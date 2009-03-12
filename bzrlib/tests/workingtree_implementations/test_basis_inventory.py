@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005 Canonical Ltd
+# Copyright (C) 2004, 2005, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,6 +16,7 @@
 
 import os
 
+from bzrlib.tests import TestNotApplicable
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 from bzrlib.branch import Branch
 from bzrlib import inventory
@@ -29,8 +30,9 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         # This test is not applicable to DirState based trees: the basis is
         # not separate is mandatory.
         if isinstance(self.workingtree_format,
-            bzrlib.workingtree_4.WorkingTreeFormat4):
-            return
+            bzrlib.workingtree_4.DirStateWorkingTreeFormat):
+            raise TestNotApplicable("not applicable to %r"
+                % (self.workingtree_format,))
         # TODO: jam 20051218 this probably should add more than just
         #                    a couple files to the inventory
 
@@ -41,11 +43,11 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         t.add('a')
         t.commit('a', rev_id='r1')
 
-        t._control_files.get_utf8('basis-inventory-cache')
+        self.assertTrue(t._transport.has('basis-inventory-cache'))
 
         basis_inv = t.basis_tree().inventory
         self.assertEquals('r1', basis_inv.revision_id)
-        
+
         store_inv = b.repository.get_inventory('r1')
         self.assertEquals(store_inv._byid, basis_inv._byid)
 
@@ -53,7 +55,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         t.add('b')
         t.commit('b', rev_id='r2')
 
-        t._control_files.get_utf8('basis-inventory-cache')
+        self.assertTrue(t._transport.has('basis-inventory-cache'))
 
         basis_inv_txt = t.read_basis_inventory()
         basis_inv = bzrlib.xml7.serializer_v7.read_inventory_from_string(basis_inv_txt)
@@ -67,19 +69,20 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         # This test is not applicable to DirState based trees: the basis is
         # not separate and ignorable.
         if isinstance(self.workingtree_format,
-            bzrlib.workingtree_4.WorkingTreeFormat4):
-            return
+            bzrlib.workingtree_4.DirStateWorkingTreeFormat):
+            raise TestNotApplicable("not applicable to %r"
+                % (self.workingtree_format,))
         t = self.make_branch_and_tree('.')
         b = t.branch
         open('a', 'wb').write('a\n')
         t.add('a')
         t.commit('a', rev_id='r1')
-        t._control_files.put_utf8('basis-inventory-cache', 'booga')
+        t._transport.put_bytes('basis-inventory-cache', 'booga')
         t.basis_tree()
-        t._control_files.put_utf8('basis-inventory-cache', '<xml/>')
+        t._transport.put_bytes('basis-inventory-cache', '<xml/>')
         t.basis_tree()
-        t._control_files.put_utf8('basis-inventory-cache', '<inventory />')
+        t._transport.put_bytes('basis-inventory-cache', '<inventory />')
         t.basis_tree()
-        t._control_files.put_utf8('basis-inventory-cache', 
-                                  '<inventory format="pi"/>')
+        t._transport.put_bytes('basis-inventory-cache',
+            '<inventory format="pi"/>')
         t.basis_tree()

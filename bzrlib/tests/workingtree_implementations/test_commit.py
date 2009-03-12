@@ -23,13 +23,14 @@ from bzrlib import (
     bzrdir,
     conflicts,
     errors,
+    mutabletree,
     osutils,
     revision as _mod_revision,
     ui,
     uncommit,
     workingtree,
     )
-from bzrlib.errors import (NotBranchError, NotVersionedError, 
+from bzrlib.errors import (NotBranchError, NotVersionedError,
                            UnsupportedOperation)
 from bzrlib.osutils import pathjoin, getcwd
 from bzrlib.tests import TestCase
@@ -62,7 +63,7 @@ class CapturingUIFactory(ui.UIFactory):
 
     def progress_bar(self):
         return self
-    
+
     def nested_progress_bar(self):
         self.depth += 1
         return self
@@ -194,6 +195,52 @@ class TestCommit(TestCaseWithWorkingTree):
                           ('xyz/m', 'm-id'),
                          ], paths)
 
+    def test_commit_exclude_pending_merge_fails(self):
+        """Excludes are a form of partial commit."""
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['foo'])
+        wt.add('foo')
+        wt.commit('commit one')
+        wt2 = wt.bzrdir.sprout('to').open_workingtree()
+        wt2.commit('change_right')
+        wt.merge_from_branch(wt2.branch)
+        self.assertRaises(errors.CannotCommitSelectedFileMerge,
+            wt.commit, 'test', exclude=['foo'])
+
+    def test_commit_exclude_exclude_changed_is_pointless(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a'])
+        tree.smart_add(['.'])
+        tree.commit('setup test')
+        self.build_tree_contents([('a', 'new contents for "a"\n')])
+        self.assertRaises(errors.PointlessCommit, tree.commit, 'test',
+            exclude=['a'], allow_pointless=False)
+
+    def test_commit_exclude_excludes_modified_files(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a', 'b', 'c'])
+        tree.smart_add(['.'])
+        tree.commit('test', exclude=['b', 'c'])
+        # If b was excluded it will still be 'added' in status.
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        changes = list(tree.iter_changes(tree.basis_tree()))
+        self.assertEqual(2, len(changes))
+        self.assertEqual((None, 'b'), changes[0][1])
+        self.assertEqual((None, 'c'), changes[1][1])
+
+    def test_commit_exclude_subtree_of_selected(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a/', 'a/b'])
+        tree.smart_add(['.'])
+        tree.commit('test', specific_files=['a'], exclude=['a/b'])
+        # If a/b was excluded it will still be 'added' in status.
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        changes = list(tree.iter_changes(tree.basis_tree()))
+        self.assertEqual(1, len(changes))
+        self.assertEqual((None, 'a/b'), changes[0][1])
+
     def test_commit_sets_last_revision(self):
         tree = self.make_branch_and_tree('tree')
         committed_id = tree.commit('foo', rev_id='foo')
@@ -208,7 +255,7 @@ class TestCommit(TestCaseWithWorkingTree):
         self.assertNotEqual(None, committed_id)
 
     def test_commit_local_unbound(self):
-        # using the library api to do a local commit on unbound branches is 
+        # using the library api to do a local commit on unbound branches is
         # also an error
         tree = self.make_branch_and_tree('tree')
         self.assertRaises(errors.LocalRequiresBoundBranch,
@@ -252,7 +299,7 @@ class TestCommit(TestCaseWithWorkingTree):
                           bzrdir.BzrDir.open,
                           'master')
         tree.commit('foo', rev_id='foo', local=True)
- 
+
     def test_local_commit_does_not_push_to_master(self):
         # a --local commit does not require access to the master branch
         # at all, or even for it to exist.
@@ -397,7 +444,7 @@ class TestCommit(TestCaseWithWorkingTree):
             basis.get_reference_revision(basis.path2id('subtree')))
         # the outer tree must have have changed too.
         self.assertNotEqual(None, rev_id)
-        
+
     def test_nested_commit_second_commit_detects_changes(self):
         """Commit with a nested tree picks up the correct child revid."""
         tree = self.make_branch_and_tree('.')
@@ -447,17 +494,17 @@ class TestCommit(TestCaseWithWorkingTree):
 
 
 class TestCommitProgress(TestCaseWithWorkingTree):
-    
+
     def restoreDefaults(self):
         ui.ui_factory = self.old_ui_factory
 
     def test_commit_progress_steps(self):
-        # during commit we one progress update for every entry in the 
+        # during commit we one progress update for every entry in the
         # inventory, and then one for the inventory, and one for the
         # inventory, and one for the revision insertions.
-        # first we need a test commit to do. Lets setup a branch with 
+        # first we need a test commit to do. Lets setup a branch with
         # 3 files, and alter one in a selected-file commit. This exercises
-        # a number of cases quickly. We should also test things like 
+        # a number of cases quickly. We should also test things like
         # selective commits which excludes newly added files.
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b', 'c'])
@@ -466,7 +513,7 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         f = file('b', 'wt')
         f.write('new content')
         f.close()
-        # set a progress bar that captures the calls so we can see what is 
+        # set a progress bar that captures the calls so we can see what is
         # emitted
         self.old_ui_factory = ui.ui_factory
         self.addCleanup(self.restoreDefaults)
@@ -489,7 +536,7 @@ class TestCommitProgress(TestCaseWithWorkingTree):
 
     def test_commit_progress_shows_post_hook_names(self):
         tree = self.make_branch_and_tree('.')
-        # set a progress bar that captures the calls so we can see what is 
+        # set a progress bar that captures the calls so we can see what is
         # emitted
         self.old_ui_factory = ui.ui_factory
         self.addCleanup(self.restoreDefaults)
@@ -497,8 +544,8 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         ui.ui_factory = factory
         def a_hook(_, _2, _3, _4, _5, _6):
             pass
-        branch.Branch.hooks.install_hook('post_commit', a_hook)
-        branch.Branch.hooks.name_hook(a_hook, 'hook name')
+        branch.Branch.hooks.install_named_hook('post_commit', a_hook,
+                                               'hook name')
         tree.commit('first post')
         self.assertEqual(
             [('update', 1, 5, 'Collecting changes [Directory 0] - Stage'),
@@ -514,7 +561,7 @@ class TestCommitProgress(TestCaseWithWorkingTree):
 
     def test_commit_progress_shows_pre_hook_names(self):
         tree = self.make_branch_and_tree('.')
-        # set a progress bar that captures the calls so we can see what is 
+        # set a progress bar that captures the calls so we can see what is
         # emitted
         self.old_ui_factory = ui.ui_factory
         self.addCleanup(self.restoreDefaults)
@@ -522,8 +569,8 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         ui.ui_factory = factory
         def a_hook(_, _2, _3, _4, _5, _6, _7, _8):
             pass
-        branch.Branch.hooks.install_hook('pre_commit', a_hook)
-        branch.Branch.hooks.name_hook(a_hook, 'hook name')
+        branch.Branch.hooks.install_named_hook('pre_commit', a_hook,
+                                               'hook name')
         tree.commit('first post')
         self.assertEqual(
             [('update', 1, 5, 'Collecting changes [Directory 0] - Stage'),
@@ -536,3 +583,21 @@ class TestCommitProgress(TestCaseWithWorkingTree):
              ],
             factory._calls
            )
+
+    def test_start_commit_hook(self):
+        """Make sure a start commit hook can modify the tree that is
+        committed."""
+        def start_commit_hook_adds_file(tree):
+            open(tree.abspath("newfile"), 'w').write("data")
+            tree.add(["newfile"])
+        def restoreDefaults():
+            mutabletree.MutableTree.hooks['start_commit'] = []
+        self.addCleanup(restoreDefaults)
+        tree = self.make_branch_and_tree('.')
+        mutabletree.MutableTree.hooks.install_named_hook(
+            'start_commit',
+            start_commit_hook_adds_file,
+            None)
+        revid = tree.commit('first post')
+        committed_tree = tree.basis_tree()
+        self.assertTrue(committed_tree.has_filename("newfile"))

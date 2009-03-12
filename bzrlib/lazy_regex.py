@@ -91,7 +91,7 @@ def install_lazy_compile():
 
 def reset_compile():
     """Restore the original function to re.compile().
-    
+
     It is safe to call reset_compile() multiple times, it will always
     restore re.compile() to the value that existed at import time.
     Though the first call will reset back to the original (it doesn't
@@ -101,6 +101,7 @@ def reset_compile():
 
 
 _real_re_compile = re.compile
-assert _real_re_compile is not lazy_compile, \
-    "re.compile has already been overridden as lazy_compile, but this would" \
-    " cause infinite recursion"
+if _real_re_compile is lazy_compile:
+    raise AssertionError(
+        "re.compile has already been overridden as lazy_compile, but this would" \
+        " cause infinite recursion")

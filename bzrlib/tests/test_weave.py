@@ -16,7 +16,7 @@
 
 
 # TODO: tests regarding version names
-# TODO: rbc 20050108 test that join does not leave an inconsistent weave 
+# TODO: rbc 20050108 test that join does not leave an inconsistent weave
 #       if it fails.
 
 """test suite for weave algorithm"""
@@ -65,7 +65,7 @@ class TestBase(TestCase):
 class WeaveContains(TestBase):
     """Weave __contains__ operator"""
     def runTest(self):
-        k = Weave()
+        k = Weave(get_scope=lambda:None)
         self.assertFalse('foo' in k)
         k.add_lines('foo', [], TEXT_1)
         self.assertTrue('foo' in k)
@@ -83,18 +83,6 @@ class AnnotateOne(TestBase):
         self.assertEqual(k.annotate('text0'),
                          [('text0', TEXT_0[0])])
 
-
-class GetSha1(TestBase):
-    def test_get_sha1(self):
-        k = Weave()
-        k.add_lines('text0', [], 'text0')
-        self.assertEqual('34dc0e430c642a26c3dd1c2beb7a8b4f4445eb79',
-                         k.get_sha1('text0'))
-        self.assertRaises(errors.RevisionNotPresent,
-                          k.get_sha1, 0)
-        self.assertRaises(errors.RevisionNotPresent,
-                          k.get_sha1, 'text1')
-                        
 
 class InvalidAdd(TestBase):
     """Try to use invalid version number during add."""
@@ -133,7 +121,7 @@ class InvalidRepeatedAdd(TestBase):
                           'text0',
                           ['basis'],         # not the right parents
                           TEXT_0)
-        
+
 
 class InsertLines(TestBase):
     """Store a revision that adds one line to the original.
@@ -182,7 +170,7 @@ class InsertLines(TestBase):
               ['text0', 'text1', 'text3'],
               ['line 1', 'aaa', 'middle line', 'bbb', 'line 2', 'ccc'])
 
-        self.assertEqual(k.annotate('text4'), 
+        self.assertEqual(k.annotate('text4'),
                          [('text0', 'line 1'),
                           ('text4', 'aaa'),
                           ('text3', 'middle line'),
@@ -201,7 +189,7 @@ class DeleteLines(TestBase):
         base_text = ['one', 'two', 'three', 'four']
 
         k.add_lines('text0', [], base_text)
-        
+
         texts = [['one', 'two', 'three'],
                  ['two', 'three', 'four'],
                  ['one', 'four'],
@@ -238,11 +226,11 @@ class SuicideDelete(TestBase):
                 ]
         ################################### SKIPPED
         # Weave.get doesn't trap this anymore
-        return 
+        return
 
         self.assertRaises(WeaveFormatError,
                           k.get_lines,
-                          0)        
+                          0)
 
 
 class CannedDelete(TestBase):
@@ -290,7 +278,7 @@ class CannedReplacement(TestBase):
                 'line to be deleted',
                 (']', 1),
                 ('{', 1),
-                'replacement line',                
+                'replacement line',
                 ('}', 1),
                 'last line',
                 ('}', 0),
@@ -333,7 +321,7 @@ class BadWeave(TestBase):
 
         ################################### SKIPPED
         # Weave.get doesn't trap this anymore
-        return 
+        return
 
 
         self.assertRaises(WeaveFormatError,
@@ -411,7 +399,7 @@ class InsertNested(TestBase):
                           '  added in version 1',
                           '  also from v1',
                           '}'])
-                       
+
         self.assertEqual(k.get_lines(2),
                          ['foo {',
                           '  added in v2',
@@ -423,7 +411,7 @@ class InsertNested(TestBase):
                           '  added in v2',
                           '  also from v1',
                           '}'])
-                         
+
 
 class DeleteLines2(TestBase):
     """Test recording revisions that delete lines.
@@ -505,7 +493,7 @@ class DivergedIncludes(TestBase):
                 ('}', 1),
                 ('{', 2),
                 "alternative second line",
-                ('}', 2),                
+                ('}', 2),
                 ]
 
         k._sha1s = [sha_string('first line')
@@ -533,7 +521,7 @@ class ReplaceLine(TestBase):
 
         text0 = ['cheddar', 'stilton', 'gruyere']
         text1 = ['cheddar', 'blue vein', 'neufchatel', 'chevre']
-        
+
         k.add_lines('text0', [], text0)
         k.add_lines('text1', ['text0'], text1)
 
@@ -621,7 +609,7 @@ class Khayyam(TestBase):
             A Jug of Wine, a Loaf of Bread, -- and Thou
             Beside me singing in the Wilderness --
             Oh, Wilderness were Paradise enow!""",
-            
+
             """A Book of Verses underneath the Bough,
             A Jug of Wine, a Loaf of Bread, -- and Thou
             Beside me singing in the Wilderness --
@@ -669,66 +657,6 @@ class JoinWeavesTests(TestBase):
         self.weave1.add_lines('v1', [], self.lines1)
         self.weave1.add_lines('v2', ['v1'], ['hello\n', 'world\n'])
         self.weave1.add_lines('v3', ['v2'], self.lines3)
-        
-    def test_join_empty(self):
-        """Join two empty weaves."""
-        eq = self.assertEqual
-        w1 = Weave()
-        w2 = Weave()
-        w1.join(w2)
-        eq(len(w1), 0)
-        
-    def test_join_empty_to_nonempty(self):
-        """Join empty weave onto nonempty."""
-        self.weave1.join(Weave())
-        self.assertEqual(len(self.weave1), 3)
-
-    def test_join_unrelated(self):
-        """Join two weaves with no history in common."""
-        wb = Weave()
-        wb.add_lines('b1', [], ['line from b\n'])
-        w1 = self.weave1
-        w1.join(wb)
-        eq = self.assertEqual
-        eq(len(w1), 4)
-        eq(sorted(w1.versions()),
-           ['b1', 'v1', 'v2', 'v3'])
-
-    def test_join_related(self):
-        wa = self.weave1.copy()
-        wb = self.weave1.copy()
-        wa.add_lines('a1', ['v3'], ['hello\n', 'sweet\n', 'world\n'])
-        wb.add_lines('b1', ['v3'], ['hello\n', 'pale blue\n', 'world\n'])
-        eq = self.assertEquals
-        eq(len(wa), 4)
-        eq(len(wb), 4)
-        wa.join(wb)
-        eq(len(wa), 5)
-        eq(wa.get_lines('b1'),
-           ['hello\n', 'pale blue\n', 'world\n'])
-
-    def test_join_text_disagreement(self):
-        """Cannot join weaves with different texts for a version."""
-        wa = Weave()
-        wb = Weave()
-        wa.add_lines('v1', [], ['hello\n'])
-        wb.add_lines('v1', [], ['not\n', 'hello\n'])
-        self.assertRaises(WeaveError,
-                          wa.join, wb)
-
-    def test_join_unordered(self):
-        """Join weaves where indexes differ.
-        
-        The source weave contains a different version at index 0."""
-        wa = self.weave1.copy()
-        wb = Weave()
-        wb.add_lines('x1', [], ['line from x1\n'])
-        wb.add_lines('v1', [], ['hello\n'])
-        wb.add_lines('v2', ['v1'], ['hello\n', 'world\n'])
-        wa.join(wb)
-        eq = self.assertEquals
-        eq(sorted(wa.versions()), ['v1', 'v2', 'v3', 'x1',])
-        eq(wa.get_text('x1'), 'line from x1\n')
 
     def test_written_detection(self):
         # Test detection of weave file corruption.
@@ -779,9 +707,24 @@ class JoinWeavesTests(TestBase):
         self.assertRaises(errors.WeaveInvalidChecksum, w.check)
 
 
+class TestWeave(TestCase):
+
+    def test_allow_reserved_false(self):
+        w = Weave('name', allow_reserved=False)
+        # Add lines is checked at the WeaveFile level, not at the Weave level
+        w.add_lines('name:', [], TEXT_1)
+        # But get_lines is checked at this level
+        self.assertRaises(errors.ReservedId, w.get_lines, 'name:')
+
+    def test_allow_reserved_true(self):
+        w = Weave('name', allow_reserved=True)
+        w.add_lines('name:', [], TEXT_1)
+        self.assertEqual(TEXT_1, w.get_lines('name:'))
+
+
 class InstrumentedWeave(Weave):
     """Keep track of how many times functions are called."""
-    
+
     def __init__(self, weave_name=None):
         self._extract_count = 0
         Weave.__init__(self, weave_name=weave_name)
@@ -789,57 +732,6 @@ class InstrumentedWeave(Weave):
     def _extract(self, versions):
         self._extract_count += 1
         return Weave._extract(self, versions)
-
-
-class JoinOptimization(TestCase):
-    """Test that Weave.join() doesn't extract all texts, only what must be done."""
-
-    def test_join(self):
-        w1 = InstrumentedWeave()
-        w2 = InstrumentedWeave()
-
-        txt0 = ['a\n']
-        txt1 = ['a\n', 'b\n']
-        txt2 = ['a\n', 'c\n']
-        txt3 = ['a\n', 'b\n', 'c\n']
-
-        w1.add_lines('txt0', [], txt0) # extract 1a
-        w2.add_lines('txt0', [], txt0) # extract 1b
-        w1.add_lines('txt1', ['txt0'], txt1)# extract 2a
-        w2.add_lines('txt2', ['txt0'], txt2)# extract 2b
-        w1.join(w2) # extract 3a to add txt2 
-        w2.join(w1) # extract 3b to add txt1 
-
-        w1.add_lines('txt3', ['txt1', 'txt2'], txt3) # extract 4a 
-        w2.add_lines('txt3', ['txt2', 'txt1'], txt3) # extract 4b
-        # These secretly have inverted parents
-
-        # This should not have to do any extractions
-        w1.join(w2) # NO extract, texts already present with same parents
-        w2.join(w1) # NO extract, texts already present with same parents
-
-        self.assertEqual(4, w1._extract_count)
-        self.assertEqual(4, w2._extract_count)
-
-    def test_double_parent(self):
-        # It should not be considered illegal to add
-        # a revision with the same parent twice
-        w1 = InstrumentedWeave()
-        w2 = InstrumentedWeave()
-
-        txt0 = ['a\n']
-        txt1 = ['a\n', 'b\n']
-        txt2 = ['a\n', 'c\n']
-        txt3 = ['a\n', 'b\n', 'c\n']
-
-        w1.add_lines('txt0', [], txt0)
-        w2.add_lines('txt0', [], txt0)
-        w1.add_lines('txt1', ['txt0'], txt1)
-        w2.add_lines('txt1', ['txt0', 'txt0'], txt1)
-        # Same text, effectively the same, because the
-        # parent is only repeated
-        w1.join(w2) # extract 3a to add txt2 
-        w2.join(w1) # extract 3b to add txt1 
 
 
 class TestNeedsReweave(TestCase):
@@ -861,7 +753,7 @@ class TestNeedsReweave(TestCase):
 
 
 class TestWeaveFile(TestCaseInTempDir):
-    
+
     def test_empty_file(self):
         f = open('empty.weave', 'wb+')
         try:

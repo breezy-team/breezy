@@ -44,13 +44,32 @@ _bugs_help = \
 recorded by using the --fixes option. For each bug marked as fixed, an
 entry is included in the 'bugs' revision property stating '<url> <status>'.
 (The only ``status`` value currently supported is ``fixed.``)
-Support for Launchpad's central bug tracker is built in. For other bug
-trackers, configuration is required in advance so that the correct URL
-can be recorded.
 
-In addition to Launchpad, Bazaar directly supports the generation of
-URLs appropriate for Bugzilla and Trac. If your project uses a different
-bug tracker, it is easy to add support for it.
+The --fixes option allows you to specify a bug tracker and a bug identifier
+rather than a full URL. This looks like
+
+    bzr commit --fixes <tracker>:<id>
+
+where "<tracker>" is an identifier for the bug tracker, and "<id>" is the
+identifier for that bug within the bugtracker, usually the bug number.
+
+Bazaar knows about a few bug trackers that have many users. If
+you use one of these bug trackers then there is no setup required to
+use this feature, you just need to know the tracker identifier to use.
+These are the bugtrackers that are built in:
+
+     URL                          | Abbreviation | Example
+     https://bugs.launchpad.net/  | lp           | lp:12345
+     http://bugs.debian.org/      | deb          | deb:12345
+     http://bugzilla.gnome.org/   | gnome        | gnome:12345
+
+For the bug trackers not listed above configuration is required.
+Support for generating the URLs for any project using Bugzilla or Trac
+is built in, along with a template mechanism for other bugtrackers with
+simple URL schemes. If your bug tracker can't be described by one
+of the schemes described below then you can write a plugin to support
+it.
+
 If you use Bugzilla or Trac, then you only need to set a configuration
 variable which contains the base URL of the bug tracker. These options
 can go into ``bazaar.conf``, ``branch.conf`` or into a branch-specific
@@ -59,6 +78,11 @@ for each of the projects you work on.
 
 Note: As you provide a short name for each tracker, you can specify one or
 more bugs in one or more trackers at commit time if you wish.
+
+Launchpad
+---------
+
+Use ``bzr commit --fixes lp:2`` to record that this commit fixes bug 2.
 
 bugzilla_<tracker_abbreviation>_url
 -----------------------------------
@@ -171,7 +195,8 @@ class UniqueIntegerBugTracker(IntegerBugTracker):
     """A style of bug tracker that exists in one place only, such as Launchpad.
 
     If you have one of these trackers then register an instance passing in an
-    abbreviated name for the bug tracker and a base URL.
+    abbreviated name for the bug tracker and a base URL. The bug ids are
+    appended directly to the URL.
     """
 
     def __init__(self, abbreviated_bugtracker_name, base_url):
@@ -187,7 +212,7 @@ class UniqueIntegerBugTracker(IntegerBugTracker):
 
     def _get_bug_url(self, bug_id):
         """Return the URL for bug_id."""
-        return urlutils.join(self.base_url, bug_id)
+        return self.base_url + bug_id
 
 
 tracker_registry.register(
@@ -196,6 +221,10 @@ tracker_registry.register(
 
 tracker_registry.register(
     'debian', UniqueIntegerBugTracker('deb', 'http://bugs.debian.org/'))
+
+
+tracker_registry.register('gnome',
+    UniqueIntegerBugTracker('gnome', 'http://bugzilla.gnome.org/show_bug.cgi?id='))
 
 
 class URLParametrizedIntegerBugTracker(IntegerBugTracker):

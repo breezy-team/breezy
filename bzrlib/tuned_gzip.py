@@ -21,7 +21,7 @@ from cStringIO import StringIO
 
 # make GzipFile faster:
 import gzip
-from gzip import U32, LOWU32, FEXTRA, FCOMMENT, FNAME, FHCRC
+from gzip import FEXTRA, FCOMMENT, FNAME, FHCRC
 import sys
 import struct
 import zlib
@@ -30,6 +30,21 @@ import zlib
 import bzrlib
 
 __all__ = ["GzipFile", "bytes_to_gzip"]
+
+
+def U32(i):
+    """Return i as an unsigned integer, assuming it fits in 32 bits.
+
+    If it's >= 2GB when viewed as a 32-bit unsigned int, return a long.
+    """
+    if i < 0:
+        i += 1L << 32
+    return i
+
+
+def LOWU32(i):
+    """Return the low-order 32 bits of an int, as a non-negative int."""
+    return i & 0xFFFFFFFFL
 
 
 def bytes_to_gzip(bytes, factory=zlib.compressobj,
@@ -99,7 +114,7 @@ class GzipFile(gzip.GzipFile):
         """A tuned version of gzip._write_gzip_header
 
         We have some extra constrains that plain Gzip does not.
-        1) We want to write the whole blob at once. rather than multiple 
+        1) We want to write the whole blob at once. rather than multiple
            calls to fileobj.write().
         2) We never have a filename
         3) We don't care about the time
@@ -121,7 +136,7 @@ class GzipFile(gzip.GzipFile):
 
     def _read(self, size=1024):
         # various optimisations:
-        # reduces lsprof count from 2500 to 
+        # reduces lsprof count from 2500 to
         # 8337 calls in 1272, 365 internal
         if self.fileobj is None:
             raise EOFError, "Reached EOF"
@@ -149,7 +164,8 @@ class GzipFile(gzip.GzipFile):
 
         if buf == "":
             self._add_read_data(self.decompress.flush())
-            assert len(self.decompress.unused_data) >= 8, "what does flush do?"
+            if len(self.decompress.unused_data) < 8:
+                raise AssertionError("what does flush do?")
             self._gzip_tail = self.decompress.unused_data[0:8]
             self._read_eof()
             # tell the driving read() call we have stuffed all the data
@@ -175,7 +191,8 @@ class GzipFile(gzip.GzipFile):
                 self._gzip_tail = self.decompress.unused_data[0:8]
             elif seek_length < 0:
                 # we haven't read enough to check the checksum.
-                assert -8 < seek_length, "too great a seek."
+                if not (-8 < seek_length):
+                    raise AssertionError("too great a seek")
                 buf = self.fileobj.read(-seek_length)
                 self._gzip_tail = self.decompress.unused_data + buf
             else:
@@ -190,17 +207,18 @@ class GzipFile(gzip.GzipFile):
         """tuned to reduce function calls and eliminate file seeking:
         pass 1:
         reduces lsprof count from 800 to 288
-        4168 in 296 
+        4168 in 296
         avoid U32 call by using struct format L
         4168 in 200
         """
-        # We've read to the end of the file, so we should have 8 bytes of 
+        # We've read to the end of the file, so we should have 8 bytes of
         # unused data in the decompressor. If we don't, there is a corrupt file.
         # We use these 8 bytes to calculate the CRC and the recorded file size.
         # We then check the that the computed CRC and size of the
         # uncompressed data matches the stored values.  Note that the size
         # stored is the true file size mod 2**32.
-        assert len(self._gzip_tail) == 8, "gzip trailer is incorrect length."
+        if not (len(self._gzip_tail) == 8):
+            raise AssertionError("gzip trailer is incorrect length.")
         crc32, isize = struct.unpack("<LL", self._gzip_tail)
         # note that isize is unsigned - it can exceed 2GB
         if crc32 != U32(self.crc):
@@ -210,7 +228,7 @@ class GzipFile(gzip.GzipFile):
 
     def _read_gzip_header(self, bytes=None):
         """Supply bytes if the minimum header size is already read.
-        
+
         :param bytes: 10 bytes of header data.
         """
         """starting cost: 300 in 3998
@@ -253,7 +271,7 @@ class GzipFile(gzip.GzipFile):
 
     def readline(self, size=-1):
         """Tuned to remove buffer length calls in _unread and...
-        
+
         also removes multiple len(c) calls, inlines _unread,
         total savings - lsprof 5800 to 5300
         phase 2:
@@ -263,7 +281,7 @@ class GzipFile(gzip.GzipFile):
         leading to a drop to:
         4168 calls in 1977
         4168 call to read() in 1646
-        - i.e. just reduced the function call overhead. May be worth 
+        - i.e. just reduced the function call overhead. May be worth
           keeping.
         """
         if size < 0: size = sys.maxint
@@ -311,7 +329,7 @@ class GzipFile(gzip.GzipFile):
         # to :
         # 4168 calls in 417.
         # Negative numbers result in reading all the lines
-        
+
         # python's gzip routine uses sizehint. This is a more efficient way
         # than python uses to honor it. But it is even more efficient to
         # just read the entire thing and use cStringIO to split into lines.
@@ -324,12 +342,12 @@ class GzipFile(gzip.GzipFile):
 
     def _unread(self, buf, len_buf=None):
         """tuned to remove unneeded len calls.
-        
+
         because this is such an inner routine in readline, and readline is
         in many inner loops, this has been inlined into readline().
 
         The len_buf parameter combined with the reduction in len calls dropped
-        the lsprof ms count for this routine on my test data from 800 to 200 - 
+        the lsprof ms count for this routine on my test data from 800 to 200 -
         a 75% saving.
         """
         if len_buf is None:
@@ -353,7 +371,7 @@ class GzipFile(gzip.GzipFile):
             self.offset += data_len
 
     def writelines(self, lines):
-        # profiling indicated a significant overhead 
+        # profiling indicated a significant overhead
         # calling write for each line.
         # this batch call is a lot faster :).
         # (4 seconds to 1 seconds for the sample upgrades I was testing).

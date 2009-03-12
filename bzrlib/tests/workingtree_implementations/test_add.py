@@ -24,7 +24,6 @@ from bzrlib import (
     osutils,
     tests,
     )
-from bzrlib.workingtree_4 import WorkingTreeFormat4
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 
 
@@ -149,7 +148,7 @@ class TestAdd(TestCaseWithWorkingTree):
                           tree.add, ['dir/subdir'])
 
     def test_add_root(self):
-        # adding the root should be a no-op, or at least not 
+        # adding the root should be a no-op, or at least not
         # do anything whacky.
         tree = self.make_branch_and_tree('.')
         tree.lock_write()

@@ -49,7 +49,7 @@ def unique_lcs_py(a, b):
         else:
             index[line]= i
     # make btoa[i] = position of line i in a, unless
-    # that line doesn't occur exactly once in both, 
+    # that line doesn't occur exactly once in both,
     # in which case it's set to None
     btoa = [None] * len(b)
     index2 = {}
@@ -79,7 +79,7 @@ def unique_lcs_py(a, b):
             k = len(stacks)
         # as an optimization, check if the next line comes right after
         # the previous line, because usually it does
-        elif stacks and stacks[k] < apos and (k == len(stacks) - 1 or 
+        elif stacks and stacks[k] < apos and (k == len(stacks) - 1 or
                                               stacks[k+1] > apos):
             k += 1
         else:
@@ -176,7 +176,7 @@ def _collapse_sequences(matches):
     length = 0
     for i_a, i_b in matches:
         if (start_a is not None
-            and (i_a == start_a + length) 
+            and (i_a == start_a + length)
             and (i_b == start_b + length)):
             length += 1
         else:
@@ -196,9 +196,11 @@ def _check_consistency(answer):
     # For consistency sake, make sure all matches are only increasing
     next_a = -1
     next_b = -1
-    for a,b,match_len in answer:
-        assert a >= next_a, 'Non increasing matches for a'
-        assert b >= next_b, 'Not increasing matches for b'
+    for (a, b, match_len) in answer:
+        if a < next_a:
+            raise ValueError('Non increasing matches for a')
+        if b < next_b:
+            raise ValueError('Non increasing matches for b')
         next_a = a + match_len
         next_b = b + match_len
 
@@ -228,7 +230,7 @@ class PatienceSequenceMatcher_py(difflib.SequenceMatcher):
         >>> s.get_matching_blocks()
         [(0, 0, 2), (3, 2, 2), (5, 4, 0)]
         """
-        # jam 20060525 This is the python 2.4.1 difflib get_matching_blocks 
+        # jam 20060525 This is the python 2.4.1 difflib get_matching_blocks
         # implementation which uses __helper. 2.4.3 got rid of helper for
         # doing it inline with a queue.
         # We should consider doing the same for recurse_matches

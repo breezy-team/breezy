@@ -45,9 +45,9 @@ from bzrlib.errors import NotConflicted
 # u'\xe5' == a with circle
 # '\xc3\xae' == u'\xee' == i with hat
 # So these are u'pathg' and 'idg' only with a circle and a hat. (shappo?)
-example_conflicts = ConflictList([ 
+example_conflicts = ConflictList([
     MissingParent('Not deleting', u'p\xe5thg', '\xc3\xaedg'),
-    ContentsConflict(u'p\xe5tha', None, '\xc3\xaeda'), 
+    ContentsConflict(u'p\xe5tha', None, '\xc3\xaeda'),
     TextConflict(u'p\xe5tha'),
     PathConflict(u'p\xe5thb', u'p\xe5thc', '\xc3\xaedb'),
     DuplicateID('Unversioned existing file', u'p\xe5thc', u'p\xe5thc2',
@@ -85,7 +85,7 @@ class TestConflicts(TestCaseWithTransport):
         restore('hello.sploo')
         self.assertEqual(len(tree.conflicts()), 0)
         self.assertFileEqual('hello world2', 'hello')
-        assert not os.path.lexists('hello.sploo')
+        self.assertFalse(os.path.lexists('hello.sploo'))
         self.assertRaises(NotConflicted, restore, 'hello')
         self.assertRaises(NotConflicted, restore, 'hello.sploo')
 

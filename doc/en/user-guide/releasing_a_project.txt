@@ -25,7 +25,7 @@ to work out the type of archive to create as shown below.
          zip                          .zip
       =================       =========================
 
-If you wish to package a different version to the last one, use
+If you wish to package a revision other than the last one, use
 the ``-r`` option. If you wish to tune the root directory inside
 the archive, use the ``--root`` option. See the online help or
 User Reference for further details on the options supported by

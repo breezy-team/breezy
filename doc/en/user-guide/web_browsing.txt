@@ -1,0 +1,20 @@
+Web browsing
+============
+
+Overview
+--------
+
+There are a range of options available for providing a web view of a
+Bazaar repository. In increasing order of complexity, these are:
+
+* bzrweb
+* webserve
+* Loggerhead
+
+The first two tools are lightweight and easy to install.
+Loggerhead takes more effort to setup but provides more functionality.
+See http://bazaar-vcs.org/WebInterface for the latest information on
+these packages including download links.
+
+Note: If your project is hosted or mirrored on Launchpad,
+Loggerhead code browsing is provided as part of the service.

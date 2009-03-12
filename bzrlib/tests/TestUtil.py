@@ -47,7 +47,7 @@ def makeCollectingLogger():
 def visitTests(suite, visitor):
     """A foreign method for visiting the tests in a test suite."""
     for test in suite._tests:
-        #Abusing types to avoid monkey patching unittest.TestCase. 
+        #Abusing types to avoid monkey patching unittest.TestCase.
         # Maybe that would be better?
         try:
             test.visit(visitor)
@@ -59,7 +59,7 @@ def visitTests(suite, visitor):
                 visitTests(test, visitor)
             else:
                 print "unvisitable non-unittest.TestCase element %r (%r)" % (test, test.__class__)
-    
+
 
 class TestSuite(unittest.TestSuite):
     """I am an extended TestSuite with a visitor interface.
@@ -83,14 +83,20 @@ class TestLoader(unittest.TestLoader):
     def loadTestsFromModuleNames(self, names):
         """use a custom means to load tests from modules.
 
-        There is an undesirable glitch in the python TestLoader where a 
-        import error is ignore. We think this can be solved by ensuring the 
+        There is an undesirable glitch in the python TestLoader where a
+        import error is ignore. We think this can be solved by ensuring the
         requested name is resolvable, if its not raising the original error.
         """
         result = self.suiteClass()
         for name in names:
-            module = _load_module_by_name(name)
-            result.addTests(self.loadTestsFromModule(module))
+            result.addTests(self.loadTestsFromModuleName(name))
+        return result
+
+    def loadTestsFromModuleName(self, name):
+        result = self.suiteClass()
+        module = _load_module_by_name(name)
+
+        result.addTests(self.loadTestsFromModule(module))
         return result
 
     def loadTestsFromModule(self, module):
@@ -101,7 +107,7 @@ class TestLoader(unittest.TestLoader):
         regular python loadTestsFromModule.
 
         If a load_tests attribute is found, it is called and the result is
-        returned. 
+        returned.
 
         load_tests should be defined like so:
         >>> def load_tests(standard_tests, module, loader):
@@ -127,13 +133,33 @@ class TestLoader(unittest.TestLoader):
     def getTestCaseNames(self, test_case_class):
         test_fn_names = self.test_func_names.get(test_case_class, None)
         if test_fn_names is not None:
-            # We already calculate that
+            # We already know them
             return test_fn_names
 
         test_fn_names = unittest.TestLoader.getTestCaseNames(self,
                                                              test_case_class)
         self.test_func_names[test_case_class] = test_fn_names
         return test_fn_names
+
+
+class FilteredByModuleTestLoader(TestLoader):
+    """A test loader that import only the needed modules."""
+
+    def __init__(self, needs_module):
+        """Constructor.
+
+        :param needs_module: a callable taking a module name as a
+            parameter returing True if the module should be loaded.
+        """
+        TestLoader.__init__(self)
+        self.needs_module = needs_module
+
+    def loadTestsFromModuleName(self, name):
+        if self.needs_module(name):
+            return TestLoader.loadTestsFromModuleName(self, name)
+        else:
+            return self.suiteClass()
+
 
 def _load_module_by_name(mod_name):
     parts = mod_name.split('.')

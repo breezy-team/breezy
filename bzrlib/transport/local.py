@@ -63,12 +63,21 @@ class LocalTransport(Transport):
             base = urlutils.local_path_to_url(base)
         if base[-1] != '/':
             base = base + '/'
+
+        # Special case : windows has no "root", but does have
+        # multiple lettered drives inside it. #240910
+        if sys.platform == 'win32' and base == 'file:///':
+            base = ''
+            self._local_base = ''
+            super(LocalTransport, self).__init__(base)
+            return
+
         super(LocalTransport, self).__init__(base)
         self._local_base = urlutils.local_path_from_url(base)
 
     def clone(self, offset=None):
         """Return a new LocalTransport with root at self.base + offset
-        Because the local filesystem does not require a connection, 
+        Because the local filesystem does not require a connection,
         we can just return a new object.
         """
         if offset is None:
@@ -96,11 +105,20 @@ class LocalTransport(Transport):
     def abspath(self, relpath):
         """Return the full url to the given relative URL."""
         # TODO: url escape the result. RBC 20060523.
-        assert isinstance(relpath, basestring), (type(relpath), relpath)
         # jam 20060426 Using normpath on the real path, because that ensures
         #       proper handling of stuff like
         path = osutils.normpath(osutils.pathjoin(
                     self._local_base, urlutils.unescape(relpath)))
+        # on windows, our _local_base may or may not have a drive specified
+        # (ie, it may be "/" or "c:/foo").
+        # If 'relpath' is '/' we *always* get back an abspath without
+        # the drive letter - but if our transport already has a drive letter,
+        # we want our abspaths to have a drive letter too - so handle that
+        # here.
+        if (sys.platform == "win32" and self._local_base[1:2] == ":"
+            and path == '/'):
+            path = self._local_base[:3]
+
         return urlutils.local_path_to_url(path)
 
     def local_abspath(self, relpath):
@@ -109,8 +127,9 @@ class LocalTransport(Transport):
         This function only exists for the LocalTransport, since it is
         the only one that has direct local access.
         This is mostly for stuff like WorkingTree which needs to know
-        the local working directory.
-        
+        the local working directory.  The returned path will always contain
+        forward slashes as the path separator, regardless of the platform.
+
         This function is quite expensive: it calls realpath which resolves
         symlinks.
         """
@@ -152,7 +171,7 @@ class LocalTransport(Transport):
 
         :param relpath: Location to put the contents, relative to base.
         :param f:       File-like object.
-        :param mode: The mode for the newly created file, 
+        :param mode: The mode for the newly created file,
                      None means just use the default
         """
 
@@ -378,7 +397,7 @@ class LocalTransport(Transport):
     def rename(self, rel_from, rel_to):
         path_from = self._abspath(rel_from)
         try:
-            # *don't* call bzrlib.osutils.rename, because we want to 
+            # *don't* call bzrlib.osutils.rename, because we want to
             # detect errors on rename
             os.rename(path_from, self._abspath(rel_to))
         except (IOError, OSError),e:
@@ -511,14 +530,13 @@ class EmulatedWin32LocalTransport(LocalTransport):
         self._local_base = urlutils._win32_local_path_from_url(base)
 
     def abspath(self, relpath):
-        assert isinstance(relpath, basestring), (type(relpath), relpath)
         path = osutils.normpath(osutils.pathjoin(
                     self._local_base, urlutils.unescape(relpath)))
         return urlutils._win32_local_path_to_url(path)
 
     def clone(self, offset=None):
         """Return a new LocalTransport with root at self.base + offset
-        Because the local filesystem does not require a connection, 
+        Because the local filesystem does not require a connection,
         we can just return a new object.
         """
         if offset is None:
@@ -535,14 +553,14 @@ class EmulatedWin32LocalTransport(LocalTransport):
 
 class LocalURLServer(Server):
     """A pretend server for local transports, using file:// urls.
-    
+
     Of course no actual server is required to access the local filesystem, so
     this just exists to tell the test code how to get to it.
     """
 
     def setUp(self):
         """Setup the server to service requests.
-        
+
         :param decorated_transport: ignored by this implementation.
         """
 

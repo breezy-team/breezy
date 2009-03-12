@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -40,6 +40,7 @@ from bzrlib.errors import (FileExists,
                            )
 from bzrlib.osutils import getcwd
 import bzrlib.revision
+from bzrlib.symbol_versioning import deprecated_in
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 from bzrlib.tests.branch_implementations import TestCaseWithBranch
 from bzrlib.tests.http_server import HttpServer
@@ -48,17 +49,31 @@ from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryServer
 from bzrlib.upgrade import upgrade
 from bzrlib.workingtree import WorkingTree
-from bzrlib.symbol_versioning import (
-    zero_ninetyone,
-    )
+
+
+class TestTestCaseWithBranch(TestCaseWithBranch):
+
+    def test_branch_format_matches_bzrdir_branch_format(self):
+        bzrdir_branch_format = self.bzrdir_format.get_branch_format()
+        self.assertIs(self.branch_format.__class__,
+                      bzrdir_branch_format.__class__)
+
+    def test_make_branch_gets_expected_format(self):
+        branch = self.make_branch('.')
+        self.assertIs(self.branch_format.__class__,
+            branch._format.__class__)
 
 
 class TestBranch(TestCaseWithBranch):
 
     def test_create_tree_with_merge(self):
         tree = self.create_tree_with_merge()
-        ancestry_graph = tree.branch.repository.get_revision_graph('rev-3')
-        self.assertEqual({'rev-1':(),
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        graph = tree.branch.repository.get_graph()
+        ancestry_graph = graph.get_parent_map(
+            tree.branch.repository.all_revision_ids())
+        self.assertEqual({'rev-1':('null:',),
                           'rev-2':('rev-1', ),
                           'rev-1.1.1':('rev-1', ),
                           'rev-3':('rev-2', 'rev-1.1.1', ),
@@ -94,7 +109,7 @@ class TestBranch(TestCaseWithBranch):
         wt.commit('lala!', rev_id='revision-1', allow_pointless=False)
 
         b2 = self.make_branch('b2')
-        self.assertEqual((1, []), b2.fetch(b1))
+        b2.fetch(b1)
 
         rev = b2.repository.get_revision('revision-1')
         tree = b2.repository.revision_tree('revision-1')
@@ -164,7 +179,7 @@ class TestBranch(TestCaseWithBranch):
         wt_a.add(['one'])
         wt_a.commit('commit one', rev_id='1')
 
-        branch_b = wt_a.bzrdir.sprout('b', revision_id='1').open_branch()
+        branch_b = wt_a.branch.bzrdir.sprout('b', revision_id='1').open_branch()
         self.assertEqual(wt_a.branch.base, branch_b.get_parent())
         return branch_b
 
@@ -197,7 +212,7 @@ class TestBranch(TestCaseWithBranch):
         self.assertEqual(branch.get_submit_branch(), 'sftp://example.com')
         branch.set_submit_branch('sftp://example.net')
         self.assertEqual(branch.get_submit_branch(), 'sftp://example.net')
-        
+
     def test_public_branch(self):
         """public location can be queried and set"""
         branch = self.make_branch('branch')
@@ -214,6 +229,8 @@ class TestBranch(TestCaseWithBranch):
         wt = self.make_branch_and_tree('.')
         wt.set_parent_ids(['non:existent@rev--ision--0--2'],
             allow_leftmost_as_ghost=True)
+        self.assertEqual(['non:existent@rev--ision--0--2'],
+            wt.get_parent_ids())
         rev_id = wt.commit('commit against a ghost first parent.')
         rev = wt.branch.repository.get_revision(rev_id)
         self.assertEqual(rev.parent_ids, ['non:existent@rev--ision--0--2'])
@@ -241,10 +258,10 @@ class TestBranch(TestCaseWithBranch):
                           None)
 
 # TODO 20051003 RBC:
-# compare the gpg-to-sign info for a commit with a ghost and 
+# compare the gpg-to-sign info for a commit with a ghost and
 #     an identical tree without a ghost
 # fetch missing should rewrite the TOC of weaves to list newly available parents.
-        
+
     def test_sign_existing_revision(self):
         wt = self.make_branch_and_tree('.')
         branch = wt.branch
@@ -278,6 +295,7 @@ class TestBranch(TestCaseWithBranch):
                 branch.repository.commit_write_group()
         finally:
             branch.unlock()
+        # A signature without a revision should not be accessible.
         self.assertRaises(errors.NoSuchRevision,
                           branch.repository.has_signature_for_revision_id,
                           'A')
@@ -302,9 +320,39 @@ class TestBranch(TestCaseWithBranch):
         self.assertEqual(repo.get_signature_text('A'),
                          d2.open_repository().get_signature_text('A'))
 
+    def test_missing_revisions(self):
+        t1 = self.make_branch_and_tree('b1')
+        rev1 = t1.commit('one')
+        t2 = t1.bzrdir.sprout('b2').open_workingtree()
+        rev2 = t1.commit('two')
+        rev3 = t1.commit('three')
+
+        self.assertEqual([rev2, rev3],
+            self.applyDeprecated(deprecated_in((1, 6, 0)),
+            t2.branch.missing_revisions, t1.branch))
+
+        self.assertEqual([],
+            self.applyDeprecated(deprecated_in((1, 6, 0)),
+            t2.branch.missing_revisions, t1.branch, stop_revision=1))
+        self.assertEqual([rev2],
+            self.applyDeprecated(deprecated_in((1, 6, 0)),
+            t2.branch.missing_revisions, t1.branch, stop_revision=2))
+        self.assertEqual([rev2, rev3],
+            self.applyDeprecated(deprecated_in((1, 6, 0)),
+            t2.branch.missing_revisions, t1.branch, stop_revision=3))
+
+        self.assertRaises(errors.NoSuchRevision,
+            self.applyDeprecated, deprecated_in((1, 6, 0)),
+            t2.branch.missing_revisions, t1.branch, stop_revision=4)
+
+        rev4 = t2.commit('four')
+        self.assertRaises(errors.DivergedBranches,
+            self.applyDeprecated, deprecated_in((1, 6, 0)),
+            t2.branch.missing_revisions, t1.branch)
+
     def test_nicks(self):
         """Test explicit and implicit branch nicknames.
-        
+
         Nicknames are implicitly the name of the branch's directory, unless an
         explicit nickname is set.  That is, an explicit nickname always
         overrides the implicit one.
@@ -321,10 +369,8 @@ class TestBranch(TestCaseWithBranch):
         # Set the branch nick explicitly.  This will ensure there's a branch
         # config file in the branch.
         branch.nick = "Aaron's branch"
-        branch.nick = "Aaron's branch"
         if not isinstance(branch, remote.RemoteBranch):
-            controlfilename = branch.control_files.controlfilename
-            self.failUnless(t.has(t.relpath(controlfilename("branch.conf"))))
+            self.failUnless(branch._transport.has("branch.conf"))
         # Because the nick has been set explicitly, the nick is now always
         # "Aaron's branch", regardless of directory name.
         self.assertEqual(branch.nick, "Aaron's branch")
@@ -367,14 +413,6 @@ class TestBranch(TestCaseWithBranch):
         tree = self.make_branch_and_tree('tree')
         text = tree.branch._format.get_format_description()
         self.failUnless(len(text))
-
-    def test_check_branch_report_results(self):
-        """Checking a branch produces results which can be printed"""
-        branch = self.make_branch('.')
-        result = branch.check()
-        # reports results through logging
-        result.report_results(verbose=True)
-        result.report_results(verbose=False)
 
     def test_get_commit_builder(self):
         branch = self.make_branch(".")
@@ -455,6 +493,28 @@ class TestBranch(TestCaseWithBranch):
         self.assertEquals(br.revision_history(), [])
 
 
+class TestBranchFormat(TestCaseWithBranch):
+
+    def test_branch_format_network_name(self):
+        br = self.make_branch('.')
+        format = br._format
+        network_name = format.network_name()
+        self.assertIsInstance(network_name, str)
+        # We want to test that the network_name matches the actual format on
+        # disk. For local branches that means that using network_name as a key
+        # in the registry gives back the same format. For remote branches we
+        # check that the network_name of the RemoteBranchFormat we have locally
+        # matches the actual format present on disk.
+        if isinstance(format, remote.RemoteBranchFormat):
+            br._ensure_real()
+            real_branch = br._real_branch
+            self.assertEqual(real_branch._format.network_name(), network_name)
+        else:
+            registry = branch.network_format_registry
+            looked_up_format = registry.get(network_name)
+            self.assertEqual(format.__class__, looked_up_format.__class__)
+
+
 class ChrootedTests(TestCaseWithBranch):
     """A support class that provides readonly urls outside the local namespace.
 
@@ -478,7 +538,7 @@ class ChrootedTests(TestCaseWithBranch):
         self.assertEqual('', relpath)
         branch, relpath = Branch.open_containing(self.get_readonly_url('g/p/q'))
         self.assertEqual('g/p/q', relpath)
-        
+
 
 class InstrumentedTransaction(object):
 

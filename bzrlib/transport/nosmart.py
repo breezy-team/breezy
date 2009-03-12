@@ -1,0 +1,49 @@
+# Copyright (C) 2008 Canonical Ltd
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+"""Implementation of Transport that never has a smart medium.
+
+This is mainly useful with HTTP transports, which sometimes have a smart medium
+and sometimes don't.  By using this decorator, you can force those transports
+to never have a smart medium.
+"""
+
+from bzrlib import errors
+from bzrlib.transport.decorator import TransportDecorator, DecoratorServer
+
+
+class NoSmartTransportDecorator(TransportDecorator):
+    """A decorator for transports that disables get_smart_medium."""
+
+    @classmethod
+    def _get_url_prefix(self):
+        return 'nosmart+'
+
+    def get_smart_medium(self):
+        raise errors.NoSmartMedium(self)
+
+
+class NoSmartTransportServer(DecoratorServer):
+    """Server for the NoSmartTransportDecorator for testing with."""
+
+    def get_decorator_class(self):
+        return NoSmartTransportDecorator
+
+
+def get_test_permutations():
+    """Return the permutations to be used in testing."""
+    return [(NoSmartTransportDecorator, NoSmartTransportServer)]
+

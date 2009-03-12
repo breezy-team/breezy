@@ -15,18 +15,18 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os
-import sha
 import stat
 import sys
 import time
 
+from bzrlib import osutils
 from bzrlib.errors import BzrError
 from bzrlib.hashcache import HashCache
 from bzrlib.tests import OsFifoFeature, TestCaseInTempDir, TestCase
 
 
 def sha1(t):
-    return sha.new(t).hexdigest()
+    return osutils.sha(t).hexdigest()
 
 
 def pause():
@@ -158,7 +158,7 @@ class FakeHashCache(HashCache):
     def pretend_to_sleep(self, secs):
         self._clock += secs
 
-    
+
 class TestHashCacheFakeFilesystem(TestCaseInTempDir):
     """Tests the hashcache using a simulated OS.
     """
@@ -173,7 +173,7 @@ class TestHashCacheFakeFilesystem(TestCaseInTempDir):
         self.assertEquals(hc.get_sha1('foo'), sha1('hello'))
         self.assertEquals(hc.miss_count, 1)
         self.assertEquals(hc.hit_count, 0)
-        # if we try again it's still too new; 
+        # if we try again it's still too new;
         self.assertEquals(hc.get_sha1('foo'), sha1('hello'))
         self.assertEquals(hc.miss_count, 2)
         self.assertEquals(hc.hit_count, 0)

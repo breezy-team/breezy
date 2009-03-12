@@ -149,7 +149,7 @@ class ImportReplacer(ScopeReplacer):
 
         :param scope: The scope that objects should be imported into.
             Typically this is globals()
-        :param name: The variable name. Often this is the same as the 
+        :param name: The variable name. Often this is the same as the
             module_path. 'bzrlib'
         :param module_path: A list for the fully specified module path
             ['bzrlib', 'foo', 'bar']
@@ -157,7 +157,7 @@ class ImportReplacer(ScopeReplacer):
             None, indicating the module is being imported.
         :param children: Children entries to be imported later.
             This should be a map of children specifications.
-            {'foo':(['bzrlib', 'foo'], None, 
+            {'foo':(['bzrlib', 'foo'], None,
                 {'bar':(['bzrlib', 'foo', 'bar'], None {})})
             }
         Examples:
@@ -170,9 +170,8 @@ class ImportReplacer(ScopeReplacer):
             from foo import bar, baz would get translated into 2 import
             requests. On for 'name=bar' and one for 'name=baz'
         """
-        if member is not None:
-            assert not children, \
-                'Cannot supply both a member and children'
+        if (member is not None) and children:
+            raise ValueError('Cannot supply both a member and children')
 
         object.__setattr__(self, '_import_replacer_children', children)
         object.__setattr__(self, '_member', member)
@@ -260,7 +259,8 @@ class ImportProcessor(object):
 
         :param import_str: The import string to process
         """
-        assert import_str.startswith('import ')
+        if not import_str.startswith('import '):
+            raise ValueError('bad import string %r' % (import_str,))
         import_str = import_str[len('import '):]
 
         for path in import_str.split(','):
@@ -305,7 +305,8 @@ class ImportProcessor(object):
 
         :param from_str: The import string to process
         """
-        assert from_str.startswith('from ')
+        if not from_str.startswith('from '):
+            raise ValueError('bad from/import %r' % from_str)
         from_str = from_str[len('from '):]
 
         from_module, import_list = from_str.split(' import ')

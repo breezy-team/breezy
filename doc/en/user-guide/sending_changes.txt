@@ -34,22 +34,30 @@ and can be processed much like branches can on the receiving end.
 Creating a merge directive
 --------------------------
 
-To create a merge directive, use the ``send`` command. For example,
-this command creates a merge directive and saves it into the
-nominated output file::
+To create and optionally send a merge directive, use the ``send`` command. 
+
+By default, ``send`` will email the merge directive to the "submission
+address" for the branch, which is typically the lead developer or the
+development mailing list.  
+``send`` without options will create a merge directive, fire up your email
+tool and attach it, ready for you to add the explanatory text bit.
+(See the online help for ``send`` and
+`Configuration Settings <../user-reference/bzr_man.html#configuration-settings>`_
+in the User Reference for further details on how to configure this.)
+
+Most projects like people to add some explanation to the mail along with
+the patch, explaining the reason for the patch, and why it is done the way
+it is.  This gives a reviewer some context before going into the
+line-by-line diff.
+
+Alternatively, if the ``--output`` (or ``-o``) option is given, ``send``
+will write the merge directive to a file, so you can mail it yourself,
+examine it, or save it for later use.  If an output file of ``-`` is
+given, the directive is written to stdout.  For example::
 
   cd X-fix-123
   bzr send -o ../fix-123.patch
 
-That file can then be emailed to a reviewer, together with an
-explanation of how and why you fixed the problem the way you did, say.
-
-Emailing merge directives is such a common thing that the ``send`` command
-without options will create a merge directive, fire up your email
-tool and attach it, ready for you to add the explanatory text bit.
-See the online help for ``send`` and
-`Configuration Settings <../user-reference/bzr_man.html#configuration-settings>`_
-in the User Reference for further details on how to configure this.
 
 Applying a merge directive
 --------------------------

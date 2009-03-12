@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,7 +24,10 @@ To get a fake nfs transport use get_transport('fakenfs+' + real_url)
 
 from stat import S_ISDIR
 
-import bzrlib.errors as errors
+from bzrlib import (
+    errors,
+    urlutils,
+    )
 from bzrlib.transport.decorator import TransportDecorator, DecoratorServer
 
 
@@ -52,6 +55,11 @@ class FakeNFSTransportDecorator(TransportDecorator):
                 raise errors.ResourceBusy(rel_to)
             else:
                 raise
+
+    def delete(self, relpath):
+        if urlutils.basename(relpath).startswith('.nfs'):
+            raise errors.ResourceBusy(self.abspath(relpath))
+        return self._decorated.delete(relpath)
 
 
 class FakeNFSServer(DecoratorServer):

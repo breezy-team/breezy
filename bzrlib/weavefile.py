@@ -72,7 +72,6 @@ def write_weave_v5(weave, f):
 
     for l in weave._weave:
         if isinstance(l, tuple):
-            assert l[0] in '{}[]'
             if l[0] == '}':
                 f.write('}\n')
             else:
@@ -81,10 +80,8 @@ def write_weave_v5(weave, f):
             if not l:
                 f.write(', \n')
             elif l[-1] == '\n':
-                assert l.find('\n', 0, -1) == -1
                 f.write('. ' + l)
             else:
-                assert l.find('\n') == -1
                 f.write(', ' + l + '\n')
 
     f.write('W\n')
@@ -102,7 +99,7 @@ def read_weave(f):
 
 def _read_weave_v5(f, w):
     """Private helper routine to read a weave format 5 file into memory.
-    
+
     This is only to be used by read_weave and WeaveFile.__init__.
     """
     #  200   0   2075.5080   1084.0360   bzrlib.weavefile:104(_read_weave_v5)
@@ -118,11 +115,11 @@ def _read_weave_v5(f, w):
     #  200   0    851.7250    501.1120   bzrlib.weavefile:104(_read_weave_v5)
     # +59363 0    311.8780    311.8780   +<method 'append' of 'list' objects>
     # +200   0     30.2500     30.2500   +<method 'readlines' of 'file' objects>
-                  
+
     from weave import WeaveFormatError
 
     lines = iter(f.readlines())
-    
+
     try:
         l = lines.next()
     except StopIteration:
@@ -140,21 +137,13 @@ def _read_weave_v5(f, w):
                 w._parents.append(map(int, l[2:].split(' ')))
             else:
                 w._parents.append([])
-
             l = lines.next()[:-1]
-            assert '1 ' == l[0:2]
             w._sha1s.append(l[2:])
-                
             l = lines.next()
-            assert 'n ' == l[0:2]
             name = l[2:-1]
-            assert name not in w._name_map
             w._names.append(name)
             w._name_map[name] = ver
-                
             l = lines.next()
-            assert l == '\n'
-
             ver += 1
         elif l == 'w\n':
             break
@@ -173,9 +162,5 @@ def _read_weave_v5(f, w):
         elif l == '}\n':
             w._weave.append(('}', None))
         else:
-            assert l[0] in '{[]', l
-            assert l[1] == ' ', l
             w._weave.append((intern(l[0]), int(l[2:])))
-
     return w
-    

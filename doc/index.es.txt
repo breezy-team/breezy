@@ -1,0 +1,46 @@
+==================================
+Indice de Documentacion de Bazaar
+==================================
+
+Las ultimas versiones de estos documentos se encuentran disponibles
+en la pagina de  Bazaar, http://doc.bazaar-vcs.org.
+
+Documentacion Principal
+=======================
+
+* `Mini Tutorial <es/mini-tutorial/index.html>`_ 
+
+* `Referencia Rapida <es/referencia-rapida/referencia-rapida.svg>`_
+
+* `Guia de Usuario <es/guia-usuario/index.html>`_ 
+
+* `Referencia <es/referencia/bzr_man.html>`_ 
+
+* `Notas sobre la Version <es/notas-version/NOTICIAS.html>`_
+
+* `Guia del Desarrollador <es/guia-desarrollador/HACKING.html>`_
+
+
+Otra Documentacion
+===================
+
+Mudandose a Bazaar (enlances web):
+
+* `Guias de Mudanzas <http://bazaar-vcs.org/BzrSwitching>`_ 
+  - para los usuarios que se mudan de otros SCV
+
+* `Guias de Migracion <http://bazaar-vcs.org/BzrMigration>`_
+  - para equipos que mudan el historial de otros SCV
+
+Otros Documentos (enlances web):
+
+* `Glosario <http://bazaar-vcs.org/BzrGlossary>`_
+
+* `Preguntas Frecuentes <http://bazaar-vcs.org/FAQ>`_
+
+* `Referencia del API bzrlib <http://bazaar-vcs.org/BzrLib>`_
+
+Especificaciones tecnicas, planes a futuro y varias
+notas tecnicas varias en Ingles:
+
+* `Catalogo de Documentos para Desarrolladores <developers/index.html>`_

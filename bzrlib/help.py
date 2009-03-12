@@ -65,11 +65,6 @@ def help_commands(outfile=None):
     outfile.write(_help_commands_to_text('commands'))
 
 
-@symbol_versioning.deprecated_function(symbol_versioning.zero_sixteen)
-def command_usage(cmd):
-    return cmd._usage()
-
-
 def _help_commands_to_text(topic):
     """Generate the help text for the list of commands"""
     out = []
@@ -117,7 +112,7 @@ help_topics.topic_registry.register("hidden-commands",
 
 class HelpIndices(object):
     """Maintainer of help topics across multiple indices.
-    
+
     It is currently separate to the HelpTopicRegistry because of its ordered
     nature, but possibly we should instead structure it as a search within the
     registry and add ordering and searching facilities to the registry. The
@@ -148,7 +143,7 @@ class HelpIndices(object):
 
     def search(self, topic):
         """Search for topic across the help search path.
-        
+
         :param topic: A string naming the help topic to search for.
         :raises: NoHelpTopic if none of the indexs in search_path have topic.
         :return: A list of HelpTopics which matched 'topic'.

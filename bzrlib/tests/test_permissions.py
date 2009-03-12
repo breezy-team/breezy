@@ -26,10 +26,10 @@ permissions should be inherited individually, rather than all be the same.
 """
 
 # TODO: jam 20051215 There are no tests for ftp yet, because we have no ftp server
-# TODO: jam 20051215 Currently the default behavior for 'bzr branch' is just 
+# TODO: jam 20051215 Currently the default behavior for 'bzr branch' is just
 #                    defined by the local umask. This isn't terrible, is it
 #                    the truly desired behavior?
- 
+
 import os
 import sys
 import stat
@@ -38,7 +38,6 @@ import urllib
 
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
-from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.tests import TestCaseWithTransport, TestSkipped
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.transport import get_transport
@@ -47,7 +46,6 @@ from bzrlib.workingtree import WorkingTree
 
 def chmod_r(base, file_mode, dir_mode):
     """Recursively chmod from a base directory"""
-    assert os.path.isdir(base)
     os.chmod(base, dir_mode)
     for root, dirs, files in os.walk(base):
         for d in dirs:
@@ -67,7 +65,6 @@ def check_mode_r(test, base, file_mode, dir_mode, include_base=True):
     :param dir_mode: The mode for all directories
     :param include_base: If false, only check the subdirectories
     """
-    assert os.path.isdir(base)
     t = get_transport(".")
     if include_base:
         test.assertTransportMode(t, base, dir_mode)
@@ -99,13 +96,15 @@ class TestPermissions(TestCaseWithTransport):
 
         # although we are modifying the filesystem
         # underneath the objects, they are not locked, and thus it must
-        # be safe for most operations. But here we want to observe a 
+        # be safe for most operations. But here we want to observe a
         # mode change in the control bits, which current do not refresh
         # when a new lock is taken out.
         t = WorkingTree.open('.')
         b = t.branch
         self.assertEqualMode(0755, b.control_files._dir_mode)
         self.assertEqualMode(0644, b.control_files._file_mode)
+        self.assertEqualMode(0755, b.bzrdir._get_dir_mode())
+        self.assertEqualMode(0644, b.bzrdir._get_file_mode())
 
         # Modifying a file shouldn't break the permissions
         open('a', 'wb').write('foo2\n')
@@ -126,6 +125,8 @@ class TestPermissions(TestCaseWithTransport):
         b = t.branch
         self.assertEqualMode(0775, b.control_files._dir_mode)
         self.assertEqualMode(0664, b.control_files._file_mode)
+        self.assertEqualMode(0775, b.bzrdir._get_dir_mode())
+        self.assertEqualMode(0664, b.bzrdir._get_file_mode())
 
         open('a', 'wb').write('foo3\n')
         t.commit('foo3')
@@ -136,6 +137,18 @@ class TestPermissions(TestCaseWithTransport):
         t.commit('new c')
         check_mode_r(self, '.bzr', 0664, 0775)
 
+    def test_new_files_group_sticky_bit(self):
+        if sys.platform == 'win32':
+            raise TestSkipped('chmod has no effect on win32')
+        elif sys.platform == 'darwin':
+            # OS X creates temp dirs with the 'wheel' group, which users are
+            # not likely to be in, and this prevents us from setting the sgid
+            # bit
+            os.chown(self.test_dir, os.getuid(), os.getgid())
+
+        t = self.make_branch_and_tree('.')
+        b = t.branch
+
         # Test the group sticky bit
         # Recursively update the modes of all files
         chmod_r('.bzr', 0664, 02775)
@@ -144,6 +157,8 @@ class TestPermissions(TestCaseWithTransport):
         b = t.branch
         self.assertEqualMode(02775, b.control_files._dir_mode)
         self.assertEqualMode(0664, b.control_files._file_mode)
+        self.assertEqualMode(02775, b.bzrdir._get_dir_mode())
+        self.assertEqualMode(0664, b.bzrdir._get_file_mode())
 
         open('a', 'wb').write('foo4\n')
         t.commit('foo4')
@@ -153,43 +168,6 @@ class TestPermissions(TestCaseWithTransport):
         t.add('d')
         t.commit('new d')
         check_mode_r(self, '.bzr', 0664, 02775)
-
-    def test_disable_set_mode(self):
-        # TODO: jam 20051215 Ultimately, this test should probably test that
-        #                    extra chmod calls aren't being made
-        try:
-            transport = get_transport(self.get_url())
-            transport.put_bytes('my-lock', '')
-            lockable = LockableFiles(transport, 'my-lock', TransportLock)
-            self.assertNotEqual(None, lockable._dir_mode)
-            self.assertNotEqual(None, lockable._file_mode)
-
-            LockableFiles._set_dir_mode = False
-            transport = get_transport('.')
-            lockable = LockableFiles(transport, 'my-lock', TransportLock)
-            self.assertEqual(None, lockable._dir_mode)
-            self.assertNotEqual(None, lockable._file_mode)
-
-            LockableFiles._set_file_mode = False
-            transport = get_transport('.')
-            lockable = LockableFiles(transport, 'my-lock', TransportLock)
-            self.assertEqual(None, lockable._dir_mode)
-            self.assertEqual(None, lockable._file_mode)
-
-            LockableFiles._set_dir_mode = True
-            transport = get_transport('.')
-            lockable = LockableFiles(transport, 'my-lock', TransportLock)
-            self.assertNotEqual(None, lockable._dir_mode)
-            self.assertEqual(None, lockable._file_mode)
-
-            LockableFiles._set_file_mode = True
-            transport = get_transport('.')
-            lockable = LockableFiles(transport, 'my-lock', TransportLock)
-            self.assertNotEqual(None, lockable._dir_mode)
-            self.assertNotEqual(None, lockable._file_mode)
-        finally:
-            LockableFiles._set_dir_mode = True
-            LockableFiles._set_file_mode = True
 
 
 class TestSftpPermissions(TestCaseWithSFTPServer):
@@ -219,6 +197,8 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
         b_local = t.branch
         self.assertEqualMode(0755, b_local.control_files._dir_mode)
         self.assertEqualMode(0644, b_local.control_files._file_mode)
+        self.assertEqualMode(0755, b_local.bzrdir._get_dir_mode())
+        self.assertEqualMode(0644, b_local.bzrdir._get_file_mode())
 
         os.mkdir('sftp')
         sftp_url = self.get_url('sftp')
@@ -232,6 +212,8 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
         b_sftp = Branch.open(sftp_url)
         self.assertEqualMode(0755, b_sftp.control_files._dir_mode)
         self.assertEqualMode(0644, b_sftp.control_files._file_mode)
+        self.assertEqualMode(0755, b_sftp.bzrdir._get_dir_mode())
+        self.assertEqualMode(0644, b_sftp.bzrdir._get_file_mode())
 
         open('local/a', 'wb').write('foo2\n')
         t_local.commit('foo2')
@@ -253,6 +235,8 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
         b_sftp = Branch.open(sftp_url)
         self.assertEqualMode(0775, b_sftp.control_files._dir_mode)
         self.assertEqualMode(0664, b_sftp.control_files._file_mode)
+        self.assertEqualMode(0775, b_sftp.bzrdir._get_dir_mode())
+        self.assertEqualMode(0664, b_sftp.bzrdir._get_file_mode())
 
         open('local/a', 'wb').write('foo3\n')
         t_local.commit('foo3')

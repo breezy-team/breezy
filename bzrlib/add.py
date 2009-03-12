@@ -54,7 +54,7 @@ class AddAction(object):
         :param kind: The kind of the object being added.
         """
         if self.should_print:
-            self._to_file.write('added %s\n' % _quote(path.raw_path))
+            self._to_file.write('adding %s\n' % _quote(path.raw_path))
         return None
 
 
@@ -73,7 +73,7 @@ class AddFromBaseAction(AddAction):
         file_id, base_path = self._get_base_file_id(path, parent_ie)
         if file_id is not None:
             if self.should_print:
-                self._to_file.write('added %s w/ file id from %s\n'
+                self._to_file.write('adding %s w/ file id from %s\n'
                                     % (path.raw_path, base_path))
         else:
             # we aren't doing anything special, so let the default
@@ -110,24 +110,3 @@ add_action_add = AddAction()
 add_action_null = add_action_add
 add_action_add_and_print = AddAction(should_print=True)
 add_action_print = add_action_add_and_print
-
-
-@deprecated_function(zero_eighteen)
-def smart_add(file_list, recurse=True, action=None, save=True):
-    """Add files to version, optionally recursing into directories.
-
-    This is designed more towards DWIM for humans than API simplicity.
-    For the specific behaviour see the help for cmd_add().
-
-    Returns the number of files added.
-    Deprecated in 0.18. Please use MutableTree.smart_add.
-    """
-    tree = WorkingTree.open_containing(file_list[0])[0]
-    return smart_add_tree(tree, file_list, recurse, action=action, save=save)
-
-
-@deprecated_function(zero_eighteen)
-def smart_add_tree(tree, file_list, recurse=True, action=None, save=True):
-    """Deprecated in 0.18. Please use MutableTree.smart_add."""
-    return tree.smart_add(file_list, recurse, action, save)
-

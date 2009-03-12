@@ -170,7 +170,7 @@ class TestExecutable(TestCaseWithWorkingTree):
 
     def test_08_no_op_revert(self):
         """Just do a simple revert without anything changed
-        
+
         The bits shouldn't swap.
         """
         self.wt.commit('adding a,b', rev_id='r1')

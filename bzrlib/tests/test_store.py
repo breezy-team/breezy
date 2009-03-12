@@ -26,6 +26,7 @@ from bzrlib.transport.local import LocalTransport
 from bzrlib.store.text import TextStore
 from bzrlib.tests import TestCase, TestCaseInTempDir, TestCaseWithTransport
 import bzrlib.store as store
+import bzrlib.store.versioned
 import bzrlib.transactions as transactions
 import bzrlib.transport as transport
 from bzrlib.transport.memory import MemoryTransport
@@ -63,11 +64,11 @@ class TestStores(object):
     def test_get(self):
         store = self.get_store()
         self.fill_store(store)
-    
+
         self.check_content(store, 'a', 'hello')
         self.check_content(store, 'b', 'other')
         self.check_content(store, 'c', 'something')
-    
+
         # Make sure that requesting a non-existing file fails
         self.assertRaises(KeyError, self.check_content, store, 'd', None)
 
@@ -91,7 +92,7 @@ class TestCompressedTextStore(TestCaseInTempDir, TestStores):
         store.add(StringIO('goodbye2'), '123123', 'dsc')
         # these get gzipped - content should be stable
         self.assertEqual(store.total_size(), (2, 55))
-        
+
     def test__relpath_suffixed(self):
         my_store = TextStore(MockTransport(),
                              prefixed=True, compressed=True)
@@ -100,10 +101,10 @@ class TestCompressedTextStore(TestCaseInTempDir, TestStores):
 
 
 class TestMemoryStore(TestCase):
-    
+
     def get_store(self):
         return TextStore(MemoryTransport())
-    
+
     def test_add_and_retrieve(self):
         store = self.get_store()
         store.add(StringIO('hello'), 'aa')
@@ -173,7 +174,7 @@ class TestMixedTextStore(TestCaseInTempDir, TestStores):
         self.assertEquals(s.has_id('a'), True)
         self.assertEquals(cs.get('a').read(), 'hello there')
         self.assertEquals(s.get('a').read(), 'hello there')
-        
+
         self.assertRaises(BzrError, s.add, StringIO('goodbye'), 'a')
 
         s.add(StringIO('goodbye'), 'b')
@@ -185,7 +186,7 @@ class TestMixedTextStore(TestCaseInTempDir, TestStores):
         self.assertEquals(s.has_id('b'), True)
         self.assertEquals(cs.get('b').read(), 'goodbye')
         self.assertEquals(s.get('b').read(), 'goodbye')
-        
+
         self.assertRaises(BzrError, cs.add, StringIO('again'), 'b')
 
 class MockTransport(transport.Transport):
@@ -239,7 +240,7 @@ class TestMockTransport(TestCase):
 
 
 class TestTransportStore(TestCase):
-    
+
     def test__relpath_invalid(self):
         my_store = store.TransportStore(MockTransport())
         self.assertRaises(ValueError, my_store._relpath, '/foo')
@@ -296,7 +297,7 @@ class TestTransportStore(TestCase):
         my_store.register_suffix('dsc')
         my_store.add(stream, "foo", 'dsc')
         self.assertEqual([("_add", "foo.dsc", stream)], my_store._calls)
-        
+
     def test_add_simple_suffixed(self):
         stream = StringIO("content")
         my_store = InstrumentedTransportStore(MockTransport(), True)
@@ -316,7 +317,7 @@ class TestTransportStore(TestCase):
         stream = StringIO("signature for missing base")
         my_store.add(stream, "missing", 'sig')
         return my_store
-        
+
     def test_has_simple(self):
         my_store = self.get_populated_store()
         self.assertEqual(True, my_store.has_id('foo'))
@@ -398,39 +399,50 @@ class TestTransportStore(TestCase):
 
     def test_escaped_uppercase(self):
         """Uppercase letters are escaped for safety on Windows"""
-        my_store = store.TransportStore(MemoryTransport(), escaped=True)
+        my_store = store.TransportStore(MemoryTransport(), prefixed=True,
+            escaped=True)
         # a particularly perverse file-id! :-)
-        self.assertEquals(my_store._escape_file_id('C:<>'), '%43%3a%3c%3e')
+        self.assertEquals(my_store._relpath('C:<>'), 'be/%2543%253a%253c%253e')
 
 
 class TestVersionFileStore(TestCaseWithTransport):
 
+    def get_scope(self):
+        return self._transaction
+
     def setUp(self):
         super(TestVersionFileStore, self).setUp()
         self.vfstore = store.versioned.VersionedFileStore(MemoryTransport())
+        self.vfstore.get_scope = self.get_scope
+        self._transaction = None
 
     def test_get_weave_registers_dirty_in_write(self):
-        transaction = transactions.WriteTransaction()
-        vf = self.vfstore.get_weave_or_empty('id', transaction)
-        transaction.finish()
+        self._transaction = transactions.WriteTransaction()
+        vf = self.vfstore.get_weave_or_empty('id', self._transaction)
+        self._transaction.finish()
+        self._transaction = None
         self.assertRaises(errors.OutSideTransaction, vf.add_lines, 'b', [], [])
-        transaction = transactions.WriteTransaction()
-        vf = self.vfstore.get_weave('id', transaction)
-        transaction.finish()
+        self._transaction = transactions.WriteTransaction()
+        vf = self.vfstore.get_weave('id', self._transaction)
+        self._transaction.finish()
+        self._transaction = None
         self.assertRaises(errors.OutSideTransaction, vf.add_lines, 'b', [], [])
-
-    def test_get_weave_or_empty_readonly_fails(self):
-        transaction = transactions.ReadOnlyTransaction()
-        vf = self.assertRaises(errors.ReadOnlyError,
-                               self.vfstore.get_weave_or_empty,
-                               'id',
-                               transaction)
 
     def test_get_weave_readonly_cant_write(self):
-        transaction = transactions.WriteTransaction()
-        vf = self.vfstore.get_weave_or_empty('id', transaction)
-        transaction.finish()
-        transaction = transactions.ReadOnlyTransaction()
-        vf = self.vfstore.get_weave_or_empty('id', transaction)
+        self._transaction = transactions.WriteTransaction()
+        vf = self.vfstore.get_weave_or_empty('id', self._transaction)
+        self._transaction.finish()
+        self._transaction = transactions.ReadOnlyTransaction()
+        vf = self.vfstore.get_weave_or_empty('id', self._transaction)
         self.assertRaises(errors.ReadOnlyError, vf.add_lines, 'b', [], [])
 
+    def test___iter__escaped(self):
+        self.vfstore = store.versioned.VersionedFileStore(MemoryTransport(),
+            prefixed=True, escaped=True)
+        self.vfstore.get_scope = self.get_scope
+        self._transaction = transactions.WriteTransaction()
+        vf = self.vfstore.get_weave_or_empty(' ', self._transaction)
+        vf.add_lines('a', [], [])
+        del vf
+        self._transaction.finish()
+        self.assertEqual([' '], list(self.vfstore))

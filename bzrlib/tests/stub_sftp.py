@@ -71,9 +71,10 @@ class StubSFTPServer (SFTPServerInterface):
         if home is None:
             self.home = ''
         else:
-            assert home.startswith(self.root), \
-                    "home must be a subdirectory of root (%s vs %s)" \
-                    % (home, root)
+            if not home.startswith(self.root):
+                raise AssertionError(
+                    "home must be a subdirectory of root (%s vs %s)"
+                    % (home, root))
             self.home = home[len(self.root):]
         if self.home.startswith('/'):
             self.home = self.home[1:]
@@ -82,7 +83,7 @@ class StubSFTPServer (SFTPServerInterface):
     def _realpath(self, path):
         # paths returned from self.canonicalize() always start with
         # a path separator. So if 'root' is just '/', this would cause
-        # a double slash at the beginning '//home/dir'. 
+        # a double slash at the beginning '//home/dir'.
         if self.root == '/':
             return self.canonicalize(path)
         return self.root + self.canonicalize(path)
@@ -95,7 +96,7 @@ class StubSFTPServer (SFTPServerInterface):
             #     /h:/foo/bar
             # and relative paths stay the same:
             #     foo/bar
-            # win32 needs to use the Unicode APIs. so we require the 
+            # win32 needs to use the Unicode APIs. so we require the
             # paths to be utf8 (Linux just uses bytestreams)
             thispath = path.decode('utf8')
             if path.startswith('/'):
@@ -123,7 +124,7 @@ class StubSFTPServer (SFTPServerInterface):
             out = [ ]
             # TODO: win32 incorrectly lists paths with non-ascii if path is not
             # unicode. However on Linux the server should only deal with
-            # bytestreams and posix.listdir does the right thing 
+            # bytestreams and posix.listdir does the right thing
             if sys.platform == 'win32':
                 flist = [f.encode('utf8') for f in os.listdir(path)]
             else:

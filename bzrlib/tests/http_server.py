@@ -20,6 +20,7 @@ import os
 import posixpath
 import random
 import re
+import select
 import SimpleHTTPServer
 import socket
 import SocketServer
@@ -31,10 +32,6 @@ import urlparse
 
 from bzrlib import transport
 from bzrlib.transport import local
-
-
-class WebserverNotAvailable(Exception):
-    pass
 
 
 class BadWebserverPath(ValueError):
@@ -58,6 +55,7 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
     def setup(self):
         SimpleHTTPServer.SimpleHTTPRequestHandler.setup(self)
+        self._cwd = self.server._home_dir
         tcs = self.server.test_case_server
         if tcs.protocol_version is not None:
             # If the test server forced a protocol version, use it
@@ -139,7 +137,7 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             # common)
             self.send_response(301)
             self.send_header("Location", self.path + "/")
-            # Indicates that the body is empty for HTTP/1.1 clients 
+            # Indicates that the body is empty for HTTP/1.1 clients
             self.send_header('Content-Length', '0')
             self.end_headers()
             return None
@@ -179,7 +177,7 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             content_length += self._header_line_length(
                 'Content-Range', 'bytes %d-%d/%d' % (start, end, file_size))
             content_length += len('\r\n') # end headers
-            content_length += end - start # + 1
+            content_length += end - start + 1
         content_length += len(boundary_line)
         self.send_header('Content-length', content_length)
         self.end_headers()
@@ -284,36 +282,30 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         return self._translate_path(path)
 
     def _translate_path(self, path):
-        return SimpleHTTPServer.SimpleHTTPRequestHandler.translate_path(
-            self, path)
+        """Translate a /-separated PATH to the local filename syntax.
 
-    if sys.platform == 'win32':
-        # On win32 you cannot access non-ascii filenames without
-        # decoding them into unicode first.
-        # However, under Linux, you can access bytestream paths
-        # without any problems. If this function was always active
-        # it would probably break tests when LANG=C was set
-        def _translate_path(self, path):
-            """Translate a /-separated PATH to the local filename syntax.
+        Note that we're translating http URLs here, not file URLs.
+        The URL root location is the server's startup directory.
+        Components that mean special things to the local file system
+        (e.g. drive or directory names) are ignored.  (XXX They should
+        probably be diagnosed.)
 
-            For bzr, all url paths are considered to be utf8 paths.
-            On Linux, you can access these paths directly over the bytestream
-            request, but on win32, you must decode them, and access them
-            as Unicode files.
-            """
-            # abandon query parameters
-            path = urlparse.urlparse(path)[2]
-            path = posixpath.normpath(urllib.unquote(path))
-            path = path.decode('utf-8')
-            words = path.split('/')
-            words = filter(None, words)
-            path = os.getcwdu()
-            for word in words:
+        Override from python standard library to stop it calling os.getcwd()
+        """
+        # abandon query parameters
+        path = urlparse.urlparse(path)[2]
+        path = posixpath.normpath(urllib.unquote(path))
+        path = path.decode('utf-8')
+        words = path.split('/')
+        words = filter(None, words)
+        path = self._cwd
+        for num, word in enumerate(words):
+            if num == 0:
                 drive, word = os.path.splitdrive(word)
-                head, word = os.path.split(word)
-                if word in (os.curdir, os.pardir): continue
-                path = os.path.join(path, word)
-            return path
+            head, word = os.path.split(word)
+            if word in (os.curdir, os.pardir): continue
+            path = os.path.join(path, word)
+        return path
 
 
 class TestingHTTPServerMixin:
@@ -324,10 +316,11 @@ class TestingHTTPServerMixin:
         # server), allowing dynamic behaviors to be defined from
         # the tests cases.
         self.test_case_server = test_case_server
+        self._home_dir = test_case_server._home_dir
 
     def tearDown(self):
          """Called to clean-up the server.
- 
+
          Since the server may be (surely is, even) in a blocking listen, we
          shutdown its socket before closing it.
          """
@@ -350,10 +343,16 @@ class TestingHTTPServerMixin:
              # WSAENOTCONN (10057) 'Socket is not connected' is harmless on
              # windows (occurs before the first connection attempt
              # vila--20071230)
-             if not len(e.args) or e.args[0] != 10057:
+
+             # 'Socket is not connected' can also occur on OSX, with a
+             # "regular" ENOTCONN (when something went wrong during test case
+             # setup leading to self.setUp() *not* being called but
+             # self.tearDown() still being called -- vila20081106
+             if not len(e.args) or e.args[0] not in (errno.ENOTCONN, 10057):
                  raise
          # Let the server properly close the socket
          self.server_close()
+
 
 class TestingHTTPServer(SocketServer.TCPServer, TestingHTTPServerMixin):
 
@@ -421,6 +420,13 @@ class HttpServer(transport.Server):
         # Allows tests to verify number of GET requests issued
         self.GET_request_nb = 0
 
+    def create_httpd(self, serv_cls, rhandler_cls):
+        return serv_cls((self.host, self.port), self.request_handler, self)
+
+    def __repr__(self):
+        return "%s(%s:%s)" % \
+            (self.__class__.__name__, self.host, self.port)
+
     def _get_httpd(self):
         if self._httpd is None:
             rhandler = self.request_handler
@@ -438,7 +444,7 @@ class HttpServer(transport.Server):
             if serv_cls is None:
                 raise httplib.UnknownProtocol(proto_vers)
             else:
-                self._httpd = serv_cls((self.host, self.port), rhandler, self)
+                self._httpd = self.create_httpd(serv_cls, rhandler)
             host, self.port = self._httpd.socket.getsockname()
         return self._httpd
 
@@ -470,6 +476,14 @@ class HttpServer(transport.Server):
                 httpd.handle_request()
             except socket.timeout:
                 pass
+            except (socket.error, select.error), e:
+               if e[0] == errno.EBADF:
+                   # Starting with python-2.6, handle_request may raise socket
+                   # or select exceptions when the server is shut down (as we
+                   # do).
+                   pass
+               else:
+                   raise
 
     def _get_remote_url(self, path):
         path_parts = path.split(os.path.sep)
@@ -489,17 +503,18 @@ class HttpServer(transport.Server):
 
     def setUp(self, backing_transport_server=None):
         """See bzrlib.transport.Server.setUp.
-        
+
         :param backing_transport_server: The transport that requests over this
             protocol should be forwarded to. Note that this is currently not
             supported for HTTP.
         """
         # XXX: TODO: make the server back onto vfs_server rather than local
         # disk.
-        assert backing_transport_server is None or \
-            isinstance(backing_transport_server, local.LocalURLServer), \
-            "HTTPServer currently assumes local transport, got %s" % \
-            backing_transport_server
+        if not (backing_transport_server is None or \
+                isinstance(backing_transport_server, local.LocalURLServer)):
+            raise AssertionError(
+                "HTTPServer currently assumes local transport, got %s" % \
+                backing_transport_server)
         self._home_dir = os.getcwdu()
         self._local_path_parts = self._home_dir.split(os.path.sep)
         self._http_base_url = None

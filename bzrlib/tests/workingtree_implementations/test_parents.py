@@ -32,7 +32,12 @@ from bzrlib.inventory import (
     InventoryLink,
     )
 from bzrlib.revision import Revision
-from bzrlib.tests import SymlinkFeature, TestNotApplicable
+from bzrlib.tests import (
+    KnownFailure,
+    SymlinkFeature,
+    TestNotApplicable,
+    UnicodeFilenameFeature,
+    )
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 from bzrlib.uncommit import uncommit
 
@@ -51,9 +56,6 @@ class TestParents(TestCaseWithWorkingTree):
                              _mod_revision.ensure_null(tree.last_revision()))
         else:
             self.assertEqual(expected[0], tree.last_revision())
-        self.assertEqual(expected[1:],
-            self.applyDeprecated(symbol_versioning.zero_eleven,
-                tree.pending_merges))
 
 
 class TestGetParents(TestParents):
@@ -163,6 +165,97 @@ class TestSetParents(TestParents):
         self.assertConsistentParents(
             [first_revision, second_revision, third_revision], t)
 
+    def test_set_duplicate_parent_ids(self):
+        t = self.make_branch_and_tree('.')
+        rev1 = t.commit('first post')
+        uncommit(t.branch, tree=t)
+        rev2 = t.commit('second post')
+        uncommit(t.branch, tree=t)
+        rev3 = t.commit('third post')
+        uncommit(t.branch, tree=t)
+        t.set_parent_ids([rev1, rev2, rev2, rev3])
+        # We strip the duplicate, but preserve the ordering
+        self.assertConsistentParents([rev1, rev2, rev3], t)
+
+    def test_set_duplicate_parent_trees(self):
+        t = self.make_branch_and_tree('.')
+        rev1 = t.commit('first post')
+        uncommit(t.branch, tree=t)
+        rev2 = t.commit('second post')
+        uncommit(t.branch, tree=t)
+        rev3 = t.commit('third post')
+        uncommit(t.branch, tree=t)
+        rev_tree1 = t.branch.repository.revision_tree(rev1)
+        rev_tree2 = t.branch.repository.revision_tree(rev2)
+        rev_tree3 = t.branch.repository.revision_tree(rev3)
+        t.set_parent_trees([(rev1, rev_tree1), (rev2, rev_tree2),
+                            (rev2, rev_tree2), (rev3, rev_tree3)])
+        # We strip the duplicate, but preserve the ordering
+        self.assertConsistentParents([rev1, rev2, rev3], t)
+
+    def test_set_parent_ids_in_ancestry(self):
+        t = self.make_branch_and_tree('.')
+        rev1 = t.commit('first post')
+        rev2 = t.commit('second post')
+        rev3 = t.commit('third post')
+        # Reset the tree, back to rev1
+        t.set_parent_ids([rev1])
+        t.branch.set_last_revision_info(1, rev1)
+        self.assertConsistentParents([rev1], t)
+        t.set_parent_ids([rev1, rev2, rev3])
+        # rev2 is in the ancestry of rev3, so it will be filtered out
+        self.assertConsistentParents([rev1, rev3], t)
+        # Order should be preserved, and the first revision should always be
+        # kept
+        t.set_parent_ids([rev2, rev3, rev1])
+        self.assertConsistentParents([rev2, rev3], t)
+
+    def test_set_parent_trees_in_ancestry(self):
+        t = self.make_branch_and_tree('.')
+        rev1 = t.commit('first post')
+        rev2 = t.commit('second post')
+        rev3 = t.commit('third post')
+        # Reset the tree, back to rev1
+        t.set_parent_ids([rev1])
+        t.branch.set_last_revision_info(1, rev1)
+        self.assertConsistentParents([rev1], t)
+        rev_tree1 = t.branch.repository.revision_tree(rev1)
+        rev_tree2 = t.branch.repository.revision_tree(rev2)
+        rev_tree3 = t.branch.repository.revision_tree(rev3)
+        t.set_parent_trees([(rev1, rev_tree1), (rev2, rev_tree2),
+                            (rev3, rev_tree3)])
+        # rev2 is in the ancestry of rev3, so it will be filtered out
+        self.assertConsistentParents([rev1, rev3], t)
+        # Order should be preserved, and the first revision should always be
+        # kept
+        t.set_parent_trees([(rev2, rev_tree2), (rev1, rev_tree1),
+                            (rev3, rev_tree3)])
+        self.assertConsistentParents([rev2, rev3], t)
+
+    def test_unicode_symlink(self):
+        # this tests bug #272444
+        self.requireFeature(SymlinkFeature)
+        self.requireFeature(UnicodeFilenameFeature)
+
+        tree = self.make_branch_and_tree('tree1')
+
+        # The link points to a file whose name is an omega
+        # U+03A9 GREEK CAPITAL LETTER OMEGA
+        # UTF-8: ce a9  UTF-16BE: 03a9  Decimal: &#937;
+        os.symlink(u'\u03a9','tree1/link_name')
+        tree.add(['link_name'],['link-id'])
+
+        try:
+            # the actual commit occurs without errors (strangely):
+            revision1 = tree.commit('added a link to a Unicode target')
+            # python 2.4 failed with UnicodeDecodeError on this commit:
+            revision2 = tree.commit('this revision will be discarded')
+            # python 2.5 failed with UnicodeEncodeError on set_parent_ids:
+            tree.set_parent_ids([revision1])
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            raise KnownFailure('there is no support for'
+                               ' symlinks to non-ASCII targets (bug #272444)')
+
 
 class TestAddParent(TestParents):
 
@@ -173,13 +266,13 @@ class TestAddParent(TestParents):
         uncommit(tree.branch, tree=tree)
         tree.add_parent_tree_id(first_revision)
         self.assertConsistentParents([first_revision], tree)
-        
+
     def test_add_first_parent_id_ghost_rejects(self):
         """Test adding the first parent id - as a ghost"""
         tree = self.make_branch_and_tree('.')
         self.assertRaises(errors.GhostRevisionUnusableHere,
             tree.add_parent_tree_id, 'first-revision')
-        
+
     def test_add_first_parent_id_ghost_force(self):
         """Test adding the first parent id - as a ghost"""
         tree = self.make_branch_and_tree('.')
@@ -192,7 +285,7 @@ class TestAddParent(TestParents):
         tree.add_parent_tree_id('first-revision', allow_leftmost_as_ghost=True)
         tree.add_parent_tree_id('second')
         self.assertConsistentParents(['first-revision', 'second'], tree)
-        
+
     def test_add_second_parent_id(self):
         """Test adding the second parent id"""
         tree = self.make_branch_and_tree('.')
@@ -201,14 +294,14 @@ class TestAddParent(TestParents):
         second_revision = tree.commit('second post')
         tree.add_parent_tree_id(first_revision)
         self.assertConsistentParents([second_revision, first_revision], tree)
-        
+
     def test_add_second_parent_id_ghost(self):
         """Test adding the second parent id - as a ghost"""
         tree = self.make_branch_and_tree('.')
         first_revision = tree.commit('first post')
         tree.add_parent_tree_id('second')
         self.assertConsistentParents([first_revision, 'second'], tree)
-        
+
     def test_add_first_parent_tree(self):
         """Test adding the first parent id"""
         tree = self.make_branch_and_tree('.')
@@ -217,20 +310,20 @@ class TestAddParent(TestParents):
         tree.add_parent_tree((first_revision,
             tree.branch.repository.revision_tree(first_revision)))
         self.assertConsistentParents([first_revision], tree)
-        
+
     def test_add_first_parent_tree_ghost_rejects(self):
         """Test adding the first parent id - as a ghost"""
         tree = self.make_branch_and_tree('.')
         self.assertRaises(errors.GhostRevisionUnusableHere,
             tree.add_parent_tree, ('first-revision', None))
-        
+
     def test_add_first_parent_tree_ghost_force(self):
         """Test adding the first parent id - as a ghost"""
         tree = self.make_branch_and_tree('.')
         tree.add_parent_tree(('first-revision', None),
             allow_leftmost_as_ghost=True)
         self.assertConsistentParents(['first-revision'], tree)
-        
+
     def test_add_second_parent_tree(self):
         """Test adding the second parent id"""
         tree = self.make_branch_and_tree('.')
@@ -240,7 +333,7 @@ class TestAddParent(TestParents):
         tree.add_parent_tree((first_revision,
             tree.branch.repository.revision_tree(first_revision)))
         self.assertConsistentParents([second_revision, first_revision], tree)
-        
+
     def test_add_second_parent_tree_ghost(self):
         """Test adding the second parent id - as a ghost"""
         tree = self.make_branch_and_tree('.')
@@ -249,9 +342,9 @@ class TestAddParent(TestParents):
         self.assertConsistentParents([first_revision, 'second'], tree)
 
 
-class UpdateToOneParentViaDeltaTests(TestParents):
+class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
     """Tests for the update_basis_by_delta call.
-    
+
     This is intuitively defined as 'apply an inventory delta to the basis and
     discard other parents', but for trees that have an inventory that is not
     managed as a tree-by-id, the implementation requires roughly duplicated
@@ -273,8 +366,10 @@ class UpdateToOneParentViaDeltaTests(TestParents):
         # the delta.
         result_basis = tree.basis_tree()
         result_basis.lock_read()
-        self.addCleanup(result_basis.unlock)
-        self.assertEqual(expected_inventory, result_basis.inventory)
+        try:
+            self.assertEqual(expected_inventory, result_basis.inventory)
+        finally:
+            result_basis.unlock()
 
     def make_inv_delta(self, old, new):
         """Make an inventory delta from two inventories."""
@@ -511,6 +606,36 @@ class UpdateToOneParentViaDeltaTests(TestParents):
         self.add_dir(new_shape, new_revid, 'dir-id-B', 'root-id', 'A')
         self.add_dir(new_shape, new_revid, 'dir-id-A', 'dir-id-B', 'B')
         self.add_link(new_shape, new_revid, 'link-id-C', 'dir-id-A', 'C', 'C')
+        self.assertTransitionFromBasisToShape(basis_shape, old_revid,
+            new_shape, new_revid)
+
+    def test_parent_deleted_child_renamed(self):
+        # test a A->None and A/B->A.
+        old_revid = 'old-parent'
+        basis_shape = Inventory(root_id=None)
+        self.add_dir(basis_shape, old_revid, 'root-id', None, '')
+        self.add_dir(basis_shape, old_revid, 'dir-id-A', 'root-id', 'A')
+        self.add_dir(basis_shape, old_revid, 'dir-id-B', 'dir-id-A', 'B')
+        self.add_link(basis_shape, old_revid, 'link-id-C', 'dir-id-B', 'C', 'C')
+        new_revid = 'new-parent'
+        new_shape = Inventory(root_id=None)
+        self.add_new_root(new_shape, old_revid, new_revid)
+        self.add_dir(new_shape, new_revid, 'dir-id-B', 'root-id', 'A')
+        self.add_link(new_shape, old_revid, 'link-id-C', 'dir-id-B', 'C', 'C')
+        self.assertTransitionFromBasisToShape(basis_shape, old_revid,
+            new_shape, new_revid)
+
+    def test_dir_to_root(self):
+        # test a A->''.
+        old_revid = 'old-parent'
+        basis_shape = Inventory(root_id=None)
+        self.add_dir(basis_shape, old_revid, 'root-id', None, '')
+        self.add_dir(basis_shape, old_revid, 'dir-id-A', 'root-id', 'A')
+        self.add_link(basis_shape, old_revid, 'link-id-B', 'dir-id-A', 'B', 'B')
+        new_revid = 'new-parent'
+        new_shape = Inventory(root_id=None)
+        self.add_dir(new_shape, new_revid, 'dir-id-A', None, '')
+        self.add_link(new_shape, old_revid, 'link-id-B', 'dir-id-A', 'B', 'B')
         self.assertTransitionFromBasisToShape(basis_shape, old_revid,
             new_shape, new_revid)
 

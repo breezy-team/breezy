@@ -1,5 +1,5 @@
 # Copyright (C) 2005, 2006, 2007 Canonical Ltd
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
@@ -30,8 +30,6 @@ from bzrlib import (
 from bzrlib.errors import (NoWorkingTree, NotBranchError,
                            NoRepositoryPresent, NotLocalUrl)
 from bzrlib.missing import find_unmerged
-from bzrlib.symbol_versioning import (deprecated_function,
-        zero_eighteen)
 
 
 def plural(n, base='', pl=None):
@@ -143,6 +141,11 @@ def _gather_related_branches(branch):
     locs.add_url('push branch', branch.get_push_location())
     locs.add_url('parent branch', branch.get_parent())
     locs.add_url('submit branch', branch.get_submit_branch())
+    try:
+        locs.add_url('stacked on', branch.get_stacked_on_url())
+    except (errors.UnstackableBranchFormat, errors.UnstackableRepositoryFormat,
+        errors.NotStacked):
+        pass
     return locs
 
 
@@ -258,7 +261,7 @@ def _show_working_stats(working, outfile):
 
     dir_cnt = 0
     for file_id in work_inv:
-        if (work_inv.get_file_kind(file_id) == 'directory' and 
+        if (work_inv.get_file_kind(file_id) == 'directory' and
             not work_inv.is_root(file_id)):
             dir_cnt += 1
     outfile.write('  %8d versioned %s\n' % (dir_cnt,
@@ -373,7 +376,8 @@ def show_component_info(control, repository, branch=None, working=None,
     elif branch is not None:
         _show_missing_revisions_branch(branch, outfile)
     if branch is not None:
-        stats = _show_branch_stats(branch, verbose==2, outfile)
+        show_committers = verbose >= 2
+        stats = _show_branch_stats(branch, show_committers, outfile)
     else:
         stats = repository.gather_stats()
     if branch is None and working is None:
@@ -440,7 +444,9 @@ def describe_format(control, repository, branch, tree):
         tree.bzrdir.root_transport.base):
         branch = None
         repository = None
-    for key in bzrdir.format_registry.keys():
+    non_aliases = set(bzrdir.format_registry.keys())
+    non_aliases.difference_update(bzrdir.format_registry.aliases())
+    for key in non_aliases:
         format = bzrdir.format_registry.make_bzrdir(key)
         if isinstance(format, bzrdir.BzrDirMetaFormat1):
             if (tree and format.workingtree_format !=
@@ -457,11 +463,12 @@ def describe_format(control, repository, branch, tree):
         candidates.append(key)
     if len(candidates) == 0:
         return 'unnamed'
-    new_candidates = [c for c in candidates if c != 'default']
-    if len(new_candidates) > 0:
-        candidates = new_candidates
+    candidates.sort()
     new_candidates = [c for c in candidates if not
         bzrdir.format_registry.get_info(c).hidden]
     if len(new_candidates) > 0:
+        # If there are any non-hidden formats that match, only return those to
+        # avoid listing hidden formats except when only a hidden format will
+        # do.
         candidates = new_candidates
     return ' or '.join(candidates)

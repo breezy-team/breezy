@@ -19,12 +19,15 @@
 
 import errno
 import subprocess
+import threading
 
+from bzrlib import (
+    tests,
+    )
 from bzrlib.strace import StraceFeature, strace_detailed, StraceResult
-from bzrlib.tests import TestCaseWithTransport
 
 
-class TestStraceFeature(TestCaseWithTransport):
+class TestStraceFeature(tests.TestCaseWithTransport):
 
     def test_strace_detection(self):
         """Strace is available if its runnable."""
@@ -43,11 +46,24 @@ class TestStraceFeature(TestCaseWithTransport):
         self.assertEqual(found_strace, StraceFeature.available())
 
 
-class TestStrace(TestCaseWithTransport):
+class TestStrace(tests.TestCaseWithTransport):
 
     _test_needs_features = [StraceFeature]
 
+    def _check_threads(self):
+        # For bug #226769, it was decided that the strace tests should not be
+        # run when more than one thread is active. A lot of tests are currently
+        # leaking threads for good or bad reasons, once they are fixed or
+        # strace itself is fixed (bug #103133), we can get rid of the
+        # restriction.
+        active = threading.activeCount()
+        if active > 1: # There is always the main thread at least
+            raise tests.KnownFailure(
+                '%d active threads, bug #103133 needs to be fixed.' % active)
+
     def test_strace_callable_is_called(self):
+        self._check_threads()
+
         output = []
         def function(positional, *args, **kwargs):
             output.append((positional, args, kwargs))
@@ -56,6 +72,8 @@ class TestStrace(TestCaseWithTransport):
         self.assertEqual([("a", ("b",), {"c":"c"})], output)
 
     def test_strace_callable_result(self):
+        self._check_threads()
+
         def function():
             return "foo"
         result, strace_result = strace_detailed(function,[], {},
@@ -65,6 +83,8 @@ class TestStrace(TestCaseWithTransport):
 
     def test_strace_result_has_raw_log(self):
         """Checks that a reasonable raw strace log was found by strace."""
+        self._check_threads()
+
         def function():
             self.build_tree(['myfile'])
         unused, result = strace_detailed(function, [], {},

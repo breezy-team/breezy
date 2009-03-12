@@ -14,8 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from StringIO import StringIO
-
+from bzrlib.symbol_versioning import deprecated_function, deprecated_in
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
@@ -31,24 +30,25 @@ from bzrlib.transport import (
 from bzrlib.trace import note
 
 
+@deprecated_function(deprecated_in((1, 12, 0)))
 def read_bundle_from_url(url):
     return read_mergeable_from_url(url, _do_directive=False)
 
 
-def read_mergeable_from_url(url, _do_directive=True):
+def read_mergeable_from_url(url, _do_directive=True, possible_transports=None):
     """Read mergable object from a given URL.
 
     :return: An object supporting get_target_revision.  Raises NotABundle if
         the target is not a mergeable type.
     """
-    url = urlutils.normalize_url(url)
-    url, filename = urlutils.split(url, exclude_trailing_slash=False)
-    if not filename:
+    child_transport = get_transport(url,
+        possible_transports=possible_transports)
+    transport = child_transport.clone('..')
+    filename = transport.relpath(child_transport.base)
+    if filename.endswith('/'):
         # A path to a directory was passed in
         # definitely not a bundle
         raise errors.NotABundle('A directory cannot be a bundle')
-
-    transport = get_transport(url)
     mergeable, transport = read_mergeable_from_transport(transport, filename,
                                                          _do_directive)
     return mergeable
@@ -82,6 +82,8 @@ def read_mergeable_from_transport(transport, filename, _do_directive=True):
             return directive, transport
         else:
             return _serializer.read_bundle(f), transport
+    except errors.ConnectionReset:
+        raise
     except (errors.TransportError, errors.PathError), e:
         raise errors.NotABundle(str(e))
     except (IOError,), e:
@@ -90,7 +92,7 @@ def read_mergeable_from_transport(transport, filename, _do_directive=True):
         # doesn't always fail at get() time. Sometimes it fails
         # during read. And that raises a generic IOError with
         # just the string 'Failure'
-        # StubSFTPServer does fail during get() (because of prefetch) 
+        # StubSFTPServer does fail during get() (because of prefetch)
         # so it has an opportunity to translate the error.
         raise errors.NotABundle(str(e))
     except errors.NotAMergeDirective:
