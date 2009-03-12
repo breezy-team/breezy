@@ -1383,7 +1383,7 @@ class BranchHooks(Hooks):
             "branch is opened.", (1, 8), None))
         self.create_hook(HookPoint('post_push',
             "Called after a push operation completes. post_push is called "
-            "with a bzrlib.branch.PushResult object and only runs in the "
+            "with a bzrlib.branch.BranchPushResult object and only runs in the "
             "bzr client.", (0, 15), None))
         self.create_hook(HookPoint('post_pull',
             "Called after a pull operation completes. post_pull is called "
