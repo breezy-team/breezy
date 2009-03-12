@@ -282,3 +282,9 @@ class GenericBugTracker(URLParametrizedIntegerBugTracker):
 
 
 tracker_registry.register('generic', GenericBugTracker())
+
+
+def encode_fixes_bug_urls(bug_urls):
+    """Return the 'bugs' property value for a revision that fixes 'bug_urls'.
+    """
+    return '\n'.join(('%s fixed' % url) for url in bug_urls)

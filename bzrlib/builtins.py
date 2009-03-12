@@ -2698,8 +2698,7 @@ class cmd_commit(Command):
              ]
     aliases = ['ci', 'checkin']
 
-    def _get_bug_fix_properties(self, fixes, branch):
-        properties = []
+    def _iter_bug_fix_urls(self, fixes, branch):
         # Configure the properties for bug fixing attributes.
         for fixed_bug in fixes:
             tokens = fixed_bug.split(':')
@@ -2710,15 +2709,13 @@ class cmd_commit(Command):
                     "feature.\nCommit refused." % fixed_bug)
             tag, bug_id = tokens
             try:
-                bug_url = bugtracker.get_bug_url(tag, branch, bug_id)
+                yield bugtracker.get_bug_url(tag, branch, bug_id)
             except errors.UnknownBugTrackerAbbreviation:
                 raise errors.BzrCommandError(
                     'Unrecognized bug %s. Commit refused.' % fixed_bug)
             except errors.MalformedBugIdentifier, e:
                 raise errors.BzrCommandError(
                     "%s\nCommit refused." % (str(e),))
-            properties.append('%s fixed' % bug_url)
-        return '\n'.join(properties)
 
     def run(self, message=None, file=None, verbose=False, selected_list=None,
             unchanged=False, strict=False, local=False, fixes=None,
@@ -2751,7 +2748,8 @@ class cmd_commit(Command):
 
         if fixes is None:
             fixes = []
-        bug_property = self._get_bug_fix_properties(fixes, tree.branch)
+        bug_property = bugtracker.encode_fixes_bug_urls(
+            self._iter_bug_fix_urls(fixes, tree.branch))
         if bug_property:
             properties['bugs'] = bug_property
 
