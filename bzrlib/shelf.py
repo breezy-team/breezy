@@ -48,8 +48,13 @@ class ShelfCreator(object):
         self.renames = {}
         self.creation = {}
         self.deletion = {}
-        self.iter_changes = work_tree.iter_changes(self.target_tree,
-                                                   specific_files=file_list)
+        try:
+            self.iter_changes = work_tree.iter_changes(self.target_tree,
+                                                       specific_files=file_list)
+        except errors.PathsNotVersionedError:
+            self.finalize()
+            raise
+
 
     def iter_shelvable(self):
         """Iterable of tuples describing shelvable changes.
