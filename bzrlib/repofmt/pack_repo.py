@@ -2085,12 +2085,12 @@ class KnitPackRepository(KnitRepository):
                 pos, length = value[1:].split(' ')
                 index_positions.append((index, int(pos), key[0],
                     tuple(parent[0] for parent in refs[0])))
-                pb.update("Reading revision index.", 0, 0)
+                pb.update("Reading revision index", 0, 0)
             index_positions.sort()
             batch_count = len(index_positions) / 1000 + 1
-            pb.update("Checking cached revision graph.", 0, batch_count)
+            pb.update("Checking cached revision graph", 0, batch_count)
             for offset in xrange(batch_count):
-                pb.update("Checking cached revision graph.", offset)
+                pb.update("Checking cached revision graph", offset)
                 to_query = index_positions[offset * 1000:(offset + 1) * 1000]
                 if not to_query:
                     break
@@ -2245,6 +2245,8 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
     # Set this attribute in derived clases to control the _serializer that the
     # repository objects will have passed to their constructor.
     _serializer = None
+    # Packs are not confused by ghosts.
+    supports_ghosts = True
     # External references are not supported in pack repositories yet.
     supports_external_lookups = False
     # What index classes to use

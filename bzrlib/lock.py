@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -185,7 +185,7 @@ if have_fcntl:
                     self.unlock()
                 # we should be more precise about whats a locking
                 # error and whats a random-other error
-                raise errors.LockContention(e)
+                raise errors.LockContention(self.filename, e)
 
         def unlock(self):
             _fcntl_WriteLock._open_locks.remove(self.filename)
@@ -209,7 +209,7 @@ if have_fcntl:
             except IOError, e:
                 # we should be more precise about whats a locking
                 # error and whats a random-other error
-                raise errors.LockContention(e)
+                raise errors.LockContention(self.filename, e)
 
         def unlock(self):
             count = _fcntl_ReadLock._open_locks[self.filename]
@@ -277,7 +277,7 @@ if have_fcntl:
                 fcntl.lockf(new_f, fcntl.LOCK_EX | fcntl.LOCK_NB)
             except IOError, e:
                 # TODO: Raise a more specific error based on the type of error
-                raise errors.LockContention(e)
+                raise errors.LockContention(self.filename, e)
             _fcntl_WriteLock._open_locks.add(self.filename)
 
             self.f = new_f
@@ -322,7 +322,7 @@ if have_pywin32 and sys.platform == 'win32':
                 raise
             except Exception, e:
                 self._clear_f()
-                raise errors.LockContention(e)
+                raise errors.LockContention(filename, e)
 
         def unlock(self):
             overlapped = pywintypes.OVERLAPPED()
@@ -330,7 +330,7 @@ if have_pywin32 and sys.platform == 'win32':
                 win32file.UnlockFileEx(self.hfile, 0, 0x7fff0000, overlapped)
                 self._clear_f()
             except Exception, e:
-                raise errors.LockContention(e)
+                raise errors.LockContention(self.filename, e)
 
 
     class _w32c_ReadLock(_w32c_FileLock):
@@ -439,8 +439,8 @@ if have_ctypes_win32:
                 last_err = _GetLastError()
                 if last_err in (ERROR_LOCK_VIOLATION,):
                     raise errors.LockContention(filename)
-                raise errors.LockContention('Unknown locking error: %s'
-                                            % (last_err,))
+                raise errors.LockContention(filename,
+                    'Unknown locking error: %s' % (last_err,))
 
         def unlock(self):
             overlapped = OVERLAPPED()
@@ -454,8 +454,8 @@ if have_ctypes_win32:
             if result == 0:
                 self._clear_f()
                 last_err = _GetLastError()
-                raise errors.LockContention('Unknown unlocking error: %s'
-                                            % (last_err,))
+                raise errors.LockContention(self.filename,
+                    'Unknown unlocking error: %s' % (last_err,))
 
 
     class _ctypes_ReadLock(_ctypes_FileLock):
