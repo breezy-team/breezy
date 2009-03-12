@@ -19,6 +19,7 @@
 import time
 
 from bzrlib import (
+    bzrdir,
     chk_map,
     chk_serializer,
     debug,
@@ -523,6 +524,14 @@ class RepositoryFormatPackGCPlain(RepositoryFormatKnitPack6):
     _fetch_order = 'unordered'
     _fetch_uses_deltas = False
 
+    def _get_matching_bzrdir(self):
+        return bzrdir.format_registry.make_bzrdir('gc-no-rich-root')
+
+    def _ignore_setting_bzrdir(self, format):
+        pass
+
+    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
         return ("Bazaar development format - btree+gc "
@@ -552,6 +561,14 @@ class RepositoryFormatPackGCCHK16(RepositoryFormatPackDevelopment5Hash16):
     _fetch_order = 'unordered'
     _fetch_uses_deltas = False
 
+    def _get_matching_bzrdir(self):
+        return bzrdir.format_registry.make_bzrdir('gc-chk16')
+
+    def _ignore_setting_bzrdir(self, format):
+        pass
+
+    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
         return ('Bazaar development format - hash16chk+gc rich-root'
@@ -580,6 +597,14 @@ class RepositoryFormatPackGCCHK255(RepositoryFormatPackDevelopment5Hash255):
     # removed (as it is in bzr.dev) we can set this back to True.
     _commit_builder_class = PackRootCommitBuilder
     rich_root_data = True
+
+    def _get_matching_bzrdir(self):
+        return bzrdir.format_registry.make_bzrdir('gc-chk255')
+
+    def _ignore_setting_bzrdir(self, format):
+        pass
+
+    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
@@ -617,6 +642,14 @@ class RepositoryFormatPackGCCHK255Big(RepositoryFormatPackGCCHK255):
     # for remote, because we access less data.
     _fetch_order = 'unordered'
     _fetch_uses_deltas = False
+
+    def _get_matching_bzrdir(self):
+        return bzrdir.format_registry.make_bzrdir('gc-chk255-big')
+
+    def _ignore_setting_bzrdir(self, format):
+        pass
+
+    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
