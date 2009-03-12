@@ -424,7 +424,8 @@ class TestHooks(TestCase):
     def test_installed_hooks_are_BranchHooks(self):
         """The installed hooks object should be a BranchHooks."""
         # the installed hooks are saved in self._preserved_hooks.
-        self.assertIsInstance(self._preserved_hooks[_mod_branch.Branch], BranchHooks)
+        self.assertIsInstance(self._preserved_hooks[_mod_branch.Branch][1],
+            BranchHooks)
 
 
 class TestPullResult(TestCase):

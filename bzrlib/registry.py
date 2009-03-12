@@ -62,10 +62,15 @@ class _LazyObjectGetter(_ObjectGetter):
         return super(_LazyObjectGetter, self).get_obj()
 
     def _do_import(self):
-        obj = __import__(self._module_name, globals(), locals(),
-                         [self._member_name])
         if self._member_name:
-            obj = getattr(obj, self._member_name)
+            segments = self._member_name.split('.')
+            names = segments[0:1]
+        else:
+            names = [self._member_name]
+        obj = __import__(self._module_name, globals(), locals(), names)
+        if self._member_name:
+            for segment in segments:
+                obj = getattr(obj, segment)
         self._obj = obj
         self._imported = True
 
