@@ -97,13 +97,13 @@ class RepoFetcher(object):
         self.count_total = 0
         self.file_ids_names = {}
         pb = bzrlib.ui.ui_factory.nested_progress_bar()
-        pb.show_pct = pb.show_cnt = False
+        pb.show_pct = pb.show_count = False
         try:
-            pb.update("Finding revisions", 1, 2)
+            pb.update("Finding revisions", 0, 2)
             search = self._revids_to_fetch()
             if search is None:
                 return
-            pb.update("Fetching revisions", 2, 2)
+            pb.update("Fetching revisions", 1, 2)
             self._fetch_everything_for_search(search)
         finally:
             pb.finished()
