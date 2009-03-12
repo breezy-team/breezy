@@ -264,17 +264,13 @@ class Unshelver(object):
         tt.deserialize(records)
         return klass(tree, base_tree, tt, metadata.get('message'))
 
-    def make_merger(self):
+    def make_merger(self, task=None):
         """Return a merger that can unshelve the changes."""
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
-            target_tree = self.transform.get_preview_tree()
-            merger = merge.Merger.from_uncommitted(self.tree, target_tree, pb,
-                                                   self.base_tree)
-            merger.merge_type = merge.Merge3Merger
-            return merger
-        finally:
-            pb.finished()
+        target_tree = self.transform.get_preview_tree()
+        merger = merge.Merger.from_uncommitted(self.tree, target_tree,
+            task, self.base_tree)
+        merger.merge_type = merge.Merge3Merger
+        return merger
 
     def finalize(self):
         """Release all resources held by this Unshelver."""

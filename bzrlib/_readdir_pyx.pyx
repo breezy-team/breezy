@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2008 Canonical Ltd
+# Copyright (C) 2006, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -298,16 +298,16 @@ cdef _read_dir(path):
         # passing full paths every time.
         orig_dir_fd = open(".", O_RDONLY, 0)
         if orig_dir_fd == -1:
-            raise OSError(errno, strerror(errno))
+            raise OSError(errno, "open: " + strerror(errno), ".")
         if -1 == chdir(path):
-            raise OSError(errno, strerror(errno))
+            raise OSError(errno, "chdir: " + strerror(errno), path)
     else:
         orig_dir_fd = -1
 
     try:
         the_dir = opendir(".")
         if NULL == the_dir:
-            raise OSError(errno, strerror(errno))
+            raise OSError(errno, "opendir: " + strerror(errno), path)
         try:
             result = []
             entry = &sentinel
@@ -330,7 +330,7 @@ cdef _read_dir(path):
                         # we consider ENOTDIR to be 'no error'.
                         continue
                     else:
-                        raise OSError(errno, strerror(errno))
+                        raise OSError(errno, "readdir: " + strerror(errno), path)
                 name = entry.d_name
                 if not (name[0] == c"." and (
                     (name[1] == 0) or 
@@ -340,7 +340,8 @@ cdef _read_dir(path):
                     stat_result = lstat(entry.d_name, &statvalue._st)
                     if stat_result != 0:
                         if errno != ENOENT:
-                            raise OSError(errno, strerror(errno))
+                            raise OSError(errno, "lstat: " + strerror(errno),
+                                path + "/" + entry.d_name)
                         else:
                             kind = _missing
                             statvalue = None
@@ -355,7 +356,7 @@ cdef _read_dir(path):
                         statvalue, None))
         finally:
             if -1 == closedir(the_dir):
-                raise OSError(errno, strerror(errno))
+                raise OSError(errno, "closedir: " + strerror(errno), path)
     finally:
         if -1 != orig_dir_fd:
             failed = False
@@ -363,7 +364,7 @@ cdef _read_dir(path):
                 # try to close the original directory anyhow
                 failed = True
             if -1 == close(orig_dir_fd) or failed:
-                raise OSError(errno, strerror(errno))
+                raise OSError(errno, "return to orig_dir: " + strerror(errno))
 
     return result
 
