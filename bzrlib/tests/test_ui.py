@@ -262,14 +262,31 @@ class TestTextProgressView(TestCase):
     # state-maintaining parts of TextProgressView were more separate, and if
     # the progress task called back directly to its own view not to the ui
     # factory. -- mbp 20090312
-
-    def test_render_progress_easy(self):
-        """Just one task and one quarter done"""
+    
+    def _make_factory(self):
         out = StringIO()
         uif = TextUIFactory(stderr=out)
         uif._progress_view._width = 80
+        return out, uif
+
+    def test_render_progress_easy(self):
+        """Just one task and one quarter done"""
+        out, uif = self._make_factory()
         task = uif.nested_progress_bar()
         task.update('reticulating splines', 5, 20)
         self.assertEqual(
 '\r[####/               ] reticulating splines 5/20                               \r'
             , out.getvalue())
+
+    def test_render_progress_easy(self):
+        """Just one task and one quarter done"""
+        out, uif = self._make_factory()
+        task = uif.nested_progress_bar()
+        task.update('reticulating splines', 0, 2)
+        task2 = uif.nested_progress_bar()
+        task2.update('stage2', 1, 2)
+        # so we're in the first half of the main task, and half way through
+        # that
+        self.assertEqual(
+'[####-               ] reticulating splines:stage2 1/2'
+            , uif._progress_view._render_line())

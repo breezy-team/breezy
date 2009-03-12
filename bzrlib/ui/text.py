@@ -154,8 +154,8 @@ class TextProgressView(object):
             spin_str =  r'/-\|'[self._spin_pos % 4]
             self._spin_pos += 1
             cols = 20
-            # number of markers highlighted in bar
-            completion_fraction = self._last_task._overall_completion_fraction()
+            completion_fraction = \
+                self._last_task._overall_completion_fraction() or 0
             markers = int(round(float(cols) * completion_fraction)) - 1
             bar_str = '[' + ('#' * markers + spin_str).ljust(cols) + '] '
             return bar_str
@@ -185,19 +185,19 @@ class TextProgressView(object):
                 m = t.msg + ':' + m
         return m + s
 
-    def _repaint(self):
+    def _render_line(self):
         bar_string = self._render_bar()
         if self._last_task:
             task_msg = self._format_task(self._last_task)
         else:
             task_msg = ''
         trans = self._last_transport_msg
-        if trans and task_msg:
+        if trans:
             trans += ' | '
-        s = (bar_string
-             + trans
-             + task_msg
-             )
+        return (bar_string + trans + task_msg)
+
+    def _repaint(self):
+        s = self._render_line()
         self._show_line(s)
         self._have_output = True
 
