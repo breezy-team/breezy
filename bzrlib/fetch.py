@@ -96,10 +96,16 @@ class RepoFetcher(object):
         # assert not missing
         self.count_total = 0
         self.file_ids_names = {}
-        search = self._revids_to_fetch()
-        if search is None:
-            return
-        self._fetch_everything_for_search(search)
+        pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        try:
+            pb.update("Finding revisions")
+            search = self._revids_to_fetch()
+            if search is None:
+                return
+            pb.update("Fetching revisions")
+            self._fetch_everything_for_search(search)
+        finally:
+            pb.finished()
 
     def _fetch_everything_for_search(self, search):
         """Fetch all data for the given set of revisions."""
