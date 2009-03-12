@@ -290,6 +290,11 @@ ALLOWED_BUG_STATUSES = set([FIXED])
 
 
 def encode_fixes_bug_urls(bug_urls):
-    """Return the 'bugs' property value for a revision that fixes 'bug_urls'.
+    """Get the revision property value for a commit that fixes bugs.
+
+    :param bug_urls: An iterable of escaped URLs to bugs. These normally
+        come from `get_bug_url`.
+    :return: A string that will be set as the 'bugs' property of a revision
+        as part of a commit.
     """
     return '\n'.join(('%s %s' % (url, FIXED)) for url in bug_urls)
