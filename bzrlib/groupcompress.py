@@ -85,14 +85,14 @@ def decode_base128_int(bytes):
 
 
 def sort_gc_optimal(parent_map):
-    """Sort and group the keys in parent_map into gc-optimal order.
+    """Sort and group the keys in parent_map into groupcompress order.
 
-    gc-optimal is defined (currently) as reverse-topological order, grouped by
+    groupcompress is defined (currently) as reverse-topological order, grouped by
     the key prefix.
 
     :return: A sorted-list of keys
     """
-    # gc-optimal ordering is approximately reverse topological,
+    # groupcompress ordering is approximately reverse topological,
     # properly grouped by file-id.
     per_prefix_map = {}
     for item in parent_map.iteritems():
@@ -751,7 +751,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
         if not keys:
             return
         if (not self._index.has_graph
-            and ordering in ('topological', 'gc-optimal')):
+            and ordering in ('topological', 'groupcompress')):
             # Cannot topological order when no graph has been stored.
             ordering = 'unordered'
         # Cheap: iterate
@@ -767,7 +767,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 parent_map[key] = self._unadded_refs[key]
             present_keys = topo_sort(parent_map)
             # Now group by source:
-        elif ordering == 'gc-optimal':
+        elif ordering == 'groupcompress':
             parent_map = dict((key, details[2]) for key, details in
                               locations.iteritems())
             for key in local_keys:
