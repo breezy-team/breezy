@@ -2949,6 +2949,15 @@ class BzrDirFormatRegistry(registry.Registry):
             self.get_help(key), info=self.get_info(key))
         self._aliases.add('default')
 
+    def set_default_rich_root(self, key):
+        """Set the 'default-rich-root' key to be a clone of the supplied key.
+
+        This method must be called once and only once.
+        """
+        registry.Registry.register(self, 'default-rich-root', self.get(key),
+            self.get_help(key), info=self.get_info(key))
+        self._aliases.add('default-rich-root')
+
     def set_default_repository(self, key):
         """Set the FormatRegistry default and Repository default.
 
@@ -3348,3 +3357,4 @@ format_registry.register_metadir('development2-subtree',
     )
 # The current format that is made on 'bzr init'.
 format_registry.set_default('pack-0.92')
+format_registry.set_default_rich_root('rich-root-pack')

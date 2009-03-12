@@ -77,6 +77,10 @@ IN DEVELOPMENT
     * Progress bars now show the rate of network activity for
       ``bzr+ssh://`` and ``bzr://`` connections.  (Andrew Bennetts)
 
+    * A new format name alias ``default-rich-root`` has been added and
+      points at the closest relative of the default format that supports 
+      rich roots. (Jelmer Vernooij, #338061)
+
     * Support for GSSAPI authentication when using HTTP or HTTPS. 
       (Jelmer Vernooij)
 
