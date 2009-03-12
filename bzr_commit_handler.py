@@ -66,6 +66,17 @@ class GenericCommitHandler(processor.CommitHandler):
         self.debug("%s id: %s, parents: %s", self.command.id,
             self.revision_id, str(self.parents))
 
+        # Tell the RevisionStore we're starting a new commit
+        self.revision = self.build_revision()
+        parent_invs = [self.get_inventory(p) for p in self.parents]
+        self.rev_store.start_new_revision(self.revision, self.parents,
+            parent_invs)
+
+        # cache of per-file parents for this commit, indexed by file-id
+        self.per_file_parents_for_commit = {}
+        if self.rev_store.expects_rich_root():
+            self.per_file_parents_for_commit[inventory.ROOT_ID] = []
+
         # Keep the basis inventory. This needs to be treated as read-only.
         if len(self.parents) == 0:
             self.basis_inventory = self._init_inventory()
@@ -97,6 +108,10 @@ class GenericCommitHandler(processor.CommitHandler):
     def _get_lines(self, file_id):
         """Get the lines for a file-id."""
         return self.lines_for_commit[file_id]
+
+    def _get_per_file_parents(self, file_id):
+        """Get the lines for a file-id."""
+        return self.per_file_parents_for_commit[file_id]
 
     def _get_inventories(self, revision_ids):
         """Get the inventories for revision-ids.
@@ -299,6 +314,7 @@ class GenericCommitHandler(processor.CommitHandler):
         new_file_id = inv.path2id(new_path)
         if new_file_id is not None:
             self.record_delete(new_path, inv[new_file_id])
+        ie.revision = self.revision_id
         self.record_rename(old_path, new_path, file_id, ie)
         self.cache_mgr.rename_path(old_path, new_path)
 
@@ -349,13 +365,14 @@ class InventoryCommitHandler(GenericCommitHandler):
     def post_process_files(self):
         """Save the revision."""
         self.cache_mgr.inventories[self.revision_id] = self.inventory
-        rev = self.build_revision()
-        self.rev_store.load(rev, self.inventory, None,
+        self.rev_store.load(self.revision, self.inventory, None,
             lambda file_id: self._get_lines(file_id),
+            lambda file_id: self._get_per_file_parents(file_id),
             lambda revision_ids: self._get_inventories(revision_ids))
 
     def record_new(self, path, ie):
         try:
+            self.per_file_parents_for_commit[ie.file_id] = []
             self.inventory.add(ie)
         except errors.DuplicateFileId:
             # Directory already exists as a file or symlink
@@ -365,6 +382,9 @@ class InventoryCommitHandler(GenericCommitHandler):
 
     def record_changed(self, path, ie, parent_id):
         # HACK: no API for this (del+add does more than it needs to)
+        per_file_parents, ie.revision = \
+            self.rev_store.get_parents_and_revision_for_entry(ie)
+        self.per_file_parents_for_commit[ie.file_id] = per_file_parents
         self.inventory._byid[ie.file_id] = ie
         parent_ie = self.inventory._byid[parent_id]
         parent_ie.children[ie.name] = ie
@@ -375,8 +395,8 @@ class InventoryCommitHandler(GenericCommitHandler):
     def record_rename(self, old_path, new_path, file_id, ie):
         new_basename, new_parent_id = self._ensure_directory(new_path,
             self.inventory)
+        self.per_file_parents_for_commit[file_id] = []
         self.inventory.rename(file_id, new_parent_id, new_basename)
-        self.inventory[file_id].revision = self.revision_id
 
     def _delete_item(self, path, inv):
         # NOTE: I'm retaining this method for now, instead of using the
@@ -472,9 +492,10 @@ class CHKInventoryCommitHandler(GenericCommitHandler):
         """Save the revision."""
         delta = list(self._delta_entries_by_fileid.values())
         #print "delta:\n%s\n\n" % "\n".join([str(de) for de in delta])
-        rev = self.build_revision()
-        inv = self.rev_store.chk_load(rev, self.basis_inventory, delta, None,
+        inv = self.rev_store.chk_load(self.revision, self.basis_inventory,
+            delta, None,
             lambda file_id: self._get_lines(file_id),
+            lambda file_id: self._get_per_file_parents(file_id),
             lambda revision_ids: self._get_inventories(revision_ids))
         self.cache_mgr.inventories[self.revision_id] = inv
         #print "committed %s" % self.revision_id
@@ -497,11 +518,31 @@ class CHKInventoryCommitHandler(GenericCommitHandler):
         #
         # In summary, we use the original old-path, new new-path and new ie
         # when combining entries.
+        old_path = entry[0]
+        new_path = entry[1]
         file_id = entry[2]
+        ie = entry[3]
         existing = self._delta_entries_by_fileid.get(file_id, None)
         if existing is not None:
-            entry = (existing[0], entry[1], file_id, entry[3])
+            old_path = existing[0]
+            entry = (old_path, new_path, file_id, ie)
         self._delta_entries_by_fileid[file_id] = entry
+
+        # Calculate the per-file parents
+        if old_path is None:
+            # add
+            self.per_file_parents_for_commit[file_id] = []
+        elif new_path is None:
+            # delete
+            pass
+        elif old_path != new_path:
+            # rename
+            self.per_file_parents_for_commit[file_id] = []
+        else:
+            # modify
+            per_file_parents, ie.revision = \
+                self.rev_store.get_parents_and_revision_for_entry(ie)
+            self.per_file_parents_for_commit[file_id] = per_file_parents
 
     def record_new(self, path, ie):
         self._add_entry((None, path, ie.file_id, ie))

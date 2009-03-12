@@ -92,6 +92,12 @@ IN DEVELOPMENT
       and ought to be regenerated.
       (Ian Clatworthy)
 
+    * Fixed how the per-file graph is generated. The per-file graph
+      may still be less than perfect in the case where a file is only
+      changed in a merge and not the parent, but in the vast majority
+      of cases now, ``bzr check`` should no longer report inconsistent
+      parents. (Ian Clatworthy)
+
     * Fix ``os`` import as needed on Windows.
       (Ian Clatworthy, esskov, #264988)
 

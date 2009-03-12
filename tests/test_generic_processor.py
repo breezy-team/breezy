@@ -711,6 +711,30 @@ class TestImportToPackFileKinds(TestCaseForGenericProcessor):
 
 ### TODO: Parameterise tests rather than below hack
 
+class TestImportToRichRootModify(TestImportToPackModify):
+    branch_format = "1.9-rich-root"
+
+class TestImportToRichRootModifyTricky(TestImportToPackModifyTricky):
+    branch_format = "1.9-rich-root"
+
+class TestImportToRichRootDelete(TestImportToPackDelete):
+    branch_format = "1.9-rich-root"
+
+class TestImportToRichRootDeleteDirectory(TestImportToPackDeleteDirectory):
+    branch_format = "1.9-rich-root"
+
+class TestImportToRichRootRename(TestImportToPackRename):
+    branch_format = "1.9-rich-root"
+
+class TestImportToRichRootRenameTricky(TestImportToPackRenameTricky):
+    branch_format = "1.9-rich-root"
+
+class TestImportToRichRootCopy(TestImportToPackCopy):
+    branch_format = "1.9-rich-root"
+
+class TestImportToRichRootFileKinds(TestImportToPackFileKinds):
+    branch_format = "1.9-rich-root"
+
 try:
     from bzrlib.repofmt.pack_repo import RepositoryFormatPackDevelopment5Hash255
 
