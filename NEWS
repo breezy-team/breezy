@@ -16,6 +16,9 @@ IN DEVELOPMENT
 
   NEW FEATURES:
 
+    * ``bzr send`` now accepts --body to specify an initial message body.
+      (Aaron bentley)
+
   IMPROVEMENTS:
 
     * Progress bars now show the rate of network activity for
@@ -59,9 +62,6 @@ and Stacked Branches should both be much faster over remote connections.
     * ``bzr reconfigure`` now supports --with-trees and --with-no-trees
       options to change the default tree-creation policy of shared
       repositories.  (Matthew Fuller, Marius Kruger, #145033)
-
-    * ``bzr send`` now accepts --body to specify an initial message body.
-      (Aaron bentley)
 
     * Debug flags can now be set in ``~/.bazaar/bazaar.conf``.
       (Martin Pool)
