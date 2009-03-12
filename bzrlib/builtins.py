@@ -2583,24 +2583,36 @@ class cmd_cat(Command):
             tree = b.basis_tree()
         rev_tree = _get_one_revision_tree('cat', revision, branch=b)
 
-        cur_file_id = tree.path2id(relpath)
         old_file_id = rev_tree.path2id(relpath)
 
         if name_from_revision:
+            # Try in revision if requested
             if old_file_id is None:
                 raise errors.BzrCommandError(
                     "%r is not present in revision %s" % (
                         filename, rev_tree.get_revision_id()))
             else:
                 content = rev_tree.get_file_text(old_file_id)
-        elif cur_file_id is not None:
-            content = rev_tree.get_file_text(cur_file_id)
-        elif old_file_id is not None:
-            content = rev_tree.get_file_text(old_file_id)
         else:
-            raise errors.BzrCommandError(
-                "%r is not present in revision %s" % (
-                    filename, rev_tree.get_revision_id()))
+            cur_file_id = tree.path2id(relpath)
+            found = False
+            if cur_file_id is not None:
+                # Then try with the actual file id
+                try:
+                    content = rev_tree.get_file_text(cur_file_id)
+                    found = True
+                except errors.NoSuchId:
+                    # The actual file id didn't exist at that time
+                    pass
+            if not found and old_file_id is not None:
+                # Finally try with the old file id
+                content = rev_tree.get_file_text(old_file_id)
+                found = True
+            if not found:
+                # Can't be found anywhere
+                raise errors.BzrCommandError(
+                    "%r is not present in revision %s" % (
+                        filename, rev_tree.get_revision_id()))
         self.outf.write(content)
 
 
