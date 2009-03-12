@@ -29,6 +29,10 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * Fix "is not a stackable format" error when pushing a
+      stackable-format branch with an unstackable-format repository to a
+      destination with a default stacking policy.  (Andrew Bennetts)
+
   DOCUMENTATION:
 
     * The generated manpage now explicitly lists aliases as commands.
