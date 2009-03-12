@@ -70,6 +70,11 @@ class ProgressTask(object):
     """
 
     def __init__(self, parent_task=None, ui_factory=None):
+        """Construct a new progress task.
+
+        Normally you should not call this directly but rather through
+        `ui_factory.nested_progress_bar`.
+        """
         self._parent_task = parent_task
         self._last_update = 0
         self.total_cnt = None
