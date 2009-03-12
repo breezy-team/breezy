@@ -44,7 +44,7 @@ from bzrlib.tag import (
 """)
 
 from bzrlib.decorators import needs_read_lock, needs_write_lock
-from bzrlib.hooks import Hooks
+from bzrlib.hooks import HookPoint, Hooks
 from bzrlib.inter import InterObject
 from bzrlib import registry
 from bzrlib.symbol_versioning import (
@@ -1372,75 +1372,66 @@ class BranchHooks(Hooks):
         notified.
         """
         Hooks.__init__(self)
-        # Introduced in 0.15:
-        # invoked whenever the revision history has been set
-        # with set_revision_history. The api signature is
-        # (branch, revision_history), and the branch will
-        # be write-locked.
-        self['set_rh'] = []
-        # Invoked after a branch is opened. The api signature is (branch).
-        self['open'] = []
-        # invoked after a push operation completes.
-        # the api signature is
-        # (push_result)
-        # containing the members
-        # (source, local, master, old_revno, old_revid, new_revno, new_revid)
-        # where local is the local target branch or None, master is the target
-        # master branch, and the rest should be self explanatory. The source
-        # is read locked and the target branches write locked. Source will
-        # be the local low-latency branch.
-        self['post_push'] = []
-        # invoked after a pull operation completes.
-        # the api signature is
-        # (pull_result)
-        # containing the members
-        # (source, local, master, old_revno, old_revid, new_revno, new_revid)
-        # where local is the local branch or None, master is the target
-        # master branch, and the rest should be self explanatory. The source
-        # is read locked and the target branches write locked. The local
-        # branch is the low-latency branch.
-        self['post_pull'] = []
-        # invoked before a commit operation takes place.
-        # the api signature is
-        # (local, master, old_revno, old_revid, future_revno, future_revid,
-        #  tree_delta, future_tree).
-        # old_revid is NULL_REVISION for the first commit to a branch
-        # tree_delta is a TreeDelta object describing changes from the basis
-        # revision, hooks MUST NOT modify this delta
-        # future_tree is an in-memory tree obtained from
-        # CommitBuilder.revision_tree() and hooks MUST NOT modify this tree
-        self['pre_commit'] = []
-        # invoked after a commit operation completes.
-        # the api signature is
-        # (local, master, old_revno, old_revid, new_revno, new_revid)
-        # old_revid is NULL_REVISION for the first commit to a branch.
-        self['post_commit'] = []
-        # invoked after a uncommit operation completes.
-        # the api signature is
-        # (local, master, old_revno, old_revid, new_revno, new_revid) where
-        # local is the local branch or None, master is the target branch,
-        # and an empty branch recieves new_revno of 0, new_revid of None.
-        self['post_uncommit'] = []
-        # Introduced in 1.6
-        # Invoked before the tip of a branch changes.
-        # the api signature is
-        # (params) where params is a ChangeBranchTipParams with the members
-        # (branch, old_revno, new_revno, old_revid, new_revid)
-        self['pre_change_branch_tip'] = []
-        # Introduced in 1.4
-        # Invoked after the tip of a branch changes.
-        # the api signature is
-        # (params) where params is a ChangeBranchTipParams with the members
-        # (branch, old_revno, new_revno, old_revid, new_revid)
-        self['post_change_branch_tip'] = []
-        # Introduced in 1.9
-        # Invoked when a stacked branch activates its fallback locations and
-        # allows the transformation of the url of said location.
-        # the api signature is
-        # (branch, url) where branch is the branch having its fallback
-        # location activated and url is the url for the fallback location.
-        # The hook should return a url.
-        self['transform_fallback_location'] = []
+        self.create_hook(HookPoint('set_rh',
+            "Invoked whenever the revision history has been set via "
+            "set_revision_history. The api signature is (branch, "
+            "revision_history), and the branch will be write-locked. "
+            "The set_rh hook can be expensive for bzr to trigger, a better "
+            "hook to use is Branch.post_change_branch_tip.", (0, 15), None))
+        self.create_hook(HookPoint('open',
+            "Called with the Branch object that has been opened after a "
+            "branch is opened.", (1, 8), None))
+        self.create_hook(HookPoint('post_push',
+            "Called after a push operation completes. post_push is called "
+            "with a bzrlib.branch.PushResult object and only runs in the "
+            "bzr client.", (0, 15), None))
+        self.create_hook(HookPoint('post_pull',
+            "Called after a pull operation completes. post_pull is called "
+            "with a bzrlib.branch.PullResult object and only runs in the "
+            "bzr client.", (0, 15), None))
+        self.create_hook(HookPoint('pre_commit',
+            "Called after a commit is calculated but before it is is "
+            "completed. pre_commit is called with (local, master, old_revno, "
+            "old_revid, future_revno, future_revid, tree_delta, future_tree"
+            "). old_revid is NULL_REVISION for the first commit to a branch, "
+            "tree_delta is a TreeDelta object describing changes from the "
+            "basis revision. hooks MUST NOT modify this delta. "
+            " future_tree is an in-memory tree obtained from "
+            "CommitBuilder.revision_tree() and hooks MUST NOT modify this "
+            "tree.", (0,91), None))
+        self.create_hook(HookPoint('post_commit',
+            "Called in the bzr client after a commit has completed. "
+            "post_commit is called with (local, master, old_revno, old_revid, "
+            "new_revno, new_revid). old_revid is NULL_REVISION for the first "
+            "commit to a branch.", (0, 15), None))
+        self.create_hook(HookPoint('post_uncommit',
+            "Called in the bzr client after an uncommit completes. "
+            "post_uncommit is called with (local, master, old_revno, "
+            "old_revid, new_revno, new_revid) where local is the local branch "
+            "or None, master is the target branch, and an empty branch "
+            "recieves new_revno of 0, new_revid of None.", (0, 15), None))
+        self.create_hook(HookPoint('pre_change_branch_tip',
+            "Called in bzr client and server before a change to the tip of a "
+            "branch is made. pre_change_branch_tip is called with a "
+            "bzrlib.branch.ChangeBranchTipParams. Note that push, pull, "
+            "commit, uncommit will all trigger this hook.", (1, 6), None))
+        self.create_hook(HookPoint('post_change_branch_tip',
+            "Called in bzr client and server after a change to the tip of a "
+            "branch is made. post_change_branch_tip is called with a "
+            "bzrlib.branch.ChangeBranchTipParams. Note that push, pull, "
+            "commit, uncommit will all trigger this hook.", (1, 4), None))
+        self.create_hook(HookPoint('transform_fallback_location',
+            "Called when a stacked branch is activating its fallback "
+            "locations. transform_fallback_location is called with (branch, "
+            "url), and should return a new url. Returning the same url "
+            "allows it to be used as-is, returning a different one can be "
+            "used to cause the branch to stack on a closer copy of that "
+            "fallback_location. Note that the branch cannot have history "
+            "accessing methods called on it during this hook because the "
+            "fallback locations have not been activated. When there are "
+            "multiple hooks installed for transform_fallback_location, "
+            "all are called with the url returned from the previous hook."
+            "The order is however undefined.", (1, 9), None))
 
 
 # install the default hooks into the Branch class.
@@ -2625,11 +2616,11 @@ class PullResult(_Result):
     :ivar new_revno: Revision number after pull.
     :ivar old_revid: Tip revision id before pull.
     :ivar new_revid: Tip revision id after pull.
-    :ivar source_branch: Source (local) branch object.
+    :ivar source_branch: Source (local) branch object. (read locked)
     :ivar master_branch: Master branch of the target, or the target if no
         Master
     :ivar local_branch: target branch if there is a Master, else None
-    :ivar target_branch: Target/destination branch object.
+    :ivar target_branch: Target/destination branch object. (write locked)
     :ivar tag_conflicts: A list of tag conflicts, see BasicTags.merge_to
     """
 
@@ -2649,13 +2640,20 @@ class PullResult(_Result):
 class PushResult(_Result):
     """Result of a Branch.push operation.
 
-    :ivar old_revno: Revision number before push.
-    :ivar new_revno: Revision number after push.
-    :ivar old_revid: Tip revision id before push.
-    :ivar new_revid: Tip revision id after push.
-    :ivar source_branch: Source branch object.
-    :ivar master_branch: Master branch of the target, or None.
-    :ivar target_branch: Target/destination branch object.
+    :ivar old_revno: Revision number (eg 10) of the target before push.
+    :ivar new_revno: Revision number (eg 12) of the target after push.
+    :ivar old_revid: Tip revision id (eg joe@foo.com-1234234-aoeua34) of target
+        before the push.
+    :ivar new_revid: Tip revision id (eg joe@foo.com-5676566-boa234a) of target
+        after the push.
+    :ivar source_branch: Source branch object that the push was from. This is
+        read locked, and generally is a local (and thus low latency) branch.
+    :ivar master_branch: If target is a bound branch, the master branch of
+        target, or target itself. Always write locked.
+    :ivar target_branch: The direct Branch where data is being sent (write
+        locked).
+    :ivar local_branch: If the target is a bound branch this will be the
+        target, otherwise it will be None.
     """
 
     def __int__(self):
