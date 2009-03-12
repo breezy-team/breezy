@@ -364,7 +364,7 @@ class GroupCompressor(object):
         self._delta_index = _groupcompress_pyx.DeltaIndex()
         self._block = GroupCompressBlock()
 
-    def compress(self, key, bytes, expected_sha, soft=False):
+    def compress(self, key, bytes, expected_sha, nostore_sha=None, soft=False):
         """Compress lines with label key.
 
         :param key: A key tuple. It is stored in the output
@@ -375,15 +375,20 @@ class GroupCompressor(object):
         :param expected_sha: If non-None, the sha the lines are believed to
             have. During compression the sha is calculated; a mismatch will
             cause an error.
+        :param nostore_sha: If the computed sha1 sum matches, we will raise
+            ExistingContent rather than adding the text.
         :param soft: Do a 'soft' compression. This means that we require larger
             ranges to match to be considered for a copy command.
         :return: The sha1 of lines, and the number of bytes accumulated in
             the group output so far.
+        :seealso VersionedFiles.add_lines:
         """
         if not _FAST or expected_sha is None:
             sha1 = sha_string(bytes)
         else:
             sha1 = expected_sha
+        if sha1 == nostore_sha:
+            raise errors.ExistingContent()
         if key[-1] is None:
             key = key[:-1] + ('sha1:' + sha1,)
         input_len = len(bytes)
@@ -603,7 +608,8 @@ class GroupCompressVersionedFiles(VersionedFiles):
         # double handling for now. Make it work until then.
         length = sum(map(len, lines))
         record = ChunkedContentFactory(key, parents, None, lines)
-        sha1 = list(self._insert_record_stream([record], random_id=random_id))[0]
+        sha1 = list(self._insert_record_stream([record], random_id=random_id,
+                                               nostore_sha=nostore_sha))[0]
         return sha1, length, None
 
     def add_fallback_versioned_files(self, a_versioned_files):
@@ -825,13 +831,15 @@ class GroupCompressVersionedFiles(VersionedFiles):
         for _ in self._insert_record_stream(stream):
             pass
 
-    def _insert_record_stream(self, stream, random_id=False):
+    def _insert_record_stream(self, stream, random_id=False, nostore_sha=None):
         """Internal core to insert a record stream into this container.
 
         This helper function has a different interface than insert_record_stream
         to allow add_lines to be minimal, but still return the needed data.
 
         :param stream: A stream of records to insert.
+        :param nostore_sha: If the sha1 of a given text matches nostore_sha,
+            raise ExistingContent, rather than committing the new text.
         :return: An iterator over the sha1 of the inserted records.
         :seealso insert_record_stream:
         :seealso add_lines:
@@ -889,7 +897,8 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 max_fulltext_prefix = prefix
             (found_sha1, end_point, type,
              length) = self._compressor.compress(record.key,
-                bytes, record.sha1, soft=soft)
+                bytes, record.sha1, soft=soft,
+                nostore_sha=nostore_sha)
             # delta_ratio = float(len(bytes)) / length
             # Check if we want to continue to include that text
             if (prefix == max_fulltext_prefix
