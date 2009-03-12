@@ -1378,7 +1378,6 @@ class GnuChangelogLogFormatter(LogFormatter):
 
     supports_merge_revisions = True
     supports_delta = True
-    supports_tags = True
 
     def log_revision(self, revision):
         """Log a revision, either merged or not."""
