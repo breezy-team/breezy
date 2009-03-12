@@ -25,10 +25,12 @@ from bzrlib import errors, shelf_ui, tests
 class ExpectShelver(shelf_ui.Shelver):
     """A variant of Shelver that intercepts console activity, for testing."""
 
-    def __init__(self, work_tree, target_tree, diff_writer=None, path=None,
-                 auto=False, auto_apply=False, file_list=None, message=None):
+    def __init__(self, work_tree, target_tree, diff_writer=None,
+                 auto=False, auto_apply=False, file_list=None, message=None,
+                 destroy=False):
         shelf_ui.Shelver.__init__(self, work_tree, target_tree, diff_writer,
-                                  auto, auto_apply, file_list, message)
+                                  auto, auto_apply, file_list, message,
+                                  destroy)
         self.expected = []
         self.diff_writer = StringIO()
 
