@@ -56,9 +56,14 @@ class RepoFetcher(object):
         :param _write_group_acquired_callable: Don't use; this parameter only
             exists to facilitate a hack done in InterPackRepo.fetch.  We would
             like to remove this parameter.
-        :param pb: ProgressBar object to use; deprecated.  If absent or None,
-            this method will just create one on top of the stack.
+        :param pb: ProgressBar object to use; deprecated and ignored.
+            This method will just create one on top of the stack.
         """
+        if pb is not None:
+            symbol_versioning.warn(
+                symbol_versioning.deprecated_in((1, 14, 0))
+                % "pb parameter to RepoFetcher.__init__")
+            # and for simplicity it is in fact ignored
         if to_repository.has_same_location(from_repository):
             # repository.fetch should be taking care of this case.
             raise errors.BzrError('RepoFetcher run '
@@ -71,13 +76,6 @@ class RepoFetcher(object):
         self._last_revision = last_revision
         self._fetch_spec = fetch_spec
         self.find_ghosts = find_ghosts
-        if pb is None:
-            self.pb = bzrlib.ui.ui_factory.nested_progress_bar()
-        else:
-            symbol_versioning.warn(
-                symbol_versioning.deprecated_in((1, 14, 0))
-                % "pb parameter to RepoFetcher.__init__")
-            self.pb = pb
         self.from_repository.lock_read()
         try:
             self.__fetch()
@@ -98,17 +96,12 @@ class RepoFetcher(object):
         # assert not missing
         self.count_total = 0
         self.file_ids_names = {}
-        pp = ProgressPhase('Transferring', 4, self.pb)
-        try:
-            pp.next_phase()
-            search = self._revids_to_fetch()
-            if search is None:
-                return
-            self._fetch_everything_for_search(search, pp)
-        finally:
-            self.pb.clear()
+        search = self._revids_to_fetch()
+        if search is None:
+            return
+        self._fetch_everything_for_search(search)
 
-    def _fetch_everything_for_search(self, search, pp):
+    def _fetch_everything_for_search(self, search):
         """Fetch all data for the given set of revisions."""
         # The first phase is "file".  We pass the progress bar for it directly
         # into item_keys_introduced_by, which has more information about how
@@ -123,7 +116,7 @@ class RepoFetcher(object):
             raise errors.IncompatibleRepositories(
                 self.from_repository, self.to_repository,
                 "different rich-root support")
-        self.pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
             source = self.from_repository._get_source(
                 self.to_repository._format)
@@ -145,8 +138,7 @@ class RepoFetcher(object):
                         resume_tokens,))
             self.sink.finished()
         finally:
-            if self.pb is not None:
-                self.pb.finished()
+            pb.finished()
 
     def _revids_to_fetch(self):
         """Determines the exact revisions needed from self.from_repository to
