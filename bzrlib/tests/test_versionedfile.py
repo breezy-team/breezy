@@ -1615,6 +1615,26 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
                 }
         return keys, sort_order
 
+    def get_keys_and_groupcompress_sort_order(self):
+        """Get diamond test keys list, and their groupcompress sort ordering."""
+        if self.key_length == 1:
+            keys = [('merged',), ('left',), ('right',), ('base',)]
+            sort_order = {('merged',):0, ('left',):1, ('right',):1, ('base',):2}
+        else:
+            keys = [
+                ('FileA', 'merged'), ('FileA', 'left'), ('FileA', 'right'),
+                ('FileA', 'base'),
+                ('FileB', 'merged'), ('FileB', 'left'), ('FileB', 'right'),
+                ('FileB', 'base'),
+                ]
+            sort_order = {
+                ('FileA', 'merged'):0, ('FileA', 'left'):1, ('FileA', 'right'):1,
+                ('FileA', 'base'):2,
+                ('FileB', 'merged'):3, ('FileB', 'left'):4, ('FileB', 'right'):4,
+                ('FileB', 'base'):5,
+                }
+        return keys, sort_order
+
     def test_get_record_stream_interface_ordered(self):
         """each item in a stream has to provide a regular interface."""
         files = self.get_versionedfiles()
@@ -1646,6 +1666,17 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             chunked_bytes = factory.get_bytes_as('chunked')
             self.assertEqualDiff(ft_bytes, ''.join(chunked_bytes))
 
+        self.assertStreamOrder(sort_order, seen, keys)
+
+    def test_get_record_stream_interface_groupcompress(self):
+        """each item in a stream has to provide a regular interface."""
+        files = self.get_versionedfiles()
+        self.get_diamond_files(files)
+        keys, sort_order = self.get_keys_and_groupcompress_sort_order()
+        parent_map = files.get_parent_map(keys)
+        entries = files.get_record_stream(keys, 'groupcompress', False)
+        seen = []
+        self.capture_stream(files, entries, seen.append, parent_map)
         self.assertStreamOrder(sort_order, seen, keys)
 
     def assertStreamOrder(self, sort_order, seen, keys):

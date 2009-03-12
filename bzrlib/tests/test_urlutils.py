@@ -497,6 +497,9 @@ class TestUrlToPath(TestCase):
         self.assertEqual('%C3%A5', urlutils.escape(u'\xe5'))
         self.assertFalse(isinstance(urlutils.escape(u'\xe5'), unicode))
 
+    def test_escape_tildes(self):
+        self.assertEqual('~foo', urlutils.escape('~foo'))
+
     def test_unescape(self):
         self.assertEqual('%', urlutils.unescape('%25'))
         self.assertEqual(u'\xe5', urlutils.unescape('%C3%A5'))

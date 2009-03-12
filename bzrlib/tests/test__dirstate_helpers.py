@@ -1020,6 +1020,17 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
                          state._dirblock_state)
 
+    def test_update_entry_tree_reference(self):
+        self.set_update_entry()
+        state = test_dirstate.InstrumentedDirState.initialize('dirstate')
+        self.addCleanup(state.unlock)
+        state.add('r', 'r-id', 'tree-reference', None, '')
+        self.build_tree(['r/'])
+        entry = state._get_entry(0, path_utf8='r')
+        self.do_update_entry(state, entry, 'r')
+        entry = state._get_entry(0, path_utf8='r')
+        self.assertEqual('t', entry[1][0][0])
+
     def create_and_test_file(self, state, entry):
         """Create a file at 'a' and verify the state finds it during update.
 
