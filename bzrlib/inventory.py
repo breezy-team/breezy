@@ -806,7 +806,19 @@ class Inventory(object):
             change regardless. E.g. in the recursive deletion of a directory -
             the directory's children must be included in the delta, or the
             final inventory will be invalid.
+
+            Note that a file_id must only appear once within a given delta.
+            An AssertionError is raised otherwise.
         """
+        # Check that the delta is legal. It would be nice if this could be
+        # done within the loops below but it's safer to validate the delta
+        # before starting to mutate the inventory.
+        unique_file_ids = set([f for _, _, f, _ in delta])
+        if len(unique_file_ids) != len(delta):
+            raise AssertionError("a file-id appears multiple times in %r"
+                    % (delta,))
+        del unique_file_ids
+
         children = {}
         # Remove all affected items which were in the original inventory,
         # starting with the longest paths, thus ensuring parents are examined

@@ -24,7 +24,6 @@ from bzrlib import (
     revision as _mod_revision,
     tests,
     )
-from bzrlib.tests import KnownFailure, SymlinkFeature, UnicodeFilenameFeature
 from bzrlib.tests.branch_implementations import TestCaseWithBranch
 
 
@@ -132,8 +131,8 @@ class TestSprout(TestCaseWithBranch):
         # Since the trigger function seems to be set_parent_trees, there exists
         # also a similar test, with name test_unicode_symlink, in class
         # TestSetParents at file workingtree_implementations/test_parents.py
-        self.requireFeature(SymlinkFeature)
-        self.requireFeature(UnicodeFilenameFeature)
+        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(tests.UnicodeFilenameFeature)
 
         tree = self.make_branch_and_tree('tree1')
 
@@ -143,14 +142,8 @@ class TestSprout(TestCaseWithBranch):
         os.symlink(u'\u03a9','tree1/link_name')
         tree.add(['link_name'],['link-id'])
 
-        try:
-            # python 2.7a0 failed on commit:
-            revision = tree.commit('added a link to a Unicode target')
-            # python 2.5 failed on sprout:
-            tree.bzrdir.sprout('target')
-        except UnicodeEncodeError, e:
-            raise KnownFailure('there is no support for'
-                               ' symlinks to non-ASCII targets (bug #272444)')
+        revision = tree.commit('added a link to a Unicode target')
+        tree.bzrdir.sprout('target')
 
     def assertBranchHookBranchIsStacked(self, pre_change_params):
         # Just calling will either succeed or fail.
@@ -172,7 +165,8 @@ class TestSprout(TestCaseWithBranch):
                 source_branch=source, stacked=True)
         except errors.UnstackableBranchFormat:
             if isinstance(self.branch_format, _mod_branch.BzrBranchFormat4):
-                raise KnownFailure("Format 4 doesn't auto stack successfully.")
+                raise tests.KnownFailure(
+                    "Format 4 doesn't auto stack successfully.")
             else:
                 raise
         result = dir.open_branch()

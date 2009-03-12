@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2009 Canonical Ltd
 #
 # Authors:
 #   Johan Rydberg <jrydberg@gnu.org>
@@ -746,21 +746,21 @@ class VersionedFileTestMixIn(object):
                 self.assertEqual(expected, progress.updates)
             return lines
         lines = iter_with_versions(['child', 'otherchild'],
-                                   [('Walking content.', 0, 2),
-                                    ('Walking content.', 1, 2),
-                                    ('Walking content.', 2, 2)])
+                                   [('Walking content', 0, 2),
+                                    ('Walking content', 1, 2),
+                                    ('Walking content', 2, 2)])
         # we must see child and otherchild
         self.assertTrue(lines[('child\n', 'child')] > 0)
         self.assertTrue(lines[('otherchild\n', 'otherchild')] > 0)
         # we dont care if we got more than that.
 
         # test all lines
-        lines = iter_with_versions(None, [('Walking content.', 0, 5),
-                                          ('Walking content.', 1, 5),
-                                          ('Walking content.', 2, 5),
-                                          ('Walking content.', 3, 5),
-                                          ('Walking content.', 4, 5),
-                                          ('Walking content.', 5, 5)])
+        lines = iter_with_versions(None, [('Walking content', 0, 5),
+                                          ('Walking content', 1, 5),
+                                          ('Walking content', 2, 5),
+                                          ('Walking content', 3, 5),
+                                          ('Walking content', 4, 5),
+                                          ('Walking content', 5, 5)])
         # all lines must be seen at least once
         self.assertTrue(lines[('base\n', 'base')] > 0)
         self.assertTrue(lines[('lancestor\n', 'lancestor')] > 0)
@@ -1492,6 +1492,27 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         return get_diamond_files(files, self.key_length,
             trailing_eol=trailing_eol, nograph=not self.graph,
             left_only=left_only)
+
+    def test_add_lines_nostoresha(self):
+        """When nostore_sha is supplied using old content raises."""
+        vf = self.get_versionedfiles()
+        empty_text = ('a', [])
+        sample_text_nl = ('b', ["foo\n", "bar\n"])
+        sample_text_no_nl = ('c', ["foo\n", "bar"])
+        shas = []
+        for version, lines in (empty_text, sample_text_nl, sample_text_no_nl):
+            sha, _, _ = vf.add_lines(self.get_simple_key(version), [], lines)
+            shas.append(sha)
+        # we now have a copy of all the lines in the vf.
+        for sha, (version, lines) in zip(
+            shas, (empty_text, sample_text_nl, sample_text_no_nl)):
+            new_key = self.get_simple_key(version + "2")
+            self.assertRaises(errors.ExistingContent,
+                vf.add_lines, new_key, [], lines,
+                nostore_sha=sha)
+            # and no new version should have been added.
+            record = vf.get_record_stream([new_key], 'unordered', True).next()
+            self.assertEqual('absent', record.storage_kind)
 
     def test_add_lines_return(self):
         files = self.get_versionedfiles()
@@ -2283,9 +2304,9 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             return lines
         lines = iter_with_keys(
             [self.get_simple_key('child'), self.get_simple_key('otherchild')],
-            [('Walking content.', 0, 2),
-             ('Walking content.', 1, 2),
-             ('Walking content.', 2, 2)])
+            [('Walking content', 0, 2),
+             ('Walking content', 1, 2),
+             ('Walking content', 2, 2)])
         # we must see child and otherchild
         self.assertTrue(lines[('child\n', self.get_simple_key('child'))] > 0)
         self.assertTrue(
@@ -2294,12 +2315,12 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
 
         # test all lines
         lines = iter_with_keys(files.keys(),
-            [('Walking content.', 0, 5),
-             ('Walking content.', 1, 5),
-             ('Walking content.', 2, 5),
-             ('Walking content.', 3, 5),
-             ('Walking content.', 4, 5),
-             ('Walking content.', 5, 5)])
+            [('Walking content', 0, 5),
+             ('Walking content', 1, 5),
+             ('Walking content', 2, 5),
+             ('Walking content', 3, 5),
+             ('Walking content', 4, 5),
+             ('Walking content', 5, 5)])
         # all lines must be seen at least once
         self.assertTrue(lines[('base\n', self.get_simple_key('base'))] > 0)
         self.assertTrue(
