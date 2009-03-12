@@ -223,6 +223,9 @@ and Stacked Branches should both be much faster over remote connections.
       UI at all - indeed it only reflects the repository status not
       changes to the branch itself. (Robert Collins)
 
+    * ``Inventory.apply_delta`` now raises an AssertionError if a file-id
+      appears multiple times within the delta. (Ian Clatworthy)
+
     * MutableTree.commit now favours the "authors" argument, with the old
       "author" argument being deprecated.
 
