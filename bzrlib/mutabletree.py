@@ -257,8 +257,7 @@ class MutableTree(tree.Tree):
             rn.add_file_edge_hashes(basis, missing_files)
             matches = rn.file_match(self, candidate_files)
             self.unversion(matches.values())
-            for path, file_id in sorted(matches.items()):
-                self.add(path, file_id)
+            self.add(matches.keys(), matches.values())
         finally:
             basis.unlock()
 
