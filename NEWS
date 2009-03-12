@@ -48,6 +48,9 @@ IN DEVELOPMENT
       branch in your web browser, as long as the branch is on Launchpad at all.
       (Jonathan Lange)
 
+    * New API for getting bugs fixed by a revision: Revision.iter_bugs().
+      (Jonathan Lange)
+
   IMPROVEMENTS:
 
     * ``bzr add`` no longer prints ``add completed`` on success. Failure
