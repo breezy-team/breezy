@@ -153,6 +153,16 @@ class GCPack(NewPack):
         # what state is the pack in? (open, finished, aborted)
         self._state = 'open'
 
+    def _check_references(self):
+        """Make sure our external references are present.
+
+        Packs are allowed to have deltas whose base is not in the pack, but it
+        must be present somewhere in this collection.  It is not allowed to
+        have deltas based on a fallback repository.
+        (See <https://bugs.launchpad.net/bzr/+bug/288751>)
+        """
+        # Groupcompress packs don't have any external references
+
 
 class GCRepositoryPackCollection(RepositoryPackCollection):
 
@@ -386,7 +396,6 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
             self._obsolete_packs(packs)
 
 
-
 class GCPackRepository(KnitPackRepository):
     """GC customisation of KnitPackRepository."""
 
@@ -450,6 +459,12 @@ class GCPackRepository(KnitPackRepository):
         self._reconcile_fixes_text_parents = True
         self._reconcile_backsup_inventory = False
 
+    def suspend_write_group(self):
+        raise errors.UnsuspendableWriteGroup(self)
+
+    def _resume_write_group(self, tokens):
+        raise errors.UnsuspendableWriteGroup(self)
+
 
 class GCCHKPackRepository(CHKInventoryRepository):
     """GC customisation of CHKInventoryRepository."""
@@ -508,6 +523,13 @@ class GCCHKPackRepository(CHKInventoryRepository):
         self._reconcile_does_inventory_gc = True
         self._reconcile_fixes_text_parents = True
         self._reconcile_backsup_inventory = False
+
+    def suspend_write_group(self):
+        raise errors.UnsuspendableWriteGroup(self)
+
+    def _resume_write_group(self, tokens):
+        raise errors.UnsuspendableWriteGroup(self)
+
 
 
 class RepositoryFormatPackGCPlain(RepositoryFormatKnitPack6):
