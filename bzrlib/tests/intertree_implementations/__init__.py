@@ -143,8 +143,8 @@ def load_tests(basic_tests, module, loader):
          return_provided_trees)]
     for optimiser in InterTree._optimisers:
         if optimiser is revisiontree.InterCHKRevisionTree:
-            # XXX: handled later because I don't understand why we may want to
-            # handle it here -- vila 20090203
+            # XXX: we shouldn't use an Intertree object to detect inventories
+            # -- vila 20090311
             continue
         elif optimiser is bzrlib.workingtree_4.InterDirStateTree:
             # Its a little ugly to be conditional here, but less so than having
