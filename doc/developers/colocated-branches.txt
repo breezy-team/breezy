@@ -1,0 +1,118 @@
+co-located branches
+===================
+
+At the moment, each Bazaar branch has a separate directory in the file
+system. While this works well, and makes it very easy to discover
+branches there are several situations where it might be useful to also
+support multiple branches under the same file system directory.
+
+There is an experimental implementation for Bazaar available as a plugin
+at http://people.samba.org/bzr/jelmer/bzr-local-branches/trunk. This was
+the original proof-of-concept and doesn't yet use the API documented
+here.
+
+Rationale
+---------
+
+Allowing multiple branches to live under the same directory in the file
+system means that it is possible to very easily share the same working
+tree and repository between those branches, without having a lot of fs
+infrastructure. 
+
+Git and Mercurial (can) store multiple branches under a single directory
+in the file system - per repository, so to speak. In order for this to
+be accessible in Bazaar, Bazaar needs to have the right APIs and UI for
+accessing these branches.
+
+Use Cases
+---------
+
+Carla has a large C-based project with a large tree and a lot of .o
+files that get generated as part of her build process. She doesn't want
+to create a new working tree for each new branch but simply uses "bzr
+switch" to switch between the different colocated branches that all use
+the same working tree.
+
+Brad has a single project with a lot of related branches. He works on
+them and occasionally pushes all of those branches to a remote host
+using a single push command.
+
+Joe follows one of his co-workers local branches in Mercurial by pulling
+into Bazaar.
+
+Implementation
+--------------
+
+UI Changes
+~~~~~~~~~~
+
+Bazaar URLs need to have some way to specify a colocated branch other
+than the current HEAD. Several options have been discussed, each with 
+its own advantages and disadvantages: This was discussed on the mailing
+list, most notably the use of a ";branch=NAME" suffix as well as a special
+separation character (+, =, etc), but no final conclusion was reached. 
+
+https://lists.ubuntu.com/archives/bazaar/2008q4/050105.html
+
+Code Changes
+~~~~~~~~~~~~
+
+BzrDir should support a BzrDir.supports_colocated_branches() call as well as 
+BzrDir.colocated_branches property that contains a colocated branch container,
+that can be used to add / remove colocated branches as well as change the 
+currently active colocated branch. 
+
+::
+
+	class ColocatedBranchContainer(object):
+
+	   def get_active_branch_name(self):
+		  """Returns the name of the currently active branch.
+
+		  This can be None if no branch is currently active.
+		  """
+
+	   def get_active_branch(self):
+		  """Returns the currently active branches' Branch object."""
+
+	   def get_branch(self, name):
+		  """Returns the Branch object for the specified branch."""
+
+	   def available_branches(self):
+		  """Returns a set with the names of the available branches."""
+
+	   def set_active_branch(self, name):
+		  """Set the currently active branch."""
+
+	   def destroy_branch(self, name):
+		 """Destroy the specified branch.
+			
+		This will remove the branch from disk.""" 
+
+If the particular BzrDir implementation doesn't support colocated
+branches, it can just return a dummy container that just contains a
+HEAD branch. 
+
+Looms can of course return a container with all their threads.
+
+BzrDir.find_branches() should take into account the colocated branches
+when iterating over its branches.
+
+Schema Changes
+--------------
+
+No format changes are necessary at first; at least, even if Bazaar
+provides the right infrastructure it doesn't have to support this
+feature in its own file formats.
+
+Eventually, Bazaar could easily support colocated branches by just
+creating a new branch transport for each colocated branch and have a 
+"regular" branch live there. This would require something like
+BzrDirMeta2 though.
+
+Unresolved Issues
+-----------------
+
+ * What about colocated looms ?
+ * What character to use to name colocated branches in URLs?
+

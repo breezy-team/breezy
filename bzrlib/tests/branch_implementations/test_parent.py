@@ -36,7 +36,7 @@ class TestParent(TestCaseWithTransport):
         """Branches should have no parent by default"""
         b = self.make_branch('.')
         self.assertEqual(None, b.get_parent())
-        
+
     def test_set_get_parent(self):
         """Set, re-get and reset the parent"""
         b = self.make_branch('subdir')

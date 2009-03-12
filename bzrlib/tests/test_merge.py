@@ -89,14 +89,14 @@ class TestMerge(TestCaseWithTransport):
         self.failIfExists('bar')
         wt2 = WorkingTree.open('.') # opens branch2
         self.assertEqual([tip], wt2.get_parent_ids())
-        
+
     def test_pending_with_null(self):
         """When base is forced to revno 0, parent_ids are set"""
         wt2 = self.test_unrelated()
         wt1 = WorkingTree.open('.')
         br1 = wt1.branch
         br1.fetch(wt2.branch)
-        # merge all of branch 2 into branch 1 even though they 
+        # merge all of branch 2 into branch 1 even though they
         # are not related.
         wt1.merge_from_branch(wt2.branch, wt2.last_revision(), 'null:')
         self.assertEqual([br1.last_revision(), wt2.branch.last_revision()],
@@ -150,12 +150,12 @@ class TestMerge(TestCaseWithTransport):
         self.addCleanup(tree_b.unlock)
         tree_a.commit(message="hello again")
         log = StringIO()
-        merge_inner(tree_b.branch, tree_a, tree_b.basis_tree(), 
+        merge_inner(tree_b.branch, tree_a, tree_b.basis_tree(),
                     this_tree=tree_b, ignore_zero=True)
         log = self._get_log(keep_log_file=True)
         self.failUnless('All changes applied successfully.\n' not in log)
         tree_b.revert()
-        merge_inner(tree_b.branch, tree_a, tree_b.basis_tree(), 
+        merge_inner(tree_b.branch, tree_a, tree_b.basis_tree(),
                     this_tree=tree_b, ignore_zero=False)
         log = self._get_log(keep_log_file=True)
         self.failUnless('All changes applied successfully.\n' in log)
@@ -248,18 +248,18 @@ class TestMerge(TestCaseWithTransport):
         self.assertEqual(tree_b.conflicts(),
                          [conflicts.ContentsConflict('file',
                           file_id='file-id')])
-    
+
     def test_merge_type_registry(self):
         merge_type_option = option.Option.OPTIONS['merge-type']
-        self.assertFalse('merge4' in [x[0] for x in 
+        self.assertFalse('merge4' in [x[0] for x in
                         merge_type_option.iter_switches()])
         registry = _mod_merge.get_merge_type_registry()
         registry.register_lazy('merge4', 'bzrlib.merge', 'Merge4Merger',
                                'time-travelling merge')
-        self.assertTrue('merge4' in [x[0] for x in 
+        self.assertTrue('merge4' in [x[0] for x in
                         merge_type_option.iter_switches()])
         registry.remove('merge4')
-        self.assertFalse('merge4' in [x[0] for x in 
+        self.assertFalse('merge4' in [x[0] for x in
                         merge_type_option.iter_switches()])
 
     def test_merge_other_moves_we_deleted(self):
@@ -312,6 +312,11 @@ class TestMerge(TestCaseWithTransport):
         merger.merge_type = _mod_merge.WeaveMerger
         merger.do_merge()
         self.assertEqual(tree_a.get_parent_ids(), [tree_b.last_revision()])
+
+    def test_Merger_defaults_to_DummyProgress(self):
+        branch = self.make_branch('branch')
+        merger = _mod_merge.Merger(branch, pb=None)
+        self.assertIsInstance(merger._pb, progress.DummyProgress)
 
     def prepare_cherrypick(self):
         """Prepare a pair of trees for cherrypicking tests.
@@ -718,7 +723,7 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
 
     def test_plan_merge_insert_order(self):
         """Weave merges are sensitive to the order of insertion.
-        
+
         Specifically for overlapping regions, it effects which region gets put
         'first'. And when a user resolves an overlapping merge, if they use the
         same ordering, then the lines match the parents, if they don't only
@@ -2153,8 +2158,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         wt.merge_from_branch(wt.branch, 'C-id')
         wt.commit('D merges B & C', rev_id='D-id')
         conflicts = wt.merge_from_branch(wt.branch, to_revision='F-id')
-        self.expectFailure("Merge3Merger doesn't use lcas for symlink content",
-            self.assertEqual, 0, conflicts)
+        self.assertEqual(0, conflicts)
         self.assertEqual('bing', wt.get_symlink_target('foo-id'))
 
     def test_renamed_symlink(self):
@@ -2421,8 +2425,7 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
         # TODO: We need to use the per-file graph to properly select a BASE
         #       before this will work. Or at least use the LCA trees to find
         #       the appropriate content base. (which is B, not A).
-        self.expectFailure("Merge3Merger doesn't recognize reverted content",
-            self.assertEqual, 'base content\n', wt.get_file_text('foo-id'))
+        self.assertEqual('base content\n', wt.get_file_text('foo-id'))
 
     def test_other_modified_content(self):
         builder = self.get_builder()
@@ -2438,8 +2441,6 @@ class TestMergerEntriesLCAOnDisk(tests.TestCaseWithTransport):
             [('modify', ('foo-id', 'F content\n'))]) # Override B content
         builder.build_snapshot('D-id', ['B-id', 'C-id'], [])
         wt, conflicts = self.do_merge(builder, 'F-id')
-        self.expectFailure("Merge3Merger only uses BASE for content",
-            self.assertEqual, 'F content\n', wt.get_file_text('foo-id'))
         self.assertEqual(0, conflicts)
         self.assertEqual('F content\n', wt.get_file_text('foo-id'))
 

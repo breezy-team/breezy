@@ -302,7 +302,7 @@ class TestCommit(ExternalBase):
     def test_commit_a_text_merge_in_a_checkout(self):
         # checkouts perform multiple actions in a transaction across bond
         # branches and their master, and have been observed to fail in the
-        # past. This is a user story reported to fail in bug #43959 where 
+        # past. This is a user story reported to fail in bug #43959 where
         # a merge done in a checkout (using the update command) failed to
         # commit correctly.
         trunk = self.make_branch_and_tree('trunk')
@@ -517,7 +517,9 @@ class TestCommit(ExternalBase):
         self.build_tree(['tree/hello.txt'])
         tree.add('hello.txt')
         self.run_bzr_error(
-            ["Invalid bug identifier for %s. Commit refused." % 'lp:orange'],
+            ["Did not understand bug identifier orange: Must be an integer. "
+             "See \"bzr help bugs\" for more information on this feature.\n"
+             "Commit refused."],
             'commit -m add-b --fixes=lp:orange',
             working_dir='tree')
 
@@ -527,7 +529,8 @@ class TestCommit(ExternalBase):
         self.build_tree(['tree/hello.txt'])
         tree.add('hello.txt')
         self.run_bzr_error(
-            [r"Invalid bug orange. Must be in the form of 'tag:id'\. "
+            [r"Invalid bug orange. Must be in the form of 'tracker:id'\. "
+             r"See \"bzr help bugs\" for more information on this feature.\n"
              r"Commit refused\."],
             'commit -m add-b --fixes=orange',
             working_dir='tree')
@@ -554,7 +557,7 @@ class TestCommit(ExternalBase):
                      "tree/hello.txt"])
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         properties = last_rev.properties
-        self.assertEqual(u'John D\xf6 <jdoe@example.com>', properties['author'])
+        self.assertEqual(u'John D\xf6 <jdoe@example.com>', properties['authors'])
 
     def test_author_no_email(self):
         """Author's name without an email address is allowed, too."""
@@ -565,7 +568,18 @@ class TestCommit(ExternalBase):
                                 "tree/hello.txt")
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         properties = last_rev.properties
-        self.assertEqual('John Doe', properties['author'])
+        self.assertEqual('John Doe', properties['authors'])
+
+    def test_multiple_authors(self):
+        """Multiple authors can be specyfied, and all are stored."""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        out, err = self.run_bzr("commit -m hello --author='John Doe' "
+                                "--author='Jane Rey' tree/hello.txt")
+        last_rev = tree.branch.repository.get_revision(tree.last_revision())
+        properties = last_rev.properties
+        self.assertEqual('John Doe\nJane Rey', properties['authors'])
 
     def test_partial_commit_with_renames_in_tree(self):
         # this test illustrates bug #140419

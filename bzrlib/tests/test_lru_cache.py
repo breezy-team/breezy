@@ -107,7 +107,7 @@ class TestLRUCache(tests.TestCase):
 
         self.assertEqual([(2, 20)], cleanup_called)
         self.assertEqual(25, cache[2])
-        
+
         # Even __setitem__ should make sure cleanup() is called
         cache[2] = 26
         self.assertEqual([(2, 20), (2, 25)], cleanup_called)

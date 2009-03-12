@@ -51,7 +51,7 @@ def vfs_enabled():
 
 class VfsRequest(request.SmartServerRequest):
     """Base class for VFS requests.
-    
+
     VFS requests are disabled if vfs_enabled() returns False.
     """
 
@@ -82,7 +82,7 @@ class AppendRequest(VfsRequest):
         relpath = self.translate_client_path(relpath)
         self._relpath = relpath
         self._mode = _deserialise_optional_mode(mode)
-    
+
     def do_body(self, body_bytes):
         old_length = self._backing_transport.append_bytes(
             self._relpath, body_bytes, self._mode)

@@ -34,13 +34,12 @@ from bzrlib.inventory import (
 
 from bzrlib.tests import (
         TestCase,
-        multiply_tests_from_modules,
         )
 
 
 class TestInventoryBasics(TestCase):
     # Most of these were moved the rather old bzrlib.tests.test_inv module
-    
+
     def make_inventory(self, root_id):
         return self.inventory_class(root_id=root_id)
 
