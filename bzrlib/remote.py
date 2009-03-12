@@ -151,6 +151,7 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         try:
             response = self._call(verb, path, stacking)
         except errors.UnknownSmartMethod:
+            medium._remember_remote_is_before((1, 13))
             return self._vfs_cloning_metadir(require_stacking=require_stacking)
         if len(response) != 3:
             raise errors.UnexpectedSmartServerResponse(response)
@@ -242,7 +243,7 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
                     raise errors.UnexpectedSmartServerResponse(response)
                 return response
             except errors.UnknownSmartMethod:
-                pass
+                medium._remember_remote_is_before((1, 13))
         response = self._call('BzrDir.open_branch', path)
         if response[0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response)
@@ -301,7 +302,11 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         medium = self._client._medium
         if medium._is_remote_before((1, 13)):
             raise errors.UnknownSmartMethod(verb)
-        response = self._call(verb, path)
+        try:
+            response = self._call(verb, path)
+        except errors.UnknownSmartMethod:
+            medium._remember_remote_is_before((1, 13))
+            raise
         if response[0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response)
         return response, None
@@ -460,6 +465,7 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
             response = a_bzrdir._call(verb, path, network_name, shared_str)
         except errors.UnknownSmartMethod:
             # Fallback - use vfs methods
+            medium._remember_remote_is_before((1, 13))
             return self._vfs_initialize(a_bzrdir, shared)
         else:
             # Turn the response into a RemoteRepository object.
@@ -499,7 +505,7 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
         return 'bzr remote repository'
 
     def __eq__(self, other):
-        return self.__class__ == other.__class__
+        return self.__class__ is other.__class__
 
     def check_conversion_target(self, target_format):
         if self.rich_root_data and not target_format.rich_root_data:
@@ -720,7 +726,7 @@ class RemoteRepository(_RpcHelper):
         return result
 
     def has_same_location(self, other):
-        return (self.__class__ == other.__class__ and
+        return (self.__class__ is other.__class__ and
                 self.bzrdir.transport.base == other.bzrdir.transport.base)
 
     def get_graph(self, other_repository=None):
@@ -1672,6 +1678,7 @@ class RemoteBranchFormat(branch.BranchFormat):
             response = a_bzrdir._call(verb, path, network_name)
         except errors.UnknownSmartMethod:
             # Fallback - use vfs methods
+            medium._remember_remote_is_before((1, 13))
             return self._vfs_initialize(a_bzrdir)
         if response[0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response)
@@ -1909,6 +1916,7 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         try:
             response = self._call('Branch.get_tags_bytes', self._remote_path())
         except errors.UnknownSmartMethod:
+            medium._remember_remote_is_before((1, 13))
             return self._vfs_get_tags_bytes()
         return response[0]
 
@@ -2116,6 +2124,7 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         try:
             response = self._call('Branch.get_parent', self._remote_path())
         except errors.UnknownSmartMethod:
+            medium._remember_remote_is_before((1, 13))
             return self._vfs_get_parent_location()
         if len(response) != 1:
             raise errors.UnexpectedSmartServerResponse(response)

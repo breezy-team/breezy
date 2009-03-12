@@ -16,34 +16,15 @@
 
 """Tests for different inventory implementations"""
 
-from bzrlib.tests import (
-        multiply_tests_from_modules,
-        )
-
-
-def _inventory_test_scenarios():
-    """Return a sequence of test scenarios.
-
-    Each scenario is (scenario_name_suffix, params).  The params are each
-    set as attributes on the test case.
-    """
-    from bzrlib.inventory import (
-        Inventory,
-        )
-    yield ('Inventory', dict(inventory_class=Inventory))
-
+from bzrlib.tests import multiply_tests
 
 def load_tests(basic_tests, module, loader):
     """Generate suite containing all parameterized tests"""
-    suite = loader.suiteClass()
-    # add the tests for this module
-    suite.addTests(basic_tests)
-
     modules_to_test = [
         'bzrlib.tests.inventory_implementations.basics',
         ]
+    from bzrlib.inventory import Inventory
+    scenarios = [('Inventory', {'inventory_class':Inventory})]
     # add the tests for the sub modules
-    suite.addTests(multiply_tests_from_modules(modules_to_test,
-                                               _inventory_test_scenarios(),
-                                               loader))
-    return suite
+    return multiply_tests(loader.loadTestsFromModuleNames(modules_to_test),
+        scenarios, basic_tests)
