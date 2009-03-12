@@ -199,6 +199,14 @@ class TestShelver(tests.TestCaseWithTransport):
         shelver.expect('Shelve 2 change(s)? [yNfq?]', 'y')
         shelver.run()
 
+    def test_shelve_distroy(self):
+        tree = self.create_shelvable_tree()
+        shelver = shelf_ui.Shelver.from_args(sys.stdout, all=True,
+                                             directory='tree', destroy=True)
+        shelver.run()
+        self.assertIs(None, tree.get_shelf_manager().last_shelf())
+        self.assertFileEqual(LINES_AJ, 'tree/foo')
+
 
 class TestUnshelver(tests.TestCaseWithTransport):
 

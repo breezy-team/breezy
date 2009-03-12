@@ -5395,11 +5395,13 @@ class cmd_shelve(Command):
                        value_switches=True, enum_switch=False),
 
         Option('list', help='List shelved changes.'),
+        Option('destroy',
+               help='Destroy removed changes instead of shelving them.'),
     ]
     _see_also = ['unshelve']
 
     def run(self, revision=None, all=False, file_list=None, message=None,
-            writer=None, list=False):
+            writer=None, list=False, destroy=False):
         if list:
             return self.run_for_list()
         from bzrlib.shelf_ui import Shelver
@@ -5407,7 +5409,7 @@ class cmd_shelve(Command):
             writer = bzrlib.option.diff_writer_registry.get()
         try:
             Shelver.from_args(writer(sys.stdout), revision, all, file_list,
-                              message).run()
+                              message, destroy=destroy).run()
         except errors.UserAbort:
             return 0
 
