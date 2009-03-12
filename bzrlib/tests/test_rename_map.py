@@ -41,3 +41,13 @@ class TestRenameMap(TestCaseWithTransport):
         self.build_tree_contents([('tree/b', ''.join(self.b_lines))])
         self.assertEqual({'a': 'aid', 'b': 'bid'},
                          rn.file_match(tree, ['a', 'b']))
+
+    def test_file_match_no_dups(self):
+        rn = RenameMap()
+        rn.add_edge_hashes(self.a_lines, 'aid')
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/a', ''.join(self.a_lines))])
+        self.build_tree_contents([('tree/b', ''.join(self.b_lines))])
+        self.build_tree_contents([('tree/c', ''.join(self.b_lines))])
+        self.assertEqual({'a': 'aid'},
+                         rn.file_match(tree, ['a', 'b', 'c']))

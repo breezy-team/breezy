@@ -251,7 +251,8 @@ class MutableTree(tree.Tree):
                         #other kinds are not handled
                         pass
                 if versioned == (False, False) and kind[1] == 'file':
-                    candidate_files.add(paths[1])
+                    if not self.is_ignored(paths[1]):
+                        candidate_files.add(paths[1])
             rn = rename_map.RenameMap()
             rn.add_file_edge_hashes(basis, missing_files)
             matches = rn.file_match(self, candidate_files)

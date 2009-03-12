@@ -47,5 +47,6 @@ class RenameMap(object):
                                    if k not in seen], reverse=True)
             if len(ordered_hits) > 0:
                 file_id = ordered_hits[0][1]
+                seen.add(file_id)
                 path_map[path] = file_id
         return path_map
