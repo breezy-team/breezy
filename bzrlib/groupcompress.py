@@ -747,67 +747,170 @@ class GroupCompressVersionedFiles(VersionedFiles):
         """
         # keys might be a generator
         orig_keys = list(keys)
-        keys = set(orig_keys)
+        keys = set(keys)
         if not keys:
             return
         if (not self._index.has_graph
             and ordering in ('topological', 'groupcompress')):
             # Cannot topological order when no graph has been stored.
+            # but we allow 'as-requested' or 'unordered'
             ordering = 'unordered'
+
+        remaining_keys = keys
+        while True:
+            try:
+                keys = set(remaining_keys)
+                for content_factory in self._get_remaining_record_stream(keys,
+                        orig_keys, ordering, include_delta_closure):
+                    remaining_keys.discard(content_factory.key)
+                    yield content_factory
+                return
+            except errors.RetryWithNewPacks, e:
+                self._access.reload_or_raise(e)
+
+    def _find_from_fallback(self, missing):
+        """Find whatever keys you can from the fallbacks.
+
+        :param missing: A set of missing keys. This set will be mutated as keys
+            are found from a fallback_vfs
+        :return: (parent_map, key_to_source_map, source_results)
+            parent_map  the overall key => parent_keys
+            key_to_source_map   a dict from {key: source}
+            source_results      a list of (source: keys)
+        """
+        parent_map = {}
+        key_to_source_map = {}
+        source_results = []
+        for source in self._fallback_vfs:
+            if not missing:
+                break
+            source_parents = source.get_parent_map(missing)
+            parent_map.update(source_parents)
+            source_parents = list(source_parents)
+            source_results.append((source, source_parents))
+            key_to_source_map.update((key, source) for key in source_parents)
+            missing.difference_update(source_parents)
+        return parent_map, key_to_source_map, source_results
+
+    def _get_ordered_source_keys(self, ordering, parent_map, key_to_source_map):
+        """Get the (source, [keys]) list.
+
+        The returned objects should be in the order defined by 'ordering',
+        which can weave between different sources.
+        :param ordering: Must be one of 'topological' or 'groupcompress'
+        :return: List of [(source, [keys])] tuples, such that all keys are in
+            the defined order, regardless of source.
+        """
+        if ordering == 'topological':
+            present_keys = topo_sort(parent_map)
+        else:
+            # ordering == 'groupcompress'
+            # XXX: This only optimizes for the target ordering. We may need
+            #      to balance that with the time it takes to extract
+            #      ordering, by somehow grouping based on
+            #      locations[key][0:3]
+            present_keys = sort_gc_optimal(parent_map)
+        # Now group by source:
+        source_keys = []
+        current_source = None
+        for key in present_keys:
+            source = key_to_source_map.get(key, self)
+            if source is not current_source:
+                source_keys.append((source, []))
+            source_keys[-1][1].append(key)
+        return source_keys
+
+    def _get_as_requested_source_keys(self, orig_keys, locations, unadded_keys,
+                                      key_to_source_map):
+        source_keys = []
+        current_source = None
+        for key in orig_keys:
+            if key in locations or key in unadded_keys:
+                source = self
+            elif key in key_to_source_map:
+                source = key_to_source_map[key]
+            else: # absent
+                continue
+            if source is not current_source:
+                source_keys.append((source, []))
+            source_keys[-1][1].append(key)
+        return source_keys
+
+    def _get_io_ordered_source_keys(self, locations, unadded_keys,
+                                    source_result):
+        def get_group(key):
+            # This is the group the bytes are stored in, followed by the
+            # location in the group
+            return locations[key][0]
+        present_keys = sorted(locations.iterkeys(), key=get_group)
+        # We don't have an ordering for keys in the in-memory object, but
+        # lets process the in-memory ones first.
+        present_keys = list(unadded_keys) + present_keys
+        # Now grab all of the ones from other sources
+        source_keys = [(self, present_keys)]
+        source_keys.extend(source_result)
+        return source_keys
+
+    def _get_remaining_record_stream(self, keys, orig_keys, ordering,
+                                     include_delta_closure):
+        """Get a stream of records for keys.
+
+        :param keys: The keys to include.
+        :param ordering: one of 'unordered', 'topological', 'groupcompress' or
+            'as-requested'
+        :param include_delta_closure: If True then the closure across any
+            compression parents will be included (in the opaque data).
+        :return: An iterator of ContentFactory objects, each of which is only
+            valid until the iterator is advanced.
+        """
         # Cheap: iterate
         locations = self._index.get_build_details(keys)
-        local_keys = frozenset(keys).intersection(set(self._unadded_refs))
-        if ordering == 'topological':
+        unadded_keys = set(self._unadded_refs).intersection(keys)
+        missing = keys.difference(locations)
+        missing.difference_update(unadded_keys)
+        (fallback_parent_map, key_to_source_map,
+         source_result) = self._find_from_fallback(missing)
+        if ordering in ('topological', 'groupcompress'):
             # would be better to not globally sort initially but instead
             # start with one key, recurse to its oldest parent, then grab
             # everything in the same group, etc.
             parent_map = dict((key, details[2]) for key, details in
                 locations.iteritems())
-            for key in local_keys:
+            for key in unadded_keys:
                 parent_map[key] = self._unadded_refs[key]
-            present_keys = topo_sort(parent_map)
-            # Now group by source:
-        elif ordering == 'groupcompress':
-            parent_map = dict((key, details[2]) for key, details in
-                              locations.iteritems())
-            for key in local_keys:
-                parent_map[key] = self._unadded_refs[key]
-            # XXX: This only optimizes for the target ordering. We may need to
-            #      balance that with the time it takes to extract ordering, by
-            #      somehow grouping based on locations[key][0:3]
-            present_keys = sort_gc_optimal(parent_map)
+            parent_map.update(fallback_parent_map)
+            source_keys = self._get_ordered_source_keys(ordering, parent_map,
+                                                        key_to_source_map)
         elif ordering == 'as-requested':
-            present_keys = [key for key in orig_keys if key in locations
-                            or key in local_keys]
+            source_keys = self._get_as_requested_source_keys(orig_keys,
+                locations, unadded_keys, key_to_source_map)
         else:
             # We want to yield the keys in a semi-optimal (read-wise) ordering.
             # Otherwise we thrash the _group_cache and destroy performance
-            def get_group(key):
-                # This is the group the bytes are stored in, followed by the
-                # location in the group
-                return locations[key][0]
-            present_keys = sorted(locations.iterkeys(), key=get_group)
-            # We don't have an ordering for keys in the in-memory object, but
-            # lets process the in-memory ones first.
-            present_keys = list(local_keys) + present_keys
-        locations.update((key, None) for key in local_keys)
-        absent_keys = keys.difference(set(locations))
-        for key in absent_keys:
+            source_keys = self._get_io_ordered_source_keys(locations,
+                unadded_keys, source_result)
+        for key in missing:
             yield AbsentContentFactory(key)
-        for key in present_keys:
-            if key in self._unadded_refs:
-                bytes, sha1 = self._compressor.extract(key)
-                parents = self._unadded_refs[key]
+        for source, keys in source_keys:
+            if source is self:
+                for key in keys:
+                    if key in self._unadded_refs:
+                        bytes, sha1 = self._compressor.extract(key)
+                        parents = self._unadded_refs[key]
+                    else:
+                        index_memo, _, parents, (method, _) = locations[key]
+                        block = self._get_block(index_memo)
+                        entry, bytes = block.extract(key, index_memo)
+                        sha1 = entry.sha1
+                        # TODO: If we don't have labels, then the sha1 here is computed
+                        #       from the data, so we don't want to re-sha the string.
+                        if not _FAST and sha_string(bytes) != sha1:
+                            raise AssertionError('sha1 sum did not match')
+                    yield FulltextContentFactory(key, parents, sha1, bytes)
             else:
-                index_memo, _, parents, (method, _) = locations[key]
-                block = self._get_block(index_memo)
-                entry, bytes = block.extract(key, index_memo)
-                sha1 = entry.sha1
-                # TODO: If we don't have labels, then the sha1 here is computed
-                #       from the data, so we don't want to re-sha the string.
-                if not _FAST and sha_string(bytes) != sha1:
-                    raise AssertionError('sha1 sum did not match')
-            yield FulltextContentFactory(key, parents, sha1, bytes)
+                for record in source.get_record_stream(keys, ordering,
+                                                       include_delta_closure):
+                    yield record
 
     def get_sha1s(self, keys):
         """See VersionedFiles.get_sha1s()."""
