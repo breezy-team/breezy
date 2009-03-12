@@ -164,8 +164,6 @@ class GroupCompressBlock(object):
             # Don't parse the label structure if we aren't going to use it
             return
         lines = header_bytes.split('\n')
-        header_len = len(header_bytes)
-        del header_bytes
         info_dict = {}
         for line in lines:
             if not line: #End of record
@@ -215,10 +213,11 @@ class GroupCompressBlock(object):
         assert len(header_bytes) == header_length
         del z_header_bytes
         out._parse_header_bytes(header_bytes)
+        del header_bytes
         zcontent = bytes[pos2:]
         if zcontent:
             out._content = decomp(zcontent)
-            out._size = header_len + len(out._content)
+            out._size = header_length + len(out._content)
         return out
 
     def extract(self, key, index_memo, sha1=None):
