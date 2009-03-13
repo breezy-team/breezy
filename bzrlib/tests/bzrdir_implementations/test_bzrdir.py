@@ -126,21 +126,14 @@ class TestBzrDir(TestCaseWithBzrDir):
                 for rev_id in left_repo.all_revision_ids():
                     self.assertEqual(left_repo.get_revision(rev_id),
                         right_repo.get_revision(rev_id))
-                # inventories
-                left_inv_weave = left_repo.inventories
-                right_inv_weave = right_repo.inventories
-                self.assertEqual(set(left_inv_weave.keys()),
-                    set(right_inv_weave.keys()))
-                # XXX: currently this does not handle indirectly referenced
-                # inventories (e.g. where the inventory is a delta basis for
-                # one that is fully present but that the revid for that
-                # inventory is not yet present.)
-                self.assertEqual(set(left_inv_weave.keys()),
-                    set(left_repo.revisions.keys()))
-                left_trees = left_repo.revision_trees(all_revs)
-                right_trees = right_repo.revision_trees(all_revs)
-                for left_tree, right_tree in izip(left_trees, right_trees):
-                    self.assertEqual(left_tree.inventory, right_tree.inventory)
+                # Assert the revision trees (and thus the inventories) are equal
+                sort_key = lambda rev_tree: rev_tree.get_revision_id()
+                rev_trees_a = sorted(
+                    left_repo.revision_trees(all_revs), key=sort_key)
+                rev_trees_b = sorted(
+                    right_repo.revision_trees(all_revs), key=sort_key)
+                for tree_a, tree_b in zip(rev_trees_a, rev_trees_b):
+                    self.assertEqual([], list(tree_a.iter_changes(tree_b)))
                 # texts
                 text_index = left_repo._generate_text_key_index()
                 self.assertEqual(text_index,
@@ -875,53 +868,6 @@ class TestBzrDir(TestCaseWithBzrDir):
         target = self.sproutOrSkip(dir, self.get_url('target'), revision_id='2')
         raise TestSkipped('revision limiting not strict yet')
 
-    def assertRepositoriesEqual(self, repo_a, repo_b):
-        """Assert that two repositories contain the same semantic content.
-
-        This works purely via direct APIs on Repository (not via
-        VersionedFiles).  It should be independent of any particular format or
-        difference in representation (e.g. due to data being stored in a
-        different order).
-        """
-        rev_ids = repo_a.all_revision_ids()
-        # Assert the revisions are equal
-        self.assertEqual(rev_ids, repo_b.all_revision_ids())
-        revisions_a = list(repo_a.get_revisions(rev_ids))
-        revisions_b = list(repo_b.get_revisions(rev_ids))
-        self.assertEqual(revisions_a, revisions_b)
-        # Assert the revision trees (and thus the inventories) are equal
-        sort_key = lambda rev_tree: rev_tree.get_revision_id()
-        rev_trees_a = sorted(repo_a.revision_trees(rev_ids), key=sort_key)
-        rev_trees_b = sorted(repo_b.revision_trees(rev_ids), key=sort_key)
-        for tree_a, tree_b in zip(rev_trees_a, rev_trees_b):
-            self.assertFalse(tree_a.changes_from(tree_b).has_changed())
-        # Assert the texts are equal
-        file_ids_a = repo_a.fileids_altered_by_revision_ids(rev_ids)
-        file_ids_b = repo_b.fileids_altered_by_revision_ids(rev_ids)
-        self.assertEqual(file_ids_a, file_ids_b)
-        all_files = []
-        count = 0
-        for file_id, file_id_revs in file_ids_a.iteritems():
-            for rev_id in file_id_revs:
-                all_files.append((file_id, rev_id, count))
-                count += 1
-        file_bytes_a = dict(repo_a.iter_files_bytes(all_files))
-        file_bytes_b = dict(repo_b.iter_files_bytes(all_files))
-        for key, bytes_iterator_a in file_bytes_a.iteritems():
-            bytes_iterator_b = file_bytes_b[key]
-            bytes_a = ''.join(bytes_iterator_a)
-            bytes_b = ''.join(bytes_iterator_b)
-            self.assertEqual(bytes_a, bytes_b)
-        # Assert the signatures are equal
-        for rev_id in rev_ids:
-            sig_present = repo_a.has_signature_for_revision_id(rev_id)
-            self.assertEqual(
-                sig_present, repo_b.has_signature_for_revision_id(rev_id))
-            if sig_present:
-                self.assertEqual(
-                    repo_a.get_signature_text(rev_id),
-                    repo_b.get_signature_text(rev_id))
-
     def test_sprout_bzrdir_branch_and_repo(self):
         tree = self.make_branch_and_tree('commit_tree')
         self.build_tree(['commit_tree/foo'])
@@ -938,7 +884,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         target_repo = target.open_repository()
         target_repo.lock_read()
         self.addCleanup(target_repo.unlock)
-        self.assertRepositoriesEqual(source.repository, target_repo)
+        self.assertRepositoryHasSameItems(source.repository, target_repo)
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
                                     [
                                      './.bzr/basis-inventory-cache',
