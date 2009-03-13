@@ -167,10 +167,10 @@ class GCPack(NewPack):
 class GCPacker(Packer):
     """This class understand what it takes to collect a GCCHK repo."""
 
-    def __init__(self, pack_collection, packs, suffix, reload_func=None):
-        # XXX: revision_ids and reload_func are not properly supported yet
+    def __init__(self, pack_collection, packs, suffix, revision_ids=None,
+                 reload_func=None):
         super(GCPacker, self).__init__(pack_collection, packs, suffix,
-                                       revision_ids=None,
+                                       revision_ids=revision_ids,
                                        reload_func=reload_func)
         self._pack_collection = pack_collection
         # ATM, We only support this for GCCHK repositories
@@ -313,6 +313,14 @@ class GCPacker(Packer):
             delta=delta)
         return vf
 
+    def _build_vfs(self, index_name, parents, delta):
+        """Build the source and target VersionedFiles."""
+        source_vf = self._build_vf(index_name, parents,
+                                   delta, for_write=False)
+        target_vf = self._build_vf(index_name, parents,
+                                   delta, for_write=True)
+        return source_vf, target_vf
+
     def _create_pack_from_packs(self):
         to_copy = [('revision', True, False),
                    ('inventory', True, True),
@@ -326,14 +334,9 @@ class GCPacker(Packer):
         # Is this necessary for GC ?
         self.new_pack.set_write_cache_size(1024*1024)
         for idx, (index_name, parents, delta) in enumerate(to_copy):
-            self.pb.update('repacking %s' % (index_name,), idx + 1, num_steps)
-            source_vf = self._build_vf(index_name, parents,
-                                       delta, for_write=False)
-            target_vf = self._build_vf(index_name, parents,
-                                       delta, for_write=True)
+            source_vf, target_vf = self._build_vfs(index_name, parents, delta)
             keys = source_vf.keys()
-            trace.mutter('repacking %s with %d keys', index_name, len(keys))
-            stream = None
+            self.pb.update('repacking %s' % (index_name,), idx + 1, num_steps)
             child_pb = ui.ui_factory.nested_progress_bar()
             try:
                 if index_name == 'inventory':
@@ -542,7 +545,8 @@ class GCCHKPackRepository(CHKInventoryRepository):
         raise errors.UnsuspendableWriteGroup(self)
 
     def _reconcile_pack(self, collection, packs, extension, revs, pb):
-        bork
+        # assert revs is None
+        packer = GCPacker(collection, packs, extension)
         return packer.pack(pb)
 
 
