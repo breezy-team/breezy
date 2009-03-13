@@ -3401,6 +3401,12 @@ class InterPackToRemotePack(InterPackRepo):
     def fetch(self, revision_id=None, pb=None, find_ghosts=False,
             fetch_spec=None):
         """See InterRepository.fetch()."""
+        if self.target._client._medium._is_remote_before((1, 13)):
+            # The server won't support the insert_stream RPC, so just use
+            # regular InterPackRepo logic.  This avoids a bug that causes many
+            # round-trips for small append calls.
+            return InterPackRepo.fetch(self, revision_id=revision_id, pb=pb,
+                find_ghosts=find_ghosts, fetch_spec=fetch_spec)
         # Always fetch using the generic streaming fetch code, to allow
         # streaming fetching into remote servers.
         from bzrlib.fetch import RepoFetcher
