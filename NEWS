@@ -40,6 +40,9 @@ IN DEVELOPMENT
       the delta is empty, and now correctly claims not to support tags.
       (Andrea Bolognani)
 
+    * Shelve can now shelve changes to a symlink target.
+      (James Westby, #341558)
+
   DOCUMENTATION:
 
     * The generated manpage now explicitly lists aliases as commands.

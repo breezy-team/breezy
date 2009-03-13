@@ -140,6 +140,27 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         limbo_name = creator.shelf_transform._limbo_name(s_trans_id)
         self.assertEqual('bar', os.readlink(limbo_name))
 
+    def test_shelve_symlink_target_change(self):
+        self.requireFeature(tests.SymlinkFeature)
+        tree = self.make_branch_and_tree('.')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        os.symlink('bar', 'foo')
+        tree.add('foo', 'foo-id')
+        tree.commit("commit symlink")
+        os.unlink("foo")
+        os.symlink('baz', 'foo')
+        creator = shelf.ShelfCreator(tree, tree.basis_tree())
+        self.addCleanup(creator.finalize)
+        self.assertEqual([('modify target', 'foo-id', 'foo', 'bar', 'baz')],
+                         list(creator.iter_shelvable()))
+        creator.shelve_modify_target('foo-id')
+        creator.transform()
+        self.assertEqual('bar', os.readlink('foo'))
+        s_trans_id = creator.shelf_transform.trans_id_file_id('foo-id')
+        limbo_name = creator.shelf_transform._limbo_name(s_trans_id)
+        self.assertEqual('baz', os.readlink(limbo_name))
+
     def test_shelve_creation_no_contents(self):
         tree = self.make_branch_and_tree('.')
         tree.lock_write()
