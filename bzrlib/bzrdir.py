@@ -3391,5 +3391,51 @@ format_registry.register_metadir('development5-hash255',
     hidden=True,
     experimental=True,
     )
+# XXX: This format is scheduled for termination
+# format_registry.register_metadir('gc-no-rich-root',
+#     'bzrlib.repofmt.groupcompress_repo.RepositoryFormatPackGCPlain',
+#     help='pack-1.9 with xml inv, group compress '
+#         'Please read '
+#         'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+#         'before use.',
+#     branch_format='bzrlib.branch.BzrBranchFormat7',
+#     tree_format='bzrlib.workingtree.WorkingTreeFormat5',
+#     hidden=False,
+#     experimental=True,
+#     )
+format_registry.register_metadir('gc-chk16',
+    'bzrlib.repofmt.groupcompress_repo.RepositoryFormatPackGCCHK16',
+    help='pack-1.9 with 16-way hashed CHK inv, group compress, rich roots. '
+        'Please read '
+        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+        'before use.',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat5',
+    hidden=False,
+    experimental=True,
+    )
+format_registry.register_metadir('gc-chk255',
+    'bzrlib.repofmt.groupcompress_repo.RepositoryFormatPackGCCHK255',
+    help='pack-1.9 with 255-way hashed CHK inv, group compress, rich roots '
+        'Please read '
+        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+        'before use.',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat5',
+    hidden=False,
+    experimental=True,
+    )
+format_registry.register_metadir('gc-chk255-big',
+    'bzrlib.repofmt.groupcompress_repo.RepositoryFormatPackGCCHK255Big',
+    help='pack-1.9 with 255-way hashed CHK inv, group compress, rich roots '
+        'Please read '
+        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+        'before use.',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat5',
+    hidden=False,
+    experimental=True,
+    )
+
 # The current format that is made on 'bzr init'.
 format_registry.set_default('pack-0.92')

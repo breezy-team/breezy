@@ -744,7 +744,8 @@ class Packer(object):
 
     def open_pack(self):
         """Open a pack for the pack we are creating."""
-        return NewPack(self._pack_collection, upload_suffix=self.suffix,
+        return self._pack_collection.pack_factory(self._pack_collection,
+                upload_suffix=self.suffix,
                 file_mode=self._pack_collection.repo.bzrdir._get_file_mode())
 
     def _update_pack_order(self, entries, index_to_pack_map):
@@ -1343,6 +1344,8 @@ class RepositoryPackCollection(object):
 
     :ivar _names: map of {pack_name: (index_size,)}
     """
+
+    pack_factory = NewPack
 
     def __init__(self, repo, transport, index_transport, upload_transport,
                  pack_transport, index_builder_class, index_class,
@@ -1952,7 +1955,7 @@ class RepositoryPackCollection(object):
         # Do not permit preparation for writing if we're not in a 'write lock'.
         if not self.repo.is_write_locked():
             raise errors.NotWriteLocked(self)
-        self._new_pack = NewPack(self, upload_suffix='.pack',
+        self._new_pack = self.pack_factory(self, upload_suffix='.pack',
             file_mode=self.repo.bzrdir._get_file_mode())
         # allow writing: queue writes to a new index
         self.revision_index.add_writable_index(self._new_pack.revision_index,
@@ -2178,28 +2181,33 @@ class KnitPackRepository(KnitRepository):
             revision_nodes = self._pack_collection.revision_index \
                 .combined_index.iter_all_entries()
             index_positions = []
-            # Get the cached index values for all revisions, and also the location
-            # in each index of the revision text so we can perform linear IO.
+            # Get the cached index values for all revisions, and also the
+            # location in each index of the revision text so we can perform
+            # linear IO.
             for index, key, value, refs in revision_nodes:
-                pos, length = value[1:].split(' ')
-                index_positions.append((index, int(pos), key[0],
-                    tuple(parent[0] for parent in refs[0])))
+                node = (index, key, value, refs)
+                index_memo = self.revisions._index._node_to_position(node)
+                assert index_memo[0] == index
+                index_positions.append((index_memo, key[0],
+                                       tuple(parent[0] for parent in refs[0])))
                 pb.update("Reading revision index", 0, 0)
             index_positions.sort()
-            batch_count = len(index_positions) / 1000 + 1
-            pb.update("Checking cached revision graph", 0, batch_count)
-            for offset in xrange(batch_count):
+            batch_size = 1000
+            pb.update("Checking cached revision graph", 0,
+                      len(index_positions))
+            for offset in xrange(0, len(index_positions), 1000):
                 pb.update("Checking cached revision graph", offset)
-                to_query = index_positions[offset * 1000:(offset + 1) * 1000]
+                to_query = index_positions[offset:offset + batch_size]
                 if not to_query:
                     break
-                rev_ids = [item[2] for item in to_query]
+                rev_ids = [item[1] for item in to_query]
                 revs = self.get_revisions(rev_ids)
                 for revision, item in zip(revs, to_query):
-                    index_parents = item[3]
+                    index_parents = item[2]
                     rev_parents = tuple(revision.parent_ids)
                     if index_parents != rev_parents:
-                        result.append((revision.revision_id, index_parents, rev_parents))
+                        result.append((revision.revision_id, index_parents,
+                                       rev_parents))
         finally:
             pb.finished()
         return result

@@ -2677,6 +2677,27 @@ format_registry.register_lazy(
     'bzrlib.repofmt.pack_repo',
     'RepositoryFormatPackDevelopment5Hash255',
     )
+# XXX: This format is scheduled for termination
+# format_registry.register_lazy(
+#     'Bazaar development format - btree+gc (needs bzr.dev from 1.13)\n',
+#     'bzrlib.repofmt.groupcompress_repo',
+#     'RepositoryFormatPackGCPlain',
+#     )
+format_registry.register_lazy(
+    'Bazaar development format - hash16chk+gc rich-root (needs bzr.dev from 1.13)\n',
+    'bzrlib.repofmt.groupcompress_repo',
+    'RepositoryFormatPackGCCHK16',
+    )
+format_registry.register_lazy(
+    'Bazaar development format - hash255chk+gc rich-root (needs bzr.dev from 1.13)\n',
+    'bzrlib.repofmt.groupcompress_repo',
+    'RepositoryFormatPackGCCHK255',
+    )
+format_registry.register_lazy(
+    'Bazaar development format - hash255chk+gc rich-root bigpage (needs bzr.dev from 1.13)\n',
+    'bzrlib.repofmt.groupcompress_repo',
+    'RepositoryFormatPackGCCHK255Big',
+    )
 
 
 class InterRepository(InterObject):
@@ -3100,12 +3121,21 @@ class InterPackRepo(InterSameDataRepository):
         Do not support CHK based repositories at this point.
         """
         from bzrlib.repofmt.pack_repo import RepositoryFormatPack
+        # XXX: This format is scheduled for termination
+        # from bzrlib.repofmt.groupcompress_repo import (
+        #     RepositoryFormatPackGCPlain,
+        #     )
         try:
             are_packs = (isinstance(source._format, RepositoryFormatPack) and
                 isinstance(target._format, RepositoryFormatPack))
         except AttributeError:
             return False
-        return (are_packs and InterRepository._same_model(source, target) and
+        if not are_packs:
+            return False
+        # if (isinstance(source._format, RepositoryFormatPackGCPlain)
+        #     or isinstance(target._format, RepositoryFormatPackGCPlain)):
+        #     return False
+        return (InterRepository._same_model(source, target) and
             not source._format.supports_chks)
 
     @needs_write_lock
@@ -3237,13 +3267,15 @@ class InterDifferingSerializer(InterKnitRepo):
     @staticmethod
     def is_compatible(source, target):
         """Be compatible with Knit2 source and Knit3 target"""
-        if source.supports_rich_root() != target.supports_rich_root():
-            return False
+        # XXX: What do we need to do to support fetching them?
+        # if source.supports_rich_root() != target.supports_rich_root():
+        #     return False
         # Ideally, we'd support fetching if the source had no tree references
         # even if it supported them...
-        if (getattr(source, '_format.supports_tree_reference', False) and
-            not getattr(target, '_format.supports_tree_reference', False)):
-            return False
+        # XXX: What do we need to do to support fetching them?
+        # if (getattr(source._format, 'supports_tree_reference', False) and
+        #     not getattr(target._format, 'supports_tree_reference', False)):
+        #    return False
         return True
 
     def _get_delta_for_revision(self, tree, parent_ids, basis_id, cache):
@@ -3278,6 +3310,7 @@ class InterDifferingSerializer(InterKnitRepo):
         # Walk though all revisions; get inventory deltas, copy referenced
         # texts that delta references, insert the delta, revision and
         # signature.
+        root_keys_to_create = set()
         text_keys = set()
         pending_deltas = []
         pending_revisions = []
@@ -3290,13 +3323,23 @@ class InterDifferingSerializer(InterKnitRepo):
             parent_ids = parent_map.get(current_revision_id, ())
             basis_id, delta = self._get_delta_for_revision(tree, parent_ids,
                                                            basis_id, cache)
+            if self._converting_to_rich_root:
+                self._revision_id_to_root_id[current_revision_id] = \
+                    tree.get_root_id()
             # Find text entries that need to be copied
             for old_path, new_path, file_id, entry in delta:
                 if new_path is not None:
-                    if not (new_path or self.target.supports_rich_root()):
-                        # We don't copy the text for the root node unless the
-                        # target supports_rich_root.
-                        continue
+                    if not new_path:
+                        # This is the root
+                        if not self.target.supports_rich_root():
+                            # The target doesn't support rich root, so we don't
+                            # copy
+                            continue
+                        if self._converting_to_rich_root:
+                            # This can't be copied normally, we have to insert
+                            # it specially
+                            root_keys_to_create.add((file_id, entry.revision))
+                            continue
                     text_keys.add((file_id, entry.revision))
             revision = self.source.get_revision(current_revision_id)
             pending_deltas.append((basis_id, delta,
@@ -3307,6 +3350,24 @@ class InterDifferingSerializer(InterKnitRepo):
         # Copy file texts
         from_texts = self.source.texts
         to_texts = self.target.texts
+        if root_keys_to_create:
+            NULL_REVISION = _mod_revision.NULL_REVISION
+            def _get_parent_keys(root_key):
+                root_id, rev_id = root_key
+                # Include direct parents of the revision, but only if they used
+                # the same root_id.
+                parent_keys = tuple([(root_id, parent_id)
+                    for parent_id in parent_map[rev_id]
+                    if parent_id != NULL_REVISION and
+                        rev_id_to_root.get(parent_id, root_id) == root_id])
+                return parent_keys
+            def new_root_data_stream():
+                rev_id_to_root = self._revision_id_to_root_id
+                for root_key in root_keys_to_create:
+                    parent_keys = _get_parent_keys(root_key)
+                    yield versionedfile.FulltextContentFactory(root_key,
+                        parent_keys, None, '')
+            to_texts.insert_record_stream(new_root_data_stream())
         to_texts.insert_record_stream(from_texts.get_record_stream(
             text_keys, self.target._format._fetch_order,
             not self.target._format._fetch_uses_deltas))
@@ -3359,6 +3420,12 @@ class InterDifferingSerializer(InterKnitRepo):
         """See InterRepository.fetch()."""
         if fetch_spec is not None:
             raise AssertionError("Not implemented yet...")
+        if (not self.source.supports_rich_root()
+            and self.target.supports_rich_root()):
+            self._converting_to_rich_root = True
+            self._revision_id_to_root_id = {}
+        else:
+            self._converting_to_rich_root = False
         revision_ids = self.target.search_missing_revision_ids(self.source,
             revision_id, find_ghosts=find_ghosts).get_keys()
         if not revision_ids:
