@@ -54,7 +54,7 @@ from bzrlib.versionedfile import (
     )
 
 _USE_LZMA = False and (pylzma is not None)
-_NO_LABELS = False
+_NO_LABELS = True
 _FAST = False
 
 def encode_base128_int(val):
