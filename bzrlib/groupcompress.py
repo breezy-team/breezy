@@ -526,7 +526,7 @@ def make_pack_factory(graph, delta, keylength):
     :param keylength: How long should keys be.
     """
     def factory(transport):
-        parents = graph or delta
+        parents = graph
         ref_length = 0
         if graph:
             ref_length = 1
