@@ -50,10 +50,11 @@ def get_transport_scenarios():
     result = []
     basis = test_transport_implementations.transport_test_permutations()
     # Keep only the interesting ones for upload
-    for name, d in result:
+    for name, d in basis:
         t_class = d['transport_class']
-        if t_class in ('bzrlib.transport.ftp', 'bzrlib.transport.sftp'):
-            result.append((name, d))
+        if t_class.__module__ in ('bzrlib.transport.ftp',
+                                'bzrlib.transport.sftp'):
+           result.append((name, d))
     try:
         import bzrlib.plugins.local_test_server
         from bzrlib.plugins.local_test_server import test_server
