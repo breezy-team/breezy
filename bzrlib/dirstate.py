@@ -1588,7 +1588,18 @@ class DirState(object):
         #       already in memory. However, this really needs to be done at a
         #       higher level, because there either won't be anything on disk,
         #       or the thing on disk will be a file.
-        return os.readlink(abspath.encode(osutils._fs_enc))
+        fs_encoding = osutils._fs_enc
+        if isinstance(abspath, unicode):
+            # abspath is defined as the path to pass to lstat. readlink is
+            # buggy in python < 2.6 (it doesn't encode unicode path into FS
+            # encoding), so we need to encode ourselves knowing that unicode
+            # paths are produced by UnicodeDirReader on purpose.
+            abspath = abspath.encode(fs_encoding)
+        target = os.readlink(abspath)
+        if fs_encoding not in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968'):
+            # Change encoding if needed
+            target = target.decode(fs_encoding).encode('UTF-8')
+        return target
 
     def get_ghosts(self):
         """Return a list of the parent tree revision ids that are ghosts."""
@@ -1866,8 +1877,10 @@ class DirState(object):
             size = 0
             executable = False
         elif kind == 'symlink':
-            # We don't support non-ascii targets for symlinks yet.
-            fingerprint = str(inv_entry.symlink_target or '')
+            if inv_entry.symlink_target is None:
+                fingerprint = ''
+            else:
+                fingerprint = inv_entry.symlink_target.encode('utf8')
             size = 0
             executable = False
         elif kind == 'file':
@@ -2807,6 +2820,8 @@ def py_update_entry(state, entry, abspath, stat_value,
     (saved_minikind, saved_link_or_sha1, saved_file_size,
      saved_executable, saved_packed_stat) = entry[1][0]
 
+    if minikind == 'd' and saved_minikind == 't':
+        minikind = 't'
     if (minikind == saved_minikind
         and packed_stat == saved_packed_stat):
         # The stat hasn't changed since we saved, so we can re-use the
@@ -3405,7 +3420,7 @@ class ProcessEntryPython(object):
                 while (current_entry is not None or
                     current_path_info is not None):
                     if current_entry is None:
-                        # the check for path_handled when the path is adnvaced
+                        # the check for path_handled when the path is advanced
                         # will yield this path if needed.
                         pass
                     elif current_path_info is None:

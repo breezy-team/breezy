@@ -1556,3 +1556,31 @@ def record_to_fulltext_bytes(record):
     record_content = record.get_bytes_as('fulltext')
     return "fulltext\n%s%s%s" % (
         _length_prefix(record_meta), record_meta, record_content)
+
+
+def sort_groupcompress(parent_map):
+    """Sort and group the keys in parent_map into groupcompress order.
+
+    groupcompress is defined (currently) as reverse-topological order, grouped
+    by the key prefix.
+
+    :return: A sorted-list of keys
+    """
+    # gc-optimal ordering is approximately reverse topological,
+    # properly grouped by file-id.
+    per_prefix_map = {}
+    for item in parent_map.iteritems():
+        key = item[0]
+        if isinstance(key, str) or len(key) == 1:
+            prefix = ''
+        else:
+            prefix = key[0]
+        try:
+            per_prefix_map[prefix].append(item)
+        except KeyError:
+            per_prefix_map[prefix] = [item]
+
+    present_keys = []
+    for prefix in sorted(per_prefix_map):
+        present_keys.extend(reversed(tsort.topo_sort(per_prefix_map[prefix])))
+    return present_keys

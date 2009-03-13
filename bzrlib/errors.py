@@ -1003,14 +1003,15 @@ class UnlockableTransport(LockError):
 
 class LockContention(LockError):
 
-    _fmt = 'Could not acquire lock "%(lock)s"'
+    _fmt = 'Could not acquire lock "%(lock)s": %(msg)s'
     # TODO: show full url for lock, combining the transport and relative
     # bits?
 
     internal_error = False
 
-    def __init__(self, lock):
+    def __init__(self, lock, msg=''):
         self.lock = lock
+        self.msg = msg
 
 
 class LockBroken(LockError):
@@ -2503,7 +2504,8 @@ class TagAlreadyExists(BzrError):
 
 class MalformedBugIdentifier(BzrError):
 
-    _fmt = "Did not understand bug identifier %(bug_id)s: %(reason)s"
+    _fmt = ('Did not understand bug identifier %(bug_id)s: %(reason)s. '
+            'See "bzr help bugs" for more information on this feature.')
 
     def __init__(self, bug_id, reason):
         self.bug_id = bug_id
@@ -2528,6 +2530,22 @@ class UnknownBugTrackerAbbreviation(BzrError):
     def __init__(self, abbreviation, branch):
         self.abbreviation = abbreviation
         self.branch = branch
+
+
+class InvalidLineInBugsProperty(BzrError):
+
+    _fmt = ("Invalid line in bugs property: '%(line)s'")
+
+    def __init__(self, line):
+        self.line = line
+
+
+class InvalidBugStatus(BzrError):
+
+    _fmt = ("Invalid bug status: '%(status)s'")
+
+    def __init__(self, status):
+        self.status = status
 
 
 class UnexpectedSmartServerResponse(BzrError):
