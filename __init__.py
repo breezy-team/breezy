@@ -102,12 +102,13 @@ def sort_by_committer(a_repo, revids):
         revisions = a_repo.get_revisions(revids)
         for count, rev in enumerate(revisions):
             pb.update('checking', count, len(revids))
-            username = config.parse_username(rev.get_apparent_author())
-            if username[1] == '':
-                email = username[0]
-            else:
-                email = username[1]
-            committers.setdefault(email, []).append(rev)
+            for author in rev.get_apparent_authors():
+                username = config.parse_username(author)
+                if username[1] == '':
+                    email = username[0]
+                else:
+                    email = username[1]
+                committers.setdefault(email, []).append(rev)
     finally:
         pb.finished()
 
@@ -149,11 +150,12 @@ def get_diff_info(a_repo, start_rev, end_rev):
 
         for count, rev in enumerate(revisions):
             pb.update('checking', count, len(ancestry))
-            try:
-                email = config.extract_email_address(rev.get_apparent_author())
-            except errors.BzrError:
-                email = rev.get_apparent_author()
-            committers.setdefault(email, []).append(rev)
+            for author in rev.get_apparent_authors():
+                try:
+                    email = config.extract_email_address(author)
+                except errors.BzrError:
+                    email = author
+                committers.setdefault(email, []).append(rev)
     finally:
         a_repo.unlock()
         pb.finished()
@@ -350,10 +352,10 @@ def find_credits(repository, revid):
                 if len(rev.parent_ids) > 1:
                     continue
                 for c in set(classify_delta(delta)):
-                    author = rev.get_apparent_author()
-                    if not author in ret[c]:
-                        ret[c][author] = 0
-                    ret[c][author] += 1
+                    for author in rev.get_apparent_authors():
+                        if not author in ret[c]:
+                            ret[c][author] = 0
+                        ret[c][author] += 1
         finally:
             pb.finished()
     finally:
