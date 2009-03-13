@@ -50,7 +50,7 @@ from bzrlib import (
 
 from bzrlib import registry
 # Compatibility
-from bzrlib.hooks import Hooks
+from bzrlib.hooks import HookPoint, Hooks
 from bzrlib.option import Option
 
 
@@ -591,11 +591,10 @@ class CommandHooks(Hooks):
         notified.
         """
         Hooks.__init__(self)
-        # Introduced in 1.13:
-        # invoked after creating a command object to allow modifications such
-        # as adding or removing options, docs etc. Invoked with the command
-        # object.
-        self['extend_command'] = []
+        self.create_hook(HookPoint('extend_command',
+            "Called after creating a command object to allow modifications "
+            "such as adding or removing options, docs etc. Called with the "
+            "new bzrlib.commands.Command object.", (1, 13), None))
 
 Command.hooks = CommandHooks()
 

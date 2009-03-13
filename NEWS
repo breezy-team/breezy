@@ -17,6 +17,12 @@ IN DEVELOPMENT
 
   NEW FEATURES:
 
+    * shelve can now apply changes without storing anything on the shelf, via
+      the new --destroy option.  (Aaron Bentley)
+
+    * ``bzr send`` now accepts --body to specify an initial message body.
+      (Aaron bentley)
+
   IMPROVEMENTS:
 
     * Progress bars now show the rate of network activity for
@@ -26,6 +32,14 @@ IN DEVELOPMENT
       (Jonathan Lange)
 
   BUG FIXES:
+
+    * Fix "is not a stackable format" error when pushing a
+      stackable-format branch with an unstackable-format repository to a
+      destination with a default stacking policy.  (Andrew Bennetts)
+
+    * The GNU Changelog formatter is slightly improved in the case where
+      the delta is empty, and now correctly claims not to support tags.
+      (Andrea Bolognani)
 
   DOCUMENTATION:
 
@@ -89,7 +103,20 @@ and Stacked Branches should both be much faster over remote connections.
       branch in your web browser, as long as the branch is on Launchpad at all.
       (Jonathan Lange)
 
+    * New API for getting bugs fixed by a revision: Revision.iter_bugs().
+      (Jonathan Lange)
+
   IMPROVEMENTS:
+
+    * All bzr ``Hooks`` classes are now registered in
+      ``bzrlib.hooks.known_hooks``. This removes the separate list from
+      ``bzrlib.tests`` and ensures that all hooks registered there are
+      correctly isolated by the test suite (previously
+      ``MutableTreeHooks`` were not being isolated correctly). Further, 
+      documentation for hooks is now dynamically generated from the
+      present HookPoints. ``bzr hooks`` will now also report on all the
+      hooks present in the ``bzrlib.hooks.known_hooks`` registry.
+      (Robert Collins)
 
     * ``bzr add`` no longer prints ``add completed`` on success. Failure
       still prints an error message. (Robert Collins)
@@ -135,6 +162,10 @@ and Stacked Branches should both be much faster over remote connections.
     * Bazaar now gives a better message including the filename if it's
       unable to read a file in the working directory, for example because
       of a permission error.  (Martin Pool, #338653)
+
+    * ``bzr cat -r<old> <path>`` doesn't traceback anymore when <path> has a
+      file id in the working tree different from the one in revision <old>.
+      (Vincent Ladeuil, #341517, #253806)
 
     * ``bzr send`` help is more specific about how to apply merge
       directives.  (Neil Martinsen-Burrell, #253470)
@@ -188,6 +219,9 @@ and Stacked Branches should both be much faster over remote connections.
     * Unshelve does not generate warnings about progress bars.
       (Aaron Bentley, #328148)
 
+    * shelve cleans up properly when unversioned files are specified.
+      (Benoît Pierre, Aaron Bentley)
+
   DOCUMENTATION:
 
     * Added ``Organizing your workspace`` to the User Guide appendices,
@@ -209,12 +243,18 @@ and Stacked Branches should both be much faster over remote connections.
       updated to comply with this. The code already complied with the other
       criteria, but now it is enforced. (Marius Kruger)
 
+    ``bzrlib.branch.PushResult`` was renamed to 
+    ``bzrlib.branch.BranchPushResult``. (Jelmer Vernooij)
+
     * ``Branch.fetch`` and ``Repository.fetch`` now return None rather
       than a count of copied revisions and failed revisions. A while back
       we stopped ever reporting failed revisions because we started
       erroring instead, and the copied revisions count is not used in the
       UI at all - indeed it only reflects the repository status not
       changes to the branch itself. (Robert Collins)
+
+    * ``Inventory.apply_delta`` now raises an AssertionError if a file-id
+      appears multiple times within the delta. (Ian Clatworthy)
 
     * MutableTree.commit now favours the "authors" argument, with the old
       "author" argument being deprecated.
