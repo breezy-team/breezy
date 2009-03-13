@@ -1014,6 +1014,11 @@ class AuthenticationConfig(object):
            - name: the section name of the credentials in the
              authentication.conf file,
            - user: can't be different from the provided user if any,
+           - scheme: the server protocol,
+           - host: the server address,
+           - port: the server port (can be None),
+           - path: the absolute server path (can be None),
+           - realm: the http specific authentication realm (can be None),
            - password: the decoded password, could be None if the credential
              defines only the user
            - verify_certificates: https specific, True if the server
@@ -1074,12 +1079,6 @@ class AuthenticationConfig(object):
             # Decode the password in the credentials (or get one)
             self.decode_password(credentials,
                                  auth_def.get('password_encoding', None))
-            # Delete all extra keys from the credentials dictionary
-            del credentials['scheme']
-            del credentials['host']
-            del credentials['port']
-            del credentials['path']
-            del credentials['realm']
             if 'auth' in debug.debug_flags:
                 trace.mutter("Using authentication section: %r", auth_def_name)
             break
