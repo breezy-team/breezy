@@ -7,8 +7,9 @@ class RenameMap(object):
         self.edge_hashes = {}
 
     def iter_edge_hashes(self, lines):
+        modulus = 1024 * 1024 * 10
         for n in range(len(lines)):
-            yield hash(tuple(lines[n:n+2])) % 4096
+            yield hash(tuple(lines[n:n+2])) % modulus
 
     def add_edge_hashes(self, lines, tag):
         for my_hash in self.iter_edge_hashes(lines):
@@ -31,7 +32,7 @@ class RenameMap(object):
             for tag in tags:
                 if tag not in hits:
                     hits[tag] = 0
-                hits[tag] += 1
+                hits[tag] += 1.0 / len(tags)
         return hits
 
     def file_match(self, tree, paths):
