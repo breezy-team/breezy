@@ -271,7 +271,11 @@ class Sha1Provider(object):
         raise NotImplementedError(self.sha1)
 
     def stat_and_sha1(self, abspath):
-        """Return the stat and sha1 of a file given its absolute path."""
+        """Return the stat and sha1 of a file given its absolute path.
+        
+        Note: the stat should be the stat of the physical file
+        while the sha may be the sha of its canonical content.
+        """
         raise NotImplementedError(self.stat_and_sha1)
 
 
@@ -3056,7 +3060,7 @@ class ProcessEntryPython(object):
                             if link_or_sha1 is None:
                                 # Stat cache miss:
                                 statvalue, link_or_sha1 = \
-                                    self.sha1_provider.stat_and_sha1(
+                                    self.state._sha1_provider.stat_and_sha1(
                                     path_info[4])
                                 self.state._observed_sha1(entry, link_or_sha1,
                                     statvalue)
