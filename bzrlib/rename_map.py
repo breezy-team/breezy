@@ -30,16 +30,14 @@ class RenameMap(object):
             tags = self.edge_hashes.get(my_hash)
             if tags is None:
                 continue
+            taglen = len(tags)
             for tag in tags:
                 if tag not in hits:
                     hits[tag] = 0
-                hits[tag] += 1.0 / len(tags)
+                hits[tag] += 1.0 / taglen
         return hits
 
-    def file_match(self, tree, paths):
-        seen_file_ids = set()
-        seen_paths = set()
-        path_map = {}
+    def get_all_hits(self, tree, paths):
         ordered_hits = []
         for path in paths:
             my_file = tree.get_file(None, path=path)
@@ -48,6 +46,13 @@ class RenameMap(object):
             finally:
                 my_file.close()
             ordered_hits.extend((v, path, k) for k, v in hits.items())
+        return ordered_hits
+
+    def file_match(self, tree, paths):
+        seen_file_ids = set()
+        seen_paths = set()
+        path_map = {}
+        ordered_hits = self.get_all_hits(tree, paths)
         ordered_hits.sort(reverse=True)
         for count, path, file_id in ordered_hits:
             if path in seen_paths or file_id in seen_file_ids:
