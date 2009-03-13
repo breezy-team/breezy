@@ -2336,11 +2336,6 @@ class ConvertBzrDir4To5(Converter):
         self.snapshot_ie(previous_entries, ie, w, rev_id)
         del ie.text_id
 
-    @symbol_versioning.deprecated_method(symbol_versioning.one_one)
-    def get_parents(self, revision_ids):
-        for revision_id in revision_ids:
-            yield self.revisions[revision_id].parent_ids
-
     def get_parent_map(self, revision_ids):
         """See graph._StackedParentsProvider.get_parent_map"""
         return dict((revision_id, self.revisions[revision_id])

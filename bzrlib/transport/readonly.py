@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
 
 """Implementation of Transport that adapts another transport to be readonly."""
 
-from bzrlib.errors import TransportNotPossible, NoSmartServer, NoSmartMedium
+from bzrlib.errors import TransportNotPossible, NoSmartMedium
 from bzrlib.transport.decorator import TransportDecorator, DecoratorServer
 
 

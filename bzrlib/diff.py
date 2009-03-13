@@ -40,9 +40,8 @@ from bzrlib import (
 """)
 
 from bzrlib.symbol_versioning import (
-        deprecated_function,
-        one_three
-        )
+    deprecated_function,
+    )
 from bzrlib.trace import warning
 
 
@@ -435,13 +434,6 @@ def _patch_header_date(tree, file_id, path):
     mtime = tree.get_file_mtime(file_id, path)
     return timestamp.format_patch_date(mtime)
 
-
-@deprecated_function(one_three)
-def get_prop_change(meta_modified):
-    if meta_modified:
-        return " (properties changed)"
-    else:
-        return  ""
 
 def get_executable_change(old_is_x, new_is_x):
     descr = { True:"+x", False:"-x", None:"??" }

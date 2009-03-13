@@ -51,6 +51,9 @@ NOT RELEASED YET
 
   API CHANGES:
 
+    * APIs deprecated in 1.6 and previous verisons of bzr are now removed.
+      (Martin Pool)
+
   TESTING:
 
   INTERNALS:

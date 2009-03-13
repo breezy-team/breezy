@@ -2306,15 +2306,6 @@ class NoSmartMedium(InternalBzrError):
         self.transport = transport
 
 
-class NoSmartServer(NotBranchError):
-
-    _fmt = "No smart server available at %(url)s"
-
-    @symbol_versioning.deprecated_method(symbol_versioning.one_four)
-    def __init__(self, url):
-        self.url = url
-
-
 class UnknownSSH(BzrError):
 
     _fmt = "Unrecognised value for BZR_SSH environment variable: %(vendor)s"

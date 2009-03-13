@@ -27,13 +27,6 @@ __all__ = ['deprecated_function',
            'deprecated_passed',
            'set_warning_method',
            'warn',
-           'one_zero',
-           'one_one',
-           'one_two',
-           'one_three',
-           'one_four',
-           'one_five',
-           'one_six',
            ]
 
 from warnings import warn
@@ -42,13 +35,6 @@ import bzrlib
 
 
 DEPRECATED_PARAMETER = "A deprecated parameter marker."
-one_zero = "%s was deprecated in version 1.0."
-one_one = "%s was deprecated in version 1.1."
-one_two = "%s was deprecated in version 1.2."
-one_three = "%s was deprecated in version 1.3."
-one_four = "%s was deprecated in version 1.4."
-one_five = "%s was deprecated in version 1.5."
-one_six = "%s was deprecated in version 1.6."
 
 
 def deprecated_in(version_tuple):

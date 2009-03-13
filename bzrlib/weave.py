@@ -970,13 +970,6 @@ class WeaveFile(Weave):
         super(WeaveFile, self).insert_record_stream(stream)
         self._save()
 
-    @deprecated_method(one_five)
-    def join(self, other, pb=None, msg=None, version_ids=None,
-             ignore_missing=False):
-        """Join other into self and save."""
-        super(WeaveFile, self).join(other, pb, msg, version_ids, ignore_missing)
-        self._save()
-
 
 def _reweave(wa, wb, pb=None, msg=None):
     """Combine two weaves and return the result.

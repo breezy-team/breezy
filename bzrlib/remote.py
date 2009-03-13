@@ -405,11 +405,6 @@ class RemoteRepository(_RpcHelper):
         self._ensure_real()
         return self._real_repository._generate_text_key_index()
 
-    @symbol_versioning.deprecated_method(symbol_versioning.one_four)
-    def get_revision_graph(self, revision_id=None):
-        """See Repository.get_revision_graph()."""
-        return self._get_revision_graph(revision_id)
-
     def _get_revision_graph(self, revision_id):
         """Private method for using with old (< 1.2) servers to fallback."""
         if revision_id is None:
@@ -991,13 +986,6 @@ class RemoteRepository(_RpcHelper):
     def get_signature_text(self, revision_id):
         self._ensure_real()
         return self._real_repository.get_signature_text(revision_id)
-
-    @needs_read_lock
-    @symbol_versioning.deprecated_method(symbol_versioning.one_three)
-    def get_revision_graph_with_ghosts(self, revision_ids=None):
-        self._ensure_real()
-        return self._real_repository.get_revision_graph_with_ghosts(
-            revision_ids=revision_ids)
 
     @needs_read_lock
     def get_inventory_xml(self, revision_id):

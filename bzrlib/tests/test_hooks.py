@@ -23,24 +23,10 @@ from bzrlib.errors import (
     UnknownHook,
     )
 
-from bzrlib.symbol_versioning import one_five
 from bzrlib.tests import TestCase
 
 
 class TestHooks(TestCase):
-
-    def test_install_hook_raises_unknown_hook(self):
-        """install_hook should raise UnknownHook if a hook is unknown."""
-        hooks = Hooks()
-        self.assertRaises(UnknownHook, self.applyDeprecated, one_five,
-                          hooks.install_hook, 'silly', None)
-
-    def test_install_hook_appends_known_hook(self):
-        """install_hook should append the callable for known hooks."""
-        hooks = Hooks()
-        hooks['set_rh'] = []
-        self.applyDeprecated(one_five, hooks.install_hook, 'set_rh', None)
-        self.assertEqual(hooks['set_rh'], [None])
 
     def test_install_named_hook_raises_unknown_hook(self):
         hooks = Hooks()
@@ -58,17 +44,3 @@ class TestHooks(TestCase):
         hooks['set_rh'] = []
         hooks.install_named_hook('set_rh', None, "demo")
         self.assertEqual("demo", hooks.get_hook_name(None))
-
-    def test_name_hook_and_retrieve_name(self):
-        """name_hook puts the name in the names mapping."""
-        hooks = Hooks()
-        hooks['set_rh'] = []
-        self.applyDeprecated(one_five, hooks.install_hook, 'set_rh', None)
-        hooks.name_hook(None, 'demo')
-        self.assertEqual("demo", hooks.get_hook_name(None))
-
-    def test_get_unnamed_hook_name_is_unnamed(self):
-        hooks = Hooks()
-        hooks['set_rh'] = []
-        self.applyDeprecated(one_five, hooks.install_hook, 'set_rh', None)
-        self.assertEqual("No hook name", hooks.get_hook_name(None))

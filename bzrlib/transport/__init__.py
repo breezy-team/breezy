@@ -50,7 +50,6 @@ from bzrlib.symbol_versioning import (
         deprecated_method,
         deprecated_function,
         DEPRECATED_PARAMETER,
-        one_four,
         )
 from bzrlib.trace import (
     mutter,
@@ -587,30 +586,8 @@ class Transport(object):
         finally:
             f.close()
 
-    @deprecated_method(one_four)
-    def get_smart_client(self):
-        """Return a smart client for this transport if possible.
-
-        A smart client doesn't imply the presence of a smart server: it implies
-        that the smart protocol can be tunnelled via this transport.
-
-        :raises NoSmartServer: if no smart server client is available.
-        """
-        raise errors.NoSmartServer(self.base)
-
     def get_smart_medium(self):
         """Return a smart client medium for this transport if possible.
-
-        A smart medium doesn't imply the presence of a smart server: it implies
-        that the smart protocol can be tunnelled via this transport.
-
-        :raises NoSmartMedium: if no smart server medium is available.
-        """
-        raise errors.NoSmartMedium(self)
-
-    @deprecated_method(one_four)
-    def get_shared_medium(self):
-        """Return a smart client shared medium for this transport if possible.
 
         A smart medium doesn't imply the presence of a smart server: it implies
         that the smart protocol can be tunnelled via this transport.
