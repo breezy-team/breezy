@@ -36,6 +36,10 @@ IN DEVELOPMENT
       stackable-format branch with an unstackable-format repository to a
       destination with a default stacking policy.  (Andrew Bennetts)
 
+    * The GNU Changelog formatter is slightly improved in the case where
+      the delta is empty, and now correctly claims not to support tags.
+      (Andrea Bolognani)
+
   DOCUMENTATION:
 
     * The generated manpage now explicitly lists aliases as commands.
