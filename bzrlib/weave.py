@@ -99,6 +99,7 @@ from bzrlib.versionedfile import (
     AbsentContentFactory,
     adapter_registry,
     ContentFactory,
+    sort_groupcompress,
     VersionedFile,
     )
 from bzrlib.weavefile import _read_weave_v5, write_weave_v5
@@ -319,6 +320,11 @@ class Weave(VersionedFile):
         if ordering == 'topological':
             parents = self.get_parent_map(versions)
             new_versions = tsort.topo_sort(parents)
+            new_versions.extend(set(versions).difference(set(parents)))
+            versions = new_versions
+        elif ordering == 'groupcompress':
+            parents = self.get_parent_map(versions)
+            new_versions = sort_groupcompress(parents)
             new_versions.extend(set(versions).difference(set(parents)))
             versions = new_versions
         for version in versions:
@@ -578,10 +584,7 @@ class Weave(VersionedFile):
             version_ids = self.versions()
         version_ids = set(version_ids)
         for lineno, inserted, deletes, line in self._walk_internal(version_ids):
-            # if inserted not in version_ids then it was inserted before the
-            # versions we care about, but because weaves cannot represent ghosts
-            # properly, we do not filter down to that
-            # if inserted not in version_ids: continue
+            if inserted not in version_ids: continue
             if line[-1] != '\n':
                 yield line + '\n', inserted
             else:

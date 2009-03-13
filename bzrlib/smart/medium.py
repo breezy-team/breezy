@@ -727,22 +727,28 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         :param vendor: An optional override for the ssh vendor to use. See
             bzrlib.transport.ssh for details on ssh vendors.
         """
-        SmartClientStreamMedium.__init__(self, base)
         self._connected = False
         self._host = host
         self._password = password
         self._port = port
         self._username = username
+        # SmartClientStreamMedium stores the repr of this object in its
+        # _DebugCounter so we have to store all the values used in our repr
+        # method before calling the super init.
+        SmartClientStreamMedium.__init__(self, base)
         self._read_from = None
         self._ssh_connection = None
         self._vendor = vendor
         self._write_to = None
         self._bzr_remote_path = bzr_remote_path
-        if self._bzr_remote_path is None:
-            symbol_versioning.warn(
-                'bzr_remote_path is required as of bzr 0.92',
-                DeprecationWarning, stacklevel=2)
-            self._bzr_remote_path = os.environ.get('BZR_REMOTE_PATH', 'bzr')
+
+    def __repr__(self):
+        return "%s(connected=%r, username=%r, host=%r, port=%r)" % (
+            self.__class__.__name__,
+            self._connected,
+            self._username,
+            self._host,
+            self._port)
 
     def _accept_bytes(self, bytes):
         """See SmartClientStreamMedium.accept_bytes."""
