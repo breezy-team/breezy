@@ -5,8 +5,18 @@ Bazaar Release Notes
 .. contents::
 
 
-IN DEVELOPMENT
---------------
+bzr 1.13
+--------
+
+  BUG FIXES:
+
+    * Fix "is not a stackable format" error when pushing a
+      stackable-format branch with an unstackable-format repository to a
+      destination with a default stacking policy.  (Andrew Bennetts)
+
+    * Progress bars now show the rate of network activity for
+      ``bzr+ssh://`` and ``bzr://`` connections.  (Andrew Bennetts)
+
 
 bzr 1.13rc1 "paraskavedekatriaphobia" 2009-03-10
 ------------------------------------------------
