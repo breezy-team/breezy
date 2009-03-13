@@ -164,13 +164,15 @@ class GCPack(NewPack):
         # Groupcompress packs don't have any external references
 
 
-class GCPacker(object):
+class GCPacker(Packer):
     """This class understand what it takes to collect a GCCHK repo."""
 
-    def __init__(self, pack_collection, packs, new_pack):
+    def __init__(self, pack_collection, packs, suffix, reload_func=None):
+        # XXX: revision_ids and reload_func are not properly supported yet
+        super(GCPacker, self).__init__(pack_collection, packs, suffix,
+                                       revision_ids=None,
+                                       reload_func=reload_func)
         self._pack_collection = pack_collection
-        self._packs = packs
-        self._new_pack = new_pack
         # ATM, We only support this for GCCHK repositories
         assert pack_collection.chk_index is not None
         self._chk_id_roots = []
@@ -287,15 +289,16 @@ class GCPacker(object):
         access = knit._DirectPackAccess(index_to_pack)
         if for_write:
             # Use new_pack
-            index = getattr(self._new_pack, index_name)
-            index_to_pack[index] = self._new_pack.access_tuple()
+            assert self.new_pack is not None
+            index = getattr(self.new_pack, index_name)
+            index_to_pack[index] = self.new_pack.access_tuple()
             index.set_optimize(for_size=True)
-            access.set_writer(self._new_pack._writer, index,
-                              self._new_pack.access_tuple())
+            access.set_writer(self.new_pack._writer, index,
+                              self.new_pack.access_tuple())
             add_callback = index.add_nodes
         else:
             indices = []
-            for pack in self._packs:
+            for pack in self.packs:
                 sub_index = getattr(pack, index_name)
                 index_to_pack[sub_index] = pack.access_tuple()
                 indices.append(sub_index)
@@ -310,15 +313,20 @@ class GCPacker(object):
             delta=delta)
         return vf
 
-    def _fetch_across_packs(self, pb):
+    def _create_pack_from_packs(self):
         to_copy = [('revision', True, False),
                    ('inventory', True, True),
                    ('chk', False, True),
                    ('text', True, True),
                    ('signature', False, False),
                   ]
+        num_steps = len(to_copy) + 2
+        self.pb.update('repacking', 0, num_steps)
+        self.new_pack = self.open_pack()
+        # Is this necessary for GC ?
+        self.new_pack.set_write_cache_size(1024*1024)
         for idx, (index_name, parents, delta) in enumerate(to_copy):
-            pb.update('repacking %s' % (index_name,), idx + 1, len(to_copy))
+            self.pb.update('repacking %s' % (index_name,), idx + 1, num_steps)
             source_vf = self._build_vf(index_name, parents,
                                        delta, for_write=False)
             target_vf = self._build_vf(index_name, parents,
@@ -341,13 +349,23 @@ class GCPacker(object):
                         source_vf, keys, index_name, child_pb))
             finally:
                 child_pb.finished()
+        # XXX: This shouldn't be necessary, as GC packs don't have external
+        #      references.
+        self.new_pack._check_references()
+        if not self._use_pack(self.new_pack):
+            self.new_pack.abort()
+            return None
+        self.pb.update('Finishing pack', idx + 1, num_steps)
+        self.new_pack.finish()
+        self._pack_collection.allocate(self.new_pack)
+        return self.new_pack
 
 
 class GCRepositoryPackCollection(RepositoryPackCollection):
 
     pack_factory = GCPack
 
-    def _execute_pack_operations(self, pack_operations, _packer_class=Packer,
+    def _execute_pack_operations(self, pack_operations, _packer_class=GCPacker,
                                  reload_func=None):
         """Execute a series of pack operations.
 
@@ -355,40 +373,24 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         :param _packer_class: The class of packer to use (default: Packer).
         :return: None.
         """
+        # XXX: Copied across from RepositoryPackCollection simply because we
+        #      want to override the _packer_class ... :(
         for revision_count, packs in pack_operations:
             # we may have no-ops from the setup logic
             if len(packs) == 0:
                 continue
-            # Create a new temp VersionedFile instance based on these packs,
-            # and then just fetch everything into the target
-
-            # Should we use start_write_group instead?
-            if self._new_pack is not None:
-                raise errors.BzrError('call to %s.pack() while another pack is'
-                                      ' being written.'
-                                      % (self.__class__.__name__,))
-            new_pack = self.pack_factory(self, '.autopack',
-                file_mode=self.repo.bzrdir._get_file_mode())
-            new_pack.set_write_cache_size(1024*1024)
-
-            packer = GCPacker(self, packs, new_pack)
-            pb = ui.ui_factory.nested_progress_bar()
+            packer = GCPacker(self, packs, '.autopack',
+                                   reload_func=reload_func)
             try:
-                packer._fetch_across_packs(pb)
-                new_pack._check_references() # shouldn't be needed
-            except:
-                pb.finished()
-                new_pack.abort()
+                packer.pack()
+            except errors.RetryWithNewPacks:
+                # An exception is propagating out of this context, make sure
+                # this packer has cleaned up. Packer() doesn't set its new_pack
+                # state into the RepositoryPackCollection object, so we only
+                # have access to it directly here.
+                if packer.new_pack is not None:
+                    packer.new_pack.abort()
                 raise
-            else:
-                pb.finished()
-                if not new_pack.data_inserted():
-                    raise AssertionError('We copied from pack files,'
-                                         ' but had no data copied')
-                    # we need to abort somehow, because we don't want to remove
-                    # the other packs
-                new_pack.finish()
-                self.allocate(new_pack)
             for pack in packs:
                 self._remove_pack_from_memory(pack)
         # record the newly available packs and stop advertising the old
