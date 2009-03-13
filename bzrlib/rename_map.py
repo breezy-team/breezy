@@ -1,22 +1,51 @@
+# Copyright (C) 2009 Canonical Ltd
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+
 from cStringIO import StringIO
 
 
 class RenameMap(object):
+    """Determine a mapping of renames."""
 
     def __init__(self):
         self.edge_hashes = {}
 
     @staticmethod
     def iter_edge_hashes(lines):
+        """Iterate through the hashes of line pairs (which make up an edge)."""
         modulus = 1024 * 1024 * 10
         for n in range(len(lines)):
             yield hash(tuple(lines[n:n+2])) % modulus
 
     def add_edge_hashes(self, lines, tag):
+        """Update edge_hashes to include the given lines.
+
+        :param lines: The lines to update the hashes for.
+        :param tag: A tag uniquely associated with these lines (i.e. file-id)
+        """
         for my_hash in self.iter_edge_hashes(lines):
             self.edge_hashes.setdefault(my_hash, set()).add(tag)
 
     def add_file_edge_hashes(self, tree, file_ids):
+        """Update to reflect the hashes for files in the tree.
+
+        :param tree: The tree containing the files.
+        :param file_ids: A list of file_ids to perform the updates for.
+        """
         desired_files = [(f, f) for f in file_ids]
         for file_id, contents in tree.iter_files_bytes(desired_files):
             s = StringIO()
@@ -25,6 +54,13 @@ class RenameMap(object):
             self.add_edge_hashes(s.readlines(), file_id)
 
     def hitcounts(self, lines):
+        """Count the number of hash hits for each tag, for the given lines.
+
+        Hits are weighted according to the number of tags the hash is
+        associated with; more tags means that the lines are not unique and
+        should tend to be ignored.
+        :param lines: The lines to calculate hashes of.
+        """
         hits = {}
         for my_hash in self.iter_edge_hashes(lines):
             tags = self.edge_hashes.get(my_hash)
@@ -38,6 +74,10 @@ class RenameMap(object):
         return hits
 
     def get_all_hits(self, tree, paths):
+        """Find all the hit counts for the listed paths in a tree.
+
+        :return: A list of tuples of count, path, file_id.
+        """
         ordered_hits = []
         for path in paths:
             my_file = tree.get_file(None, path=path)
@@ -49,6 +89,7 @@ class RenameMap(object):
         return ordered_hits
 
     def file_match(self, tree, paths):
+        """Return a mapping from file_ids to the supplied paths."""
         seen_file_ids = set()
         seen_paths = set()
         path_map = {}

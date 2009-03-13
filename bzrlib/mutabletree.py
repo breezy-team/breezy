@@ -235,7 +235,12 @@ class MutableTree(tree.Tree):
         """Helper function for add - sets the entries of kinds."""
         raise NotImplementedError(self._gather_kinds)
 
-    def guess_renames(self, specific_files=None):
+    def guess_renames(self):
+        """Guess which files to rename, and perform the rename.
+
+        We assume that unversioned files and missing files indicate that
+        versioned files have been renamed outside of Bazaar.
+        """
         missing_files = set()
         candidate_files = set()
         basis = self.basis_tree()
