@@ -28,8 +28,10 @@ from bzrlib import (
     add,
     bzrdir,
     hooks,
+    progress,
     rename_map,
     symbol_versioning,
+    ui,
     )
 from bzrlib.osutils import dirname
 from bzrlib.revisiontree import RevisionTree
@@ -259,8 +261,15 @@ class MutableTree(tree.Tree):
                     if not self.is_ignored(paths[1]):
                         candidate_files.add(paths[1])
             rn = rename_map.RenameMap()
-            rn.add_file_edge_hashes(basis, missing_files)
-            matches = rn.file_match(self, candidate_files)
+            task = ui.ui_factory.nested_progress_bar()
+            try:
+                pp = progress.ProgressPhase('Guessing renames', 2, task)
+                pp.next_phase()
+                rn.add_file_edge_hashes(basis, missing_files)
+                pp.next_phase()
+                matches = rn.file_match(self, candidate_files)
+            finally:
+                task.finished()
             self.unversion(matches.values())
             self.add(matches.keys(), matches.values())
         finally:

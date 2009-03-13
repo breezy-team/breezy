@@ -16,6 +16,7 @@
 
 
 from cStringIO import StringIO
+from ui import ui_factory
 
 
 class RenameMap(object):
@@ -47,11 +48,17 @@ class RenameMap(object):
         :param file_ids: A list of file_ids to perform the updates for.
         """
         desired_files = [(f, f) for f in file_ids]
-        for file_id, contents in tree.iter_files_bytes(desired_files):
-            s = StringIO()
-            s.writelines(contents)
-            s.seek(0)
-            self.add_edge_hashes(s.readlines(), file_id)
+        task = ui_factory.nested_progress_bar()
+        try:
+            for num, (file_id, contents) in enumerate(
+                tree.iter_files_bytes(desired_files)):
+                task.update('Calculating hashes', num, len(file_ids))
+                s = StringIO()
+                s.writelines(contents)
+                s.seek(0)
+                self.add_edge_hashes(s.readlines(), file_id)
+        finally:
+            task.finished()
 
     def hitcounts(self, lines):
         """Count the number of hash hits for each tag, for the given lines.
@@ -79,13 +86,18 @@ class RenameMap(object):
         :return: A list of tuples of count, path, file_id.
         """
         ordered_hits = []
-        for path in paths:
-            my_file = tree.get_file(None, path=path)
-            try:
-                hits = self.hitcounts(my_file.readlines())
-            finally:
-                my_file.close()
-            ordered_hits.extend((v, path, k) for k, v in hits.items())
+        task = ui_factory.nested_progress_bar()
+        try:
+            for num, path in enumerate(paths):
+                task.update('Determining hash hits', num, len(paths))
+                my_file = tree.get_file(None, path=path)
+                try:
+                    hits = self.hitcounts(my_file.readlines())
+                finally:
+                    my_file.close()
+                ordered_hits.extend((v, path, k) for k, v in hits.items())
+        finally:
+            task.finished()
         return ordered_hits
 
     def file_match(self, tree, paths):

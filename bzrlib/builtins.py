@@ -5210,12 +5210,11 @@ class cmd_guess_renames(Command):
     detection, and renames to ignored files will not be detected.
     """
 
-    takes_args = ['file*']
-    def run(self, file_list=None):
-        work_tree, file_list = tree_files(file_list, default_branch='.')
+    def run(self):
+        work_tree, file_list = tree_files(None, default_branch='.')
         work_tree.lock_write()
         try:
-            work_tree.guess_renames(specific_files=file_list)
+            work_tree.guess_renames()
         finally:
             work_tree.unlock()
 
