@@ -572,8 +572,11 @@ class MutableTreeHooks(hooks.Hooks):
 
         """
         hooks.Hooks.__init__(self)
-        # Invoked before a commit is done in a tree. New in 1.4
-        self['start_commit'] = []
+        self.create_hook(hooks.HookPoint('start_commit',
+            "Called before a commit is performed on a tree. The start commit "
+            "hook is able to change the tree before the commit takes place. "
+            "start_commit is called with the bzrlib.tree.MutableTree that the "
+            "commit is being performed on.", (1, 4), None))
 
 
 # install the default hooks into the MutableTree class.

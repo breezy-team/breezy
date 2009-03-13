@@ -59,7 +59,7 @@ from bzrlib.transport.http._urllib import HttpTransport_urllib
 from bzrlib.transport.memory import MemoryServer
 from bzrlib.transport.nosmart import NoSmartTransportDecorator
 from bzrlib.transport.readonly import ReadonlyTransportDecorator
-from bzrlib.repofmt import knitrepo, weaverepo
+from bzrlib.repofmt import knitrepo, weaverepo, pack_repo
 
 
 class TestDefaultFormat(TestCase):
@@ -466,6 +466,18 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
         self.assertEqual(child_branch.base,
                          new_child.open_branch().get_stacked_on_url())
 
+    def test_default_stacking_with_stackable_branch_unstackable_repo(self):
+        # Make stackable source branch with an unstackable repo format.
+        source_bzrdir = self.make_bzrdir('source')
+        pack_repo.RepositoryFormatKnitPack1().initialize(source_bzrdir)
+        source_branch = bzrlib.branch.BzrBranchFormat7().initialize(source_bzrdir)
+        # Make a directory with a default stacking policy
+        parent_bzrdir = self.make_bzrdir('parent')
+        stacked_on = self.make_branch('parent/stacked-on', format='pack-0.92')
+        parent_bzrdir.get_config().set_default_stack_on(stacked_on.base)
+        # Clone source into directory
+        target = source_bzrdir.clone(self.get_url('parent/target'))
+
     def test_sprout_obeys_stacking_policy(self):
         child_branch, new_child_transport = self.prepare_default_stacking()
         new_child = child_branch.bzrdir.sprout(new_child_transport.base)
@@ -740,15 +752,20 @@ class ChrootedTests(TestCaseWithTransport):
                           transport)
 
     def test_sprout_recursive(self):
-        tree = self.make_branch_and_tree('tree1', format='dirstate-with-subtree')
+        tree = self.make_branch_and_tree('tree1',
+                                         format='dirstate-with-subtree')
         sub_tree = self.make_branch_and_tree('tree1/subtree',
             format='dirstate-with-subtree')
+        sub_tree.set_root_id('subtree-root')
         tree.add_reference(sub_tree)
         self.build_tree(['tree1/subtree/file'])
         sub_tree.add('file')
         tree.commit('Initial commit')
-        tree.bzrdir.sprout('tree2')
+        tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
+        tree2.lock_read()
+        self.addCleanup(tree2.unlock)
         self.failUnlessExists('tree2/subtree/file')
+        self.assertEqual('tree-reference', tree2.kind('subtree-root'))
 
     def test_cloning_metadir(self):
         """Ensure that cloning metadir is suitable"""
