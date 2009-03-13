@@ -6,7 +6,8 @@ class RenameMap(object):
     def __init__(self):
         self.edge_hashes = {}
 
-    def iter_edge_hashes(self, lines):
+    @staticmethod
+    def iter_edge_hashes(lines):
         modulus = 1024 * 1024 * 10
         for n in range(len(lines)):
             yield hash(tuple(lines[n:n+2])) % modulus
