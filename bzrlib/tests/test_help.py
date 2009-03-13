@@ -203,10 +203,10 @@ class TestRegisteredTopic(tests.TestCase):
 
     def test_get_help_text_loaded_from_file(self):
         # Pick a known topic stored in an external file
-        topic = help_topics.RegisteredTopic('hooks')
+        topic = help_topics.RegisteredTopic('authentication')
         self.assertStartsWith(topic.get_help_text(),
-            'Hooks\n'
-            '=====\n'
+            'Authentication Settings\n'
+            '=======================\n'
             '\n')
 
     def test_get_help_topic(self):

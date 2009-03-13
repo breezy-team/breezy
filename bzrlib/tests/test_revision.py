@@ -19,11 +19,16 @@ import os
 import warnings
 
 from bzrlib import (
+    bugtracker,
     revision,
     symbol_versioning,
     )
 from bzrlib.branch import Branch
-from bzrlib.errors import NoSuchRevision
+from bzrlib.errors import (
+    InvalidBugStatus,
+    InvalidLineInBugsProperty,
+    NoSuchRevision,
+    )
 from bzrlib.deprecated_graph import Graph
 from bzrlib.revision import (find_present_ancestors,
                              NULL_REVISION)
@@ -231,3 +236,37 @@ class TestRevisionMethods(TestCase):
         self.assertEqual(['B'], r.get_apparent_authors())
         r.properties['authors'] = 'C\nD'
         self.assertEqual(['C', 'D'], r.get_apparent_authors())
+
+
+class TestRevisionBugs(TestCase):
+    """Tests for getting the bugs that a revision is linked to."""
+
+    def test_no_bugs(self):
+        r = revision.Revision('1')
+        self.assertEqual([], list(r.iter_bugs()))
+
+    def test_some_bugs(self):
+        r = revision.Revision(
+            '1', properties={
+                'bugs': bugtracker.encode_fixes_bug_urls(
+                    ['http://example.com/bugs/1',
+                     'http://launchpad.net/bugs/1234'])})
+        self.assertEqual(
+            [('http://example.com/bugs/1', bugtracker.FIXED),
+             ('http://launchpad.net/bugs/1234', bugtracker.FIXED)],
+            list(r.iter_bugs()))
+
+    def test_no_status(self):
+        r = revision.Revision(
+            '1', properties={'bugs': 'http://example.com/bugs/1'})
+        self.assertRaises(InvalidLineInBugsProperty, list, r.iter_bugs())
+
+    def test_too_much_information(self):
+        r = revision.Revision(
+            '1', properties={'bugs': 'http://example.com/bugs/1 fixed bar'})
+        self.assertRaises(InvalidLineInBugsProperty, list, r.iter_bugs())
+
+    def test_invalid_status(self):
+        r = revision.Revision(
+            '1', properties={'bugs': 'http://example.com/bugs/1 faxed'})
+        self.assertRaises(InvalidBugStatus, list, r.iter_bugs())

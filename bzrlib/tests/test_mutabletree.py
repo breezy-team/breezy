@@ -34,7 +34,7 @@ class TestHooks(TestCase):
     def test_installed_hooks_are_MutableTreeHooks(self):
         """The installed hooks object should be a MutableTreeHooks."""
         # the installed hooks are saved in self._preserved_hooks.
-        self.assertIsInstance(self._preserved_hooks[MutableTree],
+        self.assertIsInstance(self._preserved_hooks[MutableTree][1],
                               MutableTreeHooks)
 
 
