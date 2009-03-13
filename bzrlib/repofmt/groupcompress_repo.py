@@ -252,14 +252,21 @@ class GCCHKPacker(Packer):
                 keys_by_search_prefix = {}
                 remaining_keys.difference_update(cur_keys)
                 next_keys = set()
-                stream = source_vf.get_record_stream(cur_keys, 'as-requested',
-                                                     True)
                 def handle_internal_node(node):
                     for prefix, value in node._items.iteritems():
                         if not isinstance(value, tuple):
                             raise AssertionError("value is %s when a tuple"
                                 " is expected" % (value.__class__))
-                        if value not in next_keys:
+                        # We don't want to request the same key twice, and we
+                        # want to order it by the first time it is seen.
+                        # Even further, we don't want to request a key which is
+                        # not in this group of pack files (it should be in the
+                        # repo, but it doesn't have to be in the group being
+                        # packed.)
+                        # TODO: consider how to treat externally referenced chk
+                        #       pages as 'external_references' so that we
+                        #       always fill them in for stacked branches
+                        if value not in next_keys and value in remaining_keys:
                             keys_by_search_prefix.setdefault(prefix,
                                 []).append(value)
                             next_keys.add(value)
@@ -267,12 +274,11 @@ class GCCHKPacker(Packer):
                     # Store is None, because we know we have a LeafNode, and we
                     # just want its entries
                     for file_id, bytes in node.iteritems(None):
-                        try:
-                            entry = inv._bytes_to_entry(bytes)
-                        except ValueError:
-                            import pdb; pdb.set_trace()
+                        entry = inv._bytes_to_entry(bytes)
                         self._text_refs.add((entry.file_id, entry.revision))
                 def next_stream():
+                    stream = source_vf.get_record_stream(cur_keys,
+                                                         'as-requested', True)
                     for record in stream:
                         bytes = record.get_bytes_as('fulltext')
                         # We don't care about search_key_func for this code,
@@ -300,7 +306,10 @@ class GCCHKPacker(Packer):
                 # If we get rid of the pre-calculation of all keys, we could
                 # turn this around and do
                 # next_keys.difference_update(seen_keys)
-                next_keys = next_keys.intersection(remaining_keys)
+                # However, we also may have references to chk pages in another
+                # pack file during autopack. We filter earlier, so we should no
+                # longer need to do this
+                # next_keys = next_keys.intersection(remaining_keys)
                 cur_keys = []
                 for prefix in sorted(keys_by_search_prefix):
                     cur_keys.extend(keys_by_search_prefix[prefix])
@@ -308,9 +317,15 @@ class GCCHKPacker(Packer):
                                              self._gather_text_refs):
             yield stream
         del self._chk_id_roots
-        for stream in _get_referenced_stream(self._chk_p_id_roots, False):
-            yield stream
+        # while it isn't really possible for chk_id_roots to not be in the
+        # local group of packs, it is possible that the tree shape has not
+        # changed recently, so we need to filter _chk_p_id_roots by the
+        # available keys
+        chk_p_id_roots = [key for key in self._chk_p_id_roots
+                          if key in remaining_keys]
         del self._chk_p_id_roots
+        for stream in _get_referenced_stream(chk_p_id_roots, False):
+            yield stream
         if remaining_keys:
             trace.mutter('There were %d keys in the chk index, %d of which'
                          ' were not referenced', total_keys,
