@@ -132,20 +132,32 @@ def _unsquish_command_name(cmd):
 
 def _builtin_commands():
     import bzrlib.builtins
+    return _scan_module_for_commands(bzrlib.builtins)
+
+
+def _scan_module_for_commands(module):
     r = {}
-    builtins = bzrlib.builtins.__dict__
-    for name in builtins:
+    for name, obj in module.__dict__.iteritems():
         if name.startswith("cmd_"):
             real_name = _unsquish_command_name(name)
-            r[real_name] = builtins[name]
+            r[real_name] = obj
     return r
+
+
+def _list_bzr_commands(names):
+    """Return a list of all the registered commands.
+
+    This searches plugins and the core.
+    """
+    # to eliminate duplicates
+    names.update(builtin_command_names())
+    names.update(plugin_command_names())
+    return names
 
 
 def all_command_names():
     """Return a list of all command names."""
-    # to eliminate duplicates
-    names = set(builtin_command_names())
-    names.update(plugin_command_names())
+    names = set()
     for hook in Command.hooks['list_commands']:
         new_names = hook(names)
         if new_names is None:
@@ -203,11 +215,20 @@ def _get_cmd_object(cmd_name, plugins_override=True):
     :return: A Command object instance
     :raises: KeyError if no command is found.
     """
-    # Pre-hook command lookup logic.
-    cmd = __get_cmd_object(cmd_name, plugins_override)
-    # Allow hooks to supply/replace commands:
+    # We want only 'ascii' command names, but the user may have typed
+    # in a Unicode name. In that case, they should just get a
+    # 'command not found' error later.
+    # In the future, we may actually support Unicode command names.
+
+    cmd = None
+    # Get a command
     for hook in Command.hooks['get_command']:
         cmd = hook(cmd, cmd_name)
+        if cmd is not None and not plugins_override:
+            # We've found a non-plugin command, don't permit it to be
+            # overridden.
+            if not cmd.plugin_name():
+                break
     if cmd is None:
         try:
             plugin_metadata, provider = probe_for_provider(cmd_name)
@@ -239,40 +260,42 @@ def probe_for_provider(cmd_name):
     raise errors.NoPluginAvailable(cmd_name)
 
 
-def __get_cmd_object(cmd_name, plugins_override):
-    """Worker for get_cmd_object which raises KeyError rather than BzrCommandError."""
-    from bzrlib.externalcommand import ExternalCommand
-
-    # We want only 'ascii' command names, but the user may have typed
-    # in a Unicode name. In that case, they should just get a
-    # 'command not found' error later.
-    # In the future, we may actually support Unicode command names.
-
-    # first look up this command under the specified name
-    if plugins_override:
-        try:
-            return plugin_cmds.get(cmd_name)()
-        except KeyError:
-            pass
+def _get_bzr_command(cmd_or_None, cmd_name):
+    """Get a command from bzr's core."""
     cmds = _get_cmd_dict(plugins_override=False)
     try:
         return cmds[cmd_name]()
     except KeyError:
         pass
-    if plugins_override:
-        for key in plugin_cmds.keys():
-            info = plugin_cmds.get_info(key)
-            if cmd_name in info.aliases:
-                return plugin_cmds.get(key)()
     # look for any command which claims this as an alias
     for real_cmd_name, cmd_class in cmds.iteritems():
         if cmd_name in cmd_class.aliases:
             return cmd_class()
+    return cmd_or_None
 
+
+def _get_external_command(cmd_or_None, cmd_name):
+    """Lookup a command that is a shell script."""
+    # Only do external command lookups when no command is found so far.
+    if cmd_or_None is not None:
+        return cmd_or_None
+    from bzrlib.externalcommand import ExternalCommand
     cmd_obj = ExternalCommand.find_command(cmd_name)
     if cmd_obj:
         return cmd_obj
-    return None
+
+
+def _get_plugin_command(cmd_or_None, cmd_name):
+    """Get a command from bzr's plugins."""
+    try:
+        return plugin_cmds.get(cmd_name)()
+    except KeyError:
+        pass
+    for key in plugin_cmds.keys():
+        info = plugin_cmds.get_info(key)
+        if cmd_name in info.aliases:
+            return plugin_cmds.get(key)()
+    return cmd_or_None
 
 
 class Command(object):
@@ -656,6 +679,16 @@ class CommandHooks(Hooks):
             "to replace it with another (eg plugin supplied) version. "
             "list_commands should return the updated dict of commands.",
             (1, 14), None))
+        # We currently ship default hooks to get builtin and plugin supplied
+        # command names.
+        self.install_named_hook("list_commands", _list_bzr_commands,
+            "bzr commands")
+        self.install_named_hook("get_command", _get_bzr_command,
+            "bzr commands")
+        self.install_named_hook("get_command", _get_plugin_command,
+            "bzr plugin commands")
+        self.install_named_hook("get_command", _get_external_command,
+            "bzr external command lookup")
 
 Command.hooks = CommandHooks()
 
