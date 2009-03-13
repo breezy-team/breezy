@@ -42,7 +42,9 @@ IN DEVELOPMENT
 
     * Fixed incorrect "Source format does not support stacking" warning
       when pushing to a smart server.  (Andrew Bennetts, #334114)
-      
+
+    * ``merge --force`` works again. (Robert Collins, #342105)
+
     * The GNU Changelog formatter is slightly improved in the case where
       the delta is empty, and now correctly claims not to support tags.
       (Andrea Bolognani)
