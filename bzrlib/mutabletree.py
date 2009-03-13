@@ -244,7 +244,9 @@ class MutableTree(tree.Tree):
         versioned files have been renamed outside of Bazaar.
         """
         missing_files = set()
+        missing_parents = set()
         candidate_files = set()
+        required_parents = set()
         basis = self.basis_tree()
         basis.lock_read()
         try:
@@ -252,14 +254,22 @@ class MutableTree(tree.Tree):
             for (file_id, paths, changed_content, versioned, parent, name,
                  kind, executable) in iterator:
                 if kind[1] is None and versioned[1]:
+                    missing_parents.add(parent[1])
                     if kind[0] == 'file':
                         missing_files.add(file_id)
                     else:
                         #other kinds are not handled
                         pass
-                if versioned == (False, False) and kind[1] == 'file':
-                    if not self.is_ignored(paths[1]):
+                if versioned == (False, False):
+                    if self.is_ignored(paths[1]):
+                        continue
+                    if kind[1] == 'file':
                         candidate_files.add(paths[1])
+                    if kind[1] == 'directory':
+                        for directory, children in self.walkdirs(paths[1]):
+                            for child in children:
+                                if child[2] == 'file':
+                                    candidate_files.add(child[0])
             rn = rename_map.RenameMap()
             task = ui.ui_factory.nested_progress_bar()
             try:
@@ -270,6 +280,15 @@ class MutableTree(tree.Tree):
                 matches = rn.file_match(self, candidate_files)
             finally:
                 task.finished()
+            for path in matches:
+                while True:
+                    path = dirname(path)
+                    if path in required_parents:
+                        break
+                    if self.path2id(path) is not None:
+                        break
+                    required_parents.add(path)
+            self.add(required_parents)
             self.unversion(matches.values())
             self.add(matches.keys(), matches.values())
         finally:
