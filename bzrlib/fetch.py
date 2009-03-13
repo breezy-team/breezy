@@ -77,6 +77,9 @@ class RepoFetcher(object):
         self._fetch_spec = fetch_spec
         self.find_ghosts = find_ghosts
         self.from_repository.lock_read()
+        mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
+               self.from_repository, self.from_repository._format,
+               self.to_repository, self.to_repository._format)
         try:
             self.__fetch()
         finally:
@@ -160,6 +163,7 @@ class RepoFetcher(object):
         """
         if self._fetch_spec is not None:
             return self._fetch_spec
+        mutter('fetch up to rev {%s}', self._last_revision)
         if self._last_revision is NULL_REVISION:
             # explicit limit of no revisions needed
             return None
