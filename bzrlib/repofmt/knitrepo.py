@@ -118,8 +118,6 @@ class KnitRepository(MetaDirRepository):
         self._commit_builder_class = _commit_builder_class
         self._serializer = _serializer
         self._reconcile_fixes_text_parents = True
-        self._fetch_uses_deltas = True
-        self._fetch_order = 'topological'
 
     @needs_read_lock
     def _all_revision_ids(self):
@@ -216,7 +214,7 @@ class KnitRepository(MetaDirRepository):
         reconciler = KnitReconciler(self, thorough=thorough)
         reconciler.reconcile()
         return reconciler
-    
+
     def _make_parents_provider(self):
         return _KnitsParentsProvider(self.revisions)
 
@@ -253,7 +251,7 @@ class KnitRepository(MetaDirRepository):
 
 
 class RepositoryFormatKnit(MetaDirRepositoryFormat):
-    """Bzr repository knit format (generalized). 
+    """Bzr repository knit format (generalized).
 
     This repository format has:
      - knits for file texts and inventory
@@ -282,6 +280,8 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
     supports_ghosts = True
     # External lookups are not supported in this format.
     supports_external_lookups = False
+    _fetch_order = 'topological'
+    _fetch_uses_deltas = True
 
     def _get_inventories(self, repo_transport, repo, name='inventory'):
         mapper = versionedfile.ConstantMapper(name)
@@ -327,7 +327,7 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
         dirs = ['knits']
         files = []
         utf8_files = [('format', self.get_format_string())]
-        
+
         self._upload_blank_content(a_bzrdir, dirs, files, utf8_files, shared)
         repo_transport = a_bzrdir.get_repository_transport(None)
         control_files = lockable_files.LockableFiles(repo_transport,
@@ -345,7 +345,7 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
 
     def open(self, a_bzrdir, _found=False, _override_transport=None):
         """See RepositoryFormat.open().
-        
+
         :param _override_transport: INTERNAL USE ONLY. Allows opening the
                                     repository at a slightly different url
                                     than normal. I.e. during 'upgrade'.
@@ -447,7 +447,7 @@ class RepositoryFormatKnit3(RepositoryFormatKnit):
         if not getattr(target_format, 'supports_tree_reference', False):
             raise errors.BadConversionTarget(
                 'Does not support nested trees', target_format)
-            
+
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
         return "Bazaar Knit Repository Format 3 (bzr 0.15)\n"

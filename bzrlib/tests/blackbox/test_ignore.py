@@ -47,7 +47,7 @@ class TestCommands(ExternalBase):
         self.run_bzr_error(('bzr: ERROR: NAME_PATTERN should not '
                             'be an absolute path\n',),
                            'ignore /crud')
-        
+
     def test_ignore_directories(self):
         """ignoring a directory should ignore directory tree.
 
@@ -93,7 +93,7 @@ class TestCommands(ExternalBase):
         self.run_bzr('ignore garh')
         self.assertEquals(list(tree.unknowns()), [])
         self.check_file_contents('.bzrignore', '*.blah\ngarh\n')
-       
+
     def test_ignore_multiple_arguments(self):
         """'ignore' works with multiple arguments"""
         tree = self.make_branch_and_tree('.')
@@ -122,9 +122,11 @@ class TestCommands(ExternalBase):
 
         # test a single versioned file
         out, err = self.run_bzr('ignore a')
-        self.assertEqual(out, 
+        self.assertEqual(out,
                          "Warning: the following files are version controlled"\
-                         " and match your ignore pattern:\na\n")
+                         " and match your ignore pattern:\na\n"\
+                         "These files will continue to be version controlled"\
+                         " unless you 'bzr remove' them.\n")
 
         # test a single unversioned file
         out, err = self.run_bzr('ignore b')
@@ -133,9 +135,11 @@ class TestCommands(ExternalBase):
         # test wildcards
         tree.add('b')
         out, err = self.run_bzr('ignore *')
-        self.assertEqual(out, 
+        self.assertEqual(out,
                          "Warning: the following files are version controlled"\
-                         " and match your ignore pattern:\n.bzrignore\na\nb\n")
+                         " and match your ignore pattern:\n.bzrignore\na\nb\n"\
+                         "These files will continue to be version controlled"\
+                         " unless you 'bzr remove' them.\n")
 
     def test_ignored_versioned_file_matching_new_pattern(self):
         tree = self.make_branch_and_tree('.')
@@ -146,6 +150,8 @@ class TestCommands(ExternalBase):
         # If only the given pattern is used then only 'b' should match in
         # this case.
         out, err = self.run_bzr('ignore b')
-        self.assertEqual(out, 
+        self.assertEqual(out,
                          "Warning: the following files are version controlled"\
-                         " and match your ignore pattern:\nb\n")
+                         " and match your ignore pattern:\nb\n"\
+                         "These files will continue to be version controlled"\
+                         " unless you 'bzr remove' them.\n")

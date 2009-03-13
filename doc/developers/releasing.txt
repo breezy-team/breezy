@@ -32,6 +32,11 @@ Preparing the tree for release
 
 #. Add the date and release number to ``./NEWS``
 
+#. To check that all bugs mentioned in ``./NEWS`` are actually marked as
+   closed in Launchpad, you can run ``tools/check-newsbugs.py``::
+
+     ./tools/check-newsbugs.py NEWS
+
 #. Summarize into one or two paragraphs what's new in this release.
 
 #. Commit these changes to the release branch, using a command like::
@@ -74,6 +79,9 @@ Preparing the tree for release
      
       # API compatibility version: bzrlib is currently API compatible with 1.7.
       
+#. Tag the new release::
+
+     bzr tag bzr-1.12rc1 
 
 #. Submit those changes to PQM for merge into the appropriate release
    branch::
@@ -144,10 +152,13 @@ Now that the release is publicly available, tell people about it.
     | 
     | <<Summary paragraph from news>>
     |
+    | The Bazaar team is happy to announce availability of a new 
+    | release of the bzr adaptive version control system.
+    |
     | Thanks to everyone who contributed patches, suggestions, and
     | feedback.
     | 
-    | bzr x.yy is now available for download from 
+    | Bazaar is now available for download from 
     | http://bazaar-vcs.org/Download as a source tarball; packages 
     | for various systems will be available soon.
     | 

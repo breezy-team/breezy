@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2008 Canonical Ltd
+# Copyright (C) 2005, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,13 +21,18 @@ import os
 from StringIO import StringIO
 import re
 import sys
+import time
 
 import bzrlib
 import bzrlib.errors as errors
 from bzrlib.progress import (
     DotsProgressBar,
     ProgressBarStack,
+    ProgressTask,
     TTYProgressBar,
+    )
+from bzrlib.symbol_versioning import (
+    deprecated_in,
     )
 from bzrlib.tests import (
     TestCase,
@@ -39,7 +44,10 @@ from bzrlib.ui import (
     CLIUIFactory,
     SilentUIFactory,
     )
-from bzrlib.ui.text import TextUIFactory
+from bzrlib.ui.text import (
+    TextProgressView,
+    TextUIFactory,
+    )
 
 
 class UITests(TestCase):
@@ -144,19 +152,25 @@ class UITests(TestCase):
         ui = TextUIFactory(None, None, None)
         pb1 = ui.nested_progress_bar()
         pb2 = ui.nested_progress_bar()
-        # We no longer warn about finishing unnested progress bars.
+        # You do get a warning if the outermost progress bar wasn't finished
+        # first - it's not clear if this is really useful or if it should just
+        # become orphaned -- mbp 20090120
         warnings, _ = self.callCatchWarnings(pb1.finished)
-        self.assertEqual(len(warnings), 0)
+        if len(warnings) != 1:
+            self.fail("unexpected warnings: %r" % (warnings,))
         pb2.finished()
         pb1.finished()
 
     def test_progress_stack(self):
-        # test the progress bar stack which the default text factory 
+        # test the progress bar stack which the default text factory
         # uses.
         stderr = StringIO()
         stdout = StringIO()
         # make a stack, which accepts parameters like a pb.
-        stack = ProgressBarStack(to_file=stderr, to_messages_file=stdout)
+        stack = self.applyDeprecated(
+            deprecated_in((1, 12, 0)),
+            ProgressBarStack,
+            to_file=stderr, to_messages_file=stdout)
         # but is not one
         self.assertFalse(getattr(stack, 'note', False))
         pb1 = stack.get_nested()
@@ -228,3 +242,74 @@ class UITests(TestCase):
             r"what do you want\? \[y/n\]: what do you want\? \[y/n\]: ")
         # stdin should have been totally consumed
         self.assertEqual('', factory.stdin.readline())
+
+    def test_text_tick_after_update(self):
+        ui_factory = TextUIFactory(stdout=StringIO(), stderr=StringIO())
+        pb = ui_factory.nested_progress_bar()
+        try:
+            pb.update('task', 0, 3)
+            # Reset the clock, so that it actually tries to repaint itself
+            ui_factory._progress_view._last_repaint = time.time() - 1.0
+            pb.tick()
+        finally:
+            pb.finished()
+
+
+class TestTextProgressView(TestCase):
+    """Tests for text display of progress bars.
+    """
+    # XXX: These might be a bit easier to write if the rendering and
+    # state-maintaining parts of TextProgressView were more separate, and if
+    # the progress task called back directly to its own view not to the ui
+    # factory. -- mbp 20090312
+    
+    def _make_factory(self):
+        out = StringIO()
+        uif = TextUIFactory(stderr=out)
+        uif._progress_view._width = 80
+        return out, uif
+
+    def test_render_progress_easy(self):
+        """Just one task and one quarter done"""
+        out, uif = self._make_factory()
+        task = uif.nested_progress_bar()
+        task.update('reticulating splines', 5, 20)
+        self.assertEqual(
+'\r[####/               ] reticulating splines 5/20                               \r'
+            , out.getvalue())
+
+    def test_render_progress_nested(self):
+        """Tasks proportionally contribute to overall progress"""
+        out, uif = self._make_factory()
+        task = uif.nested_progress_bar()
+        task.update('reticulating splines', 0, 2)
+        task2 = uif.nested_progress_bar()
+        task2.update('stage2', 1, 2)
+        # so we're in the first half of the main task, and half way through
+        # that
+        self.assertEqual(
+r'[####\               ] reticulating splines:stage2 1/2'
+            , uif._progress_view._render_line())
+        # if the nested task is complete, then we're all the way through the
+        # first half of the overall work
+        task2.update('stage2', 2, 2)
+        self.assertEqual(
+r'[#########|          ] reticulating splines:stage2 2/2'
+            , uif._progress_view._render_line())
+
+    def test_render_progress_sub_nested(self):
+        """Intermediate tasks don't mess up calculation."""
+        out, uif = self._make_factory()
+        task_a = uif.nested_progress_bar()
+        task_a.update('a', 0, 2)
+        task_b = uif.nested_progress_bar()
+        task_b.update('b')
+        task_c = uif.nested_progress_bar()
+        task_c.update('c', 1, 2)
+        # the top-level task is in its first half; the middle one has no
+        # progress indication, just a label; and the bottom one is half done,
+        # so the overall fraction is 1/4
+        self.assertEqual(
+            r'[####|               ] a:b:c 1/2'
+            , uif._progress_view._render_line())
+

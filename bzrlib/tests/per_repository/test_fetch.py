@@ -31,7 +31,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
 
     def test_fetch(self):
         # smoke test fetch to ensure that the convenience function works.
-        # it is defined as a convenience function with the underlying 
+        # it is defined as a convenience function with the underlying
         # functionality provided by an InterRepository
         tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/foo'])
@@ -44,9 +44,8 @@ class TestFetchSameRepository(TestCaseWithRepository):
             raise TestSkipped('Cannot fetch from model2 to model1')
         repo.fetch(tree_a.branch.repository,
                    revision_id=None)
-                   ## pb=bzrlib.progress.DummyProgress())
 
-    def test_fetch_knit3(self):
+    def test_fetch_to_knit3(self):
         # create a repository of the sort we are testing.
         tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/foo'])
@@ -80,7 +79,10 @@ class TestFetchSameRepository(TestCaseWithRepository):
         try:
             tree_b = b_bzrdir.create_workingtree()
         except errors.NotLocalUrl:
-            raise TestSkipped("cannot make working tree with transport %r"
+            try:
+                tree_b = b_branch.create_checkout('b', lightweight=True)
+            except errors.NotLocalUrl:
+                raise TestSkipped("cannot make working tree with transport %r"
                               % b_bzrdir.transport)
         tree_b.commit('no change', rev_id='rev2')
         rev2_tree = knit3_repo.revision_tree('rev2')

@@ -212,7 +212,6 @@ class HttpTransportBase(ConnectedTransport):
         :param offsets: A list of (offset, size) tuples.
         :param return: A list or generator of (offset, data) tuples
         """
-
         # offsets may be a generator, we will iterate it several times, so
         # build a list
         offsets = list(offsets)
@@ -349,7 +348,7 @@ class HttpTransportBase(ConnectedTransport):
 
     def _post(self, body_bytes):
         """POST body_bytes to .bzr/smart on this transport.
-        
+
         :returns: (response code, response body file-like object).
         """
         # TODO: Requiring all the body_bytes to be available at the beginning of
@@ -622,6 +621,14 @@ class SmartClientHTTPMedium(medium.SmartClientMedium):
         except errors.InvalidHttpResponse, e:
             raise errors.SmartProtocolError(str(e))
         return body_filelike
+
+    def _report_activity(self, bytes, direction):
+        """See SmartMedium._report_activity.
+
+        Does nothing; the underlying plain HTTP transport will report the
+        activity that this medium would report.
+        """
+        pass
 
 
 # TODO: May be better located in smart/medium.py with the other

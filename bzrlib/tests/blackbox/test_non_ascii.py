@@ -20,8 +20,18 @@ import sys
 import os
 
 from bzrlib import osutils, urlutils
-from bzrlib.tests import TestCaseWithTransport, TestSkipped
+from bzrlib.tests import (
+    TestCaseWithTransport,
+    TestSkipped,
+    multiply_tests,
+    )
+from bzrlib.tests.EncodingAdapter import encoding_scenarios
 from bzrlib.trace import mutter, note
+
+
+def load_tests(standard_tests, module, loader):
+    return multiply_tests(standard_tests, encoding_scenarios,
+        loader.suiteClass())
 
 
 class TestNonAscii(TestCaseWithTransport):
@@ -52,7 +62,7 @@ class TestNonAscii(TestCaseWithTransport):
 
         Returns a string containing the stdout output from bzr.
 
-        :param fail: If true, the operation is expected to fail with 
+        :param fail: If true, the operation is expected to fail with
             a UnicodeError.
         """
         if encoding is None:
@@ -298,7 +308,7 @@ class TestNonAscii(TestCaseWithTransport):
         fname = self.info['filename']
         txt = self.run_bzr_decode(['file-id', fname])
 
-        # TODO: jam 20060106 We don't support non-ascii file ids yet, 
+        # TODO: jam 20060106 We don't support non-ascii file ids yet,
         #       so there is nothing which would fail in ascii encoding
         #       This *should* be retcode=3
         txt = self.run_bzr_decode(['file-id', fname], encoding='ascii')
@@ -318,23 +328,23 @@ class TestNonAscii(TestCaseWithTransport):
 
         txt = self.run_bzr_decode(['file-path', path])
 
-        # TODO: jam 20060106 We don't support non-ascii file ids yet, 
+        # TODO: jam 20060106 We don't support non-ascii file ids yet,
         #       so there is nothing which would fail in ascii encoding
         #       This *should* be retcode=3
         txt = self.run_bzr_decode(['file-path', path], encoding='ascii')
 
     def test_revision_history(self):
-        # TODO: jam 20060106 We don't support non-ascii revision ids yet, 
+        # TODO: jam 20060106 We don't support non-ascii revision ids yet,
         #       so there is nothing which would fail in ascii encoding
         txt = self.run_bzr_decode('revision-history')
 
     def test_ancestry(self):
-        # TODO: jam 20060106 We don't support non-ascii revision ids yet, 
+        # TODO: jam 20060106 We don't support non-ascii revision ids yet,
         #       so there is nothing which would fail in ascii encoding
         txt = self.run_bzr_decode('ancestry')
 
     def test_diff(self):
-        # TODO: jam 20060106 diff is a difficult one to test, because it 
+        # TODO: jam 20060106 diff is a difficult one to test, because it
         #       shouldn't encode the file contents, but it needs some sort
         #       of encoding for the paths, etc which are displayed.
         self.build_tree_contents([(self.info['filename'], 'newline\n')])
@@ -413,7 +423,7 @@ class TestNonAscii(TestCaseWithTransport):
         self.wt.commit(u'Renamed %s => %s' % (fname, fname2))
 
         txt = self.run_bzr_decode(['touching-revisions', fname2])
-        expected_txt = (u'     3 added %s\n' 
+        expected_txt = (u'     3 added %s\n'
                         u'     4 renamed %s => %s\n'
                         % (fname, fname, fname2))
         self.assertEqual(expected_txt, txt)
@@ -436,7 +446,7 @@ class TestNonAscii(TestCaseWithTransport):
         fname = self.info['filename'] + '2'
         self.build_tree_contents([(fname, 'unknown\n')])
 
-        # TODO: jam 20060112 bzr unknowns is the only one which 
+        # TODO: jam 20060112 bzr unknowns is the only one which
         #       quotes paths do we really want it to?
         #       awilkins 20080521 added and modified do it now as well
         txt = self.run_bzr_decode('unknowns')

@@ -58,7 +58,7 @@ class TestDeprecationWarnings(TestCase):
     @deprecated_method(deprecated_in((0, 7, 0)))
     def deprecated_method(self):
         """Deprecated method docstring.
-        
+
         This might explain stuff.
         """
         return 1
@@ -94,7 +94,7 @@ class TestDeprecationWarnings(TestCase):
             "TestDeprecationWarnings.deprecated_method "
             "was deprecated in version 0.7.", DeprecationWarning, 2)
         expected_docstring = ('Deprecated method docstring.\n'
-                              '        \n'
+                              '\n'
                               '        This might explain stuff.\n'
                               '        \n'
                               '        This method was deprecated in version 0.7.\n'
@@ -192,7 +192,7 @@ class TestDeprecationWarnings(TestCase):
             self.assertTrue(deprecated_callable.is_deprecated)
         finally:
             symbol_versioning.set_warning_method(old_warning_method)
-    
+
     def test_deprecated_passed(self):
         self.assertEqual(True, symbol_versioning.deprecated_passed(None))
         self.assertEqual(True, symbol_versioning.deprecated_passed(True))

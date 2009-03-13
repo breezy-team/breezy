@@ -841,6 +841,8 @@ cdef _update_entry(self, entry, abspath, stat_value):
     packed_stat = _pack_stat(stat_value)
     details = PyList_GetItem_void_void(PyTuple_GetItem_void_void(<void *>entry, 1), 0)
     saved_minikind = PyString_AsString_obj(<PyObject *>PyTuple_GetItem_void_void(details, 0))[0]
+    if minikind == c'd' and saved_minikind == c't':
+        minikind = c't'
     saved_link_or_sha1 = PyTuple_GetItem_void_object(details, 1)
     saved_file_size = PyTuple_GetItem_void_object(details, 2)
     saved_executable = PyTuple_GetItem_void_object(details, 3)
@@ -1256,8 +1258,14 @@ cdef class ProcessEntryC:
             path = self.pathjoin(entry[0][0], entry[0][1])
             # parent id is the entry for the path in the target tree
             # TODO: these are the same for an entire directory: cache em.
-            parent_id = self.state._get_entry(self.target_index,
-                                         path_utf8=entry[0][0])[0][2]
+            parent_entry = self.state._get_entry(self.target_index,
+                                                 path_utf8=entry[0][0])
+            if parent_entry is None:
+                raise errors.DirstateCorrupt(self.state,
+                    "We could not find the parent entry in index %d"
+                    " for the entry: %s"
+                    % (self.target_index, entry[0]))
+            parent_id = parent_entry[0][2]
             if parent_id == entry[0][2]:
                 parent_id = None
             if path_info is not None:

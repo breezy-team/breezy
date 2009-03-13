@@ -237,7 +237,7 @@ complex_shortcut2 = {'a':[NULL_REVISION], 'b':['a'], 'c':['b'], 'd':['c'],
                     'e':['d'], 'f':['e'], 'g':['f'], 'h':['d'], 'i':['g'],
                     'j':['h'], 'k':['h', 'i'], 'l':['k'], 'm':['l'], 'n':['m'],
                     'o':['n'], 'p':['o'], 'q':['p'], 'r':['q'], 's':['r'],
-                    't':['i', 's'], 'u':['s', 'j'], 
+                    't':['i', 's'], 'u':['s', 'j'],
                     }
 
 # Graph where different walkers will race to find the common and uncommon
@@ -698,9 +698,20 @@ class TestGraph(TestCaseWithMemoryTransport):
         instrumented_graph.is_ancestor('rev2a', 'rev2b')
         self.assertTrue('null:' not in instrumented_provider.calls)
 
+    def test_is_between(self):
+        graph = self.make_graph(ancestry_1)
+        self.assertEqual(True, graph.is_between('null:', 'null:', 'null:'))
+        self.assertEqual(True, graph.is_between('rev1', 'null:', 'rev1'))
+        self.assertEqual(True, graph.is_between('rev1', 'rev1', 'rev4'))
+        self.assertEqual(True, graph.is_between('rev4', 'rev1', 'rev4'))
+        self.assertEqual(True, graph.is_between('rev3', 'rev1', 'rev4'))
+        self.assertEqual(False, graph.is_between('rev4', 'rev1', 'rev3'))
+        self.assertEqual(False, graph.is_between('rev1', 'rev2a', 'rev4'))
+        self.assertEqual(False, graph.is_between('null:', 'rev1', 'rev4'))
+
     def test_is_ancestor_boundary(self):
         """Ensure that we avoid searching the whole graph.
-        
+
         This requires searching through b as a common ancestor, so we
         can identify that e is common.
         """
@@ -726,7 +737,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         # 'a' is not in the ancestry of 'c', and 'g' is a ghost
         expected['g'] = None
         self.assertEqual(expected, dict(graph.iter_ancestry(['a', 'c'])))
-        expected.pop('a') 
+        expected.pop('a')
         self.assertEqual(expected, dict(graph.iter_ancestry(['c'])))
 
     def test_filter_candidate_lca(self):
@@ -834,7 +845,7 @@ class TestGraph(TestCaseWithMemoryTransport):
 
     def _run_heads_break_deeper(self, graph_dict, search):
         """Run heads on a graph-as-a-dict.
-        
+
         If the search asks for the parents of 'deeper' the test will fail.
         """
         class stub(object):
@@ -1069,7 +1080,8 @@ class TestGraph(TestCaseWithMemoryTransport):
         search = graph._make_breadth_first_searcher(['head'])
         expected = [
             # NULL_REVISION and ghost1 have not been returned
-            (set(['head']), (set(['head']), set(['child', 'ghost1']), 1),
+            (set(['head']),
+             (set(['head']), set(['child', NULL_REVISION, 'ghost1']), 1),
              ['head'], None, [NULL_REVISION, 'ghost1']),
             # ghost1 has been returned, NULL_REVISION is to be returned in the
             # next iteration.
@@ -1513,3 +1525,33 @@ class TestCollapseLinearRegions(tests.TestCase):
         # 2 and 3 cannot be removed because 1 has 2 parents
         d = {1:[2, 3], 2:[4], 4:[6], 3:[5], 5:[6], 6:[7], 7:[]}
         self.assertCollapsed(d, d)
+
+
+class TestPendingAncestryResult(TestCaseWithMemoryTransport):
+    """Tests for bzrlib.graph.PendingAncestryResult."""
+
+    def test_get_keys(self):
+        builder = self.make_branch_builder('b')
+        builder.start_series()
+        builder.build_snapshot('rev-1', None, [
+            ('add', ('', 'root-id', 'directory', ''))])
+        builder.build_snapshot('rev-2', ['rev-1'], [])
+        builder.finish_series()
+        repo = builder.get_branch().repository
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        par = _mod_graph.PendingAncestryResult(['rev-2'], repo)
+        self.assertEqual(set(['rev-1', 'rev-2']), set(par.get_keys()))
+
+    def test_get_keys_excludes_null(self):
+        # Make a 'graph' with an iter_ancestry that returns NULL_REVISION
+        # somewhere other than the last element, which can happen in real
+        # ancestries.
+        class StubGraph(object):
+            def iter_ancestry(self, keys):
+                return [(NULL_REVISION, ()), ('foo', (NULL_REVISION,))]
+        par = _mod_graph.PendingAncestryResult(['rev-3'], None)
+        par_keys = par._get_keys(StubGraph())
+        # Only the non-null keys from the ancestry appear.
+        self.assertEqual(set(['foo']), set(par_keys))
+

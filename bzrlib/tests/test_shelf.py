@@ -16,7 +16,7 @@
 
 import os
 
-from bzrlib import errors, pack, shelf, tests, transform
+from bzrlib import errors, pack, shelf, tests, transform, workingtree
 
 
 EMPTY_SHELF = ("Bazaar pack format 1 (introduced in 0.18)\n"
@@ -139,6 +139,27 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         self.failIfExists('foo')
         limbo_name = creator.shelf_transform._limbo_name(s_trans_id)
         self.assertEqual('bar', os.readlink(limbo_name))
+
+    def test_shelve_symlink_target_change(self):
+        self.requireFeature(tests.SymlinkFeature)
+        tree = self.make_branch_and_tree('.')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        os.symlink('bar', 'foo')
+        tree.add('foo', 'foo-id')
+        tree.commit("commit symlink")
+        os.unlink("foo")
+        os.symlink('baz', 'foo')
+        creator = shelf.ShelfCreator(tree, tree.basis_tree())
+        self.addCleanup(creator.finalize)
+        self.assertEqual([('modify target', 'foo-id', 'foo', 'bar', 'baz')],
+                         list(creator.iter_shelvable()))
+        creator.shelve_modify_target('foo-id')
+        creator.transform()
+        self.assertEqual('bar', os.readlink('foo'))
+        s_trans_id = creator.shelf_transform.trans_id_file_id('foo-id')
+        limbo_name = creator.shelf_transform._limbo_name(s_trans_id)
+        self.assertEqual('baz', os.readlink(limbo_name))
 
     def test_shelve_creation_no_contents(self):
         tree = self.make_branch_and_tree('.')
@@ -268,6 +289,20 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         records.next()
         tt.deserialize(records)
 
+    def test_shelve_unversioned(self):
+        tree = self.make_branch_and_tree('tree')
+        self.assertRaises(errors.PathsNotVersionedError,
+                          shelf.ShelfCreator, tree, tree.basis_tree(), ['foo'])
+        # We should be able to lock/unlock the tree if ShelfCreator cleaned
+        # after itself.
+        wt = workingtree.WorkingTree.open('tree')
+        wt.lock_tree_write()
+        wt.unlock()
+        # And a second tentative should raise the same error (no
+        # limbo/pending_deletion leftovers).
+        self.assertRaises(errors.PathsNotVersionedError,
+                          shelf.ShelfCreator, tree, tree.basis_tree(), ['foo'])
+
 
 class TestUnshelver(tests.TestCaseWithTransport):
 
@@ -314,6 +349,35 @@ class TestUnshelver(tests.TestCaseWithTransport):
         unshelver = shelf.Unshelver.from_tree_and_shelf(tree, shelf_file)
         unshelver.make_merger().do_merge()
         self.assertFileEqual('z\na\nb\nd\n', 'tree/foo')
+
+    def test_unshelve_deleted(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        self.build_tree_contents([('tree/foo/',), ('tree/foo/bar', 'baz')])
+        tree.add(['foo', 'foo/bar'], ['foo-id', 'bar-id'])
+        tree.commit('Added file and directory')
+        tree.unversion(['foo-id', 'bar-id'])
+        os.unlink('tree/foo/bar')
+        os.rmdir('tree/foo')
+        creator = shelf.ShelfCreator(tree, tree.basis_tree())
+        list(creator.iter_shelvable())
+        creator.shelve_deletion('foo-id')
+        creator.shelve_deletion('bar-id')
+        shelf_file = open('shelf', 'w+b')
+        self.addCleanup(shelf_file.close)
+        creator.write_shelf(shelf_file)
+        creator.transform()
+        creator.finalize()
+        # validate the test setup
+        self.assertTrue('foo-id' in tree)
+        self.assertTrue('bar-id' in tree)
+        self.assertFileEqual('baz', 'tree/foo/bar')
+        shelf_file.seek(0)
+        unshelver = shelf.Unshelver.from_tree_and_shelf(tree, shelf_file)
+        unshelver.make_merger().do_merge()
+        self.assertFalse('foo-id' in tree)
+        self.assertFalse('bar-id' in tree)
 
     def test_unshelve_base(self):
         tree = self.make_branch_and_tree('tree')

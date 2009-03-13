@@ -34,14 +34,15 @@ from bzrlib import (
     )
 from bzrlib.transport import get_transport
 from bzrlib.tests import (
-                          adapt_modules,
+                          multiply_tests,
                           default_transport,
                           TestCaseWithTransport,
                           TestSkipped,
                           )
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.tests.workingtree_implementations import (
-    WorkingTreeTestProviderAdapter,
+    make_scenarios as wt_make_scenarios,
+    make_scenario as wt_make_scenario,
     )
 from bzrlib.revision import NULL_REVISION
 from bzrlib.revisiontree import RevisionTree
@@ -125,7 +126,7 @@ class TestCaseWithTree(TestCaseWithBzrDir):
 
     def get_tree_no_parents_no_content(self, empty_tree, converter=None):
         """Make a tree with no parents and no contents from empty_tree.
-        
+
         :param empty_tree: A working tree with no content and no parents to
             modify.
         """
@@ -147,7 +148,7 @@ class TestCaseWithTree(TestCaseWithBzrDir):
 
     def get_tree_no_parents_abc_content_2(self, tree, converter=None):
         """return a test tree with a, b/, b/c contents.
-        
+
         This variation changes the content of 'a' to foobar\n.
         """
         self._make_abc_tree(tree)
@@ -160,7 +161,7 @@ class TestCaseWithTree(TestCaseWithBzrDir):
 
     def get_tree_no_parents_abc_content_3(self, tree, converter=None):
         """return a test tree with a, b/, b/c contents.
-        
+
         This variation changes the executable flag of b/c to True.
         """
         self._make_abc_tree(tree)
@@ -172,7 +173,7 @@ class TestCaseWithTree(TestCaseWithBzrDir):
 
     def get_tree_no_parents_abc_content_4(self, tree, converter=None):
         """return a test tree with d, b/, b/c contents.
-        
+
         This variation renames a to d.
         """
         self._make_abc_tree(tree)
@@ -181,7 +182,7 @@ class TestCaseWithTree(TestCaseWithBzrDir):
 
     def get_tree_no_parents_abc_content_5(self, tree, converter=None):
         """return a test tree with d, b/, b/c contents.
-        
+
         This variation renames a to d and alters its content to 'bar\n'.
         """
         self._make_abc_tree(tree)
@@ -195,7 +196,7 @@ class TestCaseWithTree(TestCaseWithBzrDir):
 
     def get_tree_no_parents_abc_content_6(self, tree, converter=None):
         """return a test tree with a, b/, e contents.
-        
+
         This variation renames b/c to e, and makes it executable.
         """
         self._make_abc_tree(tree)
@@ -235,7 +236,7 @@ class TestCaseWithTree(TestCaseWithBzrDir):
         where each component has the type of its name -
         i.e. '1file..' is afile.
 
-        note that the order of the paths and fileids is deliberately 
+        note that the order of the paths and fileids is deliberately
         mismatched to ensure that the result order is path based.
         """
         tree = self.make_branch_and_tree('.')
@@ -319,67 +320,61 @@ class TestCaseWithTree(TestCaseWithBzrDir):
         return self.workingtree_to_test_tree(tree)
 
 
-class TreeTestProviderAdapter(WorkingTreeTestProviderAdapter):
+def make_scenarios(transport_server, transport_readonly_server, formats):
     """Generate test suites for each Tree implementation in bzrlib.
 
     Currently this covers all working tree formats, and RevisionTree and
     DirStateRevisionTree by committing a working tree to create the revision
     tree.
     """
-
-    def __init__(self, transport_server, transport_readonly_server, formats):
-        """Create a TreeTestProviderAdapter.
-
-        :param formats: [workingtree_format]
-        """
-        super(TreeTestProviderAdapter, self).__init__(transport_server,
-            transport_readonly_server, formats)
-        # now adjust the scenarios and add the non-working-tree tree scenarios.
-        for scenario in self.scenarios:
-            # for working tree adapted tests, preserve the tree
-            scenario[1]["_workingtree_to_test_tree"] = return_parameter
+    scenarios = wt_make_scenarios(transport_server, transport_readonly_server,
+        formats)
+    # now adjust the scenarios and add the non-working-tree tree scenarios.
+    for scenario in scenarios:
+        # for working tree format tests, preserve the tree
+        scenario[1]["_workingtree_to_test_tree"] = return_parameter
         # add RevisionTree scenario
-        self.scenarios.append(self.create_tree_scenario(RevisionTree.__name__,
-                              revision_tree_from_workingtree,))
+    workingtree_format = WorkingTreeFormat._default_format
+    scenarios.append((RevisionTree.__name__,
+        create_tree_scenario(transport_server, transport_readonly_server,
+        workingtree_format, revision_tree_from_workingtree,)))
 
-        # also test WorkingTree4's RevisionTree implementation which is
-        # specialised.
-        self.scenarios.append(self.create_tree_scenario(
-            DirStateRevisionTree.__name__, _dirstate_tree_from_workingtree,
-            WorkingTreeFormat4()))
-        self.scenarios.append(self.create_tree_scenario(
-            DirStateRevisionTree.__name__, _dirstate_tree_from_workingtree,
-            WorkingTreeFormat5()))
-        self.scenarios.append(self.create_tree_scenario('PreviewTree',
-            preview_tree_pre))
-        self.scenarios.append(self.create_tree_scenario('PreviewTreePost',
-            preview_tree_post))
-
-    def create_tree_scenario(self, name, converter, workingtree_format=None):
-        """Create a scenario for the specified converter
-
-        :param name: The name to append to tests using this converter
-        :param converter: A function that converts a workingtree into the
-            desired format.
-        :param workingtree_format: The particular workingtree format to
-            convert from.
-        :return: a (name, options) tuple, where options is a dict of values
-            to be used as members of the TestCase.
-        """
-        if workingtree_format is None:
-            workingtree_format = WorkingTreeFormat._default_format
-        scenario_options = WorkingTreeTestProviderAdapter.create_scenario(self,
-            workingtree_format)[1]
-        scenario_options["_workingtree_to_test_tree"] = converter
-        return name, scenario_options
+    # also test WorkingTree4/5's RevisionTree implementation which is
+    # specialised.
+    # XXX: Ask igc if WT5 revision tree actually is different.
+    scenarios.append((DirStateRevisionTree.__name__ + ",WT4",
+        create_tree_scenario(transport_server, transport_readonly_server,
+        WorkingTreeFormat4(), _dirstate_tree_from_workingtree)))
+    scenarios.append((DirStateRevisionTree.__name__ + ",WT5",
+        create_tree_scenario(transport_server, transport_readonly_server,
+        WorkingTreeFormat5(), _dirstate_tree_from_workingtree)))
+    scenarios.append(("PreviewTree", create_tree_scenario(transport_server,
+        transport_readonly_server, workingtree_format, preview_tree_pre)))
+    scenarios.append(("PreviewTreePost", create_tree_scenario(transport_server,
+        transport_readonly_server, workingtree_format, preview_tree_post)))
+    return scenarios
 
 
-def load_tests(basic_tests, module, loader):
-    result = loader.suiteClass()
-    # add the tests for this module
-    result.addTests(basic_tests)
+def create_tree_scenario(transport_server, transport_readonly_server,
+    workingtree_format, converter):
+    """Create a scenario for the specified converter
 
-    test_tree_implementations = [
+    :param name: The name to append to tests using this converter
+    :param converter: A function that converts a workingtree into the
+        desired format.
+    :param workingtree_format: The particular workingtree format to
+        convert from.
+    :return: a (name, options) tuple, where options is a dict of values
+        to be used as members of the TestCase.
+    """
+    scenario_options = wt_make_scenario(transport_server, transport_readonly_server,
+        workingtree_format)
+    scenario_options["_workingtree_to_test_tree"] = converter
+    return scenario_options
+
+
+def load_tests(standard_tests, module, loader):
+    submod_tests = loader.loadTestsFromModuleNames([
         'bzrlib.tests.tree_implementations.test_annotate_iter',
         'bzrlib.tests.tree_implementations.test_get_file_mtime',
         'bzrlib.tests.tree_implementations.test_get_root_id',
@@ -392,15 +387,12 @@ def load_tests(basic_tests, module, loader):
         'bzrlib.tests.tree_implementations.test_test_trees',
         'bzrlib.tests.tree_implementations.test_tree',
         'bzrlib.tests.tree_implementations.test_walkdirs',
-        ]
-
-    adapter = TreeTestProviderAdapter(
+        ])
+    scenarios = make_scenarios(
         default_transport,
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
         WorkingTreeFormat._formats.values() + _legacy_formats)
-
     # add the tests for the sub modules
-    adapt_modules(test_tree_implementations, adapter, loader, result)
-    return result
+    return multiply_tests(submod_tests, scenarios, standard_tests)

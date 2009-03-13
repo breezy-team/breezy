@@ -56,7 +56,7 @@ class WorkingTreeBenchmark(Benchmark):
         """How long does is_ignored take to initialise and check one file."""
         t = self.make_branch_and_tree('.')
         self.time(t.is_ignored, "CVS")
-        
+
     def test_is_ignored_10824_calls(self):
         """How long does is_ignored take to initialise and check one file."""
         t = self.make_branch_and_tree('.')

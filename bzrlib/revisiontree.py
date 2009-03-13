@@ -34,9 +34,9 @@ class RevisionTree(Tree):
     """
 
     def __init__(self, branch, inv, revision_id):
-        # for compatability the 'branch' parameter has not been renamed to 
+        # for compatability the 'branch' parameter has not been renamed to
         # repository at this point. However, we should change RevisionTree's
-        # construction to always be via Repository and not via direct 
+        # construction to always be via Repository and not via direct
         # construction - this will mean that we can change the constructor
         # with much less chance of breaking client code.
         self._repository = branch
@@ -58,7 +58,7 @@ class RevisionTree(Tree):
             parent_ids = self._repository.get_revision(
                 self._revision_id).parent_ids
         return parent_ids
-        
+
     def get_revision_id(self):
         """Return the revision id associated with this tree."""
         return self._revision_id

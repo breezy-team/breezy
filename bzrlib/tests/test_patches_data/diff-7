@@ -1,0 +1,7 @@
+--- orig-7	2008-12-02 01:58:43.000000000 +0100
++++ mod-7	2008-12-02 01:58:43.000000000 +0100
+@@ -1 +1 @@
+-No terminating newline
+\ No newline at end of file
++No newline either
+\ No newline at end of file

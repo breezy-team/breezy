@@ -59,7 +59,7 @@ except ImportError, e:
 try:
     # see if we can actually initialize PyCurl - sometimes it will load but
     # fail to start up due to this bug:
-    #  
+    #
     #   32. (At least on Windows) If libcurl is built with c-ares and there's
     #   no DNS server configured in the system, the ares_init() call fails and
     #   thus curl_easy_init() fails as well. This causes weird effects for
@@ -180,7 +180,7 @@ class PyCurlTransport(HttpTransportBase):
 
         :param curl: The curl object to place the request on
         :param relpath: The relative path that we want to get
-        :return: (abspath, data, header) 
+        :return: (abspath, data, header)
                  abspath: full url
                  data: file that will be filled with the body
                  header: file that will be filled with the headers
@@ -215,8 +215,8 @@ class PyCurlTransport(HttpTransportBase):
 
     # The parent class use 0 to minimize the requests, but since we can't
     # exploit the results as soon as they are received (pycurl limitation) we'd
-    # better issue more requests and provide a more responsive UI do the cost
-    # of more latency costs.
+    # better issue more requests and provide a more responsive UI incurring
+    # more latency costs.
     # If you modify this, think about modifying the comment in http/__init__.py
     # too.
     _get_max_size = 4 * 1024 * 1024
@@ -287,6 +287,7 @@ class PyCurlTransport(HttpTransportBase):
         msg = self._parse_headers(header)
         return code, response.handle_response(abspath, code, msg, data)
 
+
     def _raise_curl_http_error(self, curl, info=None):
         code = curl.getinfo(pycurl.HTTP_CODE)
         url = curl.getinfo(pycurl.EFFECTIVE_URL)
@@ -304,15 +305,28 @@ class PyCurlTransport(HttpTransportBase):
             raise errors.InvalidHttpResponse(
                 url, 'Unable to handle http code %d%s' % (code,msg))
 
+    def _debug_cb(self, kind, text):
+        if kind in (pycurl.INFOTYPE_HEADER_IN, pycurl.INFOTYPE_DATA_IN,
+                    pycurl.INFOTYPE_SSL_DATA_IN):
+            self._report_activity(len(text), 'read')
+            if (kind == pycurl.INFOTYPE_HEADER_IN
+                and 'http' in debug.debug_flags):
+                mutter('< %s' % text)
+        elif kind in (pycurl.INFOTYPE_HEADER_OUT, pycurl.INFOTYPE_DATA_OUT,
+                      pycurl.INFOTYPE_SSL_DATA_OUT):
+            self._report_activity(len(text), 'write')
+            if (kind == pycurl.INFOTYPE_HEADER_OUT
+                and 'http' in debug.debug_flags):
+                mutter('> %s' % text)
+        elif kind == pycurl.INFOTYPE_TEXT and 'http' in debug.debug_flags:
+            mutter('* %s' % text)
+
     def _set_curl_options(self, curl):
         """Set options for all requests"""
-        if 'http' in debug.debug_flags:
-            curl.setopt(pycurl.VERBOSE, 1)
-            # pycurl doesn't implement the CURLOPT_STDERR option, so we can't
-            # do : curl.setopt(pycurl.STDERR, trace._trace_file)
-
         ua_str = 'bzr/%s (pycurl: %s)' % (bzrlib.__version__, pycurl.version)
         curl.setopt(pycurl.USERAGENT, ua_str)
+        curl.setopt(pycurl.VERBOSE, 1)
+        curl.setopt(pycurl.DEBUGFUNCTION, self._debug_cb)
         if self.cabundle:
             curl.setopt(pycurl.CAINFO, self.cabundle)
         # Set accepted auth methods

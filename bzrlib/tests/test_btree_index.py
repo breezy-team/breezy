@@ -27,9 +27,8 @@ from bzrlib import (
     )
 from bzrlib.tests import (
     TestCaseWithTransport,
-    TestScenarioApplier,
-    adapt_tests,
     condition_isinstance,
+    multiply_tests,
     split_suite_by_condition,
     )
 from bzrlib.transport import get_transport
@@ -39,16 +38,14 @@ def load_tests(standard_tests, module, loader):
     # parameterise the TestBTreeNodes tests
     node_tests, others = split_suite_by_condition(standard_tests,
         condition_isinstance(TestBTreeNodes))
-    applier = TestScenarioApplier()
     import bzrlib._btree_serializer_py as py_module
-    applier.scenarios = [('python', {'parse_btree': py_module})]
+    scenarios = [('python', {'parse_btree': py_module})]
     if CompiledBtreeParserFeature.available():
         # Is there a way to do this that gets missing feature failures rather
         # than no indication to the user?
         import bzrlib._btree_serializer_c as c_module
-        applier.scenarios.append(('C', {'parse_btree': c_module}))
-    adapt_tests(node_tests, applier, others)
-    return others
+        scenarios.append(('C', {'parse_btree': c_module}))
+    return multiply_tests(node_tests, scenarios, others)
 
 
 class _CompiledBtreeParserFeature(tests.Feature):
@@ -868,6 +865,37 @@ class TestBTreeIndex(BTreeTestCase):
         self.assertEqual(set([(index, ('name', 'fin1'), 'data', ((('ref', 'erence'),),)),
             (index, ('name', 'fin2'), 'beta', ((), ))]),
             set(index.iter_entries_prefix([('name', None)])))
+
+    # XXX: external_references tests are duplicated in test_index.  We
+    # probably should have per_graph_index tests...
+    def test_external_references_no_refs(self):
+        index = self.make_index(ref_lists=0, nodes=[])
+        self.assertRaises(ValueError, index.external_references, 0)
+
+    def test_external_references_no_results(self):
+        index = self.make_index(ref_lists=1, nodes=[
+            (('key',), 'value', ([],))])
+        self.assertEqual(set(), index.external_references(0))
+
+    def test_external_references_missing_ref(self):
+        missing_key = ('missing',)
+        index = self.make_index(ref_lists=1, nodes=[
+            (('key',), 'value', ([missing_key],))])
+        self.assertEqual(set([missing_key]), index.external_references(0))
+
+    def test_external_references_multiple_ref_lists(self):
+        missing_key = ('missing',)
+        index = self.make_index(ref_lists=2, nodes=[
+            (('key',), 'value', ([], [missing_key]))])
+        self.assertEqual(set([]), index.external_references(0))
+        self.assertEqual(set([missing_key]), index.external_references(1))
+
+    def test_external_references_two_records(self):
+        index = self.make_index(ref_lists=1, nodes=[
+            (('key-1',), 'value', ([('key-2',)],)),
+            (('key-2',), 'value', ([],)),
+            ])
+        self.assertEqual(set([]), index.external_references(0))
 
 
 class TestBTreeNodes(BTreeTestCase):

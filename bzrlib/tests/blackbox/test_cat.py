@@ -74,17 +74,20 @@ class TestCat(TestCaseWithTransport):
         # a-rev-tree is special because it appears in both the revision
         # tree and the working tree
         self.build_tree_contents([('a-rev-tree', 'foo\n'),
-            ('c-rev', 'baz\n'), ('d-rev', 'bar\n')])
+            ('c-rev', 'baz\n'), ('d-rev', 'bar\n'), ('e-rev', 'qux\n')])
         tree.lock_write()
         try:
-            tree.add(['a-rev-tree', 'c-rev', 'd-rev'])
-            tree.commit('add test files')
-            # remove currently uses self._write_inventory - 
+            tree.add(['a-rev-tree', 'c-rev', 'd-rev', 'e-rev'])
+            tree.commit('add test files', rev_id='first')
+            # remove currently uses self._write_inventory -
             # work around that for now.
             tree.flush()
             tree.remove(['d-rev'])
             tree.rename_one('a-rev-tree', 'b-tree')
             tree.rename_one('c-rev', 'a-rev-tree')
+            tree.rename_one('e-rev', 'old-rev')
+            self.build_tree_contents([('e-rev', 'new\n')])
+            tree.add(['e-rev'])
         finally:
             # calling bzr as another process require free lock on win32
             tree.unlock()
@@ -106,6 +109,11 @@ class TestCat(TestCaseWithTransport):
 
         out, err = self.run_bzr_subprocess('cat a-rev-tree')
         self.assertEqual('baz\n', out)
+        self.assertEqual('', err)
+
+        # the actual file-id for e-rev doesn't exist in the old tree
+        out, err = self.run_bzr_subprocess('cat e-rev -rrevid:first')
+        self.assertEqual('qux\n', out)
         self.assertEqual('', err)
 
     def test_remote_cat(self):

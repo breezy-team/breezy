@@ -99,7 +99,7 @@ class VersionInfoBuilder(object):
             if not self._check or self._working_tree is None:
                 return
 
-            delta = self._working_tree.changes_from(basis_tree, 
+            delta = self._working_tree.changes_from(basis_tree,
                                                     include_root=True)
 
             # Using a 2-pass algorithm for renames. This is because you might have

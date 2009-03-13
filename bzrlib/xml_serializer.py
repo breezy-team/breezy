@@ -122,7 +122,7 @@ escape_map = {
     }
 def _escape_replace(match, map=escape_map):
     return map[match.group()]
- 
+
 def _escape_attrib(text, encoding=None, replace=None):
     # escape attribute value
     try:
@@ -153,7 +153,7 @@ escape_cdata_map = {
     }
 def _escape_cdata_replace(match, map=escape_cdata_map):
     return map[match.group()]
- 
+
 def _escape_cdata(text, encoding=None, replace=None):
     # escape character data
     try:

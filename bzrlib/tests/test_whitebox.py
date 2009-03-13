@@ -30,7 +30,7 @@ class MoreTests(TestCaseWithTransport):
 
     def test_relpath(self):
         """test for branch path lookups
-    
+
         bzrlib.osutils._relpath do a simple but subtle
         job: given a path (either relative to cwd or absolute), work out
         if it is inside a branch and return the path relative to the base.

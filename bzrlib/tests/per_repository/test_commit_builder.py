@@ -139,7 +139,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
             builder.abort()
         finally:
             tree.unlock()
-    
+
     def test_commit_unchanged_root(self):
         tree = self.make_branch_and_tree(".")
         old_revision_id = tree.commit('')
@@ -338,7 +338,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
             tree.unlock()
 
     def test_last_modified_revision_after_commit_root_unchanged(self):
-        # commiting without changing the root does not change the 
+        # commiting without changing the root does not change the
         # last modified except on non-rich-root-repositories.
         tree = self.make_branch_and_tree('.')
         rev1 = tree.commit('')

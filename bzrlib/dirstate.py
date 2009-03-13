@@ -99,7 +99,7 @@ The entries on disk and in memory are ordered according to the following keys:
 
 --- Format 1 had the following different definition: ---
 rows = dirname, NULL, basename, NULL, MINIKIND, NULL, fileid_utf8, NULL,
-    WHOLE NUMBER (* size *), NULL, packed stat, NULL, sha1|symlink target, 
+    WHOLE NUMBER (* size *), NULL, packed stat, NULL, sha1|symlink target,
     {PARENT ROW}
 PARENT ROW = NULL, revision_utf8, NULL, MINIKIND, NULL, dirname, NULL,
     basename, NULL, WHOLE NUMBER (* size *), NULL, "y" | "n", NULL,
@@ -130,7 +130,7 @@ common case (diff/status/commit/merge on all files) and extremely fast
 operations for the less common but still occurs a lot status/diff/commit
 on specific files). Operations on specific files involve a scan for all
 the children of a path, *in every involved tree*, which the current
-format did not accommodate. 
+format did not accommodate.
 ----
 
 Design priorities:
@@ -148,8 +148,8 @@ Locking:
 
 Memory representation:
  vector of all directories, and vector of the childen ?
-   i.e. 
-     root_entrie = (direntry for root, [parent_direntries_for_root]), 
+   i.e.
+     root_entrie = (direntry for root, [parent_direntries_for_root]),
      dirblocks = [
      ('', ['data for achild', 'data for bchild', 'data for cchild'])
      ('dir', ['achild', 'cchild', 'echild'])
@@ -158,13 +158,13 @@ Memory representation:
     - in-order for serialisation - this is 'dirblock' grouping.
     - insertion of a file '/a' affects only the '/' child-vector, that is, to
       insert 10K elements from scratch does not generates O(N^2) memoves of a
-      single vector, rather each individual, which tends to be limited to a 
-      manageable number. Will scale badly on trees with 10K entries in a 
+      single vector, rather each individual, which tends to be limited to a
+      manageable number. Will scale badly on trees with 10K entries in a
       single directory. compare with Inventory.InventoryDirectory which has
       a dictionary for the children. No bisect capability, can only probe for
       exact matches, or grab all elements and sort.
     - What's the risk of error here? Once we have the base format being processed
-      we should have a net win regardless of optimality. So we are going to 
+      we should have a net win regardless of optimality. So we are going to
       go with what seems reasonable.
 open questions:
 
@@ -331,14 +331,14 @@ class DirState(object):
         # IN_MEMORY_UNMODIFIED indicates that what we have in memory
         #   is the same as is on disk
         # IN_MEMORY_MODIFIED indicates that we have a modified version
-        #   of what is on disk. 
+        #   of what is on disk.
         # In future we will add more granularity, for instance _dirblock_state
         # will probably support partially-in-memory as a separate variable,
         # allowing for partially-in-memory unmodified and partially-in-memory
         # modified states.
         self._header_state = DirState.NOT_IN_MEMORY
         self._dirblock_state = DirState.NOT_IN_MEMORY
-        # If true, an error has been detected while updating the dirstate, and 
+        # If true, an error has been detected while updating the dirstate, and
         # for safety we're not going to commit to disk.
         self._changes_aborted = False
         self._dirblocks = []
@@ -374,10 +374,10 @@ class DirState(object):
         """Add a path to be tracked.
 
         :param path: The path within the dirstate - '' is the root, 'foo' is the
-            path foo within the root, 'foo/bar' is the path bar within foo 
+            path foo within the root, 'foo/bar' is the path bar within foo
             within the root.
         :param file_id: The file id of the path being added.
-        :param kind: The kind of the path, as a string like 'file', 
+        :param kind: The kind of the path, as a string like 'file',
             'directory', etc.
         :param stat: The output of os.lstat for the path.
         :param fingerprint: The sha value of the file,
@@ -386,7 +386,7 @@ class DirState(object):
             or '' for directories.
         """
         # adding a file:
-        # find the block its in. 
+        # find the block its in.
         # find the location in the block.
         # check its not there
         # add it.
@@ -405,7 +405,7 @@ class DirState(object):
         # in the parent, or according to the special treatment for the root
         if basename == '.' or basename == '..':
             raise errors.InvalidEntryName(path)
-        # now that we've normalised, we need the correct utf8 path and 
+        # now that we've normalised, we need the correct utf8 path and
         # dirname and basename elements. This single encode and split should be
         # faster than three separate encodes.
         utf8path = (dirname + '/' + basename).strip('/').encode('utf8')
@@ -439,7 +439,7 @@ class DirState(object):
             # check the path is not in the tree
             block = self._dirblocks[block_index][1]
             entry_index, _ = self._find_entry_index(first_key, block)
-            while (entry_index < len(block) and 
+            while (entry_index < len(block) and
                 block[entry_index][0][0:2] == first_key[0:2]):
                 if block[entry_index][1][0][0] not in 'ar':
                     # this path is in the dirstate in the current tree.
@@ -935,7 +935,7 @@ class DirState(object):
 
     def _discard_merge_parents(self):
         """Discard any parents trees beyond the first.
-        
+
         Note that if this fails the dirstate is corrupted.
 
         After this function returns the dirstate contains 2 trees, neither of
@@ -1011,7 +1011,7 @@ class DirState(object):
                 raise AssertionError("bad dirname %r" % dirname)
         block_index, present = self._find_block_index_from_key((dirname, '', ''))
         if not present:
-            ## In future, when doing partial parsing, this should load and 
+            ## In future, when doing partial parsing, this should load and
             # populate the entire block.
             self._dirblocks.insert(block_index, (dirname, []))
         return block_index
@@ -1029,7 +1029,7 @@ class DirState(object):
         if new_entries[0][0][0:2] != ('', ''):
             raise AssertionError(
                 "Missing root row %r" % (new_entries[0][0],))
-        # The two blocks here are deliberate: the root block and the 
+        # The two blocks here are deliberate: the root block and the
         # contents-of-root block.
         self._dirblocks = [('', []), ('', [])]
         current_block = self._dirblocks[0][1]
@@ -1159,7 +1159,7 @@ class DirState(object):
         # one to use it. we use _right here because there are two
         # '' blocks - the root, and the contents of root
         # we always have a minimum of 2 in self._dirblocks: root and
-        # root-contents, and for '', we get 2 back, so this is 
+        # root-contents, and for '', we get 2 back, so this is
         # simple and correct:
         present = (block_index < len(self._dirblocks) and
             self._dirblocks[block_index][0] == key[0])
@@ -1588,7 +1588,18 @@ class DirState(object):
         #       already in memory. However, this really needs to be done at a
         #       higher level, because there either won't be anything on disk,
         #       or the thing on disk will be a file.
-        return os.readlink(abspath)
+        fs_encoding = osutils._fs_enc
+        if isinstance(abspath, unicode):
+            # abspath is defined as the path to pass to lstat. readlink is
+            # buggy in python < 2.6 (it doesn't encode unicode path into FS
+            # encoding), so we need to encode ourselves knowing that unicode
+            # paths are produced by UnicodeDirReader on purpose.
+            abspath = abspath.encode(fs_encoding)
+        target = os.readlink(abspath)
+        if fs_encoding not in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968'):
+            # Change encoding if needed
+            target = target.decode(fs_encoding).encode('UTF-8')
+        return target
 
     def get_ghosts(self):
         """Return a list of the parent tree revision ids that are ghosts."""
@@ -1798,7 +1809,7 @@ class DirState(object):
                 if present:
                     entry = self._dirblocks[block_index][1][entry_index]
                     if entry[1][tree_index][0] in 'fdlt':
-                        # this is the result we are looking for: the  
+                        # this is the result we are looking for: the
                         # real home of this file_id in this tree.
                         return entry
                     if entry[1][tree_index][0] == 'a':
@@ -1866,8 +1877,10 @@ class DirState(object):
             size = 0
             executable = False
         elif kind == 'symlink':
-            # We don't support non-ascii targets for symlinks yet.
-            fingerprint = str(inv_entry.symlink_target or '')
+            if inv_entry.symlink_target is None:
+                fingerprint = ''
+            else:
+                fingerprint = inv_entry.symlink_target.encode('utf8')
             size = 0
             executable = False
         elif kind == 'file':
@@ -1885,7 +1898,7 @@ class DirState(object):
     def _iter_child_entries(self, tree_index, path_utf8):
         """Iterate over all the entries that are children of path_utf.
 
-        This only returns entries that are present (not in 'a', 'r') in 
+        This only returns entries that are present (not in 'a', 'r') in
         tree_index. tree_index data is not refreshed, so if tree 0 is used,
         results may differ from that obtained if paths were statted to
         determine what ones were directories.
@@ -1922,7 +1935,7 @@ class DirState(object):
                         else:
                             path = entry[0][1]
                         next_pending_dirs.append(path)
-    
+
     def _iter_entries(self):
         """Iterate over all the entries in the dirstate.
 
@@ -1979,7 +1992,7 @@ class DirState(object):
 
     def _read_dirblocks_if_needed(self):
         """Read in all the dirblocks from the file if they are not in memory.
-        
+
         This populates self._dirblocks, and sets self._dirblock_state to
         IN_MEMORY_UNMODIFIED. It is not currently ready for incremental block
         loading.
@@ -2110,7 +2123,7 @@ class DirState(object):
 
         :param parent_ids: A list of parent tree revision ids.
         :param dirblocks: A list containing one tuple for each directory in the
-            tree. Each tuple contains the directory path and a list of entries 
+            tree. Each tuple contains the directory path and a list of entries
             found in that directory.
         """
         # our memory copy is now authoritative.
@@ -2150,12 +2163,12 @@ class DirState(object):
         """Set the parent trees for the dirstate.
 
         :param trees: A list of revision_id, tree tuples. tree must be provided
-            even if the revision_id refers to a ghost: supply an empty tree in 
+            even if the revision_id refers to a ghost: supply an empty tree in
             this case.
         :param ghosts: A list of the revision_ids that are ghosts at the time
             of setting.
-        """ 
-        # TODO: generate a list of parent indexes to preserve to save 
+        """
+        # TODO: generate a list of parent indexes to preserve to save
         # processing specific parent trees. In the common case one tree will
         # be preserved - the left most parent.
         # TODO: if the parent tree is a dirstate, we might want to walk them
@@ -2166,8 +2179,8 @@ class DirState(object):
         # map and then walk the new parent trees only, mapping them into the
         # dirstate. Walk the dirstate at the same time to remove unreferenced
         # entries.
-        # for now: 
-        # sketch: loop over all entries in the dirstate, cherry picking 
+        # for now:
+        # sketch: loop over all entries in the dirstate, cherry picking
         # entries from the parent trees, if they are not ghost trees.
         # after we finish walking the dirstate, all entries not in the dirstate
         # are deletes, so we want to append them to the end as per the design
@@ -2178,8 +2191,8 @@ class DirState(object):
         #   links. We dont't trivially use the inventory from other trees
         #   because this leads to either double touching, or to accessing
         #   missing keys,
-        # - find other keys containing a path 
-        # We accumulate each entry via this dictionary, including the root 
+        # - find other keys containing a path
+        # We accumulate each entry via this dictionary, including the root
         by_path = {}
         id_index = {}
         # we could do parallel iterators, but because file id data may be
@@ -2189,11 +2202,11 @@ class DirState(object):
         # parent, but for now the common cases are adding a new parent (merge),
         # and replacing completely (commit), and commit is more common: so
         # optimise merge later.
-        
+
         # ---- start generation of full tree mapping data
         # what trees should we use?
         parent_trees = [tree for rev_id, tree in trees if rev_id not in ghosts]
-        # how many trees do we end up with 
+        # how many trees do we end up with
         parent_count = len(parent_trees)
 
         # one: the current tree
@@ -2204,7 +2217,7 @@ class DirState(object):
             by_path[entry[0]] = [entry[1][0]] + \
                 [DirState.NULL_PARENT_DETAILS] * parent_count
             id_index[entry[0][2]] = set([entry[0]])
-        
+
         # now the parent trees:
         for tree_index, tree in enumerate(parent_trees):
             # the index is off by one, adjust it.
@@ -2224,7 +2237,7 @@ class DirState(object):
                 # avoid checking all known paths for the id when generating a
                 # new entry at this path: by adding the id->path mapping last,
                 # all the mappings are valid and have correct relocation
-                # records where needed. 
+                # records where needed.
                 file_id = entry.file_id
                 path_utf8 = path.encode('utf8')
                 dirname, basename = osutils.split(path_utf8)
@@ -2241,7 +2254,7 @@ class DirState(object):
                         # This is the vertical axis in the matrix, all pointing
                         # to the real path.
                         by_path[entry_key][tree_index] = ('r', path_utf8, 0, False, '')
-                # by path consistency: Insert into an existing path record (trivial), or 
+                # by path consistency: Insert into an existing path record (trivial), or
                 # add a new one with relocation pointers for the other tree indexes.
                 if new_entry_key in id_index[file_id]:
                     # there is already an entry where this data belongs, just insert it.
@@ -2260,7 +2273,7 @@ class DirState(object):
                             new_details.append(DirState.NULL_PARENT_DETAILS)
                         else:
                             # grab any one entry, use it to find the right path.
-                            # TODO: optimise this to reduce memory use in highly 
+                            # TODO: optimise this to reduce memory use in highly
                             # fragmented situations by reusing the relocation
                             # records.
                             a_key = iter(id_index[file_id]).next()
@@ -2299,7 +2312,7 @@ class DirState(object):
         return sorted(entry_list, key=_key)
 
     def set_state_from_inventory(self, new_inv):
-        """Set new_inv as the current state. 
+        """Set new_inv as the current state.
 
         This API is called by tree transform, and will usually occur with
         existing parent trees.
@@ -2311,10 +2324,10 @@ class DirState(object):
                 "set_state_from_inventory called; please mutate the tree instead")
         self._read_dirblocks_if_needed()
         # sketch:
-        # Two iterators: current data and new data, both in dirblock order. 
+        # Two iterators: current data and new data, both in dirblock order.
         # We zip them together, which tells about entries that are new in the
         # inventory, or removed in the inventory, or present in both and
-        # possibly changed.  
+        # possibly changed.
         #
         # You might think we could just synthesize a new dirstate directly
         # since we're processing it in the right order.  However, we need to
@@ -2469,7 +2482,7 @@ class DirState(object):
         :param minikind: The type for the entry ('f' == 'file', 'd' ==
                 'directory'), etc.
         :param executable: Should the executable bit be set?
-        :param fingerprint: Simple fingerprint for new entry: sha1 for files, 
+        :param fingerprint: Simple fingerprint for new entry: sha1 for files,
             referenced revision id for subtrees, etc.
         :param packed_stat: Packed stat value for new entry.
         :param size: Size information for new entry
@@ -2520,7 +2533,7 @@ class DirState(object):
                 num_present_parents = self._num_present_parents()
                 for lookup_index in xrange(1, num_present_parents + 1):
                     # grab any one entry, use it to find the right path.
-                    # TODO: optimise this to reduce memory use in highly 
+                    # TODO: optimise this to reduce memory use in highly
                     # fragmented situations by reusing the relocation
                     # records.
                     update_block_index, present = \
@@ -2543,10 +2556,10 @@ class DirState(object):
             block.insert(entry_index, new_entry)
             existing_keys.add(key)
         else:
-            # Does the new state matter? 
+            # Does the new state matter?
             block[entry_index][1][0] = new_details
             # parents cannot be affected by what we do.
-            # other occurences of this id can be found 
+            # other occurences of this id can be found
             # from the id index.
             # ---
             # tree index consistency: All other paths for this id in this tree
@@ -2585,7 +2598,7 @@ class DirState(object):
     def _validate(self):
         """Check that invariants on the dirblock are correct.
 
-        This can be useful in debugging; it shouldn't be necessary in 
+        This can be useful in debugging; it shouldn't be necessary in
         normal code.
 
         This must be called with a lock held.
@@ -2660,7 +2673,7 @@ class DirState(object):
         # For each file id, for each tree: either
         # the file id is not present at all; all rows with that id in the
         # key have it marked as 'absent'
-        # OR the file id is present under exactly one name; any other entries 
+        # OR the file id is present under exactly one name; any other entries
         # that mention that id point to the correct name.
         #
         # We check this with a dict per tree pointing either to the present
@@ -2713,7 +2726,7 @@ class DirState(object):
                         # absent; should not occur anywhere else
                         this_tree_map[file_id] = None, this_path
                     elif minikind == 'r':
-                        # relocation, must occur at expected location 
+                        # relocation, must occur at expected location
                         this_tree_map[file_id] = tree_state[1], this_path
                     else:
                         this_tree_map[file_id] = this_path, this_path
@@ -2807,6 +2820,8 @@ def py_update_entry(state, entry, abspath, stat_value,
     (saved_minikind, saved_link_or_sha1, saved_file_size,
      saved_executable, saved_packed_stat) = entry[1][0]
 
+    if minikind == 'd' and saved_minikind == 't':
+        minikind = 't'
     if (minikind == saved_minikind
         and packed_stat == saved_packed_stat):
         # The stat hasn't changed since we saved, so we can re-use the
@@ -3181,20 +3196,20 @@ class ProcessEntryPython(object):
         search_specific_files = self.search_specific_files
         searched_specific_files = self.searched_specific_files
         splitpath = osutils.splitpath
-        # sketch: 
+        # sketch:
         # compare source_index and target_index at or under each element of search_specific_files.
         # follow the following comparison table. Note that we only want to do diff operations when
-        # the target is fdl because thats when the walkdirs logic will have exposed the pathinfo 
+        # the target is fdl because thats when the walkdirs logic will have exposed the pathinfo
         # for the target.
         # cases:
-        # 
+        #
         # Source | Target | disk | action
         #   r    | fdlt   |      | add source to search, add id path move and perform
         #        |        |      | diff check on source-target
-        #   r    | fdlt   |  a   | dangling file that was present in the basis. 
+        #   r    | fdlt   |  a   | dangling file that was present in the basis.
         #        |        |      | ???
         #   r    |  a     |      | add source to search
-        #   r    |  a     |  a   | 
+        #   r    |  a     |  a   |
         #   r    |  r     |      | this path is present in a non-examined tree, skip.
         #   r    |  r     |  a   | this path is present in a non-examined tree, skip.
         #   a    | fdlt   |      | add new id
@@ -3308,7 +3323,7 @@ class ProcessEntryPython(object):
                             raise AssertionError()
                         del current_dir_info[1][bzr_index]
             # walk until both the directory listing and the versioned metadata
-            # are exhausted. 
+            # are exhausted.
             if (block_index < len(self.state._dirblocks) and
                 osutils.is_inside(current_root, self.state._dirblocks[block_index][0])):
                 current_block = self.state._dirblocks[block_index]
@@ -3405,7 +3420,7 @@ class ProcessEntryPython(object):
                 while (current_entry is not None or
                     current_path_info is not None):
                     if current_entry is None:
-                        # the check for path_handled when the path is adnvaced
+                        # the check for path_handled when the path is advanced
                         # will yield this path if needed.
                         pass
                     elif current_path_info is None:
@@ -3475,7 +3490,7 @@ class ProcessEntryPython(object):
                             if current_path_info[2] in ('directory'):
                                 del current_dir_info[1][path_index]
                                 path_index -= 1
-                        # dont descend the disk iterator into any tree 
+                        # dont descend the disk iterator into any tree
                         # paths.
                         if current_path_info[2] == 'tree-reference':
                             del current_dir_info[1][path_index]

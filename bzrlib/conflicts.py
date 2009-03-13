@@ -16,7 +16,7 @@
 
 # TODO: Move this into builtins
 
-# TODO: 'bzr resolve' should accept a directory name and work from that 
+# TODO: 'bzr resolve' should accept a directory name and work from that
 # point down
 
 import os
@@ -228,7 +228,7 @@ class ConflictList(object):
         """Generator of stanzas"""
         for conflict in self:
             yield conflict.as_stanza()
-            
+
     def to_strings(self):
         """Generate strings for the provided conflicts"""
         for conflict in self:
@@ -249,7 +249,7 @@ class ConflictList(object):
     def select_conflicts(self, tree, paths, ignore_misses=False,
                          recurse=False):
         """Select the conflicts associated with paths in a tree.
-        
+
         File-ids are also used for this.
         :return: a pair of ConflictLists: (not_selected, selected)
         """
@@ -299,7 +299,7 @@ class ConflictList(object):
                     print "%s is not conflicted" % path
         return new_conflicts, selected_conflicts
 
- 
+
 class Conflict(object):
     """Base class for all types of conflict"""
 
@@ -403,7 +403,7 @@ class HandledConflict(Conflict):
     """
 
     rformat = "%(class)s(%(action)r, %(path)r, %(file_id)r)"
-    
+
     def __init__(self, action, path, file_id=None):
         Conflict.__init__(self, path, file_id)
         self.action = action
@@ -428,14 +428,14 @@ class HandledPathConflict(HandledConflict):
     def __init__(self, action, path, conflict_path, file_id=None,
                  conflict_file_id=None):
         HandledConflict.__init__(self, action, path, file_id)
-        self.conflict_path = conflict_path 
+        self.conflict_path = conflict_path
         # warn turned off, because the factory blindly transfers the Stanza
         # values to __init__.
         self.conflict_file_id = osutils.safe_file_id(conflict_file_id,
                                                      warn=False)
-        
+
     def _cmp_list(self):
-        return HandledConflict._cmp_list(self) + [self.conflict_path, 
+        return HandledConflict._cmp_list(self) + [self.conflict_path,
                                                   self.conflict_file_id]
 
     def as_stanza(self):
@@ -443,7 +443,7 @@ class HandledPathConflict(HandledConflict):
         s.add('conflict_path', self.conflict_path)
         if self.conflict_file_id is not None:
             s.add('conflict_file_id', self.conflict_file_id.decode('utf8'))
-            
+
         return s
 
 

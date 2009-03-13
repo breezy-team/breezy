@@ -28,9 +28,6 @@ class DummyForeignVcsMapping(foreign.VcsMapping):
     def __eq__(self, other):
         return type(self) == type(other)
 
-    def show_foreign_revid(self, foreign_revid):
-        return { "dummy ding": "%s/%s\\%s" % foreign_revid }
-
     def revision_id_bzr_to_foreign(self, bzr_revid):
         return tuple(bzr_revid[len("dummy-v1:"):].split("-")), self
 
@@ -50,32 +47,37 @@ class DummyForeignVcsMappingRegistry(foreign.VcsMappingRegistry):
 
 class DummyForeignVcs(foreign.ForeignVcs):
     """A dummy Foreign VCS, for use with testing.
-    
+
     It has revision ids that are a tuple with three strings.
     """
 
     def __init__(self):
         self.mapping_registry = DummyForeignVcsMappingRegistry()
-        self.mapping_registry.register("v1", DummyForeignVcsMapping(), 
+        self.mapping_registry.register("v1", DummyForeignVcsMapping(self),
                                        "Version 1")
+
+    def show_foreign_revid(self, foreign_revid):
+        return { "dummy ding": "%s/%s\\%s" % foreign_revid }
+
 
 
 class ForeignVcsRegistryTests(TestCase):
 
-    def test_parse_revision_id_no_dash(self):       
+    def test_parse_revision_id_no_dash(self):
         reg = foreign.ForeignVcsRegistry()
-        self.assertRaises(errors.InvalidRevisionId, 
+        self.assertRaises(errors.InvalidRevisionId,
                           reg.parse_revision_id, "invalid")
-        
-    def test_parse_revision_id_unknown_mapping(self):       
+
+    def test_parse_revision_id_unknown_mapping(self):
         reg = foreign.ForeignVcsRegistry()
-        self.assertRaises(errors.InvalidRevisionId, 
+        self.assertRaises(errors.InvalidRevisionId,
                           reg.parse_revision_id, "unknown-foreignrevid")
 
     def test_parse_revision_id(self):
         reg = foreign.ForeignVcsRegistry()
-        reg.register("dummy", DummyForeignVcs(), "Dummy VCS")
-        self.assertEquals((("some", "foreign", "revid"), DummyForeignVcsMapping()),
+        vcs = DummyForeignVcs()
+        reg.register("dummy", vcs, "Dummy VCS")
+        self.assertEquals((("some", "foreign", "revid"), DummyForeignVcsMapping(vcs)),
                           reg.parse_revision_id("dummy-v1:some-foreign-revid"))
 
 
@@ -83,8 +85,8 @@ class ForeignRevisionTests(TestCase):
     """Tests for the ForeignRevision class."""
 
     def test_create(self):
-        mapp = DummyForeignVcsMapping()
-        rev = foreign.ForeignRevision(("a", "foreign", "revid"), 
+        mapp = DummyForeignVcsMapping(DummyForeignVcs())
+        rev = foreign.ForeignRevision(("a", "foreign", "revid"),
                                       mapp, "roundtripped-revid")
         self.assertEquals("", rev.inventory_sha1)
         self.assertEquals(("a", "foreign", "revid"), rev.foreign_revid)
@@ -96,8 +98,9 @@ class ShowForeignPropertiesTests(TestCase):
 
     def setUp(self):
         super(ShowForeignPropertiesTests, self).setUp()
-        foreign.foreign_vcs_registry.register("dummy", 
-            DummyForeignVcs(), "Dummy VCS")
+        self.vcs = DummyForeignVcs()
+        foreign.foreign_vcs_registry.register("dummy",
+            self.vcs, "Dummy VCS")
 
     def tearDown(self):
         super(ShowForeignPropertiesTests, self).tearDown()
@@ -113,8 +116,8 @@ class ShowForeignPropertiesTests(TestCase):
                           foreign.show_foreign_properties(rev))
 
     def test_show_direct(self):
-        rev = foreign.ForeignRevision(("some", "foreign", "revid"), 
-                                      DummyForeignVcsMapping(), 
+        rev = foreign.ForeignRevision(("some", "foreign", "revid"),
+                                      DummyForeignVcsMapping(self.vcs),
                                       "roundtrip-revid")
         self.assertEquals({ "dummy ding": "some/foreign\\revid" },
                           foreign.show_foreign_properties(rev))

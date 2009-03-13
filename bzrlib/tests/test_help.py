@@ -96,14 +96,14 @@ class TestCommandHelp(tests.TestCase):
         """Help text should be plain text by default."""
         class cmd_Demo(commands.Command):
             """A sample command.
- 
+
             :Examples:
                 Example 1::
- 
+
                     cmd arg1
- 
+
                 Example 2::
- 
+
                     cmd arg2
             """
         cmd = cmd_Demo()
@@ -151,12 +151,12 @@ class TestCommandHelp(tests.TestCase):
         """Help text may contain a custom usage section."""
         class cmd_Demo(commands.Command):
             """A sample command.
- 
+
             :Usage:
                 cmd Demo [opts] args
- 
+
                 cmd Demo -h
- 
+
             Blah blah blah.
             """
         cmd = cmd_Demo()
@@ -183,7 +183,7 @@ class TestRegisteredTopic(tests.TestCase):
 
     def test_contruct(self):
         """Construction takes the help topic name for the registered item."""
-        # validate our test 
+        # validate our test
         self.assertTrue('basic' in help_topics.topic_registry)
         topic = help_topics.RegisteredTopic('basic')
         self.assertEqual('basic', topic.topic)
@@ -203,10 +203,10 @@ class TestRegisteredTopic(tests.TestCase):
 
     def test_get_help_text_loaded_from_file(self):
         # Pick a known topic stored in an external file
-        topic = help_topics.RegisteredTopic('hooks')
+        topic = help_topics.RegisteredTopic('authentication')
         self.assertStartsWith(topic.get_help_text(),
-            'Hooks\n'
-            '=====\n'
+            'Authentication Settings\n'
+            '=======================\n'
             '\n')
 
     def test_get_help_topic(self):
