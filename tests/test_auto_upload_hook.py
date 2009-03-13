@@ -50,8 +50,8 @@ class AutoPushHookTests(TestCaseWithTransport):
 
     def test_hook_is_registered(self):
         # Hooks are stored in self._preserved_hooks
-        self.assertTrue(auto_upload_hook in 
-                self._preserved_hooks[Branch]['post_change_branch_tip'])
+        self.assertTrue(auto_upload_hook in
+                self._preserved_hooks[Branch][1]['post_change_branch_tip'])
 
     def test_auto_push_on_commit(self):
         self.make_start_branch()

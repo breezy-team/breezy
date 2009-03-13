@@ -46,102 +46,62 @@ from bzrlib.plugins.upload import (
     )
 
 
-class TransportAdapter(
-    test_transport_implementations.TransportTestProviderAdapter):
-    """A tool to generate a suite testing all transports for a single test.
-
-    We restrict the transports to the ones we want to support.
-    """
-
-    def _test_permutations(self):
-        """Return a list of the klass, server_factory pairs to test."""
-        result = []
-        transport_modules =['bzrlib.transport.ftp',
-                            'bzrlib.transport.sftp']
-        for module in transport_modules:
-            try:
-                permutations = self.get_transport_test_permutations(
-                    reduce(getattr, (module).split('.')[1:],
-                           __import__(module)))
-                for (klass, server_factory) in permutations:
-                    scenario = (server_factory.__name__,
-                        {"transport_class":klass,
-                         "transport_server":server_factory})
-                    result.append(scenario)
-            except errors.DependencyNotPresent, e:
-                # Continue even if a dependency prevents us 
-                # from adding this test
-                pass
-        try:
-            import bzrlib.plugins.local_test_server
-            from bzrlib.plugins.local_test_server import test_server
-            if False:
-                # XXX: Disable since we can't get chmod working for anonymous
-                # user
-                scenario = ('vsftpd',
-                            {'transport_class': test_server.FtpTransport,
-                             'transport_server': test_server.Vsftpd,
-                             })
-                result.append(scenario)
-            from test_server import ProftpdFeature
-            if ProftpdFeature().available():
-                scenario = ('proftpd',
-                            {'transport_class': test_server.FtpTransport,
-                             'transport_server': test_server.Proftpd,
-                             })
-                result.append(scenario)
-        except ImportError:
-            pass
-        return result
+def get_transport_scenarios():
+    result = []
+    basis = test_transport_implementations.transport_test_permutations()
+    # Keep only the interesting ones for upload
+    for name, d in result:
+        t_class = d['transport_class']
+        if t_class in ('bzrlib.transport.ftp', 'bzrlib.transport.sftp'):
+            result.append((name, d))
+    try:
+        import bzrlib.plugins.local_test_server
+        from bzrlib.plugins.local_test_server import test_server
+        if False:
+            # XXX: Disable since we can't get chmod working for anonymous
+            # user
+            scenario = ('vsftpd',
+                        {'transport_class': test_server.FtpTransport,
+                         'transport_server': test_server.Vsftpd,
+                         })
+            result.append(scenario)
+        from test_server import ProftpdFeature
+        if ProftpdFeature().available():
+            scenario = ('proftpd',
+                        {'transport_class': test_server.FtpTransport,
+                         'transport_server': test_server.Proftpd,
+                         })
+            result.append(scenario)
+        # XXX: add support for pyftpdlib
+    except ImportError:
+        pass
+    return result
 
 
 def load_tests(standard_tests, module, loader):
     """Multiply tests for tranport implementations."""
     result = loader.suiteClass()
 
-    is_testing_for_transports = tests.condition_isinstance(
-        (TestFullUpload,
-         TestIncrementalUpload,
-         TestUploadFromRemoteBranch))
-    transport_adapter = TransportAdapter()
+    # one for each transport implementation
+    t_tests, remaining_tests = tests.split_suite_by_condition(
+        standard_tests, tests.condition_isinstance((
+                TestFullUpload,
+                TestIncrementalUpload,
+                TestUploadFromRemoteBranch,
+                )))
+    tests.multiply_tests(t_tests, get_transport_scenarios(), result)
 
-    is_testing_for_branches = tests.condition_isinstance(
-        (TestBranchUploadLocations,))
-    # Generate a list of branch formats and their associated bzrdir formats to
-    # use.
-    # XXX: This was copied from bzrlib.tests.branch_implementations.tests_suite
-    # and need to be shared in a better way.
-    combinations = [(format, format._matchingbzrdir) for format in
-         branch.BranchFormat._formats.values() + branch._legacy_formats]
-    BTPA = branch_implementations.BranchTestProviderAdapter
-    branch_adapter = BTPA(
-        # None here will cause the default vfs transport server to be used.
-        None,
-        # None here will cause a readonly decorator to be created
-        # by the TestCaseWithTransport.get_readonly_transport method.
-        None,
-        combinations)
-    branch_adapter_for_ss = BTPA(
-        smart_server.SmartTCPServer_for_testing,
-        smart_server.ReadonlySmartTCPServer_for_testing,
-        [(remote.RemoteBranchFormat(), remote.RemoteBzrDirFormat())],
-        # XXX: Report to bzr list, this parameter is not used in the
-        # constructor
+    # one for each branch format
+    b_tests, remaining_tests = tests.split_suite_by_condition(
+        remaining_tests, tests.condition_isinstance((
+                TestBranchUploadLocations,
+                )))
+    tests.multiply_tests(b_tests, branch_implementations.branch_scenarios(),
+                         result)
 
-        # MemoryServer
-        )
+    # No parametrization for the remaining tests
+    result.addTests(remaining_tests)
 
-    for test_class in tests.iter_suite_tests(standard_tests):
-        # Each test class is either standalone or testing for some combination
-        # of transport or branch. Use the right adpater (or none) depending on
-        # the class.
-        if is_testing_for_transports(test_class):
-            result.addTests(transport_adapter.adapt(test_class))
-        elif is_testing_for_branches(test_class):
-            result.addTests(branch_adapter.adapt(test_class))
-            result.addTests(branch_adapter_for_ss.adapt(test_class))
-        else:
-            result.addTest(test_class)
     return result
 
 
