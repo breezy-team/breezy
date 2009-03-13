@@ -103,11 +103,15 @@ class RenameMap(object):
 
     def file_match(self, tree, paths):
         """Return a mapping from file_ids to the supplied paths."""
+        ordered_hits = self.get_all_hits(tree, paths)
+        ordered_hits.sort(reverse=True)
+        return self._match_hits(ordered_hits)
+
+    @staticmethod
+    def _match_hits(ordered_hits):
         seen_file_ids = set()
         seen_paths = set()
         path_map = {}
-        ordered_hits = self.get_all_hits(tree, paths)
-        ordered_hits.sort(reverse=True)
         for count, path, file_id in ordered_hits:
             if path in seen_paths or file_id in seen_file_ids:
                 continue
@@ -125,4 +129,22 @@ class RenameMap(object):
                 if tree.path2id(path) is not None:
                     break
                 required_parents.setdefault(path, []).append(child)
-        return required_parents
+        require_ids = {}
+        for parent, children in required_parents.iteritems():
+            child_file_ids = set()
+            for child in children:
+                file_id = matches.get(child)
+                if file_id is not None:
+                    child_file_ids.add(file_id)
+            require_ids[parent] = child_file_ids
+        return require_ids
+
+    def match_parents(self, required_parents, missing_parents):
+        ordered_hits = []
+        for file_id, file_id_children in missing_parents.iteritems():
+            for path, path_children in required_parents.iteritems():
+                hits = len(path_children.intersection(file_id_children))
+                if hits > 0:
+                    ordered_hits.append((hits, path, file_id))
+        ordered_hits.sort(reverse=True)
+        return self._match_hits(ordered_hits)

@@ -244,7 +244,7 @@ class MutableTree(tree.Tree):
         versioned files have been renamed outside of Bazaar.
         """
         missing_files = set()
-        missing_parents = set()
+        missing_parents = {}
         candidate_files = set()
         basis = self.basis_tree()
         basis.lock_read()
@@ -253,7 +253,7 @@ class MutableTree(tree.Tree):
             for (file_id, paths, changed_content, versioned, parent, name,
                  kind, executable) in iterator:
                 if kind[1] is None and versioned[1]:
-                    missing_parents.add(parent[1])
+                    missing_parents.setdefault(parent[0], set()).add(file_id)
                     if kind[0] == 'file':
                         missing_files.add(file_id)
                     else:
@@ -277,11 +277,19 @@ class MutableTree(tree.Tree):
                 rn.add_file_edge_hashes(basis, missing_files)
                 pp.next_phase()
                 matches = rn.file_match(self, candidate_files)
+                required_parents = rn.get_required_parents(matches, self)
+                matches.update(rn.match_parents(required_parents,
+                               missing_parents))
             finally:
                 task.finished()
-            self.add(rn.get_required_parents(matches, self))
-            self.unversion(matches.values())
-            self.add(matches.keys(), matches.values())
+            self.add(set(required_parents) - set(matches))
+            reversed = dict((v, k) for k, v in matches.iteritems())
+            child_to_parent = sorted(
+                matches.values(), key=lambda x: reversed[x], reverse=True)
+            self.unversion(child_to_parent)
+            paths_forward = sorted(matches.keys())
+            file_ids_forward = [matches[p] for p in paths_forward]
+            self.add(paths_forward, file_ids_forward)
         finally:
             basis.unlock()
 

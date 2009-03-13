@@ -81,5 +81,27 @@ class TestRenameMap(TestCaseWithTransport):
         required_parents = rn.get_required_parents({
             'path1': 'a',
             'path2/tr': 'b',
+            'path3/path4/path5': 'c',
         }, tree)
-        self.assertEqual({'path2': ['path2/tr']}, required_parents)
+        self.assertEqual(
+            {'path2': set(['b']), 'path3/path4': set(['c']), 'path3': set()},
+            required_parents)
+
+    def test_find_directory_renames(self):
+        rn = RenameMap()
+        tree = self.make_branch_and_tree('tree')
+        matches = {
+            'path1': 'a',
+            'path3/path4/path5': 'c',
+        }
+        required_parents = {
+            'path2': set(['b']),
+            'path3/path4': set(['c']),
+            'path3': set([])}
+        missing_parents = {
+            'path2-id': set(['b']),
+            'path4-id': set(['c']),
+            'path3-id': set(['path4-id'])}
+        matches = RenameMap().match_parents(required_parents, missing_parents)
+        self.assertEqual({'path3/path4': 'path4-id', 'path2': 'path2-id'},
+                         matches)
