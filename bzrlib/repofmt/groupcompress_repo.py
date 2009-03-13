@@ -248,6 +248,15 @@ class GCPacker(Packer):
                 next_keys = set()
                 stream = source_vf.get_record_stream(cur_keys, 'as-requested',
                                                      True)
+                def handle_internal_node(node):
+                    for prefix, value in node._items.iteritems():
+                        if not isinstance(value, tuple):
+                            raise AssertionError("value is %s when a tuple"
+                                " is expected" % (value.__class__))
+                        if value not in next_keys:
+                            keys_by_search_prefix.setdefault(prefix,
+                                []).append(value)
+                            next_keys.add(value)
                 def next_stream():
                     for record in stream:
                         bytes = record.get_bytes_as('fulltext')
@@ -257,14 +266,7 @@ class GCPacker(Packer):
                                                     search_key_func=None)
                         common_base = node._search_prefix
                         if isinstance(node, chk_map.InternalNode):
-                            for prefix, value in node._items.iteritems():
-                                if not isinstance(value, tuple):
-                                    raise AssertionError("value is %s when"
-                                        " tuple expected" % (value.__class__))
-                                if value not in next_keys:
-                                    keys_by_search_prefix.setdefault(prefix,
-                                        []).append(value)
-                                    next_keys.add(value)
+                            handle_internal_node(node)
                         # XXX: We don't walk the chk map to determine
                         #      referenced (file_id, revision_id) keys.
                         #      We don't do it yet because you really need to
@@ -278,6 +280,9 @@ class GCPacker(Packer):
                         yield record
                 yield next_stream()
                 # Double check that we won't be emitting any keys twice
+                # If we get rid of the pre-calculation of all keys, we could
+                # turn this around and do
+                # next_keys.difference_update(seen_keys)
                 next_keys = next_keys.intersection(remaining_keys)
                 cur_keys = []
                 for prefix in sorted(keys_by_search_prefix):
