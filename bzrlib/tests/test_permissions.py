@@ -26,7 +26,7 @@ permissions should be inherited individually, rather than all be the same.
 """
 
 # TODO: jam 20051215 There are no tests for ftp yet, because we have no ftp server
-# TODO: jam 20051215 Currently the default behavior for 'bzr branch' is just 
+# TODO: jam 20051215 Currently the default behavior for 'bzr branch' is just
 #                    defined by the local umask. This isn't terrible, is it
 #                    the truly desired behavior?
 
@@ -38,7 +38,6 @@ import urllib
 
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
-from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.tests import TestCaseWithTransport, TestSkipped
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.transport import get_transport
@@ -97,7 +96,7 @@ class TestPermissions(TestCaseWithTransport):
 
         # although we are modifying the filesystem
         # underneath the objects, they are not locked, and thus it must
-        # be safe for most operations. But here we want to observe a 
+        # be safe for most operations. But here we want to observe a
         # mode change in the control bits, which current do not refresh
         # when a new lock is taken out.
         t = WorkingTree.open('.')

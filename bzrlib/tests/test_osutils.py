@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -37,17 +37,16 @@ from bzrlib.osutils import (
         pathjoin,
         pumpfile,
         pump_string_file,
+        canonical_relpath,
         )
 from bzrlib.tests import (
-        adapt_tests,
         Feature,
         probe_unicode_in_user_encoding,
-        split_suite_by_re,
         StringIOWrapper,
         SymlinkFeature,
+        CaseInsCasePresFilenameFeature,
         TestCase,
         TestCaseInTempDir,
-        TestScenarioApplier,
         TestSkipped,
         )
 from bzrlib.tests.file_utils import (
@@ -169,7 +168,7 @@ class TestOSUtils(TestCaseInTempDir):
                          (['src'], 'src'),
                          ]:
             self.assert_(is_inside_or_parent_of_any(dirs, fn))
-            
+
         for dirs, fn in [(['src'], 'srccontrol'),
                          (['srccontrol/foo.c'], 'src'),
                          (['src'], 'srccontrol/foo')]:
@@ -200,7 +199,7 @@ class TestOSUtils(TestCaseInTempDir):
         if osutils.has_symlinks():
             os.symlink('symlink', 'symlink')
             self.assertEquals('symlink', osutils.file_kind('symlink'))
-        
+
         # TODO: jam 20060529 Test a block device
         try:
             os.lstat('/dev/null')
@@ -308,7 +307,7 @@ class TestOSUtils(TestCaseInTempDir):
         self.assertEqual(bar_path, osutils.realpath('./bar'))
         os.symlink('bar', 'foo')
         self.assertEqual(bar_path, osutils.realpath('./foo'))
-        
+
         # Does not dereference terminal symlinks
         foo_path = osutils.pathjoin(cwd, 'foo')
         self.assertEqual(foo_path, osutils.dereference_path('./foo'))
@@ -354,6 +353,24 @@ class TestOSUtils(TestCaseInTempDir):
 
     def test_host_os_dereferences_symlinks(self):
         osutils.host_os_dereferences_symlinks()
+
+
+class TestCanonicalRelPath(TestCaseInTempDir):
+
+    _test_needs_features = [CaseInsCasePresFilenameFeature]
+
+    def test_canonical_relpath_simple(self):
+        f = file('MixedCaseName', 'w')
+        f.close()
+        self.failUnlessEqual(
+            canonical_relpath(self.test_base_dir, 'mixedcasename'),
+            'work/MixedCaseName')
+
+    def test_canonical_relpath_missing_tail(self):
+        os.mkdir('MixedCaseParent')
+        self.failUnlessEqual(
+            canonical_relpath(self.test_base_dir, 'mixedcaseparent/nochild'),
+            'work/MixedCaseParent/nochild')
 
 
 class TestPumpFile(TestCase):
@@ -465,6 +482,34 @@ class TestPumpFile(TestCase):
         if response_data != self.test_data:
             message = "Data not equal.  Expected %d bytes, received %d."
             self.fail(message % (len(response_data), self.test_data_len))
+
+    def test_report_activity(self):
+        activity = []
+        def log_activity(length, direction):
+            activity.append((length, direction))
+        from_file = StringIO(self.test_data)
+        to_file = StringIO()
+        pumpfile(from_file, to_file, buff_size=500,
+                 report_activity=log_activity, direction='read')
+        self.assertEqual([(500, 'read'), (500, 'read'), (500, 'read'),
+                          (36, 'read')], activity)
+
+        from_file = StringIO(self.test_data)
+        to_file = StringIO()
+        del activity[:]
+        pumpfile(from_file, to_file, buff_size=500,
+                 report_activity=log_activity, direction='write')
+        self.assertEqual([(500, 'write'), (500, 'write'), (500, 'write'),
+                          (36, 'write')], activity)
+
+        # And with a limited amount of data
+        from_file = StringIO(self.test_data)
+        to_file = StringIO()
+        del activity[:]
+        pumpfile(from_file, to_file, buff_size=500, read_length=1028,
+                 report_activity=log_activity, direction='read')
+        self.assertEqual([(500, 'read'), (500, 'read'), (28, 'read')], activity)
+
 
 
 class TestPumpStringFile(TestCase):
@@ -644,7 +689,7 @@ class TestWin32Funcs(TestCase):
 
 class TestWin32FuncsDirs(TestCaseInTempDir):
     """Test win32 functions that create files."""
-    
+
     def test_getcwd(self):
         if win32utils.winver == 'Windows 98':
             raise TestSkipped('Windows 98 cannot handle unicode filenames')
@@ -756,6 +801,23 @@ class TestMacFuncsDirs(TestCaseInTempDir):
         self.assertEndsWith(osutils._mac_getcwd(), u'B\xe5gfors')
 
 
+class TestChunksToLines(TestCase):
+
+    def test_smoketest(self):
+        self.assertEqual(['foo\n', 'bar\n', 'baz\n'],
+                         osutils.chunks_to_lines(['foo\nbar', '\nbaz\n']))
+        self.assertEqual(['foo\n', 'bar\n', 'baz\n'],
+                         osutils.chunks_to_lines(['foo\n', 'bar\n', 'baz\n']))
+
+    def test_osutils_binding(self):
+        from bzrlib.tests import test__chunks_to_lines
+        if test__chunks_to_lines.CompiledChunksToLinesFeature.available():
+            from bzrlib._chunks_to_lines_pyx import chunks_to_lines
+        else:
+            from bzrlib._chunks_to_lines_py import chunks_to_lines
+        self.assertIs(chunks_to_lines, osutils.chunks_to_lines)
+
+
 class TestSplitLines(TestCase):
 
     def test_split_unicode(self):
@@ -816,6 +878,26 @@ class TestWalkDirs(TestCaseInTempDir):
             result.append(dirblock)
         self.assertEqual(expected_dirblocks[1:],
             [(dirinfo, [line[0:3] for line in block]) for dirinfo, block in result])
+
+    def test_walkdirs_os_error(self):
+        # <https://bugs.edge.launchpad.net/bzr/+bug/338653>
+        # Pyrex readdir didn't raise useful messages if it had an error
+        # reading the directory
+        if sys.platform == 'win32':
+            raise tests.TestNotApplicable(
+                "readdir IOError not tested on win32")
+        os.mkdir("test-unreadable")
+        os.chmod("test-unreadable", 0000)
+        # must chmod it back so that it can be removed
+        self.addCleanup(lambda: os.chmod("test-unreadable", 0700))
+        # The error is not raised until the generator is actually evaluated.
+        # (It would be ok if it happened earlier but at the moment it
+        # doesn't.)
+        e = self.assertRaises(OSError, list,
+            osutils._walkdirs_utf8("."))
+        self.assertEquals(e.filename, './test-unreadable')
+        self.assertEquals(str(e),
+            "[Errno 13] chdir: Permission denied: './test-unreadable'")
 
     def test__walkdirs_utf8(self):
         tree = [
@@ -1265,7 +1347,7 @@ class TestWalkDirs(TestCaseInTempDir):
 
 
 class TestCopyTree(TestCaseInTempDir):
-    
+
     def test_copy_basic_tree(self):
         self.build_tree(['source/', 'source/a', 'source/b/', 'source/b/c'])
         osutils.copy_tree('source', 'target')
@@ -1350,7 +1432,7 @@ class TestSetUnsetEnv(TestCase):
 
     def test_unicode(self):
         """Environment can only contain plain strings
-        
+
         So Unicode strings must be encoded.
         """
         uni_val, env_val = probe_unicode_in_user_encoding()
@@ -1406,59 +1488,12 @@ class TestShaFileByName(TestCaseInTempDir):
         self.assertEqual(expected_sha, osutils.sha_file_by_name('foo'))
 
 
-_debug_text = \
-r'''# Copyright (C) 2005, 2006 Canonical Ltd
-#
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-
-
-# NOTE: If update these, please also update the help for global-options in
-#       bzrlib/help_topics/__init__.py
-
-debug_flags = set()
-"""Set of flags that enable different debug behaviour.
-
-These are set with eg ``-Dlock`` on the bzr command line.
-
-Options include:
- 
- * auth - show authentication sections used
- * error - show stack traces for all top level exceptions
- * evil - capture call sites that do expensive or badly-scaling operations.
- * fetch - trace history copying between repositories
- * graph - trace graph traversal information
- * hashcache - log every time a working file is read to determine its hash
- * hooks - trace hook execution
- * hpss - trace smart protocol requests and responses
- * http - trace http connections, requests and responses
- * index - trace major index operations
- * knit - trace knit operations
- * lock - trace when lockdir locks are taken or released
- * merge - emit information for debugging merges
- * pack - emit information about pack operations
-
-"""
-'''
-
-
 class TestResourceLoading(TestCaseInTempDir):
 
     def test_resource_string(self):
         # test resource in bzrlib
         text = osutils.resource_string('bzrlib', 'debug.py')
-        self.assertEquals(_debug_text, text)
+        self.assertContainsRe(text, "debug_flags = set()")
         # test resource under bzrlib
         text = osutils.resource_string('bzrlib.ui', 'text.py')
         self.assertContainsRe(text, "class TextUIFactory")

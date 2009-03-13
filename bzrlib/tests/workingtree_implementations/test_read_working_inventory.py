@@ -30,12 +30,12 @@ class TestReadWorkingInventory(TestCaseWithWorkingTree):
 
     def test_read_after_inventory_modification(self):
         tree = self.make_branch_and_tree('tree')
-        # prepare for a series of changes that will modify the 
+        # prepare for a series of changes that will modify the
         # inventory
         tree.lock_write()
         try:
             tree.set_root_id('new-root')
-            # having dirtied the inventory, we can now expect an 
+            # having dirtied the inventory, we can now expect an
             # InventoryModified exception when doing a read_working_inventory()
             # OR, the call can be ignored and hte changes preserved
             try:

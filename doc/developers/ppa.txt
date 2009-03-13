@@ -85,7 +85,10 @@ Preconditions
 
 * You need a Ubuntu (or probably Debian) machine, and ::
 
-    sudo apt-get install build-essential devscripts dput quilt patch
+    sudo apt-get install build-essential devscripts dput quilt patch libcrypt-ssleay-perl debhelper cdbs python-docutils
+
+  Please update this document if you encounter unmet dependencies or find a
+  shorter way to express them.
 
 * You will also want to have the `bzr-builddeb`_ plugin installed, which
   depends on `bzrtools`_.
@@ -104,6 +107,7 @@ For people who have already set up everything they need, building the
 release packages is as simple as::
 
   cd ~/dev/bzr/releases/packaging
+  ln ~/dev/bzr/releases/bzr-1.6.tar.gz ./bzr_1.6.orig.tar.gz
   export UBUNTU_RELEASES="dapper feisty gutsy hardy intrepid"
   ~/dev/bzr/bzr.dev/tools/packaging/update-packaging-branches.sh
   ~/dev/bzr/bzr.dev/tools/packaging/update-changelogs.sh 1.6~beta3-1~bazaar1
@@ -114,7 +118,8 @@ Long Form
 ~~~~~~~~~
 
 #. You will end up checking out a separate directory for each supported
-   release. Such as ``~/dev/bzr/releases/packaging/hardy``
+   release. Such as ``~/dev/bzr/releases/packaging/hardy``. In each of these
+   branches, you will produce the package for the release.
 
 #. Decide on the final version number.  It should be of this form::
 
@@ -132,7 +137,7 @@ Long Form
 
 #. Export the distroreleases that you will be packaging for::
 
-      export UBUNTU_RELEASES="dapper feisty gutsy hardy intrepid"
+      export UBUNTU_RELEASES="dapper feisty gutsy hardy intrepid jaunty"
 
 #. Checkout (or update) the packaging branch for each supported release::
 
@@ -162,8 +167,9 @@ Long Form
    against the version number (which is just our convention), so make sure 
    to specify it.
 
-   Make sure you have the correct email address for yourself, version
-   number, and distribution.  It should look something like this::
+   Make sure you have the correct email address for yourself (you may need
+   export DEBEMAIL=`bzr whoami` if it isn't already set), version number, and
+   distribution.  It should look something like this::
 
        bzr (1.6~beta3-1~bazaar1~hardy1) hardy; urgency=low
      
@@ -216,6 +222,31 @@ Long Form
    means that your package is waiting to be built.  You can then track its
    progress in <https://launchpad.net/~bzr-beta-ppa/+archive> and
    <https://launchpad.net/~bzr-beta-ppa/+archive/+builds>.
+
+
+Packaging bzr-svn
+~~~~~~~~~~~~~~~~~
+
+bzr-svn uses a packaging branch that contains both the source 
+(including any changes against upstream) and the ``debian/`` directory.
+
+To build bzr-svn:
+
+#. Get a checkout of ``lp:~bzr/bzr-svn/hardy-ppa/``
+
+#. Merge from ``http://bzr.debian.org/pkg-bazaar/bzr-svn/experimental/``
+  
+   This should bring in both upstream and packaging changes for the new
+   release, and it's updated as part of the bzr-svn release process.
+
+#. Run ``dch -v 0.4.15-1~bazaar1-hardy1 -D hardy`` or similar
+
+#. Run ``bzr builddeb --source``
+
+   bzr-builddeb will automatically check out the appropriate tag from the
+   main branch of bzr-svn, build, and package it.
+
+#. ``dput bzr-beta-ppa ../bzr-svn_0.4.15-1~bazaar1~hardy1_source.changes``
 
 
 Monitoring the contents of PPAs

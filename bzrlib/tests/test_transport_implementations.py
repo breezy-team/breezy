@@ -48,9 +48,9 @@ from bzrlib.osutils import getcwd
 from bzrlib.smart import medium
 from bzrlib.tests import (
     TestCaseInTempDir,
-    TestScenarioApplier,
     TestSkipped,
     TestNotApplicable,
+    multiply_tests,
     )
 from bzrlib.tests.test_transport import TestTransportImplementation
 from bzrlib.transport import (
@@ -61,52 +61,40 @@ from bzrlib.transport import (
 from bzrlib.transport.memory import MemoryTransport
 
 
-class TransportTestProviderAdapter(TestScenarioApplier):
-    """A tool to generate a suite testing all transports for a single test.
+def get_transport_test_permutations(module):
+    """Get the permutations module wants to have tested."""
+    if getattr(module, 'get_test_permutations', None) is None:
+        raise AssertionError(
+            "transport module %s doesn't provide get_test_permutations()"
+            % module.__name__)
+        return []
+    return module.get_test_permutations()
 
-    This is done by copying the test once for each transport and injecting
-    the transport_class and transport_server classes into each copy. Each copy
-    is also given a new id() to make it easy to identify.
-    """
 
-    def __init__(self):
-        self.scenarios = self._test_permutations()
-
-    def get_transport_test_permutations(self, module):
-        """Get the permutations module wants to have tested."""
-        if getattr(module, 'get_test_permutations', None) is None:
-            raise AssertionError(
-                "transport module %s doesn't provide get_test_permutations()"
-                % module.__name__)
-            return []
-        return module.get_test_permutations()
-
-    def _test_permutations(self):
-        """Return a list of the klass, server_factory pairs to test."""
-        result = []
-        for module in _get_transport_modules():
-            try:
-                permutations = self.get_transport_test_permutations(
-                    reduce(getattr, (module).split('.')[1:], __import__(module)))
-                for (klass, server_factory) in permutations:
-                    scenario = (server_factory.__name__,
-                        {"transport_class":klass,
-                         "transport_server":server_factory})
-                    result.append(scenario)
-            except errors.DependencyNotPresent, e:
-                # Continue even if a dependency prevents us 
-                # from adding this test
-                pass
-        return result
+def transport_test_permutations():
+    """Return a list of the klass, server_factory pairs to test."""
+    result = []
+    for module in _get_transport_modules():
+        try:
+            permutations = get_transport_test_permutations(
+                reduce(getattr, (module).split('.')[1:], __import__(module)))
+            for (klass, server_factory) in permutations:
+                scenario = (server_factory.__name__,
+                    {"transport_class":klass,
+                     "transport_server":server_factory})
+                result.append(scenario)
+        except errors.DependencyNotPresent, e:
+            # Continue even if a dependency prevents us
+            # from adding this test
+            pass
+    return result
 
 
 def load_tests(standard_tests, module, loader):
     """Multiply tests for tranport implementations."""
     result = loader.suiteClass()
-    adapter = TransportTestProviderAdapter()
-    for test in tests.iter_suite_tests(standard_tests):
-        result.addTests(adapter.adapt(test))
-    return result
+    scenarios = transport_test_permutations()
+    return multiply_tests(standard_tests, scenarios, result)
 
 
 class TransportTests(TestTransportImplementation):
@@ -325,7 +313,7 @@ class TransportTests(TestTransportImplementation):
         t.put_bytes_non_atomic('dir/a', 'contents for dir/a\n',
                                create_parent_dir=True)
         self.check_transport_contents('contents for dir/a\n', t, 'dir/a')
-        
+
         # But we still get NoSuchFile if we can't make the parent dir
         self.assertRaises(NoSuchFile, t.put_bytes_non_atomic, 'not/there/a',
                                        'contents\n',
@@ -353,7 +341,7 @@ class TransportTests(TestTransportImplementation):
         umask = osutils.get_umask()
         t.put_bytes('nomode', 'test text\n', mode=None)
         self.assertTransportMode(t, 'nomode', 0666 & ~umask)
-        
+
     def test_put_bytes_non_atomic_permissions(self):
         t = self.get_transport()
 
@@ -387,7 +375,7 @@ class TransportTests(TestTransportImplementation):
         t.put_bytes_non_atomic('dir777/mode664', 'test text\n', mode=0664,
                                dir_mode=0777, create_parent_dir=True)
         self.assertTransportMode(t, 'dir777', 0777)
-        
+
     def test_put_file(self):
         t = self.get_transport()
 
@@ -441,7 +429,7 @@ class TransportTests(TestTransportImplementation):
         t.put_file_non_atomic('dir/a', StringIO('contents for dir/a\n'),
                               create_parent_dir=True)
         self.check_transport_contents('contents for dir/a\n', t, 'dir/a')
-        
+
         # But we still get NoSuchFile if we can't make the parent dir
         self.assertRaises(NoSuchFile, t.put_file_non_atomic, 'not/there/a',
                                        StringIO('contents\n'),
@@ -469,7 +457,7 @@ class TransportTests(TestTransportImplementation):
         umask = osutils.get_umask()
         t.put_file('nomode', StringIO('test text\n'), mode=None)
         self.assertTransportMode(t, 'nomode', 0666 & ~umask)
-        
+
     def test_put_file_non_atomic_permissions(self):
         t = self.get_transport()
 
@@ -492,7 +480,7 @@ class TransportTests(TestTransportImplementation):
         umask = osutils.get_umask()
         t.put_file_non_atomic('nomode', StringIO('test text\n'), mode=None)
         self.assertTransportMode(t, 'nomode', 0666 & ~umask)
-        
+
         # We should also be able to set the mode for a parent directory
         # when it is created
         sio = StringIO()
@@ -538,7 +526,7 @@ class TransportTests(TestTransportImplementation):
         t = self.get_transport()
 
         if t.is_readonly():
-            # cannot mkdir on readonly transports. We're not testing for 
+            # cannot mkdir on readonly transports. We're not testing for
             # cache coherency because cache behaviour is not currently
             # defined for the transport interface.
             self.assertRaises(TransportNotPossible, t.mkdir, '.')
@@ -565,7 +553,7 @@ class TransportTests(TestTransportImplementation):
 
         # we were testing that a local mkdir followed by a transport
         # mkdir failed thusly, but given that we * in one process * do not
-        # concurrently fiddle with disk dirs and then use transport to do 
+        # concurrently fiddle with disk dirs and then use transport to do
         # things, the win here seems marginal compared to the constraint on
         # the interface. RBC 20051227
         t.mkdir('dir_g')
@@ -790,7 +778,7 @@ class TransportTests(TestTransportImplementation):
                 t.append_file, 'f', StringIO('f'), mode=None)
             return
         t.append_file('f', StringIO('f'), mode=None)
-        
+
     def test_append_bytes_mode(self):
         # check append_bytes accepts a mode
         t = self.get_transport()
@@ -799,7 +787,7 @@ class TransportTests(TestTransportImplementation):
                 t.append_bytes, 'f', 'f', mode=None)
             return
         t.append_bytes('f', 'f', mode=None)
-        
+
     def test_delete(self):
         # TODO: Test Transport.delete
         t = self.get_transport()
@@ -866,7 +854,7 @@ class TransportTests(TestTransportImplementation):
 
     def test_rmdir_not_empty(self):
         """Deleting a non-empty directory raises an exception
-        
+
         sftp (and possibly others) don't give us a specific "directory not
         empty" exception -- we can just see that the operation failed.
         """
@@ -879,7 +867,7 @@ class TransportTests(TestTransportImplementation):
 
     def test_rmdir_empty_but_similar_prefix(self):
         """rmdir does not get confused by sibling paths.
-        
+
         A naive implementation of MemoryTransport would refuse to rmdir
         ".bzr/branch" if there is a ".bzr/branch-format" directory, because it
         uses "path.startswith(dir)" on all file paths to determine if directory
@@ -1021,7 +1009,7 @@ class TransportTests(TestTransportImplementation):
 
     def test_connection_error(self):
         """ConnectionError is raised when connection is impossible.
-        
+
         The error should be raised from the first operation on the transport.
         """
         try:
@@ -1115,6 +1103,7 @@ class TransportTests(TestTransportImplementation):
 
         self.assertListRaises(PathError, t.list_dir, 'q')
         self.assertListRaises(PathError, t.list_dir, 'c/f')
+        # 'a' is a file, list_dir should raise an error
         self.assertListRaises(PathError, t.list_dir, 'a')
 
     def test_list_dir_result_is_url_escaped(self):
@@ -1437,6 +1426,36 @@ class TransportTests(TestTransportImplementation):
                          'to/dir/b%2525z',
                          'to/bar',]))
 
+    def test_copy_tree_to_transport(self):
+        transport = self.get_transport()
+        if not transport.listable():
+            self.assertRaises(TransportNotPossible,
+                              transport.iter_files_recursive)
+            return
+        if transport.is_readonly():
+            return
+        self.build_tree(['from/',
+                         'from/dir/',
+                         'from/dir/foo',
+                         'from/dir/bar',
+                         'from/dir/b%25z', # make sure quoting is correct
+                         'from/bar'],
+                        transport=transport)
+        from_transport = transport.clone('from')
+        to_transport = transport.clone('to')
+        to_transport.ensure_base()
+        from_transport.copy_tree_to_transport(to_transport)
+        paths = set(transport.iter_files_recursive())
+        self.assertEqual(paths,
+                    set(['from/dir/foo',
+                         'from/dir/bar',
+                         'from/dir/b%2525z',
+                         'from/bar',
+                         'to/dir/foo',
+                         'to/dir/bar',
+                         'to/dir/b%2525z',
+                         'to/bar',]))
+
     def test_unicode_paths(self):
         """Test that we can read/write files with Unicode names."""
         t = self.get_transport()
@@ -1476,7 +1495,10 @@ class TransportTests(TestTransportImplementation):
         transport.put_bytes('foo', 'bar')
         transport3 = self.get_transport()
         self.check_transport_contents('bar', transport3, 'foo')
-        # its base should be usable.
+        # its base should be usable. XXX: This is true only if we don't use
+        # auhentication, otherwise 'base' doesn't mention the password and we
+        # can't access it anymore since the password is lost (it *could* be
+        # mentioned in the url given by the test server) --vila 090226
         transport4 = get_transport(transport.base)
         self.check_transport_contents('bar', transport4, 'foo')
 

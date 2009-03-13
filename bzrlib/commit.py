@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -60,6 +60,7 @@ from bzrlib import (
     debug,
     errors,
     revision,
+    trace,
     tree,
     )
 from bzrlib.branch import Branch
@@ -77,7 +78,7 @@ from bzrlib.osutils import (get_user_encoding,
                             )
 from bzrlib.testament import Testament
 from bzrlib.trace import mutter, note, warning, is_quiet
-from bzrlib.inventory import InventoryEntry, make_entry
+from bzrlib.inventory import Inventory, InventoryEntry, make_entry
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (deprecated_passed,
         deprecated_function,
@@ -205,7 +206,8 @@ class Commit(object):
                config=None,
                message_callback=None,
                recursive='down',
-               exclude=None):
+               exclude=None,
+               possible_master_transports=None):
         """Commit working copy as a new revision.
 
         :param message: the commit message (it or message_callback is required)
@@ -235,7 +237,7 @@ class Commit(object):
             pending changes of any sort during this commit.
         :param exclude: None or a list of relative paths to exclude from the
             commit. Pending changes to excluded files will be ignored by the
-            commit. 
+            commit.
         """
         mutter('preparing to commit')
 
@@ -294,7 +296,7 @@ class Commit(object):
                 raise ConflictsInTree
 
             # Setup the bound branch variables as needed.
-            self._check_bound_branch()
+            self._check_bound_branch(possible_master_transports)
 
             # Check that the working tree is up to date
             old_revno, new_revno = self._check_out_of_date_tree()
@@ -349,9 +351,9 @@ class Commit(object):
                     entries_title="Directory")
             self.builder = self.branch.get_commit_builder(self.parents,
                 self.config, timestamp, timezone, committer, revprops, rev_id)
-            
+
             try:
-                self.builder.recording_deletes()
+                self.builder.will_record_deletes()
                 # find the location being committed to
                 if self.bound_branch:
                     master_location = self.master_branch.base
@@ -380,7 +382,10 @@ class Commit(object):
                 # Add revision data to the local branch
                 self.rev_id = self.builder.commit(self.message)
 
-            except:
+            except Exception, e:
+                mutter("aborting commit write group because of exception:")
+                trace.log_exception_quietly()
+                note("aborting commit write group: %r" % (e,))
                 self.builder.abort()
                 raise
 
@@ -389,16 +394,11 @@ class Commit(object):
             # Upload revision data to the master.
             # this will propagate merged revisions too if needed.
             if self.bound_branch:
-                if not self.master_branch.repository.has_same_location(
-                        self.branch.repository):
-                    self._set_progress_stage("Uploading data to master branch")
-                    self.master_branch.repository.fetch(self.branch.repository,
-                        revision_id=self.rev_id)
-                # now the master has the revision data
+                self._set_progress_stage("Uploading data to master branch")
                 # 'commit' to the master first so a timeout here causes the
                 # local branch to be out of date
-                self.master_branch.set_last_revision_info(new_revno,
-                                                          self.rev_id)
+                self.master_branch.import_last_revision_info(
+                    self.branch.repository, new_revno, self.rev_id)
 
             # and now do the commit locally.
             self.branch.set_last_revision_info(new_revno, self.rev_id)
@@ -406,7 +406,7 @@ class Commit(object):
             # Make the working tree up to date with the branch
             self._set_progress_stage("Updating the working tree")
             self.work_tree.update_basis_by_delta(self.rev_id,
-                 self.builder.basis_delta)
+                 self.builder.get_basis_delta())
             self.reporter.completed(new_revno, self.rev_id)
             self._process_post_hooks(old_revno, new_revno)
         finally:
@@ -435,13 +435,13 @@ class Commit(object):
         # If length == 1, then we only have the root entry. Which means
         # that there is no real difference (only the root could be different)
         # unless deletes occured, in which case the length is irrelevant.
-        if (self.any_entries_deleted or 
+        if (self.any_entries_deleted or
             (len(self.builder.new_inventory) != 1 and
              self.builder.any_changes())):
             return
         raise PointlessCommit()
 
-    def _check_bound_branch(self):
+    def _check_bound_branch(self, possible_master_transports=None):
         """Check to see if the local branch is bound.
 
         If it is bound, then most of the commit will actually be
@@ -452,7 +452,8 @@ class Commit(object):
             raise errors.LocalRequiresBoundBranch()
 
         if not self.local:
-            self.master_branch = self.branch.get_master_branch()
+            self.master_branch = self.branch.get_master_branch(
+                possible_master_transports)
 
         if not self.master_branch:
             # make this branch the reference branch for out of date checks.
@@ -469,7 +470,7 @@ class Commit(object):
         #       commits to the remote branch if they would fit.
         #       But for now, just require remote to be identical
         #       to local.
-        
+
         # Make sure the local branch is identical to the master
         master_info = self.master_branch.last_revision_info()
         local_info = self.branch.last_revision_info()
@@ -532,7 +533,7 @@ class Commit(object):
     def _process_hooks(self, hook_name, old_revno, new_revno):
         if not Branch.hooks[hook_name]:
             return
-        
+
         # new style commit hooks:
         if not self.bound_branch:
             hook_master = self.branch
@@ -547,12 +548,12 @@ class Commit(object):
             old_revid = self.parents[0]
         else:
             old_revid = bzrlib.revision.NULL_REVISION
-        
+
         if hook_name == "pre_commit":
             future_tree = self.builder.revision_tree()
             tree_delta = future_tree.changes_from(self.basis_tree,
                                              include_root=True)
-        
+
         for hook in Branch.hooks[hook_name]:
             # show the running hook in the progress bar. As hooks may
             # end up doing nothing (e.g. because they are not configured by
@@ -588,11 +589,11 @@ class Commit(object):
             # typically this will be useful enough.
             except Exception, e:
                 found_exception = e
-        if found_exception is not None: 
+        if found_exception is not None:
             # don't do a plan raise, because the last exception may have been
             # trashed, e is our sure-to-work exception even though it loses the
             # full traceback. XXX: RBC 20060421 perhaps we could check the
-            # exc_info and if its the same one do a plain raise otherwise 
+            # exc_info and if its the same one do a plain raise otherwise
             # 'raise e' as we do now.
             raise e
 
@@ -614,7 +615,7 @@ class Commit(object):
         # serialiser not by commit. Then we can also add an unescaper
         # in the deserializer and start roundtripping revision messages
         # precisely. See repository_implementations/test_repository.py
-        
+
         # Python strings can include characters that can't be
         # represented in well-formed XML; escape characters that
         # aren't listed in the XML specification
@@ -628,7 +629,7 @@ class Commit(object):
 
     def _gather_parents(self):
         """Record the parents of a merge for merge detection."""
-        # TODO: Make sure that this list doesn't contain duplicate 
+        # TODO: Make sure that this list doesn't contain duplicate
         # entries and the order is preserved when doing this.
         self.parents = self.work_tree.get_parent_ids()
         self.parent_invs = [self.basis_inv]
@@ -647,7 +648,7 @@ class Commit(object):
         #
         # This starts by creating a new empty inventory. Depending on
         # which files are selected for commit, and what is present in the
-        # current tree, the new inventory is populated. inventory entries 
+        # current tree, the new inventory is populated. inventory entries
         # which are candidates for modification have their revision set to
         # None; inventory entries that are carried over untouched have their
         # revision set to their prior value.
@@ -693,8 +694,19 @@ class Commit(object):
     def _report_and_accumulate_deletes(self):
         # XXX: Could the list of deleted paths and ids be instead taken from
         # _populate_from_inventory?
-        deleted_ids = set(self.basis_inv._byid.keys()) - \
-            set(self.builder.new_inventory._byid.keys())
+        if (isinstance(self.basis_inv, Inventory)
+            and isinstance(self.builder.new_inventory, Inventory)):
+            # the older Inventory classes provide a _byid dict, and building a
+            # set from the keys of this dict is substantially faster than even
+            # getting a set of ids from the inventory
+            #
+            # <lifeless> set(dict) is roughly the same speed as
+            # set(iter(dict)) and both are significantly slower than
+            # set(dict.keys())
+            deleted_ids = set(self.basis_inv._byid.keys()) - \
+               set(self.builder.new_inventory._byid.keys())
+        else:
+            deleted_ids = set(self.basis_inv) - set(self.builder.new_inventory)
         if deleted_ids:
             self.any_entries_deleted = True
             deleted = [(self.basis_tree.id2path(file_id), file_id)
@@ -711,7 +723,7 @@ class Commit(object):
             # raise an exception as soon as we find a single unknown.
             for unknown in self.work_tree.unknowns():
                 raise StrictCommitFailed()
-        
+
         specific_files = self.specific_files
         exclude = self.exclude
         report_changes = self.reporter.is_verbose()
@@ -807,7 +819,7 @@ class Commit(object):
         # FIXME: be more comprehensive here:
         # this works when both trees are in --trees repository,
         # but when both are bound to a different repository,
-        # it fails; a better way of approaching this is to 
+        # it fails; a better way of approaching this is to
         # finally implement the explicit-caches approach design
         # a while back - RBC 20070306.
         if sub_tree.branch.repository.has_same_location(
@@ -858,7 +870,7 @@ class Commit(object):
         else:
             basis_ie = None
         change = ie.describe_change(basis_ie, ie)
-        if change in (InventoryEntry.RENAMED, 
+        if change in (InventoryEntry.RENAMED,
             InventoryEntry.MODIFIED_AND_RENAMED):
             old_path = self.basis_inv.id2path(ie.file_id)
             self.reporter.renamed(change, old_path, path)

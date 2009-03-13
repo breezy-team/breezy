@@ -14,22 +14,22 @@ To create a mirror branch, set-up a shared repository
 (or ``checkout``) command to create the mirror.
 For example::
 
-  bzr init-repo X-repo
-  cd X-repo
-  bzr branch sftp://centralhost/srv/bzr/X-repo/X-trunk
+  bzr init-repo PROJECT
+  cd PROJECT
+  bzr branch sftp://centralhost/srv/bzr/PROJECT/trunk
 
 Task branches
 -------------
 
 Each new feature or fix is developed in its own branch.
 These branches are referred to as *feature branches* or
-*task branches* - the terms are used interchangably.
+*task branches* - the terms are used interchangeably.
 
 To create a task branch, use the ``branch`` command
 against your mirror branch. For example::
 
-  bzr branch X-trunk X-fix-123
-  cd X-fix-123
+  bzr branch trunk fix-123
+  cd fix-123
   (hack, hack, hack)
 
 There are numerous advantages to this approach:
@@ -51,7 +51,7 @@ Refreshing a mirror branch
 
 Use the ``pull`` command to do this::
 
-  cd X-trunk
+  cd trunk
   bzr pull
 
 Merging the latest trunk into a feature branch
@@ -59,10 +59,10 @@ Merging the latest trunk into a feature branch
 
 Use the ``merge`` command to do this::
 
-  cd X-fix-123
+  cd fix-123
   bzr merge
   (resolve any conflicts)
-  bzr commit -m "merged X-trunk"
+  bzr commit -m "merged trunk"
 
 Merging a feature into the trunk
 --------------------------------
@@ -73,17 +73,17 @@ the main trunk are shown below.
 
 If your mirror is a checkout::
 
-  cd X-trunk
+  cd trunk
   bzr update
-  bzr merge ../X-fix-123
+  bzr merge ../fix-123
   (resolve any conflicts)
   bzr commit -m "Fixed bug #123"
 
 If your mirror is a branch::
 
-  cd X-trunk
+  cd trunk
   bzr pull
-  bzr merge ../X-fix-123
+  bzr merge ../fix-123
   (resolve any conflicts)
   bzr commit -m "Fixed bug #123"
   bzr push

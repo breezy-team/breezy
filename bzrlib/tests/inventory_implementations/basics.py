@@ -34,15 +34,16 @@ from bzrlib.inventory import (
 
 from bzrlib.tests import (
         TestCase,
-        multiply_tests_from_modules,
         )
 
 
-class TestInventoryBasics(TestCase):
-    # Most of these were moved the rather old bzrlib.tests.test_inv module
-    
+class TestInventory(TestCase):
+
     def make_inventory(self, root_id):
         return self.inventory_class(root_id=root_id)
+
+
+class TestInventoryUpdates(TestInventory):
 
     def test_creation_from_root_id(self):
         # iff a root id is passed to the constructor, a root directory is made
@@ -89,19 +90,6 @@ class TestInventoryBasics(TestCase):
         self.assertEquals('someroot', inv2.root.file_id)
         self.assertEquals('therev', inv2.root.revision)
 
-    def test_is_root(self):
-        """Ensure our root-checking code is accurate."""
-        inv = self.make_inventory('TREE_ROOT')
-        self.assertTrue(inv.is_root('TREE_ROOT'))
-        self.assertFalse(inv.is_root('booga'))
-        inv.root.file_id = 'booga'
-        self.assertFalse(inv.is_root('TREE_ROOT'))
-        self.assertTrue(inv.is_root('booga'))
-        # works properly even if no root is set
-        inv.root = None
-        self.assertFalse(inv.is_root('TREE_ROOT'))
-        self.assertFalse(inv.is_root('booga'))
-
     def test_create_tree_reference(self):
         inv = self.make_inventory('tree-root-123')
         inv.add(TreeReference('nested-id', 'nested', parent_id='tree-root-123',
@@ -116,6 +104,69 @@ class TestInventoryBasics(TestCase):
             self.assertContainsRe(str(e), u'\u1234'.encode('utf-8'))
         else:
             self.fail('BzrError not raised')
+
+    def test_add_recursive(self):
+        parent = InventoryDirectory('src-id', 'src', 'tree-root')
+        child = InventoryFile('hello-id', 'hello.c', 'src-id')
+        parent.children[child.file_id] = child
+        inv = self.make_inventory('tree-root')
+        inv.add(parent)
+        self.assertEqual('src/hello.c', inv.id2path('hello-id'))
+
+
+class TestInventoryApplyDelta(TestInventory):
+
+    def test_apply_delta_add(self):
+        inv = self.make_inventory('tree-root')
+        inv.apply_delta([
+            (None, "a", "a-id", InventoryFile('a-id', 'a', 'tree-root')),
+            ])
+        self.assertEqual('a', inv.id2path('a-id'))
+
+    def test_apply_delta_delete(self):
+        inv = self.make_inventory('tree-root')
+        inv.apply_delta([
+            (None, "a", "a-id", InventoryFile('a-id', 'a', 'tree-root')),
+            ])
+        self.assertEqual('a', inv.id2path('a-id'))
+        a_ie = inv['a-id']
+        inv.apply_delta([("a", None, "a-id", a_ie)])
+        self.assertRaises(errors.NoSuchId, inv.id2path, 'a-id')
+
+    def test_apply_delta_rename(self):
+        inv = self.make_inventory('tree-root')
+        inv.apply_delta([
+            (None, "a", "a-id", InventoryFile('a-id', 'a', 'tree-root')),
+            ])
+        self.assertEqual('a', inv.id2path('a-id'))
+        a_ie = inv['a-id']
+        b_ie = InventoryFile(a_ie.file_id, "b", a_ie.parent_id)
+        inv.apply_delta([("a", "b", "a-id", b_ie)])
+        self.assertEqual("b", inv.id2path('a-id'))
+
+    def test_apply_delta_illegal(self):
+        # A file-id cannot appear in a delta more than once
+        inv = self.make_inventory('tree-root')
+        self.assertRaises(AssertionError, inv.apply_delta, [
+            ("a", "a", "id-1", InventoryFile('id-1', 'a', 'tree-root')),
+            ("a", "b", "id-1", InventoryFile('id-1', 'b', 'tree-root')),
+            ])
+
+
+class TestInventoryReads(TestInventory):
+
+    def test_is_root(self):
+        """Ensure our root-checking code is accurate."""
+        inv = self.make_inventory('TREE_ROOT')
+        self.assertTrue(inv.is_root('TREE_ROOT'))
+        self.assertFalse(inv.is_root('booga'))
+        inv.root.file_id = 'booga'
+        self.assertFalse(inv.is_root('TREE_ROOT'))
+        self.assertTrue(inv.is_root('booga'))
+        # works properly even if no root is set
+        inv.root = None
+        self.assertFalse(inv.is_root('TREE_ROOT'))
+        self.assertFalse(inv.is_root('booga'))
 
     def test_ids(self):
         """Test detection of files within selected directories."""
@@ -232,11 +283,3 @@ class TestInventoryBasics(TestCase):
             ('src/bye.c', 'bye-id'),
             ], [(path, ie.file_id) for path, ie in inv.iter_entries_by_dir(
                 specific_file_ids=('bye-id',), yield_parents=True)])
-
-    def test_add_recursive(self):
-        parent = InventoryDirectory('src-id', 'src', 'tree-root')
-        child = InventoryFile('hello-id', 'hello.c', 'src-id')
-        parent.children[child.file_id] = child
-        inv = self.make_inventory('tree-root')
-        inv.add(parent)
-        self.assertEqual('src/hello.c', inv.id2path('hello-id'))

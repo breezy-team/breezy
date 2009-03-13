@@ -19,7 +19,7 @@
 """Black-box tests for bzr.
 
 These check that it behaves properly when it's invoked through the regular
-command-line interface. This doesn't actually run a new interpreter but 
+command-line interface. This doesn't actually run a new interpreter but
 rather starts again from the run_bzr function.
 """
 
@@ -229,6 +229,16 @@ class TestSimpleAnnotate(TestCaseWithTransport):
 
         os.chdir('tree')
         out, err = self.run_bzr('annotate empty')
+        self.assertEqual('', out)
+
+    def test_annotate_empty_file_show_ids(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/empty', '')])
+        tree.add('empty')
+        tree.commit('add empty file')
+
+        os.chdir('tree')
+        out, err = self.run_bzr(['annotate', '--show-ids', 'empty'])
         self.assertEqual('', out)
 
     def test_annotate_nonexistant_file(self):

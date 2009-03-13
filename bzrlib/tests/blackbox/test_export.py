@@ -187,7 +187,7 @@ class TestExport(ExternalBase):
         tree.add('goodbye')
         tree.commit('setup')
         return tree
-        
+
     def test_basic_directory_export(self):
         self.example_branch()
         os.chdir('branch')
@@ -262,7 +262,7 @@ class TestExport(ExternalBase):
             self.assertEqual('foo', zf.read('pizza/hello'))
         finally:
             zf.close()
-        
+
         self.run_bzr('export ../first-zip --format=zip -r 1')
         zf = zipfile.ZipFile('../first-zip')
         try:

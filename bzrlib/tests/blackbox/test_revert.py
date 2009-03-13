@@ -46,7 +46,7 @@ class TestRevert(ExternalBase):
         self.assertEquals('modified:\n  dir/file\n', self.run_bzr('status')[0])
 
     def _prepare_rename_mod_tree(self):
-        self.build_tree(['a/', 'a/b', 'a/c', 'a/d/', 'a/d/e', 'f/', 'f/g', 
+        self.build_tree(['a/', 'a/b', 'a/c', 'a/d/', 'a/d/e', 'f/', 'f/g',
                          'f/h', 'f/i'])
         self.run_bzr('init')
         self.run_bzr('add')
@@ -154,7 +154,7 @@ class TestRevert(ExternalBase):
                              os.readlink('symlink'))
         else:
             self.log("skipping revert symlink tests")
-        
+
         file('hello', 'wt').write('xyz')
         self.run_bzr('commit -m xyz hello')
         self.run_bzr('revert -r 1 hello')

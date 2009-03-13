@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -425,7 +425,7 @@ class TestBranchConfig(tests.TestCaseWithTransport):
         locations = config.locations_config_filename()
         config.ensure_config_dir_exists()
         local_url = urlutils.local_path_to_url('branch')
-        open(locations, 'wb').write('[%s]\nnickname = foobar' 
+        open(locations, 'wb').write('[%s]\nnickname = foobar'
                                     % (local_url,))
         self.assertEqual('foobar', branch.nick)
 
@@ -436,7 +436,7 @@ class TestBranchConfig(tests.TestCaseWithTransport):
 
         locations = config.locations_config_filename()
         config.ensure_config_dir_exists()
-        open(locations, 'wb').write('[%s/branch]\nnickname = barry' 
+        open(locations, 'wb').write('[%s/branch]\nnickname = barry'
                                     % (osutils.getcwd().encode('utf8'),))
         self.assertEqual('barry', branch.nick)
 
@@ -1263,6 +1263,16 @@ port=port # Error: Not an int
 """))
         self.assertRaises(ValueError, conf.get_credentials, 'ftp', 'foo.net')
 
+    def test_unknown_password_encoding(self):
+        conf = config.AuthenticationConfig(_file=StringIO(
+                """[broken]
+scheme=ftp
+user=joe
+password_encoding=unknown
+"""))
+        self.assertRaises(ValueError, conf.get_password,
+                          'ftp', 'foo.net', 'joe')
+
     def test_credentials_for_scheme_host(self):
         conf = config.AuthenticationConfig(_file=StringIO(
                 """# Identity on foo.net
@@ -1412,6 +1422,32 @@ password=bendover
         self.assertEquals(True, credentials.get('verify_certificates'))
 
 
+class TestAuthenticationStorage(tests.TestCaseInTempDir):
+
+    def test_set_credentials(self):
+        conf = config.AuthenticationConfig()
+        conf.set_credentials('name', 'host', 'user', 'scheme', 'password',
+        99, path='/foo', verify_certificates=False)
+        credentials = conf.get_credentials(host='host', scheme='scheme',
+                                           port=99, path='/foo')
+        CREDENTIALS = {'name': 'name', 'user': 'user', 'password': 'password',
+                       'verify_certificates': False,}
+        self.assertEqual(CREDENTIALS, credentials)
+        credentials_from_disk = config.AuthenticationConfig().get_credentials(
+            host='host', scheme='scheme', port=99, path='/foo')
+        self.assertEqual(CREDENTIALS, credentials_from_disk)
+
+    def test_reset_credentials_different_name(self):
+        conf = config.AuthenticationConfig()
+        conf.set_credentials('name', 'host', 'user', 'scheme', 'password'),
+        conf.set_credentials('name2', 'host', 'user2', 'scheme', 'password'),
+        self.assertIs(None, conf._get_config().get('name'))
+        credentials = conf.get_credentials(host='host', scheme='scheme')
+        CREDENTIALS = {'name': 'name2', 'user': 'user2', 'password':
+                       'password', 'verify_certificates': True}
+        self.assertEqual(CREDENTIALS, credentials)
+
+
 class TestAuthenticationConfig(tests.TestCase):
     """Test AuthenticationConfig behaviour"""
 
@@ -1498,6 +1534,32 @@ user=jim
         self.assertNotContainsRe(
             self._get_log(keep_log_file=True),
             'password ignored in section \[ssh with password\]')
+
+
+class TestCredentialStoreRegistry(tests.TestCase):
+
+    def _get_cs_registry(self):
+        return config.credential_store_registry
+
+    def test_default_credential_store(self):
+        r = self._get_cs_registry()
+        default = r.get_credential_store(None)
+        self.assertIsInstance(default, config.PlainTextCredentialStore)
+
+    def test_unknown_credential_store(self):
+        r = self._get_cs_registry()
+        # It's hard to imagine someone creating a credential store named
+        # 'unknown' so we use that as an never registered key.
+        self.assertRaises(KeyError, r.get_credential_store, 'unknown')
+
+
+class TestPlainTextCredentialStore(tests.TestCase):
+
+    def test_decode_password(self):
+        r = config.credential_store_registry
+        plain_text = r.get_credential_store()
+        decoded = plain_text.decode_password(dict(password='secret'))
+        self.assertEquals('secret', decoded)
 
 
 # FIXME: Once we have a way to declare authentication to all test servers, we

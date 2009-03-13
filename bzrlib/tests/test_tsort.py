@@ -50,29 +50,29 @@ class TopoSortTests(TestCase):
     def test_tsort_cycle(self):
         """TopoSort traps graph with cycles"""
         self.assertSortAndIterateRaise(GraphCycleError,
-                                       {0: [1], 
+                                       {0: [1],
                                         1: [0]}.items())
 
     def test_tsort_cycle_2(self):
         """TopoSort traps graph with longer cycle"""
         self.assertSortAndIterateRaise(GraphCycleError,
-                                       {0: [1], 
-                                        1: [2], 
+                                       {0: [1],
+                                        1: [2],
                                         2: [0]}.items())
-                 
+
     def test_tsort_1(self):
         """TopoSort simple nontrivial graph"""
-        self.assertSortAndIterate({0: [3], 
+        self.assertSortAndIterate({0: [3],
                                    1: [4],
                                    2: [1, 4],
-                                   3: [], 
+                                   3: [],
                                    4: [0, 3]}.items(),
                                   [3, 0, 4, 1, 2])
 
     def test_tsort_partial(self):
         """Topological sort with partial ordering.
 
-        If the graph does not give an order between two nodes, they are 
+        If the graph does not give an order between two nodes, they are
         returned in lexicographical order.
         """
         self.assertSortAndIterate(([(0, []),
@@ -140,7 +140,7 @@ class MergeSortTests(TestCase):
                                   'id',
                                   [(0, 'id', 0, (1,), True)],
                                   True)
-    
+
     def test_sequence_numbers_increase_no_merges(self):
         # emit a few revisions with no merges to check the sequence
         # numbering works in trivial cases
@@ -244,9 +244,9 @@ class MergeSortTests(TestCase):
         # the merge depth marker should reflect the depth of the revision
         # in terms of merges out from the mainline
         # revid, depth, parents:
-        #  A 0   [D, B]   
-        #  B  1  [C, F]   
-        #  C  1  [H] 
+        #  A 0   [D, B]
+        #  B  1  [C, F]
+        #  C  1  [H]
         #  D 0   [H, E]
         #  E  1  [G, F]
         #  F   2 [G]
@@ -403,10 +403,10 @@ class MergeSortTests(TestCase):
     def test_end_of_merge_multiple_revisions_merged_at_once(self):
         # when multiple branches are merged at once, both of their
         # branch-endpoints should be listed as end-of-merge.
-        # Also, the order of the multiple merges should be 
+        # Also, the order of the multiple merges should be
         # left-right shown top to bottom.
         # * means end of merge
-        # A 0    [H, B, E] 
+        # A 0    [H, B, E]
         # B  1   [D, C]
         # C   2  [D]       *
         # D  1   [H]       *
@@ -483,7 +483,7 @@ class MergeSortTests(TestCase):
         # and thus when truncated to D,B,A it should show
         # A 0
         # B 0
-        # C 1 
+        # C 1
         # because C is brought in by B in this view and D
         # is the terminating revision id
         # this should also preserve revision numbers: C should still be 2.1.1
@@ -566,11 +566,11 @@ class MergeSortTests(TestCase):
              ],
             True
             )
-        
+
     def test_revnos_are_globally_assigned(self):
         """revnos are assigned according to the revision they derive from."""
-        # in this test we setup a number of branches that all derive from 
-        # the first revision, and then merge them one at a time, which 
+        # in this test we setup a number of branches that all derive from
+        # the first revision, and then merge them one at a time, which
         # should give the revisions as they merge numbers still deriving from
         # the revision were based on.
         # merge 3: J: ['G', 'I']

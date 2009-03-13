@@ -23,7 +23,7 @@ from bzrlib import (
     osutils,
     )
 
-from bzrlib.workingtree_4 import WorkingTreeFormat4
+from bzrlib.workingtree_4 import DirStateWorkingTreeFormat
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 
 
@@ -42,6 +42,16 @@ class TestMove(TestCaseWithWorkingTree):
         """Check that the tree has the correct layout."""
         actual = self.get_tree_layout(tree)
         self.assertEqual(expected, actual)
+
+    def test_move_via_rm_and_add(self):
+        """Move by remove and add-with-id"""
+        self.build_tree(['a1', 'b1'])
+        tree = self.make_branch_and_tree('.')
+        tree.add(['a1'], ids=['a1-id'])
+        tree.commit('initial commit')
+        tree.remove('a1', force=True, keep_files=False)
+        tree.add(['b1'], ids=['a1-id'])
+        tree._validate()
 
     def test_move_correct_call_named(self):
         """tree.move has the deprecated parameter 'to_name'.
@@ -99,9 +109,10 @@ class TestMove(TestCaseWithWorkingTree):
                                 tree.move, ['a1'], to_name='sub1',
                                 after=False)
         except TypeError:
-            # WorkingTreeFormat4 doesn't have to maintain api compatibility
-            # since it was deprecated before the class was introduced.
-            if not isinstance(self.workingtree_format, WorkingTreeFormat4):
+            # WorkingTreeFormat4 and later don't have to maintain api
+            # compatibility since it was deprecated before they were introduced.
+            if not isinstance(self.workingtree_format,
+                DirStateWorkingTreeFormat):
                 raise
         tree._validate()
 

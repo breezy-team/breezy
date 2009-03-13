@@ -58,7 +58,7 @@ class TestHelp(ExternalBase):
         out, err = self.run_bzr('help checkouts')
         self.assertContainsRe(out, 'checkout')
         self.assertContainsRe(out, 'lightweight')
-        
+
     def test_help_urlspec(self):
         """Smoke test for 'bzr help urlspec'"""
         out, err = self.run_bzr('help urlspec')

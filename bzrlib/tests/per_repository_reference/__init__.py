@@ -27,12 +27,7 @@ from bzrlib import (
     remote,
     )
 from bzrlib.bzrdir import BzrDir
-from bzrlib.tests import (
-                          adapt_modules,
-                          adapt_tests,
-                          TestScenarioApplier,
-                          TestSuite,
-                          )
+from bzrlib.tests import multiply_tests
 from bzrlib.tests.per_repository import (
     all_repository_format_scenarios,
     TestCaseWithRepository,
@@ -43,7 +38,7 @@ class TestCaseWithExternalReferenceRepository(TestCaseWithRepository):
 
     def make_referring(self, relpath, target_path):
         """Get a new repository that refers to a_repository.
-        
+
         :param relpath: The path to create the repository at.
         :param a_repository: A repository to refer to.
         """
@@ -60,7 +55,7 @@ class TestCorrectFormat(TestCaseWithExternalReferenceRepository):
 
     def test_repository_format(self):
         # make sure the repository on tree.branch is of the desired format,
-        # because developers use this api to setup the tree, branch and 
+        # because developers use this api to setup the tree, branch and
         # repository for their tests: having it not give the right repository
         # type would invalidate the tests.
         self.make_branch_and_tree('repo')
@@ -77,16 +72,13 @@ def external_reference_test_scenarios():
         # For remote repositories, we need at least one external reference
         # capable format to test it: defer this until landing such a format.
         # if isinstance(format, remote.RemoteRepositoryFormat):
-        #     scenario[1]['bzrdir_format'].repository_format = 
+        #     scenario[1]['bzrdir_format'].repository_format =
         if scenario_info['repository_format'].supports_external_lookups:
             result.append((test_name, scenario_info))
     return result
 
 
 def load_tests(standard_tests, module, loader):
-    adapter = TestScenarioApplier()
-    adapter.scenarios = external_reference_test_scenarios()
-
     module_list = [
         'bzrlib.tests.per_repository_reference.test_add_inventory',
         'bzrlib.tests.per_repository_reference.test_add_revision',
@@ -94,9 +86,9 @@ def load_tests(standard_tests, module, loader):
         'bzrlib.tests.per_repository_reference.test_all_revision_ids',
         'bzrlib.tests.per_repository_reference.test_break_lock',
         'bzrlib.tests.per_repository_reference.test_check',
+        'bzrlib.tests.per_repository_reference.test_default_stacking',
         ]
     # Parameterize per_repository_reference test modules by format.
-    result = TestSuite()
-    adapt_tests(standard_tests, adapter, result)
-    adapt_modules(module_list, adapter, loader, result)
-    return result
+    standard_tests.addTests(loader.loadTestsFromModuleNames(module_list))
+    return multiply_tests(standard_tests, external_reference_test_scenarios(),
+        loader.suiteClass())

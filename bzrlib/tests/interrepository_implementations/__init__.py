@@ -21,7 +21,7 @@
 
 These test the conformance of all the interrepository variations to the
 expected API including generally applicable corner cases.
-Specific tests for individual formats are in the tests/test_repository.py file 
+Specific tests for individual formats are in the tests/test_repository.py file
 rather than in tests/interrepository_implementations/*.py.
 """
 
@@ -33,96 +33,81 @@ from bzrlib.errors import (
 
 from bzrlib.repository import (
                                InterKnitRepo,
-                               InterKnit1and2,
-                               InterModel1and2,
                                InterRepository,
                                )
 from bzrlib.tests import (
-                          adapt_modules,
                           default_transport,
-                          TestScenarioApplier,
+                          multiply_tests,
                           )
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.transport import get_transport
 
 
-class InterRepositoryTestProviderAdapter(TestScenarioApplier):
-    """A tool to generate a suite testing multiple inter repository formats.
+def make_scenarios(transport_server, transport_readonly_server, formats):
+    """Transform the input formats to a list of scenarios.
 
-    This is done by copying the test once for each interrepo provider and injecting
-    the transport_server, transport_readonly_server, repository_format and 
-    repository_to_format classes into each copy.
-    Each copy is also given a new id() to make it easy to identify.
+    :param formats: A list of tuples:
+        (interrepo_class, repository_format, repository_format_to).
     """
+    result = []
+    for interrepo_class, repository_format, repository_format_to in formats:
+        id = '%s,%s,%s' % (interrepo_class.__name__,
+                            repository_format.__class__.__name__,
+                            repository_format_to.__class__.__name__)
+        scenario = (id,
+            {"transport_server": transport_server,
+             "transport_readonly_server": transport_readonly_server,
+             "repository_format": repository_format,
+             "interrepo_class": interrepo_class,
+             "repository_format_to": repository_format_to,
+             })
+        result.append(scenario)
+    return result
 
-    def __init__(self, transport_server, transport_readonly_server, formats):
-        TestScenarioApplier.__init__(self)
-        self._transport_server = transport_server
-        self._transport_readonly_server = transport_readonly_server
-        self.scenarios = self.formats_to_scenarios(formats)
-    
-    def formats_to_scenarios(self, formats):
-        """Transform the input formats to a list of scenarios.
 
-        :param formats: A list of tuples:
-            (interrepo_class, repository_format, repository_format_to).
-        """
-        result = []
-        for interrepo_class, repository_format, repository_format_to in formats:
-            id = '%s,%s,%s' % (interrepo_class.__name__,
-                                repository_format.__class__.__name__,
-                                repository_format_to.__class__.__name__)
-            scenario = (id,
-                {"transport_server":self._transport_server,
-                 "transport_readonly_server":self._transport_readonly_server,
-                 "repository_format":repository_format,
-                 "interrepo_class":interrepo_class,
-                 "repository_format_to":repository_format_to,
-                 })
-            result.append(scenario)
-        return result
-    
-    @staticmethod
-    def default_test_list():
-        """Generate the default list of interrepo permutations to test."""
-        from bzrlib.repofmt import knitrepo, pack_repo, weaverepo
-        result = []
-        # test the default InterRepository between format 6 and the current 
-        # default format.
-        # XXX: robertc 20060220 reinstate this when there are two supported
-        # formats which do not have an optimal code path between them.
-        #result.append((InterRepository,
-        #               RepositoryFormat6(),
-        #               RepositoryFormatKnit1()))
-        for optimiser_class in InterRepository._optimisers:
-            format_to_test = optimiser_class._get_repo_format_to_test()
-            if format_to_test is not None:
-                result.append((optimiser_class,
-                               format_to_test, format_to_test))
-        # if there are specific combinations we want to use, we can add them 
-        # here.
-        result.append((InterModel1and2,
-                       weaverepo.RepositoryFormat5(),
-                       knitrepo.RepositoryFormatKnit3()))
-        result.append((InterModel1and2,
-                       knitrepo.RepositoryFormatKnit1(),
-                       knitrepo.RepositoryFormatKnit3()))
-        result.append((InterKnit1and2,
-                       knitrepo.RepositoryFormatKnit1(),
-                       knitrepo.RepositoryFormatKnit3()))
-        result.append((InterKnitRepo,
-                       knitrepo.RepositoryFormatKnit1(),
-                       pack_repo.RepositoryFormatKnitPack1()))
-        result.append((InterKnitRepo,
-                       pack_repo.RepositoryFormatKnitPack1(),
-                       knitrepo.RepositoryFormatKnit1()))
-        result.append((InterKnitRepo,
-                       knitrepo.RepositoryFormatKnit3(),
-                       pack_repo.RepositoryFormatKnitPack3()))
-        result.append((InterKnitRepo,
-                       pack_repo.RepositoryFormatKnitPack3(),
-                       knitrepo.RepositoryFormatKnit3()))
-        return result
+def default_test_list():
+    """Generate the default list of interrepo permutations to test."""
+    from bzrlib.repofmt import knitrepo, pack_repo, weaverepo
+    result = []
+    # test the default InterRepository between format 6 and the current
+    # default format.
+    # XXX: robertc 20060220 reinstate this when there are two supported
+    # formats which do not have an optimal code path between them.
+    #result.append((InterRepository,
+    #               RepositoryFormat6(),
+    #               RepositoryFormatKnit1()))
+    for optimiser_class in InterRepository._optimisers:
+        format_to_test = optimiser_class._get_repo_format_to_test()
+        if format_to_test is not None:
+            result.append((optimiser_class,
+                           format_to_test, format_to_test))
+    # if there are specific combinations we want to use, we can add them
+    # here. We want to test rich root upgrading.
+    result.append((InterRepository,
+                   weaverepo.RepositoryFormat5(),
+                   knitrepo.RepositoryFormatKnit3()))
+    result.append((InterRepository,
+                   knitrepo.RepositoryFormatKnit1(),
+                   knitrepo.RepositoryFormatKnit3()))
+    result.append((InterRepository,
+                   knitrepo.RepositoryFormatKnit1(),
+                   knitrepo.RepositoryFormatKnit3()))
+    result.append((InterKnitRepo,
+                   knitrepo.RepositoryFormatKnit1(),
+                   pack_repo.RepositoryFormatKnitPack1()))
+    result.append((InterKnitRepo,
+                   pack_repo.RepositoryFormatKnitPack1(),
+                   knitrepo.RepositoryFormatKnit1()))
+    result.append((InterKnitRepo,
+                   knitrepo.RepositoryFormatKnit3(),
+                   pack_repo.RepositoryFormatKnitPack3()))
+    result.append((InterKnitRepo,
+                   pack_repo.RepositoryFormatKnitPack3(),
+                   knitrepo.RepositoryFormatKnit3()))
+    result.append((InterKnitRepo,
+                   pack_repo.RepositoryFormatKnitPack3(),
+                   pack_repo.RepositoryFormatKnitPack4()))
+    return result
 
 
 class TestCaseWithInterRepository(TestCaseWithBzrDir):
@@ -161,22 +146,16 @@ class TestCaseWithInterRepository(TestCaseWithBzrDir):
         return self.repository_format_to.initialize(made_control)
 
 
-def load_tests(basic_tests, module, loader):
-    result = loader.suiteClass()
-    # add the tests for this module
-    result.addTests(basic_tests)
-
-    test_interrepository_implementations = [
+def load_tests(standard_tests, module, loader):
+    submod_tests = loader.loadTestsFromModuleNames([
         'bzrlib.tests.interrepository_implementations.test_fetch',
         'bzrlib.tests.interrepository_implementations.test_interrepository',
-        ]
-    adapter = InterRepositoryTestProviderAdapter(
+        ])
+    scenarios = make_scenarios(
         default_transport,
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
-        InterRepositoryTestProviderAdapter.default_test_list()
+        default_test_list()
         )
-    # add the tests for the sub modules
-    adapt_modules(test_interrepository_implementations, adapter, loader, result)
-    return result
+    return multiply_tests(submod_tests, scenarios, standard_tests)

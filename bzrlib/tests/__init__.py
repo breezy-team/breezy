@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -53,6 +53,7 @@ from bzrlib import (
     bzrdir,
     debug,
     errors,
+    hooks,
     memorytree,
     osutils,
     progress,
@@ -76,6 +77,7 @@ except ImportError:
 from bzrlib.merge import merge_inner
 import bzrlib.merge3
 import bzrlib.plugin
+from bzrlib.smart import client, server
 import bzrlib.store
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (
@@ -126,7 +128,7 @@ class ExtendedTestResult(unittest._TextTestResult):
     """
 
     stop_early = False
-    
+
     def __init__(self, stream, descriptions, verbosity,
                  bench_history=None,
                  num_tests=None,
@@ -162,11 +164,11 @@ class ExtendedTestResult(unittest._TextTestResult):
         self.unsupported = {}
         self.count = 0
         self._overall_start_time = time.time()
-    
+
     def _extractBenchmarkTime(self, testCase):
         """Add a benchmark time for the current test case."""
         return getattr(testCase, "_benchtime", None)
-    
+
     def _elapsedTestTimeString(self):
         """Return a time string for the overall time the current test has taken."""
         return self._formatTime(time.time() - self._start_time)
@@ -215,8 +217,8 @@ class ExtendedTestResult(unittest._TextTestResult):
         fails with an unexpected error.
         """
         self._testConcluded(test)
-        if isinstance(err[1], TestSkipped):
-            return self._addSkipped(test, err)
+        if isinstance(err[1], TestNotApplicable):
+            return self._addNotApplicable(test, err)
         elif isinstance(err[1], UnavailableFeature):
             return self.addNotSupported(test, err[1].args[0])
         else:
@@ -276,7 +278,7 @@ class ExtendedTestResult(unittest._TextTestResult):
         """The test will not be run because of a missing feature.
         """
         # this can be called in two different ways: it may be that the
-        # test started running, and then raised (through addError) 
+        # test started running, and then raised (through addError)
         # UnavailableFeature.  Alternatively this method can be called
         # while probing for features before running the tests; in that
         # case we will see startTest and stopTest, but the test will never
@@ -285,19 +287,21 @@ class ExtendedTestResult(unittest._TextTestResult):
         self.unsupported[str(feature)] += 1
         self.report_unsupported(test, feature)
 
-    def _addSkipped(self, test, skip_excinfo):
+    def addSkip(self, test, reason):
+        """A test has not run for 'reason'."""
+        self.skip_count += 1
+        self.report_skip(test, reason)
+
+    def _addNotApplicable(self, test, skip_excinfo):
         if isinstance(skip_excinfo[1], TestNotApplicable):
             self.not_applicable_count += 1
             self.report_not_applicable(test, skip_excinfo)
-        else:
-            self.skip_count += 1
-            self.report_skip(test, skip_excinfo)
         try:
             test.tearDown()
         except KeyboardInterrupt:
             raise
         except:
-            self.addError(test, test._exc_info())
+            self.addError(test, test.exc_info())
         else:
             # seems best to treat this as success from point-of-view of unittest
             # -- it actually does nothing so it barely matters :)
@@ -360,7 +364,7 @@ class TextTestResult(ExtendedTestResult):
         self.pb.show_bar = False
 
     def report_starting(self):
-        self.pb.update('[test 0/%d] starting...' % (self.num_tests))
+        self.pb.update('[test 0/%d] Starting' % (self.num_tests))
 
     def _progress_prefix_text(self):
         # the longer this text, the less space we have to show the test
@@ -393,20 +397,20 @@ class TextTestResult(ExtendedTestResult):
         self.count += 1
         self.pb.update(
                 self._progress_prefix_text()
-                + ' ' 
+                + ' '
                 + self._shortened_test_description(test))
 
     def _test_description(self, test):
         return self._shortened_test_description(test)
 
     def report_error(self, test, err):
-        self.pb.note('ERROR: %s\n    %s\n', 
+        self.pb.note('ERROR: %s\n    %s\n',
             self._test_description(test),
             err[1],
             )
 
     def report_failure(self, test, err):
-        self.pb.note('FAIL: %s\n    %s\n', 
+        self.pb.note('FAIL: %s\n    %s\n',
             self._test_description(test),
             err[1],
             )
@@ -415,7 +419,7 @@ class TextTestResult(ExtendedTestResult):
         self.pb.note('XFAIL: %s\n%s\n',
             self._test_description(test), err[1])
 
-    def report_skip(self, test, skip_excinfo):
+    def report_skip(self, test, reason):
         pass
 
     def report_not_applicable(self, test, skip_excinfo):
@@ -423,9 +427,9 @@ class TextTestResult(ExtendedTestResult):
 
     def report_unsupported(self, test, feature):
         """test cannot be run because feature is missing."""
-                  
+
     def report_cleaning_up(self):
-        self.pb.update('cleaning up...')
+        self.pb.update('Cleaning up')
 
     def finished(self):
         if not self._supplied_pb:
@@ -484,10 +488,9 @@ class VerboseTestResult(ExtendedTestResult):
         # used to show the output in PQM.
         self.stream.flush()
 
-    def report_skip(self, test, skip_excinfo):
+    def report_skip(self, test, reason):
         self.stream.writeln(' SKIP %s\n%s'
-                % (self._testTimeString(test),
-                   self._error_summary(skip_excinfo)))
+                % (self._testTimeString(test), reason))
 
     def report_not_applicable(self, test, skip_excinfo):
         self.stream.writeln('  N/A %s\n%s'
@@ -539,7 +542,7 @@ class TextTestRunner(object):
                 self.stream.writeln("%s" % (t.id()))
                 run += 1
             actionTaken = "Listed"
-        else: 
+        else:
             test.run(result)
             run = result.testsRun
             actionTaken = "Ran"
@@ -583,15 +586,15 @@ class TextTestRunner(object):
 
 def iter_suite_tests(suite):
     """Return all tests in a suite, recursing through nested suites"""
-    for item in suite._tests:
-        if isinstance(item, unittest.TestCase):
-            yield item
-        elif isinstance(item, unittest.TestSuite):
+    if isinstance(suite, unittest.TestCase):
+        yield suite
+    elif isinstance(suite, unittest.TestSuite):
+        for item in suite._tests:
             for r in iter_suite_tests(item):
                 yield r
-        else:
-            raise Exception('unknown object %r inside test suite %r'
-                            % (item, suite))
+    else:
+        raise Exception('unknown type %r for object %r'
+                        % (type(suite), suite))
 
 
 class TestSkipped(Exception):
@@ -601,8 +604,8 @@ class TestSkipped(Exception):
 class TestNotApplicable(TestSkipped):
     """A test is not applicable to the situation where it was run.
 
-    This is only normally raised by parameterized tests, if they find that 
-    the instance they're constructed upon does not support one aspect 
+    This is only normally raised by parameterized tests, if they find that
+    the instance they're constructed upon does not support one aspect
     of its interface.
     """
 
@@ -630,7 +633,7 @@ class CommandFailed(Exception):
 
 class StringIOWrapper(object):
     """A wrapper around cStringIO which just adds an encoding attribute.
-    
+
     Internally we can check sys.stdout to see what the output encoding
     should be. However, cStringIO has no encoding attribute that we can
     set. So we wrap it instead.
@@ -727,8 +730,8 @@ def _report_leaked_threads():
 
 class TestCase(unittest.TestCase):
     """Base class for bzr unit tests.
-    
-    Tests that need access to disk resources should subclass 
+
+    Tests that need access to disk resources should subclass
     TestCaseInTempDir not TestCase.
 
     Error and debug log messages are redirected from their usual
@@ -736,10 +739,10 @@ class TestCase(unittest.TestCase):
     retrieved by _get_log().  We use a real OS file, not an in-memory object,
     so that it can also capture file IO.  When the test completes this file
     is read into memory and removed from disk.
-       
+
     There are also convenience functions to invoke bzr's command-line
     routine, and to build and check bzr trees.
-   
+
     In addition to the usual method of overriding tearDown(), this class also
     allows subclasses to register functions into the _cleanups list, which is
     run in order as the object is torn down.  It's less likely this will be
@@ -774,6 +777,18 @@ class TestCase(unittest.TestCase):
         TestCase._active_threads = threading.activeCount()
         self.addCleanup(self._check_leaked_threads)
 
+    def debug(self):
+        # debug a frame up.
+        import pdb
+        pdb.Pdb().set_trace(sys._getframe().f_back)
+
+    def exc_info(self):
+        absent_attr = object()
+        exc_info = getattr(self, '_exc_info', absent_attr)
+        if exc_info is absent_attr:
+            exc_info = getattr(self, '_TestCase__exc_info')
+        return exc_info()
+
     def _check_leaked_threads(self):
         active = threading.activeCount()
         leaked_threads = active - TestCase._active_threads
@@ -789,7 +804,7 @@ class TestCase(unittest.TestCase):
 
     def _clear_debug_flags(self):
         """Prevent externally set debug flags affecting tests.
-        
+
         Tests that want to use debug flags can just set them in the
         debug_flags set during setup/teardown.
         """
@@ -800,20 +815,15 @@ class TestCase(unittest.TestCase):
 
     def _clear_hooks(self):
         # prevent hooks affecting tests
-        import bzrlib.branch
-        import bzrlib.smart.client
-        import bzrlib.smart.server
-        self._preserved_hooks = {
-            bzrlib.branch.Branch: bzrlib.branch.Branch.hooks,
-            bzrlib.mutabletree.MutableTree: bzrlib.mutabletree.MutableTree.hooks,
-            bzrlib.smart.client._SmartClient: bzrlib.smart.client._SmartClient.hooks,
-            bzrlib.smart.server.SmartTCPServer: bzrlib.smart.server.SmartTCPServer.hooks,
-            }
+        self._preserved_hooks = {}
+        for key, factory in hooks.known_hooks.items():
+            parent, name = hooks.known_hooks_key_to_parent_and_attribute(key)
+            current_hooks = hooks.known_hooks_key_to_object(key)
+            self._preserved_hooks[parent] = (name, current_hooks)
         self.addCleanup(self._restoreHooks)
-        # reset all hooks to an empty instance of the appropriate type
-        bzrlib.branch.Branch.hooks = bzrlib.branch.BranchHooks()
-        bzrlib.smart.client._SmartClient.hooks = bzrlib.smart.client.SmartClientHooks()
-        bzrlib.smart.server.SmartTCPServer.hooks = bzrlib.smart.server.SmartServerHooks()
+        for key, factory in hooks.known_hooks.items():
+            parent, name = hooks.known_hooks_key_to_parent_and_attribute(key)
+            setattr(parent, name, factory())
 
     def _silenceUI(self):
         """Turn off UI for duration of test"""
@@ -826,7 +836,7 @@ class TestCase(unittest.TestCase):
 
     def _ndiff_strings(self, a, b):
         """Return ndiff between two strings containing lines.
-        
+
         A trailing newline is added if missing to make the strings
         print properly."""
         if b and b[-1] != '\n':
@@ -857,8 +867,8 @@ class TestCase(unittest.TestCase):
 
     def assertEqualDiff(self, a, b, message=None):
         """Assert two texts are equal, if not raise an exception.
-        
-        This is intended for use with multi-line strings where it can 
+
+        This is intended for use with multi-line strings where it can
         be hard to find the differences by eye.
         """
         # TODO: perhaps override assertEquals to call this for strings?
@@ -872,7 +882,7 @@ class TestCase(unittest.TestCase):
             message = 'second string is missing a final newline.\n'
         raise AssertionError(message +
                              self._ndiff_strings(a, b))
-        
+
     def assertEqualMode(self, mode, mode_test):
         self.assertEqual(mode, mode_test,
                          'mode mismatch %o != %o' % (mode, mode_test))
@@ -909,9 +919,9 @@ class TestCase(unittest.TestCase):
         if not s.endswith(suffix):
             raise AssertionError('string %r does not end with %r' % (s, suffix))
 
-    def assertContainsRe(self, haystack, needle_re):
+    def assertContainsRe(self, haystack, needle_re, flags=0):
         """Assert that a contains something matching a regular expression."""
-        if not re.search(needle_re, haystack):
+        if not re.search(needle_re, haystack, flags):
             if '\n' in haystack or len(haystack) > 60:
                 # a long string, format it in a more readable way
                 raise AssertionError(
@@ -921,9 +931,9 @@ class TestCase(unittest.TestCase):
                 raise AssertionError('pattern "%s" not found in "%s"'
                         % (needle_re, haystack))
 
-    def assertNotContainsRe(self, haystack, needle_re):
+    def assertNotContainsRe(self, haystack, needle_re, flags=0):
         """Assert that a does not match a regular expression"""
-        if re.search(needle_re, haystack):
+        if re.search(needle_re, haystack, flags):
             raise AssertionError('pattern "%s" found in "%s"'
                     % (needle_re, haystack))
 
@@ -936,7 +946,7 @@ class TestCase(unittest.TestCase):
 
     def assertListRaises(self, excClass, func, *args, **kwargs):
         """Fail unless excClass is raised when the iterator from func is used.
-        
+
         Many functions can return generators this makes sure
         to wrap them in a list() call to make sure the whole generator
         is run, and that the proper exception is raised.
@@ -990,7 +1000,7 @@ class TestCase(unittest.TestCase):
 
     def assertTransportMode(self, transport, path, mode):
         """Fail if a path does not have mode mode.
-        
+
         If modes are not supported on this transport, the assertion is ignored.
         """
         if not transport._can_roundtrip_unix_modebits():
@@ -1167,7 +1177,7 @@ class TestCase(unittest.TestCase):
     def callDeprecated(self, expected, callable, *args, **kwargs):
         """Assert that a callable is deprecated in a particular way.
 
-        This is a very precise test for unusual requirements. The 
+        This is a very precise test for unusual requirements. The
         applyDeprecated helper function is probably more suited for most tests
         as it allows you to simply specify the deprecation format being used
         and will ensure that that is issued for the function being called.
@@ -1218,7 +1228,7 @@ class TestCase(unittest.TestCase):
     def addCleanup(self, callable, *args, **kwargs):
         """Arrange to run a callable when this case is torn down.
 
-        Callables are run in the reverse of the order they are registered, 
+        Callables are run in the reverse of the order they are registered,
         ie last-in first-out.
         """
         self._cleanups.append((callable, args, kwargs))
@@ -1235,6 +1245,7 @@ class TestCase(unittest.TestCase):
             'EMAIL': None,
             'BZR_PROGRESS_BAR': None,
             'BZR_LOG': None,
+            'BZR_PLUGIN_PATH': None,
             # SSH Agent
             'SSH_AUTH_SOCK': None,
             # Proxies
@@ -1271,12 +1282,19 @@ class TestCase(unittest.TestCase):
             osutils.set_or_unset_env(name, value)
 
     def _restoreHooks(self):
-        for klass, hooks in self._preserved_hooks.items():
-            setattr(klass, 'hooks', hooks)
+        for klass, (name, hooks) in self._preserved_hooks.items():
+            setattr(klass, name, hooks)
 
     def knownFailure(self, reason):
         """This test has failed for some known reason."""
         raise KnownFailure(reason)
+
+    def _do_skip(self, result, reason):
+        addSkip = getattr(result, 'addSkip', None)
+        if not callable(addSkip):
+            result.addError(self, self.exc_info())
+        else:
+            addSkip(self, reason)
 
     def run(self, result=None):
         if result is None: result = self.defaultTestResult()
@@ -1290,7 +1308,61 @@ class TestCase(unittest.TestCase):
                 result.stopTest(self)
                 return
         try:
-            return unittest.TestCase.run(self, result)
+            try:
+                result.startTest(self)
+                absent_attr = object()
+                # Python 2.5
+                method_name = getattr(self, '_testMethodName', absent_attr)
+                if method_name is absent_attr:
+                    # Python 2.4
+                    method_name = getattr(self, '_TestCase__testMethodName')
+                testMethod = getattr(self, method_name)
+                try:
+                    try:
+                        self.setUp()
+                    except KeyboardInterrupt:
+                        raise
+                    except TestSkipped, e:
+                        self._do_skip(result, e.args[0])
+                        self.tearDown()
+                        return
+                    except:
+                        result.addError(self, self.exc_info())
+                        return
+
+                    ok = False
+                    try:
+                        testMethod()
+                        ok = True
+                    except self.failureException:
+                        result.addFailure(self, self.exc_info())
+                    except TestSkipped, e:
+                        if not e.args:
+                            reason = "No reason given."
+                        else:
+                            reason = e.args[0]
+                        self._do_skip(result, reason)
+                    except KeyboardInterrupt:
+                        raise
+                    except:
+                        result.addError(self, self.exc_info())
+
+                    try:
+                        self.tearDown()
+                    except KeyboardInterrupt:
+                        raise
+                    except:
+                        result.addError(self, self.exc_info())
+                        ok = False
+                    if ok: result.addSuccess(self)
+                finally:
+                    result.stopTest(self)
+                return
+            except TestNotApplicable:
+                # Not moved from the result [yet].
+                raise
+            except KeyboardInterrupt:
+                raise
         finally:
             saved_attrs = {}
             absent_attr = object()
@@ -1302,11 +1374,12 @@ class TestCase(unittest.TestCase):
 
     def tearDown(self):
         self._runCleanups()
+        self._log_contents = ''
         unittest.TestCase.tearDown(self)
 
     def time(self, callable, *args, **kwargs):
         """Run callable and accrue the time it takes to the benchmark time.
-        
+
         If lsprofiling is enabled (i.e. by --lsprof-time to bzr selftest) then
         this will cause lsprofile statistics to be gathered and stored in
         self._benchcalls.
@@ -1327,11 +1400,11 @@ class TestCase(unittest.TestCase):
             self._benchtime += time.time() - start
 
     def _runCleanups(self):
-        """Run registered cleanup functions. 
+        """Run registered cleanup functions.
 
         This should only be called from TestCase.tearDown.
         """
-        # TODO: Perhaps this should keep running cleanups even if 
+        # TODO: Perhaps this should keep running cleanups even if
         # one of them fails?
 
         # Actually pop the cleanups from the list so tearDown running
@@ -1354,7 +1427,8 @@ class TestCase(unittest.TestCase):
         """
         # flush the log file, to get all content
         import bzrlib.trace
-        bzrlib.trace._trace_file.flush()
+        if bzrlib.trace._trace_file:
+            bzrlib.trace._trace_file.flush()
         if self._log_contents:
             # XXX: this can hardly contain the content flushed above --vila
             # 20080128
@@ -1452,10 +1526,10 @@ class TestCase(unittest.TestCase):
         passed in three ways:
 
         1- A list of strings, eg ["commit", "a"].  This is recommended
-        when the command contains whitespace or metacharacters, or 
+        when the command contains whitespace or metacharacters, or
         is built up at run time.
 
-        2- A single string, eg "add a".  This is the most convenient 
+        2- A single string, eg "add a".  This is the most convenient
         for hardcoded commands.
 
         This runs bzr through the interface that catches and reports
@@ -1520,10 +1594,10 @@ class TestCase(unittest.TestCase):
     def run_bzr_subprocess(self, *args, **kwargs):
         """Run bzr in a subprocess for testing.
 
-        This starts a new Python interpreter and runs bzr in there. 
+        This starts a new Python interpreter and runs bzr in there.
         This should only be used for tests that have a justifiable need for
         this isolation: e.g. they are testing startup time, or signal
-        handling, or early startup code, etc.  Subprocess code can't be 
+        handling, or early startup code, etc.  Subprocess code can't be
         profiled or debugged so easily.
 
         :keyword retcode: The status code that is expected.  Defaults to 0.  If
@@ -1745,6 +1819,29 @@ class TestCase(unittest.TestCase):
         return sio
 
 
+class CapturedCall(object):
+    """A helper for capturing smart server calls for easy debug analysis."""
+
+    def __init__(self, params, prefix_length):
+        """Capture the call with params and skip prefix_length stack frames."""
+        self.call = params
+        import traceback
+        # The last 5 frames are the __init__, the hook frame, and 3 smart
+        # client frames. Beyond this we could get more clever, but this is good
+        # enough for now.
+        stack = traceback.extract_stack()[prefix_length:-5]
+        self.stack = ''.join(traceback.format_list(stack))
+
+    def __str__(self):
+        return self.call.method
+
+    def __repr__(self):
+        return self.call.method
+
+    def stack(self):
+        return self.stack
+
+
 class TestCaseWithMemoryTransport(TestCase):
     """Common test class for tests that do not need disk resources.
 
@@ -1769,7 +1866,7 @@ class TestCaseWithMemoryTransport(TestCase):
 
     def __init__(self, methodName='runTest'):
         # allow test parameterization after test construction and before test
-        # execution. Variables that the parameterizer sets need to be 
+        # execution. Variables that the parameterizer sets need to be
         # ones that are not set by setUp, or setUp will trash them.
         super(TestCaseWithMemoryTransport, self).__init__(methodName)
         self.vfs_transport_factory = default_transport
@@ -1782,7 +1879,7 @@ class TestCaseWithMemoryTransport(TestCase):
 
         This transport is for the test scratch space relative to
         "self._test_root"
-        
+
         :param relpath: a path relative to the base url.
         """
         t = get_transport(self.get_url(relpath))
@@ -1791,7 +1888,7 @@ class TestCaseWithMemoryTransport(TestCase):
 
     def get_readonly_transport(self, relpath=None):
         """Return a readonly transport for the test scratch space
-        
+
         This can be used to test that operations which should only need
         readonly access in fact do not try to write.
 
@@ -1828,7 +1925,7 @@ class TestCaseWithMemoryTransport(TestCase):
     def get_readonly_url(self, relpath=None):
         """Get a URL for the readonly transport.
 
-        This will either be backed by '.' or a decorator to the transport 
+        This will either be backed by '.' or a decorator to the transport
         used by self.get_url()
         relpath provides for clients to get a path relative to the base url.
         These should only be downwards relative, not upwards.
@@ -1967,16 +2064,16 @@ class TestCaseWithMemoryTransport(TestCase):
 
     def makeAndChdirToTestDir(self):
         """Create a temporary directories for this one test.
-        
+
         This must set self.test_home_dir and self.test_dir and chdir to
         self.test_dir.
-        
+
         For TestCaseWithMemoryTransport we chdir to the TEST_ROOT for this test.
         """
         os.chdir(TestCaseWithMemoryTransport.TEST_ROOT)
         self.test_dir = TestCaseWithMemoryTransport.TEST_ROOT
         self.test_home_dir = self.test_dir + "/MemoryTransportMissingHomeDir"
-        
+
     def make_branch(self, relpath, format=None):
         """Create a branch on the transport at relpath."""
         repo = self.make_repository(relpath, format=format)
@@ -2000,11 +2097,11 @@ class TestCaseWithMemoryTransport(TestCase):
 
     def make_repository(self, relpath, shared=False, format=None):
         """Create a repository on our default transport at relpath.
-        
+
         Note that relpath must be a relative path, not a full url.
         """
         # FIXME: If you create a remoterepository this returns the underlying
-        # real format, which is incorrect.  Actually we should make sure that 
+        # real format, which is incorrect.  Actually we should make sure that
         # RemoteBzrDir returns a RemoteRepository.
         # maybe  mbp 20070410
         made_control = self.make_bzrdir(relpath, format=format)
@@ -2016,14 +2113,13 @@ class TestCaseWithMemoryTransport(TestCase):
         return memorytree.MemoryTree.create_on_branch(b)
 
     def make_branch_builder(self, relpath, format=None):
-        url = self.get_url(relpath)
-        tran = get_transport(url)
-        return branchbuilder.BranchBuilder(get_transport(url), format=format)
+        return branchbuilder.BranchBuilder(self.get_transport(relpath),
+            format=format)
 
     def overrideEnvironmentForTesting(self):
         os.environ['HOME'] = self.test_home_dir
         os.environ['BZR_HOME'] = self.test_home_dir
-        
+
     def setUp(self):
         super(TestCaseWithMemoryTransport, self).setUp()
         self._make_test_root()
@@ -2037,7 +2133,24 @@ class TestCaseWithMemoryTransport(TestCase):
         self.__server = None
         self.reduceLockdirTimeout()
 
-     
+    def setup_smart_server_with_call_log(self):
+        """Sets up a smart server as the transport server with a call log."""
+        self.transport_server = server.SmartTCPServer_for_testing
+        self.hpss_calls = []
+        import traceback
+        # Skip the current stack down to the caller of
+        # setup_smart_server_with_call_log
+        prefix_length = len(traceback.extract_stack()) - 2
+        def capture_hpss_call(params):
+            self.hpss_calls.append(
+                CapturedCall(params, prefix_length))
+        client._SmartClient.hooks.install_named_hook(
+            'call', capture_hpss_call, None)
+
+    def reset_smart_call_log(self):
+        self.hpss_calls = []
+
+
 class TestCaseInTempDir(TestCaseWithMemoryTransport):
     """Derived class that runs a test within a temporary directory.
 
@@ -2048,7 +2161,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
     All test cases create their own directory within that.  If the
     tests complete successfully, the directory is removed.
 
-    :ivar test_base_dir: The path of the top-level directory for this 
+    :ivar test_base_dir: The path of the top-level directory for this
     test, which contains a home directory and a work directory.
 
     :ivar test_home_dir: An initially empty directory under test_base_dir
@@ -2080,7 +2193,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
 
     def makeAndChdirToTestDir(self):
         """See TestCaseWithMemoryTransport.makeAndChdirToTestDir().
-        
+
         For TestCaseInTempDir we create a temporary directory based on the test
         name and then create two subdirs - test and home under it.
         """
@@ -2136,7 +2249,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         if transport is None or transport.is_readonly():
             transport = get_transport(".")
         for name in shape:
-            self.assert_(isinstance(name, basestring))
+            self.assertIsInstance(name, basestring)
             if name[-1] == '/':
                 transport.mkdir(urlutils.escape(name[:-1]))
             else:
@@ -2185,7 +2298,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
     ReadonlyTransportDecorator is used instead which allows the use of non disk
     based read write transports.
 
-    If an explicit class is provided for readonly access, that server and the 
+    If an explicit class is provided for readonly access, that server and the
     readwrite one must both define get_url() as resolving to os.getcwd().
     """
 
@@ -2277,7 +2390,7 @@ class ChrootedTestCase(TestCaseWithTransport):
     for readonly urls.
 
     TODO RBC 20060127: make this an option to TestCaseWithTransport so it can
-                       be used without needed to redo it when a different 
+                       be used without needed to redo it when a different
                        subclass is in use ?
     """
 
@@ -2289,7 +2402,7 @@ class ChrootedTestCase(TestCaseWithTransport):
 
 def condition_id_re(pattern):
     """Create a condition filter which performs a re check on a test's id.
-    
+
     :param pattern: A regular expression string.
     :return: A callable that returns True if the re matches.
     """
@@ -2302,7 +2415,7 @@ def condition_id_re(pattern):
 
 def condition_isinstance(klass_or_klass_list):
     """Create a condition filter which returns isinstance(param, klass).
-    
+
     :return: A callable which when called with one parameter obj return the
         result of isinstance(obj, klass_or_klass_list).
     """
@@ -2313,7 +2426,7 @@ def condition_isinstance(klass_or_klass_list):
 
 def condition_id_in_list(id_list):
     """Create a condition filter which verify that test's id in a list.
-    
+
     :param id_list: A TestIdList object.
     :return: A callable that returns True if the test's id appears in the list.
     """
@@ -2324,9 +2437,9 @@ def condition_id_in_list(id_list):
 
 def condition_id_startswith(starts):
     """Create a condition filter verifying that test's id starts with a string.
-    
+
     :param starts: A list of string.
-    :return: A callable that returns True if the test's id starts with one of 
+    :return: A callable that returns True if the test's id starts with one of
         the given strings.
     """
     def condition(test):
@@ -2355,7 +2468,7 @@ def exclude_tests_by_condition(suite, condition):
 
 def filter_suite_by_condition(suite, condition):
     """Create a test suite by filtering another one.
-    
+
     :param suite: The source suite.
     :param condition: A callable whose result evaluates True when called with a
         test case which should be included in the result.
@@ -2371,7 +2484,7 @@ def filter_suite_by_condition(suite, condition):
 
 def filter_suite_by_re(suite, pattern):
     """Create a test suite by filtering another one.
-    
+
     :param suite:           the source suite
     :param pattern:         pattern that names must match
     :returns: the newly created suite
@@ -2429,7 +2542,7 @@ def preserve_input(something):
 
 def randomize_suite(suite):
     """Return a new TestSuite with suite's tests in random order.
-    
+
     The tests in the input suite are flattened into a single suite in order to
     accomplish this. Any nested TestSuites are removed to provide global
     randomness.
@@ -2441,7 +2554,7 @@ def randomize_suite(suite):
 
 def split_suite_by_condition(suite, condition):
     """Split a test suite into two by a condition.
-    
+
     :param suite: The suite to split.
     :param condition: The condition to match on. Tests that match this
         condition are returned in the first test suite, ones that do not match
@@ -2463,7 +2576,7 @@ def split_suite_by_condition(suite, condition):
 
 def split_suite_by_re(suite, pattern):
     """Split a test suite into two by a regular expression.
-    
+
     :param suite: The suite to split.
     :param pattern: A regular expression string. Test ids that match this
         pattern will be in the first test suite returned, and the others in the
@@ -2483,13 +2596,23 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
               list_only=False,
               random_seed=None,
               exclude_pattern=None,
-              strict=False):
+              strict=False,
+              runner_class=None):
+    """Run a test suite for bzr selftest.
+
+    :param runner_class: The class of runner to use. Must support the
+        constructor arguments passed by run_suite which are more than standard
+        python uses.
+    :return: A boolean indicating success.
+    """
     TestCase._gather_lsprof_in_benchmarks = lsprof_timed
     if verbose:
         verbosity = 2
     else:
         verbosity = 1
-    runner = TextTestRunner(stream=sys.stdout,
+    if runner_class is None:
+        runner_class = TextTestRunner
+    runner = runner_class(stream=sys.stdout,
                             descriptions=0,
                             verbosity=verbosity,
                             bench_history=bench_history,
@@ -2551,6 +2674,7 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              load_list=None,
              debug_flags=None,
              starting_with=None,
+             runner_class=None,
              ):
     """Run the whole test suite under the enhanced runner"""
     # XXX: Very ugly way to do this...
@@ -2586,7 +2710,9 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
                      list_only=list_only,
                      random_seed=random_seed,
                      exclude_pattern=exclude_pattern,
-                     strict=strict)
+                     strict=strict,
+                     runner_class=runner_class,
+                     )
     finally:
         default_transport = old_transport
         selftest_debug_flags = old_debug_flags
@@ -2619,7 +2745,7 @@ def suite_matches_id_list(test_suite, id_list):
     """Warns about tests not appearing or appearing more than once.
 
     :param test_suite: A TestSuite object.
-    :param test_id_list: The list of test ids that should be found in 
+    :param test_id_list: The list of test ids that should be found in
          test_suite.
 
     :return: (absents, duplicates) absents is a list containing the test found
@@ -2767,6 +2893,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.interrepository_implementations',
                    'bzrlib.tests.intertree_implementations',
                    'bzrlib.tests.inventory_implementations',
+                   'bzrlib.tests.per_interbranch',
                    'bzrlib.tests.per_lock',
                    'bzrlib.tests.per_repository',
                    'bzrlib.tests.per_repository_reference',
@@ -2785,7 +2912,9 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_bundle',
                    'bzrlib.tests.test_bzrdir',
                    'bzrlib.tests.test_cache_utf8',
+                   'bzrlib.tests.test_clean_tree',
                    'bzrlib.tests.test_chunk_writer',
+                   'bzrlib.tests.test__chunks_to_lines',
                    'bzrlib.tests.test_commands',
                    'bzrlib.tests.test_commit',
                    'bzrlib.tests.test_commit_merge',
@@ -2794,15 +2923,19 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_counted_lock',
                    'bzrlib.tests.test_decorators',
                    'bzrlib.tests.test_delta',
+                   'bzrlib.tests.test_debug',
                    'bzrlib.tests.test_deprecated_graph',
                    'bzrlib.tests.test_diff',
                    'bzrlib.tests.test_directory_service',
                    'bzrlib.tests.test_dirstate',
                    'bzrlib.tests.test_email_message',
                    'bzrlib.tests.test_errors',
+                   'bzrlib.tests.test_export',
                    'bzrlib.tests.test_extract',
                    'bzrlib.tests.test_fetch',
+                   'bzrlib.tests.test_fifo_cache',
                    'bzrlib.tests.test_ftp_transport',
+                   'bzrlib.tests.test_foreign',
                    'bzrlib.tests.test_generate_docs',
                    'bzrlib.tests.test_generate_ids',
                    'bzrlib.tests.test_globbing',
@@ -2865,8 +2998,11 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_selftest',
                    'bzrlib.tests.test_setup',
                    'bzrlib.tests.test_sftp_transport',
+                   'bzrlib.tests.test_shelf',
+                   'bzrlib.tests.test_shelf_ui',
                    'bzrlib.tests.test_smart',
                    'bzrlib.tests.test_smart_add',
+                   'bzrlib.tests.test_smart_request',
                    'bzrlib.tests.test_smart_transport',
                    'bzrlib.tests.test_smtp_connection',
                    'bzrlib.tests.test_source',
@@ -2950,14 +3086,13 @@ def test_suite(keep_only=None, starting_with=None):
 
     modules_to_doctest = [
         'bzrlib',
-        'bzrlib.errors',
+        'bzrlib.branchbuilder',
         'bzrlib.export',
         'bzrlib.inventory',
         'bzrlib.iterablefile',
         'bzrlib.lockdir',
         'bzrlib.merge3',
         'bzrlib.option',
-        'bzrlib.store',
         'bzrlib.symbol_versioning',
         'bzrlib.tests',
         'bzrlib.timestamp',
@@ -2969,10 +3104,15 @@ def test_suite(keep_only=None, starting_with=None):
             # No tests to keep here, move along
             continue
         try:
-            doc_suite = doctest.DocTestSuite(mod)
+            # note that this really does mean "report only" -- doctest
+            # still runs the rest of the examples
+            doc_suite = doctest.DocTestSuite(mod,
+                optionflags=doctest.REPORT_ONLY_FIRST_FAILURE)
         except ValueError, e:
             print '**failed to get doctest for: %s\n%s' % (mod, e)
             raise
+        if len(doc_suite._tests) == 0:
+            raise errors.BzrError("no doctests found in %s" % (mod,))
         suite.addTest(doc_suite)
 
     default_encoding = sys.getdefaultencoding()
@@ -3019,54 +3159,6 @@ def test_suite(keep_only=None, starting_with=None):
     return suite
 
 
-def multiply_tests_from_modules(module_name_list, scenario_iter, loader=None):
-    """Adapt all tests in some given modules to given scenarios.
-
-    This is the recommended public interface for test parameterization.
-    Typically the test_suite() method for a per-implementation test
-    suite will call multiply_tests_from_modules and return the 
-    result.
-
-    :param module_name_list: List of fully-qualified names of test
-        modules.
-    :param scenario_iter: Iterable of pairs of (scenario_name, 
-        scenario_param_dict).
-    :param loader: If provided, will be used instead of a new 
-        bzrlib.tests.TestLoader() instance.
-
-    This returns a new TestSuite containing the cross product of
-    all the tests in all the modules, each repeated for each scenario.
-    Each test is adapted by adding the scenario name at the end 
-    of its name, and updating the test object's __dict__ with the
-    scenario_param_dict.
-
-    >>> r = multiply_tests_from_modules(
-    ...     ['bzrlib.tests.test_sampler'],
-    ...     [('one', dict(param=1)), 
-    ...      ('two', dict(param=2))])
-    >>> tests = list(iter_suite_tests(r))
-    >>> len(tests)
-    2
-    >>> tests[0].id()
-    'bzrlib.tests.test_sampler.DemoTest.test_nothing(one)'
-    >>> tests[0].param
-    1
-    >>> tests[1].param
-    2
-    """
-    # XXX: Isn't load_tests() a better way to provide the same functionality
-    # without forcing a predefined TestScenarioApplier ? --vila 080215
-    if loader is None:
-        loader = TestUtil.TestLoader()
-
-    suite = loader.suiteClass()
-
-    adapter = TestScenarioApplier()
-    adapter.scenarios = list(scenario_iter)
-    adapt_modules(module_name_list, adapter, loader, suite)
-    return suite
-
-
 def multiply_scenarios(scenarios_left, scenarios_right):
     """Multiply two sets of scenarios.
 
@@ -3081,17 +3173,85 @@ def multiply_scenarios(scenarios_left, scenarios_right):
         for right_name, right_dict in scenarios_right]
 
 
+def multiply_tests(tests, scenarios, result):
+    """Multiply tests_list by scenarios into result.
 
-def adapt_modules(mods_list, adapter, loader, suite):
-    """Adapt the modules in mods_list using adapter and add to suite."""
-    tests = loader.loadTestsFromModuleNames(mods_list)
-    adapt_tests(tests, adapter, suite)
+    This is the core workhorse for test parameterisation.
+
+    Typically the load_tests() method for a per-implementation test suite will
+    call multiply_tests and return the result.
+
+    :param tests: The tests to parameterise.
+    :param scenarios: The scenarios to apply: pairs of (scenario_name,
+        scenario_param_dict).
+    :param result: A TestSuite to add created tests to.
+
+    This returns the passed in result TestSuite with the cross product of all
+    the tests repeated once for each scenario.  Each test is adapted by adding
+    the scenario name at the end of its id(), and updating the test object's
+    __dict__ with the scenario_param_dict.
+
+    >>> r = multiply_tests(
+    ...     bzrlib.tests.test_sampler.DemoTest('test_nothing'),
+    ...     [('one', dict(param=1)),
+    ...      ('two', dict(param=2))],
+    ...     TestSuite())
+    >>> tests = list(iter_suite_tests(r))
+    >>> len(tests)
+    2
+    >>> tests[0].id()
+    'bzrlib.tests.test_sampler.DemoTest.test_nothing(one)'
+    >>> tests[0].param
+    1
+    >>> tests[1].param
+    2
+    """
+    for test in iter_suite_tests(tests):
+        apply_scenarios(test, scenarios, result)
+    return result
 
 
-def adapt_tests(tests_list, adapter, suite):
-    """Adapt the tests in tests_list using adapter and add to suite."""
-    for test in iter_suite_tests(tests_list):
-        suite.addTests(adapter.adapt(test))
+def apply_scenarios(test, scenarios, result):
+    """Apply the scenarios in scenarios to test and add to result.
+
+    :param test: The test to apply scenarios to.
+    :param scenarios: An iterable of scenarios to apply to test.
+    :return: result
+    :seealso: apply_scenario
+    """
+    for scenario in scenarios:
+        result.addTest(apply_scenario(test, scenario))
+    return result
+
+
+def apply_scenario(test, scenario):
+    """Copy test and apply scenario to it.
+
+    :param test: A test to adapt.
+    :param scenario: A tuple describing the scenarion.
+        The first element of the tuple is the new test id.
+        The second element is a dict containing attributes to set on the
+        test.
+    :return: The adapted test.
+    """
+    new_id = "%s(%s)" % (test.id(), scenario[0])
+    new_test = clone_test(test, new_id)
+    for name, value in scenario[1].items():
+        setattr(new_test, name, value)
+    return new_test
+
+
+def clone_test(test, new_id):
+    """Clone a test giving it a new id.
+
+    :param test: The test to clone.
+    :param new_id: The id to assign to it.
+    :return: The new test.
+    """
+    from copy import deepcopy
+    new_test = deepcopy(test)
+    new_test.id = lambda: new_id
+    return new_test
 
 
 def _rmtree_temp_dir(dirname):
@@ -3202,35 +3362,6 @@ class _UnicodeFilenameFeature(Feature):
 UnicodeFilenameFeature = _UnicodeFilenameFeature()
 
 
-class TestScenarioApplier(object):
-    """A tool to apply scenarios to tests."""
-
-    def adapt(self, test):
-        """Return a TestSuite containing a copy of test for each scenario."""
-        result = unittest.TestSuite()
-        for scenario in self.scenarios:
-            result.addTest(self.adapt_test_to_scenario(test, scenario))
-        return result
-
-    def adapt_test_to_scenario(self, test, scenario):
-        """Copy test and apply scenario to it.
-
-        :param test: A test to adapt.
-        :param scenario: A tuple describing the scenarion.
-            The first element of the tuple is the new test id.
-            The second element is a dict containing attributes to set on the
-            test.
-        :return: The adapted test.
-        """
-        from copy import deepcopy
-        new_test = deepcopy(test)
-        for name, value in scenario[1].items():
-            setattr(new_test, name, value)
-        new_id = "%s(%s)" % (new_test.id(), scenario[0])
-        new_test.id = lambda: new_id
-        return new_test
-
-
 def probe_unicode_in_user_encoding():
     """Try to encode several unicode strings to use in unicode-aware tests.
     Return first successfull match.
@@ -3281,7 +3412,29 @@ class _FTPServerFeature(Feature):
     def feature_name(self):
         return 'FTPServer'
 
+
 FTPServerFeature = _FTPServerFeature()
+
+
+class _HTTPSServerFeature(Feature):
+    """Some tests want an https Server, check if one is available.
+
+    Right now, the only way this is available is under python2.6 which provides
+    an ssl module.
+    """
+
+    def _probe(self):
+        try:
+            import ssl
+            return True
+        except ImportError:
+            return False
+
+    def feature_name(self):
+        return 'HTTPSServer'
+
+
+HTTPSServerFeature = _HTTPSServerFeature()
 
 
 class _UnicodeFilename(Feature):
@@ -3315,12 +3468,41 @@ class _UTF8Filesystem(Feature):
 UTF8Filesystem = _UTF8Filesystem()
 
 
-class _CaseInsensitiveFilesystemFeature(Feature):
-    """Check if underlying filesystem is case-insensitive
-    (e.g. on Windows, Cygwin, MacOS)
-    """
+class _CaseInsCasePresFilenameFeature(Feature):
+    """Is the file-system case insensitive, but case-preserving?"""
 
     def _probe(self):
+        fileno, name = tempfile.mkstemp(prefix='MixedCase')
+        try:
+            # first check truly case-preserving for created files, then check
+            # case insensitive when opening existing files.
+            name = osutils.normpath(name)
+            base, rel = osutils.split(name)
+            found_rel = osutils.canonical_relpath(base, name)
+            return (found_rel == rel
+                    and os.path.isfile(name.upper())
+                    and os.path.isfile(name.lower()))
+        finally:
+            os.close(fileno)
+            os.remove(name)
+
+    def feature_name(self):
+        return "case-insensitive case-preserving filesystem"
+
+CaseInsCasePresFilenameFeature = _CaseInsCasePresFilenameFeature()
+
+
+class _CaseInsensitiveFilesystemFeature(Feature):
+    """Check if underlying filesystem is case-insensitive but *not* case
+    preserving.
+    """
+    # Note that on Windows, Cygwin, MacOS etc, the file-systems are far
+    # more likely to be case preserving, so this case is rare.
+
+    def _probe(self):
+        if CaseInsCasePresFilenameFeature.available():
+            return False
+
         if TestCaseWithMemoryTransport.TEST_ROOT is None:
             root = osutils.mkdtemp(prefix='testbzr-', suffix='.tmp')
             TestCaseWithMemoryTransport.TEST_ROOT = root

@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2007 Canonical Ltd
+# Copyright (C) 2004, 2005, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,14 +26,17 @@ See the plugin-api developer documentation for information about writing
 plugins.
 
 BZR_PLUGIN_PATH is also honoured for any plugins imported via
-'import bzrlib.plugins.PLUGINNAME', as long as set_plugins_path has been 
+'import bzrlib.plugins.PLUGINNAME', as long as set_plugins_path has been
 called.
 """
 
 import os
 import sys
 
+from bzrlib import osutils
+
 from bzrlib.lazy_import import lazy_import
+
 lazy_import(globals(), """
 import imp
 import re
@@ -41,10 +44,10 @@ import types
 import zipfile
 
 from bzrlib import (
+    _format_version_tuple,
     config,
     debug,
     errors,
-    osutils,
     trace,
     )
 from bzrlib import plugins as _mod_plugins
@@ -69,20 +72,33 @@ def disable_plugins():
 
     Future calls to load_plugins() will be ignored.
     """
-    # TODO: jam 20060131 This should probably also disable
-    #       load_from_dirs()
-    global _loaded
-    _loaded = True
+    load_plugins([])
 
 
 def _strip_trailing_sep(path):
     return path.rstrip("\\/")
 
 
-def set_plugins_path():
-    """Set the path for plugins to be loaded from."""
+def set_plugins_path(path=None):
+    """Set the path for plugins to be loaded from.
+
+    :param path: The list of paths to search for plugins.  By default,
+        path will be determined using get_standard_plugins_path.
+        if path is [], no plugins can be loaded.
+    """
+    if path is None:
+        path = get_standard_plugins_path()
+    _mod_plugins.__path__ = path
+    return path
+
+
+def get_standard_plugins_path():
+    """Determine a plugin path suitable for general use."""
     path = os.environ.get('BZR_PLUGIN_PATH',
                           get_default_plugin_path()).split(os.pathsep)
+    # Get rid of trailing slashes, since Python can't handle them when
+    # it tries to import modules.
+    path = map(_strip_trailing_sep, path)
     bzr_exe = bool(getattr(sys, 'frozen', None))
     if bzr_exe:    # expand path for bzr.exe
         # We need to use relative path to system-wide plugin
@@ -97,9 +113,6 @@ def set_plugins_path():
         # so relative path is ../../../plugins
         path.append(osutils.abspath(osutils.pathjoin(
             osutils.dirname(__file__), '../../../plugins')))
-    # Get rid of trailing slashes, since Python can't handle them when
-    # it tries to import modules.
-    path = map(_strip_trailing_sep, path)
     if not bzr_exe:     # don't look inside library.zip
         # search the plugin path before the bzrlib installed dir
         path.append(os.path.dirname(_mod_plugins.__file__))
@@ -116,11 +129,10 @@ def set_plugins_path():
                     'plugins')
             if archless_path not in path:
                 path.append(archless_path)
-    _mod_plugins.__path__ = path
     return path
 
 
-def load_plugins():
+def load_plugins(path=None):
     """Load bzrlib plugins.
 
     The environment variable BZR_PLUGIN_PATH is considered a delimited
@@ -130,6 +142,10 @@ def load_plugins():
 
     load_from_dirs() provides the underlying mechanism and is called with
     the default directory list to provide the normal behaviour.
+
+    :param path: The list of paths to search for plugins.  By default,
+        path will be determined using get_standard_plugins_path.
+        if path is [], no plugins can be loaded.
     """
     global _loaded
     if _loaded:
@@ -138,7 +154,7 @@ def load_plugins():
     _loaded = True
 
     # scan for all plugins in the path.
-    load_from_path(set_plugins_path())
+    load_from_path(set_plugins_path(path))
 
 
 def load_from_path(dirs):
@@ -174,7 +190,7 @@ load_from_dirs = load_from_path
 
 def load_from_dir(d):
     """Load the plugins in directory d.
-    
+
     d must be in the plugins module path already.
     """
     # Get the list of valid python suffixes for __init__.py?
@@ -203,12 +219,14 @@ def load_from_dir(d):
                     break
             else:
                 continue
-        if getattr(_mod_plugins, f, None):
+        if f == '__init__':
+            continue # We don't load __init__.py again in the plugin dir
+        elif getattr(_mod_plugins, f, None):
             trace.mutter('Plugin name %s already loaded', f)
         else:
             # trace.mutter('add plugin name %s', f)
             plugin_names.add(f)
-    
+
     for name in plugin_names:
         try:
             exec "import bzrlib.plugins.%s" % name in {}
@@ -269,11 +287,11 @@ def load_from_zip(zip_name):
                     if name.startswith(prefix)]
 
     trace.mutter('Names in archive: %r', namelist)
-    
+
     for name in namelist:
         if not name or name.endswith('/'):
             continue
-    
+
         # '/' is used to separate pathname components inside zip archives
         ix = name.rfind('/')
         if ix == -1:
@@ -283,11 +301,11 @@ def load_from_zip(zip_name):
         if '/' in head:
             # we don't need looking in subdirectories
             continue
-    
+
         base, suffix = osutils.splitext(tail)
         if suffix not in valid_suffixes:
             continue
-    
+
         if base == '__init__':
             # package
             plugin_name = head
@@ -296,13 +314,13 @@ def load_from_zip(zip_name):
             plugin_name = base
         else:
             continue
-    
+
         if not plugin_name:
             continue
         if getattr(_mod_plugins, plugin_name, None):
             trace.mutter('Plugin name %s already loaded', plugin_name)
             continue
-    
+
         try:
             exec "import bzrlib.plugins.%s" % plugin_name in {}
             trace.mutter('Load plugin %s from zip %r', plugin_name, zip_name)
@@ -319,7 +337,7 @@ def load_from_zip(zip_name):
 
 def plugins():
     """Return a dictionary of the plugins.
-    
+
     Each item in the dictionary is a PlugIn object.
     """
     result = {}
@@ -379,7 +397,7 @@ class ModuleHelpTopic(object):
             result = self.module.__doc__
         if result[-1] != '\n':
             result += '\n'
-        # there is code duplicated here and in bzrlib/help_topic.py's 
+        # there is code duplicated here and in bzrlib/help_topic.py's
         # matching Topic code. This should probably be factored in
         # to a helper function and a common base class.
         if additional_see_also is not None:
@@ -451,18 +469,29 @@ class PlugIn(object):
     def version_info(self):
         """Return the plugin's version_tuple or None if unknown."""
         version_info = getattr(self.module, 'version_info', None)
-        if version_info is not None and len(version_info) == 3:
-            version_info = tuple(version_info) + ('final', 0)
+        if version_info is not None:
+            try:
+                if isinstance(version_info, types.StringType):
+                    version_info = version_info.split('.')
+                elif len(version_info) == 3:
+                    version_info = tuple(version_info) + ('final', 0)
+            except TypeError, e:
+                # The given version_info isn't even iteratible
+                trace.log_exception_quietly()
+                version_info = (version_info,)
         return version_info
 
     def _get__version__(self):
         version_info = self.version_info()
-        if version_info is None:
+        if version_info is None or len(version_info) == 0:
             return "unknown"
-        if version_info[3] == 'final':
-            version_string = '%d.%d.%d' % version_info[:3]
-        else:
-            version_string = '%d.%d.%d%s%d' % version_info
+        try:
+            version_string = _format_version_tuple(version_info)
+        except (ValueError, TypeError, IndexError), e:
+            trace.log_exception_quietly()
+            # try to return something usefull for bad plugins, in stead of
+            # stack tracing.
+            version_string = '.'.join(map(str, version_info))
         return version_string
 
     __version__ = property(_get__version__)

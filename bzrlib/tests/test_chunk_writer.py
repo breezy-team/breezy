@@ -39,6 +39,24 @@ class TestWriter(TestCaseWithTransport):
         # Only a zlib header.
         self.assertEqual(4088, padding)
 
+    def test_optimize_for_speed(self):
+        writer = chunk_writer.ChunkWriter(4096)
+        writer.set_optimize(for_size=False)
+        self.assertEqual(chunk_writer.ChunkWriter._repack_opts_for_speed,
+                         (writer._max_repack, writer._max_zsync))
+        writer = chunk_writer.ChunkWriter(4096, optimize_for_size=False)
+        self.assertEqual(chunk_writer.ChunkWriter._repack_opts_for_speed,
+                         (writer._max_repack, writer._max_zsync))
+
+    def test_optimize_for_size(self):
+        writer = chunk_writer.ChunkWriter(4096)
+        writer.set_optimize(for_size=True)
+        self.assertEqual(chunk_writer.ChunkWriter._repack_opts_for_size,
+                         (writer._max_repack, writer._max_zsync))
+        writer = chunk_writer.ChunkWriter(4096, optimize_for_size=True)
+        self.assertEqual(chunk_writer.ChunkWriter._repack_opts_for_size,
+                         (writer._max_repack, writer._max_zsync))
+
     def test_some_data(self):
         writer = chunk_writer.ChunkWriter(4096)
         writer.write("foo bar baz quux\n")

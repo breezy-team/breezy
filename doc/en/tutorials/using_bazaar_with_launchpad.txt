@@ -114,7 +114,7 @@ exciting CDEs around for several notable reasons:
   together on related issues and roadmaps.
 
 In other words, Launchpad has been designed to help your
-comunity grow and to reduce the workflow friction both
+community grow and to reduce the workflow friction both
 *within* your community and *between* communities. Ultimately,
 that means less time on mechanical tasks and more time for
 interesting development.
@@ -441,7 +441,7 @@ Together, they can:
 In particular, Launchpad is a free code hosting service for your Bazaar
 branches, branches can be browsed online, branches can be linked to bugs
 and blueprints, and the status of bug-branch relationships can be
-automatically managed by mentioning the bug while commiting in Bazaar.
+automatically managed by mentioning the bug while committing in Bazaar.
 Further integration is under development with the aim of streamlining
 the process from *great idea* to *running code in the hands of end users*.
 

@@ -29,7 +29,7 @@ from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
 class TestPull(TestCaseWithBranch):
 
     def test_pull_convergence_simple(self):
-        # when revisions are pulled, the left-most accessible parents must 
+        # when revisions are pulled, the left-most accessible parents must
         # become the revision-history.
         parent = self.make_branch_and_tree('parent')
         parent.commit('1st post', rev_id='P1', allow_pointless=True)
@@ -127,7 +127,7 @@ class TestPullHook(TestCaseWithBranch):
 
     def capture_post_pull_hook(self, result):
         """Capture post pull hook calls to self.hook_calls.
-        
+
         The call is logged, as is some state of the two branches.
         """
         if result.local_branch:
@@ -161,7 +161,7 @@ class TestPullHook(TestCaseWithBranch):
     def test_post_pull_bound_branch(self):
         # pulling to a bound branch should pass in the master branch to the
         # hook, allowing the correct number of emails to be sent, while still
-        # allowing hooks that want to modify the target to do so to both 
+        # allowing hooks that want to modify the target to do so to both
         # instances.
         target = self.make_branch('target')
         local = self.make_branch('local')
