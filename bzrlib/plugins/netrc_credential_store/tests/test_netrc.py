@@ -46,53 +46,26 @@ default login anonymous password joe@home
             f.write(netrc_content)
         finally:
             f.close()
-        
-        # Create a test AuthenticationConfig object
-        ac_content = """
-[host1]
-host = host
-user = joe
-password_encoding = netrc
-
-[host2]
-host = host
-user = jim
-password_encoding = netrc
-
-[other]
-host = other
-user = anonymous
-password_encoding = netrc
-"""
-        ac_path = osutils.pathjoin(self.test_home_dir, 'netrc-authentication.conf')
-        f = open(ac_path, 'wb')
-        try:
-            f.write(ac_content)
-        finally:
-            f.close()
-        self.ac = config.AuthenticationConfig(_file=ac_path)
 
     def _get_netrc_cs(self):
         return  config.credential_store_registry.get_credential_store('netrc')
 
     def test_not_matching_user(self):
-        credentials = self.ac.get_credentials('scheme', 'host', user='jim')
-        self.assertIsNot(None, credentials)
-        self.assertIs(None, credentials.get('password', None))
+        cs = self._get_netrc_cs()
+        password = cs.decode_password(dict(host='host', user='jim'))
+        self.assertIs(None, password)
 
     def test_matching_user(self):
-        credentials = self.ac.get_credentials('scheme', 'host', user='joe')
-        self.assertIsNot(None, credentials)
-        self.assertEquals('secret', credentials.get('password', None))
+        cs = self._get_netrc_cs()
+        password = cs.decode_password(dict(host='host', user='joe'))
+        self.assertEquals('secret', password)
 
     def test_default_password(self):
-        credentials = self.ac.get_credentials('scheme', 'other', user='anonymous')
-        self.assertIsNot(None, credentials)
-        self.assertEquals('joe@home', credentials.get('password', None))
+        cs = self._get_netrc_cs()
+        password = cs.decode_password(dict(host='other', user='anonymous'))
+        self.assertEquals('joe@home', password)
 
     def test_default_password_without_user(self):
-        # We need to test the plug-in directly here because it's impossible
-        # to not provide a user through the AuthenticationConfig path
         cs = self._get_netrc_cs()
         password = cs.decode_password(dict(host='other'))
         self.assertIs(None, password)
