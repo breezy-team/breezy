@@ -287,10 +287,10 @@ class DefaultSha1Provider(Sha1Provider):
         file_obj = file(abspath, 'rb')
         try:
             statvalue = os.fstat(file_obj.fileno())
-            link_or_sha1 = osutils.sha_file(file_obj)
+            sha1 = osutils.sha_file(file_obj)
         finally:
             file_obj.close()
-        return statvalue, link_or_sha1
+        return statvalue, sha1
 
 
 class DirState(object):
