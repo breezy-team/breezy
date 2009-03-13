@@ -362,7 +362,7 @@ class GCCHKPacker(Packer):
     def _copy_stream(self, source_vf, target_vf, keys, message, vf_to_stream,
                      pb_offset):
         trace.mutter('repacking %d %s', len(keys), message)
-        self.pb.update('repacking %s', pb_offset)
+        self.pb.update('repacking %s' % (message,), pb_offset)
         child_pb = ui.ui_factory.nested_progress_bar()
         try:
             stream = vf_to_stream(source_vf, keys, message, child_pb)
