@@ -230,14 +230,16 @@ class CHKMap(object):
         # *) common references are at different heights.
         #    consider two trees:
         #    {'a': LeafNode={'aaa':'foo', 'aab':'bar'}, 'b': LeafNode={'b'}}
-        #    {'a': InternalNode={'aa':LeafNode={'aaa':'foo', 'aab':'bar'}, 'ab':LeafNode={'ab':'bar'}}
+        #    {'a': InternalNode={'aa':LeafNode={'aaa':'foo', 'aab':'bar'},
+        #                        'ab':LeafNode={'ab':'bar'}}
         #     'b': LeafNode={'b'}}
         #    the node with aaa/aab will only be encountered in the second tree
         #    after reading the 'a' subtree, but it is encountered in the first
-        #    tree immediately. Variations on this may have read internal nodes like this.
-        #    we want to cut the entire pending subtree when we realise we have a common node.
-        #    For this we use a list of keys - the path to a node - and check the entire path is
-        #    clean as we process each item.
+        #    tree immediately. Variations on this may have read internal nodes
+        #    like this.  we want to cut the entire pending subtree when we
+        #    realise we have a common node.  For this we use a list of keys -
+        #    the path to a node - and check the entire path is clean as we
+        #    process each item.
         if self._node_key(self._root_node) == self._node_key(basis._root_node):
             return
         self._ensure_root()
