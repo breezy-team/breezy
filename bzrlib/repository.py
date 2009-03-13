@@ -2617,6 +2617,7 @@ class InterRepository(InterObject):
             pass
         self.target.fetch(self.source, revision_id=revision_id)
 
+    @needs_write_lock
     def fetch(self, revision_id=None, pb=None, find_ghosts=False,
             fetch_spec=None):
         """Fetch the content required to construct revision_id.
