@@ -28,7 +28,6 @@ from bzrlib import (
 
 lazy_import(globals(), """
 from bzrlib.lockable_files import (
-    _LockWarner,
     TransportLock,
     )
 from bzrlib.plugins.git import (
@@ -70,7 +69,7 @@ class GitLockableFiles(lockable_files.LockableFiles):
         self._transaction = None
         self._lock_mode = None
         self._transport = transport
-        self._lock_warner = _LockWarner(repr(self))
+        self._lock_count = 0
 
 
 class GitDir(bzrdir.BzrDir):
