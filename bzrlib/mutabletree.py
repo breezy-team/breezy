@@ -246,7 +246,6 @@ class MutableTree(tree.Tree):
         missing_files = set()
         missing_parents = set()
         candidate_files = set()
-        required_parents = set()
         basis = self.basis_tree()
         basis.lock_read()
         try:
@@ -280,15 +279,7 @@ class MutableTree(tree.Tree):
                 matches = rn.file_match(self, candidate_files)
             finally:
                 task.finished()
-            for path in matches:
-                while True:
-                    path = dirname(path)
-                    if path in required_parents:
-                        break
-                    if self.path2id(path) is not None:
-                        break
-                    required_parents.add(path)
-            self.add(required_parents)
+            self.add(rn.get_required_parents(matches, self))
             self.unversion(matches.values())
             self.add(matches.keys(), matches.values())
         finally:

@@ -74,3 +74,12 @@ class TestRenameMap(TestCaseWithTransport):
         self.build_tree_contents([('tree/c', ''.join(self.b_lines))])
         self.assertEqual({'a': 'aid'},
                          rn.file_match(tree, ['a', 'b', 'c']))
+
+    def test_match_directories(self):
+        rn = RenameMap()
+        tree = self.make_branch_and_tree('tree')
+        required_parents = rn.get_required_parents({
+            'path1': 'a',
+            'path2/tr': 'b',
+        }, tree)
+        self.assertEqual({'path2': ['path2/tr']}, required_parents)

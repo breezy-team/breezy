@@ -16,7 +16,8 @@
 
 
 from cStringIO import StringIO
-from ui import ui_factory
+from bzrlib.ui import ui_factory
+from bzrlib import osutils
 
 
 class RenameMap(object):
@@ -114,3 +115,14 @@ class RenameMap(object):
             seen_paths.add(path)
             seen_file_ids.add(file_id)
         return path_map
+
+    def get_required_parents(self, matches, tree):
+        required_parents = {}
+        for path in matches:
+            while True:
+                child = path
+                path = osutils.dirname(path)
+                if tree.path2id(path) is not None:
+                    break
+                required_parents.setdefault(path, []).append(child)
+        return required_parents
