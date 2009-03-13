@@ -84,4 +84,4 @@ password_encoding = netrc
     def test_get_credentials(self):
         credentials = self.ac.get_credentials('scheme', 'host', user='joe')
         self.assertIsNot(None, credentials)
-        self.assertIs('secret', credentials.get('password', None))
+        self.assertEquals('secret', credentials.get('password', None))
