@@ -386,6 +386,54 @@ class TestRepository(TestCaseWithRepository):
         self.assertIsInstance(delta, TreeDelta)
         self.assertEqual([('vla', 'file2', 'file')], delta.added)
 
+    def test_get_revision_delta_filtered(self):
+        tree_a = self.make_branch_and_tree('a')
+        self.build_tree(['a/foo', 'a/bar/', 'a/bar/b1', 'a/bar/b2', 'a/baz'])
+        tree_a.add(['foo', 'bar', 'bar/b1', 'bar/b2', 'baz'],
+                   ['foo-id', 'bar-id', 'b1-id', 'b2-id', 'baz-id'])
+        tree_a.commit('rev1', rev_id='rev1')
+        self.build_tree(['a/bar/b3'])
+        tree_a.add('bar/b3', 'b3-id')
+        tree_a.commit('rev2', rev_id='rev2')
+
+        # Test multiple files
+        delta = tree_a.branch.repository.get_revision_delta('rev1',
+            specific_fileids=['foo-id', 'baz-id'])
+        self.assertIsInstance(delta, TreeDelta)
+        self.assertEqual([
+            ('baz', 'baz-id', 'file'),
+            ('foo', 'foo-id', 'file'),
+            ], delta.added)
+        # Test a directory
+        delta = tree_a.branch.repository.get_revision_delta('rev1',
+            specific_fileids=['bar-id'])
+        self.assertIsInstance(delta, TreeDelta)
+        self.assertEqual([
+            ('bar', 'bar-id', 'directory'),
+            ('bar/b1', 'b1-id', 'file'),
+            ('bar/b2', 'b2-id', 'file'),
+            ], delta.added)
+        # Test a file in a directory
+        delta = tree_a.branch.repository.get_revision_delta('rev1',
+            specific_fileids=['b2-id'])
+        self.assertIsInstance(delta, TreeDelta)
+        self.assertEqual([
+            ('bar', 'bar-id', 'directory'),
+            ('bar/b2', 'b2-id', 'file'),
+            ], delta.added)
+        # Try another revision
+        delta = tree_a.branch.repository.get_revision_delta('rev2',
+                specific_fileids=['b3-id'])
+        self.assertIsInstance(delta, TreeDelta)
+        self.assertEqual([
+            ('bar', 'bar-id', 'directory'),
+            ('bar/b3', 'b3-id', 'file'),
+            ], delta.added)
+        delta = tree_a.branch.repository.get_revision_delta('rev2',
+                specific_fileids=['foo-id'])
+        self.assertIsInstance(delta, TreeDelta)
+        self.assertEqual([], delta.added)
+
     def test_clone_bzrdir_repository_revision(self):
         # make a repository with some revisions,
         # and clone it, this should not have unreferenced revisions.
