@@ -3,12 +3,12 @@ Bazaar Architectural Overview
 =============================
 
 This document describes the key classes and concepts within Bazaar.  It is
-intended to be useful to people working on the Bazaar
-codebase, or to people writing plugins.
+intended to be useful to people working on the Bazaar codebase, or to
+people writing plugins.
 
-If you have any questions, or if something seems to be incorrect, unclear or
-missing, please talk to us in ``irc://irc.freenode.net/#bzr``, or write to
-the Bazaar mailing list.  To propose a correction or addition to this
+If you have any questions, or if something seems to be incorrect, unclear
+or missing, please talk to us in ``irc://irc.freenode.net/#bzr``, or write
+to the Bazaar mailing list.  To propose a correction or addition to this
 document, send a merge request or new text to the mailing list.
 
 The current version of this document is available in the file
@@ -55,11 +55,11 @@ Python file I/O mechanisms.
 Filenames vs URLs
 =================
 
-Transports work in terms of URLs.  Take note that URLs are by definition only
-ASCII - the decision of how to encode a Unicode string into a URL must be
-taken at a higher level, typically in the Store.  (Note that Stores also
-escape filenames which cannot be safely stored on all filesystems, but
-this is a different level.)
+Transports work in terms of URLs.  Take note that URLs are by definition
+only ASCII - the decision of how to encode a Unicode string into a URL
+must be taken at a higher level, typically in the Store.  (Note that
+Stores also escape filenames which cannot be safely stored on all
+filesystems, but this is a different level.)
 
 The main reason for this is that it's not possible to safely roundtrip a
 URL into Unicode and then back into the same URL.  The URL standard
@@ -72,21 +72,22 @@ way to tell whether that character represents "latin small letter a with
 grave" in iso-8859-1, or "latin small letter r with acute" in iso-8859-2,
 or malformed UTF-8.  So we can't convert the URL to Unicode reliably.
 
-Equally problematic is if we're given a URL-like string containing (unescaped) non-ASCII
-characters (such as the accented a).  We can't be sure how to convert that
-to a valid (i.e. ASCII-only) URL, because we don't know what encoding the server expects
-for those characters.  (Although it is not totally reliable, we might still
-accept these and assume that they should be put into UTF-8.)
+Equally problematic is if we're given a URL-like string containing
+(unescaped) non-ASCII characters (such as the accented a).  We can't be
+sure how to convert that to a valid (i.e. ASCII-only) URL, because we
+don't know what encoding the server expects for those characters.
+(Although it is not totally reliable, we might still accept these and
+assume that they should be put into UTF-8.)
 
 A similar edge case is that the URL ``http://foo/sweet%2Fsour`` contains
 one directory component whose name is "sweet/sour".  The escaped slash is
-not a directory separator, but if we try to convert the URL to a regular Unicode
-path, this information will be lost.
+not a directory separator, but if we try to convert the URL to a regular
+Unicode path, this information will be lost.
 
 This implies that Transports must natively deal with URLs.  For simplicity
 they *only* deal with URLs; conversion of other strings to URLs is done
-elsewhere.  Information that Transports return, such as from ``list_dir``, is also in
-the form of URL components.
+elsewhere.  Information that Transports return, such as from ``list_dir``,
+is also in the form of URL components.
 
 
 Repository
