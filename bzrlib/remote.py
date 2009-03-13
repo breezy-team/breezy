@@ -73,9 +73,9 @@ class _RpcHelper(object):
 def response_tuple_to_repo_format(response):
     """Convert a response tuple describing a repository format to a format."""
     format = RemoteRepositoryFormat()
-    format.rich_root_data = (response[0] == 'yes')
-    format.supports_tree_reference = (response[1] == 'yes')
-    format.supports_external_lookups = (response[2] == 'yes')
+    format._rich_root_data = (response[0] == 'yes')
+    format._supports_tree_reference = (response[1] == 'yes')
+    format._supports_external_lookups = (response[2] == 'yes')
     format._network_name = response[3]
     return format
 
@@ -412,6 +412,32 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
         self._custom_format = None
         self._network_name = None
         self._creating_bzrdir = None
+        self._supports_external_lookups = None
+        self._supports_tree_reference = None
+        self._rich_root_data = None
+
+    @property
+    def rich_root_data(self):
+        if self._rich_root_data is None:
+            self._ensure_real()
+            self._rich_root_data = self._custom_format.rich_root_data
+        return self._rich_root_data
+
+    @property
+    def supports_external_lookups(self):
+        if self._supports_external_lookups is None:
+            self._ensure_real()
+            self._supports_external_lookups = \
+                self._custom_format.supports_external_lookups 
+        return self._supports_external_lookups
+
+    @property
+    def supports_tree_reference(self):
+        if self._supports_tree_reference is None:
+            self._ensure_real()
+            self._supports_tree_reference = \
+                self._custom_format.supports_tree_reference
+        return self._supports_tree_reference
 
     def _vfs_initialize(self, a_bzrdir, shared):
         """Helper for common code in initialize."""
@@ -995,12 +1021,9 @@ class RemoteRepository(_RpcHelper):
 
         :param repository: A repository.
         """
-        # XXX: At the moment the RemoteRepository will allow fallbacks
-        # unconditionally - however, a _real_repository will usually exist,
-        # and may raise an error if it's not accommodated by the underlying
-        # format.  Eventually we should check when opening the repository
-        # whether it's willing to allow them or not.
-        #
+        if not self._format.supports_external_lookups:
+            raise errors.UnstackableRepositoryFormat(
+                self._format.network_name(), self.base)
         # We need to accumulate additional repositories here, to pass them in
         # on various RPC's.
         #

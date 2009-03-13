@@ -2440,7 +2440,9 @@ class cmd_ignore(Command):
         tree.unlock()
         if len(matches) > 0:
             print "Warning: the following files are version controlled and" \
-                  " match your ignore pattern:\n%s" % ("\n".join(matches),)
+                  " match your ignore pattern:\n%s" \
+                  "\nThese files will continue to be version controlled" \
+                  " unless you 'bzr remove' them." % ("\n".join(matches),)
 
 
 class cmd_ignored(Command):
