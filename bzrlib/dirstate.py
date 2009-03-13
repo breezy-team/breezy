@@ -351,12 +351,11 @@ class DirState(object):
     HEADER_FORMAT_2 = '#bazaar dirstate flat format 2\n'
     HEADER_FORMAT_3 = '#bazaar dirstate flat format 3\n'
 
-    def __init__(self, path, sha1_provider=None):
+    def __init__(self, path, sha1_provider):
         """Create a  DirState object.
 
         :param path: The path at which the dirstate file on disk should live.
         :param sha1_provider: an object meeting the Sha1Provider interface.
-            If None, a DefaultSha1Provider is used.
         """
         # _header_state and _dirblock_state represent the current state
         # of the dirstate metadata and the per-row data respectiely.
@@ -388,10 +387,7 @@ class DirState(object):
         self._cutoff_time = None
         self._split_path_cache = {}
         self._bisect_page_size = DirState.BISECT_PAGE_SIZE
-        if sha1_provider is None:
-            self._sha1_provider = DefaultSha1Provider()
-        else:
-            self._sha1_provider = sha1_provider
+        self._sha1_provider = sha1_provider
         if 'hashcache' in debug.debug_flags:
             self._sha1_file = self._sha1_file_and_mutter
         else:
@@ -1232,15 +1228,18 @@ class DirState(object):
         return entry_index, present
 
     @staticmethod
-    def from_tree(tree, dir_state_filename):
+    def from_tree(tree, dir_state_filename, sha1_provider=None):
         """Create a dirstate from a bzr Tree.
 
         :param tree: The tree which should provide parent information and
             inventory ids.
+        :param sha1_provider: an object meeting the Sha1Provider interface.
+            If None, a DefaultSha1Provider is used.
         :return: a DirState object which is currently locked for writing.
             (it was locked by DirState.initialize)
         """
-        result = DirState.initialize(dir_state_filename)
+        result = DirState.initialize(dir_state_filename,
+            sha1_provider=sha1_provider)
         try:
             tree.lock_read()
             try:
@@ -1867,13 +1866,15 @@ class DirState(object):
             return None, None
 
     @classmethod
-    def initialize(cls, path):
+    def initialize(cls, path, sha1_provider=None):
         """Create a new dirstate on path.
 
         The new dirstate will be an empty tree - that is it has no parents,
         and only a root node - which has id ROOT_ID.
 
         :param path: The name of the file for the dirstate.
+        :param sha1_provider: an object meeting the Sha1Provider interface.
+            If None, a DefaultSha1Provider is used.
         :return: A write-locked DirState object.
         """
         # This constructs a new DirState object on a path, sets the _state_file
@@ -1881,7 +1882,9 @@ class DirState(object):
         # stock empty dirstate information - a root with ROOT_ID, no children,
         # and no parents. Finally it calls save() to ensure that this data will
         # persist.
-        result = cls(path)
+        if sha1_provider is None:
+            sha1_provider = DefaultSha1Provider()
+        result = cls(path, sha1_provider)
         # root dir and root dir contents with no children.
         empty_tree_dirblocks = [('', []), ('', [])]
         # a new root directory, with a NULLSTAT.
@@ -2028,7 +2031,9 @@ class DirState(object):
             If None, a DefaultSha1Provider is used.
         :return: An unlocked DirState object, associated with the given path.
         """
-        result = DirState(path, sha1_provider=sha1_provider)
+        if sha1_provider is None:
+            sha1_provider = DefaultSha1Provider()
+        result = DirState(path, sha1_provider)
         return result
 
     def _read_dirblocks_if_needed(self):

@@ -1617,11 +1617,12 @@ class TestDirstateSortOrder(TestCaseWithTransport):
 class InstrumentedDirState(dirstate.DirState):
     """An DirState with instrumented sha1 functionality."""
 
-    def __init__(self, path):
-        super(InstrumentedDirState, self).__init__(path)
+    def __init__(self, path, sha1_provider):
+        super(InstrumentedDirState, self).__init__(path, sha1_provider)
         self._time_offset = 0
         self._log = []
         # member is dynamically set in DirState.__init__ to turn on trace
+        self._sha1_provider = sha1_provider
         self._sha1_file = self._sha1_file_and_log
 
     def _sha_cutoff_time(self):
@@ -1630,7 +1631,7 @@ class InstrumentedDirState(dirstate.DirState):
 
     def _sha1_file_and_log(self, abspath):
         self._log.append(('sha1', abspath))
-        return osutils.sha_file_by_name(abspath)
+        return self._sha1_provider.sha1(abspath)
 
     def _read_link(self, abspath, old_link):
         self._log.append(('read_link', abspath, old_link))
