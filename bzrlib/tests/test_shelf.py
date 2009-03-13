@@ -16,7 +16,7 @@
 
 import os
 
-from bzrlib import errors, pack, shelf, tests, transform
+from bzrlib import errors, pack, shelf, tests, transform, workingtree
 
 
 EMPTY_SHELF = ("Bazaar pack format 1 (introduced in 0.18)\n"
@@ -267,6 +267,20 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         #skip revision-id
         records.next()
         tt.deserialize(records)
+
+    def test_shelve_unversioned(self):
+        tree = self.make_branch_and_tree('tree')
+        self.assertRaises(errors.PathsNotVersionedError,
+                          shelf.ShelfCreator, tree, tree.basis_tree(), ['foo'])
+        # We should be able to lock/unlock the tree if ShelfCreator cleaned
+        # after itself.
+        wt = workingtree.WorkingTree.open('tree')
+        wt.lock_tree_write()
+        wt.unlock()
+        # And a second tentative should raise the same error (no
+        # limbo/pending_deletion leftovers).
+        self.assertRaises(errors.PathsNotVersionedError,
+                          shelf.ShelfCreator, tree, tree.basis_tree(), ['foo'])
 
 
 class TestUnshelver(tests.TestCaseWithTransport):

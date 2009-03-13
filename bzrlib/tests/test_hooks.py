@@ -16,10 +16,13 @@
 
 """Tests for the core Hooks logic."""
 
-from bzrlib import errors
+from bzrlib import branch, errors
 from bzrlib.hooks import (
     HookPoint,
     Hooks,
+    known_hooks,
+    known_hooks_key_to_object,
+    known_hooks_key_to_parent_and_attribute,
     )
 from bzrlib.errors import (
     UnknownHook,
@@ -51,7 +54,9 @@ class TestHooks(TestCase):
 
     def test_docs(self):
         """docs() should return something reasonable about the Hooks."""
-        hooks = Hooks()
+        class MyHooks(Hooks):
+            pass
+        hooks = MyHooks()
         hooks['legacy'] = []
         hook1 = HookPoint('post_tip_change',
             "Invoked after the tip of a branch changes. Called with "
@@ -63,14 +68,17 @@ class TestHooks(TestCase):
             (1, 6), None)
         hooks.create_hook(hook1)
         hooks.create_hook(hook2)
-        self.assertEqual(
-            "legacy\n"
-            "------\n"
+        self.assertEqualDiff(
+            "MyHooks\n"
+            "-------\n"
             "\n"
-            "An old-style hook. For documentation see the __init__ method of 'Hooks'\n"
+            "legacy\n"
+            "~~~~~~\n"
+            "\n"
+            "An old-style hook. For documentation see the __init__ method of 'MyHooks'\n"
             "\n"
             "post_tip_change\n"
-            "---------------\n"
+            "~~~~~~~~~~~~~~~\n"
             "\n"
             "Introduced in: 1.4\n"
             "Deprecated in: Not deprecated\n"
@@ -79,7 +87,7 @@ class TestHooks(TestCase):
             "ChangeBranchTipParams object.\n"
             "\n"
             "pre_tip_change\n"
-            "--------------\n"
+            "~~~~~~~~~~~~~~\n"
             "\n"
             "Introduced in: 1.6\n"
             "Deprecated in: Not deprecated\n"
@@ -150,7 +158,7 @@ class TestHook(TestCase):
             " a bzrlib.branch.PostChangeBranchTipParams object")
         hook = HookPoint("post_tip_change", doc, (0, 15), None)
         self.assertEqual("post_tip_change\n"
-            "---------------\n"
+            "~~~~~~~~~~~~~~~\n"
             "\n"
             "Introduced in: 0.15\n"
             "Deprecated in: Not deprecated\n"
@@ -175,3 +183,33 @@ class TestHook(TestCase):
         self.assertEqual(
             '<HookPoint(foo), callbacks=[%s(my callback)]>' %
             callback_repr, repr(hook))
+
+
+class TestHookRegistry(TestCase):
+
+    def test_items_are_reasonable_keys(self):
+        # All the items in the known_hooks registry need to map from
+        # (module_name, member_name) tuples to the callable used to get an
+        # empty Hooks of for that attribute. This is used to support the test
+        # suite which needs to generate empty hooks (and HookPoints) to ensure
+        # isolation and prevent tests failing spuriously.
+        for key, factory in known_hooks.items():
+            self.assertTrue(callable(factory),
+                "The factory(%r) for %r is not callable" % (factory, key))
+            obj = known_hooks_key_to_object(key)
+            self.assertIsInstance(obj, Hooks)
+            new_hooks = factory()
+            self.assertIsInstance(obj, Hooks)
+            self.assertEqual(type(obj), type(new_hooks))
+
+    def test_known_hooks_key_to_object(self):
+        self.assertIs(branch.Branch.hooks,
+            known_hooks_key_to_object(('bzrlib.branch', 'Branch.hooks')))
+
+    def test_known_hooks_key_to_parent_and_attribute(self):
+        self.assertEqual((branch.Branch, 'hooks'),
+            known_hooks_key_to_parent_and_attribute(
+            ('bzrlib.branch', 'Branch.hooks')))
+        self.assertEqual((branch, 'Branch'),
+            known_hooks_key_to_parent_and_attribute(
+            ('bzrlib.branch', 'Branch')))

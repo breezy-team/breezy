@@ -1143,6 +1143,9 @@ class LogFormatter(object):
           let the log formatter decide.
         """
         self.to_file = to_file
+        # 'exact' stream used to show diff, it should print content 'as is'
+        # and should not try to decode/encode it to unicode to avoid bug #328007
+        self.to_exact_file = getattr(to_file, 'stream', to_file)
         self.show_ids = show_ids
         self.show_timezone = show_timezone
         if delta_format is None:
@@ -1246,7 +1249,7 @@ class LongLogFormatter(LogFormatter):
             to_file.write(indent + 'diff:\n')
             # Note: we explicitly don't indent the diff (relative to the
             # revision information) so that the output can be fed to patch -p0
-            self.show_diff(to_file, revision.diff, indent)
+            self.show_diff(self.to_exact_file, revision.diff, indent)
 
 
 class ShortLogFormatter(LogFormatter):
@@ -1310,7 +1313,7 @@ class ShortLogFormatter(LogFormatter):
             revision.delta.show(to_file, self.show_ids, indent=indent + offset,
                                 short_status=self.delta_format==1)
         if revision.diff is not None:
-            self.show_diff(to_file, revision.diff, '      ')
+            self.show_diff(self.to_exact_file, revision.diff, '      ')
         to_file.write('\n')
 
 

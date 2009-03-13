@@ -3062,7 +3062,8 @@ class RepositoryAcquisitionPolicy(object):
                 stack_on = self._get_full_stack_on()
         try:
             branch.set_stacked_on_url(stack_on)
-        except errors.UnstackableBranchFormat:
+        except (errors.UnstackableBranchFormat,
+                errors.UnstackableRepositoryFormat):
             if self._require_stacking:
                 raise
 
