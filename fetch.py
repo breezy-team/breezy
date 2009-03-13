@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008 Jelmer Vernooij <jelmer@samba.org>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,8 +14,20 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib import osutils, ui, urlutils
-from bzrlib.errors import InvalidRevisionId, NoSuchRevision
+from cStringIO import StringIO
+import dulwich as git
+from dulwich.client import SimpleFetchGraphWalker
+from dulwich.objects import Commit
+
+from bzrlib import (
+    osutils,
+    ui,
+    urlutils,
+    )
+from bzrlib.errors import (
+    InvalidRevisionId,
+    NoSuchRevision,
+    )
 from bzrlib.inventory import Inventory
 from bzrlib.repository import InterRepository
 from bzrlib.trace import info
@@ -29,11 +41,6 @@ from bzrlib.plugins.git.repository import (
 from bzrlib.plugins.git.converter import GitObjectConverter
 from bzrlib.plugins.git.remote import RemoteGitRepository
 
-import dulwich as git
-from dulwich.client import SimpleFetchGraphWalker
-from dulwich.objects import Commit
-
-from cStringIO import StringIO
 
 
 class BzrFetchGraphWalker(object):
