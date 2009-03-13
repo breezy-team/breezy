@@ -164,9 +164,17 @@ class GCPack(NewPack):
         # Groupcompress packs don't have any external references
 
 
-class GCRepositoryPackCollection(RepositoryPackCollection):
+class GCPacker(object):
+    """This class understand what it takes to collect a GCCHK repo."""
 
-    pack_factory = GCPack
+    def __init__(self, pack_collection, packs, new_pack):
+        self._pack_collection = pack_collection
+        self._packs = packs
+        self._new_pack = new_pack
+        # ATM, We only support this for GCCHK repositories
+        assert pack_collection.chk_index is not None
+        self._chk_id_roots = []
+        self._chk_p_id_roots = []
 
     def _get_progress_stream(self, source_vf, keys, index_name, pb):
         def pb_stream():
@@ -179,33 +187,35 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
 
     def _get_filtered_inv_stream(self, source_vf, keys, pb=None):
         """Filter the texts of inventories, to find the chk pages."""
-        id_roots = []
-        p_id_roots = []
-        id_roots_set = set()
-        p_id_roots_set = set()
         total_keys = len(keys)
-        def _filter_inv_stream(stream):
+        def _filtered_inv_stream():
+            id_roots_set = set()
+            p_id_roots_set = set()
+            stream = source_vf.get_record_stream(keys, 'groupcompress', True)
             for idx, record in enumerate(stream):
-                ### child_pb.update('fetch inv', idx, len(inv_keys_to_fetch))
                 bytes = record.get_bytes_as('fulltext')
-                chk_inv = inventory.CHKInventory.deserialise(None, bytes, record.key)
+                chk_inv = inventory.CHKInventory.deserialise(None, bytes,
+                                                             record.key)
                 if pb is not None:
                     pb.update('inv', idx, total_keys)
                 key = chk_inv.id_to_entry.key()
                 if key not in id_roots_set:
-                    id_roots.append(key)
+                    self._chk_id_roots.append(key)
                     id_roots_set.add(key)
                 p_id_map = chk_inv.parent_id_basename_to_file_id
-                if p_id_map is not None:
-                    key = p_id_map.key()
-                    if key not in p_id_roots_set:
-                        p_id_roots_set.add(key)
-                        p_id_roots.append(key)
+                assert p_id_map is not None
+                key = p_id_map.key()
+                if key not in p_id_roots_set:
+                    p_id_roots_set.add(key)
+                    self._chk_p_id_roots.append(key)
                 yield record
-        stream = source_vf.get_record_stream(keys, 'groupcompress', True)
-        return _filter_inv_stream(stream), id_roots, p_id_roots
+            # We have finished processing all of the inventory records, we
+            # don't need these sets anymore
+            id_roots_set.clear()
+            p_id_roots_set.clear()
+        return _filtered_inv_stream()
 
-    def _get_chk_streams(self, source_vf, keys, id_roots, p_id_roots, pb=None):
+    def _get_chk_streams(self, source_vf, keys, pb=None):
         # We want to stream the keys from 'id_roots', and things they
         # reference, and then stream things from p_id_roots and things they
         # reference, and then any remaining keys that we didn't get to.
@@ -259,9 +269,9 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
                 cur_keys = []
                 for prefix in sorted(keys_by_search_prefix):
                     cur_keys.extend(keys_by_search_prefix[prefix])
-        for stream in _get_referenced_stream(id_roots):
+        for stream in _get_referenced_stream(self._chk_id_roots):
             yield stream
-        for stream in _get_referenced_stream(p_id_roots):
+        for stream in _get_referenced_stream(self._chk_p_id_roots):
             yield stream
         if remaining_keys:
             trace.note('There were %d keys in the chk index, which were not'
@@ -270,22 +280,22 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
                                                  True)
             yield stream
 
-    def _build_vf(self, packs, index_name, parents, delta, for_write=False):
+    def _build_vf(self, index_name, parents, delta, for_write=False):
         """Build a VersionedFiles instance on top of this group of packs."""
         index_name = index_name + '_index'
         index_to_pack = {}
         access = knit._DirectPackAccess(index_to_pack)
         if for_write:
-            assert len(packs) == 1
-            pack = packs[0]
-            index = getattr(pack, index_name)
-            index_to_pack[index] = pack.access_tuple()
+            # Use new_pack
+            index = getattr(self._new_pack, index_name)
+            index_to_pack[index] = self._new_pack.access_tuple()
             index.set_optimize(for_size=True)
-            access.set_writer(pack._writer, index, pack.access_tuple())
+            access.set_writer(self._new_pack._writer, index,
+                              self._new_pack.access_tuple())
             add_callback = index.add_nodes
         else:
             indices = []
-            for pack in packs:
+            for pack in self._packs:
                 sub_index = getattr(pack, index_name)
                 index_to_pack[sub_index] = pack.access_tuple()
                 indices.append(sub_index)
@@ -295,31 +305,35 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
             _GCGraphIndex(index,
                           add_callback=add_callback,
                           parents=parents,
-                          is_locked=self.repo.is_locked),
+                          is_locked=self._pack_collection.repo.is_locked),
             access=access,
             delta=delta)
         return vf
 
-    def _fetch_across_packs(self, packs, new_pack, to_copy, has_chk, pb):
+    def _fetch_across_packs(self, pb):
+        to_copy = [('revision', True, False),
+                   ('inventory', True, True),
+                   ('chk', False, True),
+                   ('text', True, True),
+                   ('signature', False, False),
+                  ]
         for idx, (index_name, parents, delta) in enumerate(to_copy):
             pb.update('repacking %s' % (index_name,), idx + 1, len(to_copy))
-            source_vf = self._build_vf(packs, index_name, parents,
+            source_vf = self._build_vf(index_name, parents,
                                        delta, for_write=False)
-            target_vf = self._build_vf([new_pack], index_name, parents,
+            target_vf = self._build_vf(index_name, parents,
                                        delta, for_write=True)
             keys = source_vf.keys()
-            trace.mutter('repacking %s with %d keys',
-                         index_name, len(keys))
+            trace.mutter('repacking %s with %d keys', index_name, len(keys))
             stream = None
             child_pb = ui.ui_factory.nested_progress_bar()
             try:
-                if has_chk and index_name == 'inventory':
-                    stream, id_roots, p_id_roots = self._get_filtered_inv_stream(
+                if index_name == 'inventory':
+                    stream = self._get_filtered_inv_stream(
                         source_vf, keys, pb=child_pb)
                     target_vf.insert_record_stream(stream)
-                elif has_chk and index_name == 'chk':
+                elif index_name == 'chk':
                     for stream in self._get_chk_streams(source_vf, keys,
-                                        id_roots, p_id_roots,
                                         pb=child_pb):
                         target_vf.insert_record_stream(stream)
                 else:
@@ -327,6 +341,11 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
                         source_vf, keys, index_name, child_pb))
             finally:
                 child_pb.finished()
+
+
+class GCRepositoryPackCollection(RepositoryPackCollection):
+
+    pack_factory = GCPack
 
     def _execute_pack_operations(self, pack_operations, _packer_class=Packer,
                                  reload_func=None):
@@ -343,22 +362,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
             # Create a new temp VersionedFile instance based on these packs,
             # and then just fetch everything into the target
 
-            # index name, parents, delta
-            to_copy = [('revision', True, False),
-                       ('inventory', True, True),
-                       ('text', True, True),
-                       ('signature', False, False),
-                      ]
-            # TODO: This is a very non-optimal ordering for chk_bytes. The
-            #       issue is that pages that are similar are not transmitted
-            #       together. Perhaps get_record_stream('groupcompress') should be
-            #       taught about how to group chk pages?
-            has_chk = False
-            if self.chk_index is not None:
-                has_chk = True
-                to_copy.insert(2, ('chk', False, True))
-
-            # Shouldn't we start_write_group around this?
+            # Should we use start_write_group instead?
             if self._new_pack is not None:
                 raise errors.BzrError('call to %s.pack() while another pack is'
                                       ' being written.'
@@ -366,12 +370,11 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
             new_pack = self.pack_factory(self, '.autopack',
                 file_mode=self.repo.bzrdir._get_file_mode())
             new_pack.set_write_cache_size(1024*1024)
-            # TODO: A better alternative is to probably use Packer.open_pack(), and
-            #       then create a GroupCompressVersionedFiles() around the
-            #       target pack to insert into.
+
+            packer = GCPacker(self, packs, new_pack)
             pb = ui.ui_factory.nested_progress_bar()
             try:
-                self._fetch_across_packs(packs, new_pack, to_copy, has_chk, pb)
+                packer._fetch_across_packs(pb)
                 new_pack._check_references() # shouldn't be needed
             except:
                 pb.finished()
@@ -396,74 +399,80 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
             self._obsolete_packs(packs)
 
 
-class GCPackRepository(KnitPackRepository):
-    """GC customisation of KnitPackRepository."""
-
-    def __init__(self, _format, a_bzrdir, control_files, _commit_builder_class,
-        _serializer):
-        """Overridden to change pack collection class."""
-        KnitPackRepository.__init__(self, _format, a_bzrdir, control_files,
-            _commit_builder_class, _serializer)
-        # and now replace everything it did :)
-        index_transport = self._transport.clone('indices')
-        self._pack_collection = GCRepositoryPackCollection(self,
-            self._transport, index_transport,
-            self._transport.clone('upload'),
-            self._transport.clone('packs'),
-            _format.index_builder_class,
-            _format.index_class,
-            use_chk_index=self._format.supports_chks,
-            )
-        self.inventories = GroupCompressVersionedFiles(
-            _GCGraphIndex(self._pack_collection.inventory_index.combined_index,
-                add_callback=self._pack_collection.inventory_index.add_callback,
-                parents=True, is_locked=self.is_locked),
-            access=self._pack_collection.inventory_index.data_access)
-        self.revisions = GroupCompressVersionedFiles(
-            _GCGraphIndex(self._pack_collection.revision_index.combined_index,
-                add_callback=self._pack_collection.revision_index.add_callback,
-                parents=True, is_locked=self.is_locked),
-            access=self._pack_collection.revision_index.data_access,
-            delta=False)
-        self.signatures = GroupCompressVersionedFiles(
-            _GCGraphIndex(self._pack_collection.signature_index.combined_index,
-                add_callback=self._pack_collection.signature_index.add_callback,
-                parents=False, is_locked=self.is_locked),
-            access=self._pack_collection.signature_index.data_access,
-            delta=False)
-        self.texts = GroupCompressVersionedFiles(
-            _GCGraphIndex(self._pack_collection.text_index.combined_index,
-                add_callback=self._pack_collection.text_index.add_callback,
-                parents=True, is_locked=self.is_locked),
-            access=self._pack_collection.text_index.data_access)
-        if _format.supports_chks:
-            # No graph, no compression:- references from chks are between
-            # different objects not temporal versions of the same; and without
-            # some sort of temporal structure knit compression will just fail.
-            self.chk_bytes = GroupCompressVersionedFiles(
-                _GCGraphIndex(self._pack_collection.chk_index.combined_index,
-                    add_callback=self._pack_collection.chk_index.add_callback,
-                    parents=False, is_locked=self.is_locked),
-                access=self._pack_collection.chk_index.data_access)
-        else:
-            self.chk_bytes = None
-        # True when the repository object is 'write locked' (as opposed to the
-        # physical lock only taken out around changes to the pack-names list.)
-        # Another way to represent this would be a decorator around the control
-        # files object that presents logical locks as physical ones - if this
-        # gets ugly consider that alternative design. RBC 20071011
-        self._write_lock_count = 0
-        self._transaction = None
-        # for tests
-        self._reconcile_does_inventory_gc = True
-        self._reconcile_fixes_text_parents = True
-        self._reconcile_backsup_inventory = False
-
-    def suspend_write_group(self):
-        raise errors.UnsuspendableWriteGroup(self)
-
-    def _resume_write_group(self, tokens):
-        raise errors.UnsuspendableWriteGroup(self)
+# XXX: This format is scheduled for termination
+#
+# class GCPackRepository(KnitPackRepository):
+#     """GC customisation of KnitPackRepository."""
+#
+#     def __init__(self, _format, a_bzrdir, control_files, _commit_builder_class,
+#         _serializer):
+#         """Overridden to change pack collection class."""
+#         KnitPackRepository.__init__(self, _format, a_bzrdir, control_files,
+#             _commit_builder_class, _serializer)
+#         # and now replace everything it did :)
+#         index_transport = self._transport.clone('indices')
+#         self._pack_collection = GCRepositoryPackCollection(self,
+#             self._transport, index_transport,
+#             self._transport.clone('upload'),
+#             self._transport.clone('packs'),
+#             _format.index_builder_class,
+#             _format.index_class,
+#             use_chk_index=self._format.supports_chks,
+#             )
+#         self.inventories = GroupCompressVersionedFiles(
+#             _GCGraphIndex(self._pack_collection.inventory_index.combined_index,
+#                 add_callback=self._pack_collection.inventory_index.add_callback,
+#                 parents=True, is_locked=self.is_locked),
+#             access=self._pack_collection.inventory_index.data_access)
+#         self.revisions = GroupCompressVersionedFiles(
+#             _GCGraphIndex(self._pack_collection.revision_index.combined_index,
+#                 add_callback=self._pack_collection.revision_index.add_callback,
+#                 parents=True, is_locked=self.is_locked),
+#             access=self._pack_collection.revision_index.data_access,
+#             delta=False)
+#         self.signatures = GroupCompressVersionedFiles(
+#             _GCGraphIndex(self._pack_collection.signature_index.combined_index,
+#                 add_callback=self._pack_collection.signature_index.add_callback,
+#                 parents=False, is_locked=self.is_locked),
+#             access=self._pack_collection.signature_index.data_access,
+#             delta=False)
+#         self.texts = GroupCompressVersionedFiles(
+#             _GCGraphIndex(self._pack_collection.text_index.combined_index,
+#                 add_callback=self._pack_collection.text_index.add_callback,
+#                 parents=True, is_locked=self.is_locked),
+#             access=self._pack_collection.text_index.data_access)
+#         if _format.supports_chks:
+#             # No graph, no compression:- references from chks are between
+#             # different objects not temporal versions of the same; and without
+#             # some sort of temporal structure knit compression will just fail.
+#             self.chk_bytes = GroupCompressVersionedFiles(
+#                 _GCGraphIndex(self._pack_collection.chk_index.combined_index,
+#                     add_callback=self._pack_collection.chk_index.add_callback,
+#                     parents=False, is_locked=self.is_locked),
+#                 access=self._pack_collection.chk_index.data_access)
+#         else:
+#             self.chk_bytes = None
+#         # True when the repository object is 'write locked' (as opposed to the
+#         # physical lock only taken out around changes to the pack-names list.)
+#         # Another way to represent this would be a decorator around the control
+#         # files object that presents logical locks as physical ones - if this
+#         # gets ugly consider that alternative design. RBC 20071011
+#         self._write_lock_count = 0
+#         self._transaction = None
+#         # for tests
+#         self._reconcile_does_inventory_gc = True
+#         self._reconcile_fixes_text_parents = True
+#         self._reconcile_backsup_inventory = False
+#
+#     def suspend_write_group(self):
+#         raise errors.UnsuspendableWriteGroup(self)
+#
+#     def _resume_write_group(self, tokens):
+#         raise errors.UnsuspendableWriteGroup(self)
+#
+#     def _reconcile_pack(self, collection, packs, extension, revs, pb):
+#         bork
+#         return packer.pack(pb)
 
 
 class GCCHKPackRepository(CHKInventoryRepository):
@@ -530,6 +539,9 @@ class GCCHKPackRepository(CHKInventoryRepository):
     def _resume_write_group(self, tokens):
         raise errors.UnsuspendableWriteGroup(self)
 
+    def _reconcile_pack(self, collection, packs, extension, revs, pb):
+        bork
+        return packer.pack(pb)
 
 
 # This format has been disabled for now. It is not expected that this will be a

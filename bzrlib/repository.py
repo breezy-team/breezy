@@ -3121,9 +3121,10 @@ class InterPackRepo(InterSameDataRepository):
         Do not support CHK based repositories at this point.
         """
         from bzrlib.repofmt.pack_repo import RepositoryFormatPack
-        from bzrlib.repofmt.groupcompress_repo import (
-            RepositoryFormatPackGCPlain,
-            )
+        # XXX: This format is scheduled for termination
+        # from bzrlib.repofmt.groupcompress_repo import (
+        #     RepositoryFormatPackGCPlain,
+        #     )
         try:
             are_packs = (isinstance(source._format, RepositoryFormatPack) and
                 isinstance(target._format, RepositoryFormatPack))
@@ -3131,9 +3132,9 @@ class InterPackRepo(InterSameDataRepository):
             return False
         if not are_packs:
             return False
-        if (isinstance(source._format, RepositoryFormatPackGCPlain)
-            or isinstance(target._format, RepositoryFormatPackGCPlain)):
-            return False
+        # if (isinstance(source._format, RepositoryFormatPackGCPlain)
+        #     or isinstance(target._format, RepositoryFormatPackGCPlain)):
+        #     return False
         return (InterRepository._same_model(source, target) and
             not source._format.supports_chks)
 
