@@ -5,6 +5,7 @@ Bazaar Release Notes
 .. contents::
 
 
+
 IN DEVELOPMENT
 --------------
 
@@ -52,6 +53,8 @@ IN DEVELOPMENT
 
   DOCUMENTATION:
 
+    * New topic `bzr help debug-flags`.  (Martin Pool)
+
     * The generated manpage now explicitly lists aliases as commands.
       (James Westby, #336998)
 
@@ -60,6 +63,9 @@ IN DEVELOPMENT
     * New sort order for ``get_record_stream`` ``groupcompress`` which
       sorts optimally for use with groupcompress compressors. (John Arbash
       Meinel, Robert Collins)
+
+    * The ``pb`` argument to ``fetch()`` is deprecated.
+      (Martin Pool)
 
   INTERNALS:
 

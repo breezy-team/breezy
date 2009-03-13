@@ -86,7 +86,8 @@ class TextUIFactory(CLIUIFactory):
         This may update a progress bar, spinner, or similar display.
         By default it does nothing.
         """
-        self._progress_view.show_transport_activity(byte_count)
+        self._progress_view._show_transport_activity(transport,
+            direction, byte_count)
 
     def _progress_updated(self, task):
         """A task has been updated and wants to be displayed.
@@ -130,7 +131,6 @@ class TextProgressView(object):
         self._last_repaint = 0
         # time we last got information about transport activity
         self._transport_update_time = 0
-        self._task_fraction = None
         self._last_task = None
         self._total_byte_count = 0
         self._bytes_since_update = 0
@@ -154,10 +154,13 @@ class TextProgressView(object):
             # to have what looks like an incomplete progress bar.
             spin_str =  r'/-\|'[self._spin_pos % 4]
             self._spin_pos += 1
-            f = self._task_fraction or 0
             cols = 20
-            # number of markers highlighted in bar
-            markers = int(round(float(cols) * f)) - 1
+            if self._last_task is None:
+                completion_fraction = 0
+            else:
+                completion_fraction = \
+                    self._last_task._overall_completion_fraction() or 0
+            markers = int(round(float(cols) * completion_fraction)) - 1
             bar_str = '[' + ('#' * markers + spin_str).ljust(cols) + '] '
             return bar_str
         elif self._last_task.show_spinner:
@@ -177,7 +180,6 @@ class TextProgressView(object):
             s = ' %d' % (task.current_cnt)
         else:
             s = ''
-        self._task_fraction = task._overall_completion_fraction()
         # compose all the parent messages
         t = task
         m = task.msg
@@ -187,35 +189,41 @@ class TextProgressView(object):
                 m = t.msg + ':' + m
         return m + s
 
-    def _repaint(self):
+    def _render_line(self):
         bar_string = self._render_bar()
         if self._last_task:
             task_msg = self._format_task(self._last_task)
         else:
             task_msg = ''
         trans = self._last_transport_msg
-        if trans and task_msg:
+        if trans:
             trans += ' | '
-        s = (bar_string
-             + trans
-             + task_msg
-             )
+        return (bar_string + trans + task_msg)
+
+    def _repaint(self):
+        s = self._render_line()
         self._show_line(s)
         self._have_output = True
 
     def show_progress(self, task):
+        """Called by the task object when it has changed.
+        
+        :param task: The top task object; its parents are also included 
+            by following links.
+        """
+        must_update = task is not self._last_task
         self._last_task = task
         now = time.time()
-        if now < self._last_repaint + 0.1:
+        if (not must_update) and (now < self._last_repaint + 0.1):
             return
-        if now > self._transport_update_time + 5:
+        if now > self._transport_update_time + 10:
             # no recent activity; expire it
             self._last_transport_msg = ''
         self._last_repaint = now
         self._repaint()
 
-    def show_transport_activity(self, byte_count):
-        """Called by transports as they do IO.
+    def _show_transport_activity(self, transport, direction, byte_count):
+        """Called by transports via the ui_factory, as they do IO.
 
         This may update a progress bar, spinner, or similar display.
         By default it does nothing.
@@ -232,8 +240,15 @@ class TextProgressView(object):
             # guard against clock stepping backwards, and don't update too
             # often
             rate = self._bytes_since_update / (now - self._transport_update_time)
-            msg = ("%6dkB @ %4dkB/s" %
-                (self._total_byte_count>>10, int(rate)>>10,))
+            scheme = getattr(transport, '_scheme', None) or repr(transport)
+            if direction == 'read':
+                dir_char = '>'
+            elif direction == 'write':
+                dir_char = '<'
+            else:
+                dir_char = '?'
+            msg = ("%.7s %s %6dkB %5dkB/s" %
+                    (scheme, dir_char, self._total_byte_count>>10, int(rate)>>10,))
             self._transport_update_time = now
             self._last_repaint = now
             self._bytes_since_update = 0

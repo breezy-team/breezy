@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -2617,6 +2617,7 @@ class InterRepository(InterObject):
             pass
         self.target.fetch(self.source, revision_id=revision_id)
 
+    @needs_write_lock
     def fetch(self, revision_id=None, pb=None, find_ghosts=False,
             fetch_spec=None):
         """Fetch the content required to construct revision_id.
@@ -2630,9 +2631,6 @@ class InterRepository(InterObject):
         :return: None.
         """
         from bzrlib.fetch import RepoFetcher
-        mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
-               self.source, self.source._format, self.target,
-               self.target._format)
         f = RepoFetcher(to_repository=self.target,
                                from_repository=self.source,
                                last_revision=revision_id,
@@ -2851,19 +2849,6 @@ class InterWeaveRepo(InterSameDataRepository):
         else:
             self.target.fetch(self.source, revision_id=revision_id)
 
-    @needs_write_lock
-    def fetch(self, revision_id=None, pb=None, find_ghosts=False,
-            fetch_spec=None):
-        """See InterRepository.fetch()."""
-        from bzrlib.fetch import RepoFetcher
-        mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
-               self.source, self.source._format, self.target, self.target._format)
-        f = RepoFetcher(to_repository=self.target,
-                               from_repository=self.source,
-                               last_revision=revision_id,
-                               fetch_spec=fetch_spec,
-                               pb=pb, find_ghosts=find_ghosts)
-
     @needs_read_lock
     def search_missing_revision_ids(self, revision_id=None, find_ghosts=True):
         """See InterRepository.missing_revision_ids()."""
@@ -2932,19 +2917,6 @@ class InterKnitRepo(InterSameDataRepository):
         except AttributeError:
             return False
         return are_knits and InterRepository._same_model(source, target)
-
-    @needs_write_lock
-    def fetch(self, revision_id=None, pb=None, find_ghosts=False,
-            fetch_spec=None):
-        """See InterRepository.fetch()."""
-        from bzrlib.fetch import RepoFetcher
-        mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
-               self.source, self.source._format, self.target, self.target._format)
-        f = RepoFetcher(to_repository=self.target,
-                            from_repository=self.source,
-                            last_revision=revision_id,
-                            fetch_spec=fetch_spec,
-                            pb=pb, find_ghosts=find_ghosts)
 
     @needs_read_lock
     def search_missing_revision_ids(self, revision_id=None, find_ghosts=True):
@@ -3017,8 +2989,6 @@ class InterPackRepo(InterSameDataRepository):
             from bzrlib.fetch import RepoFetcher
             fetcher = RepoFetcher(self.target, self.source, revision_id,
                     pb, find_ghosts, fetch_spec=fetch_spec)
-        mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
-               self.source, self.source._format, self.target, self.target._format)
         if fetch_spec is not None:
             if len(list(fetch_spec.heads)) != 1:
                 raise AssertionError(
@@ -3262,6 +3232,9 @@ class InterDifferingSerializer(InterKnitRepo):
             my_pb = ui.ui_factory.nested_progress_bar()
             pb = my_pb
         else:
+            symbol_versioning.warn(
+                symbol_versioning.deprecated_in((1, 14, 0))
+                % "pb parameter to fetch()")
             my_pb = None
         try:
             self._fetch_all_revisions(revision_ids, pb)
@@ -3351,16 +3324,6 @@ class InterRemoteToOther(InterRepository):
             self.source._ensure_real()
             real_source = self.source._real_repository
             self._real_inter = InterRepository.get(real_source, self.target)
-
-    @needs_write_lock
-    def fetch(self, revision_id=None, pb=None, find_ghosts=False,
-            fetch_spec=None):
-        """See InterRepository.fetch()."""
-        # Always fetch using the generic streaming fetch code, to allow
-        # streaming fetching from remote servers.
-        from bzrlib.fetch import RepoFetcher
-        fetcher = RepoFetcher(self.target, self.source, revision_id,
-                pb, find_ghosts, fetch_spec=fetch_spec)
 
     def copy_content(self, revision_id=None):
         self._ensure_real_inter()

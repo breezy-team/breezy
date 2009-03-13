@@ -1662,6 +1662,7 @@ class KnitVersionedFiles(VersionedFiles):
          * If a requested key did not change any lines (or didn't have any
            lines), it may not be mentioned at all in the result.
 
+        :param pb: Progress bar supplied by caller.
         :return: An iterator over (line, key).
         """
         if pb is None:

@@ -44,7 +44,6 @@ class TestFetchSameRepository(TestCaseWithRepository):
             raise TestSkipped('Cannot fetch from model2 to model1')
         repo.fetch(tree_a.branch.repository,
                    revision_id=None)
-                   ## pb=bzrlib.progress.DummyProgress())
 
     def test_fetch_to_knit3(self):
         # create a repository of the sort we are testing.
