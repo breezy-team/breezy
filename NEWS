@@ -564,6 +564,7 @@ bzr 1.12rc1 "1234567890" 2009-02-10
 
     * ``ProgressBarStack`` is deprecated; instead use
       ``ui_factory.nested_progress_bar`` to create new progress bars.
+      (Martin Pool)
 
     * ForeignVcsMapping() now requires a ForeignVcs object as first
       argument. (Jelmer Vernooij)
