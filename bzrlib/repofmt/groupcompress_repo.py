@@ -30,6 +30,7 @@ from bzrlib import (
     osutils,
     pack,
     repository,
+    revision as _mod_revision,
     trace,
     ui,
     )
@@ -164,21 +165,21 @@ class GCPack(NewPack):
         # Groupcompress packs don't have any external references
 
 
-class GCPacker(Packer):
+class GCCHKPacker(Packer):
     """This class understand what it takes to collect a GCCHK repo."""
 
     def __init__(self, pack_collection, packs, suffix, revision_ids=None,
                  reload_func=None):
-        super(GCPacker, self).__init__(pack_collection, packs, suffix,
-                                       revision_ids=revision_ids,
-                                       reload_func=reload_func)
+        super(GCCHKPacker, self).__init__(pack_collection, packs, suffix,
+                                          revision_ids=revision_ids,
+                                          reload_func=reload_func)
         self._pack_collection = pack_collection
         # ATM, We only support this for GCCHK repositories
         assert pack_collection.chk_index is not None
-        self._filtered_fetch = (revision_ids is not None)
+        self._gather_text_refs = False
         self._chk_id_roots = []
         self._chk_p_id_roots = []
-        self._referenced_texts = set()
+        self._text_refs = None
         # set by .pack() if self.revision_ids is not None
         self.revision_keys = None
 
@@ -240,7 +241,12 @@ class GCPacker(Packer):
         total_keys = len(keys)
         remaining_keys = set(keys)
         counter = [0]
-        def _get_referenced_stream(root_keys):
+        if self._gather_text_refs:
+            # Just to get _bytes_to_entry, so we don't care about the
+            # search_key_name
+            inv = inventory.CHKInventory(None)
+            self._text_refs = set()
+        def _get_referenced_stream(root_keys, parse_leaf_nodes=False):
             cur_keys = root_keys
             while cur_keys:
                 keys_by_search_prefix = {}
@@ -257,6 +263,15 @@ class GCPacker(Packer):
                             keys_by_search_prefix.setdefault(prefix,
                                 []).append(value)
                             next_keys.add(value)
+                def handle_leaf_node(node):
+                    # Store is None, because we know we have a LeafNode, and we
+                    # just want its entries
+                    for file_id, bytes in node.iteritems(None):
+                        try:
+                            entry = inv._bytes_to_entry(bytes)
+                        except ValueError:
+                            import pdb; pdb.set_trace()
+                        self._text_refs.add((entry.file_id, entry.revision))
                 def next_stream():
                     for record in stream:
                         bytes = record.get_bytes_as('fulltext')
@@ -267,6 +282,8 @@ class GCPacker(Packer):
                         common_base = node._search_prefix
                         if isinstance(node, chk_map.InternalNode):
                             handle_internal_node(node)
+                        elif parse_leaf_nodes:
+                            handle_leaf_node(node)
                         # XXX: We don't walk the chk map to determine
                         #      referenced (file_id, revision_id) keys.
                         #      We don't do it yet because you really need to
@@ -287,10 +304,11 @@ class GCPacker(Packer):
                 cur_keys = []
                 for prefix in sorted(keys_by_search_prefix):
                     cur_keys.extend(keys_by_search_prefix[prefix])
-        for stream in _get_referenced_stream(self._chk_id_roots):
+        for stream in _get_referenced_stream(self._chk_id_roots,
+                                             self._gather_text_refs):
             yield stream
         del self._chk_id_roots
-        for stream in _get_referenced_stream(self._chk_p_id_roots):
+        for stream in _get_referenced_stream(self._chk_p_id_roots, False):
             yield stream
         del self._chk_p_id_roots
         if remaining_keys:
@@ -363,7 +381,7 @@ class GCPacker(Packer):
     def _copy_inventory_texts(self):
         source_vf, target_vf = self._build_vfs('inventory', True, True)
         self._copy_stream(source_vf, target_vf, self.revision_keys,
-                          'revisions', self._get_filtered_inv_stream, 2)
+                          'inventories', self._get_filtered_inv_stream, 2)
 
     def _copy_chk_texts(self):
         source_vf, target_vf = self._build_vfs('chk', False, False)
@@ -392,7 +410,7 @@ class GCPacker(Packer):
         #      is grabbing too many keys...
         text_keys = source_vf.keys()
         self._copy_stream(source_vf, target_vf, text_keys,
-                          'revisions', self._get_progress_stream, 4)
+                          'text', self._get_progress_stream, 4)
 
     def _copy_signature_texts(self):
         source_vf, target_vf = self._build_vfs('signature', False, False)
@@ -421,11 +439,97 @@ class GCPacker(Packer):
         return self.new_pack
 
 
+class GCCHKReconcilePacker(GCCHKPacker):
+    """A packer which regenerates indices etc as it copies.
+
+    This is used by ``bzr reconcile`` to cause parent text pointers to be
+    regenerated.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(GCCHKReconcilePacker, self).__init__(*args, **kwargs)
+        self._data_changed = False
+        self._gather_text_refs = True
+
+    def _copy_inventory_texts(self):
+        source_vf, target_vf = self._build_vfs('inventory', True, True)
+        self._copy_stream(source_vf, target_vf, self.revision_keys,
+                          'inventories', self._get_filtered_inv_stream, 2)
+        if source_vf.keys() != self.revision_keys:
+            self._data_changed = True
+
+    def _copy_text_texts(self):
+        """generate what texts we should have and then copy."""
+        source_vf, target_vf = self._build_vfs('text', True, True)
+        trace.mutter('repacking %d texts', len(self._text_refs))
+        self.pb.update("repacking texts", 4)
+        # we have three major tasks here:
+        # 1) generate the ideal index
+        repo = self._pack_collection.repo
+        # We want the one we just wrote, so base it on self.new_pack
+        revision_vf = self._build_vf('revision', True, False, for_write=True)
+        ancestor_keys = revision_vf.get_parent_map(revision_vf.keys())
+        # Strip keys back into revision_ids.
+        ancestors = dict((k[0], tuple([p[0] for p in parents]))
+                         for k, parents in ancestor_keys.iteritems())
+        del ancestor_keys
+        # TODO: _generate_text_key_index should be much cheaper to generate from
+        #       a chk repository, rather than the current implementation
+        ideal_index = repo._generate_text_key_index(None, ancestors)
+        file_id_parent_map = source_vf.get_parent_map(self._text_refs)
+        # 2) generate a keys list that contains all the entries that can
+        #    be used as-is, with corrected parents.
+        ok_keys = []
+        new_parent_keys = {} # (key, parent_keys)
+        discarded_keys = []
+        NULL_REVISION = _mod_revision.NULL_REVISION
+        for key in self._text_refs:
+            # 0 - index
+            # 1 - key
+            # 2 - value
+            # 3 - refs
+            try:
+                ideal_parents = tuple(ideal_index[key])
+            except KeyError:
+                discarded_keys.append(key)
+                self._data_changed = True
+            else:
+                if ideal_parents == (NULL_REVISION,):
+                    ideal_parents = ()
+                source_parents = file_id_parent_map[key]
+                if ideal_parents == source_parents:
+                    # no change needed.
+                    ok_keys.append(key)
+                else:
+                    # We need to change the parent graph, but we don't need to
+                    # re-insert the text (since we don't pun the compression
+                    # parent with the parents list)
+                    self._data_changed = True
+                    new_parent_keys[key] = ideal_parents
+        # we're finished with some data.
+        del ideal_index
+        del file_id_parent_map
+        # 3) bulk copy the data, updating records than need it
+        def _update_parents_for_texts():
+            stream = source_vf.get_record_stream(self._text_refs,
+                'groupcompress', False)
+            for record in stream:
+                if record.key in new_parent_keys:
+                    record.parents = new_parent_keys[record.key]
+                yield record
+        target_vf.insert_record_stream(_update_parents_for_texts())
+
+    def _use_pack(self, new_pack):
+        """Override _use_pack to check for reconcile having changed content."""
+        return new_pack.data_inserted() and self._data_changed
+
+
 class GCRepositoryPackCollection(RepositoryPackCollection):
 
     pack_factory = GCPack
 
-    def _execute_pack_operations(self, pack_operations, _packer_class=GCPacker,
+    def _execute_pack_operations(self, pack_operations,
+                                 _packer_class=GCCHKPacker,
                                  reload_func=None):
         """Execute a series of pack operations.
 
@@ -439,8 +543,8 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
             # we may have no-ops from the setup logic
             if len(packs) == 0:
                 continue
-            packer = GCPacker(self, packs, '.autopack',
-                                   reload_func=reload_func)
+            packer = GCCHKPacker(self, packs, '.autopack',
+                                 reload_func=reload_func)
             try:
                 packer.pack()
             except errors.RetryWithNewPacks:
@@ -603,7 +707,7 @@ class GCCHKPackRepository(CHKInventoryRepository):
 
     def _reconcile_pack(self, collection, packs, extension, revs, pb):
         # assert revs is None
-        packer = GCPacker(collection, packs, extension)
+        packer = GCCHKReconcilePacker(collection, packs, extension)
         return packer.pack(pb)
 
 
