@@ -68,9 +68,9 @@ def load_tests(standard_tests, module, loader):
     to_adapt, result = split_suite_by_condition(
         standard_tests, condition_isinstance(BasicRemoteObjectTests))
     smart_server_version_scenarios = [
-        ('HPSS-v2', 
+        ('HPSS-v2',
             {'transport_server': server.SmartTCPServer_for_testing_v2_only}),
-        ('HPSS-v3', 
+        ('HPSS-v3',
             {'transport_server': server.SmartTCPServer_for_testing})]
     return multiply_tests(to_adapt, smart_server_version_scenarios, result)
 
