@@ -175,19 +175,23 @@ class GCPacker(Packer):
         self._pack_collection = pack_collection
         # ATM, We only support this for GCCHK repositories
         assert pack_collection.chk_index is not None
+        self._filtered_fetch = (revision_ids is not None)
         self._chk_id_roots = []
         self._chk_p_id_roots = []
+        self._referenced_texts = set()
+        # set by .pack() if self.revision_ids is not None
+        self.revision_keys = None
 
-    def _get_progress_stream(self, source_vf, keys, index_name, pb):
+    def _get_progress_stream(self, source_vf, keys, message, pb):
         def pb_stream():
             substream = source_vf.get_record_stream(keys, 'groupcompress', True)
             for idx, record in enumerate(substream):
                 if pb is not None:
-                    pb.update(index_name, idx + 1, len(keys))
+                    pb.update(message, idx + 1, len(keys))
                 yield record
         return pb_stream()
 
-    def _get_filtered_inv_stream(self, source_vf, keys, pb=None):
+    def _get_filtered_inv_stream(self, source_vf, keys, message, pb=None):
         """Filter the texts of inventories, to find the chk pages."""
         total_keys = len(keys)
         def _filtered_inv_stream():
@@ -261,6 +265,13 @@ class GCPacker(Packer):
                                     keys_by_search_prefix.setdefault(prefix,
                                         []).append(value)
                                     next_keys.add(value)
+                        # XXX: We don't walk the chk map to determine
+                        #      referenced (file_id, revision_id) keys.
+                        #      We don't do it yet because you really need to
+                        #      filter out the ones that are present in the
+                        #      parents of the rev just before the ones you are
+                        #      copying, otherwise the filter is grabbing too
+                        #      many keys...
                         counter[0] += 1
                         if pb is not None:
                             pb.update('chk node', counter[0], total_keys)
@@ -273,14 +284,18 @@ class GCPacker(Packer):
                     cur_keys.extend(keys_by_search_prefix[prefix])
         for stream in _get_referenced_stream(self._chk_id_roots):
             yield stream
+        del self._chk_id_roots
         for stream in _get_referenced_stream(self._chk_p_id_roots):
             yield stream
+        del self._chk_p_id_roots
         if remaining_keys:
-            trace.note('There were %d keys in the chk index, which were not'
-                       ' referenced from inventories', len(remaining_keys))
-            stream = source_vf.get_record_stream(remaining_keys, 'unordered',
-                                                 True)
-            yield stream
+            trace.mutter('There were %d keys in the chk index, %d of which'
+                         ' were not referenced', total_keys,
+                         len(remaining_keys))
+            if self.revision_ids is None:
+                stream = source_vf.get_record_stream(remaining_keys,
+                                                     'unordered', True)
+                yield stream
 
     def _build_vf(self, index_name, parents, delta, for_write=False):
         """Build a VersionedFiles instance on top of this group of packs."""
@@ -321,44 +336,81 @@ class GCPacker(Packer):
                                    delta, for_write=True)
         return source_vf, target_vf
 
+    def _copy_stream(self, source_vf, target_vf, keys, message, vf_to_stream,
+                     pb_offset):
+        trace.mutter('repacking %d %s', len(keys), message)
+        self.pb.update('repacking %s', pb_offset)
+        child_pb = ui.ui_factory.nested_progress_bar()
+        try:
+            stream = vf_to_stream(source_vf, keys, message, child_pb)
+            target_vf.insert_record_stream(stream)
+        finally:
+            child_pb.finished()
+
+    def _copy_revision_texts(self):
+        source_vf, target_vf = self._build_vfs('revision', True, False)
+        if not self.revision_keys:
+            # We are doing a full fetch, aka 'pack'
+            self.revision_keys = source_vf.keys()
+        self._copy_stream(source_vf, target_vf, self.revision_keys,
+                          'revisions', self._get_progress_stream, 1)
+
+    def _copy_inventory_texts(self):
+        source_vf, target_vf = self._build_vfs('inventory', True, True)
+        self._copy_stream(source_vf, target_vf, self.revision_keys,
+                          'revisions', self._get_filtered_inv_stream, 2)
+
+    def _copy_chk_texts(self):
+        source_vf, target_vf = self._build_vfs('chk', False, False)
+        # TODO: This is technically spurious... if it is a performance issue,
+        #       remove it
+        total_keys = source_vf.keys()
+        trace.mutter('repacking chk: %d id_to_entry roots,'
+                     ' %d p_id_map roots, %d total keys',
+                     len(self._chk_id_roots), len(self._chk_p_id_roots),
+                     len(total_keys))
+        self.pb.update('repacking chk', 3)
+        child_pb = ui.ui_factory.nested_progress_bar()
+        try:
+            for stream in self._get_chk_streams(source_vf, total_keys,
+                                                pb=child_pb):
+                target_vf.insert_record_stream(stream)
+        finally:
+            child_pb.finished()
+
+    def _copy_text_texts(self):
+        source_vf, target_vf = self._build_vfs('text', True, True)
+        # XXX: We don't walk the chk map to determine referenced (file_id,
+        #      revision_id) keys.  We don't do it yet because you really need
+        #      to filter out the ones that are present in the parents of the
+        #      rev just before the ones you are copying, otherwise the filter
+        #      is grabbing too many keys...
+        text_keys = source_vf.keys()
+        self._copy_stream(source_vf, target_vf, text_keys,
+                          'revisions', self._get_progress_stream, 4)
+
+    def _copy_signature_texts(self):
+        source_vf, target_vf = self._build_vfs('signature', False, False)
+        signature_keys = source_vf.keys()
+        signature_keys.intersection(self.revision_keys)
+        self._copy_stream(source_vf, target_vf, signature_keys,
+                          'signatures', self._get_progress_stream, 5)
+
     def _create_pack_from_packs(self):
-        to_copy = [('revision', True, False),
-                   ('inventory', True, True),
-                   ('chk', False, True),
-                   ('text', True, True),
-                   ('signature', False, False),
-                  ]
-        num_steps = len(to_copy) + 2
-        self.pb.update('repacking', 0, num_steps)
+        self.pb.update('repacking', 0, 7)
         self.new_pack = self.open_pack()
         # Is this necessary for GC ?
         self.new_pack.set_write_cache_size(1024*1024)
-        for idx, (index_name, parents, delta) in enumerate(to_copy):
-            source_vf, target_vf = self._build_vfs(index_name, parents, delta)
-            keys = source_vf.keys()
-            self.pb.update('repacking %s' % (index_name,), idx + 1, num_steps)
-            child_pb = ui.ui_factory.nested_progress_bar()
-            try:
-                if index_name == 'inventory':
-                    stream = self._get_filtered_inv_stream(
-                        source_vf, keys, pb=child_pb)
-                    target_vf.insert_record_stream(stream)
-                elif index_name == 'chk':
-                    for stream in self._get_chk_streams(source_vf, keys,
-                                        pb=child_pb):
-                        target_vf.insert_record_stream(stream)
-                else:
-                    target_vf.insert_record_stream(self._get_progress_stream(
-                        source_vf, keys, index_name, child_pb))
-            finally:
-                child_pb.finished()
-        # XXX: This shouldn't be necessary, as GC packs don't have external
-        #      references.
+        self._copy_revision_texts()
+        self._copy_inventory_texts()
+        self._copy_chk_texts()
+        self._copy_text_texts()
+        self._copy_signature_texts()
         self.new_pack._check_references()
         if not self._use_pack(self.new_pack):
             self.new_pack.abort()
             return None
-        self.pb.update('Finishing pack', idx + 1, num_steps)
+        self.pb.update('finishing repack', 6, 7)
         self.new_pack.finish()
         self._pack_collection.allocate(self.new_pack)
         return self.new_pack
