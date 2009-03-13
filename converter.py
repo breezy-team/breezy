@@ -16,10 +16,10 @@
 
 """Map from Git sha's to Bazaar objects."""
 
+import stat
+
 import bzrlib
-
 from bzrlib import ui
-
 from bzrlib.errors import NoSuchRevision
 
 from bzrlib.plugins.git.mapping import (
@@ -30,6 +30,7 @@ from bzrlib.plugins.git.shamap import GitShaMap
 
 from dulwich.objects import (
     Blob,
+    Tree,
     )
 
 
@@ -86,8 +87,30 @@ class GitObjectConverter(object):
         blob._text = text
         return blob
 
-    def _get_tree(self, path, revid):
-        raise NotImplementedError(self._get_tree)
+    def _get_tree(self, path, revid, inv=None):
+        """Return a Git Tree object from a path and a revision stored in bzr.
+
+        :param path: path in the tree.
+        :param revision: Revision of the tree.
+        """
+        if inv is None:
+            inv = self.repository.get_inventory(revid)
+        tree = Tree()
+        fileid = inv.path2id(path)
+        for name, ie in inv[fileid].children.iteritems():
+            if ie.kind == "directory":
+                subtree = self._get_tree(inv.id2path(ie.file_id), revid, inv)
+                tree.add(stat.S_IFDIR, name.encode('UTF-8'), subtree.sha().hexdigest())
+            elif ie.kind == "file":
+                blob = self._get_blob(inv.path2id(ie.file_id), revid)
+                mode = stat.S_IFREG | 0644
+                if ie.executable:
+                    mode |= 0111
+                tree.add(mode, name.encode('UTF-8'), blob.sha().hexdigest())
+            elif ie.kind == "symlink":
+                raise AssertionError("Symlinks not yet supported")
+        tree.serialize()
+        return tree
 
     def _get_commit(self, revid, tree_sha):
         rev = self.repository.get_revision(revid)
