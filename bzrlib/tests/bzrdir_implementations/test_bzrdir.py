@@ -879,11 +879,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = source.bzrdir
         target = dir.sprout(self.get_url('target'))
         self.assertNotEqual(dir.transport.base, target.transport.base)
-        source.repository.lock_read()
-        self.addCleanup(source.repository.unlock)
         target_repo = target.open_repository()
-        target_repo.lock_read()
-        self.addCleanup(target_repo.unlock)
         self.assertRepositoryHasSameItems(source.repository, target_repo)
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
                                     [
