@@ -164,6 +164,20 @@ class TestShelver(tests.TestCaseWithTransport):
                        'y')
         shelver.expect('Shelve 1 change(s)? [yNfq?]', 'y')
 
+    def test_shelve_modify_target(self):
+        tree = self.create_shelvable_tree()
+        os.symlink('bar', 'tree/baz')
+        tree.add('baz', 'baz-id')
+        tree.commit("Add symlink")
+        os.unlink('tree/baz')
+        os.symlink('vax', 'tree/baz')
+        shelver = ExpectShelver(tree, tree.basis_tree())
+        shelver.expect('Shelve changing target of "baz" from "bar" to '
+                '"vax"? [yNfq?]', 'y')
+        shelver.expect('Shelve 1 change(s)? [yNfq?]', 'y')
+        shelver.run()
+        self.assertEqual('bar', os.readlink('tree/baz'))
+
     def test_shelve_finish(self):
         tree = self.create_shelvable_tree()
         shelver = ExpectShelver(tree, tree.basis_tree())
