@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from StringIO import StringIO
+
 from bzrlib import (
     config,
     errors,
@@ -46,6 +48,15 @@ default login anonymous password joe@home
             f.write(netrc_content)
         finally:
             f.close()
+        
+        # Create a test AuthenticationConfig object
+        ac_content = """
+[host1]
+host = host
+user = joe
+password_encoding = netrc
+"""
+        self.ac = config.AuthenticationConfig(_file=StringIO(ac_content))
 
     def _get_netrc_cs(self):
         return  config.credential_store_registry.get_credential_store('netrc')
@@ -69,3 +80,8 @@ default login anonymous password joe@home
         cs = self._get_netrc_cs()
         password = cs.decode_password(dict(host='other'))
         self.assertIs(None, password)
+    
+    def test_get_credentials(self):
+        credentials = self.ac.get_credentials('scheme', 'host', user='joe')
+        self.assertIsNot(None, credentials)
+        self.assertIs('secret', credentials.get('password', None))
