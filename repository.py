@@ -102,9 +102,10 @@ class LocalGitRepository(GitRepository):
 
     def all_revision_ids(self):
         ret = set([revision.NULL_REVISION])
-        if self._git.heads() == []:
+        heads = self._git.heads()
+        if heads == {}:
             return ret
-        bzr_heads = [self.get_mapping().revision_id_foreign_to_bzr(h) for h in self._git.heads()]
+        bzr_heads = [self.get_mapping().revision_id_foreign_to_bzr(h) for h in heads.itervalues()]
         ret = set(bzr_heads)
         graph = self.get_graph()
         for rev, parents in graph.iter_ancestry(bzr_heads):
