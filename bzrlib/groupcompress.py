@@ -145,21 +145,33 @@ class GroupCompressBlock(object):
     def __init__(self):
         # map by key? or just order in file?
         self._entries = {}
+        self._compressor = None
+        self._z_header_length = None
+        self._header_length = None
+        self._z_header = None
+        self._z_content = None
+        self._z_content_length = None
+        self._content_length = None
         self._content = None
-        self._size = 0
-
-    def _parse_header(self):
-        """Parse the meta-info from the stream."""
 
     def __len__(self):
-        return self._size
+        return self._content_length + self._header_length
 
-    def _parse_header_bytes(self, header_bytes):
+    def _parse_header(self):
         """Parse the header part of the block."""
-        if _NO_LABELS:
-            # Don't parse the label structure if we aren't going to use it
+        assert self._z_header is not None
+        if self._z_header == '':
+            # Nothing to process
+            self._z_header = None
             return
-        lines = header_bytes.split('\n')
+        if self._compressor == 'lzma':
+            header = pylzma.decompress(self._z_header)
+        else:
+            assert self._compressor == 'zlib'
+            header = zlib.decompress(self._z_header)
+        self._z_header = None # We have consumed the header
+        lines = header.split('\n')
+        del header
         info_dict = {}
         for line in lines:
             if not line: #End of record
@@ -177,55 +189,66 @@ class GroupCompressBlock(object):
                 value = intern(value)
             info_dict[key] = value
 
+    def _expand_content(self):
+        assert self._z_content is not None
+        assert self._content is None
+        if self._z_content == '':
+            self._content = ''
+        elif self._compressor == 'lzma':
+            self._content = pylzma.decompress(self._z_content)
+        else:
+            assert self._compressor == 'zlib'
+            self._content = zlib.decompress(self._z_content)
+        self._z_content = None
+
+    def _parse_bytes(self, bytes):
+        """Read the various lengths from the header.
+
+        This also populates the various 'compressed' buffers.
+
+        :return: The position in bytes just after the last newline
+        """
+        # At present, there are 4 lengths to be read, we have 2 integers for
+        # the length of the compressed and uncompressed header, and 2 integers
+        # for the compressed and uncompressed content
+        pos = bytes.index('\n', 6)
+        self._z_header_length = int(bytes[6:pos])
+        pos += 1
+        pos2 = bytes.index('\n', pos)
+        self._header_length = int(bytes[pos:pos2])
+        pos2 += 1
+        # Older versions don't have the content lengths, if we want to preserve
+        # backwards compatibility, we could try/except over these, and allow
+        # them to be skipped
+        pos = bytes.index('\n', pos2)
+        self._z_content_length = int(bytes[pos2:pos])
+        pos += 1
+        pos2 = bytes.index('\n', pos)
+        self._content_length = int(bytes[pos:pos2])
+        pos = pos2 + 1
+        assert len(bytes) == (pos + self._z_header_length +
+                              self._z_content_length)
+        pos2 = pos + self._z_header_length
+        self._z_header = bytes[pos:pos2]
+        self._z_content = bytes[pos2:]
+        assert len(self._z_content) == self._z_content_length
+        return pos2 + 1
+
     @classmethod
     def from_bytes(cls, bytes):
         out = cls()
         if bytes[:6] not in (cls.GCB_HEADER, cls.GCB_LZ_HEADER):
             raise ValueError('bytes did not start with %r' % (cls.GCB_HEADER,))
         if bytes[4] == 'z':
-            decomp = zlib.decompress
+            out._compressor = 'zlib'
         elif bytes[4] == 'l':
-            decomp = pylzma.decompress
+            out._compressor = 'lzma'
         else:
             raise ValueError('unknown compressor: %r' % (bytes,))
-        pos = bytes.index('\n', 6)
-        z_header_length = int(bytes[6:pos])
-        pos += 1
-        pos2 = bytes.index('\n', pos)
-        header_length = int(bytes[pos:pos2])
-        pos2 += 1
-        pos = bytes.index('\n', pos2)
-        z_content_length = int(bytes[pos2:pos])
-        pos += 1
-        pos2 = bytes.index('\n', pos)
-        content_length = int(bytes[pos:pos2])
-        if z_header_length == 0:
-            if header_length != 0:
-                raise ValueError('z_header_length 0, but header length != 0')
-            zcontent = bytes[pos2+1:]
-            if zcontent:
-                assert len(zcontent) == z_content_length
-                out._content = decomp(zcontent)
-                assert len(out._content) == content_length
-                out._size = len(out._content)
-            return out
-        pos = pos2 + 1
-        pos2 = pos + z_header_length
-        z_header_bytes = bytes[pos:pos2]
-        if len(z_header_bytes) != z_header_length:
-            raise ValueError('Wrong length of compressed header. %s != %s'
-                             % (len(z_header_bytes), z_header_length))
-        header_bytes = decomp(z_header_bytes)
-        if len(header_bytes) != header_length:
-            raise ValueError('Wrong length of header. %s != %s'
-                             % (len(header_bytes), header_length))
-        del z_header_bytes
-        out._parse_header_bytes(header_bytes)
-        del header_bytes
-        zcontent = bytes[pos2:]
-        if zcontent:
-            out._content = decomp(zcontent)
-            out._size = header_length + len(out._content)
+        out._parse_bytes(bytes)
+        if not _NO_LABELS:
+            out._parse_header()
+        out._expand_content()
         return out
 
     def extract(self, key, index_memo, sha1=None):

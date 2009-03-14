@@ -194,7 +194,7 @@ class TestGroupCompressBlock(tests.TestCase):
             'gcb1z\n0\n0\n0\n0\n')
         self.assertIsInstance(block, groupcompress.GroupCompressBlock)
         self.assertEqual({}, block._entries)
-        self.assertIs(None, block._content)
+        self.assertEqual('', block._content)
 
     def test_from_bytes(self):
         header = ('key:bing\n'
