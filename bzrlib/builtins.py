@@ -41,6 +41,7 @@ from bzrlib import (
     merge_directive,
     osutils,
     reconfigure,
+    rename_map,
     revision as _mod_revision,
     symbol_versioning,
     transport,
@@ -5214,7 +5215,7 @@ class cmd_guess_renames(Command):
         work_tree, file_list = tree_files(None, default_branch='.')
         work_tree.lock_write()
         try:
-            work_tree.guess_renames()
+            rename_map.RenameMap.guess_renames(work_tree)
         finally:
             work_tree.unlock()
 

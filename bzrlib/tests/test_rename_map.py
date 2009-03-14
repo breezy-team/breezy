@@ -15,6 +15,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
+import os
+
 from bzrlib.rename_map import RenameMap
 from bzrlib.tests import TestCaseWithTransport
 
@@ -105,3 +107,25 @@ class TestRenameMap(TestCaseWithTransport):
         matches = RenameMap().match_parents(required_parents, missing_parents)
         self.assertEqual({'path3/path4': 'path4-id', 'path2': 'path2-id'},
                          matches)
+
+    def test_guess_renames(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        self.build_tree(['tree/file'])
+        tree.add('file', 'file-id')
+        tree.commit('Added file')
+        os.rename('tree/file', 'tree/file2')
+        RenameMap.guess_renames(tree)
+        self.assertEqual('file2', tree.id2path('file-id'))
+
+    def test_guess_renames_handles_directories(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        self.build_tree(['tree/dir/', 'tree/dir/file'])
+        tree.add(['dir', 'dir/file'], ['dir-id', 'file-id'])
+        tree.commit('Added file')
+        os.rename('tree/dir', 'tree/dir2')
+        RenameMap.guess_renames(tree)
+        self.assertEqual('dir2/file', tree.id2path('file-id'))

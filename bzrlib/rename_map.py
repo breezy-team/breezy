@@ -16,8 +16,12 @@
 
 
 from cStringIO import StringIO
+
+from bzrlib import (
+    osutils,
+    progress,
+)
 from bzrlib.ui import ui_factory
-from bzrlib import osutils
 
 
 class RenameMap(object):
@@ -148,3 +152,60 @@ class RenameMap(object):
                     ordered_hits.append((hits, path, file_id))
         ordered_hits.sort(reverse=True)
         return self._match_hits(ordered_hits)
+
+    @staticmethod
+    def guess_renames(tree):
+        """Guess which files to rename, and perform the rename.
+
+        We assume that unversioned files and missing files indicate that
+        versioned files have been renamed outside of Bazaar.
+        """
+        missing_files = set()
+        missing_parents = {}
+        candidate_files = set()
+        basis = tree.basis_tree()
+        basis.lock_read()
+        try:
+            iterator = tree.iter_changes(basis, want_unversioned=True)
+            for (file_id, paths, changed_content, versioned, parent, name,
+                 kind, executable) in iterator:
+                if kind[1] is None and versioned[1]:
+                    missing_parents.setdefault(parent[0], set()).add(file_id)
+                    if kind[0] == 'file':
+                        missing_files.add(file_id)
+                    else:
+                        #other kinds are not handled
+                        pass
+                if versioned == (False, False):
+                    if tree.is_ignored(paths[1]):
+                        continue
+                    if kind[1] == 'file':
+                        candidate_files.add(paths[1])
+                    if kind[1] == 'directory':
+                        for directory, children in tree.walkdirs(paths[1]):
+                            for child in children:
+                                if child[2] == 'file':
+                                    candidate_files.add(child[0])
+            rn = RenameMap()
+            task = ui_factory.nested_progress_bar()
+            try:
+                pp = progress.ProgressPhase('Guessing renames', 2, task)
+                pp.next_phase()
+                rn.add_file_edge_hashes(basis, missing_files)
+                pp.next_phase()
+                matches = rn.file_match(tree, candidate_files)
+                required_parents = rn.get_required_parents(matches, tree)
+                matches.update(rn.match_parents(required_parents,
+                               missing_parents))
+            finally:
+                task.finished()
+            tree.add(set(required_parents) - set(matches))
+            reversed = dict((v, k) for k, v in matches.iteritems())
+            child_to_parent = sorted(
+                matches.values(), key=lambda x: reversed[x], reverse=True)
+            tree.unversion(child_to_parent)
+            paths_forward = sorted(matches.keys())
+            file_ids_forward = [matches[p] for p in paths_forward]
+            tree.add(paths_forward, file_ids_forward)
+        finally:
+            basis.unlock()

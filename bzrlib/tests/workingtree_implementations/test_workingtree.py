@@ -879,28 +879,6 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             raise TestSkipped('WorkingTree2 is not supported')
         self.assertEqual(case_sensitive, tree.case_sensitive)
 
-    def test_guess_renames(self):
-        tree = self.make_branch_and_tree('tree')
-        tree.lock_write()
-        self.addCleanup(tree.unlock)
-        self.build_tree(['tree/file'])
-        tree.add('file', 'file-id')
-        tree.commit('Added file')
-        os.rename('tree/file', 'tree/file2')
-        tree.guess_renames()
-        self.assertEqual('file2', tree.id2path('file-id'))
-
-    def test_guess_renames_handles_directories(self):
-        tree = self.make_branch_and_tree('tree')
-        tree.lock_write()
-        self.addCleanup(tree.unlock)
-        self.build_tree(['tree/dir/', 'tree/dir/file'])
-        tree.add(['dir', 'dir/file'], ['dir-id', 'file-id'])
-        tree.commit('Added file')
-        os.rename('tree/dir', 'tree/dir2')
-        tree.guess_renames()
-        self.assertEqual('dir2/file', tree.id2path('file-id'))
-
     def test_all_file_ids_with_missing(self):
         tree = self.make_branch_and_tree('tree')
         tree.lock_write()
