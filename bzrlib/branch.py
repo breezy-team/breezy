@@ -2785,6 +2785,10 @@ class GenericInterBranch(InterBranch):
 
 class InterToBranch5(GenericInterBranch):
 
+    @staticmethod
+    def _get_branch_formats_to_test():
+        return BranchFormat._default_format, BzrBranchFormat5
+
     def pull(self, overwrite=False, stop_revision=None,
              possible_transports=None, run_hooks=True,
              _override_hook_target=None):

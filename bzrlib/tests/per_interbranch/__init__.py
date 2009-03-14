@@ -25,12 +25,16 @@ itself rather than in tests/per_interbranch/*.py.
 """
 
 
+from bzrlib import (
+    memorytree,
+    )
 from bzrlib.branch import (
                            GenericInterBranch,
                            InterBranch,
                            )
 from bzrlib.errors import (
     FileExists,
+    NotBranchError,
     UninitializableFormat,
     )
 from bzrlib.tests import (
@@ -124,9 +128,27 @@ class TestCaseWithInterBranch(TestCaseWithBzrDir):
         return self.make_bzrdir(relpath,
             self.branch_format_to._matchingbzrdir)
 
+    def make_to_repository(self, relpath):
+        made_control = self.make_bzrdir(relpath,
+            format=self.branch_format_to._matchingbzrdir)
+        return made_control.create_repository()
+
     def make_to_branch(self, relpath):
-        made_control = self.make_to_bzrdir(relpath)
-        return self.branch_format_to.initialize(made_control)
+        repo = self.make_repository(relpath,
+            format=self.branch_format_to._matchingbzrdir)
+        return repo.bzrdir.create_branch()
+
+    def make_to_branch_and_memory_tree(self, relpath):
+        """Create a branch on the default transport and a MemoryTree for it."""
+        b = self.make_to_branch(relpath)
+        return memorytree.MemoryTree.create_on_branch(b)
+
+    def sprout_to(self, origdir, to_url):
+        """Sprout a bzrdir, using to_format for the new bzrdir."""
+        newbranch = self.make_to_branch(to_url)
+        origdir.open_branch().sprout(newbranch.bzrdir)
+        newbranch.bzrdir.create_workingtree()
+        return newbranch.bzrdir
 
 
 def load_tests(basic_tests, module, loader):
@@ -135,6 +157,7 @@ def load_tests(basic_tests, module, loader):
     result.addTests(basic_tests)
 
     test_interbranch_implementations = [
+        'bzrlib.tests.per_interbranch.test_pull',
         'bzrlib.tests.per_interbranch.test_update_revisions',
         ]
     adapter = InterBranchTestProviderAdapter(
