@@ -129,3 +129,4 @@ class TestRenameMap(TestCaseWithTransport):
         os.rename('tree/dir', 'tree/dir2')
         RenameMap.guess_renames(tree)
         self.assertEqual('dir2/file', tree.id2path('file-id'))
+        self.assertEqual('dir2', tree.id2path('dir-id'))

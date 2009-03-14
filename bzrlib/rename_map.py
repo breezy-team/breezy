@@ -32,7 +32,13 @@ class RenameMap(object):
 
     @staticmethod
     def iter_edge_hashes(lines):
-        """Iterate through the hashes of line pairs (which make up an edge)."""
+        """Iterate through the hashes of line pairs (which make up an edge).
+
+        The hash is truncated using a modulus to avoid excessive memory
+        consumption by the hitscount dict.  A modulus of 10Mi means that the
+        maximum number of keys is 10Mi.  (Keys are normally 32 bits, e.g.
+        4 Gi)
+        """
         modulus = 1024 * 1024 * 10
         for n in range(len(lines)):
             yield hash(tuple(lines[n:n+2])) % modulus
@@ -69,9 +75,10 @@ class RenameMap(object):
         """Count the number of hash hits for each tag, for the given lines.
 
         Hits are weighted according to the number of tags the hash is
-        associated with; more tags means that the lines are not unique and
-        should tend to be ignored.
+        associated with; more tags means that the hash is less rare and should
+        tend to be ignored.
         :param lines: The lines to calculate hashes of.
+        :return: a dict of {tag: hitcount}
         """
         hits = {}
         for my_hash in self.iter_edge_hashes(lines):
@@ -90,7 +97,7 @@ class RenameMap(object):
 
         :return: A list of tuples of count, path, file_id.
         """
-        ordered_hits = []
+        all_hits = []
         task = ui_factory.nested_progress_bar()
         try:
             for num, path in enumerate(paths):
@@ -100,23 +107,27 @@ class RenameMap(object):
                     hits = self.hitcounts(my_file.readlines())
                 finally:
                     my_file.close()
-                ordered_hits.extend((v, path, k) for k, v in hits.items())
+                all_hits.extend((v, path, k) for k, v in hits.items())
         finally:
             task.finished()
-        return ordered_hits
+        return all_hits
 
     def file_match(self, tree, paths):
         """Return a mapping from file_ids to the supplied paths."""
-        ordered_hits = self.get_all_hits(tree, paths)
-        ordered_hits.sort(reverse=True)
-        return self._match_hits(ordered_hits)
+        return self._match_hits(self.get_all_hits(tree, paths))
 
     @staticmethod
-    def _match_hits(ordered_hits):
+    def _match_hits(hit_list):
+        """Using a hit list, determin a path-to-fileid map.
+
+        The hit list is a list of (count, path, file_id), where count is a
+        (possibly float) number, with higher numbers indicating stronger
+        matches.
+        """
         seen_file_ids = set()
         seen_paths = set()
         path_map = {}
-        for count, path, file_id in ordered_hits:
+        for count, path, file_id in sorted(hit_list, reverse=True):
             if path in seen_paths or file_id in seen_file_ids:
                 continue
             path_map[path] = file_id
@@ -125,6 +136,11 @@ class RenameMap(object):
         return path_map
 
     def get_required_parents(self, matches, tree):
+        """Return a dict of all file parents that must be versioned.
+
+        The keys are the required parents and the values are sets of their
+        children.
+        """
         required_parents = {}
         for path in matches:
             while True:
@@ -144,14 +160,19 @@ class RenameMap(object):
         return require_ids
 
     def match_parents(self, required_parents, missing_parents):
-        ordered_hits = []
+        """Map parent directories to file-ids.
+
+        This is done by finding similarity between the file-ids of children of
+        required parent directories and the file-ids of children of missing
+        parent directories.
+        """
+        all_hits = []
         for file_id, file_id_children in missing_parents.iteritems():
             for path, path_children in required_parents.iteritems():
                 hits = len(path_children.intersection(file_id_children))
                 if hits > 0:
-                    ordered_hits.append((hits, path, file_id))
-        ordered_hits.sort(reverse=True)
-        return self._match_hits(ordered_hits)
+                    all_hits.append((hits, path, file_id))
+        return self._match_hits(all_hits)
 
     @staticmethod
     def guess_renames(tree):
