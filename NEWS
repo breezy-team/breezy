@@ -24,6 +24,10 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * ``bzr ignore`` gives a more informative message when existing
+      version controlled files match the ignore pattern. (Neil
+      Martinsen-Burrell, #248895)
+
     * Progress bars now show the rate of network activity for
       ``bzr+ssh://`` and ``bzr://`` connections.  (Andrew Bennetts)
 
@@ -35,6 +39,16 @@ IN DEVELOPMENT
     * Fix "is not a stackable format" error when pushing a
       stackable-format branch with an unstackable-format repository to a
       destination with a default stacking policy.  (Andrew Bennetts)
+
+    * Fixed incorrect "Source format does not support stacking" warning
+      when pushing to a smart server.  (Andrew Bennetts, #334114)
+      
+    * The GNU Changelog formatter is slightly improved in the case where
+      the delta is empty, and now correctly claims not to support tags.
+      (Andrea Bolognani)
+
+    * Shelve can now shelve changes to a symlink target.
+      (James Westby, #341558)
 
   DOCUMENTATION:
 

@@ -1374,11 +1374,10 @@ class LineLogFormatter(LogFormatter):
         return self.truncate(prefix + " ".join(out).rstrip('\n'), max_chars)
 
 
-class ChangeLogLogFormatter(LogFormatter):
+class GnuChangelogLogFormatter(LogFormatter):
 
     supports_merge_revisions = True
     supports_delta = True
-    supports_tags = True
 
     def log_revision(self, revision):
         """Log a revision, either merged or not."""
@@ -1392,7 +1391,7 @@ class ChangeLogLogFormatter(LogFormatter):
         committer_str = revision.rev.committer.replace (' <', '  <')
         to_file.write('%s  %s\n\n' % (date_str,committer_str))
 
-        if revision.delta is not None:
+        if revision.delta is not None and revision.delta.has_changed():
             for c in revision.delta.added + revision.delta.removed + revision.delta.modified:
                 path, = c[:1]
                 to_file.write('\t* %s:\n' % (path,))
@@ -1440,9 +1439,8 @@ log_formatter_registry.register('long', LongLogFormatter,
                                 'Detailed log format')
 log_formatter_registry.register('line', LineLogFormatter,
                                 'Log format with one line per revision')
-log_formatter_registry.register(
-    'gnu-changelog', ChangeLogLogFormatter,
-    'Format used by GNU ChangeLog files')
+log_formatter_registry.register('gnu-changelog', GnuChangelogLogFormatter,
+                                'Format used by GNU ChangeLog files')
 
 
 def register_formatter(name, formatter):
