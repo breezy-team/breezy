@@ -145,7 +145,8 @@ def upgrade_workingtree(wt, foreign_repository, new_mapping,
 
 
 def upgrade_tags(tags, repository, foreign_repository, new_mapping, 
-                 allow_changes=False, verbose=False, branch_renames=None):
+                 allow_changes=False, verbose=False, branch_renames=None,
+                 branch_ancestry=None):
     """Upgrade a tags dictionary."""
     renames = {}
     if branch_renames is not None:
@@ -159,7 +160,7 @@ def upgrade_tags(tags, repository, foreign_repository, new_mapping,
                 renames.update(upgrade_repository(repository, foreign_repository, 
                       revision_id=revid, new_mapping=new_mapping,
                       allow_changes=allow_changes, verbose=verbose))
-            if revid in renames:
+            if revid in renames and (branch_ancestry is None or not revid in branch_ancestry):
                 tags.set_tag(name, renames[revid])
     finally:
         pb.finished()
@@ -178,11 +179,13 @@ def upgrade_branch(branch, foreign_repository, new_mapping,
     renames = upgrade_repository(branch.repository, foreign_repository, 
               revision_id=revid, new_mapping=new_mapping,
               allow_changes=allow_changes, verbose=verbose)
-    upgrade_tags(branch.tags, branch.repository, foreign_repository, 
-           new_mapping=new_mapping, 
-           allow_changes=allow_changes, verbose=verbose, branch_renames=renames)
     if revid in renames:
         branch.generate_revision_history(renames[revid])
+    ancestry = branch.repository.get_ancestry(branch.last_revision(), topo_sorted=False)
+    upgrade_tags(branch.tags, branch.repository, foreign_repository, 
+           new_mapping=new_mapping, 
+           allow_changes=allow_changes, verbose=verbose, branch_renames=renames,
+           branch_ancestry=ancestry)
     return renames
 
 

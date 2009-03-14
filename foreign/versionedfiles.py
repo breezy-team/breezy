@@ -31,7 +31,10 @@ class VirtualRevisionTexts(VirtualVersionedFiles):
         except NoSuchRevision:
             return None
 
-    # TODO: annotate, keys
+    # TODO: annotate
+
+    def keys(self):
+        return self.repository.all_revision_ids()
 
 
 class VirtualInventoryTexts(VirtualVersionedFiles):
@@ -46,7 +49,10 @@ class VirtualInventoryTexts(VirtualVersionedFiles):
         except NoSuchRevision:
             return None
 
-    # TODO: annotate, keys
+    def keys(self):
+        return self.repository.all_revision_ids()
+
+    # TODO: annotate
 
 
 class VirtualSignatureTexts(VirtualVersionedFiles):
@@ -61,5 +67,8 @@ class VirtualSignatureTexts(VirtualVersionedFiles):
         except NoSuchRevision:
             return None
 
-    # TODO: annotate, keys
+    def keys(self):
+        return self.repository.all_revision_ids()
+
+    # TODO: annotate
 

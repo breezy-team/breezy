@@ -59,8 +59,7 @@ class FakeControlFiles(object):
 
 
 class cmd_dpush(Command):
-    """Push diffs into a foreign version control system without any 
-    Bazaar-specific metadata.
+    """Push diffs into a foreign branch without any bzr-specific metadata.
 
     This will afterwards rebase the local Bazaar branch on the remote
     branch unless the --no-rebase option is used, in which case 
@@ -73,10 +72,11 @@ class cmd_dpush(Command):
             short_name='d',
             type=unicode,
             ),
+            Option("idmap-file", help="Write map with old and new revision ids.", type=str),
             Option('no-rebase', help="Don't rebase after push")]
 
     def run(self, location=None, remember=False, directory=None, 
-            no_rebase=False):
+            no_rebase=False, idmap_file=None):
         from bzrlib import urlutils
         from bzrlib.bzrdir import BzrDir
         from bzrlib.errors import BzrCommandError, NoWorkingTree
@@ -120,6 +120,12 @@ class cmd_dpush(Command):
                 no_rebase = True
             else:
                 revid_map = target_branch.dpull(source_branch)
+                if idmap_file:
+                    f = open(idmap_file, "w")
+                    try:
+                        f.write("".join(["%s\t%s\n" % item for item in revid_map.iteritems()]))
+                    finally:
+                        f.close()
             # We successfully created the target, remember it
             if source_branch.get_push_location() is None or remember:
                 source_branch.set_push_location(target_branch.base)
@@ -144,8 +150,7 @@ class cmd_dpush(Command):
 
 
 class cmd_foreign_mapping_upgrade(Command):
-    """Upgrade revisions mapped from a foreign version control system 
-    in a Bazaar branch.
+    """Upgrade revisions mapped from a foreign version control system.
     
     This will change the identity of revisions whose parents 
     were mapped from revisions in the other version control system.
