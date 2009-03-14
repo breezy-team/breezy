@@ -145,7 +145,7 @@ class GroupCompressBlock(object):
     def __init__(self):
         # map by key? or just order in file?
         self._entries = {}
-        self._compressor = None
+        self._compressor_name = None
         self._z_header_length = None
         self._header_length = None
         self._z_header = None
@@ -165,10 +165,10 @@ class GroupCompressBlock(object):
             # Nothing to process
             self._z_header = None
             return
-        if self._compressor == 'lzma':
+        if self._compressor_name == 'lzma':
             header = pylzma.decompress(self._z_header)
         else:
-            assert self._compressor == 'zlib'
+            assert self._compressor_name == 'zlib'
             header = zlib.decompress(self._z_header)
         self._z_header = None # We have consumed the header
         lines = header.split('\n')
@@ -195,10 +195,10 @@ class GroupCompressBlock(object):
         assert self._content is None
         if self._z_content == '':
             self._content = ''
-        elif self._compressor == 'lzma':
+        elif self._compressor_name == 'lzma':
             self._content = pylzma.decompress(self._z_content)
         else:
-            assert self._compressor == 'zlib'
+            assert self._compressor_name == 'zlib'
             self._content = zlib.decompress(self._z_content)
         self._z_content = None
 
@@ -215,11 +215,12 @@ class GroupCompressBlock(object):
             assert self._z_content is not None
             if self._z_content == '':
                 self._content = ''
-            elif self._compressor == 'lzma':
+            elif self._compressor_name == 'lzma':
                 # We don't do partial lzma decomp yet
                 self._content = pylma.decompress(self._z_content)
             else:
                 # Start a zlib decompressor
+                assert self._compressor_name == 'zlib'
                 self._z_content_decompressor = zlib.decompressobj()
                 # Seed the decompressor with the uncompressed bytes, so that
                 # the rest of the code is simplified
@@ -287,9 +288,9 @@ class GroupCompressBlock(object):
         if bytes[:6] not in (cls.GCB_HEADER, cls.GCB_LZ_HEADER):
             raise ValueError('bytes did not start with %r' % (cls.GCB_HEADER,))
         if bytes[4] == 'z':
-            out._compressor = 'zlib'
+            out._compressor_name = 'zlib'
         elif bytes[4] == 'l':
-            out._compressor = 'lzma'
+            out._compressor_name = 'lzma'
         else:
             raise ValueError('unknown compressor: %r' % (bytes,))
         out._parse_bytes(bytes)
@@ -297,14 +298,13 @@ class GroupCompressBlock(object):
             out._parse_header()
         return out
 
-    def extract(self, key, index_memo, sha1=None):
+    def extract(self, key, start, end, sha1=None):
         """Extract the text for a specific key.
 
         :param key: The label used for this content
         :param sha1: TODO (should we validate only when sha1 is supplied?)
         :return: The bytes for the content
         """
-        start, end = index_memo[3:5]
         # Make sure we have enough bytes for this record
         self._ensure_content(end)
         # The bytes are 'f' or 'd' for the type, then a variable-length
@@ -401,6 +401,49 @@ class GroupCompressBlock(object):
         chunks.append(z_header_bytes)
         chunks.append(z_content_bytes)
         return ''.join(chunks)
+
+
+class LazyGroupCompressFactory(object):
+    """Yield content from a GroupCompressBlock on demand."""
+
+    def __init__(self, key, parents, gc_block, start, end, first):
+        """Create a LazyGroupCompressFactory
+
+        :param key: The key of just this record
+        :param parents: The parents of this key (possibly None)
+        :param gc_block: A GroupCompressBlock object
+        :param start: Offset of the first byte for this record in the
+            uncompressd content
+        :param end: Offset of the byte just after the end of this record
+            (ie, bytes = content[start:end])
+        :param first: Is this the first Factory for the given block?
+        """
+        self.key = key
+        self.parents = parents
+        self.sha1 = None
+        self._gc_block = gc_block
+        self.storage_kind = 'groupcompress-block'
+        if not first:
+            self.storage_kind = 'groupcompress-block-ref'
+        self._first = first
+        self._start = start
+        self._end = end
+
+    def get_bytes_as(self, storage_kind):
+        if storage_kind == self.storage_kind:
+            if self._first:
+                # wire bytes, something...
+                return Something
+            else:
+                return ''
+        if storage_kind in ('fulltext', 'chunked'):
+            _, bytes = self._gc_block.extract(self.key, self._start, self._end)
+            if storage_kind == 'fulltext':
+                return bytes
+            else:
+                return [bytes]
+        raise errors.UnavailableRepresentation(self.key, storage_kind,
+            self.storage_kind)
 
 
 class GroupCompressor(object):
@@ -553,6 +596,12 @@ class GroupCompressor(object):
             raise ValueError('Recorded sha1 != measured %s != %s'
                              % (entry.sha1, bytes_sha1))
         return bytes, entry.sha1
+
+    def flush(self):
+        """Finish this group, creating a formatted stream."""
+        content = ''.join(self.lines)
+        self.lines = None
+        return self._block.to_bytes(content)
 
     def output_chunks(self, new_chunks):
         """Output some chunks.
@@ -972,7 +1021,8 @@ class GroupCompressVersionedFiles(VersionedFiles):
                     else:
                         index_memo, _, parents, (method, _) = locations[key]
                         block = self._get_block(index_memo)
-                        entry, bytes = block.extract(key, index_memo)
+                        start, end = index_memo[3:5]
+                        entry, bytes = block.extract(key, start, end)
                         sha1 = entry.sha1
                         # TODO: If we don't have labels, then the sha1 here is
                         #       computed from the data, so we don't want to
@@ -1036,8 +1086,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
         keys_to_add = []
         basis_end = 0
         def flush():
-            bytes = self._compressor._block.to_bytes(
-                ''.join(self._compressor.lines))
+            bytes = self._compressor.flush()
             index, start, length = self._access.add_raw_records(
                 [(None, len(bytes))], bytes)[0]
             nodes = []

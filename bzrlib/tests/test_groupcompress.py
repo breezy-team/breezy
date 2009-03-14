@@ -20,6 +20,7 @@ import zlib
 
 from bzrlib import (
     groupcompress,
+    errors,
     osutils,
     tests,
     )
@@ -307,6 +308,7 @@ class TestGroupCompressBlock(tests.TestCase):
         block = groupcompress.GroupCompressBlock()
         block._z_content = z_content
         block._z_content_length = len(z_content)
+        block._compressor_name = 'zlib'
         block._content_length = 158634
         self.assertIs(None, block._content)
         block._ensure_content(100)
@@ -330,7 +332,7 @@ class TestGroupCompressBlock(tests.TestCase):
         # And now lets finish
         block._ensure_content(158634)
         self.assertEqualDiff(content, block._content)
-        # And the decompressor is finalized 
+        # And the decompressor is finalized
         self.assertIs(None, block._z_content_decompressor)
 
 
@@ -343,6 +345,9 @@ class TestCaseWithGroupCompressVersionedFiles(tests.TestCaseWithTransport):
         if do_cleanup:
             self.addCleanup(groupcompress.cleanup_pack_group, vf)
         return vf
+
+
+class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
 
     def test_get_record_stream_as_requested(self):
         # Consider promoting 'as-requested' to general availability, and
@@ -378,3 +383,37 @@ class TestCaseWithGroupCompressVersionedFiles(tests.TestCaseWithTransport):
                     [('b',), ('a',), ('d',), ('c',)],
                     'as-requested', False)]
         self.assertEqual([('b',), ('a',), ('d',), ('c',)], keys)
+
+
+class TestLazyGroupCompressFactory(tests.TestCaseWithTransport):
+
+    def make_block(self, key_to_text):
+        """Create a GroupCompressBlock, filling it with the given texts."""
+        compressor = groupcompress.GroupCompressor()
+        start = 0
+        for key in sorted(key_to_text):
+            compressor.compress(key, key_to_text[key], None)
+        entries = compressor._block._entries
+        raw_bytes = compressor.flush()
+        return entries, groupcompress.GroupCompressBlock.from_bytes(raw_bytes)
+
+    def entry_and_block_to_factory(self, key, entries, block, first=False):
+        entry = entries[key]
+        return groupcompress.LazyGroupCompressFactory(key, (), block,
+            entry.start, entry.start + entry.length, first)
+
+    def test_get_fulltexts(self):
+        key_to_text = {
+            ('key1',): "this is a text\n"
+                       "with a reasonable amount of compressible bytes\n",
+            ('key2',): "another text\n"
+                       "with a reasonable amount of compressible bytes\n",
+        }
+        entries, block = self.make_block(key_to_text)
+        for key in key_to_text:
+            cf = self.entry_and_block_to_factory(key, entries, block)
+            text = key_to_text[key]
+            self.assertEqual(text, cf.get_bytes_as('fulltext'))
+            self.assertEqual(text, ''.join(cf.get_bytes_as('chunked')))
+            self.assertRaises(errors.UnavailableRepresentation,
+                cf.get_bytes_as, 'unknown-representation')
