@@ -29,8 +29,6 @@ from bzrlib.tests import (
     )
 
 
-
-
 class TestGroupCompressor(tests.TestCase):
     """Tests for GroupCompressor"""
 
@@ -266,3 +264,49 @@ class TestGroupCompressBlock(tests.TestCase):
                              'start:0\n'
                              'length:100\n'
                              '\n', raw_bytes)
+
+
+class TestCaseWithGroupCompressVersionedFiles(tests.TestCaseWithTransport):
+
+    def make_test_vf(self, create_graph, keylength=1, do_cleanup=True):
+        t = self.get_transport()
+        vf = groupcompress.make_pack_factory(graph=create_graph,
+            delta=False, keylength=keylength)(t)
+        if do_cleanup:
+            self.addCleanup(groupcompress.cleanup_pack_group, vf)
+        return vf
+
+    def test_get_record_stream_as_requested(self):
+        # Consider promoting 'as-requested' to general availability, and
+        # make this a VF interface test
+        vf = self.make_test_vf(False, do_cleanup=False)
+        vf.add_lines(('a',), (), ['lines\n'])
+        vf.add_lines(('b',), (), ['lines\n'])
+        vf.add_lines(('c',), (), ['lines\n'])
+        vf.add_lines(('d',), (), ['lines\n'])
+        vf.writer.end()
+        keys = [record.key for record in vf.get_record_stream(
+                    [('a',), ('b',), ('c',), ('d',)],
+                    'as-requested', False)]
+        self.assertEqual([('a',), ('b',), ('c',), ('d',)], keys)
+        keys = [record.key for record in vf.get_record_stream(
+                    [('b',), ('a',), ('d',), ('c',)],
+                    'as-requested', False)]
+        self.assertEqual([('b',), ('a',), ('d',), ('c',)], keys)
+        # We have to cleanup manually, because we create a second VF
+        groupcompress.cleanup_pack_group(vf)
+
+        # It should work even after being repacked into another VF
+        vf2 = self.make_test_vf(False)
+        vf2.insert_record_stream(vf.get_record_stream(
+                    [('b',), ('a',), ('d',), ('c',)], 'as-requested', False))
+        vf2.writer.end()
+
+        keys = [record.key for record in vf2.get_record_stream(
+                    [('a',), ('b',), ('c',), ('d',)],
+                    'as-requested', False)]
+        self.assertEqual([('a',), ('b',), ('c',), ('d',)], keys)
+        keys = [record.key for record in vf2.get_record_stream(
+                    [('b',), ('a',), ('d',), ('c',)],
+                    'as-requested', False)]
+        self.assertEqual([('b',), ('a',), ('d',), ('c',)], keys)
