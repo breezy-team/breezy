@@ -150,6 +150,7 @@ class GroupCompressBlock(object):
         self._header_length = None
         self._z_header = None
         self._z_content = None
+        self._z_content_decompressor = None
         self._z_content_length = None
         self._content_length = None
         self._content = None
@@ -201,10 +202,51 @@ class GroupCompressBlock(object):
             self._content = zlib.decompress(self._z_content)
         self._z_content = None
 
-    def _ensure_content(self):
-        """Make sure that content has been expanded."""
+    def _ensure_content(self, num_bytes=None):
+        """Make sure that content has been expanded enough.
+
+        :param num_bytes: Ensure that we have extracted at least num_bytes of
+            content. If None, consume everything
+        """
+        if num_bytes is None:
+            num_bytes = self._content_length
+        assert num_bytes <= self._content_length
         if self._content is None:
-            self._expand_content()
+            assert self._z_content is not None
+            if self._z_content == '':
+                self._content = ''
+            elif self._compressor == 'lzma':
+                # We don't do partial lzma decomp yet
+                self._content = pylma.decompress(self._z_content)
+            else:
+                # Start a zlib decompressor
+                self._z_content_decompressor = zlib.decompressobj()
+                # Seed the decompressor with the uncompressed bytes, so that
+                # the rest of the code is simplified
+                self._content = self._z_content_decompressor.decompress(
+                    self._z_content, 64*1024)
+                # Any bytes remaining to be decompressed will be in the
+                # decompressors 'unconsumed_tail'
+            self._z_content = None
+        # Do we have enough bytes already?
+        if len(self._content) >= num_bytes:
+            return
+        # If we got this far, and don't have a decompressor, something is wrong
+        assert self._z_content_decompressor is not None
+        remaining_decomp = self._z_content_decompressor.unconsumed_tail
+        # If we have nothing left to decomp, we ran out of decomp bytes
+        assert remaining_decomp
+        needed_bytes = num_bytes - len(self._content)
+        # We always set max_size to 64kB over the minimum needed, so that zlib
+        # will give us as much as we really want.
+        # TODO: If this isn't good enough, we could make a loop here, that
+        #       keeps expanding the request until we get enough
+        self._content += self._z_content_decompressor.decompress(
+            remaining_decomp, needed_bytes + 64*1024)
+        assert len(self._content) >= num_bytes
+        if not self._z_content_decompressor.unconsumed_tail:
+            # The stream is finished
+            self._z_content_decompressor = None
 
     def _parse_bytes(self, bytes):
         """Read the various lengths from the header.
@@ -253,7 +295,6 @@ class GroupCompressBlock(object):
         out._parse_bytes(bytes)
         if not _NO_LABELS:
             out._parse_header()
-        # out._expand_content()
         return out
 
     def extract(self, key, index_memo, sha1=None):
@@ -263,35 +304,23 @@ class GroupCompressBlock(object):
         :param sha1: TODO (should we validate only when sha1 is supplied?)
         :return: The bytes for the content
         """
-        self._ensure_content()
-        if _NO_LABELS or not self._entries:
-            start, end = index_memo[3:5]
-            # The bytes are 'f' or 'd' for the type, then a variable-length
-            # base128 integer for the content size, then the actual content
-            # We know that the variable-length integer won't be longer than 10
-            # bytes (it only takes 5 bytes to encode 2^32)
-            c = self._content[start]
-            if c == 'f':
-                type = 'fulltext'
-            else:
-                if c != 'd':
-                    raise ValueError('Unknown content control code: %s'
-                                     % (c,))
-                type = 'delta'
-            entry = GroupCompressBlockEntry(key, type, sha1=None,
-                                            start=start, length=end-start)
+        start, end = index_memo[3:5]
+        # Make sure we have enough bytes for this record
+        self._ensure_content(end)
+        # The bytes are 'f' or 'd' for the type, then a variable-length
+        # base128 integer for the content size, then the actual content
+        # We know that the variable-length integer won't be longer than 10
+        # bytes (it only takes 5 bytes to encode 2^32)
+        c = self._content[start]
+        if c == 'f':
+            type = 'fulltext'
         else:
-            entry = self._entries[key]
-            c = self._content[entry.start]
-            if entry.type == 'fulltext':
-                if c != 'f':
-                    raise ValueError('Label claimed fulltext, byte claims: %s'
-                                     % (c,))
-            elif entry.type == 'delta':
-                if c != 'd':
-                    raise ValueError('Label claimed delta, byte claims: %s'
-                                     % (c,))
-            start = entry.start
+            if c != 'd':
+                raise ValueError('Unknown content control code: %s'
+                                 % (c,))
+            type = 'delta'
+        entry = GroupCompressBlockEntry(key, type, sha1=None,
+                                        start=start, length=end-start)
         content_len, len_len = decode_base128_int(
                             self._content[entry.start + 1:entry.start + 11])
         content_start = entry.start + 1 + len_len
