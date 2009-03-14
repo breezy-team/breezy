@@ -201,6 +201,11 @@ class GroupCompressBlock(object):
             self._content = zlib.decompress(self._z_content)
         self._z_content = None
 
+    def _ensure_content(self):
+        """Make sure that content has been expanded."""
+        if self._content is None:
+            self._expand_content()
+
     def _parse_bytes(self, bytes):
         """Read the various lengths from the header.
 
@@ -248,7 +253,7 @@ class GroupCompressBlock(object):
         out._parse_bytes(bytes)
         if not _NO_LABELS:
             out._parse_header()
-        out._expand_content()
+        # out._expand_content()
         return out
 
     def extract(self, key, index_memo, sha1=None):
@@ -258,6 +263,7 @@ class GroupCompressBlock(object):
         :param sha1: TODO (should we validate only when sha1 is supplied?)
         :return: The bytes for the content
         """
+        self._ensure_content()
         if _NO_LABELS or not self._entries:
             start, end = index_memo[3:5]
             # The bytes are 'f' or 'd' for the type, then a variable-length

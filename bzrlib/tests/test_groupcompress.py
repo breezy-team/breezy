@@ -194,7 +194,12 @@ class TestGroupCompressBlock(tests.TestCase):
             'gcb1z\n0\n0\n0\n0\n')
         self.assertIsInstance(block, groupcompress.GroupCompressBlock)
         self.assertEqual({}, block._entries)
+        self.assertIs(None, block._content)
+        self.assertEqual('', block._z_content)
+        block._ensure_content()
         self.assertEqual('', block._content)
+        self.assertIs(None, block._z_content)
+        block._ensure_content() # Ensure content is safe to call 2x
 
     def test_from_bytes(self):
         header = ('key:bing\n'
@@ -239,6 +244,10 @@ class TestGroupCompressBlock(tests.TestCase):
         self.assertEqual('abcd'*10, foobar.sha1)
         self.assertEqual(0, foobar.start)
         self.assertEqual(100, foobar.length)
+        self.assertEqual(z_content, block._z_content)
+        self.assertIs(None, block._content)
+        block._ensure_content()
+        self.assertIs(None, block._z_content)
         self.assertEqual(content, block._content)
 
     def test_add_entry(self):
