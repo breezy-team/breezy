@@ -1453,6 +1453,26 @@ class Repository(object):
                 result[key] = True
         return result
 
+    def _inventory_xml_lines_for_keys(self, keys):
+        """Get a line iterator of the sort needed for findind references.
+
+        Not relevant for non-xml inventory repositories.
+
+        Ghosts in revision_keys are ignored.
+
+        :param revision_keys: The revision keys for the inventories to inspect.
+        :return: An iterator over (inventory line, revid) for the fulltexts of
+            all of the xml inventories specified by revision_keys.
+        """
+        stream = self.inventories.get_record_stream(keys, 'unordered', True)
+        for record in stream:
+            if record.storage_kind != 'absent':
+                chunks = record.get_bytes_as('chunked')
+                revid = record.key[-1]
+                lines = osutils.chunks_to_lines(chunks)
+                for line in lines:
+                    yield line, revid
+
     def _find_file_ids_from_xml_inventory_lines(self, line_iterator,
         revision_ids):
         """Helper routine for fileids_altered_by_revision_ids.
@@ -1468,15 +1488,20 @@ class Repository(object):
         revision_ids. Each altered file-ids has the exact revision_ids that
         altered it listed explicitly.
         """
+        seen = set(self._find_text_key_references_from_xml_inventory_lines(
+                line_iterator).iterkeys())
+        # Note that revision_ids are revision keys.
+        parent_maps = self.revisions.get_parent_map(revision_ids)
+        parents = set()
+        map(parents.update, parent_maps.itervalues())
+        parents.difference_update(revision_ids)
+        parent_seen = set(self._find_text_key_references_from_xml_inventory_lines(
+            self._inventory_xml_lines_for_keys(parents)))
+        new_keys = seen - parent_seen
         result = {}
         setdefault = result.setdefault
-        for key in \
-            self._find_text_key_references_from_xml_inventory_lines(
-                line_iterator).iterkeys():
-            # once data is all ensured-consistent; then this is
-            # if revision_id == version_id
-            if key[-1:] in revision_ids:
-                setdefault(key[0], set()).add(key[-1])
+        for key in new_keys:
+            setdefault(key[0], set()).add(key[-1])
         return result
 
     def fileids_altered_by_revision_ids(self, revision_ids, _inv_weave=None):
@@ -3165,10 +3190,7 @@ class InterDifferingSerializer(InterKnitRepo):
                         # We don't copy the text for the root node unless the
                         # target supports_rich_root.
                         continue
-                    # TODO: Do we need:
-                    #       "if entry.revision == current_revision_id" ?
-                    if entry.revision == current_revision_id:
-                        text_keys.add((file_id, entry.revision))
+                    text_keys.add((file_id, entry.revision))
             revision = self.source.get_revision(current_revision_id)
             pending_deltas.append((basis_id, delta,
                 current_revision_id, revision.parent_ids))
@@ -3379,6 +3401,12 @@ class InterPackToRemotePack(InterPackRepo):
     def fetch(self, revision_id=None, pb=None, find_ghosts=False,
             fetch_spec=None):
         """See InterRepository.fetch()."""
+        if self.target._client._medium._is_remote_before((1, 13)):
+            # The server won't support the insert_stream RPC, so just use
+            # regular InterPackRepo logic.  This avoids a bug that causes many
+            # round-trips for small append calls.
+            return InterPackRepo.fetch(self, revision_id=revision_id, pb=pb,
+                find_ghosts=find_ghosts, fetch_spec=fetch_spec)
         # Always fetch using the generic streaming fetch code, to allow
         # streaming fetching into remote servers.
         from bzrlib.fetch import RepoFetcher
