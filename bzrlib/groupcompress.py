@@ -193,12 +193,20 @@ class GroupCompressBlock(object):
         pos += 1
         pos2 = bytes.index('\n', pos)
         header_length = int(bytes[pos:pos2])
+        pos2 += 1
+        pos = bytes.index('\n', pos2)
+        z_content_length = int(bytes[pos2:pos])
+        pos += 1
+        pos2 = bytes.index('\n', pos)
+        content_length = int(bytes[pos:pos2])
         if z_header_length == 0:
             if header_length != 0:
                 raise ValueError('z_header_length 0, but header length != 0')
             zcontent = bytes[pos2+1:]
             if zcontent:
+                assert len(zcontent) == z_content_length
                 out._content = decomp(zcontent)
+                assert len(out._content) == content_length
                 out._size = len(out._content)
             return out
         pos = pos2 + 1
@@ -307,9 +315,9 @@ class GroupCompressBlock(object):
             chunks.append(chunk)
         bytes = ''.join(chunks)
         info_len = len(bytes)
-        z_bytes = []
-        z_bytes.append(compress(bytes))
-        del bytes
+        z_header_bytes = compress(bytes)
+        del bytes, chunks
+        z_header_len = len(z_header_bytes)
         # TODO: we may want to have the header compressed in the same chain
         #       as the data, or we may not, evaulate it
         #       having them compressed together is probably a win for
@@ -317,23 +325,23 @@ class GroupCompressBlock(object):
         #       label in the header is duplicated in the text.
         #       For chk pages and real bytes, I would guess this is not
         #       true.
-        z_len = sum(map(len, z_bytes))
-        c_len = len(content)
         if _NO_LABELS:
-            z_bytes = []
-            z_len = 0
+            z_header_bytes = ''
+            z_header_len = 0
             info_len = 0
-        z_bytes.append(compress(content))
+        content_len = len(content)
+        z_content_bytes = compress(content)
+        z_content_len = len(z_content_bytes)
         if _USE_LZMA:
             header = self.GCB_LZ_HEADER
         else:
             header = self.GCB_HEADER
         chunks = [header,
-                  '%d\n' % (z_len,),
-                  '%d\n' % (info_len,),
-                  #'%d\n' % (c_len,),
+                  '%d\n%d\n%d\n%d\n' % (z_header_len, info_len,
+                                        z_content_len, content_len)
                  ]
-        chunks.extend(z_bytes)
+        chunks.append(z_header_bytes)
+        chunks.append(z_content_bytes)
         return ''.join(chunks)
 
 
@@ -908,8 +916,9 @@ class GroupCompressVersionedFiles(VersionedFiles):
                         block = self._get_block(index_memo)
                         entry, bytes = block.extract(key, index_memo)
                         sha1 = entry.sha1
-                        # TODO: If we don't have labels, then the sha1 here is computed
-                        #       from the data, so we don't want to re-sha the string.
+                        # TODO: If we don't have labels, then the sha1 here is
+                        #       computed from the data, so we don't want to
+                        #       re-sha the string.
                         if not _FAST and sha_string(bytes) != sha1:
                             raise AssertionError('sha1 sum did not match')
                     yield FulltextContentFactory(key, parents, sha1, bytes)

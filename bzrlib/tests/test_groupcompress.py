@@ -190,17 +190,14 @@ class TestGroupCompressBlock(tests.TestCase):
                           groupcompress.GroupCompressBlock.from_bytes, '')
 
     def test_from_minimal_bytes(self):
-        block = groupcompress.GroupCompressBlock.from_bytes('gcb1z\n0\n0\n')
+        block = groupcompress.GroupCompressBlock.from_bytes(
+            'gcb1z\n0\n0\n0\n0\n')
         self.assertIsInstance(block, groupcompress.GroupCompressBlock)
         self.assertEqual({}, block._entries)
+        self.assertIs(None, block._content)
 
     def test_from_bytes(self):
-        z_header_bytes = (
-            'gcb1z\n' # group compress block v1 plain
-            '76\n' # Length of zlib bytes
-            '183\n' # Length of all meta-info
-            + zlib.compress(
-            'key:bing\n'
+        header = ('key:bing\n'
             'sha1:abcdabcdabcdabcdabcdabcdabcdabcdabcdabcd\n'
             'type:fulltext\n'
             'start:100\n'
@@ -211,10 +208,23 @@ class TestGroupCompressBlock(tests.TestCase):
             'type:fulltext\n'
             'start:0\n'
             'length:100\n'
-            '\n'))
+            '\n')
+        z_header = zlib.compress(header)
+        content = ('a tiny bit of content\n')
+        z_content = zlib.compress(content)
+        z_bytes = (
+            'gcb1z\n' # group compress block v1 plain
+            '%d\n' # Length of zlib bytes
+            '%d\n' # Length of all meta-info
+            '%d\n' # Length of compressed content
+            '%d\n' # Length of uncompressed content
+            '%s'   # Compressed header
+            '%s'   # Compressed content
+            ) % (len(z_header), len(header),
+                 len(z_content), len(content),
+                 z_header, z_content)
         block = groupcompress.GroupCompressBlock.from_bytes(
-            z_header_bytes)
-        self.assertIs(None, block._content)
+            z_bytes)
         self.assertIsInstance(block, groupcompress.GroupCompressBlock)
         self.assertEqual([('bing',), ('foo', 'bar')], sorted(block._entries))
         bing = block._entries[('bing',)]
@@ -229,6 +239,7 @@ class TestGroupCompressBlock(tests.TestCase):
         self.assertEqual('abcd'*10, foobar.sha1)
         self.assertEqual(0, foobar.start)
         self.assertEqual(100, foobar.length)
+        self.assertEqual(content, block._content)
 
     def test_add_entry(self):
         gcb = groupcompress.GroupCompressBlock()
@@ -244,13 +255,16 @@ class TestGroupCompressBlock(tests.TestCase):
         gcb = groupcompress.GroupCompressBlock()
         gcb.add_entry(('foo', 'bar'), 'fulltext', 'abcd'*10, 0, 100)
         gcb.add_entry(('bing',), 'fulltext', 'abcd'*10, 100, 100)
-        bytes = gcb.to_bytes()
-        self.assertStartsWith(bytes,
-                              'gcb1z\n' # group compress block v1 zlib
-                              '76\n' # Length of compressed bytes
-                              '183\n' # Length of all meta-info
-                             )
-        remaining_bytes = bytes[13:]
+        bytes = gcb.to_bytes('this is some content\n'
+                             'this content will be compressed\n')
+        expected_header =('gcb1z\n' # group compress block v1 zlib
+                          '76\n' # Length of compressed bytes
+                          '183\n' # Length of uncompressed meta-info
+                          '50\n' # Length of compressed content
+                          '53\n' # Length of uncompressed content
+                         )
+        self.assertStartsWith(bytes, expected_header)
+        remaining_bytes = bytes[len(expected_header):]
         raw_bytes = zlib.decompress(remaining_bytes)
         self.assertEqualDiff('key:bing\n'
                              'sha1:abcdabcdabcdabcdabcdabcdabcdabcdabcdabcd\n'
