@@ -585,8 +585,6 @@ class cmd_add(Command):
         finally:
             if base_tree is not None:
                 base_tree.unlock()
-        if not is_quiet() and len(added) > 0:
-            self.outf.write('add completed\n')
         if len(ignored) > 0:
             if verbose:
                 for glob in sorted(ignored.keys()):
@@ -841,7 +839,7 @@ class cmd_pull(Command):
     with bzr send.
     """
 
-    _see_also = ['push', 'update', 'status-flags']
+    _see_also = ['push', 'update', 'status-flags', 'send']
     takes_options = ['remember', 'overwrite', 'revision',
         custom_help('verbose',
             help='Show logs of pulled revisions.'),
@@ -2304,6 +2302,14 @@ class cmd_ls(Command):
         if revision is not None or tree is None:
             tree = _get_one_revision_tree('ls', revision, branch=branch)
 
+        apply_view = False
+        if isinstance(tree, WorkingTree) and tree.supports_views():
+            view_files = tree.views.lookup_view()
+            if view_files:
+                apply_view = True
+                view_str = views.view_display_str(view_files)
+                note("ignoring files outside view: %s" % view_str)
+
         tree.lock_read()
         try:
             for fp, fc, fkind, fid, entry in tree.list_files(include_root=False):
@@ -2315,6 +2321,11 @@ class cmd_ls(Command):
                         continue
                     if kind is not None and fkind != kind:
                         continue
+                    if apply_view:
+                        try:
+                            views.check_path_in_view(tree, fp)
+                        except errors.FileOutsideView:
+                            continue
                     kindch = entry.kind_character()
                     outstring = fp + kindch
                     if verbose:
@@ -2620,6 +2631,8 @@ class cmd_commit(Command):
     If author of the change is not the same person as the committer, you can
     specify the author's name using the --author option. The name should be
     in the same format as a committer-id, e.g. "John Doe <jdoe@example.com>".
+    If there is more than one author of the change you can specify the option
+    multiple times, once for each author.
 
     A selected-file commit may fail in some cases where the committed
     tree would be invalid. Consider::
@@ -2668,8 +2681,9 @@ class cmd_commit(Command):
                     help="Refuse to commit if there are unknown "
                     "files in the working tree."),
              ListOption('fixes', type=str,
-                    help="Mark a bug as being fixed by this revision."),
-             Option('author', type=unicode,
+                    help="Mark a bug as being fixed by this revision "
+                         "(see \"bzr help bugs\")."),
+             ListOption('author', type=unicode,
                     help="Set the author's name, if it's different "
                          "from the committer."),
              Option('local',
@@ -2691,18 +2705,18 @@ class cmd_commit(Command):
             tokens = fixed_bug.split(':')
             if len(tokens) != 2:
                 raise errors.BzrCommandError(
-                    "Invalid bug %s. Must be in the form of 'tag:id'. "
-                    "Commit refused." % fixed_bug)
+                    "Invalid bug %s. Must be in the form of 'tracker:id'. "
+                    "See \"bzr help bugs\" for more information on this "
+                    "feature.\nCommit refused." % fixed_bug)
             tag, bug_id = tokens
             try:
                 bug_url = bugtracker.get_bug_url(tag, branch, bug_id)
             except errors.UnknownBugTrackerAbbreviation:
                 raise errors.BzrCommandError(
                     'Unrecognized bug %s. Commit refused.' % fixed_bug)
-            except errors.MalformedBugIdentifier:
+            except errors.MalformedBugIdentifier, e:
                 raise errors.BzrCommandError(
-                    "Invalid bug identifier for %s. Commit refused."
-                    % fixed_bug)
+                    "%s\nCommit refused." % (str(e),))
             properties.append('%s fixed' % bug_url)
         return '\n'.join(properties)
 
@@ -2772,7 +2786,7 @@ class cmd_commit(Command):
                         specific_files=selected_list,
                         allow_pointless=unchanged, strict=strict, local=local,
                         reporter=None, verbose=verbose, revprops=properties,
-                        author=author,
+                        authors=author,
                         exclude=safe_relpath_files(tree, exclude))
         except PointlessCommit:
             # FIXME: This should really happen before the file is read in;
@@ -2875,8 +2889,6 @@ class cmd_upgrade(Command):
 
     def run(self, url='.', format=None):
         from bzrlib.upgrade import upgrade
-        if format is None:
-            format = bzrdir.format_registry.make_bzrdir('default')
         upgrade(url, format)
 
 
@@ -3312,7 +3324,7 @@ class cmd_merge(Command):
     """
 
     encoding_type = 'exact'
-    _see_also = ['update', 'remerge', 'status-flags']
+    _see_also = ['update', 'remerge', 'status-flags', 'send']
     takes_args = ['location?']
     takes_options = [
         'change',
@@ -3354,6 +3366,16 @@ class cmd_merge(Command):
         allow_pending = True
         verified = 'inapplicable'
         tree = WorkingTree.open_containing(directory)[0]
+
+        # die as quickly as possible if there are uncommitted changes
+        try:
+            basis_tree = tree.revision_tree(tree.last_revision())
+        except errors.NoSuchRevision:
+            basis_tree = tree.basis_tree()
+        changes = tree.changes_from(basis_tree)
+        if changes.has_changed():
+            raise errors.UncommittedChanges(tree)
+
         view_info = _get_view_info_for_change_reporter(tree)
         change_reporter = delta._ChangeReporter(
             unversioned_filter=tree.is_ignored, view_info=view_info)
@@ -3412,7 +3434,7 @@ class cmd_merge(Command):
                                        merger.other_rev_id)
                     result.report(self.outf)
                     return 0
-            merger.check_basis(not force)
+            merger.check_basis(False)
             if preview:
                 return self._do_preview(merger)
             else:
@@ -4689,7 +4711,8 @@ class cmd_send(Command):
     default.  "0.9" uses revision bundle format 0.9 and merge directive
     format 1.  It is compatible with Bazaar 0.12 - 0.18.
 
-    Merge directives are applied using the merge command or the pull command.
+    The merge directives created by bzr send may be applied using bzr merge or
+    bzr pull by specifying a file containing a merge directive as the location.
     """
 
     encoding_type = 'exact'
@@ -5430,6 +5453,40 @@ class cmd_unshelve(Command):
     def run(self, shelf_id=None, action='apply'):
         from bzrlib.shelf_ui import Unshelver
         Unshelver.from_args(shelf_id, action).run()
+
+
+class cmd_clean_tree(Command):
+    """Remove unwanted files from working tree.
+
+    By default, only unknown files, not ignored files, are deleted.  Versioned
+    files are never deleted.
+
+    Another class is 'detritus', which includes files emitted by bzr during
+    normal operations and selftests.  (The value of these files decreases with
+    time.)
+
+    If no options are specified, unknown files are deleted.  Otherwise, option
+    flags are respected, and may be combined.
+
+    To check what clean-tree will do, use --dry-run.
+    """
+    takes_options = [Option('ignored', help='Delete all ignored files.'),
+                     Option('detritus', help='Delete conflict files, merge'
+                            ' backups, and failed selftest dirs.'),
+                     Option('unknown',
+                            help='Delete files unknown to bzr (default).'),
+                     Option('dry-run', help='Show files to delete instead of'
+                            ' deleting them.'),
+                     Option('force', help='Do not prompt before deleting.')]
+    def run(self, unknown=False, ignored=False, detritus=False, dry_run=False,
+            force=False):
+        from bzrlib.clean_tree import clean_tree
+        if not (unknown or ignored or detritus):
+            unknown = True
+        if dry_run:
+            force = True
+        clean_tree('.', unknown=unknown, ignored=ignored, detritus=detritus,
+                   dry_run=dry_run, no_prompt=force)
 
 
 def _create_prefix(cur_transport):

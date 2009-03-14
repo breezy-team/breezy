@@ -16,7 +16,9 @@
 
 """Tests for the core Hooks logic."""
 
+from bzrlib import errors
 from bzrlib.hooks import (
+    HookPoint,
     Hooks,
     )
 from bzrlib.errors import (
@@ -28,6 +30,68 @@ from bzrlib.tests import TestCase
 
 
 class TestHooks(TestCase):
+
+    def test_create_hook_first(self):
+        hooks = Hooks()
+        doc = ("Invoked after changing the tip of a branch object. Called with"
+            "a bzrlib.branch.PostChangeBranchTipParams object")
+        hook = HookPoint("post_tip_change", doc, (0, 15), None)
+        hooks.create_hook(hook)
+        self.assertEqual(hook, hooks['post_tip_change'])
+
+    def test_create_hook_name_collision_errors(self):
+        hooks = Hooks()
+        doc = ("Invoked after changing the tip of a branch object. Called with"
+            "a bzrlib.branch.PostChangeBranchTipParams object")
+        hook = HookPoint("post_tip_change", doc, (0, 15), None)
+        hook2 = HookPoint("post_tip_change", None, None, None)
+        hooks.create_hook(hook)
+        self.assertRaises(errors.DuplicateKey, hooks.create_hook, hook2)
+        self.assertEqual(hook, hooks['post_tip_change'])
+
+    def test_docs(self):
+        """docs() should return something reasonable about the Hooks."""
+        class MyHooks(Hooks):
+            pass
+        hooks = MyHooks()
+        hooks['legacy'] = []
+        hook1 = HookPoint('post_tip_change',
+            "Invoked after the tip of a branch changes. Called with "
+            "a ChangeBranchTipParams object.", (1, 4), None)
+        hook2 = HookPoint('pre_tip_change',
+            "Invoked before the tip of a branch changes. Called with "
+            "a ChangeBranchTipParams object. Hooks should raise "
+            "TipChangeRejected to signal that a tip change is not permitted.",
+            (1, 6), None)
+        hooks.create_hook(hook1)
+        hooks.create_hook(hook2)
+        self.assertEqualDiff(
+            "MyHooks\n"
+            "=======\n"
+            "\n"
+            "legacy\n"
+            "------\n"
+            "\n"
+            "An old-style hook. For documentation see the __init__ method of 'MyHooks'\n"
+            "\n"
+            "post_tip_change\n"
+            "---------------\n"
+            "\n"
+            "Introduced in: 1.4\n"
+            "Deprecated in: Not deprecated\n"
+            "\n"
+            "Invoked after the tip of a branch changes. Called with a\n"
+            "ChangeBranchTipParams object.\n"
+            "\n"
+            "pre_tip_change\n"
+            "--------------\n"
+            "\n"
+            "Introduced in: 1.6\n"
+            "Deprecated in: Not deprecated\n"
+            "\n"
+            "Invoked before the tip of a branch changes. Called with a\n"
+            "ChangeBranchTipParams object. Hooks should raise TipChangeRejected to\n"
+            "signal that a tip change is not permitted.\n", hooks.docs())
 
     def test_install_hook_raises_unknown_hook(self):
         """install_hook should raise UnknownHook if a hook is unknown."""
@@ -72,3 +136,47 @@ class TestHooks(TestCase):
         hooks['set_rh'] = []
         self.applyDeprecated(one_five, hooks.install_hook, 'set_rh', None)
         self.assertEqual("No hook name", hooks.get_hook_name(None))
+
+
+class TestHook(TestCase):
+
+    def test___init__(self):
+        doc = ("Invoked after changing the tip of a branch object. Called with"
+            "a bzrlib.branch.PostChangeBranchTipParams object")
+        hook = HookPoint("post_tip_change", doc, (0, 15), None)
+        self.assertEqual(doc, hook.__doc__)
+        self.assertEqual("post_tip_change", hook.name)
+        self.assertEqual((0, 15), hook.introduced)
+        self.assertEqual(None, hook.deprecated)
+        self.assertEqual([], list(hook))
+
+    def test_docs(self):
+        doc = ("Invoked after changing the tip of a branch object. Called with"
+            " a bzrlib.branch.PostChangeBranchTipParams object")
+        hook = HookPoint("post_tip_change", doc, (0, 15), None)
+        self.assertEqual("post_tip_change\n"
+            "---------------\n"
+            "\n"
+            "Introduced in: 0.15\n"
+            "Deprecated in: Not deprecated\n"
+            "\n"
+            "Invoked after changing the tip of a branch object. Called with a\n"
+            "bzrlib.branch.PostChangeBranchTipParams object\n", hook.docs())
+
+    def test_hook(self):
+        hook = HookPoint("foo", "no docs", None, None)
+        def callback():
+            pass
+        hook.hook(callback, "my callback")
+        self.assertEqual([callback], list(hook))
+
+    def test___repr(self):
+        # The repr should list all the callbacks, with names.
+        hook = HookPoint("foo", "no docs", None, None)
+        def callback():
+            pass
+        hook.hook(callback, "my callback")
+        callback_repr = repr(callback)
+        self.assertEqual(
+            '<HookPoint(foo), callbacks=[%s(my callback)]>' %
+            callback_repr, repr(hook))

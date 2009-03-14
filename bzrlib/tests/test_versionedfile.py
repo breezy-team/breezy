@@ -48,11 +48,10 @@ from bzrlib.tests import (
     TestCase,
     TestCaseWithMemoryTransport,
     TestNotApplicable,
-    TestScenarioApplier,
     TestSkipped,
     condition_isinstance,
     split_suite_by_condition,
-    iter_suite_tests,
+    multiply_tests,
     )
 from bzrlib.tests.http_utils import TestCaseWithWebserver
 from bzrlib.trace import mutter
@@ -76,8 +75,6 @@ def load_tests(standard_tests, module, loader):
     """Parameterize VersionedFiles tests for different implementations."""
     to_adapt, result = split_suite_by_condition(
         standard_tests, condition_isinstance(TestVersionedFiles))
-    len_one_adapter = TestScenarioApplier()
-    len_two_adapter = TestScenarioApplier()
     # We want to be sure of behaviour for:
     # weaves prefix layout (weave texts)
     # individually named weaves (weave inventories)
@@ -88,7 +85,7 @@ def load_tests(standard_tests, module, loader):
     # individual graph knits in packs (inventories)
     # individual graph nocompression knits in packs (revisions)
     # plain text knits in packs (texts)
-    len_one_adapter.scenarios = [
+    len_one_scenarios = [
         ('weave-named', {
             'cleanup':None,
             'factory':make_versioned_files_factory(WeaveFile,
@@ -126,7 +123,7 @@ def load_tests(standard_tests, module, loader):
             'support_partial_insertion': False,
             }),
         ]
-    len_two_adapter.scenarios = [
+    len_two_scenarios = [
         ('weave-prefix', {
             'cleanup':None,
             'factory':make_versioned_files_factory(WeaveFile,
@@ -150,10 +147,8 @@ def load_tests(standard_tests, module, loader):
             'support_partial_insertion': True,
             }),
         ]
-    for test in iter_suite_tests(to_adapt):
-        result.addTests(len_one_adapter.adapt(test))
-        result.addTests(len_two_adapter.adapt(test))
-    return result
+    scenarios = len_one_scenarios + len_two_scenarios
+    return multiply_tests(to_adapt, scenarios, result)
 
 
 def get_diamond_vf(f, trailing_eol=True, left_only=False):
@@ -1620,6 +1615,26 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
                 }
         return keys, sort_order
 
+    def get_keys_and_groupcompress_sort_order(self):
+        """Get diamond test keys list, and their groupcompress sort ordering."""
+        if self.key_length == 1:
+            keys = [('merged',), ('left',), ('right',), ('base',)]
+            sort_order = {('merged',):0, ('left',):1, ('right',):1, ('base',):2}
+        else:
+            keys = [
+                ('FileA', 'merged'), ('FileA', 'left'), ('FileA', 'right'),
+                ('FileA', 'base'),
+                ('FileB', 'merged'), ('FileB', 'left'), ('FileB', 'right'),
+                ('FileB', 'base'),
+                ]
+            sort_order = {
+                ('FileA', 'merged'):0, ('FileA', 'left'):1, ('FileA', 'right'):1,
+                ('FileA', 'base'):2,
+                ('FileB', 'merged'):3, ('FileB', 'left'):4, ('FileB', 'right'):4,
+                ('FileB', 'base'):5,
+                }
+        return keys, sort_order
+
     def test_get_record_stream_interface_ordered(self):
         """each item in a stream has to provide a regular interface."""
         files = self.get_versionedfiles()
@@ -1651,6 +1666,17 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             chunked_bytes = factory.get_bytes_as('chunked')
             self.assertEqualDiff(ft_bytes, ''.join(chunked_bytes))
 
+        self.assertStreamOrder(sort_order, seen, keys)
+
+    def test_get_record_stream_interface_groupcompress(self):
+        """each item in a stream has to provide a regular interface."""
+        files = self.get_versionedfiles()
+        self.get_diamond_files(files)
+        keys, sort_order = self.get_keys_and_groupcompress_sort_order()
+        parent_map = files.get_parent_map(keys)
+        entries = files.get_record_stream(keys, 'groupcompress', False)
+        seen = []
+        self.capture_stream(files, entries, seen.append, parent_map)
         self.assertStreamOrder(sort_order, seen, keys)
 
     def assertStreamOrder(self, sort_order, seen, keys):

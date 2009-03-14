@@ -432,11 +432,10 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
         """The default acquisition policy should create a standalone branch."""
         my_bzrdir = self.make_bzrdir('.')
         repo_policy = my_bzrdir.determine_repository_policy()
-        repo = repo_policy.acquire_repository()
+        repo, is_new = repo_policy.acquire_repository()
         self.assertEqual(repo.bzrdir.root_transport.base,
                          my_bzrdir.root_transport.base)
         self.assertFalse(repo.is_shared())
-
 
     def test_determine_stacking_policy(self):
         parent_bzrdir = self.make_bzrdir('.')
@@ -741,15 +740,20 @@ class ChrootedTests(TestCaseWithTransport):
                           transport)
 
     def test_sprout_recursive(self):
-        tree = self.make_branch_and_tree('tree1', format='dirstate-with-subtree')
+        tree = self.make_branch_and_tree('tree1',
+                                         format='dirstate-with-subtree')
         sub_tree = self.make_branch_and_tree('tree1/subtree',
             format='dirstate-with-subtree')
+        sub_tree.set_root_id('subtree-root')
         tree.add_reference(sub_tree)
         self.build_tree(['tree1/subtree/file'])
         sub_tree.add('file')
         tree.commit('Initial commit')
-        tree.bzrdir.sprout('tree2')
+        tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
+        tree2.lock_read()
+        self.addCleanup(tree2.unlock)
         self.failUnlessExists('tree2/subtree/file')
+        self.assertEqual('tree-reference', tree2.kind('subtree-root'))
 
     def test_cloning_metadir(self):
         """Ensure that cloning metadir is suitable"""
@@ -1228,10 +1232,15 @@ class _TestBzrDir(bzrdir.BzrDirMeta1):
         return _TestBzrDirFormat()
 
 
+class _TestBranchFormat(bzrlib.branch.BranchFormat):
+    """Test Branch format for TestBzrDirSprout."""
+
+
 class _TestBranch(bzrlib.branch.Branch):
     """Test Branch implementation for TestBzrDirSprout."""
 
     def __init__(self, *args, **kwargs):
+        self._format = _TestBranchFormat()
         super(_TestBranch, self).__init__(*args, **kwargs)
         self.calls = []
         self._parent = None

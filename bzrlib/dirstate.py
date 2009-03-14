@@ -2807,6 +2807,8 @@ def py_update_entry(state, entry, abspath, stat_value,
     (saved_minikind, saved_link_or_sha1, saved_file_size,
      saved_executable, saved_packed_stat) = entry[1][0]
 
+    if minikind == 'd' and saved_minikind == 't':
+        minikind = 't'
     if (minikind == saved_minikind
         and packed_stat == saved_packed_stat):
         # The stat hasn't changed since we saved, so we can re-use the

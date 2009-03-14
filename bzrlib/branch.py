@@ -83,12 +83,8 @@ class Branch(object):
     # - RBC 20060112
     base = None
 
-    # override this to set the strategy for storing tags
-    def _make_tags(self):
-        return DisabledTags(self)
-
     def __init__(self, *ignored, **ignored_too):
-        self.tags = self._make_tags()
+        self.tags = self._format.make_tags(self)
         self._revision_history_cache = None
         self._revision_id_to_revno_cache = None
         self._partial_revision_id_to_revno_cache = {}
@@ -155,10 +151,24 @@ class Branch(object):
         The default implementation returns False if this branch has no tags,
         and True the rest of the time.  Subclasses may override this.
         """
-        return self.tags.supports_tags() and self.tags.get_tag_dict()
+        return self.supports_tags() and self.tags.get_tag_dict()
 
     def get_config(self):
         return BranchConfig(self)
+
+    def _get_tags_bytes(self):
+        """Get the bytes of a serialised tags dict.
+
+        Note that not all branches support tags, nor do all use the same tags
+        logic: this method is specific to BasicTags. Other tag implementations
+        may use the same method name and behave differently, safely, because
+        of the double-dispatch via
+        format.make_tags->tags_instance->get_tags_dict.
+
+        :return: The bytes of the tags file.
+        :seealso: Branch._set_tags_bytes.
+        """
+        return self._transport.get_bytes('tags')
 
     def _get_nick(self, local=False, possible_transports=None):
         config = self.get_config()
@@ -464,9 +474,7 @@ class Branch(object):
         :param last_revision: What revision to stop at (None for at the end
                               of the branch.
         :param pb: An optional progress bar to use.
-
-        Returns the copied revision count and the failed revisions in a tuple:
-        (copied, failures).
+        :return: None
         """
         if self.base == from_branch.base:
             return (0, [])
@@ -566,6 +574,14 @@ class Branch(object):
             stacking.
         """
         raise NotImplementedError(self.set_stacked_on_url)
+
+    def _set_tags_bytes(self, bytes):
+        """Mirror method for _get_tags_bytes.
+
+        :seealso: Branch._get_tags_bytes.
+        """
+        return _run_with_write_locked_target(self, self._transport.put_bytes,
+            'tags', bytes)
 
     def _cache_revision_history(self, rev_history):
         """Set the cached revision history to rev_history.
@@ -708,6 +724,20 @@ class Branch(object):
         return InterBranch.get(other, self).update_revisions(stop_revision,
             overwrite, graph)
 
+    def import_last_revision_info(self, source_repo, revno, revid):
+        """Set the last revision info, importing from another repo if necessary.
+
+        This is used by the bound branch code to upload a revision to
+        the master branch first before updating the tip of the local branch.
+
+        :param source_repo: Source repository to optionally fetch from
+        :param revno: Revision number of the new tip
+        :param revid: Revision id of the new tip
+        """
+        if not self.repository.has_same_location(source_repo):
+            self.repository.fetch(source_repo, revision_id=revid)
+        self.set_last_revision_info(revno, revid)
+
     def revision_id_to_revno(self, revision_id):
         """Given a revision id, return its revno"""
         if _mod_revision.is_null(revision_id):
@@ -759,7 +789,20 @@ class Branch(object):
         pattern is that the user can override it by specifying a
         location.
         """
-        raise NotImplementedError(self.get_parent)
+        parent = self._get_parent_location()
+        if parent is None:
+            return parent
+        # This is an old-format absolute path to a local branch
+        # turn it into a url
+        if parent.startswith('/'):
+            parent = urlutils.local_path_to_url(parent.decode('utf8'))
+        try:
+            return urlutils.join(self.base[:-1], parent)
+        except errors.InvalidURLJoin, e:
+            raise errors.InaccessibleParent(parent, self.base)
+
+    def _get_parent_location(self):
+        raise NotImplementedError(self._get_parent_location)
 
     def _set_config_location(self, name, url, config=None,
                              make_relative=False):
@@ -881,7 +924,7 @@ class Branch(object):
             raise errors.InvalidRevisionNumber(revno)
 
     @needs_read_lock
-    def clone(self, to_bzrdir, revision_id=None):
+    def clone(self, to_bzrdir, revision_id=None, repository_policy=None):
         """Clone this branch into to_bzrdir preserving all semantic values.
 
         Most API users will want 'create_clone_on_transport', which creates a
@@ -891,11 +934,13 @@ class Branch(object):
                      be truncated to end with revision_id.
         """
         result = to_bzrdir.create_branch()
+        if repository_policy is not None:
+            repository_policy.configure_branch(result)
         self.copy_content_into(result, revision_id=revision_id)
         return  result
 
     @needs_read_lock
-    def sprout(self, to_bzrdir, revision_id=None):
+    def sprout(self, to_bzrdir, revision_id=None, repository_policy=None):
         """Create a new line of development from the branch, into to_bzrdir.
 
         to_bzrdir controls the branch format.
@@ -904,6 +949,8 @@ class Branch(object):
                      be truncated to end with revision_id.
         """
         result = to_bzrdir.create_branch()
+        if repository_policy is not None:
+            repository_policy.configure_branch(result)
         self.copy_content_into(result, revision_id=revision_id)
         result.set_parent(self.bzrdir.root_transport.base)
         return result
@@ -1254,6 +1301,20 @@ class BranchFormat(object):
         """
         return True
 
+    def make_tags(self, branch):
+        """Create a tags object for branch.
+
+        This method is on BranchFormat, because BranchFormats are reflected
+        over the wire via network_name(), whereas full Branch instances require
+        multiple VFS method calls to operate at all.
+
+        The default implementation returns a disabled-tags instance.
+
+        Note that it is normal for branch to be a RemoteBranch when using tags
+        on a RemoteBranch.
+        """
+        return DisabledTags(branch)
+
     def network_name(self):
         """A simple byte string uniquely identifying this format for RPC calls.
 
@@ -1276,8 +1337,9 @@ class BranchFormat(object):
     def register_format(klass, format):
         """Register a metadir format."""
         klass._formats[format.get_format_string()] = format
-        # Metadir formats have a network name of their format string.
-        network_format_registry.register(format.get_format_string(), format)
+        # Metadir formats have a network name of their format string, and get
+        # registered as class factories.
+        network_format_registry.register(format.get_format_string(), format.__class__)
 
     @classmethod
     def set_default_format(klass, format):
@@ -1582,6 +1644,11 @@ class BzrBranchFormat6(BranchFormatMetadir):
                       ]
         return self._initialize_helper(a_bzrdir, utf8_files)
 
+    def make_tags(self, branch):
+        """See bzrlib.branch.BranchFormat.make_tags()."""
+        return BasicTags(branch)
+
+
 
 class BzrBranchFormat7(BranchFormatMetadir):
     """Branch format with last-revision, tags, and a stacked location pointer.
@@ -1615,6 +1682,10 @@ class BzrBranchFormat7(BranchFormatMetadir):
         super(BzrBranchFormat7, self).__init__()
         self._matchingbzrdir.repository_format = \
             RepositoryFormatKnitPack5RichRoot()
+
+    def make_tags(self, branch):
+        """See bzrlib.branch.BranchFormat.make_tags()."""
+        return BasicTags(branch)
 
     def supports_stacking(self):
         return True
@@ -1671,7 +1742,8 @@ class BranchReferenceFormat(BranchFormat):
 
     def _make_reference_clone_function(format, a_branch):
         """Create a clone() routine for a branch dynamically."""
-        def clone(to_bzrdir, revision_id=None):
+        def clone(to_bzrdir, revision_id=None,
+            repository_policy=None):
             """See Branch.clone()."""
             return format.initialize(to_bzrdir, a_branch)
             # cannot obey revision_id limits when cloning a reference ...
@@ -1711,7 +1783,7 @@ class BranchReferenceFormat(BranchFormat):
 network_format_registry = registry.FormatRegistry()
 """Registry of formats indexed by their network name.
 
-The network name for a repository format is an identifier that can be used when
+The network name for a branch format is an identifier that can be used when
 referring to formats with smart server operations. See
 BranchFormat.network_name() for more detail.
 """
@@ -1730,7 +1802,7 @@ BranchFormat.set_default_format(__format6)
 _legacy_formats = [BzrBranchFormat4(),
     ]
 network_format_registry.register(
-    _legacy_formats[0].network_name(), _legacy_formats[0])
+    _legacy_formats[0].network_name(), _legacy_formats[0].__class__)
 
 
 class BzrBranch(Branch):
@@ -2023,20 +2095,6 @@ class BzrBranch(Branch):
             result.tag_conflicts = self.tags.merge_to(target.tags, overwrite)
         result.new_revno, result.new_revid = target.last_revision_info()
         return result
-
-    def get_parent(self):
-        """See Branch.get_parent."""
-        parent = self._get_parent_location()
-        if parent is None:
-            return parent
-        # This is an old-format absolute path to a local branch
-        # turn it into a url
-        if parent.startswith('/'):
-            parent = urlutils.local_path_to_url(parent.decode('utf8'))
-        try:
-            return urlutils.join(self.base[:-1], parent)
-        except errors.InvalidURLJoin, e:
-            raise errors.InaccessibleParent(parent, self.base)
 
     def get_stacked_on_url(self):
         raise errors.UnstackableBranchFormat(self._format, self.base)
@@ -2419,9 +2477,6 @@ class BzrBranch7(BzrBranch5):
         value = self.get_config().get_user_option('append_revisions_only')
         return value == 'True'
 
-    def _make_tags(self):
-        return BasicTags(self)
-
     @needs_write_lock
     def generate_revision_history(self, revision_id, last_rev=None,
                                   other_branch=None):
@@ -2541,9 +2596,9 @@ class PushResult(_Result):
     def report(self, to_file):
         """Write a human-readable description of the result."""
         if self.old_revid == self.new_revid:
-            to_file.write('No new revisions to push.\n')
+            note('No new revisions to push.')
         else:
-            to_file.write('Pushed up to revision %d.\n' % self.new_revno)
+            note('Pushed up to revision %d.' % self.new_revno)
         self._show_tag_conficts(to_file)
 
 

@@ -27,12 +27,7 @@ from bzrlib import (
     remote,
     )
 from bzrlib.bzrdir import BzrDir
-from bzrlib.tests import (
-                          adapt_modules,
-                          adapt_tests,
-                          TestScenarioApplier,
-                          TestSuite,
-                          )
+from bzrlib.tests import multiply_tests
 from bzrlib.tests.per_repository import (
     all_repository_format_scenarios,
     TestCaseWithRepository,
@@ -84,9 +79,6 @@ def external_reference_test_scenarios():
 
 
 def load_tests(standard_tests, module, loader):
-    adapter = TestScenarioApplier()
-    adapter.scenarios = external_reference_test_scenarios()
-
     module_list = [
         'bzrlib.tests.per_repository_reference.test_add_inventory',
         'bzrlib.tests.per_repository_reference.test_add_revision',
@@ -94,9 +86,9 @@ def load_tests(standard_tests, module, loader):
         'bzrlib.tests.per_repository_reference.test_all_revision_ids',
         'bzrlib.tests.per_repository_reference.test_break_lock',
         'bzrlib.tests.per_repository_reference.test_check',
+        'bzrlib.tests.per_repository_reference.test_default_stacking',
         ]
     # Parameterize per_repository_reference test modules by format.
-    result = TestSuite()
-    adapt_tests(standard_tests, adapter, result)
-    adapt_modules(module_list, adapter, loader, result)
-    return result
+    standard_tests.addTests(loader.loadTestsFromModuleNames(module_list))
+    return multiply_tests(standard_tests, external_reference_test_scenarios(),
+        loader.suiteClass())
