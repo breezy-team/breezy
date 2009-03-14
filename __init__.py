@@ -213,6 +213,9 @@ foreign_vcs_registry.register_lazy("git",
 plugin_cmds.register_lazy("cmd_git_serve", [], "bzrlib.plugins.git.commands")
 plugin_cmds.register_lazy("cmd_git_import", [], "bzrlib.plugins.git.commands")
 
+def get_rich_root_format():
+    return bzrdir.format_registry.make_bzrdir("1.9-rich-root")
+
 def test_suite():
     from bzrlib.plugins.git import tests
     return tests.test_suite()
