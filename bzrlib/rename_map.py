@@ -233,6 +233,10 @@ class RenameMap(object):
                 task.finished()
         finally:
             basis.unlock()
+        rn._update_tree(tree, required_parents, matches)
+
+    @staticmethod
+    def _update_tree(tree, required_parents, matches):
         tree.add(required_parents)
         reversed = dict((v, k) for k, v in matches.iteritems())
         child_to_parent = sorted(
@@ -241,4 +245,3 @@ class RenameMap(object):
         paths_forward = sorted(matches.keys())
         file_ids_forward = [matches[p] for p in paths_forward]
         tree.add(paths_forward, file_ids_forward)
-
