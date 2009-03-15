@@ -414,15 +414,10 @@ class GenericProcessor(processor.ImportProcessor):
                 pass
             self.cache_mgr._blobs = {}
             self._revision_count += 1
-            # If we're finished getting back to where we were,
-            # load the file-ids cache
-            if self._revision_count == self.skip_total:
-                self._gen_file_ids_cache()
             return
         if self.first_incremental_commit:
             self.first_incremental_commit = None
             parents = self.cache_mgr.track_heads(cmd)
-            self._gen_file_ids_cache(parents)
 
         # 'Commit' the revision and report progress
         handler = self.commit_handler_factory(cmd, self.cache_mgr,
@@ -441,28 +436,6 @@ class GenericProcessor(processor.ImportProcessor):
             self.note("%d commits - automatic checkpoint triggered",
                 self._revision_count)
             self.checkpoint_handler(None)
-
-    def _gen_file_ids_cache(self, revs=False):
-        """Generate the file-id cache by searching repository inventories.
-        """
-        # Get the interesting revisions - the heads
-        if revs:
-            head_ids = revs
-        else:
-            head_ids = self.cache_mgr.heads.keys()
-        revision_ids = [self.cache_mgr.revision_ids[h] for h in head_ids]
-
-        # Update the fileid cache
-        file_ids = {}
-        for revision_id in revision_ids:
-            self.note("Collecting file-ids for head %s ..." % revision_id)
-            inv = self.repo.revision_tree(revision_id).inventory
-            # Cache the inventories while we're at it
-            self.cache_mgr.inventories[revision_id] = inv
-            for path, ie in inv.iter_entries():
-                file_ids[path] = ie.file_id
-        self.cache_mgr.file_ids = file_ids
-        self.note("Generated the file-ids cache - %d entries" % len(file_ids))
 
     def report_progress(self, details=''):
         if self._revision_count % self.progress_every == 0:

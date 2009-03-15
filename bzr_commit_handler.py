@@ -45,6 +45,7 @@ class GenericCommitHandler(processor.CommitHandler):
         self.cache_mgr = cache_mgr
         self.rev_store = rev_store
         self.verbose = verbose
+        self.branch_ref = command.ref
 
     def pre_process_files(self):
         """Prepare for committing."""
@@ -147,12 +148,17 @@ class GenericCommitHandler(processor.CommitHandler):
           is_new = True if the file_id is newly created
         """
         try:
-            id = self.cache_mgr.file_ids[path]
+            id = self.cache_mgr.fetch_file_id(self.branch_ref, path)
             return id, False
         except KeyError:
-            id = generate_ids.gen_file_id(path)
-            self.cache_mgr.file_ids[path] = id
-            self.debug("Generated new file id %s for '%s'", id, path)
+            # Not in the cache, try the inventory
+            id = self.basis_inventory.path2id(path)
+            if id is None:
+                # Doesn't exist yet so create it
+                id = generate_ids.gen_file_id(path)
+                self.debug("Generated new file id %s for '%s' in '%s'",
+                    id, path, self.branch_ref)
+            self.cache_mgr.store_file_id(self.branch_ref, path, id)
             return id, True
 
     def bzr_file_id(self, path):
@@ -316,7 +322,7 @@ class GenericCommitHandler(processor.CommitHandler):
             self.record_delete(new_path, inv[new_file_id])
         ie.revision = self.revision_id
         self.record_rename(old_path, new_path, file_id, ie)
-        self.cache_mgr.rename_path(old_path, new_path)
+        self.cache_mgr.rename_path(self.branch_ref, old_path, new_path)
 
         # The revision-id for this entry will be/has been updated and
         # that means the loader then needs to know what the "new" text is.
@@ -343,7 +349,11 @@ class InventoryCommitHandler(GenericCommitHandler):
     def pre_process_files(self):
         super(InventoryCommitHandler, self).pre_process_files()
 
-        # Seed the inventory from the previous one
+        # Seed the inventory from the previous one. Note that
+        # the parent class version of pre_process_files() has
+        # already set the right basis_inventory for this branch
+        # but we need to copy it in order to mutate it safely
+        # without corrupting the cached inventory value.
         if len(self.parents) == 0:
             self.inventory = self.basis_inventory
         else:
@@ -415,8 +425,12 @@ class InventoryCommitHandler(GenericCommitHandler):
                 del inv[fileid]
             else:
                 # already added by some other name?
-                if dirname in self.cache_mgr.file_ids:
-                    parent_id = self.cache_mgr.file_ids[dirname]
+                try:
+                    parent_id = self.cache_mgr.fetch_file_id(self.branch_ref,
+                        dirname)
+                except KeyError:
+                    pass
+                else:
                     del inv[parent_id].children[basename]
         except KeyError:
             self._warn_unless_in_merges(fileid, path)
@@ -430,7 +444,7 @@ class InventoryCommitHandler(GenericCommitHandler):
             else:
                 raise
         try:
-            self.cache_mgr.delete_path(path)
+            self.cache_mgr.delete_path(self.branch_ref, path)
         except KeyError:
             pass
 
