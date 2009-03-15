@@ -945,7 +945,11 @@ class CommonInventory(object):
 
         # mutter("lookup path %r" % name)
 
-        parent = self.root
+        try:
+            parent = self.root
+        except errors.NoSuchId:
+            # root doesn't exist yet so nothing else can
+            return None
         if parent is None:
             return None
         for f in name:
