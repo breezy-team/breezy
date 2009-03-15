@@ -54,7 +54,7 @@ from bzrlib.versionedfile import (
     )
 
 _USE_LZMA = False and (pylzma is not None)
-_NO_LABELS = True
+_NO_LABELS = False
 _FAST = False
 
 def encode_base128_int(val):
@@ -526,7 +526,7 @@ def make_pack_factory(graph, delta, keylength):
     :param keylength: How long should keys be.
     """
     def factory(transport):
-        parents = graph or delta
+        parents = graph
         ref_length = 0
         if graph:
             ref_length = 1
@@ -1103,13 +1103,13 @@ class GroupCompressVersionedFiles(VersionedFiles):
             'unordered', True)):
             # XXX: todo - optimise to use less than full texts.
             key = record.key
-            pb.update('Walking content.', key_idx, total)
+            pb.update('Walking content', key_idx, total)
             if record.storage_kind == 'absent':
                 raise errors.RevisionNotPresent(key, self)
             lines = split_lines(record.get_bytes_as('fulltext'))
             for line in lines:
                 yield line, key
-        pb.update('Walking content.', total, total)
+        pb.update('Walking content', total, total)
 
     def keys(self):
         """See VersionedFiles.keys."""
