@@ -43,7 +43,7 @@ class FetchGraphWalkerTests(TestCaseWithTransport):
         self.assertEquals(None, graphwalker.next())
 
 
-class RepositoryFetchTests(TestCaseWithTransport):
+class LocalRepositoryFetchTests(TestCaseWithTransport):
 
     def make_git_repo(self, path):
         os.mkdir(path)
@@ -75,4 +75,20 @@ class RepositoryFetchTests(TestCaseWithTransport):
         newrepo = self.clone_git_repo("d", "f")
         self.assertEquals([oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha)], newrepo.all_revision_ids())
 
-
+    def test_executable(self):
+        self.make_git_repo("d")
+        os.chdir("d")
+        bb = GitBranchBuilder()
+        bb.set_file("foobar", "foo\nbar\n", True)
+        bb.set_file("notexec", "foo\nbar\n", False)
+        mark = bb.commit("Somebody <somebody@someorg.org>", "mymsg")
+        gitsha = bb.finish()[mark]
+        os.chdir("..")
+        oldrepo = Repository.open("d")
+        newrepo = self.clone_git_repo("d", "f")
+        revid = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha)
+        tree = newrepo.revision_tree(revid)
+        self.assertTrue(tree.has_filename("foobar"))
+        self.assertEquals(True, tree.inventory[tree.path2id("foobar")].executable)
+        self.assertTrue(tree.has_filename("notexec"))
+        self.assertEquals(False, tree.inventory[tree.path2id("notexec")].executable)
