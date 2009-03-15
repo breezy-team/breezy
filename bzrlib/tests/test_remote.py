@@ -51,6 +51,11 @@ from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import server, medium
 from bzrlib.smart.client import _SmartClient
 from bzrlib.symbol_versioning import one_four
+from bzrlib.tests import (
+    condition_isinstance,
+    split_suite_by_condition,
+    multiply_tests,
+    )
 from bzrlib.transport import get_transport, http
 from bzrlib.transport.memory import MemoryTransport
 from bzrlib.transport.remote import (
@@ -59,11 +64,20 @@ from bzrlib.transport.remote import (
     RemoteTCPTransport,
 )
 
+def load_tests(standard_tests, module, loader):
+    to_adapt, result = split_suite_by_condition(
+        standard_tests, condition_isinstance(BasicRemoteObjectTests))
+    smart_server_version_scenarios = [
+        ('HPSS-v2', 
+            {'transport_server': server.SmartTCPServer_for_testing_v2_only}),
+        ('HPSS-v3', 
+            {'transport_server': server.SmartTCPServer_for_testing})]
+    return multiply_tests(to_adapt, smart_server_version_scenarios, result)
+
 
 class BasicRemoteObjectTests(tests.TestCaseWithTransport):
 
     def setUp(self):
-        self.transport_server = server.SmartTCPServer_for_testing
         super(BasicRemoteObjectTests, self).setUp()
         self.transport = self.get_transport()
         # make a branch that can be opened over the smart transport
@@ -122,6 +136,19 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
         self.make_branch('stackable', format='1.9')
         b = BzrDir.open_from_transport(t.clone('stackable')).open_branch()
         self.assertTrue(b._format.supports_stacking())
+
+    def test_remote_repo_format_supports_external_references(self):
+        t = self.transport
+        bd = self.make_bzrdir('unstackable', format='pack-0.92')
+        r = bd.create_repository()
+        self.assertFalse(r._format.supports_external_lookups)
+        r = BzrDir.open_from_transport(t.clone('unstackable')).open_repository()
+        self.assertFalse(r._format.supports_external_lookups)
+        bd = self.make_bzrdir('stackable', format='1.9')
+        r = bd.create_repository()
+        self.assertTrue(r._format.supports_external_lookups)
+        r = BzrDir.open_from_transport(t.clone('stackable')).open_repository()
+        self.assertTrue(r._format.supports_external_lookups)
 
 
 class FakeProtocol(object):
@@ -876,7 +903,9 @@ class TestBranch_get_stacked_on_url(TestRemote):
             'success', ('ok', vfs_url))
         bzrdir = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
             _client=client)
-        branch = RemoteBranch(bzrdir, RemoteRepository(bzrdir, None),
+        repo_fmt = remote.RemoteRepositoryFormat()
+        repo_fmt._custom_format = stacked_branch.repository._format
+        branch = RemoteBranch(bzrdir, RemoteRepository(bzrdir, repo_fmt),
             _client=client)
         result = branch.get_stacked_on_url()
         self.assertEqual(vfs_url, result)
@@ -893,7 +922,7 @@ class TestBranch_get_stacked_on_url(TestRemote):
             'success', ('branch', branch_network_name))
         client.add_expected_call(
             'BzrDir.find_repositoryV3', ('stacked/',),
-            'success', ('ok', '', 'no', 'no', 'no',
+            'success', ('ok', '', 'no', 'no', 'yes',
                 stacked_branch.repository._format.network_name()))
         # called twice, once from constructor and then again by us
         client.add_expected_call(
@@ -929,7 +958,7 @@ class TestBranch_get_stacked_on_url(TestRemote):
             'success', ('branch', branch_network_name))
         client.add_expected_call(
             'BzrDir.find_repositoryV3', ('stacked/',),
-            'success', ('ok', '', 'no', 'no', 'no', network_name))
+            'success', ('ok', '', 'no', 'no', 'yes', network_name))
         # called twice, once from constructor and then again by us
         client.add_expected_call(
             'Branch.get_stacked_on_url', ('stacked/',),

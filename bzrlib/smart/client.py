@@ -192,7 +192,11 @@ class SmartClientHooks(hooks.Hooks):
 
     def __init__(self):
         hooks.Hooks.__init__(self)
-        self['call'] = []
+        self.create_hook(hooks.HookPoint('call',
+            "Called when the smart client is submitting a request to the "
+            "smart server. Called with a bzrlib.smart.client.CallHookParams "
+            "object. Streaming request bodies, and responses, are not "
+            "accessible.", None, None))
 
 
 _SmartClient.hooks = SmartClientHooks()

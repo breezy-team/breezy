@@ -20,7 +20,7 @@
 These are set with eg ``-Dlock`` on the bzr command line or in
 ~/.bazaar/bazaar.conf debug_flags.
 
-See "bzr help global-options" or bzrlib/help_topics/__init__.py
+See `bzr help debug-flags` or `bzrlib/help_topics/en/debug-flags.txt`
 for a list of the available options.
 """
 

@@ -16,7 +16,7 @@
 
 import os
 
-from bzrlib import errors, pack, shelf, tests, transform
+from bzrlib import errors, pack, shelf, tests, transform, workingtree
 
 
 EMPTY_SHELF = ("Bazaar pack format 1 (introduced in 0.18)\n"
@@ -139,6 +139,27 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         self.failIfExists('foo')
         limbo_name = creator.shelf_transform._limbo_name(s_trans_id)
         self.assertEqual('bar', os.readlink(limbo_name))
+
+    def test_shelve_symlink_target_change(self):
+        self.requireFeature(tests.SymlinkFeature)
+        tree = self.make_branch_and_tree('.')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        os.symlink('bar', 'foo')
+        tree.add('foo', 'foo-id')
+        tree.commit("commit symlink")
+        os.unlink("foo")
+        os.symlink('baz', 'foo')
+        creator = shelf.ShelfCreator(tree, tree.basis_tree())
+        self.addCleanup(creator.finalize)
+        self.assertEqual([('modify target', 'foo-id', 'foo', 'bar', 'baz')],
+                         list(creator.iter_shelvable()))
+        creator.shelve_modify_target('foo-id')
+        creator.transform()
+        self.assertEqual('bar', os.readlink('foo'))
+        s_trans_id = creator.shelf_transform.trans_id_file_id('foo-id')
+        limbo_name = creator.shelf_transform._limbo_name(s_trans_id)
+        self.assertEqual('baz', os.readlink(limbo_name))
 
     def test_shelve_creation_no_contents(self):
         tree = self.make_branch_and_tree('.')
@@ -267,6 +288,20 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         #skip revision-id
         records.next()
         tt.deserialize(records)
+
+    def test_shelve_unversioned(self):
+        tree = self.make_branch_and_tree('tree')
+        self.assertRaises(errors.PathsNotVersionedError,
+                          shelf.ShelfCreator, tree, tree.basis_tree(), ['foo'])
+        # We should be able to lock/unlock the tree if ShelfCreator cleaned
+        # after itself.
+        wt = workingtree.WorkingTree.open('tree')
+        wt.lock_tree_write()
+        wt.unlock()
+        # And a second tentative should raise the same error (no
+        # limbo/pending_deletion leftovers).
+        self.assertRaises(errors.PathsNotVersionedError,
+                          shelf.ShelfCreator, tree, tree.basis_tree(), ['foo'])
 
 
 class TestUnshelver(tests.TestCaseWithTransport):

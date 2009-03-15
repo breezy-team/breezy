@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2008 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,19 +21,15 @@ The basic plan is that every branch knows the history of everything
 that has merged into it.  As the first step of a merge, pull, or
 branch operation we copy history from the source into the destination
 branch.
-
-The copying is done in a slightly complicated order.  We don't want to
-add a revision to the store until everything it refers to is also
-stored, so that if a revision is present we can totally recreate it.
-However, we can't know what files are included in a revision until we
-read its inventory.  So we query the inventory store of the source for
-the ids we need, and then pull those ids and then return to the inventories.
 """
 
 import operator
 
 import bzrlib
-import bzrlib.errors as errors
+from bzrlib import (
+    errors,
+    symbol_versioning,
+    )
 from bzrlib.errors import InstallFailed
 from bzrlib.progress import ProgressPhase
 from bzrlib.revision import NULL_REVISION
@@ -42,29 +38,9 @@ from bzrlib.trace import mutter
 import bzrlib.ui
 from bzrlib.versionedfile import FulltextContentFactory
 
-# TODO: Avoid repeatedly opening weaves so many times.
-
-# XXX: This doesn't handle ghost (not present in branch) revisions at
-# all yet.  I'm not sure they really should be supported.
-
-# NOTE: This doesn't copy revisions which may be present but not
-# merged into the last revision.  I'm not sure we want to do that.
-
-# - get a list of revisions that need to be pulled in
-# - for each one, pull in that revision file
-#   and get the inventory, and store the inventory with right
-#   parents.
-# - and get the ancestry, and store that with right parents too
-# - and keep a note of all file ids and version seen
-# - then go through all files; for each one get the weave,
-#   and add in all file versions
-
 
 class RepoFetcher(object):
     """Pull revisions and texts from one repository to another.
-
-    last_revision
-        if set, try to limit to the data this revision references.
 
     This should not be used directly, it's essential a object to encapsulate
     the logic in InterRepository.fetch().
@@ -74,11 +50,20 @@ class RepoFetcher(object):
         pb=None, find_ghosts=True, fetch_spec=None):
         """Create a repo fetcher.
 
+        :param last_revision: If set, try to limit to the data this revision
+            references.
         :param find_ghosts: If True search the entire history for ghosts.
         :param _write_group_acquired_callable: Don't use; this parameter only
             exists to facilitate a hack done in InterPackRepo.fetch.  We would
             like to remove this parameter.
+        :param pb: ProgressBar object to use; deprecated and ignored.
+            This method will just create one on top of the stack.
         """
+        if pb is not None:
+            symbol_versioning.warn(
+                symbol_versioning.deprecated_in((1, 14, 0))
+                % "pb parameter to RepoFetcher.__init__")
+            # and for simplicity it is in fact ignored
         if to_repository.has_same_location(from_repository):
             # repository.fetch should be taking care of this case.
             raise errors.BzrError('RepoFetcher run '
@@ -91,19 +76,12 @@ class RepoFetcher(object):
         self._last_revision = last_revision
         self._fetch_spec = fetch_spec
         self.find_ghosts = find_ghosts
-        if pb is None:
-            self.pb = bzrlib.ui.ui_factory.nested_progress_bar()
-            self.nested_pb = self.pb
-        else:
-            self.pb = pb
-            self.nested_pb = None
         self.from_repository.lock_read()
+        mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
+               self.from_repository, self.from_repository._format,
+               self.to_repository, self.to_repository._format)
         try:
-            try:
-                self.__fetch()
-            finally:
-                if self.nested_pb is not None:
-                    self.nested_pb.finished()
+            self.__fetch()
         finally:
             self.from_repository.unlock()
 
@@ -121,17 +99,19 @@ class RepoFetcher(object):
         # assert not missing
         self.count_total = 0
         self.file_ids_names = {}
-        pp = ProgressPhase('Transferring', 4, self.pb)
+        pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        pb.show_pct = pb.show_count = False
         try:
-            pp.next_phase()
+            pb.update("Finding revisions", 0, 2)
             search = self._revids_to_fetch()
             if search is None:
                 return
-            self._fetch_everything_for_search(search, pp)
+            pb.update("Fetching revisions", 1, 2)
+            self._fetch_everything_for_search(search)
         finally:
-            self.pb.clear()
+            pb.finished()
 
-    def _fetch_everything_for_search(self, search, pp):
+    def _fetch_everything_for_search(self, search):
         """Fetch all data for the given set of revisions."""
         # The first phase is "file".  We pass the progress bar for it directly
         # into item_keys_introduced_by, which has more information about how
@@ -146,16 +126,20 @@ class RepoFetcher(object):
             raise errors.IncompatibleRepositories(
                 self.from_repository, self.to_repository,
                 "different rich-root support")
-        self.pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
+            pb.update("Get stream source")
             source = self.from_repository._get_source(
                 self.to_repository._format)
             stream = source.get_stream(search)
             from_format = self.from_repository._format
+            pb.update("Inserting stream")
             resume_tokens, missing_keys = self.sink.insert_stream(
                 stream, from_format, [])
             if missing_keys:
+                pb.update("Missing keys")
                 stream = source.get_stream_for_missing_keys(missing_keys)
+                pb.update("Inserting missing keys")
                 resume_tokens, missing_keys = self.sink.insert_stream(
                     stream, from_format, resume_tokens)
             if missing_keys:
@@ -166,10 +150,10 @@ class RepoFetcher(object):
                 raise AssertionError(
                     "second push failed to commit the fetch %r." % (
                         resume_tokens,))
+            pb.update("Finishing stream")
             self.sink.finished()
         finally:
-            if self.pb is not None:
-                self.pb.finished()
+            pb.finished()
 
     def _revids_to_fetch(self):
         """Determines the exact revisions needed from self.from_repository to

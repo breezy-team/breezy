@@ -53,6 +53,7 @@ from bzrlib import (
     bzrdir,
     debug,
     errors,
+    hooks,
     memorytree,
     osutils,
     progress,
@@ -363,7 +364,7 @@ class TextTestResult(ExtendedTestResult):
         self.pb.show_bar = False
 
     def report_starting(self):
-        self.pb.update('[test 0/%d] starting...' % (self.num_tests))
+        self.pb.update('[test 0/%d] Starting' % (self.num_tests))
 
     def _progress_prefix_text(self):
         # the longer this text, the less space we have to show the test
@@ -428,7 +429,7 @@ class TextTestResult(ExtendedTestResult):
         """test cannot be run because feature is missing."""
 
     def report_cleaning_up(self):
-        self.pb.update('cleaning up...')
+        self.pb.update('Cleaning up')
 
     def finished(self):
         if not self._supplied_pb:
@@ -814,22 +815,15 @@ class TestCase(unittest.TestCase):
 
     def _clear_hooks(self):
         # prevent hooks affecting tests
-        import bzrlib.branch
-        import bzrlib.smart.client
-        import bzrlib.smart.server
-        self._preserved_hooks = {
-            bzrlib.branch.Branch: bzrlib.branch.Branch.hooks,
-            bzrlib.mutabletree.MutableTree: bzrlib.mutabletree.MutableTree.hooks,
-            bzrlib.smart.client._SmartClient: bzrlib.smart.client._SmartClient.hooks,
-            bzrlib.smart.server.SmartTCPServer: bzrlib.smart.server.SmartTCPServer.hooks,
-            bzrlib.commands.Command: bzrlib.commands.Command.hooks,
-            }
+        self._preserved_hooks = {}
+        for key, factory in hooks.known_hooks.items():
+            parent, name = hooks.known_hooks_key_to_parent_and_attribute(key)
+            current_hooks = hooks.known_hooks_key_to_object(key)
+            self._preserved_hooks[parent] = (name, current_hooks)
         self.addCleanup(self._restoreHooks)
-        # reset all hooks to an empty instance of the appropriate type
-        bzrlib.branch.Branch.hooks = bzrlib.branch.BranchHooks()
-        bzrlib.smart.client._SmartClient.hooks = bzrlib.smart.client.SmartClientHooks()
-        bzrlib.smart.server.SmartTCPServer.hooks = bzrlib.smart.server.SmartServerHooks()
-        bzrlib.commands.Command.hooks = bzrlib.commands.CommandHooks()
+        for key, factory in hooks.known_hooks.items():
+            parent, name = hooks.known_hooks_key_to_parent_and_attribute(key)
+            setattr(parent, name, factory())
 
     def _silenceUI(self):
         """Turn off UI for duration of test"""
@@ -1288,8 +1282,8 @@ class TestCase(unittest.TestCase):
             osutils.set_or_unset_env(name, value)
 
     def _restoreHooks(self):
-        for klass, hooks in self._preserved_hooks.items():
-            setattr(klass, 'hooks', hooks)
+        for klass, (name, hooks) in self._preserved_hooks.items():
+            setattr(klass, name, hooks)
 
     def knownFailure(self, reason):
         """This test has failed for some known reason."""
