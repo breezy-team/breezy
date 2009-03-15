@@ -33,7 +33,7 @@ class TestRenameMap(TestCaseWithTransport):
 
 
     def test_add_edge_hashes(self):
-        rn = RenameMap()
+        rn = RenameMap(None)
         rn.add_edge_hashes(self.a_lines, 'a')
         self.assertEqual(set(['a']), rn.edge_hashes[myhash(('a\n', 'b\n'))])
         self.assertEqual(set(['a']), rn.edge_hashes[myhash(('b\n', 'c\n'))])
@@ -43,14 +43,14 @@ class TestRenameMap(TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/a', ''.join(self.a_lines))])
         tree.add('a', 'a')
-        rn = RenameMap()
+        rn = RenameMap(tree)
         rn.add_file_edge_hashes(tree, ['a'])
         self.assertEqual(set(['a']), rn.edge_hashes[myhash(('a\n', 'b\n'))])
         self.assertEqual(set(['a']), rn.edge_hashes[myhash(('b\n', 'c\n'))])
         self.assertIs(None, rn.edge_hashes.get(myhash(('c\n', 'd\n'))))
 
     def test_hitcounts(self):
-        rn = RenameMap()
+        rn = RenameMap(None)
         rn.add_edge_hashes(self.a_lines, 'a')
         rn.add_edge_hashes(self.b_lines, 'b')
         self.assertEqual({'a': 2.5, 'b': 0.5}, rn.hitcounts(self.a_lines))
@@ -58,40 +58,40 @@ class TestRenameMap(TestCaseWithTransport):
         self.assertEqual({'b': 2.5, 'a': 0.5}, rn.hitcounts(self.b_lines))
 
     def test_file_match(self):
-        rn = RenameMap()
+        tree = self.make_branch_and_tree('tree')
+        rn = RenameMap(tree)
         rn.add_edge_hashes(self.a_lines, 'aid')
         rn.add_edge_hashes(self.b_lines, 'bid')
-        tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/a', ''.join(self.a_lines))])
         self.build_tree_contents([('tree/b', ''.join(self.b_lines))])
         self.assertEqual({'a': 'aid', 'b': 'bid'},
-                         rn.file_match(tree, ['a', 'b']))
+                         rn.file_match(['a', 'b']))
 
     def test_file_match_no_dups(self):
-        rn = RenameMap()
-        rn.add_edge_hashes(self.a_lines, 'aid')
         tree = self.make_branch_and_tree('tree')
+        rn = RenameMap(tree)
+        rn.add_edge_hashes(self.a_lines, 'aid')
         self.build_tree_contents([('tree/a', ''.join(self.a_lines))])
         self.build_tree_contents([('tree/b', ''.join(self.b_lines))])
         self.build_tree_contents([('tree/c', ''.join(self.b_lines))])
         self.assertEqual({'a': 'aid'},
-                         rn.file_match(tree, ['a', 'b', 'c']))
+                         rn.file_match(['a', 'b', 'c']))
 
     def test_match_directories(self):
-        rn = RenameMap()
         tree = self.make_branch_and_tree('tree')
+        rn = RenameMap(tree)
         required_parents = rn.get_required_parents({
             'path1': 'a',
             'path2/tr': 'b',
             'path3/path4/path5': 'c',
-        }, tree)
+        })
         self.assertEqual(
             {'path2': set(['b']), 'path3/path4': set(['c']), 'path3': set()},
             required_parents)
 
     def test_find_directory_renames(self):
-        rn = RenameMap()
         tree = self.make_branch_and_tree('tree')
+        rn = RenameMap(tree)
         matches = {
             'path1': 'a',
             'path3/path4/path5': 'c',
@@ -104,7 +104,7 @@ class TestRenameMap(TestCaseWithTransport):
             'path2-id': set(['b']),
             'path4-id': set(['c']),
             'path3-id': set(['path4-id'])}
-        matches = RenameMap().match_parents(required_parents, missing_parents)
+        matches = rn.match_parents(required_parents, missing_parents)
         self.assertEqual({'path3/path4': 'path4-id', 'path2': 'path2-id'},
                          matches)
 

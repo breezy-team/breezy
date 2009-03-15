@@ -27,7 +27,8 @@ from bzrlib.ui import ui_factory
 class RenameMap(object):
     """Determine a mapping of renames."""
 
-    def __init__(self):
+    def __init__(self, tree):
+        self.tree = tree
         self.edge_hashes = {}
 
     @staticmethod
@@ -92,8 +93,8 @@ class RenameMap(object):
                 hits[tag] += 1.0 / taglen
         return hits
 
-    def get_all_hits(self, tree, paths):
-        """Find all the hit counts for the listed paths in a tree.
+    def get_all_hits(self, paths):
+        """Find all the hit counts for the listed paths in the tree.
 
         :return: A list of tuples of count, path, file_id.
         """
@@ -102,7 +103,7 @@ class RenameMap(object):
         try:
             for num, path in enumerate(paths):
                 task.update('Determining hash hits', num, len(paths))
-                my_file = tree.get_file(None, path=path)
+                my_file = self.tree.get_file(None, path=path)
                 try:
                     hits = self.hitcounts(my_file.readlines())
                 finally:
@@ -112,9 +113,9 @@ class RenameMap(object):
             task.finished()
         return all_hits
 
-    def file_match(self, tree, paths):
+    def file_match(self, paths):
         """Return a mapping from file_ids to the supplied paths."""
-        return self._match_hits(self.get_all_hits(tree, paths))
+        return self._match_hits(self.get_all_hits(paths))
 
     @staticmethod
     def _match_hits(hit_list):
@@ -135,7 +136,7 @@ class RenameMap(object):
             seen_file_ids.add(file_id)
         return path_map
 
-    def get_required_parents(self, matches, tree):
+    def get_required_parents(self, matches):
         """Return a dict of all file parents that must be versioned.
 
         The keys are the required parents and the values are sets of their
@@ -146,7 +147,7 @@ class RenameMap(object):
             while True:
                 child = path
                 path = osutils.dirname(path)
-                if tree.path2id(path) is not None:
+                if self.tree.path2id(path) is not None:
                     break
                 required_parents.setdefault(path, []).append(child)
         require_ids = {}
@@ -174,12 +175,11 @@ class RenameMap(object):
                     all_hits.append((hits, path, file_id))
         return self._match_hits(all_hits)
 
-    @staticmethod
-    def _find_missing_files(tree, basis):
+    def _find_missing_files(self, basis):
         missing_files = set()
         missing_parents = {}
         candidate_files = set()
-        iterator = tree.iter_changes(basis, want_unversioned=True)
+        iterator = self.tree.iter_changes(basis, want_unversioned=True)
         for (file_id, paths, changed_content, versioned, parent, name,
              kind, executable) in iterator:
             if kind[1] is None and versioned[1]:
@@ -190,12 +190,12 @@ class RenameMap(object):
                     #other kinds are not handled
                     pass
             if versioned == (False, False):
-                if tree.is_ignored(paths[1]):
+                if self.tree.is_ignored(paths[1]):
                     continue
                 if kind[1] == 'file':
                     candidate_files.add(paths[1])
                 if kind[1] == 'directory':
-                    for directory, children in tree.walkdirs(paths[1]):
+                    for directory, children in self.tree.walkdirs(paths[1]):
                         for child in children:
                             if child[2] == 'file':
                                 candidate_files.add(child[0])
@@ -212,20 +212,20 @@ class RenameMap(object):
         basis = tree.basis_tree()
         basis.lock_read()
         try:
-            rn = klass()
+            rn = klass(tree)
             missing_files, missing_parents, candidate_files = (
-                rn._find_missing_files(tree, basis))
+                rn._find_missing_files(basis))
             task = ui_factory.nested_progress_bar()
             try:
                 pp = progress.ProgressPhase('Guessing renames', 2, task)
                 pp.next_phase()
                 rn.add_file_edge_hashes(basis, missing_files)
                 pp.next_phase()
-                matches = rn.file_match(tree, candidate_files)
+                matches = rn.file_match(candidate_files)
                 parents_matches = matches
                 while len(parents_matches) > 0:
                     required_parents = rn.get_required_parents(
-                        parents_matches, tree)
+                        parents_matches)
                     parents_matches = rn.match_parents(required_parents,
                                                        missing_parents)
                     matches.update(parents_matches)
@@ -233,15 +233,14 @@ class RenameMap(object):
                 task.finished()
         finally:
             basis.unlock()
-        rn._update_tree(tree, required_parents, matches)
+        rn._update_tree(required_parents, matches)
 
-    @staticmethod
-    def _update_tree(tree, required_parents, matches):
-        tree.add(required_parents)
+    def _update_tree(self, required_parents, matches):
+        self.tree.add(required_parents)
         reversed = dict((v, k) for k, v in matches.iteritems())
         child_to_parent = sorted(
             matches.values(), key=lambda x: reversed[x], reverse=True)
-        tree.unversion(child_to_parent)
+        self.tree.unversion(child_to_parent)
         paths_forward = sorted(matches.keys())
         file_ids_forward = [matches[p] for p in paths_forward]
-        tree.add(paths_forward, file_ids_forward)
+        self.tree.add(paths_forward, file_ids_forward)
