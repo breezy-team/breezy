@@ -179,26 +179,31 @@ class RenameMap(object):
         missing_files = set()
         missing_parents = {}
         candidate_files = set()
-        iterator = self.tree.iter_changes(basis, want_unversioned=True)
-        for (file_id, paths, changed_content, versioned, parent, name,
-             kind, executable) in iterator:
-            if kind[1] is None and versioned[1]:
-                missing_parents.setdefault(parent[0], set()).add(file_id)
-                if kind[0] == 'file':
-                    missing_files.add(file_id)
-                else:
-                    #other kinds are not handled
-                    pass
-            if versioned == (False, False):
-                if self.tree.is_ignored(paths[1]):
-                    continue
-                if kind[1] == 'file':
-                    candidate_files.add(paths[1])
-                if kind[1] == 'directory':
-                    for directory, children in self.tree.walkdirs(paths[1]):
-                        for child in children:
-                            if child[2] == 'file':
-                                candidate_files.add(child[0])
+        task = ui_factory.nested_progress_bar()
+        iterator = self.tree.iter_changes(basis, want_unversioned=True,
+                                          pb=task)
+        try:
+            for (file_id, paths, changed_content, versioned, parent, name,
+                 kind, executable) in iterator:
+                if kind[1] is None and versioned[1]:
+                    missing_parents.setdefault(parent[0], set()).add(file_id)
+                    if kind[0] == 'file':
+                        missing_files.add(file_id)
+                    else:
+                        #other kinds are not handled
+                        pass
+                if versioned == (False, False):
+                    if self.tree.is_ignored(paths[1]):
+                        continue
+                    if kind[1] == 'file':
+                        candidate_files.add(paths[1])
+                    if kind[1] == 'directory':
+                        for _dir, children in self.tree.walkdirs(paths[1]):
+                            for child in children:
+                                if child[2] == 'file':
+                                    candidate_files.add(child[0])
+        finally:
+            task.finished()
         return missing_files, missing_parents, candidate_files
 
     @classmethod
@@ -209,31 +214,33 @@ class RenameMap(object):
         versioned files have been renamed outside of Bazaar.
         """
         required_parents = {}
-        basis = tree.basis_tree()
-        basis.lock_read()
+        task = ui_factory.nested_progress_bar()
         try:
-            rn = klass(tree)
-            missing_files, missing_parents, candidate_files = (
-                rn._find_missing_files(basis))
-            task = ui_factory.nested_progress_bar()
+            pp = progress.ProgressPhase('Guessing renames', 4, task)
+            basis = tree.basis_tree()
+            basis.lock_read()
             try:
-                pp = progress.ProgressPhase('Guessing renames', 2, task)
+                rn = klass(tree)
+                pp.next_phase()
+                missing_files, missing_parents, candidate_files = (
+                    rn._find_missing_files(basis))
                 pp.next_phase()
                 rn.add_file_edge_hashes(basis, missing_files)
-                pp.next_phase()
-                matches = rn.file_match(candidate_files)
-                parents_matches = matches
-                while len(parents_matches) > 0:
-                    required_parents = rn.get_required_parents(
-                        parents_matches)
-                    parents_matches = rn.match_parents(required_parents,
-                                                       missing_parents)
-                    matches.update(parents_matches)
             finally:
-                task.finished()
+                basis.unlock()
+            pp.next_phase()
+            matches = rn.file_match(candidate_files)
+            parents_matches = matches
+            while len(parents_matches) > 0:
+                required_parents = rn.get_required_parents(
+                    parents_matches)
+                parents_matches = rn.match_parents(required_parents,
+                                                   missing_parents)
+                matches.update(parents_matches)
+            pp.next_phase()
+            rn._update_tree(required_parents, matches)
         finally:
-            basis.unlock()
-        rn._update_tree(required_parents, matches)
+            task.finished()
 
     def _update_tree(self, required_parents, matches):
         self.tree.add(required_parents)
