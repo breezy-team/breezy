@@ -175,39 +175,46 @@ class RenameMap(object):
         return self._match_hits(all_hits)
 
     @staticmethod
-    def guess_renames(tree):
+    def _find_missing_files(tree, basis):
+        missing_files = set()
+        missing_parents = {}
+        candidate_files = set()
+        iterator = tree.iter_changes(basis, want_unversioned=True)
+        for (file_id, paths, changed_content, versioned, parent, name,
+             kind, executable) in iterator:
+            if kind[1] is None and versioned[1]:
+                missing_parents.setdefault(parent[0], set()).add(file_id)
+                if kind[0] == 'file':
+                    missing_files.add(file_id)
+                else:
+                    #other kinds are not handled
+                    pass
+            if versioned == (False, False):
+                if tree.is_ignored(paths[1]):
+                    continue
+                if kind[1] == 'file':
+                    candidate_files.add(paths[1])
+                if kind[1] == 'directory':
+                    for directory, children in tree.walkdirs(paths[1]):
+                        for child in children:
+                            if child[2] == 'file':
+                                candidate_files.add(child[0])
+        return missing_files, missing_parents, candidate_files
+
+    @classmethod
+    def guess_renames(klass, tree):
         """Guess which files to rename, and perform the rename.
 
         We assume that unversioned files and missing files indicate that
         versioned files have been renamed outside of Bazaar.
         """
-        missing_files = set()
-        missing_parents = {}
-        candidate_files = set()
+        required_parents = {}
         basis = tree.basis_tree()
         basis.lock_read()
         try:
-            iterator = tree.iter_changes(basis, want_unversioned=True)
-            for (file_id, paths, changed_content, versioned, parent, name,
-                 kind, executable) in iterator:
-                if kind[1] is None and versioned[1]:
-                    missing_parents.setdefault(parent[0], set()).add(file_id)
-                    if kind[0] == 'file':
-                        missing_files.add(file_id)
-                    else:
-                        #other kinds are not handled
-                        pass
-                if versioned == (False, False):
-                    if tree.is_ignored(paths[1]):
-                        continue
-                    if kind[1] == 'file':
-                        candidate_files.add(paths[1])
-                    if kind[1] == 'directory':
-                        for directory, children in tree.walkdirs(paths[1]):
-                            for child in children:
-                                if child[2] == 'file':
-                                    candidate_files.add(child[0])
-            rn = RenameMap()
+            rn = klass()
+            missing_files, missing_parents, candidate_files = (
+                rn._find_missing_files(tree, basis))
             task = ui_factory.nested_progress_bar()
             try:
                 pp = progress.ProgressPhase('Guessing renames', 2, task)
@@ -224,13 +231,14 @@ class RenameMap(object):
                     matches.update(parents_matches)
             finally:
                 task.finished()
-            tree.add(required_parents)
-            reversed = dict((v, k) for k, v in matches.iteritems())
-            child_to_parent = sorted(
-                matches.values(), key=lambda x: reversed[x], reverse=True)
-            tree.unversion(child_to_parent)
-            paths_forward = sorted(matches.keys())
-            file_ids_forward = [matches[p] for p in paths_forward]
-            tree.add(paths_forward, file_ids_forward)
         finally:
             basis.unlock()
+        tree.add(required_parents)
+        reversed = dict((v, k) for k, v in matches.iteritems())
+        child_to_parent = sorted(
+            matches.values(), key=lambda x: reversed[x], reverse=True)
+        tree.unversion(child_to_parent)
+        paths_forward = sorted(matches.keys())
+        file_ids_forward = [matches[p] for p in paths_forward]
+        tree.add(paths_forward, file_ids_forward)
+
