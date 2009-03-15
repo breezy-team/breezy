@@ -215,12 +215,16 @@ class RenameMap(object):
                 rn.add_file_edge_hashes(basis, missing_files)
                 pp.next_phase()
                 matches = rn.file_match(tree, candidate_files)
-                required_parents = rn.get_required_parents(matches, tree)
-                matches.update(rn.match_parents(required_parents,
-                               missing_parents))
+                parents_matches = matches
+                while len(parents_matches) > 0:
+                    required_parents = rn.get_required_parents(
+                        parents_matches, tree)
+                    parents_matches = rn.match_parents(required_parents,
+                                                       missing_parents)
+                    matches.update(parents_matches)
             finally:
                 task.finished()
-            tree.add(set(required_parents) - set(matches))
+            tree.add(required_parents)
             reversed = dict((v, k) for k, v in matches.iteritems())
             child_to_parent = sorted(
                 matches.values(), key=lambda x: reversed[x], reverse=True)

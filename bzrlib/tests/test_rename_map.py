@@ -130,3 +130,17 @@ class TestRenameMap(TestCaseWithTransport):
         RenameMap.guess_renames(tree)
         self.assertEqual('dir2/file', tree.id2path('file-id'))
         self.assertEqual('dir2', tree.id2path('dir-id'))
+
+    def test_guess_renames_handles_grandparent_directories(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        self.build_tree(['tree/topdir/',
+                         'tree/topdir/middledir/',
+                         'tree/topdir/middledir/file'])
+        tree.add(['topdir', 'topdir/middledir', 'topdir/middledir/file'],
+                 ['topdir-id', 'middledir-id', 'file-id'])
+        tree.commit('Added files.')
+        os.rename('tree/topdir', 'tree/topdir2')
+        RenameMap.guess_renames(tree)
+        self.assertEqual('topdir2', tree.id2path('topdir-id'))
