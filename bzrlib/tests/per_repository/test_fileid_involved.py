@@ -141,6 +141,7 @@ class TestFileIdInvolved(FileIdInvolvedBase):
             print set(self.branch.repository.get_ancestry(new)).difference(set(self.branch.repository.get_ancestry(old)))
         self.branch.lock_read()
         self.addCleanup(self.branch.unlock)
+        self.branch.repository.fileids_altered_by_revision_ids(["rev-J","rev-K"])
         self.assertEqual(
             {'b-file-id-2006-01-01-defg':set(['rev-J']),
              'c-funky<file-id>quiji%bo':set(['rev-K'])
