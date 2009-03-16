@@ -1356,9 +1356,6 @@ class Repository(object):
     def find_text_key_references(self):
         """Find the text key references within the repository.
 
-        :return: a dictionary mapping (file_id, revision_id) tuples to altered file-ids to an iterable of
-        revision_ids. Each altered file-ids has the exact revision_ids that
-        altered it listed explicitly.
         :return: A dictionary mapping text keys ((fileid, revision_id) tuples)
             to whether they were referred to by the inventory of the
             revision_id that they contain. The inventory texts from all present
@@ -1968,9 +1965,17 @@ class Repository(object):
                 [parents_provider, other_repository._make_parents_provider()])
         return graph.Graph(parents_provider)
 
-    def _get_versioned_file_checker(self):
-        """Return an object suitable for checking versioned files."""
-        return _VersionedFileChecker(self)
+    def _get_versioned_file_checker(self, text_key_references=None):
+        """Return an object suitable for checking versioned files.
+        
+        :param text_key_references: if non-None, an already built
+            dictionary mapping text keys ((fileid, revision_id) tuples)
+            to whether they were referred to by the inventory of the
+            revision_id that they contain. If None, this will be
+            calculated.
+        """
+        return _VersionedFileChecker(self,
+            text_key_references=text_key_references)
 
     def revision_ids_to_search_result(self, result_set):
         """Convert a set of revision ids to a graph SearchResult."""
@@ -3478,9 +3483,10 @@ def _unescape_xml(data):
 
 class _VersionedFileChecker(object):
 
-    def __init__(self, repository):
+    def __init__(self, repository, text_key_references=None):
         self.repository = repository
-        self.text_index = self.repository._generate_text_key_index()
+        self.text_index = self.repository._generate_text_key_index(
+            text_key_references=text_key_references)
 
     def calculate_file_version_parents(self, text_key):
         """Calculate the correct parents for a file version according to
