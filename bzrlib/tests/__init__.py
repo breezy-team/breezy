@@ -2113,6 +2113,13 @@ class TestCaseWithMemoryTransport(TestCase):
         made_control = self.make_bzrdir(relpath, format=format)
         return made_control.create_repository(shared=shared)
 
+    def make_smart_server(self, path):
+        smart_server = server.SmartTCPServer_for_testing()
+        smart_server.setUp(self.get_server())
+        remote_transport = get_transport(smart_server.get_url()).clone(path)
+        self.addCleanup(smart_server.tearDown)
+        return remote_transport
+
     def make_branch_and_memory_tree(self, relpath, format=None):
         """Create a branch on the default transport and a MemoryTree for it."""
         b = self.make_branch(relpath, format=format)

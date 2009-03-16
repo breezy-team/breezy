@@ -1282,6 +1282,8 @@ class TestSmartServerPackRepositoryAutopack(tests.TestCaseWithTransport):
 
     def test_autopack_needed(self):
         repo = self.make_repo_needing_autopacking()
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
         backing = self.get_transport()
         request = smart.packrepository.SmartServerPackRepositoryAutopack(
             backing)
@@ -1293,6 +1295,8 @@ class TestSmartServerPackRepositoryAutopack(tests.TestCaseWithTransport):
     def test_autopack_not_needed(self):
         tree = self.make_branch_and_tree('.', format='pack-0.92')
         repo = tree.branch.repository
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
         for x in range(9):
             tree.commit('commit %s' % x)
         backing = self.get_transport()
