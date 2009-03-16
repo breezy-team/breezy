@@ -1103,6 +1103,10 @@ class Repository(object):
         If revision_id is None and fetch_spec is None, then all content is
         copied.
 
+        fetch() may not be used when the repository is in a write group -
+        either finish the current write group before using fetch, or use
+        fetch before starting the write group.
+
         :param find_ghosts: Find and copy revisions in the source that are
             ghosts in the target (and not reachable directly by walking out to
             the first-present revision in target from revision_id).
@@ -1117,6 +1121,8 @@ class Repository(object):
         if fetch_spec is not None and revision_id is not None:
             raise AssertionError(
                 "fetch_spec and revision_id are mutually exclusive.")
+        if self.is_in_write_group():
+            raise errors.BzrError("May not fetch while in a write group.")
         # fast path same-url fetch operations
         if self.has_same_location(source) and fetch_spec is None:
             # check that last_revision is in 'from' and then return a

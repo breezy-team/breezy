@@ -43,7 +43,12 @@ IN DEVELOPMENT
 
     * Fixed incorrect "Source format does not support stacking" warning
       when pushing to a smart server.  (Andrew Bennetts, #334114)
-      
+
+    * It is no longer possible to fetch between repositories while the
+      target repository is in a write group. This prevents race conditions
+      that prevent the use of RPC's to perform fetch, and thus allows
+      optimising more operations. (Robert Collins, Andrew Bennetts)
+
     * The GNU Changelog formatter is slightly improved in the case where
       the delta is empty, and now correctly claims not to support tags.
       (Andrea Bolognani)
