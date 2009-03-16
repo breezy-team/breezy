@@ -111,6 +111,14 @@ class SMTPConnection(object):
             self._smtp_password = auth.get_password(
                 'smtp', self._smtp_server, self._smtp_username)
 
+        # smtplib requires that the username and password be byte
+        # strings (and the relevant RFCs don't seem to address
+        # character encoding for usernames and passwords).
+        if isinstance(self._smtp_username, unicode):
+            self._smtp_username = self._smtp_username.encode('ascii')
+        if isinstance(self._smtp_password, unicode):
+            self._smtp_password = self._smtp_password.encode('ascii')
+
         self._connection.login(self._smtp_username, self._smtp_password)
 
     @staticmethod

@@ -86,7 +86,7 @@ class WideOpenSMTPFactory(StubSMTPFactory):
     """A fake smtp server that implements login by accepting anybody."""
 
     def login(self, user, password):
-        pass
+        self._calls.append(('login', user, password))
 
 
 class TestSMTPConnection(tests.TestCaseInTempDir):
@@ -161,6 +161,22 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
 
         conn._connect()
         self.assertEqual(password, conn._smtp_password)
+
+    def test_authenticate_with_byte_strings(self):
+        user = 'joe'
+        password = 'hispass'
+        factory = WideOpenSMTPFactory()
+        conn = self.get_connection(
+            '[DEFAULT]\nsmtp_username=%s\nsmtp_password=%s\n'
+            % (user, password), smtp_factory=factory)
+        conn._connect()
+        self.assertEqual([('connect', 'localhost'),
+                          ('ehlo',),
+                          ('has_extn', 'starttls'),
+                          ('login', user, password)], factory._calls)
+        smtp_user, smtp_password = factory._calls[-1][1:]
+        self.assertIsInstance(smtp_user, str)
+        self.assertIsInstance(smtp_password, str)
 
     def test_create_connection(self):
         factory = StubSMTPFactory()
