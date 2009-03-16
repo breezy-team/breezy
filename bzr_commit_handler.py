@@ -76,7 +76,7 @@ class GenericCommitHandler(processor.CommitHandler):
         # cache of per-file parents for this commit, indexed by file-id
         self.per_file_parents_for_commit = {}
         if self.rev_store.expects_rich_root():
-            self.per_file_parents_for_commit[inventory.ROOT_ID] = []
+            self.per_file_parents_for_commit[inventory.ROOT_ID] = ()
 
         # Keep the basis inventory. This needs to be treated as read-only.
         if len(self.parents) == 0:
@@ -382,7 +382,7 @@ class InventoryCommitHandler(GenericCommitHandler):
 
     def record_new(self, path, ie):
         try:
-            self.per_file_parents_for_commit[ie.file_id] = []
+            self.per_file_parents_for_commit[ie.file_id] = ()
             self.inventory.add(ie)
         except errors.DuplicateFileId:
             # Directory already exists as a file or symlink
@@ -405,7 +405,7 @@ class InventoryCommitHandler(GenericCommitHandler):
     def record_rename(self, old_path, new_path, file_id, ie):
         new_basename, new_parent_id = self._ensure_directory(new_path,
             self.inventory)
-        self.per_file_parents_for_commit[file_id] = []
+        self.per_file_parents_for_commit[file_id] = ()
         self.inventory.rename(file_id, new_parent_id, new_basename)
 
     def _delete_item(self, path, inv):
@@ -545,13 +545,13 @@ class CHKInventoryCommitHandler(GenericCommitHandler):
         # Calculate the per-file parents
         if old_path is None:
             # add
-            self.per_file_parents_for_commit[file_id] = []
+            self.per_file_parents_for_commit[file_id] = ()
         elif new_path is None:
             # delete
             pass
         elif old_path != new_path:
             # rename
-            self.per_file_parents_for_commit[file_id] = []
+            self.per_file_parents_for_commit[file_id] = ()
         else:
             # modify
             per_file_parents, ie.revision = \

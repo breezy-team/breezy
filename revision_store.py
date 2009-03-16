@@ -113,7 +113,7 @@ class AbstractRevisionStore(object):
         
         :param ie: the inventory entry
         :return parents, revision_id where
-            parents is the list of parent revision_ids for the per-file graph
+            parents is the tuple of parent revision_ids for the per-file graph
             revision_id is the revision_id to use for this entry
         """
         # Check for correct API usage
@@ -158,7 +158,7 @@ class AbstractRevisionStore(object):
             rev_id = ie.revision
         else:
             rev_id = parent_entry.revision
-        return heads, rev_id
+        return tuple(heads), rev_id
 
     def load(self, rev, inv, signature, text_provider, parents_provider,
         inventories_provider=None):
@@ -236,7 +236,8 @@ class AbstractRevisionStore(object):
 
         # Load the texts, signature and revision
         file_rev_ids_needing_texts = [(id, ie.revision)
-            for _, n, id, ie in inv_delta if n is not None]
+            for _, n, id, ie in inv_delta
+            if n is not None and ie.revision == rev_id]
         self._load_texts_for_file_rev_ids(file_rev_ids_needing_texts,
             text_provider, parents_provider)
         if signature is not None:
