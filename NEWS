@@ -74,6 +74,11 @@ IN DEVELOPMENT
     * New ``assertLength`` method based on one Martin has squirreled away
       somewhere. (Robert Collins, Martin Pool)
 
+    * ``_walk_to_common_revisions`` will now batch up at least 50
+      revisions before calling ``get_parent_map`` on the target,
+      regardless of ``InterRepository``.
+      (Andrew Bennetts, Robert Collins)
+
 
 bzr 1.13rc1 "paraskavedekatriaphobia" 2009-03-10
 ------------------------------------------------
