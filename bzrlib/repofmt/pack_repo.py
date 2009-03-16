@@ -1529,6 +1529,10 @@ class RepositoryPackCollection(object):
         return [[final_rev_count, final_pack_list]]
 
     def ensure_loaded(self):
+        """Ensure we have read names from disk.
+
+        :return: True if the disk names had not been previously read.
+        """
         # NB: if you see an assertion error here, its probably access against
         # an unlocked repo. Naughty.
         if not self.repo.is_locked():
@@ -1540,8 +1544,12 @@ class RepositoryPackCollection(object):
                 name = key[0]
                 self._names[name] = self._parse_index_sizes(value)
                 self._packs_at_load.add((key, value))
+            result = True
+        else:
+            result = False
         # populate all the metadata.
         self.all_packs()
+        return result
 
     def _parse_index_sizes(self, value):
         """Parse a string of index sizes."""
@@ -1840,14 +1848,17 @@ class RepositoryPackCollection(object):
         This should be called when we find out that something we thought was
         present is now missing. This happens when another process re-packs the
         repository, etc.
+
+        :return: True if the in-memory list of packs has been altered at all.
         """
         # The ensure_loaded call is to handle the case where the first call
         # made involving the collection was to reload_pack_names, where we 
         # don't have a view of disk contents. Its a bit of a bandaid, and
         # causes two reads of pack-names, but its a rare corner case not struck
         # with regular push/pull etc.
-        self.ensure_loaded()
-        # This is functionally similar to _save_pack_names, but we don't write
+        first_read = self.ensure_loaded()
+        if first_read:
+            return True
         # out the new value.
         disk_nodes, _, _ = self._diff_pack_names()
         self._packs_at_load = disk_nodes
