@@ -1522,13 +1522,21 @@ class RemoteStreamSink(repository.StreamSink):
         return result
 
     def insert_stream(self, stream, src_format, resume_tokens):
-        repo = self.target_repo
-        client = repo._client
+        target = self.target_repo
+        if target._lock_token:
+            verb = 'Repository.insert_stream_locked'
+            extra_args = (target._lock_token or '',)
+            required_version = (1, 14)
+        else:
+            verb = 'Repository.insert_stream'
+            extra_args = ()
+            required_version = (1, 13)
+        client = target._client
         medium = client._medium
-        if medium._is_remote_before((1, 13)):
+        if medium._is_remote_before(required_version):
             # No possible way this can work.
             return self._insert_real(stream, src_format, resume_tokens)
-        path = repo.bzrdir._path_for_remote_call(client)
+        path = target.bzrdir._path_for_remote_call(client)
         if not resume_tokens:
             # XXX: Ugly but important for correctness, *will* be fixed during
             # 1.13 cycle. Pushing a stream that is interrupted results in a
@@ -1541,15 +1549,15 @@ class RemoteStreamSink(repository.StreamSink):
             byte_stream = smart_repo._stream_to_byte_stream([], src_format)
             try:
                 response = client.call_with_body_stream(
-                    ('Repository.insert_stream', path, ''), byte_stream)
+                    (verb, path, '') + extra_args, byte_stream)
             except errors.UnknownSmartMethod:
-                medium._remember_remote_is_before((1,13))
+                medium._remember_remote_is_before(required_version)
                 return self._insert_real(stream, src_format, resume_tokens)
         byte_stream = smart_repo._stream_to_byte_stream(
             stream, src_format)
         resume_tokens = ' '.join(resume_tokens)
         response = client.call_with_body_stream(
-            ('Repository.insert_stream', path, resume_tokens), byte_stream)
+            (verb, path, resume_tokens) + extra_args, byte_stream)
         if response[0][0] not in ('ok', 'missing-basis'):
             raise errors.UnexpectedSmartServerResponse(response)
         if response[0][0] == 'missing-basis':
