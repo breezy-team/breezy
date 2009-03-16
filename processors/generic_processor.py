@@ -308,32 +308,41 @@ class GenericProcessor(processor.ImportProcessor):
                 self.warning("No working trees available to update")
         self.dump_stats()
 
-        # Finish up by telling the user what to do next.
         if self._original_max_pack_count:
             # We earlier disabled autopacking, creating one pack every
             # checkpoint instead. We now pack the repository to optimise
             # how data is stored.
-            if self._revision_count > self.checkpoint_every:
-                # Free whatever memory we can before packing
-                import gc
-                from bzrlib.plugins.groupcompress import groupcompress
-                self.cache_mgr.clear_all()
-                gc.collect()
-                groupcompress._FAST = False
-                self.note("Packing repository ...")
-                self.repo.pack()
-                # To be conservative, packing puts the old packs and
-                # indices in obsolete_packs. We err on the side of
-                # optimism and clear out that directory to save space.
-                self.note("Removing obsolete packs ...")
-                # TODO: Use a public API for this once one exists
-                repo_transport = self.repo._pack_collection.transport
-                repo_transport.clone('obsolete_packs').delete_multi(
-                    repo_transport.list_dir('obsolete_packs'))
+            self._pack_repository()
+
+        # Finish up by telling the user what to do next.
         if remind_about_update:
             # This message is explicitly not timestamped.
             note("To refresh the working tree for a branch, "
                 "use 'bzr update'.")
+
+    def _pack_repository(self):
+        # Before packing, free whatever memory we can and ensure
+        # that groupcompress is configured to optimise disk space
+        import gc
+        self.cache_mgr.clear_all()
+        gc.collect()
+        try:
+            from bzrlib.plugins.groupcompress import groupcompress
+        except ImportError:
+            pass
+        else:
+            groupcompress._FAST = False
+        self.note("Packing repository ...")
+        self.repo.pack()
+
+        # To be conservative, packing puts the old packs and
+        # indices in obsolete_packs. We err on the side of
+        # optimism and clear out that directory to save space.
+        self.note("Removing obsolete packs ...")
+        # TODO: Use a public API for this once one exists
+        repo_transport = self.repo._pack_collection.transport
+        repo_transport.clone('obsolete_packs').delete_multi(
+            repo_transport.list_dir('obsolete_packs'))
 
     def _get_working_trees(self, branches):
         """Get the working trees for branches in the repository."""
