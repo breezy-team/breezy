@@ -1523,11 +1523,15 @@ class RepositoryPackCollection(object):
         """
         self.repo.control_files.lock_write()
 
+    def _already_packed(self):
+        """Is the collection already packed?"""
+        return len(self._names) < 2
+
     def pack(self):
         """Pack the pack collection totally."""
         self.ensure_loaded()
         total_packs = len(self._names)
-        if total_packs < 2:
+        if self._already_packed():
             # This is arguably wrong because we might not be optimal, but for
             # now lets leave it in. (e.g. reconcile -> one pack. But not
             # optimal.
