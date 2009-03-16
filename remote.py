@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import bzrlib
-from bzrlib import urlutils
+from bzrlib import branch, tag, urlutils
 from bzrlib.bzrdir import BzrDir, BzrDirFormat
 from bzrlib.errors import BzrError, NoSuchFile, NotLocalUrl
 from bzrlib.lockable_files import TransportLock
@@ -142,6 +142,17 @@ class RemoteGitRepository(GitRepository):
 
     def __init__(self, gitdir, lockfiles):
         GitRepository.__init__(self, gitdir, lockfiles)
+        self._refs = None
+
+    def get_refs(self):
+        if self._refs is not None:
+            return self._refs
+        def determine_wants(heads):
+            self._refs = heads
+            return []
+        self.bzrdir.root_transport.fetch_pack(determine_wants, None, 
+            lambda x: None, lambda x: mutter("git: %s" % x))
+        return self._refs
 
     def fetch_pack(self, determine_wants, graph_walker, pack_data, 
                    progress=None):
@@ -157,15 +168,33 @@ class RemoteGitRepository(GitRepository):
         return TemporaryPackIterator(path[:-len(".pack")], resolve_ext_ref)
 
 
+class RemoteGitTagDict(tag.BasicTags):
+
+    def __init__(self, branch):
+        self.branch = branch
+        self.repository = branch.repository
+
+    def get_tag_dict(self):
+        ret = {}
+        refs = self.repository.get_refs()
+        for k,v in refs.iteritems():
+            if k.startswith("refs/tags/") and not k.endswith("^{}"):
+                v = refs.get(k+"^{}", v)
+                ret[k] = self.branch.mapping.revision_id_foreign_to_bzr(v)
+        return ret
+
+    def set_tag(self, name, revid):
+        # FIXME: Not supported yet, should do a push of a new ref
+        raise NotImplementedError(self.set_tag)
+
+
 class RemoteGitBranch(GitBranch):
 
     def __init__(self, bzrdir, repository, name, lockfiles):
-        def determine_wants(heads):
-            if not name in heads:
-                raise NoSuchRef(name)
-            self._ref = heads[name]
-        bzrdir.root_transport.fetch_pack(determine_wants, None, lambda x: None, 
-                             lambda x: mutter("git: %s" % x))
+        heads = repository.get_refs()
+        if not name in heads:
+            raise NoSuchRef(name)
+        self._ref = heads[name]
         super(RemoteGitBranch, self).__init__(bzrdir, repository, name, self._ref, lockfiles)
 
     def last_revision(self):
