@@ -1143,7 +1143,7 @@ class RemoteRepository(_RpcHelper):
             # check that last_revision is in 'from' and then return a
             # no-operation.
             if (revision_id is not None and
-                not _mod_revision.is_null(revision_id)):
+                not revision.is_null(revision_id)):
                 self.get_revision(revision_id)
             return 0, []
         # if there is no specific appropriate InterRepository, this will get
