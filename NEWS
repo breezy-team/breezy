@@ -32,6 +32,10 @@ IN DEVELOPMENT
     * Progress bars now show the rate of network activity for
       ``bzr+ssh://`` and ``bzr://`` connections.  (Andrew Bennetts)
 
+    * Streaming push can be done to older repository formats.  This is
+      implemented using a new ``Repository.insert_stream_locked`` RPC.
+      (Andrew Bennetts, Robert Collins)
+
     * Tildes are no longer escaped. No more %7Euser/project/branch!
       (Jonathan Lange)
 
