@@ -213,7 +213,8 @@ class GroupCompressBlock(object):
         """
         if num_bytes is None:
             num_bytes = self._content_length
-        assert num_bytes <= self._content_length
+        if self._content_length is not None:
+            assert num_bytes <= self._content_length
         if self._content is None:
             assert self._z_content is not None
             if self._z_content == '':
@@ -233,24 +234,37 @@ class GroupCompressBlock(object):
                 # decompressors 'unconsumed_tail'
             self._z_content = None
         # Do we have enough bytes already?
-        if len(self._content) >= num_bytes:
+        if num_bytes is not None and len(self._content) >= num_bytes:
             return
         # If we got this far, and don't have a decompressor, something is wrong
         assert self._z_content_decompressor is not None
         remaining_decomp = self._z_content_decompressor.unconsumed_tail
-        # If we have nothing left to decomp, we ran out of decomp bytes
-        assert remaining_decomp
-        needed_bytes = num_bytes - len(self._content)
-        # We always set max_size to 32kB over the minimum needed, so that zlib
-        # will give us as much as we really want.
-        # TODO: If this isn't good enough, we could make a loop here, that
-        #       keeps expanding the request until we get enough
-        self._content += self._z_content_decompressor.decompress(
-            remaining_decomp, needed_bytes + _ZLIB_DECOMP_WINDOW)
-        assert len(self._content) >= num_bytes
-        if not self._z_content_decompressor.unconsumed_tail:
-            # The stream is finished
-            self._z_content_decompressor = None
+        if num_bytes is None:
+            if remaining_decomp:
+                # We don't know how much is left, but we'll decompress it all
+                self._content += self._z_content_decompressor.decompress(
+                    remaining_decomp)
+                # Note: There what I consider a bug in zlib.decompressobj
+                #       If you pass back in the entire unconsumed_tail, only
+                #       this time you don't pass a max-size, it doesn't
+                #       change the unconsumed_tail back to None/''.
+                #       However, we know we are done with the whole stream
+                self._z_content_decompressor = None
+            self._content_length = len(self._content)
+        else:
+            # If we have nothing left to decomp, we ran out of decomp bytes
+            assert remaining_decomp
+            needed_bytes = num_bytes - len(self._content)
+            # We always set max_size to 32kB over the minimum needed, so that zlib
+            # will give us as much as we really want.
+            # TODO: If this isn't good enough, we could make a loop here, that
+            #       keeps expanding the request until we get enough
+            self._content += self._z_content_decompressor.decompress(
+                remaining_decomp, needed_bytes + _ZLIB_DECOMP_WINDOW)
+            assert len(self._content) >= num_bytes
+            if not self._z_content_decompressor.unconsumed_tail:
+                # The stream is finished
+                self._z_content_decompressor = None
 
     def _parse_bytes(self, bytes):
         """Read the various lengths from the header.

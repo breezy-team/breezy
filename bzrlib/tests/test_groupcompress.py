@@ -353,6 +353,47 @@ class TestGroupCompressBlock(tests.TestCase):
         # And the decompressor is finalized
         self.assertIs(None, block._z_content_decompressor)
 
+    def test_partial_decomp_no_known_length(self):
+        content_chunks = []
+        for i in xrange(2048):
+            next_content = '%d\nThis is a bit of duplicate text\n' % (i,)
+            content_chunks.append(next_content)
+            next_sha1 = osutils.sha_string(next_content)
+            content_chunks.append(next_sha1 + '\n')
+        content = ''.join(content_chunks)
+        self.assertEqual(158634, len(content))
+        z_content = zlib.compress(content)
+        self.assertEqual(57182, len(z_content))
+        block = groupcompress.GroupCompressBlock()
+        block._z_content = z_content
+        block._z_content_length = len(z_content)
+        block._compressor_name = 'zlib'
+        block._content_length = None # Don't tell the decompressed length
+        self.assertIs(None, block._content)
+        block._ensure_content(100)
+        self.assertIsNot(None, block._content)
+        # We have decompressed at least 100 bytes
+        self.assertTrue(len(block._content) >= 100)
+        # We have not decompressed the whole content
+        self.assertTrue(len(block._content) < 158634)
+        self.assertEqualDiff(content[:len(block._content)], block._content)
+        # ensuring content that we already have shouldn't cause any more data
+        # to be extracted
+        cur_len = len(block._content)
+        block._ensure_content(cur_len - 10)
+        self.assertEqual(cur_len, len(block._content))
+        # Now we want a bit more content
+        cur_len += 10
+        block._ensure_content(cur_len)
+        self.assertTrue(len(block._content) >= cur_len)
+        self.assertTrue(len(block._content) < 158634)
+        self.assertEqualDiff(content[:len(block._content)], block._content)
+        # And now lets finish
+        block._ensure_content()
+        self.assertEqualDiff(content, block._content)
+        # And the decompressor is finalized
+        self.assertIs(None, block._z_content_decompressor)
+
 
 class TestCaseWithGroupCompressVersionedFiles(tests.TestCaseWithTransport):
 
