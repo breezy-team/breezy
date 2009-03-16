@@ -643,6 +643,14 @@ class RemoteRepository(_RpcHelper):
         """Ensure that there is a _real_repository set.
 
         Used before calls to self._real_repository.
+
+        Note that _ensure_real causes many roundtrips to the server which are
+        not desirable, and prevents the use of smart one-roundtrip RPC's to
+        perform complex operations (such as accessing parent data, streaming
+        revisions etc). Adding calls to _ensure_real should only be done when
+        bringing up new functionality, adding fallbacks for smart methods that
+        require a fallback path, and never to replace an existing smart method
+        invocation. If in doubt chat to the bzr network team.
         """
         if self._real_repository is None:
             self.bzrdir._ensure_real()
@@ -1082,6 +1090,20 @@ class RemoteRepository(_RpcHelper):
         self._ensure_real()
         return self._real_repository.make_working_trees()
 
+    def refresh_data(self):
+        """Re-read any data needed to to synchronise with disk.
+
+        This method is intended to be called after another repository instance
+        (such as one used by a smart server) has inserted data into the
+        repository. It may not be called during a write group, but may be
+        called at any other time.
+        """
+        if self.is_in_write_group():
+            raise errors.InternalBzrError(
+                "May not refresh_data while in a write group.")
+        if self._real_repository is not None:
+            self._real_repository.refresh_data()
+
     def revision_ids_to_search_result(self, result_set):
         """Convert a set of revision ids to a graph SearchResult."""
         result_parents = set()
@@ -1108,11 +1130,15 @@ class RemoteRepository(_RpcHelper):
 
     def fetch(self, source, revision_id=None, pb=None, find_ghosts=False,
             fetch_spec=None):
+        # No base implementation to use as RemoteRepository is not a subclass
+        # of Repository; so this is a copy of Repository.fetch().
         if fetch_spec is not None and revision_id is not None:
             raise AssertionError(
                 "fetch_spec and revision_id are mutually exclusive.")
-        # Not delegated to _real_repository so that InterRepository.get has a
-        # chance to find an InterRepository specialised for RemoteRepository.
+        if self.is_in_write_group():
+            raise errors.InternalBzrError(
+                "May not fetch while in a write group.")
+        # fast path same-url fetch operations
         if self.has_same_location(source) and fetch_spec is None:
             # check that last_revision is in 'from' and then return a
             # no-operation.
@@ -1120,12 +1146,12 @@ class RemoteRepository(_RpcHelper):
                 not revision.is_null(revision_id)):
                 self.get_revision(revision_id)
             return 0, []
+        # if there is no specific appropriate InterRepository, this will get
+        # the InterRepository base class, which raises an
+        # IncompatibleRepositories when asked to fetch.
         inter = repository.InterRepository.get(source, self)
-        try:
-            return inter.fetch(revision_id=revision_id, pb=pb,
-                    find_ghosts=find_ghosts, fetch_spec=fetch_spec)
-        except NotImplementedError:
-            raise errors.IncompatibleRepositories(source, self)
+        return inter.fetch(revision_id=revision_id, pb=pb,
+            find_ghosts=find_ghosts, fetch_spec=fetch_spec)
 
     def create_bundle(self, target, base, fileobj, format=None):
         self._ensure_real()
@@ -1501,12 +1527,7 @@ class RemoteRepository(_RpcHelper):
             self._ensure_real()
             self._real_repository._pack_collection.autopack()
             return
-        if self._real_repository is not None:
-            # Reset the real repository's cache of pack names.
-            # XXX: At some point we may be able to skip this and just rely on
-            # the automatic retry logic to do the right thing, but for now we
-            # err on the side of being correct rather than being optimal.
-            self._real_repository._pack_collection.reload_pack_names()
+        self.refresh_data()
         if response[0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response)
 
@@ -1565,11 +1586,7 @@ class RemoteStreamSink(repository.StreamSink):
             resume_tokens = tokens
             return resume_tokens, missing_keys
         else:
-            if self.target_repo._real_repository is not None:
-                collection = getattr(self.target_repo._real_repository,
-                    '_pack_collection', None)
-                if collection is not None:
-                    collection.reload_pack_names()
+            self.target_repo.refresh_data()
             return [], set()
 
 

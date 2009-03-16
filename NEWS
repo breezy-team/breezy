@@ -48,6 +48,11 @@ IN DEVELOPMENT
     * Fixed incorrect "Source format does not support stacking" warning
       when pushing to a smart server.  (Andrew Bennetts, #334114)
 
+    * It is no longer possible to fetch between repositories while the
+      target repository is in a write group. This prevents race conditions
+      that prevent the use of RPC's to perform fetch, and thus allows
+      optimising more operations. (Robert Collins, Andrew Bennetts)
+
     * ``merge --force`` works again. (Robert Collins, #342105)
 
     * The GNU Changelog formatter is slightly improved in the case where
@@ -77,6 +82,10 @@ IN DEVELOPMENT
 
     * New ``assertLength`` method based on one Martin has squirreled away
       somewhere. (Robert Collins, Martin Pool)
+
+    * New repository method ``refresh_data`` to cause any repository to
+      make visible data inserted into the repository by a smart server
+      fetch operation. (Robert Collins, Andrew Bennetts)
 
     * ``_walk_to_common_revisions`` will now batch up at least 50
       revisions before calling ``get_parent_map`` on the target,
