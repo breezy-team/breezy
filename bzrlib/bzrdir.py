@@ -2823,7 +2823,6 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
                 result._custom_format = custom_format._custom_format
             else:
                 result._custom_format = custom_format
-            result.rich_root_data = custom_format.rich_root_data
         return result
 
     def get_branch_format(self):
@@ -3062,7 +3061,8 @@ class RepositoryAcquisitionPolicy(object):
                 stack_on = self._get_full_stack_on()
         try:
             branch.set_stacked_on_url(stack_on)
-        except errors.UnstackableBranchFormat:
+        except (errors.UnstackableBranchFormat,
+                errors.UnstackableRepositoryFormat):
             if self._require_stacking:
                 raise
 

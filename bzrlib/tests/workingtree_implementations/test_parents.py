@@ -245,16 +245,12 @@ class TestSetParents(TestParents):
         os.symlink(u'\u03a9','tree1/link_name')
         tree.add(['link_name'],['link-id'])
 
-        try:
-            # the actual commit occurs without errors (strangely):
-            revision1 = tree.commit('added a link to a Unicode target')
-            # python 2.4 failed with UnicodeDecodeError on this commit:
-            revision2 = tree.commit('this revision will be discarded')
-            # python 2.5 failed with UnicodeEncodeError on set_parent_ids:
-            tree.set_parent_ids([revision1])
-        except (UnicodeEncodeError, UnicodeDecodeError):
-            raise KnownFailure('there is no support for'
-                               ' symlinks to non-ASCII targets (bug #272444)')
+        # the actual commit occurs without errors (strangely):
+        revision1 = tree.commit('added a link to a Unicode target')
+        # python 2.4 failed with UnicodeDecodeError on this commit:
+        revision2 = tree.commit('this revision will be discarded')
+        # python 2.5 failed with UnicodeEncodeError on set_parent_ids:
+        tree.set_parent_ids([revision1])
 
 
 class TestAddParent(TestParents):

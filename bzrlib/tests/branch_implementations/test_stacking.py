@@ -58,7 +58,9 @@ class TestStacking(TestCaseWithBranch):
         except unstackable_format_errors:
             # if the set failed, so must the get
             self.assertRaises(unstackable_format_errors, branch.get_stacked_on_url)
+            self.assertFalse(branch._format.supports_stacking())
             return
+        self.assertTrue(branch._format.supports_stacking())
         # now we have a stacked branch:
         self.assertEqual(target.base, branch.get_stacked_on_url())
         branch.set_stacked_on_url(None)
@@ -252,10 +254,11 @@ class TestStacking(TestCaseWithBranch):
         parent_bzrdir.get_config().set_default_stack_on('stack-on')
         source = self.make_branch('source')
         target = source.bzrdir.sprout('target').open_branch()
-        try:
+        if self.branch_format.supports_stacking():
             self.assertEqual('../stack-on', target.get_stacked_on_url())
-        except errors.UnstackableBranchFormat:
-            pass
+        else:
+            self.assertRaises(
+                errors.UnstackableBranchFormat, target.get_stacked_on_url)
 
     def test_clone_stacking_policy_handling(self):
         """Obey policy where possible, ignore otherwise."""
@@ -264,10 +267,27 @@ class TestStacking(TestCaseWithBranch):
         parent_bzrdir.get_config().set_default_stack_on('stack-on')
         source = self.make_branch('source')
         target = source.bzrdir.clone('target').open_branch()
-        try:
+        if self.branch_format.supports_stacking():
             self.assertEqual('../stack-on', target.get_stacked_on_url())
-        except errors.UnstackableBranchFormat:
-            pass
+        else:
+            self.assertRaises(
+                errors.UnstackableBranchFormat, target.get_stacked_on_url)
+
+    def test_sprout_to_smart_server_stacking_policy_handling(self):
+        """Obey policy where possible, ignore otherwise."""
+        if isinstance(self.branch_format, branch.BzrBranchFormat4):
+            raise TestNotApplicable('Branch format 4 is not usable via HPSS.')
+        stack_on = self.make_branch('stack-on')
+        parent_bzrdir = self.make_bzrdir('.', format='default')
+        parent_bzrdir.get_config().set_default_stack_on('stack-on')
+        source = self.make_branch('source')
+        url = self.make_smart_server('target').base
+        target = source.bzrdir.sprout(url).open_branch()
+        if self.branch_format.supports_stacking():
+            self.assertEqual('../stack-on', target.get_stacked_on_url())
+        else:
+            self.assertRaises(
+                errors.UnstackableBranchFormat, target.get_stacked_on_url)
 
     def prepare_stacked_on_fetch(self):
         stack_on = self.make_branch_and_tree('stack-on')
