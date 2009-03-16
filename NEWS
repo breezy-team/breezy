@@ -47,7 +47,9 @@ IN DEVELOPMENT
 
     * Fixed incorrect "Source format does not support stacking" warning
       when pushing to a smart server.  (Andrew Bennetts, #334114)
-      
+
+    * ``merge --force`` works again. (Robert Collins, #342105)
+
     * The GNU Changelog formatter is slightly improved in the case where
       the delta is empty, and now correctly claims not to support tags.
       (Andrea Bolognani)
@@ -72,6 +74,9 @@ IN DEVELOPMENT
       (Martin Pool)
 
   INTERNALS:
+
+    * New ``assertLength`` method based on one Martin has squirreled away
+      somewhere. (Robert Collins, Martin Pool)
 
     * ``_walk_to_common_revisions`` will now batch up at least 50
       revisions before calling ``get_parent_map`` on the target,
