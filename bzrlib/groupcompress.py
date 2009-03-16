@@ -130,7 +130,10 @@ class GroupCompressBlockEntry(object):
             self.__class__.__name__,
             self.key, self.type, self.sha1, self.start, self.length
             )
-
+# The max zlib window size is 32kB, so if we set 'max_size' output of the
+# decompressor to the requested bytes + 32kB, then we should guarantee
+# num_bytes coming out.
+_ZLIB_DECOMP_WINDOW = 32*1024
 
 class GroupCompressBlock(object):
     """An object which maintains the internal structure of the compressed data.
@@ -225,7 +228,7 @@ class GroupCompressBlock(object):
                 # Seed the decompressor with the uncompressed bytes, so that
                 # the rest of the code is simplified
                 self._content = self._z_content_decompressor.decompress(
-                    self._z_content, 64*1024)
+                    self._z_content, _ZLIB_DECOMP_WINDOW)
                 # Any bytes remaining to be decompressed will be in the
                 # decompressors 'unconsumed_tail'
             self._z_content = None
@@ -238,12 +241,12 @@ class GroupCompressBlock(object):
         # If we have nothing left to decomp, we ran out of decomp bytes
         assert remaining_decomp
         needed_bytes = num_bytes - len(self._content)
-        # We always set max_size to 64kB over the minimum needed, so that zlib
+        # We always set max_size to 32kB over the minimum needed, so that zlib
         # will give us as much as we really want.
         # TODO: If this isn't good enough, we could make a loop here, that
         #       keeps expanding the request until we get enough
         self._content += self._z_content_decompressor.decompress(
-            remaining_decomp, needed_bytes + 64*1024)
+            remaining_decomp, needed_bytes + _ZLIB_DECOMP_WINDOW)
         assert len(self._content) >= num_bytes
         if not self._z_content_decompressor.unconsumed_tail:
             # The stream is finished
