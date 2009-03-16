@@ -592,10 +592,6 @@ class SmartServerRepositoryInsertStreamLocked(SmartServerRepositoryRequest):
 class SmartServerRepositoryInsertStream(SmartServerRepositoryInsertStreamLocked):
     """Insert a record stream from a RemoteSink into an unlocked repository.
 
-    This gets bytes pushed to it by the network infrastructure and turns that
-    into a bytes iterator using a thread. That is then processed by
-    _byte_stream_to_stream.
-
     This is the same as SmartServerRepositoryInsertStreamLocked, except it
     takes no lock_tokens; i.e. it works with an unlocked (or lock-free, e.g.
     like pack format) repository.

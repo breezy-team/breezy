@@ -271,7 +271,10 @@ class FakeClient(_SmartClient):
         self._check_call(args[0], args[1:])
         self._calls.append(('call_with_body_stream', args[0], args[1:], stream))
         result = self._get_next_response()
-        return result[1], None
+        # The second value returned from call_with_body_stream is supposed to
+        # be a response_handler object, but so far no tests depend on that.
+        response_handler = None 
+        return result[1], response_handler
 
 
 class FakeMedium(medium.SmartClientMedium):
