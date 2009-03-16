@@ -1114,9 +1114,6 @@ class TestSmartServerRepositoryIsShared(tests.TestCaseWithMemoryTransport):
 
 class TestSmartServerRepositoryLockWrite(tests.TestCaseWithMemoryTransport):
 
-    def setUp(self):
-        tests.TestCaseWithMemoryTransport.setUp(self)
-
     def test_lock_write_on_unlocked_repo(self):
         backing = self.get_transport()
         request = smart.repository.SmartServerRepositoryLockWrite(backing)
@@ -1147,6 +1144,54 @@ class TestSmartServerRepositoryLockWrite(tests.TestCaseWithMemoryTransport):
         response = request.execute('')
         self.assertFalse(response.is_successful())
         self.assertEqual('LockFailed', response.args[0])
+
+
+class TestInsertStreamBase(tests.TestCaseWithMemoryTransport):
+
+    def make_empty_byte_stream(self, repo):
+        byte_stream = smart.repository._stream_to_byte_stream([], repo._format)
+        return ''.join(byte_stream)
+
+
+class TestSmartServerRepositoryInsertStream(TestInsertStreamBase):
+
+    def test_insert_stream_empty(self):
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryInsertStream(backing)
+        repository = self.make_repository('.')
+        response = request.execute('', '')
+        self.assertEqual(None, response)
+        response = request.do_chunk(self.make_empty_byte_stream(repository))
+        self.assertEqual(None, response)
+        response = request.do_end()
+        self.assertEqual(SmartServerResponse(('ok', )), response)
+        
+
+class TestSmartServerRepositoryInsertStreamLocked(TestInsertStreamBase):
+
+    def test_insert_stream_empty(self):
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryInsertStreamLocked(
+            backing)
+        repository = self.make_repository('.', format='knit')
+        lock_token = repository.lock_write()
+        response = request.execute('', '', lock_token)
+        self.assertEqual(None, response)
+        response = request.do_chunk(self.make_empty_byte_stream(repository))
+        self.assertEqual(None, response)
+        response = request.do_end()
+        self.assertEqual(SmartServerResponse(('ok', )), response)
+        repository.unlock()
+
+    def test_insert_stream_with_wrong_lock_token(self):
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryInsertStreamLocked(
+            backing)
+        repository = self.make_repository('.', format='knit')
+        lock_token = repository.lock_write()
+        self.assertRaises(
+            errors.TokenMismatch, request.execute, '', '', 'wrong-token')
+        repository.unlock()
 
 
 class TestSmartServerRepositoryUnlock(tests.TestCaseWithMemoryTransport):
@@ -1339,17 +1384,23 @@ class TestHandlers(tests.TestCase):
                 'Repository.get_revision_graph'),
             smart.repository.SmartServerRepositoryGetRevisionGraph)
         self.assertEqual(
+            smart.request.request_handlers.get('Repository.get_stream'),
+            smart.repository.SmartServerRepositoryGetStream)
+        self.assertEqual(
             smart.request.request_handlers.get('Repository.has_revision'),
             smart.repository.SmartServerRequestHasRevision)
+        self.assertEqual(
+            smart.request.request_handlers.get('Repository.insert_stream'),
+            smart.repository.SmartServerRepositoryInsertStream)
+        self.assertEqual(
+            smart.request.request_handlers.get('Repository.insert_stream_locked'),
+            smart.repository.SmartServerRepositoryInsertStreamLocked)
         self.assertEqual(
             smart.request.request_handlers.get('Repository.is_shared'),
             smart.repository.SmartServerRepositoryIsShared)
         self.assertEqual(
             smart.request.request_handlers.get('Repository.lock_write'),
             smart.repository.SmartServerRepositoryLockWrite)
-        self.assertEqual(
-            smart.request.request_handlers.get('Repository.get_stream'),
-            smart.repository.SmartServerRepositoryGetStream)
         self.assertEqual(
             smart.request.request_handlers.get('Repository.tarball'),
             smart.repository.SmartServerRepositoryTarball)
