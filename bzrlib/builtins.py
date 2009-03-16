@@ -3387,9 +3387,10 @@ class cmd_merge(Command):
             basis_tree = tree.revision_tree(tree.last_revision())
         except errors.NoSuchRevision:
             basis_tree = tree.basis_tree()
-        changes = tree.changes_from(basis_tree)
-        if changes.has_changed():
-            raise errors.UncommittedChanges(tree)
+        if not force:
+            changes = tree.changes_from(basis_tree)
+            if changes.has_changed():
+                raise errors.UncommittedChanges(tree)
 
         view_info = _get_view_info_for_change_reporter(tree)
         change_reporter = delta._ChangeReporter(
