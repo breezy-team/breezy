@@ -262,28 +262,38 @@ class GroupCompressBlock(object):
         # At present, there are 4 lengths to be read, we have 2 integers for
         # the length of the compressed and uncompressed header, and 2 integers
         # for the compressed and uncompressed content
-        pos = bytes.index('\n', 6)
+        # 14 bytes can represent > 1TB, so to avoid checking too far, cap the
+        # search to 14 bytes.
+        pos = bytes.index('\n', 6, 20)
         self._z_header_length = int(bytes[6:pos])
         pos += 1
-        pos2 = bytes.index('\n', pos)
+        pos2 = bytes.index('\n', pos, pos + 14)
         self._header_length = int(bytes[pos:pos2])
+        end_of_z_lengths = pos2
         pos2 += 1
         # Older versions don't have the content lengths, if we want to preserve
         # backwards compatibility, we could try/except over these, and allow
         # them to be skipped
-        pos = bytes.index('\n', pos2)
-        self._z_content_length = int(bytes[pos2:pos])
-        pos += 1
-        pos2 = bytes.index('\n', pos)
-        self._content_length = int(bytes[pos:pos2])
-        pos = pos2 + 1
-        assert len(bytes) == (pos + self._z_header_length +
-                              self._z_content_length)
-        pos2 = pos + self._z_header_length
-        self._z_header = bytes[pos:pos2]
-        self._z_content = bytes[pos2:]
-        assert len(self._z_content) == self._z_content_length
-        return pos2 + 1
+        try:
+            pos = bytes.index('\n', pos2, pos2 + 14)
+            self._z_content_length = int(bytes[pos2:pos])
+            pos += 1
+            pos2 = bytes.index('\n', pos, pos + 14)
+            self._content_length = int(bytes[pos:pos2])
+            pos = pos2 + 1
+            assert len(bytes) == (pos + self._z_header_length +
+                                  self._z_content_length)
+            pos2 = pos + self._z_header_length
+            self._z_header = bytes[pos:pos2]
+            self._z_content = bytes[pos2:]
+            assert len(self._z_content) == self._z_content_length
+        except ValueError:
+            # This is the older form, which did not encode its content length
+            pos = end_of_z_lengths + 1
+            pos2 = pos + self._z_header_length
+            self._z_header = bytes[pos:pos2]
+            self._z_content = bytes[pos2:]
+            self._z_content_length = len(self._z_content)
 
     @classmethod
     def from_bytes(cls, bytes):

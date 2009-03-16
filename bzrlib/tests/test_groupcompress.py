@@ -252,6 +252,24 @@ class TestGroupCompressBlock(tests.TestCase):
         self.assertIs(None, block._z_content)
         self.assertEqual(content, block._content)
 
+    def test_from_old_bytes(self):
+        # Backwards compatibility, with groups that didn't define content length
+        content = ('a tiny bit of content\n')
+        z_content = zlib.compress(content)
+        z_bytes = (
+            'gcb1z\n' # group compress block v1 plain
+            '0\n' # Length of zlib bytes
+            '0\n' # Length of all meta-info
+            ''    # Compressed header
+            '%s'   # Compressed content
+            ) % (z_content)
+        block = groupcompress.GroupCompressBlock.from_bytes(
+            z_bytes)
+        self.assertIsInstance(block, groupcompress.GroupCompressBlock)
+        block._ensure_content()
+        self.assertIs(None, block._z_content)
+        self.assertEqual(content, block._content)
+
     def test_add_entry(self):
         gcb = groupcompress.GroupCompressBlock()
         e = gcb.add_entry(('foo', 'bar'), 'fulltext', 'abcd'*10, 0, 100)
