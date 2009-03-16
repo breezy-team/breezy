@@ -130,6 +130,11 @@ class GroupCompressBlockEntry(object):
             self.__class__.__name__,
             self.key, self.type, self.sha1, self.start, self.length
             )
+
+    @property
+    def end(self):
+        return self.start + self.length
+
 # The max zlib window size is 32kB, so if we set 'max_size' output of the
 # decompressor to the requested bytes + 32kB, then we should guarantee
 # num_bytes coming out.
@@ -351,7 +356,6 @@ class GroupCompressBlock(object):
         content_len, len_len = decode_base128_int(
                             self._content[entry.start + 1:entry.start + 11])
         content_start = entry.start + 1 + len_len
-        end = entry.start + entry.length
         content = self._content[content_start:end]
         if c == 'f':
             bytes = content
@@ -433,7 +437,7 @@ class GroupCompressBlock(object):
 class LazyGroupCompressFactory(object):
     """Yield content from a GroupCompressBlock on demand."""
 
-    def __init__(self, key, parents, gc_block, start, end, first):
+    def __init__(self, key, parents, manager, start, end, first):
         """Create a LazyGroupCompressFactory
 
         :param key: The key of just this record
@@ -448,7 +452,7 @@ class LazyGroupCompressFactory(object):
         self.key = key
         self.parents = parents
         self.sha1 = None
-        self._gc_block = gc_block
+        self._manager = manager
         self.storage_kind = 'groupcompress-block'
         if not first:
             self.storage_kind = 'groupcompress-block-ref'
@@ -464,17 +468,60 @@ class LazyGroupCompressFactory(object):
         if storage_kind == self.storage_kind:
             if self._first:
                 # wire bytes, something...
-                return Something
+                return self._manager._wire_bytes()
             else:
                 return ''
         if storage_kind in ('fulltext', 'chunked'):
-            _, bytes = self._gc_block.extract(self.key, self._start, self._end)
+            block = self._manager._block
+            _, bytes = block.extract(self.key, self._start, self._end)
             if storage_kind == 'fulltext':
                 return bytes
             else:
                 return [bytes]
         raise errors.UnavailableRepresentation(self.key, storage_kind,
             self.storage_kind)
+
+
+class LazyGroupContentManager(object):
+    """This manages a group of LazyGroupCompressFactory objects."""
+
+    def __init__(self, block):
+        self._block = block
+        # We need to preserve the ordering
+        self._factories = []
+
+    def add_factory(self, key, parents, start, end):
+        if not self._factories:
+            first = True
+        else:
+            first = False
+        # Note that this creates a reference cycle....
+        factory = LazyGroupCompressFactory(key, parents, self,
+            start, end, first=first)
+        self._factories.append(factory)
+
+    def get_record_stream(self):
+        """Get a record for all keys added so far."""
+        for factory in self._factories:
+            yield factory
+
+    def _wire_bytes(self):
+        """Return a byte stream suitable for transmitting over the wire."""
+        # TODO: this might be a really good time to determine that we want to
+        #       rebuild a group based on how much content we are actually
+        #       transmitting.
+        #       Specifically, we could use max(end) to compare to
+        #       block._content_length to see if we want to just truncate the
+        #       last bytes. a simple:
+        #           last_needed_byte = max(end)
+        #           bytes = zlib.decompress(last_needed_byte+XXX)
+        #           c_bytes = zlib.compress(bytes[:last_needed_byte])
+        #       Going further, we could compare sum(end-start) to see how many
+        #       bytes out of the partial content we will actually be using, and
+        #       use a heuristic to decide that we need to generate a new group.
+        #       (that could be if *any* bytes are unused, or just if more than
+        #       XX percent is unused)
+        return ''
 
 
 class GroupCompressor(object):
@@ -1045,17 +1092,16 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 unadded_keys, source_result)
         for key in missing:
             yield AbsentContentFactory(key)
-        last_block = None
-        lazy_buffered = None
+        manager = None
         for source, keys in source_keys:
             if source is self:
                 for key in keys:
                     if key in self._unadded_refs:
-                        if lazy_buffered:
-                            for factory in lazy_buffered:
+                        if manager is not None:
+                            # Yield everything buffered so far
+                            for factory in manager.get_record_stream():
                                 yield factory
-                            lazy_buffered = None
-                            last_block = None
+                            manager = None
                         bytes, sha1 = self._compressor.extract(key)
                         parents = self._unadded_refs[key]
                         yield FulltextContentFactory(key, parents, sha1, bytes)
@@ -1063,36 +1109,28 @@ class GroupCompressVersionedFiles(VersionedFiles):
                         index_memo, _, parents, (method, _) = locations[key]
                         block = self._get_block(index_memo)
                         start, end = index_memo[3:5]
-                        if block is last_block:
-                            first = False
-                        else:
-                            first = True
-                        factory = LazyGroupCompressFactory(key,
-                            parents, block, start, end, first)
-                        if first:
-                            # The first entry in a new group
-                            if lazy_buffered:
-                                for old in lazy_buffered:
-                                    yield old
-                            lazy_buffered = [factory]
-                        else:
-                            lazy_buffered.append(factory)
-                        last_block = block
+                        if manager is None:
+                            manager = LazyGroupContentManager(block)
+                        elif manager._block is not block:
+                            # Flush and create a new manager
+                            for factory in manager.get_record_stream():
+                                yield factory
+                            manager = LazyGroupContentManager(block)
+                        manager.add_factory(key, parents, start, end)
             else:
-                # We need to flush everything we have buffered so far
-                if lazy_buffered:
-                    for factory in lazy_buffered:
+                if manager is not None:
+                    # Yield everything buffered so far
+                    for factory in manager.get_record_stream():
                         yield factory
-                    lazy_buffered = None
-                    last_block = None
+                    manager = None
                 for record in source.get_record_stream(keys, ordering,
                                                        include_delta_closure):
                     yield record
-        if lazy_buffered:
-            for factory in lazy_buffered:
+        if manager is not None:
+            # Yield everything buffered so far
+            for factory in manager.get_record_stream():
                 yield factory
-            lazy_buffered = None
-            last_block = None
+            manager = None
 
     def get_sha1s(self, keys):
         """See VersionedFiles.get_sha1s()."""

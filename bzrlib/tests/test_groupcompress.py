@@ -444,8 +444,14 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
         self.assertEqual([('b',), ('a',), ('d',), ('c',)], keys)
 
 
-class TestLazyGroupCompressFactory(tests.TestCaseWithTransport):
+class TestLazyGroupCompress(tests.TestCaseWithTransport):
 
+    _texts = {
+        ('key1',): "this is a text\n"
+                   "with a reasonable amount of compressible bytes\n",
+        ('key2',): "another text\n"
+                   "with a reasonable amount of compressible bytes\n",
+    }
     def make_block(self, key_to_text):
         """Create a GroupCompressBlock, filling it with the given texts."""
         compressor = groupcompress.GroupCompressor()
@@ -456,23 +462,15 @@ class TestLazyGroupCompressFactory(tests.TestCaseWithTransport):
         raw_bytes = compressor.flush()
         return entries, groupcompress.GroupCompressBlock.from_bytes(raw_bytes)
 
-    def entry_and_block_to_factory(self, key, entries, block, first=False):
-        entry = entries[key]
-        return groupcompress.LazyGroupCompressFactory(key, (), block,
-            entry.start, entry.start + entry.length, first)
-
     def test_get_fulltexts(self):
-        key_to_text = {
-            ('key1',): "this is a text\n"
-                       "with a reasonable amount of compressible bytes\n",
-            ('key2',): "another text\n"
-                       "with a reasonable amount of compressible bytes\n",
-        }
-        entries, block = self.make_block(key_to_text)
-        for key in key_to_text:
-            cf = self.entry_and_block_to_factory(key, entries, block)
-            text = key_to_text[key]
-            self.assertEqual(text, cf.get_bytes_as('fulltext'))
-            self.assertEqual(text, ''.join(cf.get_bytes_as('chunked')))
-            self.assertRaises(errors.UnavailableRepresentation,
-                cf.get_bytes_as, 'unknown-representation')
+        entries, block = self.make_block(self._texts)
+        manager = groupcompress.LazyGroupContentManager(block)
+        entry = entries[('key1',)]
+        manager.add_factory(entry.key, (), entry.start, entry.end)
+        entry = entries[('key2',)]
+        manager.add_factory(entry.key, (), entry.start, entry.end)
+        result_order = []
+        for record in manager.get_record_stream():
+            result_order.append(record.key)
+            text = self._texts[record.key]
+            self.assertEqual(text, record.get_bytes_as('fulltext'))
