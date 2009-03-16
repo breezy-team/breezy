@@ -823,6 +823,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
             source = key_to_source_map.get(key, self)
             if source is not current_source:
                 source_keys.append((source, []))
+                current_source = source
             source_keys[-1][1].append(key)
         return source_keys
 
@@ -839,6 +840,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 continue
             if source is not current_source:
                 source_keys.append((source, []))
+                current_source = source
             source_keys[-1][1].append(key)
         return source_keys
 
