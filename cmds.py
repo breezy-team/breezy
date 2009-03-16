@@ -82,31 +82,31 @@ from bzrlib.plugins.builddeb.util import (find_changelog,
         )
 
 dont_purge_opt = Option('dont-purge',
-    help="Don't purge the build directory after building")
+    help="Don't purge the build directory after building.")
 result_opt = Option('result-dir',
-    help="Directory in which to place the resulting package files", type=str)
+    help="Directory in which to place the resulting package files.", type=str)
 builder_opt = Option('builder',
-    help="Command to build the package", type=str)
+    help="Command to build the package.", type=str)
 merge_opt = Option('merge',
-    help='Merge the debian part of the source in to the upstream tarball')
+    help='Merge the debian part of the source in to the upstream tarball.')
 split_opt = Option('split',
-    help="Automatically create an .orig.tar.gz from a full source branch")
+    help="Automatically create an .orig.tar.gz from a full source branch.")
 build_dir_opt = Option('build-dir',
-    help="The dir to use for building", type=str)
+    help="The dir to use for building.", type=str)
 orig_dir_opt = Option('orig-dir',
     help="Directory containing the .orig.tar.gz files. For use when only"
-       +"debian/ is versioned", type=str)
+       +"debian/ is versioned.", type=str)
 native_opt = Option('native',
-    help="Build a native package")
+    help="Build a native package.")
 export_upstream_opt = Option('export-upstream',
-    help="Create the .orig.tar.gz from a bzr branch before building",
+    help="Create the .orig.tar.gz from a bzr branch before building.",
     type=unicode)
 export_upstream_revision_opt = Option('export-upstream-revision',
-    help="Select the upstream revision that will be exported",
+    help="Select the upstream revision that will be exported.",
     type=str)
 no_user_conf_opt = Option('no-user-config',
     help="Stop builddeb from reading the user's config file. Used mainly "
-    "for tests")
+    "for tests.")
 
 
 def debuild_config(tree, working_tree, no_user_config):
@@ -141,10 +141,10 @@ class cmd_builddeb(Command):
     If BRANCH is specified it is assumed that the branch you wish to build is
     located there. If it is not specified then the current directory is used.
 
-    By default the if a working tree is found it is used to build and otherwise
-    the last committed revision was used. To force building the last committed 
-    revision use --revision -1. You can specify any other revision using the 
-    --revision option.
+    By default, if a working tree is found, it is used to build. Otherwise the
+    last committed revision found in the branch is used. To force building the
+    last committed revision use --revision -1. You can also specify any other
+    revision with the --revision option.
 
     If you only wish to export the package, and not build it (especially useful
     for merge mode), use --export-only.
@@ -176,20 +176,21 @@ class cmd_builddeb(Command):
     debian/rules binary'. It is overriden if --builder is passed. Using this
     and --reuse allows for fast rebuilds.
     """
-    working_tree_opt = Option('working-tree', help="This option has no effect",
+    working_tree_opt = Option('working-tree', help="This option has no effect.",
                               short_name='w')
-    export_only_opt = Option('export-only', help="Export only, don't build",
+    export_only_opt = Option('export-only', help="Export only, don't build.",
                              short_name='e')
     use_existing_opt = Option('use-existing',
-                              help="Use an existing build directory")
+                              help="Use an existing build directory.")
     quick_opt = Option('quick', help="Quickly build the package, uses "
                        +"quick-builder, which defaults to \"fakeroot "
-                       +"debian/rules binary\"")
-    reuse_opt = Option('reuse', help="Try to avoid expoting too much on each "
+                       +"debian/rules binary\".")
+    reuse_opt = Option('reuse', help="Try to avoid exporting too much on each "
                        +"build. Only works in merge mode; it saves unpacking "
                        +"the upstream tarball each time. Implies --dont-purge "
-                       +"and --use-existing")
-    source_opt = Option('source', help="Build a source package", short_name='S')
+                       +"and --use-existing.")
+    source_opt = Option('source', help="Build a source package.",
+                        short_name='S')
     result_compat_opt = Option('result', help="Present only for compatibility "
             "with bzr-builddeb <= 2.0. Use --result-dir instead.")
     takes_args = ['branch_or_build_options*']
@@ -450,8 +451,9 @@ class cmd_merge_upstream(Command):
     version_opt = Option('version', help="The version number of this release.",
                          type=str)
     distribution_opt = Option('distribution', help="The distribution that "
-            "this release is targetted at", type=str)
-    directory_opt = Option('directory', help='Working tree into which to merge.',
+            "this release is targetted at.", type=str)
+    directory_opt = Option('directory',
+                           help='Working tree into which to merge.',
                            short_name='d', type=unicode)
 
     takes_options = [package_opt, no_user_conf_opt, version_opt,

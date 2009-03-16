@@ -28,12 +28,13 @@ from bzrlib.trace import mutter
 from bzrlib.plugins.builddeb.errors import DebianError, MissingChanges
 
 class DebianChanges(deb822.Changes):
-  """Abstraction of the .changes file. Use it to find out what files were 
-  built."""
+  """Abstraction of the .changes file used to find out what files were built."""
 
   def __init__(self, package, version, dir, arch=None):
     """
-    >>> c = DebianChanges('bzr-builddeb', '0.1-1', None, 'i386')
+    >>> import os.path
+    >>> file_dir = os.path.dirname(__file__)
+    >>> c = DebianChanges('bzr-builddeb', '0.1-1', file_dir, 'i386')
     >>> fs = c.files()
     >>> f = fs[0]
     >>> f['name']
@@ -61,7 +62,7 @@ class DebianChanges(deb822.Changes):
     fp = open(changes)
     deb822.Changes.__init__(self, fp)
     self._filename = changes
-    
+
   def files(self):
     return self['Files']
 
@@ -75,5 +76,5 @@ def _test():
 
 if __name__ == "__main__":
   _test()
-  
+
 # vim: ts=2 sts=2 sw=2
