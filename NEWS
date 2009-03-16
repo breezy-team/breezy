@@ -41,6 +41,11 @@ IN DEVELOPMENT
 
   BUG FIXES:
 
+    * Authentication plugins now receive all the parameters from the request
+      itself (aka host, port, realm, path, etc). Previously, only the 
+      authentication section name, username and encoded password were 
+      provided. (Jean-Francois Roy)
+
     * Fix "is not a stackable format" error when pushing a
       stackable-format branch with an unstackable-format repository to a
       destination with a default stacking policy.  (Andrew Bennetts)
@@ -74,6 +79,10 @@ IN DEVELOPMENT
     * New sort order for ``get_record_stream`` ``groupcompress`` which
       sorts optimally for use with groupcompress compressors. (John Arbash
       Meinel, Robert Collins)
+
+    * The ``get_credentials`` and ``set_credentials`` methods of 
+      ``AuthenticationConfig`` now accept an optional realm argument.
+      (Jean-Francois Roy)
 
     * The ``pb`` argument to ``fetch()`` is deprecated.
       (Martin Pool)
