@@ -77,6 +77,10 @@ IN DEVELOPMENT
     * New ``assertLength`` method based on one Martin has squirreled away
       somewhere. (Robert Collins, Martin Pool)
 
+    * New repository method ``refresh_data`` to cause any repository to
+      make visible data inserted into the repository by a smart server
+      fetch operation. (Robert Collins, Andrew Bennetts)
+
 
 bzr 1.13rc1 "paraskavedekatriaphobia" 2009-03-10
 ------------------------------------------------

@@ -884,18 +884,22 @@ class Repository(object):
 
         XXX: this docstring is duplicated in many places, e.g. lockable_files.py
         """
+        locked = self.is_locked()
         result = self.control_files.lock_write(token=token)
         for repo in self._fallback_repositories:
             # Writes don't affect fallback repos
             repo.lock_read()
-        self._refresh_data()
+        if not locked:
+            self._refresh_data()
         return result
 
     def lock_read(self):
+        locked = self.is_locked()
         self.control_files.lock_read()
         for repo in self._fallback_repositories:
             repo.lock_read()
-        self._refresh_data()
+        if not locked:
+            self._refresh_data()
 
     def get_physical_lock_status(self):
         return self.control_files.get_physical_lock_status()
@@ -1083,6 +1087,19 @@ class Repository(object):
 
     def suspend_write_group(self):
         raise errors.UnsuspendableWriteGroup(self)
+
+    def refresh_data(self):
+        """Re-read any data needed to to synchronise with disk.
+
+        This method is intended to be called after another repository instance
+        (such as one used by a smart server) has inserted data into the
+        repository. It may not be called during a write group, but may be
+        called at any other time.
+        """
+        if self.is_in_write_group():
+            raise errors.InternalBzrError(
+                "May not refresh_data while in a write group.")
+        self._refresh_data()
 
     def resume_write_group(self, tokens):
         if not self.is_write_locked():
@@ -1844,7 +1861,11 @@ class Repository(object):
         for repositories to maintain loaded indices across multiple locks
         by checking inside their implementation of this method to see
         whether their indices are still valid. This depends of course on
-        the disk format being validatable in this manner.
+        the disk format being validatable in this manner. This method is
+        also called by the refresh_data() public interface to cause a refresh
+        to occur while in a write lock so that data inserted by a smart server
+        push operation is visible on the client's instance of the physical
+        repository.
         """
 
     @needs_read_lock

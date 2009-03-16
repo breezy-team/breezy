@@ -869,6 +869,7 @@ def load_tests(standard_tests, module, loader):
         'test_iter_reverse_revision_history',
         'test_pack',
         'test_reconcile',
+        'test_refresh_data',
         'test_repository',
         'test_revision',
         'test_statistics',

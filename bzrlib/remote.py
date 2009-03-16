@@ -1090,6 +1090,20 @@ class RemoteRepository(_RpcHelper):
         self._ensure_real()
         return self._real_repository.make_working_trees()
 
+    def refresh_data(self):
+        """Re-read any data needed to to synchronise with disk.
+
+        This method is intended to be called after another repository instance
+        (such as one used by a smart server) has inserted data into the
+        repository. It may not be called during a write group, but may be
+        called at any other time.
+        """
+        if self.is_in_write_group():
+            raise errors.InternalBzrError(
+                "May not refresh_data while in a write group.")
+        if self._real_repository is not None:
+            self._real_repository.refresh_data()
+
     def revision_ids_to_search_result(self, result_set):
         """Convert a set of revision ids to a graph SearchResult."""
         result_parents = set()
@@ -1134,7 +1148,7 @@ class RemoteRepository(_RpcHelper):
         # if there is no specific appropriate InterRepository, this will get
         # the InterRepository base class, which raises an
         # IncompatibleRepositories when asked to fetch.
-        inter = InterRepository.get(source, self)
+        inter = repository.InterRepository.get(source, self)
         return inter.fetch(revision_id=revision_id, pb=pb,
             find_ghosts=find_ghosts, fetch_spec=fetch_spec)
 
@@ -1512,12 +1526,7 @@ class RemoteRepository(_RpcHelper):
             self._ensure_real()
             self._real_repository._pack_collection.autopack()
             return
-        if self._real_repository is not None:
-            # Reset the real repository's cache of pack names.
-            # XXX: At some point we may be able to skip this and just rely on
-            # the automatic retry logic to do the right thing, but for now we
-            # err on the side of being correct rather than being optimal.
-            self._real_repository._pack_collection.reload_pack_names()
+        self.refresh_data()
         if response[0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response)
 
@@ -1568,11 +1577,7 @@ class RemoteStreamSink(repository.StreamSink):
             resume_tokens = tokens
             return resume_tokens, missing_keys
         else:
-            if self.target_repo._real_repository is not None:
-                collection = getattr(self.target_repo._real_repository,
-                    '_pack_collection', None)
-                if collection is not None:
-                    collection.reload_pack_names()
+            self.target_repo.refresh_data()
             return [], set()
 
 
