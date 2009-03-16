@@ -255,10 +255,10 @@ class GroupCompressBlock(object):
             # If we have nothing left to decomp, we ran out of decomp bytes
             assert remaining_decomp
             needed_bytes = num_bytes - len(self._content)
-            # We always set max_size to 32kB over the minimum needed, so that zlib
-            # will give us as much as we really want.
-            # TODO: If this isn't good enough, we could make a loop here, that
-            #       keeps expanding the request until we get enough
+            # We always set max_size to 32kB over the minimum needed, so that
+            # zlib will give us as much as we really want.
+            # TODO: If this isn't good enough, we could make a loop here,
+            #       that keeps expanding the request until we get enough
             self._content += self._z_content_decompressor.decompress(
                 remaining_decomp, needed_bytes + _ZLIB_DECOMP_WINDOW)
             assert len(self._content) >= num_bytes
@@ -455,6 +455,10 @@ class LazyGroupCompressFactory(object):
         self._first = first
         self._start = start
         self._end = end
+
+    def __repr__(self):
+        return '%s(%s, first=%s)' % (self.__class__.__name__,
+            self.key, self._first)
 
     def get_bytes_as(self, storage_kind):
         if storage_kind == self.storage_kind:
@@ -965,6 +969,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
             source = key_to_source_map.get(key, self)
             if source is not current_source:
                 source_keys.append((source, []))
+                current_source = source
             source_keys[-1][1].append(key)
         return source_keys
 
@@ -981,6 +986,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 continue
             if source is not current_source:
                 source_keys.append((source, []))
+                current_source = source
             source_keys[-1][1].append(key)
         return source_keys
 
@@ -1039,28 +1045,54 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 unadded_keys, source_result)
         for key in missing:
             yield AbsentContentFactory(key)
+        last_block = None
+        lazy_buffered = None
         for source, keys in source_keys:
             if source is self:
                 for key in keys:
                     if key in self._unadded_refs:
+                        if lazy_buffered:
+                            for factory in lazy_buffered:
+                                yield factory
+                            lazy_buffered = None
+                            last_block = None
                         bytes, sha1 = self._compressor.extract(key)
                         parents = self._unadded_refs[key]
+                        yield FulltextContentFactory(key, parents, sha1, bytes)
                     else:
                         index_memo, _, parents, (method, _) = locations[key]
                         block = self._get_block(index_memo)
                         start, end = index_memo[3:5]
-                        entry, bytes = block.extract(key, start, end)
-                        sha1 = entry.sha1
-                        # TODO: If we don't have labels, then the sha1 here is
-                        #       computed from the data, so we don't want to
-                        #       re-sha the string.
-                        if not _FAST and sha_string(bytes) != sha1:
-                            raise AssertionError('sha1 sum did not match')
-                    yield FulltextContentFactory(key, parents, sha1, bytes)
+                        if block is last_block:
+                            first = False
+                        else:
+                            first = True
+                        factory = LazyGroupCompressFactory(key,
+                            parents, block, start, end, first)
+                        if first:
+                            # The first entry in a new group
+                            if lazy_buffered:
+                                for old in lazy_buffered:
+                                    yield old
+                            lazy_buffered = [factory]
+                        else:
+                            lazy_buffered.append(factory)
+                        last_block = block
             else:
+                # We need to flush everything we have buffered so far
+                if lazy_buffered:
+                    for factory in lazy_buffered:
+                        yield factory
+                    lazy_buffered = None
+                    last_block = None
                 for record in source.get_record_stream(keys, ordering,
                                                        include_delta_closure):
                     yield record
+        if lazy_buffered:
+            for factory in lazy_buffered:
+                yield factory
+            lazy_buffered = None
+            last_block = None
 
     def get_sha1s(self, keys):
         """See VersionedFiles.get_sha1s()."""
@@ -1070,7 +1102,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 result[record.key] = record.sha1
             else:
                 if record.storage_kind != 'absent':
-                    result[record.key] == sha_string(record.get_bytes_as(
+                    result[record.key] = sha_string(record.get_bytes_as(
                         'fulltext'))
         return result
 
