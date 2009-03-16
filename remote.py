@@ -180,7 +180,7 @@ class RemoteGitTagDict(tag.BasicTags):
         for k,v in refs.iteritems():
             if k.startswith("refs/tags/") and not k.endswith("^{}"):
                 v = refs.get(k+"^{}", v)
-                ret[k] = self.branch.mapping.revision_id_foreign_to_bzr(v)
+                ret[k[len("refs/tags/"):]] = self.branch.mapping.revision_id_foreign_to_bzr(v)
         return ret
 
     def set_tag(self, name, revid):
