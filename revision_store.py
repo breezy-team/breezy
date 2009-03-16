@@ -110,7 +110,7 @@ class AbstractRevisionStore(object):
 
     def get_parents_and_revision_for_entry(self, ie):
         """Get the parents and revision for an inventory entry.
-        
+ 
         :param ie: the inventory entry
         :return parents, revision_id where
             parents is the tuple of parent revision_ids for the per-file graph
@@ -135,16 +135,19 @@ class AbstractRevisionStore(object):
             if ie.file_id in inv:
                 old_rev = inv[ie.file_id].revision
                 if old_rev in head_set:
-                    heads.append(inv[ie.file_id].revision)
-                    head_set.remove(inv[ie.file_id].revision)
+                    rev_id = inv[ie.file_id].revision
+                    heads.append(rev_id)
+                    head_set.remove(rev_id)
 
         # Find the revision to use. If the content has not changed
         # since the parent, record the parent's revision.
+        if len(heads) == 0:
+            return (), ie.revision
         parent_entry = parent_candidate_entries[heads[0]]
         changed = False
         if len(heads) > 1:
             changed = True
-        elif (parent_entry.kind != ie.kind or
+        elif (parent_entry.name != ie.name or parent_entry.kind != ie.kind or
             parent_entry.parent_id != ie.parent_id): 
             changed = True
         elif ie.kind == 'file':

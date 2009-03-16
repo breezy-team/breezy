@@ -320,7 +320,6 @@ class GenericCommitHandler(processor.CommitHandler):
         new_file_id = inv.path2id(new_path)
         if new_file_id is not None:
             self.record_delete(new_path, inv[new_file_id])
-        ie.revision = self.revision_id
         self.record_rename(old_path, new_path, file_id, ie)
         self.cache_mgr.rename_path(self.branch_ref, old_path, new_path)
 
@@ -382,7 +381,12 @@ class InventoryCommitHandler(GenericCommitHandler):
 
     def record_new(self, path, ie):
         try:
-            self.per_file_parents_for_commit[ie.file_id] = ()
+            # If this is a merge, the file was most likely added already.
+            # The per-file parent(s) must therefore be calculated and
+            # we can't assume there are none.
+            per_file_parents, ie.revision = \
+                self.rev_store.get_parents_and_revision_for_entry(ie)
+            self.per_file_parents_for_commit[ie.file_id] = per_file_parents
             self.inventory.add(ie)
         except errors.DuplicateFileId:
             # Directory already exists as a file or symlink
@@ -403,9 +407,14 @@ class InventoryCommitHandler(GenericCommitHandler):
         self.inventory.remove_recursive_id(ie.file_id)
 
     def record_rename(self, old_path, new_path, file_id, ie):
+        # For a rename, the revision-id is always the new one so
+        # no need to change/set it here
+        ie.revision = self.revision_id
+        per_file_parents, _ = \
+            self.rev_store.get_parents_and_revision_for_entry(ie)
+        self.per_file_parents_for_commit[file_id] = per_file_parents
         new_basename, new_parent_id = self._ensure_directory(new_path,
             self.inventory)
-        self.per_file_parents_for_commit[file_id] = ()
         self.inventory.rename(file_id, new_parent_id, new_basename)
 
     def _delete_item(self, path, inv):
@@ -515,7 +524,7 @@ class CHKInventoryCommitHandler(GenericCommitHandler):
         #print "committed %s" % self.revision_id
 
     def _add_entry(self, entry):
-        # We need to combine the data if multiple entries have the same fileid.
+        # We need to combine the data if multiple entries have the same file-id.
         # For example, a rename followed by a modification looks like:
         #
         # (x, y, f, e) & (y, y, f, g) => (x, y, f, g)
@@ -542,16 +551,25 @@ class CHKInventoryCommitHandler(GenericCommitHandler):
             entry = (old_path, new_path, file_id, ie)
         self._delta_entries_by_fileid[file_id] = entry
 
-        # Calculate the per-file parents
+        # Calculate the per-file parents, if not already done
+        if file_id in self.per_file_parents_for_commit:
+            return
         if old_path is None:
             # add
-            self.per_file_parents_for_commit[file_id] = ()
+            # If this is a merge, the file was most likely added already.
+            # The per-file parent(s) must therefore be calculated and
+            # we can't assume there are none.
+            per_file_parents, ie.revision = \
+                self.rev_store.get_parents_and_revision_for_entry(ie)
+            self.per_file_parents_for_commit[file_id] = per_file_parents
         elif new_path is None:
             # delete
             pass
         elif old_path != new_path:
             # rename
-            self.per_file_parents_for_commit[file_id] = ()
+            per_file_parents, _ = \
+                self.rev_store.get_parents_and_revision_for_entry(ie)
+            self.per_file_parents_for_commit[file_id] = per_file_parents
         else:
             # modify
             per_file_parents, ie.revision = \
@@ -569,7 +587,6 @@ class CHKInventoryCommitHandler(GenericCommitHandler):
         if ie.kind == 'directory':
             for child_path, entry in \
                 self.basis_inventory.iter_entries_by_dir(from_dir=ie):
-                #print "deleting child %s" % child_path
                 self._add_entry((child_path, None, entry.file_id, None))
 
     def record_rename(self, old_path, new_path, file_id, old_ie):
