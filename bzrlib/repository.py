@@ -1139,7 +1139,8 @@ class Repository(object):
             raise AssertionError(
                 "fetch_spec and revision_id are mutually exclusive.")
         if self.is_in_write_group():
-            raise errors.BzrError("May not fetch while in a write group.")
+            raise errors.InternalBzrError(
+                "May not fetch while in a write group.")
         # fast path same-url fetch operations
         if self.has_same_location(source) and fetch_spec is None:
             # check that last_revision is in 'from' and then return a
@@ -2617,7 +2618,7 @@ class InterRepository(InterObject):
     InterRepository.get(other).method_name(parameters).
     """
 
-    _walk_to_common_revisions_batch_size = 1
+    _walk_to_common_revisions_batch_size = 50
     _optimisers = []
     """The available optimised InterRepository types."""
 
@@ -3298,8 +3299,6 @@ class InterOtherToRemote(InterRepository):
     calculated for (source, target._real_repository).
     """
 
-    _walk_to_common_revisions_batch_size = 50
-
     def __init__(self, source, target):
         InterRepository.__init__(self, source, target)
         self._real_inter = None
@@ -3369,8 +3368,6 @@ class InterPackToRemotePack(InterPackRepo):
     This will use the get_parent_map RPC rather than plain readvs, and also
     uses an RPC for autopacking.
     """
-
-    _walk_to_common_revisions_batch_size = 50
 
     @staticmethod
     def is_compatible(source, target):

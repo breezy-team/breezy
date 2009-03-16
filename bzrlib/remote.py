@@ -1136,7 +1136,8 @@ class RemoteRepository(_RpcHelper):
             raise AssertionError(
                 "fetch_spec and revision_id are mutually exclusive.")
         if self.is_in_write_group():
-            raise errors.BzrError("May not fetch while in a write group.")
+            raise errors.InternalBzrError(
+                "May not fetch while in a write group.")
         # fast path same-url fetch operations
         if self.has_same_location(source) and fetch_spec is None:
             # check that last_revision is in 'from' and then return a
