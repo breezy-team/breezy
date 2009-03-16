@@ -902,6 +902,12 @@ class TestCase(unittest.TestCase):
         self.assertEqual(expected.st_ino, actual.st_ino)
         self.assertEqual(expected.st_mode, actual.st_mode)
 
+    def assertLength(self, length, obj_with_len):
+        """Assert that obj_with_len is of length length."""
+        if len(obj_with_len) != length:
+            self.fail("Incorrect length: wanted %d, got %d for %r" % (
+                length, len(obj_with_len), obj_with_len))
+
     def assertPositive(self, val):
         """Assert that val is greater than 0."""
         self.assertTrue(val > 0, 'expected a positive value, but got %s' % val)
