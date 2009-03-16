@@ -1671,8 +1671,9 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         for factory in entries:
             on_seen(factory.key)
             self.assertValidStorageKind(factory.storage_kind)
-            self.assertEqual(f.get_sha1s([factory.key])[factory.key],
-                factory.sha1)
+            if factory.sha1 is not None:
+                self.assertEqual(f.get_sha1s([factory.key])[factory.key],
+                    factory.sha1)
             self.assertEqual(parents[factory.key], factory.parents)
             self.assertIsInstance(factory.get_bytes_as(factory.storage_kind),
                 str)
@@ -1815,8 +1816,9 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         for factory in entries:
             seen.add(factory.key)
             self.assertValidStorageKind(factory.storage_kind)
-            self.assertEqual(files.get_sha1s([factory.key])[factory.key],
-                factory.sha1)
+            if factory.sha1 is not None:
+                self.assertEqual(files.get_sha1s([factory.key])[factory.key],
+                                 factory.sha1)
             self.assertEqual(parent_map[factory.key], factory.parents)
             # currently no stream emits mpdiff
             self.assertRaises(errors.UnavailableRepresentation,
@@ -2020,8 +2022,9 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
                 self.assertEqual(None, factory.parents)
             else:
                 self.assertValidStorageKind(factory.storage_kind)
-                self.assertEqual(files.get_sha1s([factory.key])[factory.key],
-                    factory.sha1)
+                if factory.sha1 is not None:
+                    sha1 = files.get_sha1s([factory.key])[factory.key]
+                    self.assertEqual(sha1, factory.sha1)
                 self.assertEqual(parents[factory.key], factory.parents)
                 self.assertIsInstance(factory.get_bytes_as(factory.storage_kind),
                     str)
