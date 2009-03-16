@@ -1882,7 +1882,14 @@ class TestRemoteRepositoryCopyContent(tests.TestCaseWithTransport):
 class _StubRealPackRepository(object):
 
     def __init__(self, calls):
+        self.calls = calls
         self._pack_collection = _StubPackCollection(calls)
+
+    def is_in_write_group(self):
+        return False
+
+    def refresh_data(self):
+        self.calls.append(('pack collection reload_pack_names',))
 
 
 class _StubPackCollection(object):
@@ -1892,9 +1899,6 @@ class _StubPackCollection(object):
 
     def autopack(self):
         self.calls.append(('pack collection autopack',))
-
-    def reload_pack_names(self):
-        self.calls.append(('pack collection reload_pack_names',))
 
 
 class TestRemotePackRepositoryAutoPack(TestRemoteRepository):
