@@ -21,6 +21,7 @@
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import deprecated_graph
+from bzrlib import bugtracker
 """)
 from bzrlib import (
     errors,
@@ -112,13 +113,47 @@ class Revision(object):
         """
         return self.message.lstrip().split('\n', 1)[0]
 
+    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((1, 13, 0)))
     def get_apparent_author(self):
         """Return the apparent author of this revision.
 
-        If the revision properties contain the author name,
-        return it. Otherwise return the committer name.
+        This method is deprecated in favour of get_apparent_authors.
+
+        If the revision properties contain any author names,
+        return the first. Otherwise return the committer name.
         """
-        return self.properties.get('author', self.committer)
+        return self.get_apparent_authors()[0]
+
+    def get_apparent_authors(self):
+        """Return the apparent authors of this revision.
+
+        If the revision properties contain the names of the authors,
+        return them. Otherwise return the committer name.
+
+        The return value will be a list containing at least one element.
+        """
+        authors = self.properties.get('authors', None)
+        if authors is None:
+            author = self.properties.get('author', None)
+            if author is None:
+                return [self.committer]
+            return [author]
+        else:
+            return authors.split("\n")
+
+    def iter_bugs(self):
+        """Iterate over the bugs associated with this revision."""
+        bug_property = self.properties.get('bugs', None)
+        if bug_property is None:
+            return
+        for line in bug_property.splitlines():
+            try:
+                url, status = line.split(None, 2)
+            except ValueError:
+                raise errors.InvalidLineInBugsProperty(line)
+            if status not in bugtracker.ALLOWED_BUG_STATUSES:
+                raise errors.InvalidBugStatus(status)
+            yield url, status
 
 
 def iter_ancestors(revision_id, revision_source, only_present=False):

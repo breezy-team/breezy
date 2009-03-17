@@ -125,7 +125,6 @@ from bzrlib.errors import (
         ResourceBusy,
         TransportError,
         )
-from bzrlib.hooks import Hooks
 from bzrlib.trace import mutter, note
 from bzrlib.osutils import format_delta, rand_chars, get_host_name
 import bzrlib.ui

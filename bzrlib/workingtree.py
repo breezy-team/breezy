@@ -729,7 +729,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 kind = 'tree-reference'
             return kind, None, None, None
         elif kind == 'symlink':
-            return ('symlink', None, None, os.readlink(abspath.encode(osutils._fs_enc)))
+            return ('symlink', None, None,
+                    os.readlink(abspath.encode(osutils._fs_enc)
+                                ).decode(osutils._fs_enc))
         else:
             return (kind, None, None, None)
 

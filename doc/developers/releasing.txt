@@ -32,6 +32,11 @@ Preparing the tree for release
 
 #. Add the date and release number to ``./NEWS``
 
+#. To check that all bugs mentioned in ``./NEWS`` are actually marked as
+   closed in Launchpad, you can run ``tools/check-newsbugs.py``::
+
+     ./tools/check-newsbugs.py NEWS
+
 #. Summarize into one or two paragraphs what's new in this release.
 
 #. Commit these changes to the release branch, using a command like::
@@ -192,6 +197,10 @@ Merge the release branch back into the trunk.  Check that changes in NEWS
 were merged into the right sections.  If it's not already done, advance
 the version number in ``bzr`` and ``bzrlib/__init__.py``.  Submit this
 back into pqm for bzr.dev.
+
+You should also merge (not pull) the release branch into
+``lp:~bzr/bzr/current``, so that branch contains the current released code
+at any time.
 
 
 See also

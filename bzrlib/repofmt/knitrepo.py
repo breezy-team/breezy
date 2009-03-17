@@ -124,8 +124,6 @@ class KnitRepository(MetaDirRepository):
         self._commit_builder_class = _commit_builder_class
         self._serializer = _serializer
         self._reconcile_fixes_text_parents = True
-        self._fetch_uses_deltas = True
-        self._fetch_order = 'topological'
 
     @needs_read_lock
     def _all_revision_ids(self):
@@ -215,6 +213,17 @@ class KnitRepository(MetaDirRepository):
         revision_id = osutils.safe_revision_id(revision_id)
         return self.get_revision_reconcile(revision_id)
 
+    def _refresh_data(self):
+        if not self.is_locked():
+            return
+        # Create a new transaction to force all knits to see the scope change.
+        # This is safe because we're outside a write group.
+        self.control_files._finish_transaction()
+        if self.is_write_locked():
+            self.control_files._set_write_transaction()
+        else:
+            self.control_files._set_read_transaction()
+
     @needs_write_lock
     def reconcile(self, other=None, thorough=False):
         """Reconcile this repository."""
@@ -288,6 +297,8 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
     supports_ghosts = True
     # External lookups are not supported in this format.
     supports_external_lookups = False
+    _fetch_order = 'topological'
+    _fetch_uses_deltas = True
 
     def _get_inventories(self, repo_transport, repo, name='inventory'):
         mapper = versionedfile.ConstantMapper(name)

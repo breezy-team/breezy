@@ -40,16 +40,13 @@ from bzrlib.osutils import (
         canonical_relpath,
         )
 from bzrlib.tests import (
-        adapt_tests,
         Feature,
         probe_unicode_in_user_encoding,
-        split_suite_by_re,
         StringIOWrapper,
         SymlinkFeature,
         CaseInsCasePresFilenameFeature,
         TestCase,
         TestCaseInTempDir,
-        TestScenarioApplier,
         TestSkipped,
         )
 from bzrlib.tests.file_utils import (
@@ -881,6 +878,26 @@ class TestWalkDirs(TestCaseInTempDir):
             result.append(dirblock)
         self.assertEqual(expected_dirblocks[1:],
             [(dirinfo, [line[0:3] for line in block]) for dirinfo, block in result])
+
+    def test_walkdirs_os_error(self):
+        # <https://bugs.edge.launchpad.net/bzr/+bug/338653>
+        # Pyrex readdir didn't raise useful messages if it had an error
+        # reading the directory
+        if sys.platform == 'win32':
+            raise tests.TestNotApplicable(
+                "readdir IOError not tested on win32")
+        os.mkdir("test-unreadable")
+        os.chmod("test-unreadable", 0000)
+        # must chmod it back so that it can be removed
+        self.addCleanup(lambda: os.chmod("test-unreadable", 0700))
+        # The error is not raised until the generator is actually evaluated.
+        # (It would be ok if it happened earlier but at the moment it
+        # doesn't.)
+        e = self.assertRaises(OSError, list, osutils._walkdirs_utf8("."))
+        self.assertEquals('./test-unreadable', e.filename)
+        self.assertEquals(errno.EACCES, e.errno)
+        # Ensure the message contains the file name
+        self.assertContainsRe(str(e), "\./test-unreadable")
 
     def test__walkdirs_utf8(self):
         tree = [

@@ -34,7 +34,8 @@ from bzrlib.patches import (MalformedLine,
                             iter_patched_from_hunks,
                             parse_line,
                             parse_patch,
-                            parse_patches)
+                            parse_patches,
+                            NO_NL)
 
 
 class PatchesTester(TestCase):
@@ -117,6 +118,10 @@ class PatchesTester(TestCase):
         """Parse invalid valid hunk lines"""
         self.makeMalformedLine("hello\n")
 
+    def testMalformedLineNO_NL(self):
+        """Parse invalid '\ No newline at end of file' in hunk lines"""
+        self.makeMalformedLine(NO_NL)
+
     def compare_parsed(self, patchtext):
         lines = patchtext.splitlines(True)
         patch = parse_patch(lines.__iter__())
@@ -174,6 +179,7 @@ class PatchesTester(TestCase):
             ('diff-4', 'orig-4', 'mod-4'),
             ('diff-5', 'orig-5', 'mod-5'),
             ('diff-6', 'orig-6', 'mod-6'),
+            ('diff-7', 'orig-7', 'mod-7'),
         ]
         for diff, orig, mod in files:
             patch = self.datafile(diff)
@@ -196,6 +202,7 @@ class PatchesTester(TestCase):
             ('diff-4', 'orig-4', 'mod-4'),
             ('diff-5', 'orig-5', 'mod-5'),
             ('diff-6', 'orig-6', 'mod-6'),
+            ('diff-7', 'orig-7', 'mod-7'),
         ]
         for diff, orig, mod in files:
             parsed = parse_patch(self.datafile(diff))

@@ -70,8 +70,17 @@ class TestTrace(TestCase):
 
     def test_format_os_error(self):
         try:
+            os.rmdir('nosuchfile22222')
+        except OSError:
+            pass
+        msg = _format_exception()
+        self.assertContainsRe(msg,
+            r'^bzr: ERROR: \[Errno .*\] No such file.*nosuchfile22222')
+
+    def test_format_io_error(self):
+        try:
             file('nosuchfile22222')
-        except (OSError, IOError):
+        except IOError:
             pass
         msg = _format_exception()
         self.assertContainsRe(msg, r'^bzr: ERROR: \[Errno .*\] No such file.*nosuchfile')

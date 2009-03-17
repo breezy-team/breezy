@@ -28,6 +28,7 @@ from bzrlib import (
     add,
     bzrdir,
     hooks,
+    symbol_versioning,
     )
 from bzrlib.osutils import dirname
 from bzrlib.revisiontree import RevisionTree
@@ -41,7 +42,6 @@ from bzrlib import (
     )
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.osutils import splitpath
-from bzrlib.symbol_versioning import DEPRECATED_PARAMETER
 
 
 def needs_tree_write_lock(unbound):
@@ -192,12 +192,32 @@ class MutableTree(tree.Tree):
             revprops['branch-nick'] = self.branch._get_nick(
                 kwargs.get('local', False),
                 possible_master_transports)
+        authors = kwargs.pop('authors', None)
         author = kwargs.pop('author', None)
-        if author is not None:
-            if 'author' in revprops:
+        if authors is not None:
+            if author is not None:
+                raise AssertionError('Specifying both author and authors '
+                        'is not allowed. Specify just authors instead')
+            if 'author' in revprops or 'authors' in revprops:
                 # XXX: maybe we should just accept one of them?
                 raise AssertionError('author property given twice')
-            revprops['author'] = author
+            if authors:
+                for individual in authors:
+                    if '\n' in individual:
+                        raise AssertionError('\\n is not a valid character '
+                                'in an author identity')
+                revprops['authors'] = '\n'.join(authors)
+        if author is not None:
+            symbol_versioning.warn('The parameter author was deprecated'
+                   ' in version 1.13. Use authors instead',
+                   DeprecationWarning)
+            if 'author' in revprops or 'authors' in revprops:
+                # XXX: maybe we should just accept one of them?
+                raise AssertionError('author property given twice')
+            if '\n' in author:
+                raise AssertionError('\\n is not a valid character '
+                        'in an author identity')
+            revprops['authors'] = author
         # args for wt.commit start at message from the Commit.commit method,
         args = (message, ) + args
         for hook in MutableTree.hooks['start_commit']:
@@ -549,8 +569,11 @@ class MutableTreeHooks(hooks.Hooks):
 
         """
         hooks.Hooks.__init__(self)
-        # Invoked before a commit is done in a tree. New in 1.4
-        self['start_commit'] = []
+        self.create_hook(hooks.HookPoint('start_commit',
+            "Called before a commit is performed on a tree. The start commit "
+            "hook is able to change the tree before the commit takes place. "
+            "start_commit is called with the bzrlib.tree.MutableTree that the "
+            "commit is being performed on.", (1, 4), None))
 
 
 # install the default hooks into the MutableTree class.

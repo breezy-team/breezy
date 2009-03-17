@@ -38,7 +38,8 @@ from bzrlib import (
     )
 from bzrlib.branch import Branch, BranchReferenceFormat
 import bzrlib.smart.branch
-import bzrlib.smart.bzrdir
+import bzrlib.smart.bzrdir, bzrlib.smart.bzrdir as smart_dir
+import bzrlib.smart.packrepository
 import bzrlib.smart.repository
 from bzrlib.smart.request import (
     FailedSmartServerResponse,
@@ -47,9 +48,7 @@ from bzrlib.smart.request import (
     SuccessfulSmartServerResponse,
     )
 from bzrlib.tests import (
-    iter_suite_tests,
     split_suite_by_re,
-    TestScenarioApplier,
     )
 from bzrlib.transport import chroot, get_transport
 from bzrlib.util import bencode
@@ -59,22 +58,22 @@ def load_tests(standard_tests, module, loader):
     """Multiply tests version and protocol consistency."""
     # FindRepository tests.
     bzrdir_mod = bzrlib.smart.bzrdir
-    applier = TestScenarioApplier()
-    applier.scenarios = [
+    scenarios = [
         ("find_repository", {
             "_request_class":bzrdir_mod.SmartServerRequestFindRepositoryV1}),
         ("find_repositoryV2", {
             "_request_class":bzrdir_mod.SmartServerRequestFindRepositoryV2}),
+        ("find_repositoryV3", {
+            "_request_class":bzrdir_mod.SmartServerRequestFindRepositoryV3}),
         ]
     to_adapt, result = split_suite_by_re(standard_tests,
         "TestSmartServerRequestFindRepository")
     v2_only, v1_and_2 = split_suite_by_re(to_adapt,
         "_v2")
-    for test in iter_suite_tests(v1_and_2):
-        result.addTests(applier.adapt(test))
-    del applier.scenarios[0]
-    for test in iter_suite_tests(v2_only):
-        result.addTests(applier.adapt(test))
+    tests.multiply_tests(v1_and_2, scenarios, result)
+    # The first scenario is only applicable to v1 protocols, it is deleted
+    # since.
+    tests.multiply_tests(v2_only, scenarios[1:], result)
     return result
 
 
@@ -160,6 +159,43 @@ class TestSmartServerRequest(tests.TestCaseWithMemoryTransport):
             request.transport_from_client_path('foo/').base)
 
 
+class TestSmartServerBzrDirRequestCloningMetaDir(
+    tests.TestCaseWithMemoryTransport):
+    """Tests for BzrDir.cloning_metadir."""
+
+    def test_cloning_metadir(self):
+        """When there is a bzrdir present, the call succeeds."""
+        backing = self.get_transport()
+        dir = self.make_bzrdir('.')
+        local_result = dir.cloning_metadir()
+        request_class = smart_dir.SmartServerBzrDirRequestCloningMetaDir
+        request = request_class(backing)
+        expected = SuccessfulSmartServerResponse(
+            (local_result.network_name(),
+            local_result.repository_format.network_name(),
+            ('branch', local_result.get_branch_format().network_name())))
+        self.assertEqual(expected, request.execute('', 'False'))
+
+    def test_cloning_metadir_reference(self):
+        """The request works when bzrdir contains a branch reference."""
+        backing = self.get_transport()
+        referenced_branch = self.make_branch('referenced')
+        dir = self.make_bzrdir('.')
+        local_result = dir.cloning_metadir()
+        reference = BranchReferenceFormat().initialize(dir, referenced_branch)
+        reference_url = BranchReferenceFormat().get_reference(dir)
+        # The server shouldn't try to follow the branch reference, so it's fine
+        # if the referenced branch isn't reachable.
+        backing.rename('referenced', 'moved')
+        request_class = smart_dir.SmartServerBzrDirRequestCloningMetaDir
+        request = request_class(backing)
+        expected = SuccessfulSmartServerResponse(
+            (local_result.network_name(),
+            local_result.repository_format.network_name(),
+            ('ref', reference_url)))
+        self.assertEqual(expected, request.execute('', 'False'))
+
+
 class TestSmartServerRequestCreateRepository(tests.TestCaseWithMemoryTransport):
     """Tests for BzrDir.create_repository."""
 
@@ -214,7 +250,12 @@ class TestSmartServerRequestFindRepository(tests.TestCaseWithMemoryTransport):
             subtrees = 'yes'
         else:
             subtrees = 'no'
-        if (smart.bzrdir.SmartServerRequestFindRepositoryV2 ==
+        if (smart.bzrdir.SmartServerRequestFindRepositoryV3 ==
+            self._request_class):
+            return SuccessfulSmartServerResponse(
+                ('ok', '', rich_root, subtrees, 'no',
+                 repo._format.network_name()))
+        elif (smart.bzrdir.SmartServerRequestFindRepositoryV2 ==
             self._request_class):
             # All tests so far are on formats, and for non-external
             # repositories.
@@ -316,6 +357,36 @@ class TestSmartServerRequestOpenBranch(TestCaseWithChrootedTransport):
         reference_url = BranchReferenceFormat().get_reference(checkout.bzrdir)
         self.assertFileEqual(reference_url, 'reference/.bzr/branch/location')
         self.assertEqual(SmartServerResponse(('ok', reference_url)),
+            request.execute('reference'))
+
+
+class TestSmartServerRequestOpenBranchV2(TestCaseWithChrootedTransport):
+
+    def test_no_branch(self):
+        """When there is no branch, ('nobranch', ) is returned."""
+        backing = self.get_transport()
+        self.make_bzrdir('.')
+        request = smart.bzrdir.SmartServerRequestOpenBranchV2(backing)
+        self.assertEqual(SmartServerResponse(('nobranch', )),
+            request.execute(''))
+
+    def test_branch(self):
+        """When there is a branch, 'ok' is returned."""
+        backing = self.get_transport()
+        expected = self.make_branch('.')._format.network_name()
+        request = smart.bzrdir.SmartServerRequestOpenBranchV2(backing)
+        self.assertEqual(SuccessfulSmartServerResponse(('branch', expected)),
+            request.execute(''))
+
+    def test_branch_reference(self):
+        """When there is a branch reference, the reference URL is returned."""
+        backing = self.get_transport()
+        request = smart.bzrdir.SmartServerRequestOpenBranchV2(backing)
+        branch = self.make_branch('branch')
+        checkout = branch.create_checkout('reference',lightweight=True)
+        reference_url = BranchReferenceFormat().get_reference(checkout.bzrdir)
+        self.assertFileEqual(reference_url, 'reference/.bzr/branch/location')
+        self.assertEqual(SuccessfulSmartServerResponse(('ref', reference_url)),
             request.execute('reference'))
 
 
@@ -632,6 +703,38 @@ class TestSmartServerBranchRequestSetLastRevisionEx(
         self.assertEqual('child-1', self.tree.branch.last_revision())
 
 
+class TestSmartServerBranchRequestGetParent(tests.TestCaseWithMemoryTransport):
+
+    def test_get_parent_none(self):
+        base_branch = self.make_branch('base')
+        request = smart.branch.SmartServerBranchGetParent(self.get_transport())
+        response = request.execute('base')
+        self.assertEquals(
+            SuccessfulSmartServerResponse(('',)), response)
+
+    def test_get_parent_something(self):
+        base_branch = self.make_branch('base')
+        base_branch.set_parent(self.get_url('foo'))
+        request = smart.branch.SmartServerBranchGetParent(self.get_transport())
+        response = request.execute('base')
+        self.assertEquals(
+            SuccessfulSmartServerResponse(("../foo",)),
+            response)
+
+
+class TestSmartServerBranchRequestGetTagsBytes(tests.TestCaseWithMemoryTransport):
+# Only called when the branch format and tags match [yay factory
+# methods] so only need to test straight forward cases.
+
+    def test_get_bytes(self):
+        base_branch = self.make_branch('base')
+        request = smart.branch.SmartServerBranchGetTagsBytes(
+            self.get_transport())
+        response = request.execute('base')
+        self.assertEquals(
+            SuccessfulSmartServerResponse(('',)), response)
+
+
 class TestSmartServerBranchRequestGetStackedOnURL(tests.TestCaseWithMemoryTransport):
 
     def test_get_stacked_on_url(self):
@@ -867,6 +970,45 @@ class TestSmartServerRepositoryGetRevisionGraph(tests.TestCaseWithMemoryTranspor
             request.execute('', 'missingrevision'))
 
 
+class TestSmartServerRepositoryGetStream(tests.TestCaseWithMemoryTransport):
+
+    def make_two_commit_repo(self):
+        tree = self.make_branch_and_memory_tree('.')
+        tree.lock_write()
+        tree.add('')
+        r1 = tree.commit('1st commit')
+        r2 = tree.commit('2nd commit', rev_id=u'\xc8'.encode('utf-8'))
+        tree.unlock()
+        repo = tree.branch.repository
+        return repo, r1, r2
+
+    def test_ancestry_of(self):
+        """The search argument may be a 'ancestry-of' some heads'."""
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryGetStream(backing)
+        repo, r1, r2 = self.make_two_commit_repo()
+        fetch_spec = ['ancestry-of', r2]
+        lines = '\n'.join(fetch_spec)
+        request.execute('', repo._format.network_name())
+        response = request.do_body(lines)
+        self.assertEqual(('ok',), response.args)
+        stream_bytes = ''.join(response.body_stream)
+        self.assertStartsWith(stream_bytes, 'Bazaar pack format 1')
+
+    def test_search(self):
+        """The search argument may be a 'search' of some explicit keys."""
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryGetStream(backing)
+        repo, r1, r2 = self.make_two_commit_repo()
+        fetch_spec = ['search', '%s %s' % (r1, r2), 'null:', '2']
+        lines = '\n'.join(fetch_spec)
+        request.execute('', repo._format.network_name())
+        response = request.do_body(lines)
+        self.assertEqual(('ok',), response.args)
+        stream_bytes = ''.join(response.body_stream)
+        self.assertStartsWith(stream_bytes, 'Bazaar pack format 1')
+
+
 class TestSmartServerRequestHasRevision(tests.TestCaseWithMemoryTransport):
 
     def test_missing_revision(self):
@@ -972,9 +1114,6 @@ class TestSmartServerRepositoryIsShared(tests.TestCaseWithMemoryTransport):
 
 class TestSmartServerRepositoryLockWrite(tests.TestCaseWithMemoryTransport):
 
-    def setUp(self):
-        tests.TestCaseWithMemoryTransport.setUp(self)
-
     def test_lock_write_on_unlocked_repo(self):
         backing = self.get_transport()
         request = smart.repository.SmartServerRepositoryLockWrite(backing)
@@ -1005,6 +1144,54 @@ class TestSmartServerRepositoryLockWrite(tests.TestCaseWithMemoryTransport):
         response = request.execute('')
         self.assertFalse(response.is_successful())
         self.assertEqual('LockFailed', response.args[0])
+
+
+class TestInsertStreamBase(tests.TestCaseWithMemoryTransport):
+
+    def make_empty_byte_stream(self, repo):
+        byte_stream = smart.repository._stream_to_byte_stream([], repo._format)
+        return ''.join(byte_stream)
+
+
+class TestSmartServerRepositoryInsertStream(TestInsertStreamBase):
+
+    def test_insert_stream_empty(self):
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryInsertStream(backing)
+        repository = self.make_repository('.')
+        response = request.execute('', '')
+        self.assertEqual(None, response)
+        response = request.do_chunk(self.make_empty_byte_stream(repository))
+        self.assertEqual(None, response)
+        response = request.do_end()
+        self.assertEqual(SmartServerResponse(('ok', )), response)
+        
+
+class TestSmartServerRepositoryInsertStreamLocked(TestInsertStreamBase):
+
+    def test_insert_stream_empty(self):
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryInsertStreamLocked(
+            backing)
+        repository = self.make_repository('.', format='knit')
+        lock_token = repository.lock_write()
+        response = request.execute('', '', lock_token)
+        self.assertEqual(None, response)
+        response = request.do_chunk(self.make_empty_byte_stream(repository))
+        self.assertEqual(None, response)
+        response = request.do_end()
+        self.assertEqual(SmartServerResponse(('ok', )), response)
+        repository.unlock()
+
+    def test_insert_stream_with_wrong_lock_token(self):
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryInsertStreamLocked(
+            backing)
+        repository = self.make_repository('.', format='knit')
+        lock_token = repository.lock_write()
+        self.assertRaises(
+            errors.TokenMismatch, request.execute, '', '', 'wrong-token')
+        repository.unlock()
 
 
 class TestSmartServerRepositoryUnlock(tests.TestCaseWithMemoryTransport):
@@ -1095,6 +1282,8 @@ class TestSmartServerPackRepositoryAutopack(tests.TestCaseWithTransport):
 
     def test_autopack_needed(self):
         repo = self.make_repo_needing_autopacking()
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
         backing = self.get_transport()
         request = smart.packrepository.SmartServerPackRepositoryAutopack(
             backing)
@@ -1106,6 +1295,8 @@ class TestSmartServerPackRepositoryAutopack(tests.TestCaseWithTransport):
     def test_autopack_not_needed(self):
         tree = self.make_branch_and_tree('.', format='pack-0.92')
         repo = tree.branch.repository
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
         for x in range(9):
             tree.commit('commit %s' % x)
         backing = self.get_transport()
@@ -1142,6 +1333,12 @@ class TestHandlers(tests.TestCase):
             smart.request.request_handlers.get('Branch.get_config_file'),
             smart.branch.SmartServerBranchGetConfigFile)
         self.assertEqual(
+            smart.request.request_handlers.get('Branch.get_parent'),
+            smart.branch.SmartServerBranchGetParent)
+        self.assertEqual(
+            smart.request.request_handlers.get('Branch.get_tags_bytes'),
+            smart.branch.SmartServerBranchGetTagsBytes)
+        self.assertEqual(
             smart.request.request_handlers.get('Branch.lock_write'),
             smart.branch.SmartServerBranchRequestLockWrite)
         self.assertEqual(
@@ -1169,8 +1366,14 @@ class TestHandlers(tests.TestCase):
             smart.request.request_handlers.get('BzrDirFormat.initialize'),
             smart.bzrdir.SmartServerRequestInitializeBzrDir)
         self.assertEqual(
+            smart.request.request_handlers.get('BzrDir.cloning_metadir'),
+            smart.bzrdir.SmartServerBzrDirRequestCloningMetaDir)
+        self.assertEqual(
             smart.request.request_handlers.get('BzrDir.open_branch'),
             smart.bzrdir.SmartServerRequestOpenBranch)
+        self.assertEqual(
+            smart.request.request_handlers.get('BzrDir.open_branchV2'),
+            smart.bzrdir.SmartServerRequestOpenBranchV2)
         self.assertEqual(
             smart.request.request_handlers.get('PackRepository.autopack'),
             smart.packrepository.SmartServerPackRepositoryAutopack)
@@ -1185,8 +1388,17 @@ class TestHandlers(tests.TestCase):
                 'Repository.get_revision_graph'),
             smart.repository.SmartServerRepositoryGetRevisionGraph)
         self.assertEqual(
+            smart.request.request_handlers.get('Repository.get_stream'),
+            smart.repository.SmartServerRepositoryGetStream)
+        self.assertEqual(
             smart.request.request_handlers.get('Repository.has_revision'),
             smart.repository.SmartServerRequestHasRevision)
+        self.assertEqual(
+            smart.request.request_handlers.get('Repository.insert_stream'),
+            smart.repository.SmartServerRepositoryInsertStream)
+        self.assertEqual(
+            smart.request.request_handlers.get('Repository.insert_stream_locked'),
+            smart.repository.SmartServerRepositoryInsertStreamLocked)
         self.assertEqual(
             smart.request.request_handlers.get('Repository.is_shared'),
             smart.repository.SmartServerRepositoryIsShared)
