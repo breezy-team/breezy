@@ -97,7 +97,7 @@ class SmartServerRepositoryRequest(SmartServerRequest):
                     break
                 search.stop_searching_any(exclude_keys.intersection(next_revs))
             search_result = search.get_result()
-            if search_result.get_recipe()[2] != revision_count:
+            if search_result.get_recipe()[3] != revision_count:
                 # we got back a different amount of data than expected, this
                 # gets reported as NoSuchRevision, because less revisions
                 # indicates missing revisions, and more should never happen as

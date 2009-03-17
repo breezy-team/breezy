@@ -3019,7 +3019,7 @@ class InterPackRepo(InterSameDataRepository):
                 raise AssertionError(
                     "InterPackRepo.fetch doesn't support "
                     "fetching multiple heads yet.")
-            revision_id = fetch_spec.heads[0]
+            revision_id = list(fetch_spec.heads)[0]
             fetch_spec = None
         if revision_id is None:
             # TODO:
