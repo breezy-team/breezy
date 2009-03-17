@@ -394,12 +394,17 @@ def commit_rebase(wt, oldrev, newrevid):
     revprops = dict(oldrev.properties)
     revprops[REVPROP_REBASE_OF] = oldrev.revision_id
     committer = wt.branch.get_config().username()
-    author = oldrev.get_apparent_author()
-    if author == committer or 'author' in revprops:
-        author = None
+    authors = oldrev.get_apparent_authors()
+    if oldrev.committer == committer:
+        # No need to explicitly record the authors if the original 
+        # committer is rebasing.
+        if [oldrev.committer] == authors:
+            authors = None
+    else:
+        authors.append(oldrev.committer)
     wt.commit(message=oldrev.message, timestamp=oldrev.timestamp, 
               timezone=oldrev.timezone, revprops=revprops, rev_id=newrevid,
-              committer=committer, author=author)
+              committer=committer, authors=authors)
     write_active_rebase_revid(wt, None)
 
 
