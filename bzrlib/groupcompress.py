@@ -198,24 +198,19 @@ class GroupCompressBlock(object):
                 value = intern(value)
             info_dict[key] = value
 
-    def _expand_content(self):
-        assert self._z_content is not None
-        assert self._content is None
-        if self._z_content == '':
-            self._content = ''
-        elif self._compressor_name == 'lzma':
-            self._content = pylzma.decompress(self._z_content)
-        else:
-            assert self._compressor_name == 'zlib'
-            self._content = zlib.decompress(self._z_content)
-        self._z_content = None
-
     def _ensure_content(self, num_bytes=None):
         """Make sure that content has been expanded enough.
 
         :param num_bytes: Ensure that we have extracted at least num_bytes of
             content. If None, consume everything
         """
+        # TODO: If we re-use the same content block at different times during
+        #       get_record_stream(), it is possible that the first pass will
+        #       get inserted, triggering an extract/_ensure_content() which
+        #       will get rid of _z_content. And then the next use of the block
+        #       will try to access _z_content (to send it over the wire), and
+        #       fail because it is already extracted. Consider never releasing
+        #       _z_content because of this.
         if num_bytes is None:
             num_bytes = self._content_length
         if self._content_length is not None:
@@ -338,11 +333,23 @@ class GroupCompressBlock(object):
         :return: The bytes for the content
         """
         # Make sure we have enough bytes for this record
-        self._ensure_content(end)
+        # TODO: if we didn't want to track the end of this entry, we could
+        #       _ensure_content(start+enough_bytes_for_type_and_length), and
+        #       then decode the entry length, and
+        #       _ensure_content(start+1+length)
+        #       It is 2 calls to _ensure_content(), but we always buffer a bit
+        #       extra anyway, and it means 1 less offset stored in the index,
+        #       and transmitted over the wire
+        if end is None:
+            # it takes 5 bytes to encode 2^32, so we need 1 byte to hold the
+            # 'f' or 'd' declaration, and then 5 more for the record length.
+            self._ensure_content(start + 6)
+        else:
+            self._ensure_content(end)
         # The bytes are 'f' or 'd' for the type, then a variable-length
         # base128 integer for the content size, then the actual content
-        # We know that the variable-length integer won't be longer than 10
-        # bytes (it only takes 5 bytes to encode 2^32)
+        # We know that the variable-length integer won't be longer than 5
+        # bytes (it takes 5 bytes to encode 2^32)
         c = self._content[start]
         if c == 'f':
             type = 'fulltext'
@@ -351,11 +358,18 @@ class GroupCompressBlock(object):
                 raise ValueError('Unknown content control code: %s'
                                  % (c,))
             type = 'delta'
+        content_len, len_len = decode_base128_int(
+                            self._content[start + 1:start + 6])
+        content_start = start + 1 + len_len
+        if end is None:
+            end = content_start + content_len
+            self._ensure_content(end)
+        else:
+            if end != content_start + content_len:
+                raise ValueError('end != len according to field header'
+                    ' %s != %s' % (end, content_start + content_len))
         entry = GroupCompressBlockEntry(key, type, sha1=None,
                                         start=start, length=end-start)
-        content_len, len_len = decode_base128_int(
-                            self._content[entry.start + 1:entry.start + 11])
-        content_start = entry.start + 1 + len_len
         content = self._content[content_start:end]
         if c == 'f':
             bytes = content
@@ -452,6 +466,11 @@ class LazyGroupCompressFactory(object):
         self.key = key
         self.parents = parents
         self.sha1 = None
+        # Note: This attribute coupled with Manager._factories creates a
+        #       reference cycle. Perhaps we would rather use a weakref(), or
+        #       find an appropriate time to release the ref. After the first
+        #       get_bytes_as call? After Manager.get_record_stream() returns
+        #       the object?
         self._manager = manager
         self.storage_kind = 'groupcompress-block'
         if not first:
@@ -504,6 +523,8 @@ class LazyGroupContentManager(object):
         """Get a record for all keys added so far."""
         for factory in self._factories:
             yield factory
+        # TODO: Consider setting self._factories = None after the above loop,
+        #       as it will break the reference cycle
 
     def _wire_bytes(self):
         """Return a byte stream suitable for transmitting over the wire."""
@@ -521,6 +542,12 @@ class LazyGroupContentManager(object):
         #       use a heuristic to decide that we need to generate a new group.
         #       (that could be if *any* bytes are unused, or just if more than
         #       XX percent is unused)
+        lines = ['groupcompress-block']
+        # The minimal info we need is the key and the start offset. The length
+        # and type are encoded in the record itself. However, passing in the 
+        # The list of keys, and the start offset, the length
+        for factory in self._factories:
+            pass
         return ''
 
 
@@ -1093,6 +1120,15 @@ class GroupCompressVersionedFiles(VersionedFiles):
         for key in missing:
             yield AbsentContentFactory(key)
         manager = None
+        # TODO: This works fairly well at batching up existing groups into a
+        #       streamable format, and possibly allowing for taking one big
+        #       group and splitting it when it isn't fully utilized.
+        #       However, it doesn't allow us to find under-utilized groups and
+        #       combine them into a bigger group on the fly.
+        #       (Consider the issue with how chk_map inserts texts
+        #       one-at-a-time.) This could be done at insert_record_stream()
+        #       time, but it probably would decrease the number of
+        #       bytes-on-the-wire for fetch.
         for source, keys in source_keys:
             if source is self:
                 for key in keys:

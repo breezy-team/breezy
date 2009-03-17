@@ -187,6 +187,16 @@ class TestBase128Int(tests.TestCase):
 
 class TestGroupCompressBlock(tests.TestCase):
 
+    def make_block(self, key_to_text):
+        """Create a GroupCompressBlock, filling it with the given texts."""
+        compressor = groupcompress.GroupCompressor()
+        start = 0
+        for key in sorted(key_to_text):
+            compressor.compress(key, key_to_text[key], None)
+        entries = compressor._block._entries
+        raw_bytes = compressor.flush()
+        return entries, groupcompress.GroupCompressBlock.from_bytes(raw_bytes)
+
     def test_from_empty_bytes(self):
         self.assertRaises(ValueError,
                           groupcompress.GroupCompressBlock.from_bytes, '')
@@ -307,6 +317,21 @@ class TestGroupCompressBlock(tests.TestCase):
                              'start:0\n'
                              'length:100\n'
                              '\n', raw_bytes)
+
+    def test_extract_no_end(self):
+        # We should be able to extract a record, even if we only know the start
+        # of the bytes.
+        texts = {
+            ('key1',): 'text for key1\nhas bytes that are common\n',
+            ('key2',): 'text for key2\nhas bytes that are common\n',
+        }
+        entries, block = self.make_block(texts)
+        self.assertEqualDiff('text for key1\nhas bytes that are common\n',
+                             block.extract(('key1',), entries[('key1',)].start,
+                                           end=None)[1])
+        self.assertEqualDiff('text for key2\nhas bytes that are common\n',
+                             block.extract(('key2',), entries[('key2',)].start,
+                                           end=None)[1])
 
     def test_partial_decomp(self):
         content_chunks = []
@@ -451,6 +476,12 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
                    "with a reasonable amount of compressible bytes\n",
         ('key2',): "another text\n"
                    "with a reasonable amount of compressible bytes\n",
+        ('key3',): "yet another text which won't be extracted\n"
+                   "with a reasonable amount of compressible bytes\n",
+        ('key4',): "this will be extracted\n"
+                   "but references bytes from\n"
+                   "yet another text which won't be extracted\n"
+                   "with a reasonable amount of compressible bytes\n",
     }
     def make_block(self, key_to_text):
         """Create a GroupCompressBlock, filling it with the given texts."""
@@ -462,15 +493,33 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
         raw_bytes = compressor.flush()
         return entries, groupcompress.GroupCompressBlock.from_bytes(raw_bytes)
 
+    def add_key_to_manager(self, key, entries, block, manager):
+        entry = entries[key]
+        manager.add_factory(entry.key, (), entry.start, entry.end)
+
     def test_get_fulltexts(self):
         entries, block = self.make_block(self._texts)
         manager = groupcompress.LazyGroupContentManager(block)
-        entry = entries[('key1',)]
-        manager.add_factory(entry.key, (), entry.start, entry.end)
-        entry = entries[('key2',)]
-        manager.add_factory(entry.key, (), entry.start, entry.end)
+        self.add_key_to_manager(('key1',), entries, block, manager)
+        self.add_key_to_manager(('key2',), entries, block, manager)
         result_order = []
         for record in manager.get_record_stream():
             result_order.append(record.key)
             text = self._texts[record.key]
             self.assertEqual(text, record.get_bytes_as('fulltext'))
+        self.assertEqual([('key1',), ('key2',)], result_order)
+
+        # If we build the manager in the opposite order, we should get them
+        # back in the opposite order
+        manager = groupcompress.LazyGroupContentManager(block)
+        self.add_key_to_manager(('key2',), entries, block, manager)
+        self.add_key_to_manager(('key1',), entries, block, manager)
+        result_order = []
+        for record in manager.get_record_stream():
+            result_order.append(record.key)
+            text = self._texts[record.key]
+            self.assertEqual(text, record.get_bytes_as('fulltext'))
+        self.assertEqual([('key2',), ('key1',)], result_order)
+
+    def test__wire_bytes(self):
+        entries, block = self.make_block(self._texts)
