@@ -31,10 +31,10 @@ import getpass
 import os
 import os.path
 import urlparse
+import random
 import socket
 import stat
 import time
-import random
 from warnings import warn
 
 from bzrlib import (
