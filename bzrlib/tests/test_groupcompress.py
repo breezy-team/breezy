@@ -194,9 +194,12 @@ class TestGroupCompressBlock(tests.TestCase):
         start = 0
         for key in sorted(key_to_text):
             compressor.compress(key, key_to_text[key], None)
-        entries = compressor._block._entries
-        raw_bytes = compressor.flush()
-        return entries, groupcompress.GroupCompressBlock.from_bytes(raw_bytes)
+        block = compressor.flush()
+        entries = block._entries
+        # Go through from_bytes(to_bytes()) so that we start with a compressed
+        # content object
+        return entries, groupcompress.GroupCompressBlock.from_bytes(
+            block.to_bytes())
 
     def test_from_empty_bytes(self):
         self.assertRaises(ValueError,
@@ -595,8 +598,9 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
         start = 0
         for key in sorted(key_to_text):
             compressor.compress(key, key_to_text[key], None)
-        entries = compressor._block._entries
-        raw_bytes = compressor.flush()
+        block = compressor.flush()
+        entries = block._entries
+        raw_bytes = block.to_bytes()
         return entries, groupcompress.GroupCompressBlock.from_bytes(raw_bytes)
 
     def add_key_to_manager(self, key, entries, block, manager):
@@ -692,3 +696,42 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
             text = self._texts[record.key]
             self.assertEqual(text, record.get_bytes_as('fulltext'))
         self.assertEqual([('key1',), ('key4',)], result_order)
+
+    def test__check_rebuild_no_changes(self):
+        entries, block = self.make_block(self._texts)
+        manager = groupcompress._LazyGroupContentManager(block)
+        # Request all the keys, which ensures that we won't rebuild
+        self.add_key_to_manager(('key1',), entries, block, manager)
+        self.add_key_to_manager(('key2',), entries, block, manager)
+        self.add_key_to_manager(('key3',), entries, block, manager)
+        self.add_key_to_manager(('key4',), entries, block, manager)
+        manager._check_rebuild_block()
+        self.assertIs(block, manager._block)
+
+    def test__check_rebuild_only_one(self):
+        entries, block = self.make_block(self._texts)
+        manager = groupcompress._LazyGroupContentManager(block)
+        # Request just the first key, which should trigger a 'strip' action
+        self.add_key_to_manager(('key1',), entries, block, manager)
+        manager._check_rebuild_block()
+        self.assertIsNot(block, manager._block)
+        self.assertTrue(block._content_length > manager._block._content_length)
+        # We should be able to still get the content out of this block, though
+        # it should only have 1 entry
+        for record in manager.get_record_stream():
+            self.assertEqual(('key1',), record.key)
+            self.assertEqual(self._texts[record.key],
+                             record.get_bytes_as('fulltext'))
+
+    def test__check_rebuild_middle(self):
+        entries, block = self.make_block(self._texts)
+        manager = groupcompress._LazyGroupContentManager(block)
+        # Request a small key in the middle should trigger a 'rebuild'
+        self.add_key_to_manager(('key4',), entries, block, manager)
+        manager._check_rebuild_block()
+        self.assertIsNot(block, manager._block)
+        self.assertTrue(block._content_length > manager._block._content_length)
+        for record in manager.get_record_stream():
+            self.assertEqual(('key4',), record.key)
+            self.assertEqual(self._texts[record.key],
+                             record.get_bytes_as('fulltext'))

@@ -19,6 +19,7 @@
 from itertools import izip
 from cStringIO import StringIO
 import struct
+import time
 import zlib
 try:
     import pylzma
@@ -34,6 +35,7 @@ from bzrlib import (
     osutils,
     pack,
     patiencediff,
+    trace,
     )
 from bzrlib.graph import Graph
 from bzrlib.knit import _DirectPackAccess
@@ -463,11 +465,11 @@ class GroupCompressBlock(object):
         return ''.join(chunks)
 
 
-class LazyGroupCompressFactory(object):
+class _LazyGroupCompressFactory(object):
     """Yield content from a GroupCompressBlock on demand."""
 
     def __init__(self, key, parents, manager, start, end, first):
-        """Create a LazyGroupCompressFactory
+        """Create a _LazyGroupCompressFactory
 
         :param key: The key of just this record
         :param parents: The parents of this key (possibly None)
@@ -517,7 +519,7 @@ class LazyGroupCompressFactory(object):
 
 
 class _LazyGroupContentManager(object):
-    """This manages a group of LazyGroupCompressFactory objects."""
+    """This manages a group of _LazyGroupCompressFactory objects."""
 
     def __init__(self, block):
         self._block = block
@@ -530,7 +532,7 @@ class _LazyGroupContentManager(object):
         else:
             first = False
         # Note that this creates a reference cycle....
-        factory = LazyGroupCompressFactory(key, parents, self,
+        factory = _LazyGroupCompressFactory(key, parents, self,
             start, end, first=first)
         self._factories.append(factory)
 
@@ -540,6 +542,74 @@ class _LazyGroupContentManager(object):
             yield factory
         # TODO: Consider setting self._factories = None after the above loop,
         #       as it will break the reference cycle
+
+    def _trim_block(self, last_byte):
+        """Create a new GroupCompressBlock, with just some of the content."""
+        # None of the factories need to be adjusted, because the content is
+        # located in an identical place. Just that some of the unreferenced
+        # trailing bytes are stripped
+        trace.mutter('stripping trailing bytes from groupcompress block'
+                     ' %d => %d', self._block._content_length, last_byte)
+        new_block = GroupCompressBlock()
+        self._block._ensure_content(last_byte)
+        new_block.set_content(self._block._content[:last_byte])
+        self._block = new_block
+
+    def _rebuild_block(self):
+        """Create a new GroupCompressBlock with only the referenced texts."""
+        compressor = GroupCompressor()
+        tstart = time.time()
+        old_length = self._block._content_length
+        cur_endpoint = 0
+        for factory in self._factories:
+            bytes = factory.get_bytes_as('fulltext')
+            (found_sha1, end_point, type,
+             length) = compressor.compress(factory.key, bytes, factory.sha1)
+            # Now update this factory with the new offsets, etc
+            factory.sha1 = found_sha1
+            factory._start = cur_endpoint
+            factory._end = end_point
+            cur_endpoint = end_point
+        new_block = compressor.flush()
+        # TODO: Should we check that new_block really *is* smaller than the old
+        #       block? It seems hard to come up with a method that it would
+        #       expand, since we do full compression again. Perhaps based on a
+        #       request that ends up poorly ordered?
+        delta = time.time() - tstart
+        self._block = new_block
+        trace.mutter('creating new compressed block on-the-fly in %.3fs'
+                     ' %d bytes => %d bytes', delta, old_length,
+                     self._block._content_length)
+
+    def _check_rebuild_block(self):
+        """Check to see if our block should be repacked."""
+        total_bytes_used = 0
+        last_byte_used = 0
+        for factory in self._factories:
+            total_bytes_used += factory._end - factory._start
+            last_byte_used = max(last_byte_used, factory._end)
+        # If we are using most of the bytes from the block, we have nothing
+        # else to check (currently more that 1/2)
+        if total_bytes_used * 2 >= self._block._content_length:
+            return
+        # Can we just strip off the trailing bytes? If we are going to be
+        # transmitting more than 50% of the front of the content, go ahead
+        if total_bytes_used * 2 > last_byte_used:
+            self._trim_block(last_byte_used)
+            return
+
+        # We are using a small amount of the data, and it isn't just packed
+        # nicely at the front, so rebuild the content.
+        # Note: This would be *nicer* as a strip-data-from-group, rather than
+        #       building it up again from scratch
+        #       It might be reasonable to consider the fulltext sizes for
+        #       different bits when deciding this, too. As you may have a small
+        #       fulltext, and a trivial delta, and you are just trading around
+        #       for another fulltext. If we do a simple 'prune' you may end up
+        #       expanding many deltas into fulltexts, as well.
+        #       If we build a cheap enough 'strip', then we could try a strip,
+        #       if that expands the content, we then rebuild.
+        self._rebuild_block()
 
     def _wire_bytes(self):
         """Return a byte stream suitable for transmitting over the wire."""
@@ -811,7 +881,7 @@ class GroupCompressor(object):
         content = ''.join(self.lines)
         self.lines = None
         self._block.set_content(content)
-        return self._block.to_bytes()
+        return self._block
 
     def output_chunks(self, new_chunks):
         """Output some chunks.
@@ -1328,7 +1398,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
         keys_to_add = []
         basis_end = 0
         def flush():
-            bytes = self._compressor.flush()
+            bytes = self._compressor.flush().to_bytes()
             index, start, length = self._access.add_raw_records(
                 [(None, len(bytes))], bytes)[0]
             nodes = []
