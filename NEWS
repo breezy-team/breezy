@@ -5,8 +5,127 @@ Bazaar Release Notes
 .. contents::
 
 
+
 IN DEVELOPMENT
 --------------
+
+  COMPATIBILITY BREAKS:
+
+    * bzr no longer autodetects nested trees as 'tree-references'.  They
+      must now be explicitly added tree references.  At the commandline, use
+      join --reference instead of add.  (Aaron Bentley)
+
+  NEW FEATURES:
+
+    * shelve can now apply changes without storing anything on the shelf, via
+      the new --destroy option.  (Aaron Bentley)
+
+    * ``bzr send`` now accepts --body to specify an initial message body.
+      (Aaron bentley)
+
+  IMPROVEMENTS:
+
+    * Branching from a stacked branch using ``bzr*://`` will now stream
+      the data when the target repository does not need topological
+      ordering, reducing round trips and network overhead. This uses the
+      existing smart server methods added in 1.13, so will work on any
+      1.13 or newer server. (Robert Collins, Andrew Bennetts)
+
+    * ``bzr ignore`` gives a more informative message when existing
+      version controlled files match the ignore pattern. (Neil
+      Martinsen-Burrell, #248895)
+
+    * Progress bars now show the rate of network activity for
+      ``bzr+ssh://`` and ``bzr://`` connections.  (Andrew Bennetts)
+
+    * Streaming push can be done to older repository formats.  This is
+      implemented using a new ``Repository.insert_stream_locked`` RPC.
+      (Andrew Bennetts, Robert Collins)
+
+    * Tildes are no longer escaped. No more %7Euser/project/branch!
+      (Jonathan Lange)
+
+  BUG FIXES:
+
+    * Authentication plugins now receive all the parameters from the request
+      itself (aka host, port, realm, path, etc). Previously, only the 
+      authentication section name, username and encoded password were 
+      provided. (Jean-Francois Roy)
+
+    * Fix "is not a stackable format" error when pushing a
+      stackable-format branch with an unstackable-format repository to a
+      destination with a default stacking policy.  (Andrew Bennetts)
+
+    * Fixed incorrect "Source format does not support stacking" warning
+      when pushing to a smart server.  (Andrew Bennetts, #334114)
+
+    * It is no longer possible to fetch between repositories while the
+      target repository is in a write group. This prevents race conditions
+      that prevent the use of RPC's to perform fetch, and thus allows
+      optimising more operations. (Robert Collins, Andrew Bennetts)
+
+    * ``merge --force`` works again. (Robert Collins, #342105)
+
+    * The GNU Changelog formatter is slightly improved in the case where
+      the delta is empty, and now correctly claims not to support tags.
+      (Andrea Bolognani)
+
+    * Shelve can now shelve changes to a symlink target.
+      (James Westby, #341558)
+
+  DOCUMENTATION:
+
+    * New topic `bzr help debug-flags`.  (Martin Pool)
+
+    * The generated manpage now explicitly lists aliases as commands.
+      (James Westby, #336998)
+
+  API CHANGES:
+
+    * New sort order for ``get_record_stream`` ``groupcompress`` which
+      sorts optimally for use with groupcompress compressors. (John Arbash
+      Meinel, Robert Collins)
+
+    * The ``get_credentials`` and ``set_credentials`` methods of 
+      ``AuthenticationConfig`` now accept an optional realm argument.
+      (Jean-Francois Roy)
+
+    * The ``pb`` argument to ``fetch()`` is deprecated.
+      (Martin Pool)
+
+  TESTING:
+
+    * ``bzrlib.tests.TestCase`` now fails the test if its own ``setUp``
+      and ``tearDown`` weren't called.  This catches faulty tests that
+      forget to upcall when overriding ``setUp`` and ``tearDown``.  Those
+      faulty tests were not properly isolated.
+      (Andrew Bennetts, Robert Collins)
+
+  INTERNALS:
+
+    * New ``assertLength`` method based on one Martin has squirreled away
+      somewhere. (Robert Collins, Martin Pool)
+
+    * New repository method ``refresh_data`` to cause any repository to
+      make visible data inserted into the repository by a smart server
+      fetch operation. (Robert Collins, Andrew Bennetts)
+
+    * Removed ``InterRemoteToOther``, ``InterOtherToRemote`` and
+      ``InterPackToRemotePack`` classes, as they are now unnecessary.
+      (Andrew Bennetts)
+      
+    * ``_walk_to_common_revisions`` will now batch up at least 50
+      revisions before calling ``get_parent_map`` on the target,
+      regardless of ``InterRepository``.
+      (Andrew Bennetts, Robert Collins)
+
+
+bzr 1.13rc1 "paraskavedekatriaphobia" 2009-03-10
+------------------------------------------------
+This release includes bug fixes and a few performance and feature improvements.
+GNU Changelog output can now be produced by ``bzr log --format gnu-changelog``.
+Debug flags can now be set in ``~/.bazaar/bazaar.conf``. Lightweight Checkouts
+and Stacked Branches should both be much faster over remote connections.
 
   COMPATIBILITY BREAKS:
 
@@ -21,19 +140,46 @@ IN DEVELOPMENT
       options to change the default tree-creation policy of shared
       repositories.  (Matthew Fuller, Marius Kruger, #145033)
 
+    * Debug flags can now be set in ``~/.bazaar/bazaar.conf``.
+      (Martin Pool)
+
     * Filtered views provide a mask over the tree so that users can focus
       on a subset of a tree when doing their work. See ``Filtered views``
       in chapter 7 of the User Guide and ``bzr help view`` for details.
       (Ian Clatworthy)
 
+    * GNU Changelog output can now be produced by ``bzr log --format
+      gnu-changelog``.  (Andrea Bolognani, Martin Pool)
+
     * The ``-Dmemory`` flag now gives memory information on Windows.
       (John Arbash Meinel)
+
+    * Multiple authors for a commit can now be recorded by using the "--author"
+      option multiple times. (James Westby, #185772)
+
+    * New clean-tree command, from bzrtools.  (Aaron Bentley, Jelmer Vernoij)
 
     * New command ``bzr launchpad-open`` opens a Launchpad web page for that
       branch in your web browser, as long as the branch is on Launchpad at all.
       (Jonathan Lange)
 
+    * New API for getting bugs fixed by a revision: Revision.iter_bugs().
+      (Jonathan Lange)
+
   IMPROVEMENTS:
+
+    * All bzr ``Hooks`` classes are now registered in
+      ``bzrlib.hooks.known_hooks``. This removes the separate list from
+      ``bzrlib.tests`` and ensures that all hooks registered there are
+      correctly isolated by the test suite (previously
+      ``MutableTreeHooks`` were not being isolated correctly). Further, 
+      documentation for hooks is now dynamically generated from the
+      present HookPoints. ``bzr hooks`` will now also report on all the
+      hooks present in the ``bzrlib.hooks.known_hooks`` registry.
+      (Robert Collins)
+
+    * ``bzr add`` no longer prints ``add completed`` on success. Failure
+      still prints an error message. (Robert Collins)
 
     * ``bzr branch`` now has a ``--no-tree`` option which turns off the
       generation of a working tree in the new branch.
@@ -62,7 +208,27 @@ IN DEVELOPMENT
     * The ``bzr shelve`` prompt now includes a '?' help option to explain the
       short options better. (Daniel Watkins, #327429)
 
+    * ``bzr lp-open`` now falls back to the push location if it cannot find a
+      public location. (Jonathan Lange, #332372)
+
+    * ``bzr lp-open`` will try to find the Launchpad URL for the location
+      passed on the command line. This makes ``bzr lp-open lp:foo`` work as
+      expected. (Jonathan Lange, #332705)
+
+    * ``bzr send`` now supports MH-E via ``emacsclient``. (Eric Gillespie)
+
   BUG FIXES:
+
+    * Bazaar now gives a better message including the filename if it's
+      unable to read a file in the working directory, for example because
+      of a permission error.  (Martin Pool, #338653)
+
+    * ``bzr cat -r<old> <path>`` doesn't traceback anymore when <path> has a
+      file id in the working tree different from the one in revision <old>.
+      (Vincent Ladeuil, #341517, #253806)
+
+    * ``bzr send`` help is more specific about how to apply merge
+      directives.  (Neil Martinsen-Burrell, #253470)
 
     * ``bzr missing`` now uses ``Repository.get_revision_delta()`` rather
       than fetching trees and determining a delta itself. (Jelmer
@@ -81,21 +247,50 @@ IN DEVELOPMENT
     * Export now handles files that are not present in the tree.
       (James Westby, #174539)
 
+    * Fixed incorrect "Source format does not support stacking" warning
+      when pushing to a smart server.  (Andrew Bennetts, #334114)
+      
     * Fixed "sprout() got an unexpected keyword argument 'source_branch'"
       error branching from old repositories.
       (Martin Pool, #321695)
+
+    * Make ``bzr push --quiet <non-local location>`` less chatty.
+      (Kent Gibson, #221461)
 
     * Many Branch hooks would not fire with ``bzr://`` and ``bzr+ssh://``
       branches, and this was not noticed due to a bug in the test logic
       for branches. This is now fixed and a test added to prevent it
       reoccuring. (Robert Collins, Andrew Bennetts)
 
+    * Restore the progress bar on Windows. We were disabling it when TERM
+      wasn't set, but Windows doesn't set TERM. (Alexander Belchenko)
+
+    * ``setup.py build_ext`` now gives a proper error when an extension
+      fails to build. (John Arbash Meinel)
+
+    * Symlinks to non ascii file names are now supported.
+      (Robert Collins, Vincent Ladeuil, #339055, #272444)    
+
     * Under rare circumstances (aka nobody reported a bug about it), the ftp
       transport could revert to ascii mode. It now stays in binary mode except
       when needed.
       (Vincent Ladeuil)
 
+    * Unshelve does not generate warnings about progress bars.
+      (Aaron Bentley, #328148)
+
+    * shelve cleans up properly when unversioned files are specified.
+      (Benoît Pierre, Aaron Bentley)
+
   DOCUMENTATION:
+
+    * Added ``Organizing your workspace`` to the User Guide appendices,
+      summarizing some common ways of organizing trees, branches and
+      repositories and the processes/workflows implied/enabled by each.
+      (Ian Clatworthy)
+
+    * Hooks can now be self documenting. ``bzrlib.hooks.Hooks.create_hook``
+      is the entry point for this feature. (Robert Collins)
 
     * The documentation for ``shelve`` and ``unshelve`` has been clarified.
       (Daniel Watkins, #327421, #327425)
@@ -108,12 +303,50 @@ IN DEVELOPMENT
       updated to comply with this. The code already complied with the other
       criteria, but now it is enforced. (Marius Kruger)
 
+    ``bzrlib.branch.PushResult`` was renamed to 
+    ``bzrlib.branch.BranchPushResult``. (Jelmer Vernooij)
+
+    * ``Branch.fetch`` and ``Repository.fetch`` now return None rather
+      than a count of copied revisions and failed revisions. A while back
+      we stopped ever reporting failed revisions because we started
+      erroring instead, and the copied revisions count is not used in the
+      UI at all - indeed it only reflects the repository status not
+      changes to the branch itself. (Robert Collins)
+
+    * ``Inventory.apply_delta`` now raises an AssertionError if a file-id
+      appears multiple times within the delta. (Ian Clatworthy)
+
+    * MutableTree.commit now favours the "authors" argument, with the old
+      "author" argument being deprecated.
+
+    * Remove deprecated EmptyTree.  (Martin Pool)
+
+    * ``Repository.fetch`` now accepts an optional ``fetch_spec``
+      parameter.  A ``SearchResult`` or ``MiniSearchResult`` may be passed
+      to ``fetch_spec`` instead of a ``last_revision`` to specify exactly
+      which revisions to fetch. (Andrew Bennetts)
+
+    * ``RepositoryAcquisitionPolicy.acquire_repository`` now returns a
+      tuple of ``(repository, is_new_flag)``, rather than just the
+      repository.  (Andrew Bennetts)
+
+    * Revision.get_apparent_author() is now deprecated, replaced by
+      Revision.get_apparent_authors(), which returns a list. The former
+      now returns the first item that would be returned from the second.
+
+    * The ``BranchBuilder`` test helper now accepts a ``timestamp``
+      parameter to ``build_commit`` and ``build_snapshot``.  (Martin Pool)
+
     * The ``_fetch_*`` attributes on ``Repository`` are now on
       ``RepositoryFormat``, more accurately reflecting their intent (they
       describe a disk format capability, not state of a particular
       repository of that format). (Robert Collins)
 
   INTERNALS:
+
+    * Branching from a non-stacked branch on a smart protocol is now
+      free of virtual file system methods.
+      (Robert Collins, Andrew Bennetts)
 
     * Branch and Repository creation on a bzr+ssh://server are now done
       via RPC calls rather than VFS calls, reducing round trips for
@@ -126,16 +359,25 @@ IN DEVELOPMENT
       plugins to have hooks called on non-stacked instances.
       (Robert Collins, #334187)
 
+    * ``BzrDir.cloning_metadir`` now has a RPC call. (Robert Collins)
+
     * ``BzrDirFormat.__str__`` now uses the human readable description
       rather than the sometimes-absent disk label. (Robert Collins)
 
     * ``bzrlib.fetch`` is now composed of a sender and a sink component
-      allowing for decoupling over a network connection. Fetching into
-      a RemoteRepository uses this to stream the operation.
+      allowing for decoupling over a network connection. Fetching from
+      or into a RemoteRepository with a 1.13 server will use this to
+      stream the operation.
       (Andrew Bennetts, Robert Collins)
 
     * ``bzrlib.tests.run_suite`` accepts a runner_class parameter
       supporting the use of different runners. (Robert Collins)
+
+    * Change how file_ids and revision_ids are interned as part of
+      inventory deserialization. Now we use the real ``intern()``, rather
+      than our own workaround that would also cache a Unicode copy of the
+      string, and never emptied the cache. This should slightly reduce
+      memory consumption. (John Arbash Meinel)
 
     * New branch method ``create_clone_on_transport`` that returns a
       branch object. (Robert Collins)
@@ -155,8 +397,9 @@ IN DEVELOPMENT
       ``resume_write_group`` methods.  These are currently only useful
       with pack repositories. (Andrew Bennetts, Robert Collins)
 
-    * ``RepositoryFormat`` objects now have a ``network_name`` for passing
-      the format across RPC calls. (Robert Collins, Andrew Bennetts)
+    * ``BzrDirFormat``, ``BranchFormat`` and ``RepositoryFormat`` objects
+      now have a ``network_name`` for passing the format across RPC calls.
+      (Robert Collins, Andrew Bennetts)
 
     * ``RepositoryFormat`` objects now all have a new attribute
       ``_serializer`` used by fetch when reserialising is required.
@@ -166,6 +409,19 @@ IN DEVELOPMENT
       to aid branch types that are not bzr branch objects (like
       RemoteBranch). (Robert Collins, Andrew Bennetts)
 
+    * Test adaptation has been made consistent throughout the built in
+      tests. ``TestScenarioApplier``, ``multiply_tests_from_modules``,
+      ``adapt_tests``, ``adapt_modules`` have all been deleted. Please
+      use ``multiply_tests``, or for lower level needs ``apply_scenarios``
+      and ``apply_scenario``. (Robert Collins)
+
+    * ``TestSkipped`` is now detected by TestCase and passed to the
+      ``TestResult`` by calling ``addSkip``. For older TestResult objects,
+      where ``addSkip`` is not available, ``addError`` is still called.
+      This permits test filtering in subunit to strip out skipped tests
+      resulting in a faster fix-shrink-list-run cycle. This is compatible
+      with the testtools protocol for skips. (Robert Collins)
+
     * The ``_index`` of ``KnitVersionedFiles`` now supports the ability
       to scan an underlying index that is going to be incorporated into
       the ``KnitVersionedFiles`` object, to determine if it has missing
@@ -174,6 +430,9 @@ IN DEVELOPMENT
 
     * There is a RemoteSink object which handles pushing to smart servers.
       (Andrew Bennetts, Robert Collins)
+
+    * ``TransportTraceDecorator`` now logs ``put_bytes_non_atomic`` and
+      ``rmdir`` calls. (Robert Collins)
 
     * ``VersionedFiles`` record adapters have had their signature change
       from ``(record, record.get_bytes_as(record.storage_kind))`` to
@@ -2659,8 +2918,8 @@ bzr 1.3.1 2008-04-09
   No changes from 1.3.1rc1.
 
 
-bzr 1.3rc1 2008-04-04
----------------------
+bzr 1.3.1rc1 2008-04-04
+-----------------------
 
   BUG FIXES:
 

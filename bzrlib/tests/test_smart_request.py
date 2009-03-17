@@ -28,6 +28,39 @@ class NoBodyRequest(request.SmartServerRequest):
         return request.SuccessfulSmartServerResponse(('ok',))
 
 
+class DoErrorRequest(request.SmartServerRequest):
+    """A request that raises an error from self.do()."""
+    
+    def do(self):
+        raise errors.NoSuchFile('xyzzy')
+
+
+class ChunkErrorRequest(request.SmartServerRequest):
+    """A request that raises an error from self.do_chunk()."""
+    
+    def do(self):
+        """No-op."""
+        pass
+
+    def do_chunk(self, bytes):
+        raise errors.NoSuchFile('xyzzy')
+
+
+class EndErrorRequest(request.SmartServerRequest):
+    """A request that raises an error from self.do_end()."""
+    
+    def do(self):
+        """No-op."""
+        pass
+
+    def do_chunk(self, bytes):
+        """No-op."""
+        pass
+        
+    def do_end(self):
+        raise errors.NoSuchFile('xyzzy')
+
+
 class TestSmartRequest(TestCase):
 
     def test_request_class_without_do_body(self):
@@ -43,20 +76,61 @@ class TestSmartRequest(TestCase):
         handler.end_received()
         # Request done, no exception was raised.
 
-    def test_unexpected_body(self):
-        """If a request implementation receives an unexpected body, it
-        raises an error.
-        """
-        # Create a SmartServerRequestHandler with a SmartServerRequest subclass
-        # that does not implement do_body.
+
+class TestSmartRequestHandlerErrorTranslation(TestCase):
+    """Tests that SmartServerRequestHandler will translate exceptions raised by
+    a SmartServerRequest into FailedSmartServerResponses.
+    """
+
+    def assertNoResponse(self, handler):
+        self.assertEqual(None, handler.response)
+
+    def assertResponseIsTranslatedError(self, handler):
+        expected_translation = ('NoSuchFile', 'xyzzy')
+        self.assertEqual(
+            request.FailedSmartServerResponse(expected_translation),
+            handler.response)
+
+    def test_error_translation_from_args_received(self):
         handler = request.SmartServerRequestHandler(
-            None, {'foo': NoBodyRequest}, '/')
-        # Emulate a request with a body
+            None, {'foo': DoErrorRequest}, '/')
         handler.args_received(('foo',))
-        handler.accept_body('some body bytes')
-        # Note that the exception currently occurs at the end of the request.
-        # In principle it would also be ok for it to happen earlier, during
-        # accept_body.
-        exc = self.assertRaises(errors.SmartProtocolError, handler.end_received)
-        self.assertEquals('Request does not expect a body', exc.details)
+        self.assertResponseIsTranslatedError(handler)
+
+    def test_error_translation_from_chunk_received(self):
+        handler = request.SmartServerRequestHandler(
+            None, {'foo': ChunkErrorRequest}, '/')
+        handler.args_received(('foo',))
+        self.assertNoResponse(handler)
+        handler.accept_body('bytes')
+        self.assertResponseIsTranslatedError(handler)
+
+    def test_error_translation_from_end_received(self):
+        handler = request.SmartServerRequestHandler(
+            None, {'foo': EndErrorRequest}, '/')
+        handler.args_received(('foo',))
+        self.assertNoResponse(handler)
+        handler.end_received()
+        self.assertResponseIsTranslatedError(handler)
+
+
+class TestRequestHanderErrorTranslation(TestCase):
+    """Tests for bzrlib.smart.request._translate_error."""
+
+    def assertTranslationEqual(self, expected_tuple, error):
+        self.assertEqual(expected_tuple, request._translate_error(error))
+
+    def test_NoSuchFile(self):
+        self.assertTranslationEqual(
+            ('NoSuchFile', 'path'), errors.NoSuchFile('path'))
+
+    def test_LockContention(self):
+        self.assertTranslationEqual(
+            ('LockContention', 'lock', 'msg'),
+            errors.LockContention('lock', 'msg'))
+
+    def test_TokenMismatch(self):
+        self.assertTranslationEqual(
+            ('TokenMismatch', 'some-token', 'actual-token'),
+            errors.TokenMismatch('some-token', 'actual-token'))
 

@@ -259,7 +259,7 @@ class TestPush(TestCaseWithBranch):
         self.disableOptimisticGetParentMap()
         self.assertFalse(local.is_locked())
         local.push(remote)
-        hpss_call_names = [item[0].method for item in self.hpss_calls]
+        hpss_call_names = [item.call.method for item in self.hpss_calls]
         self.assertTrue('Repository.insert_stream' in hpss_call_names)
         insert_stream_idx = hpss_call_names.index('Repository.insert_stream')
         calls_after_insert_stream = hpss_call_names[insert_stream_idx:]
@@ -274,18 +274,13 @@ class TestPush(TestCaseWithBranch):
         # Tweak some class variables to stop remote get_parent_map calls asking
         # for or receiving more data than the caller asked for.
         old_flag = SmartServerRepositoryGetParentMap.no_extra_results
-        inter_classes = [repository.InterOtherToRemote,
-            repository.InterPackToRemotePack]
-        old_batch_sizes = []
-        for inter_class in inter_classes:
-            old_batch_sizes.append(
-                inter_class._walk_to_common_revisions_batch_size)
-            inter_class._walk_to_common_revisions_batch_size = 1
+        inter_class = repository.InterRepository
+        old_batch_size = inter_class._walk_to_common_revisions_batch_size
+        inter_class._walk_to_common_revisions_batch_size = 1
         SmartServerRepositoryGetParentMap.no_extra_results = True
         def reset_values():
             SmartServerRepositoryGetParentMap.no_extra_results = old_flag
-            for inter_class, size in zip(inter_classes, old_batch_sizes):
-                inter_class._walk_to_common_revisions_batch_size = size
+            inter_class._walk_to_common_revisions_batch_size = old_batch_size
         self.addCleanup(reset_values)
 
 
@@ -418,7 +413,7 @@ class EmptyPushSmartEffortTests(TestCaseWithBranch):
         self.empty_branch.push(target)
         self.assertEqual(
             ['BzrDir.open',
-             'BzrDir.open_branch',
+             'BzrDir.open_branchV2',
              'BzrDir.find_repositoryV3',
              'Branch.get_stacked_on_url',
              'Branch.lock_write',

@@ -747,16 +747,50 @@ class TestCommit(TestCaseWithTransport):
         rev_id = tree.commit('commit 1')
         rev = tree.branch.repository.get_revision(rev_id)
         self.assertFalse('author' in rev.properties)
+        self.assertFalse('authors' in rev.properties)
 
     def test_commit_author(self):
         """Passing a non-empty author kwarg to MutableTree.commit should add
         the 'author' revision property.
         """
         tree = self.make_branch_and_tree('foo')
-        rev_id = tree.commit('commit 1', author='John Doe <jdoe@example.com>')
+        rev_id = self.callDeprecated(['The parameter author was '
+                'deprecated in version 1.13. Use authors instead'],
+                tree.commit, 'commit 1', author='John Doe <jdoe@example.com>')
         rev = tree.branch.repository.get_revision(rev_id)
         self.assertEqual('John Doe <jdoe@example.com>',
-                         rev.properties['author'])
+                         rev.properties['authors'])
+        self.assertFalse('author' in rev.properties)
+
+    def test_commit_empty_authors_list(self):
+        """Passing an empty list to authors shouldn't add the property."""
+        tree = self.make_branch_and_tree('foo')
+        rev_id = tree.commit('commit 1', authors=[])
+        rev = tree.branch.repository.get_revision(rev_id)
+        self.assertFalse('author' in rev.properties)
+        self.assertFalse('authors' in rev.properties)
+
+    def test_multiple_authors(self):
+        tree = self.make_branch_and_tree('foo')
+        rev_id = tree.commit('commit 1',
+                authors=['John Doe <jdoe@example.com>',
+                         'Jane Rey <jrey@example.com>'])
+        rev = tree.branch.repository.get_revision(rev_id)
+        self.assertEqual('John Doe <jdoe@example.com>\n'
+                'Jane Rey <jrey@example.com>', rev.properties['authors'])
+        self.assertFalse('author' in rev.properties)
+
+    def test_author_and_authors_incompatible(self):
+        tree = self.make_branch_and_tree('foo')
+        self.assertRaises(AssertionError, tree.commit, 'commit 1',
+                authors=['John Doe <jdoe@example.com>',
+                         'Jane Rey <jrey@example.com>'],
+                author="Jack Me <jme@example.com>")
+
+    def test_author_with_newline_rejected(self):
+        tree = self.make_branch_and_tree('foo')
+        self.assertRaises(AssertionError, tree.commit, 'commit 1',
+                authors=['John\nDoe <jdoe@example.com>'])
 
     def test_commit_with_checkout_and_branch_sharing_repo(self):
         repo = self.make_repository('repo', shared=True)

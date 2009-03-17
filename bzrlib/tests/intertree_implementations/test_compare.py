@@ -799,7 +799,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2.set_root_id('root-id')
         subtree2 = self.make_to_branch_and_tree('2/sub')
         subtree2.set_root_id('subtree-id')
-        tree2.add(['sub'], ['subtree-id'])
+        tree2.add_reference(subtree2)
         self.build_tree(['2/sub/file'])
         subtree2.add(['file'])
 

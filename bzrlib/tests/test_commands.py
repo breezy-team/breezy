@@ -140,6 +140,7 @@ class TestSeeAlso(tests.TestCase):
 class TestRegisterLazy(tests.TestCase):
 
     def setUp(self):
+        tests.TestCase.setUp(self)
         import bzrlib.tests.fake_command
         del sys.modules['bzrlib.tests.fake_command']
         global lazy_command_imported

@@ -104,6 +104,14 @@ class TransportTraceDecorator(TransportDecorator):
         self._trace(('put_bytes', relpath, len(bytes), mode))
         return self._decorated.put_bytes(relpath, bytes, mode)
 
+    def put_bytes_non_atomic(self, relpath, bytes, mode=None,
+        create_parent_dir=False, dir_mode=None):
+        """See Transport.put_bytes_non_atomic."""
+        self._trace(('put_bytes_non_atomic', relpath, len(bytes), mode,
+            create_parent_dir, dir_mode))
+        return self._decorated.put_bytes_non_atomic(relpath, bytes, mode=mode,
+            create_parent_dir=create_parent_dir, dir_mode=dir_mode)
+
     def listable(self):
         """See Transport.listable."""
         return self._decorated.listable()
@@ -134,6 +142,7 @@ class TransportTraceDecorator(TransportDecorator):
 
     def rmdir(self, relpath):
         """See Transport.rmdir."""
+        self._trace(('rmdir', relpath))
         return self._decorated.rmdir(relpath)
 
     def stat(self, relpath):
