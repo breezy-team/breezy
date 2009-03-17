@@ -1150,6 +1150,7 @@ class TestRunner(TestCase):
         class SkippedTest(TestCase):
 
             def setUp(self):
+                TestCase.setUp(self)
                 calls.append('setUp')
                 self.addCleanup(self.cleanup)
 
@@ -1370,6 +1371,30 @@ class TestTestCase(TestCase):
             a_list)
         self.assertEqual('Incorrect length: wanted 2, got 3 for [1, 2, 3]',
             exception.args[0])
+
+    def test_base_setUp_not_called_causes_failure(self):
+        class TestCaseWithBrokenSetUp(TestCase):
+            def setUp(self):
+                pass # does not call TestCase.setUp
+            def test_foo(self):
+                pass
+        test = TestCaseWithBrokenSetUp('test_foo')
+        result = unittest.TestResult()
+        test.run(result)
+        self.assertFalse(result.wasSuccessful())
+        self.assertEqual(1, result.testsRun)
+
+    def test_base_tearDown_not_called_causes_failure(self):
+        class TestCaseWithBrokenTearDown(TestCase):
+            def tearDown(self):
+                pass # does not call TestCase.tearDown
+            def test_foo(self):
+                pass
+        test = TestCaseWithBrokenTearDown('test_foo')
+        result = unittest.TestResult()
+        test.run(result)
+        self.assertFalse(result.wasSuccessful())
+        self.assertEqual(1, result.testsRun)
 
     def test_debug_flags_sanitised(self):
         """The bzrlib debug flags should be sanitised by setUp."""
@@ -1842,6 +1867,7 @@ class TestUnavailableFeature(TestCase):
 class TestSelftestFiltering(TestCase):
 
     def setUp(self):
+        TestCase.setUp(self)
         self.suite = TestUtil.TestSuite()
         self.loader = TestUtil.TestLoader()
         self.suite.addTest(self.loader.loadTestsFromModuleNames([

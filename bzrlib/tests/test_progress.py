@@ -58,6 +58,7 @@ class _NonTTYStringIO(StringIO):
 class TestProgress(TestCase):
 
     def setUp(self):
+        TestCase.setUp(self)
         q = DummyProgress()
         self.top = ChildProgress(_stack=FakeStack(q))
 

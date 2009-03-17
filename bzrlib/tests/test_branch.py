@@ -471,6 +471,7 @@ class TestRunWithWriteLockedTarget(TestCase):
     """Tests for _run_with_write_locked_target."""
 
     def setUp(self):
+        TestCase.setUp(self)
         self._calls = []
 
     def func_that_returns_ok(self):

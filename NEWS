@@ -25,6 +25,12 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * Branching from a stacked branch using ``bzr*://`` will now stream
+      the data when the target repository does not need topological
+      ordering, reducing round trips and network overhead. This uses the
+      existing smart server methods added in 1.13, so will work on any
+      1.13 or newer server. (Robert Collins, Andrew Bennetts)
+
     * ``bzr ignore`` gives a more informative message when existing
       version controlled files match the ignore pattern. (Neil
       Martinsen-Burrell, #248895)
@@ -87,6 +93,14 @@ IN DEVELOPMENT
     * The ``pb`` argument to ``fetch()`` is deprecated.
       (Martin Pool)
 
+  TESTING:
+
+    * ``bzrlib.tests.TestCase`` now fails the test if its own ``setUp``
+      and ``tearDown`` weren't called.  This catches faulty tests that
+      forget to upcall when overriding ``setUp`` and ``tearDown``.  Those
+      faulty tests were not properly isolated.
+      (Andrew Bennetts, Robert Collins)
+
   INTERNALS:
 
     * New ``assertLength`` method based on one Martin has squirreled away
@@ -96,6 +110,10 @@ IN DEVELOPMENT
       make visible data inserted into the repository by a smart server
       fetch operation. (Robert Collins, Andrew Bennetts)
 
+    * Removed ``InterRemoteToOther``, ``InterOtherToRemote`` and
+      ``InterPackToRemotePack`` classes, as they are now unnecessary.
+      (Andrew Bennetts)
+      
     * ``_walk_to_common_revisions`` will now batch up at least 50
       revisions before calling ``get_parent_map`` on the target,
       regardless of ``InterRepository``.

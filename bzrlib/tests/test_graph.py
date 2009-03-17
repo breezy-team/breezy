@@ -992,6 +992,9 @@ class TestGraph(TestCaseWithMemoryTransport):
         :param next: A callable to advance the search.
         """
         for seen, recipe, included_keys, starts, stops in instructions:
+            # Adjust for recipe contract changes that don't vary for all the
+            # current tests.
+            recipe = ('search',) + recipe
             next()
             if starts is not None:
                 search.start_searching(starts)
@@ -1011,7 +1014,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         search = graph._make_breadth_first_searcher(['head'])
         # At the start, nothing has been seen, to its all excluded:
         result = search.get_result()
-        self.assertEqual((set(['head']), set(['head']), 0),
+        self.assertEqual(('search', set(['head']), set(['head']), 0),
             result.get_recipe())
         self.assertEqual(set(), result.get_keys())
         self.assertEqual(set(), search.seen)
@@ -1043,7 +1046,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         search.start_searching(['head'])
         # head has been seen:
         result = search.get_result()
-        self.assertEqual((set(['head']), set(['child']), 1),
+        self.assertEqual(('search', set(['head']), set(['child']), 1),
             result.get_recipe())
         self.assertEqual(set(['head']), result.get_keys())
         self.assertEqual(set(['head']), search.seen)
@@ -1203,7 +1206,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertRaises(StopIteration, search.next)
         self.assertEqual(set(['head', 'ghost', NULL_REVISION]), search.seen)
         result = search.get_result()
-        self.assertEqual((set(['ghost', 'head']), set(['ghost']), 2),
+        self.assertEqual(('search', set(['ghost', 'head']), set(['ghost']), 2),
             result.get_recipe())
         self.assertEqual(set(['head', NULL_REVISION]), result.get_keys())
         # using next_with_ghosts:
@@ -1212,7 +1215,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertRaises(StopIteration, search.next)
         self.assertEqual(set(['head', 'ghost', NULL_REVISION]), search.seen)
         result = search.get_result()
-        self.assertEqual((set(['ghost', 'head']), set(['ghost']), 2),
+        self.assertEqual(('search', set(['ghost', 'head']), set(['ghost']), 2),
             result.get_recipe())
         self.assertEqual(set(['head', NULL_REVISION]), result.get_keys())
 
@@ -1527,7 +1530,7 @@ class TestCollapseLinearRegions(tests.TestCase):
         self.assertCollapsed(d, d)
 
 
-class TestPendingAncestryResult(TestCaseWithMemoryTransport):
+class TestPendingAncestryResultGetKeys(TestCaseWithMemoryTransport):
     """Tests for bzrlib.graph.PendingAncestryResult."""
 
     def test_get_keys(self):
@@ -1540,8 +1543,8 @@ class TestPendingAncestryResult(TestCaseWithMemoryTransport):
         repo = builder.get_branch().repository
         repo.lock_read()
         self.addCleanup(repo.unlock)
-        par = _mod_graph.PendingAncestryResult(['rev-2'], repo)
-        self.assertEqual(set(['rev-1', 'rev-2']), set(par.get_keys()))
+        result = _mod_graph.PendingAncestryResult(['rev-2'], repo)
+        self.assertEqual(set(['rev-1', 'rev-2']), set(result.get_keys()))
 
     def test_get_keys_excludes_null(self):
         # Make a 'graph' with an iter_ancestry that returns NULL_REVISION
@@ -1550,8 +1553,55 @@ class TestPendingAncestryResult(TestCaseWithMemoryTransport):
         class StubGraph(object):
             def iter_ancestry(self, keys):
                 return [(NULL_REVISION, ()), ('foo', (NULL_REVISION,))]
-        par = _mod_graph.PendingAncestryResult(['rev-3'], None)
-        par_keys = par._get_keys(StubGraph())
+        result = _mod_graph.PendingAncestryResult(['rev-3'], None)
+        result_keys = result._get_keys(StubGraph())
         # Only the non-null keys from the ancestry appear.
-        self.assertEqual(set(['foo']), set(par_keys))
+        self.assertEqual(set(['foo']), set(result_keys))
 
+
+class TestPendingAncestryResultRefine(TestGraphBase):
+
+    def test_refine(self):
+        # Used when pulling from a stacked repository, so test some revisions
+        # being satisfied from the stacking branch.
+        g = self.make_graph(
+            {"tip":["mid"], "mid":["base"], "tag":["base"],
+             "base":[NULL_REVISION], NULL_REVISION:[]})
+        result = _mod_graph.PendingAncestryResult(['tip', 'tag'], None)
+        result = result.refine(set(['tip']), set(['mid']))
+        self.assertEqual(set(['mid', 'tag']), result.heads)
+        result = result.refine(set(['mid', 'tag', 'base']),
+            set([NULL_REVISION]))
+        self.assertEqual(set([NULL_REVISION]), result.heads)
+        self.assertTrue(result.is_empty())
+
+
+class TestSearchResultRefine(TestGraphBase):
+
+    def test_refine(self):
+        # Used when pulling from a stacked repository, so test some revisions
+        # being satisfied from the stacking branch.
+        g = self.make_graph(
+            {"tip":["mid"], "mid":["base"], "tag":["base"],
+             "base":[NULL_REVISION], NULL_REVISION:[]})
+        result = _mod_graph.SearchResult(set(['tip', 'tag']),
+            set([NULL_REVISION]), 4, set(['tip', 'mid', 'tag', 'base']))
+        result = result.refine(set(['tip']), set(['mid']))
+        recipe = result.get_recipe()
+        # We should be starting from tag (original head) and mid (seen ref)
+        self.assertEqual(set(['mid', 'tag']), recipe[1])
+        # We should be stopping at NULL (original stop) and tip (seen head)
+        self.assertEqual(set([NULL_REVISION, 'tip']), recipe[2])
+        self.assertEqual(3, recipe[3])
+        result = result.refine(set(['mid', 'tag', 'base']),
+            set([NULL_REVISION]))
+        recipe = result.get_recipe()
+        # We should be starting from nothing (NULL was known as a cut point)
+        self.assertEqual(set([]), recipe[1])
+        # We should be stopping at NULL (original stop) and tip (seen head) and
+        # tag (seen head) and mid(seen mid-point head). We could come back and
+        # define this as not including mid, for minimal results, but it is
+        # still 'correct' to include mid, and simpler/easier.
+        self.assertEqual(set([NULL_REVISION, 'tip', 'tag', 'mid']), recipe[2])
+        self.assertEqual(0, recipe[3])
+        self.assertTrue(result.is_empty())
