@@ -87,6 +87,9 @@ IN DEVELOPMENT
       make visible data inserted into the repository by a smart server
       fetch operation. (Robert Collins, Andrew Bennetts)
 
+    * Removed ``InterRemoteToOther`` and ``InterOtherToRemote`` classes,
+      as they are now unnecessary.  (Andrew Bennetts)
+      
     * ``_walk_to_common_revisions`` will now batch up at least 50
       revisions before calling ``get_parent_map`` on the target,
       regardless of ``InterRepository``.
