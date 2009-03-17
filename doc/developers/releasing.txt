@@ -201,12 +201,11 @@ at any time.
 See also
 --------
 
- * `Packaging into the bzr PPA <ppa.html>`_ to make and publish Ubuntu
-   packages.
- * `Bazaar Developer Document Catalog <index.html>`_
- * `Development cycles <cycle.html>`_: things that happen during the cycle
-   before the actual release.
-
+* `Packaging into the bzr PPA <ppa.html>`_ to make and publish Ubuntu
+  packages.
+* `Bazaar Developer Document Catalog <index.html>`_
+* `Development cycles <cycle.html>`_: things that happen during the cycle
+  before the actual release.
 
 ..
    vim: filetype=rst textwidth=74 ai shiftwidth=4
