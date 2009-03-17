@@ -1382,7 +1382,7 @@ class TestTestCase(TestCase):
         result = unittest.TestResult()
         test.run(result)
         self.assertFalse(result.wasSuccessful())
-        self.assertLength(1, result.errors)
+        self.assertEqual(1, result.testsRun)
 
     def test_base_tearDown_not_called_causes_failure(self):
         class TestCaseWithBrokenTearDown(TestCase):
@@ -1394,7 +1394,7 @@ class TestTestCase(TestCase):
         result = unittest.TestResult()
         test.run(result)
         self.assertFalse(result.wasSuccessful())
-        self.assertLength(1, result.errors)
+        self.assertEqual(1, result.testsRun)
 
     def test_debug_flags_sanitised(self):
         """The bzrlib debug flags should be sanitised by setUp."""
