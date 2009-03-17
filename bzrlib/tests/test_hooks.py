@@ -95,19 +95,6 @@ class TestHooks(TestCase):
             "ChangeBranchTipParams object. Hooks should raise TipChangeRejected to\n"
             "signal that a tip change is not permitted.\n", hooks.docs())
 
-    def test_install_hook_raises_unknown_hook(self):
-        """install_hook should raise UnknownHook if a hook is unknown."""
-        hooks = Hooks()
-        self.assertRaises(UnknownHook, self.applyDeprecated, one_five,
-                          hooks.install_hook, 'silly', None)
-
-    def test_install_hook_appends_known_hook(self):
-        """install_hook should append the callable for known hooks."""
-        hooks = Hooks()
-        hooks['set_rh'] = []
-        self.applyDeprecated(one_five, hooks.install_hook, 'set_rh', None)
-        self.assertEqual(hooks['set_rh'], [None])
-
     def test_install_named_hook_raises_unknown_hook(self):
         hooks = Hooks()
         self.assertRaises(UnknownHook, hooks.install_named_hook, 'silly',
