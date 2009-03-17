@@ -1295,7 +1295,8 @@ class GroupCompressVersionedFiles(VersionedFiles):
         for _ in self._insert_record_stream(stream):
             pass
 
-    def _insert_record_stream(self, stream, random_id=False, nostore_sha=None):
+    def _insert_record_stream(self, stream, random_id=False, nostore_sha=None,
+                              reuse_blocks=True):
         """Internal core to insert a record stream into this container.
 
         This helper function has a different interface than insert_record_stream
@@ -1304,6 +1305,9 @@ class GroupCompressVersionedFiles(VersionedFiles):
         :param stream: A stream of records to insert.
         :param nostore_sha: If the sha1 of a given text matches nostore_sha,
             raise ExistingContent, rather than committing the new text.
+        :param reuse_blocks: If the source is streaming from
+            groupcompress-blocks, just insert the blocks as-is, rather than
+            expanding the texts and inserting again.
         :return: An iterator over the sha1 of the inserted records.
         :seealso insert_record_stream:
         :seealso add_lines:
@@ -1346,24 +1350,27 @@ class GroupCompressVersionedFiles(VersionedFiles):
             # Raise an error when a record is missing.
             if record.storage_kind == 'absent':
                 raise errors.RevisionNotPresent(record.key, self)
-            if record.storage_kind == 'groupcompress-block':
-                # Insert the raw block into the target repo
-                insert_manager = record._manager
-                bytes = record._manager._block.to_bytes()
-                _, start, length = self._access.add_raw_records(
-                    [(None, len(bytes))], bytes)[0]
-                del bytes
-                block_start = start
-                block_length = length
-            if record.storage_kind in ('groupcompress-block',
-                                       'groupcompress-block-ref'):
-                assert insert_manager is not None
-                assert record._manager is insert_manager
-                value = "%d %d %d %d" % (block_start, block_length,
-                                         record._start, record._end)
-                nodes = [(record.key, value, (record.parents,))]
-                self._index.add_records(nodes, random_id=random_id)
-                continue
+            if reuse_blocks:
+                # If the reuse_blocks flag is set, check to see if we can just
+                # copy a groupcompress block as-is.
+                if record.storage_kind == 'groupcompress-block':
+                    # Insert the raw block into the target repo
+                    insert_manager = record._manager
+                    bytes = record._manager._block.to_bytes()
+                    _, start, length = self._access.add_raw_records(
+                        [(None, len(bytes))], bytes)[0]
+                    del bytes
+                    block_start = start
+                    block_length = length
+                if record.storage_kind in ('groupcompress-block',
+                                           'groupcompress-block-ref'):
+                    assert insert_manager is not None
+                    assert record._manager is insert_manager
+                    value = "%d %d %d %d" % (block_start, block_length,
+                                             record._start, record._end)
+                    nodes = [(record.key, value, (record.parents,))]
+                    self._index.add_records(nodes, random_id=random_id)
+                    continue
             try:
                 bytes = record.get_bytes_as('fulltext')
             except errors.UnavailableRepresentation:
