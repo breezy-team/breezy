@@ -23,6 +23,12 @@ IN DEVELOPMENT
     * ``bzr send`` now accepts --body to specify an initial message body.
       (Aaron bentley)
 
+    * ``bzr xxx --usage`` where xxx is a command now shows a usage
+      message and the options without the descriptive help sections
+      (like Description and Examples). A message is also given
+      explaining how to see the complete help, i.e. ``bzr help xxx``.
+      (Ian Clatworthy)
+
   IMPROVEMENTS:
 
     * Branching from a stacked branch using ``bzr*://`` will now stream
