@@ -381,7 +381,9 @@ class GCCHKPacker(Packer):
         child_pb = ui.ui_factory.nested_progress_bar()
         try:
             stream = vf_to_stream(source_vf, keys, message, child_pb)
-            target_vf.insert_record_stream(stream)
+            for _ in target_vf._insert_record_stream(stream,
+                                                     reuse_blocks=False):
+                pass
         finally:
             child_pb.finished()
 
@@ -412,7 +414,9 @@ class GCCHKPacker(Packer):
         try:
             for stream in self._get_chk_streams(source_vf, total_keys,
                                                 pb=child_pb):
-                target_vf.insert_record_stream(stream)
+                for _ in target_vf._insert_record_stream(stream,
+                                                         reuse_blocks=False):
+                    pass
         finally:
             child_pb.finished()
 
