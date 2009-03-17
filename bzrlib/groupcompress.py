@@ -600,7 +600,7 @@ class _LazyGroupContentManager(object):
         return ''.join(lines)
 
     @classmethod
-    def from_bytes(cls, bytes, line_end):
+    def from_bytes(cls, bytes):
         # TODO: This does extra string copying, probably better to do it a
         #       different way
         (storage_kind, z_header_len, header_len,
@@ -649,6 +649,13 @@ class _LazyGroupContentManager(object):
             end_offset = int(header_lines[start+3])
             result.add_factory(key, parents, start_offset, end_offset)
         return result
+
+
+def network_block_to_records(storage_kind, bytes, line_end):
+    if storage_kind != 'groupcompress-block':
+        raise ValueError('Unknown storage kind: %s' % (storage_kind,))
+    manager = _LazyGroupContentManager.from_bytes(bytes)
+    return manager.get_record_stream()
 
 
 class GroupCompressor(object):

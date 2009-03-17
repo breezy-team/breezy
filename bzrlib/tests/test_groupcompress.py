@@ -583,8 +583,7 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
         self.add_key_to_manager(('key4',), entries, block, manager)
         wire_bytes = manager._wire_bytes()
         self.assertStartsWith(wire_bytes, 'groupcompress-block\n')
-        manager = groupcompress._LazyGroupContentManager.from_bytes(wire_bytes,
-            wire_bytes.index('\n')+1)
+        manager = groupcompress._LazyGroupContentManager.from_bytes(wire_bytes)
         self.assertIsInstance(manager, groupcompress._LazyGroupContentManager)
         self.assertEqual(2, len(manager._factories))
         self.assertEqual(block._z_content, manager._block._z_content)
