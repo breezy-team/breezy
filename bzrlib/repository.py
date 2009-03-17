@@ -881,18 +881,22 @@ class Repository(object):
 
         XXX: this docstring is duplicated in many places, e.g. lockable_files.py
         """
+        locked = self.is_locked()
         result = self.control_files.lock_write(token=token)
         for repo in self._fallback_repositories:
             # Writes don't affect fallback repos
             repo.lock_read()
-        self._refresh_data()
+        if not locked:
+            self._refresh_data()
         return result
 
     def lock_read(self):
+        locked = self.is_locked()
         self.control_files.lock_read()
         for repo in self._fallback_repositories:
             repo.lock_read()
-        self._refresh_data()
+        if not locked:
+            self._refresh_data()
 
     def get_physical_lock_status(self):
         return self.control_files.get_physical_lock_status()
@@ -1063,6 +1067,19 @@ class Repository(object):
     def suspend_write_group(self):
         raise errors.UnsuspendableWriteGroup(self)
 
+    def refresh_data(self):
+        """Re-read any data needed to to synchronise with disk.
+
+        This method is intended to be called after another repository instance
+        (such as one used by a smart server) has inserted data into the
+        repository. It may not be called during a write group, but may be
+        called at any other time.
+        """
+        if self.is_in_write_group():
+            raise errors.InternalBzrError(
+                "May not refresh_data while in a write group.")
+        self._refresh_data()
+
     def resume_write_group(self, tokens):
         if not self.is_write_locked():
             raise errors.NotWriteLocked(self)
@@ -1082,6 +1099,10 @@ class Repository(object):
         If revision_id is None and fetch_spec is None, then all content is
         copied.
 
+        fetch() may not be used when the repository is in a write group -
+        either finish the current write group before using fetch, or use
+        fetch before starting the write group.
+
         :param find_ghosts: Find and copy revisions in the source that are
             ghosts in the target (and not reachable directly by walking out to
             the first-present revision in target from revision_id).
@@ -1096,6 +1117,9 @@ class Repository(object):
         if fetch_spec is not None and revision_id is not None:
             raise AssertionError(
                 "fetch_spec and revision_id are mutually exclusive.")
+        if self.is_in_write_group():
+            raise errors.InternalBzrError(
+                "May not fetch while in a write group.")
         # fast path same-url fetch operations
         if self.has_same_location(source) and fetch_spec is None:
             # check that last_revision is in 'from' and then return a
@@ -1335,9 +1359,6 @@ class Repository(object):
     def find_text_key_references(self):
         """Find the text key references within the repository.
 
-        :return: a dictionary mapping (file_id, revision_id) tuples to altered file-ids to an iterable of
-        revision_ids. Each altered file-ids has the exact revision_ids that
-        altered it listed explicitly.
         :return: A dictionary mapping text keys ((fileid, revision_id) tuples)
             to whether they were referred to by the inventory of the
             revision_id that they contain. The inventory texts from all present
@@ -1817,7 +1838,11 @@ class Repository(object):
         for repositories to maintain loaded indices across multiple locks
         by checking inside their implementation of this method to see
         whether their indices are still valid. This depends of course on
-        the disk format being validatable in this manner.
+        the disk format being validatable in this manner. This method is
+        also called by the refresh_data() public interface to cause a refresh
+        to occur while in a write lock so that data inserted by a smart server
+        push operation is visible on the client's instance of the physical
+        repository.
         """
 
     @needs_read_lock
@@ -1922,9 +1947,17 @@ class Repository(object):
                 [parents_provider, other_repository._make_parents_provider()])
         return graph.Graph(parents_provider)
 
-    def _get_versioned_file_checker(self):
-        """Return an object suitable for checking versioned files."""
-        return _VersionedFileChecker(self)
+    def _get_versioned_file_checker(self, text_key_references=None):
+        """Return an object suitable for checking versioned files.
+        
+        :param text_key_references: if non-None, an already built
+            dictionary mapping text keys ((fileid, revision_id) tuples)
+            to whether they were referred to by the inventory of the
+            revision_id that they contain. If None, this will be
+            calculated.
+        """
+        return _VersionedFileChecker(self,
+            text_key_references=text_key_references)
 
     def revision_ids_to_search_result(self, result_set):
         """Convert a set of revision ids to a graph SearchResult."""
@@ -2544,7 +2577,7 @@ class InterRepository(InterObject):
     InterRepository.get(other).method_name(parameters).
     """
 
-    _walk_to_common_revisions_batch_size = 1
+    _walk_to_common_revisions_batch_size = 50
     _optimisers = []
     """The available optimised InterRepository types."""
 
@@ -3210,8 +3243,6 @@ class InterOtherToRemote(InterRepository):
     calculated for (source, target._real_repository).
     """
 
-    _walk_to_common_revisions_batch_size = 50
-
     def __init__(self, source, target):
         InterRepository.__init__(self, source, target)
         self._real_inter = None
@@ -3281,8 +3312,6 @@ class InterPackToRemotePack(InterPackRepo):
     This will use the get_parent_map RPC rather than plain readvs, and also
     uses an RPC for autopacking.
     """
-
-    _walk_to_common_revisions_batch_size = 50
 
     @staticmethod
     def is_compatible(source, target):
@@ -3417,9 +3446,10 @@ def _unescape_xml(data):
 
 class _VersionedFileChecker(object):
 
-    def __init__(self, repository):
+    def __init__(self, repository, text_key_references=None):
         self.repository = repository
-        self.text_index = self.repository._generate_text_key_index()
+        self.text_index = self.repository._generate_text_key_index(
+            text_key_references=text_key_references)
 
     def calculate_file_version_parents(self, text_key):
         """Calculate the correct parents for a file version according to

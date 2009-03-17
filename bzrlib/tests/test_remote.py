@@ -269,7 +269,11 @@ class FakeClient(_SmartClient):
         stream = list(stream)
         self._check_call(args[0], args[1:])
         self._calls.append(('call_with_body_stream', args[0], args[1:], stream))
-        return self._get_next_response()[1]
+        result = self._get_next_response()
+        # The second value returned from call_with_body_stream is supposed to
+        # be a response_handler object, but so far no tests depend on that.
+        response_handler = None 
+        return result[1], response_handler
 
 
 class FakeMedium(medium.SmartClientMedium):
@@ -1752,6 +1756,65 @@ class TestRepositoryHasRevision(TestRemoteRepository):
         self.assertEqual([], client._calls)
 
 
+class TestRepositoryInsertStream(TestRemoteRepository):
+
+    def test_unlocked_repo(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'Repository.insert_stream', ('quack/', ''),
+            'success', ('ok',))
+        client.add_expected_call(
+            'Repository.insert_stream', ('quack/', ''),
+            'success', ('ok',))
+        sink = repo._get_sink()
+        fmt = repository.RepositoryFormat.get_default_format()
+        resume_tokens, missing_keys = sink.insert_stream([], fmt, [])
+        self.assertEqual([], resume_tokens)
+        self.assertEqual(set(), missing_keys)
+        client.finished_test()
+
+    def test_locked_repo_with_no_lock_token(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'Repository.lock_write', ('quack/', ''),
+            'success', ('ok', ''))
+        client.add_expected_call(
+            'Repository.insert_stream', ('quack/', ''),
+            'success', ('ok',))
+        client.add_expected_call(
+            'Repository.insert_stream', ('quack/', ''),
+            'success', ('ok',))
+        repo.lock_write()
+        sink = repo._get_sink()
+        fmt = repository.RepositoryFormat.get_default_format()
+        resume_tokens, missing_keys = sink.insert_stream([], fmt, [])
+        self.assertEqual([], resume_tokens)
+        self.assertEqual(set(), missing_keys)
+        client.finished_test()
+
+    def test_locked_repo_with_lock_token(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'Repository.lock_write', ('quack/', ''),
+            'success', ('ok', 'a token'))
+        client.add_expected_call(
+            'Repository.insert_stream_locked', ('quack/', '', 'a token'),
+            'success', ('ok',))
+        client.add_expected_call(
+            'Repository.insert_stream_locked', ('quack/', '', 'a token'),
+            'success', ('ok',))
+        repo.lock_write()
+        sink = repo._get_sink()
+        fmt = repository.RepositoryFormat.get_default_format()
+        resume_tokens, missing_keys = sink.insert_stream([], fmt, [])
+        self.assertEqual([], resume_tokens)
+        self.assertEqual(set(), missing_keys)
+        client.finished_test()
+
+
 class TestRepositoryTarball(TestRemoteRepository):
 
     # This is a canned tarball reponse we can validate against
@@ -1809,7 +1872,14 @@ class TestRemoteRepositoryCopyContent(tests.TestCaseWithTransport):
 class _StubRealPackRepository(object):
 
     def __init__(self, calls):
+        self.calls = calls
         self._pack_collection = _StubPackCollection(calls)
+
+    def is_in_write_group(self):
+        return False
+
+    def refresh_data(self):
+        self.calls.append(('pack collection reload_pack_names',))
 
 
 class _StubPackCollection(object):
@@ -1819,9 +1889,6 @@ class _StubPackCollection(object):
 
     def autopack(self):
         self.calls.append(('pack collection autopack',))
-
-    def reload_pack_names(self):
-        self.calls.append(('pack collection reload_pack_names',))
 
 
 class TestRemotePackRepositoryAutoPack(TestRemoteRepository):
