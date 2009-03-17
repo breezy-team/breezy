@@ -741,6 +741,9 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         self._vendor = vendor
         self._write_to = None
         self._bzr_remote_path = bzr_remote_path
+        # for the benefit of progress making a short description of this
+        # transport
+        self._scheme = 'bzr+ssh'
 
     def __repr__(self):
         return "%s(connected=%r, username=%r, host=%r, port=%r)" % (

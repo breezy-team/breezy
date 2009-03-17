@@ -106,6 +106,7 @@ def _format_version_tuple(version_info):
     version_string = '%d.%d.%d.%s.%d' % version_info
     return main_version + sub_string
 
+
 __version__ = _format_version_tuple(version_info)
 version_string = __version__
 

@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Tests for bzrdir implementations - tests a bzrdir format."""
+"""Tests for repository implementations - tests a repository format."""
 
 from cStringIO import StringIO
 import re
@@ -832,6 +832,26 @@ class TestRepository(TestCaseWithRepository):
                 "Cannot lock_read old formats like AllInOne over HPSS.")
         local_repo = local_bzrdir.open_repository()
         self.assertEqual(remote_backing_repo._format, local_repo._format)
+
+    # XXX: this helper probably belongs on TestCaseWithTransport
+    def make_smart_server(self, path):
+        smart_server = server.SmartTCPServer_for_testing()
+        smart_server.setUp(self.get_server())
+        remote_transport = get_transport(smart_server.get_url()).clone(path)
+        self.addCleanup(smart_server.tearDown)
+        return remote_transport
+
+    def test_clone_to_hpss(self):
+        pre_metadir_formats = [RepositoryFormat5(), RepositoryFormat6()]
+        if self.repository_format in pre_metadir_formats:
+            raise TestNotApplicable(
+                "Cannot lock pre_metadir_formats remotely.")
+        remote_transport = self.make_smart_server('remote')
+        local_branch = self.make_branch('local')
+        remote_branch = local_branch.create_clone_on_transport(remote_transport)
+        self.assertEqual(
+            local_branch.repository._format.supports_external_lookups,
+            remote_branch.repository._format.supports_external_lookups)
 
     def test_clone_unstackable_branch_preserves_stackable_repo_format(self):
         """Cloning an unstackable branch format to a somewhere with a default

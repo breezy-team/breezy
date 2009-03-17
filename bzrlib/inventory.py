@@ -490,7 +490,6 @@ class InventoryFile(InventoryEntry):
                 checker.repeated_text_cnt += 1
                 return
 
-        mutter('check version {%s} of {%s}', tree_revision_id, self.file_id)
         checker.checked_text_cnt += 1
         # We can't check the length, because Weave doesn't store that
         # information, and the whole point of looking at the weave's
@@ -945,7 +944,11 @@ class CommonInventory(object):
 
         # mutter("lookup path %r" % name)
 
-        parent = self.root
+        try:
+            parent = self.root
+        except errors.NoSuchId:
+            # root doesn't exist yet so nothing else can
+            return None
         if parent is None:
             return None
         for f in name:

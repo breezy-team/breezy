@@ -764,9 +764,12 @@ class TestCase(unittest.TestCase):
     def __init__(self, methodName='testMethod'):
         super(TestCase, self).__init__(methodName)
         self._cleanups = []
+        self._bzr_test_setUp_run = False
+        self._bzr_test_tearDown_run = False
 
     def setUp(self):
         unittest.TestCase.setUp(self)
+        self._bzr_test_setUp_run = True
         self._cleanEnvironment()
         self._silenceUI()
         self._startLogFile()
@@ -901,6 +904,12 @@ class TestCase(unittest.TestCase):
         self.assertEqual(expected.st_dev, actual.st_dev)
         self.assertEqual(expected.st_ino, actual.st_ino)
         self.assertEqual(expected.st_mode, actual.st_mode)
+
+    def assertLength(self, length, obj_with_len):
+        """Assert that obj_with_len is of length length."""
+        if len(obj_with_len) != length:
+            self.fail("Incorrect length: wanted %d, got %d for %r" % (
+                length, len(obj_with_len), obj_with_len))
 
     def assertPositive(self, val):
         """Assert that val is greater than 0."""
@@ -1320,6 +1329,10 @@ class TestCase(unittest.TestCase):
                 try:
                     try:
                         self.setUp()
+                        if not self._bzr_test_setUp_run:
+                            self.fail(
+                                "test setUp did not invoke "
+                                "bzrlib.tests.TestCase's setUp")
                     except KeyboardInterrupt:
                         raise
                     except TestSkipped, e:
@@ -1349,6 +1362,10 @@ class TestCase(unittest.TestCase):
 
                     try:
                         self.tearDown()
+                        if not self._bzr_test_tearDown_run:
+                            self.fail(
+                                "test tearDown did not invoke "
+                                "bzrlib.tests.TestCase's tearDown")
                     except KeyboardInterrupt:
                         raise
                     except:
@@ -1373,6 +1390,7 @@ class TestCase(unittest.TestCase):
             self.__dict__ = saved_attrs
 
     def tearDown(self):
+        self._bzr_test_tearDown_run = True
         self._runCleanups()
         self._log_contents = ''
         unittest.TestCase.tearDown(self)
@@ -2106,6 +2124,13 @@ class TestCaseWithMemoryTransport(TestCase):
         # maybe  mbp 20070410
         made_control = self.make_bzrdir(relpath, format=format)
         return made_control.create_repository(shared=shared)
+
+    def make_smart_server(self, path):
+        smart_server = server.SmartTCPServer_for_testing()
+        smart_server.setUp(self.get_server())
+        remote_transport = get_transport(smart_server.get_url()).clone(path)
+        self.addCleanup(smart_server.tearDown)
+        return remote_transport
 
     def make_branch_and_memory_tree(self, relpath, format=None):
         """Create a branch on the default transport and a MemoryTree for it."""

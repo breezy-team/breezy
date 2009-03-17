@@ -376,6 +376,7 @@ class TestCanonicalRelPath(TestCaseInTempDir):
 class TestPumpFile(TestCase):
     """Test pumpfile method."""
     def setUp(self):
+        TestCase.setUp(self)
         # create a test datablock
         self.block_size = 512
         pattern = '0123456789ABCDEF'
@@ -896,6 +897,8 @@ class TestWalkDirs(TestCaseInTempDir):
         e = self.assertRaises(OSError, list, osutils._walkdirs_utf8("."))
         self.assertEquals('./test-unreadable', e.filename)
         self.assertEquals(errno.EACCES, e.errno)
+        # Ensure the message contains the file name
+        self.assertContainsRe(str(e), "\./test-unreadable")
 
     def test__walkdirs_utf8(self):
         tree = [

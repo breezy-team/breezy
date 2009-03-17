@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,6 +30,7 @@ from bzrlib import (
         lockable_files,
         repository,
         revision as _mod_revision,
+        symbol_versioning,
         transport,
         tsort,
         ui,
@@ -478,24 +479,19 @@ class Branch(object):
         """
         if self.base == from_branch.base:
             return (0, [])
-        if pb is None:
-            nested_pb = ui.ui_factory.nested_progress_bar()
-            pb = nested_pb
-        else:
-            nested_pb = None
-
+        if pb is not None:
+            symbol_versioning.warn(
+                symbol_versioning.deprecated_in((1, 14, 0))
+                % "pb parameter to fetch()")
         from_branch.lock_read()
         try:
             if last_revision is None:
-                pb.update('get source history')
                 last_revision = from_branch.last_revision()
                 last_revision = _mod_revision.ensure_null(last_revision)
             return self.repository.fetch(from_branch.repository,
                                          revision_id=last_revision,
-                                         pb=nested_pb)
+                                         pb=pb)
         finally:
-            if nested_pb is not None:
-                nested_pb.finished()
             from_branch.unlock()
 
     def get_bound_location(self):
