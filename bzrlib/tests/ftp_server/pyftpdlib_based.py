@@ -96,7 +96,7 @@ class BZRConformingFTPHandler(ftpserver.FTPHandler):
 
     def ftp_SITE_CHMOD(self, line):
         try:
-            mode, path = line.split()
+            mode, path = line.split(None, 1)
             mode = int(mode, 8)
         except ValueError:
             # We catch both malformed line and malformed mode with the same
