@@ -395,16 +395,11 @@ class Commit(object):
             # Upload revision data to the master.
             # this will propagate merged revisions too if needed.
             if self.bound_branch:
-                if not self.master_branch.repository.has_same_location(
-                        self.branch.repository):
-                    self._set_progress_stage("Uploading data to master branch")
-                    self.master_branch.repository.fetch(self.branch.repository,
-                        revision_id=self.rev_id)
-                # now the master has the revision data
+                self._set_progress_stage("Uploading data to master branch")
                 # 'commit' to the master first so a timeout here causes the
                 # local branch to be out of date
-                self.master_branch.set_last_revision_info(new_revno,
-                                                          self.rev_id)
+                self.master_branch.import_last_revision_info(
+                    self.branch.repository, new_revno, self.rev_id)
 
             # and now do the commit locally.
             self.branch.set_last_revision_info(new_revno, self.rev_id)

@@ -33,61 +33,46 @@ from bzrlib.errors import (
     FileExists,
     UninitializableFormat,
     )
-from bzrlib.tests import (
-                          adapt_modules,
-                          TestScenarioApplier,
-                          )
+from bzrlib.tests import multiply_tests
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.transport import get_transport
 
 
-class InterBranchTestProviderAdapter(TestScenarioApplier):
-    """A tool to generate a suite testing multiple inter branch formats.
+def make_scenarios(test_list):
+    """Transform the input test list to a list of scenarios.
 
-    This is done by copying the test once for each interbranch provider and
-    injecting the branch_format_from and branch_to_format classes into each
-    copy.  Each copy is also given a new id() to make it easy to identify.
+    :param formats: A list of tuples:
+        (interbranch_class, branch_format_from, branch_format_to).
     """
+    result = []
+    for interbranch_class, branch_format_from, branch_format_to in test_list:
+        id = '%s,%s,%s' % (interbranch_class.__name__,
+                            branch_format_from.__class__.__name__,
+                            branch_format_to.__class__.__name__)
+        scenario = (id,
+            {
+             "branch_format_from": branch_format_from,
+             "interbranch_class": interbranch_class,
+             "branch_format_to": branch_format_to,
+             })
+        result.append(scenario)
+    return result
 
-    def __init__(self, formats):
-        TestScenarioApplier.__init__(self)
-        self.scenarios = self.formats_to_scenarios(formats)
 
-    def formats_to_scenarios(self, formats):
-        """Transform the input formats to a list of scenarios.
-
-        :param formats: A list of tuples:
-            (interbranch_class, branch_format_from, branch_format_to).
-        """
-        result = []
-        for interbranch_class, branch_format_from, branch_format_to in formats:
-            id = '%s,%s,%s' % (interbranch_class.__name__,
-                                branch_format_from.__class__.__name__,
-                                branch_format_to.__class__.__name__)
-            scenario = (id,
-                {
-                 "branch_format_from":branch_format_from,
-                 "interbranch_class":interbranch_class,
-                 "branch_format_to":branch_format_to,
-                 })
-            result.append(scenario)
-        return result
-
-    @staticmethod
-    def default_test_list():
-        """Generate the default list of interbranch permutations to test."""
-        result = []
-        # test the default InterBranch between format 6 and the current
-        # default format.
-        for optimiser_class in InterBranch._optimisers:
-            format_from_test, format_to_test = \
-                optimiser_class._get_branch_formats_to_test()
-            if format_to_test is not None:
-                result.append((optimiser_class,
-                               format_from_test, format_to_test))
-        # if there are specific combinations we want to use, we can add them
-        # here.
-        return result
+def default_test_list():
+    """Generate the default list of interbranch permutations to test."""
+    result = []
+    # test the default InterBranch between format 6 and the current
+    # default format.
+    for optimiser_class in InterBranch._optimisers:
+        format_from_test, format_to_test = \
+            optimiser_class._get_branch_formats_to_test()
+        if format_to_test is not None:
+            result.append((optimiser_class,
+                           format_from_test, format_to_test))
+    # if there are specific combinations we want to use, we can add them
+    # here.
+    return result
 
 
 class TestCaseWithInterBranch(TestCaseWithBzrDir):
@@ -129,17 +114,9 @@ class TestCaseWithInterBranch(TestCaseWithBzrDir):
         return self.branch_format_to.initialize(made_control)
 
 
-def load_tests(basic_tests, module, loader):
-    result = loader.suiteClass()
-    # add the tests for this module
-    result.addTests(basic_tests)
-
-    test_interbranch_implementations = [
+def load_tests(standard_tests, module, loader):
+    submod_tests = loader.loadTestsFromModuleNames([
         'bzrlib.tests.per_interbranch.test_update_revisions',
-        ]
-    adapter = InterBranchTestProviderAdapter(
-        InterBranchTestProviderAdapter.default_test_list()
-        )
-    # add the tests for the sub modules
-    adapt_modules(test_interbranch_implementations, adapter, loader, result)
-    return result
+        ])
+    scenarios = make_scenarios(default_test_list())
+    return multiply_tests(submod_tests, scenarios, standard_tests)

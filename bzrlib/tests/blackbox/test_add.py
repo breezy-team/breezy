@@ -35,7 +35,6 @@ class TestAdd(ExternalBase):
         results = sorted(out.rstrip('\n').split('\n'))
         self.assertEquals(['If you wish to add some of these files, please'\
                            ' add them by name.',
-                           'add completed',
                            'adding .bzrignore',
                            'adding dir',
                            'adding dir/sub.txt',
@@ -149,8 +148,7 @@ class TestAdd(ExternalBase):
         self.assertEqual('', err)
         self.assertEqualDiff('adding a w/ file id from a\n'
                              'adding b w/ file id from b\n'
-                             'adding b/c w/ file id from b/c\n'
-                             'add completed\n',
+                             'adding b/c w/ file id from b/c\n',
                              out)
         new_tree = new_tree.bzrdir.open_workingtree()
         self.assertEqual(base_tree.path2id('a'), new_tree.path2id('a'))
@@ -170,8 +168,7 @@ class TestAdd(ExternalBase):
         out, err = self.run_bzr('add --file-ids-from ../base/b')
         self.assertEqual('', err)
         self.assertEqualDiff('adding c w/ file id from b/c\n'
-                             'adding d w/ file id from b/d\n'
-                             'add completed\n',
+                             'adding d w/ file id from b/d\n',
                              out)
 
         new_tree = new_tree.bzrdir.open_workingtree()
