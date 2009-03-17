@@ -108,3 +108,18 @@ class TestFTPServerUI(TestCaseWithFTPServer):
         self.assertEqual('test bytes\n', t.get_bytes('foo'))
         # stdin should have  been left untouched
         self.assertEqual('precious\n', ui.ui_factory.stdin.readline())
+
+    def test_empty_password(self):
+        # Override the default user/password from setUp
+        self.user = 'jim'
+        self.password = ''
+        self.get_server().add_user(self.user, self.password)
+        t = self.get_transport()
+        ui.ui_factory = tests.TestUIFactory(stdin=self.password+'\n',
+                                            stdout=tests.StringIOWrapper())
+        # Issue a request to the server to connect
+        t.has('whatever/not/existing')
+        # stdin should be empty (the provided password have been consumed),
+        # even if the password is empty, it's followed by a newline.
+        self.assertEqual('', ui.ui_factory.stdin.readline())
+

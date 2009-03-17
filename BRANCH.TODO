@@ -3,8 +3,6 @@
 # 
 #
 
-- explicit test to forbid empty password for ftp ? Or try using
-   arg_needed = None for the PASS command as suggested.
 - handle unicode or utf-8 encoded paths
 - explicit test for chmod and path with spaces
 

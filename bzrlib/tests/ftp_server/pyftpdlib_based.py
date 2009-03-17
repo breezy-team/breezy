@@ -124,6 +124,15 @@ ftpserver.proto_cmds['SITE CHMOD'] = ftpserver._CommandProperty(
     auth_needed=True, arg_needed=True, check_path=False,
     help='Syntax: SITE CHMOD <SP>  octal_mode_bits file-name (chmod file)',
     )
+ftpserver.proto_cmds['PASS'] = ftpserver._CommandProperty(
+    perm=None,
+    auth_needed=False,
+    # An empty password is valid, hence the arg is neither mandatory not
+    # forbidden
+    arg_needed=None,
+    check_path=False,
+    help='Syntax: PASS [<SP> password] (set user password).',
+    )
 
 
 class ftp_server(ftpserver.FTPServer):
@@ -131,7 +140,7 @@ class ftp_server(ftpserver.FTPServer):
     def __init__(self, address, handler, authorizer):
         ftpserver.FTPServer.__init__(self, address, handler)
         self.authorizer = authorizer
-        # Worth backporting updstream ?
+        # Worth backporting upstream ?
         self.addr = self.socket.getsockname()
 
 
