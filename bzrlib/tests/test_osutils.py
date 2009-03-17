@@ -376,6 +376,7 @@ class TestCanonicalRelPath(TestCaseInTempDir):
 class TestPumpFile(TestCase):
     """Test pumpfile method."""
     def setUp(self):
+        TestCase.setUp(self)
         # create a test datablock
         self.block_size = 512
         pattern = '0123456789ABCDEF'

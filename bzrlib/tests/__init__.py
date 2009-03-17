@@ -764,9 +764,12 @@ class TestCase(unittest.TestCase):
     def __init__(self, methodName='testMethod'):
         super(TestCase, self).__init__(methodName)
         self._cleanups = []
+        self._bzr_test_setUp_run = False
+        self._bzr_test_tearDown_run = False
 
     def setUp(self):
         unittest.TestCase.setUp(self)
+        self._bzr_test_setUp_run = True
         self._cleanEnvironment()
         self._silenceUI()
         self._startLogFile()
@@ -1326,6 +1329,10 @@ class TestCase(unittest.TestCase):
                 try:
                     try:
                         self.setUp()
+                        if not self._bzr_test_setUp_run:
+                            self.fail(
+                                "test setUp did not invoke "
+                                "bzrlib.tests.TestCase's setUp")
                     except KeyboardInterrupt:
                         raise
                     except TestSkipped, e:
@@ -1355,6 +1362,10 @@ class TestCase(unittest.TestCase):
 
                     try:
                         self.tearDown()
+                        if not self._bzr_test_tearDown_run:
+                            self.fail(
+                                "test tearDown did not invoke "
+                                "bzrlib.tests.TestCase's tearDown")
                     except KeyboardInterrupt:
                         raise
                     except:
@@ -1379,6 +1390,7 @@ class TestCase(unittest.TestCase):
             self.__dict__ = saved_attrs
 
     def tearDown(self):
+        self._bzr_test_tearDown_run = True
         self._runCleanups()
         self._log_contents = ''
         unittest.TestCase.tearDown(self)

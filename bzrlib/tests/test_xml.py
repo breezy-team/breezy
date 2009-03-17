@@ -509,6 +509,7 @@ class TestEncodeAndEscape(TestCase):
     """Whitebox testing of the _encode_and_escape function."""
 
     def setUp(self):
+        TestCase.setUp(self)
         # Keep the cache clear before and after the test
         bzrlib.xml8._ensure_utf8_re()
         bzrlib.xml8._clear_cache()
