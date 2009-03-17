@@ -17,6 +17,7 @@
 
 """An adapter between a Git Repository and a Bazaar Branch"""
 
+import dulwich as git
 import os
 import time
 
@@ -41,10 +42,13 @@ from bzrlib.transport import get_transport
 from bzrlib.plugins.git.foreign import (
     versionedfiles,
     )
-from bzrlib.plugins.git.mapping import default_mapping, mapping_registry, inventory_to_tree_and_blobs, revision_to_commit
+from bzrlib.plugins.git.mapping import (
+    default_mapping,
+    inventory_to_tree_and_blobs,
+    mapping_registry,
+    revision_to_commit,
+    )
 from bzrlib.plugins.git.versionedfiles import GitTexts
-
-import dulwich as git
 
 
 class GitTags(object):
@@ -151,7 +155,7 @@ class LocalGitRepository(GitRepository):
         return [None] + ancestry
 
     def import_revision_gist(self, source, revid, parent_lookup):
-        """Impor the gist of another revision into this Git repository.
+        """Import the gist of a revision into this Git repository.
 
         """
         objects = []
@@ -166,6 +170,7 @@ class LocalGitRepository(GitRepository):
         return commit.sha().hexdigest()
 
     def dfetch(self, source, stop_revision):
+        """Import the gist of the ancestry of a particular revision."""
         if stop_revision is None:
             raise NotImplementedError
         revidmap = {}

@@ -16,21 +16,26 @@
 
 """Tests for interfacing with a Git Repository"""
 
+import dulwich as git
+import os
+
 from bzrlib import (
     errors,
     inventory,
     revision,
     )
-from bzrlib.repository import Repository
+from bzrlib.repository import (
+    Repository,
+    )
 
 from bzrlib.plugins.git import (
     dir,
     repository,
     tests,
     )
-from bzrlib.plugins.git.mapping import default_mapping
-
-import dulwich as git
+from bzrlib.plugins.git.mapping import (
+    default_mapping,
+    )
 
 class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
     """Feature tests for GitRepository."""
@@ -180,3 +185,25 @@ class GitRepositoryFormat(tests.TestCase):
 
     def test_get_format_description(self):
         self.assertEquals("Git Repository", self.format.get_format_description())
+
+
+class RevisionGistImportTests(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        tests.TestCaseWithTransport.setUp(self)
+        self.git_path = os.path.join(self.test_dir, "git")
+        os.mkdir(self.git_path)
+        git.repo.Repo.create(self.git_path)
+        self.git_repo = Repository.open(self.git_path)
+        self.bzr_tree = self.make_branch_and_tree("bzr")
+
+    def import_rev(self, revid, parent_lookup=None):
+        return self.git_repo.import_revision_gist(
+            self.bzr_tree.branch.repository, revid, parent_lookup)
+
+    def test_pointless(self):
+        revid = self.bzr_tree.commit("pointless")
+        self.assertEquals("68ced02231857f075bd78150cc08f23555eff1f4", 
+                self.import_rev(revid))
+        self.assertEquals("68ced02231857f075bd78150cc08f23555eff1f4", 
+                self.import_rev(revid))
