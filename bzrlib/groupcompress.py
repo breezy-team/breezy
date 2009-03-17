@@ -613,20 +613,7 @@ class _LazyGroupContentManager(object):
 
     def _wire_bytes(self):
         """Return a byte stream suitable for transmitting over the wire."""
-        # TODO: this might be a really good time to determine that we want to
-        #       rebuild a group based on how much content we are actually
-        #       transmitting.
-        #       Specifically, we could use max(end) to compare to
-        #       block._content_length to see if we want to just truncate the
-        #       last bytes. a simple:
-        #           last_needed_byte = max(end)
-        #           bytes = zlib.decompress(last_needed_byte+XXX)
-        #           c_bytes = zlib.compress(bytes[:last_needed_byte])
-        #       Going further, we could compare sum(end-start) to see how many
-        #       bytes out of the partial content we will actually be using, and
-        #       use a heuristic to decide that we need to generate a new group.
-        #       (that could be if *any* bytes are unused, or just if more than
-        #       XX percent is unused)
+        self._check_rebuild_block()
         # The outer block starts with:
         #   'groupcompress-block\n'
         #   <length of compressed key info>\n
@@ -660,7 +647,6 @@ class _LazyGroupContentManager(object):
         z_header_bytes = zlib.compress(header_bytes)
         del header_bytes
         z_header_bytes_len = len(z_header_bytes)
-        assert self._block._z_content is not None
         block_bytes = self._block.to_bytes()
         lines.append('%d\n%d\n%d\n' % (z_header_bytes_len, header_bytes_len,
                                        len(block_bytes)))
@@ -1426,6 +1412,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 if record.storage_kind == 'groupcompress-block':
                     # Insert the raw block into the target repo
                     insert_manager = record._manager
+                    record._manager._check_rebuild_block()
                     bytes = record._manager._block.to_bytes()
                     _, start, length = self._access.add_raw_records(
                         [(None, len(bytes))], bytes)[0]

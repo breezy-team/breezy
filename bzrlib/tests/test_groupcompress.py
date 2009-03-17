@@ -636,13 +636,19 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
         manager = groupcompress._LazyGroupContentManager(block)
         wire_bytes = manager._wire_bytes()
         block_length = len(block.to_bytes())
-        self.assertStartsWith(wire_bytes,
-                              'groupcompress-block\n'
-                              '8\n' # len(compress(''))
-                              '0\n' # len('')
-                              '%d\n'
-                              % (block_length,)
-                              )
+        # We should have triggered a strip, since we aren't using any content
+        stripped_block = manager._block.to_bytes()
+        self.assertTrue(block_length > len(stripped_block))
+        empty_z_header = zlib.compress('')
+        self.assertEqual('groupcompress-block\n'
+                         '8\n' # len(compress(''))
+                         '0\n' # len('')
+                         '%d\n'# compressed block len
+                         '%s'  # zheader
+                         '%s'  # block
+                         % (len(stripped_block), empty_z_header,
+                            stripped_block),
+                         wire_bytes)
 
     def test__wire_bytes(self):
         entries, block = self.make_block(self._texts)
