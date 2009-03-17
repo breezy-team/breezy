@@ -15,7 +15,11 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.plugins.git import tests
-from bzrlib.plugins.git.mapping import BzrGitMappingv1
+from bzrlib.plugins.git.mapping import (
+    BzrGitMappingv1,
+    escape_file_id,
+    unescape_file_id,
+    )
 
 
 class TestRevidConversionV1(tests.TestCase):
@@ -32,3 +36,21 @@ class TestRevidConversionV1(tests.TestCase):
                          BzrGitMappingv1().revision_id_bzr_to_foreign(
                             "git-v1:"
                             "c6a4d8f1fa4ac650748e647c4b1b368f589a7356"))
+
+
+class FileidTests(tests.TestCase):
+
+    def test_escape_space(self):
+        self.assertEquals("bla_s", escape_file_id("bla "))
+
+    def test_escape_underscore(self):
+        self.assertEquals("bla__", escape_file_id("bla_"))
+
+    def test_escape_underscore_space(self):
+        self.assertEquals("bla___s", escape_file_id("bla_ "))
+
+    def test_unescape_underscore(self):
+        self.assertEquals("bla ", unescape_file_id("bla_s"))
+
+    def test_unescape_underscore_space(self):
+        self.assertEquals("bla _", unescape_file_id("bla_s__"))
