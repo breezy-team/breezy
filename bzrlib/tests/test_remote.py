@@ -2256,15 +2256,13 @@ class TestStacking(tests.TestCaseWithTransport):
 
     def prepare_stacked_remote_branch(self):
         """Get stacked_upon and stacked branches with content in each."""
-        smart_server = server.SmartTCPServer_for_testing()
-        smart_server.setUp()
-        self.addCleanup(smart_server.tearDown)
+        self.setup_smart_server_with_call_log()
         tree1 = self.make_branch_and_tree('tree1', format='1.9')
         tree1.commit('rev1', rev_id='rev1')
         tree2 = tree1.branch.bzrdir.sprout('tree2', stacked=True
             ).open_workingtree()
         tree2.commit('local changes make me feel good.')
-        branch2 = Branch.open(smart_server.get_url() + '/tree2')
+        branch2 = Branch.open(self.get_url('tree2'))
         branch2.lock_read()
         self.addCleanup(branch2.unlock)
         return tree1.branch, branch2
@@ -2308,6 +2306,7 @@ class TestStacking(tests.TestCaseWithTransport):
         tip = stacked.last_revision()
         revs = stacked.repository.get_ancestry(tip)
         search = graph.PendingAncestryResult([tip], stacked.repository)
+        self.reset_smart_call_log()
         stream = source.get_stream(search)
         if None in revs:
             revs.remove(None)
@@ -2322,14 +2321,19 @@ class TestStacking(tests.TestCaseWithTransport):
         # unordered yields the full data from both stacked and stacked upon
         # sources.
         rev_ord, expected_revs = self.get_ordered_revs('1.9', 'unordered')
-        self.assertEqual(set(rev_ord), set(expected_revs))
+        self.assertEqual(set(expected_revs), set(rev_ord))
+        # Getting unordered results should have made a streaming data request
+        # from the server, then one from the backing branch.
+        self.assertLength(2, self.hpss_calls)
 
     def test_stacked_get_stream_topological(self):
         # Repository._get_source.get_stream() from a stacked repository with
         # topological sorting yields the full data from both stacked and
         # stacked upon sources in topological order.
         rev_ord, expected_revs = self.get_ordered_revs('knit', 'topological')
-        self.assertEqual(rev_ord, expected_revs)
+        self.assertEqual(expected_revs, rev_ord)
+        # Getting topological sort requires VFS calls still
+        self.assertLength(14, self.hpss_calls)
 
     def test_stacked_get_stream_groupcompress(self):
         # Repository._get_source.get_stream() from a stacked repository with
@@ -2337,7 +2341,10 @@ class TestStacking(tests.TestCaseWithTransport):
         # stacked upon sources in groupcompress order.
         raise tests.TestSkipped('No groupcompress ordered format available')
         rev_ord, expected_revs = self.get_ordered_revs('dev5', 'groupcompress')
-        self.assertEqual(reversed(rev_ord), expected_revs)
+        self.assertEqual(expected_revs, reversed(rev_ord))
+        # Getting unordered results should have made a streaming data request
+        # from the backing branch, and one from the stacked on branch.
+        self.assertLength(2, self.hpss_calls)
 
 
 class TestRemoteBranchEffort(tests.TestCaseWithTransport):
