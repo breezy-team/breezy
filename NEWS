@@ -87,6 +87,14 @@ IN DEVELOPMENT
     * The ``pb`` argument to ``fetch()`` is deprecated.
       (Martin Pool)
 
+  TESTING:
+
+    * ``bzrlib.tests.TestCase`` now fails the test if its own ``setUp``
+      and ``tearDown`` weren't called.  This catches faulty tests that
+      forget to upcall when overriding ``setUp`` and ``tearDown``.  Those
+      faulty tests were not properly isolated.
+      (Andrew Bennetts, Robert Collins)
+
   INTERNALS:
 
     * New ``assertLength`` method based on one Martin has squirreled away
