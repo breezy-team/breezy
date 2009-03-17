@@ -202,8 +202,9 @@ class RevisionGistImportTests(tests.TestCaseWithTransport):
             self.bzr_tree.branch.repository, revid, parent_lookup)
 
     def test_pointless(self):
-        revid = self.bzr_tree.commit("pointless")
-        self.assertEquals("68ced02231857f075bd78150cc08f23555eff1f4", 
+        revid = self.bzr_tree.commit("pointless", timestamp=1205433193,
+                  committer="Jelmer Vernooij <jelmer@samba.org>")
+        self.assertEquals("2caa8094a5b794961cd9bf582e3e2bb090db0b14", 
                 self.import_rev(revid))
-        self.assertEquals("68ced02231857f075bd78150cc08f23555eff1f4", 
+        self.assertEquals("2caa8094a5b794961cd9bf582e3e2bb090db0b14", 
                 self.import_rev(revid))
