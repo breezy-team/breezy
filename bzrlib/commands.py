@@ -342,8 +342,8 @@ class Command(object):
             list to internal links (used by bzr_man rstx generator)
         :param verbose: if True, display the full help, otherwise
             leave out the descriptive sections and just display
-            concise help (e.g. Purpose, Usage, Options) with a
-            message pointing to "help -v" for more information.
+            usage help (e.g. Purpose, Usage, Options) with a
+            message explaining how to obtain full help.
         """
         doc = self.help()
         if doc is None:
