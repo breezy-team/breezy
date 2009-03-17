@@ -530,6 +530,9 @@ class Command(object):
 
         # Process the standard options
         if 'help' in opts:  # e.g. bzr add --help
+            sys.stdout.write(self.get_help_text())
+            return 0
+        if 'usage' in opts:  # e.g. bzr add --usage
             sys.stdout.write(self.get_help_text(verbose=False))
             return 0
         trace.set_verbosity_level(option._verbosity_level)

@@ -46,11 +46,11 @@ IN DEVELOPMENT
       stream if the server is version 1.13 or greater, reducing roundtrips
       significantly. (Andrew Bennetts, Robert Collins)
 
-    * ``bzr xxx -h`` where xxx is a command now shows concise help, i.e.
-      a usage message and the options without the descriptive sections
-      (like Description and Examples). When concise help is given, a
-      message is given explaining how to see the complete help, i.e.
-      ``bzr help xxx``.  (Ian Clatworthy)
+    * ``bzr xxx --usage`` where xxx is a command now shows a usage
+      message and the options without the descriptive sections
+      (like Description and Examples). A message is also given
+      explaining how to see the complete help, i.e. ``bzr help xxx``.
+      (Ian Clatworthy)
 
     * Lightweight Checkouts and Stacked Branches should both be much
       faster over remote connections. Building the working tree now

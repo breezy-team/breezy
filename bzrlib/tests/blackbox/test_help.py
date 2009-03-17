@@ -112,18 +112,10 @@ class TestHelp(ExternalBase):
         self.assertTrue('rocks' in hidden)
         self.assertTrue('rocks' not in commands)
 
-    def test_help_concise(self):
-        dash_h  = self.run_bzr('diff -h')[0]
-        self.assertContainsRe(dash_h, "Purpose:")
-        self.assertContainsRe(dash_h, "Usage:")
-        self.assertContainsRe(dash_h, "Options:")
-        self.assertNotContainsRe(dash_h, "Description:")
-        self.assertNotContainsRe(dash_h, "Examples:")
-        self.assertContainsRe(dash_h, "See also:")
-        self.assertContainsRe(dash_h, "Aliases:")
-
     def test_help_detail(self):
+        dash_h  = self.run_bzr('diff -h')[0]
         help_x  = self.run_bzr('help diff')[0]
+        self.assertEquals(dash_h, help_x)
         self.assertContainsRe(help_x, "Purpose:")
         self.assertContainsRe(help_x, "Usage:")
         self.assertContainsRe(help_x, "Options:")
@@ -131,6 +123,16 @@ class TestHelp(ExternalBase):
         self.assertContainsRe(help_x, "Examples:")
         self.assertContainsRe(help_x, "See also:")
         self.assertContainsRe(help_x, "Aliases:")
+
+    def test_help_usage(self):
+        usage  = self.run_bzr('diff --usage')[0]
+        self.assertContainsRe(usage, "Purpose:")
+        self.assertContainsRe(usage, "Usage:")
+        self.assertContainsRe(usage, "Options:")
+        self.assertNotContainsRe(usage, "Description:")
+        self.assertNotContainsRe(usage, "Examples:")
+        self.assertContainsRe(usage, "See also:")
+        self.assertContainsRe(usage, "Aliases:")
 
     def test_help_help(self):
         help = self.run_bzr('help help')[0]
