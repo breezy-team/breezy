@@ -213,7 +213,7 @@ class TestGroupCompressBlock(tests.TestCase):
         self.assertIs(None, block._z_content)
         block._ensure_content() # Ensure content is safe to call 2x
 
-    def test_from_bytes(self):
+    def test_from_bytes_with_labels(self):
         header = ('key:bing\n'
             'sha1:abcdabcdabcdabcdabcdabcdabcdabcdabcdabcd\n'
             'type:fulltext\n'
@@ -242,6 +242,7 @@ class TestGroupCompressBlock(tests.TestCase):
                  z_header, z_content)
         block = groupcompress.GroupCompressBlock.from_bytes(
             z_bytes)
+        block._parse_header()
         self.assertIsInstance(block, groupcompress.GroupCompressBlock)
         self.assertEqual([('bing',), ('foo', 'bar')], sorted(block._entries))
         bing = block._entries[('bing',)]
@@ -291,11 +292,17 @@ class TestGroupCompressBlock(tests.TestCase):
         self.assertEqual(100, e.length)
 
     def test_to_bytes(self):
+        no_labels = groupcompress._NO_LABELS
+        def reset():
+            groupcompress._NO_LABELS = no_labels
+        self.addCleanup(reset)
+        groupcompress._NO_LABELS = False
         gcb = groupcompress.GroupCompressBlock()
         gcb.add_entry(('foo', 'bar'), 'fulltext', 'abcd'*10, 0, 100)
         gcb.add_entry(('bing',), 'fulltext', 'abcd'*10, 100, 100)
-        bytes = gcb.to_bytes('this is some content\n'
-                             'this content will be compressed\n')
+        gcb.set_content('this is some content\n'
+                        'this content will be compressed\n')
+        bytes = gcb.to_bytes()
         expected_header =('gcb1z\n' # group compress block v1 zlib
                           '76\n' # Length of compressed bytes
                           '183\n' # Length of uncompressed meta-info
@@ -499,7 +506,7 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
 
     def test_get_fulltexts(self):
         entries, block = self.make_block(self._texts)
-        manager = groupcompress.LazyGroupContentManager(block)
+        manager = groupcompress._LazyGroupContentManager(block)
         self.add_key_to_manager(('key1',), entries, block, manager)
         self.add_key_to_manager(('key2',), entries, block, manager)
         result_order = []
@@ -511,7 +518,7 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
 
         # If we build the manager in the opposite order, we should get them
         # back in the opposite order
-        manager = groupcompress.LazyGroupContentManager(block)
+        manager = groupcompress._LazyGroupContentManager(block)
         self.add_key_to_manager(('key2',), entries, block, manager)
         self.add_key_to_manager(('key1',), entries, block, manager)
         result_order = []
@@ -523,21 +530,23 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
 
     def test__wire_bytes_no_keys(self):
         entries, block = self.make_block(self._texts)
-        manager = groupcompress.LazyGroupContentManager(block)
+        manager = groupcompress._LazyGroupContentManager(block)
         wire_bytes = manager._wire_bytes()
+        block_length = len(block.to_bytes())
         self.assertStartsWith(wire_bytes,
                               'groupcompress-block\n'
                               '8\n' # len(compress(''))
                               '0\n' # len('')
                               '%d\n'
-                              % (len(block._z_content),)
+                              % (block_length,)
                               )
 
     def test__wire_bytes(self):
         entries, block = self.make_block(self._texts)
-        manager = groupcompress.LazyGroupContentManager(block)
+        manager = groupcompress._LazyGroupContentManager(block)
         self.add_key_to_manager(('key1',), entries, block, manager)
         self.add_key_to_manager(('key4',), entries, block, manager)
+        block_bytes = block.to_bytes()
         wire_bytes = manager._wire_bytes()
         (storage_kind, z_header_len, header_len,
          block_len, rest) = wire_bytes.split('\n', 4)
@@ -547,7 +556,7 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
         self.assertEqual('groupcompress-block', storage_kind)
         self.assertEqual(33, z_header_len)
         self.assertEqual(25, header_len)
-        self.assertEqual(len(block._z_content), block_len)
+        self.assertEqual(len(block_bytes), block_len)
         z_header = rest[:z_header_len]
         header = zlib.decompress(z_header)
         self.assertEqual(header_len, len(header))
@@ -565,4 +574,23 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
                                 entry4.start, entry4.end),
                             header)
         z_block = rest[z_header_len:]
-        self.assertEqual(block._z_content, z_block)
+        self.assertEqual(block_bytes, z_block)
+
+    def test_from_bytes(self):
+        entries, block = self.make_block(self._texts)
+        manager = groupcompress._LazyGroupContentManager(block)
+        self.add_key_to_manager(('key1',), entries, block, manager)
+        self.add_key_to_manager(('key4',), entries, block, manager)
+        wire_bytes = manager._wire_bytes()
+        self.assertStartsWith(wire_bytes, 'groupcompress-block\n')
+        manager = groupcompress._LazyGroupContentManager.from_bytes(wire_bytes,
+            wire_bytes.index('\n')+1)
+        self.assertIsInstance(manager, groupcompress._LazyGroupContentManager)
+        self.assertEqual(2, len(manager._factories))
+        self.assertEqual(block._z_content, manager._block._z_content)
+        result_order = []
+        for record in manager.get_record_stream():
+            result_order.append(record.key)
+            text = self._texts[record.key]
+            self.assertEqual(text, record.get_bytes_as('fulltext'))
+        self.assertEqual([('key1',), ('key4',)], result_order)

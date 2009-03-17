@@ -54,7 +54,7 @@ from bzrlib.versionedfile import (
     )
 
 _USE_LZMA = False and (pylzma is not None)
-_NO_LABELS = False
+_NO_LABELS = True
 _FAST = False
 
 def encode_base128_int(val):
@@ -395,7 +395,14 @@ class GroupCompressBlock(object):
         self._entries[key] = entry
         return entry
 
-    def to_bytes(self, content=''):
+    def set_content(self, content):
+        """Set the content of this block."""
+        self._content_length = len(content)
+        self._content = content
+        self._z_content = None
+        self._z_header_length = None
+
+    def to_bytes(self):
         """Encode the information into a byte stream."""
         compress = zlib.compress
         if _USE_LZMA:
@@ -432,9 +439,17 @@ class GroupCompressBlock(object):
             z_header_bytes = ''
             z_header_len = 0
             info_len = 0
-        content_len = len(content)
-        z_content_bytes = compress(content)
-        z_content_len = len(z_content_bytes)
+        if self._z_content is not None:
+            content_len = self._content_length
+            z_content_len = self._z_content_length
+            z_content_bytes = self._z_content
+        else:
+            assert self._content is not None
+            content_len = self._content_length
+            z_content_bytes = compress(self._content)
+            self._z_content = z_content_bytes
+            z_content_len = len(z_content_bytes)
+            self._z_content_length = z_content_len
         if _USE_LZMA:
             header = self.GCB_LZ_HEADER
         else:
@@ -501,7 +516,7 @@ class LazyGroupCompressFactory(object):
             self.storage_kind)
 
 
-class LazyGroupContentManager(object):
+class _LazyGroupContentManager(object):
     """This manages a group of LazyGroupCompressFactory objects."""
 
     def __init__(self, block):
@@ -576,11 +591,64 @@ class LazyGroupContentManager(object):
         del header_bytes
         z_header_bytes_len = len(z_header_bytes)
         assert self._block._z_content is not None
+        block_bytes = self._block.to_bytes()
         lines.append('%d\n%d\n%d\n' % (z_header_bytes_len, header_bytes_len,
-                                       len(self._block._z_content)))
+                                       len(block_bytes)))
         lines.append(z_header_bytes)
-        lines.append(self._block._z_content)
+        lines.append(block_bytes)
+        del z_header_bytes, block_bytes
         return ''.join(lines)
+
+    @classmethod
+    def from_bytes(cls, bytes, line_end):
+        # TODO: This does extra string copying, probably better to do it a
+        #       different way
+        (storage_kind, z_header_len, header_len,
+         block_len, rest) = bytes.split('\n', 4)
+        del bytes
+        if storage_kind != 'groupcompress-block':
+            raise ValueError('Unknown storage kind: %s' % (storage_kind,))
+        z_header_len = int(z_header_len)
+        if len(rest) < z_header_len:
+            raise ValueError('Compressed header len shorter than all bytes')
+        z_header = rest[:z_header_len]
+        header_len = int(header_len)
+        header = zlib.decompress(z_header)
+        if len(header) != header_len:
+            raise ValueError('invalid length for decompressed bytes')
+        del z_header
+        block_len = int(block_len)
+        if len(rest) != z_header_len + block_len:
+            raise ValueError('Invalid length for block')
+        block_bytes = rest[z_header_len:]
+        del rest
+        # So now we have a valid GCB, we just need to parse the factories that
+        # were sent to us
+        header_lines = header.split('\n')
+        del header
+        last = header_lines.pop()
+        if last != '':
+            raise ValueError('header lines did not end with a trailing'
+                             ' newline')
+        if len(header_lines) % 4 != 0:
+            raise ValueError('The header was not an even multiple of 4 lines')
+        block = GroupCompressBlock.from_bytes(block_bytes)
+        del block_bytes
+        result = cls(block)
+        for start in xrange(0, len(header_lines), 4):
+            # intern()?
+            key = tuple(header_lines[start].split('\x00'))
+            parents_line = header_lines[start+1]
+            if parents_line == 'None:':
+                parents = None
+            else:
+                parents = tuple([tuple(segment.split('\x00'))
+                                 for segment in parents_line.split('\t')
+                                  if segment])
+            start_offset = int(header_lines[start+2])
+            end_offset = int(header_lines[start+3])
+            result.add_factory(key, parents, start_offset, end_offset)
+        return result
 
 
 class GroupCompressor(object):
@@ -738,7 +806,8 @@ class GroupCompressor(object):
         """Finish this group, creating a formatted stream."""
         content = ''.join(self.lines)
         self.lines = None
-        return self._block.to_bytes(content)
+        self._block.set_content(content)
+        return self._block.to_bytes()
 
     def output_chunks(self, new_chunks):
         """Output some chunks.
@@ -1178,12 +1247,12 @@ class GroupCompressVersionedFiles(VersionedFiles):
                         block = self._get_block(index_memo)
                         start, end = index_memo[3:5]
                         if manager is None:
-                            manager = LazyGroupContentManager(block)
+                            manager = _LazyGroupContentManager(block)
                         elif manager._block is not block:
                             # Flush and create a new manager
                             for factory in manager.get_record_stream():
                                 yield factory
-                            manager = LazyGroupContentManager(block)
+                            manager = _LazyGroupContentManager(block)
                         manager.add_factory(key, parents, start, end)
             else:
                 if manager is not None:
