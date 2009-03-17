@@ -274,7 +274,7 @@ class BundleWriteOperation(object):
             self.revision_ids = revision_ids
         else:
             graph = repository.get_graph()
-            self.revision_ids = graph.find_difference(base, target)[1]
+            self.revision_ids = graph.find_unique_ancestors(target, [base])
         self.revision_keys = set([(revid,) for revid in self.revision_ids])
 
     def do_write(self):
