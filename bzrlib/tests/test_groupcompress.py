@@ -23,6 +23,7 @@ from bzrlib import (
     errors,
     osutils,
     tests,
+    versionedfile,
     )
 from bzrlib.osutils import sha_string
 from bzrlib.tests import (
@@ -429,8 +430,10 @@ class TestGroupCompressBlock(tests.TestCase):
 
 class TestCaseWithGroupCompressVersionedFiles(tests.TestCaseWithTransport):
 
-    def make_test_vf(self, create_graph, keylength=1, do_cleanup=True):
-        t = self.get_transport()
+    def make_test_vf(self, create_graph, keylength=1, do_cleanup=True,
+                     dir='.'):
+        t = self.get_transport(dir)
+        t.ensure_base()
         vf = groupcompress.make_pack_factory(graph=create_graph,
             delta=False, keylength=keylength)(t)
         if do_cleanup:
@@ -443,7 +446,8 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
     def test_get_record_stream_as_requested(self):
         # Consider promoting 'as-requested' to general availability, and
         # make this a VF interface test
-        vf = self.make_test_vf(False, do_cleanup=False)
+        vf = self.make_test_vf(False, do_cleanup=False,
+                               dir='source')
         vf.add_lines(('a',), (), ['lines\n'])
         vf.add_lines(('b',), (), ['lines\n'])
         vf.add_lines(('c',), (), ['lines\n'])
@@ -461,7 +465,7 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
         groupcompress.cleanup_pack_group(vf)
 
         # It should work even after being repacked into another VF
-        vf2 = self.make_test_vf(False)
+        vf2 = self.make_test_vf(False, dir='target')
         vf2.insert_record_stream(vf.get_record_stream(
                     [('b',), ('a',), ('d',), ('c',)], 'as-requested', False))
         vf2.writer.end()
@@ -475,6 +479,56 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
                     'as-requested', False)]
         self.assertEqual([('b',), ('a',), ('d',), ('c',)], keys)
 
+    def test_get_record_stream_block(self):
+        vf = self.make_test_vf(True, do_cleanup=False, dir='source')
+        def grouped_stream(revision_ids, first_parents=()):
+            parents = first_parents
+            for revision_id in revision_ids:
+                key = (revision_id,)
+                record = versionedfile.FulltextContentFactory(
+                    key, parents, None,
+                    'some content that is\n'
+                    'identical except for\n'
+                    'revision_id:%s\n' % (revision_id,))
+                yield record
+                parents = (key,)
+        # One group, a-d
+        vf.insert_record_stream(grouped_stream(['a', 'b', 'c', 'd']))
+        # Second group, e-h
+        vf.insert_record_stream(grouped_stream(['e', 'f', 'g', 'h'],
+                                               first_parents=(('d',),)))
+        block_bytes = {}
+        stream = vf.get_record_stream([(r,) for r in 'abcdefgh'],
+                                      'unordered', False)
+        for record in stream:
+            if record.key in [('a',), ('e',)]:
+                self.assertEqual('groupcompress-block', record.storage_kind)
+            else:
+                self.assertEqual('groupcompress-block-ref',
+                                 record.storage_kind)
+            block_bytes[record.key] = record._manager._block._z_content
+        for r in 'abcd':
+            key = (r,)
+            self.assertIs(block_bytes[key], block_bytes[('a',)])
+            self.assertNotEqual(block_bytes[key], block_bytes[('e',)])
+        for r in 'efgh':
+            key = (r,)
+            self.assertIs(block_bytes[key], block_bytes[('e',)])
+            self.assertNotEqual(block_bytes[key], block_bytes[('a',)])
+        # Now copy the blocks into another vf, and ensure that the blocks are
+        # preserved without creating new entries
+        vf2 = self.make_test_vf(True, dir='target')
+        # ordering in 'groupcompress' order, should actually swap the groups in
+        # the target vf, but the groups themselves should not be disturbed.
+        vf2.insert_record_stream(vf.get_record_stream(
+            [(r,) for r in 'abcdefgh'], 'groupcompress', False))
+        groupcompress.cleanup_pack_group(vf)
+        stream = vf2.get_record_stream([(r,) for r in 'abcdefgh'],
+                                       'groupcompress', False)
+        vf2.writer.end()
+        for record in stream:
+            self.assertEqual(block_bytes[record.key],
+                             record._manager._block._z_content)
 
 class TestLazyGroupCompress(tests.TestCaseWithTransport):
 

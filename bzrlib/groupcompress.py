@@ -1339,10 +1339,31 @@ class GroupCompressVersionedFiles(VersionedFiles):
         last_fulltext_len = None
         max_fulltext_len = 0
         max_fulltext_prefix = None
+        insert_manager = None
+        block_start = None
+        block_length = None
         for record in stream:
             # Raise an error when a record is missing.
             if record.storage_kind == 'absent':
                 raise errors.RevisionNotPresent(record.key, self)
+            if record.storage_kind == 'groupcompress-block':
+                # Insert the raw block into the target repo
+                insert_manager = record._manager
+                bytes = record._manager._block.to_bytes()
+                _, start, length = self._access.add_raw_records(
+                    [(None, len(bytes))], bytes)[0]
+                del bytes
+                block_start = start
+                block_length = length
+            if record.storage_kind in ('groupcompress-block',
+                                       'groupcompress-block-ref'):
+                assert insert_manager is not None
+                assert record._manager is insert_manager
+                value = "%d %d %d %d" % (block_start, block_length,
+                                         record._start, record._end)
+                nodes = [(record.key, value, (record.parents,))]
+                self._index.add_records(nodes, random_id=random_id)
+                continue
             try:
                 bytes = record.get_bytes_as('fulltext')
             except errors.UnavailableRepresentation:
