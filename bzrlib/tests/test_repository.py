@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1004,6 +1004,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         packs = tree.branch.repository._pack_collection
+        packs.reset()
         packs.ensure_loaded()
         name = packs.names()[0]
         pack_1 = packs.get_pack_by_name(name)
@@ -1197,24 +1198,3 @@ class TestOptimisingPacker(TestCaseWithTransport):
         self.assertTrue(new_pack.inventory_index._optimize_for_size)
         self.assertTrue(new_pack.text_index._optimize_for_size)
         self.assertTrue(new_pack.signature_index._optimize_for_size)
-
-
-class TestInterDifferingSerializer(TestCaseWithTransport):
-
-    def test_progress_bar(self):
-        tree = self.make_branch_and_tree('tree')
-        tree.commit('rev1', rev_id='rev-1')
-        tree.commit('rev2', rev_id='rev-2')
-        tree.commit('rev3', rev_id='rev-3')
-        repo = self.make_repository('repo')
-        inter_repo = repository.InterDifferingSerializer(
-            tree.branch.repository, repo)
-        pb = progress.InstrumentedProgress(to_file=StringIO())
-        pb.never_throttle = True
-        inter_repo.fetch('rev-1', pb)
-        self.assertEqual('Transferring revisions', pb.last_msg)
-        self.assertEqual(1, pb.last_cnt)
-        self.assertEqual(1, pb.last_total)
-        inter_repo.fetch('rev-3', pb)
-        self.assertEqual(2, pb.last_cnt)
-        self.assertEqual(2, pb.last_total)

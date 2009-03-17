@@ -5,6 +5,7 @@ Bazaar Release Notes
 .. contents::
 
 
+
 IN DEVELOPMENT
 --------------
 
@@ -24,19 +25,57 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * Branching from a stacked branch using ``bzr*://`` will now stream
+      the data when the target repository does not need topological
+      ordering, reducing round trips and network overhead. This uses the
+      existing smart server methods added in 1.13, so will work on any
+      1.13 or newer server. (Robert Collins, Andrew Bennetts)
+
+    * ``bzr ignore`` gives a more informative message when existing
+      version controlled files match the ignore pattern. (Neil
+      Martinsen-Burrell, #248895)
+
     * Progress bars now show the rate of network activity for
       ``bzr+ssh://`` and ``bzr://`` connections.  (Andrew Bennetts)
+
+    * Streaming push can be done to older repository formats.  This is
+      implemented using a new ``Repository.insert_stream_locked`` RPC.
+      (Andrew Bennetts, Robert Collins)
 
     * Tildes are no longer escaped. No more %7Euser/project/branch!
       (Jonathan Lange)
 
   BUG FIXES:
 
+    * Authentication plugins now receive all the parameters from the request
+      itself (aka host, port, realm, path, etc). Previously, only the 
+      authentication section name, username and encoded password were 
+      provided. (Jean-Francois Roy)
+
     * Fix "is not a stackable format" error when pushing a
       stackable-format branch with an unstackable-format repository to a
       destination with a default stacking policy.  (Andrew Bennetts)
 
+    * Fixed incorrect "Source format does not support stacking" warning
+      when pushing to a smart server.  (Andrew Bennetts, #334114)
+
+    * It is no longer possible to fetch between repositories while the
+      target repository is in a write group. This prevents race conditions
+      that prevent the use of RPC's to perform fetch, and thus allows
+      optimising more operations. (Robert Collins, Andrew Bennetts)
+
+    * ``merge --force`` works again. (Robert Collins, #342105)
+
+    * The GNU Changelog formatter is slightly improved in the case where
+      the delta is empty, and now correctly claims not to support tags.
+      (Andrea Bolognani)
+
+    * Shelve can now shelve changes to a symlink target.
+      (James Westby, #341558)
+
   DOCUMENTATION:
+
+    * New topic `bzr help debug-flags`.  (Martin Pool)
 
     * The generated manpage now explicitly lists aliases as commands.
       (James Westby, #336998)
@@ -47,7 +86,38 @@ IN DEVELOPMENT
       sorts optimally for use with groupcompress compressors. (John Arbash
       Meinel, Robert Collins)
 
+    * The ``get_credentials`` and ``set_credentials`` methods of 
+      ``AuthenticationConfig`` now accept an optional realm argument.
+      (Jean-Francois Roy)
+
+    * The ``pb`` argument to ``fetch()`` is deprecated.
+      (Martin Pool)
+
+  TESTING:
+
+    * ``bzrlib.tests.TestCase`` now fails the test if its own ``setUp``
+      and ``tearDown`` weren't called.  This catches faulty tests that
+      forget to upcall when overriding ``setUp`` and ``tearDown``.  Those
+      faulty tests were not properly isolated.
+      (Andrew Bennetts, Robert Collins)
+
   INTERNALS:
+
+    * New ``assertLength`` method based on one Martin has squirreled away
+      somewhere. (Robert Collins, Martin Pool)
+
+    * New repository method ``refresh_data`` to cause any repository to
+      make visible data inserted into the repository by a smart server
+      fetch operation. (Robert Collins, Andrew Bennetts)
+
+    * Removed ``InterRemoteToOther``, ``InterOtherToRemote`` and
+      ``InterPackToRemotePack`` classes, as they are now unnecessary.
+      (Andrew Bennetts)
+      
+    * ``_walk_to_common_revisions`` will now batch up at least 50
+      revisions before calling ``get_parent_map`` on the target,
+      regardless of ``InterRepository``.
+      (Andrew Bennetts, Robert Collins)
 
 
 bzr 1.13rc1 "paraskavedekatriaphobia" 2009-03-10
@@ -2848,8 +2918,8 @@ bzr 1.3.1 2008-04-09
   No changes from 1.3.1rc1.
 
 
-bzr 1.3rc1 2008-04-04
----------------------
+bzr 1.3.1rc1 2008-04-04
+-----------------------
 
   BUG FIXES:
 

@@ -2440,7 +2440,9 @@ class cmd_ignore(Command):
         tree.unlock()
         if len(matches) > 0:
             print "Warning: the following files are version controlled and" \
-                  " match your ignore pattern:\n%s" % ("\n".join(matches),)
+                  " match your ignore pattern:\n%s" \
+                  "\nThese files will continue to be version controlled" \
+                  " unless you 'bzr remove' them." % ("\n".join(matches),)
 
 
 class cmd_ignored(Command):
@@ -3385,9 +3387,10 @@ class cmd_merge(Command):
             basis_tree = tree.revision_tree(tree.last_revision())
         except errors.NoSuchRevision:
             basis_tree = tree.basis_tree()
-        changes = tree.changes_from(basis_tree)
-        if changes.has_changed():
-            raise errors.UncommittedChanges(tree)
+        if not force:
+            changes = tree.changes_from(basis_tree)
+            if changes.has_changed():
+                raise errors.UncommittedChanges(tree)
 
         view_info = _get_view_info_for_change_reporter(tree)
         change_reporter = delta._ChangeReporter(
@@ -3806,7 +3809,7 @@ class cmd_missing(Command):
 
     OTHER_BRANCH may be local or remote.
 
-    To filter on a range of revirions, you can use the command -r begin..end
+    To filter on a range of revisions, you can use the command -r begin..end
     -r revision requests a specific revision, -r ..end or -r begin.. are
     also valid.
 
