@@ -542,13 +542,45 @@ class LazyGroupContentManager(object):
         #       use a heuristic to decide that we need to generate a new group.
         #       (that could be if *any* bytes are unused, or just if more than
         #       XX percent is unused)
-        lines = ['groupcompress-block']
-        # The minimal info we need is the key and the start offset. The length
-        # and type are encoded in the record itself. However, passing in the 
-        # The list of keys, and the start offset, the length
+        # The outer block starts with:
+        #   'groupcompress-block\n'
+        #   <length of compressed key info>\n
+        #   <length of uncompressed info>\n
+        #   <length of gc block>\n
+        #   <header bytes>
+        #   <gc-block>
+        lines = ['groupcompress-block\n']
+        # The minimal info we need is the key, the start offset, and the
+        # parents. The length and type are encoded in the record itself.
+        # However, passing in the other bits makes it easier.  The list of
+        # keys, and the start offset, the length
+        # 1 line key
+        # 1 line with parents, '' for ()
+        # 1 line for start offset
+        # 1 line for end byte
+        header_lines = []
         for factory in self._factories:
-            pass
-        return ''
+            key_bytes = '\x00'.join(factory.key)
+            parents = factory.parents
+            if parents is None:
+                parent_bytes = 'None:'
+            else:
+                parent_bytes = '\t'.join('\x00'.join(key) for key in parents)
+            record_header = '%s\n%s\n%d\n%d\n' % (
+                key_bytes, parent_bytes, factory._start, factory._end)
+            header_lines.append(record_header)
+        header_bytes = ''.join(header_lines)
+        del header_lines
+        header_bytes_len = len(header_bytes)
+        z_header_bytes = zlib.compress(header_bytes)
+        del header_bytes
+        z_header_bytes_len = len(z_header_bytes)
+        assert self._block._z_content is not None
+        lines.append('%d\n%d\n%d\n' % (z_header_bytes_len, header_bytes_len,
+                                       len(self._block._z_content)))
+        lines.append(z_header_bytes)
+        lines.append(self._block._z_content)
+        return ''.join(lines)
 
 
 class GroupCompressor(object):

@@ -521,5 +521,48 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
             self.assertEqual(text, record.get_bytes_as('fulltext'))
         self.assertEqual([('key2',), ('key1',)], result_order)
 
+    def test__wire_bytes_no_keys(self):
+        entries, block = self.make_block(self._texts)
+        manager = groupcompress.LazyGroupContentManager(block)
+        wire_bytes = manager._wire_bytes()
+        self.assertStartsWith(wire_bytes,
+                              'groupcompress-block\n'
+                              '8\n' # len(compress(''))
+                              '0\n' # len('')
+                              '%d\n'
+                              % (len(block._z_content),)
+                              )
+
     def test__wire_bytes(self):
         entries, block = self.make_block(self._texts)
+        manager = groupcompress.LazyGroupContentManager(block)
+        self.add_key_to_manager(('key1',), entries, block, manager)
+        self.add_key_to_manager(('key4',), entries, block, manager)
+        wire_bytes = manager._wire_bytes()
+        (storage_kind, z_header_len, header_len,
+         block_len, rest) = wire_bytes.split('\n', 4)
+        z_header_len = int(z_header_len)
+        header_len = int(header_len)
+        block_len = int(block_len)
+        self.assertEqual('groupcompress-block', storage_kind)
+        self.assertEqual(33, z_header_len)
+        self.assertEqual(25, header_len)
+        self.assertEqual(len(block._z_content), block_len)
+        z_header = rest[:z_header_len]
+        header = zlib.decompress(z_header)
+        self.assertEqual(header_len, len(header))
+        entry1 = entries[('key1',)]
+        entry4 = entries[('key4',)]
+        self.assertEqualDiff('key1\n'
+                             '\n'  # no parents
+                             '%d\n' # start offset
+                             '%d\n' # end byte
+                             'key4\n'
+                             '\n'
+                             '%d\n'
+                             '%d\n'
+                             % (entry1.start, entry1.end,
+                                entry4.start, entry4.end),
+                            header)
+        z_block = rest[z_header_len:]
+        self.assertEqual(block._z_content, z_block)
