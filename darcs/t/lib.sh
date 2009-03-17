@@ -232,8 +232,8 @@ diff_importgit()
 
 diff_importhg()
 {
-	diff --exclude _darcs --exclude .hg --exclude '*-darcs-backup*' --exclude hg-export.status \
-		--exclude '*.orig' -Nur $1 $1.darcs
+	diff --exclude _darcs --exclude .hg --exclude '*-darcs-backup*' --exclude 'hg-export.*' \
+		--exclude '.hgtags' --exclude '*.orig' -Nur $1 $1.darcs
 	return $?
 }
 
