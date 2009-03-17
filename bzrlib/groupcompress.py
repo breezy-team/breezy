@@ -674,11 +674,8 @@ class GroupCompressor(object):
        left side.
     """
 
-    def __init__(self, delta=True):
-        """Create a GroupCompressor.
-
-        :param delta: If False, do not compress records.
-        """
+    def __init__(self):
+        """Create a GroupCompressor."""
         # Consider seeding the lines with some sort of GC Start flag, or
         # putting it as part of the output stream, rather than in the
         # compressed bytes.
@@ -1322,7 +1319,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 return adapter
         # This will go up to fulltexts for gc to gc fetching, which isn't
         # ideal.
-        self._compressor = GroupCompressor(self._delta)
+        self._compressor = GroupCompressor()
         self._unadded_refs = {}
         keys_to_add = []
         basis_end = 0
@@ -1336,7 +1333,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
             self._index.add_records(nodes, random_id=random_id)
             self._unadded_refs = {}
             del keys_to_add[:]
-            self._compressor = GroupCompressor(self._delta)
+            self._compressor = GroupCompressor()
 
         last_prefix = None
         last_fulltext_len = None

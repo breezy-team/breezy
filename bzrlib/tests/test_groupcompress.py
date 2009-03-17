@@ -35,12 +35,12 @@ class TestGroupCompressor(tests.TestCase):
     """Tests for GroupCompressor"""
 
     def test_empty_delta(self):
-        compressor = groupcompress.GroupCompressor(True)
+        compressor = groupcompress.GroupCompressor()
         self.assertEqual([], compressor.lines)
 
     def test_one_nosha_delta(self):
         # diff against NUKK
-        compressor = groupcompress.GroupCompressor(True)
+        compressor = groupcompress.GroupCompressor()
         sha1, end_point, _, _ = compressor.compress(('label',),
             'strange\ncommon\n', None)
         self.assertEqual(sha_string('strange\ncommon\n'), sha1)
@@ -66,7 +66,7 @@ class TestGroupCompressor(tests.TestCase):
                              self._chunks_to_repr_lines(actual))
 
     def test_two_nosha_delta(self):
-        compressor = groupcompress.GroupCompressor(True)
+        compressor = groupcompress.GroupCompressor()
         sha1_1, _, _, _ = compressor.compress(('label',),
             'strange\ncommon long line\nthat needs a 16 byte match\n', None)
         expected_lines = list(compressor.lines)
@@ -91,7 +91,7 @@ class TestGroupCompressor(tests.TestCase):
     def test_three_nosha_delta(self):
         # The first interesting test: make a change that should use lines from
         # both parents.
-        compressor = groupcompress.GroupCompressor(True)
+        compressor = groupcompress.GroupCompressor()
         sha1_1, end_point, _, _ = compressor.compress(('label',),
             'strange\ncommon very very long line\nwith some extra text\n', None)
         sha1_2, _, _, _ = compressor.compress(('newlabel',),
@@ -121,7 +121,7 @@ class TestGroupCompressor(tests.TestCase):
         self.assertEqual(sum(map(len, expected_lines)), end_point)
 
     def test_stats(self):
-        compressor = groupcompress.GroupCompressor(True)
+        compressor = groupcompress.GroupCompressor()
         compressor.compress(('label',), 'strange\ncommon long line\n'
                                         'plus more text\n', None)
         compressor.compress(('newlabel',),
@@ -135,7 +135,7 @@ class TestGroupCompressor(tests.TestCase):
     def test_extract_from_compressor(self):
         # Knit fetching will try to reconstruct texts locally which results in
         # reading something that is in the compressor stream already.
-        compressor = groupcompress.GroupCompressor(True)
+        compressor = groupcompress.GroupCompressor()
         sha1_1, _, _, _ = compressor.compress(('label',),
             'strange\ncommon long line\nthat needs a 16 byte match\n', None)
         expected_lines = list(compressor.lines)
