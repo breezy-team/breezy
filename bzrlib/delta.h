@@ -47,7 +47,7 @@ create_delta_index(const struct source_info *src,
  */
 extern struct delta_index *
 create_delta_index_from_delta(const struct source_info *delta,
-                              const struct delta_index *old);
+                              struct delta_index *old);
 /*
  * free_delta_index: free the index created by create_delta_index()
  *
