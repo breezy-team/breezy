@@ -225,7 +225,10 @@ plugin_cmds.register_lazy("cmd_git_serve", [], "bzrlib.plugins.git.commands")
 plugin_cmds.register_lazy("cmd_git_import", [], "bzrlib.plugins.git.commands")
 
 def get_rich_root_format():
-    return bzrdir.format_registry.make_bzrdir("1.9-rich-root")
+    try:
+        return bzrdir.format_registry.make_bzrdir("default-rich-root")
+    except KeyError:
+        return bzrdir.format_registry.make_bzrdir("1.9-rich-root")
 
 def test_suite():
     from bzrlib.plugins.git import tests
