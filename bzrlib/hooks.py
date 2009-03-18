@@ -33,6 +33,8 @@ from bzrlib.help_topics import help_as_plain_text
 known_hooks = registry.Registry()
 known_hooks.register_lazy(('bzrlib.branch', 'Branch.hooks'), 'bzrlib.branch',
     'BranchHooks')
+known_hooks.register_lazy(('bzrlib.bzrdir', 'BzrDir.hooks'), 'bzrlib.bzrdir',
+    'BzrDirHooks')
 known_hooks.register_lazy(('bzrlib.commands', 'Command.hooks'),
     'bzrlib.commands', 'CommandHooks')
 known_hooks.register_lazy(('bzrlib.lock', 'Lock.hooks'), 'bzrlib.lock',
