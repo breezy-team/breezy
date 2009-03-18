@@ -30,6 +30,10 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+    * A new format name alias ``default-rich-root`` has been added and
+      points at the closest relative of the default format that supports 
+      rich roots. (Jelmer Vernooij, #338061)
+
     * Branching from a stacked branch using ``bzr*://`` will now stream
       the data when the target repository does not need topological
       ordering, reducing round trips and network overhead. This uses the
