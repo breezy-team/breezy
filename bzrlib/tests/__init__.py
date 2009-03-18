@@ -1016,7 +1016,7 @@ class TestCase(unittest.TestCase):
             return
         path_stat = transport.stat(path)
         actual_mode = stat.S_IMODE(path_stat.st_mode)
-        self.assertEqual(oct(mode), oct(actual_mode),
+        self.assertEqual(mode, actual_mode,
                          'mode of %r incorrect (%s != %s)'
                          % (path, oct(mode), oct(actual_mode)))
 
