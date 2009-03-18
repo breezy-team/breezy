@@ -28,7 +28,7 @@
 /* The hash map is sized to put 4 entries per bucket, this gives us 2 blank
  * spaces.
  */
-#define EXTRA_NULLS 2
+#define EXTRA_NULLS 1
 
 static const unsigned int T[256] = {
     0x00000000, 0xab59b4d1, 0x56b369a2, 0xfdeadd73, 0x063f6795, 0xad66d344,
@@ -447,7 +447,7 @@ struct delta_index * create_delta_index(const struct source_info *src,
         total_num_entries = num_entries + old->num_entries;
     else
         total_num_entries = num_entries;
-    hsize = total_num_entries / 4;
+    hsize = total_num_entries / 2;
     for (i = 4; (1u << i) < hsize && i < 31; i++);
     hsize = 1 << i;
     hmask = hsize - 1;
@@ -531,7 +531,7 @@ create_index_from_old_and_new_entries(const struct delta_index *old_index,
        first byte to allow for optimizing the Rabin's polynomial
        initialization in create_delta(). */
     total_num_entries = num_entries + old_index->num_entries;
-    hsize = total_num_entries / 4;
+    hsize = total_num_entries / 2;
     for (i = 4; (1u << i) < hsize && i < 31; i++);
     hsize = 1 << i;
     if (hsize < old_index->hash_mask) {
