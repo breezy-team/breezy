@@ -1297,6 +1297,7 @@ class RepositoryPackCollection(object):
         :param index_builder_class: The index builder class to use.
         :param index_class: The index class to use.
         """
+        # XXX: This should call self.reset()
         self.repo = repo
         self.transport = transport
         self._index_transport = index_transport
@@ -1307,6 +1308,7 @@ class RepositoryPackCollection(object):
         self._suffix_offsets = {'.rix': 0, '.iix': 1, '.tix': 2, '.six': 3}
         self.packs = []
         # name:Pack mapping
+        self._names = None
         self._packs_by_name = {}
         # the previous pack-names content
         self._packs_at_load = None
@@ -1527,6 +1529,10 @@ class RepositoryPackCollection(object):
         return [[final_rev_count, final_pack_list]]
 
     def ensure_loaded(self):
+        """Ensure we have read names from disk.
+
+        :return: True if the disk names had not been previously read.
+        """
         # NB: if you see an assertion error here, its probably access against
         # an unlocked repo. Naughty.
         if not self.repo.is_locked():
@@ -1538,8 +1544,12 @@ class RepositoryPackCollection(object):
                 name = key[0]
                 self._names[name] = self._parse_index_sizes(value)
                 self._packs_at_load.add((key, value))
+            result = True
+        else:
+            result = False
         # populate all the metadata.
         self.all_packs()
+        return result
 
     def _parse_index_sizes(self, value):
         """Parse a string of index sizes."""
@@ -1838,8 +1848,17 @@ class RepositoryPackCollection(object):
         This should be called when we find out that something we thought was
         present is now missing. This happens when another process re-packs the
         repository, etc.
+
+        :return: True if the in-memory list of packs has been altered at all.
         """
-        # This is functionally similar to _save_pack_names, but we don't write
+        # The ensure_loaded call is to handle the case where the first call
+        # made involving the collection was to reload_pack_names, where we 
+        # don't have a view of disk contents. Its a bit of a bandaid, and
+        # causes two reads of pack-names, but its a rare corner case not struck
+        # with regular push/pull etc.
+        first_read = self.ensure_loaded()
+        if first_read:
+            return True
         # out the new value.
         disk_nodes, _, _ = self._diff_pack_names()
         self._packs_at_load = disk_nodes
@@ -2085,12 +2104,12 @@ class KnitPackRepository(KnitRepository):
                 pos, length = value[1:].split(' ')
                 index_positions.append((index, int(pos), key[0],
                     tuple(parent[0] for parent in refs[0])))
-                pb.update("Reading revision index.", 0, 0)
+                pb.update("Reading revision index", 0, 0)
             index_positions.sort()
             batch_count = len(index_positions) / 1000 + 1
-            pb.update("Checking cached revision graph.", 0, batch_count)
+            pb.update("Checking cached revision graph", 0, batch_count)
             for offset in xrange(batch_count):
-                pb.update("Checking cached revision graph.", offset)
+                pb.update("Checking cached revision graph", offset)
                 to_query = index_positions[offset * 1000:(offset + 1) * 1000]
                 if not to_query:
                     break
@@ -2115,14 +2134,9 @@ class KnitPackRepository(KnitRepository):
         return graph.CachingParentsProvider(self)
 
     def _refresh_data(self):
-        if self._write_lock_count == 1 or (
-            self.control_files._lock_count == 1 and
-            self.control_files._lock_mode == 'r'):
-            # forget what names there are
-            self._pack_collection.reset()
-            # XXX: Better to do an in-memory merge when acquiring a new lock -
-            # factor out code from _save_pack_names.
-            self._pack_collection.ensure_loaded()
+        if not self.is_locked():
+            return
+        self._pack_collection.reload_pack_names()
 
     def _start_write_group(self):
         self._pack_collection._start_write_group()
@@ -2153,7 +2167,8 @@ class KnitPackRepository(KnitRepository):
         return self._write_lock_count
 
     def lock_write(self, token=None):
-        if not self._write_lock_count and self.is_locked():
+        locked = self.is_locked()
+        if not self._write_lock_count and locked:
             raise errors.ReadOnlyError(self)
         self._write_lock_count += 1
         if self._write_lock_count == 1:
@@ -2161,9 +2176,11 @@ class KnitPackRepository(KnitRepository):
             for repo in self._fallback_repositories:
                 # Writes don't affect fallback repos
                 repo.lock_read()
-        self._refresh_data()
+        if not locked:
+            self._refresh_data()
 
     def lock_read(self):
+        locked = self.is_locked()
         if self._write_lock_count:
             self._write_lock_count += 1
         else:
@@ -2171,7 +2188,8 @@ class KnitPackRepository(KnitRepository):
             for repo in self._fallback_repositories:
                 # Writes don't affect fallback repos
                 repo.lock_read()
-        self._refresh_data()
+        if not locked:
+            self._refresh_data()
 
     def leave_lock_in_place(self):
         # not supported - raise an error

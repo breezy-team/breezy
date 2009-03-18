@@ -75,6 +75,7 @@ from bzrlib.trace import (
     )
 
 from bzrlib import (
+    hooks,
     registry,
     symbol_versioning,
     )
@@ -93,6 +94,8 @@ class BzrDir(object):
         (i.e. the parent directory holding the .bzr directory).
 
     Everything in the bzrdir should have the same file permissions.
+
+    :cvar hooks: An instance of BzrDirHooks.
     """
 
     def break_lock(self):
@@ -806,6 +809,8 @@ class BzrDir(object):
         :param transport: Transport containing the bzrdir.
         :param _unsupported: private.
         """
+        for hook in BzrDir.hooks['pre_open']:
+            hook(transport)
         # Keep initial base since 'transport' may be modified while following
         # the redirections.
         base = transport.base
@@ -1188,6 +1193,20 @@ class BzrDir(object):
                 if basis is not None:
                     basis.unlock()
         return result
+
+
+class BzrDirHooks(hooks.Hooks):
+    """Hooks for BzrDir operations."""
+
+    def __init__(self):
+        """Create the default hooks."""
+        hooks.Hooks.__init__(self)
+        self.create_hook(hooks.HookPoint('pre_open',
+            "Invoked before attempting to open a BzrDir with the transport "
+            "that the open will use.", (1, 14), None))
+
+# install the default hooks
+BzrDir.hooks = BzrDirHooks()
 
 
 class BzrDirPreSplitOut(BzrDir):
@@ -2823,7 +2842,6 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
                 result._custom_format = custom_format._custom_format
             else:
                 result._custom_format = custom_format
-            result.rich_root_data = custom_format.rich_root_data
         return result
 
     def get_branch_format(self):
@@ -3062,7 +3080,8 @@ class RepositoryAcquisitionPolicy(object):
                 stack_on = self._get_full_stack_on()
         try:
             branch.set_stacked_on_url(stack_on)
-        except errors.UnstackableBranchFormat:
+        except (errors.UnstackableBranchFormat,
+                errors.UnstackableRepositoryFormat):
             if self._require_stacking:
                 raise
 

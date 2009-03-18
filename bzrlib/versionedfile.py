@@ -1484,7 +1484,7 @@ class VirtualVersionedFiles(VersionedFiles):
         """See VersionedFile.iter_lines_added_or_present_in_versions()."""
         for i, (key,) in enumerate(keys):
             if pb is not None:
-                pb.update("iterating texts", i, len(keys))
+                pb.update("Finding changed lines", i, len(keys))
             for l in self._get_lines(key):
                 yield (l, key)
 

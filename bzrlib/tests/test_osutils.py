@@ -376,6 +376,7 @@ class TestCanonicalRelPath(TestCaseInTempDir):
 class TestPumpFile(TestCase):
     """Test pumpfile method."""
     def setUp(self):
+        TestCase.setUp(self)
         # create a test datablock
         self.block_size = 512
         pattern = '0123456789ABCDEF'
@@ -893,11 +894,11 @@ class TestWalkDirs(TestCaseInTempDir):
         # The error is not raised until the generator is actually evaluated.
         # (It would be ok if it happened earlier but at the moment it
         # doesn't.)
-        e = self.assertRaises(OSError, list,
-            osutils._walkdirs_utf8("."))
-        self.assertEquals(e.filename, './test-unreadable')
-        self.assertEquals(str(e),
-            "[Errno 13] chdir: Permission denied: './test-unreadable'")
+        e = self.assertRaises(OSError, list, osutils._walkdirs_utf8("."))
+        self.assertEquals('./test-unreadable', e.filename)
+        self.assertEquals(errno.EACCES, e.errno)
+        # Ensure the message contains the file name
+        self.assertContainsRe(str(e), "\./test-unreadable")
 
     def test__walkdirs_utf8(self):
         tree = [

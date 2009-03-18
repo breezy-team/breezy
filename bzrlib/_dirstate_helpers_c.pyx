@@ -1144,14 +1144,9 @@ cdef class ProcessEntryC:
                         if target_details[2] == source_details[2]:
                             if link_or_sha1 is None:
                                 # Stat cache miss:
-                                file_obj = file(path_info[4], 'rb')
-                                try:
-                                    # XXX: TODO: Use lower level file IO rather
-                                    # than python objects for sha-misses.
-                                    statvalue = self.fstat(file_obj.fileno())
-                                    link_or_sha1 = self.sha_file(file_obj)
-                                finally:
-                                    file_obj.close()
+                                statvalue, link_or_sha1 = \
+                                    self.state._sha1_provider.stat_and_sha1(
+                                    path_info[4])
                                 self.state._observed_sha1(entry, link_or_sha1,
                                     statvalue)
                             content_change = (link_or_sha1 != source_details[1])

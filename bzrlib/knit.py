@@ -299,7 +299,19 @@ class KnitContentFactory(ContentFactory):
             if self._network_bytes is None:
                 self._create_network_bytes()
             return self._network_bytes
+        if ('-ft-' in self.storage_kind and
+            storage_kind in ('chunked', 'fulltext')):
+            adapter_key = (self.storage_kind, 'fulltext')
+            adapter_factory = adapter_registry.get(adapter_key)
+            adapter = adapter_factory(None)
+            bytes = adapter.get_bytes(self)
+            if storage_kind == 'chunked':
+                return [bytes]
+            else:
+                return bytes
         if self._knit is not None:
+            # Not redundant with direct conversion above - that only handles
+            # fulltext cases.
             if storage_kind == 'chunked':
                 return self._knit.get_lines(self.key[0])
             elif storage_kind == 'fulltext':
@@ -1662,6 +1674,7 @@ class KnitVersionedFiles(VersionedFiles):
          * If a requested key did not change any lines (or didn't have any
            lines), it may not be mentioned at all in the result.
 
+        :param pb: Progress bar supplied by caller.
         :return: An iterator over (line, key).
         """
         if pb is None:
@@ -1681,7 +1694,7 @@ class KnitVersionedFiles(VersionedFiles):
                         key_records.append((key, details[0]))
                 records_iter = enumerate(self._read_records_iter(key_records))
                 for (key_idx, (key, data, sha_value)) in records_iter:
-                    pb.update('Walking content.', key_idx, total)
+                    pb.update('Walking content', key_idx, total)
                     compression_parent = build_details[key][1]
                     if compression_parent is None:
                         # fulltext
@@ -1717,7 +1730,7 @@ class KnitVersionedFiles(VersionedFiles):
                 source_keys.add(key)
                 yield line, key
             keys.difference_update(source_keys)
-        pb.update('Walking content.', total, total)
+        pb.update('Walking content', total, total)
 
     def _make_line_delta(self, delta_seq, new_content):
         """Generate a line delta from delta_seq and new_content."""
