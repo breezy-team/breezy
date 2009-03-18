@@ -12,6 +12,8 @@
  * published by the Free Software Foundation.
  */
 
+#include <stdio.h>
+
 #include "delta.h"
 #include <stdlib.h>
 #include <string.h>
@@ -212,7 +214,7 @@ pack_delta_index(struct unpacked_index_entry **hash, unsigned int hsize,
      */
     memsize = sizeof(*index)
         + sizeof(*packed_hash) * (hsize+1)
-        + sizeof(*packed_entry) * (num_entries + hsize*2);
+        + sizeof(*packed_entry) * (num_entries);
     mem = malloc(memsize);
     if (!mem) {
         return NULL;
@@ -238,14 +240,14 @@ pack_delta_index(struct unpacked_index_entry **hash, unsigned int hsize,
             *packed_entry++ = entry->entry;
         }
         /* Now add 2 'NULL' entries that we can use for future expansion. */
-        *packed_entry++ = null_entry;
-        *packed_entry++ = null_entry;
+        // *packed_entry++ = null_entry;
+        // *packed_entry++ = null_entry;
     }
 
     /* Sentinel value to indicate the length of the last hash bucket */
     packed_hash[hsize] = packed_entry;
 
-    assert(packed_entry - (struct index_entry *)mem == num_entries);
+    assert(packed_entry - (struct index_entry *)mem == num_entries); // + hsize*2);
     index->last_entry = (packed_entry - 1);
     return index;
 }
@@ -279,42 +281,17 @@ void include_entries_from_index(struct unpacked_index_entry **hash,
     }
 }
 
-int
-insert_entries_into_index(struct delta_index *old,
-                          struct unpacked_index_entry **hash,
-                          unsigned int hsize,
-                          unsigned int num_entries)
-{
-    unsigned int i;
-    for (i = 0; i < hsize; ++i) {
-        for (entry = hash[i]; entry; entry = entry->next) {
-            /* We have an entry to insert, so flush the copy buffer */
-            if (total_copy > 0) {
-                assert(copy_to_start != NULL);
-                assert(copy_from_start != NULL);
-                memcpy(copy_to_start, copy_from_start,
-                       total_copy * sizeof(struct index_entry));
-                bytes_copied += (total_copy * sizeof(struct index_entry));
-                total_copy = 0;
-                copy_from_start = copy_to_start = NULL;
-                num_ops += 1;
-            }
-            *packed_entry++ = entry->entry;
-        }
-    }
-}
-
 struct delta_index *
 create_index_from_old_and_hash(const struct delta_index *old,
                                struct unpacked_index_entry **hash,
                                unsigned int hsize,
                                unsigned int num_entries)
 {
-    unsigned int i, memsize, total_num_entries;
+    unsigned int i, memsize, total_num_entries, num_nulls;
     struct unpacked_index_entry *entry;
     struct delta_index *index;
-    struct index_entry *packed_entry, **packed_hash;
-    struct index_entry *copy_from_start, *copy_to_start;
+    struct index_entry *packed_entry, **packed_hash, null_entry = {0};
+    struct index_entry *copy_from_start, *copy_to_start, *old_entry;
     size_t total_copy, to_copy;
     unsigned int num_ops;
     unsigned int bytes_copied;
@@ -353,7 +330,16 @@ create_index_from_old_and_hash(const struct delta_index *old,
          * The entries in old all come before the entries in hash.
          */
         packed_hash[i] = packed_entry;
-        to_copy = (old->hash[i+1] - old->hash[i]);
+        old_entry = old->hash[i+1];
+        /* Find how many NULL items are in this hash section */
+        old_entry--;
+        num_nulls = 0;
+        while (old_entry >= old->hash[i] && old_entry->ptr == NULL) {
+            old_entry--;
+            num_nulls++;
+        }
+        old_entry++;
+        to_copy = (old_entry - old->hash[i]);
         if (to_copy > 0) {
             /* This next range can be copied wholesale. However, we will wait
              * until we have to insert something from the new data before we
@@ -367,7 +353,7 @@ create_index_from_old_and_hash(const struct delta_index *old,
             packed_entry += to_copy;
             total_copy += to_copy;
             assert((packed_entry - copy_to_start) == total_copy);
-            assert((old->hash[i+1] - copy_from_start) == total_copy);
+            assert((old_entry - copy_from_start) == total_copy);
         }
         for (entry = hash[i]; entry; entry = entry->next) {
             /* We have an entry to insert, so flush the copy buffer */
@@ -383,6 +369,10 @@ create_index_from_old_and_hash(const struct delta_index *old,
             }
             *packed_entry++ = entry->entry;
         }
+        fprintf(stderr, "num nulls: %d\n", num_nulls);
+        for (; num_nulls > 0; --num_nulls) {
+            *packed_entry++ = null_entry;
+        }
     }
     if (total_copy > 0) {
         assert(copy_to_start != NULL);
@@ -396,7 +386,8 @@ create_index_from_old_and_hash(const struct delta_index *old,
     /* Sentinel value to indicate the length of the last hash bucket */
     packed_hash[hsize] = packed_entry;
 
-    assert(packed_entry - (struct index_entry *)mem == total_num_entries);
+    assert(packed_entry - (struct index_entry *)mem
+           == total_num_entries); // + hsize*2);
     index->last_entry = (packed_entry - 1);
     return index;
 }
@@ -492,55 +483,18 @@ struct delta_index * create_delta_index(const struct source_info *src,
     return index;
 }
 
-
 struct delta_index *
-create_index_from_old_and_new_entries(const struct delta_index *old_index,
-                                      const struct index_entry *entries,
-                                      unsigned int num_entries)
+create_delta_index_from_delta(const struct source_info *src,
+                              const struct delta_index *old)
 {
     unsigned int i, hsize, hmask, num_entries, prev_val, *hash_count;
     unsigned int total_num_entries;
-    const unsigned char *data, *buffer;
-    struct delta_index *index;
-    struct index_entry *entry, *packed_entry, **packed_hash;
-    void *mem;
-    unsigned long memsize;
-
-    /* Determine index hash size.  Note that indexing skips the
-       first byte to allow for optimizing the Rabin's polynomial
-       initialization in create_delta(). */
-    total_num_entries = num_entries + old_index->num_entries;
-    hsize = total_num_entries / 4;
-    for (i = 4; (1u << i) < hsize && i < 31; i++);
-    hsize = 1 << i;
-    hmask = hsize - 1;
-
-    memsize = sizeof(*index)
-        + sizeof(*packed_hash) * (hsize+1)
-        + sizeof(*packed_entry) * (total_num_entries + hsize*2);
-    mem = malloc(memsize);
-    if (!mem) {
-        return NULL;
-    }
-    hash = mem;
-    mem = hash + hsize;
-    entry = mem;
-
-    memset(hash, 0, hsize * sizeof(*hash));
-
-}
-
-
-struct delta_index *
-create_delta_index_from_delta(const struct source_info *src,
-                              struct delta_index *old_index)
-{
-    unsigned int i, num_entries, max_num_entries, prev_val;
-    unsigned int hash_offset;
     const unsigned char *data, *buffer, *top;
     unsigned char cmd;
-    struct delta_index *new_index;
-    struct index_entry *entry, *entries, *old_entry;
+    struct delta_index *index;
+    struct unpacked_index_entry *entry, **hash;
+    void *mem;
+    unsigned long memsize;
 
     if (!src->buf || !src->size)
         return NULL;
@@ -554,21 +508,47 @@ create_delta_index_from_delta(const struct source_info *src,
        actual number will be recomputed during processing.
        */
 
-    max_num_entries = (src->size - 1)  / RABIN_WINDOW;
+    num_entries = (src->size - 1)  / RABIN_WINDOW;
+    if (old != NULL)
+        total_num_entries = num_entries + old->num_entries;
+    else
+        total_num_entries = num_entries;
+    hsize = total_num_entries / 4;
+    for (i = 4; (1u << i) < hsize && i < 31; i++);
+    hsize = 1 << i;
+    hmask = hsize - 1;
 
-    /* allocate an array to hold whatever entries we find */
-    entries = malloc(sizeof(*entry) * max_num_entries);
-    if (!entries) /* malloc failure */
+    /* allocate lookup index */
+    memsize = sizeof(*hash) * hsize +
+          sizeof(*entry) * total_num_entries;
+    mem = malloc(memsize);
+    if (!mem)
         return NULL;
+    hash = mem;
+    mem = hash + hsize;
+    entry = mem;
+
+    memset(hash, 0, hsize * sizeof(*hash));
+
+    /* allocate an array to count hash num_entries */
+    hash_count = calloc(hsize, sizeof(*hash_count));
+    if (!hash_count) {
+        free(hash);
+        return NULL;
+    }
 
     /* then populate the index for the new data */
+    /* The create_delta_index code starts at the end and works backward,
+     * because it is easier to update the entry pointers (you always update the
+     * head, rather than updating the tail).
+     * However, we can't walk the delta structure that way.
+     */
     prev_val = ~0;
     data = buffer;
     /* source size */
     get_delta_hdr_size(&data, top);
     /* target size */
     get_delta_hdr_size(&data, top);
-    entry = entries; /* start at the first slot */
     num_entries = 0; /* calculate the real number of entries */
     while (data < top) {
         cmd = *data++;
@@ -595,16 +575,27 @@ create_delta_index_from_delta(const struct source_info *src,
                 if (val != prev_val) {
                     /* Only keep the first of consecutive data */
                     prev_val = val;
-                    num_entries++;
-                    entry->ptr = data + RABIN_WINDOW;
-                    entry->val = val;
-                    entry->src = src;
-                    entry++;
-                    if (num_entries > max_num_entries) {
-                        /* We ran out of entry room, something is really wrong
-                         */
-                        break;
+                    i = val & hmask;
+                    entry->entry.ptr = data + RABIN_WINDOW;
+                    entry->entry.val = val;
+                    entry->entry.src = src;
+                    entry->next = NULL;
+                    /* Now we have to insert this entry at the end of the hash
+                     * map
+                     */
+                    if (hash[i] == NULL) {
+                        hash[i] = entry;
+                    } else {
+                        struct unpacked_index_entry *this;
+                        for (this = hash[i];
+                            this->next != NULL;
+                            this = this->next) { /* No action */ }
+                        this->next = entry;
+                        this = entry;
                     }
+                    hash_count[i]++;
+                    entry++;
+                    num_entries++;
                 }
             }
             /* Move the data pointer by whatever remainder is left */
@@ -620,54 +611,49 @@ create_delta_index_from_delta(const struct source_info *src,
     }
     if (data != top) {
         /* Something was wrong with this delta */
-        free(entries);
+        free(hash);
+        free(hash_count);
         return NULL;
     }
     if (num_entries == 0) {
         /** Nothing to index **/
-        free(entries);
+        free(hash);
+        free(hash_count);
         return NULL;
     }
-    assert(old_index != NULL);
-    /* See if we can fill in these values into the holes in the array */
-    entry = entries;
-    for (i = 0; i < num_entries; ++i, ++entry) {
-        hash_offset = entry->val & old_index->hmask;
-        /* The basic structure is a hash => packed_entries that fit in that
-         * hash bucket. Things are structured such that the hash-pointers are
-         * strictly ordered. So we start by pointing to the next pointer, and
-         * walk back until we stop getting NULL targets, and then go back
-         * forward. If there are no NULL targets, then we know because
-         * entry->src will not be NULL.
-         */
-        old_entry = old_index->hash[hash_offset + 1];
-        old_entry--;
-        while (old_entry->src == NULL) {
-            old_entry--;
+    if (old != NULL) {
+        if (hmask == old->hash_mask) {
+            /* The total hash table size didn't change, which means that
+             * entries will end up in the same pages. We can do bulk-copying to
+             * get the final output
+             */
+            index = create_index_from_old_and_hash(old, hash, hsize,
+                                                   num_entries);
+            free(hash_count);
+            free(hash);
+            if (!index) {
+                return NULL;
+            }
+            index->last_src = src;
+            return index;
+        } else {
+            total_num_entries = num_entries + old->num_entries;
+            include_entries_from_index(hash, hash_count, hsize, entry, old);
         }
-        old_entry++;
-        if (old_entry->src != NULL) { /* there are no open spots */
-            /* We need to realloc the hash map and start from scratch */
-            break;
-        }
-        *old_entry = *entry;
-        /* For entries which we *do* manage to insert into old_index, we don't
-         * want them double copied into the final output.
-         */
-        num_entries--;
-    }
-    if (i < num_entries) {
-        /* We couldn't fit the new entries into the old index, so allocate a
-         * new one, and fill it with stuff.
-         */
-        struct delta_index * new_index;
-        new_index = create_index_from_old_and_new_entries(old_index,
-            entry, num_entries);
     } else {
-        new_index = old_index;
+        total_num_entries = num_entries;
     }
-    free(entries);
-    return old_index;
+
+    total_num_entries = limit_hash_buckets(hash, hash_count, hsize,
+                                           total_num_entries);
+    free(hash_count);
+    index = pack_delta_index(hash, hsize, total_num_entries);
+    free(hash);
+    if (!index) {
+        return NULL;
+    }
+    index->last_src = src;
+    return index;
 }
 
 void free_delta_index(struct delta_index *index)
