@@ -213,9 +213,8 @@ class DirStateWorkingTree(WorkingTree3):
             WorkingTree3._comparison_data(self, entry, path)
         # it looks like a plain directory, but it's really a reference -- see
         # also kind()
-        if (self._repo_supports_tree_reference and
-            kind == 'directory' and
-            self._directory_is_tree_reference(path)):
+        if (self._repo_supports_tree_reference and kind == 'directory'
+            and entry is not None and entry.kind == 'tree-reference'):
             kind = 'tree-reference'
         return kind, executable, stat_value
 
@@ -248,8 +247,19 @@ class DirStateWorkingTree(WorkingTree3):
         local_path = self.bzrdir.get_workingtree_transport(None
             ).local_abspath('dirstate')
         self._dirstate = dirstate.DirState.on_file(local_path,
-            self._content_filter_stack_provider())
+            self._sha1_provider())
         return self._dirstate
+
+    def _sha1_provider(self):
+        """A function that returns a SHA1Provider suitable for this tree.
+
+        :return: None if content filtering is not supported by this tree.
+          Otherwise, a SHA1Provider is returned that sha's the canonical
+          form of files, i.e. after read filters are applied.
+        """
+        #if self.supports_content_filtering():
+        #    return ContentFilterAWareSHA1Provider(self)
+        return None
 
     def filter_unversioned_files(self, paths):
         """Filter out paths that are versioned.
@@ -565,10 +575,11 @@ class DirStateWorkingTree(WorkingTree3):
     def _kind(self, relpath):
         abspath = self.abspath(relpath)
         kind = file_kind(abspath)
-        if (self._repo_supports_tree_reference and
-            kind == 'directory' and
-            self._directory_is_tree_reference(relpath)):
-            kind = 'tree-reference'
+        if (self._repo_supports_tree_reference and kind == 'directory'):
+            entry = self._get_entry(path=relpath)
+            if entry[1] is not None:
+                if entry[1][0][0] == 't':
+                    kind = 'tree-reference'
         return kind
 
     @needs_read_lock

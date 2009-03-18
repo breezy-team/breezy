@@ -124,7 +124,9 @@ class TestCommands(ExternalBase):
         out, err = self.run_bzr('ignore a')
         self.assertEqual(out,
                          "Warning: the following files are version controlled"\
-                         " and match your ignore pattern:\na\n")
+                         " and match your ignore pattern:\na\n"\
+                         "These files will continue to be version controlled"\
+                         " unless you 'bzr remove' them.\n")
 
         # test a single unversioned file
         out, err = self.run_bzr('ignore b')
@@ -135,7 +137,9 @@ class TestCommands(ExternalBase):
         out, err = self.run_bzr('ignore *')
         self.assertEqual(out,
                          "Warning: the following files are version controlled"\
-                         " and match your ignore pattern:\n.bzrignore\na\nb\n")
+                         " and match your ignore pattern:\n.bzrignore\na\nb\n"\
+                         "These files will continue to be version controlled"\
+                         " unless you 'bzr remove' them.\n")
 
     def test_ignored_versioned_file_matching_new_pattern(self):
         tree = self.make_branch_and_tree('.')
@@ -148,4 +152,6 @@ class TestCommands(ExternalBase):
         out, err = self.run_bzr('ignore b')
         self.assertEqual(out,
                          "Warning: the following files are version controlled"\
-                         " and match your ignore pattern:\nb\n")
+                         " and match your ignore pattern:\nb\n"\
+                         "These files will continue to be version controlled"\
+                         " unless you 'bzr remove' them.\n")

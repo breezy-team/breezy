@@ -126,21 +126,14 @@ class TestBzrDir(TestCaseWithBzrDir):
                 for rev_id in left_repo.all_revision_ids():
                     self.assertEqual(left_repo.get_revision(rev_id),
                         right_repo.get_revision(rev_id))
-                # inventories
-                left_inv_weave = left_repo.inventories
-                right_inv_weave = right_repo.inventories
-                self.assertEqual(set(left_inv_weave.keys()),
-                    set(right_inv_weave.keys()))
-                # XXX: currently this does not handle indirectly referenced
-                # inventories (e.g. where the inventory is a delta basis for
-                # one that is fully present but that the revid for that
-                # inventory is not yet present.)
-                self.assertEqual(set(left_inv_weave.keys()),
-                    set(left_repo.revisions.keys()))
-                left_trees = left_repo.revision_trees(all_revs)
-                right_trees = right_repo.revision_trees(all_revs)
-                for left_tree, right_tree in izip(left_trees, right_trees):
-                    self.assertEqual(left_tree.inventory, right_tree.inventory)
+                # Assert the revision trees (and thus the inventories) are equal
+                sort_key = lambda rev_tree: rev_tree.get_revision_id()
+                rev_trees_a = sorted(
+                    left_repo.revision_trees(all_revs), key=sort_key)
+                rev_trees_b = sorted(
+                    right_repo.revision_trees(all_revs), key=sort_key)
+                for tree_a, tree_b in zip(rev_trees_a, rev_trees_b):
+                    self.assertEqual([], list(tree_a.iter_changes(tree_b)))
                 # texts
                 text_index = left_repo._generate_text_key_index()
                 self.assertEqual(text_index,
@@ -886,6 +879,8 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = source.bzrdir
         target = dir.sprout(self.get_url('target'))
         self.assertNotEqual(dir.transport.base, target.transport.base)
+        target_repo = target.open_repository()
+        self.assertRepositoryHasSameItems(source.repository, target_repo)
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
                                     [
                                      './.bzr/basis-inventory-cache',
@@ -896,7 +891,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                                      './.bzr/checkout/stat-cache',
                                      './.bzr/inventory',
                                      './.bzr/parent',
-                                     './.bzr/repository/inventory.knit',
+                                     './.bzr/repository',
                                      './.bzr/stat-cache',
                                      './foo',
                                      ])

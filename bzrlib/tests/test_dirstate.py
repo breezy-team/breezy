@@ -31,6 +31,7 @@ from bzrlib.memorytree import MemoryTree
 from bzrlib.tests import (
         SymlinkFeature,
         TestCase,
+        TestCaseInTempDir,
         TestCaseWithTransport,
         )
 
@@ -1617,20 +1618,21 @@ class TestDirstateSortOrder(TestCaseWithTransport):
 class InstrumentedDirState(dirstate.DirState):
     """An DirState with instrumented sha1 functionality."""
 
-    def __init__(self, path):
-        super(InstrumentedDirState, self).__init__(path)
+    def __init__(self, path, sha1_provider):
+        super(InstrumentedDirState, self).__init__(path, sha1_provider)
         self._time_offset = 0
         self._log = []
         # member is dynamically set in DirState.__init__ to turn on trace
-        self._size_sha1_file = self._size_sha1_file_and_log
+        self._sha1_provider = sha1_provider
+        self._sha1_file = self._sha1_file_and_log
 
     def _sha_cutoff_time(self):
         timestamp = super(InstrumentedDirState, self)._sha_cutoff_time()
         self._cutoff_time = timestamp + self._time_offset
 
-    def _size_sha1_file_and_log(self, abspath, filter_list):
+    def _sha1_file_and_log(self, abspath):
         self._log.append(('sha1', abspath))
-        return filters.internal_size_sha_file_byname(abspath, filter_list)
+        return self._sha1_provider.sha1(abspath)
 
     def _read_link(self, abspath, old_link):
         self._log.append(('read_link', abspath, old_link))
@@ -1666,6 +1668,11 @@ class _FakeStat(object):
         self.st_dev = dev
         self.st_ino = ino
         self.st_mode = mode
+
+    @staticmethod
+    def from_stat(st):
+        return _FakeStat(st.st_size, st.st_mtime, st.st_ctime, st.st_dev,
+            st.st_ino, st.st_mode)
 
 
 class TestPackStat(TestCaseWithTransport):
@@ -2222,3 +2229,28 @@ class Test_InvEntryToDetails(TestCaseWithDirState):
         inv_entry.symlink_target = u'link-target'
         details = self.assertDetails(('l', 'link-target', 0, False,
                                       'link-revision-id'), inv_entry)
+
+
+class TestSHA1Provider(TestCaseInTempDir):
+
+    def test_sha1provider_is_an_interface(self):
+        p = dirstate.SHA1Provider()
+        self.assertRaises(NotImplementedError, p.sha1, "foo")
+        self.assertRaises(NotImplementedError, p.stat_and_sha1, "foo")
+
+    def test_defaultsha1provider_sha1(self):
+        text = 'test\r\nwith\nall\rpossible line endings\r\n'
+        self.build_tree_contents([('foo', text)])
+        expected_sha = osutils.sha_string(text)
+        p = dirstate.DefaultSHA1Provider()
+        self.assertEqual(expected_sha, p.sha1('foo'))
+
+    def test_defaultsha1provider_stat_and_sha1(self):
+        text = 'test\r\nwith\nall\rpossible line endings\r\n'
+        self.build_tree_contents([('foo', text)])
+        expected_sha = osutils.sha_string(text)
+        p = dirstate.DefaultSHA1Provider()
+        statvalue, sha1 = p.stat_and_sha1('foo')
+        self.assertTrue(len(statvalue) >= 10)
+        self.assertEqual(len(text), statvalue.st_size)
+        self.assertEqual(expected_sha, sha1)

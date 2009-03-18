@@ -44,7 +44,17 @@ class TestFetchSameRepository(TestCaseWithRepository):
             raise TestSkipped('Cannot fetch from model2 to model1')
         repo.fetch(tree_a.branch.repository,
                    revision_id=None)
-                   ## pb=bzrlib.progress.DummyProgress())
+
+    def test_fetch_fails_in_write_group(self):
+        # fetch() manages a write group itself, fetching within one isn't safe.
+        repo = self.make_repository('a')
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        self.addCleanup(repo.abort_write_group)
+        # Don't need a specific class - not expecting flow control based on
+        # this.
+        self.assertRaises(errors.BzrError, repo.fetch, repo)
 
     def test_fetch_to_knit3(self):
         # create a repository of the sort we are testing.

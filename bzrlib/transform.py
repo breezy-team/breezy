@@ -1846,7 +1846,7 @@ class _PreviewTree(tree.Tree):
                 size = None
                 executable = None
             if kind == 'symlink':
-                link_or_sha1 = os.readlink(limbo_name)
+                link_or_sha1 = os.readlink(limbo_name).decode(osutils._fs_enc)
         if supports_executable():
             executable = tt._new_executability.get(trans_id, executable)
         return kind, size, executable, link_or_sha1

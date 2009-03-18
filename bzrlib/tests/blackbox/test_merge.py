@@ -491,6 +491,18 @@ class TestMerge(ExternalBase):
         out, err = self.run_bzr(['merge', '-d', 'a', 'b'])
         self.assertContainsRe(err, 'Warning: criss-cross merge encountered.')
 
+    def test_merge_force(self):
+        tree_a = self.make_branch_and_tree('a')
+        self.build_tree(['a/foo'])
+        tree_a.add(['foo'])
+        tree_a.commit('add file')
+        tree_b = tree_a.bzrdir.sprout('b').open_workingtree()
+        self.build_tree_contents([('a/foo', 'change 1')])
+        tree_a.commit('change file')
+        tree_b.merge_from_branch(tree_a.branch)
+        tree_a.commit('empty change to allow merge to run')
+        self.run_bzr(['merge', '../a', '--force'], working_dir='b')
+
     def test_merge_from_submit(self):
         tree_a = self.make_branch_and_tree('a')
         tree_b = tree_a.bzrdir.sprout('b').open_workingtree()

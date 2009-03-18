@@ -263,27 +263,6 @@ class SmartClientMediumTests(tests.TestCase):
             ['bzr', 'serve', '--inet', '--directory=/', '--allow-writes'])],
             vendor.calls)
 
-    def test_ssh_client_changes_command_when_BZR_REMOTE_PATH_is_set(self):
-        # The only thing that initiates a connection from the medium is giving
-        # it bytes.
-        output = StringIO()
-        vendor = StringIOSSHVendor(StringIO(), output)
-        orig_bzr_remote_path = os.environ.get('BZR_REMOTE_PATH')
-        def cleanup_environ():
-            osutils.set_or_unset_env('BZR_REMOTE_PATH', orig_bzr_remote_path)
-        self.addCleanup(cleanup_environ)
-        os.environ['BZR_REMOTE_PATH'] = 'fugly'
-        client_medium = self.callDeprecated(
-            ['bzr_remote_path is required as of bzr 0.92'],
-            medium.SmartSSHClientMedium, 'a hostname', 'a port', 'a username',
-            'a password', 'base', vendor)
-        client_medium._accept_bytes('abc')
-        self.assertEqual('abc', output.getvalue())
-        self.assertEqual([('connect_ssh', 'a username', 'a password',
-            'a hostname', 'a port',
-            ['fugly', 'serve', '--inet', '--directory=/', '--allow-writes'])],
-            vendor.calls)
-
     def test_ssh_client_changes_command_when_bzr_remote_path_passed(self):
         # The only thing that initiates a connection from the medium is giving
         # it bytes.
@@ -2844,6 +2823,7 @@ class TestResponseEncoderBufferingProtocolThree(tests.TestCase):
     """
 
     def setUp(self):
+        tests.TestCase.setUp(self)
         self.writes = []
         self.responder = protocol.ProtocolThreeResponder(self.writes.append)
 

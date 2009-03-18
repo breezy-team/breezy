@@ -105,12 +105,8 @@ class _ReportingSocket(object):
         self.sock = sock
         self._report_activity = report_activity
 
-    def send(self, s, *args):
-        self.sock.send(s, *args)
-        self._report_activity(len(s), 'write')
-
     def sendall(self, s, *args):
-        self.sock.send(s, *args)
+        self.sock.sendall(s, *args)
         self._report_activity(len(s), 'write')
 
     def recv(self, *args):

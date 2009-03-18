@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -34,7 +34,6 @@ from bzrlib import (
     lockdir,
     lru_cache,
     osutils,
-    remote,
     revision as _mod_revision,
     symbol_versioning,
     tsort,
@@ -884,18 +883,22 @@ class Repository(object):
 
         XXX: this docstring is duplicated in many places, e.g. lockable_files.py
         """
+        locked = self.is_locked()
         result = self.control_files.lock_write(token=token)
         for repo in self._fallback_repositories:
             # Writes don't affect fallback repos
             repo.lock_read()
-        self._refresh_data()
+        if not locked:
+            self._refresh_data()
         return result
 
     def lock_read(self):
+        locked = self.is_locked()
         self.control_files.lock_read()
         for repo in self._fallback_repositories:
             repo.lock_read()
-        self._refresh_data()
+        if not locked:
+            self._refresh_data()
 
     def get_physical_lock_status(self):
         return self.control_files.get_physical_lock_status()
@@ -1084,6 +1087,19 @@ class Repository(object):
     def suspend_write_group(self):
         raise errors.UnsuspendableWriteGroup(self)
 
+    def refresh_data(self):
+        """Re-read any data needed to to synchronise with disk.
+
+        This method is intended to be called after another repository instance
+        (such as one used by a smart server) has inserted data into the
+        repository. It may not be called during a write group, but may be
+        called at any other time.
+        """
+        if self.is_in_write_group():
+            raise errors.InternalBzrError(
+                "May not refresh_data while in a write group.")
+        self._refresh_data()
+
     def resume_write_group(self, tokens):
         if not self.is_write_locked():
             raise errors.NotWriteLocked(self)
@@ -1103,6 +1119,10 @@ class Repository(object):
         If revision_id is None and fetch_spec is None, then all content is
         copied.
 
+        fetch() may not be used when the repository is in a write group -
+        either finish the current write group before using fetch, or use
+        fetch before starting the write group.
+
         :param find_ghosts: Find and copy revisions in the source that are
             ghosts in the target (and not reachable directly by walking out to
             the first-present revision in target from revision_id).
@@ -1117,6 +1137,9 @@ class Repository(object):
         if fetch_spec is not None and revision_id is not None:
             raise AssertionError(
                 "fetch_spec and revision_id are mutually exclusive.")
+        if self.is_in_write_group():
+            raise errors.InternalBzrError(
+                "May not fetch while in a write group.")
         # fast path same-url fetch operations
         if self.has_same_location(source) and fetch_spec is None:
             # check that last_revision is in 'from' and then return a
@@ -1356,9 +1379,6 @@ class Repository(object):
     def find_text_key_references(self):
         """Find the text key references within the repository.
 
-        :return: a dictionary mapping (file_id, revision_id) tuples to altered file-ids to an iterable of
-        revision_ids. Each altered file-ids has the exact revision_ids that
-        altered it listed explicitly.
         :return: A dictionary mapping text keys ((fileid, revision_id) tuples)
             to whether they were referred to by the inventory of the
             revision_id that they contain. The inventory texts from all present
@@ -1453,6 +1473,26 @@ class Repository(object):
                 result[key] = True
         return result
 
+    def _inventory_xml_lines_for_keys(self, keys):
+        """Get a line iterator of the sort needed for findind references.
+
+        Not relevant for non-xml inventory repositories.
+
+        Ghosts in revision_keys are ignored.
+
+        :param revision_keys: The revision keys for the inventories to inspect.
+        :return: An iterator over (inventory line, revid) for the fulltexts of
+            all of the xml inventories specified by revision_keys.
+        """
+        stream = self.inventories.get_record_stream(keys, 'unordered', True)
+        for record in stream:
+            if record.storage_kind != 'absent':
+                chunks = record.get_bytes_as('chunked')
+                revid = record.key[-1]
+                lines = osutils.chunks_to_lines(chunks)
+                for line in lines:
+                    yield line, revid
+
     def _find_file_ids_from_xml_inventory_lines(self, line_iterator,
         revision_ids):
         """Helper routine for fileids_altered_by_revision_ids.
@@ -1468,15 +1508,20 @@ class Repository(object):
         revision_ids. Each altered file-ids has the exact revision_ids that
         altered it listed explicitly.
         """
+        seen = set(self._find_text_key_references_from_xml_inventory_lines(
+                line_iterator).iterkeys())
+        # Note that revision_ids are revision keys.
+        parent_maps = self.revisions.get_parent_map(revision_ids)
+        parents = set()
+        map(parents.update, parent_maps.itervalues())
+        parents.difference_update(revision_ids)
+        parent_seen = set(self._find_text_key_references_from_xml_inventory_lines(
+            self._inventory_xml_lines_for_keys(parents)))
+        new_keys = seen - parent_seen
         result = {}
         setdefault = result.setdefault
-        for key in \
-            self._find_text_key_references_from_xml_inventory_lines(
-                line_iterator).iterkeys():
-            # once data is all ensured-consistent; then this is
-            # if revision_id == version_id
-            if key[-1:] in revision_ids:
-                setdefault(key[0], set()).add(key[-1])
+        for key in new_keys:
+            setdefault(key[0], set()).add(key[-1])
         return result
 
     def fileids_altered_by_revision_ids(self, revision_ids, _inv_weave=None):
@@ -1580,7 +1625,7 @@ class Repository(object):
         batch_size = 10 # should be ~150MB on a 55K path tree
         batch_count = len(revision_order) / batch_size + 1
         processed_texts = 0
-        pb.update("Calculating text parents.", processed_texts, text_count)
+        pb.update("Calculating text parents", processed_texts, text_count)
         for offset in xrange(batch_count):
             to_query = revision_order[offset * batch_size:(offset + 1) *
                 batch_size]
@@ -1590,7 +1635,7 @@ class Repository(object):
                 revision_id = rev_tree.get_revision_id()
                 parent_ids = ancestors[revision_id]
                 for text_key in revision_keys[revision_id]:
-                    pb.update("Calculating text parents.", processed_texts)
+                    pb.update("Calculating text parents", processed_texts)
                     processed_texts += 1
                     candidate_parents = []
                     for parent_id in parent_ids:
@@ -1813,7 +1858,11 @@ class Repository(object):
         for repositories to maintain loaded indices across multiple locks
         by checking inside their implementation of this method to see
         whether their indices are still valid. This depends of course on
-        the disk format being validatable in this manner.
+        the disk format being validatable in this manner. This method is
+        also called by the refresh_data() public interface to cause a refresh
+        to occur while in a write lock so that data inserted by a smart server
+        push operation is visible on the client's instance of the physical
+        repository.
         """
 
     @needs_read_lock
@@ -1943,9 +1992,17 @@ class Repository(object):
                 [parents_provider, other_repository._make_parents_provider()])
         return graph.Graph(parents_provider)
 
-    def _get_versioned_file_checker(self):
-        """Return an object suitable for checking versioned files."""
-        return _VersionedFileChecker(self)
+    def _get_versioned_file_checker(self, text_key_references=None):
+        """Return an object suitable for checking versioned files.
+        
+        :param text_key_references: if non-None, an already built
+            dictionary mapping text keys ((fileid, revision_id) tuples)
+            to whether they were referred to by the inventory of the
+            revision_id that they contain. If None, this will be
+            calculated.
+        """
+        return _VersionedFileChecker(self,
+            text_key_references=text_key_references)
 
     def revision_ids_to_search_result(self, result_set):
         """Convert a set of revision ids to a graph SearchResult."""
@@ -2565,16 +2622,9 @@ class InterRepository(InterObject):
     InterRepository.get(other).method_name(parameters).
     """
 
-    _walk_to_common_revisions_batch_size = 1
+    _walk_to_common_revisions_batch_size = 50
     _optimisers = []
     """The available optimised InterRepository types."""
-
-    def __init__(self, source, target):
-        InterObject.__init__(self, source, target)
-        # These two attributes may be overridden by e.g. InterOtherToRemote to
-        # provide a faster implementation.
-        self.target_get_graph = self.target.get_graph
-        self.target_get_parent_map = self.target.get_parent_map
 
     @needs_write_lock
     def copy_content(self, revision_id=None):
@@ -2592,6 +2642,7 @@ class InterRepository(InterObject):
             pass
         self.target.fetch(self.source, revision_id=revision_id)
 
+    @needs_write_lock
     def fetch(self, revision_id=None, pb=None, find_ghosts=False,
             fetch_spec=None):
         """Fetch the content required to construct revision_id.
@@ -2605,9 +2656,6 @@ class InterRepository(InterObject):
         :return: None.
         """
         from bzrlib.fetch import RepoFetcher
-        mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
-               self.source, self.source._format, self.target,
-               self.target._format)
         f = RepoFetcher(to_repository=self.target,
                                from_repository=self.source,
                                last_revision=revision_id,
@@ -2620,7 +2668,7 @@ class InterRepository(InterObject):
         :param revision_ids: The start point for the search.
         :return: A set of revision ids.
         """
-        target_graph = self.target_get_graph()
+        target_graph = self.target.get_graph()
         revision_ids = frozenset(revision_ids)
         # Fast path for the case where all the revisions are already in the
         # target repo.
@@ -2826,19 +2874,6 @@ class InterWeaveRepo(InterSameDataRepository):
         else:
             self.target.fetch(self.source, revision_id=revision_id)
 
-    @needs_write_lock
-    def fetch(self, revision_id=None, pb=None, find_ghosts=False,
-            fetch_spec=None):
-        """See InterRepository.fetch()."""
-        from bzrlib.fetch import RepoFetcher
-        mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
-               self.source, self.source._format, self.target, self.target._format)
-        f = RepoFetcher(to_repository=self.target,
-                               from_repository=self.source,
-                               last_revision=revision_id,
-                               fetch_spec=fetch_spec,
-                               pb=pb, find_ghosts=find_ghosts)
-
     @needs_read_lock
     def search_missing_revision_ids(self, revision_id=None, find_ghosts=True):
         """See InterRepository.missing_revision_ids()."""
@@ -2907,19 +2942,6 @@ class InterKnitRepo(InterSameDataRepository):
         except AttributeError:
             return False
         return are_knits and InterRepository._same_model(source, target)
-
-    @needs_write_lock
-    def fetch(self, revision_id=None, pb=None, find_ghosts=False,
-            fetch_spec=None):
-        """See InterRepository.fetch()."""
-        from bzrlib.fetch import RepoFetcher
-        mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
-               self.source, self.source._format, self.target, self.target._format)
-        f = RepoFetcher(to_repository=self.target,
-                            from_repository=self.source,
-                            last_revision=revision_id,
-                            fetch_spec=fetch_spec,
-                            pb=pb, find_ghosts=find_ghosts)
 
     @needs_read_lock
     def search_missing_revision_ids(self, revision_id=None, find_ghosts=True):
@@ -2992,14 +3014,12 @@ class InterPackRepo(InterSameDataRepository):
             from bzrlib.fetch import RepoFetcher
             fetcher = RepoFetcher(self.target, self.source, revision_id,
                     pb, find_ghosts, fetch_spec=fetch_spec)
-        mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
-               self.source, self.source._format, self.target, self.target._format)
         if fetch_spec is not None:
             if len(list(fetch_spec.heads)) != 1:
                 raise AssertionError(
                     "InterPackRepo.fetch doesn't support "
                     "fetching multiple heads yet.")
-            revision_id = fetch_spec.heads[0]
+            revision_id = list(fetch_spec.heads)[0]
             fetch_spec = None
         if revision_id is None:
             # TODO:
@@ -3009,10 +3029,9 @@ class InterPackRepo(InterSameDataRepository):
             # till then:
             source_revision_ids = frozenset(self.source.all_revision_ids())
             revision_ids = source_revision_ids - \
-                frozenset(self.target_get_parent_map(source_revision_ids))
+                frozenset(self.target.get_parent_map(source_revision_ids))
             revision_keys = [(revid,) for revid in revision_ids]
-            target_pack_collection = self._get_target_pack_collection()
-            index = target_pack_collection.revision_index.combined_index
+            index = self.target._pack_collection.revision_index.combined_index
             present_revision_ids = set(item[1][0] for item in
                 index.iter_entries(revision_keys))
             revision_ids = set(revision_ids) - present_revision_ids
@@ -3038,26 +3057,19 @@ class InterPackRepo(InterSameDataRepository):
 
     def _pack(self, source, target, revision_ids):
         from bzrlib.repofmt.pack_repo import Packer
-        target_pack_collection = self._get_target_pack_collection()
         packs = source._pack_collection.all_packs()
-        pack = Packer(target_pack_collection, packs, '.fetch',
+        pack = Packer(self.target._pack_collection, packs, '.fetch',
             revision_ids).pack()
         if pack is not None:
-            target_pack_collection._save_pack_names()
+            self.target._pack_collection._save_pack_names()
             copied_revs = pack.get_revision_count()
             # Trigger an autopack. This may duplicate effort as we've just done
             # a pack creation, but for now it is simpler to think about as
             # 'upload data, then repack if needed'.
-            self._autopack()
+            self.target._pack_collection.autopack()
             return (copied_revs, [])
         else:
             return (0, [])
-
-    def _autopack(self):
-        self.target._pack_collection.autopack()
-
-    def _get_target_pack_collection(self):
-        return self.target._pack_collection
 
     @needs_read_lock
     def search_missing_revision_ids(self, revision_id=None, find_ghosts=True):
@@ -3071,7 +3083,7 @@ class InterPackRepo(InterSameDataRepository):
         elif revision_id is not None:
             # Find ghosts: search for revisions pointing from one repository to
             # the other, and vice versa, anywhere in the history of revision_id.
-            graph = self.target_get_graph(other_repository=self.source)
+            graph = self.target.get_graph(other_repository=self.source)
             searcher = graph._make_breadth_first_searcher([revision_id])
             found_ids = set()
             while True:
@@ -3087,7 +3099,7 @@ class InterPackRepo(InterSameDataRepository):
             # Double query here: should be able to avoid this by changing the
             # graph api further.
             result_set = found_ids - frozenset(
-                self.target_get_parent_map(found_ids))
+                self.target.get_parent_map(found_ids))
         else:
             source_ids = self.source.all_revision_ids()
             # source_ids is the worst possible case we may need to pull.
@@ -3165,10 +3177,7 @@ class InterDifferingSerializer(InterKnitRepo):
                         # We don't copy the text for the root node unless the
                         # target supports_rich_root.
                         continue
-                    # TODO: Do we need:
-                    #       "if entry.revision == current_revision_id" ?
-                    if entry.revision == current_revision_id:
-                        text_keys.add((file_id, entry.revision))
+                    text_keys.add((file_id, entry.revision))
             revision = self.source.get_revision(current_revision_id)
             pending_deltas.append((basis_id, delta,
                 current_revision_id, revision.parent_ids))
@@ -3240,6 +3249,9 @@ class InterDifferingSerializer(InterKnitRepo):
             my_pb = ui.ui_factory.nested_progress_bar()
             pb = my_pb
         else:
+            symbol_versioning.warn(
+                symbol_versioning.deprecated_in((1, 14, 0))
+                % "pb parameter to fetch()")
             my_pb = None
         try:
             self._fetch_all_revisions(revision_ids, pb)
@@ -3271,136 +3283,11 @@ class InterDifferingSerializer(InterKnitRepo):
         return basis_id, basis_tree
 
 
-class InterOtherToRemote(InterRepository):
-    """An InterRepository that simply delegates to the 'real' InterRepository
-    calculated for (source, target._real_repository).
-    """
-
-    _walk_to_common_revisions_batch_size = 50
-
-    def __init__(self, source, target):
-        InterRepository.__init__(self, source, target)
-        self._real_inter = None
-
-    @staticmethod
-    def is_compatible(source, target):
-        if isinstance(target, remote.RemoteRepository):
-            return True
-        return False
-
-    def _ensure_real_inter(self):
-        if self._real_inter is None:
-            self.target._ensure_real()
-            real_target = self.target._real_repository
-            self._real_inter = InterRepository.get(self.source, real_target)
-            # Make _real_inter use the RemoteRepository for get_parent_map
-            self._real_inter.target_get_graph = self.target.get_graph
-            self._real_inter.target_get_parent_map = self.target.get_parent_map
-
-    def copy_content(self, revision_id=None):
-        self._ensure_real_inter()
-        self._real_inter.copy_content(revision_id=revision_id)
-
-    def fetch(self, revision_id=None, pb=None, find_ghosts=False,
-            fetch_spec=None):
-        self._ensure_real_inter()
-        return self._real_inter.fetch(revision_id=revision_id, pb=pb,
-            find_ghosts=find_ghosts, fetch_spec=fetch_spec)
-
-    @classmethod
-    def _get_repo_format_to_test(self):
-        return None
-
-
-class InterRemoteToOther(InterRepository):
-
-    def __init__(self, source, target):
-        InterRepository.__init__(self, source, target)
-        self._real_inter = None
-
-    @staticmethod
-    def is_compatible(source, target):
-        if not isinstance(source, remote.RemoteRepository):
-            return False
-        return InterRepository._same_model(source, target)
-
-    def _ensure_real_inter(self):
-        if self._real_inter is None:
-            self.source._ensure_real()
-            real_source = self.source._real_repository
-            self._real_inter = InterRepository.get(real_source, self.target)
-
-    @needs_write_lock
-    def fetch(self, revision_id=None, pb=None, find_ghosts=False,
-            fetch_spec=None):
-        """See InterRepository.fetch()."""
-        # Always fetch using the generic streaming fetch code, to allow
-        # streaming fetching from remote servers.
-        from bzrlib.fetch import RepoFetcher
-        fetcher = RepoFetcher(self.target, self.source, revision_id,
-                pb, find_ghosts, fetch_spec=fetch_spec)
-
-    def copy_content(self, revision_id=None):
-        self._ensure_real_inter()
-        self._real_inter.copy_content(revision_id=revision_id)
-
-    @classmethod
-    def _get_repo_format_to_test(self):
-        return None
-
-
-
-class InterPackToRemotePack(InterPackRepo):
-    """A specialisation of InterPackRepo for a target that is a
-    RemoteRepository.
-
-    This will use the get_parent_map RPC rather than plain readvs, and also
-    uses an RPC for autopacking.
-    """
-
-    _walk_to_common_revisions_batch_size = 50
-
-    @staticmethod
-    def is_compatible(source, target):
-        from bzrlib.repofmt.pack_repo import RepositoryFormatPack
-        if isinstance(source._format, RepositoryFormatPack):
-            if isinstance(target, remote.RemoteRepository):
-                target._format._ensure_real()
-                if isinstance(target._format._custom_format,
-                              RepositoryFormatPack):
-                    if InterRepository._same_model(source, target):
-                        return True
-        return False
-
-    def _autopack(self):
-        self.target.autopack()
-
-    @needs_write_lock
-    def fetch(self, revision_id=None, pb=None, find_ghosts=False,
-            fetch_spec=None):
-        """See InterRepository.fetch()."""
-        # Always fetch using the generic streaming fetch code, to allow
-        # streaming fetching into remote servers.
-        from bzrlib.fetch import RepoFetcher
-        fetcher = RepoFetcher(self.target, self.source, revision_id,
-                              pb, find_ghosts, fetch_spec=fetch_spec)
-
-    def _get_target_pack_collection(self):
-        return self.target._real_repository._pack_collection
-
-    @classmethod
-    def _get_repo_format_to_test(self):
-        return None
-
-
 InterRepository.register_optimiser(InterDifferingSerializer)
 InterRepository.register_optimiser(InterSameDataRepository)
 InterRepository.register_optimiser(InterWeaveRepo)
 InterRepository.register_optimiser(InterKnitRepo)
 InterRepository.register_optimiser(InterPackRepo)
-InterRepository.register_optimiser(InterOtherToRemote)
-InterRepository.register_optimiser(InterRemoteToOther)
-InterRepository.register_optimiser(InterPackToRemotePack)
 
 
 class CopyConverter(object):
@@ -3487,9 +3374,10 @@ def _unescape_xml(data):
 
 class _VersionedFileChecker(object):
 
-    def __init__(self, repository):
+    def __init__(self, repository, text_key_references=None):
         self.repository = repository
-        self.text_index = self.repository._generate_text_key_index()
+        self.text_index = self.repository._generate_text_key_index(
+            text_key_references=text_key_references)
 
     def calculate_file_version_parents(self, text_key):
         """Calculate the correct parents for a file version according to
