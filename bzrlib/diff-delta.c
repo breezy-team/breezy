@@ -252,9 +252,9 @@ pack_delta_index(struct unpacked_index_entry **hash, unsigned int hsize,
 
     if (packed_entry - (struct index_entry *)mem
         != num_entries + hsize*EXTRA_NULLS) {
-        // fprintf(stderr, "We expected %d entries, but created %d\n",
-        //         num_entries + hsize*EXTRA_NULLS,
-        //         (int)(packed_entry - (struct index_entry*)mem));
+        fprintf(stderr, "We expected %d entries, but created %d\n",
+                num_entries + hsize*EXTRA_NULLS,
+                (int)(packed_entry - (struct index_entry*)mem));
     }
     assert(packed_entry - (struct index_entry *)mem
             == num_entries + hsize*EXTRA_NULLS);
@@ -543,9 +543,9 @@ create_index_from_old_and_new_entries(const struct delta_index *old_index,
         hsize = old_index->hash_mask + 1;
     }
     hmask = hsize - 1;
-    // fprintf(stderr, "resizing index to insert %d entries into array"
-    //                 " with %d entries: %x => %x\n",
-    //         num_entries, old_index->num_entries, old_index->hash_mask, hmask);
+    fprintf(stderr, "resizing index to insert %d entries into array"
+                    " with %d entries: %x => %x\n",
+            num_entries, old_index->num_entries, old_index->hash_mask, hmask);
 
     memsize = sizeof(*index)
         + sizeof(*packed_hash) * (hsize+1)
@@ -785,7 +785,13 @@ create_delta_index_from_delta(const struct source_info *src,
                 /* Invalid insert, not enough bytes in the delta */
                 break;
             }
-            for (; cmd > RABIN_WINDOW; cmd -= RABIN_WINDOW,
+            /* The create_delta code requires a match at least 4 characters
+             * (including only the last char of the RABIN_WINDOW) before it
+             * will consider it something worth copying rather than inserting.
+             * So we don't want to index anything that we know won't ever be a
+             * match.
+             */
+            for (; cmd > RABIN_WINDOW + 3; cmd -= RABIN_WINDOW,
                                        data += RABIN_WINDOW) {
                 unsigned int val = 0;
                 for (i = 1; i <= RABIN_WINDOW; i++)
@@ -849,18 +855,18 @@ create_delta_index_from_delta(const struct source_info *src,
         old_entry++;
         if (old_entry->ptr != NULL
             || old_entry >= old_index->hash[hash_offset + 1]) {
-            // char buff[128];
-            // get_text(buff, entry->ptr);
-            // fprintf(stderr, "Failed to find an opening @%x for %8x:\n '%s'\n",
-            //         hash_offset, entry->val, buff);
-            // for (old_entry = old_index->hash[hash_offset];
-            //      old_entry < old_index->hash[hash_offset+1];
-            //      ++old_entry) {
-            //     get_text(buff, old_entry->ptr);
-            //     fprintf(stderr, "  [%2d] %8x %8x: '%s'\n",
-            //             (int)(old_entry - old_index->hash[hash_offset]),
-            //             old_entry->val, old_entry->ptr, buff);
-            // }
+            char buff[128];
+            get_text(buff, entry->ptr);
+            fprintf(stderr, "Failed to find an opening @%x for %8x:\n '%s'\n",
+                    hash_offset, entry->val, buff);
+            for (old_entry = old_index->hash[hash_offset];
+                 old_entry < old_index->hash[hash_offset+1];
+                 ++old_entry) {
+                get_text(buff, old_entry->ptr);
+                fprintf(stderr, "  [%2d] %8x %8x: '%s'\n",
+                        (int)(old_entry - old_index->hash[hash_offset]),
+                        old_entry->val, old_entry->ptr, buff);
+            }
             break;
         }
         num_inserted++;
@@ -874,12 +880,12 @@ create_delta_index_from_delta(const struct source_info *src,
         /* We couldn't fit the new entries into the old index, so allocate a
          * new one, and fill it with stuff.
          */
-        // fprintf(stderr, "inserted %d before resize\n", num_inserted);
+        fprintf(stderr, "inserted %d before resize\n", num_inserted);
         new_index = create_index_from_old_and_new_entries(old_index,
             entry, num_entries);
     } else {
         new_index = NULL;
-        // fprintf(stderr, "inserted %d without resizing\n", num_inserted);
+        fprintf(stderr, "inserted %d without resizing\n", num_inserted);
     }
     free(entries);
     return new_index;
