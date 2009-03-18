@@ -27,6 +27,7 @@ SmartServerRequestHandler).
 """
 
 import tempfile
+import threading
 
 from bzrlib import (
     bzrdir,
@@ -40,6 +41,10 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib.bundle import serializer
 """)
+
+
+jail_info = threading.local()
+jail_info.transports = None
 
 
 class SmartServerRequest(object):
@@ -120,6 +125,12 @@ class SmartServerRequest(object):
         body_bytes = ''.join(self._body_chunks)
         self._body_chunks = None
         return self.do_body(body_bytes)
+
+    def setup_jail(self):
+        jail_info.transports = [self._backing_transport]
+
+    def teardown_jail(self):
+        jail_info.transports = None
 
     def translate_client_path(self, client_path):
         """Translate a path received from a network client into a local
@@ -277,7 +288,11 @@ class SmartServerRequestHandler(object):
         # XXX: most of this error conversion is VFS-related, and thus ought to
         # be in SmartServerVFSRequestHandler somewhere.
         try:
-            return callable(*args, **kwargs)
+            self._command.setup_jail()
+            try:
+                return callable(*args, **kwargs)
+            finally:
+                self._command.teardown_jail()
         except (KeyboardInterrupt, SystemExit):
             raise
         except Exception, err:

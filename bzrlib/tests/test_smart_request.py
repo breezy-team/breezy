@@ -16,9 +16,11 @@
 
 """Tests for smart server request infrastructure (bzrlib.smart.request)."""
 
+import threading
+
 from bzrlib import errors
 from bzrlib.smart import request
-from bzrlib.tests import TestCase
+from bzrlib.tests import TestCase, TestCaseWithMemoryTransport
 
 
 class NoBodyRequest(request.SmartServerRequest):
@@ -61,6 +63,22 @@ class EndErrorRequest(request.SmartServerRequest):
         raise errors.NoSuchFile('xyzzy')
 
 
+class CheckJailRequest(request.SmartServerRequest):
+
+    def __init__(self, *args):
+        request.SmartServerRequest.__init__(self, *args)
+        self.jail_transports_log = []
+
+    def do(self):
+        self.jail_transports_log.append(request.jail_info.transports)
+
+    def do_chunk(self, bytes):
+        self.jail_transports_log.append(request.jail_info.transports)
+
+    def do_end(self):
+        self.jail_transports_log.append(request.jail_info.transports)
+
+
 class TestSmartRequest(TestCase):
 
     def test_request_class_without_do_body(self):
@@ -75,6 +93,20 @@ class TestSmartRequest(TestCase):
         handler.args_received(('foo',))
         handler.end_received()
         # Request done, no exception was raised.
+
+    def test_only_request_code_is_jailed(self):
+        transport = 'dummy transport'
+        handler = request.SmartServerRequestHandler(
+            transport, {'foo': CheckJailRequest}, '/')
+        handler.args_received(('foo',))
+        self.assertEqual(None, request.jail_info.transports)
+        handler.accept_body('bytes')
+        self.assertEqual(None, request.jail_info.transports)
+        handler.end_received()
+        self.assertEqual(None, request.jail_info.transports)
+        self.assertEqual(
+            [[transport]] * 3, handler._command.jail_transports_log)
+
 
 
 class TestSmartRequestHandlerErrorTranslation(TestCase):
@@ -133,4 +165,17 @@ class TestRequestHanderErrorTranslation(TestCase):
         self.assertTranslationEqual(
             ('TokenMismatch', 'some-token', 'actual-token'),
             errors.TokenMismatch('some-token', 'actual-token'))
+
+
+class TestRequestJail(TestCaseWithMemoryTransport):
+    
+    def test_jail(self):
+        transport = self.get_transport('blah')
+        req = request.SmartServerRequest(transport)
+        tls = threading.local()
+        self.assertEqual(None, request.jail_info.transports)
+        req.setup_jail()
+        self.assertEqual([transport], request.jail_info.transports)
+        req.teardown_jail()
+        self.assertEqual(None, request.jail_info.transports)
 
