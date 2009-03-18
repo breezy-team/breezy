@@ -140,9 +140,9 @@ bzr 1.13 "paraskavedekatriaphobia" 2009-03-14
 ---------------------------------------------
 
 This release includes bug fixes and a few performance and feature improvements.
-GNU Changelog output can now be produced by ``bzr log --log-format gnu-changelog``.
-Debug flags can now be set in ``~/.bazaar/bazaar.conf``.  Lightweight checkouts
-and stacked branches should both be much faster over remote connections.
+GNU Changelog output can now be produced by ``bzr log --gnu-changelog``.  Debug
+flags can now be set in ``~/.bazaar/bazaar.conf``. Lightweight Checkouts and
+Stacked Branches should both be much faster over remote connections.
 
   CHANGES FROM bzr 1.13rc1 2009-03-10:
 
@@ -174,8 +174,8 @@ and stacked branches should both be much faster over remote connections.
       in chapter 7 of the User Guide and ``bzr help view`` for details.
       (Ian Clatworthy)
 
-    * GNU Changelog output can now be produced by ``bzr log --log-format
-      gnu-changelog``.  (Andrea Bolognani, Martin Pool)
+    * GNU Changelog output can now be produced by ``bzr log --gnu-changelog``.
+      (Andrea Bolognani, Martin Pool)
 
     * The ``-Dmemory`` flag now gives memory information on Windows.
       (John Arbash Meinel)
