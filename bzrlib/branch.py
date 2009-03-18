@@ -2306,9 +2306,6 @@ class BzrBranch7(BzrBranch5):
             self._get_fallback_repository(url))
 
     def _open_hook(self):
-#        from bzrlib.smart.request import jail_info
-#        if jail_info.transports is not None:
-#            return
         if self._ignore_fallbacks:
             return
         try:
