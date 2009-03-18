@@ -21,8 +21,7 @@ Preparing the tree for release
 
 #. Download the pqm plugin and install it into your ``~/.bazaar/plugins``::
 
-	bzr checkout --lighweight lp:bzr-pqm
-	mv bzr-pqm pqm
+     bzr branch lp:bzr-pqm ~/.bazaar/plugins/pqm
 
 #. Configure pqm-submit for this branch, with a section like this in
    ``~/.bazaar/locations.conf``::
