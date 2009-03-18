@@ -47,6 +47,30 @@ jail_info = threading.local()
 jail_info.transports = None
 
 
+def _install_hook():
+    bzrdir.BzrDir.hooks.install_named_hook(
+        'pre_open', _pre_open_hook, 'checking server jail')
+
+
+def _pre_open_hook(transport):
+    allowed_transports = jail_info.transports
+    if allowed_transports is None:
+        return
+    abspath = transport.base
+    for allowed_transport in allowed_transports:
+        try:
+            allowed_transport.relpath(abspath)
+        except errors.PathNotChild:
+            continue
+        else:
+            return
+    raise errors.BzrError('jail break: %r' % (abspath,))
+
+
+_install_hook()
+
+
+
 class SmartServerRequest(object):
     """Base class for request handlers.
 

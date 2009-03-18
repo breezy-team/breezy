@@ -398,7 +398,11 @@ class TestSmartServerRequestOpenBranchV2(TestCaseWithChrootedTransport):
         Branch.hooks.install_named_hook('open', opened_branches.append, None)
         backing = self.get_transport()
         request = smart.bzrdir.SmartServerRequestOpenBranchV2(backing)
-        response = request.execute('feature')
+        request.setup_jail()
+        try:
+            response = request.execute('feature')
+        finally:
+            request.teardown_jail()
         expected_format = feature._format.network_name()
         self.assertEqual(
             SuccessfulSmartServerResponse(('branch', expected_format)),
