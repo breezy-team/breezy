@@ -16,11 +16,13 @@
 
 from dulwich.objects import (
     Blob,
+    Tree,
     )
 import os
 
 from bzrlib import (
     knit,
+    osutils,
     versionedfile,
     )
 from bzrlib.bzrdir import (
@@ -128,6 +130,7 @@ class ImportObjects(TestCaseWithTransport):
     def setUp(self):
         super(ImportObjects, self).setUp()
         self._map = DictGitShaMap()
+        self._mapping = BzrGitMappingv1()
         factory = knit.make_file_factory(True, versionedfile.PrefixMapper())
         self._texts = factory(self.get_transport('texts'))
 
@@ -135,6 +138,40 @@ class ImportObjects(TestCaseWithTransport):
         blob = Blob.from_string("bar")
         inv = Inventory()
         inv.revision_id = "somerevid"
-        import_git_blob(self._texts, BzrGitMappingv1(), "bla", blob, 
+        import_git_blob(self._texts, self._mapping, "bla", blob, 
             inv, [], self._map, False)
         self.assertEquals(set([('bla', 'somerevid')]), self._texts.keys())
+        self.assertEquals(self._texts.get_record_stream([('bla', 'somerevid')],
+            "unordered", True).next().get_bytes_as("fulltext"), "bar")
+        self.assertEquals(False, inv["bla"].executable)
+        self.assertEquals("file", inv["bla"].kind)
+        self.assertEquals("somerevid", inv["bla"].revision)
+        self.assertEquals(osutils.sha_strings(["bar"]), inv["bla"].text_sha1)
+
+    def test_import_tree_empty_root(self):
+        inv = Inventory()
+        inv.revision_id = "somerevid"
+        tree = Tree()
+        tree.serialize()
+        import_git_tree(self._texts, self._mapping, "", tree, inv, [], 
+            self._map, lambda sha: None)
+        self.assertEquals(set([("TREE_ROOT", 'somerevid')]), self._texts.keys())
+        self.assertEquals(False, inv["TREE_ROOT"].executable)
+        self.assertEquals("directory", inv["TREE_ROOT"].kind)
+        self.assertEquals({}, inv["TREE_ROOT"].children)
+        self.assertEquals("somerevid", inv["TREE_ROOT"].revision)
+        self.assertEquals(None, inv["TREE_ROOT"].text_sha1)
+
+    def test_import_tree_empty(self):
+        inv = Inventory()
+        inv.revision_id = "somerevid"
+        tree = Tree()
+        tree.serialize()
+        import_git_tree(self._texts, self._mapping, "bla", tree, inv, [], 
+            self._map, lambda sha: None)
+        self.assertEquals(set([("bla", 'somerevid')]), self._texts.keys())
+        self.assertEquals("directory", inv["bla"].kind)
+        self.assertEquals(False, inv["bla"].executable)
+        self.assertEquals({}, inv["bla"].children)
+        self.assertEquals("somerevid", inv["bla"].revision)
+        self.assertEquals(None, inv["bla"].text_sha1)
