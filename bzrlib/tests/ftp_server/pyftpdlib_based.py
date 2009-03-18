@@ -45,6 +45,9 @@ class AnonymousWithWriteAccessAuthorizer(ftpserver.DummyAuthorizer):
 
 class BzrConformingFS(ftpserver.AbstractedFS):
 
+    def chmod(self, path, mode):
+        return os.chmod(path, mode)
+
     def listdir(self, path):
         """List the content of a directory."""
         # FIXME: need tests with unicode paths
