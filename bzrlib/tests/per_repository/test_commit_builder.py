@@ -104,14 +104,13 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         try:
             builder = tree.branch.get_commit_builder([])
             try:
-                builder.record_iter_changes(tree, tree.basis_tree(),
-                    tree.last_revision(), tree.iter_changes(tree.basis_tree()))
+                basis = tree.basis_tree()
+                last_rev = tree.last_revision()
+                changes = tree.iter_changes(basis)
+                builder.record_iter_changes(tree, basis, last_rev, changes)
                 builder.finish_inventory()
-            except:
+            finally:
                 builder.abort()
-                raise
-            builder.finish_inventory()
-            builder.abort()
         finally:
             tree.unlock()
 
@@ -400,7 +399,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
                 builder.record_iter_changes(tree, tree.basis_tree(), rev_id,
                     [delete_change])
                 self.assertEqual(("foo", None, "foo-id", None),
-                    builder.basis_delta[0])
+                    builder._basis_delta[0])
                 self.assertTrue(builder.any_changes())
                 builder.finish_inventory()
                 rev_id2 = builder.commit('delete foo')
@@ -811,7 +810,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
             changes = list(tree.iter_changes(parent_tree))
             builder.record_iter_changes(tree, parent_tree, parent_ids[0],
                 changes)
-            delta = builder.basis_delta
+            delta = builder._basis_delta
             delta_dict = dict((change[2], change) for change in delta)
             file_id = tree.path2id(new_name)
             version_recorded = (file_id in delta_dict and

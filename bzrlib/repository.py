@@ -208,12 +208,9 @@ class CommitBuilder(object):
         if self.new_inventory is None:
             # an inventory delta was accumulated without creating a new
             # inventory.
-            try:
-                basis_id = self.parents[0]
-            except IndexError:
-                basis_id = _mod_revision.NULL_REVISION
-            self.inv_sha1 = self.repository.add_inventory_delta(
-                basis_id, self.basis_delta, self._new_revision_id,
+            basis_id = self.basis_delta_revision
+            self.inv_sha1 = self.repository.add_inventory_by_delta(
+                basis_id, self._basis_delta, self._new_revision_id,
                 self.parents)
         else:
             if self.new_inventory.root is None:
@@ -282,7 +279,7 @@ class CommitBuilder(object):
         entry = entry_factory['directory'](tree.path2id(''), '',
             None)
         entry.revision = self._new_revision_id
-        self.basis_delta.append(('', '', entry.file_id, entry))
+        self._basis_delta.append(('', '', entry.file_id, entry))
 
     def _get_delta(self, ie, basis_inv, path):
         """Get a delta against the basis inventory for ie."""
@@ -341,6 +338,11 @@ class CommitBuilder(object):
         builder.record_delete().
         """
         self._recording_deletes = True
+        try:
+            basis_id = self.parents[0]
+        except IndexError:
+            basis_id = _mod_revision.NULL_REVISION
+        self.basis_delta_revision = basis_id
 
     def record_entry_contents(self, ie, parent_invs, path, tree,
         content_summary):
@@ -559,8 +561,10 @@ class CommitBuilder(object):
         :param basis_tree: The basis tree this commit is being performed
             against.
         :param basis_revision_id: The revision id of the tree the iter_changes
-            has been generated against.
-        :param iter_changes: An iter_changes iterator.
+            has been generated against. Currently assumed to be the same
+            as self.parents[0] - if it is not, errors may occur.
+        :param iter_changes: An iter_changes iterator with the changes to apply
+            to basis_revision_id.
         :param _entry_factory: Private method to bind entry_factory locally for
             performance.
         :return: None
@@ -569,18 +573,27 @@ class CommitBuilder(object):
         # deltas between all the parent inventories. We use inventory delta's 
         # between the inventory objects because iter_changes masks
         # last-changed-field only changes.
-        basis_inv = basis_tree.inventory
+        # Working data:
         # file_id -> change map, change is fileid, paths, changed, versioneds,
         # parents, names, kinds, executables
         merged_ids = {}
         # file_id -> revision_id -> inventory entry, for entries in parent
         # trees that are not parents[0]
         parent_entries = {}
+        revtrees = list(self.repository.revision_trees(self.parents))
+        # The basis inventory from a repository 
+        if revtrees:
+            basis_inv = revtrees[0].inventory
+        else:
+            basis_inv = self.repository.revision_tree(
+                _mod_revision.NULL_REVISION).inventory
         if len(self.parents) > 1:
-            revtrees = list(self.repository.revision_trees(self.parents))
+            if basis_revision_id != self.parents[0]:
+                raise Exception(
+                    "arbitrary basis parents not yet supported with merges")
             repo_basis = revtrees[0]
             for revtree in revtrees[1:]:
-                for change in revtree.inventory.make_delta(basis_tree.inventory):
+                for change in revtree.inventory.make_delta(basis_inv):
                     if change[1] is None:
                         # Deleted
                         continue
@@ -597,12 +610,19 @@ class CommitBuilder(object):
                         parent_entries[change[2]][change[3].revision] = change[3]
         else:
             merged_ids = {}
+        # Setup the changes from the tree:
         changes= {}
         for change in iter_changes:
             # This probably looks up in basis_inv way to much.
-            changes[change[0]] = change, merged_ids.get(
-                change[0], [basis_inv[change[0]].revision])
+            if change[1][0] is not None:
+                head_candidate = [basis_inv[change[0]].revision]
+            else:
+                head_candidate = []
+            changes[change[0]] = change, merged_ids.get(change[0],
+                head_candidate)
         unchanged_merged = set(merged_ids) - set(changes)
+        # Extend the changes dict with synthetic changes to record merges of
+        # texts.
         for file_id in unchanged_merged:
             # Record a merged version of these items that did not change vs the
             # basis. This can be either identical parallel changes, or a revert
@@ -614,7 +634,7 @@ class CommitBuilder(object):
             # inv delta  change: (file_id, (path_in_source, path_in_target),
             #   changed_content, versioned, parent, name, kind,
             #   executable)
-            basis_entry = basis_inv[file_id]
+            basis_entry = repo_basis.inventory[file_id]
             change = (file_id,
                 (basis_inv.id2path(file_id), tree.id2path(file_id)),
                 False, (True, True),
@@ -628,7 +648,7 @@ class CommitBuilder(object):
         # inv delta is:
         # old_path, new_path, file_id, new_inventory_entry
         seen_root = False # Is the root in the basis delta?
-        inv_delta = self.basis_delta
+        inv_delta = self._basis_delta
         modified_rev = self._new_revision_id
         for change, head_candidates in changes.values():
             if change[3][1]: # versioned in target.
@@ -746,6 +766,7 @@ class CommitBuilder(object):
         if not seen_root:
             # housekeeping root entry changes do not affect no-change commits.
             self._require_root_change(tree)
+        self.basis_delta_revision = basis_revision_id
 
     def _add_text_to_weave(self, file_id, new_lines, parents, nostore_sha):
         # Note: as we read the content directly from the tree, we know its not
