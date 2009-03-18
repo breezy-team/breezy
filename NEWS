@@ -111,6 +111,10 @@ IN DEVELOPMENT
 
   INTERNALS:
 
+    * ``DirState`` can now be passed a custom ``SHA1Provider`` object
+      enabling it to store the sha1 and stat of the canonical (post
+      content filtered) form. (Ian Clatworthy)
+
     * New ``assertLength`` method based on one Martin has squirreled away
       somewhere. (Robert Collins, Martin Pool)
 
