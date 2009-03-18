@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -58,6 +58,20 @@ class TestBranchBuilder(tests.TestCaseWithMemoryTransport):
         self.assertEqual(
             'commit 1',
             branch.repository.get_revision(branch.last_revision()).message)
+
+    def test_build_commit_timestamp(self):
+        """You can set a date when committing."""
+        builder = self.make_branch_builder('foo')
+        rev_id = builder.build_commit(timestamp=1236043340)
+        branch = builder.get_branch()
+        self.assertEqual((1, rev_id), branch.last_revision_info())
+        rev = branch.repository.get_revision(branch.last_revision())
+        self.assertEqual(
+            'commit 1',
+            rev.message)
+        self.assertEqual(
+            1236043340,
+            int(rev.timestamp))
 
     def test_build_two_commits(self):
         """The second commit has the right parents and message."""
@@ -129,6 +143,16 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
                               (u'a', 'a-id', 'file'),
                               (u'b', 'b-id', 'directory'),
                              ], rev_tree)
+
+    def test_commit_timestamp(self):
+        builder = self.make_branch_builder('foo')
+        rev_id = builder.build_snapshot(None, None,
+            [('add', (u'', None, 'directory', None))],
+            timestamp=1234567890)
+        rev = builder.get_branch().repository.get_revision(rev_id)
+        self.assertEqual(
+            1234567890,
+            int(rev.timestamp))
 
     def test_commit_message_default(self):
         builder = BranchBuilder(self.get_transport().clone('foo'))

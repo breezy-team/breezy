@@ -283,8 +283,7 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
                     self._protocol_decoder._get_in_buffer()[:10],
                     self._protocol_decoder.state_accept.__name__)
             raise errors.ConnectionReset(
-                "please check connectivity and permissions",
-                "(and try -Dhpss if further diagnosis is required)")
+                "please check connectivity and permissions")
         self._protocol_decoder.accept_bytes(bytes)
 
     def protocol_error(self, exception):

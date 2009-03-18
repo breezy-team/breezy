@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1143,6 +1143,9 @@ class LogFormatter(object):
           let the log formatter decide.
         """
         self.to_file = to_file
+        # 'exact' stream used to show diff, it should print content 'as is'
+        # and should not try to decode/encode it to unicode to avoid bug #328007
+        self.to_exact_file = getattr(to_file, 'stream', to_file)
         self.show_ids = show_ids
         self.show_timezone = show_timezone
         if delta_format is None:
@@ -1174,7 +1177,7 @@ class LogFormatter(object):
         return address
 
     def short_author(self, rev):
-        name, address = config.parse_username(rev.get_apparent_author())
+        name, address = config.parse_username(rev.get_apparent_authors()[0])
         if name:
             return name
         return address
@@ -1216,10 +1219,11 @@ class LongLogFormatter(LogFormatter):
                 to_file.write(indent + 'parent: %s\n' % (parent_id,))
         self.show_properties(revision.rev, indent)
 
-        author = revision.rev.properties.get('author', None)
-        if author is not None:
-            to_file.write(indent + 'author: %s\n' % (author,))
-        to_file.write(indent + 'committer: %s\n' % (revision.rev.committer,))
+        committer = revision.rev.committer
+        authors = revision.rev.get_apparent_authors()
+        if authors != [committer]:
+            to_file.write(indent + 'author: %s\n' % (", ".join(authors),))
+        to_file.write(indent + 'committer: %s\n' % (committer,))
 
         branch_nick = revision.rev.properties.get('branch-nick', None)
         if branch_nick is not None:
@@ -1245,7 +1249,7 @@ class LongLogFormatter(LogFormatter):
             to_file.write(indent + 'diff:\n')
             # Note: we explicitly don't indent the diff (relative to the
             # revision information) so that the output can be fed to patch -p0
-            self.show_diff(to_file, revision.diff, indent)
+            self.show_diff(self.to_exact_file, revision.diff, indent)
 
 
 class ShortLogFormatter(LogFormatter):
@@ -1309,7 +1313,7 @@ class ShortLogFormatter(LogFormatter):
             revision.delta.show(to_file, self.show_ids, indent=indent + offset,
                                 short_status=self.delta_format==1)
         if revision.diff is not None:
-            self.show_diff(to_file, revision.diff, '      ')
+            self.show_diff(self.to_exact_file, revision.diff, '      ')
         to_file.write('\n')
 
 
@@ -1370,6 +1374,42 @@ class LineLogFormatter(LogFormatter):
         return self.truncate(prefix + " ".join(out).rstrip('\n'), max_chars)
 
 
+class GnuChangelogLogFormatter(LogFormatter):
+
+    supports_merge_revisions = True
+    supports_delta = True
+
+    def log_revision(self, revision):
+        """Log a revision, either merged or not."""
+        to_file = self.to_file
+
+        date_str = format_date(revision.rev.timestamp,
+                               revision.rev.timezone or 0,
+                               self.show_timezone,
+                               date_fmt='%Y-%m-%d',
+                               show_offset=False)
+        committer_str = revision.rev.committer.replace (' <', '  <')
+        to_file.write('%s  %s\n\n' % (date_str,committer_str))
+
+        if revision.delta is not None and revision.delta.has_changed():
+            for c in revision.delta.added + revision.delta.removed + revision.delta.modified:
+                path, = c[:1]
+                to_file.write('\t* %s:\n' % (path,))
+            for c in revision.delta.renamed:
+                oldpath,newpath = c[:2]
+                # For renamed files, show both the old and the new path
+                to_file.write('\t* %s:\n\t* %s:\n' % (oldpath,newpath))
+            to_file.write('\n')
+
+        if not revision.rev.message:
+            to_file.write('\tNo commit message\n')
+        else:
+            message = revision.rev.message.rstrip('\r\n')
+            for l in message.split('\n'):
+                to_file.write('\t%s\n' % (l.lstrip(),))
+            to_file.write('\n')
+
+
 def line_log(rev, max_chars):
     lf = LineLogFormatter(None)
     return lf.log_string(None, rev, max_chars)
@@ -1399,6 +1439,8 @@ log_formatter_registry.register('long', LongLogFormatter,
                                 'Detailed log format')
 log_formatter_registry.register('line', LineLogFormatter,
                                 'Log format with one line per revision')
+log_formatter_registry.register('gnu-changelog', GnuChangelogLogFormatter,
+                                'Format used by GNU ChangeLog files')
 
 
 def register_formatter(name, formatter):

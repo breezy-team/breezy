@@ -103,6 +103,7 @@ from bzrlib.versionedfile import (
     ConstantMapper,
     ContentFactory,
     ChunkedContentFactory,
+    sort_groupcompress,
     VersionedFile,
     VersionedFiles,
     )
@@ -298,7 +299,19 @@ class KnitContentFactory(ContentFactory):
             if self._network_bytes is None:
                 self._create_network_bytes()
             return self._network_bytes
+        if ('-ft-' in self.storage_kind and
+            storage_kind in ('chunked', 'fulltext')):
+            adapter_key = (self.storage_kind, 'fulltext')
+            adapter_factory = adapter_registry.get(adapter_key)
+            adapter = adapter_factory(None)
+            bytes = adapter.get_bytes(self)
+            if storage_kind == 'chunked':
+                return [bytes]
+            else:
+                return bytes
         if self._knit is not None:
+            # Not redundant with direct conversion above - that only handles
+            # fulltext cases.
             if storage_kind == 'chunked':
                 return self._knit.get_lines(self.key[0])
             elif storage_kind == 'fulltext':
@@ -966,7 +979,7 @@ class KnitVersionedFiles(VersionedFiles):
         else:
             options.append('fulltext')
             # isinstance is slower and we have no hierarchy.
-            if self._factory.__class__ == KnitPlainFactory:
+            if self._factory.__class__ is KnitPlainFactory:
                 # Use the already joined bytes saving iteration time in
                 # _record_to_data.
                 size, bytes = self._record_to_data(key, digest,
@@ -1297,9 +1310,6 @@ class KnitVersionedFiles(VersionedFiles):
         if cur_keys:
             result.append((cur_keys, cur_non_local))
             sizes.append(cur_size)
-        trace.mutter('Collapsed %d keys into %d requests w/ %d file_ids'
-                     ' w/ sizes: %s', total_keys, len(result),
-                     len(prefix_split_keys), sizes)
         return result
 
     def get_record_stream(self, keys, ordering, include_delta_closure):
@@ -1319,7 +1329,7 @@ class KnitVersionedFiles(VersionedFiles):
         if not keys:
             return
         if not self._index.has_graph:
-            # Cannot topological order when no graph has been stored.
+            # Cannot sort when no graph has been stored.
             ordering = 'unordered'
 
         remaining_keys = keys
@@ -1381,9 +1391,12 @@ class KnitVersionedFiles(VersionedFiles):
                     needed_from_fallback.add(key)
         # Double index lookups here : need a unified api ?
         global_map, parent_maps = self._get_parent_map_with_sources(keys)
-        if ordering == 'topological':
-            # Global topological sort
-            present_keys = tsort.topo_sort(global_map)
+        if ordering in ('topological', 'groupcompress'):
+            if ordering == 'topological':
+                # Global topological sort
+                present_keys = tsort.topo_sort(global_map)
+            else:
+                present_keys = sort_groupcompress(global_map)
             # Now group by source:
             source_keys = []
             current_source = None
@@ -1399,7 +1412,7 @@ class KnitVersionedFiles(VersionedFiles):
         else:
             if ordering != 'unordered':
                 raise AssertionError('valid values for ordering are:'
-                    ' "unordered" or "topological" not: %r'
+                    ' "unordered", "groupcompress" or "topological" not: %r'
                     % (ordering,))
             # Just group by source; remote sources first.
             present_keys = []
@@ -1661,6 +1674,7 @@ class KnitVersionedFiles(VersionedFiles):
          * If a requested key did not change any lines (or didn't have any
            lines), it may not be mentioned at all in the result.
 
+        :param pb: Progress bar supplied by caller.
         :return: An iterator over (line, key).
         """
         if pb is None:
@@ -1680,7 +1694,7 @@ class KnitVersionedFiles(VersionedFiles):
                         key_records.append((key, details[0]))
                 records_iter = enumerate(self._read_records_iter(key_records))
                 for (key_idx, (key, data, sha_value)) in records_iter:
-                    pb.update('Walking content.', key_idx, total)
+                    pb.update('Walking content', key_idx, total)
                     compression_parent = build_details[key][1]
                     if compression_parent is None:
                         # fulltext
@@ -1716,7 +1730,7 @@ class KnitVersionedFiles(VersionedFiles):
                 source_keys.add(key)
                 yield line, key
             keys.difference_update(source_keys)
-        pb.update('Walking content.', total, total)
+        pb.update('Walking content', total, total)
 
     def _make_line_delta(self, delta_seq, new_content):
         """Generate a line delta from delta_seq and new_content."""

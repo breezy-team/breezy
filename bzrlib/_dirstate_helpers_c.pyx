@@ -841,6 +841,8 @@ cdef _update_entry(self, entry, abspath, stat_value):
     packed_stat = _pack_stat(stat_value)
     details = PyList_GetItem_void_void(PyTuple_GetItem_void_void(<void *>entry, 1), 0)
     saved_minikind = PyString_AsString_obj(<PyObject *>PyTuple_GetItem_void_void(details, 0))[0]
+    if minikind == c'd' and saved_minikind == c't':
+        minikind = c't'
     saved_link_or_sha1 = PyTuple_GetItem_void_object(details, 1)
     saved_file_size = PyTuple_GetItem_void_object(details, 2)
     saved_executable = PyTuple_GetItem_void_object(details, 3)

@@ -263,27 +263,6 @@ class SmartClientMediumTests(tests.TestCase):
             ['bzr', 'serve', '--inet', '--directory=/', '--allow-writes'])],
             vendor.calls)
 
-    def test_ssh_client_changes_command_when_BZR_REMOTE_PATH_is_set(self):
-        # The only thing that initiates a connection from the medium is giving
-        # it bytes.
-        output = StringIO()
-        vendor = StringIOSSHVendor(StringIO(), output)
-        orig_bzr_remote_path = os.environ.get('BZR_REMOTE_PATH')
-        def cleanup_environ():
-            osutils.set_or_unset_env('BZR_REMOTE_PATH', orig_bzr_remote_path)
-        self.addCleanup(cleanup_environ)
-        os.environ['BZR_REMOTE_PATH'] = 'fugly'
-        client_medium = self.callDeprecated(
-            ['bzr_remote_path is required as of bzr 0.92'],
-            medium.SmartSSHClientMedium, 'a hostname', 'a port', 'a username',
-            'a password', 'base', vendor)
-        client_medium._accept_bytes('abc')
-        self.assertEqual('abc', output.getvalue())
-        self.assertEqual([('connect_ssh', 'a username', 'a password',
-            'a hostname', 'a port',
-            ['fugly', 'serve', '--inet', '--directory=/', '--allow-writes'])],
-            vendor.calls)
-
     def test_ssh_client_changes_command_when_bzr_remote_path_passed(self):
         # The only thing that initiates a connection from the medium is giving
         # it bytes.
@@ -1528,8 +1507,8 @@ class CommonSmartProtocolTestMixin(object):
         ex = self.assertRaises(errors.ConnectionReset,
             response_handler.read_response_tuple)
         self.assertEqual("Connection closed: "
-            "please check connectivity and permissions "
-            "(and try -Dhpss if further diagnosis is required)", str(ex))
+            "please check connectivity and permissions ",
+            str(ex))
 
     def test_server_offset_serialisation(self):
         """The Smart protocol serialises offsets as a comma and \n string.
@@ -2844,6 +2823,7 @@ class TestResponseEncoderBufferingProtocolThree(tests.TestCase):
     """
 
     def setUp(self):
+        tests.TestCase.setUp(self)
         self.writes = []
         self.responder = protocol.ProtocolThreeResponder(self.writes.append)
 
@@ -2873,17 +2853,30 @@ class TestResponseEncoderBufferingProtocolThree(tests.TestCase):
         self.responder.send_response(response)
         self.assertWriteCount(1)
 
-    def test_send_response_with_body_stream_writes_once_per_chunk(self):
-        """A normal response with a stream body is written to the medium
-        writes to the medium once per chunk.
-        """
+    def test_send_response_with_body_stream_buffers_writes(self):
+        """A normal response with a stream body writes to the medium once."""
         # Construct a response with stream with 2 chunks in it.
         response = _mod_request.SuccessfulSmartServerResponse(
             ('arg', 'arg'), body_stream=['chunk1', 'chunk2'])
         self.responder.send_response(response)
-        # We will write 3 times: exactly once for each chunk, plus a final
-        # write to end the response.
-        self.assertWriteCount(3)
+        # We will write just once, despite the multiple chunks, due to
+        # buffering.
+        self.assertWriteCount(1)
+
+    def test_send_response_with_body_stream_flushes_buffers_sometimes(self):
+        """When there are many chunks (>100), multiple writes will occur rather
+        than buffering indefinitely.
+        """
+        # Construct a response with stream with 40 chunks in it.  Every chunk
+        # triggers 3 buffered writes, so we expect > 100 buffered writes, but <
+        # 200.
+        body_stream = ['chunk %d' % count for count in range(40)]
+        response = _mod_request.SuccessfulSmartServerResponse(
+            ('arg', 'arg'), body_stream=body_stream)
+        self.responder.send_response(response)
+        # The write buffer is flushed every 100 buffered writes, so we expect 2
+        # actual writes.
+        self.assertWriteCount(2)
 
 
 class TestSmartClientUnicode(tests.TestCase):

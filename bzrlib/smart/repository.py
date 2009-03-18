@@ -27,6 +27,7 @@ import threading
 
 from bzrlib import (
     errors,
+    graph,
     osutils,
     pack,
     )
@@ -70,8 +71,18 @@ class SmartServerRepositoryRequest(SmartServerRequest):
         # is expected)
         return None
 
-    def recreate_search(self, repository, recipe_bytes):
-        lines = recipe_bytes.split('\n')
+    def recreate_search(self, repository, search_bytes):
+        lines = search_bytes.split('\n')
+        if lines[0] == 'ancestry-of':
+            heads = lines[1:]
+            search_result = graph.PendingAncestryResult(heads, repository)
+            return search_result, None
+        elif lines[0] == 'search':
+            return self.recreate_search_from_recipe(repository, lines[1:])
+        else:
+            return (None, FailedSmartServerResponse(('BadSearch',)))
+
+    def recreate_search_from_recipe(self, repository, lines):
         start_keys = set(lines[0].split(' '))
         exclude_keys = set(lines[1].split(' '))
         revision_count = int(lines[2])
@@ -86,14 +97,14 @@ class SmartServerRepositoryRequest(SmartServerRequest):
                     break
                 search.stop_searching_any(exclude_keys.intersection(next_revs))
             search_result = search.get_result()
-            if search_result.get_recipe()[2] != revision_count:
+            if search_result.get_recipe()[3] != revision_count:
                 # we got back a different amount of data than expected, this
                 # gets reported as NoSuchRevision, because less revisions
                 # indicates missing revisions, and more should never happen as
                 # the excludes list considers ghosts and ensures that ghost
                 # filling races are not a problem.
                 return (None, FailedSmartServerResponse(('NoSuchRevision',)))
-            return (search, None)
+            return (search_result, None)
         finally:
             repository.unlock()
 
@@ -147,12 +158,14 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
     def _do_repository_request(self, body_bytes):
         repository = self._repository
         revision_ids = set(self._revision_ids)
-        search, error = self.recreate_search(repository, body_bytes)
+        body_lines = body_bytes.split('\n')
+        search_result, error = self.recreate_search_from_recipe(
+            repository, body_lines)
         if error is not None:
             return error
         # TODO might be nice to start up the search again; but thats not
         # written or tested yet.
-        client_seen_revs = set(search.get_result().get_keys())
+        client_seen_revs = set(search_result.get_keys())
         # Always include the requested ids.
         client_seen_revs.difference_update(revision_ids)
         lines = []
@@ -349,13 +362,12 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
         repository = self._repository
         repository.lock_read()
         try:
-            search, error = self.recreate_search(repository, body_bytes)
+            search_result, error = self.recreate_search(repository, body_bytes)
             if error is not None:
                 repository.unlock()
                 return error
-            search = search.get_result()
             source = repository._get_source(self._to_format)
-            stream = source.get_stream(search)
+            stream = source.get_stream(search_result)
         except Exception:
             exc_info = sys.exc_info()
             try:
@@ -512,17 +524,22 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
             tarball.close()
 
 
-class SmartServerRepositoryInsertStream(SmartServerRepositoryRequest):
+class SmartServerRepositoryInsertStreamLocked(SmartServerRepositoryRequest):
     """Insert a record stream from a RemoteSink into a repository.
 
     This gets bytes pushed to it by the network infrastructure and turns that
     into a bytes iterator using a thread. That is then processed by
     _byte_stream_to_stream.
+
+    New in 1.14.
     """
 
-    def do_repository_request(self, repository, resume_tokens):
+    def do_repository_request(self, repository, resume_tokens, lock_token):
         """StreamSink.insert_stream for a remote repository."""
-        repository.lock_write()
+        repository.lock_write(token=lock_token)
+        self.do_insert_stream_request(repository, resume_tokens)
+
+    def do_insert_stream_request(self, repository, resume_tokens):
         tokens = [token for token in resume_tokens.split(' ') if token]
         self.tokens = tokens
         self.repository = repository
@@ -570,3 +587,21 @@ class SmartServerRepositoryInsertStream(SmartServerRepositoryRequest):
         else:
             self.repository.unlock()
             return SuccessfulSmartServerResponse(('ok', ))
+
+
+class SmartServerRepositoryInsertStream(SmartServerRepositoryInsertStreamLocked):
+    """Insert a record stream from a RemoteSink into an unlocked repository.
+
+    This is the same as SmartServerRepositoryInsertStreamLocked, except it
+    takes no lock_tokens; i.e. it works with an unlocked (or lock-free, e.g.
+    like pack format) repository.
+
+    New in 1.13.
+    """
+
+    def do_repository_request(self, repository, resume_tokens):
+        """StreamSink.insert_stream for a remote repository."""
+        repository.lock_write()
+        self.do_insert_stream_request(repository, resume_tokens)
+
+

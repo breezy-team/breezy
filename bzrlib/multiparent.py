@@ -290,7 +290,7 @@ class ParentText(object):
             ' %(num_lines)r)' % self.__dict__
 
     def __eq__(self, other):
-        if self.__class__ != other.__class__:
+        if self.__class__ is not other.__class__:
             return False
         return (self.__dict__ == other.__dict__)
 

@@ -344,6 +344,10 @@ def _translate_error(err):
         return ('ReadError', err.path)
     elif isinstance(err, errors.PermissionDenied):
         return ('PermissionDenied', err.path, err.extra)
+    elif isinstance(err, errors.TokenMismatch):
+        return ('TokenMismatch', err.given_token, err.lock_token)
+    elif isinstance(err, errors.LockContention):
+        return ('LockContention', err.lock, err.msg)
     # Unserialisable error.  Log it, and return a generic error
     trace.log_exception_quietly()
     return ('error', str(err))
@@ -388,7 +392,13 @@ request_handlers = registry.Registry()
 request_handlers.register_lazy(
     'append', 'bzrlib.smart.vfs', 'AppendRequest')
 request_handlers.register_lazy(
-    'Branch.get_config_file', 'bzrlib.smart.branch', 'SmartServerBranchGetConfigFile')
+    'Branch.get_config_file', 'bzrlib.smart.branch',
+    'SmartServerBranchGetConfigFile')
+request_handlers.register_lazy(
+    'Branch.get_parent', 'bzrlib.smart.branch', 'SmartServerBranchGetParent')
+request_handlers.register_lazy(
+    'Branch.get_tags_bytes', 'bzrlib.smart.branch',
+    'SmartServerBranchGetTagsBytes')
 request_handlers.register_lazy(
     'Branch.get_stacked_on_url', 'bzrlib.smart.branch', 'SmartServerBranchRequestGetStackedOnURL')
 request_handlers.register_lazy(
@@ -408,19 +418,32 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'Branch.unlock', 'bzrlib.smart.branch', 'SmartServerBranchRequestUnlock')
 request_handlers.register_lazy(
-    'BzrDir.create_branch', 'bzrlib.smart.bzrdir', 'SmartServerRequestCreateBranch')
+    'BzrDir.cloning_metadir', 'bzrlib.smart.bzrdir',
+    'SmartServerBzrDirRequestCloningMetaDir')
 request_handlers.register_lazy(
-    'BzrDir.create_repository', 'bzrlib.smart.bzrdir', 'SmartServerRequestCreateRepository')
+    'BzrDir.create_branch', 'bzrlib.smart.bzrdir',
+    'SmartServerRequestCreateBranch')
 request_handlers.register_lazy(
-    'BzrDir.find_repository', 'bzrlib.smart.bzrdir', 'SmartServerRequestFindRepositoryV1')
+    'BzrDir.create_repository', 'bzrlib.smart.bzrdir',
+    'SmartServerRequestCreateRepository')
 request_handlers.register_lazy(
-    'BzrDir.find_repositoryV2', 'bzrlib.smart.bzrdir', 'SmartServerRequestFindRepositoryV2')
+    'BzrDir.find_repository', 'bzrlib.smart.bzrdir',
+    'SmartServerRequestFindRepositoryV1')
 request_handlers.register_lazy(
-    'BzrDir.find_repositoryV3', 'bzrlib.smart.bzrdir', 'SmartServerRequestFindRepositoryV3')
+    'BzrDir.find_repositoryV2', 'bzrlib.smart.bzrdir',
+    'SmartServerRequestFindRepositoryV2')
 request_handlers.register_lazy(
-    'BzrDirFormat.initialize', 'bzrlib.smart.bzrdir', 'SmartServerRequestInitializeBzrDir')
+    'BzrDir.find_repositoryV3', 'bzrlib.smart.bzrdir',
+    'SmartServerRequestFindRepositoryV3')
 request_handlers.register_lazy(
-    'BzrDir.open_branch', 'bzrlib.smart.bzrdir', 'SmartServerRequestOpenBranch')
+    'BzrDirFormat.initialize', 'bzrlib.smart.bzrdir',
+    'SmartServerRequestInitializeBzrDir')
+request_handlers.register_lazy(
+    'BzrDir.open_branch', 'bzrlib.smart.bzrdir',
+    'SmartServerRequestOpenBranch')
+request_handlers.register_lazy(
+    'BzrDir.open_branchV2', 'bzrlib.smart.bzrdir',
+    'SmartServerRequestOpenBranchV2')
 request_handlers.register_lazy(
     'delete', 'bzrlib.smart.vfs', 'DeleteRequest')
 request_handlers.register_lazy(
@@ -462,6 +485,8 @@ request_handlers.register_lazy(
     'Repository.has_revision', 'bzrlib.smart.repository', 'SmartServerRequestHasRevision')
 request_handlers.register_lazy(
     'Repository.insert_stream', 'bzrlib.smart.repository', 'SmartServerRepositoryInsertStream')
+request_handlers.register_lazy(
+    'Repository.insert_stream_locked', 'bzrlib.smart.repository', 'SmartServerRepositoryInsertStreamLocked')
 request_handlers.register_lazy(
     'Repository.is_shared', 'bzrlib.smart.repository', 'SmartServerRepositoryIsShared')
 request_handlers.register_lazy(

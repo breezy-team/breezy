@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -53,6 +53,7 @@ from bzrlib import (
     bzrdir,
     debug,
     errors,
+    hooks,
     memorytree,
     osutils,
     progress,
@@ -363,7 +364,7 @@ class TextTestResult(ExtendedTestResult):
         self.pb.show_bar = False
 
     def report_starting(self):
-        self.pb.update('[test 0/%d] starting...' % (self.num_tests))
+        self.pb.update('[test 0/%d] Starting' % (self.num_tests))
 
     def _progress_prefix_text(self):
         # the longer this text, the less space we have to show the test
@@ -428,7 +429,7 @@ class TextTestResult(ExtendedTestResult):
         """test cannot be run because feature is missing."""
 
     def report_cleaning_up(self):
-        self.pb.update('cleaning up...')
+        self.pb.update('Cleaning up')
 
     def finished(self):
         if not self._supplied_pb:
@@ -585,15 +586,15 @@ class TextTestRunner(object):
 
 def iter_suite_tests(suite):
     """Return all tests in a suite, recursing through nested suites"""
-    for item in suite._tests:
-        if isinstance(item, unittest.TestCase):
-            yield item
-        elif isinstance(item, unittest.TestSuite):
+    if isinstance(suite, unittest.TestCase):
+        yield suite
+    elif isinstance(suite, unittest.TestSuite):
+        for item in suite._tests:
             for r in iter_suite_tests(item):
                 yield r
-        else:
-            raise Exception('unknown object %r inside test suite %r'
-                            % (item, suite))
+    else:
+        raise Exception('unknown type %r for object %r'
+                        % (type(suite), suite))
 
 
 class TestSkipped(Exception):
@@ -763,9 +764,12 @@ class TestCase(unittest.TestCase):
     def __init__(self, methodName='testMethod'):
         super(TestCase, self).__init__(methodName)
         self._cleanups = []
+        self._bzr_test_setUp_run = False
+        self._bzr_test_tearDown_run = False
 
     def setUp(self):
         unittest.TestCase.setUp(self)
+        self._bzr_test_setUp_run = True
         self._cleanEnvironment()
         self._silenceUI()
         self._startLogFile()
@@ -775,6 +779,11 @@ class TestCase(unittest.TestCase):
         self._clear_debug_flags()
         TestCase._active_threads = threading.activeCount()
         self.addCleanup(self._check_leaked_threads)
+
+    def debug(self):
+        # debug a frame up.
+        import pdb
+        pdb.Pdb().set_trace(sys._getframe().f_back)
 
     def exc_info(self):
         absent_attr = object()
@@ -809,22 +818,15 @@ class TestCase(unittest.TestCase):
 
     def _clear_hooks(self):
         # prevent hooks affecting tests
-        import bzrlib.branch
-        import bzrlib.smart.client
-        import bzrlib.smart.server
-        self._preserved_hooks = {
-            bzrlib.branch.Branch: bzrlib.branch.Branch.hooks,
-            bzrlib.mutabletree.MutableTree: bzrlib.mutabletree.MutableTree.hooks,
-            bzrlib.smart.client._SmartClient: bzrlib.smart.client._SmartClient.hooks,
-            bzrlib.smart.server.SmartTCPServer: bzrlib.smart.server.SmartTCPServer.hooks,
-            bzrlib.commands.Command: bzrlib.commands.Command.hooks,
-            }
+        self._preserved_hooks = {}
+        for key, factory in hooks.known_hooks.items():
+            parent, name = hooks.known_hooks_key_to_parent_and_attribute(key)
+            current_hooks = hooks.known_hooks_key_to_object(key)
+            self._preserved_hooks[parent] = (name, current_hooks)
         self.addCleanup(self._restoreHooks)
-        # reset all hooks to an empty instance of the appropriate type
-        bzrlib.branch.Branch.hooks = bzrlib.branch.BranchHooks()
-        bzrlib.smart.client._SmartClient.hooks = bzrlib.smart.client.SmartClientHooks()
-        bzrlib.smart.server.SmartTCPServer.hooks = bzrlib.smart.server.SmartServerHooks()
-        bzrlib.commands.Command.hooks = bzrlib.commands.CommandHooks()
+        for key, factory in hooks.known_hooks.items():
+            parent, name = hooks.known_hooks_key_to_parent_and_attribute(key)
+            setattr(parent, name, factory())
 
     def _silenceUI(self):
         """Turn off UI for duration of test"""
@@ -902,6 +904,12 @@ class TestCase(unittest.TestCase):
         self.assertEqual(expected.st_dev, actual.st_dev)
         self.assertEqual(expected.st_ino, actual.st_ino)
         self.assertEqual(expected.st_mode, actual.st_mode)
+
+    def assertLength(self, length, obj_with_len):
+        """Assert that obj_with_len is of length length."""
+        if len(obj_with_len) != length:
+            self.fail("Incorrect length: wanted %d, got %d for %r" % (
+                length, len(obj_with_len), obj_with_len))
 
     def assertPositive(self, val):
         """Assert that val is greater than 0."""
@@ -1283,8 +1291,8 @@ class TestCase(unittest.TestCase):
             osutils.set_or_unset_env(name, value)
 
     def _restoreHooks(self):
-        for klass, hooks in self._preserved_hooks.items():
-            setattr(klass, 'hooks', hooks)
+        for klass, (name, hooks) in self._preserved_hooks.items():
+            setattr(klass, name, hooks)
 
     def knownFailure(self, reason):
         """This test has failed for some known reason."""
@@ -1321,6 +1329,10 @@ class TestCase(unittest.TestCase):
                 try:
                     try:
                         self.setUp()
+                        if not self._bzr_test_setUp_run:
+                            self.fail(
+                                "test setUp did not invoke "
+                                "bzrlib.tests.TestCase's setUp")
                     except KeyboardInterrupt:
                         raise
                     except TestSkipped, e:
@@ -1350,6 +1362,10 @@ class TestCase(unittest.TestCase):
 
                     try:
                         self.tearDown()
+                        if not self._bzr_test_tearDown_run:
+                            self.fail(
+                                "test tearDown did not invoke "
+                                "bzrlib.tests.TestCase's tearDown")
                     except KeyboardInterrupt:
                         raise
                     except:
@@ -1374,6 +1390,7 @@ class TestCase(unittest.TestCase):
             self.__dict__ = saved_attrs
 
     def tearDown(self):
+        self._bzr_test_tearDown_run = True
         self._runCleanups()
         self._log_contents = ''
         unittest.TestCase.tearDown(self)
@@ -1820,6 +1837,29 @@ class TestCase(unittest.TestCase):
         return sio
 
 
+class CapturedCall(object):
+    """A helper for capturing smart server calls for easy debug analysis."""
+
+    def __init__(self, params, prefix_length):
+        """Capture the call with params and skip prefix_length stack frames."""
+        self.call = params
+        import traceback
+        # The last 5 frames are the __init__, the hook frame, and 3 smart
+        # client frames. Beyond this we could get more clever, but this is good
+        # enough for now.
+        stack = traceback.extract_stack()[prefix_length:-5]
+        self.stack = ''.join(traceback.format_list(stack))
+
+    def __str__(self):
+        return self.call.method
+
+    def __repr__(self):
+        return self.call.method
+
+    def stack(self):
+        return self.stack
+
+
 class TestCaseWithMemoryTransport(TestCase):
     """Common test class for tests that do not need disk resources.
 
@@ -2085,15 +2125,21 @@ class TestCaseWithMemoryTransport(TestCase):
         made_control = self.make_bzrdir(relpath, format=format)
         return made_control.create_repository(shared=shared)
 
+    def make_smart_server(self, path):
+        smart_server = server.SmartTCPServer_for_testing()
+        smart_server.setUp(self.get_server())
+        remote_transport = get_transport(smart_server.get_url()).clone(path)
+        self.addCleanup(smart_server.tearDown)
+        return remote_transport
+
     def make_branch_and_memory_tree(self, relpath, format=None):
         """Create a branch on the default transport and a MemoryTree for it."""
         b = self.make_branch(relpath, format=format)
         return memorytree.MemoryTree.create_on_branch(b)
 
     def make_branch_builder(self, relpath, format=None):
-        url = self.get_url(relpath)
-        tran = get_transport(url)
-        return branchbuilder.BranchBuilder(get_transport(url), format=format)
+        return branchbuilder.BranchBuilder(self.get_transport(relpath),
+            format=format)
 
     def overrideEnvironmentForTesting(self):
         os.environ['HOME'] = self.test_home_dir
@@ -2116,9 +2162,13 @@ class TestCaseWithMemoryTransport(TestCase):
         """Sets up a smart server as the transport server with a call log."""
         self.transport_server = server.SmartTCPServer_for_testing
         self.hpss_calls = []
+        import traceback
+        # Skip the current stack down to the caller of
+        # setup_smart_server_with_call_log
+        prefix_length = len(traceback.extract_stack()) - 2
         def capture_hpss_call(params):
-            import traceback
-            self.hpss_calls.append((params, traceback.format_stack()))
+            self.hpss_calls.append(
+                CapturedCall(params, prefix_length))
         client._SmartClient.hooks.install_named_hook(
             'call', capture_hpss_call, None)
 
@@ -2887,6 +2937,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_bundle',
                    'bzrlib.tests.test_bzrdir',
                    'bzrlib.tests.test_cache_utf8',
+                   'bzrlib.tests.test_clean_tree',
                    'bzrlib.tests.test_chunk_writer',
                    'bzrlib.tests.test__chunks_to_lines',
                    'bzrlib.tests.test_commands',
@@ -2897,6 +2948,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_counted_lock',
                    'bzrlib.tests.test_decorators',
                    'bzrlib.tests.test_delta',
+                   'bzrlib.tests.test_debug',
                    'bzrlib.tests.test_deprecated_graph',
                    'bzrlib.tests.test_diff',
                    'bzrlib.tests.test_directory_service',
@@ -3132,54 +3184,6 @@ def test_suite(keep_only=None, starting_with=None):
     return suite
 
 
-def multiply_tests_from_modules(module_name_list, scenario_iter, loader=None):
-    """Adapt all tests in some given modules to given scenarios.
-
-    This is the recommended public interface for test parameterization.
-    Typically the test_suite() method for a per-implementation test
-    suite will call multiply_tests_from_modules and return the
-    result.
-
-    :param module_name_list: List of fully-qualified names of test
-        modules.
-    :param scenario_iter: Iterable of pairs of (scenario_name,
-        scenario_param_dict).
-    :param loader: If provided, will be used instead of a new
-        bzrlib.tests.TestLoader() instance.
-
-    This returns a new TestSuite containing the cross product of
-    all the tests in all the modules, each repeated for each scenario.
-    Each test is adapted by adding the scenario name at the end
-    of its name, and updating the test object's __dict__ with the
-    scenario_param_dict.
-
-    >>> r = multiply_tests_from_modules(
-    ...     ['bzrlib.tests.test_sampler'],
-    ...     [('one', dict(param=1)),
-    ...      ('two', dict(param=2))])
-    >>> tests = list(iter_suite_tests(r))
-    >>> len(tests)
-    2
-    >>> tests[0].id()
-    'bzrlib.tests.test_sampler.DemoTest.test_nothing(one)'
-    >>> tests[0].param
-    1
-    >>> tests[1].param
-    2
-    """
-    # XXX: Isn't load_tests() a better way to provide the same functionality
-    # without forcing a predefined TestScenarioApplier ? --vila 080215
-    if loader is None:
-        loader = TestUtil.TestLoader()
-
-    suite = loader.suiteClass()
-
-    adapter = TestScenarioApplier()
-    adapter.scenarios = list(scenario_iter)
-    adapt_modules(module_name_list, adapter, loader, suite)
-    return suite
-
-
 def multiply_scenarios(scenarios_left, scenarios_right):
     """Multiply two sets of scenarios.
 
@@ -3194,17 +3198,85 @@ def multiply_scenarios(scenarios_left, scenarios_right):
         for right_name, right_dict in scenarios_right]
 
 
+def multiply_tests(tests, scenarios, result):
+    """Multiply tests_list by scenarios into result.
 
-def adapt_modules(mods_list, adapter, loader, suite):
-    """Adapt the modules in mods_list using adapter and add to suite."""
-    tests = loader.loadTestsFromModuleNames(mods_list)
-    adapt_tests(tests, adapter, suite)
+    This is the core workhorse for test parameterisation.
+
+    Typically the load_tests() method for a per-implementation test suite will
+    call multiply_tests and return the result.
+
+    :param tests: The tests to parameterise.
+    :param scenarios: The scenarios to apply: pairs of (scenario_name,
+        scenario_param_dict).
+    :param result: A TestSuite to add created tests to.
+
+    This returns the passed in result TestSuite with the cross product of all
+    the tests repeated once for each scenario.  Each test is adapted by adding
+    the scenario name at the end of its id(), and updating the test object's
+    __dict__ with the scenario_param_dict.
+
+    >>> r = multiply_tests(
+    ...     bzrlib.tests.test_sampler.DemoTest('test_nothing'),
+    ...     [('one', dict(param=1)),
+    ...      ('two', dict(param=2))],
+    ...     TestSuite())
+    >>> tests = list(iter_suite_tests(r))
+    >>> len(tests)
+    2
+    >>> tests[0].id()
+    'bzrlib.tests.test_sampler.DemoTest.test_nothing(one)'
+    >>> tests[0].param
+    1
+    >>> tests[1].param
+    2
+    """
+    for test in iter_suite_tests(tests):
+        apply_scenarios(test, scenarios, result)
+    return result
 
 
-def adapt_tests(tests_list, adapter, suite):
-    """Adapt the tests in tests_list using adapter and add to suite."""
-    for test in iter_suite_tests(tests_list):
-        suite.addTests(adapter.adapt(test))
+def apply_scenarios(test, scenarios, result):
+    """Apply the scenarios in scenarios to test and add to result.
+
+    :param test: The test to apply scenarios to.
+    :param scenarios: An iterable of scenarios to apply to test.
+    :return: result
+    :seealso: apply_scenario
+    """
+    for scenario in scenarios:
+        result.addTest(apply_scenario(test, scenario))
+    return result
+
+
+def apply_scenario(test, scenario):
+    """Copy test and apply scenario to it.
+
+    :param test: A test to adapt.
+    :param scenario: A tuple describing the scenarion.
+        The first element of the tuple is the new test id.
+        The second element is a dict containing attributes to set on the
+        test.
+    :return: The adapted test.
+    """
+    new_id = "%s(%s)" % (test.id(), scenario[0])
+    new_test = clone_test(test, new_id)
+    for name, value in scenario[1].items():
+        setattr(new_test, name, value)
+    return new_test
+
+
+def clone_test(test, new_id):
+    """Clone a test giving it a new id.
+
+    :param test: The test to clone.
+    :param new_id: The id to assign to it.
+    :return: The new test.
+    """
+    from copy import deepcopy
+    new_test = deepcopy(test)
+    new_test.id = lambda: new_id
+    return new_test
 
 
 def _rmtree_temp_dir(dirname):
@@ -3313,35 +3385,6 @@ class _UnicodeFilenameFeature(Feature):
             return True
 
 UnicodeFilenameFeature = _UnicodeFilenameFeature()
-
-
-class TestScenarioApplier(object):
-    """A tool to apply scenarios to tests."""
-
-    def adapt(self, test):
-        """Return a TestSuite containing a copy of test for each scenario."""
-        result = unittest.TestSuite()
-        for scenario in self.scenarios:
-            result.addTest(self.adapt_test_to_scenario(test, scenario))
-        return result
-
-    def adapt_test_to_scenario(self, test, scenario):
-        """Copy test and apply scenario to it.
-
-        :param test: A test to adapt.
-        :param scenario: A tuple describing the scenarion.
-            The first element of the tuple is the new test id.
-            The second element is a dict containing attributes to set on the
-            test.
-        :return: The adapted test.
-        """
-        from copy import deepcopy
-        new_test = deepcopy(test)
-        for name, value in scenario[1].items():
-            setattr(new_test, name, value)
-        new_id = "%s(%s)" % (new_test.id(), scenario[0])
-        new_test.id = lambda: new_id
-        return new_test
 
 
 def probe_unicode_in_user_encoding():

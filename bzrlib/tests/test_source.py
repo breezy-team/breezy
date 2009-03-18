@@ -35,6 +35,7 @@ from bzrlib import (
     )
 import bzrlib.branch
 from bzrlib.tests import (
+    KnownFailure,
     TestCase,
     TestSkipped,
     )
@@ -330,6 +331,7 @@ class TestSource(TestSourceHelper):
                '\n\n    %s'
                % ('\n    '.join(no_newline_at_eof)))
         if problems:
+            raise KnownFailure("test_coding_style has failed")
             self.fail('\n\n'.join(problems))
 
     def test_no_asserts(self):
