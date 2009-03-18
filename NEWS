@@ -41,6 +41,9 @@ IN DEVELOPMENT
       version controlled files match the ignore pattern. (Neil
       Martinsen-Burrell, #248895)
 
+    * ``bzr send`` is faster on repositories with deep histories.
+      (Ian Clatworthy)
+
     * Progress bars now show the rate of network activity for
       ``bzr+ssh://`` and ``bzr://`` connections.  (Andrew Bennetts)
 
