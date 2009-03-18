@@ -35,8 +35,9 @@ Preparing the tree for release
 
     Please see <http://doc.bazaar-vcs.org/latest/developers/HACKING.html#an-overview-of-pqm> for more details on PQM
 
-#. In the release branch, update  ``version_info`` in
-   ``./bzrlib/__init__.py``.  Check the output of ``bzr --version``.
+#. In the release branch, update  ``version_info`` in ``./bzrlib/__init__.py``.
+   Double check that ./bzr ``_script_version`` matches ``version_info``. Check
+   the output of ``bzr --version``. 
 
 #. Add the date and release number to ``./NEWS``
 
