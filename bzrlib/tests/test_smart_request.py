@@ -21,6 +21,7 @@ import threading
 from bzrlib import errors
 from bzrlib.smart import request
 from bzrlib.tests import TestCase, TestCaseWithMemoryTransport
+from bzrlib.transport import get_transport
 
 
 class NoBodyRequest(request.SmartServerRequest):
@@ -172,10 +173,33 @@ class TestRequestJail(TestCaseWithMemoryTransport):
     def test_jail(self):
         transport = self.get_transport('blah')
         req = request.SmartServerRequest(transport)
-        tls = threading.local()
         self.assertEqual(None, request.jail_info.transports)
         req.setup_jail()
         self.assertEqual([transport], request.jail_info.transports)
         req.teardown_jail()
         self.assertEqual(None, request.jail_info.transports)
+
+
+class TestJailHook(TestCaseWithMemoryTransport):
+
+    def tearDown(self):
+        request.jail_info.transports = None
+        TestCaseWithMemoryTransport.tearDown(self)
+
+    def test_jail_hook(self):
+        request.jail_info.transports = None
+        _pre_open_hook = request._pre_open_hook
+        # Any transport is fine if jail_info.transports is None
+        t = self.get_transport('foo')
+        _pre_open_hook(t)
+        # A transport in jail_info.transports is allowed
+        request.jail_info.transports = [t]
+        _pre_open_hook(t)
+        # A child of a transport in jail_info is allowed
+        _pre_open_hook(t.clone('child'))
+        # A parent is not allowed
+        self.assertRaises(errors.BzrError, _pre_open_hook, t.clone('..'))
+        # A completely unrelated transport is not allowed
+        self.assertRaises(
+            errors.BzrError, _pre_open_hook, get_transport('http://host/'))
 

@@ -70,7 +70,6 @@ def _pre_open_hook(transport):
 _install_hook()
 
 
-
 class SmartServerRequest(object):
     """Base class for request handlers.
 
