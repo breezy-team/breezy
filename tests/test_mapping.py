@@ -14,6 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from dulwich.objects import (
+    Commit,
+    )
+
 from bzrlib.plugins.git import tests
 from bzrlib.plugins.git.mapping import (
     BzrGitMappingv1,
@@ -54,3 +58,22 @@ class FileidTests(tests.TestCase):
 
     def test_unescape_underscore_space(self):
         self.assertEquals("bla _", unescape_file_id("bla_s__"))
+
+
+class TestImportCommit(tests.TestCase):
+
+    def test_commit(self):
+        c = Commit()
+        c._tree = "cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
+        c._message = "Some message"
+        c._committer = "Committer"
+        c._commit_time = 4
+        c._author = "Author"
+        c.serialize()
+        rev = BzrGitMappingv1().import_commit(c)
+        self.assertEquals("Some message", rev.message)
+        self.assertEquals("Committer", rev.committer)
+        self.assertEquals("Author", rev.properties['author'])
+        self.assertEquals(0, rev.timezone)
+        self.assertEquals((), rev.parent_ids)
+        self.assertEquals("git-v1:" + c.id, rev.revision_id)

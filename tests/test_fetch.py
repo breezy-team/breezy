@@ -14,17 +14,46 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from dulwich.objects import (
+    Blob,
+    )
 import os
 
-from bzrlib.bzrdir import BzrDir
-from bzrlib.repository import Repository
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib import (
+    knit,
+    versionedfile,
+    )
+from bzrlib.bzrdir import (
+    BzrDir,
+    )
+from bzrlib.inventory import (
+    Inventory,
+    )
+from bzrlib.repository import (
+    Repository,
+    )
+from bzrlib.tests import (
+    TestCaseWithTransport,
+    )
+from bzrlib.transport import (
+    get_transport,
+    )
 
 from bzrlib.plugins.git import (
     get_rich_root_format,
     )
-from bzrlib.plugins.git.fetch import BzrFetchGraphWalker
-from bzrlib.plugins.git.mapping import default_mapping
+from bzrlib.plugins.git.fetch import (
+    BzrFetchGraphWalker,
+    import_git_blob,
+    import_git_tree,
+    )
+from bzrlib.plugins.git.mapping import (
+    BzrGitMappingv1,
+    default_mapping,
+    )
+from bzrlib.plugins.git.shamap import (
+    DictGitShaMap,
+    )
 from bzrlib.plugins.git.tests import (
     GitBranchBuilder,
     run_git,
@@ -92,3 +121,20 @@ class LocalRepositoryFetchTests(TestCaseWithTransport):
         self.assertEquals(True, tree.inventory[tree.path2id("foobar")].executable)
         self.assertTrue(tree.has_filename("notexec"))
         self.assertEquals(False, tree.inventory[tree.path2id("notexec")].executable)
+
+
+class ImportObjects(TestCaseWithTransport):
+
+    def setUp(self):
+        super(ImportObjects, self).setUp()
+        self._map = DictGitShaMap()
+        factory = knit.make_file_factory(True, versionedfile.PrefixMapper())
+        self._texts = factory(self.get_transport('texts'))
+
+    def test_import_blob_simple(self):
+        blob = Blob.from_string("bar")
+        inv = Inventory()
+        inv.revision_id = "somerevid"
+        import_git_blob(self._texts, BzrGitMappingv1(), "bla", blob, 
+            inv, [], self._map, False)
+        self.assertEquals(set([('bla', 'somerevid')]), self._texts.keys())

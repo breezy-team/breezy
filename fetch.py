@@ -93,7 +93,7 @@ class BzrFetchGraphWalker(object):
         return None
 
 
-def import_git_blob(texts, mapping, path, blob, inv, parent_invs, gitmap,
+def import_git_blob(texts, mapping, path, blob, inv, parent_invs, shagitmap,
     executable):
     """Import a git blob object into a bzr repository.
 
@@ -103,6 +103,8 @@ def import_git_blob(texts, mapping, path, blob, inv, parent_invs, gitmap,
     """
     file_id = mapping.generate_file_id(path)
     text_revision = inv.revision_id
+    assert file_id is not None
+    assert text_revision is not None
     texts.add_lines((file_id, text_revision),
         [(file_id, p[file_id].revision) for p in parent_invs if file_id in p],
         osutils.split_lines(blob.data))
@@ -111,11 +113,11 @@ def import_git_blob(texts, mapping, path, blob, inv, parent_invs, gitmap,
     ie.text_size = len(blob.data)
     ie.text_sha1 = osutils.sha_string(blob.data)
     ie.executable = executable
-    gitmap._idmap.add_entry(blob.sha().hexdigest(), "blob",
+    shagitmap.add_entry(blob.sha().hexdigest(), "blob",
         (ie.file_id, ie.revision))
 
 
-def import_git_tree(texts, mapping, path, tree, inv, parent_invs, gitmap,
+def import_git_tree(texts, mapping, path, tree, inv, parent_invs, shagitmap,
     lookup_object):
     """Import a git tree object into a bzr repository.
 
@@ -131,7 +133,7 @@ def import_git_tree(texts, mapping, path, tree, inv, parent_invs, gitmap,
         [])
     ie = inv.add_path(path, "directory", file_id)
     ie.revision = text_revision
-    gitmap._idmap.add_entry(tree.sha().hexdigest(), "tree",
+    shagitmap.add_entry(tree.sha().hexdigest(), "tree",
         (file_id, text_revision))
     for mode, name, hexsha in tree.entries():
         entry_kind = (mode & 0700000) / 0100000
@@ -140,15 +142,14 @@ def import_git_tree(texts, mapping, path, tree, inv, parent_invs, gitmap,
             child_path = name
         else:
             child_path = urlutils.join(path, name)
+        obj = lookup_object(hexsha)
         if entry_kind == 0:
-            tree = lookup_object(hexsha)
-            import_git_tree(texts, mapping, child_path, tree, inv,
-                parent_invs, gitmap, lookup_object)
+            import_git_tree(texts, mapping, child_path, obj, inv, parent_invs,
+                shagitmap, lookup_object)
         elif entry_kind == 1:
-            blob = lookup_object(hexsha)
             fs_mode = mode & 0777
-            import_git_blob(texts, mapping, child_path, blob, inv,
-                parent_invs, gitmap, bool(fs_mode & 0111))
+            import_git_blob(texts, mapping, child_path, obj, inv, parent_invs,
+                shagitmap, bool(fs_mode & 0111))
         else:
             raise AssertionError("Unknown blob kind, perms=%r." % (mode,))
 
@@ -192,7 +193,7 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
             return target_git_object_retriever[sha]
         parent_invs = [repo.get_inventory(r) for r in rev.parent_ids]
         import_git_tree(repo.texts, mapping, "", root_tree, inv, parent_invs, 
-            target_git_object_retriever, lookup_object)
+            target_git_object_retriever._idmap, lookup_object)
         repo.add_revision(rev.revision_id, rev, inv)
 
 

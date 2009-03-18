@@ -135,7 +135,6 @@ def inventory_to_tree_and_blobs(repo, mapping, revision_id):
 
     # stack contains the set of trees that we haven't 
     # finished constructing
-
     for path, entry in inv.iter_entries():
         while stack and not path.startswith(cur):
             tree.serialize()
