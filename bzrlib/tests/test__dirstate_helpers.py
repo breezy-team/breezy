@@ -23,6 +23,7 @@ import time
 from bzrlib import (
     dirstate,
     errors,
+    osutils,
     tests,
     )
 from bzrlib.tests import (
@@ -1173,6 +1174,59 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         self.assertEqual([('f', '', 14, True, dirstate.DirState.NULLSTAT)],
             entry[1])
 
+    def _prepare_tree(self):
+        # Create a tree
+        text = 'Hello World\n'
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/a file', text)])
+        tree.add('a file', 'a-file-id')
+        # Note: dirstate does not sha prior to the first commit
+        # so commit now in order for the test to work
+        tree.commit('first')
+        return tree, text
+
+    def test_sha1provider_sha1_used(self):
+        tree, text = self._prepare_tree()
+        state = dirstate.DirState.from_tree(tree, 'dirstate',
+            UppercaseSHA1Provider())
+        self.addCleanup(state.unlock)
+        expected_sha = osutils.sha_string(text.upper() + "foo")
+        entry = state._get_entry(0, path_utf8='a file')
+        state._sha_cutoff_time()
+        state._cutoff_time += 10
+        sha1 = dirstate.update_entry(state, entry, 'tree/a file',
+            os.lstat('tree/a file'))
+        self.assertEqual(expected_sha, sha1)
+
+    def test_sha1provider_stat_and_sha1_used(self):
+        tree, text = self._prepare_tree()
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        state = tree._current_dirstate()
+        state._sha1_provider = UppercaseSHA1Provider()
+        # If we used the standard provider, it would look like nothing has
+        # changed
+        file_ids_changed = [change[0] for change 
+                in tree.iter_changes(tree.basis_tree())]
+        self.assertEqual(['a-file-id'], file_ids_changed)
+
+
+class UppercaseSHA1Provider():
+    """A custom SHA1Provider."""
+
+    def sha1(self, abspath):
+        return self.stat_and_sha1(abspath)[1]
+
+    def stat_and_sha1(self, abspath):
+        file_obj = file(abspath, 'rb')
+        try:
+            statvalue = os.fstat(file_obj.fileno())
+            text = ''.join(file_obj.readlines())
+            sha1 = osutils.sha_string(text.upper() + "foo")
+        finally:
+            file_obj.close()
+        return statvalue, sha1
+
 
 class TestCompiledUpdateEntry(TestUpdateEntry):
     """Test the pyrex implementation of _read_dirblocks"""
@@ -1182,3 +1236,59 @@ class TestCompiledUpdateEntry(TestUpdateEntry):
     def set_update_entry(self):
         from bzrlib._dirstate_helpers_c import update_entry
         self.update_entry = update_entry
+
+
+class TestProcessEntryPython(test_dirstate.TestCaseWithDirState):
+
+    def setUp(self):
+        super(TestProcessEntryPython, self).setUp()
+        self.setup_process_entry()
+
+    def setup_process_entry(self):
+        from bzrlib import dirstate
+        orig = dirstate._process_entry
+        def cleanup():
+            dirstate._process_entry = orig
+        self.addCleanup(cleanup)
+        dirstate._process_entry = dirstate.ProcessEntryPython
+
+    def assertChangedFileIds(self, expected, tree):
+        tree.lock_read()
+        try:
+            file_ids = [info[0] for info
+                        in tree.iter_changes(tree.basis_tree())]
+        finally:
+            tree.unlock()
+        self.assertEqual(sorted(expected), sorted(file_ids))
+
+    def test_simple_changes(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/file'])
+        tree.add(['file'], ['file-id'])
+        self.assertChangedFileIds([tree.get_root_id(), 'file-id'], tree)
+        tree.commit('one')
+        self.assertChangedFileIds([], tree)
+
+    def test_sha1provider_stat_and_sha1_used(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/file'])
+        tree.add(['file'], ['file-id'])
+        tree.commit('one')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        state = tree._current_dirstate()
+        state._sha1_provider = UppercaseSHA1Provider()
+        self.assertChangedFileIds(['file-id'], tree)
+
+
+class TestProcessEntryC(TestProcessEntryPython):
+    _test_needs_features = [CompiledDirstateHelpersFeature]
+
+    def setup_process_entry(self):
+        from bzrlib import _dirstate_helpers_c
+        orig = dirstate._process_entry
+        def cleanup():
+            dirstate._process_entry = orig
+        self.addCleanup(cleanup)
+        dirstate._process_entry = _dirstate_helpers_c.ProcessEntryC
+
