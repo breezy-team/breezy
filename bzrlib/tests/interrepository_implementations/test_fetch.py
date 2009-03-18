@@ -76,7 +76,7 @@ class TestInterRepository(TestCaseWithInterRepository):
 
     def test_fetch_inconsistent_last_changed_entries(self):
         """If an inventory has odd data we should still get what it references.
-        
+
         This test tests that we do fetch a file text created in a revision not
         being fetched, but referenced from the revision we are fetching when the
         adjacent revisions to the one being fetched do not reference that text.
