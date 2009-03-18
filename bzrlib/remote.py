@@ -428,7 +428,7 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
         if self._supports_external_lookups is None:
             self._ensure_real()
             self._supports_external_lookups = \
-                self._custom_format.supports_external_lookups 
+                self._custom_format.supports_external_lookups
         return self._supports_external_lookups
 
     @property

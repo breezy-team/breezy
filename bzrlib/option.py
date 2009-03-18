@@ -502,6 +502,8 @@ _merge_type_registry.register_lazy('lca', 'bzrlib.merge', 'LCAMerger',
 # Declare the standard options
 _standard_option('help', short_name='h',
                  help='Show help message.')
+_standard_option('usage',
+                 help='Show usage message and options.')
 _standard_option('verbose', short_name='v',
                  help='Display more information.',
                  custom_callback=_verbosity_level_callback)
