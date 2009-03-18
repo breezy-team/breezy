@@ -14,8 +14,6 @@ and Stacked Branches should both be much faster over remote connections.
 
   CHANGES FROM bzr 1.13rc1 2009-03-10:
 
-  BUG FIXES:
-
     * Fix "is not a stackable format" error when pushing a
       stackable-format branch with an unstackable-format repository to a
       destination with a default stacking policy.  (Andrew Bennetts)
