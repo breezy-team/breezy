@@ -263,7 +263,7 @@ else:
         # return '%X.%X' % (int(st.st_mtime), st.st_mode)
 
 
-class Sha1Provider(object):
+class SHA1Provider(object):
     """An interface for getting sha1s of a file."""
 
     def sha1(self, abspath):
@@ -279,15 +279,15 @@ class Sha1Provider(object):
         raise NotImplementedError(self.stat_and_sha1)
 
 
-class DefaultSha1Provider(Sha1Provider):
-    """A Sha1Provider that reads directly from the filesystem."""
+class DefaultSHA1Provider(SHA1Provider):
+    """A SHA1Provider that reads directly from the filesystem."""
 
     def sha1(self, abspath):
-        """Return the sha1 of a file given it's absolute path."""
+        """Return the sha1 of a file given its absolute path."""
         return osutils.sha_file_by_name(abspath)
 
     def stat_and_sha1(self, abspath):
-        """Return the stat and sha1 of a file given it's absolute path."""
+        """Return the stat and sha1 of a file given its absolute path."""
         file_obj = file(abspath, 'rb')
         try:
             statvalue = os.fstat(file_obj.fileno())
@@ -359,7 +359,7 @@ class DirState(object):
         """Create a  DirState object.
 
         :param path: The path at which the dirstate file on disk should live.
-        :param sha1_provider: an object meeting the Sha1Provider interface.
+        :param sha1_provider: an object meeting the SHA1Provider interface.
         """
         # _header_state and _dirblock_state represent the current state
         # of the dirstate metadata and the per-row data respectiely.
@@ -1237,8 +1237,8 @@ class DirState(object):
 
         :param tree: The tree which should provide parent information and
             inventory ids.
-        :param sha1_provider: an object meeting the Sha1Provider interface.
-            If None, a DefaultSha1Provider is used.
+        :param sha1_provider: an object meeting the SHA1Provider interface.
+            If None, a DefaultSHA1Provider is used.
         :return: a DirState object which is currently locked for writing.
             (it was locked by DirState.initialize)
         """
@@ -1877,8 +1877,8 @@ class DirState(object):
         and only a root node - which has id ROOT_ID.
 
         :param path: The name of the file for the dirstate.
-        :param sha1_provider: an object meeting the Sha1Provider interface.
-            If None, a DefaultSha1Provider is used.
+        :param sha1_provider: an object meeting the SHA1Provider interface.
+            If None, a DefaultSHA1Provider is used.
         :return: A write-locked DirState object.
         """
         # This constructs a new DirState object on a path, sets the _state_file
@@ -1887,7 +1887,7 @@ class DirState(object):
         # and no parents. Finally it calls save() to ensure that this data will
         # persist.
         if sha1_provider is None:
-            sha1_provider = DefaultSha1Provider()
+            sha1_provider = DefaultSHA1Provider()
         result = cls(path, sha1_provider)
         # root dir and root dir contents with no children.
         empty_tree_dirblocks = [('', []), ('', [])]
@@ -2031,12 +2031,12 @@ class DirState(object):
         """Construct a DirState on the file at path path.
 
         :param path: The path at which the dirstate file on disk should live.
-        :param sha1_provider: an object meeting the Sha1Provider interface.
-            If None, a DefaultSha1Provider is used.
+        :param sha1_provider: an object meeting the SHA1Provider interface.
+            If None, a DefaultSHA1Provider is used.
         :return: An unlocked DirState object, associated with the given path.
         """
         if sha1_provider is None:
-            sha1_provider = DefaultSha1Provider()
+            sha1_provider = DefaultSHA1Provider()
         result = DirState(path, sha1_provider)
         return result
 

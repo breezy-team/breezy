@@ -1188,7 +1188,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
     def test_sha1provider_sha1_used(self):
         tree, text = self._prepare_tree()
         state = dirstate.DirState.from_tree(tree, 'dirstate',
-            UppercaseSha1Provider())
+            UppercaseSHA1Provider())
         self.addCleanup(state.unlock)
         expected_sha = osutils.sha_string(text.upper() + "foo")
         entry = state._get_entry(0, path_utf8='a file')
@@ -1203,7 +1203,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         tree.lock_write()
         self.addCleanup(tree.unlock)
         state = tree._current_dirstate()
-        state._sha1_provider = UppercaseSha1Provider()
+        state._sha1_provider = UppercaseSHA1Provider()
         # If we used the standard provider, it would look like nothing has
         # changed
         file_ids_changed = [change[0] for change 
@@ -1211,8 +1211,8 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         self.assertEqual(['a-file-id'], file_ids_changed)
 
 
-class UppercaseSha1Provider():
-    """A custom Sha1Provider."""
+class UppercaseSHA1Provider():
+    """A custom SHA1Provider."""
 
     def sha1(self, abspath):
         return self.stat_and_sha1(abspath)[1]
@@ -1277,7 +1277,7 @@ class TestProcessEntryPython(test_dirstate.TestCaseWithDirState):
         tree.lock_write()
         self.addCleanup(tree.unlock)
         state = tree._current_dirstate()
-        state._sha1_provider = UppercaseSha1Provider()
+        state._sha1_provider = UppercaseSHA1Provider()
         self.assertChangedFileIds(['file-id'], tree)
 
 

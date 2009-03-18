@@ -2230,10 +2230,10 @@ class Test_InvEntryToDetails(TestCaseWithDirState):
                                       'link-revision-id'), inv_entry)
 
 
-class TestSha1Provider(TestCaseInTempDir):
+class TestSHA1Provider(TestCaseInTempDir):
 
     def test_sha1provider_is_an_interface(self):
-        p = dirstate.Sha1Provider()
+        p = dirstate.SHA1Provider()
         self.assertRaises(NotImplementedError, p.sha1, "foo")
         self.assertRaises(NotImplementedError, p.stat_and_sha1, "foo")
 
@@ -2241,14 +2241,14 @@ class TestSha1Provider(TestCaseInTempDir):
         text = 'test\r\nwith\nall\rpossible line endings\r\n'
         self.build_tree_contents([('foo', text)])
         expected_sha = osutils.sha_string(text)
-        p = dirstate.DefaultSha1Provider()
+        p = dirstate.DefaultSHA1Provider()
         self.assertEqual(expected_sha, p.sha1('foo'))
 
     def test_defaultsha1provider_stat_and_sha1(self):
         text = 'test\r\nwith\nall\rpossible line endings\r\n'
         self.build_tree_contents([('foo', text)])
         expected_sha = osutils.sha_string(text)
-        p = dirstate.DefaultSha1Provider()
+        p = dirstate.DefaultSHA1Provider()
         statvalue, sha1 = p.stat_and_sha1('foo')
         self.assertTrue(len(statvalue) >= 10)
         self.assertEqual(len(text), statvalue.st_size)
