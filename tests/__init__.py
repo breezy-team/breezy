@@ -235,6 +235,7 @@ def test_suite():
         'test_fetch',
         'test_mapping',
         'test_repository',
+        'test_shamap',
         'test_blackbox',
         ]
     testmod_names = ['%s.%s' % (__name__, t) for t in testmod_names]

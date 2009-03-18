@@ -83,19 +83,20 @@ class DictGitShaMap(GitShaMap):
         return self.dict[sha]
 
     def revids(self):
-        ret = []
         for key, (type, type_data) in self.dict.iteritems():
             if type == "commit":
-                ret.append(type_data[0])
-        return ret
+                yield type_data[0]
 
 
 class SqliteGitShaMap(GitShaMap):
 
-    def __init__(self, transport):
+    def __init__(self, transport=None):
         self.transport = transport
-        self.db = sqlite3.connect(
-            os.path.join(self.transport.local_abspath("."), "git.db"))
+        if transport is None:
+            self.db = sqlite3.connect(":memory:")
+        else:
+            self.db = sqlite3.connect(
+                os.path.join(self.transport.local_abspath("."), "git.db"))
         self.db.executescript("""
         create table if not exists commits(sha1 text, revid text, tree_sha text);
         create index if not exists commit_sha1 on commits(sha1);
