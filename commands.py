@@ -23,6 +23,8 @@
 from bzrlib.commands import Command
 from bzrlib.option import Option
 
+from bzrlib.plugins.git import get_rich_root_format
+
 class cmd_git_serve(Command):
     """Provide access to a Bazaar branch using the git protocol.
 
@@ -84,7 +86,7 @@ class cmd_git_import(Command):
         source_repo = Repository.open(src_location)
         if not isinstance(source_repo, GitRepository):
             raise BzrCommandError("%r is not a git repository" % src_location)
-        format = format_registry.make_bzrdir("1.9-rich-root")
+        format = get_rich_root_format()
         try:
             target_bzrdir = BzrDir.open(dest_location)
         except NotBranchError:

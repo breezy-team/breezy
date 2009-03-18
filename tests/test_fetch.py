@@ -14,10 +14,22 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import os
+
+from bzrlib.bzrdir import BzrDir
+from bzrlib.repository import Repository
+from bzrlib.tests import TestCaseWithTransport
+
+from bzrlib.plugins.git import (
+    get_rich_root_format,
+    )
 from bzrlib.plugins.git.fetch import BzrFetchGraphWalker
 from bzrlib.plugins.git.mapping import default_mapping
+from bzrlib.plugins.git.tests import (
+    GitBranchBuilder,
+    run_git,
+    )
 
-from bzrlib.tests import TestCaseWithTransport
 
 class FetchGraphWalkerTests(TestCaseWithTransport):
 
@@ -31,3 +43,52 @@ class FetchGraphWalkerTests(TestCaseWithTransport):
         self.assertEquals(None, graphwalker.next())
 
 
+class LocalRepositoryFetchTests(TestCaseWithTransport):
+
+    def make_git_repo(self, path):
+        os.mkdir(path)
+        os.chdir(path)
+        run_git("init")
+        os.chdir("..")
+
+    def clone_git_repo(self, from_url, to_url):
+        oldrepos = Repository.open(from_url)
+        dir = BzrDir.create(to_url, get_rich_root_format())
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+        return newrepos
+
+    def test_empty(self):
+        self.make_git_repo("d")
+        newrepos = self.clone_git_repo("d", "f")
+        self.assertEquals([], newrepos.all_revision_ids())
+
+    def test_single_rev(self):
+        self.make_git_repo("d")
+        os.chdir("d")
+        bb = GitBranchBuilder()
+        bb.set_file("foobar", "foo\nbar\n", False)
+        mark = bb.commit("Somebody <somebody@someorg.org>", "mymsg")
+        gitsha = bb.finish()[mark]
+        os.chdir("..")
+        oldrepo = Repository.open("d")
+        newrepo = self.clone_git_repo("d", "f")
+        self.assertEquals([oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha)], newrepo.all_revision_ids())
+
+    def test_executable(self):
+        self.make_git_repo("d")
+        os.chdir("d")
+        bb = GitBranchBuilder()
+        bb.set_file("foobar", "foo\nbar\n", True)
+        bb.set_file("notexec", "foo\nbar\n", False)
+        mark = bb.commit("Somebody <somebody@someorg.org>", "mymsg")
+        gitsha = bb.finish()[mark]
+        os.chdir("..")
+        oldrepo = Repository.open("d")
+        newrepo = self.clone_git_repo("d", "f")
+        revid = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha)
+        tree = newrepo.revision_tree(revid)
+        self.assertTrue(tree.has_filename("foobar"))
+        self.assertEquals(True, tree.inventory[tree.path2id("foobar")].executable)
+        self.assertTrue(tree.has_filename("notexec"))
+        self.assertEquals(False, tree.inventory[tree.path2id("notexec")].executable)

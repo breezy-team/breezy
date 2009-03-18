@@ -80,6 +80,9 @@ class GitBranchFormat(branch.BranchFormat):
         return True
 
     def make_tags(self, branch):
+        if getattr(branch.repository, "get_refs", None) is not None:
+            from bzrlib.plugins.git.remote import RemoteGitTagDict
+            return RemoteGitTagDict(branch)
         return GitTagDict(branch)
 
 

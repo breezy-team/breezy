@@ -33,6 +33,7 @@ from bzrlib.lockable_files import (
 from bzrlib.plugins.git import (
     errors,
     branch,
+    get_rich_root_format,
     repository,
     workingtree,
     )
@@ -79,7 +80,7 @@ class GitDir(bzrdir.BzrDir):
         return True
 
     def cloning_metadir(self, stacked=False):
-        return bzrlib.bzrdir.format_registry.make_bzrdir("1.9-rich-root")
+        return get_rich_root_format()
 
 
 class LocalGitDir(GitDir):
