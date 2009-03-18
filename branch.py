@@ -17,6 +17,11 @@
 
 """An adapter between a Git Branch and a Bazaar Branch"""
 
+from dulwich.objects import (
+    Commit,
+    Tag,
+    )
+
 from bzrlib import (
     branch,
     config,
@@ -24,18 +29,23 @@ from bzrlib import (
     revision,
     tag,
     )
-from bzrlib.decorators import needs_read_lock
-from bzrlib.trace import mutter
+from bzrlib.decorators import (
+    needs_read_lock,
+    )
+from bzrlib.trace import (
+    mutter,
+    )
 
-from bzrlib.plugins.git.foreign import ForeignBranch
-from bzrlib.plugins.git.errors import LightWeightCheckoutsNotSupported
+from bzrlib.plugins.git.foreign import (
+    ForeignBranch,
+    )
+from bzrlib.plugins.git.errors import (
+    LightWeightCheckoutsNotSupported,
+    )
 
-from dulwich.objects import (
-        Commit,
-        Tag,
-        )
 
-class GitTagDict(tag.BasicTags):
+class LocalGitTagDict(tag.BasicTags):
+    """Dictionary with tags in a local repository."""
 
     def __init__(self, branch):
         self.branch = branch
@@ -49,7 +59,8 @@ class GitTagDict(tag.BasicTags):
                 v = obj.object[1]
                 obj = self.repository._git.get_object(v)
             if not isinstance(obj, Commit):
-                mutter("Tag %s points at object %r that is not a commit, ignoring", k, obj)
+                mutter("Tag %s points at object %r that is not a commit, "
+                       "ignoring", k, obj)
                 continue
             ret[k] = self.branch.mapping.revision_id_foreign_to_bzr(v)
         return ret
@@ -66,9 +77,11 @@ class GitBranchConfig(config.BranchConfig):
         # do not provide a BranchDataConfig
         self.option_sources = self.option_sources[0], self.option_sources[2]
 
-    def set_user_option(self, name, value, store=config.STORE_BRANCH, warn_masked=False):
+    def set_user_option(self, name, value, store=config.STORE_BRANCH,
+            warn_masked=False):
         """Force local to True"""
-        config.BranchConfig.set_user_option(self, name, value, store=config.STORE_LOCATION, warn_masked=warn_masked)
+        config.BranchConfig.set_user_option(self, name, value,
+            store=config.STORE_LOCATION, warn_masked=warn_masked)
 
 
 class GitBranchFormat(branch.BranchFormat):
@@ -83,7 +96,8 @@ class GitBranchFormat(branch.BranchFormat):
         if getattr(branch.repository, "get_refs", None) is not None:
             from bzrlib.plugins.git.remote import RemoteGitTagDict
             return RemoteGitTagDict(branch)
-        return GitTagDict(branch)
+        else:
+            return LocalGitTagDict(branch)
 
 
 class GitBranch(ForeignBranch):
@@ -104,7 +118,8 @@ class GitBranch(ForeignBranch):
             stop_revision = source.last_revision()
         # FIXME: Check for diverged branches
         revidmap = self.repository.dfetch(source.repository, stop_revision)
-        self.head, self.mapping = self.mapping.revision_id_bzr_to_foreign(revidmap[stop_revision])
+        self.head, self.mapping = self.mapping.revision_id_bzr_to_foreign(
+            revidmap[stop_revision])
         return revidmap
 
     def lock_write(self):
@@ -132,6 +147,7 @@ class GitBranch(ForeignBranch):
 
  
 class LocalGitBranch(GitBranch):
+    """A local Git branch."""
 
     @needs_read_lock
     def last_revision(self):
@@ -140,11 +156,12 @@ class LocalGitBranch(GitBranch):
             return revision.NULL_REVISION
         return self.mapping.revision_id_foreign_to_bzr(self.head)
 
-    def create_checkout(self, to_location, revision_id=None, 
-                        lightweight=False, accelerator_tree=None, hardlink=False):
+    def create_checkout(self, to_location, revision_id=None, lightweight=False,
+        accelerator_tree=None, hardlink=False):
         if lightweight:
             raise LightWeightCheckoutsNotSupported()
-        return self._create_heavyweight_checkout(to_location, revision_id, hardlink)
+        return self._create_heavyweight_checkout(to_location, revision_id,
+            hardlink)
 
     def _create_heavyweight_checkout(self, to_location, revision_id=None, 
                                      hardlink=False):
@@ -167,7 +184,8 @@ class LocalGitBranch(GitBranch):
     def _gen_revision_history(self):
         if self.head is None:
             return []
-        ret = list(self.repository.iter_reverse_revision_history(self.last_revision()))
+        ret = list(self.repository.iter_reverse_revision_history(
+            self.last_revision()))
         ret.reverse()
         return ret
 
@@ -189,6 +207,7 @@ class LocalGitBranch(GitBranch):
 
 
 class InterGitGenericBranch(branch.InterBranch):
+    """InterBranch implementation that pulls from Git into bzr."""
 
     @classmethod
     def is_compatible(self, source, target):
@@ -206,7 +225,8 @@ class InterGitGenericBranch(branch.InterBranch):
                 raise BzrError("No such remote branch '%s', found: %r" % (
                     self.source.name, heads.keys()))
             head = heads[self.source.name]
-            self._last_revid = self.source.mapping.revision_id_foreign_to_bzr(head)
+            self._last_revid = self.source.mapping.revision_id_foreign_to_bzr(
+                head)
             if self.target.repository.has_revision(self._last_revid):
                 return []
             return [head]

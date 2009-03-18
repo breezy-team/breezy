@@ -118,7 +118,8 @@ class cmd_git_import(Command):
                 except NotBranchError:
                     head_branch = head_bzrdir.create_branch()
                 if ("%s^{}" % name) in refs:
-                    revid = mapping.revision_id_foreign_to_bzr(refs["%s^{}" % name])
+                    revid = mapping.revision_id_foreign_to_bzr(
+                        refs["%s^{}" % name])
                 else:
                     revid = mapping.revision_id_foreign_to_bzr(ref)
                 head_branch.generate_revision_history(revid)

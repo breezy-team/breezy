@@ -16,11 +16,16 @@
 
 from cStringIO import StringIO
 import dulwich as git
-from dulwich.client import SimpleFetchGraphWalker
-from dulwich.objects import Commit
+from dulwich.client import (
+    SimpleFetchGraphWalker,
+    )
+from dulwich.objects import (
+    Commit,
+    )
 
 from bzrlib import (
     osutils,
+    trace,
     ui,
     urlutils,
     )
@@ -28,19 +33,25 @@ from bzrlib.errors import (
     InvalidRevisionId,
     NoSuchRevision,
     )
-from bzrlib.inventory import Inventory
-from bzrlib.repository import InterRepository
-from bzrlib.trace import info
+from bzrlib.inventory import (
+    Inventory,
+    )
+from bzrlib.repository import (
+    InterRepository,
+    )
 from bzrlib.tsort import topo_sort
 
+from bzrlib.plugins.git.converter import (
+    GitObjectConverter,
+    )
 from bzrlib.plugins.git.repository import (
-        LocalGitRepository, 
-        GitRepository, 
-        GitFormat,
-        )
-from bzrlib.plugins.git.converter import GitObjectConverter
-from bzrlib.plugins.git.remote import RemoteGitRepository
-
+    LocalGitRepository, 
+    GitRepository, 
+    GitFormat,
+    )
+from bzrlib.plugins.git.remote import (
+    RemoteGitRepository,
+    )
 
 
 class BzrFetchGraphWalker(object):
@@ -82,16 +93,17 @@ class BzrFetchGraphWalker(object):
         return None
 
 
-def import_git_blob(repo, mapping, path, blob, inv, parent_invs, gitmap, executable):
+def import_git_blob(texts, mapping, path, blob, inv, parent_invs, gitmap,
+    executable):
     """Import a git blob object into a bzr repository.
 
-    :param repo: bzr repository
+    :param texts: VersionedFiles to add to
     :param path: Path in the tree
     :param blob: A git blob
     """
     file_id = mapping.generate_file_id(path)
     text_revision = inv.revision_id
-    repo.texts.add_lines((file_id, text_revision),
+    texts.add_lines((file_id, text_revision),
         [(file_id, p[file_id].revision) for p in parent_invs if file_id in p],
         osutils.split_lines(blob.data))
     ie = inv.add_path(path, "file", file_id)
@@ -99,26 +111,28 @@ def import_git_blob(repo, mapping, path, blob, inv, parent_invs, gitmap, executa
     ie.text_size = len(blob.data)
     ie.text_sha1 = osutils.sha_string(blob.data)
     ie.executable = executable
-    gitmap._idmap.add_entry(blob.sha().hexdigest(), "blob", (ie.file_id, ie.revision))
+    gitmap._idmap.add_entry(blob.sha().hexdigest(), "blob",
+        (ie.file_id, ie.revision))
 
 
-def import_git_tree(repo, mapping, path, tree, inv, parent_invs, 
-                    gitmap, lookup_object):
+def import_git_tree(texts, mapping, path, tree, inv, parent_invs, gitmap,
+    lookup_object):
     """Import a git tree object into a bzr repository.
 
-    :param repo: A Bzr repository object
+    :param texts: VersionedFiles object to add to
     :param path: Path in the tree
     :param tree: A git tree object
     :param inv: Inventory object
     """
     file_id = mapping.generate_file_id(path)
     text_revision = inv.revision_id
-    repo.texts.add_lines((file_id, text_revision),
+    texts.add_lines((file_id, text_revision),
         [(file_id, p[file_id].revision) for p in parent_invs if file_id in p],
         [])
     ie = inv.add_path(path, "directory", file_id)
     ie.revision = text_revision
-    gitmap._idmap.add_entry(tree.sha().hexdigest(), "tree", (file_id, text_revision))
+    gitmap._idmap.add_entry(tree.sha().hexdigest(), "tree",
+        (file_id, text_revision))
     for mode, name, hexsha in tree.entries():
         entry_kind = (mode & 0700000) / 0100000
         basename = name.decode("utf-8")
@@ -128,11 +142,13 @@ def import_git_tree(repo, mapping, path, tree, inv, parent_invs,
             child_path = urlutils.join(path, name)
         if entry_kind == 0:
             tree = lookup_object(hexsha)
-            import_git_tree(repo, mapping, child_path, tree, inv, parent_invs, gitmap, lookup_object)
+            import_git_tree(texts, mapping, child_path, tree, inv,
+                parent_invs, gitmap, lookup_object)
         elif entry_kind == 1:
             blob = lookup_object(hexsha)
             fs_mode = mode & 0777
-            import_git_blob(repo, mapping, child_path, blob, inv, parent_invs, gitmap, bool(fs_mode & 0111))
+            import_git_blob(texts, mapping, child_path, blob, inv,
+                parent_invs, gitmap, bool(fs_mode & 0111))
         else:
             raise AssertionError("Unknown blob kind, perms=%r." % (mode,))
 
@@ -156,7 +172,8 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
             root_trees[rev.revision_id] = object_iter[o.tree]
             revisions[rev.revision_id] = rev
             graph.append((rev.revision_id, rev.parent_ids))
-            target_git_object_retriever._idmap.add_entry(o.sha().hexdigest(), "commit", (rev.revision_id, o._tree))
+            target_git_object_retriever._idmap.add_entry(o.sha().hexdigest(),
+                "commit", (rev.revision_id, o._tree))
     # Order the revisions
     # Create the inventory objects
     for i, revid in enumerate(topo_sort(graph)):
@@ -174,7 +191,7 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
                 return object_iter[sha]
             return target_git_object_retriever[sha]
         parent_invs = [repo.get_inventory(r) for r in rev.parent_ids]
-        import_git_tree(repo, mapping, "", root_tree, inv, parent_invs, 
+        import_git_tree(repo.texts, mapping, "", root_tree, inv, parent_invs, 
             target_git_object_retriever, lookup_object)
         repo.add_revision(rev.revision_id, rev, inv)
 
@@ -271,7 +288,7 @@ class InterGitRepository(InterRepository):
         if mapping is None:
             mapping = self.source.get_mapping()
         def progress(text):
-            info("git: %s", text)
+            trace.info("git: %s", text)
         r = self.target._git
         if revision_id is not None:
             args = [mapping.revision_id_bzr_to_foreign(revision_id)[0]]

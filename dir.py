@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""An adapter between a Git control dir and a Bazaar BzrDir"""
+"""An adapter between a Git control dir and a Bazaar BzrDir."""
 
 import os
 
@@ -111,7 +111,8 @@ class LocalGitDir(GitDir):
     def open_branch(self, ignored=None):
         """'create' a branch for this dir."""
         repo = self.open_repository()
-        return branch.LocalGitBranch(self, repo, "HEAD", repo._git.head(), self._lockfiles)
+        return branch.LocalGitBranch(self, repo, "HEAD", repo._git.head(),
+            self._lockfiles)
 
     def open_repository(self, shared=False):
         """'open' a repository for this dir."""
