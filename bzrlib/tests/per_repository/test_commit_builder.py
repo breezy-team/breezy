@@ -76,8 +76,8 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         try:
             builder = tree.branch.get_commit_builder([])
             try:
-                builder.record_iter_changes(tree, tree.basis_tree(),
-                    tree.last_revision(), tree.iter_changes(tree.basis_tree()))
+                builder.record_iter_changes(tree, tree.last_revision(),
+                    tree.iter_changes(tree.basis_tree()))
                 builder.finish_inventory()
             except:
                 builder.abort()
@@ -107,7 +107,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
                 basis = tree.basis_tree()
                 last_rev = tree.last_revision()
                 changes = tree.iter_changes(basis)
-                builder.record_iter_changes(tree, basis, last_rev, changes)
+                builder.record_iter_changes(tree, last_rev, changes)
                 builder.finish_inventory()
             finally:
                 builder.abort()
@@ -179,8 +179,8 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
                 return
             self.assertFalse(builder.random_revid)
             try:
-                builder.record_iter_changes(tree, tree.basis_tree(),
-                    tree.last_revision(), tree.iter_changes(tree.basis_tree()))
+                builder.record_iter_changes(tree, tree.last_revision(),
+                    tree.iter_changes(tree.basis_tree()))
                 builder.finish_inventory()
             except:
                 builder.abort()
@@ -253,12 +253,9 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         tree = self.make_branch_and_tree(".")
         old_revision_id = tree.commit('')
         tree.lock_write()
-        parent_tree = tree.basis_tree()
-        parent_tree.lock_read()
-        self.addCleanup(parent_tree.unlock)
         builder = tree.branch.get_commit_builder([old_revision_id])
         try:
-            builder.record_iter_changes(tree, parent_tree, old_revision_id, [])
+            builder.record_iter_changes(tree, old_revision_id, [])
             # Regardless of repository root behaviour we should consider this a
             # pointless commit.
             self.assertFalse(builder.any_changes())
@@ -396,8 +393,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
                 delete_change = ('foo-id', ('foo', None), True, (True, False),
                     (tree.path2id(''), None), ('foo', None), ('file', None),
                     (False, None))
-                builder.record_iter_changes(tree, tree.basis_tree(), rev_id,
-                    [delete_change])
+                builder.record_iter_changes(tree, rev_id, [delete_change])
                 self.assertEqual(("foo", None, "foo-id", None),
                     builder._basis_delta[0])
                 self.assertTrue(builder.any_changes())
@@ -452,8 +448,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         try:
             builder = tree.branch.get_commit_builder([])
             try:
-                builder.record_iter_changes(tree, tree.basis_tree(),
-                    _mod_revision.NULL_REVISION,
+                builder.record_iter_changes(tree, _mod_revision.NULL_REVISION,
                     tree.iter_changes(tree.basis_tree()))
                 builder.finish_inventory()
                 rev_id = builder.commit('foo bar')
@@ -808,8 +803,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
                 parent_invs.append(tree.branch.repository.revision_tree(
                     parent_id).inventory)
             changes = list(tree.iter_changes(parent_tree))
-            builder.record_iter_changes(tree, parent_tree, parent_ids[0],
-                changes)
+            builder.record_iter_changes(tree, parent_ids[0], changes)
             delta = builder._basis_delta
             delta_dict = dict((change[2], change) for change in delta)
             file_id = tree.path2id(new_name)

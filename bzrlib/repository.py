@@ -553,13 +553,11 @@ class CommitBuilder(object):
         self._any_changes = True
         return self._get_delta(ie, basis_inv, path), True, fingerprint
 
-    def record_iter_changes(self, tree, basis_tree, basis_revision_id,
-        iter_changes, _entry_factory=entry_factory):
+    def record_iter_changes(self, tree, basis_revision_id, iter_changes,
+        _entry_factory=entry_factory):
         """Record a new tree via iter_changes.
 
         :param tree: The tree to obtain text contents from for changed objects.
-        :param basis_tree: The basis tree this commit is being performed
-            against.
         :param basis_revision_id: The revision id of the tree the iter_changes
             has been generated against. Currently assumed to be the same
             as self.parents[0] - if it is not, errors may occur.
