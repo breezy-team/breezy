@@ -12,8 +12,6 @@
  * published by the Free Software Foundation.
  */
 
-#include <stdio.h>
-
 #include "delta.h"
 #include <stdlib.h>
 #include <string.h>
@@ -24,6 +22,8 @@
 
 #define RABIN_SHIFT 23
 #define RABIN_WINDOW 16
+
+#define EXTRA_NULLS 1
 
 static const unsigned int T[256] = {
     0x00000000, 0xab59b4d1, 0x56b369a2, 0xfdeadd73, 0x063f6795, 0xad66d344,
@@ -201,7 +201,7 @@ static struct delta_index *
 pack_delta_index(struct unpacked_index_entry **hash, unsigned int hsize,
                  unsigned int num_entries)
 {
-    unsigned int i, memsize;
+    unsigned int i, j, memsize;
     struct unpacked_index_entry *entry;
     struct delta_index *index;
     struct index_entry *packed_entry, **packed_hash;
@@ -214,7 +214,7 @@ pack_delta_index(struct unpacked_index_entry **hash, unsigned int hsize,
      */
     memsize = sizeof(*index)
         + sizeof(*packed_hash) * (hsize+1)
-        + sizeof(*packed_entry) * (num_entries);
+        + sizeof(*packed_entry) * (num_entries + hsize * EXTRA_NULLS);
     mem = malloc(memsize);
     if (!mem) {
         return NULL;
@@ -239,15 +239,17 @@ pack_delta_index(struct unpacked_index_entry **hash, unsigned int hsize,
         for (entry = hash[i]; entry; entry = entry->next) {
             *packed_entry++ = entry->entry;
         }
-        /* Now add 2 'NULL' entries that we can use for future expansion. */
-        // *packed_entry++ = null_entry;
-        // *packed_entry++ = null_entry;
+        /* Now add extra 'NULL' entries that we can use for future expansion. */
+        for (j = 0; j < EXTRA_NULLS; ++j ) {
+            *packed_entry++ = null_entry;
+        }
     }
 
     /* Sentinel value to indicate the length of the last hash bucket */
     packed_hash[hsize] = packed_entry;
 
-    assert(packed_entry - (struct index_entry *)mem == num_entries); // + hsize*2);
+    assert(packed_entry - (struct index_entry *)mem
+            == num_entries + hsize*EXTRA_NULLS);
     index->last_entry = (packed_entry - 1);
     return index;
 }
@@ -258,7 +260,7 @@ void include_entries_from_index(struct unpacked_index_entry **hash,
                                 struct unpacked_index_entry *entry,
                                 const struct delta_index *old)
 {
-    unsigned int i, hmask, masked_val;
+    unsigned int hmask, masked_val;
     struct index_entry *old_entry;
 
     hmask = hsize - 1;
@@ -271,13 +273,15 @@ void include_entries_from_index(struct unpacked_index_entry **hash,
      *       step, so that we wouldn't have to copy everything into a new
      *       buffer, and then copy everything again into yet another buffer.
      */
-    for (old_entry = old->last_entry, i = 0; i < old->num_entries;
-         i++, old_entry--) {
+    for (old_entry = old->last_entry; old_entry >= old->hash[0]; old_entry--) {
         masked_val = old_entry->val & hmask;
-        entry->entry = *old_entry;
-        entry->next = hash[masked_val];
-        hash[masked_val] = entry++;
-        hash_count[masked_val]++;
+        if (old_entry->ptr != NULL) {
+            /* Skip the null entries */
+            entry->entry = *old_entry;
+            entry->next = hash[masked_val];
+            hash[masked_val] = entry++;
+            hash_count[masked_val]++;
+        }
     }
 }
 
@@ -303,7 +307,7 @@ create_index_from_old_and_hash(const struct delta_index *old,
     total_num_entries = num_entries + old->num_entries;
     memsize = sizeof(*index)
         + sizeof(*packed_hash) * (hsize+1)
-        + sizeof(*packed_entry) * total_num_entries;
+        + sizeof(*packed_entry) * (total_num_entries + hsize * EXTRA_NULLS);
     mem = malloc(memsize);
     if (!mem) {
         return NULL;
@@ -323,6 +327,7 @@ create_index_from_old_and_hash(const struct delta_index *old,
     bytes_copied = 0;
     num_ops = 0;
     copy_from_start = copy_to_start = NULL;
+    num_nulls = 0;
     for (i = 0; i < hsize; i++) {
         /*
          * Coalesce all entries belonging to one linked list
@@ -369,9 +374,20 @@ create_index_from_old_and_hash(const struct delta_index *old,
             }
             *packed_entry++ = entry->entry;
         }
-        fprintf(stderr, "num nulls: %d\n", num_nulls);
-        for (; num_nulls > 0; --num_nulls) {
-            *packed_entry++ = null_entry;
+        if (total_copy == 0) {
+            /* We inserted some entries, copy the null entries to the end */
+            for (; num_nulls > 0; --num_nulls) {
+                *packed_entry++ = null_entry;
+            }
+        } else {
+            /* We haven't done an insert yet, so just queue the null entries
+             * for copying.
+             */
+            total_copy += num_nulls;
+            packed_entry += num_nulls;
+            assert((packed_entry - copy_to_start) == total_copy);
+            assert((old->hash[i+1] - copy_from_start) == total_copy);
+            num_nulls = 0;
         }
     }
     if (total_copy > 0) {
@@ -381,13 +397,16 @@ create_index_from_old_and_hash(const struct delta_index *old,
                total_copy * sizeof(struct index_entry));
         bytes_copied += (total_copy * sizeof(struct index_entry));
         num_ops += 1;
+        for (; num_nulls > 0; --num_nulls) {
+            *packed_entry++ = null_entry;
+        }
     }
 
     /* Sentinel value to indicate the length of the last hash bucket */
     packed_hash[hsize] = packed_entry;
 
     assert(packed_entry - (struct index_entry *)mem
-           == total_num_entries); // + hsize*2);
+           == total_num_entries + hsize * EXTRA_NULLS);
     index->last_entry = (packed_entry - 1);
     return index;
 }
