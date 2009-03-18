@@ -1,21 +1,25 @@
---------------------
+====================
 Bazaar Release Notes
---------------------
-
-.. contents::
+====================
 
 
-IN DEVELOPMENT
---------------
+.. contents:: List of Releases
+   :depth: 1
 
-  COMPATIBILITY BREAKS:
+
+In Development
+##############
+
+Compatibility Breaks
+====================
 
     * ``bzr log --line`` now indicates which revisions are merges with
       `[merge]` after the date.  Scripts which parse the output of this
       command may need to be adjusted.
       (Neil Martinsen-Burrell)
 
-  NEW FEATURES:
+New Features
+============
 
     * ``bzr reconfigure`` now supports --with-trees and --with-no-trees
       options to change the default tree-creation policy of shared
@@ -33,7 +37,8 @@ IN DEVELOPMENT
       branch in your web browser, as long as the branch is on Launchpad at all.
       (Jonathan Lange)
 
-  IMPROVEMENTS:
+Improvements
+============
 
     * ``bzr branch`` now has a ``--no-tree`` option which turns off the
       generation of a working tree in the new branch.
@@ -69,7 +74,8 @@ IN DEVELOPMENT
       passed on the command line. This makes ``bzr lp-open lp:foo`` work as
       expected. (Jonathan Lange, #332705)
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * ``bzr missing`` now uses ``Repository.get_revision_delta()`` rather
       than fetching trees and determining a delta itself. (Jelmer
@@ -102,12 +108,14 @@ IN DEVELOPMENT
       when needed.
       (Vincent Ladeuil)
 
-  DOCUMENTATION:
+Documentation
+=============
 
     * The documentation for ``shelve`` and ``unshelve`` has been clarified.
       (Daniel Watkins, #327421, #327425)
 
-  API CHANGES:
+API Changes
+===========
 
     * ``bzr selftest`` now fails if the bazaar sources contain trailing
       whitespace, non-unix style line endings and files not ending in a
@@ -127,7 +135,8 @@ IN DEVELOPMENT
       describe a disk format capability, not state of a particular
       repository of that format). (Robert Collins)
 
-  INTERNALS:
+Internals
+=========
 
     * Branch and Repository creation on a bzr+ssh://server are now done
       via RPC calls rather than VFS calls, reducing round trips for
@@ -209,7 +218,7 @@ IN DEVELOPMENT
 
 
 bzr 1.12 "1234567890" 2009-02-13
---------------------------------
+################################
 
 This release of Bazaar contains many improvements to the speed,
 documentation and functionality of ``bzr log`` and the display of logged
@@ -217,21 +226,24 @@ revisions by ``bzr status``.  bzr now also gives a better indication of
 progress, both in the way operations are drawn onto a text terminal, and
 by showing the rate of network IO.
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * ``bzr init --development-wt5[-rich-root]`` would fail because of
       circular import errors. (John Arbash Meinel, #328135)
 
-  DOCUMENTATION:
+Documentation
+=============
 
     * Expanded the help for log and added a new help topic called
       ``log-formats``.  (Ian Clatworthy)
 
 
 bzr 1.12rc1 "1234567890" 2009-02-10
------------------------------------
+###################################
 
-  COMPATIBILITY BREAKS:
+Compatibility Breaks
+====================
 
     * By default, ``bzr status`` after a merge now shows just the pending
       merge tip revisions. This improves the signal-to-noise ratio after
@@ -255,7 +267,8 @@ bzr 1.12rc1 "1234567890" 2009-02-10
 
     * ``read_bundle_from_url`` has been deprecated. (Vincent Ladeuil)
 
-  NEW FEATURES:
+New Features
+============
 
     * Add support for filtering ``bzr missing`` on revisions.  Remote revisions
       can be filtered using ``bzr missing -r -20..-10`` and local revisions can
@@ -277,7 +290,8 @@ bzr 1.12rc1 "1234567890" 2009-02-10
       ``--long`` format, ``bzr log --long -n1``.
       (Ian Clatworthy)
 
-  IMPROVEMENTS:
+Improvements
+============
 
     * ``bzr add`` more clearly communicates success vs failure.
       (Daniel Watkins)
@@ -319,7 +333,8 @@ bzr 1.12rc1 "1234567890" 2009-02-10
       ``iter_lines_added_or_present_in_keys``. This allows the creation of 
       new branches based on stacked bzr-svn branches. (#311997)
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * ``bzr annotate --show-ids`` doesn't give a backtrace on empty files
       anymore.
@@ -366,11 +381,13 @@ bzr 1.12rc1 "1234567890" 2009-02-10
 
     * Unshelve now handles deleted paths without crashing. (Robert Collins)
 
-  DOCUMENTATION:
+Documentation
+=============
 
     * Improved plugin developer documentation.  (Martin Pool)
 
-  API CHANGES:
+API Changes
+===========
 
     * ``ProgressBarStack`` is deprecated; instead use
       ``ui_factory.nested_progress_bar`` to create new progress bars.
@@ -394,7 +411,8 @@ bzr 1.12rc1 "1234567890" 2009-02-10
       same but code that provides a new UI or progress bar class may
       need to be updated.  (Martin Pool)
 
-  INTERNALS:
+Internals
+=========
 
     * Default User Interface (UI) is CLIUIFactory when bzr runs in a dumb
       terminal. It is sometimes desirable do override this default by forcing
@@ -421,7 +439,7 @@ bzr 1.12rc1 "1234567890" 2009-02-10
 
 
 bzr 1.11 "Eyes up!" 2009-01-19
-------------------------------
+##############################
 
 This first monthly release of Bazaar for 2009 improves Bazaar's operation
 in Windows, Mac OS X, and other situations where file names are matched
@@ -436,7 +454,8 @@ advice.
 This release also fixes a number of bugs, particularly a glitch that can
 occur when there are concurrent writes to a pack repository.
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * Fix failing test when CompiledChunksToLines is not available.
       (Vincent Ladeuil)
@@ -447,14 +466,16 @@ occur when there are concurrent writes to a pack repository.
 
 
 bzr 1.11rc1 "Eyes up!" 2009-01-09
----------------------------------
+#################################
 
-  CHANGES:
+Changes
+=======
 
     * Formats using Knit-based repository formats are now explicitly
       marked as deprecated. (Ian Clatworthy)
 
-  NEW FEATURES:
+New Features
+============
 
     * Add support for `bzr tags -r 1..2`, that is we now support showing
       tags applicable for a specified revision range. (Marius Kruger)
@@ -468,7 +489,8 @@ bzr 1.11rc1 "Eyes up!" 2009-01-09
     * ``shelve --list`` can now be used to list shelved changes.
       (Aaron Bentley)
 
-  IMPROVEMENTS:
+Improvements
+============
 
     * Add trailing slash to directories in all output of ``bzr ls``, except
       ``bzr ls --null``. (Gordon P. Hemsley, #306424)
@@ -494,7 +516,8 @@ bzr 1.11rc1 "Eyes up!" 2009-01-09
       item on the file-system or in the inventory to help prevent
       counter-intuitive behaviour on Windows. (Mark Hammond)
 
-  BUG FIXES:
+Bug Fixes
+=========
   
     * Allow BzrDir implementation to implement backing up of 
       control directory. (#139691)
@@ -571,14 +594,16 @@ bzr 1.11rc1 "Eyes up!" 2009-01-09
     * Allow files to be renamed or moved via remove + add-by-id. (Charles
       Duffy, #314251)
 
-  DOCUMENTATION:
+Documentation
+=============
 
     * Improved the formats help topic to explain why multiple formats
       exist and to provide guidelines in selecting one. Introduced
       two new supporting help topics: current-formats and other-formats.
       (Ian Clatworthy)
 
-  API CHANGES:
+API Changes
+===========
 
     * ``LRUCache(after_cleanup_size)`` was renamed to
       ``after_cleanup_count`` and the old name deprecated. The new name is
@@ -598,7 +623,8 @@ bzr 1.11rc1 "Eyes up!" 2009-01-09
       in use has been updated to support the new ``recording_deletes`` and
       ``record_delete`` methods. (Robert Collins)
 
-  TESTING:
+Testing
+=======
 
     * An HTTPS server is now available (it requires python-2.6). Future bzr
       versions will allow the use of the python-2.6 ssl module that can be
@@ -614,7 +640,8 @@ bzr 1.11rc1 "Eyes up!" 2009-01-09
       features, namely content filtering and filtered views.
       (Ian Clatworthy)
 
-  INTERNALS:
+Internals
+=========
 
     * Added an ``InventoryEntry`` cache when deserializing inventories.
       Can cut the time to iterate over multiple RevisionsTrees in half.
@@ -676,7 +703,7 @@ bzr 1.11rc1 "Eyes up!" 2009-01-09
 
 
 bzr 1.10 2008-12-05
--------------------
+###################
 
 Bazaar 1.10 has several performance improvements for copying revisions
 (especially for small updates to large projects).  There has also been a
@@ -686,7 +713,8 @@ implementation.
 
 The only changes versus bzr-1.10rc1 are bugfixes for stacked branches.
 
-  BUG FIXES:
+bug Fixes
+=========
 
     * Don't set a pack write cache size from RepoFetcher, because the
       cache is not coherent with reads and causes ShortReadvErrors.
@@ -701,7 +729,7 @@ The only changes versus bzr-1.10rc1 are bugfixes for stacked branches.
 
 
 bzr 1.10rc1 2008-11-28
-----------------------
+######################
 
 This release of Bazaar focuses on performance improvements when pushing
 and pulling revisions, both locally and to remote networks.  The popular
@@ -709,7 +737,8 @@ and pulling revisions, both locally and to remote networks.  The popular
 restore work in progress, have been merged from bzrtools into the bzr
 core.  There are also bug fixes for portability, and for stacked branches.
 
-  NEW FEATURES:
+New Features
+============
 
     * New ``commit_message_template`` hook that is called by the commit
       code to generate a template commit message. (Jelmer Vernooij)
@@ -717,7 +746,8 @@ core.  There are also bug fixes for portability, and for stacked branches.
     * New `shelve` and `unshelve` commands allow undoing and redoing changes.
       (Aaron Bentley)
 
-  IMPROVEMENTS:
+Improvements
+============
 
     * ``(Remote)Branch.copy_content_into`` no longer generates the full revision
       history just to set the last revision info.
@@ -748,7 +778,8 @@ core.  There are also bug fixes for portability, and for stacked branches.
       to stream, this helps keep us from buffering too much information at
       once. (John Arbash Meinel)
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * Better message when the user needs to set their Launchpad ID.
       (Martin Pool, #289148)
@@ -789,7 +820,8 @@ core.  There are also bug fixes for portability, and for stacked branches.
     * RemoteRepository.get_parent_map now uses fallback repositories.
       (Aaron Bentley, #297991?, #293679?)
 
-  API CHANGES:
+API Changes
+===========
 
     * ``CommitBuilder`` now validates the strings it will be committing,
       to ensure that they do not have characters that will not be properly
@@ -808,7 +840,8 @@ core.  There are also bug fixes for portability, and for stacked branches.
     * Transport implementations must provide copy_tree_to_transport.  A default
       implementation is provided for Transport subclasses.
 
-  TESTING:
+Testing
+=======
 
     * ``bzr selftest`` now fails if no doctests are found in a module
       that's expected to have them.  (Martin Pool)
@@ -817,7 +850,7 @@ core.  There are also bug fixes for portability, and for stacked branches.
 
 
 bzr 1.9 2008-11-07
-------------------
+##################
 
 This release of Bazaar adds a new repository format, ``1.9``, with smaller
 and more efficient index files.  This format can be specified when
@@ -826,7 +859,8 @@ repository.  bzr 1.9 also speeds most operations over the smart server
 protocol, makes annotate faster, and uses less memory when making
 checkouts or pulling large amounts of data.
 
-  BUG FIXES:
+Bug Fixes
+=========
 
    * Fix "invalid property value 'branch-nick' for None" regression with
      branches bound to svn branches.  (Martin Pool, #293440)
@@ -839,9 +873,10 @@ checkouts or pulling large amounts of data.
 
 
 bzr 1.9rc1 2008-10-31
----------------------
+#####################
 
-  NEW FEATURES:
+New Features
+============
 
     * New Branch hook ``transform_fallback_location`` allows a function to
       be called when looking up the stacked source. (Michael Hudson)
@@ -851,7 +886,8 @@ bzr 1.9rc1 2008-10-31
       These indexes are both smaller and faster for access to historical
       information.  (John Arbash Meinel)
 
-  IMPROVEMENTS:
+Improvements
+============
 
     * ``BTreeIndex`` code now is able to prefetch extra pages to help tune
       the tradeoff between bandwidth and latency. Should be tuned
@@ -892,7 +928,8 @@ bzr 1.9rc1 2008-10-31
       the client and the server, otherwise the client will fallback to the
       slower method.  (Andrew Bennetts)
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * A failure to load a plugin due to an IncompatibleAPI exception is
       now correctly reported. (Robert Collins, #279451)
@@ -936,22 +973,25 @@ bzr 1.9rc1 2008-10-31
       for a nickname if one was not explicitly set.
       (Marius Kruger, #230903)
 
-  DOCUMENTATION:
+Documentation
+=============
 
     * Improved hook documentation. (Michael Ernst)
 
-  API CHANGES:
+API Changes
+===========
 
     * commands.plugins_cmds is now a CommandRegistry, not a dict.
 
-  INTERNALS:
+Internals
+=========
 
      * New AuthenticationConfig.set_credentials method allows easy programmatic
        configuration of authetication credentials.
 
 
 bzr 1.8 2008-10-16
-------------------
+##################
 
 Bazaar 1.8 includes several fixes that improve working tree performance,
 display of revision logs, and merges.  The bzr testsuite now passes on OS
@@ -959,21 +999,24 @@ X and Python 2.6, and almost completely passes on Windows.  The
 smartserver code has gained several bug fixes and performance
 improvements, and can now run server-side hooks within an http server.
 
-  BUG FIXES:
+Bug Fixes
+=========
 
    * Fix "Must end write group" error when another error occurs during
      ``bzr push``.  (Andrew Bennetts, #230902)
 
-  PORTABILITY:
+Portability
+===========
 
    * Some Pyrex versions require the WIN32 macro defined to compile on
      that platform.  (Alexander Belchenko, Martin Pool, #277481)
 
 
 bzr 1.8rc1 2008-10-07
----------------------
+#####################
 
-  CHANGES:
+Changes
+=======
 
     * ``bzr log file`` has been changed. It now uses a different method
       for determining which revisions to show as merging the changes to
@@ -994,7 +1037,8 @@ bzr 1.8rc1 2008-10-07
       pyrex >= 0.9.6 so it doesn't effect releases, only users running
       from the source tree. (John Arbash Meinel, #276868)
 
-  FEATURES:
+Features
+========
 
     * bzr is now compatible with python-2.6. python-2.6 is not yet officially
       supported (nor released, tests were conducted with the dev version of
@@ -1002,7 +1046,8 @@ bzr 1.8rc1 2008-10-07
       welcome.
       (Vincent Ladeuil, #269535)
 
-  IMPROVEMENTS:
+Improvements
+============
 
     * ``bzr annotate`` will now include uncommitted changes from the local
       working tree by default. Such uncommitted changes are given the
@@ -1043,7 +1088,8 @@ bzr 1.8rc1 2008-10-07
       calls per medium to stderr.  This is in addition to the existing
       detailed logging to the .bzr.log trace file.  (Andrew Bennetts)
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * Avoid random failures arising from misinterpreted ``errno`` values
       in ``_readdir_pyx.read_dir``.
@@ -1093,11 +1139,13 @@ bzr 1.8rc1 2008-10-07
       for a nickname if one was not explicitly set.
       (Marius Kruger, #230903)
 
-  DOCUMENTATION:
+Documentation
+=============
 
     * Explain revision/range identifiers. (Daniel Clemente)
 
-  API CHANGES:
+API Changes
+===========
 
     * ``CommitBuilder.record_entry_contents`` returns one more element in
       its result tuple - an optional file system hash for the hash cache
@@ -1112,7 +1160,8 @@ bzr 1.8rc1 2008-10-07
       result other users of these classes need to supply the index types
       they want. (Robert Collins)
 
-  TESTING:
+Testing
+=======
 
     * ``bzrlib.tests.repository_implementations`` has been renamed to
       ``bzrlib.tests.per_repository`` so that we have a common structure
@@ -1131,7 +1180,8 @@ bzr 1.8rc1 2008-10-07
     * The full test suite passes when run with ``-Eallow_debug``.
       (Andrew Bennetts)
 
-  INTERNALS:
+Internals
+=========
 
     * A new hook, ``Branch.open``, has been added, which is called when
       branch objects are opened. (Robert Collins)
@@ -1162,18 +1212,19 @@ bzr 1.8rc1 2008-10-07
 
 
 bzr 1.7.1 2008-10-01
---------------------
+####################
 
-  No changes from 1.7.1rc1.
+No changes from 1.7.1rc1.
 
 
 bzr 1.7.1rc1 2008-09-24
------------------------
+#######################
 
 This release just includes an update to how the merge algorithm handles
 file paths when we encounter complex history.
 
-  FEATURES:
+Features
+========
 
     * If we encounter a criss-cross in history, use information from
       direct Least Common Ancestors to resolve inventory shape (locations
@@ -1183,7 +1234,7 @@ file paths when we encounter complex history.
 
 
 bzr 1.7 2008-09-23
-------------------
+##################
 
 This release includes many bug fixes and a few performance and feature
 improvements.  ``bzr rm`` will now scan for missing files and remove them,
@@ -1192,7 +1243,8 @@ polish has been applied to the stacking code. The b-tree indexing code has
 been brought in, with an eye on using it in a future repository format.
 There are only minor installer changes since bzr-1.7rc2.
 
-  FEATURES
+Features
+========
 
     * Some small updates to the win32 installer. Include localization
       files found in plugins, and include the builtin distutils as part of
@@ -1200,14 +1252,15 @@ There are only minor installer changes since bzr-1.7rc2.
 
 
 bzr 1.7rc2 2008-09-17
----------------------
+#####################
 
 A few bug fixes from 1.7rc1. The biggest change is a new
 ``RemoteBranch.get_stacked_on_url`` rpc. This allows clients that are
 trying to access a Stacked branch over the smart protocol, to properly
 connect to the stacked-on location.
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * Branching from a shared repository on a smart server into a new
       repository now preserves the repository format.
@@ -1224,7 +1277,7 @@ connect to the stacked-on location.
 
 
 bzr 1.7rc1 2008-09-09
----------------------
+#####################
 
 This release candidate for bzr 1.7 has several bug fixes and a few
 performance and feature improvements.  ``bzr rm`` will now scan for
@@ -1234,7 +1287,8 @@ code. The b-tree indexing code has been brought in, with an eye on using
 it in a future repository format.
 
 
-  CHANGES:
+Changes
+=======
 
     * ``bzr export`` can now export a subdirectory of a project.
       (Robert Collins)
@@ -1247,14 +1301,16 @@ it in a future repository format.
       them automatically, much as ``bzr add`` scans for new files that
       are not ignored and adds them automatically. (Robert Collins)
 
-  FEATURES
+Features
+========
 
     * Support for GSSAPI authentication when using FTP as documented in
       RFC2228. (Jelmer Vernooij, #49623)
 
     * Add support for IPv6 in the smart server. (Jelmer Vernooij, #165014)
 
-  IMPROVEMENTS:
+Improvements
+============
 
     * A url like ``log+file:///tmp`` will log all access to that Transport
       to ``.bzr.log``, which may help in debugging or profiling.
@@ -1292,7 +1348,8 @@ it in a future repository format.
       later. This could trigger a total read size of more than the whole
       file. (John Arbash Meinel)
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * ``bzr rm`` is now aliased to ``bzr del`` for the convenience of svn
       users. (Robert Collins, #205416)
@@ -1346,11 +1403,13 @@ it in a future repository format.
     * ``WorkingTree4`` trees will now correctly report missing-and-new
       paths in the output of ``iter_changes``. (Robert Collins)
 
-  DOCUMENTATION:
+Documentation
+=============
 
     * Updated developer documentation.  (Martin Pool)
 
-  API CHANGES:
+API Changes
+===========
 
     * Exporters now take 4 parameters. (Robert Collins)
 
@@ -1368,7 +1427,8 @@ it in a future repository format.
     * BzrDir.cloning_metadir implementations must now take a require_stacking
       parameter.  (Aaron Bentley)
 
-  TESTING:
+Testing
+=======
 
     * ``addCleanup`` now takes ``*arguments`` and ``**keyword_arguments``
       which are then passed to the cleanup callable as it is run. In
@@ -1386,7 +1446,8 @@ it in a future repository format.
     * ``selftest``'s ``--starting-with`` option now accepts multiple values.
       (Vincent Ladeuil)
 
-  INTERNALS:
+Internals
+=========
 
     * A new plugin interface, ``bzrlib.log.log_adapters``, has been added.
       This allows dynamic log output filtering by plugins.
@@ -1414,7 +1475,7 @@ it in a future repository format.
 
 
 bzr 1.6.1 2008-09-05
---------------------
+####################
 
 A couple regressions were found in the 1.6 release. There was a
 performance issue when using ``bzr+ssh`` to branch large repositories,
@@ -1422,9 +1483,10 @@ and some problems with stacking and ``rich-root`` capable repositories.
 
 
 bzr 1.6.1rc2 2008-09-03
------------------------
+#######################
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * Copying between ``rich-root`` and ``rich-root-pack`` (and vice
       versa) was accidentally using the inter-model fetcher, instead of
@@ -1433,7 +1495,7 @@ bzr 1.6.1rc2 2008-09-03
 
 
 bzr 1.6.1rc1 2008-08-29
------------------------
+#######################
 
 This release fixes a few regressions found in the 1.6 client. Fetching
 changes was using an O(N^2) buffering algorithm, so for large projects it
@@ -1448,7 +1510,8 @@ nodes (not possible if you only used official releases).
 I should also clarify that none of this is data loss level issues, but
 still sufficient enough to warrant an updated release.
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * ``RemoteTransport.readv()`` was being inefficient about how it
       buffered the readv data and processed it. It would keep appending to
@@ -1473,7 +1536,7 @@ still sufficient enough to warrant an updated release.
 
 
 bzr 1.6 2008-08-25
-------------------
+##################
 
 Finally, the long awaited bzr 1.6 has been released. This release includes
 new features like Stacked Branches, improved weave merge, and an updated
@@ -1487,9 +1550,10 @@ TortoiseBzr in the standalone Windows installer.
 
 
 bzr 1.6rc5 2008-08-19
----------------------
+#####################
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * Disable automatic detection of stacking based on a containing
       directory of the target. It interacted badly with push, and needs a
@@ -1499,9 +1563,10 @@ bzr 1.6rc5 2008-08-19
 
 
 bzr 1.6rc4 2008-08-18
----------------------
+#####################
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * Fix a regression in knit => pack fetching.  We had a logic
       inversion, causing the fetch to insert fulltexts in random order,
@@ -1509,22 +1574,25 @@ bzr 1.6rc4 2008-08-18
 
 
 bzr 1.6rc3 2008-08-14
----------------------
+#####################
 
-  CHANGES:
+Changes
+=======
 
     * Disable reading ``.bzrrules`` as a per-branch rule preferences
       file. The feature was not quite ready for a full release.
       (Robert Collins)
 
-  IMPROVEMENTS:
+Improvements
+============
 
     * Update the windows installer to bundle TortoiseBzr and ``qbzr``
       into the standalone installer. This will be the first official
       windows release that installs Tortoise by default.
       (Mark Hammond)
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * Fix a regression in ``bzr+http`` support. There was a missing
       function (``_read_line``) that needed to be carried over from
@@ -1540,12 +1608,13 @@ bzr 1.6rc3 2008-08-14
 
 
 bzr 1.6rc2 2008-08-13
----------------------
+#####################
 
 This release candidate has a few minor bug fixes, and some regression
 fixes for Windows.
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * ``bzr upgrade`` on remote branches accessed via bzr:// and
       bzr+ssh:// now works.  (Andrew Bennetts)
@@ -1578,7 +1647,7 @@ fixes for Windows.
 
 
 bzr 1.6rc1 2008-08-06
----------------------
+#####################
 
 This release candidate for bzr 1.6 solidifies the new branch stacking
 feature.  Bazaar now recommends that users upgrade all knit repositories,
@@ -1586,13 +1655,15 @@ because later formats are much faster.  However, we plan to continue read/write 
 upgrade support for knit repostories for the forseeable future.  Several
 other bugs and performance issues were fixed.
 
-  CHANGES:
+Changes
+=======
 
     * Knit format repositories are deprecated and bzr will now emit
       warnings whenever it encounters one.  Use ``bzr upgrade`` to upgrade
       knit repositories to pack format.  (Andrew Bennetts)
 
-  IMPROVEMENTS:
+Improvements
+============
 
     * ``bzr check`` can now be told which elements at a location it should
       check.  (Daniel Watkins)
@@ -1619,7 +1690,8 @@ other bugs and performance issues were fixed.
       LongLogFormatter to display the custom properties returned by the
       registered handlers. (Guillermo Gonzalez, #162469)
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * Add more tests that stacking does not create deltas spanning
       physical repository boundaries.
@@ -1657,7 +1729,8 @@ other bugs and performance issues were fixed.
     * Handle a file turning in to a directory in TreeTransform.
       (James Westby, #248448)
 
-  API CHANGES:
+API Changes
+===========
 
     * ``MutableTree.commit`` has an extra optional keywork parameter
       ``exclude`` that will be unconditionally supplied by the command
@@ -1686,7 +1759,8 @@ other bugs and performance issues were fixed.
       file when locked. And during probe, locking the repo isn't very
       useful. (John Arbash Meinel)
 
-  INTERNALS:
+Internals
+=========
 
     * ``bzrlib.branchbuilder.BranchBuilder`` is now much more capable of
       putting together a real history without having to create a full
@@ -1710,7 +1784,7 @@ other bugs and performance issues were fixed.
 
 
 bzr 1.6beta3 2008-07-17
------------------------
+#######################
 
 This release adds a new 'stacked branches' feature allowing branches to
 share storage without being in the same repository or on the same machine.
@@ -1718,7 +1792,8 @@ share storage without being in the same repository or on the same machine.
 weaves, aliases for related locations, faster bzr+ssh push, and several
 bug fixes.
 
-  FEATURES:
+Features
+========
 
     * New ``pre_change_branch_tip`` hook that is called before the
       branch tip is moved, while the branch is write-locked.  See the User
@@ -1738,7 +1813,8 @@ bug fixes.
       to stack, though the stacked-on branch can be of any format.
       (Robert Collins)
 
-  IMPROVEMENTS:
+Improvements
+============
 
     * ``bzr export --format=tgz --root=NAME -`` to export a gzipped tarball
       to stdout; also ``tar`` and ``tbz2``.
@@ -1761,7 +1837,8 @@ bug fixes.
       faster.  The new request method name is
       ``Branch.set_last_revision_ex``.  (Andrew Bennetts)
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * Bazaar is now able to be a client to the web server of IIS 6 and 7.
       The broken implementations of RFC822 in Python and RFC2046 in IIS
@@ -1814,7 +1891,8 @@ bug fixes.
     * Set locale from environment for third party libs.
       (Martin von Gagern, #128496)
 
-  DOCUMENTATION:
+Documentation
+=============
 
     * Added *Using stacked branches* to the User Guide.
       (Ian Clatworthy)
@@ -1822,7 +1900,8 @@ bug fixes.
     * Updated developer documentation.
       (Martin Pool)
 
-  TESTING:
+Testing
+=======
 
    * ``-Dmemory`` will cause /proc/PID/status to be catted before bzr
      exits, allowing low-key analysis of peak memory use. (Robert Collins)
@@ -1832,7 +1911,8 @@ bug fixes.
      preventing some ``RemoteBranch`` tests from actually running with
      ``RemoteBranch`` instances.  (Andrew Bennetts)
 
-  API CHANGES:
+API Changes
+===========
 
     * Removed ``Repository.text_store``, ``control_store``, etc.  Instead,
       there are new attributes ``texts, inventories, revisions,
@@ -1853,7 +1933,8 @@ bug fixes.
       bzrlib does not use them internally, and there are no direct tests
       for them. (Alexander Belchenko)
 
-  INTERNALS:
+Internals
+=========
 
     * ``cat`` command no longer uses ``Tree.print_file()`` internally.
       (Alexander Belchenko)
@@ -1876,14 +1957,15 @@ bug fixes.
 
 
 bzr 1.6beta2 2008-06-10
------------------------
+#######################
 
 This release contains further progress towards our 1.6 goals of shallow
 repositories, and contains a fix for some user-affecting bugs in the
 repository layer.  Building working trees during checkout and branch is
 now faster.
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * Avoid KnitCorrupt error extracting inventories from some repositories.
       (The data is not corrupt; an internal check is detecting a problem
@@ -1913,7 +1995,8 @@ now faster.
       ``UnicodeError`` when you have symlinks and non-ascii filenames.
       (John Arbash Meinel, #135320)
 
-  IMPROVEMENTS:
+Improvements
+============
 
     * Added the 'alias' command to set/unset and display aliases. (Tim Penhey)
 
@@ -1925,16 +2008,19 @@ now faster.
     * Faster branching (1.09x) and lightweight checkouts (1.06x) on large trees.
       (Ian Clatworthy, Aaron Bentley)
 
-  DOCUMENTATION:
+Documentation
+=============
 
     * Added *Bazaar Zen* section to the User Guide. (Ian Clatworthy)
 
-  TESTING:
+Testing
+=======
 
     * Fix the test HTTPServer to be isolated from chdir calls made while it is
       running, allowing it to be used in blackbox tests. (Robert Collins)
 
-  API CHANGES:
+API Changes
+===========
 
     * ``WorkingTree.set_parent_(ids/trees)`` will now filter out revisions
       which are in the ancestry of other revisions. So if you merge the same
@@ -1945,7 +2031,8 @@ now faster.
     * ``RepositoryPolicy.__init__`` now requires stack_on and stack_on_pwd,
       through the derived classes do not.  (Aaron Bentley)
 
-  INTERNALS:
+Internals
+=========
 
     * ``bzrlib.bzrdir.BzrDir.sprout`` now accepts ``stacked`` to control
       creating stacked branches. (Robert Collins)
@@ -1955,7 +2042,7 @@ now faster.
 
 
 bzr 1.6beta1 2008-06-02
------------------------
+#######################
 
 
 Commands that work on the revision history such as push, pull, missing,
@@ -1966,7 +2053,8 @@ protocol which is used by default and which allows for more efficient transfers
 and future extensions.
 
 
-  NOTES WHEN UPGRADING:
+Notes When Upgrading
+====================
 
     * There is a new version of the network protocol used for bzr://, bzr+ssh://
       and bzr+http:// connections.  This will allow more efficient requests and
@@ -1977,18 +2065,21 @@ and future extensions.
       these protocols.  Use alternatives like SFTP or upgrade those servers.
       (Andrew Bennetts, #83935)
 
-  CHANGES:
+Changes
+=======
 
     * Deprecation warnings will not be suppressed when running ``bzr selftest``
       so that developers can see if their code is using deprecated functions.
       (John Arbash Meinel)
 
-  FEATURES:
+Features
+========
 
     * Adding ``-Derror`` will now display a traceback when a plugin fails to
       load. (James Westby)
 
-  IMPROVEMENTS:
+Improvements
+============
 
     * ``bzr branch/push/pull -r XXX`` now have a helper function for finding
       the revno of the new revision (``Graph.find_distance_to_null``). This
@@ -2013,7 +2104,8 @@ and future extensions.
       step closer to not using full revision history.
       (John Arbash Meinel, #172649)
 
-  BUGFIXES:
+Bugfixes
+========
 
     * ``bzr merge --lca`` should handle when two revisions have no common
       ancestor other than NULL_REVISION. (John Arbash Meinel, #235715)
@@ -2069,7 +2161,8 @@ and future extensions.
     * ``VersionedFile.make_mpdiffs()`` was raising an exception that wasn't in
       scope. (Daniel Fischer #235687)
 
-  DOCUMENTATION:
+Documentation
+=============
 
     * Added directory structure and started translation of docs in spanish.
       (Martin Albisetti, Lucio Albenga)
@@ -2084,7 +2177,8 @@ and future extensions.
 
     * Updated Tortise strategy document. (Mark Hammond)
 
-  TESTING:
+Testing
+=======
 
     * ``bzrlib.tests.adapt_tests`` was broken and unused - it has been fixed.
       (Robert Collins)
@@ -2095,14 +2189,16 @@ and future extensions.
     * New helper function for splitting test suites
       ``split_suite_by_condition``. (Robert Collins)
 
-  INTERNALS:
+Internals
+=========
 
     * ``Branch.missing_revisions`` has been deprecated. Similar functionality
       can be obtained using ``bzrlib.missing.find_unmerged``. The api was
       fairly broken, and the function was unused, so we are getting rid of it.
       (John Arbash Meinel)
 
-  API CHANGES:
+API Changes
+===========
 
     * ``Branch.abspath`` is deprecated; use the Tree or Transport
       instead.  (Martin Pool)
@@ -2166,19 +2262,21 @@ and future extensions.
 
 
 bzr 1.5 2008-05-16
-------------------
+##################
 
 This release of Bazaar includes several updates to the documentation, and fixes
 to prepare for making rich root support the default format. Many bugs have been
 squashed, including fixes to log, bzr+ssh inter-operation with older servers.
 
-  CHANGES:
+Changes
+=======
 
     * Suppress deprecation warnings when bzrlib is a 'final' release. This way
       users of packaged software won't be bothered with DeprecationWarnings,
       but developers and testers will still see them. (John Arbash Meinel)
 
-  DOCUMENTATION:
+Documentation
+=============
 
     * Incorporate feedback from Jelmer Vernooij and Neil Martinsen-Burrell
       on the plugin and integration chapters of the User Guide.
@@ -2186,20 +2284,18 @@ squashed, including fixes to log, bzr+ssh inter-operation with older servers.
 
 
 bzr 1.5rc1 2008-05-09
----------------------
+#####################
 
-  NOTES WHEN UPGRADING:
-
-  CHANGES:
+Changes
+=======
 
     * Broader support of GNU Emacs mail clients. Set
       ``mail_client=emacsclient`` in your bazaar.conf and ``send`` will pop the
       bundle in a mail buffer according to the value of ``mail-user-agent``
       variable. (Xavier Maillard)
 
-  FEATURES:
-
-  IMPROVEMENTS:
+Improvements
+============
 
     * Diff now handles revision specs like "branch:" and "submit:" more
       efficiently.  (Aaron Bentley, #202928)
@@ -2210,7 +2306,8 @@ bzr 1.5rc1 2008-05-09
     * Pull completes much faster when there is nothing to pull.
       (Aaron Bentley)
 
-  BUGFIXES:
+Bugfixes
+========
 
     * Authentication.conf can define sections without password.
       (Vincent Ladeuil, #199440)
@@ -2279,7 +2376,8 @@ bzr 1.5rc1 2008-05-09
       workaround so that we don't get spurious failures.
       (John Arbash Meinel, #215522)
 
-  DOCUMENTATION:
+Documentation
+=============
 
     * Expanded the User Guide to include new chapters on popular plugins and
       integrating Bazaar into your environment. The *Best practices* chapter
@@ -2293,7 +2391,8 @@ bzr 1.5rc1 2008-05-09
     * Update authentication docs regarding ssh agents.
       (Vincent Ladeuil, #183705)
 
-  TESTING:
+Testing
+=======
 
     * Add ``thread_name_suffix`` parameter to SmartTCPServer_for_testing, to
       make it easy to identify which test spawned a thread with an unhandled
@@ -2317,7 +2416,8 @@ bzr 1.5rc1 2008-05-09
       significantly and provides many examples on how to migrate (grep for
       load_tests).  (Vincent Ladeuil)
 
-  INTERNALS:
+Internals
+=========
 
     * ``Hooks.install_hook`` is now deprecated in favour of
       ``Hooks.install_named_hook`` which adds a required ``name`` parameter, to
@@ -2334,7 +2434,8 @@ bzr 1.5rc1 2008-05-09
     * The Python ``assert`` statement is no longer used in Bazaar source, and
       a test checks this.  (Martin Pool)
 
-  API CHANGES:
+API Changes
+===========
 
     * ``bzrlib.status.show_pending_merges`` requires the repository to be
       locked by the caller. Callers should have been doing it anyway, but it
@@ -2354,7 +2455,7 @@ bzr 1.5rc1 2008-05-09
 
 
 bzr 1.4 2008-04-28
-------------------
+##################
 
 This release of Bazaar includes handy improvements to the speed of log and
 status, new options for several commands, improved documentation, and better
@@ -2364,7 +2465,8 @@ different releases of Bazaar over there network.  There's been substantial
 internal work in both the repository and network code to enable new features
 and faster performance.
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * Pushing a branch in "dirstate" format (Branch5) over bzr+ssh would break
       if the remote server was < version 1.2.  This was due to a bug in the
@@ -2373,9 +2475,10 @@ and faster performance.
 
 
 bzr 1.4rc2 2008-04-21
----------------------
+#####################
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * ``bzr log -r ..X bzr://`` was failing, because it was getting a request
       for ``revision_id=None`` which was not a string.
@@ -2396,9 +2499,10 @@ bzr 1.4rc2 2008-04-21
 
 
 bzr 1.4rc1 2008-04-11
----------------------
+#####################
 
-  CHANGES:
+Changes
+=======
 
    * bzr main script cannot be imported (Benjamin Peterson)
 
@@ -2422,7 +2526,8 @@ bzr 1.4rc1 2008-04-11
      need a trailing / added to the base URL if one is not already there.
      (James Wesby, Andrew Cowie)
 
-  FEATURES:
+Features
+========
 
     * Added start_commit hook for mutable trees. (Jelmer Vernooij, #186422)
 
@@ -2438,7 +2543,8 @@ bzr 1.4rc1 2008-04-11
     * Reconfigure can convert a branch to be standalone or to use a shared
       repository.  (Aaron Bentley)
 
-  IMPROVEMENTS:
+Improvements
+============
 
     * The smart protocol now has support for setting branches' revision info
       directly.  This should make operations like push slightly faster, and is a
@@ -2485,7 +2591,8 @@ bzr 1.4rc1 2008-04-11
     * Various operations with revision specs and commands that calculate
       revnos and revision ids are faster.  (John A. Meinel, Aaron Bentley)
 
-  BUGFIXES:
+Bugfixes
+========
 
     * Add ``root_client_path`` parameter to SmartWSGIApp and
       SmartServerRequest.  This makes it possible to publish filesystem
@@ -2528,7 +2635,8 @@ bzr 1.4rc1 2008-04-11
     * vsftp's return ``550 RNFR command failed.`` supported.
       (Marcus Trautwig, #129786)
 
-  DOCUMENTATION:
+Documentation
+=============
 
     * Improved documentation on send/merge relationship. (Peter Schuller)
 
@@ -2538,7 +2646,8 @@ bzr 1.4rc1 2008-04-11
 
     * Added Integrating with Bazaar document for developers (Martin Albisetti)
 
-  API BREAKS:
+API Breaks
+==========
 
     * Attempting to pull data from a ghost aware repository (e.g. knits) into a
       non-ghost aware repository such as weaves will now fail if there are
@@ -2619,7 +2728,8 @@ bzr 1.4rc1 2008-04-11
       which reduces memory pressure (but requires more careful management by
       callers to preserve performance). (Robert Collins)
 
-  TESTING:
+Testing
+=======
 
     * New -Dselftest_debug flag disables clearing of the debug flags during
       tests.  This is useful if you want to use e.g. -Dhpss to help debug a
@@ -2646,7 +2756,8 @@ bzr 1.4rc1 2008-04-11
       is done by clearing most attributes of TestCases after running them, if
       they succeeded.  (Andrew Bennetts)
 
-  INTERNALS:
+Internals
+=========
 
     * Added ``_build_client_protocol`` to ``_SmartClient``.  (Andrew Bennetts)
 
@@ -2676,15 +2787,16 @@ bzr 1.4rc1 2008-04-11
 
 
 bzr 1.3.1 2008-04-09
---------------------
+####################
 
-  No changes from 1.3.1rc1.
+No changes from 1.3.1rc1.
 
 
 bzr 1.3.1rc1 2008-04-04
------------------------
+#######################
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * Fix a bug causing a ValueError crash in ``parse_line_delta_iter`` when
       fetching revisions from a knit to pack repository or vice versa using
@@ -2693,7 +2805,7 @@ bzr 1.3.1rc1 2008-04-04
 
 
 bzr 1.3 2008-03-20
-------------------
+##################
 
 Bazaar has become part of the GNU project <http://www.gnu.org>
 
@@ -2701,7 +2813,8 @@ Many operations that act on history, including ``log`` and ``annotate`` are now
 substantially faster.  Several bugs have been fixed and several new options and
 features have been added.
 
-  TESTING:
+Testing
+=======
 
     * Avoid spurious failure of ``TestVersion.test_version`` matching
       directory names.
@@ -2709,14 +2822,16 @@ features have been added.
 
 
 bzr 1.3rc1 2008-03-16
----------------------
+#####################
 
-  NOTES WHEN UPGRADING:
+Notes When Upgrading
+====================
 
     * The backup directory created by ``upgrade`` is now called
       ``backup.bzr``, not ``.bzr.backup``. (Martin Albisetti)
 
-  CHANGES:
+Changes
+=======
 
     * A new repository format 'development' has been added. This format will
       represent the latest 'in-progress' format that the bzr developers are
@@ -2741,7 +2856,8 @@ bzr 1.3rc1 2008-03-16
     * Version number is now shown as "1.2" or "1.2pr2", without zeroed or
       missing final fields.  (Martin Pool)
 
-  FEATURES:
+Features
+========
 
     * ``branch`` and ``checkout`` can hard-link working tree files, which is
       faster and saves space.  (Aaron Bentley)
@@ -2750,7 +2866,8 @@ bzr 1.3rc1 2008-03-16
       the submit branch to determine the email address to send to.
       (Jelmer Vernooij)
 
-  IMPROVEMENTS:
+Improvements
+============
 
     * BzrBranch._lefthand_history is faster on pack repos.  (Aaron Bentley)
 
@@ -2784,7 +2901,8 @@ bzr 1.3rc1 2008-03-16
       should be attributed to the first merge which notices this, and not
       to all subsequent merges.) (John Arbash Meinel)
 
-  BUGFIXES:
+Bugfixes
+========
 
     * Autopacking no longer holds the full set of inventory lines in
       memory while copying. For large repositories, this can amount to
@@ -2832,18 +2950,21 @@ bzr 1.3rc1 2008-03-16
     * Use correct indices when emitting LCA conflicts.  This fixes IndexError
       errors.  (Aaron Bentley, #196780)
 
-  DOCUMENTATION:
+Documentation
+=============
 
     * Explained how to use ``version-info --custom`` in the User Guide.
       (Neil Martinsen-Burrell)
 
-  API BREAKS:
+API Breaks
+==========
 
     * Support for loading plugins from zip files and
       ``bzrlib.plugin.load_from_zip()`` function are deprecated.
       (Alexander Belchenko)
 
-  TESTING:
+Testing
+=======
 
     * Added missing blackbox tests for ``modified`` (Adrian Wilkins)
 
@@ -2851,7 +2972,8 @@ bzr 1.3rc1 2008-03-16
       repositories because the empty string is not a valid file-id.
       (Robert Collins)
 
-  INTERNALS:
+Internals
+=========
 
     * ``Graph.iter_ancestry`` returns the ancestry of revision ids. Similar to
       ``Repository.get_revision_graph()`` except it includes ghosts and you can
@@ -2887,17 +3009,19 @@ bzr 1.3rc1 2008-03-16
 
 
 bzr 1.2 2008-02-15
-------------------
+##################
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * Fix failing test in Launchpad plugin. (Martin Pool)
 
 
 bzr 1.2rc1 2008-02-13
----------------------
+#####################
 
-  NOTES WHEN UPGRADING:
+Notes When Upgrading
+====================
 
     * Fetching via the smart protocol may need to reconnect once during a fetch
       if the remote server is running Bazaar 1.1 or earlier, because the client
@@ -2906,7 +3030,8 @@ bzr 1.2rc1 2008-02-13
       This won't happen if the server is upgraded to Bazaar 1.2.
       (Andrew Bennetts)
 
-  CHANGES:
+Changes
+=======
 
     * Fetching via bzr+ssh will no longer fill ghosts by default (this is
       consistent with pack-0.92 fetching over SFTP). (Robert Collins)
@@ -2923,7 +3048,8 @@ bzr 1.2rc1 2008-02-13
       ``merge --remember`` can now be used to set the submit_branch.
       (Aaron Bentley)
 
-  FEATURES:
+Features
+========
 
     * ``merge --preview`` produces a diff of the changes merge would make,
       but does not actually perform the merge.  (Aaron Bentley)
@@ -2948,7 +3074,8 @@ bzr 1.2rc1 2008-02-13
       account.  Branches that are pushed to the staging environment
       have an expected lifetime of one day. (Tim Penhey)
 
-  IMPROVEMENTS:
+Improvements
+============
 
     * Creating a new branch no longer tries to read the entire revision-history
       unnecessarily over smart server operations. (Robert Collins)
@@ -2967,7 +3094,8 @@ bzr 1.2rc1 2008-02-13
       Speeds up ``bzr annotate`` with a pack repository by approx 3:2.
       (John Arbash Meinel)
 
-  BUGFIXES:
+Bugfixes
+========
 
     * Calculate remote path relative to the shared medium in _SmartClient.  This
       is related to the problem in bug #124089.  (Andrew Bennetts)
@@ -3020,7 +3148,8 @@ bzr 1.2rc1 2008-02-13
     * Unknown hostnames when connecting to a ``bzr://`` URL no longer cause
       tracebacks.  (Andrew Bennetts, #182849)
 
-  API BREAKS:
+API Breaks
+==========
 
     * Classes implementing Merge types like Merge3Merger must now accept (and
       honour) a do_merge flag in their constructor.  (Aaron Bentley)
@@ -3029,13 +3158,15 @@ bzr 1.2rc1 2008-02-13
       to previously take a write lock (and start a write group.)
       (Martin Pool)
 
-  TESTING:
+Testing
+=======
 
     * selftest now accepts --load-list <file> to load a test id list. This
       speeds up running the test suite on a limited set of tests.
       (Vincent Ladeuil)
 
-  INTERNALS:
+Internals
+=========
 
     * Add a new method ``get_result`` to graph search objects. The resulting
       ``SearchResult`` can be used to recreate the search later, which will
@@ -3089,14 +3220,15 @@ bzr 1.2rc1 2008-02-13
 
 
 bzr 1.1 2008-01-15
-------------------
+##################
 
 (no changes from 1.1rc1)
 
 bzr 1.1rc1 2008-01-05
----------------------
+#####################
 
-  CHANGES:
+Changes
+=======
 
    * Dotted revision numbers have been revised. Instead of growing longer with
      nested branches the branch number just increases. (eg instead of 1.1.1.1.1
@@ -3108,7 +3240,8 @@ bzr 1.1rc1 2008-01-05
      been made to remove the ambiguity where ``branch2`` is in fact a
      specific file to diff within ``branch1``.
 
-  FEATURES:
+Features
+========
 
    * New option to use custom template-based formats in  ``bzr version-info``.
      (Lukáš Lalinský)
@@ -3119,7 +3252,8 @@ bzr 1.1rc1 2008-01-05
    * New "lca" merge-type for fast everyday merging that also supports
      criss-cross merges.  (Aaron Bentley)
 
-  IMPROVEMENTS:
+Improvements
+============
 
    * ``annotate`` now doesn't require a working tree. (Lukáš Lalinský,
      #90049)
@@ -3156,7 +3290,8 @@ bzr 1.1rc1 2008-01-05
    * ``split`` now supported, to enable splitting large trees into smaller
      pieces.  (Aaron Bentley)
 
-  BUGFIXES:
+Bugfixes
+========
 
    * Avoid AttributeError when unlocking a pack repository when an error occurs.
      (Martin Pool, #180208)
@@ -3219,7 +3354,8 @@ bzr 1.1rc1 2008-01-05
      read the remaining bytes by chunks to avoid overflowing network buffers.
      (Vincent Ladeuil, #175886)
 
-  DOCUMENTATION:
+Documentation
+=============
 
    * Minor tweaks made to the bug tracker integration documentation.
      (Ian Clatworthy)
@@ -3233,7 +3369,8 @@ bzr 1.1rc1 2008-01-05
 
    * *Using Bazaar with Launchpad* tutorial added. (Ian Clatworthy)
 
-  INTERNALS:
+Internals
+=========
 
     * find_* methods available for BzrDirs, Branches and WorkingTrees.
       (Aaron Bentley)
@@ -3254,9 +3391,11 @@ bzr 1.1rc1 2008-01-05
     * Reduce selftest overhead to establish test names by memoization.
       (Vincent Ladeuil)
 
-  API BREAKS:
+API Breaks
+==========
 
-  TESTING:
+Testing
+=======
 
    * Modules can now customise their tests by defining a ``load_tests``
      attribute. ``pydoc bzrlib.tests.TestUtil.TestLoader.loadTestsFromModule``
@@ -3297,9 +3436,10 @@ bzr 1.1rc1 2008-01-05
 
 
 bzr 1.0 2007-12-14
-------------------
+##################
 
-  DOCUMENTATION:
+Documentation
+=============
 
    * More improvements and fixes to the User Guide.  (Ian Clatworthy)
 
@@ -3314,16 +3454,18 @@ bzr 1.0 2007-12-14
 
 
 bzr 1.0rc3 2007-12-11
----------------------
+#####################
 
-  CHANGES:
+Changes
+=======
 
    * If a traceback occurs, users are now asked to report the bug
      through Launchpad (https://bugs.launchpad.net/bzr/), rather than
      by mail to the mailing list.
      (Martin Pool)
 
-  BUGFIXES:
+Bugfixes
+========
 
    * Fix Makefile rules for doc generation. (Ian Clatworthy, #175207)
 
@@ -3336,14 +3478,16 @@ bzr 1.0rc3 2007-12-11
    * Implement _make_parents_provider on RemoteRepository, allowing generating
      bundles against branches on a smart server.  (Andrew Bennetts, #147836)
 
-  DOCUMENTATION:
+Documentation
+=============
 
    * Improved user guide.  (Ian Clatworthy)
 
    * The single-page quick reference guide is now available as a PDF.
      (Ian Clatworthy)
 
-  INTERNALS:
+Internals
+=========
 
     * readv urllib http implementation is now a real iterator above the
       underlying socket and deliver data as soon as it arrives. 'get' still
@@ -3352,9 +3496,10 @@ bzr 1.0rc3 2007-12-11
 
 
 bzr 1.0rc2 2007-12-07
----------------------
+#####################
 
-  IMPROVEMENTS:
+Improvements
+============
 
    * Added a --coverage option to selftest. (Andrew Bennetts)
 
@@ -3389,14 +3534,16 @@ bzr 1.0rc2 2007-12-07
      now also required if the branch a lightweight checkout is pointing
      to has been moved. (Ian Clatworthy)
 
-  INTERNALS:
+Internals
+=========
 
     * New -Dhttp debug option reports http connections, requests and responses.
       (Vincent Ladeuil)
 
     * New -Dmerge debug option, which emits merge plans for merge-type=weave.
 
-  BUGFIXES:
+Bugfixes
+========
 
    * Better error message when running ``bzr cat`` on a non-existant branch.
      (Lukáš Lalinský, #133782)
@@ -3416,16 +3563,18 @@ bzr 1.0rc2 2007-12-07
    * Fall back to showing e-mail in ``log --short/--line`` if the
      committer/author has only e-mail. (Lukáš Lalinský, #157026)
 
-  API BREAKS:
+API Breaks
+==========
 
    * Deprecate not passing a ``location`` argument to commit reporters'
      ``started`` methods. (Matt Nordhoff)
 
 
 bzr 1.0rc1 2007-11-30
----------------------
+#####################
 
-  NOTES WHEN UPGRADING:
+Notes When Upgrading
+====================
 
    * The default repository format is now ``pack-0.92``.  This
      default is used when creating new repositories with ``init`` and
@@ -3452,7 +3601,8 @@ bzr 1.0rc1 2007-11-30
      from any tree without problems.
      (Robert Collins, Martin Pool, #164476)
 
-  CHANGES:
+Changes
+=======
 
    * Disable detection of plink.exe as possible ssh vendor. Plink vendor
      still available if user selects it explicitly with BZR_SSH environment
@@ -3463,7 +3613,8 @@ bzr 1.0rc1 2007-11-30
      See http://doc.bazaar-vcs.org/latest/developer/packrepo.html
      (Martin Pool)
 
-  FEATURES:
+Features
+========
 
    * New ``authentication.conf`` file holding the password or other credentials
      for remote servers. This can be used for ssh, sftp, smtp and other
@@ -3485,7 +3636,8 @@ bzr 1.0rc1 2007-11-30
    * ``reconfigure`` command can now convert branches, trees, or checkouts to
      lightweight checkouts.  (Aaron Bentley)
 
-  PERFORMANCE:
+Performance
+===========
 
    * Commit updates the state of the working tree via a delta rather than
      supplying entirely new basis trees. For commit of a single specified file
@@ -3510,7 +3662,8 @@ bzr 1.0rc1 2007-11-30
      versionedfiles withough cached annotations, e.g. pack-0.92.
      (Aaron Bentley)
 
-  IMPROVEMENTS:
+Improvements
+============
 
    * ``bzr merge`` now warns when it encounters a criss-cross merge.
      (Aaron Bentley)
@@ -3529,9 +3682,11 @@ bzr 1.0rc1 2007-11-30
      installer write to the registry (HKLM\SOFTWARE\Bazaar) useful info
      about paths and bzr version. (Alexander Belchenko, #129298)
 
-  DOCUMENTATION:
+Documentation
+=============
 
-  BUG FIXES:
+Bug Fixes
+=========
 
    * A progress bar has been added for knitpack -> knitpack fetching.
      (Robert Collins, #157789, #159147)
@@ -3659,7 +3814,8 @@ bzr 1.0rc1 2007-11-30
    * Wrap medusa ftp test server as an FTPServer feature.
      (Vincent Ladeuil, #157752)
 
-  API BREAKS:
+API Breaks
+==========
 
    * ``osutils.backup_file`` is deprecated. Actually it's not used in bzrlib
      during very long time. (Alexander Belchenko)
@@ -3678,7 +3834,8 @@ bzr 1.0rc1 2007-11-30
      format.
      (Martin Pool)
 
-  INTERNALS:
+Internals
+=========
 
    * Added ``ContainerSerialiser`` and ``ContainerPushParser`` to
      ``bzrlib.pack``.  These classes provide more convenient APIs for generating
@@ -3690,23 +3847,21 @@ bzr 1.0rc1 2007-11-30
 
    * InventoryEntry.diff is now deprecated.  Please use diff.DiffTree instead.
 
-  TESTING:
-
 
 bzr 0.92 2007-11-05
--------------------
+###################
 
-  CHANGES:
+Changes
+=======
 
   * New uninstaller on Win32.  (Alexander Belchenko)
 
 
 bzr 0.92rc1 2007-10-29
-----------------------
+######################
 
-  NOTES WHEN UPGRADING:
-
-  CHANGES:
+Changes
+=======
 
    * ``bzr`` now returns exit code 4 if an internal error occurred, and
      3 if a normal error occurred.  (Martin Pool)
@@ -3725,7 +3880,8 @@ bzr 0.92rc1 2007-10-29
      to ask them to upgrade and run reconcile).
      (Robert Collins)
 
-  FEATURES:
+Features
+========
 
    * New ``knitpack-experimental`` repository format. This is interoperable with
      the ``dirstate-tags`` format but uses a smarter storage design that greatly
@@ -3752,7 +3908,8 @@ bzr 0.92rc1 2007-10-29
      user ID.  This can then be used by other functions of the
      Launchpad plugin. (James Henstridge)
 
-  PERFORMANCE:
+Performance
+===========
 
    * Commit in quiet mode is now slightly faster as the information to
      output is no longer calculated. (Ian Clatworthy)
@@ -3785,7 +3942,8 @@ bzr 0.92rc1 2007-10-29
    * Graph ``heads()`` queries have been fixed to no longer access all history
      unnecessarily. (Robert Collins)
 
-  IMPROVEMENTS:
+Improvements
+============
 
    * ``bzr+https://`` smart server across https now supported.
      (John Ferlito, Martin Pool, #128456)
@@ -3802,14 +3960,16 @@ bzr 0.92rc1 2007-10-29
    * Experimental directory formats can now be marked with
      ``experimental = True`` during registration. (Ian Clatworthy)
 
-  DOCUMENTATION:
+Documentation
+=============
 
    * New *Bazaar in Five Minutes* guide.  (Matthew Revell)
 
    * The hooks reference documentation is now converted to html as expected.
      (Ian Clatworthy)
 
-  BUG FIXES:
+Bug Fixes
+=========
 
    * Connection error reporting for the smart server has been fixed to
      display a user friendly message instead of a traceback.
@@ -3889,7 +4049,8 @@ bzr 0.92rc1 2007-10-29
    * Correctly detect a NoSuchFile when using a filezilla server. (Gary van der
      Merwe)
 
-  API BREAKS:
+API Breaks
+==========
 
    * ``bzrlib.index.GraphIndex`` now requires a size parameter to the
      constructor, for enabling bisection searches. (Robert Collins)
@@ -3937,7 +4098,8 @@ bzr 0.92rc1 2007-10-29
      implementation. See notes when upgrading for more information.
      (Robert Collins)
 
-  INTERNALS:
+Internals
+=========
 
    * ``bzrlib.transport.Transport.put_file`` now returns the number of bytes
      put by the method call, to allow avoiding stat-after-write or
@@ -4000,7 +4162,8 @@ bzr 0.92rc1 2007-10-29
    * The python path used in the Makefile can now be overridden.
      (Andrew Bennetts, Ian Clatworthy)
 
-  TESTING:
+Testing
+=======
 
    * New transport implementation ``trace+`` which is useful for testing,
      logging activity taken to its _activity attribute. (Robert Collins)
@@ -4016,9 +4179,10 @@ bzr 0.92rc1 2007-10-29
 
 
 bzr 0.91 2007-09-26
--------------------
+###################
 
-  BUG FIXES:
+Bug Fixes
+=========
 
    * Print a warning instead of aborting the ``python setup.py install``
      process if building of a C extension is not possible.
@@ -4037,16 +4201,17 @@ bzr 0.91 2007-09-26
 
 
 bzr 0.91rc2 2007-09-11
-----------------------
+######################
 
    * Replaced incorrect tarball for previous release; a debug statement was left
      in bzrlib/remote.py.
 
 
 bzr 0.91rc1 2007-09-11
-----------------------
+######################
 
-  CHANGES:
+Changes
+=======
 
    * The default branch and repository format has changed to
      ``dirstate-tags``, so tag commands are active by default.
@@ -4059,7 +4224,8 @@ bzr 0.91rc1 2007-09-11
      ``bzr -q missing`` need to be rewritten as ``bzr missing -q``.
      (Ian Clatworthy)
 
-  FEATURES:
+Features
+========
 
    * New option ``--author`` in ``bzr commit`` to specify the author of the
      change, if it's different from the committer. ``bzr log`` and
@@ -4095,7 +4261,8 @@ bzr 0.91rc1 2007-09-11
      network protocol for greatly reduced roundtrips when retrieving a set of
      revisions. (Andrew Bennetts)
 
-  BUG FIXES:
+Bug Fixes
+=========
 
    * ``bzr plugins`` now lists the version number for each plugin in square
      brackets after the path. (Robert Collins, #125421)
@@ -4189,7 +4356,8 @@ bzr 0.91rc1 2007-09-11
      process if building of a C extension is not possible.
      (Lukáš Lalinský, Alexander Belchenko)
 
-  IMPROVEMENTS:
+Improvements
+============
 
    * Add the option "--show-diff" to the commit command in order to display
      the diff during the commit log creation. (Goffredo Baroncelli)
@@ -4249,7 +4417,8 @@ bzr 0.91rc1 2007-09-11
       so repositories which were manipulated by old bzrs should be
       checked, and possibly reconciled ASAP.  (Aaron Bentley, Andrew Bennetts)
 
-  API BREAKS:
+API Breaks
+==========
 
    * ``Branch.append_revision`` is removed altogether; please use
      ``Branch.set_last_revision_info`` instead.  (Martin Pool)
@@ -4268,7 +4437,8 @@ bzr 0.91rc1 2007-09-11
    * ``Transport.should_cache`` has been removed.  It was not called in the
      previous release.  (Martin Pool)
 
-  TESTING:
+Testing
+=======
 
    * Tests may now raise TestNotApplicable to indicate they shouldn't be
      run in a particular scenario.  (Martin Pool)
@@ -4285,7 +4455,8 @@ bzr 0.91rc1 2007-09-11
    * Use UTF-8 encoded StringIO for log tests to avoid failures on
      non-ASCII committer names.  (Lukáš Lalinský)
 
-  INTERNALS:
+Internals
+=========
 
    * ``bzrlib.plugin.all_plugins`` has been deprecated in favour of
      ``bzrlib.plugin.plugins()`` which returns PlugIn objects that provide
@@ -4365,9 +4536,10 @@ bzr 0.91rc1 2007-09-11
 
 
 bzr 0.90 2007-08-28
--------------------
+###################
 
-  IMPROVEMENTS:
+Improvements
+============
 
     * Documentation is now organized into multiple directories with a level
       added for different languages or locales. Added the Mini Tutorial
@@ -4379,7 +4551,8 @@ bzr 0.90 2007-08-28
       (Ian Clatworthy, Sabin Iacob, Alexander Belchenko)
 
 
-  API CHANGES:
+API Changes
+===========
 
     * The static convenience method ``BzrDir.create_repository``
       is deprecated.  Callers should instead create a ``BzrDir`` instance
@@ -4387,9 +4560,10 @@ bzr 0.90 2007-08-28
 
 
 bzr 0.90rc1 2007-08-14
-----------------------
+######################
 
-  BUGFIXES:
+Bugfixes
+========
 
     * ``bzr init`` should connect to the remote location one time only.  We
       have been connecting several times because we forget to pass around the
@@ -4433,7 +4607,8 @@ bzr 0.90rc1 2007-08-14
     * SMTP connection failures produce a nice message, not a traceback.
       (Aaron Bentley)
 
-  IMPROVEMENTS:
+Improvements
+============
 
     * Don't show "dots" progress indicators when run non-interactively, such
       as from cron.  (Martin Pool)
@@ -4525,7 +4700,8 @@ bzr 0.90rc1 2007-08-14
     * Windows standalone installer show link to registration survey
       when installation finished. (Alexander Belchenko)
 
-  LIBRARY API BREAKS:
+Library API Breaks
+==================
 
     * Deprecated dictionary ``bzrlib.option.SHORT_OPTIONS`` removed.
       Options are now required to provide a help string and it must
@@ -4544,7 +4720,8 @@ bzr 0.90rc1 2007-08-14
       The serialised form of these packs is identical with 0.18 when a single
       element tuple is in use. (Robert Collins)
 
-  INTERNALS:
+Internals
+=========
 
     * merge now uses ``iter_changes`` to calculate changes, which makes room for
       future performance increases.  It is also more consistent with other
@@ -4640,7 +4817,8 @@ bzr 0.90rc1 2007-08-14
       The former provides access into a .pack file, and the latter provides the
       current production repository form of .knit files. (Robert Collins)
 
-  TESTING:
+Testing
+=======
 
     * Remove selftest ``--clean-output``, ``--numbered-dirs`` and
       ``--keep-output`` options, which are obsolete now that tests
@@ -4655,17 +4833,19 @@ bzr 0.90rc1 2007-08-14
 
 
 bzr 0.18  2007-07-17
---------------------
+####################
 
-  BUGFIXES:
+Bugfixes
+========
 
     * Fix 'bzr add' crash under Win32 (Kuno Meyer)
 
 
 bzr 0.18rc1  2007-07-10
------------------------
+#######################
 
-  BUGFIXES:
+Bugfixes
+========
 
     * Do not suppress pipe errors, etc. in non-display commands
       (Alexander Belchenko, #87178)
@@ -4712,7 +4892,8 @@ bzr 0.18rc1  2007-07-10
 
     *  Make annotate behave in a non-ASCII world (Adeodato Simó).
 
-  IMPROVEMENTS:
+Improvements
+============
 
     * The --lsprof-file option now dumps a text rendering of the profiling
       information if the filename ends in ".txt". It will also convert the
@@ -4782,7 +4963,8 @@ bzr 0.18rc1  2007-07-10
     * Add a -Dhpss option to trace smart protocol requests and responses.
       (Andrew Bennetts)
 
-  LIBRARY API BREAKS:
+Library API Breaks
+==================
 
     * Testing cleanups -
       ``bzrlib.repository.RepositoryTestProviderAdapter`` has been moved
@@ -4825,7 +5007,8 @@ bzr 0.18rc1  2007-07-10
       may have a chrooted URL but also the local file:// URL will be at the
       same location. (Robert Collins)
 
-  INTERNALS:
+Internals
+=========
 
     * New SMTPConnection class to unify email handling.  (Adeodato Simó)
 
@@ -4874,7 +5057,8 @@ bzr 0.18rc1  2007-07-10
     * Teach windows installers to build pyrex/C extensions.
       (Alexander Belchenko)
 
-  TESTING:
+Testing
+=======
 
     * Removed the ``--keep-output`` option from selftest and clean up test
       directories as they're used.  This reduces the IO load from
@@ -4910,9 +5094,10 @@ bzr 0.18rc1  2007-07-10
 
 
 bzr 0.17  2007-06-18
---------------------
+####################
 
-  BUGFIXES:
+Bugfixes
+========
 
     * Fix crash of commit due to wrong lookup of filesystem encoding.
       (Colin Watson, #120647)
@@ -4922,9 +5107,10 @@ bzr 0.17  2007-06-18
 
 
 bzr 0.17rc1  2007-06-12
------------------------
+#######################
 
-  NOTES WHEN UPGRADING:
+Notes When Upgrading
+====================
 
     * The kind() and is_executable() APIs on the WorkingTree interface no
       longer implicitly (read) locks and unlocks the tree. This *might*
@@ -4940,7 +5126,8 @@ bzr 0.17rc1  2007-06-12
         finally:
             work_tree.unlock()
 
-  INTERNALS:
+Internals
+=========
     * Rework of LogFormatter API to provide beginning/end of log hooks and to
       encapsulate the details of the revision to be logged in a LogRevision
       object.
@@ -4952,7 +5139,8 @@ bzr 0.17rc1  2007-06-12
       histories quickly. Useful for testing and potentially other applications
       too. (Robert Collins)
 
-  IMPROVEMENTS:
+Improvements
+============
 
     * There are two new help topics, working-trees and repositories that
       attempt to explain these concepts. (James Westby, John Arbash Meinel,
@@ -4981,7 +5169,8 @@ bzr 0.17rc1  2007-06-12
     * New --create-prefix option to bzr init, like for push.  (Daniel Watkins,
       #56322)
 
-  BUGFIXES:
+Bugfixes
+========
 
     * ``bzr push`` should only connect to the remote location one time.
       We have been connecting 3 times because we forget to pass around
@@ -5020,9 +5209,10 @@ bzr 0.17rc1  2007-06-12
       mainline). (John Arbash Meinel, #115343)
 
 bzr 0.16  2007-05-07
---------------------
+####################
 
-  BUGFIXES:
+Bugfixes
+========
 
     * Handle when you have 2 directories with similar names, but one has a
       hyphen. (``'abc'`` versus ``'abc-2'``). The WT4._iter_changes
@@ -5037,7 +5227,8 @@ bzr 0.16  2007-05-07
     * Avoid error when running hooks after pulling into or pushing from
       a branch bound to a smartserver branch.  (Martin Pool, #111968)
 
-  IMPROVEMENTS:
+Improvements
+============
 
     * Move developer documentation to doc/developers/. This reduces clutter in
       the root of the source tree and allows HACKING to be split into multiple
@@ -5049,9 +5240,10 @@ bzr 0.16  2007-05-07
       both. (John Arbash Meinel)
 
 bzr 0.16rc2  2007-04-30
------------------------
+#######################
 
-  BUGFIXES:
+Bugfixes
+========
 
     * Handle the case when you delete a file, and then rename another file
       on top of it. Also handle the case of ``bzr rm --keep foo``. ``bzr
@@ -5072,9 +5264,10 @@ bzr 0.16rc2  2007-04-30
       directories. (John Arbash Meinel, #110399)
 
 bzr 0.16rc1  2007-04-26
------------------------
+#######################
 
-  NOTES WHEN UPGRADING:
+Notes When Upgrading
+====================
 
     * ``bzr remove`` and ``bzr rm`` will now remove the working file, if
       it could be recovered again.
@@ -5087,7 +5280,8 @@ bzr 0.16rc1  2007-04-26
       ``bzr remove`` is also more verbose.
       (Marius Kruger, #82602)
 
-  IMPROVEMENTS:
+Improvements
+============
 
     * Merge directives can now be supplied as input to `merge` and `pull`,
       like bundles can.  (Aaron Bentley)
@@ -5183,7 +5377,8 @@ bzr 0.16rc1  2007-04-26
       header(s).
       (Vincent Ladeuil).
 
-  INTERNALS:
+Internals
+=========
 
     * bzrlib API compatability with 0.8 has been dropped, cleaning up some
       code paths. (Robert Collins)
@@ -5276,7 +5471,8 @@ bzr 0.16rc1  2007-04-26
     * ``urlutils.normalize_url`` now unescapes unreserved characters, such as "~".
       (Andrew Bennetts)
 
-  BUGFIXES:
+Bugfixes
+========
 
     * Don't fail bundle selftest if email has 'two' embedded.
       (Ian Clatworthy, #98510)
@@ -5336,7 +5532,8 @@ bzr 0.16rc1  2007-04-26
     * Handle http and proxy digest authentication.
       (Vincent Ladeuil, #94034).
 
-  TESTING:
+Testing
+=======
 
     * Added ``bzrlib.strace.strace`` which will strace a single callable and
       return a StraceResult object which contains just the syscalls involved
@@ -5375,9 +5572,10 @@ bzr 0.16rc1  2007-04-26
       (Vincent Ladeuil)
 
 bzr 0.15 2007-04-01
--------------------
+###################
 
-  BUGFIXES:
+Bugfixes
+========
 
     * Handle incompatible repositories as a user issue when fetching.
       (Aaron Bentley)
@@ -5387,15 +5585,17 @@ bzr 0.15 2007-04-01
       (Martin Pool)
 
 bzr 0.15rc3  2007-03-26
------------------------
+#######################
 
-  CHANGES:
+Changes
+=======
 
     * A warning is now displayed when opening working trees in older
       formats, to encourage people to upgrade to WorkingTreeFormat4.
       (Martin Pool)
 
-  IMPROVEMENTS:
+Improvements
+============
 
     * HTTP redirections are now taken into account when a branch (or a
       bundle) is accessed for the first time. A message is issued at each
@@ -5407,7 +5607,8 @@ bzr 0.15rc3  2007-03-26
       ``bzrlib.transport.do_catching_redirections`` provide an easy transition
       path.  (vila)
 
-  INTERNALS:
+Internals
+=========
 
     * Added ``ReadLock.temporary_write_lock()`` to allow upgrading an OS read
       lock to an OS write lock. Linux can do this without unlocking, Win32
@@ -5427,7 +5628,8 @@ bzr 0.15rc3  2007-03-26
       this cache, and call ``_clear_revision_history_cache`` and
       ``_cache_revision_history`` at appropriate times. (Andrew Bennetts)
 
-  BUGFIXES:
+Bugfixes
+========
 
     * Take ``smtp_server`` from user config into account.
       (vila, #92195)
@@ -5459,15 +5661,17 @@ bzr 0.15rc3  2007-03-26
       (vila, #88780)
 
 bzr 0.15rc2  2007-03-14
------------------------
+#######################
 
-  NOTES WHEN UPGRADING:
+Notes When Upgrading
+====================
 
     * Release 0.15rc2 of bzr changes the ``bzr init-repo`` command to
       default to ``--trees`` instead of ``--no-trees``.
       Existing shared repositories are not affected.
 
-  IMPROVEMENTS:
+Improvements
+============
 
     * New ``merge-directive`` command to generate machine- and human-readable
       merge requests.  (Aaron Bentley)
@@ -5483,12 +5687,14 @@ bzr 0.15rc2  2007-03-14
     * Merge now autodetects the correct line-ending style for its conflict
       markers.  (Aaron Bentley)
 
-  INTERNALS:
+Internals
+=========
 
     * Refactored SSH vendor registration into SSHVendorManager class.
       (Dmitry Vasiliev)
 
-  BUGFIXES:
+Bugfixes
+========
 
     * New ``--numbered-dirs`` option to ``bzr selftest`` to use
       numbered dirs for TestCaseInTempDir. This is default behavior
@@ -5509,9 +5715,10 @@ bzr 0.15rc2  2007-03-14
 
 
 bzr 0.15rc1  2007-03-07
------------------------
+#######################
 
-  SURPRISES:
+Surprises
+=========
 
     * The default disk format has changed. Please run 'bzr upgrade' in your
       working trees to upgrade. This new default is compatible for network
@@ -5538,7 +5745,8 @@ bzr 0.15rc1  2007-03-07
       combination of the tree API, and the bzrlib.transform API. (Robert
       Collins, John A Meinel, Martin Pool, and others).
 
-  IMPROVEMENTS:
+Improvements
+============
 
     * Support for OS Windows 98. Also .bzr.log on any windows system
       saved in My Documents folder. (Alexander Belchenko)
@@ -5606,7 +5814,8 @@ bzr 0.15rc1  2007-03-07
     * ``bzr resolve`` now detects and marks resolved text conflicts.
       (Aaron Bentley)
 
-  INTERNALS:
+Internals
+=========
 
     * Internally revision ids and file ids are now passed around as utf-8
       bytestrings, rather than treating them as Unicode strings. This has
@@ -5684,7 +5893,8 @@ bzr 0.15rc1  2007-03-07
       http://code.aaronbentley.com/bzr/bzrrepo/nested-trees/
       (Aaron Bentley, Martin Pool, Robert Collins).
 
-  BUGFIXES:
+Bugfixes
+========
 
     * ``bzr annotate`` now uses dotted revnos from the viewpoint of the
       branch, rather than the last changed revision of the file.
@@ -5728,20 +5938,23 @@ bzr 0.15rc1  2007-03-07
     * Fix bzrtools shelve command for removed lines beginning with "--"
       (Johan Dahlberg, #75577)
 
-  TESTING:
+Testing
+=======
 
     * New ``--first`` option to ``bzr selftest`` to run specified tests
       before the rest of the suite.  (Martin Pool)
 
 
 bzr 0.14  2007-01-23
---------------------
+####################
 
-  IMPROVEMENTS:
+Improvements
+============
 
     * ``bzr help global-options`` describes the global options. (Aaron Bentley)
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * Skip documentation generation tests if the tools to do so are not
       available. Fixes running selftest for installled copies of bzr.
@@ -5753,9 +5966,10 @@ bzr 0.14  2007-01-23
 
 
 bzr 0.14rc1  2007-01-16
------------------------
+#######################
 
-  IMPROVEMENTS:
+Improvements
+============
 
     * New connection: ``bzr+http://`` which supports tunnelling the smart
       protocol over an HTTP connection. If writing is enabled on the bzr
@@ -5813,7 +6027,8 @@ bzr 0.14rc1  2007-01-16
 
     * ``bzr help formats`` describes available directory formats. (Aaron Bentley)
 
-  INTERNALS:
+Internals
+=========
 
     * A few tweaks directly to ``fileids_affected_by_revision_ids`` to
       help speed up processing, as well allowing to extract unannotated
@@ -5839,7 +6054,8 @@ bzr 0.14rc1  2007-01-16
 
     * Formats for end-user selection are provided via a FormatRegistry (Aaron Bentley)
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * ``bzr missing --verbose`` was showing adds/removals in the wrong
       direction. (John Arbash Meinel)
@@ -5885,14 +6101,16 @@ bzr 0.14rc1  2007-01-16
 
 
 bzr 0.13  2006-12-05
---------------------
+####################
 
-  No changes from 0.13rc1
+No changes from 0.13rc
+
 
 bzr 0.13rc1  2006-11-27
------------------------
+#######################
 
-  IMPROVEMENTS:
+Improvements
+============
 
     * New command ``bzr remove-tree`` allows the removal of the working
       tree from a branch.
@@ -5922,7 +6140,8 @@ bzr 0.13rc1  2006-11-27
       (eg For a project with 2500 files, and 7500 revisions, it changes
       the size of inventory.knit from 11MB to 5.4MB) (John Arbash Meinel)
 
-  INTERNALS:
+Internals
+=========
 
     * New -D option given before the command line turns on debugging output
       for particular areas.  -Derror shows tracebacks on all errors.
@@ -5947,7 +6166,8 @@ bzr 0.13rc1  2006-11-27
       prefix.  It disallows any access to locations above a set URL.  (Andrew
       Bennetts)
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * Now ``_KnitIndex`` properly decode revision ids when loading index data.
       And optimize the knit index parsing code.
@@ -6006,24 +6226,27 @@ bzr 0.13rc1  2006-11-27
       use "--name-from-revision" to select the file in the old tree.
       (Cheuksan Edward Wang, #30190)
 
-  TESTING:
+Testing
+=======
 
     * TestingHTTPRequestHandler really handles the Range header
       (previously it was ignoring it and returning the whole file,).
 
 bzr 0.12  2006-10-30
---------------------
+####################
 
-  INTERNALS:
+Internals
+=========
 
     * Clean up ``bzr selftest --benchmark bundle`` to correct an import,
       and remove benchmarks that take longer than 10min to run.
       (John Arbash Meinel)
 
 bzr 0.12rc1  2006-10-23
------------------------
+#######################
 
-  IMPROVEMENTS:
+Improvements
+============
 
     * ``bzr log`` now shows dotted-decimal revision numbers for all revisions,
       rather than just showing a decimal revision number for revisions on the
@@ -6046,12 +6269,14 @@ bzr 0.12rc1  2006-10-23
       to allow modules to be loaded on request.
       (John Arbash Meinel, Adeodato Simó)
 
-  API INCOMPATABILITY:
+API Incompatability
+===================
 
     * LogFormatter subclasses show now expect the 'revno' parameter to
       show() to be a string rather than an int. (Robert Collins)
 
-  INTERNALS:
+Internals
+=========
 
     * ``TestCase.run_bzr``, ``run_bzr_captured``, and ``run_bzr_subprocess``
       can take a ``working_dir='foo'`` parameter, which will change directory
@@ -6088,7 +6313,8 @@ bzr 0.12rc1  2006-10-23
     * ``LogFormatter.show_merge`` is deprecated in favour of
       ``LogFormatter.show_merge_revno``. (Robert Collins)
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * Avoid circular imports by creating a deprecated function for
       ``bzrlib.tree.RevisionTree``. Callers should have been using
@@ -6126,7 +6352,8 @@ bzr 0.12rc1  2006-10-23
       the tree for later commit. (Cheuksan Edward Wang, Stefan Metzmacher,
       #32054)
 
-  TESTING:
+Testing
+=======
 
     * New test base class TestCaseWithMemoryTransport offers memory-only
       testing facilities: its not suitable for tests that need to mutate disk
@@ -6138,14 +6365,15 @@ bzr 0.12rc1  2006-10-23
       created objects. (Robert Collins, John Arbash Meinel)
 
 bzr 0.11  2006-10-02
---------------------
+####################
 
     * Smart server transport test failures on windows fixed. (Lukáš Lalinský).
 
 bzr 0.11rc2  2006-09-27
------------------------
+#######################
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * Test suite hangs on windows fixed. (Andrew Bennets, Alexander Belchenko).
 
@@ -6153,9 +6381,10 @@ bzr 0.11rc2  2006-09-27
       Arbash Meinel).
 
 bzr 0.11rc1  2006-09-25
------------------------
+#######################
 
-  IMPROVEMENTS:
+Improvements
+============
 
     * Knit files now wait to create their contents until the first data is
       added. The old code used to create an empty .knit and a .kndx with just
@@ -6195,7 +6424,8 @@ bzr 0.11rc1  2006-09-25
       of a build commands. See ``doc/version_info.txt`` for more information
       (John Arbash Meinel)
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * ``'bzr inventory [FILE...]'`` allows restricting the file list to a
       specific set of files. (John Arbash Meinel, #3631)
@@ -6251,11 +6481,13 @@ bzr 0.11rc1  2006-09-25
     * When committing, only files that exist in working tree or basis tree
       may be specified (Aaron Bentley, #50793)
 
-  PORTABILITY:
+Portability
+===========
 
     * Fixes to run on Python 2.5 (Brian M. Carlson, Martin Pool, Marien Zwart)
 
-  INTERNALS:
+Internals
+=========
 
     * TestCaseInTempDir now creates a separate directory for HOME, rather
       than having HOME set to the same location as the working directory.
@@ -6328,7 +6560,8 @@ bzr 0.11rc1  2006-09-25
     * Transport behaviour at the root of the URL is now defined and tested.
       (Andrew Bennetts, Robert Collins)
 
-  TESTING:
+Testing
+=======
 
     * New test helper classs MemoryTree. This is typically accessed via
       ``self.make_branch_and_memory_tree()`` in test cases. (Robert Collins)
@@ -6342,9 +6575,10 @@ bzr 0.11rc1  2006-09-25
       Transport. (Andrew Bennetts, Martin Pool)
 
 bzr 0.10  2006-08-29
---------------------
+####################
 
-  IMPROVEMENTS:
+Improvements
+============
     * 'merge' now takes --uncommitted, to apply uncommitted changes from a
       tree.  (Aaron Bentley)
 
@@ -6365,7 +6599,8 @@ bzr 0.10  2006-08-29
       Writing out a kernel sized inventory drops from 2s down to ~350ms.
       (Robert Collins, John Arbash Meinel)
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * Help diffutils 2.8.4 get along with binary tests (Marien Zwart: #57614)
 
@@ -6404,7 +6639,8 @@ bzr 0.10  2006-08-29
     * The bzr selftest was failing on installed versions due to a bug in a new
       test helper. (John Arbash Meinel, Robert Collins, #58057)
 
-  INTERNALS:
+Internals
+=========
 
     * ``bzrlib.cache_utf8`` contains ``encode()`` and ``decode()`` functions
       which can be used to cache the conversion between utf8 and Unicode.
@@ -6417,9 +6653,10 @@ bzr 0.10  2006-08-29
       easier. (John Arbash Meinel)
 
 bzr 0.9.0  2006-08-11
----------------------
+#####################
 
-  SURPRISES:
+Surprises
+=========
 
    * The hard-coded built-in ignore rules have been removed. There are
      now two rulesets which are enforced. A user global one in
@@ -6436,7 +6673,8 @@ bzr 0.9.0  2006-08-11
      to more locations than just branch locations.
      (Aaron Bentley)
 
-  IMPROVEMENTS:
+Improvements
+============
 
    * The revision specifier "revno:" is extended to accept the syntax
      revno:N:branch. For example,
@@ -6547,7 +6785,8 @@ bzr 0.9.0  2006-08-11
      2x faster. Utilize paramiko.readv() support for async requests if it
      is available (paramiko > 1.6) (John Arbash Meinel)
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * Fix shadowed definition of TestLocationConfig that caused some
       tests not to run.
@@ -6635,7 +6874,8 @@ bzr 0.9.0  2006-08-11
     * Fix ``Branch.get_parent()`` to handle the case when the parent is not
       accessible (John Arbash Meinel, #52976)
 
-  INTERNALS:
+Internals
+=========
 
     * Combine the ignore rules into a single regex rather than looping over
       them to reduce the threshold where  N^2 behaviour occurs in operations
@@ -6681,16 +6921,18 @@ bzr 0.9.0  2006-08-11
     * "RevisionTree" is now in bzrlib/revisiontree.py. (Robert Collins)
 
 bzr 0.8.2  2006-05-17
----------------------
+#####################
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * setup.py failed to install launchpad plugin.  (Martin Pool)
 
 bzr 0.8.1  2006-05-16
----------------------
+#####################
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * Fix failure to commit a merge in a checkout.  (Martin Pool,
       Robert Collins, Erik Bågfors, #43959)
@@ -6702,7 +6944,8 @@ bzr 0.8.1  2006-05-16
       optimized mode of python. Add the same check to pending merges.
       (Olaf Conradi, #44443)
 
-  CHANGES:
+Changes
+=======
 
     * Do not show the None revision in output of bzr ancestry. (Olaf Conradi)
 
@@ -6711,34 +6954,39 @@ bzr 0.8.1  2006-05-16
 
     * Fix bug in knits when raising InvalidRevisionId. (Olaf Conradi, #44284)
 
-  CHANGES:
+Changes
+=======
 
     * Make editor invocation comply with Debian Policy. First check
       environment variables VISUAL and EDITOR, then try editor from
       alternatives system. If that all fails, fall back to the pre-defined
       list of editors. (Olaf Conradi, #42904)
 
-  NEW FEATURES:
+New Features
+============
 
     * New 'register-branch' command registers a public branch into
       Launchpad.net, where it can be associated with bugs, etc.
       (Martin Pool, Bjorn Tillenius, Robert Collins)
 
-  INTERNALS:
+Internals
+=========
 
     * New public api in InventoryEntry - ``describe_change(old, new)`` which
       provides a human description of the changes between two old and
       new. (Robert Collins, Martin Pool)
 
-  TESTING:
+Testing
+=======
 
     * Fix test case for bzr info in upgrading a standalone branch to metadir,
       uses bzrlib api now. (Olaf Conradi)
 
 bzr 0.8  2006-05-08
--------------------
+###################
 
-  NOTES WHEN UPGRADING:
+Notes When Upgrading
+====================
 
     Release 0.8 of bzr introduces a new format for history storage, called
     'knit', as an evolution of to the 'weave' format used in 0.7.  Local
@@ -6773,7 +7021,8 @@ bzr 0.8  2006-05-08
     arrangement.
 
 
-  IMPROVEMENTS:
+Improvements
+============
 
     * Sftp paths can now be relative, or local, according to the lftp
       convention. Paths now take the form::
@@ -6886,7 +7135,8 @@ bzr 0.8  2006-05-08
       to a reweave) it can now be corrected by 'bzr reconcile'.
       (Robert Collins)
 
-  CHANGES:
+Changes
+=======
 
     * Commit is now verbose by default, and shows changed filenames and the
       new revision number.  (Robert Collins, Martin Pool)
@@ -6903,7 +7153,8 @@ bzr 0.8  2006-05-08
       Clean up help for option --format in commands 'init', 'init-repo' and
       'upgrade'.  (Olaf Conradi)
 
-  INTERNALS:
+Internals
+=========
 
     * The internal storage of history, and logical branch identity have now
       been split into Branch, and Repository. The common locking and file
@@ -6967,7 +7218,8 @@ bzr 0.8  2006-05-08
     * ``bzrlib.ui.ui_factory protocol`` now supports ``get_boolean`` to prompt
       the user for yes/no style input. (Robert Collins)
 
-  TESTING:
+Testing
+=======
 
     * SFTP tests now shortcut the SSH negotiation, reducing test overhead
       for testing SFTP protocol support. (Robey Pointer)
@@ -6993,9 +7245,10 @@ bzr 0.8  2006-05-08
       parameter which will provide String("foo") to the command as its stdin.
 
 bzr 0.7 2006-01-09
-------------------
+##################
 
-  CHANGES:
+Changes
+=======
 
     * .bzrignore is excluded from exports, on the grounds that it's a bzr
       internal-use file and may not be wanted.  (Jamie Wilkinson)
@@ -7032,7 +7285,8 @@ bzr 0.7 2006-01-09
     * '.sw[nop]' pattern ignored, to ignore vim swap files for nameless
       files.  (John Arbash Meinel, Martin Pool)
 
-  IMPROVEMENTS:
+Improvements
+============
 
     * "bzr INIT dir" now initializes the specified directory, and creates
       it if it does not exist.  (John Arbash Meinel)
@@ -7099,7 +7353,8 @@ bzr 0.7 2006-01-09
       be limited to show what either end of the comparison is missing.
       (Aaron Bently, with a little prompting from Daniel Silverstone)
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * SFTP can walk up to the root path without index errors. (Robert Collins)
 
@@ -7149,7 +7404,8 @@ bzr 0.7 2006-01-09
 
     * Fix failure in 'bzr added'.  (Nathan McCallum, Martin Pool)
 
-  TESTING:
+Testing
+=======
 
     * Fix selftest asking for passwords when there are no SFTP keys.
       (Robey Pointer, Jelmer Vernooij)
@@ -7204,7 +7460,8 @@ bzr 0.7 2006-01-09
       pass in a transport parameter to give it an existing connection.
       (Robert Collins).
 
-  INTERNALS:
+Internals
+=========
 
     * WorkingTree.pull has been split across Branch and WorkingTree,
       to allow Branch only pulls. (Robert Collins)
@@ -7284,9 +7541,10 @@ bzr 0.7 2006-01-09
       for functions that need unicode strings. (Robert Collins)
 
 bzr 0.6 2005-10-28
-------------------
+##################
 
-  IMPROVEMENTS:
+Improvements
+============
 
     * pull now takes --verbose to show you what revisions are added or removed
       (John A Meinel)
@@ -7362,7 +7620,8 @@ bzr 0.6 2005-10-28
 
    * 'bzr merge --reprocess' minimizes conflicts
 
-  TESTING:
+Testing
+=======
 
     * The 'bzr selftest --pattern' option for has been removed, now
       test specifiers on the command line can be simple strings, or
@@ -7382,7 +7641,8 @@ bzr 0.6 2005-10-28
     * Fix test suite's habit of leaving many temporary log files in $TMPDIR.
       (Martin Pool)
 
-  INTERNALS:
+Internals
+=========
 
     * New 'testament' command and concept for making gpg-signatures
       of revisions that are not tied to a particular internal
@@ -7486,7 +7746,8 @@ bzr 0.6 2005-10-28
     * New ``bzrlib.version_info`` tuple (similar to ``sys.version_info``),
       which can be used by programs importing bzrlib.
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * Better handling of branches in directories with non-ascii names.
       (Joel Rosdahl, Panagiotis Papadakos)
@@ -7496,9 +7757,10 @@ bzr 0.6 2005-10-28
 
 
 bzr 0.1.1 2005-10-12
---------------------
+####################
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * Fix problem in pulling over http from machines that do not
       allow directories to be listed.
@@ -7506,22 +7768,25 @@ bzr 0.1.1 2005-10-12
     * Avoid harmless warning about invalid hash cache after
       upgrading branch format.
 
-  PERFORMANCE:
+Performance
+===========
 
     * Avoid some unnecessary http operations in branch and pull.
 
 
 bzr 0.1 2005-10-11
-------------------
+##################
 
-  NOTES:
+Notes
+=====
 
     * 'bzr branch' over http initially gives a very high estimate
       of completion time but it should fall as the first few
       revisions are pulled in.  branch is still slow on
       high-latency connections.
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * bzr-man.py has been updated to work again. Contributed by
       Rob Weir.
@@ -7558,7 +7823,8 @@ bzr 0.1 2005-10-11
     * Symlink support: working with symlinks when not in the root of a
       bzr tree was broken, patch from Scott James Remnant.
 
-  IMPROVEMENTS:
+Improvements
+============
 
     * 'branch' now accepts a --basis parameter which will take advantage
       of local history when making a new branch. This allows faster
@@ -7596,7 +7862,8 @@ bzr 0.1 2005-10-11
       Niemeyer, made incremental by Robert Collins.
 
 
-  INTERNALS:
+Internals
+=========
 
     * Test case failures have the exception printed after the log
       for your viewing pleasure.
@@ -7627,7 +7894,8 @@ bzr 0.1 2005-10-11
       This must be consistent with the overall branch version
       but allows for more flexibility in future upgrades.
 
-  TESTING:
+Testing
+=======
 
     * Removed testsweet module so that tests can be run after
       bzr installed by 'bzr selftest'.
@@ -7637,9 +7905,10 @@ bzr 0.1 2005-10-11
 
 
 bzr 0.0.9 2005-09-23
---------------------
+####################
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * Fixed "branch -r" option.
 
@@ -7653,7 +7922,8 @@ bzr 0.0.9 2005-09-23
     * Various minor bug in windows support have been fixed, largely in the
       test suite. Contributed by Alexander Belchenko.
 
-  IMPROVEMENTS:
+Improvements
+============
 
     * Status now accepts a -r argument to give status between chosen
       revisions. Contributed by Heikki Paajanen.
@@ -7667,7 +7937,8 @@ bzr 0.0.9 2005-09-23
     * There is now a bzr.bat file created by distutils when building on
       Windows. Contributed by Alexander Belchenko.
 
-  INTERNALS:
+Internals
+=========
 
     * Removed uuid() as it was unused.
 
@@ -7676,9 +7947,10 @@ bzr 0.0.9 2005-09-23
 
 
 bzr 0.0.8 2005-09-20
---------------------
+####################
 
-  IMPROVEMENTS:
+Improvements
+============
 
     * Adding a file whose parent directory is not versioned will
       implicitly add the parent, and so on up to the root. This means
@@ -7700,11 +7972,13 @@ bzr 0.0.8 2005-09-20
       them to the tree though - they are not versionable.
 
 
-  INTERNALS:
+Internals
+=========
 
     * Refactor xml packing/unpacking.
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * Fixed 'bzr mv' by Ollie Rutherfurd.
 
@@ -7715,7 +7989,8 @@ bzr 0.0.8 2005-09-20
       read.
 
 
-  PORTABILITY:
+Portability
+===========
 
     * Various Windows fixes from Ollie Rutherfurd.
 
@@ -7723,9 +7998,10 @@ bzr 0.0.8 2005-09-20
 
 
 bzr-0.0.7 2005-09-02
---------------------
+####################
 
-  NEW FEATURES:
+New Features
+============
 
     * ``bzr shell-complete`` command contributed by Clint Adams to
       help with intelligent shell completion.
@@ -7733,7 +8009,8 @@ bzr-0.0.7 2005-09-02
     * New expert command ``bzr find-merge-base`` for debugging merges.
 
 
-  ENHANCEMENTS:
+Enhancements
+============
 
     * Much better merge support.
 
@@ -7742,7 +8019,8 @@ bzr-0.0.7 2005-09-02
       like emacs smerge.
 
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * ``bzr upgrade`` no longer fails when trying to fix trees that
       mention revisions that are not present.
@@ -7755,7 +8033,8 @@ bzr-0.0.7 2005-09-02
       (Patch from Goffredo Baroncelli.)
 
 
-  CHANGES:
+Changes
+=======
 
     * ``bzr log --show-ids`` shows the revision ids of all parents.
 
@@ -7764,7 +8043,8 @@ bzr-0.0.7 2005-09-02
       --help themselves.
 
 
-  LIBRARY:
+Library
+=======
 
     * Changed trace messages to go through the standard logging
       framework, so that they can more easily be redirected by
@@ -7773,9 +8053,10 @@ bzr-0.0.7 2005-09-02
 
 
 bzr-0.0.6 2005-08-18
---------------------
+####################
 
-  NEW FEATURES:
+New Features
+============
 
     * Python plugins, automatically loaded from the directories on
       ``BZR_PLUGIN_PATH`` or ``~/.bzr.conf/plugins`` by default.
@@ -7801,12 +8082,14 @@ bzr-0.0.6 2005-08-18
       on a patch from Heikki Paajanen.)
 
 
-  ENHANCEMENTS:
+Enhancements
+============
 
     * Faster working tree operations.
 
 
-  CHANGES:
+Changes
+=======
 
     * 3rd-party modules shipped with bzr are copied within the bzrlib
       python package, so that they can be installed by the setup
@@ -7849,15 +8132,17 @@ bzr-0.0.6 2005-08-18
       is available with ``--short``.
 
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * Fix bugs in committing only selected files or within a subdirectory.
 
 
 bzr-0.0.5  2005-06-15
----------------------
+#####################
 
-  CHANGES:
+Changes
+=======
 
     * ``bzr`` with no command now shows help rather than giving an
       error.  Suggested by Michael Ellerman.
@@ -7876,7 +8161,8 @@ bzr-0.0.5  2005-06-15
       field.
 
 
-  ENHANCEMENTS:
+Enhancements
+============
 
     * New 'bzr whoami --email' option shows only the email component
       of the user identification, from Jo Vermeulen.
@@ -7933,7 +8219,8 @@ bzr-0.0.5  2005-06-15
       from a branch.
 
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * Fixed diff format so that added and removed files will be
       handled properly by patch.  Fix from Lalo Martins.
@@ -7942,7 +8229,8 @@ bzr-0.0.5  2005-06-15
       metacharacters.
 
 
-  TESTING:
+Testing
+=======
 
     * Converted black-box test suites from Bourne shell into Python;
       now run using ``./testbzr``.  Various structural improvements to
@@ -7960,7 +8248,8 @@ bzr-0.0.5  2005-06-15
     * Tests added for many other changes in this release.
 
 
-  INTERNAL:
+Internal
+========
 
     * Included ElementTree library upgraded to 1.2.6 by Fredrik Lundh.
 
@@ -7984,16 +8273,18 @@ bzr-0.0.5  2005-06-15
     * New developer commands ``added``, ``modified``.
 
 
-  PORTABILITY:
+Portability
+===========
 
     * Cope on Windows on python2.3 by using the weaker random seed.
       2.4 is now only recommended.
 
 
 bzr-0.0.4  2005-04-22
----------------------
+#####################
 
-  ENHANCEMENTS:
+Enhancements
+============
 
     * 'bzr diff' optionally takes a list of files to diff.  Still a bit
       basic.  Patch from QuantumG.
@@ -8011,7 +8302,8 @@ bzr-0.0.4  2005-04-22
     * New 'bzr help commands' based on a patch from Denys Duchier.
 
 
-  CHANGES:
+Changes
+=======
 
     * User email is determined by looking at $BZREMAIL or ~/.bzr.email
       or $EMAIL.  All are decoded by the locale preferred encoding.
@@ -8022,7 +8314,8 @@ bzr-0.0.4  2005-04-22
     * New 'bzr whoami' command instead of username user-email.
 
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * Make commit safe for hardlinked bzr trees.
 
@@ -8032,7 +8325,8 @@ bzr-0.0.4  2005-04-22
       trailing newlines properly.
 
 
-  INTERNAL:
+Internal
+========
 
     * Allow docstrings for help to be in PEP0257 format.  Patch from
       Matt Brubeck.
@@ -8045,7 +8339,8 @@ bzr-0.0.4  2005-04-22
     * Smaller .bzr.log with process ids.
 
 
-  PORTABILITY:
+Portability
+===========
 
     * Fix opening of ~/.bzr.log on Windows.  Patch from Andrew
       Bennetts.
@@ -8055,9 +8350,10 @@ bzr-0.0.4  2005-04-22
 
 
 bzr-0.0.3  2005-04-06
----------------------
+#####################
 
-  ENHANCEMENTS:
+Enhancements
+============
 
     * New "directories" internal command lists versioned directories
       in the tree.
@@ -8074,39 +8370,45 @@ bzr-0.0.3  2005-04-06
 
     * New cat command contributed by janmar.
 
-  CHANGES:
+Changes
+=======
 
     * .bzr.log is placed in $HOME (not pwd) and is always written in
       UTF-8.  (Probably not a completely good long-term solution, but
       will do for now.)
 
-  PORTABILITY:
+Portability
+===========
 
     * Workaround for difflib bug in Python 2.3 that causes an
       exception when comparing empty files.  Reported by Erik Toubro
       Nielsen.
 
-  INTERNAL:
+Internal
+========
 
     * Refactored inventory storage to insert a root entry at the top.
 
-  TESTING:
+Testing
+=======
 
     * Start of shell-based black-box testing in test.sh.
 
 
 bzr-0.0.2.1
------------
+###########
 
-  PORTABILITY:
+Portability
+===========
 
     * Win32 fixes from Steve Brown.
 
 
 bzr-0.0.2  "black cube"  2005-03-31
------------------------------------
+###################################
 
-  ENHANCEMENTS:
+Enhancements
+============
 
     * Default ignore list extended (see bzrlib/__init__.py).
 
@@ -8132,9 +8434,10 @@ bzr-0.0.2  "black cube"  2005-03-31
 
 
 bzr-0.0.1  2005-03-26
----------------------
+#####################
 
-  ENHANCEMENTS:
+Enhancements
+============
 
     * More information from info command.
 
@@ -8145,11 +8448,13 @@ bzr-0.0.1  2005-03-26
 
     * More useful verbose output from some commands.
 
-  BUG FIXES:
+Bug Fixes
+=========
 
     * Fix inverted display of 'R' and 'M' during 'commit -v'.
 
-  PORTABILITY:
+Portability
+===========
 
     * Include a subset of ElementTree-1.2.20040618 to make
       installation easier.
@@ -8159,9 +8464,10 @@ bzr-0.0.1  2005-03-26
 
 
 bzr-0.0.0.69  2005-03-22
-------------------------
+########################
 
-  ENHANCEMENTS:
+Enhancements
+============
 
     * First public release.
 
