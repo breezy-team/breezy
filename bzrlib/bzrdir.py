@@ -75,6 +75,7 @@ from bzrlib.trace import (
     )
 
 from bzrlib import (
+    hooks,
     registry,
     symbol_versioning,
     )
@@ -93,6 +94,8 @@ class BzrDir(object):
         (i.e. the parent directory holding the .bzr directory).
 
     Everything in the bzrdir should have the same file permissions.
+
+    :cvar hooks: An instance of BzrDirHooks.
     """
 
     def break_lock(self):
@@ -806,6 +809,8 @@ class BzrDir(object):
         :param transport: Transport containing the bzrdir.
         :param _unsupported: private.
         """
+        for hook in BzrDir.hooks['pre_open']:
+            hook(transport)
         # Keep initial base since 'transport' may be modified while following
         # the redirections.
         base = transport.base
@@ -1188,6 +1193,20 @@ class BzrDir(object):
                 if basis is not None:
                     basis.unlock()
         return result
+
+
+class BzrDirHooks(hooks.Hooks):
+    """Hooks for BzrDir operations."""
+
+    def __init__(self):
+        """Create the default hooks."""
+        hooks.Hooks.__init__(self)
+        self.create_hook(hooks.HookPoint('pre_open',
+            "Invoked before attempting to open a BzrDir with the transport "
+            "that the open will use.", (1, 14), None))
+
+# install the default hooks
+BzrDir.hooks = BzrDirHooks()
 
 
 class BzrDirPreSplitOut(BzrDir):
@@ -3247,7 +3266,7 @@ format_registry.register_metadir('pack-0.92-subtree',
 format_registry.register_metadir('rich-root-pack',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack4',
     help='New in 1.0: A variant of pack-0.92 that supports rich-root data '
-         '(needed for bzr-svn).',
+         '(needed for bzr-svn and bzr-git).',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     )
@@ -3262,7 +3281,7 @@ format_registry.register_metadir('1.6',
 format_registry.register_metadir('1.6.1-rich-root',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack5RichRoot',
     help='A variant of 1.6 that supports rich-root data '
-         '(needed for bzr-svn).',
+         '(needed for bzr-svn and bzr-git).',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     )
@@ -3277,7 +3296,7 @@ format_registry.register_metadir('1.9',
 format_registry.register_metadir('1.9-rich-root',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6RichRoot',
     help='A variant of 1.9 that supports rich-root data '
-         '(needed for bzr-svn).',
+         '(needed for bzr-svn and bzr-git).',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     )
@@ -3291,7 +3310,7 @@ format_registry.register_metadir('development-wt5',
 format_registry.register_metadir('development-wt5-rich-root',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6RichRoot',
     help='A variant of development-wt5 that supports rich-root data '
-         '(needed for bzr-svn).',
+         '(needed for bzr-svn and bzr-git).',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat5',
     experimental=True,
@@ -3345,6 +3364,15 @@ format_registry.register_metadir('development2-subtree',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     hidden=True,
     experimental=True,
+    )
+# The following format should be an alias for the rich root equivalent 
+# of the default format
+format_registry.register_metadir('default-rich-root',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack4',
+    help='Default format, rich root variant. (needed for bzr-svn and bzr-git).',
+    branch_format='bzrlib.branch.BzrBranchFormat6',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    alias=True,
     )
 # The current format that is made on 'bzr init'.
 format_registry.set_default('pack-0.92')
