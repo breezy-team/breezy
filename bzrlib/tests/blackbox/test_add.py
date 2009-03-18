@@ -25,6 +25,13 @@ from bzrlib.tests.test_win32utils import NeedsGlobExpansionFeature
 
 class TestAdd(ExternalBase):
 
+    # Subclasses may override this
+    branch_tree_format = "pack-0.92"
+
+    def make_branch_and_tree(self, dir):
+        return ExternalBase.make_branch_and_tree(self, dir,
+            format=self.branch_tree_format)
+
     def test_add_reports(self):
         """add command prints the names of added files."""
         tree = self.make_branch_and_tree('.')
@@ -207,3 +214,8 @@ class TestAdd(ExternalBase):
         self.build_tree([u'\u1234A', u'\u1235A', u'\u1235AA', 'cc'])
         self.run_bzr(['add', u'\u1234?', u'\u1235*'])
         self.assertEquals(self.run_bzr('unknowns')[0], 'cc\n')
+
+
+class TestAddInTreeSupportingViews(TestAdd):
+
+    branch_tree_format = "development-wt5"
