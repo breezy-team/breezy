@@ -25,7 +25,10 @@
 #define RABIN_SHIFT 23
 #define RABIN_WINDOW 16
 
-#define EXTRA_NULLS 1
+/* The hash map is sized to put 4 entries per bucket, this gives us 2 blank
+ * spaces.
+ */
+#define EXTRA_NULLS 2
 
 static const unsigned int T[256] = {
     0x00000000, 0xab59b4d1, 0x56b369a2, 0xfdeadd73, 0x063f6795, 0xad66d344,
@@ -576,20 +579,9 @@ create_index_from_old_and_new_entries(const struct delta_index *old_index,
         /* Copy any of the old entries across */
         /* Would we rather use memcpy? */
         if (hmask == old_index->hash_mask) {
-            found_null = 0;
             for (entry = old_index->hash[i];
-                 entry < old_index->hash[i+1];
+                 entry < old_index->hash[i+1] && entry->ptr != NULL;
                  ++entry) {
-                if (entry->ptr == NULL) {
-                    found_null = 1;
-                    continue;
-                } else if (found_null) {
-                    fprintf(stderr, "Found a non-null entry after a"
-                                    " NULL entry!\n"
-                                    " new offset %x"
-                                    " w/ value %x\n",
-                                    i, entry->val);
-                }
                 assert((entry->val & hmask) == i);
                 *packed_entry++ = *entry;
             }
@@ -599,27 +591,16 @@ create_index_from_old_and_new_entries(const struct delta_index *old_index,
              * spread across the new locations.
              */
             j = i & old_index->hash_mask;
-            found_null = 0;
             for (entry = old_index->hash[j];
-                 entry < old_index->hash[j+1];
+                 entry < old_index->hash[j+1] && entry->ptr != NULL;
                  ++entry) {
-                if (entry->ptr == NULL) {
-                    found_null = 1;
-                    continue;
-                } else if (found_null) {
-                    fprintf(stderr, "Found a non-null entry after a"
-                                    " NULL entry!\n"
-                                    " offset %x for new offset %x"
-                                    " w/ value %x\n",
-                                    j, i, entry->val);
-                }
                 assert((entry->val & old_index->hash_mask) == j);
-                if (!(j == i || j + old_index->hash_mask + 1 == i)) {
-                    fprintf(stderr, "Old hash entry %x"
-                                    " doesn't fit with new %x\n"
-                                    "old_mask: %x new_mask: %x\n",
-                                    j, i, old_index->hash_mask, hmask);
-                }
+                // if (!(j == i || j + old_index->hash_mask + 1 == i)) {
+                //     fprintf(stderr, "Old hash entry %x"
+                //                     " doesn't fit with new %x\n"
+                //                     "old_mask: %x new_mask: %x\n",
+                //                     j, i, old_index->hash_mask, hmask);
+                // }
                 assert(j == i || j + old_index->hash_mask + 1 == i);
                 if ((entry->val & hmask) == i) {
                     /* Any entries not picked up here will be picked up on the
@@ -855,18 +836,19 @@ create_delta_index_from_delta(const struct source_info *src,
         old_entry++;
         if (old_entry->ptr != NULL
             || old_entry >= old_index->hash[hash_offset + 1]) {
-            char buff[128];
-            get_text(buff, entry->ptr);
-            fprintf(stderr, "Failed to find an opening @%x for %8x:\n '%s'\n",
-                    hash_offset, entry->val, buff);
-            for (old_entry = old_index->hash[hash_offset];
-                 old_entry < old_index->hash[hash_offset+1];
-                 ++old_entry) {
-                get_text(buff, old_entry->ptr);
-                fprintf(stderr, "  [%2d] %8x %8x: '%s'\n",
-                        (int)(old_entry - old_index->hash[hash_offset]),
-                        old_entry->val, old_entry->ptr, buff);
-            }
+            /* There is no room for this entry, we have to resize */
+            // char buff[128];
+            // get_text(buff, entry->ptr);
+            // fprintf(stderr, "Failed to find an opening @%x for %8x:\n '%s'\n",
+            //         hash_offset, entry->val, buff);
+            // for (old_entry = old_index->hash[hash_offset];
+            //      old_entry < old_index->hash[hash_offset+1];
+            //      ++old_entry) {
+            //     get_text(buff, old_entry->ptr);
+            //     fprintf(stderr, "  [%2d] %8x %8x: '%s'\n",
+            //             (int)(old_entry - old_index->hash[hash_offset]),
+            //             old_entry->val, old_entry->ptr, buff);
+            // }
             break;
         }
         num_inserted++;
@@ -880,7 +862,7 @@ create_delta_index_from_delta(const struct source_info *src,
         /* We couldn't fit the new entries into the old index, so allocate a
          * new one, and fill it with stuff.
          */
-        fprintf(stderr, "inserted %d before resize\n", num_inserted);
+        // fprintf(stderr, "inserted %d before resize\n", num_inserted);
         new_index = create_index_from_old_and_new_entries(old_index,
             entry, num_entries);
     } else {
