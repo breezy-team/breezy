@@ -1211,7 +1211,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         self.assertEqual(['a-file-id'], file_ids_changed)
 
 
-class UppercaseSHA1Provider():
+class UppercaseSHA1Provider(dirstate.SHA1Provider):
     """A custom SHA1Provider."""
 
     def sha1(self, abspath):
