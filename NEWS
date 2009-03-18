@@ -45,7 +45,7 @@ Improvements
   (Daniel Watkins, John Klinger, #273993)
 
 * Bazaar will now point out ``bzr+ssh://`` to the user when they 
-  use ssh://. (Jelmer Vernooij, #330535)
+  use ``ssh://``. (Jelmer Vernooij, #330535)
 
 * ``bzr -v info`` now omits the number of committers branch statistic,
   making it many times faster for large projects. To include that
