@@ -45,7 +45,7 @@ class SmartServerBranchRequest(SmartServerRequest):
         bzrdir = BzrDir.open_from_transport(transport)
         if bzrdir.get_branch_reference() is not None:
             raise errors.NotBranchError(transport.base)
-        branch = bzrdir.open_branch()
+        branch = bzrdir.open_branch(ignore_fallbacks=True)
         return self.do_with_branch(branch, *args)
 
 

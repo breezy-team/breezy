@@ -322,7 +322,9 @@ class SmartServerRequestOpenBranchV2(SmartServerRequestBzrDir):
         try:
             reference_url = self._bzrdir.get_branch_reference()
             if reference_url is None:
-                format = self._bzrdir.open_branch()._format.network_name()
+                #format = self._bzrdir.find_branch_format().network_name()
+                br = self._bzrdir.open_branch(ignore_fallbacks=True)
+                format = br._format.network_name()
                 return SuccessfulSmartServerResponse(('branch', format))
             else:
                 return SuccessfulSmartServerResponse(('ref', reference_url))

@@ -836,7 +836,7 @@ class BzrDir(object):
         BzrDir._check_supported(format, _unsupported)
         return format.open(transport, _found=True)
 
-    def open_branch(self, unsupported=False):
+    def open_branch(self, unsupported=False, ignore_fallbacks=False):
         """Open the branch object at this BzrDir if one is present.
 
         If unsupported is True, then no longer supported branch formats can
@@ -1017,7 +1017,7 @@ class BzrDir(object):
         result_format = self._format.__class__()
         try:
             try:
-                branch = self.open_branch()
+                branch = self.open_branch(ignore_fallbacks=True)
                 source_repository = branch.repository
                 result_format._branch_format = branch._format
             except errors.NotBranchError:
@@ -1356,7 +1356,7 @@ class BzrDirPreSplitOut(BzrDir):
             format = BzrDirFormat.get_default_format()
         return not isinstance(self._format, format.__class__)
 
-    def open_branch(self, unsupported=False):
+    def open_branch(self, unsupported=False, ignore_fallbacks=False):
         """See BzrDir.open_branch."""
         from bzrlib.branch import BzrBranchFormat4
         format = BzrBranchFormat4()
@@ -1607,11 +1607,11 @@ class BzrDirMeta1(BzrDir):
             pass
         return False
 
-    def open_branch(self, unsupported=False):
+    def open_branch(self, unsupported=False, ignore_fallbacks=False):
         """See BzrDir.open_branch."""
         format = self.find_branch_format()
         self._check_supported(format, unsupported)
-        return format.open(self, _found=True)
+        return format.open(self, _found=True, ignore_fallbacks=ignore_fallbacks)
 
     def open_repository(self, unsupported=False):
         """See BzrDir.open_repository."""
