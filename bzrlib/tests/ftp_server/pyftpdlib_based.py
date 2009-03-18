@@ -27,6 +27,7 @@ import threading
 
 
 from bzrlib import (
+    osutils,
     trace,
     transport,
     )
@@ -36,7 +37,7 @@ class AnonymousWithWriteAccessAuthorizer(ftpserver.DummyAuthorizer):
 
     def _check_permissions(self, username, perm):
         # Like base implementation but don't warn about write permissions
-        # assigned to anonynous, since that's exactly our purpose.
+        # assigned to anonymous, since that's exactly our purpose.
         for p in perm:
             if p not in self.read_perms + self.write_perms:
                 raise ftpserver.AuthorizerError('No such permission "%s"' %p)
@@ -44,25 +45,16 @@ class AnonymousWithWriteAccessAuthorizer(ftpserver.DummyAuthorizer):
 
 class BzrConformingFS(ftpserver.AbstractedFS):
 
-    def chmod(self, path, mode):
-        return os.chmod(path, mode)
-
     def listdir(self, path):
         """List the content of a directory."""
-        # XXX: Something just freaks out in asyncore if given unicode strings,
-        # that may need to be revisited once unicode or at least utf-8 encoded
-        # paths is better handled. -- vila 20090228
-        return [str(s) for s in os.listdir(path)]
+        # FIXME: need tests with unicode paths
+        return [osutils.safe_utf8(s) for s in os.listdir(path)]
 
     def fs2ftp(self, fspath):
         p = ftpserver.AbstractedFS.fs2ftp(self, fspath)
-        # We should never send unicode strings, they are not handled properly
-        # by the stack (asynchat.async_chat.initiate_send using a buffer()
-        # starting with python2.6 may be the real culprit, but converting to
-        # str() here fixes the problem.  that may need to be revisited once
-        # unicode or at least utf-8 encoded paths is better handled. -- vila
-        # 20090228
-        return str(p)
+        # FIXME: need tests with unicode paths
+        return osutils.safe_utf8(p)
+
 
 class BZRConformingFTPHandler(ftpserver.FTPHandler):
 
@@ -103,7 +95,7 @@ class BZRConformingFTPHandler(ftpserver.FTPHandler):
             # ValueError.
             self.respond("500 'SITE CHMOD %s': command not understood."
                          % line)
-            self.log('FAIL SITE CHMOD MKD ' % line)
+            self.log('FAIL SITE CHMOD ' % line)
             return
         ftp_path = self.fs.fs2ftp(path)
         try:
@@ -124,15 +116,8 @@ ftpserver.proto_cmds['SITE CHMOD'] = ftpserver._CommandProperty(
     auth_needed=True, arg_needed=True, check_path=False,
     help='Syntax: SITE CHMOD <SP>  octal_mode_bits file-name (chmod file)',
     )
-ftpserver.proto_cmds['PASS'] = ftpserver._CommandProperty(
-    perm=None,
-    auth_needed=False,
-    # An empty password is valid, hence the arg is neither mandatory not
-    # forbidden
-    arg_needed=None,
-    check_path=False,
-    help='Syntax: PASS [<SP> password] (set user password).',
-    )
+# An empty password is valid, hence the arg is neither mandatory not forbidden
+ftpserver.proto_cmds['PASS'].arg_needed = None
 
 
 class ftp_server(ftpserver.FTPServer):
@@ -165,7 +150,7 @@ class FTPServer(transport.Server):
         return 'ftp://127.0.0.1:1/'
 
     def log(self, message):
-        """This is used by medusa.ftp_server to log connections, etc."""
+        """This is used by ftp_server to log connections, etc."""
         self.logs.append(message)
 
     def setUp(self, vfs_server=None):
@@ -190,8 +175,6 @@ class FTPServer(transport.Server):
         ftpserver.logerror = self.log
 
         self._port = self._ftp_server.socket.getsockname()[1]
-        # Don't let it loop forever, or handle an infinite number of requests.
-        # In this case it will run for 1000s, or 10000 requests
         self._ftpd_starting = threading.Lock()
         self._ftpd_starting.acquire() # So it can be released by the server
         self._ftpd_thread = threading.Thread(

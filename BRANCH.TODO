@@ -2,7 +2,3 @@
 # It should ALWAYS be empty in the mainline or in integration branches.
 # 
 #
-
-- handle unicode or utf-8 encoded paths
-- explicit test for chmod and path with spaces
-
