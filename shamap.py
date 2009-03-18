@@ -47,6 +47,50 @@ except:
 
 
 class GitShaMap(object):
+    """Git<->Bzr revision id mapping database."""
+
+    def add_entry(self, sha, type, type_data):
+        """Add a new entry to the database.
+        """
+        raise NotImplementedError(self.add_entry)
+
+    def lookup_git_sha(self, sha):
+        """Lookup a Git sha in the database.
+
+        :param sha: Git object sha
+        :return: (type, type_data) with type_data:
+            revision: revid, tree sha
+        """
+        raise NotImplementedError(self.lookup_git_sha)
+
+    def revids(self):
+        """List the revision ids known."""
+        raise NotImplementedError(self.revids)
+
+    def commit(self):
+        """Commit any pending changes."""
+
+
+class DictGitShaMap(GitShaMap):
+
+    def __init__(self):
+        self.dict = {}
+
+    def add_entry(self, sha, type, type_data):
+        self.dict[sha] = (type, type_data)
+
+    def lookup_git_sha(self, sha):
+        return self.dict[sha]
+
+    def revids(self):
+        ret = []
+        for key, (type, type_data) in self.dict.iteritems():
+            if type == "commit":
+                ret.append(type_data[0])
+        return ret
+
+
+class SqliteGitShaMap(GitShaMap):
 
     def __init__(self, transport):
         self.transport = transport
@@ -100,5 +144,6 @@ class GitShaMap(object):
         raise KeyError(sha)
 
     def revids(self):
+        """List the revision ids known."""
         for row in self.db.execute("select revid from commits").fetchall():
             yield row[0]

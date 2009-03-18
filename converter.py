@@ -16,21 +16,22 @@
 
 """Map from Git sha's to Bazaar objects."""
 
+from dulwich.objects import (
+    Blob,
+    Tree,
+    )
 import stat
 
-import bzrlib
-from bzrlib import ui
-from bzrlib.errors import NoSuchRevision
+from bzrlib import (
+    ui,
+    )
 
 from bzrlib.plugins.git.mapping import (
     inventory_to_tree_and_blobs,
     revision_to_commit,
     )
-from bzrlib.plugins.git.shamap import GitShaMap
-
-from dulwich.objects import (
-    Blob,
-    Tree,
+from bzrlib.plugins.git.shamap import (
+    SqliteGitShaMap,
     )
 
 
@@ -42,7 +43,7 @@ class GitObjectConverter(object):
             self.mapping = self.repository.get_mapping()
         else:
             self.mapping = mapping
-        self._idmap = GitShaMap(self.repository._transport)
+        self._idmap = SqliteGitShaMap(self.repository._transport)
 
     def _update_sha_map(self):
         all_revids = self.repository.all_revision_ids()
@@ -61,7 +62,8 @@ class GitObjectConverter(object):
 
     def _update_sha_map_revision(self, revid):
         inv = self.repository.get_inventory(revid)
-        objects = inventory_to_tree_and_blobs(self.repository, self.mapping, revid)
+        objects = inventory_to_tree_and_blobs(self.repository, self.mapping,
+            revid)
         for sha, o, path in objects:
             if path == "":
                 tree_sha = sha
@@ -73,8 +75,10 @@ class GitObjectConverter(object):
             else:
                 raise AssertionError()
         rev = self.repository.get_revision(revid)
-        commit_obj = revision_to_commit(rev, tree_sha, self._idmap._parent_lookup)
-        self._idmap.add_entry(commit_obj.sha().hexdigest(), "commit", (revid, tree_sha))
+        commit_obj = revision_to_commit(rev, tree_sha,
+            self._idmap._parent_lookup)
+        self._idmap.add_entry(commit_obj.sha().hexdigest(), "commit",
+            (revid, tree_sha))
 
     def _get_blob(self, fileid, revision):
         """Return a Git Blob object from a fileid and revision stored in bzr.
@@ -82,7 +86,8 @@ class GitObjectConverter(object):
         :param fileid: File id of the text
         :param revision: Revision of the text
         """
-        text = self.repository.texts.get_record_stream([(fileid, revision)], "unordered", True).next().get_bytes_as("fulltext")
+        text = self.repository.texts.get_record_stream([(fileid, revision)],
+            "unordered", True).next().get_bytes_as("fulltext")
         blob = Blob()
         blob._text = text
         return blob
@@ -100,7 +105,8 @@ class GitObjectConverter(object):
         for name, ie in inv[fileid].children.iteritems():
             if ie.kind == "directory":
                 subtree = self._get_tree(inv.id2path(ie.file_id), revid, inv)
-                tree.add(stat.S_IFDIR, name.encode('UTF-8'), subtree.sha().hexdigest())
+                tree.add(stat.S_IFDIR, name.encode('UTF-8'),
+                    subtree.sha().hexdigest())
             elif ie.kind == "file":
                 blob = self._get_blob(inv.path2id(ie.file_id), revid)
                 mode = stat.S_IFREG | 0644
