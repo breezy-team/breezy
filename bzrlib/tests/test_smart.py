@@ -389,6 +389,22 @@ class TestSmartServerRequestOpenBranchV2(TestCaseWithChrootedTransport):
         self.assertEqual(SuccessfulSmartServerResponse(('ref', reference_url)),
             request.execute('reference'))
 
+    def test_stacked_branch(self):
+        """Opening a stacked branch does not open the stacked-on branch."""
+        trunk = self.make_branch('trunk')
+        feature = self.make_branch('feature', format='1.9')
+        feature.set_stacked_on_url(trunk.base)
+        opened_branches = []
+        Branch.hooks.install_named_hook('open', opened_branches.append, None)
+        backing = self.get_transport()
+        request = smart.bzrdir.SmartServerRequestOpenBranchV2(backing)
+        response = request.execute('feature')
+        expected_format = feature._format.network_name()
+        self.assertEqual(
+            SuccessfulSmartServerResponse(('branch', expected_format)),
+            response)
+        self.assertLength(1, opened_branches)
+
 
 class TestSmartServerRequestRevisionHistory(tests.TestCaseWithMemoryTransport):
 
