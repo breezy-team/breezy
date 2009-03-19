@@ -15,14 +15,16 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Upgrading revisions made with older versions of the mapping."""
 
-from bzrlib import ui
+from bzrlib import (
+    trace,
+    ui,
+    )
 from bzrlib.errors import (
     DependencyNotPresent,
     BzrError,
     InvalidRevisionId,
     NoSuchRevision,
     )
-from bzrlib.trace import info
 
 import itertools
 
@@ -325,7 +327,7 @@ def upgrade_repository(repository, foreign_repository, new_mapping,
                                                     allow_changes=allow_changes)
         if verbose:
             for revid in rebase_todo(repository, plan):
-                info("%s -> %s" % (revid, plan[revid][0]))
+                trace.info("%s -> %s" % (revid, plan[revid][0]))
         rebase(repository, plan, replay_snapshot)
         return revid_renames
     finally:
