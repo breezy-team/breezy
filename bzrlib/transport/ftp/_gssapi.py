@@ -153,6 +153,6 @@ def get_test_permutations():
     from bzrlib import tests
     if tests.FTPServerFeature.available():
         from bzrlib.tests import ftp_server
-        return [(GSSAPIFtpTransport, ftp_server.FTPServer)]
+        return [(GSSAPIFtpTransport, ftp_server.FTPTestServer)]
     else:
         return []

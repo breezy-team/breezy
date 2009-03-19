@@ -32,7 +32,7 @@ class TestCaseWithFTPServer(tests.TestCaseWithTransport):
     _test_needs_features = [ftp_server.FTPServerFeature]
 
     def setUp(self):
-        self.transport_server = ftp_server.FTPServer
+        self.transport_server = ftp_server.FTPTestServer
         super(TestCaseWithFTPServer, self).setUp()
 
 
@@ -48,7 +48,7 @@ class TestCaseAFTP(tests.TestCaseWithTransport):
         self.assertEqual('aftp://host/path', t.abspath(''))
 
 
-class TestFTPServer(TestCaseWithFTPServer):
+class TestFTPTestServer(TestCaseWithFTPServer):
 
     def test_basic_exists(self):
         url = self.get_url()
@@ -67,17 +67,17 @@ class TestFTPServer(TestCaseWithFTPServer):
         self.assertEqual('test more bytes\n', t.get_bytes('foo'))
 
 
-class TestFTPServerUI(TestCaseWithFTPServer):
+class TestFTPTestServerUI(TestCaseWithFTPServer):
 
     def setUp(self):
-        super(TestFTPServerUI, self).setUp()
+        super(TestFTPTestServerUI, self).setUp()
         self.user = 'joe'
         self.password = 'secret'
         self.get_server().add_user(self.user, self.password)
 
     def get_url(self, relpath=None):
         """Overrides get_url to inject our user."""
-        base = super(TestFTPServerUI, self).get_url(relpath)
+        base = super(TestFTPTestServerUI, self).get_url(relpath)
         (scheme, user, password,
          host, port, path) = transport.ConnectedTransport._split_url(base)
         url = transport.ConnectedTransport._unsplit_url(

@@ -40,8 +40,11 @@ except ImportError:
 class _FTPServerFeature(tests.Feature):
     """Some tests want an FTP Server, check if one is available.
 
-    Right now, the only way this is available is if 'medusa' is installed.
-    http://www.amk.ca/python/code/medusa.html
+    Right now, the only way this is available is if one of the following is
+    installed:
+
+    - 'medusa': http://www.amk.ca/python/code/medusa.html
+    - 'pyftpdlib': http://code.google.com/p/pyftpdlib/
     """
 
     def _probe(self):
@@ -77,8 +80,8 @@ class UnavailableFTPServer(object):
 
 
 if medusa_available:
-    FTPServer = medusa_based.FTPServer
+    FTPTestServer = medusa_based.FTPTestServer
 elif pyftpdlib_available:
-    FTPServer = pyftpdlib_based.FTPServer
+    FTPTestServer = pyftpdlib_based.FTPTestServer
 else:
-    FTPServer = UnavailableFTPServer
+    FTPTestServer = UnavailableFTPTestServer

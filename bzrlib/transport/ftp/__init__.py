@@ -598,4 +598,4 @@ class FtpTransport(ConnectedTransport):
 def get_test_permutations():
     """Return the permutations to be used in testing."""
     from bzrlib.tests import ftp_server
-    return [(FtpTransport, ftp_server.FTPServer)]
+    return [(FtpTransport, ftp_server.FTPTestServer)]

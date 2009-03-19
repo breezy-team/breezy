@@ -59,7 +59,7 @@ class BzrConformingFS(ftpserver.AbstractedFS):
         return osutils.safe_utf8(p)
 
 
-class BZRConformingFTPHandler(ftpserver.FTPHandler):
+class BzrConformingFTPHandler(ftpserver.FTPHandler):
 
     abstracted_fs = BzrConformingFS
 
@@ -132,7 +132,7 @@ class ftp_server(ftpserver.FTPServer):
         self.addr = self.socket.getsockname()
 
 
-class FTPServer(transport.Server):
+class FTPTestServer(transport.Server):
     """Common code for FTP server facilities."""
 
     def __init__(self):
@@ -167,7 +167,7 @@ class FTPServer(transport.Server):
         address = ('localhost', 0) # bind to a random port
         authorizer = AnonymousWithWriteAccessAuthorizer()
         authorizer.add_anonymous(self._root, perm='elradfmw')
-        self._ftp_server = ftp_server(address, BZRConformingFTPHandler,
+        self._ftp_server = ftp_server(address, BzrConformingFTPHandler,
                                       authorizer)
         # This is hacky as hell, will not work if we need two servers working
         # at the same time, but that's the best we can do so far...
