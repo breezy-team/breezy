@@ -33,7 +33,8 @@ Preparing the tree for release
 	submit_to = bazaar@lists.canonical.com
 	smtp_server = mail.your-domain.com:25
 
-    Please see <http://doc.bazaar-vcs.org/latest/developers/HACKING.html#an-overview-of-pqm> for more details on PQM
+    Please see <http://doc.bazaar-vcs.org/latest/developers/HACKING.html#an-overview-of-pqm>
+    for more details on PQM
 
 #. In the release branch, update  ``version_info`` in
    ``./bzrlib/__init__.py``.  Check the output of ``bzr --version``.

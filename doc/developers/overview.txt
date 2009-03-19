@@ -17,7 +17,7 @@ The current version of this document is available in the file
 
 See also:
 
- * `Bazaar Developer Documentation Catalog <../../developers/index.html>`_.
+ * `Bazaar Developer Documentation Catalog <index.html>`_.
  * `Bazaar Developer Guide <../../en/developer-guide/HACKING.html>`_
    (particularly the *Coding Style Guidelines* section.)
 

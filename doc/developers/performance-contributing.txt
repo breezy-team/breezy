@@ -56,4 +56,4 @@ willing to mentor contributors on performance issues. Just send a mail to the
 list asking for mentoring on the step of the performance plan you want to help
 with.
 
-.. _HACKING: HACKING.htm
+.. _HACKING: ../../en/developers/HACKING.htm
