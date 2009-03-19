@@ -23,7 +23,7 @@ import sys
 
 
 def get_module(target):
-    mod_name = "tools.doc_generate.autodoc_%s" % (target)
+    mod_name = "doc_generate.autodoc_%s" % (target)
     mod = __import__(mod_name)
     components = mod_name.split('.')
     for comp in components[1:]:
