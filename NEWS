@@ -4,6 +4,23 @@ Bazaar Release Notes
 
 .. contents::
 
+bzr 1.13.1 2009-03-19
+---------------------
+A couple regessions where found in the 1.13 release. The pyrex-generated C
+extensions are missing from the .tar.gz and .zip files.  Documentation on how
+to generate GNU ChangeLogs is wrong.
+
+  BUG FIXES:
+
+    * Distribution archives for 1.13 do not contain generated C extension
+      modules (Jean-Francois Roy, Bob Tanner #344465)
+
+    * GNU ChangeLog output can now be produced by bzr log --format
+      gnu-changelog is incorrect (Deejay, Bob Tanner, Martin Pool, 
+      Robert Collins #343928)
+
+    * Change ./bzr's _script_version to match ./bzrlib/__init__.py
+      version_info. (Bob Tanner, Martin Pool #345232)
 
 bzr 1.13 "paraskavedekatriaphobia" 2009-03-14
 ---------------------------------------------
