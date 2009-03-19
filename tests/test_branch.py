@@ -83,15 +83,22 @@ class TestGitBranch(tests.TestCaseInTempDir):
         self.assertEqual([default_mapping.revision_id_foreign_to_bzr(r) for r in (reva, revb)],
                          thebranch.revision_history())
 
-    def test_tags(self):
+    def test_tag_annotated(self):
         self.simple_commit_a()
         reva = tests.run_git('rev-parse', 'HEAD').strip()
-        
         tests.run_git('tag', '-a', '-m', 'add tag', 'foo')
-        
         thebranch = Branch.open('.')
         self.assertEquals({"foo": default_mapping.revision_id_foreign_to_bzr(reva)},
                           thebranch.tags.get_tag_dict())
+
+    def test_tag(self):
+        self.simple_commit_a()
+        reva = tests.run_git('rev-parse', 'HEAD').strip()
+        tests.run_git('tag', '-m', 'add tag', 'foo')
+        thebranch = Branch.open('.')
+        self.assertEquals({"foo": default_mapping.revision_id_foreign_to_bzr(reva)},
+                          thebranch.tags.get_tag_dict())
+
         
 
 class TestWithGitBranch(tests.TestCaseWithTransport):
@@ -122,7 +129,7 @@ class TestGitBranchFormat(tests.TestCase):
 
 
 
-class BranchFetchTests(tests.TestCaseInTempDir):
+class BranchTests(tests.TestCaseInTempDir):
 
     def make_onerev_branch(self):
         os.mkdir("d")
@@ -145,4 +152,15 @@ class BranchFetchTests(tests.TestCaseInTempDir):
         oldrepo = Repository.open(path)
         revid = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha)
         newbranch = self.clone_git_branch(path, "f")
+        self.assertEquals([revid], newbranch.repository.all_revision_ids())
+
+    def test_sprouted_tags(self):
+        path, gitsha = self.make_onerev_branch()
+        os.chdir(path)
+        tests.run_git("tag", "lala")
+        os.chdir(self.test_dir)
+        oldrepo = Repository.open(path)
+        revid = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha)
+        newbranch = self.clone_git_branch(path, "f")
+        self.assertEquals({"lala": revid}, newbranch.tags.get_tag_dict())
         self.assertEquals([revid], newbranch.repository.all_revision_ids())

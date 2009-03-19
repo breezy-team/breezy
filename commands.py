@@ -102,9 +102,9 @@ class cmd_git_import(Command):
         pb = ui.ui_factory.nested_progress_bar()
         try:
             for i, (name, ref) in enumerate(refs.iteritems()):
-                pb.update("creating branches", i, len(refs))
-                if name.endswith("^{}"):
+                if name.startswith("refs/tags/"):
                     continue
+                pb.update("creating branches", i, len(refs))
                 head_loc = os.path.join(dest_location, name)
                 try:
                     head_bzrdir = BzrDir.open(head_loc)
@@ -117,11 +117,7 @@ class cmd_git_import(Command):
                     head_branch = head_bzrdir.open_branch()
                 except NotBranchError:
                     head_branch = head_bzrdir.create_branch()
-                if ("%s^{}" % name) in refs:
-                    revid = mapping.revision_id_foreign_to_bzr(
-                        refs["%s^{}" % name])
-                else:
-                    revid = mapping.revision_id_foreign_to_bzr(ref)
+                revid = mapping.revision_id_foreign_to_bzr(ref)
                 head_branch.generate_revision_history(revid)
         finally:
             pb.finished()
