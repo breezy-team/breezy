@@ -32,7 +32,7 @@ struct source_info {
  */
 extern struct delta_index *
 create_delta_index(const struct source_info *src,
-                   const struct delta_index *old);
+                   struct delta_index *old);
 
 
 /*

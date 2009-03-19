@@ -209,14 +209,77 @@ limit_hash_buckets(struct unpacked_index_entry **hash,
 
 static struct delta_index *
 pack_delta_index(struct unpacked_index_entry **hash, unsigned int hsize,
-                 unsigned int num_entries, const struct delta_index *old_index)
+                 unsigned int num_entries, struct delta_index *old_index)
 {
-    unsigned int i, j, hmask, memsize;
+    unsigned int i, j, hmask, memsize, to_copy, fit_in_old, copied_count;
     struct unpacked_index_entry *entry;
     struct delta_index *index;
-    struct index_entry *packed_entry, **packed_hash, *old_entry;
+    struct index_entry *packed_entry, **packed_hash, *old_entry, *copy_from;
     struct index_entry null_entry = {0};
     void *mem;
+
+    hmask = hsize - 1;
+
+    if (old_index) {
+        fprintf(stderr, "Packing %d entries into %d for total of %d entries"
+                        " %x => %x\n",
+                        num_entries - old_index->num_entries,
+                        old_index->num_entries, num_entries,
+                        old_index->hash_mask, hmask);
+    } else {
+        fprintf(stderr, "Packing %d entries into a new index\n",
+                        num_entries);
+    }
+    /* First, see if we can squeeze the new items into the existing structure.
+     */
+    fit_in_old = 0;
+    copied_count = 0;
+    if (old_index && old_index->hash_mask == hmask) {
+        fit_in_old = 1;
+        for (i = 0; i < hsize; ++i) {
+            packed_entry = NULL;
+            for (entry = hash[i]; entry; entry = entry->next) {
+                if (packed_entry == NULL) {
+                    /* Find the last open spot */
+                    packed_entry = old_index->hash[i + 1];
+                    --packed_entry;
+                    while (packed_entry >= old_index->hash[i]
+                           && packed_entry->ptr == NULL) {
+                        --packed_entry;
+                    }
+                    ++packed_entry;
+                }
+                if (packed_entry >= old_index->hash[i+1]
+                    || packed_entry->ptr != NULL) {
+                    /* There are no free spots here :( */
+                    fit_in_old = 0;
+                    break;
+                }
+                /* We found an empty spot to put this entry
+                 * Copy it over, and remove it from the linked list, just in
+                 * case we end up running out of room later.
+                 */
+                *packed_entry++ = entry->entry;
+                assert(entry == hash[i]);
+                hash[i] = entry->next;
+                copied_count += 1;
+                old_index->num_entries++;
+            }
+            if (!fit_in_old) {
+                break;
+            }
+        }
+    }
+    if (old_index) {
+        if (fit_in_old) {
+            fprintf(stderr, "Fit all %d entries into old index\n",
+                            copied_count);
+            return NULL;
+        } else {
+            fprintf(stderr, "Fit only %d entries into old index,"
+                            " reallocating\n", copied_count);
+        }
+    }
     /*
      * Now create the packed index in array form
      * rather than linked lists.
@@ -230,7 +293,6 @@ pack_delta_index(struct unpacked_index_entry **hash, unsigned int hsize,
         return NULL;
     }
 
-    hmask = hsize - 1;
     index = mem;
     index->memsize = memsize;
     index->hash_mask = hmask;
@@ -258,12 +320,32 @@ pack_delta_index(struct unpacked_index_entry **hash, unsigned int hsize,
              * old_index->hash_mask? Would it make any real difference?
              */
             j = i & old_index->hash_mask;
+            copy_from = old_index->hash[j];
+            to_copy = 0;
             for (old_entry = old_index->hash[j];
                  old_entry < old_index->hash[j + 1] && old_entry->ptr != NULL;
                  old_entry++) {
                 if ((old_entry->val & hmask) == i) {
-                    *packed_entry++ = *old_entry;
+                    to_copy += 1;
+                } else {
+                    /* We reached the end of a string of entries that should
+                     * be copied. Copy the group, and then move the pointers.
+                     */
+                    if (to_copy > 0) {
+                        memcpy(packed_entry, copy_from,
+                               sizeof(*old_entry)*to_copy);
+                        packed_entry += to_copy;
+                        to_copy = 0;
+                    }
+                    /* Don't copy *this* entry, and start the copy after this */
+                    copy_from = old_entry + 1;
                 }
+            }
+            if (to_copy > 0) {
+                memcpy(packed_entry, copy_from,
+                       sizeof(*old_entry)*to_copy);
+                packed_entry += to_copy;
+                to_copy = 0;
             }
         }
         for (entry = hash[i]; entry; entry = entry->next) {
@@ -292,135 +374,8 @@ pack_delta_index(struct unpacked_index_entry **hash, unsigned int hsize,
 
 
 struct delta_index *
-create_index_from_old_and_hash(const struct delta_index *old,
-                               struct unpacked_index_entry **hash,
-                               unsigned int hsize,
-                               unsigned int num_entries)
-{
-    unsigned int i, memsize, total_num_entries, num_nulls;
-    struct unpacked_index_entry *entry;
-    struct delta_index *index;
-    struct index_entry *packed_entry, **packed_hash, null_entry = {0};
-    struct index_entry *copy_from_start, *copy_to_start, *old_entry;
-    size_t total_copy, to_copy;
-    unsigned int num_ops;
-    unsigned int bytes_copied;
-    void *mem;
-    /*
-     * Now create the packed index in array form
-     * rather than linked lists.
-     */
-    total_num_entries = num_entries + old->num_entries;
-    memsize = sizeof(*index)
-        + sizeof(*packed_hash) * (hsize+1)
-        + sizeof(*packed_entry) * (total_num_entries + hsize * EXTRA_NULLS);
-    mem = malloc(memsize);
-    if (!mem) {
-        return NULL;
-    }
-
-    index = mem;
-    index->memsize = memsize;
-    index->hash_mask = hsize - 1;
-    index->num_entries = total_num_entries;
-
-    mem = index->hash;
-    packed_hash = mem;
-    mem = packed_hash + (hsize+1);
-    packed_entry = mem;
-
-    total_copy = 0;
-    bytes_copied = 0;
-    num_ops = 0;
-    copy_from_start = copy_to_start = NULL;
-    num_nulls = 0;
-    for (i = 0; i < hsize; i++) {
-        /*
-         * Coalesce all entries belonging to one linked list
-         * into consecutive array entries.
-         * The entries in old all come before the entries in hash.
-         */
-        packed_hash[i] = packed_entry;
-        old_entry = old->hash[i+1];
-        /* Find how many NULL items are in this hash section */
-        old_entry--;
-        num_nulls = 0;
-        while (old_entry >= old->hash[i] && old_entry->ptr == NULL) {
-            old_entry--;
-            num_nulls++;
-        }
-        old_entry++;
-        to_copy = (old_entry - old->hash[i]);
-        if (to_copy > 0) {
-            /* This next range can be copied wholesale. However, we will wait
-             * until we have to insert something from the new data before we
-             * copy everything.
-             * So for now, just reserve space for the copy.
-             */
-            if (total_copy == 0) {
-                copy_from_start = old->hash[i];
-                copy_to_start = packed_entry;
-            }
-            packed_entry += to_copy;
-            total_copy += to_copy;
-            assert((packed_entry - copy_to_start) == total_copy);
-            assert((old_entry - copy_from_start) == total_copy);
-        }
-        for (entry = hash[i]; entry; entry = entry->next) {
-            /* We have an entry to insert, so flush the copy buffer */
-            if (total_copy > 0) {
-                assert(copy_to_start != NULL);
-                assert(copy_from_start != NULL);
-                memcpy(copy_to_start, copy_from_start,
-                       total_copy * sizeof(struct index_entry));
-                bytes_copied += (total_copy * sizeof(struct index_entry));
-                total_copy = 0;
-                copy_from_start = copy_to_start = NULL;
-                num_ops += 1;
-            }
-            *packed_entry++ = entry->entry;
-        }
-        if (total_copy == 0) {
-            /* We inserted some entries, copy the null entries to the end */
-            for (; num_nulls > 0; --num_nulls) {
-                *packed_entry++ = null_entry;
-            }
-        } else {
-            /* We haven't done an insert yet, so just queue the null entries
-             * for copying.
-             */
-            total_copy += num_nulls;
-            packed_entry += num_nulls;
-            assert((packed_entry - copy_to_start) == total_copy);
-            assert((old->hash[i+1] - copy_from_start) == total_copy);
-            num_nulls = 0;
-        }
-    }
-    if (total_copy > 0) {
-        assert(copy_to_start != NULL);
-        assert(copy_from_start != NULL);
-        memcpy(copy_to_start, copy_from_start,
-               total_copy * sizeof(struct index_entry));
-        bytes_copied += (total_copy * sizeof(struct index_entry));
-        num_ops += 1;
-        for (; num_nulls > 0; --num_nulls) {
-            *packed_entry++ = null_entry;
-        }
-    }
-
-    /* Sentinel value to indicate the length of the last hash bucket */
-    packed_hash[hsize] = packed_entry;
-
-    assert(packed_entry - (struct index_entry *)mem
-           == total_num_entries + hsize * EXTRA_NULLS);
-    index->last_entry = (packed_entry - 1);
-    return index;
-}
-
-
-struct delta_index *
 create_delta_index(const struct source_info *src,
-                   const struct delta_index *old)
+                   struct delta_index *old)
 {
     unsigned int i, hsize, hmask, num_entries, prev_val, *hash_count;
     unsigned int total_num_entries;
@@ -494,12 +449,15 @@ create_delta_index(const struct source_info *src,
     total_num_entries = limit_hash_buckets(hash, hash_count, hsize,
                                            total_num_entries);
     free(hash_count);
+    if (old) {
+        old->last_src = src;
+    }
     index = pack_delta_index(hash, hsize, total_num_entries, old);
-    index->last_src = src;
     free(hash);
     if (!index) {
         return NULL;
     }
+    index->last_src = src;
     return index;
 }
 
