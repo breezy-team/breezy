@@ -382,6 +382,7 @@ class GCCHKPacker(Packer):
         try:
             stream = vf_to_stream(source_vf, keys, message, child_pb)
             for _ in target_vf._insert_record_stream(stream,
+                                                     random_id=True,
                                                      reuse_blocks=False):
                 pass
         finally:
@@ -415,6 +416,7 @@ class GCCHKPacker(Packer):
             for stream in self._get_chk_streams(source_vf, total_keys,
                                                 pb=child_pb):
                 for _ in target_vf._insert_record_stream(stream,
+                                                         random_id=True,
                                                          reuse_blocks=False):
                     pass
         finally:
