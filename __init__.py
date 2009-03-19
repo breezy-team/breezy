@@ -65,7 +65,10 @@ def collapse_by_person(committers):
     counter_to_info = {}
     counter = 0
     for email, revs in committers.iteritems():
-        fullnames = find_fullnames(rev.get_apparent_author() for rev in revs)
+        authors = []
+        for rev in revs:
+            authors += rev.get_apparent_authors()
+        fullnames = find_fullnames(authors)
         match = None
         for count, fullname in fullnames:
             if fullname and fullname in name_to_counter:
