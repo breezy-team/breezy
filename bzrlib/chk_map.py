@@ -523,7 +523,7 @@ class Node(object):
     def __repr__(self):
         items_str = str(sorted(self._items))
         if len(items_str) > 20:
-            items_str = items_str[16] + '...]'
+            items_str = items_str[:16] + '...]'
         return '%s(key:%s len:%s size:%s max:%s prefix:%s items:%s)' % (
             self.__class__.__name__, self._key, self._len, self._raw_size,
             self._maximum_size, self._search_prefix, items_str)
@@ -607,9 +607,9 @@ class LeafNode(Node):
             self._search_key_func = search_key_func
 
     def __repr__(self):
-        items_str = sorted(self._items)
+        items_str = str(sorted(self._items))
         if len(items_str) > 20:
-            items_str = items_str[16] + '...]'
+            items_str = items_str[:16] + '...]'
         return \
             '%s(key:%s len:%s size:%s max:%s prefix:%s keywidth:%s items:%s)' \
             % (self.__class__.__name__, self._key, self._len, self._raw_size,
