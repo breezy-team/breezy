@@ -25,10 +25,11 @@
 #define RABIN_SHIFT 23
 #define RABIN_WINDOW 16
 
-/* The hash map is sized to put 4 entries per bucket, this gives us 3 blank
- * spaces.
+/* The hash map is sized to put 4 entries per bucket, this gives us ~even room
+ * for more data. Tweaking this number above 4 doesn't seem to help much,
+ * anyway.
  */
-#define EXTRA_NULLS 3
+#define EXTRA_NULLS 4
 
 static const unsigned int T[256] = {
     0x00000000, 0xab59b4d1, 0x56b369a2, 0xfdeadd73, 0x063f6795, 0xad66d344,
