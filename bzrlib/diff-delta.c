@@ -209,12 +209,12 @@ limit_hash_buckets(struct unpacked_index_entry **hash,
 
 static struct delta_index *
 pack_delta_index(struct unpacked_index_entry **hash, unsigned int hsize,
-                 unsigned int num_entries)
+                 unsigned int num_entries, const struct delta_index *old_index)
 {
-    unsigned int i, j, memsize;
+    unsigned int i, j, hmask, memsize;
     struct unpacked_index_entry *entry;
     struct delta_index *index;
-    struct index_entry *packed_entry, **packed_hash;
+    struct index_entry *packed_entry, **packed_hash, *old_entry;
     struct index_entry null_entry = {0};
     void *mem;
     /*
@@ -230,10 +230,14 @@ pack_delta_index(struct unpacked_index_entry **hash, unsigned int hsize,
         return NULL;
     }
 
+    hmask = hsize - 1;
     index = mem;
     index->memsize = memsize;
-    index->hash_mask = hsize - 1;
+    index->hash_mask = hmask;
     index->num_entries = num_entries;
+    if (old_index) {
+        assert(hmask >= old_index->hash_mask);
+    }
 
     mem = index->hash;
     packed_hash = mem;
@@ -246,6 +250,22 @@ pack_delta_index(struct unpacked_index_entry **hash, unsigned int hsize,
          * into consecutive array entries.
          */
         packed_hash[i] = packed_entry;
+        /* Old comes earlier as a source, so it always comes first in a given
+         * hash bucket.
+         */
+        if (old_index) {
+            /* Could we optimize this to use memcpy when hmask ==
+             * old_index->hash_mask? Would it make any real difference?
+             */
+            j = i & old_index->hash_mask;
+            for (old_entry = old_index->hash[j];
+                 old_entry < old_index->hash[j + 1] && old_entry->ptr != NULL;
+                 old_entry++) {
+                if ((old_entry->val & hmask) == i) {
+                    *packed_entry++ = *old_entry;
+                }
+            }
+        }
         for (entry = hash[i]; entry; entry = entry->next) {
             *packed_entry++ = entry->entry;
         }
@@ -268,37 +288,6 @@ pack_delta_index(struct unpacked_index_entry **hash, unsigned int hsize,
             == num_entries + hsize*EXTRA_NULLS);
     index->last_entry = (packed_entry - 1);
     return index;
-}
-
-void include_entries_from_index(struct unpacked_index_entry **hash,
-                                unsigned int *hash_count,
-                                unsigned int hsize,
-                                struct unpacked_index_entry *entry,
-                                const struct delta_index *old)
-{
-    unsigned int hmask, masked_val;
-    struct index_entry *old_entry;
-
-    hmask = hsize - 1;
-    /* Iterate backwards through the existing entries
-     * This is so that matches early in the file end up being the first pointer
-     * in the linked list.
-     * TODO: We know that all old entries are going to occur before the new
-     *       entries, and that we are going to follow this with a limit and
-     *       then pack step. There is probably a way we could optimize this
-     *       step, so that we wouldn't have to copy everything into a new
-     *       buffer, and then copy everything again into yet another buffer.
-     */
-    for (old_entry = old->last_entry; old_entry >= old->hash[0]; old_entry--) {
-        masked_val = old_entry->val & hmask;
-        if (old_entry->ptr != NULL) {
-            /* Skip the null entries */
-            entry->entry = *old_entry;
-            entry->next = hash[masked_val];
-            hash[masked_val] = entry++;
-            hash_count[masked_val]++;
-        }
-    }
 }
 
 
@@ -501,17 +490,11 @@ create_delta_index(const struct source_info *src,
             hash_count[i]++;
         }
     }
-    /* If we have an existing delta_index, we want to bring its info into the
-     * new structure. We assume that the existing structure's objects all occur
-     * before the new source, so they get first precedence in the index.
-     */
-    if (old != NULL)
-        include_entries_from_index(hash, hash_count, hsize, entry, old);
-
+    /* TODO: It would be nice to limit_hash_buckets at a better time. */
     total_num_entries = limit_hash_buckets(hash, hash_count, hsize,
                                            total_num_entries);
     free(hash_count);
-    index = pack_delta_index(hash, hsize, total_num_entries);
+    index = pack_delta_index(hash, hsize, total_num_entries, old);
     index->last_src = src;
     free(hash);
     if (!index) {
@@ -530,7 +513,7 @@ struct index_entry_linked_list **
 _put_entries_into_hash(struct index_entry *entries, unsigned int num_entries,
                        unsigned int hsize)
 {
-    unsigned int i, hash_offset, hmask, memsize;
+    unsigned int hash_offset, hmask, memsize;
     struct index_entry *entry, *last_entry;
     struct index_entry_linked_list *out_entry, **hash;
     void *mem;
