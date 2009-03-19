@@ -180,17 +180,8 @@ class BTreeBuilder(index.GraphIndexBuilder):
         combine mem with the first and second indexes, creating a new one of
         size 4x. On the fifth create a single new one, etc.
         """
-        iterators_to_combine = [self._iter_mem_nodes()]
-        pos = -1
-        for pos, backing in enumerate(self._backing_indices):
-            if backing is None:
-                pos -= 1
-                break
-            iterators_to_combine.append(backing.iter_all_entries())
-        backing_pos = pos + 1
-        new_backing_file, size = \
-            self._write_nodes(self._iter_smallest(iterators_to_combine),
-                              allow_optimize=False)
+        (new_backing_file,
+         size) = self._write_nodes(self._iter_mem_nodes(), allow_optimize=False)
         dir_path, base_name = osutils.split(new_backing_file.name)
         # Note: The transport here isn't strictly needed, because we will use
         #       direct access to the new_backing._file object
@@ -198,11 +189,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
                                       base_name, size)
         # GC will clean up the file
         new_backing._file = new_backing_file
-        if len(self._backing_indices) == backing_pos:
-            self._backing_indices.append(None)
-        self._backing_indices[backing_pos] = new_backing
-        for pos in range(backing_pos):
-            self._backing_indices[pos] = None
+        self._backing_indices.append(new_backing)
         self._keys = set()
         self._nodes = {}
         self._nodes_by_key = None
@@ -368,7 +355,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
         for row in reversed(rows):
             pad = (type(row) != _LeafBuilderRow)
             row.finish_node(pad=pad)
-        result = tempfile.NamedTemporaryFile()
+        result = tempfile.NamedTemporaryFile(prefix='bzr-index-')
         lines = [_BTSIGNATURE]
         lines.append(_OPTION_NODE_REFS + str(self.reference_lists) + '\n')
         lines.append(_OPTION_KEY_ELEMENTS + str(self._key_length) + '\n')
