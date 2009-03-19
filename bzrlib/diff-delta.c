@@ -25,7 +25,7 @@
 #define RABIN_SHIFT 23
 #define RABIN_WINDOW 16
 
-/* The hash map is sized to put 4 entries per bucket, this gives us 2 blank
+/* The hash map is sized to put 4 entries per bucket, this gives us 3 blank
  * spaces.
  */
 #define EXTRA_NULLS 3
@@ -126,6 +126,11 @@ struct index_entry {
     const unsigned char *ptr;
     const struct source_info *src;
     unsigned int val;
+};
+
+struct index_entry_linked_list {
+    struct index_entry *p_entry;
+    struct index_entry_linked_list *next;
 };
 
 struct unpacked_index_entry {
@@ -424,8 +429,9 @@ create_index_from_old_and_hash(const struct delta_index *old,
 }
 
 
-struct delta_index * create_delta_index(const struct source_info *src,
-                                        const struct delta_index *old)
+struct delta_index *
+create_delta_index(const struct source_info *src,
+                   const struct delta_index *old)
 {
     unsigned int i, hsize, hmask, num_entries, prev_val, *hash_count;
     unsigned int total_num_entries;
@@ -514,18 +520,76 @@ struct delta_index * create_delta_index(const struct source_info *src,
     return index;
 }
 
+/* Take some entries, and put them into a custom hash.
+ * @param entries   A list of entries, sorted by position in file
+ * @param num_entries   Length of entries
+ * @param out_hsize     The maximum size of the hash, the final size will be
+ *                      returned here
+ */
+struct index_entry_linked_list **
+_put_entries_into_hash(struct index_entry *entries, unsigned int num_entries,
+                       unsigned int *out_hsize)
+{
+    unsigned int i, hsize, hmask, memsize;
+    struct index_entry *entry, *last_entry;
+    struct index_entry_linked_list *out_entry, **hash;
+    void *mem;
+
+    /* Avoid getting collisions, as it makes the code faster, and this will be
+     * a temp buffer anyway.
+     */
+    hsize = num_entries * 2;
+    for (i = 4; (1u << i) < hsize && i < 31; i++);
+    hsize = 1 << i;
+    if (hsize > *out_hsize) {
+        hsize = *out_hsize;
+    }
+    hmask = hsize - 1;
+    *out_hsize = hsize;
+
+    memsize = sizeof(*hash) * hsize +
+          sizeof(*out_entry) * num_entries;
+    mem = malloc(memsize);
+    if (!mem)
+        return NULL;
+    hash = mem;
+    mem = hash + hsize;
+    out_entry = mem;
+
+    memset(hash, 0, sizeof(*hash)*(hsize+1));
+
+    /* We know that entries are in the order we want in the output, but they
+     * aren't "grouped" by hash bucket yet.
+     */
+    last_entry = entries + num_entries;
+    for (entry = entries + num_entries - 1; entry >= entries; --entry) {
+        i = entry->val & hmask;
+        out_entry->p_entry = entry;
+        out_entry->next = hash[i];
+        /* TODO: Remove entries that have identical vals, or at least filter
+         *       the map a little bit.
+         * if (hash[i] != NULL) {
+         * }
+         */
+        hash[i] = out_entry;
+    }
+    return hash;
+}
+
 
 struct delta_index *
 create_index_from_old_and_new_entries(const struct delta_index *old_index,
                                       struct index_entry *entries,
                                       unsigned int num_entries)
 {
-    unsigned int i, j, hsize, hmask, total_num_entries, found_null;
+    unsigned int i, j, hsize, hmask, total_num_entries;
     struct delta_index *index;
     struct index_entry *entry, *packed_entry, **packed_hash;
     struct index_entry *last_entry, null_entry = {0};
     void *mem;
     unsigned long memsize;
+    struct index_entry_linked_list *unpacked_entry, **mini_hash;
+    unsigned int mini_hsize, mini_hmask;
 
     /* Determine index hash size.  Note that indexing skips the
        first byte to allow for optimizing the Rabin's polynomial
@@ -568,6 +632,14 @@ create_index_from_old_and_new_entries(const struct delta_index *old_index,
     mem = packed_hash + (hsize+1);
     packed_entry = mem;
 
+    mini_hsize = hsize;
+    mini_hash = _put_entries_into_hash(entries, num_entries, &mini_hsize);
+    if (mini_hash == NULL) {
+        free(index);
+        return NULL;
+    }
+    mini_hmask = mini_hsize - 1;
+    assert(mini_hmask <= hmask);
     last_entry = entries + num_entries;
     for (i = 0; i < hsize; i++) {
         /*
@@ -620,36 +692,11 @@ create_index_from_old_and_new_entries(const struct delta_index *old_index,
          * entries, the tradeoff is a malloc, 1 pass over the entries, copying
          * them into a sorted buffer, and a free() when done,
          */
-        for (entry = entries; entry < last_entry; ++entry) {
-            if (entry->ptr != NULL && ((entry->val & hmask) == i)) {
-                /* A non-empty entry, which fits in this hash bucket */
-                *packed_entry++ = *entry;
-                *entry = null_entry;
-                if (entry == entries) {
-                    /* This is the first entry in the list, skip all of the
-                     * null entries from the front.
-                     */
-                    while (entries < last_entry && entries->ptr == 0) {
-                        ++entries;
-                        /* we can also skip processing any of these entries in
-                         * the current pass
-                         */
-                        ++entry;
-                    }
-                    /* But we need to adjust back one, because the loop will
-                     * increment as well.
-                     */
-                    --entry;
-                } else if (entry == (last_entry - 1)) {
-                    /* This is the last entry, remove all the trailing null
-                     * entries from the list.
-                     */
-                    --last_entry;
-                    while (last_entry > entries && last_entry->ptr == NULL) {
-                        --last_entry;
-                    }
-                    ++last_entry;
-                }
+        for (unpacked_entry = mini_hash[i & mini_hmask];
+             unpacked_entry;
+             unpacked_entry = unpacked_entry->next) {
+            if ((unpacked_entry->p_entry->val & hmask) == i) {
+                *packed_entry++ = *(unpacked_entry->p_entry);
             }
         }
         /* Now insert some extra nulls */
@@ -657,6 +704,7 @@ create_index_from_old_and_new_entries(const struct delta_index *old_index,
             *packed_entry++ = null_entry;
         }
     }
+    free(mini_hash);
 
     /* Sentinel value to indicate the length of the last hash bucket */
     packed_hash[hsize] = packed_entry;
