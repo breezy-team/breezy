@@ -300,6 +300,10 @@ pack_delta_index(struct unpacked_index_entry **hash, unsigned int hsize,
     index->hash_mask = hmask;
     index->num_entries = num_entries;
     if (old_index) {
+        if (hmask < old_index->hash_mask) {
+            fprintf(stderr, "hash mask was shrunk %x => %x\n",
+                            old_index->hash_mask, hmask);
+        }
         assert(hmask >= old_index->hash_mask);
     }
 
@@ -389,6 +393,10 @@ create_delta_index(const struct source_info *src,
     for (i = 4; (1u << i) < hsize && i < 31; i++);
     hsize = 1 << i;
     hmask = hsize - 1;
+    if (old && old->hash_mask < hmask) {
+        hmask = old->hash_mask;
+        hsize = hmask + 1;
+    }
 
     /* allocate lookup index */
     memsize = sizeof(*hash) * hsize +
