@@ -591,13 +591,6 @@ create_index_from_old_and_new_entries(const struct delta_index *old_index,
                  entry < old_index->hash[j+1] && entry->ptr != NULL;
                  ++entry) {
                 assert((entry->val & old_index->hash_mask) == j);
-                // if (!(j == i || j + old_index->hash_mask + 1 == i)) {
-                //     fprintf(stderr, "Old hash entry %x"
-                //                     " doesn't fit with new %x\n"
-                //                     "old_mask: %x new_mask: %x\n",
-                //                     j, i, old_index->hash_mask, hmask);
-                // }
-                assert(j == i || j + old_index->hash_mask + 1 == i);
                 if ((entry->val & hmask) == i) {
                     /* Any entries not picked up here will be picked up on the
                      * next pass.
