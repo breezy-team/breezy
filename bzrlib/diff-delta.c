@@ -221,16 +221,16 @@ pack_delta_index(struct unpacked_index_entry **hash, unsigned int hsize,
 
     hmask = hsize - 1;
 
-    if (old_index) {
-        fprintf(stderr, "Packing %d entries into %d for total of %d entries"
-                        " %x => %x\n",
-                        num_entries - old_index->num_entries,
-                        old_index->num_entries, num_entries,
-                        old_index->hash_mask, hmask);
-    } else {
-        fprintf(stderr, "Packing %d entries into a new index\n",
-                        num_entries);
-    }
+    // if (old_index) {
+    //     fprintf(stderr, "Packing %d entries into %d for total of %d entries"
+    //                     " %x => %x\n",
+    //                     num_entries - old_index->num_entries,
+    //                     old_index->num_entries, num_entries,
+    //                     old_index->hash_mask, hmask);
+    // } else {
+    //     fprintf(stderr, "Packing %d entries into a new index\n",
+    //                     num_entries);
+    // }
     /* First, see if we can squeeze the new items into the existing structure.
      */
     fit_in_old = 0;
@@ -273,13 +273,13 @@ pack_delta_index(struct unpacked_index_entry **hash, unsigned int hsize,
     }
     if (old_index) {
         if (fit_in_old) {
-            fprintf(stderr, "Fit all %d entries into old index\n",
-                            copied_count);
+            // fprintf(stderr, "Fit all %d entries into old index\n",
+            //                 copied_count);
             /* No need to allocate a new buffer */
             return NULL;
         } else {
-            fprintf(stderr, "Fit only %d entries into old index,"
-                            " reallocating\n", copied_count);
+            // fprintf(stderr, "Fit only %d entries into old index,"
+            //                 " reallocating\n", copied_count);
         }
     }
     /*
@@ -529,9 +529,9 @@ create_index_from_old_and_new_entries(const struct delta_index *old_index,
         hsize = old_index->hash_mask + 1;
     }
     hmask = hsize - 1;
-    fprintf(stderr, "resizing index to insert %d entries into array"
-                    " with %d entries: %x => %x\n",
-            num_entries, old_index->num_entries, old_index->hash_mask, hmask);
+    // fprintf(stderr, "resizing index to insert %d entries into array"
+    //                 " with %d entries: %x => %x\n",
+    //         num_entries, old_index->num_entries, old_index->hash_mask, hmask);
 
     memsize = sizeof(*index)
         + sizeof(*packed_hash) * (hsize+1)
@@ -830,7 +830,7 @@ create_delta_index_from_delta(const struct source_info *src,
             entry, num_entries);
     } else {
         new_index = NULL;
-        fprintf(stderr, "inserted %d without resizing\n", num_inserted);
+        // fprintf(stderr, "inserted %d without resizing\n", num_inserted);
     }
     free(entries);
     return new_index;
