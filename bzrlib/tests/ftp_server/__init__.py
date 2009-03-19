@@ -57,7 +57,7 @@ class _FTPServerFeature(tests.Feature):
 FTPServerFeature = _FTPServerFeature()
 
 
-class UnavailableFTPServer(object):
+class UnavailableFTPTestServer(object):
     """Dummy ftp test server.
 
     This allows the test suite report the number of tests needing that
