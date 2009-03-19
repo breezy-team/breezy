@@ -74,7 +74,7 @@ class FetchGraphWalkerTests(TestCaseWithTransport):
         self.assertEquals(None, graphwalker.next())
 
 
-class LocalRepositoryFetchTests(TestCaseWithTransport):
+class RepositoryFetchTests:
 
     def make_git_repo(self, path):
         os.mkdir(path)
@@ -88,9 +88,6 @@ class LocalRepositoryFetchTests(TestCaseWithTransport):
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos, revision_id=revision_id)
         return newrepos
-
-    def open_git_repo(self, path):
-        return Repository.open(path)
 
     def test_empty(self):
         self.make_git_repo("d")
@@ -138,7 +135,7 @@ class LocalRepositoryFetchTests(TestCaseWithTransport):
         self.assertEquals([revid1], newrepo.all_revision_ids())
         revid2 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha2)
         newrepo.fetch(oldrepo, revision_id=revid2)
-        self.assertEquals([revid1, revid2], newrepo.all_revision_ids())
+        self.assertEquals(set([revid1, revid2]), set(newrepo.all_revision_ids()))
 
     def test_executable(self):
         self.make_git_repo("d")
@@ -157,6 +154,12 @@ class LocalRepositoryFetchTests(TestCaseWithTransport):
         self.assertEquals(True, tree.inventory[tree.path2id("foobar")].executable)
         self.assertTrue(tree.has_filename("notexec"))
         self.assertEquals(False, tree.inventory[tree.path2id("notexec")].executable)
+
+
+class LocalRepositoryFetchTests(RepositoryFetchTests, TestCaseWithTransport):
+
+    def open_git_repo(self, path):
+        return Repository.open(path)
 
 
 class ImportObjects(TestCaseWithTransport):
