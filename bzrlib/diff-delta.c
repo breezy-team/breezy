@@ -528,24 +528,14 @@ create_delta_index(const struct source_info *src,
  */
 struct index_entry_linked_list **
 _put_entries_into_hash(struct index_entry *entries, unsigned int num_entries,
-                       unsigned int *out_hsize)
+                       unsigned int hsize)
 {
-    unsigned int i, hsize, hmask, memsize;
+    unsigned int i, hash_offset, hmask, memsize;
     struct index_entry *entry, *last_entry;
     struct index_entry_linked_list *out_entry, **hash;
     void *mem;
 
-    /* Avoid getting collisions, as it makes the code faster, and this will be
-     * a temp buffer anyway.
-     */
-    hsize = num_entries * 2;
-    for (i = 4; (1u << i) < hsize && i < 31; i++);
-    hsize = 1 << i;
-    if (hsize > *out_hsize) {
-        hsize = *out_hsize;
-    }
     hmask = hsize - 1;
-    *out_hsize = hsize;
 
     memsize = sizeof(*hash) * hsize +
           sizeof(*out_entry) * num_entries;
@@ -563,15 +553,16 @@ _put_entries_into_hash(struct index_entry *entries, unsigned int num_entries,
      */
     last_entry = entries + num_entries;
     for (entry = entries + num_entries - 1; entry >= entries; --entry) {
-        i = entry->val & hmask;
+        hash_offset = entry->val & hmask;
         out_entry->p_entry = entry;
-        out_entry->next = hash[i];
+        out_entry->next = hash[hash_offset];
         /* TODO: Remove entries that have identical vals, or at least filter
          *       the map a little bit.
          * if (hash[i] != NULL) {
          * }
          */
-        hash[i] = out_entry;
+        hash[hash_offset] = out_entry;
+        ++out_entry;
     }
     return hash;
 }
@@ -589,7 +580,6 @@ create_index_from_old_and_new_entries(const struct delta_index *old_index,
     void *mem;
     unsigned long memsize;
     struct index_entry_linked_list *unpacked_entry, **mini_hash;
-    unsigned int mini_hsize, mini_hmask;
 
     /* Determine index hash size.  Note that indexing skips the
        first byte to allow for optimizing the Rabin's polynomial
@@ -632,14 +622,11 @@ create_index_from_old_and_new_entries(const struct delta_index *old_index,
     mem = packed_hash + (hsize+1);
     packed_entry = mem;
 
-    mini_hsize = hsize;
-    mini_hash = _put_entries_into_hash(entries, num_entries, &mini_hsize);
+    mini_hash = _put_entries_into_hash(entries, num_entries, hsize);
     if (mini_hash == NULL) {
         free(index);
         return NULL;
     }
-    mini_hmask = mini_hsize - 1;
-    assert(mini_hmask <= hmask);
     last_entry = entries + num_entries;
     for (i = 0; i < hsize; i++) {
         /*
@@ -692,12 +679,11 @@ create_index_from_old_and_new_entries(const struct delta_index *old_index,
          * entries, the tradeoff is a malloc, 1 pass over the entries, copying
          * them into a sorted buffer, and a free() when done,
          */
-        for (unpacked_entry = mini_hash[i & mini_hmask];
+        for (unpacked_entry = mini_hash[i];
              unpacked_entry;
              unpacked_entry = unpacked_entry->next) {
-            if ((unpacked_entry->p_entry->val & hmask) == i) {
-                *packed_entry++ = *(unpacked_entry->p_entry);
-            }
+            assert((unpacked_entry->p_entry->val & hmask) == i);
+            *packed_entry++ = *(unpacked_entry->p_entry);
         }
         /* Now insert some extra nulls */
         for (j = 0; j < EXTRA_NULLS; ++j) {
