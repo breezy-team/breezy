@@ -214,7 +214,7 @@ class TestGroupCompressBlock(tests.TestCase):
         self.assertEqual('', block._z_content)
         block._ensure_content()
         self.assertEqual('', block._content)
-        self.assertIs(None, block._z_content)
+        self.assertEqual('', block._z_content)
         block._ensure_content() # Ensure content is safe to call 2x
 
     def test_from_bytes_with_labels(self):
@@ -264,7 +264,7 @@ class TestGroupCompressBlock(tests.TestCase):
         self.assertEqual(z_content, block._z_content)
         self.assertIs(None, block._content)
         block._ensure_content()
-        self.assertIs(None, block._z_content)
+        self.assertEqual(z_content, block._z_content)
         self.assertEqual(content, block._content)
 
     def test_from_old_bytes(self):
@@ -282,7 +282,7 @@ class TestGroupCompressBlock(tests.TestCase):
             z_bytes)
         self.assertIsInstance(block, groupcompress.GroupCompressBlock)
         block._ensure_content()
-        self.assertIs(None, block._z_content)
+        self.assertEqual(z_content, block._z_content)
         self.assertEqual(content, block._content)
 
     def test_add_entry(self):

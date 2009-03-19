@@ -227,16 +227,21 @@ class GroupCompressBlock(object):
             else:
                 # Start a zlib decompressor
                 assert self._compressor_name == 'zlib'
-                self._z_content_decompressor = zlib.decompressobj()
-                # Seed the decompressor with the uncompressed bytes, so that
-                # the rest of the code is simplified
-                self._content = self._z_content_decompressor.decompress(
-                    self._z_content, _ZLIB_DECOMP_WINDOW)
+                if num_bytes is None:
+                    self._content = zlib.decompress(self._z_content)
+                else:
+                    self._z_content_decompressor = zlib.decompressobj()
+                    # Seed the decompressor with the uncompressed bytes, so
+                    # that the rest of the code is simplified
+                    self._content = self._z_content_decompressor.decompress(
+                        self._z_content, num_bytes + _ZLIB_DECOMP_WINDOW)
                 # Any bytes remaining to be decompressed will be in the
                 # decompressors 'unconsumed_tail'
-            self._z_content = None
         # Do we have enough bytes already?
         if num_bytes is not None and len(self._content) >= num_bytes:
+            return
+        if num_bytes is None and self._z_content_decompressor is None:
+            # We must have already decompressed everything
             return
         # If we got this far, and don't have a decompressor, something is wrong
         assert self._z_content_decompressor is not None
@@ -508,6 +513,7 @@ class _LazyGroupCompressFactory(object):
             else:
                 return ''
         if storage_kind in ('fulltext', 'chunked'):
+            self._manager._prepare_for_extract()
             block = self._manager._block
             _, bytes = block.extract(self.key, self._start, self._end)
             if storage_kind == 'fulltext':
@@ -525,6 +531,7 @@ class _LazyGroupContentManager(object):
         self._block = block
         # We need to preserve the ordering
         self._factories = []
+        self._last_byte = 0
 
     def add_factory(self, key, parents, start, end):
         if not self._factories:
@@ -534,6 +541,7 @@ class _LazyGroupContentManager(object):
         # Note that this creates a reference cycle....
         factory = _LazyGroupCompressFactory(key, parents, self,
             start, end, first=first)
+        self._last_byte = max(end, self._last_byte)
         self._factories.append(factory)
 
     def get_record_stream(self):
@@ -570,6 +578,7 @@ class _LazyGroupContentManager(object):
             factory._start = cur_endpoint
             factory._end = end_point
             cur_endpoint = end_point
+        self._last_byte = cur_endpoint
         new_block = compressor.flush()
         # TODO: Should we check that new_block really *is* smaller than the old
         #       block? It seems hard to come up with a method that it would
@@ -580,6 +589,14 @@ class _LazyGroupContentManager(object):
         trace.mutter('creating new compressed block on-the-fly in %.3fs'
                      ' %d bytes => %d bytes', delta, old_length,
                      self._block._content_length)
+
+    def _prepare_for_extract(self):
+        """A _LazyGroupCompressFactory is about to extract to fulltext."""
+        # We expect that if one child is going to fulltext, all will be. This
+        # helps prevent all of them from extracting a small amount at a time.
+        # Which in itself isn't terribly expensive, but resizing 2MB 32kB at a
+        # time (self._block._content) is a little expensive.
+        self._block._ensure_content(self._last_byte)
 
     def _check_rebuild_block(self):
         """Check to see if our block should be repacked."""
