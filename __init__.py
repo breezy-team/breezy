@@ -33,6 +33,17 @@ from bzrlib.transport import register_lazy_transport
 from bzrlib.commands import plugin_cmds
 from bzrlib.trace import warning
 
+# versions ending in 'exp' mean experimental mappings
+# versions ending in 'dev' mean development version
+# versions ending in 'final' mean release (well tested, etc)
+version_info = (0, 2, 0, 'dev', 0)
+
+if version_info[3] == 'final':
+    version_string = '%d.%d.%d' % version_info[:3]
+else:
+    version_string = '%d.%d.%d%s%d' % version_info
+__version__ = version_string
+
 MINIMUM_DULWICH_VERSION = (0, 1, 1)
 COMPATIBLE_BZR_VERSIONS = [(1, 13, 0)]
 

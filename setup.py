@@ -5,7 +5,7 @@ from distutils.core import setup
 setup(name='bzr-git',
       description='Support for Git branches in Bazaar',
       keywords='plugin bzr git bazaar',
-      version='0.1',
+      version='0.2.0',
       url='http://bazaar-vcs.org/BzrForeignBranches/Git',
       license='GPL',
       author='Robert Collins',
