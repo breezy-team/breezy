@@ -133,8 +133,7 @@ def import_git_tree(texts, mapping, path, tree, inv, parent_invs, shagitmap,
         [])
     ie = inv.add_path(path, "directory", file_id)
     ie.revision = text_revision
-    shagitmap.add_entry(tree.sha().hexdigest(), "tree",
-        (file_id, text_revision))
+    shagitmap.add_entry(tree.id, "tree", (file_id, text_revision))
     for mode, name, hexsha in tree.entries():
         entry_kind = (mode & 0700000) / 0100000
         basename = name.decode("utf-8")

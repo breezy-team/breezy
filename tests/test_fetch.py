@@ -154,7 +154,7 @@ class ImportObjects(TestCaseWithTransport):
         tree = Tree()
         tree.serialize()
         import_git_tree(self._texts, self._mapping, "", tree, inv, [], 
-            self._map, lambda sha: None)
+            self._map, {}.__getitem__)
         self.assertEquals(set([("TREE_ROOT", 'somerevid')]), self._texts.keys())
         self.assertEquals(False, inv["TREE_ROOT"].executable)
         self.assertEquals("directory", inv["TREE_ROOT"].kind)
@@ -168,10 +168,46 @@ class ImportObjects(TestCaseWithTransport):
         tree = Tree()
         tree.serialize()
         import_git_tree(self._texts, self._mapping, "bla", tree, inv, [], 
-            self._map, lambda sha: None)
+            self._map, {}.__getitem__)
         self.assertEquals(set([("bla", 'somerevid')]), self._texts.keys())
         self.assertEquals("directory", inv["bla"].kind)
         self.assertEquals(False, inv["bla"].executable)
         self.assertEquals({}, inv["bla"].children)
         self.assertEquals("somerevid", inv["bla"].revision)
         self.assertEquals(None, inv["bla"].text_sha1)
+
+    def test_import_tree_with_file(self):
+        inv = Inventory()
+        inv.revision_id = "somerevid"
+        blob = Blob.from_string("bar1")
+        tree = Tree()
+        tree.add(0100600, "foo", blob.id)
+        tree.serialize()
+        objects = { blob.id: blob, tree.id: tree }
+        import_git_tree(self._texts, self._mapping, "bla", tree, inv, [], 
+            self._map, objects.__getitem__)
+        self.assertEquals(["foo"], inv["bla"].children.keys())
+        self.assertEquals(set(["bla", "bla/foo"]), 
+                set([ie.file_id for (path, ie) in inv.entries()]))
+        ie = inv["bla/foo"]
+        self.assertEquals("file", ie.kind)
+        self.assertEquals("bla/foo", ie.file_id)
+        self.assertEquals("somerevid", ie.revision)
+        self.assertEquals(osutils.sha_strings(["bar1"]), ie.text_sha1)
+        self.assertEquals(False, ie.executable)
+
+    def test_import_tree_with_file_exe(self):
+        inv = Inventory()
+        inv.revision_id = "somerevid"
+        blob = Blob.from_string("bar")
+        tree = Tree()
+        tree.add(0100755, "foo", blob.id)
+        tree.serialize()
+        objects = { blob.id: blob, tree.id: tree }
+        import_git_tree(self._texts, self._mapping, "bla", tree, inv, [], 
+            self._map, objects.__getitem__)
+        self.assertEquals(["foo"], inv["bla"].children.keys())
+        ie = inv["bla/foo"]
+        self.assertEquals("file", ie.kind)
+        self.assertEquals(True, ie.executable)
+
