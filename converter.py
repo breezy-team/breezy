@@ -108,7 +108,7 @@ class GitObjectConverter(object):
                 tree.add(stat.S_IFDIR, name.encode('UTF-8'),
                     subtree.sha().hexdigest())
             elif ie.kind == "file":
-                blob = self._get_blob(inv.path2id(ie.file_id), revid)
+                blob = self._get_blob(ie.file_id, revid)
                 mode = stat.S_IFREG | 0644
                 if ie.executable:
                     mode |= 0111

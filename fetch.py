@@ -194,6 +194,7 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
         import_git_tree(repo.texts, mapping, "", root_tree, inv, parent_invs, 
             target_git_object_retriever._idmap, lookup_object)
         repo.add_revision(rev.revision_id, rev, inv)
+    target_git_object_retriever._idmap.commit()
 
 
 class InterGitNonGitRepository(InterRepository):
