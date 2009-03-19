@@ -77,6 +77,7 @@ class cmd_git_import(Command):
             NotBranchError,
             )
         from bzrlib.repository import Repository
+        from bzrlib.plugins.git.branch import GitBranch
         from bzrlib.plugins.git.fetch import InterGitNonGitRepository
         from bzrlib.plugins.git.repository import GitRepository
 
@@ -118,7 +119,10 @@ class cmd_git_import(Command):
                 except NotBranchError:
                     head_branch = head_bzrdir.create_branch()
                 revid = mapping.revision_id_foreign_to_bzr(ref)
+                source_branch = GitBranch(source_repo.bzrdir, source_repo, 
+                    name, ref, None)
                 head_branch.generate_revision_history(revid)
+                source_branch.tags.merge_to(head_branch.tags)
         finally:
             pb.finished()
 
