@@ -393,7 +393,7 @@ create_delta_index(const struct source_info *src,
     for (i = 4; (1u << i) < hsize && i < 31; i++);
     hsize = 1 << i;
     hmask = hsize - 1;
-    if (old && old->hash_mask < hmask) {
+    if (old && old->hash_mask > hmask) {
         hmask = old->hash_mask;
         hsize = hmask + 1;
     }
