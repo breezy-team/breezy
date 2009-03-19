@@ -1,8 +1,10 @@
-bzr (1.13.0-1) unstable; urgency=low
+bzr (1.13-1) unstable; urgency=low
 
   * New upstream release.
+  * Move to section vcs.
+  * Bump standards version to 3.8.1.
 
- -- Jelmer Vernooij <jelmer@debian.org>  Mon, 16 Mar 2009 15:02:37 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Thu, 19 Mar 2009 18:16:35 +0100
 
 bzr (1.13~rc1-1) unstable; urgency=low
 
