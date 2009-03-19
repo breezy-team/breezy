@@ -19,14 +19,27 @@
 
 import os
 
+from bzrlib.tests import (
+    condition_isinstance,
+    split_suite_by_condition,
+    multiply_tests,
+    )
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.tests.test_win32utils import NeedsGlobExpansionFeature
 
 
-class TestAdd(ExternalBase):
+def load_tests(standard_tests, module, loader):
+    """Parameterize tests for view-aware vs not."""
+    to_adapt, result = split_suite_by_condition(
+        standard_tests, condition_isinstance(TestAdd))
+    scenarios = [
+        ('pre-views', {'branch_tree_format': 'pack-0.92'}),
+        ('view-aware', {'branch_tree_format': 'development-wt5'}),
+        ]
+    return multiply_tests(to_adapt, scenarios, result)
 
-    # Subclasses may override this
-    branch_tree_format = "pack-0.92"
+
+class TestAdd(ExternalBase):
 
     def make_branch_and_tree(self, dir):
         return ExternalBase.make_branch_and_tree(self, dir,
@@ -214,8 +227,3 @@ class TestAdd(ExternalBase):
         self.build_tree([u'\u1234A', u'\u1235A', u'\u1235AA', 'cc'])
         self.run_bzr(['add', u'\u1234?', u'\u1235*'])
         self.assertEquals(self.run_bzr('unknowns')[0], 'cc\n')
-
-
-class TestAddInTreeSupportingViews(TestAdd):
-
-    branch_tree_format = "development-wt5"
