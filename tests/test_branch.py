@@ -16,16 +16,27 @@
 
 """Tests for interfacing with a Git Branch"""
 
-from bzrlib import revision
-from bzrlib.branch import Branch
+import dulwich as git
+import os
+
+from bzrlib import (
+    revision,
+    )
+from bzrlib.branch import (
+    Branch,
+    )
+from bzrlib.bzrdir import (
+    BzrDir,
+    )
+from bzrlib.repository import (
+    Repository,
+    )
 
 from bzrlib.plugins.git import (
     branch,
     tests,
     )
 from bzrlib.plugins.git.mapping import default_mapping
-
-import dulwich as git
 
 
 class TestGitBranch(tests.TestCaseInTempDir):
@@ -108,3 +119,30 @@ class TestGitBranchFormat(tests.TestCase):
 
     def test_get_format_description(self):
         self.assertEquals("Git Branch", self.format.get_format_description())
+
+
+
+class BranchFetchTests(tests.TestCaseInTempDir):
+
+    def make_onerev_branch(self):
+        os.mkdir("d")
+        os.chdir("d")
+        tests.run_git("init")
+        bb = tests.GitBranchBuilder()
+        bb.set_file("foobar", "foo\nbar\n", False)
+        mark = bb.commit("Somebody <somebody@someorg.org>", "mymsg")
+        gitsha = bb.finish()[mark]
+        os.chdir("..")
+        return "d", gitsha
+
+    def clone_git_branch(self, from_url, to_url):
+        from_dir = BzrDir.open(from_url)
+        to_dir = from_dir.sprout(to_url)
+        return to_dir.open_branch()
+
+    def test_single_rev(self):
+        path, gitsha = self.make_onerev_branch()
+        oldrepo = Repository.open(path)
+        revid = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha)
+        newbranch = self.clone_git_branch(path, "f")
+        self.assertEquals([revid], newbranch.repository.all_revision_ids())
