@@ -82,19 +82,22 @@ class LocalRepositoryFetchTests(TestCaseWithTransport):
         run_git("init")
         os.chdir("..")
 
-    def clone_git_repo(self, from_url, to_url):
-        oldrepos = Repository.open(from_url)
+    def clone_git_repo(self, from_url, to_url, revision_id=None):
+        oldrepos = self.open_git_repo(from_url)
         dir = BzrDir.create(to_url, get_rich_root_format())
         newrepos = dir.create_repository()
-        oldrepos.copy_content_into(newrepos)
+        oldrepos.copy_content_into(newrepos, revision_id=revision_id)
         return newrepos
+
+    def open_git_repo(self, path):
+        return Repository.open(path)
 
     def test_empty(self):
         self.make_git_repo("d")
         newrepos = self.clone_git_repo("d", "f")
         self.assertEquals([], newrepos.all_revision_ids())
 
-    def test_single_rev(self):
+    def make_onerev_branch(self):
         self.make_git_repo("d")
         os.chdir("d")
         bb = GitBranchBuilder()
@@ -102,9 +105,40 @@ class LocalRepositoryFetchTests(TestCaseWithTransport):
         mark = bb.commit("Somebody <somebody@someorg.org>", "mymsg")
         gitsha = bb.finish()[mark]
         os.chdir("..")
-        oldrepo = Repository.open("d")
-        newrepo = self.clone_git_repo("d", "f")
+        return "d", gitsha
+
+    def test_single_rev(self):
+        path, gitsha = self.make_onerev_branch()
+        oldrepo = self.open_git_repo(path)
+        newrepo = self.clone_git_repo(path, "f")
         self.assertEquals([oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha)], newrepo.all_revision_ids())
+
+    def test_single_rev_specific(self):
+        path, gitsha = self.make_onerev_branch()
+        oldrepo = self.open_git_repo(path)
+        revid = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha)
+        newrepo = self.clone_git_repo(path, "f", revision_id=revid)
+        self.assertEquals([revid], newrepo.all_revision_ids())
+
+    def test_incremental(self):
+        self.make_git_repo("d")
+        os.chdir("d")
+        bb = GitBranchBuilder()
+        bb.set_file("foobar", "foo\nbar\n", False)
+        mark1 = bb.commit("Somebody <somebody@someorg.org>", "mymsg")
+        bb.set_file("foobar", "fooll\nbar\n", False)
+        mark2 = bb.commit("Somebody <somebody@someorg.org>", "nextmsg")
+        marks = bb.finish()
+        gitsha1 = marks[mark1]
+        gitsha2 = marks[mark2]
+        os.chdir("..")
+        oldrepo = self.open_git_repo("d")
+        revid1 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha1)
+        newrepo = self.clone_git_repo("d", "f", revision_id=revid1)
+        self.assertEquals([revid1], newrepo.all_revision_ids())
+        revid2 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha2)
+        newrepo.fetch(oldrepo, revision_id=revid2)
+        self.assertEquals([revid1, revid2], newrepo.all_revision_ids())
 
     def test_executable(self):
         self.make_git_repo("d")
@@ -115,7 +149,7 @@ class LocalRepositoryFetchTests(TestCaseWithTransport):
         mark = bb.commit("Somebody <somebody@someorg.org>", "mymsg")
         gitsha = bb.finish()[mark]
         os.chdir("..")
-        oldrepo = Repository.open("d")
+        oldrepo = self.open_git_repo("d")
         newrepo = self.clone_git_repo("d", "f")
         revid = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha)
         tree = newrepo.revision_tree(revid)
@@ -210,4 +244,3 @@ class ImportObjects(TestCaseWithTransport):
         ie = inv["bla/foo"]
         self.assertEquals("file", ie.kind)
         self.assertEquals(True, ie.executable)
-
