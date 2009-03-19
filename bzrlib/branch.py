@@ -2328,12 +2328,9 @@ class BzrBranch7(BzrBranch5):
             raise errors.UnstackableRepositoryFormat(self.repository._format,
                 self.repository.base)
 
-    def __init__(self, _format=None, _control_files=None, a_bzrdir=None,
-        _repository=None, ignore_fallbacks=False):
-        self._ignore_fallbacks = ignore_fallbacks
-        BzrBranch5.__init__(self, _format=_format,
-            _control_files=_control_files, a_bzrdir=a_bzrdir,
-            _repository=_repository)
+    def __init__(self, *args, **kwargs):
+        self._ignore_fallbacks = kwargs.get('ignore_fallbacks', False)
+        super(BzrBranch7, self).__init__(*args, **kwargs)
         self._last_revision_info_cache = None
         self._partial_revision_history_cache = []
 
