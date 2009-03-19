@@ -6,7 +6,6 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
-
 In Development
 ##############
 
@@ -34,6 +33,10 @@ New Features
 
 Improvements
 ============
+
+* A new format name alias ``default-rich-root`` has been added and
+  points at the closest relative of the default format that supports 
+  rich roots. (Jelmer Vernooij, #338061)
 
 * Branching from a stacked branch using ``bzr*://`` will now stream
   the data when the target repository does not need topological
@@ -121,8 +124,16 @@ Testing
 Internals
 =========
 
+* ``DirState`` can now be passed a custom ``SHA1Provider`` object
+  enabling it to store the SHA1 and stat of the canonical (post
+  content filtered) form. (Ian Clatworthy)
+
 * New ``assertLength`` method based on one Martin has squirreled away
   somewhere. (Robert Collins, Martin Pool)
+
+* New hook ``BzrDir.pre_open`` which runs before opening ``BzrDir``
+  objects, allowing better enforcement of the smart server jail when
+  dealing with stacked branches. (Robert Collins, Andrew Bennetts)
 
 * New repository method ``refresh_data`` to cause any repository to
   make visible data inserted into the repository by a smart server
@@ -146,7 +157,7 @@ bzr 1.13
 :1.13rc1: 2009-03-10
 
 This release includes bug fixes and a few performance and feature improvements.
-GNU Changelog output can now be produced by ``bzr log --log-format gnu-changelog``.
+GNU Changelog output can now be produced by ``bzr log --gnu-changelog``.
 Debug flags can now be set in ``~/.bazaar/bazaar.conf``.  Lightweight checkouts
 and stacked branches should both be much faster over remote connections.
 
@@ -183,8 +194,8 @@ New Features
   in chapter 7 of the User Guide and ``bzr help view`` for details.
   (Ian Clatworthy)
 
-* GNU Changelog output can now be produced by ``bzr log --log-format
-  gnu-changelog``.  (Andrea Bolognani, Martin Pool)
+* GNU Changelog output can now be produced by ``bzr log --gnu-changelog``.
+  (Andrea Bolognani, Martin Pool)
 
 * The ``-Dmemory`` flag now gives memory information on Windows.
   (John Arbash Meinel)
