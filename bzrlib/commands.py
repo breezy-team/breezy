@@ -368,6 +368,10 @@ class Command(object):
         result += '\n'
 
         # Add the options
+        #
+        # XXX: optparse implicitly rewraps the help, and not always perfectly,
+        # so we get <https://bugs.launchpad.net/bzr/+bug/249908>.  -- mbp
+        # 20090319
         options = option.get_optparser(self.options()).format_option_help()
         if options.startswith('Options:'):
             result += ':' + options
