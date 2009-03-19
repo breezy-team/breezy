@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import textwrap
-
 from bzrlib import registry, help_topics
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """

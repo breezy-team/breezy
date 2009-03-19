@@ -94,8 +94,11 @@ def _help_commands_to_text(topic):
         else:
             firstline = ''
         helpstring = '%-*s %s%s' % (max_name, cmd_name, firstline, plugin_name)
-        lines = textwrap.wrap(helpstring, subsequent_indent=indent,
-                              width=width)
+        lines = textwrap.wrap(
+            helpstring, subsequent_indent=indent,
+            width=width,
+            break_long_words=False,
+            break_on_hyphens=False)
         for line in lines:
             out.append(line + '\n')
     return ''.join(out)

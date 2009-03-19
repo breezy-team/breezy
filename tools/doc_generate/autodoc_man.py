@@ -127,7 +127,9 @@ def format_command (params, cmd):
                     l += ', -' + short_name
                 l += (30 - len(l)) * ' ' + (help or '')
                 wrapped = textwrap.fill(l, initial_indent='',
-                                        subsequent_indent=30*' ')
+                    subsequent_indent=30*' ',
+                    break_long_words=False,
+                    break_on_hyphens=False)
                 option_str = option_str + wrapped + '\n'       
 
     aliases_str = ""
