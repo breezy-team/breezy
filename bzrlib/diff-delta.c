@@ -212,7 +212,7 @@ static struct delta_index *
 pack_delta_index(struct unpacked_index_entry **hash, unsigned int hsize,
                  unsigned int num_entries, struct delta_index *old_index)
 {
-    unsigned int i, j, hmask, memsize, to_copy, fit_in_old, copied_count;
+    unsigned int i, j, hmask, memsize, fit_in_old, copied_count;
     struct unpacked_index_entry *entry;
     struct delta_index *index;
     struct index_entry *packed_entry, **packed_hash, *old_entry, *copy_from;
@@ -275,6 +275,7 @@ pack_delta_index(struct unpacked_index_entry **hash, unsigned int hsize,
         if (fit_in_old) {
             fprintf(stderr, "Fit all %d entries into old index\n",
                             copied_count);
+            /* No need to allocate a new buffer */
             return NULL;
         } else {
             fprintf(stderr, "Fit only %d entries into old index,"
@@ -322,36 +323,22 @@ pack_delta_index(struct unpacked_index_entry **hash, unsigned int hsize,
              */
             j = i & old_index->hash_mask;
             copy_from = old_index->hash[j];
-            to_copy = 0;
             for (old_entry = old_index->hash[j];
                  old_entry < old_index->hash[j + 1] && old_entry->ptr != NULL;
                  old_entry++) {
                 if ((old_entry->val & hmask) == i) {
-                    to_copy += 1;
-                } else {
-                    /* We reached the end of a string of entries that should
-                     * be copied. Copy the group, and then move the pointers.
-                     */
-                    if (to_copy > 0) {
-                        memcpy(packed_entry, copy_from,
-                               sizeof(*old_entry)*to_copy);
-                        packed_entry += to_copy;
-                        to_copy = 0;
-                    }
-                    /* Don't copy *this* entry, and start the copy after this */
-                    copy_from = old_entry + 1;
+                    *packed_entry++ = *old_entry;
                 }
-            }
-            if (to_copy > 0) {
-                memcpy(packed_entry, copy_from,
-                       sizeof(*old_entry)*to_copy);
-                packed_entry += to_copy;
-                to_copy = 0;
             }
         }
         for (entry = hash[i]; entry; entry = entry->next) {
             *packed_entry++ = entry->entry;
         }
+        /* TODO: At this point packed_entry - packed_hash[i] is the number of
+         *       records that we have inserted into this hash bucket.
+         *       We should *really* consider doing some limiting along the
+         *       lines of limit_hash_buckets() to avoid pathological behavior.
+         */
         /* Now add extra 'NULL' entries that we can use for future expansion. */
         for (j = 0; j < EXTRA_NULLS; ++j ) {
             *packed_entry++ = null_entry;
