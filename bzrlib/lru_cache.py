@@ -151,8 +151,12 @@ class LRUCache(object):
     def clear(self):
         """Clear out all of the cache."""
         # Clean up in LRU order
-        while self._cache:
-            self._remove_lru()
+        for key in self._cache.keys():
+            self._remove(key)
+        assert not self._cache
+        assert not self._cleanup
+        self._queue = deque()
+        self._refcount = {}
 
     def resize(self, max_cache, after_cleanup_count=None):
         """Change the number of entries that will be cached."""
@@ -246,6 +250,10 @@ class LRUSizeCache(LRUCache):
         """Remove an entry, making sure to maintain the invariants."""
         val = LRUCache._remove(self, key)
         self._value_size -= self._compute_size(val)
+
+    def clear(self):
+        LRUCache.clear(self)
+        self._value_size = 0
 
     def resize(self, max_size, after_cleanup_size=None):
         """Change the number of bytes that will be cached."""

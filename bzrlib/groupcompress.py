@@ -339,6 +339,8 @@ class GroupCompressBlock(object):
         :param sha1: TODO (should we validate only when sha1 is supplied?)
         :return: The bytes for the content
         """
+        if start == end == 0:
+            return None, ''
         # Make sure we have enough bytes for this record
         # TODO: if we didn't want to track the end of this entry, we could
         #       _ensure_content(start+enough_bytes_for_type_and_length), and
@@ -494,6 +496,7 @@ class _LazyGroupCompressFactory(object):
         #       get_bytes_as call? After Manager.get_record_stream() returns
         #       the object?
         self._manager = manager
+        self._bytes = None
         self.storage_kind = 'groupcompress-block'
         if not first:
             self.storage_kind = 'groupcompress-block-ref'
@@ -512,14 +515,19 @@ class _LazyGroupCompressFactory(object):
                 return self._manager._wire_bytes()
             else:
                 return ''
+            self._manager = None # safe?
         if storage_kind in ('fulltext', 'chunked'):
-            self._manager._prepare_for_extract()
-            block = self._manager._block
-            _, bytes = block.extract(self.key, self._start, self._end)
+            if self._bytes is None:
+                # Grab the raw bytes for this entry, and break the ref-cycle
+                self._manager._prepare_for_extract()
+                block = self._manager._block
+                _, bytes = block.extract(self.key, self._start, self._end)
+                self._bytes = bytes
+                self._manager = None
             if storage_kind == 'fulltext':
-                return bytes
+                return self._bytes
             else:
-                return [bytes]
+                return [self._bytes]
         raise errors.UnavailableRepresentation(self.key, storage_kind,
             self.storage_kind)
 
@@ -1298,6 +1306,8 @@ class GroupCompressVersionedFiles(VersionedFiles):
         for key in missing:
             yield AbsentContentFactory(key)
         manager = None
+        last_block = None
+        last_memo = None
         # TODO: This works fairly well at batching up existing groups into a
         #       streamable format, and possibly allowing for taking one big
         #       group and splitting it when it isn't fully utilized.
@@ -1321,7 +1331,13 @@ class GroupCompressVersionedFiles(VersionedFiles):
                         yield FulltextContentFactory(key, parents, sha1, bytes)
                     else:
                         index_memo, _, parents, (method, _) = locations[key]
-                        block = self._get_block(index_memo)
+                        read_memo = index_memo[0:3]
+                        if last_memo == read_memo:
+                            block = last_block
+                        else:
+                            block = self._get_block(index_memo)
+                            last_block = block
+                            last_memo = read_memo
                         start, end = index_memo[3:5]
                         if manager is None:
                             manager = _LazyGroupContentManager(block)
