@@ -69,12 +69,15 @@ We'll (probably) have one shared account for running builds which is also
 an administrator for ease of installing software.
 
 You do need to have an RSA keypair to get the initial password for a
-Windows machine, even though you can't use it to log in later.  As a quirk
-of the tools(?) ``ec2-get-password`` needs the full path to the keypair
-but ``ec2-add-keypair`` just wants part of the name.  I guess this is
-distinct from the account identifier because the image is relatively
-untrusted(?).  If the password is already set in the image, this shouldn't
-be necessary.
+Windows machine, even though you can't use it to log in later.
+``ec2-get-password`` take the full path to the private key to obtain the
+password from amazon, and ``ec2-add-keypair`` creates a named keypair at
+Amazon and returns the private path. One keypair is all that is needed.
+This is distinct from the account identifier - likely due to the different
+toolchains in use (the keypairs are used for unix ssh keys, and I (Robert)
+suspect a rather unix friendly core at Amazon).
+Once a custom image is made with a saved password, you can skip using 
+``ec2-get-password`` (which is only needed for windows anyway).
 
 It would be nice if rdesktop could use private key authentication but
 apparently not.
@@ -95,22 +98,31 @@ Preparation
 * Install the
   `Amazon EC2 API tools`_ (needs-packaging `bug 330930`_)
 
+* Create an Amazon Web Services account, sign up for S3 and EC2, and do
+  the various steps to create authentication devices.
+
 * Create a private key and certificate for yourself.
   Check these environment variables are set and exported, e.g. by setting
   them in the file ``~/.aws``.  Make sure the files are private.::
 
-    EC2_PRIVATE_KEY=~/.ec2/pk-XXXXXX.pem
-    EC2_CERT=~/.ec2/cert-XXXXXX.pem
-    EC2_HOME=~/build/ec2-api-tools-1.3-30349
-    AWS_SECRET_ACCESS_KEY=XXXXXXXXX
-    AWS_ACCESS_KEY_ID=XXXXXXXXXXX
-    PATH=$PATH:$EC2_HOME/bin
-    JAVA_HOME=/usr/lib/jvm/java-6-openjdk
+    export EC2_PRIVATE_KEY=~/.ec2/pk-XXXXXX.pem
+    export EC2_CERT=~/.ec2/cert-XXXXXX.pem
+    export EC2_HOME=~/build/ec2-api-tools-1.3-30349
+    export AWS_SECRET_ACCESS_KEY=XXXXXXXXX
+    export AWS_ACCESS_KEY_ID=XXXXXXXXXXX
+    export EC2_KEYPAIR_NAME=XXXXXXXXX
+    export PATH=$PATH:$EC2_HOME/bin
+    export JAVA_HOME=/usr/lib/jvm/java-6-openjdk
+    ssh-add ~/.ec2/id_rsa
+
+  You can now '. ~/.aws' to get the ec2 commands available.
+
+* (Unix images only) run ec2-add-keypair SOMENAME, e.g. 'bzr'. Put the
+  result (minus the first line) somewhere like ~/.ec2/id_rsa and chmod go-rw.
+
+* A useful Unix image is `ami-bdfe19d4`_, Eric Hammonds 64-bit Ubuntu image.
 
 * Install the rdesktop client, to actually access the machine.
-
-* Create an Amazon Web Services account, sign up for S3 and EC2, and do
-  the various steps to create authentication devices 
 
 * Possibly read some of the `EC2 documentation`_ for background.
    
@@ -118,6 +130,8 @@ Preparation
 .. _`Amazon EC2 API tools`: 
      http://developer.amazonwebservices.com/connect/entry.jspa?externalID=368&categoryID=88
 .. _`EC2 documentation`: http://aws.amazon.com/
+.. _`ami-bdfe19d4`:
+   http://developer.amazonwebservices.com/connect/entry.jspa?externalID=1762&categoryID=101
 
 * Create a security group for your that allows rdesktop access and icmp with::
 
@@ -184,6 +198,11 @@ To save a system snapshot as an image
 
       ec2-modify-image-attributes $ami_id -l -a 123412341234
 
+
+Management console (useful!)
+----------------------------
+
+https://console.aws.amazon.com/ec2/home
 
 ..
    vim: ft=rst tw=74 ai
