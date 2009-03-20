@@ -339,20 +339,11 @@ class GroupCompressBlock(object):
         :param sha1: TODO (should we validate only when sha1 is supplied?)
         :return: The bytes for the content
         """
-        # Make sure we have enough bytes for this record
-        # TODO: if we didn't want to track the end of this entry, we could
-        #       _ensure_content(start+enough_bytes_for_type_and_length), and
-        #       then decode the entry length, and
-        #       _ensure_content(start+1+length)
-        #       It is 2 calls to _ensure_content(), but we always buffer a bit
-        #       extra anyway, and it means 1 less offset stored in the index,
-        #       and transmitted over the wire
-        if end is None:
-            # it takes 5 bytes to encode 2^32, so we need 1 byte to hold the
-            # 'f' or 'd' declaration, and then 5 more for the record length.
-            self._ensure_content(start + 6)
-        else:
-            self._ensure_content(end)
+        # Handle the 'Empty Content' record, even if we don't always write it
+        # yet.
+        if start == end == 0:
+            return ''
+        self._ensure_content(end)
         # The bytes are 'f' or 'd' for the type, then a variable-length
         # base128 integer for the content size, then the actual content
         # We know that the variable-length integer won't be longer than 5
@@ -368,23 +359,15 @@ class GroupCompressBlock(object):
         content_len, len_len = decode_base128_int(
                             self._content[start + 1:start + 6])
         content_start = start + 1 + len_len
-        if end is None:
-            end = content_start + content_len
-            self._ensure_content(end)
-        else:
-            if end != content_start + content_len:
-                raise ValueError('end != len according to field header'
-                    ' %s != %s' % (end, content_start + content_len))
-        entry = GroupCompressBlockEntry(key, type, sha1=None,
-                                        start=start, length=end-start)
+        if end != content_start + content_len:
+            raise ValueError('end != len according to field header'
+                ' %s != %s' % (end, content_start + content_len))
         content = self._content[content_start:end]
         if c == 'f':
             bytes = content
         elif c == 'd':
             bytes = _groupcompress_pyx.apply_delta(self._content, content)
-        if entry.sha1 is None:
-            entry.sha1 = sha_string(bytes)
-        return entry, bytes
+        return bytes
 
     def add_entry(self, key, type, sha1, start, length):
         """Add new meta info about an entry.
@@ -515,7 +498,7 @@ class _LazyGroupCompressFactory(object):
         if storage_kind in ('fulltext', 'chunked'):
             self._manager._prepare_for_extract()
             block = self._manager._block
-            _, bytes = block.extract(self.key, self._start, self._end)
+            bytes = block.extract(self.key, self._start, self._end)
             if storage_kind == 'fulltext':
                 return bytes
             else:
