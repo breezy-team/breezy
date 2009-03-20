@@ -47,7 +47,26 @@ class TestBreakin(tests.TestCase):
     # port 0 means to allocate any port
     _test_process_args = ['serve', '--port', 'localhost:0']
 
+    def test_breakin(self):
+        """Once called, the debugger can be exited and finishes the process."""
+        # Break in to a debugger while bzr is running
+        # we need to test against a command that will wait for
+        # a while -- bzr serve should do
+        proc = self.start_bzr_subprocess(self._test_process_args,
+                env_changes=dict(BZR_SIGQUIT_PDB=None))
+        # wait for it to get started, and print the 'listening' line
+        proc.stderr.readline()
+        # first sigquit pops into debugger
+        os.kill(proc.pid, signal.SIGQUIT)
+        # Wait for the debugger to acknowledge the signal reception
+        err = proc.stderr.readline()
+        self.assertContainsRe(err, r'entering debugger')
+        # Now that the debugger is entered, we can ask him to quit
+        proc.stdin.write("q\n")
+        # And the subprocess should just die quietly...
+
     def test_breakin_harder(self):
+        """SIGQUITting twice ends the process."""
         self._dont_SIGQUIT_on_darwin()
         proc = self.start_bzr_subprocess(self._test_process_args,
                 env_changes=dict(BZR_SIGQUIT_PDB=None))
@@ -55,23 +74,21 @@ class TestBreakin(tests.TestCase):
         proc.stderr.readline()
         # break into the debugger
         os.kill(proc.pid, signal.SIGQUIT)
+        # Wait for the debugger to acknowledge the signal reception (since we
+        # want to send a second signal, we ensure it doesn't get lost by
+        # validating the first get received and produce its effect).
         err = proc.stderr.readline()
         self.assertContainsRe(err, r'entering debugger')
-        # now send a second sigquit, which should cause it to exit.  That
-        # won't happen until the original signal has been noticed by the
-        # child and it's run its signal handler.  We don't know quite how long
+        # Now a second signal should make it quit. We don't know quite how long
         # this will take, but if it's more than 10s then it's probably not
         # going to work.
-        for i in range(100):
-            time.sleep(0.1)
-            os.kill(proc.pid, signal.SIGQUIT)
-            # note: waitpid is different on win32, but this test only runs on
-            # unix
-            r = os.waitpid(proc.pid, os.WNOHANG)
-            if r != (0, 0):
-                # high bit says if core was dumped; we don't care
-                self.assertEquals(signal.SIGQUIT, r[1] & 0x7f)
-                break
+        os.kill(proc.pid, signal.SIGQUIT)
+        # note: waitpid is different on win32, but this test only runs on
+        # unix
+        r = os.waitpid(proc.pid, 0)
+        if r != (0, 0):
+            # high bit says if core was dumped; we don't care
+            self.assertEquals(signal.SIGQUIT, r[1] & 0x7f)
         else:
             self.fail("subprocess wasn't terminated by repeated SIGQUIT")
 
