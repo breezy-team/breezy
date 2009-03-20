@@ -31,6 +31,12 @@ New Features
   explaining how to see the complete help, i.e. ``bzr help xxx``.
   (Ian Clatworthy)
 
+* Content filters can now be used to provide custom conversion
+  between the canonical format of content (i.e. as stored) and
+  the convenience format of content (i.e. as created in working
+  trees). See ``bzr help content-filters`` for further details.
+  (Ian Clatworthy, Alexander Belchenko)
+
 Improvements
 ************
 
@@ -43,6 +49,10 @@ Improvements
   ordering, reducing round trips and network overhead. This uses the
   existing smart server methods added in 1.13, so will work on any
   1.13 or newer server. (Robert Collins, Andrew Bennetts)
+
+* ``bzr cat`` and ``bzr export`` now supports a ``--filters`` option
+  that displays/saves the content after content filters are applied.
+  (Ian Clatworthy)
 
 * ``bzr ignore`` gives a more informative message when existing
   version controlled files match the ignore pattern. (Neil
@@ -82,6 +92,12 @@ Bug Fixes
   optimising more operations. (Robert Collins, Andrew Bennetts)
 
 * ``merge --force`` works again. (Robert Collins, #342105)
+
+* Pushing a new branch to a server that has a stacking policy will now
+  upgrade from the local branch format when the stacking policy points at
+  a branch which is itself stackable, because we know the client can read
+  both branches, we know that the trunk for the project can be read too,
+  so the upgrade will not inconvenience users. (Robert Collins, #345169)
 
 * The GNU Changelog formatter is slightly improved in the case where
   the delta is empty, and now correctly claims not to support tags.
@@ -148,7 +164,11 @@ Internals
 * Removed ``InterRemoteToOther``, ``InterOtherToRemote`` and
   ``InterPackToRemotePack`` classes, as they are now unnecessary.
   (Andrew Bennetts)
-  
+
+* ``bzr selftest`` now accepts ``--subunit`` to run in subunit output
+  mode. Requires ``lp:subunit`` installed to work, but is not a hard
+  dependency. (Robert Collins)
+
 * ``_walk_to_common_revisions`` will now batch up at least 50
   revisions before calling ``get_parent_map`` on the target,
   regardless of ``InterRepository``.

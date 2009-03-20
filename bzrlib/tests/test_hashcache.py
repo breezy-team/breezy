@@ -146,7 +146,7 @@ class FakeHashCache(HashCache):
                 10, 20,
                 stat.S_IFREG | 0600)
 
-    def _really_sha1_file(self, abspath):
+    def _really_sha1_file(self, abspath, filters):
         if abspath in self._files:
             return sha1(self._files[abspath][0])
         else:

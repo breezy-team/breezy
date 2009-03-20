@@ -26,6 +26,10 @@ from bzrlib import (
     osutils,
     )
 from bzrlib.export import _export_iter_entries
+from bzrlib.filters import (
+    ContentFilterContext,
+    filtered_output_bytes,
+    )
 from bzrlib.trace import mutter
 
 
@@ -37,7 +41,7 @@ _FILE_ATTR = stat.S_IFREG
 _DIR_ATTR = stat.S_IFDIR | ZIP_DIRECTORY_BIT
 
 
-def zip_exporter(tree, dest, root, subdir):
+def zip_exporter(tree, dest, root, subdir, filtered=False):
     """ Export this tree to a new zip file.
 
     `dest` will be created holding the contents of this tree; if it
@@ -64,7 +68,15 @@ def zip_exporter(tree, dest, root, subdir):
                             date_time=now)
                 zinfo.compress_type = compression
                 zinfo.external_attr = _FILE_ATTR
-                zipf.writestr(zinfo, tree.get_file_text(file_id))
+                if filtered:
+                    chunks = tree.get_file_lines(file_id)
+                    filters = tree._content_filter_stack(dp)
+                    context = ContentFilterContext(dp, tree, ie)
+                    contents = filtered_output_bytes(chunks, filters, context)
+                    content = ''.join(contents)
+                else:
+                    content = tree.get_file_text(file_id)
+                zipf.writestr(zinfo, content)
             elif ie.kind == "directory":
                 # Directories must contain a trailing slash, to indicate
                 # to the zip routine that they are really directories and
@@ -90,4 +102,3 @@ def zip_exporter(tree, dest, root, subdir):
         os.remove(dest)
         from bzrlib.errors import BzrError
         raise BzrError("Can't export non-ascii filenames to zip")
-
