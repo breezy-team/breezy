@@ -597,6 +597,24 @@ def sha_file(f):
     return s.hexdigest()
 
 
+def size_sha_file(f):
+    """Calculate the size and hexdigest of an open file.
+
+    The file cursor should be already at the start and
+    the caller is responsible for closing the file afterwards.
+    """
+    size = 0
+    s = sha()
+    BUFSIZE = 128<<10
+    while True:
+        b = f.read(BUFSIZE)
+        if not b:
+            break
+        size += len(b)
+        s.update(b)
+    return size, s.hexdigest()
+
+
 def sha_file_by_name(fname):
     """Calculate the SHA1 of a file by reading the full text"""
     s = sha()
