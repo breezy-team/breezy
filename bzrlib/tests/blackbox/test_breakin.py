@@ -16,13 +16,17 @@
 
 """Blackbox tests for debugger breakin"""
 
+import errno
 import os
 import signal
 import subprocess
 import sys
 import time
 
-from bzrlib import tests
+from bzrlib import (
+    errors,
+    tests,
+    )
 
 
 class TestBreakin(tests.TestCase):
@@ -44,11 +48,38 @@ class TestBreakin(tests.TestCase):
             raise tests.TestNotApplicable(
                 '%s raises a popup on OSX' % self.id())
 
+    def _wait_for_process(self, pid, sig=None):
+        # We don't know quite how long waiting for the process 'pid' will take,
+        # but if it's more than 10s then it's probably not going to work.
+        for i in range(100):
+            time.sleep(0.1)
+            if sig is not None:
+                os.kill(pid, sig)
+            # Use WNOHANG to ensure we don't get blocked, doing so, we may
+            # leave the process continue after *we* die...
+            try:
+                # note: waitpid is different on win32, but this test only runs
+                # on unix
+                pid_killed, returncode = os.waitpid(pid, os.WNOHANG)
+                if (pid_killed, returncode) != (0, 0):
+                    if sig is not None:
+                        # high bit in low byte says if core was dumped; we
+                        # don't care
+                        status, sig = (returncode >> 8, returncode & 0x7f)
+                        return True, sig
+            except OSError, e:
+                if e.errno in (errno.ECHILD, errno.ESRCH):
+                    # The process doesn't exist anymore
+                    return True, None
+                else:
+                    raise
+
+        return False, None
+
     # port 0 means to allocate any port
     _test_process_args = ['serve', '--port', 'localhost:0']
 
     def test_breakin(self):
-        """Once called, the debugger can be exited and finishes the process."""
         # Break in to a debugger while bzr is running
         # we need to test against a command that will wait for
         # a while -- bzr serve should do
@@ -63,7 +94,18 @@ class TestBreakin(tests.TestCase):
         self.assertContainsRe(err, r'entering debugger')
         # Now that the debugger is entered, we can ask him to quit
         proc.stdin.write("q\n")
-        # And the subprocess should just die quietly...
+        # We wait a bit to let the child process handles our query and avoid
+        # triggering deadlocks leading to hangs on multi-core hosts...
+        dead, sig = self._wait_for_process(proc.pid)
+        if not dead:
+            # The process didn't finish, let's kill it before reporting failure
+            dead, sig = self._wait_for_process(proc.pid, signal.SIGKILL)
+            if dead:
+                raise tests.KnownFailure(
+                    "subprocess wasn't terminated, it had to be killed")
+            else:
+                self.fail("subprocess %d wasn't terminated by repeated SIGKILL",
+                          proc.pid)
 
     def test_breakin_harder(self):
         """SIGQUITting twice ends the process."""
@@ -79,18 +121,9 @@ class TestBreakin(tests.TestCase):
         # validating the first get received and produce its effect).
         err = proc.stderr.readline()
         self.assertContainsRe(err, r'entering debugger')
-        # Now a second signal should make it quit. We don't know quite how long
-        # this will take, but if it's more than 10s then it's probably not
-        # going to work.
-        os.kill(proc.pid, signal.SIGQUIT)
-        # note: waitpid is different on win32, but this test only runs on
-        # unix
-        r = os.waitpid(proc.pid, 0)
-        if r != (0, 0):
-            # high bit says if core was dumped; we don't care
-            self.assertEquals(signal.SIGQUIT, r[1] & 0x7f)
-        else:
-            self.fail("subprocess wasn't terminated by repeated SIGQUIT")
+        dead, sig = self._wait_for_process(proc.pid, signal.SIGQUIT)
+        self.assertTrue((dead and sig == signal.SIGQUIT),
+                        msg="subprocess wasn't terminated by repeated SIGQUIT")
 
     def test_breakin_disabled(self):
         self._dont_SIGQUIT_on_darwin()
