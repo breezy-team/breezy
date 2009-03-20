@@ -247,7 +247,7 @@ class TextProgressView(object):
                 dir_char = '<'
             else:
                 dir_char = '?'
-            msg = ("%.7s %s %6dkB %5dkB/s" %
+            msg = ("%.7s %s %6dKB %5dKB/s" %
                     (scheme, dir_char, self._total_byte_count>>10, int(rate)>>10,))
             self._transport_update_time = now
             self._last_repaint = now

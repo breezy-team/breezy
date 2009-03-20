@@ -2527,12 +2527,14 @@ class cmd_export(Command):
                help="Type of file to export to.",
                type=unicode),
         'revision',
+        Option('filters', help='Apply content filters to export the '
+                'convenient form.'),
         Option('root',
                type=str,
                help="Name of the root directory inside the exported file."),
         ]
     def run(self, dest, branch_or_subdir=None, revision=None, format=None,
-        root=None):
+        root=None, filters=False):
         from bzrlib.export import export
 
         if branch_or_subdir is None:
@@ -2545,7 +2547,7 @@ class cmd_export(Command):
 
         rev_tree = _get_one_revision_tree('export', revision, branch=b, tree=tree)
         try:
-            export(rev_tree, dest, format, root, subdir)
+            export(rev_tree, dest, format, root, subdir, filtered=filters)
         except errors.NoSuchExportFormat, e:
             raise errors.BzrCommandError('Unsupported export format: %s' % e.format)
 
@@ -2562,13 +2564,16 @@ class cmd_cat(Command):
     _see_also = ['ls']
     takes_options = [
         Option('name-from-revision', help='The path name in the old tree.'),
+        Option('filters', help='Apply content filters to display the '
+                'convenience form.'),
         'revision',
         ]
     takes_args = ['filename']
     encoding_type = 'exact'
 
     @display_command
-    def run(self, filename, revision=None, name_from_revision=False):
+    def run(self, filename, revision=None, name_from_revision=False,
+            filters=False):
         if revision is not None and len(revision) != 1:
             raise errors.BzrCommandError("bzr cat --revision takes exactly"
                                          " one revision specifier")
@@ -2577,11 +2582,12 @@ class cmd_cat(Command):
         branch.lock_read()
         try:
             return self._run(tree, branch, relpath, filename, revision,
-                             name_from_revision)
+                             name_from_revision, filters)
         finally:
             branch.unlock()
 
-    def _run(self, tree, b, relpath, filename, revision, name_from_revision):
+    def _run(self, tree, b, relpath, filename, revision, name_from_revision,
+        filtered):
         if tree is None:
             tree = b.basis_tree()
         rev_tree = _get_one_revision_tree('cat', revision, branch=b)
@@ -2616,7 +2622,18 @@ class cmd_cat(Command):
                 raise errors.BzrCommandError(
                     "%r is not present in revision %s" % (
                         filename, rev_tree.get_revision_id()))
-        self.outf.write(content)
+        if filtered:
+            from bzrlib.filters import (
+                ContentFilterContext,
+                filtered_output_bytes,
+                )
+            filters = rev_tree._content_filter_stack(relpath)
+            chunks = content.splitlines(True)
+            content = filtered_output_bytes(chunks, filters,
+                ContentFilterContext(relpath, rev_tree))
+            self.outf.writelines(content)
+        else:
+            self.outf.write(content)
 
 
 class cmd_local_time_offset(Command):
@@ -3141,6 +3158,8 @@ class cmd_selftest(Command):
                             short_name='x',
                             help='Exclude tests that match this regular'
                                  ' expression.'),
+                     Option('subunit',
+                        help='Output test progress via subunit.'),
                      Option('strict', help='Fail on missing dependencies or '
                             'known failures.'),
                      Option('load-list', type=str, argname='TESTLISTFILE',
@@ -3163,7 +3182,7 @@ class cmd_selftest(Command):
             lsprof_timed=None, cache_dir=None,
             first=False, list_only=False,
             randomize=None, exclude=None, strict=False,
-            load_list=None, debugflag=None, starting_with=None):
+            load_list=None, debugflag=None, starting_with=None, subunit=False):
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
         from bzrlib.benchmarks import tree_creator
@@ -3185,6 +3204,13 @@ class cmd_selftest(Command):
             pattern = '|'.join(testspecs_list)
         else:
             pattern = ".*"
+        if subunit:
+            try:
+                from bzrlib.tests import SubUnitBzrRunner
+            except ImportError:
+                raise errors.BzrCommandError("subunit not available. subunit "
+                    "needs to be installed to use --subunit.")
+            self.additional_selftest_args['runner_class'] = SubUnitBzrRunner
         if benchmark:
             test_suite_factory = benchmarks.test_suite
             # Unless user explicitly asks for quiet, be verbose in benchmarks
