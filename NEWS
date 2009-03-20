@@ -148,7 +148,11 @@ Internals
 * Removed ``InterRemoteToOther``, ``InterOtherToRemote`` and
   ``InterPackToRemotePack`` classes, as they are now unnecessary.
   (Andrew Bennetts)
-  
+
+* ``bzr selftest`` now accepts ``--subunit`` to run in subunit output
+  mode. Requires ``lp:subunit`` installed to work, but is not a hard
+  dependency. (Robert Collins)
+
 * ``_walk_to_common_revisions`` will now batch up at least 50
   revisions before calling ``get_parent_map`` on the target,
   regardless of ``InterRepository``.
