@@ -19,6 +19,7 @@
 from itertools import izip
 from cStringIO import StringIO
 import struct
+import time
 import zlib
 try:
     import pylzma
@@ -34,6 +35,7 @@ from bzrlib import (
     osutils,
     pack,
     patiencediff,
+    trace,
     )
 from bzrlib.graph import Graph
 from bzrlib.knit import _DirectPackAccess
@@ -54,7 +56,7 @@ from bzrlib.versionedfile import (
     )
 
 _USE_LZMA = False and (pylzma is not None)
-_NO_LABELS = False
+_NO_LABELS = True
 _FAST = False
 
 def encode_base128_int(val):
@@ -131,6 +133,14 @@ class GroupCompressBlockEntry(object):
             self.key, self.type, self.sha1, self.start, self.length
             )
 
+    @property
+    def end(self):
+        return self.start + self.length
+
+# The max zlib window size is 32kB, so if we set 'max_size' output of the
+# decompressor to the requested bytes + 32kB, then we should guarantee
+# num_bytes coming out.
+_ZLIB_DECOMP_WINDOW = 32*1024
 
 class GroupCompressBlock(object):
     """An object which maintains the internal structure of the compressed data.
@@ -145,21 +155,34 @@ class GroupCompressBlock(object):
     def __init__(self):
         # map by key? or just order in file?
         self._entries = {}
+        self._compressor_name = None
+        self._z_header_length = None
+        self._header_length = None
+        self._z_header = None
+        self._z_content = None
+        self._z_content_decompressor = None
+        self._z_content_length = None
+        self._content_length = None
         self._content = None
-        self._size = 0
-
-    def _parse_header(self):
-        """Parse the meta-info from the stream."""
 
     def __len__(self):
-        return self._size
+        return self._content_length + self._header_length
 
-    def _parse_header_bytes(self, header_bytes):
+    def _parse_header(self):
         """Parse the header part of the block."""
-        if _NO_LABELS:
-            # Don't parse the label structure if we aren't going to use it
+        assert self._z_header is not None
+        if self._z_header == '':
+            # Nothing to process
+            self._z_header = None
             return
-        lines = header_bytes.split('\n')
+        if self._compressor_name == 'lzma':
+            header = pylzma.decompress(self._z_header)
+        else:
+            assert self._compressor_name == 'zlib'
+            header = zlib.decompress(self._z_header)
+        self._z_header = None # We have consumed the header
+        lines = header.split('\n')
+        del header
         info_dict = {}
         for line in lines:
             if not line: #End of record
@@ -177,88 +200,183 @@ class GroupCompressBlock(object):
                 value = intern(value)
             info_dict[key] = value
 
+    def _ensure_content(self, num_bytes=None):
+        """Make sure that content has been expanded enough.
+
+        :param num_bytes: Ensure that we have extracted at least num_bytes of
+            content. If None, consume everything
+        """
+        # TODO: If we re-use the same content block at different times during
+        #       get_record_stream(), it is possible that the first pass will
+        #       get inserted, triggering an extract/_ensure_content() which
+        #       will get rid of _z_content. And then the next use of the block
+        #       will try to access _z_content (to send it over the wire), and
+        #       fail because it is already extracted. Consider never releasing
+        #       _z_content because of this.
+        if num_bytes is None:
+            num_bytes = self._content_length
+        if self._content_length is not None:
+            assert num_bytes <= self._content_length
+        if self._content is None:
+            assert self._z_content is not None
+            if self._z_content == '':
+                self._content = ''
+            elif self._compressor_name == 'lzma':
+                # We don't do partial lzma decomp yet
+                self._content = pylma.decompress(self._z_content)
+            else:
+                # Start a zlib decompressor
+                assert self._compressor_name == 'zlib'
+                if num_bytes is None:
+                    self._content = zlib.decompress(self._z_content)
+                else:
+                    self._z_content_decompressor = zlib.decompressobj()
+                    # Seed the decompressor with the uncompressed bytes, so
+                    # that the rest of the code is simplified
+                    self._content = self._z_content_decompressor.decompress(
+                        self._z_content, num_bytes + _ZLIB_DECOMP_WINDOW)
+                # Any bytes remaining to be decompressed will be in the
+                # decompressors 'unconsumed_tail'
+        # Do we have enough bytes already?
+        if num_bytes is not None and len(self._content) >= num_bytes:
+            return
+        if num_bytes is None and self._z_content_decompressor is None:
+            # We must have already decompressed everything
+            return
+        # If we got this far, and don't have a decompressor, something is wrong
+        assert self._z_content_decompressor is not None
+        remaining_decomp = self._z_content_decompressor.unconsumed_tail
+        if num_bytes is None:
+            if remaining_decomp:
+                # We don't know how much is left, but we'll decompress it all
+                self._content += self._z_content_decompressor.decompress(
+                    remaining_decomp)
+                # Note: There what I consider a bug in zlib.decompressobj
+                #       If you pass back in the entire unconsumed_tail, only
+                #       this time you don't pass a max-size, it doesn't
+                #       change the unconsumed_tail back to None/''.
+                #       However, we know we are done with the whole stream
+                self._z_content_decompressor = None
+            self._content_length = len(self._content)
+        else:
+            # If we have nothing left to decomp, we ran out of decomp bytes
+            assert remaining_decomp
+            needed_bytes = num_bytes - len(self._content)
+            # We always set max_size to 32kB over the minimum needed, so that
+            # zlib will give us as much as we really want.
+            # TODO: If this isn't good enough, we could make a loop here,
+            #       that keeps expanding the request until we get enough
+            self._content += self._z_content_decompressor.decompress(
+                remaining_decomp, needed_bytes + _ZLIB_DECOMP_WINDOW)
+            assert len(self._content) >= num_bytes
+            if not self._z_content_decompressor.unconsumed_tail:
+                # The stream is finished
+                self._z_content_decompressor = None
+
+    def _parse_bytes(self, bytes):
+        """Read the various lengths from the header.
+
+        This also populates the various 'compressed' buffers.
+
+        :return: The position in bytes just after the last newline
+        """
+        # At present, there are 4 lengths to be read, we have 2 integers for
+        # the length of the compressed and uncompressed header, and 2 integers
+        # for the compressed and uncompressed content
+        # 14 bytes can represent > 1TB, so to avoid checking too far, cap the
+        # search to 14 bytes.
+        pos = bytes.index('\n', 6, 20)
+        self._z_header_length = int(bytes[6:pos])
+        pos += 1
+        pos2 = bytes.index('\n', pos, pos + 14)
+        self._header_length = int(bytes[pos:pos2])
+        end_of_z_lengths = pos2
+        pos2 += 1
+        # Older versions don't have the content lengths, if we want to preserve
+        # backwards compatibility, we could try/except over these, and allow
+        # them to be skipped
+        try:
+            pos = bytes.index('\n', pos2, pos2 + 14)
+            self._z_content_length = int(bytes[pos2:pos])
+            pos += 1
+            pos2 = bytes.index('\n', pos, pos + 14)
+            self._content_length = int(bytes[pos:pos2])
+            pos = pos2 + 1
+            assert len(bytes) == (pos + self._z_header_length +
+                                  self._z_content_length)
+            pos2 = pos + self._z_header_length
+            self._z_header = bytes[pos:pos2]
+            self._z_content = bytes[pos2:]
+            assert len(self._z_content) == self._z_content_length
+        except ValueError:
+            # This is the older form, which did not encode its content length
+            pos = end_of_z_lengths + 1
+            pos2 = pos + self._z_header_length
+            self._z_header = bytes[pos:pos2]
+            self._z_content = bytes[pos2:]
+            self._z_content_length = len(self._z_content)
+
     @classmethod
     def from_bytes(cls, bytes):
         out = cls()
         if bytes[:6] not in (cls.GCB_HEADER, cls.GCB_LZ_HEADER):
             raise ValueError('bytes did not start with %r' % (cls.GCB_HEADER,))
         if bytes[4] == 'z':
-            decomp = zlib.decompress
+            out._compressor_name = 'zlib'
         elif bytes[4] == 'l':
-            decomp = pylzma.decompress
+            out._compressor_name = 'lzma'
         else:
             raise ValueError('unknown compressor: %r' % (bytes,))
-        pos = bytes.index('\n', 6)
-        z_header_length = int(bytes[6:pos])
-        pos += 1
-        pos2 = bytes.index('\n', pos)
-        header_length = int(bytes[pos:pos2])
-        if z_header_length == 0:
-            if header_length != 0:
-                raise ValueError('z_header_length 0, but header length != 0')
-            zcontent = bytes[pos2+1:]
-            if zcontent:
-                out._content = decomp(zcontent)
-                out._size = len(out._content)
-            return out
-        pos = pos2 + 1
-        pos2 = pos + z_header_length
-        z_header_bytes = bytes[pos:pos2]
-        if len(z_header_bytes) != z_header_length:
-            raise ValueError('Wrong length of compressed header. %s != %s'
-                             % (len(z_header_bytes), z_header_length))
-        header_bytes = decomp(z_header_bytes)
-        if len(header_bytes) != header_length:
-            raise ValueError('Wrong length of header. %s != %s'
-                             % (len(header_bytes), header_length))
-        del z_header_bytes
-        out._parse_header_bytes(header_bytes)
-        del header_bytes
-        zcontent = bytes[pos2:]
-        if zcontent:
-            out._content = decomp(zcontent)
-            out._size = header_length + len(out._content)
+        out._parse_bytes(bytes)
+        if not _NO_LABELS:
+            out._parse_header()
         return out
 
-    def extract(self, key, index_memo, sha1=None):
+    def extract(self, key, start, end, sha1=None):
         """Extract the text for a specific key.
 
         :param key: The label used for this content
         :param sha1: TODO (should we validate only when sha1 is supplied?)
         :return: The bytes for the content
         """
-        if _NO_LABELS or not self._entries:
-            start, end = index_memo[3:5]
-            # The bytes are 'f' or 'd' for the type, then a variable-length
-            # base128 integer for the content size, then the actual content
-            # We know that the variable-length integer won't be longer than 10
-            # bytes (it only takes 5 bytes to encode 2^32)
-            c = self._content[start]
-            if c == 'f':
-                type = 'fulltext'
-            else:
-                if c != 'd':
-                    raise ValueError('Unknown content control code: %s'
-                                     % (c,))
-                type = 'delta'
-            entry = GroupCompressBlockEntry(key, type, sha1=None,
-                                            start=start, length=end-start)
+        # Make sure we have enough bytes for this record
+        # TODO: if we didn't want to track the end of this entry, we could
+        #       _ensure_content(start+enough_bytes_for_type_and_length), and
+        #       then decode the entry length, and
+        #       _ensure_content(start+1+length)
+        #       It is 2 calls to _ensure_content(), but we always buffer a bit
+        #       extra anyway, and it means 1 less offset stored in the index,
+        #       and transmitted over the wire
+        if end is None:
+            # it takes 5 bytes to encode 2^32, so we need 1 byte to hold the
+            # 'f' or 'd' declaration, and then 5 more for the record length.
+            self._ensure_content(start + 6)
         else:
-            entry = self._entries[key]
-            c = self._content[entry.start]
-            if entry.type == 'fulltext':
-                if c != 'f':
-                    raise ValueError('Label claimed fulltext, byte claims: %s'
-                                     % (c,))
-            elif entry.type == 'delta':
-                if c != 'd':
-                    raise ValueError('Label claimed delta, byte claims: %s'
-                                     % (c,))
-            start = entry.start
+            self._ensure_content(end)
+        # The bytes are 'f' or 'd' for the type, then a variable-length
+        # base128 integer for the content size, then the actual content
+        # We know that the variable-length integer won't be longer than 5
+        # bytes (it takes 5 bytes to encode 2^32)
+        c = self._content[start]
+        if c == 'f':
+            type = 'fulltext'
+        else:
+            if c != 'd':
+                raise ValueError('Unknown content control code: %s'
+                                 % (c,))
+            type = 'delta'
         content_len, len_len = decode_base128_int(
-                            self._content[entry.start + 1:entry.start + 11])
-        content_start = entry.start + 1 + len_len
-        end = entry.start + entry.length
+                            self._content[start + 1:start + 6])
+        content_start = start + 1 + len_len
+        if end is None:
+            end = content_start + content_len
+            self._ensure_content(end)
+        else:
+            if end != content_start + content_len:
+                raise ValueError('end != len according to field header'
+                    ' %s != %s' % (end, content_start + content_len))
+        entry = GroupCompressBlockEntry(key, type, sha1=None,
+                                        start=start, length=end-start)
         content = self._content[content_start:end]
         if c == 'f':
             bytes = content
@@ -284,7 +402,14 @@ class GroupCompressBlock(object):
         self._entries[key] = entry
         return entry
 
-    def to_bytes(self, content=''):
+    def set_content(self, content):
+        """Set the content of this block."""
+        self._content_length = len(content)
+        self._content = content
+        self._z_content = None
+        self._z_header_length = None
+
+    def to_bytes(self):
         """Encode the information into a byte stream."""
         compress = zlib.compress
         if _USE_LZMA:
@@ -307,9 +432,9 @@ class GroupCompressBlock(object):
             chunks.append(chunk)
         bytes = ''.join(chunks)
         info_len = len(bytes)
-        z_bytes = []
-        z_bytes.append(compress(bytes))
-        del bytes
+        z_header_bytes = compress(bytes)
+        del bytes, chunks
+        z_header_len = len(z_header_bytes)
         # TODO: we may want to have the header compressed in the same chain
         #       as the data, or we may not, evaulate it
         #       having them compressed together is probably a win for
@@ -317,24 +442,293 @@ class GroupCompressBlock(object):
         #       label in the header is duplicated in the text.
         #       For chk pages and real bytes, I would guess this is not
         #       true.
-        z_len = sum(map(len, z_bytes))
-        c_len = len(content)
         if _NO_LABELS:
-            z_bytes = []
-            z_len = 0
+            z_header_bytes = ''
+            z_header_len = 0
             info_len = 0
-        z_bytes.append(compress(content))
+        if self._z_content is not None:
+            content_len = self._content_length
+            z_content_len = self._z_content_length
+            z_content_bytes = self._z_content
+        else:
+            assert self._content is not None
+            content_len = self._content_length
+            z_content_bytes = compress(self._content)
+            self._z_content = z_content_bytes
+            z_content_len = len(z_content_bytes)
+            self._z_content_length = z_content_len
         if _USE_LZMA:
             header = self.GCB_LZ_HEADER
         else:
             header = self.GCB_HEADER
         chunks = [header,
-                  '%d\n' % (z_len,),
-                  '%d\n' % (info_len,),
-                  #'%d\n' % (c_len,),
+                  '%d\n%d\n%d\n%d\n' % (z_header_len, info_len,
+                                        z_content_len, content_len)
                  ]
-        chunks.extend(z_bytes)
+        chunks.append(z_header_bytes)
+        chunks.append(z_content_bytes)
         return ''.join(chunks)
+
+
+class _LazyGroupCompressFactory(object):
+    """Yield content from a GroupCompressBlock on demand."""
+
+    def __init__(self, key, parents, manager, start, end, first):
+        """Create a _LazyGroupCompressFactory
+
+        :param key: The key of just this record
+        :param parents: The parents of this key (possibly None)
+        :param gc_block: A GroupCompressBlock object
+        :param start: Offset of the first byte for this record in the
+            uncompressd content
+        :param end: Offset of the byte just after the end of this record
+            (ie, bytes = content[start:end])
+        :param first: Is this the first Factory for the given block?
+        """
+        self.key = key
+        self.parents = parents
+        self.sha1 = None
+        # Note: This attribute coupled with Manager._factories creates a
+        #       reference cycle. Perhaps we would rather use a weakref(), or
+        #       find an appropriate time to release the ref. After the first
+        #       get_bytes_as call? After Manager.get_record_stream() returns
+        #       the object?
+        self._manager = manager
+        self.storage_kind = 'groupcompress-block'
+        if not first:
+            self.storage_kind = 'groupcompress-block-ref'
+        self._first = first
+        self._start = start
+        self._end = end
+
+    def __repr__(self):
+        return '%s(%s, first=%s)' % (self.__class__.__name__,
+            self.key, self._first)
+
+    def get_bytes_as(self, storage_kind):
+        if storage_kind == self.storage_kind:
+            if self._first:
+                # wire bytes, something...
+                return self._manager._wire_bytes()
+            else:
+                return ''
+        if storage_kind in ('fulltext', 'chunked'):
+            self._manager._prepare_for_extract()
+            block = self._manager._block
+            _, bytes = block.extract(self.key, self._start, self._end)
+            if storage_kind == 'fulltext':
+                return bytes
+            else:
+                return [bytes]
+        raise errors.UnavailableRepresentation(self.key, storage_kind,
+            self.storage_kind)
+
+
+class _LazyGroupContentManager(object):
+    """This manages a group of _LazyGroupCompressFactory objects."""
+
+    def __init__(self, block):
+        self._block = block
+        # We need to preserve the ordering
+        self._factories = []
+        self._last_byte = 0
+
+    def add_factory(self, key, parents, start, end):
+        if not self._factories:
+            first = True
+        else:
+            first = False
+        # Note that this creates a reference cycle....
+        factory = _LazyGroupCompressFactory(key, parents, self,
+            start, end, first=first)
+        self._last_byte = max(end, self._last_byte)
+        self._factories.append(factory)
+
+    def get_record_stream(self):
+        """Get a record for all keys added so far."""
+        for factory in self._factories:
+            yield factory
+        # TODO: Consider setting self._factories = None after the above loop,
+        #       as it will break the reference cycle
+
+    def _trim_block(self, last_byte):
+        """Create a new GroupCompressBlock, with just some of the content."""
+        # None of the factories need to be adjusted, because the content is
+        # located in an identical place. Just that some of the unreferenced
+        # trailing bytes are stripped
+        trace.mutter('stripping trailing bytes from groupcompress block'
+                     ' %d => %d', self._block._content_length, last_byte)
+        new_block = GroupCompressBlock()
+        self._block._ensure_content(last_byte)
+        new_block.set_content(self._block._content[:last_byte])
+        self._block = new_block
+
+    def _rebuild_block(self):
+        """Create a new GroupCompressBlock with only the referenced texts."""
+        compressor = GroupCompressor()
+        tstart = time.time()
+        old_length = self._block._content_length
+        cur_endpoint = 0
+        for factory in self._factories:
+            bytes = factory.get_bytes_as('fulltext')
+            (found_sha1, end_point, type,
+             length) = compressor.compress(factory.key, bytes, factory.sha1)
+            # Now update this factory with the new offsets, etc
+            factory.sha1 = found_sha1
+            factory._start = cur_endpoint
+            factory._end = end_point
+            cur_endpoint = end_point
+        self._last_byte = cur_endpoint
+        new_block = compressor.flush()
+        # TODO: Should we check that new_block really *is* smaller than the old
+        #       block? It seems hard to come up with a method that it would
+        #       expand, since we do full compression again. Perhaps based on a
+        #       request that ends up poorly ordered?
+        delta = time.time() - tstart
+        self._block = new_block
+        trace.mutter('creating new compressed block on-the-fly in %.3fs'
+                     ' %d bytes => %d bytes', delta, old_length,
+                     self._block._content_length)
+
+    def _prepare_for_extract(self):
+        """A _LazyGroupCompressFactory is about to extract to fulltext."""
+        # We expect that if one child is going to fulltext, all will be. This
+        # helps prevent all of them from extracting a small amount at a time.
+        # Which in itself isn't terribly expensive, but resizing 2MB 32kB at a
+        # time (self._block._content) is a little expensive.
+        self._block._ensure_content(self._last_byte)
+
+    def _check_rebuild_block(self):
+        """Check to see if our block should be repacked."""
+        total_bytes_used = 0
+        last_byte_used = 0
+        for factory in self._factories:
+            total_bytes_used += factory._end - factory._start
+            last_byte_used = max(last_byte_used, factory._end)
+        # If we are using most of the bytes from the block, we have nothing
+        # else to check (currently more that 1/2)
+        if total_bytes_used * 2 >= self._block._content_length:
+            return
+        # Can we just strip off the trailing bytes? If we are going to be
+        # transmitting more than 50% of the front of the content, go ahead
+        if total_bytes_used * 2 > last_byte_used:
+            self._trim_block(last_byte_used)
+            return
+
+        # We are using a small amount of the data, and it isn't just packed
+        # nicely at the front, so rebuild the content.
+        # Note: This would be *nicer* as a strip-data-from-group, rather than
+        #       building it up again from scratch
+        #       It might be reasonable to consider the fulltext sizes for
+        #       different bits when deciding this, too. As you may have a small
+        #       fulltext, and a trivial delta, and you are just trading around
+        #       for another fulltext. If we do a simple 'prune' you may end up
+        #       expanding many deltas into fulltexts, as well.
+        #       If we build a cheap enough 'strip', then we could try a strip,
+        #       if that expands the content, we then rebuild.
+        self._rebuild_block()
+
+    def _wire_bytes(self):
+        """Return a byte stream suitable for transmitting over the wire."""
+        self._check_rebuild_block()
+        # The outer block starts with:
+        #   'groupcompress-block\n'
+        #   <length of compressed key info>\n
+        #   <length of uncompressed info>\n
+        #   <length of gc block>\n
+        #   <header bytes>
+        #   <gc-block>
+        lines = ['groupcompress-block\n']
+        # The minimal info we need is the key, the start offset, and the
+        # parents. The length and type are encoded in the record itself.
+        # However, passing in the other bits makes it easier.  The list of
+        # keys, and the start offset, the length
+        # 1 line key
+        # 1 line with parents, '' for ()
+        # 1 line for start offset
+        # 1 line for end byte
+        header_lines = []
+        for factory in self._factories:
+            key_bytes = '\x00'.join(factory.key)
+            parents = factory.parents
+            if parents is None:
+                parent_bytes = 'None:'
+            else:
+                parent_bytes = '\t'.join('\x00'.join(key) for key in parents)
+            record_header = '%s\n%s\n%d\n%d\n' % (
+                key_bytes, parent_bytes, factory._start, factory._end)
+            header_lines.append(record_header)
+        header_bytes = ''.join(header_lines)
+        del header_lines
+        header_bytes_len = len(header_bytes)
+        z_header_bytes = zlib.compress(header_bytes)
+        del header_bytes
+        z_header_bytes_len = len(z_header_bytes)
+        block_bytes = self._block.to_bytes()
+        lines.append('%d\n%d\n%d\n' % (z_header_bytes_len, header_bytes_len,
+                                       len(block_bytes)))
+        lines.append(z_header_bytes)
+        lines.append(block_bytes)
+        del z_header_bytes, block_bytes
+        return ''.join(lines)
+
+    @classmethod
+    def from_bytes(cls, bytes):
+        # TODO: This does extra string copying, probably better to do it a
+        #       different way
+        (storage_kind, z_header_len, header_len,
+         block_len, rest) = bytes.split('\n', 4)
+        del bytes
+        if storage_kind != 'groupcompress-block':
+            raise ValueError('Unknown storage kind: %s' % (storage_kind,))
+        z_header_len = int(z_header_len)
+        if len(rest) < z_header_len:
+            raise ValueError('Compressed header len shorter than all bytes')
+        z_header = rest[:z_header_len]
+        header_len = int(header_len)
+        header = zlib.decompress(z_header)
+        if len(header) != header_len:
+            raise ValueError('invalid length for decompressed bytes')
+        del z_header
+        block_len = int(block_len)
+        if len(rest) != z_header_len + block_len:
+            raise ValueError('Invalid length for block')
+        block_bytes = rest[z_header_len:]
+        del rest
+        # So now we have a valid GCB, we just need to parse the factories that
+        # were sent to us
+        header_lines = header.split('\n')
+        del header
+        last = header_lines.pop()
+        if last != '':
+            raise ValueError('header lines did not end with a trailing'
+                             ' newline')
+        if len(header_lines) % 4 != 0:
+            raise ValueError('The header was not an even multiple of 4 lines')
+        block = GroupCompressBlock.from_bytes(block_bytes)
+        del block_bytes
+        result = cls(block)
+        for start in xrange(0, len(header_lines), 4):
+            # intern()?
+            key = tuple(header_lines[start].split('\x00'))
+            parents_line = header_lines[start+1]
+            if parents_line == 'None:':
+                parents = None
+            else:
+                parents = tuple([tuple(segment.split('\x00'))
+                                 for segment in parents_line.split('\t')
+                                  if segment])
+            start_offset = int(header_lines[start+2])
+            end_offset = int(header_lines[start+3])
+            result.add_factory(key, parents, start_offset, end_offset)
+        return result
+
+
+def network_block_to_records(storage_kind, bytes, line_end):
+    if storage_kind != 'groupcompress-block':
+        raise ValueError('Unknown storage kind: %s' % (storage_kind,))
+    manager = _LazyGroupContentManager.from_bytes(bytes)
+    return manager.get_record_stream()
 
 
 class GroupCompressor(object):
@@ -353,11 +747,8 @@ class GroupCompressor(object):
        left side.
     """
 
-    def __init__(self, delta=True):
-        """Create a GroupCompressor.
-
-        :param delta: If False, do not compress records.
-        """
+    def __init__(self):
+        """Create a GroupCompressor."""
         # Consider seeding the lines with some sort of GC Start flag, or
         # putting it as part of the output stream, rather than in the
         # compressed bytes.
@@ -487,6 +878,13 @@ class GroupCompressor(object):
             raise ValueError('Recorded sha1 != measured %s != %s'
                              % (entry.sha1, bytes_sha1))
         return bytes, entry.sha1
+
+    def flush(self):
+        """Finish this group, creating a formatted stream."""
+        content = ''.join(self.lines)
+        self.lines = None
+        self._block.set_content(content)
+        return self._block
 
     def output_chunks(self, new_chunks):
         """Output some chunks.
@@ -899,26 +1297,54 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 unadded_keys, source_result)
         for key in missing:
             yield AbsentContentFactory(key)
+        manager = None
+        # TODO: This works fairly well at batching up existing groups into a
+        #       streamable format, and possibly allowing for taking one big
+        #       group and splitting it when it isn't fully utilized.
+        #       However, it doesn't allow us to find under-utilized groups and
+        #       combine them into a bigger group on the fly.
+        #       (Consider the issue with how chk_map inserts texts
+        #       one-at-a-time.) This could be done at insert_record_stream()
+        #       time, but it probably would decrease the number of
+        #       bytes-on-the-wire for fetch.
         for source, keys in source_keys:
             if source is self:
                 for key in keys:
                     if key in self._unadded_refs:
+                        if manager is not None:
+                            # Yield everything buffered so far
+                            for factory in manager.get_record_stream():
+                                yield factory
+                            manager = None
                         bytes, sha1 = self._compressor.extract(key)
                         parents = self._unadded_refs[key]
+                        yield FulltextContentFactory(key, parents, sha1, bytes)
                     else:
                         index_memo, _, parents, (method, _) = locations[key]
                         block = self._get_block(index_memo)
-                        entry, bytes = block.extract(key, index_memo)
-                        sha1 = entry.sha1
-                        # TODO: If we don't have labels, then the sha1 here is computed
-                        #       from the data, so we don't want to re-sha the string.
-                        if not _FAST and sha_string(bytes) != sha1:
-                            raise AssertionError('sha1 sum did not match')
-                    yield FulltextContentFactory(key, parents, sha1, bytes)
+                        start, end = index_memo[3:5]
+                        if manager is None:
+                            manager = _LazyGroupContentManager(block)
+                        elif manager._block is not block:
+                            # Flush and create a new manager
+                            for factory in manager.get_record_stream():
+                                yield factory
+                            manager = _LazyGroupContentManager(block)
+                        manager.add_factory(key, parents, start, end)
             else:
+                if manager is not None:
+                    # Yield everything buffered so far
+                    for factory in manager.get_record_stream():
+                        yield factory
+                    manager = None
                 for record in source.get_record_stream(keys, ordering,
                                                        include_delta_closure):
                     yield record
+        if manager is not None:
+            # Yield everything buffered so far
+            for factory in manager.get_record_stream():
+                yield factory
+            manager = None
 
     def get_sha1s(self, keys):
         """See VersionedFiles.get_sha1s()."""
@@ -928,7 +1354,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 result[record.key] = record.sha1
             else:
                 if record.storage_kind != 'absent':
-                    result[record.key] == sha_string(record.get_bytes_as(
+                    result[record.key] = sha_string(record.get_bytes_as(
                         'fulltext'))
         return result
 
@@ -942,7 +1368,8 @@ class GroupCompressVersionedFiles(VersionedFiles):
         for _ in self._insert_record_stream(stream):
             pass
 
-    def _insert_record_stream(self, stream, random_id=False, nostore_sha=None):
+    def _insert_record_stream(self, stream, random_id=False, nostore_sha=None,
+                              reuse_blocks=True):
         """Internal core to insert a record stream into this container.
 
         This helper function has a different interface than insert_record_stream
@@ -951,6 +1378,9 @@ class GroupCompressVersionedFiles(VersionedFiles):
         :param stream: A stream of records to insert.
         :param nostore_sha: If the sha1 of a given text matches nostore_sha,
             raise ExistingContent, rather than committing the new text.
+        :param reuse_blocks: If the source is streaming from
+            groupcompress-blocks, just insert the blocks as-is, rather than
+            expanding the texts and inserting again.
         :return: An iterator over the sha1 of the inserted records.
         :seealso insert_record_stream:
         :seealso add_lines:
@@ -966,13 +1396,12 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 return adapter
         # This will go up to fulltexts for gc to gc fetching, which isn't
         # ideal.
-        self._compressor = GroupCompressor(self._delta)
+        self._compressor = GroupCompressor()
         self._unadded_refs = {}
         keys_to_add = []
         basis_end = 0
         def flush():
-            bytes = self._compressor._block.to_bytes(
-                ''.join(self._compressor.lines))
+            bytes = self._compressor.flush().to_bytes()
             index, start, length = self._access.add_raw_records(
                 [(None, len(bytes))], bytes)[0]
             nodes = []
@@ -981,16 +1410,41 @@ class GroupCompressVersionedFiles(VersionedFiles):
             self._index.add_records(nodes, random_id=random_id)
             self._unadded_refs = {}
             del keys_to_add[:]
-            self._compressor = GroupCompressor(self._delta)
+            self._compressor = GroupCompressor()
 
         last_prefix = None
         last_fulltext_len = None
         max_fulltext_len = 0
         max_fulltext_prefix = None
+        insert_manager = None
+        block_start = None
+        block_length = None
         for record in stream:
             # Raise an error when a record is missing.
             if record.storage_kind == 'absent':
                 raise errors.RevisionNotPresent(record.key, self)
+            if reuse_blocks:
+                # If the reuse_blocks flag is set, check to see if we can just
+                # copy a groupcompress block as-is.
+                if record.storage_kind == 'groupcompress-block':
+                    # Insert the raw block into the target repo
+                    insert_manager = record._manager
+                    record._manager._check_rebuild_block()
+                    bytes = record._manager._block.to_bytes()
+                    _, start, length = self._access.add_raw_records(
+                        [(None, len(bytes))], bytes)[0]
+                    del bytes
+                    block_start = start
+                    block_length = length
+                if record.storage_kind in ('groupcompress-block',
+                                           'groupcompress-block-ref'):
+                    assert insert_manager is not None
+                    assert record._manager is insert_manager
+                    value = "%d %d %d %d" % (block_start, block_length,
+                                             record._start, record._end)
+                    nodes = [(record.key, value, (record.parents,))]
+                    self._index.add_records(nodes, random_id=random_id)
+                    continue
             try:
                 bytes = record.get_bytes_as('fulltext')
             except errors.UnavailableRepresentation:

@@ -2467,6 +2467,9 @@ class CHKInventoryRepository(KnitPackRepository):
             # This is cheating a bit to use the last grabbed 'inv', but it
             # works
             for name, bytes in items:
+                # TODO: We should use something cheaper than _bytes_to_entry,
+                #       which has to .decode() the entry name, etc.
+                #       We only care about a couple of the fields in the bytes.
                 entry = inv._bytes_to_entry(bytes)
                 if entry.name == '' and not rich_root:
                     continue
