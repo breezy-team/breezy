@@ -7,10 +7,10 @@ What needs doing?
 -----------------
 
 There is plenty of code to write. Testers are always welcome for experimental
-changes. In general, pick a BLUE node from performance.png which has nothing
+changes. In general, from the `Performance Tasks`_ graph, pick a BLUE node that has nothing
 pointing at it that is also BLUE, and start working on that.
 
-Adhoc performance work can also be done. One useful tool is the 'evil' debug
+Ad-hoc performance work can also be done. One useful tool is the 'evil' debug
 flag. For instance running ``bzr -Devil commit -m "test"`` will log a backtrace
 to the bzr log file for every method call which triggers a slow or non-scalable
 part of the bzr library. So checking that a given command with ``-Devil`` has
@@ -27,7 +27,7 @@ code, to be patched and corrected.
 
 If you were at the London performance sprint, please help finish documenting
 the core command analysis work. The core commands that have not been analysed
-are listed in performance.dot as the BLUE nodes. For quick reference:
+are listed in `Performance Tasks`_ as the BLUE nodes. For quick reference:
 
 * status
 * log
@@ -57,3 +57,4 @@ list asking for mentoring on the step of the performance plan you want to help
 with.
 
 .. _`Bazaar Developer Guide`: ../en/developer-guide/HACKING.html
+.. _`Performance Tasks`: performance.png
