@@ -33,10 +33,12 @@ Preparing the tree for release
 	submit_to = bazaar@lists.canonical.com
 	smtp_server = mail.your-domain.com:25
 
-    Please see <http://doc.bazaar-vcs.org/latest/developers/HACKING.html#an-overview-of-pqm> for more details on PQM
+    Please see <http://doc.bazaar-vcs.org/latest/developers/HACKING.html#an-overview-of-pqm>
+    for more details on PQM
 
-#. In the release branch, update  ``version_info`` in
-   ``./bzrlib/__init__.py``.  Check the output of ``bzr --version``.
+#. In the release branch, update  ``version_info`` in ``./bzrlib/__init__.py``.
+   Double check that ./bzr ``_script_version`` matches ``version_info``. Check
+   the output of ``bzr --version``. 
 
 #. Add the date and release number to ``./NEWS``
 
@@ -216,12 +218,11 @@ at any time.
 See also
 --------
 
- * `Packaging into the bzr PPA <ppa.html>`_ to make and publish Ubuntu
-   packages.
- * `Bazaar Developer Document Catalog <index.html>`_
- * `Development cycles <cycle.html>`_: things that happen during the cycle
-   before the actual release.
-
+* `Packaging into the bzr PPA <ppa.html>`_ to make and publish Ubuntu
+  packages.
+* `Bazaar Developer Document Catalog <index.html>`_
+* `Development cycles <cycle.html>`_: things that happen during the cycle
+  before the actual release.
 
 ..
    vim: filetype=rst textwidth=74 ai shiftwidth=4

@@ -392,6 +392,23 @@ class TestPush(ExternalBase):
         self.assertContainsRe(err,
                               'Using default stacking branch stack_on at .*')
 
+    def test_push_stacks_with_default_stacking_if_target_is_stackable(self):
+        self.make_branch('stack_on', format='1.6')
+        self.make_bzrdir('.').get_config().set_default_stack_on('stack_on')
+        self.make_branch('from', format='pack-0.92')
+        out, err = self.run_bzr('push -d from to')
+        branch = Branch.open('to')
+        self.assertEqual('../stack_on', branch.get_stacked_on_url())
+
+    def test_push_does_not_change_format_with_default_if_target_cannot(self):
+        self.make_branch('stack_on', format='pack-0.92')
+        self.make_bzrdir('.').get_config().set_default_stack_on('stack_on')
+        self.make_branch('from', format='pack-0.92')
+        out, err = self.run_bzr('push -d from to')
+        branch = Branch.open('to')
+        self.assertRaises(errors.UnstackableBranchFormat,
+            branch.get_stacked_on_url)
+
     def test_push_doesnt_create_broken_branch(self):
         """Pushing a new standalone branch works even when there's a default
         stacking policy at the destination.

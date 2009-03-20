@@ -145,24 +145,19 @@ def debug_memory_win32api(message='', short=True):
                    ' or win32process')
         return
     if short:
-        trace.note('WorkingSize %7dK'
-                   '\tPeakWorking %7dK\t%s',
+        trace.note('WorkingSize %7dKB'
+                   '\tPeakWorking %7dKB\t%s',
                    info['WorkingSetSize'] / 1024,
                    info['PeakWorkingSetSize'] / 1024,
                    message)
         return
     if message:
         trace.note('%s', message)
-    trace.note('WorkingSize %8dKiB'
-               '\tPeakWorking %8dKiB\t%s',
-               info['WorkingSetSize'] / 1024,
-               info['PeakWorkingSetSize'] / 1024,
-               message)
-    trace.note('WorkingSize       %8d kB', info['WorkingSetSize'] / 1024)
-    trace.note('PeakWorking       %8d kB', info['PeakWorkingSetSize'] / 1024)
-    trace.note('PagefileUsage     %8d kB', info.get('PagefileUsage', 0) / 1024)
-    trace.note('PeakPagefileUsage %8d kB', info.get('PeakPagefileUsage', 0) / 1024)
-    trace.note('PrivateUsage      %8d kB', info.get('PrivateUsage', 0) / 1024)
+    trace.note('WorkingSize       %8d KB', info['WorkingSetSize'] / 1024)
+    trace.note('PeakWorking       %8d KB', info['PeakWorkingSetSize'] / 1024)
+    trace.note('PagefileUsage     %8d KB', info.get('PagefileUsage', 0) / 1024)
+    trace.note('PeakPagefileUsage %8d KB', info.get('PeakPagefileUsage', 0) / 1024)
+    trace.note('PrivateUsage      %8d KB', info.get('PrivateUsage', 0) / 1024)
     trace.note('PageFaultCount    %8d', info.get('PageFaultCount', 0))
 
 
