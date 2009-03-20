@@ -47,21 +47,6 @@ class TestBreakin(tests.TestCase):
     # port 0 means to allocate any port
     _test_process_args = ['serve', '--port', 'localhost:0']
 
-    def test_breakin(self):
-        # Break in to a debugger while bzr is running
-        # we need to test against a command that will wait for
-        # a while -- bzr serve should do
-        proc = self.start_bzr_subprocess(self._test_process_args,
-                env_changes=dict(BZR_SIGQUIT_PDB=None))
-        # wait for it to get started, and print the 'listening' line
-        proc.stderr.readline()
-        # first sigquit pops into debugger
-        os.kill(proc.pid, signal.SIGQUIT)
-        proc.stdin.write("q\n")
-        time.sleep(.5)
-        err = proc.stderr.readline()
-        self.assertContainsRe(err, r'entering debugger')
-
     def test_breakin_harder(self):
         self._dont_SIGQUIT_on_darwin()
         proc = self.start_bzr_subprocess(self._test_process_args,
@@ -70,6 +55,8 @@ class TestBreakin(tests.TestCase):
         proc.stderr.readline()
         # break into the debugger
         os.kill(proc.pid, signal.SIGQUIT)
+        err = proc.stderr.readline()
+        self.assertContainsRe(err, r'entering debugger')
         # now send a second sigquit, which should cause it to exit.  That
         # won't happen until the original signal has been noticed by the
         # child and it's run its signal handler.  We don't know quite how long
@@ -83,7 +70,7 @@ class TestBreakin(tests.TestCase):
             r = os.waitpid(proc.pid, os.WNOHANG)
             if r != (0, 0):
                 # high bit says if core was dumped; we don't care
-                self.assertEquals(r[1] & 0x7f, signal.SIGQUIT)
+                self.assertEquals(signal.SIGQUIT, r[1] & 0x7f)
                 break
         else:
             self.fail("subprocess wasn't terminated by repeated SIGQUIT")
