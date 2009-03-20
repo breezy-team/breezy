@@ -1017,7 +1017,8 @@ class TestCase(unittest.TestCase):
         path_stat = transport.stat(path)
         actual_mode = stat.S_IMODE(path_stat.st_mode)
         self.assertEqual(mode, actual_mode,
-            'mode of %r incorrect (%o != %o)' % (path, mode, actual_mode))
+                         'mode of %r incorrect (%s != %s)'
+                         % (path, oct(mode), oct(actual_mode)))
 
     def assertIsSameRealPath(self, path1, path2):
         """Fail if path1 and path2 points to different files"""
@@ -3419,27 +3420,6 @@ def probe_bad_non_ascii(encoding):
         except UnicodeDecodeError:
             return char
     return None
-
-
-class _FTPServerFeature(Feature):
-    """Some tests want an FTP Server, check if one is available.
-
-    Right now, the only way this is available is if 'medusa' is installed.
-    http://www.amk.ca/python/code/medusa.html
-    """
-
-    def _probe(self):
-        try:
-            import bzrlib.tests.ftp_server
-            return True
-        except ImportError:
-            return False
-
-    def feature_name(self):
-        return 'FTPServer'
-
-
-FTPServerFeature = _FTPServerFeature()
 
 
 class _HTTPSServerFeature(Feature):
