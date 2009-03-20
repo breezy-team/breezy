@@ -258,5 +258,10 @@ collision, but 1 in 1000 that you will have a *single* collision).  Using a
 collision chance of 10^-3, and number of keys 10^6, means we need (12+3)*0.4 =
 6 bytes.
 
+Also taking one more look at ``H ~ 0.4 (2N + E)``, you can rearrange and
+consider that for every order of magnitude more keys you insert, your chance
+for collision goes up by 2 orders of magnitude. But for 100M keys, 8 bytes
+gives you a 1 in 10,000 chance of collision.
+
 .. 
   vim: ft=rst tw=78 ai
