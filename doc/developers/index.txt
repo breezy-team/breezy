@@ -92,6 +92,27 @@ Data formats
 * `Knit pack repositories <packrepo.html>`_ |--| KnitPack repositories 
   (new in Bazaar 0.92).
 
+Uncategorized documents
+=======================
+
+* `BTree Index Prefetch <btree_index_prefetch.html>`_
+
+* `co-located branches <colocated-branches.html>`_
+
+* `Development repository formats <development-repo.html>`_
+
+* `??? <dirstate.html>`_
+
+* `Computing last_modified values <last-modified.html>`_
+
+* `LCA Tree Merging <lca_tree_merging.html>`_
+
+* `Revision Properties <revision-properties.html>`_
+
+* `Bazaar Windows Shell Extension Options <tortoise-strategy.html>`_
+
+* `"bzr update" performance analysis <update.html>`_
+
 
 .. |--| unicode:: U+2014
 
