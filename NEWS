@@ -12,15 +12,18 @@ to generate GNU ChangeLogs is wrong.
 
   BUG FIXES:
 
+    * Change ``./bzr``'s ``_script_version`` to match ./bzrlib/__init__.py
+      version_info. (Bob Tanner, Martin Pool, #345232)
+
     * Distribution archives for 1.13 do not contain generated C extension
-      modules (Jean-Francois Roy, Bob Tanner #344465)
+      modules (Jean-Francois Roy, Bob Tanner, #344465)
 
     * GNU ChangeLog output can now be produced by bzr log --format
       gnu-changelog is incorrect (Deejay, Bob Tanner, Martin Pool, 
-      Robert Collins #343928)
+      Robert Collins, #343928)
 
-    * Change ./bzr's _script_version to match ./bzrlib/__init__.py
-      version_info. (Bob Tanner, Martin Pool #345232)
+    * ``merge --force`` works again. (Robert Collins, #342105)
+
 
 bzr 1.13 "paraskavedekatriaphobia" 2009-03-14
 ---------------------------------------------
