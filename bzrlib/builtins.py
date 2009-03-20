@@ -3190,7 +3190,11 @@ class cmd_selftest(Command):
         else:
             pattern = ".*"
         if subunit:
-            from bzrlib.tests import SubUnitBzrRunner
+            try:
+                from bzrlib.tests import SubUnitBzrRunner
+            except ImportError:
+                raise errors.BzrCommandError("subunit not available. subunit "
+                    "needs to be installed to use --subunit.")
             self.additional_selftest_args['runner_class'] = SubUnitBzrRunner
         if benchmark:
             test_suite_factory = benchmarks.test_suite
