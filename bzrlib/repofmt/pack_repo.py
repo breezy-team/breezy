@@ -2495,7 +2495,7 @@ class CHKInventoryRepository(KnitPackRepository):
             total = len(revision_ids)
             for pos, inv in enumerate(self.iter_inventories(revision_ids)):
                 pb.update("Finding text references", pos, total)
-                for _, entry in inv.iter_entries():
+                for entry in inv.iter_just_entries():
                     if entry.revision != inv.revision_id:
                         continue
                     if not rich_roots and entry.file_id == inv.root_id:

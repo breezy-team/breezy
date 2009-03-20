@@ -208,6 +208,23 @@ class TestInventoryReads(TestInventory):
             ('src/hello.c', 'hello-id'),
             ], [(path, ie.file_id) for path, ie in inv.iter_entries()])
 
+    def test_iter_just_entries(self):
+        inv = self.make_inventory('tree-root')
+        for args in [('src', 'directory', 'src-id'),
+                     ('doc', 'directory', 'doc-id'),
+                     ('src/hello.c', 'file', 'hello-id'),
+                     ('src/bye.c', 'file', 'bye-id'),
+                     ('Makefile', 'file', 'makefile-id')]:
+            inv.add_path(*args)
+        self.assertEqual([
+            'bye-id',
+            'doc-id',
+            'hello-id',
+            'makefile-id',
+            'src-id',
+            'tree-root',
+            ], sorted([ie.file_id for ie in inv.iter_just_entries()]))
+
     def test_iter_entries_by_dir(self):
         inv = self.make_inventory('tree-root')
         for args in [('src', 'directory', 'src-id'),

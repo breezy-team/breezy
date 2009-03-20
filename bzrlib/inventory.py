@@ -1143,6 +1143,19 @@ class Inventory(CommonInventory):
         """Iterate over all file-ids."""
         return iter(self._byid)
 
+    def iter_just_entries(self):
+        """Iterate over all entries.
+        
+        Unlike iter_entries(), just the entries are returned (not (path, ie))
+        and the order of entries is undefined.
+
+        XXX: We may not want to merge this into bzr.dev.
+        """
+        if self.root is None:
+            return
+        for _, ie in self._byid.iteritems():
+            yield ie
+
     def __len__(self):
         """Returns number of entries."""
         return len(self._byid)
@@ -1721,6 +1734,22 @@ class CHKInventory(CommonInventory):
         """Iterate over all file-ids."""
         for key, _ in self.id_to_entry.iteritems():
             yield key[-1]
+
+    def iter_just_entries(self):
+        """Iterate over all entries.
+        
+        Unlike iter_entries(), just the entries are returned (not (path, ie))
+        and the order of entries is undefined.
+
+        XXX: We may not want to merge this into bzr.dev.
+        """
+        for key, entry in self.id_to_entry.iteritems():
+            file_id = key[0]
+            ie = self._entry_cache.get(file_id, None)
+            if ie is None:
+                ie = self._bytes_to_entry(entry)
+                self._entry_cache[file_id] = ie
+            yield ie
 
     def iter_changes(self, basis):
         """Generate a Tree.iter_changes change list between this and basis.
