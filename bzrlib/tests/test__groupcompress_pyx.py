@@ -82,6 +82,16 @@ and not have much in
 common with the next text
 """
 
+_fourth_text = """\
+123456789012345
+same rabin hash
+123456789012345
+same rabin hash
+123456789012345
+same rabin hash
+123456789012345
+same rabin hash
+"""
 
 class Test_GroupCompress(tests.TestCase):
     """Direct tests for the compiled extension."""
@@ -191,15 +201,17 @@ class TestDeltaIndex(Test_GroupCompress):
 
     def test_delta_with_delta_bytes(self):
         di = self._gc_module.DeltaIndex()
+        source = _first_text
         di.add_source(_first_text, 0)
         self.assertEqual(len(_first_text), di._source_offset)
         delta = di.make_delta(_second_text)
         self.assertEqual('Dh\tsome more\x91\x019'
                          '&previous text\nand has some extra text\n', delta)
         di.add_delta_source(delta, 0)
+        source += delta
         self.assertEqual(len(_first_text) + len(delta), di._source_offset)
-        third_delta = di.make_delta(_third_text)
-        result = self._gc_module.apply_delta(_first_text + delta, third_delta)
+        second_delta = di.make_delta(_third_text)
+        result = self._gc_module.apply_delta(source, second_delta)
         self.assertEqualDiff(_third_text, result)
         # We should be able to match against the 'previous text\nand has some...'
         # that was part of the delta bytes
@@ -207,4 +219,31 @@ class TestDeltaIndex(Test_GroupCompress):
         # enough to match in the original text, and those bytes are not present
         # in the delta for the second text.
         self.assertEqual('z\x85\x01\x90\x14\x1chas some in common with the '
+                         '\x91T&\x03and\x91\x18,', second_delta)
+        # Add this delta, and create a new delta for the same text. We should
+        # find the remaining text, and only insert the short 'and' text.
+        di.add_delta_source(second_delta, 0)
+        source += second_delta
+        third_delta = di.make_delta(_third_text)
+        result = self._gc_module.apply_delta(source, third_delta)
+        self.assertEqualDiff(_third_text, result)
+        self.assertEqual('\xa6\x01\x85\x01\x90\x14\x91\x80\x1c'
                          '\x91T&\x03and\x91\x18,', third_delta)
+        # Now create a delta, which we know won't be able to be 'fit' into the
+        # existing index
+        fourth_delta = di.make_delta(_fourth_text)
+        self.assertEqual(_fourth_text,
+                         self._gc_module.apply_delta(source, fourth_delta))
+        self.assertEqual('\xa6\x01\x80\x01'
+                         '\x7f123456789012345\nsame rabin hash\n'
+                         '123456789012345\nsame rabin hash\n'
+                         '123456789012345\nsame rabin hash\n'
+                         '123456789012345\nsame rabin hash'
+                         '\x01\n', fourth_delta)
+        di.add_delta_source(fourth_delta, 0)
+        source += fourth_delta
+        # With the next delta, everything should be found
+        fifth_delta = di.make_delta(_fourth_text)
+        self.assertEqual(_fourth_text,
+                         self._gc_module.apply_delta(source, fifth_delta))
+        self.assertEqual('\xac\x02\x80\x01\x91\xab\x7f\x01\n', fifth_delta)
