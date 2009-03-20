@@ -368,7 +368,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
         for row in reversed(rows):
             pad = (type(row) != _LeafBuilderRow)
             row.finish_node(pad=pad)
-        result = tempfile.NamedTemporaryFile()
+        result = tempfile.NamedTemporaryFile(prefix='bzr-index-')
         lines = [_BTSIGNATURE]
         lines.append(_OPTION_NODE_REFS + str(self.reference_lists) + '\n')
         lines.append(_OPTION_KEY_ELEMENTS + str(self._key_length) + '\n')
