@@ -144,10 +144,17 @@ def debug_memory_win32api(message='', short=True):
         trace.note('Cannot debug memory on win32 without ctypes'
                    ' or win32process')
         return
+    if short:
+        trace.note('WorkingSize %7dKB'
+                   '\tPeakWorking %7dKB\t%s',
+                   info['WorkingSetSize'] / 1024,
+                   info['PeakWorkingSetSize'] / 1024,
+                   message)
+        return
+    if message:
+        trace.note('%s', message)
     trace.note('WorkingSize       %8d KB', info['WorkingSetSize'] / 1024)
     trace.note('PeakWorking       %8d KB', info['PeakWorkingSetSize'] / 1024)
-    if short:
-        return
     trace.note('PagefileUsage     %8d KB', info.get('PagefileUsage', 0) / 1024)
     trace.note('PeakPagefileUsage %8d KB', info.get('PeakPagefileUsage', 0) / 1024)
     trace.note('PrivateUsage      %8d KB', info.get('PrivateUsage', 0) / 1024)
