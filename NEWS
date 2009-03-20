@@ -31,6 +31,12 @@ New Features
   explaining how to see the complete help, i.e. ``bzr help xxx``.
   (Ian Clatworthy)
 
+* Content filters can now be used to provide custom conversion
+  between the canonical format of content (i.e. as stored) and
+  the convenience format of content (i.e. as created in working
+  trees). See ``bzr help content-filters`` for further details.
+  (Ian Clatworthy, Alexander Belchenko)
+
 Improvements
 ************
 
@@ -43,6 +49,10 @@ Improvements
   ordering, reducing round trips and network overhead. This uses the
   existing smart server methods added in 1.13, so will work on any
   1.13 or newer server. (Robert Collins, Andrew Bennetts)
+
+* ``bzr cat`` and ``bzr export`` now supports a ``--filters`` option
+  that displays/saves the content after content filters are applied.
+  (Ian Clatworthy)
 
 * ``bzr ignore`` gives a more informative message when existing
   version controlled files match the ignore pattern. (Neil
