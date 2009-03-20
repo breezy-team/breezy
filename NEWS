@@ -130,6 +130,10 @@ Testing
 Internals
 *********
 
+* ``BtreeIndex._spill_mem_keys_to_disk()`` now generates disk index with
+  optmizations turned off. This only has effect when processing > 100,000
+  keys during something like ``bzr pack``. (John Arbash Meinel)
+
 * ``DirState`` can now be passed a custom ``SHA1Provider`` object
   enabling it to store the SHA1 and stat of the canonical (post
   content filtered) form. (Ian Clatworthy)
