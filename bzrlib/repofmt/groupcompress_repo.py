@@ -254,9 +254,6 @@ class GCCHKPacker(Packer):
                 next_keys = set()
                 def handle_internal_node(node):
                     for prefix, value in node._items.iteritems():
-                        if not isinstance(value, tuple):
-                            raise AssertionError("value is %s when a tuple"
-                                " is expected" % (value.__class__))
                         # We don't want to request the same key twice, and we
                         # want to order it by the first time it is seen.
                         # Even further, we don't want to request a key which is
@@ -290,13 +287,6 @@ class GCCHKPacker(Packer):
                             handle_internal_node(node)
                         elif parse_leaf_nodes:
                             handle_leaf_node(node)
-                        # XXX: We don't walk the chk map to determine
-                        #      referenced (file_id, revision_id) keys.
-                        #      We don't do it yet because you really need to
-                        #      filter out the ones that are present in the
-                        #      parents of the rev just before the ones you are
-                        #      copying, otherwise the filter is grabbing too
-                        #      many keys...
                         counter[0] += 1
                         if pb is not None:
                             pb.update('chk node', counter[0], total_keys)
