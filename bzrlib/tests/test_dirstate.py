@@ -22,7 +22,6 @@ import os
 from bzrlib import (
     dirstate,
     errors,
-    filters,
     inventory,
     osutils,
     revision as _mod_revision,

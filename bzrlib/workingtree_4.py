@@ -69,6 +69,7 @@ import bzrlib.ui
 
 from bzrlib import symbol_versioning
 from bzrlib.decorators import needs_read_lock, needs_write_lock
+from bzrlib.filters import filtered_input_file, internal_size_sha_file_byname
 from bzrlib.inventory import InventoryEntry, Inventory, ROOT_ID, entry_factory
 import bzrlib.mutabletree
 from bzrlib.mutabletree import needs_tree_write_lock
@@ -257,9 +258,10 @@ class DirStateWorkingTree(WorkingTree3):
           Otherwise, a SHA1Provider is returned that sha's the canonical
           form of files, i.e. after read filters are applied.
         """
-        #if self.supports_content_filtering():
-        #    return ContentFilterAWareSHA1Provider(self)
-        return None
+        if self.supports_content_filtering():
+            return ContentFilterAwareSHA1Provider(self)
+        else:
+            return None
 
     def filter_unversioned_files(self, paths):
         """Filter out paths that are versioned.
@@ -1293,6 +1295,30 @@ class DirStateWorkingTree(WorkingTree3):
         if self._inventory is not None:
             self._inventory = inv
         self.flush()
+
+
+class ContentFilterAwareSHA1Provider(dirstate.SHA1Provider):
+
+    def __init__(self, tree):
+        self.tree = tree
+
+    def sha1(self, abspath):
+        """Return the sha1 of a file given its absolute path."""
+        filters = self.tree._content_filter_stack(self.tree.relpath(abspath))
+        return internal_size_sha_file_byname(abspath, filters)[1]
+
+    def stat_and_sha1(self, abspath):
+        """Return the stat and sha1 of a file given its absolute path."""
+        filters = self.tree._content_filter_stack(self.tree.relpath(abspath))
+        file_obj = file(abspath, 'rb', 65000)
+        try:
+            statvalue = os.fstat(file_obj.fileno())
+            if filters:
+                file_obj = filtered_input_file(file_obj, filters)
+            sha1 = osutils.size_sha_file(file_obj)[1]
+        finally:
+            file_obj.close()
+        return statvalue, sha1
 
 
 class WorkingTree4(DirStateWorkingTree):
