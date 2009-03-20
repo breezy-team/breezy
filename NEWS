@@ -93,6 +93,12 @@ Bug Fixes
 
 * ``merge --force`` works again. (Robert Collins, #342105)
 
+* Pushing a new branch to a server that has a stacking policy will now
+  upgrade from the local branch format when the stacking policy points at
+  a branch which is itself stackable, because we know the client can read
+  both branches, we know that the trunk for the project can be read too,
+  so the upgrade will not inconvenience users. (Robert Collins, #345169)
+
 * The GNU Changelog formatter is slightly improved in the case where
   the delta is empty, and now correctly claims not to support tags.
   (Andrea Bolognani)
