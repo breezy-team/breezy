@@ -3546,3 +3546,31 @@ class _CaseInsensitiveFilesystemFeature(Feature):
         return 'case-insensitive filesystem'
 
 CaseInsensitiveFilesystemFeature = _CaseInsensitiveFilesystemFeature()
+
+
+class _SubUnitFeature(Feature):
+    """Check if subunit is available."""
+
+    def _probe(self):
+        try:
+            import subunit
+            return True
+        except ImportError:
+            return False
+
+    def feature_name(self):
+        return 'subunit'
+
+SubUnitFeature = _SubUnitFeature()
+# Only define SubUnitBzrRunner if subunit is available.
+try:
+    from subunit import TestProtocolClient
+    class SubUnitBzrRunner(TextTestRunner):
+        def run(self, test):
+            # undo out claim for testing which looks like a test start to subunit
+            self.stream.write("success: %s\n" % (osutils.realpath(sys.argv[0]),))
+            result = TestProtocolClient(self.stream)
+            test.run(result)
+            return result
+except ImportError:
+    pass
