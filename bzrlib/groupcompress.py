@@ -223,7 +223,7 @@ class GroupCompressBlock(object):
                 self._content = ''
             elif self._compressor_name == 'lzma':
                 # We don't do partial lzma decomp yet
-                self._content = pylma.decompress(self._z_content)
+                self._content = pylzma.decompress(self._z_content)
             else:
                 # Start a zlib decompressor
                 assert self._compressor_name == 'zlib'
