@@ -24,7 +24,9 @@ Required information
 For a given groupcompress record, we need to know the offset and length of the
 compressed group in the .pack file, and the start and end of the content inside
 the uncompressed group. The absolute minimum is slightly less, but this is a
-good starting point.
+good starting point. The other thing to consider, is that for 1M revisions and
+1M files, we'll probably have 10-20M CHK pages, so we want to make sure we
+have an index that can scale up efficiently.
 
 1. A compressed sha hash is 20-bytes
 
@@ -50,11 +52,12 @@ good starting point.
 If we wanted to go back to the ''minimal'' amount of data that we would need to
 store.
 
-1. `Partial hash`_. 10 bytes of a sha hash are generally going to be more
-   than enough to fully determine the entry. We could support some amount of
+1. 8 bytes of a sha hash are generally going to be more than enough to fully
+   determine the entry (see `Partial hash`_). We could support some amount of
    collision in an index record, in exchange for resolving it inside the
    content. At least in theory, we don't *have* to record the whole 20-bytes
-   for the sha1 hash.
+   for the sha1 hash. (8-bytes gives us less than 1 in 1000 chance of
+   a single collision for 10M nodes in an index)
 
 2. We could record the start and length of each group in a separate location,
    and then have each record reference the group by an 'offset'. This is because
@@ -64,10 +67,10 @@ store.
    maximum overhead is just the size and cost of the dereference (and normally
    will be much much better than that.)
 
-3. If a group reference is an 8-byte start, and a 4-byte length, and we have 1M
-   keys, but get at least 1k records per group, then we would have 1k groups.
-   So we would need 12kB to record all the group offsets, and then each
-   individual record would only need a 2-byte group number, rather than a
+3. If a group reference is an 8-byte start, and a 4-byte length, and we have
+   10M keys, but get at least 1k records per group, then we would have 10k
+   groups.  So we would need 120kB to record all the group offsets, and then
+   each individual record would only need a 2-byte group number, rather than a
    12-byte reference.  We could be safe with a 4-byte group number, but if
    each group is ~1MB, 64k groups is 64GB. We can start with 2-byte, but leave
    room in the header info to indicate if we have more than 64k group entries.
@@ -76,7 +79,11 @@ store.
    less than 100 bytes each (average is closer to 40 bytes), which for 256GB
    of raw data, would amount to 2.7 billion CHK records. (This will change if
    we start to use CHK for text records, as they do not compress down as
-   small.)
+   small.) Using 100 bytes per 10M chk records, we have 1GB of compressed chk
+   data, split into 4MB groups or 250 total groups. Still << 64k groups.
+   Conversions could create 1 chk record at a time, creating a group for each,
+   but they would be foolish to not commit a write group after 10k revisions
+   (assuming 6 CHK pages each).
 
 4. We want to know the start-and-length of a record in the decompressed
    stream. This could actually be moved into a mini-index inside the group
@@ -93,7 +100,7 @@ store.
 
 5. So for 1M keys, an ideal chk+group index would be:
     
-    a. 10-byte hash prefix
+    a. 8-byte hash prefix
 
     b. 2-byte group number
 
@@ -101,29 +108,22 @@ store.
 
     d. a separate lookup of 12-byte group number to offset + length
 
-    e. a 256-way fan out top-level node consuming the first byte of the key
-       (for even better expansion, this value could *not* be repeated in the
-       final index record.) And then referencing the location in the index for
-       the actual reference with a 4-byte pointer. (It should be fine to
-       assume an index won't grow above 4GB, but they can already get above 16MB.)
+    e. a variable width mini-index that splits X bits of the key. (for the
+       smallest keys, and lowest chance of collision, this could *not* be
+       redundant with the value stored in (a)) This should then dereference
+       into a location in the index. This should probably be a 4-byte
+       reference. It is unlikely, but possible, to have an index >16MB. With
+       an 8-byte hash, it takes 1.3M chk nodes to do so.
+       At the smallest end, this will probably be a 256-way (8-bits) fan out,
+       at the high end it could go up to 64k-way (16-bits) or maybe even
+       1M-way (20-bits). (64k-way should handle up to 5-16M nodes and still
+       allow a cheap <4k read to find the final entry.)
 
-    f. for 1M keys, we probably want to consume another byte in the mini-index,
-       costing 256*256=64k records at 4bytes each. Having multiple
-       mini-indexes does not scale particularly well, because the index is
-       really just a 4-byte pointer for where to look for more information. So
-       instead, we would just have a single mini-index. This could then have a
-       variable number of bits-per-prefix that we are consuming. 8 bits (1
-       byte) would be a 256 entry index 1024 bytes long. 16 bits (2 bytes)
-       would be a 64k entry index would be 256KiB (0.25MiB). If we wanted a
-       simple 64KiB page, we would want 16k entries, which would be 14bits.
-       12 bits (1.5 bytes) would at 4k entries and 16KiB might be one of the
-       better tradeoffs.
+So the max size for the optimal groupcompress+chk index with 10M entries would be::
 
-So the max size for the optimal groupcompress+chk index with 1M entries would be::
+  12 * 10M (entries) + 64k * 12 (group) + 64k * 4 (mini index) = 121 MiB
 
-  14 * 1M (entries) + 64k * 12 (group) + 64k * 4 (mini index) = 15 MiB
-
-So 15MiB which breaks down as 14MiB for the actual entries, 0.75MiB for the
+So 121MiB which breaks down as 120MiB for the actual entries, 0.75MiB for the
 group records, and 0.25MiB for the mini index.
 
 1. Looking up a key would involve:
@@ -136,11 +136,10 @@ group records, and 0.25MiB for the mini index.
       first content if we pre-read a minimum size.)
 
    c. Jump to the location indicated, and read enough bytes to find the
-      correct 14-byte record. The mini-index only indicates the start of
-      records that start with the given prefix. A 64k-way index resolves 1MB
-      records down to 16 possibilities. So at 14 bytes each, to read all would
-      cost at most 224 bytes to be read. If we change that to a 4k-way index,
-      that goes up to 3584B = 3.5KiB. 16k-way is 896 bytes.
+      correct 12-byte record. The mini-index only indicates the start of
+      records that start with the given prefix. A 64k-way index resolves 10MB
+      records down to 160 possibilities. So at 12 bytes each, to read all would
+      cost 1920 bytes to be read.
 
    d. Determine the offset for the group entry, which is the known ``start of
       groups`` location + 12B*offset number. Read its 12-byte record.
@@ -256,12 +255,182 @@ rate. A chance of 1 in 1000 that you will collide in an index with 1M keys is
 certainly acceptible.  (note that isn't 1 in 1000 of those keys will be a
 collision, but 1 in 1000 that you will have a *single* collision).  Using a
 collision chance of 10^-3, and number of keys 10^6, means we need (12+3)*0.4 =
-6 bytes.
+6 bytes. For 10M keys, you need (14+3)*0.4 = 6.8 aka 7.
 
 Also taking one more look at ``H ~ 0.4 (2N + E)``, you can rearrange and
 consider that for every order of magnitude more keys you insert, your chance
 for collision goes up by 2 orders of magnitude. But for 100M keys, 8 bytes
 gives you a 1 in 10,000 chance of collision.
+
+You can also see this from the original equation with a bit of rearranging::
+
+     epsilon = 1 - e^(-n^2 / 2^(h+1))
+     epsilon = 1 - e^(-(2^N)^2 / (2^(h+1))) = 1 - e^(-(2^(2N))(2^-(h+1)))
+             = 1 - e^(-(2^(2N - h - 1)))
+
+Such that you want ``2N - h`` to be a very negative integer, such that
+``2^-X`` is thus very close to zero, and ``1-e^0 = 0``. But you can see that
+if you want to double the number of source texts, you need to quadruple the
+number of bits.
+
+
+Scaling Sizes
+=============
+
+Scaling up
+----------
+
+We have said we want to be able to scale to a tree with 1M files and 1M
+commits. With a 255-way fan out for chk pages, you need a 2 internal nodes,
+and a leaf node with 16 items. (You maintain 2 internal nodes up until 16.5M
+nodes, when you get another internal node, and your leaf nodes shrink down to
+1 again.) If we assume every commit averages 10 changes (large, but possible,
+especially with large merges), then you get 1 root + 10*(1 internal + 1 leaf
+node) per commit or 21 nodes per commit. At 1M revisions, that is 21M chk
+nodes. So to support the 1Mx1M project, we really need to consider having up
+to 100M chk nodes.
+
+Even if you went up to 16M tree nodes, that only bumps us up to 31M chk
+nodes. Though it also scales by number of changes, so if you had a huge churn,
+and had 100 changes per commit and a 16M node tree, you would have 301M chk
+nodes. Note that 8 bytes (64-bits) in the prefix still only gives us a 0.27%
+chance of collision (1 in 370). Or if you had 370 projects of that size, with
+all different content, *one* of them would have a collision in the index.
+
+We also should consider that you have the ``(parent_id,basename) => file_id``
+map that takes up its own set of chk pages, but testing seems to indicate that
+it is only about 1/10th that of the ``id_to_entry`` map. (rename,add,delete
+are much less common then content changes.)
+
+As a point of reference, one of the largest projects today OOo, has only 170k
+revisions, and something less than 100k files (and probably 4-5 changes per
+commit, but their history has very few merges, being a conversion from CVS).
+At 100k files, they are probably just starting to hit 2-internal nodes, so
+they would end up with 10 pages per commit (as an fair-but-high estimate), and
+at 170k revs, that would be 1.7M chk nodes.
+
+
+Scaling down
+------------
+
+While it is nice to scale to a 16M files tree with 1M files (100M total
+changes), it is also important to scale efficiently to more *real world*
+scenarios. Most projects will fall into the 255-64k file range, which is where
+you have one internal node and 255 leaf nodes (1-2 chk nodes per commit). And
+a modest number of changes (10 is generally a high figure). At 50k revisions,
+that would give you 50*2*10=500k chk nodes. (Note that all of python has 303k
+chk nodes, all of launchpad has 350k, mysql-5.1 in gc255 rather than gc255big had
+650k chk nodes, [depth=3].)
+
+So for these trees, scaling to 1M nodes is more than sufficient, and allows us
+to use a 6-byte prefix per record. At a minimum, group records could use a
+4-byte start and 3-byte length, but honestly, they are a tiny fraction of the
+overall index size, and it isn't really worth the implementation cost of being
+flexible here. We can keep a field in the header for the group record layout
+(8, 4) and for now just assert that this size is fixed.
+
+
+Other discussion
+================
+
+group encoding
+--------------
+
+In the above scheme we store the group locations as an 8-byte start, and
+4-byte length. We could theoretically just store a 4-byte length, and then you
+have to read all of the groups and add them up to determine the actual start
+position. The trade off is a direct jump-to-location versus storing 3x the
+data. Given when you have 64k groups you will need only .75MiB to store it,
+versus the 120MB for the actual entries, this seems to be no real overhead.
+Especially when you consider that 10M chk nodes should fit in only 250 groups,
+so total data is actually only 3KiB. Then again, if it was only 1KiB it is
+obvious that you would read the whole thing in one pass. But again, see the
+pathological "conversion creating 1 group per chk page" issue.
+
+Also, we might want to support more than 64k groups in a given index when we
+get to the point of storing file content in a CHK index. A lot of the analysis
+about the number of groups is based on the 100 byte compression of CHK nodes,
+which would not be true with file-content. We should compress well, I don't
+expect us to compress *that* well. Launchpad shows that the average size of a
+content record is about 500-600 bytes (after you filter out the ~140k that are
+NULL content records). At that size, you expect to get approx 7k records per
+group, down from 40k. Going further, though, you also want to split groups
+earlier, since you end up with better compression. so with 100,000 unique file
+texts, you end up with ~100 groups. With 1M revisions @ 10 changes each, you
+have 10M file texts, and would end up at 10,485 groups. That seems like more
+64k groups is still more than enough head room. You need to fit only 100
+entries per group, to get down to where you are getting into trouble (and have
+10M file texts.) Something to keep an eye on, but unlikely to be something
+that is strictly a problem.
+
+Still reasonable to have a record in the header indicating that index entries
+use a 2-byte group entry pointer, and allow it to scale to 3 (we may also find
+a win scaling it down to 1 in the common cases of <250 groups). Note that if
+you have the full 4MB groups, it takes 256 GB of compressed content to fill
+64k records. And our groups are currently scaled that we require at least
+1-2MB before they can be considered 'full'.
+
+
+variable length index entries
+-----------------------------
+
+The above had us store 8-bytes of sha hash, 2 bytes of group number, and
+2 bytes for record-in-group. However, since we have the variable-pointer
+mini-index, we could consider having those values be 'variable length'. So
+when you read the bytes between the previous-and-next record, you have a
+parser that can handle variable width. The main problem is that to encode
+start/stop of record takes some bytes, and at 12-bytes for a record, you don't
+have a lot of space to waste for a "end-of-entry" indicator. The easiest would
+be to store things in base-128 (high bit indicates the next byte also should
+be included).
+
+
+storing uncompressed offset + length
+------------------------------------
+
+To get the smallest index possible, we store only a 2-byte 'record indicator'
+inside the index, and then assume that it can be decode once we've read the
+actual group. This is certainly possible, but it represents yet another layer
+of indirection before you can actually get content. If we went with
+variable-length index entries, we could probably get most of the benefit with
+a variable-width start-of-entry value. The length-of-content is already being
+stored as a base128 integer starting at the second byte of the uncompressed
+data (the first being the record type, fulltext/delta). It complicates some of
+our other processing, since we would then only know how much to decompress to
+get the start of the record.
+
+Another intriguing possibility would be to store the *end* of the record in
+the index, and then in the data stream store the length and type information
+at the *end* of the record, rather than at the beginning (or possibly at both
+ends). Storing it at the end is a bit unintuitive when you think about reading
+in the data as a stream, and figuring out information (you have to read to the
+end, then seek back) But a given GC block does store the
+length-of-uncompressed-content, which means we can trivially decompress, jump
+to the end, and then walk-backwards for everything else.
+
+Given that every byte in an index entry costs 10MiB in a 10M index, it is
+worth considering. At 4MiB for a block, base 128 takes 4 bytes to encode the
+last 50% of records (those beyond 2MiB), 3 bytes for everything from 16KiB =>
+2MiB.  So the expected size is for all intents and purposes, 3.5 bytes.  (Just
+due to an unfortunate effect of where the boundary is that you need more
+bytes.) If we capped the data at 2MB, the expected drops to just under 3
+bytes. Note that a flat 3bytes could decode up to 16MiB, which would be much
+better for our purpose, but wouldn't let us write groups that had a record
+after 16MiB, which doesn't work for the ISO case. Though it works *absolutely*
+fine for the CHK inventory cases (what we have today).
+
+If we change the analysis
+
+null content
+------------
+At the moment, we have a lot of records in our per-file graph that refers to
+empty content. We get one for every symlink and directory, for every time that
+they change. This isn't specifically relevant for CHK pages, but for
+efficiency we could certainly consider setting "group = 0 entry = 0" to mean
+that this is actually a no-content entry. It means the group block itself
+doesn't have to hold a record for it, etc. Alternatively we could use
+"group=FFFF entry = FFFF" to mean the same thing.
+
 
 .. 
   vim: ft=rst tw=78 ai
