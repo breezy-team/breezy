@@ -40,8 +40,10 @@ class NoSuchRef(BzrGitError):
 
     _fmt = "The ref %(ref)s was not found."
     
-    def __init__(self, ref):
+    def __init__(self, ref, present_refs=None):
         self.ref = ref
+        self.present_refs = present_refs
+
 
 class LightWeightCheckoutsNotSupported(BzrGitError):
     _fmt = "bzr-git does not support creating lightweight checkouts at the moment."
