@@ -447,5 +447,19 @@ doesn't have to hold a record for it, etc. Alternatively we could use
 "group=FFFF entry = FFFF" to mean the same thing.
 
 
+``VF.keys()``
+-------------
+At the moment, some apis expect that you can list the references by reading
+all of the index. We would like to get away from this anyway, as it doesn't
+scale particularly well. However, with this format, we no longer store the
+exact value for the content. The content is self describing, and we *would* be
+storing enough to uniquely decide which node to read. Though that is actually
+contained in just 4-bytes (2-byte group, 2-byte group entry).
+
+We use ``VF.keys()`` during 'pack' and 'autopack' to avoid asking for content
+we don't have, and to put a counter on the progress bar. For the latter, we
+can just use ``index.key_count()`` for the former, we could just properly
+handle ``AbsentContentFactory``.
+
 .. 
   vim: ft=rst tw=78 ai
