@@ -83,9 +83,10 @@ def tree_files_for_add(file_list):
         tree = WorkingTree.open_containing(file_list[0])[0]
         if tree.supports_views():
             view_files = tree.views.lookup_view()
-            for filename in file_list:
-                if not osutils.is_inside_any(view_files, filename):
-                    raise errors.FileOutsideView(filename, view_files)
+            if view_files:
+                for filename in file_list:
+                    if not osutils.is_inside_any(view_files, filename):
+                        raise errors.FileOutsideView(filename, view_files)
     else:
         tree = WorkingTree.open_containing(u'.')[0]
         if tree.supports_views():
