@@ -86,6 +86,10 @@ Bug Fixes
 * Fixed incorrect "Source format does not support stacking" warning
   when pushing to a smart server.  (Andrew Bennetts, #334114)
 
+* Fixed "Specified file 'x/y/z' is outside current view: " occurring
+  on ``bzr add x/y/z`` in WorkingTree5 formats (e.g. ``development-wt5``)
+  when no view is defined.  (Ian Clatworthy, #344708)
+
 * It is no longer possible to fetch between repositories while the
   target repository is in a write group. This prevents race conditions
   that prevent the use of RPC's to perform fetch, and thus allows
