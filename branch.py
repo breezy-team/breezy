@@ -36,6 +36,9 @@ from bzrlib.trace import (
     mutter,
     )
 
+from bzrlib.plugins.git.errors import (
+    NoSuchRef,
+    )
 from bzrlib.plugins.git.foreign import (
     ForeignBranch,
     )
@@ -120,6 +123,7 @@ class GitBranch(ForeignBranch):
         revidmap = self.repository.dfetch(source.repository, stop_revision)
         self.head, self.mapping = self.mapping.revision_id_bzr_to_foreign(
             revidmap[stop_revision])
+        self.repository._git.set_ref(self.name, self.head)
         return revidmap
 
     def lock_write(self):
@@ -222,8 +226,7 @@ class InterGitGenericBranch(branch.InterBranch):
         self._last_revid = None
         def determine_wants(heads):
             if not self.source.name in heads:
-                raise BzrError("No such remote branch '%s', found: %r" % (
-                    self.source.name, heads.keys()))
+                raise NoSuchRef(self.source.name, heads.keys())
             head = heads[self.source.name]
             self._last_revid = self.source.mapping.revision_id_foreign_to_bzr(
                 head)
