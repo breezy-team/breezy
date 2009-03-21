@@ -68,8 +68,9 @@ class GitRepository(ForeignRepository):
     def __init__(self, gitdir, lockfiles):
         ForeignRepository.__init__(self, GitFormat(), gitdir, lockfiles)
         from bzrlib.plugins.git import fetch
-        repository.InterRepository.register_optimiser(fetch.InterGitRepository)
-        repository.InterRepository.register_optimiser(fetch.InterGitNonGitRepository)
+        for optimiser in [fetch.InterGitRepository, 
+                          fetch.InterGitNonGitRepository]:
+            repository.InterRepository.register_optimiser(optimiser)
 
     def is_shared(self):
         return True
@@ -89,6 +90,7 @@ class GitRepository(ForeignRepository):
 
 
 class LocalGitRepository(GitRepository):
+    """Git repository on the file system."""
 
     def __init__(self, gitdir, lockfiles):
         # FIXME: This also caches negatives. Need to be more careful 
@@ -187,9 +189,11 @@ class LocalGitRepository(GitRepository):
             try:
                 for i, revid in enumerate(todo):
                     pb.update("pushing revisions", i, len(todo))
-                    git_commit = self.import_revision_gist(source, revid, gitidmap.__getitem__)
+                    git_commit = self.import_revision_gist(source, revid,
+                        gitidmap.__getitem__)
                     gitidmap[revid] = git_commit
-                    git_revid = self.get_mapping().revision_id_foreign_to_bzr(git_commit)
+                    git_revid = self.get_mapping().revision_id_foreign_to_bzr(
+                        git_commit)
                     revidmap[revid] = git_revid
             finally:
                 pb.finished()
@@ -247,12 +251,10 @@ class LocalGitRepository(GitRepository):
 
     def revision_tree(self, revision_id):
         revision_id = revision.ensure_null(revision_id)
-
         if revision_id == revision.NULL_REVISION:
             inv = inventory.Inventory(root_id=None)
             inv.revision_id = revision_id
             return revisiontree.RevisionTree(self, inv, revision_id)
-
         return GitRevisionTree(self, revision_id)
 
     def get_inventory(self, revision_id):
@@ -262,7 +264,8 @@ class LocalGitRepository(GitRepository):
     def set_make_working_trees(self, trees):
         pass
 
-    def fetch_objects(self, determine_wants, graph_walker, resolve_ext_ref, progress=None):
+    def fetch_objects(self, determine_wants, graph_walker, resolve_ext_ref,
+        progress=None):
         return self._git.fetch_objects(determine_wants, graph_walker, progress)
 
 
