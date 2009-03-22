@@ -25,6 +25,16 @@ from bzrlib import (
 class TestLRUCache(tests.TestCase):
     """Test that LRU cache properly keeps track of entries."""
 
+    def test_cache_size(self):
+        cache = lru_cache.LRUCache(max_cache=10)
+        self.assertEqual(10, cache.cache_size())
+
+        cache = lru_cache.LRUCache(max_cache=256)
+        self.assertEqual(256, cache.cache_size())
+
+        cache.resize(512)
+        self.assertEqual(512, cache.cache_size())
+
     def test_missing(self):
         cache = lru_cache.LRUCache(max_cache=10)
 
