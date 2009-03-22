@@ -300,11 +300,16 @@ def update_workinginv_fileids(wt, old_inv, new_inv):
     # Adjust file ids in working tree
     # Sorted, so we process parents before children
     for path in sorted(fileid_renames.keys()):
+        (old_fileid, new_fileid) = fileid_renames[path]
         if path != "":
-            old_fileids.append(fileid_renames[path][0])
-            new_fileids.append((path, fileid_renames[path][1]))
+            new_fileids.append((path, new_fileid))
+            # unversion() works recursively so we only have to unversion the 
+            # top-level. Unfortunately unversioning / is not supported yet, 
+            # so unversion its children instead and use set_root_id() for /
+            if old_inv[old_fileid].parent_id == old_inv.root.file_id:
+                old_fileids.append(old_fileid)
         else:
-            new_root_id = fileid_renames[path][1]
+            new_root_id = new_fileid
     new_fileids.reverse()
     wt.unversion(old_fileids)
     if new_root_id is not None:
