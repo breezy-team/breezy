@@ -376,9 +376,9 @@ class cmd_dpush(Command):
             if not no_rebase:
                 _, old_last_revid = source_branch.last_revision_info()
                 new_last_revid = revid_map[old_last_revid]
-                if source_wt is not None:
-                    source_wt.pull(target_branch, overwrite=True, 
+                source_branch.pull(target_branch, overwrite=True, 
                                    stop_revision=new_last_revid)
+                if source_wt is not None:
                     source_wt.lock_write()
                     try:
                         update_workinginv_fileids(source_wt, 
@@ -388,9 +388,6 @@ class cmd_dpush(Command):
                                 new_last_revid))
                     finally:
                         source_wt.unlock()
-                else:
-                    source_branch.pull(target_branch, overwrite=True, 
-                                       stop_revision=new_last_revid)
         finally:
             target_branch.unlock()
 
