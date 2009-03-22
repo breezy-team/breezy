@@ -1336,19 +1336,38 @@ class Repository(object):
         rev_tmp.seek(0)
         return rev_tmp.getvalue()
 
-    def get_deltas_for_revisions(self, revisions):
+    def get_deltas_for_revisions(self, revisions, specific_fileids=None):
         """Produce a generator of revision deltas.
 
         Note that the input is a sequence of REVISIONS, not revision_ids.
         Trees will be held in memory until the generator exits.
         Each delta is relative to the revision's lefthand predecessor.
+
+        :param specific_fileids: if not None, the result is filtered
+          so that only those file-ids, their parents and their
+          children are included.
         """
+        # Get the revision-ids of interest
         required_trees = set()
         for revision in revisions:
             required_trees.add(revision.revision_id)
             required_trees.update(revision.parent_ids[:1])
-        trees = dict((t.get_revision_id(), t) for
-                     t in self.revision_trees(required_trees))
+
+        # Get the matching filtered trees. Note that it's more
+        # efficient to pass filtered trees to changes_from() rather
+        # than doing the filtering afterwards. changes_from() could
+        # arguably do the filtering itself but it's path-based, not
+        # file-id based, so filtering before or afterwards is
+        # currently easier.
+        if specific_fileids is None:
+            trees = dict((t.get_revision_id(), t) for
+                t in self.revision_trees(required_trees))
+        else:
+            trees = dict((t.get_revision_id(), t) for
+                t in self._filtered_revision_trees(required_trees,
+                specific_fileids))
+
+        # Calculate the deltas
         for revision in revisions:
             if not revision.parent_ids:
                 old_tree = self.revision_tree(_mod_revision.NULL_REVISION)
@@ -1357,14 +1376,19 @@ class Repository(object):
             yield trees[revision.revision_id].changes_from(old_tree)
 
     @needs_read_lock
-    def get_revision_delta(self, revision_id):
+    def get_revision_delta(self, revision_id, specific_fileids=None):
         """Return the delta for one revision.
 
         The delta is relative to the left-hand predecessor of the
         revision.
+
+        :param specific_fileids: if not None, the result is filtered
+          so that only those file-ids, their parents and their
+          children are included.
         """
         r = self.get_revision(revision_id)
-        return list(self.get_deltas_for_revisions([r]))[0]
+        return list(self.get_deltas_for_revisions([r],
+            specific_fileids=specific_fileids))[0]
 
     @needs_write_lock
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
@@ -1882,12 +1906,30 @@ class Repository(object):
             return RevisionTree(self, inv, revision_id)
 
     def revision_trees(self, revision_ids):
-        """Return Tree for a revision on this branch.
+        """Return Trees for revisions in this repository.
 
-        `revision_id` may not be None or 'null:'"""
+        :param revision_ids: a sequence of revision-ids;
+          a revision-id may not be None or 'null:'
+        """
         inventories = self.iter_inventories(revision_ids)
         for inv in inventories:
             yield RevisionTree(self, inv, inv.revision_id)
+
+    def _filtered_revision_trees(self, revision_ids, file_ids):
+        """Return Tree for a revision on this branch with only some files.
+
+        :param revision_ids: a sequence of revision-ids;
+          a revision-id may not be None or 'null:'
+        :param file_ids: if not None, the result is filtered
+          so that only those file-ids, their parents and their
+          children are included.
+        """
+        inventories = self.iter_inventories(revision_ids)
+        for inv in inventories:
+            # Should we introduce a FilteredRevisionTree class rather
+            # than pre-filter the inventory here?
+            filtered_inv = inv.filter(file_ids)
+            yield RevisionTree(self, filtered_inv, filtered_inv.revision_id)
 
     @needs_read_lock
     def get_ancestry(self, revision_id, topo_sorted=True):
