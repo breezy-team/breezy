@@ -19,28 +19,22 @@
 import os
 
 import bzrlib
-from bzrlib.lazy_import import lazy_import
 from bzrlib import (
     bzrdir,
     lockable_files,
     urlutils,
     )
 
-lazy_import(globals(), """
-from bzrlib.lockable_files import (
-    TransportLock,
-    )
+LockWarner = getattr(lockable_files, "_LockWarner", None)
+
 from bzrlib.plugins.git import (
+    LocalGitBzrDirFormat,
     errors,
     branch,
     get_rich_root_format,
     repository,
     workingtree,
     )
-""")
-
-from bzrlib.plugins.git import LocalGitBzrDirFormat
-
 
 
 class GitLock(object):
@@ -70,7 +64,11 @@ class GitLockableFiles(lockable_files.LockableFiles):
         self._transaction = None
         self._lock_mode = None
         self._transport = transport
-        self._lock_count = 0
+        if LockWarner is None:
+            # Bzr 1.13
+            self._lock_count = 0
+        else:
+            self._lock_warner = LockWarner(repr(self))
 
 
 class GitDir(bzrdir.BzrDir):

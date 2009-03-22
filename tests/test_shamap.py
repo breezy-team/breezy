@@ -59,11 +59,13 @@ class TestGitShaMap:
 class DictGitShaMapTests(TestCase,TestGitShaMap):
 
     def setUp(self):
+        TestCase.setUp(self)
         self.map = DictGitShaMap()
 
 
 class SqliteGitShaMapTests(TestCase,TestGitShaMap):
 
     def setUp(self):
+        TestCase.setUp(self)
         self.map = SqliteGitShaMap()
 
