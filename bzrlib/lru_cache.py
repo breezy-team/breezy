@@ -71,6 +71,10 @@ class LRUCache(object):
             # Trigger the cleanup
             self.cleanup()
 
+    def cache_size(self):
+        """Get the number of entries we will cache."""
+        return self._max_cache
+
     def get(self, key, default=None):
         if key in self._cache:
             return self[key]
