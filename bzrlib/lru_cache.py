@@ -158,8 +158,7 @@ class LRUCache(object):
         node = self._cache.get(key, None)
         if node is None:
             return default
-        # XXX: We need a test for this
-        # self._record_access(node)
+        self._record_access(node)
         return node.value
 
     def keys(self):

@@ -205,6 +205,9 @@ class TestLRUCache(tests.TestCase):
         self.assertIs(None, cache.get(3))
         obj = object()
         self.assertIs(obj, cache.get(3, obj))
+        self.assertEqual([2, 1], [n.key for n in cache._walk_lru()])
+        self.assertEqual(10, cache.get(1))
+        self.assertEqual([1, 2], [n.key for n in cache._walk_lru()])
 
     def test_keys(self):
         cache = lru_cache.LRUCache(max_cache=5, after_cleanup_count=5)
