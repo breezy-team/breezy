@@ -22,7 +22,7 @@ See RFC2228 for details.
 import base64, ftplib, getpass, socket
 
 from bzrlib import (
-    config, 
+    config,
     errors,
     )
 from bzrlib.trace import info, mutter
@@ -36,7 +36,7 @@ except ImportError, e:
     raise errors.DependencyNotPresent('kerberos', e)
 
 if getattr(kerberos, "authGSSClientWrap", None) is None:
-    raise errors.DependencyNotPresent('kerberos', 
+    raise errors.DependencyNotPresent('kerberos',
         "missing encryption function authGSSClientWrap")
 
 
@@ -60,13 +60,13 @@ class GSSAPIFtp(ftplib.FTP):
         # Try GSSAPI login first
 
         # Used FTP response codes:
-        # 235 [ADAT=base64data] - indicates that the security data exchange 
+        # 235 [ADAT=base64data] - indicates that the security data exchange
         #     completed successfully.
-        # 334 [ADAT=base64data] - indicates that the requested security 
-        #     mechanism is ok, and includes security data to be used by the 
+        # 334 [ADAT=base64data] - indicates that the requested security
+        #     mechanism is ok, and includes security data to be used by the
         #     client to construct the next command.
         # 335 [ADAT=base64data] - indicates that the security data is
-        #     acceptable, and more is required to complete the security 
+        #     acceptable, and more is required to complete the security
         #     data exchange.
 
         resp = self.sendcmd('AUTH GSSAPI')
@@ -78,7 +78,7 @@ class GSSAPIFtp(ftplib.FTP):
                     resp = self.sendcmd('ADAT ' + authdata)
                     if resp[:9] in ('235 ADAT=', '335 ADAT='):
                         rc = kerberos.authGSSClientStep(self.vc, resp[9:])
-                        if not ((resp.startswith('235 ') and rc == 1) or 
+                        if not ((resp.startswith('235 ') and rc == 1) or
                                 (resp.startswith('335 ') and rc == 0)):
                             raise ftplib.error_reply, resp
             info("Authenticated as %s" % kerberos.authGSSClientUserName(
@@ -104,11 +104,11 @@ class GSSAPIFtpTransport(FtpTransport):
 
         :return: The created connection and its associated credentials.
 
-        The credentials are a tuple with the username and password. The 
+        The credentials are a tuple with the username and password. The
         password is used if GSSAPI Authentication is not available.
 
-        The username and password can both be None, in which case the 
-        credentials specified in the URL or provided by the 
+        The username and password can both be None, in which case the
+        credentials specified in the URL or provided by the
         AuthenticationConfig() are used.
         """
         if credentials is None:
@@ -150,9 +150,8 @@ class GSSAPIFtpTransport(FtpTransport):
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    from bzrlib import tests
-    if tests.FTPServerFeature.available():
-        from bzrlib.tests import ftp_server
-        return [(GSSAPIFtpTransport, ftp_server.FTPServer)]
+    from bzrlib.tests import ftp_server
+    if ftp_server.FTPServerFeature.available():
+        return [(GSSAPIFtpTransport, ftp_server.FTPTestServer)]
     else:
         return []

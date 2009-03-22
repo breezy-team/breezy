@@ -44,7 +44,7 @@ def install_bundle(repository, bundle_reader):
         pb.finished()
 
 
-def merge_bundle(reader, tree, check_clean, merge_type, 
+def merge_bundle(reader, tree, check_clean, merge_type,
                     reprocess, show_base, change_reporter=None):
     """Merge a revision bundle into the current tree."""
     pb = bzrlib.ui.ui_factory.nested_progress_bar()

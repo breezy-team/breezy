@@ -62,11 +62,11 @@ Win32comShellFeature = _RequiredModuleFeature('win32com.shell')
 # -----
 
 class TestNeedsGlobExpansionFeature(TestCase):
-    
+
     def test_available(self):
-        self.assertEqual(sys.platform == 'win32', 
+        self.assertEqual(sys.platform == 'win32',
                          NeedsGlobExpansionFeature.available())
-        
+
     def test_str(self):
         self.assertTrue("performed" in str(NeedsGlobExpansionFeature))
 
@@ -74,7 +74,7 @@ class TestNeedsGlobExpansionFeature(TestCase):
 class TestWin32UtilsGlobExpand(TestCaseInTempDir):
 
     _test_needs_features = [NeedsGlobExpansionFeature]
-   
+
     def test_empty_tree(self):
         self.build_tree([])
         self._run_testset([
@@ -82,24 +82,24 @@ class TestWin32UtilsGlobExpand(TestCaseInTempDir):
             [['?'], ['?']],
             [['*'], ['*']],
             [['a', 'a'], ['a', 'a']]])
-        
+
     def test_tree_ascii(self):
         """Checks the glob expansion and path separation char
         normalization"""
         self.build_tree(['a', 'a1', 'a2', 'a11', 'a.1',
                          'b', 'b1', 'b2', 'b3',
-                         'c/', 'c/c1', 'c/c2', 
+                         'c/', 'c/c1', 'c/c2',
                          'd/', 'd/d1', 'd/d2', 'd/e/', 'd/e/e1'])
         self._run_testset([
             # no wildcards
             [[u'a'], [u'a']],
             [[u'a', u'a' ], [u'a', u'a']],
             [[u'A'], [u'A']],
-                
+
             [[u'd'], [u'd']],
             [[u'd/'], [u'd/']],
             [[u'd\\'], [u'd/']],
-            
+
             # wildcards
             [[u'a*'], [u'a', u'a1', u'a2', u'a11', u'a.1']],
             [[u'?'], [u'a', u'b', u'c', u'd']],
@@ -107,14 +107,14 @@ class TestWin32UtilsGlobExpand(TestCaseInTempDir):
             [[u'a??'], [u'a11', u'a.1']],
             [[u'b[1-2]'], [u'b1', u'b2']],
             [[u'A?'], [u'a1', u'a2']],
-               
+
             [[u'd/*'], [u'd/d1', u'd/d2', u'd/e']],
             [[u'd\\*'], [u'd/d1', u'd/d2', u'd/e']],
             [[u'?\\*'], [u'c/c1', u'c/c2', u'd/d1', u'd/d2', u'd/e']],
             [[u'*\\*'], [u'c/c1', u'c/c2', u'd/d1', u'd/d2', u'd/e']],
             [[u'*/'], [u'c/', u'd/']],
             [[u'*\\'], [u'c/', u'd/']]])
-        
+
     def test_tree_unicode(self):
         """Checks behaviour with non-ascii filenames"""
         self.build_tree([u'\u1234', u'\u1234\u1234', u'\u1235/', u'\u1235/\u1235'])
@@ -122,15 +122,15 @@ class TestWin32UtilsGlobExpand(TestCaseInTempDir):
             # no wildcards
             [[u'\u1234'], [u'\u1234']],
             [[u'\u1235'], [u'\u1235']],
-         
+
             [[u'\u1235/'], [u'\u1235/']],
             [[u'\u1235/\u1235'], [u'\u1235/\u1235']],
-            
+
             # wildcards
             [[u'?'], [u'\u1234', u'\u1235']],
             [[u'*'], [u'\u1234', u'\u1234\u1234', u'\u1235']],
             [[u'\u1234*'], [u'\u1234', u'\u1234\u1234']],
-            
+
             [[u'\u1235/?'], [u'\u1235/\u1235']],
             [[u'\u1235/*'], [u'\u1235/\u1235']],
             [[u'\u1235\\?'], [u'\u1235/\u1235']],
@@ -185,7 +185,7 @@ class TestLocationsCtypes(TestCase):
         first = win32utils.get_appdata_location()
         self._captureVar("APPDATA", None)
         self.assertPathsEqual(first, win32utils.get_appdata_location())
- 
+
     def test_appdata_matches_environment(self):
         # Typically the APPDATA environment variable will match
         # get_appdata_location

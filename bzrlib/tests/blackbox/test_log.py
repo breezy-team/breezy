@@ -22,7 +22,7 @@ import os, re
 
 from bzrlib import osutils
 from bzrlib.tests.blackbox import ExternalBase
-from bzrlib.tests import TestCaseInTempDir, TestCaseWithTransport
+from bzrlib.tests import KnownFailure, TestCaseInTempDir, TestCaseWithTransport
 from bzrlib.tests.test_log import (
     normalize_log,
     )
@@ -482,6 +482,10 @@ message:
 """)
 
     def test_merges_nonsupporting_formatter(self):
+        # This "feature" of log formatters is madness. If a log
+        # formatter cannot display a dotted-revno, it ought to ignore it.
+        # Otherwise, a linear sequence is always expected to be handled now.
+        raise KnownFailure('log formatters must support linear sequences now')
         self._prepare()
         err_msg = 'Selected log formatter only supports mainline revisions.'
         # The single revision case is tested in the core tests
@@ -596,7 +600,7 @@ diff:
       +++ file1\tYYYY-MM-DD HH:MM:SS +ZZZZ
       @@ -0,0 +1,1 @@
       +contents of parent/file1
-      
+\x20\x20\x20\x20\x20\x20
       === added file 'file2'
       --- file2\tYYYY-MM-DD HH:MM:SS +ZZZZ
       +++ file2\tYYYY-MM-DD HH:MM:SS +ZZZZ
@@ -612,7 +616,7 @@ diff:
         log = normalize_log(out)
         # Not supported by this formatter so expect plain output
         self.assertEqualDiff(subst_dates(log), """\
-2: Lorem Ipsum 2005-11-22 merge branch 1
+2: Lorem Ipsum 2005-11-22 [merge] merge branch 1
 1: Lorem Ipsum 2005-11-22 first post
 """)
 
@@ -655,6 +659,26 @@ diff:
 
 """)
 
+    def test_log_show_diff_non_ascii(self):
+        # Smoke test for bug #328007 UnicodeDecodeError on 'log -p'
+        message = u'Message with \xb5'
+        body = 'Body with \xb5\n'
+        wt = self.make_branch_and_tree('.')
+        self.build_tree_contents([('foo', body)])
+        wt.add('foo')
+        wt.commit(message=message)
+        # check that command won't fail with unicode error
+        # don't care about exact output because we have other tests for this
+        out,err = self.run_bzr('log -p --long')
+        self.assertNotEqual('', out)
+        self.assertEqual('', err)
+        out,err = self.run_bzr('log -p --short')
+        self.assertNotEqual('', out)
+        self.assertEqual('', err)
+        out,err = self.run_bzr('log -p --line')
+        self.assertNotEqual('', out)
+        self.assertEqual('', err)
+
 
 class TestLogEncodings(TestCaseInTempDir):
 
@@ -667,7 +691,7 @@ class TestLogEncodings(TestCaseInTempDir):
         'latin-1',
         'iso-8859-1',
         'cp437', # Common windows encoding
-        'cp1251', # Alexander Belchenko's windows encoding
+        'cp1251', # Russian windows encoding
         'cp1258', # Common windows encoding
     ]
     # Encodings which cannot encode mu

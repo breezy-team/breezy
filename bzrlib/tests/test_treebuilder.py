@@ -37,7 +37,7 @@ class FakeTree(object):
 
 
 class TestFakeTree(TestCaseWithTransport):
-    
+
     def testFakeTree(self):
         """Check that FakeTree works as required for the TreeBuilder tests."""
         tree = FakeTree()
@@ -49,7 +49,7 @@ class TestFakeTree(TestCaseWithTransport):
 
 
 class TestTreeBuilderMemoryTree(tests.TestCaseWithMemoryTransport):
-    
+
     def test_create(self):
         builder = TreeBuilder()
 
@@ -64,7 +64,7 @@ class TestTreeBuilderMemoryTree(tests.TestCaseWithMemoryTransport):
         tree = FakeTree()
         builder.start_tree(tree)
         self.assertRaises(errors.AlreadyBuilding, builder.start_tree, tree)
-        
+
     def test_finish_tree_not_started_errors(self):
         builder = TreeBuilder()
         self.assertRaises(errors.NotBuilding, builder.finish_tree)

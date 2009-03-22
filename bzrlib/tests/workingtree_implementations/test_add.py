@@ -148,7 +148,7 @@ class TestAdd(TestCaseWithWorkingTree):
                           tree.add, ['dir/subdir'])
 
     def test_add_root(self):
-        # adding the root should be a no-op, or at least not 
+        # adding the root should be a no-op, or at least not
         # do anything whacky.
         tree = self.make_branch_and_tree('.')
         tree.lock_write()

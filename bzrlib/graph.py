@@ -551,7 +551,7 @@ class Graph(object):
     def _refine_unique_nodes(self, unique_searcher, all_unique_searcher,
                              unique_tip_searchers, common_searcher):
         """Steps 5-8 of find_unique_ancestors.
-        
+
         This function returns when common_searcher has stopped searching for
         more nodes.
         """
@@ -1209,7 +1209,7 @@ class _BreadthFirstSearcher(object):
 
     def get_result(self):
         """Get a SearchResult for the current state of this searcher.
-        
+
         :return: A SearchResult for this search so far. The SearchResult is
             static - the search can be advanced and the search result will not
             be invalidated or altered.
@@ -1219,7 +1219,7 @@ class _BreadthFirstSearcher(object):
             # exclude keys for them. However, while we could have a second
             # look-ahead result buffer and shuffle things around, this method
             # is typically only called once per search - when memoising the
-            # results of the search. 
+            # results of the search.
             found, ghosts, next, parents = self._do_query(self._next_query)
             # pretend we didn't query: perhaps we should tweak _do_query to be
             # entirely stateless?
@@ -1266,7 +1266,7 @@ class _BreadthFirstSearcher(object):
 
     def next_with_ghosts(self):
         """Return the next found ancestors, with ghosts split out.
-        
+
         Ancestors are returned in the order they are seen in a breadth-first
         traversal.  No ancestor will be returned more than once. Ancestors are
         returned only after asking for their parents, which allows us to detect
@@ -1331,7 +1331,7 @@ class _BreadthFirstSearcher(object):
 
     def find_seen_ancestors(self, revisions):
         """Find ancestors of these revisions that have already been seen.
-        
+
         This function generally makes the assumption that querying for the
         parents of a node that has already been queried is reasonably cheap.
         (eg, not a round trip to a remote host).
@@ -1393,7 +1393,7 @@ class _BreadthFirstSearcher(object):
                 self._current_ghosts.intersection(revisions))
             self._current_present.difference_update(stopped)
             self._current_ghosts.difference_update(stopped)
-            # stopping 'x' should stop returning parents of 'x', but 
+            # stopping 'x' should stop returning parents of 'x', but
             # not if 'y' always references those same parents
             stop_rev_references = {}
             for rev in stopped_present:
@@ -1415,7 +1415,7 @@ class _BreadthFirstSearcher(object):
                     stop_parents.add(rev_id)
             self._next_query.difference_update(stop_parents)
         self._stopped_keys.update(stopped)
-        self._stopped_keys.update(revisions - set([revision.NULL_REVISION]))
+        self._stopped_keys.update(revisions)
         return stopped
 
     def start_searching(self, revisions):
@@ -1461,12 +1461,12 @@ class SearchResult(object):
             a SearchResult from a smart server, in which case the keys list is
             not necessarily immediately available.
         """
-        self._recipe = (start_keys, exclude_keys, key_count)
+        self._recipe = ('search', start_keys, exclude_keys, key_count)
         self._keys = frozenset(keys)
 
     def get_recipe(self):
         """Return a recipe that can be used to replay this search.
-        
+
         The recipe allows reconstruction of the same results at a later date
         without knowing all the found keys. The essential elements are a list
         of keys to start and and to stop at. In order to give reproducible
@@ -1474,13 +1474,13 @@ class SearchResult(object):
         added to the exclude list (or else ghost filling may alter the
         results).
 
-        :return: A tuple (start_keys_set, exclude_keys_set, revision_count). To
-            recreate the results of this search, create a breadth first
-            searcher on the same graph starting at start_keys. Then call next()
-            (or next_with_ghosts()) repeatedly, and on every result, call
-            stop_searching_any on any keys from the exclude_keys set. The
-            revision_count value acts as a trivial cross-check - the found
-            revisions of the new search should have as many elements as
+        :return: A tuple ('search', start_keys_set, exclude_keys_set,
+            revision_count). To recreate the results of this search, create a
+            breadth first searcher on the same graph starting at start_keys.
+            Then call next() (or next_with_ghosts()) repeatedly, and on every
+            result, call stop_searching_any on any keys from the exclude_keys
+            set. The revision_count value acts as a trivial cross-check - the
+            found revisions of the new search should have as many elements as
             revision_count. If it does not, then additional revisions have been
             ghosted since the search was executed the first time and the second
             time.
@@ -1493,6 +1493,97 @@ class SearchResult(object):
         :return: A set of keys.
         """
         return self._keys
+
+    def is_empty(self):
+        """Return true if the search lists 1 or more revisions."""
+        return self._recipe[3] == 0
+
+    def refine(self, seen, referenced):
+        """Create a new search by refining this search.
+
+        :param seen: Revisions that have been satisfied.
+        :param referenced: Revision references observed while satisfying some
+            of this search.
+        """
+        start = self._recipe[1]
+        exclude = self._recipe[2]
+        count = self._recipe[3]
+        keys = self.get_keys()
+        # New heads = referenced + old heads - seen things - exclude
+        pending_refs = set(referenced)
+        pending_refs.update(start)
+        pending_refs.difference_update(seen)
+        pending_refs.difference_update(exclude)
+        # New exclude = old exclude + satisfied heads
+        seen_heads = start.intersection(seen)
+        exclude.update(seen_heads)
+        # keys gets seen removed
+        keys = keys - seen
+        # length is reduced by len(seen)
+        count -= len(seen)
+        return SearchResult(pending_refs, exclude, count, keys)
+
+
+class PendingAncestryResult(object):
+    """A search result that will reconstruct the ancestry for some graph heads.
+
+    Unlike SearchResult, this doesn't hold the complete search result in
+    memory, it just holds a description of how to generate it.
+    """
+
+    def __init__(self, heads, repo):
+        """Constructor.
+
+        :param heads: an iterable of graph heads.
+        :param repo: a repository to use to generate the ancestry for the given
+            heads.
+        """
+        self.heads = frozenset(heads)
+        self.repo = repo
+
+    def get_recipe(self):
+        """Return a recipe that can be used to replay this search.
+
+        The recipe allows reconstruction of the same results at a later date.
+
+        :seealso SearchResult.get_recipe:
+
+        :return: A tuple ('proxy-search', start_keys_set, set(), -1)
+            To recreate this result, create a PendingAncestryResult with the
+            start_keys_set.
+        """
+        return ('proxy-search', self.heads, set(), -1)
+
+    def get_keys(self):
+        """See SearchResult.get_keys.
+
+        Returns all the keys for the ancestry of the heads, excluding
+        NULL_REVISION.
+        """
+        return self._get_keys(self.repo.get_graph())
+
+    def _get_keys(self, graph):
+        NULL_REVISION = revision.NULL_REVISION
+        keys = [key for (key, parents) in graph.iter_ancestry(self.heads)
+                if key != NULL_REVISION]
+        return keys
+
+    def is_empty(self):
+        """Return true if the search lists 1 or more revisions."""
+        if revision.NULL_REVISION in self.heads:
+            return len(self.heads) == 1
+        else:
+            return len(self.heads) == 0
+
+    def refine(self, seen, referenced):
+        """Create a new search by refining this search.
+
+        :param seen: Revisions that have been satisfied.
+        :param referenced: Revision references observed while satisfying some
+            of this search.
+        """
+        referenced = self.heads.union(referenced)
+        return PendingAncestryResult(referenced - seen, self.repo)
 
 
 def collapse_linear_regions(parent_map):

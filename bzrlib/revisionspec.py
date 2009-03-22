@@ -273,7 +273,7 @@ class RevisionSpec(object):
         # this is mostly for helping with testing
         return '<%s %s>' % (self.__class__.__name__,
                               self.user_spec)
-    
+
     def needs_branch(self):
         """Whether this revision spec needs a branch.
 
@@ -283,7 +283,7 @@ class RevisionSpec(object):
 
     def get_branch(self):
         """When the revision specifier contains a branch location, return it.
-        
+
         Otherwise, return None.
         """
         return None
@@ -340,7 +340,7 @@ class RevisionSpec_revno(RevisionSpec):
                 dotted = False
             except ValueError:
                 # dotted decimal. This arguably should not be here
-                # but the from_string method is a little primitive 
+                # but the from_string method is a little primitive
                 # right now - RBC 20060928
                 try:
                     match_revno = tuple((int(number) for number in revno_spec.split('.')))
@@ -396,7 +396,7 @@ class RevisionSpec_revno(RevisionSpec):
         else:
             return self.spec[self.spec.find(':')+1:]
 
-# Old compatibility 
+# Old compatibility
 RevisionSpec_int = RevisionSpec_revno
 
 
@@ -407,7 +407,7 @@ class RevisionSpec_revid(RevisionSpec):
     help_txt = """Selects a revision using the revision id.
 
     Supply a specific revision id, that can be used to specify any
-    revision id in the ancestry of the branch. 
+    revision id in the ancestry of the branch.
     Including merges, and pending merges.
     Examples::
 
@@ -502,7 +502,7 @@ class RevisionSpec_before(RevisionSpec):
     """
 
     prefix = 'before:'
-    
+
     def _match_on(self, branch, revs):
         r = RevisionSpec.from_string(self.spec)._match_on(branch, revs)
         if r.revno == 0:
@@ -612,7 +612,7 @@ class RevisionSpec_date(RevisionSpec):
       date:yesterday            -> select the first revision since yesterday
       date:2006-08-14,17:10:14  -> select the first revision after
                                    August 14th, 2006 at 5:10pm.
-    """    
+    """
     prefix = 'date:'
     _date_re = re.compile(
             r'(?P<date>(?P<year>\d\d\d\d)-(?P<month>\d\d)-(?P<day>\d\d))?'
@@ -728,6 +728,8 @@ class RevisionSpec_ancestor(RevisionSpec):
             revision_a = revision.ensure_null(branch.last_revision())
             if revision_a == revision.NULL_REVISION:
                 raise errors.NoCommits(branch)
+            if other_location == '':
+                other_location = branch.get_parent()
             other_branch = Branch.open(other_location)
             other_branch.lock_read()
             try:

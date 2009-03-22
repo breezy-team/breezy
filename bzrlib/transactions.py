@@ -30,8 +30,8 @@ Write transactions preserve dirty objects in the cache, though due to the
 write ordering approach we use for consistency 'dirty' is a misleading term.
 A dirty object is one we have modified.
 
-Both read and write transactions *may* flush unchanged objects out of 
-memory, unless they are marked as 'precious' which indicates that 
+Both read and write transactions *may* flush unchanged objects out of
+memory, unless they are marked as 'precious' which indicates that
 repeated reads cannot be obtained if the object is ejected, or that
 the object is an expensive one for obtaining.
 """
@@ -63,7 +63,7 @@ class ReadOnlyTransaction(object):
 
     def register_clean(self, an_object, precious=False):
         """Register an_object as being clean.
-        
+
         If the precious hint is True, the object will not
         be ejected from the object identity map ever.
         """
@@ -139,7 +139,7 @@ class WriteTransaction(ReadOnlyTransaction):
 
     def register_dirty(self, an_object):
         """Register an_object as being dirty.
-        
+
         Dirty objects are not ejected from the identity map
         until the transaction finishes and get informed
         when the transaction finishes.
@@ -154,10 +154,10 @@ class WriteTransaction(ReadOnlyTransaction):
         """Write transactions allow writes."""
         return True
 
-        
+
 class PassThroughTransaction(object):
     """A pass through transaction
-    
+
     - nothing is cached.
     - nothing ever gets into the identity map.
     """
@@ -176,14 +176,14 @@ class PassThroughTransaction(object):
 
     def register_clean(self, an_object, precious=False):
         """Register an_object as being clean.
-        
+
         Note that precious is only a hint, and PassThroughTransaction
         ignores it.
         """
 
     def register_dirty(self, an_object):
         """Register an_object as being dirty.
-        
+
         Dirty objects get informed
         when the transaction finishes.
         """

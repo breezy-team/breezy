@@ -33,7 +33,7 @@ from bzrlib.tests.intertree_implementations import TestCaseWithTwoTrees
 # TODO: test items are only emitted once when a specific_files list names a dir
 #       whose parent is now a child.
 # TODO: test specific_files when the target tree has a file and the source a
-#       dir with children, same id and same path. 
+#       dir with children, same id and same path.
 # TODO: test comparisons between trees with different root ids. mbp 20070301
 #
 # TODO: More comparisons between trees with subtrees in different states.
@@ -132,7 +132,7 @@ class TestCompare(TestCaseWithTwoTrees):
         self.assertEqual([], d.removed)
         self.assertEqual([], d.renamed)
         self.assertEqual([], d.unchanged)
-        
+
     def test_meta_modification(self):
         tree1 = self.make_branch_and_tree('1')
         tree2 = self.make_to_branch_and_tree('2')
@@ -286,14 +286,14 @@ class TestCompare(TestCaseWithTwoTrees):
     def test_require_versioned(self):
         # this does not quite robustly test, as it is passing in missing paths
         # rather than present-but-not-versioned paths. At the moment there is
-        # no mechanism for managing the test trees (which are readonly) to 
+        # no mechanism for managing the test trees (which are readonly) to
         # get present-but-not-versioned files for trees that can do that.
         tree1 = self.make_branch_and_tree('1')
         tree2 = self.make_to_branch_and_tree('2')
         tree1 = self.get_tree_no_parents_no_content(tree1)
         tree2 = self.get_tree_no_parents_abc_content(tree2)
         tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
-        self.assertRaises(errors.PathsNotVersionedError, 
+        self.assertRaises(errors.PathsNotVersionedError,
             self.intertree_class(tree1, tree2).compare,
             specific_files=['d'],
             require_versioned=True)
@@ -346,7 +346,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
 
     def do_iter_changes(self, tree1, tree2, **extra_args):
         """Helper to run iter_changes from tree1 to tree2.
-        
+
         :param tree1, tree2:  The source and target trees. These will be locked
             automatically.
         :param **extra_args: Extra args to pass to iter_changes. This is not
@@ -710,7 +710,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
             # The locked test trees conversion could not preserve the missing
             # file status. This is normal (e.g. InterDirstateTree falls back
             # to InterTree if the basis is not a DirstateRevisionTree, and
-            # revision trees cannot have missing files. 
+            # revision trees cannot have missing files.
             raise TestNotApplicable()
         expected = [('file-id', ('file', None), False, (True, False),
             (root_id, None), ('file', None), (None, None), (False, None))]
@@ -787,7 +787,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
 
     def test_disk_in_subtrees_skipped(self):
         """subtrees are considered not-in-the-current-tree.
-        
+
         This test tests the trivial case, where the basis has no paths in the
         current trees subtree.
         """
@@ -799,7 +799,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2.set_root_id('root-id')
         subtree2 = self.make_to_branch_and_tree('2/sub')
         subtree2.set_root_id('subtree-id')
-        tree2.add(['sub'], ['subtree-id'])
+        tree2.add_reference(subtree2)
         self.build_tree(['2/sub/file'])
         subtree2.add(['file'])
 
@@ -877,7 +877,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
 
     def test_unversioned_paths_in_target_matching_source_old_names(self):
         # its likely that naive implementations of unversioned file support
-        # will fail if the path was versioned, but is not any more, 
+        # will fail if the path was versioned, but is not any more,
         # due to a rename, not due to unversioning it.
         # That is, if the old tree has a versioned file 'foo', and
         # the new tree has the same file but versioned as 'bar', and also

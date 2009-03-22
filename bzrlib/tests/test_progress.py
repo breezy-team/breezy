@@ -58,6 +58,7 @@ class _NonTTYStringIO(StringIO):
 class TestProgress(TestCase):
 
     def setUp(self):
+        TestCase.setUp(self)
         q = DummyProgress()
         self.top = ChildProgress(_stack=FakeStack(q))
 
@@ -91,7 +92,7 @@ class TestProgress(TestCase):
         self.assertEqual(self.top.child_fraction, 1)
 
     def test_implementations(self):
-        for implementation in (TTYProgressBar, DotsProgressBar, 
+        for implementation in (TTYProgressBar, DotsProgressBar,
                                DummyProgress):
             self.check_parent_handling(implementation)
 

@@ -16,7 +16,7 @@
 
 """Implementation of Transport that decorates another transport.
 
-This does not change the transport behaviour at all, but provides all the 
+This does not change the transport behaviour at all, but provides all the
 stub functions to allow other decorators to be written easily.
 """
 
@@ -27,9 +27,9 @@ class TransportDecorator(Transport):
     """A no-change decorator for Transports.
 
     Subclasses of this are new transports that are based on an
-    underlying transport and can override or intercept some 
-    behavior.  For example ReadonlyTransportDecorator prevents 
-    all write attempts, and FakeNFSTransportDecorator simulates 
+    underlying transport and can override or intercept some
+    behavior.  For example ReadonlyTransportDecorator prevents
+    all write attempts, and FakeNFSTransportDecorator simulates
     some NFS quirks.
 
     This decorator class is not directly usable as a decorator:
@@ -39,7 +39,7 @@ class TransportDecorator(Transport):
 
     def __init__(self, url, _decorated=None, _from_transport=None):
         """Set the 'base' path of the transport.
-        
+
         :param _decorated: A private parameter for cloning.
         :param _from_transport: Is available for subclasses that
             need to share state across clones.
@@ -124,7 +124,7 @@ class TransportDecorator(Transport):
     def put_file(self, relpath, f, mode=None):
         """See Transport.put_file()."""
         return self._decorated.put_file(relpath, f, mode)
-    
+
     def put_bytes(self, relpath, bytes, mode=None):
         """See Transport.put_bytes()."""
         return self._decorated.put_bytes(relpath, bytes, mode)
@@ -136,7 +136,7 @@ class TransportDecorator(Transport):
     def iter_files_recursive(self):
         """See Transport.iter_files_recursive()."""
         return self._decorated.iter_files_recursive()
-    
+
     def list_dir(self, relpath):
         """See Transport.list_dir()."""
         return self._decorated.list_dir(relpath)
@@ -151,7 +151,7 @@ class TransportDecorator(Transport):
 
     def rename(self, rel_from, rel_to):
         return self._decorated.rename(rel_from, rel_to)
-    
+
     def rmdir(self, relpath):
         """See Transport.rmdir."""
         return self._decorated.rmdir(relpath)
@@ -179,7 +179,7 @@ class TransportDecorator(Transport):
 
 class DecoratorServer(Server):
     """Server for the TransportDecorator for testing with.
-    
+
     To use this when subclassing TransportDecorator, override override the
     get_decorator_class method.
     """
@@ -223,7 +223,7 @@ class DecoratorServer(Server):
 
 def get_test_permutations():
     """Return the permutations to be used in testing.
-    
+
     The Decorator class is not directly usable, and testing it would not have
     any benefit - its the concrete classes which need to be tested.
     """

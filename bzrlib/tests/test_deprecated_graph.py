@@ -45,7 +45,7 @@ class TestBase(TestCase):
                     descendants[ancestor] = set()
                 descendants[ancestor].add(node)
         return descendants
-    
+
     def test_distances(self):
         descendants = self.node_descendants()
         distances = node_distances(self.graph, descendants, 'A')
@@ -69,7 +69,7 @@ class TestBase(TestCase):
 class TestGraph(TestCase):
 
     def test_get_descendants(self):
-        # Graph objects let you get a descendants graph in 
+        # Graph objects let you get a descendants graph in
         # node: {direct-children:distance} which contains
         # known children, including ghost children
         graph = Graph()

@@ -33,6 +33,7 @@ from bzrlib import (
     errors,
     registry,
     revision,
+    trace,
     urlutils,
     )
 from bzrlib.lazy_import import lazy_import
@@ -43,7 +44,7 @@ from bzrlib.bundle import serializer
 
 class SmartServerRequest(object):
     """Base class for request handlers.
-    
+
     To define a new request, subclass this class and override the `do` method
     (and if appropriate, `do_body` as well).  Request implementors should take
     care to call `translate_client_path` and `transport_from_client_path` as
@@ -70,6 +71,7 @@ class SmartServerRequest(object):
             if not root_client_path.endswith('/'):
                 root_client_path += '/'
         self._root_client_path = root_client_path
+        self._body_chunks = []
 
     def _check_enabled(self):
         """Raises DisabledMethod if this method is disabled."""
@@ -77,9 +79,9 @@ class SmartServerRequest(object):
 
     def do(self, *args):
         """Mandatory extension point for SmartServerRequest subclasses.
-        
+
         Subclasses must implement this.
-        
+
         This should return a SmartServerResponse if this command expects to
         receive no body.
         """
@@ -100,22 +102,25 @@ class SmartServerRequest(object):
         """Called if the client sends a body with the request.
 
         The do() method is still called, and must have returned None.
-        
+
         Must return a SmartServerResponse.
         """
-        raise NotImplementedError(self.do_body)
+        if body_bytes != '':
+            raise errors.SmartProtocolError('Request does not expect a body')
 
     def do_chunk(self, chunk_bytes):
         """Called with each body chunk if the request has a streamed body.
 
         The do() method is still called, and must have returned None.
         """
-        raise NotImplementedError(self.do_chunk)
+        self._body_chunks.append(chunk_bytes)
 
     def do_end(self):
         """Called when the end of the request has been received."""
-        pass
-    
+        body_bytes = ''.join(self._body_chunks)
+        self._body_chunks = None
+        return self.do_body(body_bytes)
+
     def translate_client_path(self, client_path):
         """Translate a path received from a network client into a local
         relpath.
@@ -154,7 +159,7 @@ class SmartServerRequest(object):
 
 class SmartServerResponse(object):
     """A response to a client request.
-    
+
     This base class should not be used. Instead use
     SuccessfulSmartServerResponse and FailedSmartServerResponse as appropriate.
     """
@@ -204,7 +209,7 @@ class SuccessfulSmartServerResponse(SmartServerResponse):
 
 class SmartServerRequestHandler(object):
     """Protocol logic for smart server.
-    
+
     This doesn't handle serialization at all, it just processes requests and
     creates responses.
     """
@@ -229,25 +234,17 @@ class SmartServerRequestHandler(object):
         self._backing_transport = backing_transport
         self._root_client_path = root_client_path
         self._commands = commands
-        self._body_bytes = ''
         self.response = None
         self.finished_reading = False
         self._command = None
 
     def accept_body(self, bytes):
         """Accept body data."""
+        self._run_handler_code(self._command.do_chunk, (bytes,), {})
 
-        # TODO: This should be overriden for each command that desired body data
-        # to handle the right format of that data, i.e. plain bytes, a bundle,
-        # etc.  The deserialisation into that format should be done in the
-        # Protocol object.
-
-        # default fallback is to accumulate bytes.
-        self._body_bytes += bytes
-        
     def end_of_body(self):
         """No more body data will be received."""
-        self._run_handler_code(self._command.do_body, (self._body_bytes,), {})
+        self._run_handler_code(self._command.do_end, (), {})
         # cannot read after this.
         self.finished_reading = True
 
@@ -281,48 +278,11 @@ class SmartServerRequestHandler(object):
         # be in SmartServerVFSRequestHandler somewhere.
         try:
             return callable(*args, **kwargs)
-        except errors.NoSuchFile, e:
-            return FailedSmartServerResponse(('NoSuchFile', e.path))
-        except errors.FileExists, e:
-            return FailedSmartServerResponse(('FileExists', e.path))
-        except errors.DirectoryNotEmpty, e:
-            return FailedSmartServerResponse(('DirectoryNotEmpty', e.path))
-        except errors.ShortReadvError, e:
-            return FailedSmartServerResponse(('ShortReadvError',
-                e.path, str(e.offset), str(e.length), str(e.actual)))
-        except errors.UnstackableRepositoryFormat, e:
-            return FailedSmartServerResponse(('UnstackableRepositoryFormat',
-                str(e.format), e.url))
-        except errors.UnstackableBranchFormat, e:
-            return FailedSmartServerResponse(('UnstackableBranchFormat',
-                str(e.format), e.url))
-        except errors.NotStacked, e:
-            return FailedSmartServerResponse(('NotStacked',))
-        except UnicodeError, e:
-            # If it is a DecodeError, than most likely we are starting
-            # with a plain string
-            str_or_unicode = e.object
-            if isinstance(str_or_unicode, unicode):
-                # XXX: UTF-8 might have \x01 (our protocol v1 and v2 seperator
-                # byte) in it, so this encoding could cause broken responses.
-                # Newer clients use protocol v3, so will be fine.
-                val = 'u:' + str_or_unicode.encode('utf-8')
-            else:
-                val = 's:' + str_or_unicode.encode('base64')
-            # This handles UnicodeEncodeError or UnicodeDecodeError
-            return FailedSmartServerResponse((e.__class__.__name__,
-                    e.encoding, val, str(e.start), str(e.end), e.reason))
-        except errors.TransportNotPossible, e:
-            if e.msg == "readonly transport":
-                return FailedSmartServerResponse(('ReadOnlyError', ))
-            else:
-                raise
-        except errors.ReadError, e:
-            # cannot read the file
-            return FailedSmartServerResponse(('ReadError', e.path))
-        except errors.PermissionDenied, e:
-            return FailedSmartServerResponse(
-                ('PermissionDenied', e.path, e.extra))
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except Exception, err:
+            err_struct = _translate_error(err)
+            return FailedSmartServerResponse(err_struct)
 
     def headers_received(self, headers):
         # Just a no-op at the moment.
@@ -338,17 +298,59 @@ class SmartServerRequestHandler(object):
         self._command = command(self._backing_transport)
         self._run_handler_code(self._command.execute, args, {})
 
-    def prefixed_body_received(self, body_bytes):
-        """No more body data will be received."""
-        self._run_handler_code(self._command.do_body, (body_bytes,), {})
-        # cannot read after this.
-        self.finished_reading = True
-
-    def body_chunk_received(self, chunk_bytes):
-        self._run_handler_code(self._command.do_chunk, (chunk_bytes,), {})
-
     def end_received(self):
         self._run_handler_code(self._command.do_end, (), {})
+
+    def post_body_error_received(self, error_args):
+        # Just a no-op at the moment.
+        pass
+
+
+def _translate_error(err):
+    if isinstance(err, errors.NoSuchFile):
+        return ('NoSuchFile', err.path)
+    elif isinstance(err, errors.FileExists):
+        return ('FileExists', err.path)
+    elif isinstance(err, errors.DirectoryNotEmpty):
+        return ('DirectoryNotEmpty', err.path)
+    elif isinstance(err, errors.ShortReadvError):
+        return ('ShortReadvError', err.path, str(err.offset), str(err.length),
+                str(err.actual))
+    elif isinstance(err, errors.UnstackableRepositoryFormat):
+        return (('UnstackableRepositoryFormat', str(err.format), err.url))
+    elif isinstance(err, errors.UnstackableBranchFormat):
+        return ('UnstackableBranchFormat', str(err.format), err.url)
+    elif isinstance(err, errors.NotStacked):
+        return ('NotStacked',)
+    elif isinstance(err, UnicodeError):
+        # If it is a DecodeError, than most likely we are starting
+        # with a plain string
+        str_or_unicode = err.object
+        if isinstance(str_or_unicode, unicode):
+            # XXX: UTF-8 might have \x01 (our protocol v1 and v2 seperator
+            # byte) in it, so this encoding could cause broken responses.
+            # Newer clients use protocol v3, so will be fine.
+            val = 'u:' + str_or_unicode.encode('utf-8')
+        else:
+            val = 's:' + str_or_unicode.encode('base64')
+        # This handles UnicodeEncodeError or UnicodeDecodeError
+        return (err.__class__.__name__, err.encoding, val, str(err.start),
+                str(err.end), err.reason)
+    elif isinstance(err, errors.TransportNotPossible):
+        if err.msg == "readonly transport":
+            return ('ReadOnlyError', )
+    elif isinstance(err, errors.ReadError):
+        # cannot read the file
+        return ('ReadError', err.path)
+    elif isinstance(err, errors.PermissionDenied):
+        return ('PermissionDenied', err.path, err.extra)
+    elif isinstance(err, errors.TokenMismatch):
+        return ('TokenMismatch', err.given_token, err.lock_token)
+    elif isinstance(err, errors.LockContention):
+        return ('LockContention', err.lock, err.msg)
+    # Unserialisable error.  Log it, and return a generic error
+    trace.log_exception_quietly()
+    return ('error', str(err))
 
 
 class HelloRequest(SmartServerRequest):
@@ -390,7 +392,13 @@ request_handlers = registry.Registry()
 request_handlers.register_lazy(
     'append', 'bzrlib.smart.vfs', 'AppendRequest')
 request_handlers.register_lazy(
-    'Branch.get_config_file', 'bzrlib.smart.branch', 'SmartServerBranchGetConfigFile')
+    'Branch.get_config_file', 'bzrlib.smart.branch',
+    'SmartServerBranchGetConfigFile')
+request_handlers.register_lazy(
+    'Branch.get_parent', 'bzrlib.smart.branch', 'SmartServerBranchGetParent')
+request_handlers.register_lazy(
+    'Branch.get_tags_bytes', 'bzrlib.smart.branch',
+    'SmartServerBranchGetTagsBytes')
 request_handlers.register_lazy(
     'Branch.get_stacked_on_url', 'bzrlib.smart.branch', 'SmartServerBranchRequestGetStackedOnURL')
 request_handlers.register_lazy(
@@ -410,13 +418,32 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'Branch.unlock', 'bzrlib.smart.branch', 'SmartServerBranchRequestUnlock')
 request_handlers.register_lazy(
-    'BzrDir.find_repository', 'bzrlib.smart.bzrdir', 'SmartServerRequestFindRepositoryV1')
+    'BzrDir.cloning_metadir', 'bzrlib.smart.bzrdir',
+    'SmartServerBzrDirRequestCloningMetaDir')
 request_handlers.register_lazy(
-    'BzrDir.find_repositoryV2', 'bzrlib.smart.bzrdir', 'SmartServerRequestFindRepositoryV2')
+    'BzrDir.create_branch', 'bzrlib.smart.bzrdir',
+    'SmartServerRequestCreateBranch')
 request_handlers.register_lazy(
-    'BzrDirFormat.initialize', 'bzrlib.smart.bzrdir', 'SmartServerRequestInitializeBzrDir')
+    'BzrDir.create_repository', 'bzrlib.smart.bzrdir',
+    'SmartServerRequestCreateRepository')
 request_handlers.register_lazy(
-    'BzrDir.open_branch', 'bzrlib.smart.bzrdir', 'SmartServerRequestOpenBranch')
+    'BzrDir.find_repository', 'bzrlib.smart.bzrdir',
+    'SmartServerRequestFindRepositoryV1')
+request_handlers.register_lazy(
+    'BzrDir.find_repositoryV2', 'bzrlib.smart.bzrdir',
+    'SmartServerRequestFindRepositoryV2')
+request_handlers.register_lazy(
+    'BzrDir.find_repositoryV3', 'bzrlib.smart.bzrdir',
+    'SmartServerRequestFindRepositoryV3')
+request_handlers.register_lazy(
+    'BzrDirFormat.initialize', 'bzrlib.smart.bzrdir',
+    'SmartServerRequestInitializeBzrDir')
+request_handlers.register_lazy(
+    'BzrDir.open_branch', 'bzrlib.smart.bzrdir',
+    'SmartServerRequestOpenBranch')
+request_handlers.register_lazy(
+    'BzrDir.open_branchV2', 'bzrlib.smart.bzrdir',
+    'SmartServerRequestOpenBranchV2')
 request_handlers.register_lazy(
     'delete', 'bzrlib.smart.vfs', 'DeleteRequest')
 request_handlers.register_lazy(
@@ -457,11 +484,21 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'Repository.has_revision', 'bzrlib.smart.repository', 'SmartServerRequestHasRevision')
 request_handlers.register_lazy(
+    'Repository.insert_stream', 'bzrlib.smart.repository', 'SmartServerRepositoryInsertStream')
+request_handlers.register_lazy(
+    'Repository.insert_stream_locked', 'bzrlib.smart.repository', 'SmartServerRepositoryInsertStreamLocked')
+request_handlers.register_lazy(
     'Repository.is_shared', 'bzrlib.smart.repository', 'SmartServerRepositoryIsShared')
 request_handlers.register_lazy(
     'Repository.lock_write', 'bzrlib.smart.repository', 'SmartServerRepositoryLockWrite')
 request_handlers.register_lazy(
+    'Repository.set_make_working_trees', 'bzrlib.smart.repository',
+    'SmartServerRepositorySetMakeWorkingTrees')
+request_handlers.register_lazy(
     'Repository.unlock', 'bzrlib.smart.repository', 'SmartServerRepositoryUnlock')
+request_handlers.register_lazy(
+    'Repository.get_stream', 'bzrlib.smart.repository',
+    'SmartServerRepositoryGetStream')
 request_handlers.register_lazy(
     'Repository.tarball', 'bzrlib.smart.repository',
     'SmartServerRepositoryTarball')

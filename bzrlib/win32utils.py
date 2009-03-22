@@ -97,6 +97,70 @@ UNLEN = 256
 MAX_COMPUTERNAME_LENGTH = 31
 
 
+def debug_memory_win32api(message='', short=True):
+    """Use trace.note() to dump the running memory info."""
+    from bzrlib import trace
+    if has_ctypes:
+        class PROCESS_MEMORY_COUNTERS_EX(ctypes.Structure):
+            """Used by GetProcessMemoryInfo"""
+            _fields_ = [('cb', ctypes.c_ulong),
+                        ('PageFaultCount', ctypes.c_ulong),
+                        ('PeakWorkingSetSize', ctypes.c_size_t),
+                        ('WorkingSetSize', ctypes.c_size_t),
+                        ('QuotaPeakPagedPoolUsage', ctypes.c_size_t),
+                        ('QuotaPagedPoolUsage', ctypes.c_size_t),
+                        ('QuotaPeakNonPagedPoolUsage', ctypes.c_size_t),
+                        ('QuotaNonPagedPoolUsage', ctypes.c_size_t),
+                        ('PagefileUsage', ctypes.c_size_t),
+                        ('PeakPagefileUsage', ctypes.c_size_t),
+                        ('PrivateUsage', ctypes.c_size_t),
+                       ]
+        cur_process = ctypes.windll.kernel32.GetCurrentProcess()
+        mem_struct = PROCESS_MEMORY_COUNTERS_EX()
+        ret = ctypes.windll.psapi.GetProcessMemoryInfo(cur_process,
+            ctypes.byref(mem_struct),
+            ctypes.sizeof(mem_struct))
+        if not ret:
+            trace.note('Failed to GetProcessMemoryInfo()')
+            return
+        info = {'PageFaultCount': mem_struct.PageFaultCount,
+                'PeakWorkingSetSize': mem_struct.PeakWorkingSetSize,
+                'WorkingSetSize': mem_struct.WorkingSetSize,
+                'QuotaPeakPagedPoolUsage': mem_struct.QuotaPeakPagedPoolUsage,
+                'QuotaPagedPoolUsage': mem_struct.QuotaPagedPoolUsage,
+                'QuotaPeakNonPagedPoolUsage': mem_struct.QuotaPeakNonPagedPoolUsage,
+                'QuotaNonPagedPoolUsage': mem_struct.QuotaNonPagedPoolUsage,
+                'PagefileUsage': mem_struct.PagefileUsage,
+                'PeakPagefileUsage': mem_struct.PeakPagefileUsage,
+                'PrivateUsage': mem_struct.PrivateUsage,
+               }
+    elif has_win32api:
+        import win32process
+        # win32process does not return PrivateUsage, because it doesn't use
+        # PROCESS_MEMORY_COUNTERS_EX (it uses the one without _EX).
+        proc = win32process.GetCurrentProcess()
+        info = win32process.GetProcessMemoryInfo(proc)
+    else:
+        trace.note('Cannot debug memory on win32 without ctypes'
+                   ' or win32process')
+        return
+    if short:
+        trace.note('WorkingSize %7dKB'
+                   '\tPeakWorking %7dKB\t%s',
+                   info['WorkingSetSize'] / 1024,
+                   info['PeakWorkingSetSize'] / 1024,
+                   message)
+        return
+    if message:
+        trace.note('%s', message)
+    trace.note('WorkingSize       %8d KB', info['WorkingSetSize'] / 1024)
+    trace.note('PeakWorking       %8d KB', info['PeakWorkingSetSize'] / 1024)
+    trace.note('PagefileUsage     %8d KB', info.get('PagefileUsage', 0) / 1024)
+    trace.note('PeakPagefileUsage %8d KB', info.get('PeakPagefileUsage', 0) / 1024)
+    trace.note('PrivateUsage      %8d KB', info.get('PrivateUsage', 0) / 1024)
+    trace.note('PageFaultCount    %8d', info.get('PageFaultCount', 0))
+
+
 def get_console_size(defaultx=80, defaulty=25):
     """Return size of current console.
 
@@ -126,7 +190,7 @@ def get_console_size(defaultx=80, defaulty=25):
 
 def _get_sh_special_folder_path(csidl):
     """Call SHGetSpecialFolderPathW if available, or return None.
-    
+
     Result is always unicode (or None).
     """
     if has_ctypes:
@@ -344,7 +408,7 @@ def _ensure_with_dir(path):
         return u'./' + path, True
     else:
         return path, False
-    
+
 def _undo_ensure_with_dir(path, corrected):
     if corrected:
         return path[2:]
@@ -369,7 +433,7 @@ def glob_expand(file_list):
     import glob
     expanded_file_list = []
     for possible_glob in file_list:
-        
+
         # work around bugs in glob.glob()
         # - Python bug #1001604 ("glob doesn't return unicode with ...")
         # - failing expansion for */* with non-iso-8859-* chars
@@ -384,8 +448,8 @@ def glob_expand(file_list):
         else:
             glob_files = [_undo_ensure_with_dir(elem, corrected) for elem in glob_files]
             expanded_file_list += glob_files
-            
-    return [elem.replace(u'\\', u'/') for elem in expanded_file_list] 
+
+    return [elem.replace(u'\\', u'/') for elem in expanded_file_list]
 
 
 def get_app_path(appname):

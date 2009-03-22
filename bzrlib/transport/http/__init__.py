@@ -123,17 +123,13 @@ class HttpTransportBase(ConnectedTransport):
 
         :param relpath: The relative path to the file
         """
+        code, response_file = self._get(relpath, None)
         # FIXME: some callers want an iterable... One step forward, three steps
         # backwards :-/ And not only an iterable, but an iterable that can be
         # seeked backwards, so we will never be able to do that.  One such
         # known client is bzrlib.bundle.serializer.v4.get_bundle_reader. At the
         # time of this writing it's even the only known client -- vila20071203
-        return StringIO(self.get_bytes(relpath))
-
-    def get_bytes(self, relpath):
-        """See Transport.get_bytes()."""
-        code, response_file = self._get(relpath, None)
-        return response_file.read()
+        return StringIO(response_file.read())
 
     def _get(self, relpath, ranges, tail_amount=0):
         """Get a file, or part of a file.
@@ -352,7 +348,7 @@ class HttpTransportBase(ConnectedTransport):
 
     def _post(self, body_bytes):
         """POST body_bytes to .bzr/smart on this transport.
-        
+
         :returns: (response code, response body file-like object).
         """
         # TODO: Requiring all the body_bytes to be available at the beginning of
@@ -625,6 +621,14 @@ class SmartClientHTTPMedium(medium.SmartClientMedium):
         except errors.InvalidHttpResponse, e:
             raise errors.SmartProtocolError(str(e))
         return body_filelike
+
+    def _report_activity(self, bytes, direction):
+        """See SmartMedium._report_activity.
+
+        Does nothing; the underlying plain HTTP transport will report the
+        activity that this medium would report.
+        """
+        pass
 
 
 # TODO: May be better located in smart/medium.py with the other

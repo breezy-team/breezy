@@ -37,7 +37,7 @@ setting.
 [/home/robertc/source]
 recurse=False|True(default)
 email= as above
-check_signatures= as above 
+check_signatures= as above
 create_signatures= as above.
 
 explanation of options
@@ -45,9 +45,9 @@ explanation of options
 editor - this option sets the pop up editor to use during commits.
 email - this option sets the user id bzr will use when committing.
 check_signatures - this option controls whether bzr will require good gpg
-                   signatures, ignore them, or check them if they are 
+                   signatures, ignore them, or check them if they are
                    present.
-create_signatures - this option controls whether bzr will always create 
+create_signatures - this option controls whether bzr will always create
                     gpg signatures, never create them, or create them if the
                     branch is configured to require them.
 log_format - this option sets the default log format.  Possible values are
@@ -216,16 +216,16 @@ class Config(object):
 
     def username(self):
         """Return email-style username.
-    
+
         Something similar to 'Martin Pool <mbp@sourcefrog.net>'
-        
+
         $BZR_EMAIL can be set to override this (as well as the
         deprecated $BZREMAIL), then
         the concrete policy type is checked, and finally
         $EMAIL is examined.
         If none is found, a reasonable default is (hopefully)
         created.
-    
+
         TODO: Check it's reasonably well-formed.
         """
         v = os.environ.get('BZR_EMAIL')
@@ -385,7 +385,7 @@ class IniBasedConfig(Config):
         super(IniBasedConfig, self).__init__()
         self._get_filename = get_filename
         self._parser = None
-        
+
     def _post_commit(self):
         """See Config.post_commit."""
         return self._get_user_option('post_commit')
@@ -414,7 +414,7 @@ class IniBasedConfig(Config):
 
     def _get_alias(self, value):
         try:
-            return self._get_parser().get_value("ALIASES", 
+            return self._get_parser().get_value("ALIASES",
                                                 value)
         except KeyError:
             pass
@@ -642,7 +642,7 @@ class BranchConfig(Config):
 
     def _get_safe_value(self, option_name):
         """This variant of get_best_value never returns untrusted values.
-        
+
         It does not return values from the branch data, because the branch may
         not be controlled by the user.
 
@@ -657,7 +657,7 @@ class BranchConfig(Config):
 
     def _get_user_id(self):
         """Return the full user id for the branch.
-    
+
         e.g. "John Hacker <jhacker@example.com>"
         This is looked up in the email controlfile for the branch.
         """
@@ -667,7 +667,7 @@ class BranchConfig(Config):
                     .rstrip("\r\n"))
         except errors.NoSuchFile, e:
             pass
-        
+
         return self._get_best_value('_get_user_id')
 
     def _get_signature_checking(self):
@@ -713,14 +713,14 @@ class BranchConfig(Config):
     def _gpg_signing_command(self):
         """See Config.gpg_signing_command."""
         return self._get_safe_value('_gpg_signing_command')
-        
+
     def __init__(self, branch):
         super(BranchConfig, self).__init__()
         self._location_config = None
         self._branch_data_config = None
         self._global_config = None
         self.branch = branch
-        self.option_sources = (self._get_location_config, 
+        self.option_sources = (self._get_location_config,
                                self._get_branch_data_config,
                                self._get_global_config)
 
@@ -768,7 +768,7 @@ def config_dir():
     """Return per-user configuration directory.
 
     By default this is ~/.bazaar/
-    
+
     TODO: Global option --config-dir to override this.
     """
     base = os.environ.get('BZR_HOME', None)
@@ -898,7 +898,7 @@ def parse_username(username):
 def extract_email_address(e):
     """Return just the address part of an email string.
 
-    That is just the user@domain part, nothing else. 
+    That is just the user@domain part, nothing else.
     This part is required to contain only ascii characters.
     If it can't be extracted, raises an error.
 
@@ -918,7 +918,7 @@ class TreeConfig(IniBasedConfig):
 
     def __init__(self, branch):
         # XXX: Really this should be asking the branch for its configuration
-        # data, rather than relying on a Transport, so that it can work 
+        # data, rather than relying on a Transport, so that it can work
         # more cleanly with a RemoteBranch that has no transport.
         self._config = TransportConfig(branch._transport, 'branch.conf')
         self.branch = branch
@@ -993,7 +993,8 @@ class AuthenticationConfig(object):
         section[option_name] = value
         self._save()
 
-    def get_credentials(self, scheme, host, port=None, user=None, path=None):
+    def get_credentials(self, scheme, host, port=None, user=None, path=None, 
+                        realm=None):
         """Returns the matching credentials from authentication.conf file.
 
         :param scheme: protocol
@@ -1005,12 +1006,19 @@ class AuthenticationConfig(object):
         :param user: login (optional)
 
         :param path: the absolute path on the server (optional)
+        
+        :param realm: the http authentication realm (optional)
 
         :return: A dict containing the matching credentials or None.
            This includes:
            - name: the section name of the credentials in the
              authentication.conf file,
-           - user: can't de different from the provided user if any,
+           - user: can't be different from the provided user if any,
+           - scheme: the server protocol,
+           - host: the server address,
+           - port: the server port (can be None),
+           - path: the absolute server path (can be None),
+           - realm: the http specific authentication realm (can be None),
            - password: the decoded password, could be None if the credential
              defines only the user
            - verify_certificates: https specific, True if the server
@@ -1057,10 +1065,18 @@ class AuthenticationConfig(object):
             if a_user is None:
                 # Can't find a user
                 continue
+            # Prepare a credentials dictionary with additional keys
+            # for the credential providers
             credentials = dict(name=auth_def_name,
                                user=a_user,
+                               scheme=a_scheme,
+                               host=host,
+                               port=port,
+                               path=path,
+                               realm=realm,
                                password=auth_def.get('password', None),
                                verify_certificates=a_verify_certificates)
+            # Decode the password in the credentials (or get one)
             self.decode_password(credentials,
                                  auth_def.get('password_encoding', None))
             if 'auth' in debug.debug_flags:
@@ -1070,7 +1086,8 @@ class AuthenticationConfig(object):
         return credentials
 
     def set_credentials(self, name, host, user, scheme=None, password=None,
-                        port=None, path=None, verify_certificates=None):
+                        port=None, path=None, verify_certificates=None,
+                        realm=None):
         """Set authentication credentials for a host.
 
         Any existing credentials with matching scheme, host, port and path
@@ -1087,6 +1104,7 @@ class AuthenticationConfig(object):
             apply to.
         :param verify_certificates: On https, verify server certificates if
             True.
+        :param realm: The http authentication realm (optional).
         """
         values = {'host': host, 'user': user}
         if password is not None:
@@ -1099,10 +1117,12 @@ class AuthenticationConfig(object):
             values['path'] = path
         if verify_certificates is not None:
             values['verify_certificates'] = str(verify_certificates)
+        if realm is not None:
+            values['realm'] = realm
         config = self._get_config()
         for_deletion = []
         for section, existing_values in config.items():
-            for key in ('scheme', 'host', 'port', 'path'):
+            for key in ('scheme', 'host', 'port', 'path', 'realm'):
                 if existing_values.get(key) != values.get(key):
                     break
             else:
@@ -1127,7 +1147,7 @@ class AuthenticationConfig(object):
         :return: The found user.
         """
         credentials = self.get_credentials(scheme, host, port, user=None,
-                                           path=path)
+                                           path=path, realm=realm)
         if credentials is not None:
             user = credentials['user']
         else:
@@ -1152,7 +1172,8 @@ class AuthenticationConfig(object):
 
         :return: The found password or the one entered by the user.
         """
-        credentials = self.get_credentials(scheme, host, port, user, path)
+        credentials = self.get_credentials(scheme, host, port, user, path,
+                                           realm)
         if credentials is not None:
             password = credentials['password']
             if password is not None and scheme is 'ssh':

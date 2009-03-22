@@ -189,7 +189,8 @@ class BTreeBuilder(index.GraphIndexBuilder):
             iterators_to_combine.append(backing.iter_all_entries())
         backing_pos = pos + 1
         new_backing_file, size = \
-            self._write_nodes(self._iter_smallest(iterators_to_combine))
+            self._write_nodes(self._iter_smallest(iterators_to_combine),
+                              allow_optimize=False)
         dir_path, base_name = osutils.split(new_backing_file.name)
         # Note: The transport here isn't strictly needed, because we will use
         #       direct access to the new_backing._file object
@@ -262,11 +263,14 @@ class BTreeBuilder(index.GraphIndexBuilder):
             except StopIteration:
                 current_values[pos] = None
 
-    def _add_key(self, string_key, line, rows):
+    def _add_key(self, string_key, line, rows, allow_optimize=True):
         """Add a key to the current chunk.
 
         :param string_key: The key to add.
         :param line: The fully serialised key and value.
+        :param allow_optimize: If set to False, prevent setting the optimize
+            flag when writing out. This is used by the _spill_mem_keys_to_disk
+            functionality.
         """
         if rows[-1].writer is None:
             # opening a new leaf chunk;
@@ -277,8 +281,12 @@ class BTreeBuilder(index.GraphIndexBuilder):
                     length = _PAGE_SIZE
                     if internal_row.nodes == 0:
                         length -= _RESERVED_HEADER_BYTES # padded
+                    if allow_optimize:
+                        optimize_for_size = self._optimize_for_size
+                    else:
+                        optimize_for_size = False
                     internal_row.writer = chunk_writer.ChunkWriter(length, 0,
-                        optimize_for_size=self._optimize_for_size)
+                        optimize_for_size=optimize_for_size)
                     internal_row.writer.write(_INTERNAL_FLAG)
                     internal_row.writer.write(_INTERNAL_OFFSET +
                         str(rows[pos + 1].nodes) + "\n")
@@ -322,13 +330,16 @@ class BTreeBuilder(index.GraphIndexBuilder):
                 new_row.writer.write(_INTERNAL_OFFSET +
                     str(rows[1].nodes - 1) + "\n")
                 new_row.writer.write(key_line)
-            self._add_key(string_key, line, rows)
+            self._add_key(string_key, line, rows, allow_optimize=allow_optimize)
 
-    def _write_nodes(self, node_iterator):
+    def _write_nodes(self, node_iterator, allow_optimize=True):
         """Write node_iterator out as a B+Tree.
 
         :param node_iterator: An iterator of sorted nodes. Each node should
             match the output given by iter_all_entries.
+        :param allow_optimize: If set to False, prevent setting the optimize
+            flag when writing out. This is used by the _spill_mem_keys_to_disk
+            functionality.
         :return: A file handle for a temporary file containing a B+Tree for
             the nodes.
         """
@@ -353,11 +364,11 @@ class BTreeBuilder(index.GraphIndexBuilder):
             key_count += 1
             string_key, line = _btree_serializer._flatten_node(node,
                                     self.reference_lists)
-            self._add_key(string_key, line, rows)
+            self._add_key(string_key, line, rows, allow_optimize=allow_optimize)
         for row in reversed(rows):
             pad = (type(row) != _LeafBuilderRow)
             row.finish_node(pad=pad)
-        result = tempfile.NamedTemporaryFile()
+        result = tempfile.NamedTemporaryFile(prefix='bzr-index-')
         lines = [_BTSIGNATURE]
         lines.append(_OPTION_NODE_REFS + str(self.reference_lists) + '\n')
         lines.append(_OPTION_KEY_ELEMENTS + str(self._key_length) + '\n')
@@ -800,6 +811,19 @@ class BTreeGraphIndex(object):
             final_offsets.update(next_tips)
             new_tips = next_tips
         return final_offsets
+
+    def external_references(self, ref_list_num):
+        if self._root_node is None:
+            self._get_root_node()
+        if ref_list_num + 1 > self.node_ref_lists:
+            raise ValueError('No ref list %d, index has %d ref lists'
+                % (ref_list_num, self.node_ref_lists))
+        keys = set()
+        refs = set()
+        for node in self.iter_all_entries():
+            keys.add(node[1])
+            refs.update(node[3][ref_list_num])
+        return refs - keys
 
     def _find_layer_first_and_end(self, offset):
         """Find the start/stop nodes for the layer corresponding to offset.

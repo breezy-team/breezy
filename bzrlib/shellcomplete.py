@@ -59,10 +59,10 @@ def shellcomplete_commands(outfile = None):
     import inspect
     import commands
     from inspect import getdoc
-    
+
     if outfile is None:
         outfile = sys.stdout
-    
+
     cmds = []
     for cmdname, cmdclass in commands.get_all_cmds():
         cmds.append((cmdname, cmdclass))

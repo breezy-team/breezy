@@ -34,7 +34,7 @@ class TestUncommitHook(TestCaseWithBranch):
     def capture_post_uncommit_hook(self, local, master, old_revno,
         old_revid, new_revno, new_revid):
         """Capture post uncommit hook calls to self.hook_calls.
-        
+
         The call is logged, as is some state of the two branches.
         """
         if local:

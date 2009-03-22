@@ -52,8 +52,8 @@ class RemoteTransport(transport.ConnectedTransport):
 
     The connection has a notion of the current directory to which it's
     connected; this is incorporated in filenames passed to the server.
-    
-    This supports some higher-level RPC operations and can also be treated 
+
+    This supports some higher-level RPC operations and can also be treated
     like a Transport to do file-like operations.
 
     The connection can be made over a tcp socket, an ssh pipe or a series of
@@ -67,7 +67,7 @@ class RemoteTransport(transport.ConnectedTransport):
     # IMPORTANT FOR IMPLEMENTORS: RemoteTransport MUST NOT be given encoding
     # responsibilities: Put those on SmartClient or similar. This is vital for
     # the ability to support multiple versions of the smart protocol over time:
-    # RemoteTransport is an adapter from the Transport object model to the 
+    # RemoteTransport is an adapter from the Transport object model to the
     # SmartClient model, not an encoder.
 
     # FIXME: the medium parameter should be private, only the tests requires
@@ -90,14 +90,17 @@ class RemoteTransport(transport.ConnectedTransport):
             should only be used for testing purposes; normally this is
             determined from the medium.
         """
-        super(RemoteTransport, self).__init__(url,
-                                              _from_transport=_from_transport)
+        super(RemoteTransport, self).__init__(
+            url, _from_transport=_from_transport)
 
         # The medium is the connection, except when we need to share it with
         # other objects (RemoteBzrDir, RemoteRepository etc). In these cases
         # what we want to share is really the shared connection.
 
-        if _from_transport is None:
+        if (_from_transport is not None
+            and isinstance(_from_transport, RemoteTransport)):
+            _client = _from_transport._client
+        elif _from_transport is None:
             # If no _from_transport is specified, we need to intialize the
             # shared medium.
             credentials = None
@@ -132,6 +135,14 @@ class RemoteTransport(transport.ConnectedTransport):
         """
         # No credentials
         return None, None
+
+    def _report_activity(self, bytes, direction):
+        """See Transport._report_activity.
+
+        Does nothing; the smart medium will report activity triggered by a
+        RemoteTransport.
+        """
+        pass
 
     def is_readonly(self):
         """Smart server transport can do read/write file operations."""
@@ -206,7 +217,7 @@ class RemoteTransport(transport.ConnectedTransport):
 
     def get(self, relpath):
         """Return file-like object reading the contents of a remote file.
-        
+
         :see: Transport.get_bytes()/get_file()
         """
         return StringIO(self.get_bytes(relpath))
@@ -291,7 +302,7 @@ class RemoteTransport(transport.ConnectedTransport):
 
     def append_file(self, relpath, from_file, mode=None):
         return self.append_bytes(relpath, from_file.read(), mode)
-        
+
     def append_bytes(self, relpath, bytes, mode=None):
         resp = self._call_with_body_bytes(
             'append',
@@ -313,7 +324,7 @@ class RemoteTransport(transport.ConnectedTransport):
     def recommended_page_size(self):
         """Return the recommended page size for this transport."""
         return 64 * 1024
-        
+
     def _readv(self, relpath, offsets):
         if not offsets:
             return
@@ -421,7 +432,7 @@ class RemoteTransport(transport.ConnectedTransport):
     def _ensure_ok(self, resp):
         if resp[0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(resp)
-        
+
     def _translate_error(self, err, relpath=None):
         remote._translate_error(err, path=relpath)
 
@@ -465,7 +476,7 @@ class RemoteTransport(transport.ConnectedTransport):
 
 class RemoteTCPTransport(RemoteTransport):
     """Connection to smart server over plain tcp.
-    
+
     This is essentially just a factory to get 'RemoteTransport(url,
         SmartTCPClientMedium).
     """
@@ -513,7 +524,7 @@ class RemoteSSHTransport(RemoteTransport):
 
 class RemoteHTTPTransport(RemoteTransport):
     """Just a way to connect between a bzr+http:// url and http://.
-    
+
     This connection operates slightly differently than the RemoteSSHTransport.
     It uses a plain http:// transport underneath, which defines what remote
     .bzr/smart URL we are connected to. From there, all paths that are sent are
@@ -578,6 +589,14 @@ class RemoteHTTPTransport(RemoteTransport):
         else:
             # Either None or a transport for a different protocol
             return redirected
+
+
+class HintingSSHTransport(transport.Transport):
+    """Simple transport that handles ssh:// and points out bzr+ssh://."""
+
+    def __init__(self, url):
+        raise errors.UnsupportedProtocol(url,
+            'bzr supports bzr+ssh to operate over ssh, use "bzr+%s".' % url)
 
 
 def get_test_permutations():

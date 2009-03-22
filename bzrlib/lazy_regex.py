@@ -91,7 +91,7 @@ def install_lazy_compile():
 
 def reset_compile():
     """Restore the original function to re.compile().
-    
+
     It is safe to call reset_compile() multiple times, it will always
     restore re.compile() to the value that existed at import time.
     Though the first call will reset back to the original (it doesn't

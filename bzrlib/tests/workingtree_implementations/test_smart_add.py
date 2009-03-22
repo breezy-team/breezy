@@ -67,7 +67,7 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
         self.assertEqual(wt.path2id('file'), None)
 
     def test_add_dot_from_root(self):
-        """Test adding . from the root of the tree.""" 
+        """Test adding . from the root of the tree."""
         paths = ("original/", "original/file1", "original/file2")
         self.build_tree(paths)
         wt = self.make_branch_and_tree('.')
@@ -76,7 +76,7 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
             self.assertNotEqual(wt.path2id(path), None)
 
     def test_add_dot_from_subdir(self):
-        """Test adding . from a subdir of the tree.""" 
+        """Test adding . from a subdir of the tree."""
         paths = ("original/", "original/file1", "original/file2")
         self.build_tree(paths)
         wt = self.make_branch_and_tree('.')
@@ -85,7 +85,7 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
             self.assertNotEqual(wt.path2id(path), None)
 
     def test_add_tree_from_above_tree(self):
-        """Test adding a tree from above the tree.""" 
+        """Test adding a tree from above the tree."""
         paths = ("original/", "original/file1", "original/file2")
         branch_paths = ("branch/", "branch/original/", "branch/original/file1",
                         "branch/original/file2")
@@ -100,9 +100,9 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
         paths = ("original/", "original/file1", "original/file2")
         child_paths = ("path",)
         full_child_paths = ("original/child", "original/child/path")
-        build_paths = ("original/", "original/file1", "original/file2", 
+        build_paths = ("original/", "original/file1", "original/file2",
                        "original/child/", "original/child/path")
-        
+
         self.build_tree(build_paths)
         wt = self.make_branch_and_tree('.')
         child_tree = self.make_branch_and_tree('original/child')
@@ -124,7 +124,7 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
         wt.smart_add(paths)
         for path in paths:
             self.assertNotEqual(wt.path2id(path), None)
-    
+
     def test_add_ignored_nested_paths(self):
         """Test smart-adding a list of paths which includes ignored ones."""
         wt = self.make_branch_and_tree('.')
@@ -175,6 +175,16 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
             self.assertEqual(None, wt.path2id(path.rstrip('/')),
                     'Accidentally added path: %s' % (path,))
 
+    def test_add_file_in_unknown_dir(self):
+        # Test that parent directory addition is implicit
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['dir/', 'dir/subdir/', 'dir/subdir/foo'])
+        tree.smart_add(['dir/subdir/foo'])
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertEqual(['', 'dir', 'dir/subdir', 'dir/subdir/foo'],
+            [path for path, ie in tree.iter_entries_by_dir()])
+
     def test_custom_ids(self):
         sio = StringIO()
         action = AddCustomIDAction(to_file=sio, should_print=True)
@@ -214,7 +224,7 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
             self.wt.lock_read()
             self.addCleanup(self.wt.unlock)
             self.assertEqual([('', 'directory'), (u'\xe5', 'file')],
-                    [(path, ie.kind) for path,ie in 
+                    [(path, ie.kind) for path,ie in
                         self.wt.inventory.iter_entries()])
         finally:
             osutils.normalized_filename = orig
@@ -228,7 +238,7 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
             self.wt.lock_read()
             self.addCleanup(self.wt.unlock)
             self.assertEqual([('', 'directory'), (u'\xe5', 'file')],
-                    [(path, ie.kind) for path,ie in 
+                    [(path, ie.kind) for path,ie in
                         self.wt.inventory.iter_entries()])
         finally:
             osutils.normalized_filename = orig

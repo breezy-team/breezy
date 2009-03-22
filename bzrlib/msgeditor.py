@@ -29,7 +29,7 @@ from bzrlib import (
     trace,
     )
 from bzrlib.errors import BzrError, BadCommitMessageEncoding
-from bzrlib.hooks import Hooks
+from bzrlib.hooks import HookPoint, Hooks
 
 
 def _get_editor():
@@ -42,7 +42,7 @@ def _get_editor():
     e = config.GlobalConfig().get_editor()
     if e is not None:
         yield e, config.config_filename()
-        
+
     for varname in 'VISUAL', 'EDITOR':
         if varname in os.environ:
             yield os.environ[varname], '$' + varname
@@ -144,7 +144,7 @@ def edit_commit_message_encoded(infotext, ignoreline=DEFAULT_IGNORE_LINE,
 
         if not msgfilename or not _run_editor(msgfilename):
             return None
-        
+
         started = False
         msg = []
         lastline, nlines = 0, 0
@@ -247,8 +247,8 @@ def make_commit_message_template(working_tree, specific_files):
     from StringIO import StringIO       # must be unicode-safe
     from bzrlib.status import show_tree_status
     status_tmp = StringIO()
-    show_tree_status(working_tree, specific_files=specific_files, 
-                     to_file=status_tmp)
+    show_tree_status(working_tree, specific_files=specific_files,
+                     to_file=status_tmp, verbose=True)
     return status_tmp.getvalue()
 
 
@@ -283,7 +283,7 @@ class MessageEditorHooks(Hooks):
     """A dictionary mapping hook name to a list of callables for message editor
     hooks.
 
-    e.g. ['commit_message_template'] is the list of items to be called to 
+    e.g. ['commit_message_template'] is the list of items to be called to
     generate a commit message template
     """
 
@@ -293,13 +293,15 @@ class MessageEditorHooks(Hooks):
         These are all empty initially.
         """
         Hooks.__init__(self)
-        # Introduced in 1.10:
-        # Invoked to generate the commit message template shown in the editor
-        # The api signature is:
-        # (commit, message), and the function should return the new message
-        # There is currently no way to modify the order in which 
-        # template hooks are invoked
-        self['commit_message_template'] = []
+        self.create_hook(HookPoint('commit_message_template',
+            "Called when a commit message is being generated. "
+            "commit_message_template is called with the bzrlib.commit.Commit "
+            "object and the message that is known so far. "
+            "commit_message_template must return a new message to use (which "
+            "could be the same as it was given. When there are multiple "
+            "hooks registered for commit_message_template, they are chained "
+            "with the result from the first passed into the second, and so "
+            "on.", (1, 10), None))
 
 
 hooks = MessageEditorHooks()
