@@ -45,8 +45,7 @@ IN DEVELOPMENT
 
     * New API ``Inventory.filter()`` added that filters an inventory by
       a set of file-ids so that only those fileids, their parents and
-      their children are included.
-      (Ian Clatworthy)
+      their children are included.  (Ian Clatworthy)
 
     * New sort order for ``get_record_stream`` ``groupcompress`` which
       sorts optimally for use with groupcompress compressors. (John Arbash

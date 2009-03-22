@@ -1340,9 +1340,12 @@ class Inventory(object):
         return self.root is not None and file_id == self.root.file_id
 
     def filter(self, specific_fileids):
-        """Copy an inventory filtering against a set of file-ids.
+        """Get an inventory view filtered against a set of file-ids.
 
         Children of directories and parents are included.
+
+        The result may or may not reference the underlying inventory
+        so it should be treated as immutable.
         """
         interesting_parents = set()
         for fileid in specific_fileids:
