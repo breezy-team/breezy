@@ -21,6 +21,42 @@ from collections import deque
 from bzrlib import symbol_versioning
 
 
+class _LRUNode(object):
+    """This maintains the linked-list which is the lru internals."""
+
+    __slots__ = ('prev', 'next', 'key', 'value', 'cleanup', 'size')
+
+    def __init__(self, key, value, cleanup=None):
+        self.prev = None
+        self.next = None
+        self.key = key
+        self.value = value
+        self.cleanup = cleanup
+        # TODO: We could compute this 'on-the-fly' like we used to, and remove
+        #       one pointer from this object, we just need to decide if it
+        #       actually costs us much of anything in normal usage
+        self.size = None
+
+    def __repr__(self):
+        if self.next is None:
+            next = None
+        else:
+            next = self.next.key
+        if self.prev is None:
+            prev = None
+        else:
+            prev = self.prev.key
+        return '%s(%r n:%r p:%r)' % (self.__class__.__name__, self.key,
+                                     next, prev)
+
+    def run_cleanup(self):
+        if self.cleanup is not None:
+            self.cleanup(self.key, self.value)
+        self.cleanup = None
+        # Just make sure to break any refcycles, etc
+        self.value = None
+
+
 class LRUCache(object):
     """A class which manages a cache of entries, removing unused ones."""
 
@@ -33,21 +69,41 @@ class LRUCache(object):
                                    DeprecationWarning)
             after_cleanup_count = after_cleanup_size
         self._cache = {}
-        self._cleanup = {}
-        self._queue = deque() # Track when things are accessed
-        self._refcount = {} # number of entries in self._queue for each key
+        # The "HEAD" of the lru linked list
+        self._most_recently_used = None
+        # The "TAIL" of the lru linked list
+        self._last_recently_used = None
         self._update_max_cache(max_cache, after_cleanup_count)
 
     def __contains__(self, key):
         return key in self._cache
 
     def __getitem__(self, key):
-        val = self._cache[key]
-        self._record_access(key)
-        return val
+        node = self._cache[key]
+        # TODO: We may want to inline _record_access, to decrease the cost of
+        #       __getitem__ calls
+        self._record_access(node)
+        return node.value
 
     def __len__(self):
         return len(self._cache)
+
+    def _walk_lru(self):
+        """Walk the LRU list."""
+        node = self._most_recently_used
+        if node is not None:
+            assert node.prev is None
+        while node is not None:
+            if node.next is None:
+                assert node is self._last_recently_used
+            else:
+                assert node.next.prev is node
+            if node.prev is None:
+                assert node is self._most_recently_used
+            else:
+                assert node.prev.next is node
+            yield node
+            node = node.next
 
     def add(self, key, value, cleanup=None):
         """Add a new value to the cache.
@@ -61,11 +117,14 @@ class LRUCache(object):
                         'value' sohuld be cleaned up.
         """
         if key in self._cache:
-            self._remove(key)
-        self._cache[key] = value
-        if cleanup is not None:
-            self._cleanup[key] = cleanup
-        self._record_access(key)
+            node = self._cache[key]
+            node.run_cleanup()
+            node.value = value
+            node.cleanup = cleanup
+        else:
+            node = _LRUNode(key, value, cleanup=cleanup)
+            self._cache[key] = node
+        self._record_access(node)
 
         if len(self._cache) > self._max_cache:
             # Trigger the cleanup
@@ -76,9 +135,10 @@ class LRUCache(object):
         return self._max_cache
 
     def get(self, key, default=None):
-        if key in self._cache:
-            return self[key]
-        return default
+        node = self._cache.get(key, None)
+        if node is None:
+            return default
+        return node.value
 
     def keys(self):
         """Get the list of keys currently cached.
@@ -90,6 +150,10 @@ class LRUCache(object):
         :return: An unordered list of keys that are currently cached.
         """
         return self._cache.keys()
+
+    def items(self):
+        """Get the key:value pairs as a dict."""
+        return dict((k, n.value) for k, n in self._cache.iteritems())
 
     def cleanup(self):
         """Clear the cache until it shrinks to the requested size.
@@ -107,38 +171,54 @@ class LRUCache(object):
         """Add a value to the cache, there will be no cleanup function."""
         self.add(key, value, cleanup=None)
 
-    def _record_access(self, key):
+    def _record_access(self, node):
         """Record that key was accessed."""
-        self._queue.append(key)
-        # Can't use setdefault because you can't += 1 the result
-        self._refcount[key] = self._refcount.get(key, 0) + 1
+        # Move 'node' to the front of the queue
+        if self._most_recently_used is None:
+            assert len(self._cache) == 1
+            self._most_recently_used = node
+            self._last_recently_used = node
+            assert node.next == None
+            assert node.prev == None
+            return
+        elif node is self._most_recently_used:
+            # Nothing to do, this node is already at the head of the queue
+            return
+        elif node is self._last_recently_used:
+            assert self._last_recently_used is not None
+            self._last_recently_used = node.prev
+            assert self._last_recently_used is not None
+        # We've taken care of the tail pointer, remove the node, and insert it
+        # at the front
+        # REMOVE
+        if node.prev is not None:
+            node.prev.next = node.next
+        if node.next is not None:
+            node.next.prev = node.prev
+        # INSERT
+        node.next = self._most_recently_used
+        self._most_recently_used = node
+        node.next.prev = node
+        node.prev = None
 
-        # If our access queue is too large, clean it up too
-        if len(self._queue) > self._compact_queue_length:
-            self._compact_queue()
-
-    def _compact_queue(self):
-        """Compact the queue, leaving things in sorted last appended order."""
-        new_queue = deque()
-        for item in self._queue:
-            if self._refcount[item] == 1:
-                new_queue.append(item)
-            else:
-                self._refcount[item] -= 1
-        self._queue = new_queue
-        # All entries should be of the same size. There should be one entry in
-        # queue for each entry in cache, and all refcounts should == 1
-        if not (len(self._queue) == len(self._cache) ==
-                len(self._refcount) == sum(self._refcount.itervalues())):
-            raise AssertionError()
-
-    def _remove(self, key):
-        """Remove an entry, making sure to maintain the invariants."""
-        cleanup = self._cleanup.pop(key, None)
-        val = self._cache.pop(key)
-        if cleanup is not None:
-            cleanup(key, val)
-        return val
+    def _remove_node(self, node):
+        assert node is not None
+        if node is self._last_recently_used:
+            self._last_recently_used = node.prev
+        node2 = self._cache.pop(node.key)
+        assert node2 is node
+        del node2
+        # If we have removed all entries, remove the head pointer as well
+        if self._last_recently_used is None:
+            if len(self._cache) != 0:
+                import pdb; pdb.set_trace()
+            assert len(self._cache) == 0
+            assert self._most_recently_used is node
+            self._most_recently_used = None
+        node.run_cleanup()
+        # Shouldn't be necessary
+        # node.next = None
+        # node.prev = None
 
     def _remove_lru(self):
         """Remove one entry from the lru, and handle consequences.
@@ -146,11 +226,7 @@ class LRUCache(object):
         If there are no more references to the lru, then this entry should be
         removed from the cache.
         """
-        key = self._queue.popleft()
-        self._refcount[key] -= 1
-        if not self._refcount[key]:
-            del self._refcount[key]
-            self._remove(key)
+        self._remove_node(self._last_recently_used)
 
     def clear(self):
         """Clear out all of the cache."""
@@ -168,11 +244,8 @@ class LRUCache(object):
         if after_cleanup_count is None:
             self._after_cleanup_count = self._max_cache * 8 / 10
         else:
-            self._after_cleanup_count = min(after_cleanup_count, self._max_cache)
-
-        self._compact_queue_length = 4*self._max_cache
-        if len(self._queue) > self._compact_queue_length:
-            self._compact_queue()
+            self._after_cleanup_count = min(after_cleanup_count,
+                                            self._max_cache)
         self.cleanup()
 
 
@@ -204,9 +277,6 @@ class LRUSizeCache(LRUCache):
         self._compute_size = compute_size
         if compute_size is None:
             self._compute_size = len
-        # This approximates that texts are > 0.5k in size. It only really
-        # effects when we clean up the queue, so we don't want it to be too
-        # large.
         self._update_max_size(max_size, after_cleanup_size=after_cleanup_size)
         LRUCache.__init__(self, max_cache=max(int(max_size/512), 1))
 
@@ -221,16 +291,22 @@ class LRUSizeCache(LRUCache):
         :param cleanup: None or a function taking (key, value) to indicate
                         'value' sohuld be cleaned up.
         """
-        if key in self._cache:
-            self._remove(key)
+        node = self._cache.get(key, None)
         value_len = self._compute_size(value)
         if value_len >= self._after_cleanup_size:
+            if node is not None:
+                # The new value is too large, we won't be replacing the value,
+                # just removing the node completely
+                self._remove_node(node)
             return
+        if node is None:
+            node = _LRUNode(key, value, cleanup=cleanup)
+            self._cache[key] = node
+        else:
+            self._value_size -= node.size
+        node.size = value_len
         self._value_size += value_len
-        self._cache[key] = value
-        if cleanup is not None:
-            self._cleanup[key] = cleanup
-        self._record_access(key)
+        self._record_access(node)
 
         if self._value_size > self._max_size:
             # Time to cleanup
@@ -246,10 +322,9 @@ class LRUSizeCache(LRUCache):
         while self._value_size > self._after_cleanup_size:
             self._remove_lru()
 
-    def _remove(self, key):
-        """Remove an entry, making sure to maintain the invariants."""
-        val = LRUCache._remove(self, key)
-        self._value_size -= self._compute_size(val)
+    def _remove_node(self, node):
+        self._value_size -= node.size
+        LRUCache._remove_node(self, node)
 
     def resize(self, max_size, after_cleanup_size=None):
         """Change the number of bytes that will be cached."""
