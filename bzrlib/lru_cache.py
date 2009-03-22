@@ -80,9 +80,29 @@ class LRUCache(object):
 
     def __getitem__(self, key):
         node = self._cache[key]
-        # TODO: We may want to inline _record_access, to decrease the cost of
-        #       __getitem__ calls
-        self._record_access(node)
+        # Inlined from _record_access to decrease the overhead of __getitem__
+        # We also have more knowledge about structure if __getitem__ is
+        # succeeding, then we know that self._most_recently_used must not be
+        # None, etc.
+        mru = self._most_recently_used
+        if node is mru:
+            # Nothing to do, this node is already at the head of the queue
+            return node.value
+        elif node is self._last_recently_used:
+            assert node.prev is not None
+            self._last_recently_used = node.prev
+        # Remove this node from the old location
+        node_prev = node.prev
+        node_next = node.next
+        if node_prev is not None:
+            node_prev.next = node_next
+        if node_next is not None:
+            node_next.prev = node_prev
+        # Insert this node to the front of the list
+        node.next = mru
+        mru.prev = node
+        self._most_recently_used = node
+        node.prev = None
         return node.value
 
     def __len__(self):
@@ -138,6 +158,8 @@ class LRUCache(object):
         node = self._cache.get(key, None)
         if node is None:
             return default
+        # XXX: We need a test for this
+        # self._record_access(node)
         return node.value
 
     def keys(self):
