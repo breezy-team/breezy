@@ -121,9 +121,19 @@ Documentation
 API Changes
 ***********
 
+* New API ``Inventory.filter()`` added that filters an inventory by
+  a set of file-ids so that only those fileids, their parents and
+  their children are included.  (Ian Clatworthy)
+
 * New sort order for ``get_record_stream`` ``groupcompress`` which
   sorts optimally for use with groupcompress compressors. (John Arbash
   Meinel, Robert Collins)
+
+* Repository APIs ``get_deltas_for_revisions()`` and
+  ``get_revision_delta()`` now support an optional ``specific_fileids``
+  parameter. If provided, the deltas are filtered so that only those
+  file-ids, their parents and their children are included.
+  (Ian Clatworthy)
 
 * The ``get_credentials`` and ``set_credentials`` methods of 
   ``AuthenticationConfig`` now accept an optional realm argument.
