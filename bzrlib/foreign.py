@@ -358,12 +358,13 @@ class cmd_dpush(Command):
 
         bzrdir = BzrDir.open(location)
         target_branch = bzrdir.open_branch()
-        if not isinstance(target_branch, ForeignBranch):
+        dpull = getattr(target_branch, "dpull", None)
+        if dpull is None:
             raise BzrCommandError("%r is not a foreign branch, use "
                                   "regular push." % target_branch)
         target_branch.lock_write()
         try:
-            revid_map = target_branch.dpull(source_branch)
+            revid_map = dpull(source_branch)
             # We successfully created the target, remember it
             if source_branch.get_push_location() is None or remember:
                 source_branch.set_push_location(target_branch.base)
