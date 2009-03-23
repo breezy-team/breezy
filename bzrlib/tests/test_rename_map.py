@@ -144,3 +144,17 @@ class TestRenameMap(TestCaseWithTransport):
         os.rename('tree/topdir', 'tree/topdir2')
         RenameMap.guess_renames(tree)
         self.assertEqual('topdir2', tree.id2path('topdir-id'))
+
+    def test_guess_renames_preserves_children(self):
+        """When a directory has been moved, its children are preserved."""
+        tree = self.make_branch_and_tree('tree')
+        tree.lock_write()
+        self.build_tree_contents([('tree/foo/', ''),
+                                  ('tree/foo/bar', 'bar'),
+                                  ('tree/foo/empty', '')])
+        tree.add(['foo', 'foo/bar', 'foo/empty'],
+                 ['foo-id', 'bar-id', 'empty-id'])
+        tree.commit('rev1')
+        os.rename('tree/foo', 'tree/baz')
+        RenameMap.guess_renames(tree)
+        self.assertEqual('baz/empty', tree.id2path('empty-id'))
