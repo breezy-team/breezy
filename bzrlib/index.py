@@ -99,6 +99,7 @@ class GraphIndexBuilder(object):
         self._nodes_by_key = None
         self._key_length = key_elements
         self._optimize_for_size = False
+        self._combine_backing_indices = True
 
     def _check_key(self, key):
         """Raise BadIndexKey if key is not a valid key for this index."""
@@ -315,16 +316,23 @@ class GraphIndexBuilder(object):
                 (len(result.getvalue()), expected_bytes))
         return result
 
-    def set_optimize(self, for_size=True):
+    def set_optimize(self, for_size=None, combine_backing_indices=None):
         """Change how the builder tries to optimize the result.
 
         :param for_size: Tell the builder to try and make the index as small as
             possible.
+        :param combine_backing_indices: If the builder spills to disk to save
+            memory, should the on-disk indices be combined. Set to True if you
+            are going to be probing the index, but to False if you are not. (If
+            you are not querying, then the time spent combining is wasted.)
         :return: None
         """
         # GraphIndexBuilder itself doesn't pay attention to the flag yet, but
         # other builders do.
-        self._optimize_for_size = for_size
+        if for_size is not None:
+            self._optimize_for_size = for_size
+        if combine_backing_indices is not None:
+            self._combine_backing_indices = combine_backing_indices
 
 
 class GraphIndex(object):
