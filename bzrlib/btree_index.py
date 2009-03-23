@@ -140,7 +140,6 @@ class BTreeBuilder(index.GraphIndexBuilder):
         # Indicate it hasn't been built yet
         self._nodes_by_key = None
         self._optimize_for_size = False
-        self._combine_spilled_indices = True
 
     def add_node(self, key, value, references=()):
         """Add a node to the index.
@@ -181,7 +180,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
         combine mem with the first and second indexes, creating a new one of
         size 4x. On the fifth create a single new one, etc.
         """
-        if self._combine_spilled_indices:
+        if self._combine_backing_indices:
             (new_backing_file, size,
              backing_pos) = self._spill_mem_keys_and_combine()
         else:
@@ -193,7 +192,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
                                       base_name, size)
         # GC will clean up the file
         new_backing._file = new_backing_file
-        if self._combine_spilled_indices:
+        if self._combine_backing_indices:
             if len(self._backing_indices) == backing_pos:
                 self._backing_indices.append(None)
             self._backing_indices[backing_pos] = new_backing

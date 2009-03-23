@@ -725,8 +725,15 @@ class Packer(object):
 
     def open_pack(self):
         """Open a pack for the pack we are creating."""
-        return NewPack(self._pack_collection, upload_suffix=self.suffix,
+        new_pack = NewPack(self._pack_collection, upload_suffix=self.suffix,
                 file_mode=self._pack_collection.repo.bzrdir._get_file_mode())
+        # We know that we will process all nodes in order, and don't need to
+        # query, so don't combine any indices spilled to disk until we are done
+        new_pack.revision_index.set_optimize(combine_backing_indices=False)
+        new_pack.inventory_index.set_optimize(combine_backing_indices=False)
+        new_pack.text_index.set_optimize(combine_backing_indices=False)
+        new_pack.signature_index.set_optimize(combine_backing_indices=False)
+        return new_pack
 
     def _update_pack_order(self, entries, index_to_pack_map):
         """Determine how we want our packs to be ordered.

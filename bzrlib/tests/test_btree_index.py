@@ -433,7 +433,7 @@ class TestBTreeBuilder(BTreeTestCase):
 
     def test_spill_index_stress_1_1_no_combine(self):
         builder = btree_index.BTreeBuilder(key_elements=1, spill_at=2)
-        builder._combine_spilled_indices = False
+        builder.set_optimize(for_size=False, combine_backing_indices=False)
         nodes = [node[0:2] for node in self.make_nodes(16, 1, 0)]
         builder.add_node(*nodes[0])
         # Test the parts of the index that take up memory are doing so
@@ -510,6 +510,16 @@ class TestBTreeBuilder(BTreeTestCase):
         self.assertTrue(builder._optimize_for_size)
         builder.set_optimize(for_size=False)
         self.assertFalse(builder._optimize_for_size)
+        # test that we can set combine_backing_indices without effecting
+        # _optimize_for_size
+        obj = object()
+        builder._optimize_for_size = obj
+        builder.set_optimize(combine_backing_indices=False)
+        self.assertFalse(builder._combine_backing_indices)
+        self.assertIs(obj, builder._optimize_for_size)
+        builder.set_optimize(combine_backing_indices=True)
+        self.assertTrue(builder._combine_backing_indices)
+        self.assertIs(obj, builder._optimize_for_size)
 
     def test_spill_index_stress_2_2(self):
         # test that references and longer keys don't confuse things.
