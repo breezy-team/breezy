@@ -103,11 +103,8 @@ class RenameMap(object):
         try:
             for num, path in enumerate(paths):
                 task.update('Determining hash hits', num, len(paths))
-                my_file = self.tree.get_file(None, path=path)
-                try:
-                    hits = self.hitcounts(my_file.readlines())
-                finally:
-                    my_file.close()
+                hits = self.hitcounts(self.tree.get_file_lines(None,
+                                                               path=path))
                 all_hits.extend((v, path, k) for k, v in hits.items())
         finally:
             task.finished()
@@ -119,20 +116,18 @@ class RenameMap(object):
 
     @staticmethod
     def _match_hits(hit_list):
-        """Using a hit list, determin a path-to-fileid map.
+        """Using a hit list, determine a path-to-fileid map.
 
         The hit list is a list of (count, path, file_id), where count is a
         (possibly float) number, with higher numbers indicating stronger
         matches.
         """
         seen_file_ids = set()
-        seen_paths = set()
         path_map = {}
         for count, path, file_id in sorted(hit_list, reverse=True):
-            if path in seen_paths or file_id in seen_file_ids:
+            if path in path_map or file_id in seen_file_ids:
                 continue
             path_map[path] = file_id
-            seen_paths.add(path)
             seen_file_ids.add(file_id)
         return path_map
 
@@ -212,6 +207,8 @@ class RenameMap(object):
 
         We assume that unversioned files and missing files indicate that
         versioned files have been renamed outside of Bazaar.
+
+        :param tree: A write-locked working tree.
         """
         required_parents = {}
         task = ui_factory.nested_progress_bar()
