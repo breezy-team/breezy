@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2008 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -271,7 +271,7 @@ class LockableFiles(object):
             #traceback.print_stack()
             self._lock_mode = 'w'
             self._lock_warner.lock_count = 1
-            self._set_transaction(transactions.WriteTransaction())
+            self._set_write_transaction()
             self._token_from_lock = token_from_lock
             return token_from_lock
 
@@ -285,9 +285,17 @@ class LockableFiles(object):
             #traceback.print_stack()
             self._lock_mode = 'r'
             self._lock_warner.lock_count = 1
-            self._set_transaction(transactions.ReadOnlyTransaction())
-            # 5K may be excessive, but hey, its a knob.
-            self.get_transaction().set_cache_size(5000)
+            self._set_read_transaction()
+
+    def _set_read_transaction(self):
+        """Setup a read transaction."""
+        self._set_transaction(transactions.ReadOnlyTransaction())
+        # 5K may be excessive, but hey, its a knob.
+        self.get_transaction().set_cache_size(5000)
+
+    def _set_write_transaction(self):
+        """Setup a write transaction."""
+        self._set_transaction(transactions.WriteTransaction())
 
     def unlock(self):
         if not self._lock_mode:

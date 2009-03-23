@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -210,7 +210,7 @@ class ftp_server(medusa.ftp_server.ftp_server):
         trace.mutter('ftp_server %s: %s', type, message)
 
 
-class FTPServer(transport.Server):
+class FTPTestServer(transport.Server):
     """Common code for FTP server facilities."""
 
     def __init__(self):
@@ -250,7 +250,7 @@ class FTPServer(transport.Server):
         # Don't let it loop forever, or handle an infinite number of requests.
         # In this case it will run for 1000s, or 10000 requests
         self._async_thread = threading.Thread(
-                target=FTPServer._asyncore_loop_ignore_EBADF,
+                target=FTPTestServer._asyncore_loop_ignore_EBADF,
                 kwargs={'timeout':0.1, 'count':10000})
         self._async_thread.setDaemon(True)
         self._async_thread.start()
@@ -279,6 +279,9 @@ class FTPServer(transport.Server):
             if e.args[0] != errno.EBADF:
                 raise
 
-
-
+    def add_user(self, user, password):
+        """Add a user with write access."""
+        authorizer = server = self._ftp_server.authorizer
+        authorizer.secured_user = user
+        authorizer.secured_password = password
 

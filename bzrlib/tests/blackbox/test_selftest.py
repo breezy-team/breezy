@@ -16,10 +16,12 @@
 
 """UI tests for the test framework."""
 
+from cStringIO import StringIO
 import os
 import re
 import signal
 import sys
+import unittest
 
 import bzrlib
 from bzrlib import (
@@ -27,6 +29,7 @@ from bzrlib import (
     )
 from bzrlib.errors import ParamikoNotPresent
 from bzrlib.tests import (
+                          SubUnitFeature,
                           TestCase,
                           TestCaseInTempDir,
                           TestCaseWithMemoryTransport,
@@ -87,6 +90,21 @@ class TestOptions(TestCase):
             bzrlib.tests.default_transport = old_transport
             TestOptions.current_test = None
             TestCaseWithMemoryTransport.TEST_ROOT = old_root
+
+    def test_subunit(self):
+        """Passing --subunit results in subunit output."""
+        self.requireFeature(SubUnitFeature)
+        from subunit import ProtocolTestCase
+        stdout = self.run_bzr(
+            'selftest --subunit --no-plugins '
+            'tests.test_selftest.SelftestTests.test_import_tests')[0]
+        stream = StringIO(str(stdout))
+        test = ProtocolTestCase(stream)
+        result = unittest.TestResult()
+        test.run(result)
+        # 1 to deal with the 'test:' noise at the start, and 1 for the one we
+        # ran.
+        self.assertEqual(2, result.testsRun)
 
 
 class TestRunBzr(ExternalBase):

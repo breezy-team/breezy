@@ -489,7 +489,6 @@ class InventoryFile(InventoryEntry):
                 checker.repeated_text_cnt += 1
                 return
 
-        mutter('check version {%s} of {%s}', tree_revision_id, self.file_id)
         checker.checked_text_cnt += 1
         # We can't check the length, because Weave doesn't store that
         # information, and the whole point of looking at the weave's
@@ -771,7 +770,13 @@ class Inventory(object):
         self.revision_id = revision_id
 
     def __repr__(self):
-        return "<Inventory object at %x, contents=%r>" % (id(self), self._byid)
+        # More than one page of ouput is not useful anymore to debug
+        max_len = 2048
+        closing = '...}'
+        contents = repr(self._byid)
+        if len(contents) > max_len:
+            contents = contents[:(max_len-len(closing))] + closing
+        return "<Inventory object at %x, contents=%r>" % (id(self), contents)
 
     def apply_delta(self, delta):
         """Apply a delta to this inventory.
@@ -1350,6 +1355,39 @@ class Inventory(object):
 
     def is_root(self, file_id):
         return self.root is not None and file_id == self.root.file_id
+
+    def filter(self, specific_fileids):
+        """Get an inventory view filtered against a set of file-ids.
+
+        Children of directories and parents are included.
+
+        The result may or may not reference the underlying inventory
+        so it should be treated as immutable.
+        """
+        interesting_parents = set()
+        for fileid in specific_fileids:
+            try:
+                interesting_parents.update(self.get_idpath(fileid))
+            except errors.NoSuchId:
+                # This fileid is not in the inventory - that's ok
+                pass
+        entries = self.iter_entries()
+        if self.root is None:
+            return Inventory(root_id=None)
+        other = Inventory(entries.next()[1].file_id)
+        other.root.revision = self.root.revision
+        other.revision_id = self.revision_id
+        directories_to_expand = set()
+        for path, entry in entries:
+            file_id = entry.file_id
+            if (file_id in specific_fileids
+                or entry.parent_id in directories_to_expand):
+                if entry.kind == 'directory':
+                    directories_to_expand.add(file_id)
+            elif file_id not in interesting_parents:
+                continue
+            other.add(entry.copy())
+        return other
 
 
 entry_factory = {

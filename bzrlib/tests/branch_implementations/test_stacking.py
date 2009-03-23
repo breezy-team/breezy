@@ -126,14 +126,6 @@ class TestStacking(TestCaseWithBranch):
         self.assertRevisionNotInRepository('mainline', new_branch_revid)
         self.assertRevisionInRepository('newbranch', new_branch_revid)
 
-    # XXX: this helper probably belongs on TestCaseWithTransport
-    def make_smart_server(self, path):
-        smart_server = server.SmartTCPServer_for_testing()
-        smart_server.setUp(self.get_server())
-        remote_transport = get_transport(smart_server.get_url()).clone(path)
-        self.addCleanup(smart_server.tearDown)
-        return remote_transport
-
     def test_sprout_stacked_from_smart_server(self):
         if isinstance(self.branch_format, branch.BzrBranchFormat4):
             raise TestNotApplicable('Branch format 4 is not usable via HPSS.')

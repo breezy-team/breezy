@@ -699,7 +699,7 @@ Test coverage
 =============
 
 All code should be exercised by the test suite.  See `Guide to Testing
-Bazaar <testing.html>`_ for detailed information about writing tests.
+Bazaar <../../developers/testing.html>`_ for detailed information about writing tests.
 
 
 Core Topics
@@ -823,6 +823,39 @@ structured data, we should make it so.
 The policy about how output is presented in the text-mode client
 should be only in the command-line tool.
 
+
+Progress and Activity Indications
+---------------------------------
+
+bzrlib has a way for code to display to the user that stuff is happening
+during a long operation.  There are two particular types: *activity* which
+means that IO is happening on a Transport, and *progress* which means that
+higher-level application work is occurring.  Both are drawn together by
+the `ui_factory`.
+
+Transport objects are responsible for calling `report_transport_activity`
+when they do IO.
+
+Progress uses a model/view pattern: application code acts on a
+`ProgressTask` object, which notifies the UI when it needs to be
+displayed.  Progress tasks form a stack.  To create a new progress task on
+top of the stack, call `bzrlib.ui.ui_factory.nested_progress_bar()`, then
+call `update()` on the returned ProgressTask.  It can be updated with just
+a text description, with a numeric count, or with a numeric count and
+expected total count.  If an expected total count is provided the view
+can show the progress moving along towards the expected total.
+
+The user should call `finish` on the `ProgressTask` when the logical
+operation has finished, so it can be removed from the stack.
+
+Progress tasks have a complex relatioship with generators: it's a very
+good place to use them, but because python2.4 does not allow ``finally``
+blocks in generators it's hard to clean them up properly.  In this case
+it's probably better to have the code calling the generator allocate a
+progress task for its use and then call `finalize` when it's done, which
+will close it if it was not already closed.  The generator should also
+finish the progress task when it exits, because it may otherwise be a long
+time until the finally block runs.
 
 
 Displaying help
