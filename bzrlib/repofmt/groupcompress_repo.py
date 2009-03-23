@@ -302,7 +302,7 @@ class GCCHKPacker(Packer):
                 # next_keys = next_keys.intersection(remaining_keys)
                 cur_keys = []
                 for prefix in sorted(keys_by_search_prefix):
-                    cur_keys.extend(keys_by_search_prefix[prefix])
+                    cur_keys.extend(keys_by_search_prefix.pop(prefix))
         for stream in _get_referenced_stream(self._chk_id_roots,
                                              self._gather_text_refs):
             yield stream
