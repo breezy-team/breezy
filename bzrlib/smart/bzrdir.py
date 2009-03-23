@@ -92,7 +92,16 @@ class SmartServerRequestBzrDir(SmartServerRequest):
 class SmartServerBzrDirRequestCloningMetaDir(SmartServerRequestBzrDir):
 
     def do_bzrdir_request(self, require_stacking):
-        """Get the format that should be used when cloning from this dir."""
+        """Get the format that should be used when cloning from this dir.
+
+        New in 1.13.
+        
+        :return: on success, a 3-tuple of network names for (control,
+            repository, branch) directories, where '' signifies "not present".
+            If this BzrDir contains a branch reference then this will fail with
+            BranchReference; clients should resolve branch references before
+            calling this RPC.
+        """
         try:
             branch_ref = self._bzrdir.get_branch_reference()
         except errors.NotBranchError:
