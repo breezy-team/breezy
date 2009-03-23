@@ -59,6 +59,10 @@ _USE_LZMA = False and (pylzma is not None)
 _NO_LABELS = True
 _FAST = False
 
+# osutils.sha_string('')
+_null_sha1 = 'da39a3ee5e6b4b0d3255bfef95601890afd80709'
+
+
 def encode_base128_int(val):
     """Convert an integer into a 7-bit lsb encoding."""
     bytes = []
@@ -558,17 +562,16 @@ class _LazyGroupContentManager(object):
         compressor = GroupCompressor()
         tstart = time.time()
         old_length = self._block._content_length
-        cur_endpoint = 0
+        end_point = 0
         for factory in self._factories:
             bytes = factory.get_bytes_as('fulltext')
-            (found_sha1, end_point, type,
+            (found_sha1, start_point, end_point, type,
              length) = compressor.compress(factory.key, bytes, factory.sha1)
             # Now update this factory with the new offsets, etc
             factory.sha1 = found_sha1
-            factory._start = cur_endpoint
+            factory._start = start_point
             factory._end = end_point
-            cur_endpoint = end_point
-        self._last_byte = cur_endpoint
+        self._last_byte = end_point
         new_block = compressor.flush()
         # TODO: Should we check that new_block really *is* smaller than the old
         #       block? It seems hard to come up with a method that it would
@@ -770,12 +773,21 @@ class GroupCompressor(object):
             the group output so far.
         :seealso VersionedFiles.add_lines:
         """
-        if not _FAST or expected_sha is None:
-            sha1 = sha_string(bytes)
-        else:
+        if not bytes: # empty, like a dir entry, etc
+            if nostore_sha == _null_sha1:
+                raise errors.ExistingContent()
+            self._block.add_entry(key, type='empty',
+                                  sha1=None, start=0,
+                                  length=0)
+            return _null_sha1, 0, 0, 'fulltext', 0
+        # we assume someone knew what they were doing when they passed it in
+        if expected_sha is not None:
             sha1 = expected_sha
-        if sha1 == nostore_sha:
-            raise errors.ExistingContent()
+        else:
+            sha1 = osutils.sha_string(bytes)
+        if nostore_sha is not None:
+            if sha1 == nostore_sha:
+                raise errors.ExistingContent()
         if key[-1] is None:
             key = key[:-1] + ('sha1:' + sha1,)
         input_len = len(bytes)
@@ -813,6 +825,7 @@ class GroupCompressor(object):
                 self._delta_index.add_delta_source(delta, len_mini_header)
         self._block.add_entry(key, type=type, sha1=sha1,
                               start=self.endpoint, length=length)
+        start = self.endpoint
         delta_start = (self.endpoint, len(self.lines))
         self.num_keys += 1
         self.output_chunks(new_chunks)
@@ -823,7 +836,7 @@ class GroupCompressor(object):
             raise AssertionError('the delta index is out of sync'
                 'with the output lines %s != %s'
                 % (self._delta_index._source_offset, self.endpoint))
-        return sha1, self.endpoint, type, length
+        return sha1, start, self.endpoint, type, length
 
     def extract(self, key):
         """Extract a key previously added to the compressor.
@@ -1451,7 +1464,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
             if max_fulltext_len < len(bytes):
                 max_fulltext_len = len(bytes)
                 max_fulltext_prefix = prefix
-            (found_sha1, end_point, type,
+            (found_sha1, start_point, end_point, type,
              length) = self._compressor.compress(record.key,
                 bytes, record.sha1, soft=soft,
                 nostore_sha=nostore_sha)
@@ -1499,9 +1512,8 @@ class GroupCompressVersionedFiles(VersionedFiles):
             if start_new_block:
                 self._compressor.pop_last()
                 flush()
-                basis_end = 0
                 max_fulltext_len = len(bytes)
-                (found_sha1, end_point, type,
+                (found_sha1, start_point, end_point, type,
                  length) = self._compressor.compress(record.key,
                     bytes, record.sha1)
                 last_fulltext_len = length

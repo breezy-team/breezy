@@ -42,14 +42,36 @@ class TestGroupCompressor(tests.TestCase):
     def test_one_nosha_delta(self):
         # diff against NUKK
         compressor = groupcompress.GroupCompressor()
-        sha1, end_point, _, _ = compressor.compress(('label',),
+        sha1, start_point, end_point, _, _ = compressor.compress(('label',),
             'strange\ncommon\n', None)
         self.assertEqual(sha_string('strange\ncommon\n'), sha1)
         expected_lines = [
             'f', '\x0f', 'strange\ncommon\n',
             ]
         self.assertEqual(expected_lines, compressor.lines)
+        self.assertEqual(0, start_point)
         self.assertEqual(sum(map(len, expected_lines)), end_point)
+
+    def test_empty_content(self):
+        compressor = groupcompress.GroupCompressor()
+        # Adding empty bytes should return the 'null' record
+        sha1, start_point, end_point, kind, _ = compressor.compress(('empty',),
+            '', None)
+        self.assertEqual(0, start_point)
+        self.assertEqual(0, end_point)
+        self.assertEqual('fulltext', kind)
+        self.assertEqual(groupcompress._null_sha1, sha1)
+        self.assertEqual(0, compressor.endpoint)
+        self.assertEqual([], compressor.lines)
+        # Even after adding some content
+        compressor.compress(('content',), 'some\nbytes\n', None)
+        self.assertTrue(compressor.endpoint > 0)
+        sha1, start_point, end_point, kind, _ = compressor.compress(('empty2',),
+            '', None)
+        self.assertEqual(0, start_point)
+        self.assertEqual(0, end_point)
+        self.assertEqual('fulltext', kind)
+        self.assertEqual(groupcompress._null_sha1, sha1)
 
     def _chunks_to_repr_lines(self, chunks):
         return '\n'.join(map(repr, ''.join(chunks).split('\n')))
@@ -68,10 +90,10 @@ class TestGroupCompressor(tests.TestCase):
 
     def test_two_nosha_delta(self):
         compressor = groupcompress.GroupCompressor()
-        sha1_1, _, _, _ = compressor.compress(('label',),
+        sha1_1, _, _, _, _ = compressor.compress(('label',),
             'strange\ncommon long line\nthat needs a 16 byte match\n', None)
         expected_lines = list(compressor.lines)
-        sha1_2, end_point, _, _ = compressor.compress(('newlabel',),
+        sha1_2, start_point, end_point, _, _ = compressor.compress(('newlabel',),
             'common long line\nthat needs a 16 byte match\ndifferent\n', None)
         self.assertEqual(sha_string('common long line\n'
                                     'that needs a 16 byte match\n'
@@ -93,12 +115,12 @@ class TestGroupCompressor(tests.TestCase):
         # The first interesting test: make a change that should use lines from
         # both parents.
         compressor = groupcompress.GroupCompressor()
-        sha1_1, end_point, _, _ = compressor.compress(('label',),
+        sha1_1, _, _, _, _ = compressor.compress(('label',),
             'strange\ncommon very very long line\nwith some extra text\n', None)
-        sha1_2, _, _, _ = compressor.compress(('newlabel',),
+        sha1_2, _, _, _, _ = compressor.compress(('newlabel',),
             'different\nmoredifferent\nand then some more\n', None)
         expected_lines = list(compressor.lines)
-        sha1_3, end_point, _, _ = compressor.compress(('label3',),
+        sha1_3, start_point, end_point, _, _ = compressor.compress(('label3',),
             'new\ncommon very very long line\nwith some extra text\n'
             'different\nmoredifferent\nand then some more\n',
             None)
@@ -137,10 +159,10 @@ class TestGroupCompressor(tests.TestCase):
         # Knit fetching will try to reconstruct texts locally which results in
         # reading something that is in the compressor stream already.
         compressor = groupcompress.GroupCompressor()
-        sha1_1, _, _, _ = compressor.compress(('label',),
+        sha1_1, _, _, _, _ = compressor.compress(('label',),
             'strange\ncommon long line\nthat needs a 16 byte match\n', None)
         expected_lines = list(compressor.lines)
-        sha1_2, end_point, _, _ = compressor.compress(('newlabel',),
+        sha1_2, _, end_point, _, _ = compressor.compress(('newlabel',),
             'common long line\nthat needs a 16 byte match\ndifferent\n', None)
         # get the first out
         self.assertEqual(('strange\ncommon long line\n'
