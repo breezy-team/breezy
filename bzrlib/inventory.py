@@ -1400,6 +1400,39 @@ class Inventory(CommonInventory):
     def is_root(self, file_id):
         return self.root is not None and file_id == self.root.file_id
 
+    def filter(self, specific_fileids):
+        """Get an inventory view filtered against a set of file-ids.
+
+        Children of directories and parents are included.
+
+        The result may or may not reference the underlying inventory
+        so it should be treated as immutable.
+        """
+        interesting_parents = set()
+        for fileid in specific_fileids:
+            try:
+                interesting_parents.update(self.get_idpath(fileid))
+            except errors.NoSuchId:
+                # This fileid is not in the inventory - that's ok
+                pass
+        entries = self.iter_entries()
+        if self.root is None:
+            return Inventory(root_id=None)
+        other = Inventory(entries.next()[1].file_id)
+        other.root.revision = self.root.revision
+        other.revision_id = self.revision_id
+        directories_to_expand = set()
+        for path, entry in entries:
+            file_id = entry.file_id
+            if (file_id in specific_fileids
+                or entry.parent_id in directories_to_expand):
+                if entry.kind == 'directory':
+                    directories_to_expand.add(file_id)
+            elif file_id not in interesting_parents:
+                continue
+            other.add(entry.copy())
+        return other
+
 
 class CHKInventory(CommonInventory):
     """An inventory persisted in a CHK store.

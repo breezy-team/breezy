@@ -506,7 +506,13 @@ class _LazyGroupCompressFactory(object):
                 self._manager._prepare_for_extract()
                 block = self._manager._block
                 self._bytes = block.extract(self.key, self._start, self._end)
-                self._manager = None
+                # XXX: It seems the smart fetch extracts inventories and chk
+                #      pages as fulltexts to find the next chk pages, but then
+                #      passes them down to be inserted as a
+                #      groupcompress-block, so this is not safe to do. Perhaps
+                #      we could just change the storage kind to "fulltext" at
+                #      that point?
+                # self._manager = None
             if storage_kind == 'fulltext':
                 return self._bytes
             else:
@@ -541,7 +547,10 @@ class _LazyGroupContentManager(object):
             yield factory
             # Break the ref-cycle
             factory._bytes = None
-            factory._manager = None
+            # XXX: this is not safe, the smart fetch code requests the content
+            #      as both a 'fulltext', and then later on as a
+            #      groupcompress-block
+            # factory._manager = None
         # TODO: Consider setting self._factories = None after the above loop,
         #       as it will break the reference cycle
 
@@ -1433,7 +1442,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 if record.storage_kind == 'groupcompress-block':
                     # Insert the raw block into the target repo
                     insert_manager = record._manager
-                    record._manager._check_rebuild_block()
+                    insert_manager._check_rebuild_block()
                     bytes = record._manager._block.to_bytes()
                     _, start, length = self._access.add_raw_records(
                         [(None, len(bytes))], bytes)[0]

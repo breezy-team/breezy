@@ -428,7 +428,7 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
         if self._supports_external_lookups is None:
             self._ensure_real()
             self._supports_external_lookups = \
-                self._custom_format.supports_external_lookups 
+                self._custom_format.supports_external_lookups
         return self._supports_external_lookups
 
     @property
@@ -1325,14 +1325,16 @@ class RemoteRepository(_RpcHelper):
         return self._real_repository.all_revision_ids()
 
     @needs_read_lock
-    def get_deltas_for_revisions(self, revisions):
+    def get_deltas_for_revisions(self, revisions, specific_fileids=None):
         self._ensure_real()
-        return self._real_repository.get_deltas_for_revisions(revisions)
+        return self._real_repository.get_deltas_for_revisions(revisions,
+            specific_fileids=specific_fileids)
 
     @needs_read_lock
-    def get_revision_delta(self, revision_id):
+    def get_revision_delta(self, revision_id, specific_fileids=None):
         self._ensure_real()
-        return self._real_repository.get_revision_delta(revision_id)
+        return self._real_repository.get_revision_delta(revision_id,
+            specific_fileids=specific_fileids)
 
     @needs_read_lock
     def revision_trees(self, revision_ids):
