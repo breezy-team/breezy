@@ -654,19 +654,30 @@ class LeafNode(Node):
             list/set/dict or similar repeatedly iterable container.
         """
         if key_filter is not None:
-            # Adjust the filter - short elements go to a prefix filter. Would this
-            # be cleaner explicitly? That would be no harder for InternalNode..
+            # Adjust the filter - short elements go to a prefix filter. All
+            # other items are looked up directly.
             # XXX: perhaps defaultdict? Profiling<rinse and repeat>
             filters = {}
             for key in key_filter:
-                length_filter = filters.setdefault(len(key), set())
-                length_filter.add(key)
-            filters = filters.items()
-            for item in self._items.iteritems():
-                for length, length_filter in filters:
-                    if item[0][:length] in length_filter:
-                        yield item
-                        break
+                if len(key) == self._key_width:
+                    # This filter is meant to match exactly one key, yield it
+                    # if we have it.
+                    try:
+                        yield key, self._items[key]
+                    except KeyError:
+                        # This key is not present in this map, continue
+                        pass
+                else:
+                    # Short items, we need to match based on a prefix
+                    length_filter = filters.setdefault(len(key), set())
+                    length_filter.add(key)
+            if filters:
+                filters = filters.items()
+                for item in self._items.iteritems():
+                    for length, length_filter in filters:
+                        if item[0][:length] in length_filter:
+                            yield item
+                            break
         else:
             for item in self._items.iteritems():
                 yield item
