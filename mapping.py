@@ -188,6 +188,7 @@ def revision_to_commit(rev, tree_sha, parent_lookup):
     for p in rev.parent_ids:
         git_p = parent_lookup(p)
         if git_p is not None:
+            assert len(git_p) == 40, "unexpected length for %r" % git_p
             commit._parents.append(git_p)
     commit._message = rev.message.encode("utf-8")
     commit._committer = rev.committer.encode("utf-8")
