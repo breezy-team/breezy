@@ -574,7 +574,7 @@ class CommitBuilder(object):
         # file_id -> change map, change is fileid, paths, changed, versioneds,
         # parents, names, kinds, executables
         merged_ids = {}
-        # file_id -> revision_id -> inventory entry, for entries in parent
+        # {file_id -> revision_id -> inventory entry, for entries in parent
         # trees that are not parents[0]
         parent_entries = {}
         revtrees = list(self.repository.revision_trees(self.parents))
@@ -584,20 +584,19 @@ class CommitBuilder(object):
         else:
             basis_inv = self.repository.revision_tree(
                 _mod_revision.NULL_REVISION).inventory
-        if len(self.parents) > 1:
+        if len(self.parents) > 0:
             if basis_revision_id != self.parents[0]:
                 raise Exception(
                     "arbitrary basis parents not yet supported with merges")
-            repo_basis = revtrees[0]
             for revtree in revtrees[1:]:
-                for change in revtree.inventory.make_delta(basis_inv):
+                for change in revtree.inventory._make_delta(basis_inv):
                     if change[1] is None:
-                        # Deleted
+                        # Not present in this parent.
                         continue
                     if change[2] not in merged_ids:
                         if change[0] is not None:
                             merged_ids[change[2]] = [
-                                repo_basis.inventory[change[2]].revision,
+                                basis_inv[change[2]].revision,
                                 change[3].revision]
                         else:
                             merged_ids[change[2]] = [change[3].revision]
@@ -608,6 +607,7 @@ class CommitBuilder(object):
         else:
             merged_ids = {}
         # Setup the changes from the tree:
+        # changes maps file_id -> (change, [parent revision_ids])
         changes= {}
         for change in iter_changes:
             # This probably looks up in basis_inv way to much.
@@ -631,7 +631,7 @@ class CommitBuilder(object):
             # inv delta  change: (file_id, (path_in_source, path_in_target),
             #   changed_content, versioned, parent, name, kind,
             #   executable)
-            basis_entry = repo_basis.inventory[file_id]
+            basis_entry = basis_inv[file_id]
             change = (file_id,
                 (basis_inv.id2path(file_id), tree.id2path(file_id)),
                 False, (True, True),
