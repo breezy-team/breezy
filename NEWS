@@ -151,6 +151,9 @@ Testing
   faulty tests were not properly isolated.
   (Andrew Bennetts, Robert Collins)
 
+* Fix test_msgeditor.MsgEditorTest test isolation.
+  (Vincent Ladeuil, #347130)
+
 * ``medusa`` is not used anymore as an FTP test server starting with
   python2.6. A new FTP test server based on ``pyftplib`` can be used
   instead. This new server is a soft dependency as medusa which is still
