@@ -315,6 +315,9 @@ Improvements
 Bug Fixes
 *********
 
+* Allows ``bzr log <FILE>`` to be called in an empty branch without
+  backtracing. (Vincent Ladeuil, #346431)
+
 * Bazaar now gives a better message including the filename if it's
   unable to read a file in the working directory, for example because
   of a permission error.  (Martin Pool, #338653)
