@@ -1629,6 +1629,81 @@ class TestGetParentMapAllowsNew(tests.TestCaseWithTransport):
         self.assertEqual({'rev1': ('null:',)}, graph.get_parent_map(['rev1']))
 
 
+class TestRepositoryGetRevisionGraph(TestRemoteRepository):
+
+    def test_null_revision(self):
+        # a null revision has the predictable result {}, we should have no wire
+        # traffic when calling it with this argument
+        transport_path = 'empty'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response('notused')
+        # actual RemoteRepository.get_revision_graph is gone, but there's an
+        # equivalent private method for testing
+        result = repo._get_revision_graph(NULL_REVISION)
+        self.assertEqual([], client._calls)
+        self.assertEqual({}, result)
+
+    def test_none_revision(self):
+        # with none we want the entire graph
+        r1 = u'\u0e33'.encode('utf8')
+        r2 = u'\u0dab'.encode('utf8')
+        lines = [' '.join([r2, r1]), r1]
+        encoded_body = '\n'.join(lines)
+
+        transport_path = 'sinhala'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response_with_body(encoded_body, 'ok')
+        # actual RemoteRepository.get_revision_graph is gone, but there's an
+        # equivalent private method for testing
+        result = repo._get_revision_graph(None)
+        self.assertEqual(
+            [('call_expecting_body', 'Repository.get_revision_graph',
+             ('sinhala/', ''))],
+            client._calls)
+        self.assertEqual({r1: (), r2: (r1, )}, result)
+
+    def test_specific_revision(self):
+        # with a specific revision we want the graph for that
+        # with none we want the entire graph
+        r11 = u'\u0e33'.encode('utf8')
+        r12 = u'\xc9'.encode('utf8')
+        r2 = u'\u0dab'.encode('utf8')
+        lines = [' '.join([r2, r11, r12]), r11, r12]
+        encoded_body = '\n'.join(lines)
+
+        transport_path = 'sinhala'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_success_response_with_body(encoded_body, 'ok')
+        result = repo._get_revision_graph(r2)
+        self.assertEqual(
+            [('call_expecting_body', 'Repository.get_revision_graph',
+             ('sinhala/', r2))],
+            client._calls)
+        self.assertEqual({r11: (), r12: (), r2: (r11, r12), }, result)
+
+    def test_no_such_revision(self):
+        revid = '123'
+        transport_path = 'sinhala'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_error_response('nosuchrevision', revid)
+        # also check that the right revision is reported in the error
+        self.assertRaises(errors.NoSuchRevision,
+            repo._get_revision_graph, revid)
+        self.assertEqual(
+            [('call_expecting_body', 'Repository.get_revision_graph',
+             ('sinhala/', revid))],
+            client._calls)
+
+    def test_unexpected_error(self):
+        revid = '123'
+        transport_path = 'sinhala'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_error_response('AnUnexpectedError')
+        e = self.assertRaises(errors.UnknownErrorFromSmartServer,
+            repo._get_revision_graph, revid)
+        self.assertEqual(('AnUnexpectedError',), e.error_tuple)
+
+
 class TestRepositoryIsShared(TestRemoteRepository):
 
     def test_is_shared(self):
