@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1561,16 +1561,12 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
 
     def test_get_parent_map_reconnects_if_unknown_method(self):
         transport_path = 'quack'
-        repo, client = self.setup_fake_client_and_repository(transport_path)
-        client.add_unknown_method_response('Repository,get_parent_map')
-        client.add_success_response_with_body('', 'ok')
-        self.assertFalse(client._medium._is_remote_before((1, 2)))
         rev_id = 'revision-id'
-        expected_deprecations = [
-            'bzrlib.remote.RemoteRepository.get_revision_graph was deprecated '
-            'in version 1.4.']
-        parents = self.callDeprecated(
-            expected_deprecations, repo.get_parent_map, [rev_id])
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_unknown_method_response('Repository.get_parent_map')
+        client.add_success_response_with_body(rev_id, 'ok')
+        self.assertFalse(client._medium._is_remote_before((1, 2)))
+        parents = repo.get_parent_map([rev_id])
         self.assertEqual(
             [('call_with_body_bytes_expecting_body',
               'Repository.get_parent_map', ('quack/', rev_id), '\n\n0'),
@@ -1580,6 +1576,7 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
             client._calls)
         # The medium is now marked as being connected to an older server
         self.assertTrue(client._medium._is_remote_before((1, 2)))
+        self.assertEqual({rev_id: ('null:',)}, parents)
 
     def test_get_parent_map_fallback_parentless_node(self):
         """get_parent_map falls back to get_revision_graph on old servers.  The
@@ -1597,11 +1594,7 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_success_response_with_body(rev_id, 'ok')
         client._medium._remember_remote_is_before((1, 2))
-        expected_deprecations = [
-            'bzrlib.remote.RemoteRepository.get_revision_graph was deprecated '
-            'in version 1.4.']
-        parents = self.callDeprecated(
-            expected_deprecations, repo.get_parent_map, [rev_id])
+        parents = repo.get_parent_map([rev_id])
         self.assertEqual(
             [('call_expecting_body', 'Repository.get_revision_graph',
              ('quack/', ''))],

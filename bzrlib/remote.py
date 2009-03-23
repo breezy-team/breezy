@@ -1183,11 +1183,12 @@ class RemoteRepository(_RpcHelper):
             # We already found out that the server can't understand
             # Repository.get_parent_map requests, so just fetch the whole
             # graph.
-            # XXX: Note that this will issue a deprecation warning. This is ok
-            # :- its because we're working with a deprecated server anyway, and
-            # the user will almost certainly have seen a warning about the
-            # server version already.
-            rg = self.get_revision_graph()
+            #
+            # Note that this reads the whole graph, when only some keys are
+            # wanted.  On this old server there's no way (?) to get them all
+            # in one go, and the user probably will have seen a warning about
+            # the server being old anyhow.
+            rg = self._get_revision_graph(None)
             # There is an api discrepency between get_parent_map and
             # get_revision_graph. Specifically, a "key:()" pair in
             # get_revision_graph just means a node has no parents. For
@@ -1259,7 +1260,8 @@ class RemoteRepository(_RpcHelper):
             # To avoid having to disconnect repeatedly, we keep track of the
             # fact the server doesn't understand remote methods added in 1.2.
             medium._remember_remote_is_before((1, 2))
-            return self.get_revision_graph(None)
+            # Recurse just once and we should use the fallback code.
+            return self._get_parent_map_rpc(keys)
         response_tuple, response_handler = response
         if response_tuple[0] not in ['ok']:
             response_handler.cancel_read_body()
