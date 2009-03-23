@@ -1250,6 +1250,8 @@ class TestCase(unittest.TestCase):
             # bzr now uses the Win32 API and doesn't rely on APPDATA, but the
             # tests do check our impls match APPDATA
             'BZR_EDITOR': None, # test_msgeditor manipulates this variable
+            'VISUAL': None,
+            'EDITOR': None,
             'BZR_EMAIL': None,
             'BZREMAIL': None, # may still be present in the environment
             'EMAIL': None,
