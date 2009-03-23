@@ -329,21 +329,6 @@ class TestGroupCompressBlock(tests.TestCase):
                              'length:100\n'
                              '\n', raw_bytes)
 
-    def test_extract_no_end(self):
-        # We should be able to extract a record, even if we only know the start
-        # of the bytes.
-        texts = {
-            ('key1',): 'text for key1\nhas bytes that are common\n',
-            ('key2',): 'text for key2\nhas bytes that are common\n',
-        }
-        entries, block = self.make_block(texts)
-        self.assertEqualDiff('text for key1\nhas bytes that are common\n',
-                             block.extract(('key1',), entries[('key1',)].start,
-                                           end=None)[1])
-        self.assertEqualDiff('text for key2\nhas bytes that are common\n',
-                             block.extract(('key2',), entries[('key2',)].start,
-                                           end=None)[1])
-
     def test_partial_decomp(self):
         content_chunks = []
         # We need a sufficient amount of data so that zlib.decompress has
