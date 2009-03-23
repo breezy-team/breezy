@@ -89,7 +89,6 @@ class LRUCache(object):
             # Nothing to do, this node is already at the head of the queue
             return node.value
         elif node is self._last_recently_used:
-            assert node.prev is not None
             self._last_recently_used = node.prev
         # Remove this node from the old location
         node_prev = node.prev
@@ -109,19 +108,31 @@ class LRUCache(object):
         return len(self._cache)
 
     def _walk_lru(self):
-        """Walk the LRU list."""
+        """Walk the LRU list, only meant to be used in tests."""
         node = self._most_recently_used
         if node is not None:
-            assert node.prev is None
+            if node.prev is not None:
+                raise AssertionError('the _most_recently_used entry is not'
+                                     ' supposed to have a previous entry'
+                                     ' %s' % (node,))
         while node is not None:
             if node.next is None:
-                assert node is self._last_recently_used
+                if node is not self._last_recently_used:
+                    raise AssertionError('only the last node should have'
+                                         ' no next value: %s' % (node,))
             else:
-                assert node.next.prev is node
+                if node.next.prev is not node:
+                    raise AssertionError('inconsistency found, node.next.prev'
+                                         ' != node: %s' % (node,))
             if node.prev is None:
-                assert node is self._most_recently_used
+                if node is not self._most_recently_used:
+                    raise AssertionError('only the _most_recently_used should'
+                                         ' not have a previous node: %s'
+                                         % (node,))
             else:
-                assert node.prev.next is node
+                if node.prev.next is not node:
+                    raise AssertionError('inconsistency found, node.prev.next'
+                                         ' != node: %s' % (node,))
             yield node
             node = node.next
 
@@ -196,19 +207,14 @@ class LRUCache(object):
         """Record that key was accessed."""
         # Move 'node' to the front of the queue
         if self._most_recently_used is None:
-            assert len(self._cache) == 1
             self._most_recently_used = node
             self._last_recently_used = node
-            assert node.next == None
-            assert node.prev == None
             return
         elif node is self._most_recently_used:
             # Nothing to do, this node is already at the head of the queue
             return
         elif node is self._last_recently_used:
-            assert self._last_recently_used is not None
             self._last_recently_used = node.prev
-            assert self._last_recently_used is not None
         # We've taken care of the tail pointer, remove the node, and insert it
         # at the front
         # REMOVE
@@ -223,23 +229,13 @@ class LRUCache(object):
         node.prev = None
 
     def _remove_node(self, node):
-        assert node is not None
         if node is self._last_recently_used:
             self._last_recently_used = node.prev
-        node2 = self._cache.pop(node.key)
-        assert node2 is node
-        del node2
+        self._cache.pop(node.key)
         # If we have removed all entries, remove the head pointer as well
         if self._last_recently_used is None:
-            if len(self._cache) != 0:
-                import pdb; pdb.set_trace()
-            assert len(self._cache) == 0
-            assert self._most_recently_used is node
             self._most_recently_used = None
         node.run_cleanup()
-        # Shouldn't be necessary
-        # node.next = None
-        # node.prev = None
 
     def _remove_lru(self):
         """Remove one entry from the lru, and handle consequences.
