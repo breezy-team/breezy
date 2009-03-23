@@ -1,8 +1,12 @@
 bzr-builddeb (2.1.2) UNRELEASED; urgency=low
 
+  [ James Westby ]
   * 
 
- -- James Westby <james.westby@ubuntu.com>  Mon, 09 Mar 2009 09:04:48 +1000
+  [ Jelmer Vernooij ]
+  * Support Vcs-Hg in the deb: directory service if bzr-hg is installed.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Tue, 24 Mar 2009 00:49:44 +0100
 
 bzr-builddeb (2.1.1) experimental; urgency=low
 
