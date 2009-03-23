@@ -48,7 +48,12 @@ from bzrlib.testament import Testament
 
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.inter import InterObject
-from bzrlib.inventory import Inventory, InventoryDirectory, ROOT_ID
+from bzrlib.inventory import (
+    Inventory,
+    InventoryDirectory,
+    ROOT_ID,
+    entry_factory,
+    )
 from bzrlib import registry
 from bzrlib.symbol_versioning import (
         deprecated_method,
@@ -125,6 +130,18 @@ class CommitBuilder(object):
         # valid. Callers that will call record_delete() should call
         # .will_record_deletes() to indicate that.
         self._recording_deletes = False
+        # memo'd check for no-op commits.
+        self._any_changes = False
+
+    def any_changes(self):
+        """Return True if any entries were changed.
+        
+        This includes merge-only changes. It is the core for the --unchanged
+        detection in commit.
+
+        :return: True if any changes have occured.
+        """
+        return self._any_changes
 
     def _validate_unicode_text(self, text, context):
         """Verify things like commit messages don't have bogus characters."""
@@ -175,21 +192,37 @@ class CommitBuilder(object):
         deserializing the inventory, while we already have a copy in
         memory.
         """
+        if self.new_inventory is None:
+            self.new_inventory = self.repository.get_inventory(
+                self._new_revision_id)
         return RevisionTree(self.repository, self.new_inventory,
-                            self._new_revision_id)
+            self._new_revision_id)
 
     def finish_inventory(self):
-        """Tell the builder that the inventory is finished."""
-        if self.new_inventory.root is None:
-            raise AssertionError('Root entry should be supplied to'
-                ' record_entry_contents, as of bzr 0.10.')
-            self.new_inventory.add(InventoryDirectory(ROOT_ID, '', None))
-        self.new_inventory.revision_id = self._new_revision_id
-        self.inv_sha1 = self.repository.add_inventory(
-            self._new_revision_id,
-            self.new_inventory,
-            self.parents
-            )
+        """Tell the builder that the inventory is finished.
+        
+        :return: The inventory id in the repository, which can be used with
+            repository.get_inventory.
+        """
+        if self.new_inventory is None:
+            # an inventory delta was accumulated without creating a new
+            # inventory.
+            basis_id = self.basis_delta_revision
+            self.inv_sha1 = self.repository.add_inventory_by_delta(
+                basis_id, self._basis_delta, self._new_revision_id,
+                self.parents)
+        else:
+            if self.new_inventory.root is None:
+                raise AssertionError('Root entry should be supplied to'
+                    ' record_entry_contents, as of bzr 0.10.')
+                self.new_inventory.add(InventoryDirectory(ROOT_ID, '', None))
+            self.new_inventory.revision_id = self._new_revision_id
+            self.inv_sha1 = self.repository.add_inventory(
+                self._new_revision_id,
+                self.new_inventory,
+                self.parents
+                )
+        return self._new_revision_id
 
     def _gen_revision_id(self):
         """Return new revision-id."""
@@ -231,6 +264,21 @@ class CommitBuilder(object):
         # serializing out to disk and back in root.revision is always
         # _new_revision_id
         ie.revision = self._new_revision_id
+
+    def _require_root_change(self, tree):
+        """Enforce an appropriate root object change.
+
+        This is called once when record_iter_changes is called, if and only if
+        the root was not in the delta calculated by record_iter_changes.
+
+        :param tree: The tree which is being committed.
+        """
+        # NB: if there are no parents then this method is not called, so no
+        # need to guard on parents having length.
+        entry = entry_factory['directory'](tree.path2id(''), '',
+            None)
+        entry.revision = self._new_revision_id
+        self._basis_delta.append(('', '', entry.file_id, entry))
 
     def _get_delta(self, ie, basis_inv, path):
         """Get a delta against the basis inventory for ie."""
@@ -289,6 +337,11 @@ class CommitBuilder(object):
         builder.record_delete().
         """
         self._recording_deletes = True
+        try:
+            basis_id = self.parents[0]
+        except IndexError:
+            basis_id = _mod_revision.NULL_REVISION
+        self.basis_delta_revision = basis_id
 
     def record_entry_contents(self, ie, parent_invs, path, tree,
         content_summary):
@@ -496,7 +549,225 @@ class CommitBuilder(object):
         else:
             raise NotImplementedError('unknown kind')
         ie.revision = self._new_revision_id
+        self._any_changes = True
         return self._get_delta(ie, basis_inv, path), True, fingerprint
+
+    def record_iter_changes(self, tree, basis_revision_id, iter_changes,
+        _entry_factory=entry_factory):
+        """Record a new tree via iter_changes.
+
+        :param tree: The tree to obtain text contents from for changed objects.
+        :param basis_revision_id: The revision id of the tree the iter_changes
+            has been generated against. Currently assumed to be the same
+            as self.parents[0] - if it is not, errors may occur.
+        :param iter_changes: An iter_changes iterator with the changes to apply
+            to basis_revision_id.
+        :param _entry_factory: Private method to bind entry_factory locally for
+            performance.
+        :return: None
+        """
+        # Create an inventory delta based on deltas between all the parents and
+        # deltas between all the parent inventories. We use inventory delta's 
+        # between the inventory objects because iter_changes masks
+        # last-changed-field only changes.
+        # Working data:
+        # file_id -> change map, change is fileid, paths, changed, versioneds,
+        # parents, names, kinds, executables
+        merged_ids = {}
+        # {file_id -> revision_id -> inventory entry, for entries in parent
+        # trees that are not parents[0]
+        parent_entries = {}
+        revtrees = list(self.repository.revision_trees(self.parents))
+        # The basis inventory from a repository 
+        if revtrees:
+            basis_inv = revtrees[0].inventory
+        else:
+            basis_inv = self.repository.revision_tree(
+                _mod_revision.NULL_REVISION).inventory
+        if len(self.parents) > 0:
+            if basis_revision_id != self.parents[0]:
+                raise Exception(
+                    "arbitrary basis parents not yet supported with merges")
+            for revtree in revtrees[1:]:
+                for change in revtree.inventory._make_delta(basis_inv):
+                    if change[1] is None:
+                        # Not present in this parent.
+                        continue
+                    if change[2] not in merged_ids:
+                        if change[0] is not None:
+                            merged_ids[change[2]] = [
+                                basis_inv[change[2]].revision,
+                                change[3].revision]
+                        else:
+                            merged_ids[change[2]] = [change[3].revision]
+                        parent_entries[change[2]] = {change[3].revision:change[3]}
+                    else:
+                        merged_ids[change[2]].append(change[3].revision)
+                        parent_entries[change[2]][change[3].revision] = change[3]
+        else:
+            merged_ids = {}
+        # Setup the changes from the tree:
+        # changes maps file_id -> (change, [parent revision_ids])
+        changes= {}
+        for change in iter_changes:
+            # This probably looks up in basis_inv way to much.
+            if change[1][0] is not None:
+                head_candidate = [basis_inv[change[0]].revision]
+            else:
+                head_candidate = []
+            changes[change[0]] = change, merged_ids.get(change[0],
+                head_candidate)
+        unchanged_merged = set(merged_ids) - set(changes)
+        # Extend the changes dict with synthetic changes to record merges of
+        # texts.
+        for file_id in unchanged_merged:
+            # Record a merged version of these items that did not change vs the
+            # basis. This can be either identical parallel changes, or a revert
+            # of a specific file after a merge. The recorded content will be
+            # that of the current tree (which is the same as the basis), but
+            # the per-file graph will reflect a merge.
+            # NB:XXX: We are reconstructing path information we had, this
+            # should be preserved instead.
+            # inv delta  change: (file_id, (path_in_source, path_in_target),
+            #   changed_content, versioned, parent, name, kind,
+            #   executable)
+            basis_entry = basis_inv[file_id]
+            change = (file_id,
+                (basis_inv.id2path(file_id), tree.id2path(file_id)),
+                False, (True, True),
+                (basis_entry.parent_id, basis_entry.parent_id),
+                (basis_entry.name, basis_entry.name),
+                (basis_entry.kind, basis_entry.kind),
+                (basis_entry.executable, basis_entry.executable))
+            changes[file_id] = (change, merged_ids[file_id])
+        # changes contains tuples with the change and a set of inventory
+        # candidates for the file.
+        # inv delta is:
+        # old_path, new_path, file_id, new_inventory_entry
+        seen_root = False # Is the root in the basis delta?
+        inv_delta = self._basis_delta
+        modified_rev = self._new_revision_id
+        for change, head_candidates in changes.values():
+            if change[3][1]: # versioned in target.
+                # Several things may be happening here:
+                # We may have a fork in the per-file graph
+                #  - record a change with the content from tree
+                # We may have a change against < all trees  
+                #  - carry over the tree that hasn't changed
+                # We may have a change against all trees
+                #  - record the change with the content from tree
+                kind = change[6][1]
+                file_id = change[0]
+                entry = _entry_factory[kind](file_id, change[5][1],
+                    change[4][1])
+                head_set = self._heads(change[0], set(head_candidates))
+                heads = []
+                # Preserve ordering.
+                for head_candidate in head_candidates:
+                    if head_candidate in head_set:
+                        heads.append(head_candidate)
+                        head_set.remove(head_candidate)
+                carried_over = False
+                if len(heads) == 1:
+                    # Could be a carry-over situation:
+                    parent_entry_revs = parent_entries.get(file_id, None)
+                    if parent_entry_revs:
+                        parent_entry = parent_entry_revs.get(heads[0], None)
+                    else:
+                        parent_entry = None
+                    if parent_entry is None:
+                        # The parent iter_changes was called against is the one
+                        # that is the per-file head, so any change is relevant
+                        # iter_changes is valid.
+                        carry_over_possible = False
+                    else:
+                        # could be a carry over situation
+                        # A change against the basis may just indicate a merge,
+                        # we need to check the content against the source of the
+                        # merge to determine if it was changed after the merge
+                        # or carried over.
+                        if (parent_entry.kind != entry.kind or
+                            parent_entry.parent_id != entry.parent_id or
+                            parent_entry.name != entry.name):
+                            # Metadata common to all entries has changed
+                            # against per-file parent
+                            carry_over_possible = False
+                        else:
+                            carry_over_possible = True
+                        # per-type checks for changes against the parent_entry
+                        # are done below.
+                else:
+                    # Cannot be a carry-over situation
+                    carry_over_possible = False
+                # Populate the entry in the delta
+                if kind == 'file':
+                    # XXX: There is still a small race here: If someone reverts the content of a file
+                    # after iter_changes examines and decides it has changed,
+                    # we will unconditionally record a new version even if some
+                    # other process reverts it while commit is running (with
+                    # the revert happening after iter_changes did it's
+                    # examination).
+                    if change[7][1]:
+                        entry.executable = True
+                    else:
+                        entry.executable = False
+                    if (carry_over_possible and 
+                        parent_entry.executable == entry.executable):
+                            # Check the file length, content hash after reading
+                            # the file.
+                            nostore_sha = parent_entry.text_sha1
+                    else:
+                        nostore_sha = None
+                    file_obj, stat_value = tree.get_file_with_stat(file_id, change[1][1])
+                    try:
+                        lines = file_obj.readlines()
+                    finally:
+                        file_obj.close()
+                    try:
+                        entry.text_sha1, entry.text_size = self._add_text_to_weave(
+                            file_id, lines, heads, nostore_sha)
+                    except errors.ExistingContent:
+                        # No content change against a carry_over parent
+                        carried_over = True
+                        entry.text_size = parent_entry.text_size
+                        entry.text_sha1 = parent_entry.text_sha1
+                elif kind == 'symlink':
+                    # Wants a path hint?
+                    entry.symlink_target = tree.get_symlink_target(file_id)
+                    if (carry_over_possible and
+                        parent_entry.symlink_target == entry.symlink_target):
+                            carried_over = True
+                    else:
+                        self._add_text_to_weave(change[0], [], heads, None)
+                elif kind == 'directory':
+                    if carry_over_possible:
+                        carried_over = True
+                    else:
+                        # Nothing to set on the entry.
+                        # XXX: split into the Root and nonRoot versions.
+                        if change[1][1] != '' or self.repository.supports_rich_root():
+                            self._add_text_to_weave(change[0], [], heads, None)
+                elif kind == 'tree-reference':
+                    raise AssertionError('unknown kind %r' % kind)
+                else:
+                    raise AssertionError('unknown kind %r' % kind)
+                if not carried_over:
+                    entry.revision = modified_rev
+                else:
+                    entry.revision = parent_entry.revision
+            else:
+                entry = None
+            new_path = change[1][1]
+            inv_delta.append((change[1][0], new_path, change[0], entry))
+            if new_path == '':
+                seen_root = True
+        self.new_inventory = None
+        if len(inv_delta):
+            self._any_changes = True
+        if not seen_root:
+            # housekeeping root entry changes do not affect no-change commits.
+            self._require_root_change(tree)
+        self.basis_delta_revision = basis_revision_id
 
     def _add_text_to_weave(self, file_id, new_lines, parents, nostore_sha):
         # Note: as we read the content directly from the tree, we know its not
@@ -525,6 +796,16 @@ class RootCommitBuilder(CommitBuilder):
             commit.
         :param tree: The tree that is being committed.
         """
+
+    def _require_root_change(self, tree):
+        """Enforce an appropriate root object change.
+
+        This is called once when record_iter_changes is called, if and only if
+        the root was not in the delta calculated by record_iter_changes.
+
+        :param tree: The tree which is being committed.
+        """
+        # versioned roots do not change unless the tree found a change.
 
 
 ######################################################################

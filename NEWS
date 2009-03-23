@@ -164,6 +164,10 @@ Internals
   optmizations turned off. This only has effect when processing > 100,000
   keys during something like ``bzr pack``. (John Arbash Meinel)
 
+* ``CommitBuilder`` has a new method, ``record_iter_changes`` which works
+  in terms of an iter_changes iterator rather than full tree scanning.
+  (Robert Collins)
+
 * ``DirState`` can now be passed a custom ``SHA1Provider`` object
   enabling it to store the SHA1 and stat of the canonical (post
   content filtered) form. (Ian Clatworthy)
