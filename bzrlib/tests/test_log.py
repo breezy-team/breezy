@@ -1499,6 +1499,14 @@ class TestGetRevisionsTouchingFileID(tests.TestCaseWithTransport):
         self.assertAllRevisionsForFileID(tree, 'f1-id', ['XX', 'B', 'A'])
         self.assertAllRevisionsForFileID(tree, 'f2-id', ['D', 'C', 'A'])
 
+    def test_unknown_file_id(self):
+        tree = self.create_tree_with_single_merge()
+        self.assertAllRevisionsForFileID(tree, 'unknown', [])
+
+    def test_empty_branch_unknown_file_id(self):
+        tree = self.make_branch_and_tree('tree')
+        self.assertAllRevisionsForFileID(tree, 'unknown', [])
+
 
 class TestShowChangedRevisions(tests.TestCaseWithTransport):
 
