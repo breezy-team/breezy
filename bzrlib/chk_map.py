@@ -919,8 +919,8 @@ class InternalNode(Node):
                                           search_key_func=search_key_func)
 
     def iteritems(self, store, key_filter=None):
-        for node in self._iter_nodes(store, key_filter=key_filter):
-            for item in node.iteritems(store, key_filter=key_filter):
+        for node, node_filter in self._iter_nodes(store, key_filter=key_filter):
+            for item in node.iteritems(store, key_filter=node_filter):
                 yield item
 
     def _iter_nodes(self, store, key_filter=None, batch_size=None):
@@ -935,30 +935,38 @@ class InternalNode(Node):
         :return: An iterable of nodes. This function does not have to be fully
             consumed.  (There will be no pending I/O when items are being returned.)
         """
+        # Map from chk key ('sha1:...',) to (prefix, key_filter)
+        # prefix is the key in self._items to use, key_filter is the key_filter
+        # entries that would match this node
         keys = {}
         if key_filter is None:
             for prefix, node in self._items.iteritems():
                 if type(node) == tuple:
-                    keys[node] = prefix
+                    keys[node] = (prefix, None)
                 else:
-                    yield node
+                    yield node, None
         else:
             # XXX defaultdict ?
+            prefix_to_keys = {}
             length_filters = {}
             for key in key_filter:
                 search_key = self._search_prefix_filter(key)
                 length_filter = length_filters.setdefault(
                                     len(search_key), set())
                 length_filter.add(search_key)
+                prefix_to_keys.setdefault(search_key, []).append(key)
             length_filters = length_filters.items()
             for prefix, node in self._items.iteritems():
+                node_key_filter = []
                 for length, length_filter in length_filters:
-                    if prefix[:length] in length_filter:
-                        if type(node) == tuple:
-                            keys[node] = prefix
-                        else:
-                            yield node
-                        break
+                    sub_prefix = prefix[:length]
+                    if sub_prefix in length_filter:
+                        node_key_filter.extend(prefix_to_keys[sub_prefix])
+                if node_key_filter: # this key matched something, yield it
+                    if type(node) == tuple:
+                        keys[node] = (prefix, node_key_filter)
+                    else:
+                        yield node, node_key_filter
         if keys:
             # Look in the page cache for some more bytes
             found_keys = set()
@@ -970,9 +978,10 @@ class InternalNode(Node):
                 else:
                     node = _deserialise(bytes, key,
                         search_key_func=self._search_key_func)
-                    self._items[keys[key]] = node
+                    prefix, node_key_filter = keys[key]
+                    self._items[prefix] = node
                     found_keys.add(key)
-                    yield node
+                    yield node, node_key_filter
             for key in found_keys:
                 del keys[key]
         if keys:
@@ -986,16 +995,17 @@ class InternalNode(Node):
                 # We have to fully consume the stream so there is no pending
                 # I/O, so we buffer the nodes for now.
                 stream = store.get_record_stream(batch, 'unordered', True)
-                nodes = []
+                node_and_filters = []
                 for record in stream:
                     bytes = record.get_bytes_as('fulltext')
                     node = _deserialise(bytes, record.key,
                         search_key_func=self._search_key_func)
-                    nodes.append(node)
-                    self._items[keys[record.key]] = node
+                    prefix, node_key_filter = keys[record.key]
+                    node_and_filters.append((node, node_key_filter))
+                    self._items[prefix] = node
                     _page_cache.add(record.key, bytes)
-                for node in nodes:
-                    yield node
+                for info in node_and_filters:
+                    yield info
 
     def map(self, store, key, value):
         """Map key to value."""
@@ -1018,7 +1028,8 @@ class InternalNode(Node):
             new_parent.add_node(self._search_prefix[:len(new_prefix)+1],
                                 self)
             return new_parent.map(store, key, value)
-        children = list(self._iter_nodes(store, key_filter=[key]))
+        children = [node for node, _
+                          in self._iter_nodes(store, key_filter=[key])]
         if children:
             child = children[0]
         else:
@@ -1171,7 +1182,8 @@ class InternalNode(Node):
         """Remove key from this node and it's children."""
         if not len(self._items):
             raise AssertionError("can't unmap in an empty InternalNode.")
-        children = list(self._iter_nodes(store, key_filter=[key]))
+        children = [node for node, _
+                          in self._iter_nodes(store, key_filter=[key])]
         if children:
             child = children[0]
         else:
@@ -1235,7 +1247,7 @@ class InternalNode(Node):
         #   b) With 16-way fan out, we can still do a single round trip
         #   c) With 255-way fan out, we don't want to read all 255 and destroy
         #      the page cache, just to determine that we really don't need it.
-        for node in self._iter_nodes(store, batch_size=16):
+        for node, _ in self._iter_nodes(store, batch_size=16):
             if isinstance(node, InternalNode):
                 # Without looking at any leaf nodes, we are sure
                 return self
