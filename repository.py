@@ -177,6 +177,11 @@ class LocalGitRepository(GitRepository):
             raise NotImplementedError
         revidmap = {}
         gitidmap = {}
+        def parent_lookup(revid):
+            try:
+                return gitidmap[revid]
+            except KeyError:
+                return self.lookup_git_revid(revid)[0]
         todo = []
         source.lock_write()
         try:
@@ -190,7 +195,7 @@ class LocalGitRepository(GitRepository):
                 for i, revid in enumerate(todo):
                     pb.update("pushing revisions", i, len(todo))
                     git_commit = self.import_revision_gist(source, revid,
-                        gitidmap.__getitem__)
+                        parent_lookup)
                     gitidmap[revid] = git_commit
                     git_revid = self.get_mapping().revision_id_foreign_to_bzr(
                         git_commit)
