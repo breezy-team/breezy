@@ -303,7 +303,7 @@ class ModuleHelpTopic(object):
         """
         self.module = module
 
-    def get_help_text(self, additional_see_also=None):
+    def get_help_text(self, additional_see_also=None, verbose=True):
         """Return a string with the help for this topic.
 
         :param additional_see_also: Additional help topics to be

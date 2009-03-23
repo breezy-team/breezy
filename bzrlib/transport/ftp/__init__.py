@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,10 +31,10 @@ import getpass
 import os
 import os.path
 import urlparse
+import random
 import socket
 import stat
 import time
-import random
 from warnings import warn
 
 from bzrlib import (
@@ -439,7 +439,7 @@ class FtpTransport(ConnectedTransport):
         if mode:
             try:
                 mutter("FTP site chmod: setting permissions to %s on %s",
-                    str(mode), self._remote_path(relpath))
+                       oct(mode), self._remote_path(relpath))
                 ftp = self._get_FTP()
                 cmd = "SITE CHMOD %s %s" % (oct(mode),
                                             self._remote_path(relpath))
@@ -447,7 +447,7 @@ class FtpTransport(ConnectedTransport):
             except ftplib.error_perm, e:
                 # Command probably not available on this server
                 warning("FTP Could not set permissions to %s on %s. %s",
-                        str(mode), self._remote_path(relpath), str(e))
+                        oct(mode), self._remote_path(relpath), str(e))
 
     # TODO: jam 20060516 I believe ftp allows you to tell an ftp server
     #       to copy something to another machine. And you may be able
@@ -597,27 +597,5 @@ class FtpTransport(ConnectedTransport):
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    from bzrlib import tests
-    if tests.FTPServerFeature.available():
-        from bzrlib.tests import ftp_server
-        return [(FtpTransport, ftp_server.FTPServer)]
-    else:
-        # Dummy server to have the test suite report the number of tests
-        # needing that feature. We raise UnavailableFeature from methods before
-        # the test server is being used. Doing so in the setUp method has bad
-        # side-effects (tearDown is never called).
-        class UnavailableFTPServer(object):
-
-            def setUp(self, vfs_server=None):
-                pass
-
-            def tearDown(self):
-                pass
-
-            def get_url(self):
-                raise tests.UnavailableFeature(tests.FTPServerFeature)
-
-            def get_bogus_url(self):
-                raise tests.UnavailableFeature(tests.FTPServerFeature)
-
-        return [(FtpTransport, UnavailableFTPServer)]
+    from bzrlib.tests import ftp_server
+    return [(FtpTransport, ftp_server.FTPTestServer)]

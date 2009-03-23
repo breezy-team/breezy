@@ -34,7 +34,6 @@ from bzrlib import (
     lockdir,
     lru_cache,
     osutils,
-    remote,
     revision as _mod_revision,
     symbol_versioning,
     tsort,
@@ -49,7 +48,12 @@ from bzrlib.testament import Testament
 
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.inter import InterObject
-from bzrlib.inventory import Inventory, InventoryDirectory, ROOT_ID
+from bzrlib.inventory import (
+    Inventory,
+    InventoryDirectory,
+    ROOT_ID,
+    entry_factory,
+    )
 from bzrlib import registry
 from bzrlib.symbol_versioning import (
         deprecated_method,
@@ -123,6 +127,18 @@ class CommitBuilder(object):
         # valid. Callers that will call record_delete() should call
         # .will_record_deletes() to indicate that.
         self._recording_deletes = False
+        # memo'd check for no-op commits.
+        self._any_changes = False
+
+    def any_changes(self):
+        """Return True if any entries were changed.
+        
+        This includes merge-only changes. It is the core for the --unchanged
+        detection in commit.
+
+        :return: True if any changes have occured.
+        """
+        return self._any_changes
 
     def _validate_unicode_text(self, text, context):
         """Verify things like commit messages don't have bogus characters."""
@@ -173,21 +189,37 @@ class CommitBuilder(object):
         deserializing the inventory, while we already have a copy in
         memory.
         """
+        if self.new_inventory is None:
+            self.new_inventory = self.repository.get_inventory(
+                self._new_revision_id)
         return RevisionTree(self.repository, self.new_inventory,
-                            self._new_revision_id)
+            self._new_revision_id)
 
     def finish_inventory(self):
-        """Tell the builder that the inventory is finished."""
-        if self.new_inventory.root is None:
-            raise AssertionError('Root entry should be supplied to'
-                ' record_entry_contents, as of bzr 0.10.')
-            self.new_inventory.add(InventoryDirectory(ROOT_ID, '', None))
-        self.new_inventory.revision_id = self._new_revision_id
-        self.inv_sha1 = self.repository.add_inventory(
-            self._new_revision_id,
-            self.new_inventory,
-            self.parents
-            )
+        """Tell the builder that the inventory is finished.
+        
+        :return: The inventory id in the repository, which can be used with
+            repository.get_inventory.
+        """
+        if self.new_inventory is None:
+            # an inventory delta was accumulated without creating a new
+            # inventory.
+            basis_id = self.basis_delta_revision
+            self.inv_sha1 = self.repository.add_inventory_by_delta(
+                basis_id, self._basis_delta, self._new_revision_id,
+                self.parents)
+        else:
+            if self.new_inventory.root is None:
+                raise AssertionError('Root entry should be supplied to'
+                    ' record_entry_contents, as of bzr 0.10.')
+                self.new_inventory.add(InventoryDirectory(ROOT_ID, '', None))
+            self.new_inventory.revision_id = self._new_revision_id
+            self.inv_sha1 = self.repository.add_inventory(
+                self._new_revision_id,
+                self.new_inventory,
+                self.parents
+                )
+        return self._new_revision_id
 
     def _gen_revision_id(self):
         """Return new revision-id."""
@@ -229,6 +261,21 @@ class CommitBuilder(object):
         # serializing out to disk and back in root.revision is always
         # _new_revision_id
         ie.revision = self._new_revision_id
+
+    def _require_root_change(self, tree):
+        """Enforce an appropriate root object change.
+
+        This is called once when record_iter_changes is called, if and only if
+        the root was not in the delta calculated by record_iter_changes.
+
+        :param tree: The tree which is being committed.
+        """
+        # NB: if there are no parents then this method is not called, so no
+        # need to guard on parents having length.
+        entry = entry_factory['directory'](tree.path2id(''), '',
+            None)
+        entry.revision = self._new_revision_id
+        self._basis_delta.append(('', '', entry.file_id, entry))
 
     def _get_delta(self, ie, basis_inv, path):
         """Get a delta against the basis inventory for ie."""
@@ -287,6 +334,11 @@ class CommitBuilder(object):
         builder.record_delete().
         """
         self._recording_deletes = True
+        try:
+            basis_id = self.parents[0]
+        except IndexError:
+            basis_id = _mod_revision.NULL_REVISION
+        self.basis_delta_revision = basis_id
 
     def record_entry_contents(self, ie, parent_invs, path, tree,
         content_summary):
@@ -494,7 +546,225 @@ class CommitBuilder(object):
         else:
             raise NotImplementedError('unknown kind')
         ie.revision = self._new_revision_id
+        self._any_changes = True
         return self._get_delta(ie, basis_inv, path), True, fingerprint
+
+    def record_iter_changes(self, tree, basis_revision_id, iter_changes,
+        _entry_factory=entry_factory):
+        """Record a new tree via iter_changes.
+
+        :param tree: The tree to obtain text contents from for changed objects.
+        :param basis_revision_id: The revision id of the tree the iter_changes
+            has been generated against. Currently assumed to be the same
+            as self.parents[0] - if it is not, errors may occur.
+        :param iter_changes: An iter_changes iterator with the changes to apply
+            to basis_revision_id.
+        :param _entry_factory: Private method to bind entry_factory locally for
+            performance.
+        :return: None
+        """
+        # Create an inventory delta based on deltas between all the parents and
+        # deltas between all the parent inventories. We use inventory delta's 
+        # between the inventory objects because iter_changes masks
+        # last-changed-field only changes.
+        # Working data:
+        # file_id -> change map, change is fileid, paths, changed, versioneds,
+        # parents, names, kinds, executables
+        merged_ids = {}
+        # {file_id -> revision_id -> inventory entry, for entries in parent
+        # trees that are not parents[0]
+        parent_entries = {}
+        revtrees = list(self.repository.revision_trees(self.parents))
+        # The basis inventory from a repository 
+        if revtrees:
+            basis_inv = revtrees[0].inventory
+        else:
+            basis_inv = self.repository.revision_tree(
+                _mod_revision.NULL_REVISION).inventory
+        if len(self.parents) > 0:
+            if basis_revision_id != self.parents[0]:
+                raise Exception(
+                    "arbitrary basis parents not yet supported with merges")
+            for revtree in revtrees[1:]:
+                for change in revtree.inventory._make_delta(basis_inv):
+                    if change[1] is None:
+                        # Not present in this parent.
+                        continue
+                    if change[2] not in merged_ids:
+                        if change[0] is not None:
+                            merged_ids[change[2]] = [
+                                basis_inv[change[2]].revision,
+                                change[3].revision]
+                        else:
+                            merged_ids[change[2]] = [change[3].revision]
+                        parent_entries[change[2]] = {change[3].revision:change[3]}
+                    else:
+                        merged_ids[change[2]].append(change[3].revision)
+                        parent_entries[change[2]][change[3].revision] = change[3]
+        else:
+            merged_ids = {}
+        # Setup the changes from the tree:
+        # changes maps file_id -> (change, [parent revision_ids])
+        changes= {}
+        for change in iter_changes:
+            # This probably looks up in basis_inv way to much.
+            if change[1][0] is not None:
+                head_candidate = [basis_inv[change[0]].revision]
+            else:
+                head_candidate = []
+            changes[change[0]] = change, merged_ids.get(change[0],
+                head_candidate)
+        unchanged_merged = set(merged_ids) - set(changes)
+        # Extend the changes dict with synthetic changes to record merges of
+        # texts.
+        for file_id in unchanged_merged:
+            # Record a merged version of these items that did not change vs the
+            # basis. This can be either identical parallel changes, or a revert
+            # of a specific file after a merge. The recorded content will be
+            # that of the current tree (which is the same as the basis), but
+            # the per-file graph will reflect a merge.
+            # NB:XXX: We are reconstructing path information we had, this
+            # should be preserved instead.
+            # inv delta  change: (file_id, (path_in_source, path_in_target),
+            #   changed_content, versioned, parent, name, kind,
+            #   executable)
+            basis_entry = basis_inv[file_id]
+            change = (file_id,
+                (basis_inv.id2path(file_id), tree.id2path(file_id)),
+                False, (True, True),
+                (basis_entry.parent_id, basis_entry.parent_id),
+                (basis_entry.name, basis_entry.name),
+                (basis_entry.kind, basis_entry.kind),
+                (basis_entry.executable, basis_entry.executable))
+            changes[file_id] = (change, merged_ids[file_id])
+        # changes contains tuples with the change and a set of inventory
+        # candidates for the file.
+        # inv delta is:
+        # old_path, new_path, file_id, new_inventory_entry
+        seen_root = False # Is the root in the basis delta?
+        inv_delta = self._basis_delta
+        modified_rev = self._new_revision_id
+        for change, head_candidates in changes.values():
+            if change[3][1]: # versioned in target.
+                # Several things may be happening here:
+                # We may have a fork in the per-file graph
+                #  - record a change with the content from tree
+                # We may have a change against < all trees  
+                #  - carry over the tree that hasn't changed
+                # We may have a change against all trees
+                #  - record the change with the content from tree
+                kind = change[6][1]
+                file_id = change[0]
+                entry = _entry_factory[kind](file_id, change[5][1],
+                    change[4][1])
+                head_set = self._heads(change[0], set(head_candidates))
+                heads = []
+                # Preserve ordering.
+                for head_candidate in head_candidates:
+                    if head_candidate in head_set:
+                        heads.append(head_candidate)
+                        head_set.remove(head_candidate)
+                carried_over = False
+                if len(heads) == 1:
+                    # Could be a carry-over situation:
+                    parent_entry_revs = parent_entries.get(file_id, None)
+                    if parent_entry_revs:
+                        parent_entry = parent_entry_revs.get(heads[0], None)
+                    else:
+                        parent_entry = None
+                    if parent_entry is None:
+                        # The parent iter_changes was called against is the one
+                        # that is the per-file head, so any change is relevant
+                        # iter_changes is valid.
+                        carry_over_possible = False
+                    else:
+                        # could be a carry over situation
+                        # A change against the basis may just indicate a merge,
+                        # we need to check the content against the source of the
+                        # merge to determine if it was changed after the merge
+                        # or carried over.
+                        if (parent_entry.kind != entry.kind or
+                            parent_entry.parent_id != entry.parent_id or
+                            parent_entry.name != entry.name):
+                            # Metadata common to all entries has changed
+                            # against per-file parent
+                            carry_over_possible = False
+                        else:
+                            carry_over_possible = True
+                        # per-type checks for changes against the parent_entry
+                        # are done below.
+                else:
+                    # Cannot be a carry-over situation
+                    carry_over_possible = False
+                # Populate the entry in the delta
+                if kind == 'file':
+                    # XXX: There is still a small race here: If someone reverts the content of a file
+                    # after iter_changes examines and decides it has changed,
+                    # we will unconditionally record a new version even if some
+                    # other process reverts it while commit is running (with
+                    # the revert happening after iter_changes did it's
+                    # examination).
+                    if change[7][1]:
+                        entry.executable = True
+                    else:
+                        entry.executable = False
+                    if (carry_over_possible and 
+                        parent_entry.executable == entry.executable):
+                            # Check the file length, content hash after reading
+                            # the file.
+                            nostore_sha = parent_entry.text_sha1
+                    else:
+                        nostore_sha = None
+                    file_obj, stat_value = tree.get_file_with_stat(file_id, change[1][1])
+                    try:
+                        lines = file_obj.readlines()
+                    finally:
+                        file_obj.close()
+                    try:
+                        entry.text_sha1, entry.text_size = self._add_text_to_weave(
+                            file_id, lines, heads, nostore_sha)
+                    except errors.ExistingContent:
+                        # No content change against a carry_over parent
+                        carried_over = True
+                        entry.text_size = parent_entry.text_size
+                        entry.text_sha1 = parent_entry.text_sha1
+                elif kind == 'symlink':
+                    # Wants a path hint?
+                    entry.symlink_target = tree.get_symlink_target(file_id)
+                    if (carry_over_possible and
+                        parent_entry.symlink_target == entry.symlink_target):
+                            carried_over = True
+                    else:
+                        self._add_text_to_weave(change[0], [], heads, None)
+                elif kind == 'directory':
+                    if carry_over_possible:
+                        carried_over = True
+                    else:
+                        # Nothing to set on the entry.
+                        # XXX: split into the Root and nonRoot versions.
+                        if change[1][1] != '' or self.repository.supports_rich_root():
+                            self._add_text_to_weave(change[0], [], heads, None)
+                elif kind == 'tree-reference':
+                    raise AssertionError('unknown kind %r' % kind)
+                else:
+                    raise AssertionError('unknown kind %r' % kind)
+                if not carried_over:
+                    entry.revision = modified_rev
+                else:
+                    entry.revision = parent_entry.revision
+            else:
+                entry = None
+            new_path = change[1][1]
+            inv_delta.append((change[1][0], new_path, change[0], entry))
+            if new_path == '':
+                seen_root = True
+        self.new_inventory = None
+        if len(inv_delta):
+            self._any_changes = True
+        if not seen_root:
+            # housekeeping root entry changes do not affect no-change commits.
+            self._require_root_change(tree)
+        self.basis_delta_revision = basis_revision_id
 
     def _add_text_to_weave(self, file_id, new_lines, parents, nostore_sha):
         # Note: as we read the content directly from the tree, we know its not
@@ -523,6 +793,16 @@ class RootCommitBuilder(CommitBuilder):
             commit.
         :param tree: The tree that is being committed.
         """
+
+    def _require_root_change(self, tree):
+        """Enforce an appropriate root object change.
+
+        This is called once when record_iter_changes is called, if and only if
+        the root was not in the delta calculated by record_iter_changes.
+
+        :param tree: The tree which is being committed.
+        """
+        # versioned roots do not change unless the tree found a change.
 
 
 ######################################################################
@@ -1316,19 +1596,38 @@ class Repository(object):
         rev_tmp.seek(0)
         return rev_tmp.getvalue()
 
-    def get_deltas_for_revisions(self, revisions):
+    def get_deltas_for_revisions(self, revisions, specific_fileids=None):
         """Produce a generator of revision deltas.
 
         Note that the input is a sequence of REVISIONS, not revision_ids.
         Trees will be held in memory until the generator exits.
         Each delta is relative to the revision's lefthand predecessor.
+
+        :param specific_fileids: if not None, the result is filtered
+          so that only those file-ids, their parents and their
+          children are included.
         """
+        # Get the revision-ids of interest
         required_trees = set()
         for revision in revisions:
             required_trees.add(revision.revision_id)
             required_trees.update(revision.parent_ids[:1])
-        trees = dict((t.get_revision_id(), t) for
-                     t in self.revision_trees(required_trees))
+
+        # Get the matching filtered trees. Note that it's more
+        # efficient to pass filtered trees to changes_from() rather
+        # than doing the filtering afterwards. changes_from() could
+        # arguably do the filtering itself but it's path-based, not
+        # file-id based, so filtering before or afterwards is
+        # currently easier.
+        if specific_fileids is None:
+            trees = dict((t.get_revision_id(), t) for
+                t in self.revision_trees(required_trees))
+        else:
+            trees = dict((t.get_revision_id(), t) for
+                t in self._filtered_revision_trees(required_trees,
+                specific_fileids))
+
+        # Calculate the deltas
         for revision in revisions:
             if not revision.parent_ids:
                 old_tree = self.revision_tree(_mod_revision.NULL_REVISION)
@@ -1337,14 +1636,19 @@ class Repository(object):
             yield trees[revision.revision_id].changes_from(old_tree)
 
     @needs_read_lock
-    def get_revision_delta(self, revision_id):
+    def get_revision_delta(self, revision_id, specific_fileids=None):
         """Return the delta for one revision.
 
         The delta is relative to the left-hand predecessor of the
         revision.
+
+        :param specific_fileids: if not None, the result is filtered
+          so that only those file-ids, their parents and their
+          children are included.
         """
         r = self.get_revision(revision_id)
-        return list(self.get_deltas_for_revisions([r]))[0]
+        return list(self.get_deltas_for_revisions([r],
+            specific_fileids=specific_fileids))[0]
 
     @needs_write_lock
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
@@ -1862,12 +2166,30 @@ class Repository(object):
             return RevisionTree(self, inv, revision_id)
 
     def revision_trees(self, revision_ids):
-        """Return Tree for a revision on this branch.
+        """Return Trees for revisions in this repository.
 
-        `revision_id` may not be None or 'null:'"""
+        :param revision_ids: a sequence of revision-ids;
+          a revision-id may not be None or 'null:'
+        """
         inventories = self.iter_inventories(revision_ids)
         for inv in inventories:
             yield RevisionTree(self, inv, inv.revision_id)
+
+    def _filtered_revision_trees(self, revision_ids, file_ids):
+        """Return Tree for a revision on this branch with only some files.
+
+        :param revision_ids: a sequence of revision-ids;
+          a revision-id may not be None or 'null:'
+        :param file_ids: if not None, the result is filtered
+          so that only those file-ids, their parents and their
+          children are included.
+        """
+        inventories = self.iter_inventories(revision_ids)
+        for inv in inventories:
+            # Should we introduce a FilteredRevisionTree class rather
+            # than pre-filter the inventory here?
+            filtered_inv = inv.filter(file_ids)
+            yield RevisionTree(self, filtered_inv, filtered_inv.revision_id)
 
     @needs_read_lock
     def get_ancestry(self, revision_id, topo_sorted=True):
@@ -2581,13 +2903,6 @@ class InterRepository(InterObject):
     _optimisers = []
     """The available optimised InterRepository types."""
 
-    def __init__(self, source, target):
-        InterObject.__init__(self, source, target)
-        # These two attributes may be overridden by e.g. InterOtherToRemote to
-        # provide a faster implementation.
-        self.target_get_graph = self.target.get_graph
-        self.target_get_parent_map = self.target.get_parent_map
-
     @needs_write_lock
     def copy_content(self, revision_id=None):
         """Make a complete copy of the content in self into destination.
@@ -2630,7 +2945,7 @@ class InterRepository(InterObject):
         :param revision_ids: The start point for the search.
         :return: A set of revision ids.
         """
-        target_graph = self.target_get_graph()
+        target_graph = self.target.get_graph()
         revision_ids = frozenset(revision_ids)
         # Fast path for the case where all the revisions are already in the
         # target repo.
@@ -2966,7 +3281,7 @@ class InterPackRepo(InterSameDataRepository):
                 raise AssertionError(
                     "InterPackRepo.fetch doesn't support "
                     "fetching multiple heads yet.")
-            revision_id = fetch_spec.heads[0]
+            revision_id = list(fetch_spec.heads)[0]
             fetch_spec = None
         if revision_id is None:
             # TODO:
@@ -2976,10 +3291,9 @@ class InterPackRepo(InterSameDataRepository):
             # till then:
             source_revision_ids = frozenset(self.source.all_revision_ids())
             revision_ids = source_revision_ids - \
-                frozenset(self.target_get_parent_map(source_revision_ids))
+                frozenset(self.target.get_parent_map(source_revision_ids))
             revision_keys = [(revid,) for revid in revision_ids]
-            target_pack_collection = self._get_target_pack_collection()
-            index = target_pack_collection.revision_index.combined_index
+            index = self.target._pack_collection.revision_index.combined_index
             present_revision_ids = set(item[1][0] for item in
                 index.iter_entries(revision_keys))
             revision_ids = set(revision_ids) - present_revision_ids
@@ -3005,26 +3319,19 @@ class InterPackRepo(InterSameDataRepository):
 
     def _pack(self, source, target, revision_ids):
         from bzrlib.repofmt.pack_repo import Packer
-        target_pack_collection = self._get_target_pack_collection()
         packs = source._pack_collection.all_packs()
-        pack = Packer(target_pack_collection, packs, '.fetch',
+        pack = Packer(self.target._pack_collection, packs, '.fetch',
             revision_ids).pack()
         if pack is not None:
-            target_pack_collection._save_pack_names()
+            self.target._pack_collection._save_pack_names()
             copied_revs = pack.get_revision_count()
             # Trigger an autopack. This may duplicate effort as we've just done
             # a pack creation, but for now it is simpler to think about as
             # 'upload data, then repack if needed'.
-            self._autopack()
+            self.target._pack_collection.autopack()
             return (copied_revs, [])
         else:
             return (0, [])
-
-    def _autopack(self):
-        self.target._pack_collection.autopack()
-
-    def _get_target_pack_collection(self):
-        return self.target._pack_collection
 
     @needs_read_lock
     def search_missing_revision_ids(self, revision_id=None, find_ghosts=True):
@@ -3038,7 +3345,7 @@ class InterPackRepo(InterSameDataRepository):
         elif revision_id is not None:
             # Find ghosts: search for revisions pointing from one repository to
             # the other, and vice versa, anywhere in the history of revision_id.
-            graph = self.target_get_graph(other_repository=self.source)
+            graph = self.target.get_graph(other_repository=self.source)
             searcher = graph._make_breadth_first_searcher([revision_id])
             found_ids = set()
             while True:
@@ -3054,7 +3361,7 @@ class InterPackRepo(InterSameDataRepository):
             # Double query here: should be able to avoid this by changing the
             # graph api further.
             result_set = found_ids - frozenset(
-                self.target_get_parent_map(found_ids))
+                self.target.get_parent_map(found_ids))
         else:
             source_ids = self.source.all_revision_ids()
             # source_ids is the worst possible case we may need to pull.
@@ -3238,128 +3545,11 @@ class InterDifferingSerializer(InterKnitRepo):
         return basis_id, basis_tree
 
 
-class InterOtherToRemote(InterRepository):
-    """An InterRepository that simply delegates to the 'real' InterRepository
-    calculated for (source, target._real_repository).
-    """
-
-    def __init__(self, source, target):
-        InterRepository.__init__(self, source, target)
-        self._real_inter = None
-
-    @staticmethod
-    def is_compatible(source, target):
-        if isinstance(target, remote.RemoteRepository):
-            return True
-        return False
-
-    def _ensure_real_inter(self):
-        if self._real_inter is None:
-            self.target._ensure_real()
-            real_target = self.target._real_repository
-            self._real_inter = InterRepository.get(self.source, real_target)
-            # Make _real_inter use the RemoteRepository for get_parent_map
-            self._real_inter.target_get_graph = self.target.get_graph
-            self._real_inter.target_get_parent_map = self.target.get_parent_map
-
-    def copy_content(self, revision_id=None):
-        self._ensure_real_inter()
-        self._real_inter.copy_content(revision_id=revision_id)
-
-    def fetch(self, revision_id=None, pb=None, find_ghosts=False,
-            fetch_spec=None):
-        self._ensure_real_inter()
-        return self._real_inter.fetch(revision_id=revision_id, pb=pb,
-            find_ghosts=find_ghosts, fetch_spec=fetch_spec)
-
-    @classmethod
-    def _get_repo_format_to_test(self):
-        return None
-
-
-class InterRemoteToOther(InterRepository):
-
-    def __init__(self, source, target):
-        InterRepository.__init__(self, source, target)
-        self._real_inter = None
-
-    @staticmethod
-    def is_compatible(source, target):
-        if not isinstance(source, remote.RemoteRepository):
-            return False
-        return InterRepository._same_model(source, target)
-
-    def _ensure_real_inter(self):
-        if self._real_inter is None:
-            self.source._ensure_real()
-            real_source = self.source._real_repository
-            self._real_inter = InterRepository.get(real_source, self.target)
-
-    def copy_content(self, revision_id=None):
-        self._ensure_real_inter()
-        self._real_inter.copy_content(revision_id=revision_id)
-
-    @classmethod
-    def _get_repo_format_to_test(self):
-        return None
-
-
-
-class InterPackToRemotePack(InterPackRepo):
-    """A specialisation of InterPackRepo for a target that is a
-    RemoteRepository.
-
-    This will use the get_parent_map RPC rather than plain readvs, and also
-    uses an RPC for autopacking.
-    """
-
-    @staticmethod
-    def is_compatible(source, target):
-        from bzrlib.repofmt.pack_repo import RepositoryFormatPack
-        if isinstance(source._format, RepositoryFormatPack):
-            if isinstance(target, remote.RemoteRepository):
-                target._format._ensure_real()
-                if isinstance(target._format._custom_format,
-                              RepositoryFormatPack):
-                    if InterRepository._same_model(source, target):
-                        return True
-        return False
-
-    def _autopack(self):
-        self.target.autopack()
-
-    @needs_write_lock
-    def fetch(self, revision_id=None, pb=None, find_ghosts=False,
-            fetch_spec=None):
-        """See InterRepository.fetch()."""
-        if self.target._client._medium._is_remote_before((1, 13)):
-            # The server won't support the insert_stream RPC, so just use
-            # regular InterPackRepo logic.  This avoids a bug that causes many
-            # round-trips for small append calls.
-            return InterPackRepo.fetch(self, revision_id=revision_id, pb=pb,
-                find_ghosts=find_ghosts, fetch_spec=fetch_spec)
-        # Always fetch using the generic streaming fetch code, to allow
-        # streaming fetching into remote servers.
-        from bzrlib.fetch import RepoFetcher
-        fetcher = RepoFetcher(self.target, self.source, revision_id,
-                              pb, find_ghosts, fetch_spec=fetch_spec)
-
-    def _get_target_pack_collection(self):
-        return self.target._real_repository._pack_collection
-
-    @classmethod
-    def _get_repo_format_to_test(self):
-        return None
-
-
 InterRepository.register_optimiser(InterDifferingSerializer)
 InterRepository.register_optimiser(InterSameDataRepository)
 InterRepository.register_optimiser(InterWeaveRepo)
 InterRepository.register_optimiser(InterKnitRepo)
 InterRepository.register_optimiser(InterPackRepo)
-InterRepository.register_optimiser(InterOtherToRemote)
-InterRepository.register_optimiser(InterRemoteToOther)
-InterRepository.register_optimiser(InterPackToRemotePack)
 
 
 class CopyConverter(object):

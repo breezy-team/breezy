@@ -764,9 +764,12 @@ class TestCase(unittest.TestCase):
     def __init__(self, methodName='testMethod'):
         super(TestCase, self).__init__(methodName)
         self._cleanups = []
+        self._bzr_test_setUp_run = False
+        self._bzr_test_tearDown_run = False
 
     def setUp(self):
         unittest.TestCase.setUp(self)
+        self._bzr_test_setUp_run = True
         self._cleanEnvironment()
         self._silenceUI()
         self._startLogFile()
@@ -1014,7 +1017,8 @@ class TestCase(unittest.TestCase):
         path_stat = transport.stat(path)
         actual_mode = stat.S_IMODE(path_stat.st_mode)
         self.assertEqual(mode, actual_mode,
-            'mode of %r incorrect (%o != %o)' % (path, mode, actual_mode))
+                         'mode of %r incorrect (%s != %s)'
+                         % (path, oct(mode), oct(actual_mode)))
 
     def assertIsSameRealPath(self, path1, path2):
         """Fail if path1 and path2 points to different files"""
@@ -1326,6 +1330,10 @@ class TestCase(unittest.TestCase):
                 try:
                     try:
                         self.setUp()
+                        if not self._bzr_test_setUp_run:
+                            self.fail(
+                                "test setUp did not invoke "
+                                "bzrlib.tests.TestCase's setUp")
                     except KeyboardInterrupt:
                         raise
                     except TestSkipped, e:
@@ -1355,6 +1363,10 @@ class TestCase(unittest.TestCase):
 
                     try:
                         self.tearDown()
+                        if not self._bzr_test_tearDown_run:
+                            self.fail(
+                                "test tearDown did not invoke "
+                                "bzrlib.tests.TestCase's tearDown")
                     except KeyboardInterrupt:
                         raise
                     except:
@@ -1379,6 +1391,7 @@ class TestCase(unittest.TestCase):
             self.__dict__ = saved_attrs
 
     def tearDown(self):
+        self._bzr_test_tearDown_run = True
         self._runCleanups()
         self._log_contents = ''
         unittest.TestCase.tearDown(self)
@@ -2947,6 +2960,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_extract',
                    'bzrlib.tests.test_fetch',
                    'bzrlib.tests.test_fifo_cache',
+                   'bzrlib.tests.test_filters',
                    'bzrlib.tests.test_ftp_transport',
                    'bzrlib.tests.test_foreign',
                    'bzrlib.tests.test_generate_docs',
@@ -3408,27 +3422,6 @@ def probe_bad_non_ascii(encoding):
     return None
 
 
-class _FTPServerFeature(Feature):
-    """Some tests want an FTP Server, check if one is available.
-
-    Right now, the only way this is available is if 'medusa' is installed.
-    http://www.amk.ca/python/code/medusa.html
-    """
-
-    def _probe(self):
-        try:
-            import bzrlib.tests.ftp_server
-            return True
-        except ImportError:
-            return False
-
-    def feature_name(self):
-        return 'FTPServer'
-
-
-FTPServerFeature = _FTPServerFeature()
-
-
 class _HTTPSServerFeature(Feature):
     """Some tests want an https Server, check if one is available.
 
@@ -3534,3 +3527,31 @@ class _CaseInsensitiveFilesystemFeature(Feature):
         return 'case-insensitive filesystem'
 
 CaseInsensitiveFilesystemFeature = _CaseInsensitiveFilesystemFeature()
+
+
+class _SubUnitFeature(Feature):
+    """Check if subunit is available."""
+
+    def _probe(self):
+        try:
+            import subunit
+            return True
+        except ImportError:
+            return False
+
+    def feature_name(self):
+        return 'subunit'
+
+SubUnitFeature = _SubUnitFeature()
+# Only define SubUnitBzrRunner if subunit is available.
+try:
+    from subunit import TestProtocolClient
+    class SubUnitBzrRunner(TextTestRunner):
+        def run(self, test):
+            # undo out claim for testing which looks like a test start to subunit
+            self.stream.write("success: %s\n" % (osutils.realpath(sys.argv[0]),))
+            result = TestProtocolClient(self.stream)
+            test.run(result)
+            return result
+except ImportError:
+    pass

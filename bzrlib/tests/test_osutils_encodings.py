@@ -74,6 +74,7 @@ class TestTerminalEncoding(TestCase):
     """Test the auto-detection of proper terminal encoding."""
 
     def setUp(self):
+        TestCase.setUp(self)
         self._stdout = sys.stdout
         self._stderr = sys.stderr
         self._stdin = sys.stdin
@@ -156,6 +157,7 @@ class TestUserEncoding(TestCase):
     """Test detection of default user encoding."""
 
     def setUp(self):
+        TestCase.setUp(self)
         self._stderr = sys.stderr
         self._getpreferredencoding = locale.getpreferredencoding
         self.addCleanup(self._reset)

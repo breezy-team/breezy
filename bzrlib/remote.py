@@ -428,7 +428,7 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
         if self._supports_external_lookups is None:
             self._ensure_real()
             self._supports_external_lookups = \
-                self._custom_format.supports_external_lookups 
+                self._custom_format.supports_external_lookups
         return self._supports_external_lookups
 
     @property
@@ -1236,7 +1236,7 @@ class RemoteRepository(_RpcHelper):
         stop_keys = result_parents.difference(start_set)
         included_keys = start_set.intersection(result_parents)
         start_set.difference_update(included_keys)
-        recipe = (start_set, stop_keys, len(parents_map))
+        recipe = ('manual', start_set, stop_keys, len(parents_map))
         body = self._serialise_search_recipe(recipe)
         path = self.bzrdir._path_for_remote_call(self._client)
         for key in keys:
@@ -1305,14 +1305,16 @@ class RemoteRepository(_RpcHelper):
         return self._real_repository.all_revision_ids()
 
     @needs_read_lock
-    def get_deltas_for_revisions(self, revisions):
+    def get_deltas_for_revisions(self, revisions, specific_fileids=None):
         self._ensure_real()
-        return self._real_repository.get_deltas_for_revisions(revisions)
+        return self._real_repository.get_deltas_for_revisions(revisions,
+            specific_fileids=specific_fileids)
 
     @needs_read_lock
-    def get_revision_delta(self, revision_id):
+    def get_revision_delta(self, revision_id, specific_fileids=None):
         self._ensure_real()
-        return self._real_repository.get_revision_delta(revision_id)
+        return self._real_repository.get_revision_delta(revision_id,
+            specific_fileids=specific_fileids)
 
     @needs_read_lock
     def revision_trees(self, revision_ids):
@@ -1495,9 +1497,9 @@ class RemoteRepository(_RpcHelper):
         :param recipe: A search recipe (start, stop, count).
         :return: Serialised bytes.
         """
-        start_keys = ' '.join(recipe[0])
-        stop_keys = ' '.join(recipe[1])
-        count = str(recipe[2])
+        start_keys = ' '.join(recipe[1])
+        stop_keys = ' '.join(recipe[2])
+        count = str(recipe[3])
         return '\n'.join((start_keys, stop_keys, count))
 
     def _serialise_search_result(self, search_result):
@@ -1506,7 +1508,7 @@ class RemoteRepository(_RpcHelper):
             parts.extend(search_result.heads)
         else:
             recipe = search_result.get_recipe()
-            parts = ['search', self._serialise_search_recipe(recipe)]
+            parts = [recipe[0], self._serialise_search_recipe(recipe)]
         return '\n'.join(parts)
 
     def autopack(self):
@@ -1584,20 +1586,49 @@ class RemoteStreamSource(repository.StreamSource):
     """Stream data from a remote server."""
 
     def get_stream(self, search):
-        # streaming with fallback repositories is not well defined yet: The
-        # remote repository cannot see the fallback repositories, and thus
-        # cannot satisfy the entire search in the general case. Likewise the
-        # fallback repositories cannot reify the search to determine what they
-        # should send. It likely needs a return value in the stream listing the
-        # edge of the search to resume from in fallback repositories.
-        if self.from_repository._fallback_repositories:
-            return repository.StreamSource.get_stream(self, search)
-        repo = self.from_repository
+        if (self.from_repository._fallback_repositories and
+            self.to_format._fetch_order == 'topological'):
+            return self._real_stream(self.from_repository, search)
+        return self.missing_parents_chain(search, [self.from_repository] +
+            self.from_repository._fallback_repositories)
+
+    def _real_stream(self, repo, search):
+        """Get a stream for search from repo.
+        
+        This never called RemoteStreamSource.get_stream, and is a heler
+        for RemoteStreamSource._get_stream to allow getting a stream 
+        reliably whether fallback back because of old servers or trying
+        to stream from a non-RemoteRepository (which the stacked support
+        code will do).
+        """
+        source = repo._get_source(self.to_format)
+        if isinstance(source, RemoteStreamSource):
+            return repository.StreamSource.get_stream(source, search)
+        return source.get_stream(search)
+
+    def _get_stream(self, repo, search):
+        """Core worker to get a stream from repo for search.
+
+        This is used by both get_stream and the stacking support logic. It
+        deliberately gets a stream for repo which does not need to be
+        self.from_repository. In the event that repo is not Remote, or
+        cannot do a smart stream, a fallback is made to the generic
+        repository._get_stream() interface, via self._real_stream.
+
+        In the event of stacking, streams from _get_stream will not
+        contain all the data for search - this is normal (see get_stream).
+
+        :param repo: A repository.
+        :param search: A search.
+        """
+        # Fallbacks may be non-smart
+        if not isinstance(repo, RemoteRepository):
+            return self._real_stream(repo, search)
         client = repo._client
         medium = client._medium
         if medium._is_remote_before((1, 13)):
-            # No possible way this can work.
-            return repository.StreamSource.get_stream(self, search)
+            # streaming was added in 1.13
+            return self._real_stream(repo, search)
         path = repo.bzrdir._path_for_remote_call(client)
         try:
             search_bytes = repo._serialise_search_result(search)
@@ -1607,7 +1638,7 @@ class RemoteStreamSource(repository.StreamSource):
             response_tuple, response_handler = response
         except errors.UnknownSmartMethod:
             medium._remember_remote_is_before((1,13))
-            return repository.StreamSource.get_stream(self, search)
+            return self._real_stream(repo, search)
         if response_tuple[0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response_tuple)
         byte_stream = response_handler.read_streamed_body()
@@ -1617,6 +1648,40 @@ class RemoteStreamSource(repository.StreamSource):
                 "Mismatched RemoteRepository and stream src %r, %r" % (
                 src_format.network_name(), repo._format.network_name()))
         return stream
+
+    def missing_parents_chain(self, search, sources):
+        """Chain multiple streams together to handle stacking.
+
+        :param search: The overall search to satisfy with streams.
+        :param sources: A list of Repository objects to query.
+        """
+        self.serialiser = self.to_format._serializer
+        self.seen_revs = set()
+        self.referenced_revs = set()
+        # If there are heads in the search, or the key count is > 0, we are not
+        # done.
+        while not search.is_empty() and len(sources) > 1:
+            source = sources.pop(0)
+            stream = self._get_stream(source, search)
+            for kind, substream in stream:
+                if kind != 'revisions':
+                    yield kind, substream
+                else:
+                    yield kind, self.missing_parents_rev_handler(substream)
+            search = search.refine(self.seen_revs, self.referenced_revs)
+            self.seen_revs = set()
+            self.referenced_revs = set()
+        if not search.is_empty():
+            for kind, stream in self._get_stream(sources[0], search):
+                yield kind, stream
+
+    def missing_parents_rev_handler(self, substream):
+        for content in substream:
+            revision_bytes = content.get_bytes_as('fulltext')
+            revision = self.serialiser.read_revision_from_string(revision_bytes)
+            self.seen_revs.add(content.key[-1])
+            self.referenced_revs.update(revision.parent_ids)
+            yield content
 
 
 class RemoteBranchLockableFiles(LockableFiles):
