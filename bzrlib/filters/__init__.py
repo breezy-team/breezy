@@ -40,7 +40,7 @@ Note that context is currently only supported for write converters.
 """
 
 
-import cStringIO, sha
+from cStringIO import StringIO
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
@@ -150,7 +150,7 @@ def filtered_input_file(f, filters):
         for filter in filters:
             if filter.reader is not None:
                 chunks = filter.reader(chunks)
-        return cStringIO.StringIO(''.join(chunks))
+        return StringIO(''.join(chunks))
     else:
         return f
 
