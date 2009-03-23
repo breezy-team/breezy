@@ -670,7 +670,11 @@ class CommitBuilder(object):
                 carried_over = False
                 if len(heads) == 1:
                     # Could be a carry-over situation:
-                    parent_entry = parent_entries[file_id].get(heads[0], None)
+                    parent_entry_revs = parent_entries.get(file_id, None)
+                    if parent_entry_revs:
+                        parent_entry = parent_entry_revs.get(heads[0], None)
+                    else:
+                        parent_entry = None
                     if parent_entry is None:
                         # The parent iter_changes was called against is the one
                         # that is the per-file head, so any change is relevant
