@@ -14,6 +14,12 @@ IN DEVELOPMENT
       must now be explicitly added tree references.  At the commandline, use
       join --reference instead of add.  (Aaron Bentley)
 
+    * The smart server will no longer allow request handlers to open
+      branches outside the smart server's backing transport by default.
+      Server-side plugins that need to open external branches will need to
+      adjust the thread-local ``jail_info`` object in
+      ``bzrlib.smart.request``.
+
   NEW FEATURES:
 
     * shelve can now apply changes without storing anything on the shelf, via
