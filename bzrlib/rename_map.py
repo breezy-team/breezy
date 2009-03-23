@@ -241,10 +241,16 @@ class RenameMap(object):
 
     def _update_tree(self, required_parents, matches):
         self.tree.add(required_parents)
-        reversed = dict((v, k) for k, v in matches.iteritems())
-        child_to_parent = sorted(
-            matches.values(), key=lambda x: reversed[x], reverse=True)
-        self.tree.unversion(child_to_parent)
-        paths_forward = sorted(matches.keys())
-        file_ids_forward = [matches[p] for p in paths_forward]
-        self.tree.add(paths_forward, file_ids_forward)
+        delta = []
+        file_id_matches = dict((f, p) for p, f in matches.items())
+        for old_path, entry in self.tree.iter_entries_by_dir(matches.values()):
+            new_path = file_id_matches[entry.file_id]
+            parent_path = osutils.dirname(new_path)
+            parent_id = matches.get(parent_path)
+            if parent_id is None:
+                parent_id = self.tree.path2id(parent_path)
+            new_entry = entry.copy()
+            new_entry.parent_id = parent_id
+            new_entry.name = osutils.basename(new_path)
+            delta.append((old_path, new_path, new_entry.file_id, new_entry))
+        self.tree.apply_inventory_delta(delta)
