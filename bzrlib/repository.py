@@ -668,7 +668,7 @@ class CommitBuilder(object):
                         heads.append(head_candidate)
                         head_set.remove(head_candidate)
                 carried_over = False
-                if len(heads) == 1 and len(head_candidates) > 1:
+                if len(heads) == 1:
                     # Could be a carry-over situation:
                     parent_entry = parent_entries[file_id].get(heads[0], None)
                     if parent_entry is None:

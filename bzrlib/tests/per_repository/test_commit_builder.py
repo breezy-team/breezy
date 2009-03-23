@@ -892,6 +892,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
 
     def _commit_sprout_rename_merge(self, tree1, name, expect_fs_hash=False,
         mini_commit=None):
+        """Do a rename in both trees."""
         rev1, tree2 = self._commit_sprout(tree1, name)
         # change both sides equally
         rev2 = self._rename_in_tree(tree1, name)
@@ -972,45 +973,100 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         expected_graph[(file_id, rev2)] = ((file_id, rev1),)
         self.assertFileGraph(expected_graph, tree1, (file_id, rev2))
 
-    def test_last_modified_revision_after_converged_merge_dir_changes(self):
-        # merge a dir changes the last modified.
+    def _commit_sprout_make_merge(self, tree1, make, mini_commit=None):
+        # Make a merge which incorporates the addition of a new object to
+        # another branch. The per-file graph shows no additional change
+        # in the merge because its a straight line.
+        rev1 = tree1.commit('')
+        tree2 = tree1.bzrdir.sprout('t2').open_workingtree()
+        # make and commit on the other side to merge back
+        make('t2/name')
+        file_id = 'nameid'
+        tree2.add(['name'], [file_id])
+        rev2 = tree2.commit('')
+        tree1.merge_from_branch(tree2.branch)
+        if mini_commit is None:
+            mini_commit = self.mini_commit
+        rev3 = mini_commit(tree1, None, 'name', False)
+        tree3, = self._get_revtrees(tree1, [rev2])
+        # in rev2, name should be only changed in rev2
+        self.assertEqual(rev2, tree3.inventory[file_id].revision)
+        expected_graph = {}
+        expected_graph[(file_id, rev2)] = ()
+        self.assertFileGraph(expected_graph, tree1, (file_id, rev2))
+
+    def test_last_modified_revision_after_converged_merge_dir_unchanged(self):
+        # merge a dir that changed preserves the last modified.
         tree1 = self.make_branch_and_tree('t1')
         self.build_tree(['t1/dir/'])
         self._commit_sprout_rename_merge_converged(tree1, 'dir')
 
-    def test_last_modified_revision_after_converged_merge_dir_changes_ric(self):
-        # merge a dir changes the last modified.
+    def test_last_modified_revision_after_converged_merge_dir_unchanged_ric(self):
+        # merge a dir that changed preserves the last modified.
         tree1 = self.make_branch_and_tree('t1')
         self.build_tree(['t1/dir/'])
         self._commit_sprout_rename_merge_converged(tree1, 'dir',
             mini_commit=self.mini_commit_record_iter_changes)
 
-    def test_last_modified_revision_after_converged_merge_file_changes(self):
-        # merge a file changes the last modified.
+    def test_last_modified_revision_after_converged_merge_file_unchanged(self):
+        # merge a file that changed preserves the last modified.
         tree1 = self.make_branch_and_tree('t1')
         self.build_tree(['t1/file'])
         self._commit_sprout_rename_merge_converged(tree1, 'file')
 
-    def test_last_modified_revision_after_converged_merge_file_changes_ric(self):
-        # merge a file changes the last modified.
+    def test_last_modified_revision_after_converged_merge_file_unchanged_ric(self):
+        # merge a file that changed preserves the last modified.
         tree1 = self.make_branch_and_tree('t1')
         self.build_tree(['t1/file'])
         self._commit_sprout_rename_merge_converged(tree1, 'file',
             mini_commit=self.mini_commit_record_iter_changes)
 
-    def test_last_modified_revision_after_converged_merge_link_changes(self):
-        # merge a link changes the last modified.
+    def test_last_modified_revision_after_converged_merge_link_unchanged(self):
+        # merge a link that changed preserves the last modified.
         self.requireFeature(tests.SymlinkFeature)
         tree1 = self.make_branch_and_tree('t1')
         os.symlink('target', 't1/link')
         self._commit_sprout_rename_merge_converged(tree1, 'link')
 
-    def test_last_modified_revision_after_converged_merge_link_changes_ric(self):
-        # merge a link changes the last modified.
+    def test_last_modified_revision_after_converged_merge_link_unchanged_ric(self):
+        # merge a link that changed preserves the last modified.
         self.requireFeature(tests.SymlinkFeature)
         tree1 = self.make_branch_and_tree('t1')
         os.symlink('target', 't1/link')
         self._commit_sprout_rename_merge_converged(tree1, 'link',
+            mini_commit=self.mini_commit_record_iter_changes)
+
+    def test_last_modified_revision_after_merge_new_dir_unchanged(self):
+        # merge a new dir does not change the last modified.
+        tree1 = self.make_branch_and_tree('t1')
+        self._commit_sprout_make_merge(tree1, self.make_dir)
+
+    def test_last_modified_revision_after_merge_new_dir_unchanged_ric(self):
+        # merge a new dir does not change the last modified.
+        tree1 = self.make_branch_and_tree('t1')
+        self._commit_sprout_make_merge(tree1, self.make_dir,
+            mini_commit=self.mini_commit_record_iter_changes)
+
+    def test_last_modified_revision_after_merge_new_file_unchanged(self):
+        # merge a new file does not change the last modified.
+        tree1 = self.make_branch_and_tree('t1')
+        self._commit_sprout_make_merge(tree1, self.make_file)
+
+    def test_last_modified_revision_after_merge_new_file_unchanged_ric(self):
+        # merge a new file does not change the last modified.
+        tree1 = self.make_branch_and_tree('t1')
+        self._commit_sprout_make_merge(tree1, self.make_file,
+            mini_commit=self.mini_commit_record_iter_changes)
+
+    def test_last_modified_revision_after_merge_new_link_unchanged(self):
+        # merge a new link does not change the last modified.
+        tree1 = self.make_branch_and_tree('t1')
+        self._commit_sprout_make_merge(tree1, self.make_link)
+
+    def test_last_modified_revision_after_merge_new_link_unchanged_ric(self):
+        # merge a new link does not change the last modified.
+        tree1 = self.make_branch_and_tree('t1')
+        self._commit_sprout_make_merge(tree1, self.make_link,
             mini_commit=self.mini_commit_record_iter_changes)
 
     def make_dir(self, name):
