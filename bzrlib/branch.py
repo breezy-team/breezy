@@ -1321,8 +1321,11 @@ class BranchFormat(object):
     def open(self, a_bzrdir, _found=False, ignore_fallbacks=False):
         """Return the branch object for a_bzrdir
 
-        _found is a private parameter, do not use it. It is used to indicate
-               if format probing has already be done.
+        :param a_bzrdir: A BzrDir that contains a branch.
+        :param _found: a private parameter, do not use it. It is used to
+            indicate if format probing has already be done.
+        :param ignore_fallbacks: when set, no fallback branches will be opened
+            (if there are any).  Default is to open fallbacks.
         """
         raise NotImplementedError(self.open)
 
@@ -1501,11 +1504,7 @@ class BzrBranchFormat4(BranchFormat):
         return self._matchingbzrdir.get_format_string()
 
     def open(self, a_bzrdir, _found=False, ignore_fallbacks=False):
-        """Return the branch object for a_bzrdir
-
-        _found is a private parameter, do not use it. It is used to indicate
-               if format probing has already be done.
-        """
+        """See BranchFormat.open()."""
         if not _found:
             # we are being called directly and must probe.
             raise NotImplementedError
@@ -1533,11 +1532,7 @@ class BranchFormatMetadir(BranchFormat):
         return self.get_format_string()
 
     def open(self, a_bzrdir, _found=False, ignore_fallbacks=False):
-        """Return the branch object for a_bzrdir.
-
-        _found is a private parameter, do not use it. It is used to indicate
-               if format probing has already be done.
-        """
+        """See BranchFormat.open()."""
         if not _found:
             format = BranchFormat.find_format(a_bzrdir)
             if format.__class__ != self.__class__:
@@ -1740,8 +1735,15 @@ class BranchReferenceFormat(BranchFormat):
              possible_transports=None, ignore_fallbacks=False):
         """Return the branch that the branch reference in a_bzrdir points at.
 
-        _found is a private parameter, do not use it. It is used to indicate
-               if format probing has already be done.
+        :param a_bzrdir: A BzrDir that contains a branch.
+        :param _found: a private parameter, do not use it. It is used to
+            indicate if format probing has already be done.
+        :param ignore_fallbacks: when set, no fallback branches will be opened
+            (if there are any).  Default is to open fallbacks.
+        :param location: The location of the referenced branch.  If
+            unspecified, this will be determined from the branch reference in
+            a_bzrdir.
+        :param possible_transports: An optional reusable transports list.
         """
         if not _found:
             format = BranchFormat.find_format(a_bzrdir)
