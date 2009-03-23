@@ -417,6 +417,11 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
         self._rich_root_data = None
 
     @property
+    def fast_deltas(self):
+        self._ensure_real()
+        return self._custom_format.fast_deltas
+
+    @property
     def rich_root_data(self):
         if self._rich_root_data is None:
             self._ensure_real()

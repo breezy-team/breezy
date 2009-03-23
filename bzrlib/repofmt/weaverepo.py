@@ -268,6 +268,7 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
     supports_external_lookups = False
     _fetch_order = 'topological'
     _fetch_reconcile = True
+    fast_deltas = False
 
     def initialize(self, a_bzrdir, shared=False, _internal=False):
         """Create a weave repository."""
@@ -475,6 +476,7 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
     supports_ghosts = False
     _fetch_order = 'topological'
     _fetch_reconcile = True
+    fast_deltas = False
     @property
     def _serializer(self):
         return xml5.serializer_v5

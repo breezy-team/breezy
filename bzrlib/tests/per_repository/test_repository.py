@@ -78,6 +78,12 @@ class TestRepository(TestCaseWithRepository):
         repo = tree.branch.repository
         self.assertTrue(repo._format._fetch_uses_deltas in (True, False))
 
+    def test_attribute_fast_deltas(self):
+        """Test the format.fast_deltas attribute."""
+        tree = self.make_branch_and_tree('tree')
+        repo = tree.branch.repository
+        self.assertTrue(repo._format.fast_deltas in (True, False))
+
     def test_attribute__fetch_reconcile(self):
         """Test the the _fetch_reconcile attribute."""
         tree = self.make_branch_and_tree('tree')

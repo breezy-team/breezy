@@ -160,6 +160,10 @@ Testing
 Internals
 *********
 
+* ``bzr selftest`` now accepts ``--subunit`` to run in subunit output
+  mode. Requires ``lp:subunit`` installed to work, but is not a hard
+  dependency. (Robert Collins)
+
 * ``BtreeIndex._spill_mem_keys_to_disk()`` now generates disk index with
   optmizations turned off. This only has effect when processing > 100,000
   keys during something like ``bzr pack``. (John Arbash Meinel)
@@ -187,9 +191,9 @@ Internals
   ``InterPackToRemotePack`` classes, as they are now unnecessary.
   (Andrew Bennetts)
 
-* ``bzr selftest`` now accepts ``--subunit`` to run in subunit output
-  mode. Requires ``lp:subunit`` installed to work, but is not a hard
-  dependency. (Robert Collins)
+* ``RepositoryFormat`` as a new attribute ``fast_deltas`` to indicate
+  whether the repository can efficiently generate deltas between trees
+  regardless of tree size. (Robert Collins)
 
 * ``_walk_to_common_revisions`` will now batch up at least 50
   revisions before calling ``get_parent_map`` on the target,

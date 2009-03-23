@@ -2271,6 +2271,7 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
     index_builder_class = None
     index_class = None
     _fetch_uses_deltas = True
+    fast_deltas = False
 
     def initialize(self, a_bzrdir, shared=False):
         """Create a pack based repository.
@@ -2666,6 +2667,9 @@ class RepositoryFormatPackDevelopment2(RepositoryFormatPack):
     # What index classes to use
     index_builder_class = BTreeBuilder
     index_class = BTreeGraphIndex
+    # Set to true to get the fast-commit code path tested until a really fast
+    # format lands in trunk. Not actually fast in this format.
+    fast_deltas = True
 
     @property
     def _serializer(self):

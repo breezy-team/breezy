@@ -2661,6 +2661,9 @@ class RepositoryFormat(object):
     # Should fetch trigger a reconcile after the fetch? Only needed for
     # some repository formats that can suffer internal inconsistencies.
     _fetch_reconcile = False
+    # Does this format have < O(tree_size) delta generation. Used to hint what
+    # code path for commit, amongst other things.
+    fast_deltas = None
 
     def __str__(self):
         return "<%s>" % self.__class__.__name__

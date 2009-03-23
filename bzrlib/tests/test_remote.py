@@ -46,7 +46,9 @@ from bzrlib.remote import (
     RemoteBzrDir,
     RemoteBzrDirFormat,
     RemoteRepository,
+    RemoteRepositoryFormat,
     )
+from bzrlib.repofmt import pack_repo
 from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import server, medium
 from bzrlib.smart.client import _SmartClient
@@ -1448,6 +1450,19 @@ class TestRemoteRepository(TestRemote):
             _client=False)
         repo = RemoteRepository(bzrdir, None, _client=client)
         return repo, client
+
+
+class TestRepositoryFormat(TestRemoteRepository):
+
+    def test_fast_delta(self):
+        true_name = pack_repo.RepositoryFormatPackDevelopment2().network_name()
+        true_format = RemoteRepositoryFormat()
+        true_format._network_name = true_name
+        self.assertEqual(True, true_format.fast_deltas)
+        false_name = pack_repo.RepositoryFormatKnitPack1().network_name()
+        false_format = RemoteRepositoryFormat()
+        false_format._network_name = false_name
+        self.assertEqual(False, false_format.fast_deltas)
 
 
 class TestRepositoryGatherStats(TestRemoteRepository):
