@@ -190,8 +190,6 @@ class GCCHKPacker(Packer):
                 if pb is not None:
                     pb.update(message, idx + 1, len(keys))
                 yield record
-                record._manager = None
-                record._bytes = None
         return pb_stream()
 
     def _get_filtered_inv_stream(self, source_vf, keys, message, pb=None):
@@ -218,8 +216,6 @@ class GCCHKPacker(Packer):
                     p_id_roots_set.add(key)
                     self._chk_p_id_roots.append(key)
                 yield record
-                record._manager = None
-                record._bytes = None
             # We have finished processing all of the inventory records, we
             # don't need these sets anymore
             id_roots_set.clear()
@@ -295,8 +291,6 @@ class GCCHKPacker(Packer):
                         if pb is not None:
                             pb.update('chk node', counter[0], total_keys)
                         yield record
-                        record._manager = None
-                        record._bytes = None
                 yield next_stream()
                 # Double check that we won't be emitting any keys twice
                 # If we get rid of the pre-calculation of all keys, we could
@@ -391,17 +385,11 @@ class GCCHKPacker(Packer):
             self.revision_keys = source_vf.keys()
         self._copy_stream(source_vf, target_vf, self.revision_keys,
                           'revisions', self._get_progress_stream, 1)
-        for index in source_vf._index._graph_index._indices:
-            index._leaf_node_cache.clear()
-        # target_vf._index._graph_index._spill_mem_keys_to_disk()
 
     def _copy_inventory_texts(self):
         source_vf, target_vf = self._build_vfs('inventory', True, True)
         self._copy_stream(source_vf, target_vf, self.revision_keys,
                           'inventories', self._get_filtered_inv_stream, 2)
-        for index in source_vf._index._graph_index._indices:
-            index._leaf_node_cache.clear()
-        # target_vf._index._graph_index._spill_mem_keys_to_disk()
 
     def _copy_chk_texts(self):
         source_vf, target_vf = self._build_vfs('chk', False, False)
@@ -423,9 +411,6 @@ class GCCHKPacker(Packer):
                     pass
         finally:
             child_pb.finished()
-        for index in source_vf._index._graph_index._indices:
-            index._leaf_node_cache.clear()
-        # target_vf._index._graph_index._spill_mem_keys_to_disk()
 
     def _copy_text_texts(self):
         source_vf, target_vf = self._build_vfs('text', True, True)
@@ -437,9 +422,6 @@ class GCCHKPacker(Packer):
         text_keys = source_vf.keys()
         self._copy_stream(source_vf, target_vf, text_keys,
                           'text', self._get_progress_stream, 4)
-        for index in source_vf._index._graph_index._indices:
-            index._leaf_node_cache.clear()
-        # target_vf._index._graph_index._spill_mem_keys_to_disk()
 
     def _copy_signature_texts(self):
         source_vf, target_vf = self._build_vfs('signature', False, False)
@@ -447,9 +429,6 @@ class GCCHKPacker(Packer):
         signature_keys.intersection(self.revision_keys)
         self._copy_stream(source_vf, target_vf, signature_keys,
                           'signatures', self._get_progress_stream, 5)
-        for index in source_vf._index._graph_index._indices:
-            index._leaf_node_cache.clear()
-        # target_vf._index._graph_index._spill_mem_keys_to_disk()
 
     def _create_pack_from_packs(self):
         self.pb.update('repacking', 0, 7)
@@ -462,7 +441,6 @@ class GCCHKPacker(Packer):
         self._copy_text_texts()
         self._copy_signature_texts()
         self.new_pack._check_references()
-        trace.debug_memory('after fetch')
         if not self._use_pack(self.new_pack):
             self.new_pack.abort()
             return None

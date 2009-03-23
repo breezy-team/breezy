@@ -494,10 +494,11 @@ class _LazyGroupCompressFactory(object):
                 return self._manager._wire_bytes()
             else:
                 return ''
-            self._manager = None # safe?
         if storage_kind in ('fulltext', 'chunked'):
             if self._bytes is None:
-                # Grab the raw bytes for this entry, and break the ref-cycle
+                # Grab and cache the raw bytes for this entry
+                # and break the ref-cycle with _manager since we don't need it
+                # anymore
                 self._manager._prepare_for_extract()
                 block = self._manager._block
                 self._bytes = block.extract(self.key, self._start, self._end)
@@ -507,7 +508,7 @@ class _LazyGroupCompressFactory(object):
             else:
                 return [self._bytes]
         raise errors.UnavailableRepresentation(self.key, storage_kind,
-            self.storage_kind)
+                                               self.storage_kind)
 
 
 class _LazyGroupContentManager(object):
@@ -534,6 +535,7 @@ class _LazyGroupContentManager(object):
         """Get a record for all keys added so far."""
         for factory in self._factories:
             yield factory
+            # Break the ref-cycle
             factory._bytes = None
             factory._manager = None
         # TODO: Consider setting self._factories = None after the above loop,
@@ -1286,8 +1288,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
         for key in missing:
             yield AbsentContentFactory(key)
         manager = None
-        last_block = None
-        last_memo = None
+        last_read_memo = None
         # TODO: This works fairly well at batching up existing groups into a
         #       streamable format, and possibly allowing for taking one big
         #       group and splitting it when it isn't fully utilized.
@@ -1302,50 +1303,39 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 for key in keys:
                     if key in self._unadded_refs:
                         if manager is not None:
-                            # Yield everything buffered so far
                             for factory in manager.get_record_stream():
                                 yield factory
-                                # Disable this record, breaks the refcycle, and
-                                # saves memory. But this means clients really
-                                # *cannot* hang on to objects.
-                                factory._bytes = None
-                                factory._manager = None
-                            manager = None
+                            last_read_memo = manager = None
                         bytes, sha1 = self._compressor.extract(key)
                         parents = self._unadded_refs[key]
                         yield FulltextContentFactory(key, parents, sha1, bytes)
                     else:
                         index_memo, _, parents, (method, _) = locations[key]
                         read_memo = index_memo[0:3]
-                        if last_memo == read_memo:
-                            block = last_block
-                        else:
+                        if last_read_memo != read_memo:
+                            # We are starting a new block. If we have a
+                            # manager, we have found everything that fits for
+                            # now, so yield records
+                            if manager is not None:
+                                for factory in manager.get_record_stream():
+                                    yield factory
+                            # Now start a new manager
                             block = self._get_block(index_memo)
-                            last_block = block
-                            last_memo = read_memo
+                            manager = _LazyGroupContentManager(block)
+                            last_read_memo = read_memo
                         start, end = index_memo[3:5]
-                        if manager is None:
-                            manager = _LazyGroupContentManager(block)
-                        elif manager._block is not block:
-                            # Flush and create a new manager
-                            for factory in manager.get_record_stream():
-                                yield factory
-                            manager = _LazyGroupContentManager(block)
                         manager.add_factory(key, parents, start, end)
             else:
                 if manager is not None:
-                    # Yield everything buffered so far
                     for factory in manager.get_record_stream():
                         yield factory
-                    manager = None
+                    last_read_memo = manager = None
                 for record in source.get_record_stream(keys, ordering,
                                                        include_delta_closure):
                     yield record
         if manager is not None:
-            # Yield everything buffered so far
             for factory in manager.get_record_stream():
                 yield factory
-            manager = None
 
     def get_sha1s(self, keys):
         """See VersionedFiles.get_sha1s()."""
