@@ -177,7 +177,7 @@ class TestSmartServerBzrDirRequestCloningMetaDir(
         self.assertEqual(expected, request.execute('', 'False'))
 
     def test_cloning_metadir_reference(self):
-        """The request works when bzrdir contains a branch reference."""
+        """The request fails when bzrdir contains a branch reference."""
         backing = self.get_transport()
         referenced_branch = self.make_branch('referenced')
         dir = self.make_bzrdir('.')
@@ -189,10 +189,7 @@ class TestSmartServerBzrDirRequestCloningMetaDir(
         backing.rename('referenced', 'moved')
         request_class = smart_dir.SmartServerBzrDirRequestCloningMetaDir
         request = request_class(backing)
-        expected = SuccessfulSmartServerResponse(
-            (local_result.network_name(),
-            local_result.repository_format.network_name(),
-            ('ref', reference_url)))
+        expected = FailedSmartServerResponse(('BranchReference',))
         self.assertEqual(expected, request.execute('', 'False'))
 
 

@@ -97,6 +97,11 @@ class SmartServerBzrDirRequestCloningMetaDir(SmartServerRequestBzrDir):
             branch_ref = self._bzrdir.get_branch_reference()
         except errors.NotBranchError:
             branch_ref = None
+        if branch_ref is not None:
+            # The server shouldn't try to resolve references, and it quite
+            # possibly can't reach them anyway.  The client needs to resolve
+            # the branch reference to determine the cloning_metadir.
+            return FailedSmartServerResponse(('BranchReference',))
         if require_stacking == "True":
             require_stacking = True
         else:
@@ -104,16 +109,11 @@ class SmartServerBzrDirRequestCloningMetaDir(SmartServerRequestBzrDir):
         control_format = self._bzrdir.cloning_metadir(
             require_stacking=require_stacking)
         control_name = control_format.network_name()
-        # XXX: There should be a method that tells us that the format does/does not
-        # have subformats.
+        # XXX: There should be a method that tells us that the format does/does
+        # not have subformats.
         if isinstance(control_format, BzrDirMetaFormat1):
-            if branch_ref is not None:
-                # If there's a branch reference, the client will have to resolve
-                # the branch reference to figure out the cloning metadir
-                branch_name = ('ref', branch_ref)
-            else:
-                branch_name = ('branch',
-                    control_format.get_branch_format().network_name())
+            branch_name = ('branch',
+                control_format.get_branch_format().network_name())
             repository_name = control_format.repository_format.network_name()
         else:
             # Only MetaDir has delegated formats today.

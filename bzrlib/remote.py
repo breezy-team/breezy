@@ -153,6 +153,15 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         except errors.UnknownSmartMethod:
             medium._remember_remote_is_before((1, 13))
             return self._vfs_cloning_metadir(require_stacking=require_stacking)
+        except errors.UnknownErrorFromSmartServer, err:
+            if err.error_tuple != ('BranchReference',):
+                raise
+            # We need to resolve the branch reference to determine the
+            # cloning_metadir.  This causes unnecessary RPCs to open the
+            # referenced branch (and bzrdir, etc) but only when the caller
+            # didn't already resolve the branch reference.
+            referenced_branch = self.open_branch()
+            return referenced_branch.bzrdir.cloning_metadir()
         if len(response) != 3:
             raise errors.UnexpectedSmartServerResponse(response)
         control_name, repo_name, branch_info = response
