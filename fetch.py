@@ -102,17 +102,22 @@ def import_git_blob(texts, mapping, path, blob, inv, parent_invs, shagitmap,
     :param blob: A git blob
     """
     file_id = mapping.generate_file_id(path)
-    text_revision = inv.revision_id
-    assert file_id is not None
-    assert text_revision is not None
-    texts.add_lines((file_id, text_revision),
-        [(file_id, p[file_id].revision) for p in parent_invs if file_id in p],
-        osutils.split_lines(blob.data))
     ie = inv.add_path(path, "file", file_id)
-    ie.revision = text_revision
     ie.text_size = len(blob.data)
     ie.text_sha1 = osutils.sha_string(blob.data)
     ie.executable = executable
+    # See if this is the same revision as one of the parents unchanged
+    parent_keys = []
+    for pinv in parent_invs:
+        if file_id in pinv and pinv[file_id].text_sha1 == ie.text_sha1:
+            ie.revision = pinv[file_id].revision
+            return
+    ie.revision = inv.revision_id
+    assert file_id is not None
+    assert ie.revision is not None
+    texts.add_lines((file_id, ie.revision),
+        [(file_id, p[file_id].revision) for p in parent_invs if file_id in p],
+        osutils.split_lines(blob.data))
     shagitmap.add_entry(blob.sha().hexdigest(), "blob",
         (ie.file_id, ie.revision))
 
