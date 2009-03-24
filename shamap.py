@@ -54,6 +54,10 @@ class GitShaMap(object):
         """
         raise NotImplementedError(self.add_entry)
 
+    def lookup_tree(self, path, revid):
+        """Lookup the SHA of a git tree."""
+        raise NotImplementedError(self.lookup_tree)
+
     def lookup_git_sha(self, sha):
         """Lookup a Git sha in the database.
 
@@ -81,6 +85,12 @@ class DictGitShaMap(GitShaMap):
 
     def lookup_git_sha(self, sha):
         return self.dict[sha]
+
+    def lookup_tree(self, path, revid):
+        for k, v in self.dict.iteritems():
+            if v == ("tree", (path, revid)):
+                return k
+        raise KeyError((path, revid))
 
     def revids(self):
         for key, (type, type_data) in self.dict.iteritems():
@@ -128,6 +138,12 @@ class SqliteGitShaMap(GitShaMap):
             self.db.execute("replace into trees (sha1, path, revid) values (?, ?, ?)", (sha, type_data[0], type_data[1]))
         else:
             raise AssertionError("Unknown type %s" % type)
+
+    def lookup_tree(self, path, revid):
+        row = self.db.execute("select sha1 from trees where path = ? and revid = ?", (path,revid)).fetchone()
+        if row is None:
+            raise KeyError((path, revid))
+        return row[0]
 
     def lookup_git_sha(self, sha):
         """Lookup a Git sha in the database.
