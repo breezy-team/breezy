@@ -1412,7 +1412,6 @@ class GroupCompressVersionedFiles(VersionedFiles):
         self._compressor = GroupCompressor()
         self._unadded_refs = {}
         keys_to_add = []
-        basis_end = 0
         def flush():
             bytes = self._compressor.flush().to_bytes()
             index, start, length = self._access.add_raw_records(
@@ -1532,9 +1531,8 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 key = record.key
             self._unadded_refs[key] = record.parents
             yield found_sha1
-            keys_to_add.append((key, '%d %d' % (basis_end, end_point),
+            keys_to_add.append((key, '%d %d' % (start_point, end_point),
                 (record.parents,)))
-            basis_end = end_point
         if len(keys_to_add):
             flush()
         self._compressor = None
