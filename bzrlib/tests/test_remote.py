@@ -1558,7 +1558,8 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         self.assertEqual({r1: (NULL_REVISION,)}, parents)
         self.assertEqual(
             [('call_with_body_bytes_expecting_body',
-              'Repository.get_parent_map', ('quack/', r2), '\n\n0')],
+              'Repository.get_parent_map', ('quack/', 'include-missing:', r2),
+              '\n\n0')],
             client._calls)
         repo.unlock()
         # now we call again, and it should use the second response.
@@ -1568,9 +1569,11 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         self.assertEqual({r1: (NULL_REVISION,)}, parents)
         self.assertEqual(
             [('call_with_body_bytes_expecting_body',
-              'Repository.get_parent_map', ('quack/', r2), '\n\n0'),
+              'Repository.get_parent_map', ('quack/', 'include-missing:', r2),
+              '\n\n0'),
              ('call_with_body_bytes_expecting_body',
-              'Repository.get_parent_map', ('quack/', r1), '\n\n0'),
+              'Repository.get_parent_map', ('quack/', 'include-missing:', r1),
+              '\n\n0'),
             ],
             client._calls)
         repo.unlock()
@@ -1585,7 +1588,8 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         parents = repo.get_parent_map([rev_id])
         self.assertEqual(
             [('call_with_body_bytes_expecting_body',
-              'Repository.get_parent_map', ('quack/', rev_id), '\n\n0'),
+              'Repository.get_parent_map', ('quack/', 'include-missing:',
+              rev_id), '\n\n0'),
              ('disconnect medium',),
              ('call_expecting_body', 'Repository.get_revision_graph',
               ('quack/', ''))],
@@ -2395,7 +2399,7 @@ class TestStacking(tests.TestCaseWithTransport):
         rev_ord, expected_revs = self.get_ordered_revs('knit', 'topological')
         self.assertEqual(expected_revs, rev_ord)
         # Getting topological sort requires VFS calls still
-        self.assertLength(13, self.hpss_calls)
+        self.assertLength(12, self.hpss_calls)
 
     def test_stacked_get_stream_groupcompress(self):
         # Repository._get_source.get_stream() from a stacked repository with
