@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the test framework."""
 
@@ -43,9 +43,9 @@ from bzrlib.repofmt import (
     weaverepo,
     )
 from bzrlib.symbol_versioning import (
-    one_zero,
-    zero_eleven,
-    zero_ten,
+    deprecated_function,
+    deprecated_in,
+    deprecated_method,
     )
 from bzrlib.tests import (
                           ChrootedTestCase,
@@ -1654,7 +1654,8 @@ class TestTestCase(TestCase):
             self.assertListRaises, _TestException, success_generator)
 
 
-@symbol_versioning.deprecated_function(zero_eleven)
+# NB: Don't delete this; it's not actually from 0.11!
+@deprecated_function(deprecated_in((0, 11, 0)))
 def sample_deprecated_function():
     """A deprecated function to test applyDeprecated with."""
     return 2
@@ -1667,7 +1668,7 @@ def sample_undeprecated_function(a_param):
 class ApplyDeprecatedHelper(object):
     """A helper class for ApplyDeprecated tests."""
 
-    @symbol_versioning.deprecated_method(zero_eleven)
+    @deprecated_method(deprecated_in((0, 11, 0)))
     def sample_deprecated_method(self, param_one):
         """A deprecated method for testing with."""
         return param_one
@@ -1675,7 +1676,7 @@ class ApplyDeprecatedHelper(object):
     def sample_normal_method(self):
         """A undeprecated method."""
 
-    @symbol_versioning.deprecated_method(zero_ten)
+    @deprecated_method(deprecated_in((0, 10, 0)))
     def sample_nested_deprecation(self):
         return sample_deprecated_function()
 
@@ -1696,30 +1697,35 @@ class TestExtraAssertions(TestCase):
     def test_applyDeprecated_not_deprecated(self):
         sample_object = ApplyDeprecatedHelper()
         # calling an undeprecated callable raises an assertion
-        self.assertRaises(AssertionError, self.applyDeprecated, zero_eleven,
+        self.assertRaises(AssertionError, self.applyDeprecated,
+            deprecated_in((0, 11, 0)),
             sample_object.sample_normal_method)
-        self.assertRaises(AssertionError, self.applyDeprecated, zero_eleven,
+        self.assertRaises(AssertionError, self.applyDeprecated,
+            deprecated_in((0, 11, 0)),
             sample_undeprecated_function, "a param value")
         # calling a deprecated callable (function or method) with the wrong
         # expected deprecation fails.
-        self.assertRaises(AssertionError, self.applyDeprecated, zero_ten,
+        self.assertRaises(AssertionError, self.applyDeprecated,
+            deprecated_in((0, 10, 0)),
             sample_object.sample_deprecated_method, "a param value")
-        self.assertRaises(AssertionError, self.applyDeprecated, zero_ten,
+        self.assertRaises(AssertionError, self.applyDeprecated,
+            deprecated_in((0, 10, 0)),
             sample_deprecated_function)
         # calling a deprecated callable (function or method) with the right
         # expected deprecation returns the functions result.
-        self.assertEqual("a param value", self.applyDeprecated(zero_eleven,
+        self.assertEqual("a param value",
+            self.applyDeprecated(deprecated_in((0, 11, 0)),
             sample_object.sample_deprecated_method, "a param value"))
-        self.assertEqual(2, self.applyDeprecated(zero_eleven,
+        self.assertEqual(2, self.applyDeprecated(deprecated_in((0, 11, 0)),
             sample_deprecated_function))
         # calling a nested deprecation with the wrong deprecation version
         # fails even if a deeper nested function was deprecated with the
         # supplied version.
         self.assertRaises(AssertionError, self.applyDeprecated,
-            zero_eleven, sample_object.sample_nested_deprecation)
+            deprecated_in((0, 11, 0)), sample_object.sample_nested_deprecation)
         # calling a nested deprecation with the right deprecation value
         # returns the calls result.
-        self.assertEqual(2, self.applyDeprecated(zero_ten,
+        self.assertEqual(2, self.applyDeprecated(deprecated_in((0, 10, 0)),
             sample_object.sample_nested_deprecation))
 
     def test_callDeprecated(self):

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 
@@ -82,6 +82,7 @@ from bzrlib import (
 from bzrlib.osutils import (
     format_date,
     get_terminal_encoding,
+    re_compile_checked,
     terminal_width,
     )
 
@@ -587,8 +588,8 @@ def _make_search_filter(branch, generate_delta, search, log_rev_iterator):
     """
     if search is None:
         return log_rev_iterator
-    # Compile the search now to get early errors.
-    searchRE = re.compile(search, re.IGNORECASE)
+    searchRE = re_compile_checked(search, re.IGNORECASE,
+            'log message filter')
     return _filter_message_re(searchRE, log_rev_iterator)
 
 

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Indexing facilities."""
 
@@ -1190,23 +1190,6 @@ class CombinedGraphIndex(object):
         return "%s(%s)" % (
                 self.__class__.__name__,
                 ', '.join(map(repr, self._indices)))
-
-    @symbol_versioning.deprecated_method(symbol_versioning.one_one)
-    def get_parents(self, revision_ids):
-        """See graph._StackedParentsProvider.get_parents.
-
-        This implementation thunks the graph.Graph.get_parents api across to
-        GraphIndex.
-
-        :param revision_ids: An iterable of graph keys for this graph.
-        :return: A list of parent details for each key in revision_ids.
-            Each parent details will be one of:
-             * None when the key was missing
-             * (NULL_REVISION,) when the key has no parents.
-             * (parent_key, parent_key...) otherwise.
-        """
-        parent_map = self.get_parent_map(revision_ids)
-        return [parent_map.get(r, None) for r in revision_ids]
 
     def get_parent_map(self, keys):
         """See graph._StackedParentsProvider.get_parent_map"""

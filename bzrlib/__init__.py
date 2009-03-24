@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """bzr library"""
 
@@ -51,7 +51,6 @@ __copyright__ = "Copyright 2005, 2006, 2007, 2008, 2009 Canonical Ltd."
 # releaselevel of 'dev' for unreleased under-development code.
 
 version_info = (1, 14, 0, 'dev', 0)
-
 
 # API compatibility version: bzrlib is currently API compatible with 1.13.
 api_minimum_version = (1, 13, 0)
