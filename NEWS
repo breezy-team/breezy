@@ -151,6 +151,11 @@ API Changes
 * The ``pb`` argument to ``fetch()`` is deprecated.
   (Martin Pool)
 
+* The smart server jail now hooks into BzrDir.open to prevent any BzrDir
+  that is not inside the backing transport from being opened.  See the
+  module documentation for ``bzrlib.smart.request`` for details.
+  (Andrew Bennetts, Robert Collins)
+
 Testing
 *******
 
@@ -172,14 +177,18 @@ Testing
 Internals
 *********
 
-* ``bzr selftest`` now accepts ``--subunit`` to run in subunit output
-  mode. Requires ``lp:subunit`` installed to work, but is not a hard
-  dependency. (Robert Collins)
-
 * ``BtreeIndex._spill_mem_keys_to_disk()`` now generates disk index with
   optmizations turned off. This only has effect when processing > 100,000
   keys during something like ``bzr pack``. (John Arbash Meinel)
 
+* ``bzr selftest`` now accepts ``--subunit`` to run in subunit output
+  mode. Requires ``lp:subunit`` installed to work, but is not a hard
+  dependency. (Robert Collins)
+
+* ``BzrDir.open_branch`` now takes an optional ``ignore_fallbacks``
+  parameter for controlling opening of stacked branches.
+  (Andrew Bennetts, Robert Collins)
+  
 * ``CommitBuilder`` has a new method, ``record_iter_changes`` which works
   in terms of an iter_changes iterator rather than full tree scanning.
   (Robert Collins)

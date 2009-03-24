@@ -153,6 +153,15 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         except errors.UnknownSmartMethod:
             medium._remember_remote_is_before((1, 13))
             return self._vfs_cloning_metadir(require_stacking=require_stacking)
+        except errors.UnknownErrorFromSmartServer, err:
+            if err.error_tuple != ('BranchReference',):
+                raise
+            # We need to resolve the branch reference to determine the
+            # cloning_metadir.  This causes unnecessary RPCs to open the
+            # referenced branch (and bzrdir, etc) but only when the caller
+            # didn't already resolve the branch reference.
+            referenced_branch = self.open_branch()
+            return referenced_branch.bzrdir.cloning_metadir()
         if len(response) != 3:
             raise errors.UnexpectedSmartServerResponse(response)
         control_name, repo_name, branch_info = response
@@ -256,7 +265,7 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         """See BzrDir._get_tree_branch()."""
         return None, self.open_branch()
 
-    def open_branch(self, _unsupported=False):
+    def open_branch(self, _unsupported=False, ignore_fallbacks=False):
         if _unsupported:
             raise NotImplementedError('unsupported flag support not implemented yet.')
         if self._next_open_branch_result is not None:
@@ -268,12 +277,14 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         if response[0] == 'ref':
             # a branch reference, use the existing BranchReference logic.
             format = BranchReferenceFormat()
-            return format.open(self, _found=True, location=response[1])
+            return format.open(self, _found=True, location=response[1],
+                ignore_fallbacks=ignore_fallbacks)
         branch_format_name = response[1]
         if not branch_format_name:
             branch_format_name = None
         format = RemoteBranchFormat(network_name=branch_format_name)
-        return RemoteBranch(self, self.find_repository(), format=format)
+        return RemoteBranch(self, self.find_repository(), format=format,
+            setup_stacking=not ignore_fallbacks)
 
     def _open_repo_v1(self, path):
         verb = 'BzrDir.find_repository'
@@ -1733,8 +1744,8 @@ class RemoteBranchFormat(branch.BranchFormat):
     def network_name(self):
         return self._network_name
 
-    def open(self, a_bzrdir):
-        return a_bzrdir.open_branch()
+    def open(self, a_bzrdir, ignore_fallbacks=False):
+        return a_bzrdir.open_branch(ignore_fallbacks=ignore_fallbacks)
 
     def _vfs_initialize(self, a_bzrdir):
         # Initialisation when using a local bzrdir object, or a non-vfs init

@@ -151,7 +151,7 @@ class SampleBranchFormat(BranchFormat):
     def is_supported(self):
         return False
 
-    def open(self, transport, _found=False):
+    def open(self, transport, _found=False, ignore_fallbacks=False):
         return "opened branch."
 
 

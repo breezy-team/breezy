@@ -77,7 +77,7 @@ except ImportError:
 from bzrlib.merge import merge_inner
 import bzrlib.merge3
 import bzrlib.plugin
-from bzrlib.smart import client, server
+from bzrlib.smart import client, request, server
 import bzrlib.store
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (
@@ -827,6 +827,8 @@ class TestCase(unittest.TestCase):
         for key, factory in hooks.known_hooks.items():
             parent, name = hooks.known_hooks_key_to_parent_and_attribute(key)
             setattr(parent, name, factory())
+        # this hook should always be installed
+        request._install_hook()
 
     def _silenceUI(self):
         """Turn off UI for duration of test"""

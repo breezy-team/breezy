@@ -408,6 +408,26 @@ class TestBzrDirCloningMetaDir(TestRemote):
             call.call.method == verb])
         self.assertEqual(1, call_count)
 
+    def test_branch_reference(self):
+        transport = self.get_transport('quack')
+        referenced = self.make_branch('referenced')
+        expected = referenced.bzrdir.cloning_metadir()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'BzrDir.cloning_metadir', ('quack/', 'False'),
+            'error', ('BranchReference',)),
+        client.add_expected_call(
+            'BzrDir.open_branchV2', ('quack/',),
+            'success', ('ref', self.get_url('referenced'))),
+        a_bzrdir = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
+            _client=client)
+        result = a_bzrdir.cloning_metadir()
+        # We should have got a control dir matching the referenced branch.
+        self.assertEqual(bzrdir.BzrDirMetaFormat1, type(result))
+        self.assertEqual(expected._repository_format, result._repository_format)
+        self.assertEqual(expected._branch_format, result._branch_format)
+        client.finished_test()
+
     def test_current_server(self):
         transport = self.get_transport('.')
         transport = transport.clone('quack')
