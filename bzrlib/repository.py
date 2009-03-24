@@ -736,7 +736,7 @@ class CommitBuilder(object):
                     entry.symlink_target = tree.get_symlink_target(file_id)
                     if (carry_over_possible and
                         parent_entry.symlink_target == entry.symlink_target):
-                            carried_over = True
+                        carried_over = True
                     else:
                         self._add_text_to_weave(change[0], [], heads, None)
                 elif kind == 'directory':
@@ -748,7 +748,20 @@ class CommitBuilder(object):
                         if change[1][1] != '' or self.repository.supports_rich_root():
                             self._add_text_to_weave(change[0], [], heads, None)
                 elif kind == 'tree-reference':
-                    raise AssertionError('unknown kind %r' % kind)
+                    if not self.repository._format.supports_tree_reference:
+                        # This isn't quite sane as an error, but we shouldn't
+                        # ever see this code path in practice: tree's don't
+                        # permit references when the repo doesn't support tree
+                        # references.
+                        raise errors.UnsupportedOperation(tree.add_reference,
+                            self.repository)
+                    entry.reference_revision = \
+                        tree.get_reference_revision(change[0])
+                    if (carry_over_possible and
+                        parent_entry.reference_revision == reference_revision):
+                        carried_over = True
+                    else:
+                        self._add_text_to_weave(change[0], [], heads, None)
                 else:
                     raise AssertionError('unknown kind %r' % kind)
                 if not carried_over:
