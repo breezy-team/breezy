@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1739,6 +1739,28 @@ def until_no_eintr(f, *a, **kw):
             if e.errno == errno.EINTR:
                 continue
             raise
+
+def re_compile_checked(re_string, flags=0, where=""):
+    """Return a compiled re, or raise a sensible error.
+    
+    This should only be used when compiling user-supplied REs.
+
+    :param re_string: Text form of regular expression.
+    :param flags: eg re.IGNORECASE
+    :param where: Message explaining to the user the context where 
+        it occurred, eg 'log search filter'.
+    """
+    # from https://bugs.launchpad.net/bzr/+bug/251352
+    try:
+        re_obj = re.compile(re_string, flags)
+        re_obj.search("")
+        return re_obj
+    except re.error, e:
+        if where:
+            where = ' in ' + where
+        # despite the name 'error' is a type
+        raise errors.BzrCommandError('Invalid regular expression%s: %r: %s'
+            % (where, re_string, e))
 
 
 if sys.platform == "win32":

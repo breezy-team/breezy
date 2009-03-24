@@ -19,6 +19,7 @@
 from cStringIO import StringIO
 import errno
 import os
+import re
 import socket
 import stat
 import sys
@@ -1525,3 +1526,21 @@ class TestResourceLoading(TestCaseInTempDir):
             'yyy.xx')
         # test unknown resource
         self.assertRaises(IOError, osutils.resource_string, 'bzrlib', 'yyy.xx')
+
+
+class TestReCompile(TestCase):
+
+    def test_re_compile_checked(self):
+        r = osutils.re_compile_checked(r'A*', re.IGNORECASE)
+        self.assertTrue(r.match('aaaa'))
+        self.assertTrue(r.match('aAaA'))
+
+    def test_re_compile_checked_error(self):
+        # like https://bugs.launchpad.net/bzr/+bug/251352
+        err = self.assertRaises(
+            errors.BzrCommandError,
+            osutils.re_compile_checked, '*', re.IGNORECASE, 'test case')
+        self.assertEqual(
+            "Invalid regular expression in test case: '*': "
+            "nothing to repeat",
+            str(err))

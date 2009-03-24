@@ -249,7 +249,10 @@ class TestLog(ExternalBase):
         """
         self._prepare()
         out, err = self.run_bzr(['log', '-m', '*'], retcode=3)
-        self.assertEqual("bzr: ERROR: Invalid regular expression: '*'\n", err)
+        self.assertEqual("bzr: ERROR: Invalid regular expression"
+            " in log message filter"
+            ": '*'"
+            ": nothing to repeat\n", err)
         self.assertEqual('', out)
 
 class TestLogVerbose(TestCaseWithTransport):

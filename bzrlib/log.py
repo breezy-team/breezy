@@ -82,6 +82,7 @@ from bzrlib import (
 from bzrlib.osutils import (
     format_date,
     get_terminal_encoding,
+    re_compile_checked,
     terminal_width,
     )
 
@@ -587,13 +588,8 @@ def _make_search_filter(branch, generate_delta, search, log_rev_iterator):
     """
     if search is None:
         return log_rev_iterator
-    # Compile the search now to get early errors.
-    try:
-        searchRE = re.compile(search, re.IGNORECASE)
-        searchRE.search("")
-    except:
-        raise errors.BzrCommandError('Invalid regular expression: %r'
-            % (search,))
+    searchRE = re_compile_checked(search, re.IGNORECASE,
+            'log message filter')
     return _filter_message_re(searchRE, log_rev_iterator)
 
 
