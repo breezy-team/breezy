@@ -79,6 +79,9 @@ Bug Fixes
   authentication section name, username and encoded password were 
   provided. (Jean-Francois Roy)
 
+* bzr gives a better message if an invalid regexp is passed to ``bzr log
+  -m``.  (Anne Mohsen, Martin Pool)
+
 * Fix "is not a stackable format" error when pushing a
   stackable-format branch with an unstackable-format repository to a
   destination with a default stacking policy.  (Andrew Bennetts)
