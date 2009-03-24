@@ -3812,9 +3812,13 @@ class StreamSink(object):
             # If serializers match and the target is a pack repository, set the
             # write cache size on the new pack.  This avoids poor performance
             # on transports where append is unbuffered (such as
-            # RemoteTransport).  This is safe to do because nothing will read
+            # RemoteTransport).  This is safe to do because nothing should read
             # back from the target repository while a stream with matching
             # serialization is being inserted.
+            # The exception is that a delta record from the source that should
+            # be a fulltext may need to be expanded by the target (see
+            # test_fetch_revisions_with_deltas_into_pack); but we take care to
+            # explicitly flush any buffered writes first in that rare case.
             try:
                 new_pack = self.target_repo._pack_collection._new_pack
             except AttributeError:

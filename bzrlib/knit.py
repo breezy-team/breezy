@@ -3051,6 +3051,10 @@ class _KnitKeyAccess(object):
         return result
 
     def flush(self):
+        """Flush pending writes on this access object.
+        
+        For .knit files this is a no-op.
+        """
         pass
 
     def get_raw_records(self, memos_for_retrieval):
@@ -3125,6 +3129,10 @@ class _DirectPackAccess(object):
         return result
 
     def flush(self):
+        """Flush pending writes on this access object.
+
+        This will flush any buffered writes to a NewPack.
+        """
         if self._flush_func is not None:
             self._flush_func()
             
