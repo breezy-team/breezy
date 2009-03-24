@@ -16,9 +16,9 @@
 
 
 """Support for plugin hooking logic."""
-from bzrlib.lazy_import import lazy_import
 from bzrlib import registry
-from bzrlib.symbol_versioning import deprecated_method, one_five
+from bzrlib.lazy_import import lazy_import
+from bzrlib.symbol_versioning import deprecated_method
 lazy_import(globals(), """
 import textwrap
 
@@ -131,18 +131,6 @@ class Hooks(dict):
         intended for debugging.
         """
         return self._callable_names.get(a_callable, "No hook name")
-
-    @deprecated_method(one_five)
-    def install_hook(self, hook_name, a_callable):
-        """Install a_callable in to the hook hook_name.
-
-        :param hook_name: A hook name. See the __init__ method of BranchHooks
-            for the complete list of hooks.
-        :param a_callable: The callable to be invoked when the hook triggers.
-            The exact signature will depend on the hook - see the __init__
-            method of BranchHooks for details on each hook.
-        """
-        self.install_named_hook(hook_name, a_callable, None)
 
     def install_named_hook(self, hook_name, a_callable, name):
         """Install a_callable in to the hook hook_name, and label it name.

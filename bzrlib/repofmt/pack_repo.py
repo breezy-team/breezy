@@ -2131,12 +2131,6 @@ class KnitPackRepository(KnitRepository):
             pb.finished()
         return result
 
-    @symbol_versioning.deprecated_method(symbol_versioning.one_one)
-    def get_parents(self, revision_ids):
-        """See graph._StackedParentsProvider.get_parents."""
-        parent_map = self.get_parent_map(revision_ids)
-        return [parent_map.get(r, None) for r in revision_ids]
-
     def _make_parents_provider(self):
         return graph.CachingParentsProvider(self)
 

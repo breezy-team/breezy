@@ -1191,23 +1191,6 @@ class CombinedGraphIndex(object):
                 self.__class__.__name__,
                 ', '.join(map(repr, self._indices)))
 
-    @symbol_versioning.deprecated_method(symbol_versioning.one_one)
-    def get_parents(self, revision_ids):
-        """See graph._StackedParentsProvider.get_parents.
-
-        This implementation thunks the graph.Graph.get_parents api across to
-        GraphIndex.
-
-        :param revision_ids: An iterable of graph keys for this graph.
-        :return: A list of parent details for each key in revision_ids.
-            Each parent details will be one of:
-             * None when the key was missing
-             * (NULL_REVISION,) when the key has no parents.
-             * (parent_key, parent_key...) otherwise.
-        """
-        parent_map = self.get_parent_map(revision_ids)
-        return [parent_map.get(r, None) for r in revision_ids]
-
     def get_parent_map(self, keys):
         """See graph._StackedParentsProvider.get_parent_map"""
         search_keys = set(keys)

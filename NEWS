@@ -124,6 +124,9 @@ Documentation
 API Changes
 ***********
 
+* APIs deprecated in 1.6 and previous verisons of bzr are now removed.
+  (Martin Pool)
+
 * New API ``Inventory.filter()`` added that filters an inventory by
   a set of file-ids so that only those fileids, their parents and
   their children are included.  (Ian Clatworthy)

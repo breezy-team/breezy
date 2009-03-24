@@ -35,7 +35,6 @@ from bzrlib.errors import UnrelatedBranches, NoCommits, BzrCommandError
 from bzrlib.merge import transform_tree, merge_inner, _PlanMerge
 from bzrlib.osutils import pathjoin, file_kind
 from bzrlib.tests import TestCaseWithTransport, TestCaseWithMemoryTransport
-from bzrlib.trace import (enable_test_log, disable_test_log)
 from bzrlib.workingtree import WorkingTree
 
 

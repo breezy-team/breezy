@@ -57,9 +57,6 @@ from bzrlib.inventory import (
 from bzrlib import registry
 from bzrlib.symbol_versioning import (
         deprecated_method,
-        one_one,
-        one_two,
-        one_six,
         )
 from bzrlib.trace import (
     log_exception_quietly, note, mutter, mutter_callsite, warning)
@@ -1307,24 +1304,6 @@ class Repository(object):
         return InterRepository.get(other, self).search_missing_revision_ids(
             revision_id, find_ghosts)
 
-    @deprecated_method(one_two)
-    @needs_read_lock
-    def missing_revision_ids(self, other, revision_id=None, find_ghosts=True):
-        """Return the revision ids that other has that this does not.
-
-        These are returned in topological order.
-
-        revision_id: only return revision ids included by revision_id.
-        """
-        keys =  self.search_missing_revision_ids(
-            other, revision_id, find_ghosts).get_keys()
-        other.lock_read()
-        try:
-            parents = other.get_graph().get_parent_map(keys)
-        finally:
-            other.unlock()
-        return tsort.topo_sort(parents)
-
     @staticmethod
     def open(base):
         """Open the repository rooted at base.
@@ -2253,33 +2232,8 @@ class Repository(object):
         implicitly lock for the user.
         """
 
-    @needs_read_lock
-    @deprecated_method(one_six)
-    def print_file(self, file, revision_id):
-        """Print `file` to stdout.
-
-        FIXME RBC 20060125 as John Meinel points out this is a bad api
-        - it writes to stdout, it assumes that that is valid etc. Fix
-        by creating a new more flexible convenience function.
-        """
-        tree = self.revision_tree(revision_id)
-        # use inventory as it was in that revision
-        file_id = tree.inventory.path2id(file)
-        if not file_id:
-            # TODO: jam 20060427 Write a test for this code path
-            #       it had a bug in it, and was raising the wrong
-            #       exception.
-            raise errors.BzrError("%r is not present in revision %s" % (file, revision_id))
-        tree.print_file(file_id)
-
     def get_transaction(self):
         return self.control_files.get_transaction()
-
-    @deprecated_method(one_one)
-    def get_parents(self, revision_ids):
-        """See StackedParentsProvider.get_parents"""
-        parent_map = self.get_parent_map(revision_ids)
-        return [parent_map.get(r, None) for r in revision_ids]
 
     def get_parent_map(self, revision_ids):
         """See graph._StackedParentsProvider.get_parent_map"""
@@ -3046,21 +3000,6 @@ class InterRepository(InterObject):
             if searcher_exhausted:
                 break
         return searcher.get_result()
-
-    @deprecated_method(one_two)
-    @needs_read_lock
-    def missing_revision_ids(self, revision_id=None, find_ghosts=True):
-        """Return the revision ids that source has that target does not.
-
-        These are returned in topological order.
-
-        :param revision_id: only return revision ids included by this
-                            revision_id.
-        :param find_ghosts: If True find missing revisions in deep history
-            rather than just finding the surface difference.
-        """
-        return list(self.search_missing_revision_ids(
-            revision_id, find_ghosts).get_keys())
 
     @needs_read_lock
     def search_missing_revision_ids(self, revision_id=None, find_ghosts=True):
