@@ -134,7 +134,7 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
         from revision_ids is returned. The verb takes a body containing the
         current search state, see do_body for details.
 
-        If 'include-missing' is in revision_ids, ghosts encountered in the
+        If 'include-missing:' is in revision_ids, ghosts encountered in the
         graph traversal for getting parent data are included in the result with
         a prefix of 'missing:'.
 

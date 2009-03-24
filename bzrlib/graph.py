@@ -153,8 +153,6 @@ class CachingParentsProvider(object):
         if cache is None:
             cache = self._get_parent_map(keys)
         else:
-            # XXX: Full scan of cache, keeping a set of cached keys will scale
-            # better.
             needed_revisions = set(key for key in keys if key not in cache)
             # Do not ask for negatively cached keys
             needed_revisions.difference_update(self.missing_keys)
