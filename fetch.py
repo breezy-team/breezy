@@ -100,6 +100,7 @@ def import_git_blob(texts, mapping, path, blob, inv, parent_invs, shagitmap,
     :param texts: VersionedFiles to add to
     :param path: Path in the tree
     :param blob: A git blob
+    :return: Inventory entry
     """
     file_id = mapping.generate_file_id(path)
     ie = inv.add_path(path, "file", file_id)
@@ -113,8 +114,8 @@ def import_git_blob(texts, mapping, path, blob, inv, parent_invs, shagitmap,
             continue
         if pinv[file_id].text_sha1 == ie.text_sha1:
             ie.revision = pinv[file_id].revision
-            return
-        parent_keys.append((file_id, pinv[file_id].revision)
+            return ie
+        parent_keys.append((file_id, pinv[file_id].revision))
     ie.revision = inv.revision_id
     assert file_id is not None
     assert ie.revision is not None
@@ -122,6 +123,7 @@ def import_git_blob(texts, mapping, path, blob, inv, parent_invs, shagitmap,
         osutils.split_lines(blob.data))
     shagitmap.add_entry(blob.sha().hexdigest(), "blob",
         (ie.file_id, ie.revision))
+    return ie
 
 
 def import_git_tree(texts, mapping, path, tree, inv, parent_invs, shagitmap,
@@ -134,13 +136,7 @@ def import_git_tree(texts, mapping, path, tree, inv, parent_invs, shagitmap,
     :param inv: Inventory object
     """
     file_id = mapping.generate_file_id(path)
-    text_revision = inv.revision_id
-    texts.add_lines((file_id, text_revision),
-        [(file_id, p[file_id].revision) for p in parent_invs if file_id in p],
-        [])
     ie = inv.add_path(path, "directory", file_id)
-    ie.revision = text_revision
-    shagitmap.add_entry(tree.id, "tree", (file_id, text_revision))
     for mode, name, hexsha in tree.entries():
         entry_kind = (mode & 0700000) / 0100000
         basename = name.decode("utf-8")
@@ -158,6 +154,18 @@ def import_git_tree(texts, mapping, path, tree, inv, parent_invs, shagitmap,
                 shagitmap, bool(fs_mode & 0111))
         else:
             raise AssertionError("Unknown blob kind, perms=%r." % (mode,))
+    parent_keys = []
+    for pinv in parent_invs:
+        if not file_id in pinv:
+            continue
+        if pinv[file_id].children == ie.children:
+            ie.revision = pinv[file_id].revision
+            return
+        parent_keys.append((file_id, pinv[file_id].revision))
+    ie.revision = inv.revision_id
+    texts.add_lines((file_id, ie.revision), parent_keys, [])
+    shagitmap.add_entry(tree.id, "tree", (file_id, ie.revision))
+    return ie
 
 
 def import_git_objects(repo, mapping, object_iter, target_git_object_retriever, 
