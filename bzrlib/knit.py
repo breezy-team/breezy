@@ -1615,6 +1615,7 @@ class KnitVersionedFiles(VersionedFiles):
                 except errors.UnavailableRepresentation:
                     adapter_key = record.storage_kind, 'fulltext'
                     adapter = get_adapter(adapter_key)
+                    self._access.flush()
                     bytes = adapter.get_bytes(record)
                 lines = split_lines(bytes)
                 try:
@@ -3049,6 +3050,9 @@ class _KnitKeyAccess(object):
             result.append((key, base, size))
         return result
 
+    def flush(self):
+        pass
+
     def get_raw_records(self, memos_for_retrieval):
         """Get the raw bytes for a records.
 
@@ -3079,7 +3083,7 @@ class _KnitKeyAccess(object):
 class _DirectPackAccess(object):
     """Access to data in one or more packs with less translation."""
 
-    def __init__(self, index_to_packs, reload_func=None):
+    def __init__(self, index_to_packs, reload_func=None, flush_func=None):
         """Create a _DirectPackAccess object.
 
         :param index_to_packs: A dict mapping index objects to the transport
@@ -3092,6 +3096,7 @@ class _DirectPackAccess(object):
         self._write_index = None
         self._indices = index_to_packs
         self._reload_func = reload_func
+        self._flush_func = flush_func
 
     def add_raw_records(self, key_sizes, raw_data):
         """Add raw knit bytes to a storage area.
@@ -3119,6 +3124,10 @@ class _DirectPackAccess(object):
             result.append((self._write_index, p_offset, p_length))
         return result
 
+    def flush(self):
+        if self._flush_func is not None:
+            self._flush_func()
+            
     def get_raw_records(self, memos_for_retrieval):
         """Get the raw bytes for a records.
 
