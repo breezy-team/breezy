@@ -1609,13 +1609,13 @@ class KnitVersionedFiles(VersionedFiles):
                 # KnitVersionedFiles doesn't permit deltas (_max_delta_chain ==
                 # 0) or because it depends on a base only present in the
                 # fallback kvfs.
+                self._access.flush()
                 try:
                     # Try getting a fulltext directly from the record.
                     bytes = record.get_bytes_as('fulltext')
                 except errors.UnavailableRepresentation:
                     adapter_key = record.storage_kind, 'fulltext'
                     adapter = get_adapter(adapter_key)
-                    self._access.flush()
                     bytes = adapter.get_bytes(record)
                 lines = split_lines(bytes)
                 try:
