@@ -3806,20 +3806,22 @@ class StreamSink(object):
             self.target_repo.unlock()
 
     def _locked_insert_stream(self, stream, src_format):
-        try:
-            new_pack = self.target_repo._pack_collection._new_pack
-        except AttributeError:
-            # Not a pack repository
-            pass
-        else:
-            # Set the write cache size on the new pack.  This avoids a poor
-            # performance on transports where append is unbuffered (such as
-            # RemoteTransport).  This is safe to do because nothing can read
-            # back from repository while a stream is being inserted into a
-            # sink.
-            new_pack.set_write_cache_size(1024*1024)
         to_serializer = self.target_repo._format._serializer
         src_serializer = src_format._serializer
+        if to_serializer == src_serializer:
+            # If serializers match and the target is a pack repository, set the
+            # write cache size on the new pack.  This avoids poor performance
+            # on transports where append is unbuffered (such as
+            # RemoteTransport).  This is safe to do because nothing will read
+            # back from the target repository while a stream with matching
+            # serialization is being inserted.
+            try:
+                new_pack = self.target_repo._pack_collection._new_pack
+            except AttributeError:
+                # Not a pack repository
+                pass
+            else:
+                new_pack.set_write_cache_size(1024*1024)
         for substream_type, substream in stream:
             if substream_type == 'texts':
                 self.target_repo.texts.insert_record_stream(substream)
