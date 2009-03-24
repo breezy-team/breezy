@@ -133,13 +133,13 @@ class CachingParentsProvider(object):
             raise AssertionError('Cache enabled when already enabled.')
         self._cache = {}
         self._cache_misses = cache_misses
-        self._missing_keys = set()
+        self.missing_keys = set()
 
     def disable_cache(self):
         """Disable and clear the cache."""
         self._cache = None
         self._cache_misses = None
-        self._missing_keys = set()
+        self.missing_keys = set()
 
     def get_cached_map(self):
         """Return any cached get_parent_map values."""
@@ -157,20 +157,25 @@ class CachingParentsProvider(object):
             # better.
             needed_revisions = set(key for key in keys if key not in cache)
             # Do not ask for negatively cached keys
-            needed_revisions.difference_update(self._missing_keys)
+            needed_revisions.difference_update(self.missing_keys)
             if needed_revisions:
                 parent_map = self._get_parent_map(needed_revisions)
                 cache.update(parent_map)
                 if self._cache_misses:
                     for key in needed_revisions:
                         if key not in parent_map:
-                            self._missing_keys.add(key)
+                            self.note_missing_key(key)
         result = {}
         for key in keys:
             value = cache.get(key)
             if value is not None:
                 result[key] = value
         return result
+
+    def note_missing_key(self, key):
+        """Note that key is a missing key."""
+        if self._cache_misses:
+            self.missing_keys.add(key)
 
 
 class Graph(object):

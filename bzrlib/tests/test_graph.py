@@ -1432,6 +1432,13 @@ class TestCachingParentsProvider(tests.TestCase):
         # only present 1 time.
         self.assertEqual(['a', 'b'], sorted(self.inst_pp.calls))
 
+    def test_note_missing_key(self):
+        """After noting that a key is missing it is cached."""
+        self.caching_pp.note_missing_key('b')
+        self.assertEqual({}, self.caching_pp.get_parent_map(['b']))
+        self.assertEqual([], self.inst_pp.calls)
+        self.assertEqual(set(['b']), self.caching_pp.missing_keys)
+
 
 class TestCachingParentsProviderExtras(tests.TestCaseWithTransport):
     """Test the behaviour when parents are provided that were not requested."""

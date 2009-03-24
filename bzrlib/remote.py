@@ -1247,6 +1247,9 @@ class RemoteRepository(_RpcHelper):
         for parents in parents_map.itervalues():
             result_parents.update(parents)
         stop_keys = result_parents.difference(start_set)
+        # We don't need to send ghosts back to the server as a position to
+        # stop either.
+        stop_keys.difference_update(self._unstacked_provider.missing_keys)
         included_keys = start_set.intersection(result_parents)
         start_set.difference_update(included_keys)
         recipe = ('manual', start_set, stop_keys, len(parents_map))
@@ -1257,7 +1260,7 @@ class RemoteRepository(_RpcHelper):
                 raise ValueError(
                     "key %r not a plain string" % (key,))
         verb = 'Repository.get_parent_map'
-        args = (path,) + tuple(keys)
+        args = (path, 'include-missing:') + tuple(keys)
         try:
             response = self._call_with_body_bytes_expecting_body(
                 verb, args, body)
@@ -1291,8 +1294,14 @@ class RemoteRepository(_RpcHelper):
                 if len(d) > 1:
                     revision_graph[d[0]] = d[1:]
                 else:
-                    # No parents - so give the Graph result (NULL_REVISION,).
-                    revision_graph[d[0]] = (NULL_REVISION,)
+                    # No parents:
+                    if d[0].startswith('missing:'):
+                        revid = d[0][8:]
+                        self._unstacked_provider.note_missing_key(revid)
+                    else:
+                        # no parents - so give the Graph result
+                        # (NULL_REVISION,).
+                        revision_graph[d[0]] = (NULL_REVISION,)
             return revision_graph
 
     @needs_read_lock

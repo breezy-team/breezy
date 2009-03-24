@@ -36,6 +36,7 @@ from bzrlib import (
     repository,
     smart,
     tests,
+    treebuilder,
     urlutils,
     )
 from bzrlib.branch import Branch
@@ -1648,6 +1649,32 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
                 'more-missing']))
         self.assertLength(1, self.hpss_calls)
 
+    def test_get_parent_map_gets_ghosts_from_result(self):
+        # asking for a revision should negatively cache close ghosts in its
+        # ancestry.
+        self.setup_smart_server_with_call_log()
+        tree = self.make_branch_and_memory_tree('foo')
+        tree.lock_write()
+        try:
+            builder = treebuilder.TreeBuilder()
+            builder.start_tree(tree)
+            builder.build([])
+            builder.finish_tree()
+            tree.set_parent_ids(['non-existant'], allow_leftmost_as_ghost=True)
+            rev_id = tree.commit('')
+        finally:
+            tree.unlock()
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        repo = tree.branch.repository
+        self.assertIsInstance(repo, RemoteRepository)
+        # ask for rev_id
+        repo.get_parent_map([rev_id])
+        self.reset_smart_call_log()
+        # Now asking for rev_id's ghost parent should not make calls
+        self.assertEqual({}, repo.get_parent_map(['non-existant']))
+        self.assertLength(0, self.hpss_calls)
+
 
 class TestGetParentMapAllowsNew(tests.TestCaseWithTransport):
 
@@ -2368,7 +2395,7 @@ class TestStacking(tests.TestCaseWithTransport):
         rev_ord, expected_revs = self.get_ordered_revs('knit', 'topological')
         self.assertEqual(expected_revs, rev_ord)
         # Getting topological sort requires VFS calls still
-        self.assertLength(14, self.hpss_calls)
+        self.assertLength(13, self.hpss_calls)
 
     def test_stacked_get_stream_groupcompress(self):
         # Repository._get_source.get_stream() from a stacked repository with
