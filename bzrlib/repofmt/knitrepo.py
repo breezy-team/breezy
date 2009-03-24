@@ -299,6 +299,7 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
     supports_external_lookups = False
     _fetch_order = 'topological'
     _fetch_uses_deltas = True
+    fast_deltas = False
 
     def _get_inventories(self, repo_transport, repo, name='inventory'):
         mapper = versionedfile.ConstantMapper(name)
