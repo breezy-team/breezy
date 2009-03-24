@@ -223,7 +223,12 @@ class GenericCommitHandler(processor.CommitHandler):
                 self.record_delete(path, old_ie)
             self.record_changed(path, ie, parent_id)
         else:
-            self.record_new(path, ie)
+            try:
+                self.record_new(path, ie)
+            except:
+                print "failed to add path '%s' with entry '%s'" % (path, ie)
+                print "directory entries are:\n%r\n" % (self.directory_entries,)
+                raise
 
     def _ensure_directory(self, path, inv):
         """Ensure that the containing directory exists for 'path'"""
@@ -429,6 +434,11 @@ class InventoryCommitHandler(GenericCommitHandler):
             isinstance(inv[fileid], inventory.InventoryDirectory)):
             for child_path in inv[fileid].children.keys():
                 self._delete_item(osutils.pathjoin(path, child_path), inv)
+            # We need to clean this out of the directory entries as well
+            try:
+                del self.directory_entries[path]
+            except KeyError:
+                pass
         try:
             if self.inventory.id2path(fileid) == path:
                 del inv[fileid]
