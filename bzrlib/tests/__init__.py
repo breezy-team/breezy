@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 # TODO: Perhaps there should be an API to find out if bzr running under the
@@ -77,7 +77,7 @@ except ImportError:
 from bzrlib.merge import merge_inner
 import bzrlib.merge3
 import bzrlib.plugin
-from bzrlib.smart import client, server
+from bzrlib.smart import client, request, server
 import bzrlib.store
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (
@@ -827,6 +827,8 @@ class TestCase(unittest.TestCase):
         for key, factory in hooks.known_hooks.items():
             parent, name = hooks.known_hooks_key_to_parent_and_attribute(key)
             setattr(parent, name, factory())
+        # this hook should always be installed
+        request._install_hook()
 
     def _silenceUI(self):
         """Turn off UI for duration of test"""
@@ -1250,6 +1252,8 @@ class TestCase(unittest.TestCase):
             # bzr now uses the Win32 API and doesn't rely on APPDATA, but the
             # tests do check our impls match APPDATA
             'BZR_EDITOR': None, # test_msgeditor manipulates this variable
+            'VISUAL': None,
+            'EDITOR': None,
             'BZR_EMAIL': None,
             'BZREMAIL': None, # may still be present in the environment
             'EMAIL': None,
@@ -2432,7 +2436,8 @@ def condition_id_re(pattern):
     :param pattern: A regular expression string.
     :return: A callable that returns True if the re matches.
     """
-    filter_re = re.compile(pattern)
+    filter_re = osutils.re_compile_checked(pattern, 0,
+        'test filter')
     def condition(test):
         test_id = test.id()
         return filter_re.search(test_id)
@@ -3014,6 +3019,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_reconfigure',
                    'bzrlib.tests.test_registry',
                    'bzrlib.tests.test_remote',
+                   'bzrlib.tests.test_rename_map',
                    'bzrlib.tests.test_repository',
                    'bzrlib.tests.test_revert',
                    'bzrlib.tests.test_revision',

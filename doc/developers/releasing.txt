@@ -127,7 +127,7 @@ Now you have the releasable product.  The next step is making it
 available to the world.
 
 #. In <https://launchpad.net/bzr/> click the "Release series" for this
-   series, to take you to e.g. <https://launchpad.net/bzr/1.1>.  Then
+   series, to take you to e.g. <https://launchpad.net/bzr/1.14>.  Then
    click "Register a release", and add information about this release.
 
 #. Within that release, upload the source tarball and zipfile and the GPG

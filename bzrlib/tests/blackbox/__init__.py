@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Black-box tests for bzr.
@@ -60,6 +60,7 @@ def load_tests(basic_tests, module, loader):
                      'bzrlib.tests.blackbox.test_filesystem_cicp',
                      'bzrlib.tests.blackbox.test_filtered_view_ops',
                      'bzrlib.tests.blackbox.test_find_merge_base',
+                     'bzrlib.tests.blackbox.test_guess_renames',
                      'bzrlib.tests.blackbox.test_help',
                      'bzrlib.tests.blackbox.test_hooks',
                      'bzrlib.tests.blackbox.test_ignore',

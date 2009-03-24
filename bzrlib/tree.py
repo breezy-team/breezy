@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tree classes, representing directory at point in time.
 """
@@ -96,10 +96,6 @@ class Tree(object):
             include_root=include_root,
             want_unversioned=want_unversioned,
             )
-
-    @symbol_versioning.deprecated_method(symbol_versioning.one_three)
-    def _iter_changes(self, *args, **kwargs):
-        return self.iter_changes(*args, **kwargs)
 
     def iter_changes(self, from_tree, include_unchanged=False,
                      specific_files=None, pb=None, extra_trees=None,
@@ -547,12 +543,6 @@ class Tree(object):
         entry = self.iter_entries_by_dir([file_id]).next()[1]
         for child in getattr(entry, 'children', {}).itervalues():
             yield child.file_id
-
-    @symbol_versioning.deprecated_method(symbol_versioning.one_six)
-    def print_file(self, file_id):
-        """Print file with id `file_id` to stdout."""
-        import sys
-        sys.stdout.write(self.get_file_text(file_id))
 
     def lock_read(self):
         pass

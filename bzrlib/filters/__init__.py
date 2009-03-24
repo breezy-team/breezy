@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Working tree content filtering support.
@@ -40,7 +40,7 @@ Note that context is currently only supported for write converters.
 """
 
 
-import cStringIO, sha
+from cStringIO import StringIO
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
@@ -150,7 +150,7 @@ def filtered_input_file(f, filters):
         for filter in filters:
             if filter.reader is not None:
                 chunks = filter.reader(chunks)
-        return cStringIO.StringIO(''.join(chunks))
+        return StringIO(''.join(chunks))
     else:
         return f
 
@@ -208,6 +208,19 @@ def register_filter_stack_map(name, stack_map):
         raise errors.BzrError(
             "filter stack for %s already installed" % name)
     _filter_stacks_registry.register(name, stack_map)
+
+
+def lazy_register_filter_stack_map(name, module_name, member_name):
+    """Lazily register the filter stacks to use for various preference values.
+
+    :param name: the preference/filter-stack name
+    :param module_name: The python path to the module of the filter stack map.
+    :param member_name: The name of the filter stack map in the module.
+    """
+    if name in _filter_stacks_registry:
+        raise errors.BzrError(
+            "filter stack for %s already installed" % name)
+    _filter_stacks_registry.register_lazy(name, module_name, member_name)
 
 
 def _get_registered_names():

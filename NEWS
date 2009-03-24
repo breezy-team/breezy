@@ -19,6 +19,9 @@ Compatibility Breaks
 New Features
 ************
 
+* New ``guess-renames`` command recognizes renames after they occur.
+  (Aaron Bentley)
+
 * ``bzr shelve`` can now apply changes without storing anything on the
   shelf, via the new --destroy option.  (Aaron Bentley)
 
@@ -83,6 +86,9 @@ Bug Fixes
   authentication section name, username and encoded password were 
   provided. (Jean-Francois Roy)
 
+* bzr gives a better message if an invalid regexp is passed to ``bzr log
+  -m``.  (Anne Mohsen, Martin Pool)
+
 * Fix "is not a stackable format" error when pushing a
   stackable-format branch with an unstackable-format repository to a
   destination with a default stacking policy.  (Andrew Bennetts)
@@ -100,6 +106,9 @@ Bug Fixes
   optimising more operations. (Robert Collins, Andrew Bennetts)
 
 * ``merge --force`` works again. (Robert Collins, #342105)
+
+* No more warnings are issued about ``sha`` being deprecated under python-2.6.
+  (Vincent Ladeuil, #346593)
 
 * Pushing a new branch to a server that has a stacking policy will now
   upgrade from the local branch format when the stacking policy points at
@@ -125,9 +134,22 @@ Documentation
 API Changes
 ***********
 
+* APIs deprecated in 1.6 and previous verisons of bzr are now removed.
+  (Martin Pool)
+
+* New API ``Inventory.filter()`` added that filters an inventory by
+  a set of file-ids so that only those fileids, their parents and
+  their children are included.  (Ian Clatworthy)
+
 * New sort order for ``get_record_stream`` ``groupcompress`` which
   sorts optimally for use with groupcompress compressors. (John Arbash
   Meinel, Robert Collins)
+
+* Repository APIs ``get_deltas_for_revisions()`` and
+  ``get_revision_delta()`` now support an optional ``specific_fileids``
+  parameter. If provided, the deltas are filtered so that only those
+  file-ids, their parents and their children are included.
+  (Ian Clatworthy)
 
 * The ``get_credentials`` and ``set_credentials`` methods of 
   ``AuthenticationConfig`` now accept an optional realm argument.
@@ -135,6 +157,11 @@ API Changes
 
 * The ``pb`` argument to ``fetch()`` is deprecated.
   (Martin Pool)
+
+* The smart server jail now hooks into BzrDir.open to prevent any BzrDir
+  that is not inside the backing transport from being opened.  See the
+  module documentation for ``bzrlib.smart.request`` for details.
+  (Andrew Bennetts, Robert Collins)
 
 Testing
 *******
@@ -144,6 +171,9 @@ Testing
   forget to upcall when overriding ``setUp`` and ``tearDown``.  Those
   faulty tests were not properly isolated.
   (Andrew Bennetts, Robert Collins)
+
+* Fix test_msgeditor.MsgEditorTest test isolation.
+  (Vincent Ladeuil, #347130)
 
 * ``medusa`` is not used anymore as an FTP test server starting with
   python2.6. A new FTP test server based on ``pyftplib`` can be used
@@ -157,6 +187,18 @@ Internals
 * ``BtreeIndex._spill_mem_keys_to_disk()`` now generates disk index with
   optmizations turned off. This only has effect when processing > 100,000
   keys during something like ``bzr pack``. (John Arbash Meinel)
+
+* ``bzr selftest`` now accepts ``--subunit`` to run in subunit output
+  mode. Requires ``lp:subunit`` installed to work, but is not a hard
+  dependency. (Robert Collins)
+
+* ``BzrDir.open_branch`` now takes an optional ``ignore_fallbacks``
+  parameter for controlling opening of stacked branches.
+  (Andrew Bennetts, Robert Collins)
+  
+* ``CommitBuilder`` has a new method, ``record_iter_changes`` which works
+  in terms of an iter_changes iterator rather than full tree scanning.
+  (Robert Collins)
 
 * ``DirState`` can now be passed a custom ``SHA1Provider`` object
   enabling it to store the SHA1 and stat of the canonical (post
@@ -177,15 +219,14 @@ Internals
   ``InterPackToRemotePack`` classes, as they are now unnecessary.
   (Andrew Bennetts)
 
-* ``bzr selftest`` now accepts ``--subunit`` to run in subunit output
-  mode. Requires ``lp:subunit`` installed to work, but is not a hard
-  dependency. (Robert Collins)
+* ``RepositoryFormat`` as a new attribute ``fast_deltas`` to indicate
+  whether the repository can efficiently generate deltas between trees
+  regardless of tree size. (Robert Collins)
 
 * ``_walk_to_common_revisions`` will now batch up at least 50
   revisions before calling ``get_parent_map`` on the target,
   regardless of ``InterRepository``.
   (Andrew Bennetts, Robert Collins)
-
 
 bzr 1.13
 ########
@@ -193,11 +234,31 @@ bzr 1.13
 :Codename: paraskavedekatriaphobia
 :1.13: 2009-03-14
 :1.13rc1: 2009-03-10
+:1.13.1: 2009-03-23
 
-This release includes bug fixes and a few performance and feature improvements.
-GNU Changelog output can now be produced by ``bzr log --gnu-changelog``.
-Debug flags can now be set in ``~/.bazaar/bazaar.conf``.  Lightweight checkouts
-and stacked branches should both be much faster over remote connections.
+GNU Changelog output can now be produced by ``bzr log --gnu-changelog``.  Debug
+flags can now be set in ``~/.bazaar/bazaar.conf``.  Lightweight checkouts and
+stacked branches should both be much faster over remote connections.  
+
+Changes From 1.13 to 1.13.1
+***************************
+A couple regessions where found in the 1.13 release. The pyrex-generated C
+extensions are missing from the .tar.gz and .zip files.  Documentation on how
+to generate GNU ChangeLogs is wrong.
+
+Bug Fixes
+*********
+
+* Change ``./bzr``'s ``_script_version`` to match ./bzrlib/__init__.py
+  version_info. (Bob Tanner, Martin Pool, #345232)
+
+* Distribution archives for 1.13 do not contain generated C extension modules
+  (Jean-Francois Roy, Bob Tanner, #344465)
+
+* GNU ChangeLog output can now be produced by bzr log --format gnu-changelog is
+  incorrect (Deejay, Bob Tanner, Martin Pool, Robert Collins, #343928)
+
+* ``merge --force`` works again. (Robert Collins, #342105)
 
 Changes From RC1 to Final
 *************************
@@ -305,6 +366,9 @@ Improvements
 Bug Fixes
 *********
 
+* Allows ``bzr log <FILE>`` to be called in an empty branch without
+  backtracing. (Vincent Ladeuil, #346431)
+
 * Bazaar now gives a better message including the filename if it's
   unable to read a file in the working directory, for example because
   of a permission error.  (Martin Pool, #338653)
@@ -359,8 +423,7 @@ Bug Fixes
 
 * Under rare circumstances (aka nobody reported a bug about it), the ftp
   transport could revert to ascii mode. It now stays in binary mode except
-  when needed.
-  (Vincent Ladeuil)
+  when needed.  (Vincent Ladeuil)
 
 * Unshelve does not generate warnings about progress bars.
   (Aaron Bentley, #328148)

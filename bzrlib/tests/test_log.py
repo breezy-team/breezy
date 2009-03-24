@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
 from cStringIO import StringIO
@@ -1498,6 +1498,14 @@ class TestGetRevisionsTouchingFileID(tests.TestCaseWithTransport):
         tree.commit('commit with a ghost', rev_id='XX')
         self.assertAllRevisionsForFileID(tree, 'f1-id', ['XX', 'B', 'A'])
         self.assertAllRevisionsForFileID(tree, 'f2-id', ['D', 'C', 'A'])
+
+    def test_unknown_file_id(self):
+        tree = self.create_tree_with_single_merge()
+        self.assertAllRevisionsForFileID(tree, 'unknown', [])
+
+    def test_empty_branch_unknown_file_id(self):
+        tree = self.make_branch_and_tree('tree')
+        self.assertAllRevisionsForFileID(tree, 'unknown', [])
 
 
 class TestShowChangedRevisions(tests.TestCaseWithTransport):

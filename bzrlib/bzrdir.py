@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """BzrDir logic. The BzrDir is the basic control directory used by bzr.
 
@@ -838,7 +838,7 @@ class BzrDir(object):
         BzrDir._check_supported(format, _unsupported)
         return format.open(transport, _found=True)
 
-    def open_branch(self, unsupported=False):
+    def open_branch(self, unsupported=False, ignore_fallbacks=False):
         """Open the branch object at this BzrDir if one is present.
 
         If unsupported is True, then no longer supported branch formats can
@@ -1019,7 +1019,7 @@ class BzrDir(object):
         result_format = self._format.__class__()
         try:
             try:
-                branch = self.open_branch()
+                branch = self.open_branch(ignore_fallbacks=True)
                 source_repository = branch.repository
                 result_format._branch_format = branch._format
             except errors.NotBranchError:
@@ -1358,7 +1358,7 @@ class BzrDirPreSplitOut(BzrDir):
             format = BzrDirFormat.get_default_format()
         return not isinstance(self._format, format.__class__)
 
-    def open_branch(self, unsupported=False):
+    def open_branch(self, unsupported=False, ignore_fallbacks=False):
         """See BzrDir.open_branch."""
         from bzrlib.branch import BzrBranchFormat4
         format = BzrBranchFormat4()
@@ -1609,11 +1609,11 @@ class BzrDirMeta1(BzrDir):
             pass
         return False
 
-    def open_branch(self, unsupported=False):
+    def open_branch(self, unsupported=False, ignore_fallbacks=False):
         """See BzrDir.open_branch."""
         format = self.find_branch_format()
         self._check_supported(format, unsupported)
-        return format.open(self, _found=True)
+        return format.open(self, _found=True, ignore_fallbacks=ignore_fallbacks)
 
     def open_repository(self, unsupported=False):
         """See BzrDir.open_repository."""
@@ -2469,11 +2469,6 @@ class ConvertBzrDir4To5(Converter):
             in heads)
         self.snapshot_ie(previous_entries, ie, w, rev_id)
         del ie.text_id
-
-    @symbol_versioning.deprecated_method(symbol_versioning.one_one)
-    def get_parents(self, revision_ids):
-        for revision_id in revision_ids:
-            yield self.revisions[revision_id].parent_ids
 
     def get_parent_map(self, revision_ids):
         """See graph._StackedParentsProvider.get_parent_map"""
