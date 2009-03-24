@@ -828,7 +828,7 @@ class RemoteRepository(_RpcHelper):
         if not self._lock_mode:
             self._lock_mode = 'r'
             self._lock_count = 1
-            self._unstacked_provider.enable_cache(cache_misses=False)
+            self._unstacked_provider.enable_cache(cache_misses=True)
             if self._real_repository is not None:
                 self._real_repository.lock_read()
         else:

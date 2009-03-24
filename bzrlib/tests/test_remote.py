@@ -1623,6 +1623,31 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
             errors.UnexpectedSmartServerResponse,
             repo.get_parent_map, ['a-revision-id'])
 
+    def test_get_parent_map_negative_caches_missing_keys(self):
+        self.setup_smart_server_with_call_log()
+        repo = self.make_repository('foo')
+        self.assertIsInstance(repo, RemoteRepository)
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        self.reset_smart_call_log()
+        graph = repo.get_graph()
+        self.assertEqual({},
+            graph.get_parent_map(['some-missing', 'other-missing']))
+        self.assertLength(1, self.hpss_calls)
+        # No call if we repeat this
+        self.reset_smart_call_log()
+        graph = repo.get_graph()
+        self.assertEqual({},
+            graph.get_parent_map(['some-missing', 'other-missing']))
+        self.assertLength(0, self.hpss_calls)
+        # Asking for more unknown keys makes a request.
+        self.reset_smart_call_log()
+        graph = repo.get_graph()
+        self.assertEqual({},
+            graph.get_parent_map(['some-missing', 'other-missing',
+                'more-missing']))
+        self.assertLength(1, self.hpss_calls)
+
 
 class TestGetParentMapAllowsNew(tests.TestCaseWithTransport):
 

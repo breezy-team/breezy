@@ -1385,6 +1385,12 @@ class TestFindMergeOrder(TestGraphBase):
 
 
 class TestCachingParentsProvider(tests.TestCase):
+    """These tests run with:
+
+    self.inst_pp, a recording parents provider with a graph of a->b, and b is a
+    ghost.
+    self.caching_pp, a CachingParentsProvider layered on inst_pp.
+    """
 
     def setUp(self):
         super(TestCachingParentsProvider, self).setUp()
@@ -1409,7 +1415,6 @@ class TestCachingParentsProvider(tests.TestCase):
         self.assertEqual({}, self.caching_pp.get_parent_map(['b']))
         # No new calls
         self.assertEqual(['b'], self.inst_pp.calls)
-        self.assertEqual({'b':None}, self.caching_pp._cache)
 
     def test_get_parent_map_mixed(self):
         """Anything that can be returned from cache, should be"""
