@@ -101,7 +101,7 @@ Bug Fixes
 * ``merge --force`` works again. (Robert Collins, #342105)
 
 * No more warnings are issued about ``sha`` being deprecated under python-2.6.
-  (Vincent Ladeuil, #345593)
+  (Vincent Ladeuil, #346593)
 
 * Pushing a new branch to a server that has a stacking policy will now
   upgrade from the local branch format when the stacking policy points at
