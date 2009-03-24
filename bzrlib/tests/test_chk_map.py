@@ -1533,6 +1533,8 @@ class TestInternalNode(TestCaseWithStore):
         child.map(None, ("bar",), "baz")
         node.add_node("b", child)
 
+        # foo and bar both match exactly one leaf node, but 'cat' should not
+        # match any, and should not be placed in one.
         key_filter = (('foo',), ('bar',), ('cat',))
         for child, node_key_filter in node._iter_nodes(None,
                                                        key_filter=key_filter):
