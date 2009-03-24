@@ -588,7 +588,11 @@ def _make_search_filter(branch, generate_delta, search, log_rev_iterator):
     if search is None:
         return log_rev_iterator
     # Compile the search now to get early errors.
-    searchRE = re.compile(search, re.IGNORECASE)
+    try:
+        searchRE = re.compile(search, re.IGNORECASE) 
+        searchRE.search("")
+    except:
+        raise errors.BzrCommandError('Invalid regular expression')
     return _filter_message_re(searchRE, log_rev_iterator)
 
 
