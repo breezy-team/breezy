@@ -64,6 +64,10 @@ Improvements
 * Progress bars now show the rate of network activity for
   ``bzr+ssh://`` and ``bzr://`` connections.  (Andrew Bennetts)
 
+* Pushing to a stacked pack-format branch on a 1.12 or older smart server
+  now takes many less round trips.  (Andrew Bennetts, Robert Collins,
+  #294479)
+  
 * Streaming push can be done to older repository formats.  This is
   implemented using a new ``Repository.insert_stream_locked`` RPC.
   (Andrew Bennetts, Robert Collins)
