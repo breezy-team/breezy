@@ -43,7 +43,6 @@ from bzrlib.knit import (
     KnitAnnotateFactory,
     KnitPlainFactory,
     )
-from bzrlib.symbol_versioning import one_four, one_five
 from bzrlib.tests import (
     TestCase,
     TestCaseWithMemoryTransport,

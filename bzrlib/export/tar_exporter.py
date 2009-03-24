@@ -18,16 +18,21 @@
 """
 
 import os
+import StringIO
 import sys
 import tarfile
 import time
 
 from bzrlib import errors, export, osutils
 from bzrlib.export import _export_iter_entries
+from bzrlib.filters import (
+    ContentFilterContext,
+    filtered_output_bytes,
+    )
 from bzrlib.trace import mutter
 
 
-def tar_exporter(tree, dest, root, subdir, compression=None):
+def tar_exporter(tree, dest, root, subdir, compression=None, filtered=False):
     """Export this tree to a new tar file.
 
     `dest` will be created holding the contents of this tree; if it
@@ -54,8 +59,17 @@ def tar_exporter(tree, dest, root, subdir, compression=None):
                 item.mode = 0755
             else:
                 item.mode = 0644
-            item.size = ie.text_size
-            fileobj = tree.get_file(ie.file_id)
+            if filtered:
+                chunks = tree.get_file_lines(ie.file_id)
+                filters = tree._content_filter_stack(dp)
+                context = ContentFilterContext(dp, tree, ie)
+                contents = filtered_output_bytes(chunks, filters, context)
+                content = ''.join(contents)
+                item.size = len(content)
+                fileobj = StringIO.StringIO(content)
+            else:
+                item.size = ie.text_size
+                fileobj = tree.get_file(ie.file_id)
         elif ie.kind == "directory":
             item.type = tarfile.DIRTYPE
             item.name += '/'
@@ -75,9 +89,9 @@ def tar_exporter(tree, dest, root, subdir, compression=None):
     ball.close()
 
 
-def tgz_exporter(tree, dest, root, subdir):
-    tar_exporter(tree, dest, root, subdir, compression='gz')
+def tgz_exporter(tree, dest, root, subdir, filtered=False):
+    tar_exporter(tree, dest, root, subdir, compression='gz', filtered=filtered)
 
 
-def tbz_exporter(tree, dest, root, subdir):
-    tar_exporter(tree, dest, root, subdir, compression='bz2')
+def tbz_exporter(tree, dest, root, subdir, filtered=False):
+    tar_exporter(tree, dest, root, subdir, compression='bz2', filtered=filtered)

@@ -34,7 +34,9 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.smart import client, medium
-from bzrlib.symbol_versioning import (deprecated_method, one_four)
+from bzrlib.symbol_versioning import (
+    deprecated_method,
+    )
 
 
 class _SmartStat(object):
@@ -165,10 +167,6 @@ class RemoteTransport(transport.ConnectedTransport):
 
     def get_smart_medium(self):
         return self._get_connection()
-
-    @deprecated_method(one_four)
-    def get_shared_medium(self):
-        return self._get_shared_connection()
 
     def _remote_path(self, relpath):
         """Returns the Unicode version of the absolute path for relpath."""

@@ -431,12 +431,95 @@ class TestBTreeBuilder(BTreeTestCase):
         self.assertEqual(sorted(nodes), nodes)
         self.assertEqual(16, len(nodes))
 
+    def test_spill_index_stress_1_1_no_combine(self):
+        builder = btree_index.BTreeBuilder(key_elements=1, spill_at=2)
+        builder.set_optimize(for_size=False, combine_backing_indices=False)
+        nodes = [node[0:2] for node in self.make_nodes(16, 1, 0)]
+        builder.add_node(*nodes[0])
+        # Test the parts of the index that take up memory are doing so
+        # predictably.
+        self.assertEqual(1, len(builder._nodes))
+        self.assertEqual(1, len(builder._keys))
+        self.assertIs(None, builder._nodes_by_key)
+        builder.add_node(*nodes[1])
+        self.assertEqual(0, len(builder._nodes))
+        self.assertEqual(0, len(builder._keys))
+        self.assertIs(None, builder._nodes_by_key)
+        self.assertEqual(1, len(builder._backing_indices))
+        self.assertEqual(2, builder._backing_indices[0].key_count())
+        # now back to memory
+        builder.add_node(*nodes[2])
+        self.assertEqual(1, len(builder._nodes))
+        self.assertEqual(1, len(builder._keys))
+        self.assertIs(None, builder._nodes_by_key)
+        # And spills to a second backing index but doesn't combine
+        builder.add_node(*nodes[3])
+        self.assertEqual(0, len(builder._nodes))
+        self.assertEqual(0, len(builder._keys))
+        self.assertIs(None, builder._nodes_by_key)
+        self.assertEqual(2, len(builder._backing_indices))
+        for backing_index in builder._backing_indices:
+            self.assertEqual(2, backing_index.key_count())
+        # The next spills to the 3rd slot
+        builder.add_node(*nodes[4])
+        builder.add_node(*nodes[5])
+        self.assertEqual(0, len(builder._nodes))
+        self.assertEqual(0, len(builder._keys))
+        self.assertIs(None, builder._nodes_by_key)
+        self.assertEqual(3, len(builder._backing_indices))
+        for backing_index in builder._backing_indices:
+            self.assertEqual(2, backing_index.key_count())
+        # Now spill a few more, and check that we don't combine
+        builder.add_node(*nodes[6])
+        builder.add_node(*nodes[7])
+        builder.add_node(*nodes[8])
+        builder.add_node(*nodes[9])
+        builder.add_node(*nodes[10])
+        builder.add_node(*nodes[11])
+        builder.add_node(*nodes[12])
+        self.assertEqual(6, len(builder._backing_indices))
+        for backing_index in builder._backing_indices:
+            self.assertEqual(2, backing_index.key_count())
+        # Test that memory and disk are both used for query methods; and that
+        # None is skipped over happily.
+        self.assertEqual([(builder,) + node for node in sorted(nodes[:13])],
+            list(builder.iter_all_entries()))
+        # Two nodes - one memory one disk
+        self.assertEqual(set([(builder,) + node for node in nodes[11:13]]),
+            set(builder.iter_entries([nodes[12][0], nodes[11][0]])))
+        self.assertEqual(13, builder.key_count())
+        self.assertEqual(set([(builder,) + node for node in nodes[11:13]]),
+            set(builder.iter_entries_prefix([nodes[12][0], nodes[11][0]])))
+        builder.add_node(*nodes[13])
+        builder.add_node(*nodes[14])
+        builder.add_node(*nodes[15])
+        self.assertEqual(8, len(builder._backing_indices))
+        for backing_index in builder._backing_indices:
+            self.assertEqual(2, backing_index.key_count())
+        # Now finish, and check we got a correctly ordered tree
+        transport = self.get_transport('')
+        size = transport.put_file('index', builder.finish())
+        index = btree_index.BTreeGraphIndex(transport, 'index', size)
+        nodes = list(index.iter_all_entries())
+        self.assertEqual(sorted(nodes), nodes)
+        self.assertEqual(16, len(nodes))
+
     def test_set_optimize(self):
         builder = btree_index.BTreeBuilder(key_elements=2, reference_lists=2)
         builder.set_optimize(for_size=True)
         self.assertTrue(builder._optimize_for_size)
         builder.set_optimize(for_size=False)
         self.assertFalse(builder._optimize_for_size)
+        # test that we can set combine_backing_indices without effecting
+        # _optimize_for_size
+        obj = object()
+        builder._optimize_for_size = obj
+        builder.set_optimize(combine_backing_indices=False)
+        self.assertFalse(builder._combine_backing_indices)
+        self.assertIs(obj, builder._optimize_for_size)
+        builder.set_optimize(combine_backing_indices=True)
+        self.assertTrue(builder._combine_backing_indices)
+        self.assertIs(obj, builder._optimize_for_size)
 
     def test_spill_index_stress_2_2(self):
         # test that references and longer keys don't confuse things.

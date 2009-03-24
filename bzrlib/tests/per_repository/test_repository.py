@@ -39,7 +39,6 @@ from bzrlib.repofmt.weaverepo import (
     )
 from bzrlib.revision import NULL_REVISION, Revision
 from bzrlib.smart import server
-from bzrlib.symbol_versioning import one_two, one_three, one_four
 from bzrlib.tests import (
     KnownFailure,
     TestCaseWithTransport,
@@ -77,6 +76,12 @@ class TestRepository(TestCaseWithRepository):
         tree = self.make_branch_and_tree('tree')
         repo = tree.branch.repository
         self.assertTrue(repo._format._fetch_uses_deltas in (True, False))
+
+    def test_attribute_fast_deltas(self):
+        """Test the format.fast_deltas attribute."""
+        tree = self.make_branch_and_tree('tree')
+        repo = tree.branch.repository
+        self.assertTrue(repo._format.fast_deltas in (True, False))
 
     def test_attribute__fetch_reconcile(self):
         """Test the the _fetch_reconcile attribute."""
@@ -385,6 +390,54 @@ class TestRepository(TestCaseWithRepository):
         delta = tree_a.branch.repository.get_revision_delta('rev2')
         self.assertIsInstance(delta, TreeDelta)
         self.assertEqual([('vla', 'file2', 'file')], delta.added)
+
+    def test_get_revision_delta_filtered(self):
+        tree_a = self.make_branch_and_tree('a')
+        self.build_tree(['a/foo', 'a/bar/', 'a/bar/b1', 'a/bar/b2', 'a/baz'])
+        tree_a.add(['foo', 'bar', 'bar/b1', 'bar/b2', 'baz'],
+                   ['foo-id', 'bar-id', 'b1-id', 'b2-id', 'baz-id'])
+        tree_a.commit('rev1', rev_id='rev1')
+        self.build_tree(['a/bar/b3'])
+        tree_a.add('bar/b3', 'b3-id')
+        tree_a.commit('rev2', rev_id='rev2')
+
+        # Test multiple files
+        delta = tree_a.branch.repository.get_revision_delta('rev1',
+            specific_fileids=['foo-id', 'baz-id'])
+        self.assertIsInstance(delta, TreeDelta)
+        self.assertEqual([
+            ('baz', 'baz-id', 'file'),
+            ('foo', 'foo-id', 'file'),
+            ], delta.added)
+        # Test a directory
+        delta = tree_a.branch.repository.get_revision_delta('rev1',
+            specific_fileids=['bar-id'])
+        self.assertIsInstance(delta, TreeDelta)
+        self.assertEqual([
+            ('bar', 'bar-id', 'directory'),
+            ('bar/b1', 'b1-id', 'file'),
+            ('bar/b2', 'b2-id', 'file'),
+            ], delta.added)
+        # Test a file in a directory
+        delta = tree_a.branch.repository.get_revision_delta('rev1',
+            specific_fileids=['b2-id'])
+        self.assertIsInstance(delta, TreeDelta)
+        self.assertEqual([
+            ('bar', 'bar-id', 'directory'),
+            ('bar/b2', 'b2-id', 'file'),
+            ], delta.added)
+        # Try another revision
+        delta = tree_a.branch.repository.get_revision_delta('rev2',
+                specific_fileids=['b3-id'])
+        self.assertIsInstance(delta, TreeDelta)
+        self.assertEqual([
+            ('bar', 'bar-id', 'directory'),
+            ('bar/b3', 'b3-id', 'file'),
+            ], delta.added)
+        delta = tree_a.branch.repository.get_revision_delta('rev2',
+                specific_fileids=['foo-id'])
+        self.assertIsInstance(delta, TreeDelta)
+        self.assertEqual([], delta.added)
 
     def test_clone_bzrdir_repository_revision(self):
         # make a repository with some revisions,

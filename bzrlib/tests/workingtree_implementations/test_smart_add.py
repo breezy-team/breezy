@@ -175,6 +175,16 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
             self.assertEqual(None, wt.path2id(path.rstrip('/')),
                     'Accidentally added path: %s' % (path,))
 
+    def test_add_file_in_unknown_dir(self):
+        # Test that parent directory addition is implicit
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['dir/', 'dir/subdir/', 'dir/subdir/foo'])
+        tree.smart_add(['dir/subdir/foo'])
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertEqual(['', 'dir', 'dir/subdir', 'dir/subdir/foo'],
+            [path for path, ie in tree.iter_entries_by_dir()])
+
     def test_custom_ids(self):
         sio = StringIO()
         action = AddCustomIDAction(to_file=sio, should_print=True)

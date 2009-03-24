@@ -600,24 +600,6 @@ class Graph(object):
                                  all_unique_searcher._iterations)
             unique_tip_searchers = next_unique_searchers
 
-    @symbol_versioning.deprecated_method(symbol_versioning.one_one)
-    def get_parents(self, revisions):
-        """Find revision ids of the parents of a list of revisions
-
-        A list is returned of the same length as the input.  Each entry
-        is a list of parent ids for the corresponding input revision.
-
-        [NULL_REVISION] is used as the parent of the first user-committed
-        revision.  Its parent list is empty.
-
-        If the revision is not present (i.e. a ghost), None is used in place
-        of the list of parents.
-
-        Deprecated in bzr 1.2 - please see get_parent_map.
-        """
-        parents = self.get_parent_map(revisions)
-        return [parents.get(r, None) for r in revisions]
-
     def get_parent_map(self, revisions):
         """Get a map of key:parent_list for revisions.
 

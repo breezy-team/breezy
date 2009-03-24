@@ -27,7 +27,6 @@ from bzrlib.inventory import Inventory
 import bzrlib.repofmt.weaverepo as weaverepo
 import bzrlib.repository as repository
 from bzrlib.revision import NULL_REVISION, Revision
-from bzrlib.symbol_versioning import one_two
 from bzrlib.tests import (
     TestCase,
     TestCaseWithTransport,
@@ -114,19 +113,6 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         tree_a.branch.repository.sign_revision('rev2', bzrlib.gpg.LoopbackGPGStrategy(None))
         tree_a.branch.repository.commit_write_group()
         tree_a.branch.repository.unlock()
-
-    def test_missing_revision_ids_is_deprecated(self):
-        repo_b = self.make_to_repository('rev1_only')
-        repo_a = self.bzrdir.open_repository()
-        repo_b.fetch(repo_a, 'rev1')
-        # check the test will be valid
-        self.assertFalse(repo_b.has_revision('rev2'))
-        self.assertEqual(['rev2'],
-            self.applyDeprecated(one_two, repo_b.missing_revision_ids, repo_a))
-        inter = repository.InterRepository.get(repo_a, repo_b)
-        self.assertEqual(['rev2'],
-            self.applyDeprecated(one_two, inter.missing_revision_ids, None,
-                True))
 
     def test_search_missing_revision_ids(self):
         # revision ids in repository A but not B are returned, fake ones

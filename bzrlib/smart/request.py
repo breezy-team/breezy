@@ -14,17 +14,22 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Basic server-side logic for dealing with requests.
+"""Infrastructure for server-side request handlers.
 
-**XXX**:
-
-The class names are a little confusing: the protocol will instantiate a
-SmartServerRequestHandler, whose dispatch_command method creates an instance of
-a SmartServerRequest subclass.
-
-The request_handlers registry tracks SmartServerRequest classes (rather than
-SmartServerRequestHandler).
+Interesting module attributes:
+    * The request_handlers registry maps verb names to SmartServerRequest
+      classes.
+    * The jail_info threading.local() object is used to prevent accidental
+      opening of BzrDirs outside of the backing transport, or any other
+      transports placed in jail_info.transports.  The jail_info is reset on
+      every call into a request handler (which can happen an arbitrary number
+      of times during a request).
 """
+
+# XXX: The class names are a little confusing: the protocol will instantiate a
+# SmartServerRequestHandler, whose dispatch_command method creates an instance
+# of a SmartServerRequest subclass.
+
 
 import tempfile
 import threading

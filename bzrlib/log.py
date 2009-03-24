@@ -954,6 +954,7 @@ def _filter_revisions_touching_file_id(branch, file_id, view_revisions,
     # Lookup all possible text keys to determine which ones actually modified
     # the file.
     text_keys = [(file_id, rev_id) for rev_id, revno, depth in view_revisions]
+    next_keys = None
     # Looking up keys in batches of 1000 can cut the time in half, as well as
     # memory consumption. GraphIndex *does* like to look for a few keys in
     # parallel, it just doesn't like looking for *lots* of keys in parallel.

@@ -99,6 +99,7 @@ class GraphIndexBuilder(object):
         self._nodes_by_key = None
         self._key_length = key_elements
         self._optimize_for_size = False
+        self._combine_backing_indices = True
 
     def _check_key(self, key):
         """Raise BadIndexKey if key is not a valid key for this index."""
@@ -315,16 +316,23 @@ class GraphIndexBuilder(object):
                 (len(result.getvalue()), expected_bytes))
         return result
 
-    def set_optimize(self, for_size=True):
+    def set_optimize(self, for_size=None, combine_backing_indices=None):
         """Change how the builder tries to optimize the result.
 
         :param for_size: Tell the builder to try and make the index as small as
             possible.
+        :param combine_backing_indices: If the builder spills to disk to save
+            memory, should the on-disk indices be combined. Set to True if you
+            are going to be probing the index, but to False if you are not. (If
+            you are not querying, then the time spent combining is wasted.)
         :return: None
         """
         # GraphIndexBuilder itself doesn't pay attention to the flag yet, but
         # other builders do.
-        self._optimize_for_size = for_size
+        if for_size is not None:
+            self._optimize_for_size = for_size
+        if combine_backing_indices is not None:
+            self._combine_backing_indices = combine_backing_indices
 
 
 class GraphIndex(object):
@@ -1182,23 +1190,6 @@ class CombinedGraphIndex(object):
         return "%s(%s)" % (
                 self.__class__.__name__,
                 ', '.join(map(repr, self._indices)))
-
-    @symbol_versioning.deprecated_method(symbol_versioning.one_one)
-    def get_parents(self, revision_ids):
-        """See graph._StackedParentsProvider.get_parents.
-
-        This implementation thunks the graph.Graph.get_parents api across to
-        GraphIndex.
-
-        :param revision_ids: An iterable of graph keys for this graph.
-        :return: A list of parent details for each key in revision_ids.
-            Each parent details will be one of:
-             * None when the key was missing
-             * (NULL_REVISION,) when the key has no parents.
-             * (parent_key, parent_key...) otherwise.
-        """
-        parent_map = self.get_parent_map(revision_ids)
-        return [parent_map.get(r, None) for r in revision_ids]
 
     def get_parent_map(self, keys):
         """See graph._StackedParentsProvider.get_parent_map"""
