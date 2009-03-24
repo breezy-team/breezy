@@ -112,12 +112,13 @@ class SMTPConnection(object):
                 'smtp', self._smtp_server, self._smtp_username)
 
         # smtplib requires that the username and password be byte
-        # strings (and the relevant RFCs don't seem to address
-        # character encoding for usernames and passwords).
+        # strings.  The CRAM-MD5 spec doesn't give any guidance on
+        # encodings, but the SASL PLAIN says UTF-8, so that's what
+        # we'll use.
         if isinstance(self._smtp_username, unicode):
-            self._smtp_username = self._smtp_username.encode('ascii')
+            self._smtp_username = self._smtp_username.encode('utf-8')
         if isinstance(self._smtp_password, unicode):
-            self._smtp_password = self._smtp_password.encode('ascii')
+            self._smtp_password = self._smtp_password.encode('utf-8')
 
         self._connection.login(self._smtp_username, self._smtp_password)
 

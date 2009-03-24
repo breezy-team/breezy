@@ -164,18 +164,19 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
 
     def test_authenticate_with_byte_strings(self):
         user = 'joe'
-        password = 'hispass'
+        password = 'h\xC3\xACspass'
         factory = WideOpenSMTPFactory()
         conn = self.get_connection(
             '[DEFAULT]\nsmtp_username=%s\nsmtp_password=%s\n'
             % (user, password), smtp_factory=factory)
+        self.assertEqual(u'h\xECspass', conn._smtp_password)
         conn._connect()
         self.assertEqual([('connect', 'localhost'),
                           ('ehlo',),
                           ('has_extn', 'starttls'),
                           ('login', user, password)], factory._calls)
-        smtp_user, smtp_password = factory._calls[-1][1:]
-        self.assertIsInstance(smtp_user, str)
+        smtp_username, smtp_password = factory._calls[-1][1:]
+        self.assertIsInstance(smtp_username, str)
         self.assertIsInstance(smtp_password, str)
 
     def test_create_connection(self):
