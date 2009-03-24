@@ -1459,6 +1459,10 @@ class DirStateWorkingTreeFormat(WorkingTreeFormat3):
                            _control_files=control_files)
 
     def __get_matchingbzrdir(self):
+        return self._get_matchingbzrdir()
+
+    def _get_matchingbzrdir(self):
+        """Overrideable method to get a bzrdir for testing."""
         # please test against something that will let us do tree references
         return bzrdir.format_registry.make_bzrdir(
             'dirstate-with-subtree')

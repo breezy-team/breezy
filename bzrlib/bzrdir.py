@@ -3407,7 +3407,97 @@ format_registry.register_metadir('development2-subtree',
     hidden=True,
     experimental=True,
     )
-# The following format should be an alias for the rich root equivalent 
+format_registry.register_metadir('development5',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment5',
+    help='1.9 with CHK inventories with parent_id index. '
+        'Please read '
+        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+        'before use.',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat5',
+    hidden=True,
+    experimental=True,
+    )
+format_registry.register_metadir('development5-subtree',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment5Subtree',
+    help='1.9-subtree with CHK Inventories with parent_id index. '
+        'Please read '
+        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+        'before use.',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat5',
+    hidden=True,
+    experimental=True,
+    )
+format_registry.register_metadir('development5-hash16',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment5Hash16',
+    help='1.9 with CHK inventories with parent_id index and 16-way hash trie. '
+        'Please read '
+        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+        'before use.',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat5',
+    hidden=True,
+    experimental=True,
+    )
+format_registry.register_metadir('development5-hash255',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment5Hash255',
+    help='1.9 with CHK inventories with parent_id index and 255-way hash trie. '
+        'Please read '
+        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+        'before use.',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat5',
+    hidden=True,
+    experimental=True,
+    )
+# XXX: This format is scheduled for termination
+# format_registry.register_metadir('gc-no-rich-root',
+#     'bzrlib.repofmt.groupcompress_repo.RepositoryFormatPackGCPlain',
+#     help='pack-1.9 with xml inv, group compress '
+#         'Please read '
+#         'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+#         'before use.',
+#     branch_format='bzrlib.branch.BzrBranchFormat7',
+#     tree_format='bzrlib.workingtree.WorkingTreeFormat5',
+#     hidden=False,
+#     experimental=True,
+#     )
+format_registry.register_metadir('gc-chk16',
+    'bzrlib.repofmt.groupcompress_repo.RepositoryFormatPackGCCHK16',
+    help='pack-1.9 with 16-way hashed CHK inv, group compress, rich roots. '
+        'Please read '
+        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+        'before use.',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat5',
+    hidden=False,
+    experimental=True,
+    )
+format_registry.register_metadir('gc-chk255',
+    'bzrlib.repofmt.groupcompress_repo.RepositoryFormatPackGCCHK255',
+    help='pack-1.9 with 255-way hashed CHK inv, group compress, rich roots '
+        'Please read '
+        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+        'before use.',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat5',
+    hidden=False,
+    experimental=True,
+    )
+format_registry.register_metadir('gc-chk255-big',
+    'bzrlib.repofmt.groupcompress_repo.RepositoryFormatPackGCCHK255Big',
+    help='pack-1.9 with 255-way hashed CHK inv, group compress, rich roots '
+        'Please read '
+        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+        'before use.',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat5',
+    hidden=False,
+    experimental=True,
+    )
+
+# The following format should be an alias for the rich root equivalent
 # of the default format
 format_registry.register_metadir('default-rich-root',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack4',

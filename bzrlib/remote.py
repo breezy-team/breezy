@@ -636,6 +636,16 @@ class RemoteRepository(_RpcHelper):
         return self._real_repository.abort_write_group(
             suppress_errors=suppress_errors)
 
+    @property
+    def chk_bytes(self):
+        """Decorate the real repository for now.
+
+        In the long term a full blown network facility is needed to avoid
+        creating a real repository object locally.
+        """
+        self._ensure_real()
+        return self._real_repository.chk_bytes
+
     def commit_write_group(self):
         """Complete a write group on the decorated repository.
 

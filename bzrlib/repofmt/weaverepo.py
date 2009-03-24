@@ -266,6 +266,7 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
     supports_tree_reference = False
     supports_ghosts = False
     supports_external_lookups = False
+    supports_chks = False
     _fetch_order = 'topological'
     _fetch_reconcile = True
     fast_deltas = False
@@ -314,6 +315,7 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
         result.signatures = self._get_signatures(repo_transport, result)
         result.inventories = self._get_inventories(repo_transport, result)
         result.texts = self._get_texts(repo_transport, result)
+        result.chk_bytes = None
         return result
 
     def check_conversion_target(self, target_format):
@@ -474,6 +476,8 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
 
     _versionedfile_class = weave.WeaveFile
     supports_ghosts = False
+    supports_chks = False
+
     _fetch_order = 'topological'
     _fetch_reconcile = True
     fast_deltas = False
@@ -554,6 +558,7 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
         result.signatures = self._get_signatures(repo_transport, result)
         result.inventories = self._get_inventories(repo_transport, result)
         result.texts = self._get_texts(repo_transport, result)
+        result.chk_bytes = None
         result._transport = repo_transport
         return result
 
