@@ -1,6 +1,6 @@
-====================
+********************
 Bazaar Release Notes
-====================
+********************
 
 
 .. contents:: List of Releases
@@ -93,6 +93,9 @@ Bug Fixes
 Documentation
 *************
 
+* Avoid bad text wrapping in generated documentation.
+  (Martin Pool, #249908)
+ 
 * New topic `bzr help debug-flags`.  (Martin Pool)
 
 * The generated manpage now explicitly lists aliases as commands.
