@@ -39,7 +39,6 @@ from bzrlib.repofmt.weaverepo import (
     )
 from bzrlib.revision import NULL_REVISION, Revision
 from bzrlib.smart import server
-from bzrlib.symbol_versioning import one_two, one_three, one_four
 from bzrlib.tests import (
     KnownFailure,
     TestCaseWithTransport,
@@ -77,6 +76,12 @@ class TestRepository(TestCaseWithRepository):
         tree = self.make_branch_and_tree('tree')
         repo = tree.branch.repository
         self.assertTrue(repo._format._fetch_uses_deltas in (True, False))
+
+    def test_attribute_fast_deltas(self):
+        """Test the format.fast_deltas attribute."""
+        tree = self.make_branch_and_tree('tree')
+        repo = tree.branch.repository
+        self.assertTrue(repo._format.fast_deltas in (True, False))
 
     def test_attribute__fetch_reconcile(self):
         """Test the the _fetch_reconcile attribute."""

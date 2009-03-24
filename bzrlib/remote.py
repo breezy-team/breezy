@@ -417,6 +417,11 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
         self._rich_root_data = None
 
     @property
+    def fast_deltas(self):
+        self._ensure_real()
+        return self._custom_format.fast_deltas
+
+    @property
     def rich_root_data(self):
         if self._rich_root_data is None:
             self._ensure_real()
@@ -684,11 +689,6 @@ class RemoteRepository(_RpcHelper):
         """
         self._ensure_real()
         return self._real_repository._generate_text_key_index()
-
-    @symbol_versioning.deprecated_method(symbol_versioning.one_four)
-    def get_revision_graph(self, revision_id=None):
-        """See Repository.get_revision_graph()."""
-        return self._get_revision_graph(revision_id)
 
     def _get_revision_graph(self, revision_id):
         """Private method for using with old (< 1.2) servers to fallback."""
@@ -1188,11 +1188,12 @@ class RemoteRepository(_RpcHelper):
             # We already found out that the server can't understand
             # Repository.get_parent_map requests, so just fetch the whole
             # graph.
-            # XXX: Note that this will issue a deprecation warning. This is ok
-            # :- its because we're working with a deprecated server anyway, and
-            # the user will almost certainly have seen a warning about the
-            # server version already.
-            rg = self.get_revision_graph()
+            #
+            # Note that this reads the whole graph, when only some keys are
+            # wanted.  On this old server there's no way (?) to get them all
+            # in one go, and the user probably will have seen a warning about
+            # the server being old anyhow.
+            rg = self._get_revision_graph(None)
             # There is an api discrepency between get_parent_map and
             # get_revision_graph. Specifically, a "key:()" pair in
             # get_revision_graph just means a node has no parents. For
@@ -1264,7 +1265,8 @@ class RemoteRepository(_RpcHelper):
             # To avoid having to disconnect repeatedly, we keep track of the
             # fact the server doesn't understand remote methods added in 1.2.
             medium._remember_remote_is_before((1, 2))
-            return self.get_revision_graph(None)
+            # Recurse just once and we should use the fallback code.
+            return self._get_parent_map_rpc(keys)
         response_tuple, response_handler = response
         if response_tuple[0] not in ['ok']:
             response_handler.cancel_read_body()
@@ -1289,13 +1291,6 @@ class RemoteRepository(_RpcHelper):
     def get_signature_text(self, revision_id):
         self._ensure_real()
         return self._real_repository.get_signature_text(revision_id)
-
-    @needs_read_lock
-    @symbol_versioning.deprecated_method(symbol_versioning.one_three)
-    def get_revision_graph_with_ghosts(self, revision_ids=None):
-        self._ensure_real()
-        return self._real_repository.get_revision_graph_with_ghosts(
-            revision_ids=revision_ids)
 
     @needs_read_lock
     def get_inventory_xml(self, revision_id):

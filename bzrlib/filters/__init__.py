@@ -210,6 +210,19 @@ def register_filter_stack_map(name, stack_map):
     _filter_stacks_registry.register(name, stack_map)
 
 
+def lazy_register_filter_stack_map(name, module_name, member_name):
+    """Lazily register the filter stacks to use for various preference values.
+
+    :param name: the preference/filter-stack name
+    :param module_name: The python path to the module of the filter stack map.
+    :param member_name: The name of the filter stack map in the module.
+    """
+    if name in _filter_stacks_registry:
+        raise errors.BzrError(
+            "filter stack for %s already installed" % name)
+    _filter_stacks_registry.register_lazy(name, module_name, member_name)
+
+
 def _get_registered_names():
     """Get the list of names with filters registered."""
     # Note: We may want to intelligently order these later.

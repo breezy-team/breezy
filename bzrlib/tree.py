@@ -97,10 +97,6 @@ class Tree(object):
             want_unversioned=want_unversioned,
             )
 
-    @symbol_versioning.deprecated_method(symbol_versioning.one_three)
-    def _iter_changes(self, *args, **kwargs):
-        return self.iter_changes(*args, **kwargs)
-
     def iter_changes(self, from_tree, include_unchanged=False,
                      specific_files=None, pb=None, extra_trees=None,
                      require_versioned=True, want_unversioned=False):
@@ -547,12 +543,6 @@ class Tree(object):
         entry = self.iter_entries_by_dir([file_id]).next()[1]
         for child in getattr(entry, 'children', {}).itervalues():
             yield child.file_id
-
-    @symbol_versioning.deprecated_method(symbol_versioning.one_six)
-    def print_file(self, file_id):
-        """Print file with id `file_id` to stdout."""
-        import sys
-        sys.stdout.write(self.get_file_text(file_id))
 
     def lock_read(self):
         pass

@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -46,11 +46,12 @@ from bzrlib.remote import (
     RemoteBzrDir,
     RemoteBzrDirFormat,
     RemoteRepository,
+    RemoteRepositoryFormat,
     )
+from bzrlib.repofmt import pack_repo
 from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import server, medium
 from bzrlib.smart.client import _SmartClient
-from bzrlib.symbol_versioning import one_four
 from bzrlib.tests import (
     condition_isinstance,
     split_suite_by_condition,
@@ -1450,6 +1451,19 @@ class TestRemoteRepository(TestRemote):
         return repo, client
 
 
+class TestRepositoryFormat(TestRemoteRepository):
+
+    def test_fast_delta(self):
+        true_name = pack_repo.RepositoryFormatPackDevelopment2().network_name()
+        true_format = RemoteRepositoryFormat()
+        true_format._network_name = true_name
+        self.assertEqual(True, true_format.fast_deltas)
+        false_name = pack_repo.RepositoryFormatKnitPack1().network_name()
+        false_format = RemoteRepositoryFormat()
+        false_format._network_name = false_name
+        self.assertEqual(False, false_format.fast_deltas)
+
+
 class TestRepositoryGatherStats(TestRemoteRepository):
 
     def test_revid_none(self):
@@ -1562,16 +1576,12 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
 
     def test_get_parent_map_reconnects_if_unknown_method(self):
         transport_path = 'quack'
-        repo, client = self.setup_fake_client_and_repository(transport_path)
-        client.add_unknown_method_response('Repository,get_parent_map')
-        client.add_success_response_with_body('', 'ok')
-        self.assertFalse(client._medium._is_remote_before((1, 2)))
         rev_id = 'revision-id'
-        expected_deprecations = [
-            'bzrlib.remote.RemoteRepository.get_revision_graph was deprecated '
-            'in version 1.4.']
-        parents = self.callDeprecated(
-            expected_deprecations, repo.get_parent_map, [rev_id])
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_unknown_method_response('Repository.get_parent_map')
+        client.add_success_response_with_body(rev_id, 'ok')
+        self.assertFalse(client._medium._is_remote_before((1, 2)))
+        parents = repo.get_parent_map([rev_id])
         self.assertEqual(
             [('call_with_body_bytes_expecting_body',
               'Repository.get_parent_map', ('quack/', rev_id), '\n\n0'),
@@ -1581,6 +1591,7 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
             client._calls)
         # The medium is now marked as being connected to an older server
         self.assertTrue(client._medium._is_remote_before((1, 2)))
+        self.assertEqual({rev_id: ('null:',)}, parents)
 
     def test_get_parent_map_fallback_parentless_node(self):
         """get_parent_map falls back to get_revision_graph on old servers.  The
@@ -1598,11 +1609,7 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_success_response_with_body(rev_id, 'ok')
         client._medium._remember_remote_is_before((1, 2))
-        expected_deprecations = [
-            'bzrlib.remote.RemoteRepository.get_revision_graph was deprecated '
-            'in version 1.4.']
-        parents = self.callDeprecated(
-            expected_deprecations, repo.get_parent_map, [rev_id])
+        parents = repo.get_parent_map([rev_id])
         self.assertEqual(
             [('call_expecting_body', 'Repository.get_revision_graph',
              ('quack/', ''))],
@@ -1645,8 +1652,9 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
         transport_path = 'empty'
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_success_response('notused')
-        result = self.applyDeprecated(one_four, repo.get_revision_graph,
-            NULL_REVISION)
+        # actual RemoteRepository.get_revision_graph is gone, but there's an
+        # equivalent private method for testing
+        result = repo._get_revision_graph(NULL_REVISION)
         self.assertEqual([], client._calls)
         self.assertEqual({}, result)
 
@@ -1660,7 +1668,9 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
         transport_path = 'sinhala'
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_success_response_with_body(encoded_body, 'ok')
-        result = self.applyDeprecated(one_four, repo.get_revision_graph)
+        # actual RemoteRepository.get_revision_graph is gone, but there's an
+        # equivalent private method for testing
+        result = repo._get_revision_graph(None)
         self.assertEqual(
             [('call_expecting_body', 'Repository.get_revision_graph',
              ('sinhala/', ''))],
@@ -1679,7 +1689,7 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
         transport_path = 'sinhala'
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_success_response_with_body(encoded_body, 'ok')
-        result = self.applyDeprecated(one_four, repo.get_revision_graph, r2)
+        result = repo._get_revision_graph(r2)
         self.assertEqual(
             [('call_expecting_body', 'Repository.get_revision_graph',
              ('sinhala/', r2))],
@@ -1693,7 +1703,7 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
         client.add_error_response('nosuchrevision', revid)
         # also check that the right revision is reported in the error
         self.assertRaises(errors.NoSuchRevision,
-            self.applyDeprecated, one_four, repo.get_revision_graph, revid)
+            repo._get_revision_graph, revid)
         self.assertEqual(
             [('call_expecting_body', 'Repository.get_revision_graph',
              ('sinhala/', revid))],
@@ -1705,7 +1715,7 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_error_response('AnUnexpectedError')
         e = self.assertRaises(errors.UnknownErrorFromSmartServer,
-            self.applyDeprecated, one_four, repo.get_revision_graph, revid)
+            repo._get_revision_graph, revid)
         self.assertEqual(('AnUnexpectedError',), e.error_tuple)
 
 

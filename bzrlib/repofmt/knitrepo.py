@@ -53,12 +53,6 @@ class _KnitParentsProvider(object):
     def __repr__(self):
         return 'KnitParentsProvider(%r)' % self._knit
 
-    @symbol_versioning.deprecated_method(symbol_versioning.one_one)
-    def get_parents(self, revision_ids):
-        """See graph._StackedParentsProvider.get_parents"""
-        parent_map = self.get_parent_map(revision_ids)
-        return [parent_map.get(r, None) for r in revision_ids]
-
     def get_parent_map(self, keys):
         """See graph._StackedParentsProvider.get_parent_map"""
         parent_map = {}
@@ -299,6 +293,7 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
     supports_external_lookups = False
     _fetch_order = 'topological'
     _fetch_uses_deltas = True
+    fast_deltas = False
 
     def _get_inventories(self, repo_transport, repo, name='inventory'):
         mapper = versionedfile.ConstantMapper(name)
