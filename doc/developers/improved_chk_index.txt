@@ -3,7 +3,7 @@ CHK Optimized index
 ===================
 
 Our current btree style index is nice as a general index, but it is not optimal
-for Content-Hask-Key based content. With CHK, the keys themselves are hashes,
+for Content-Hash-Key based content. With CHK, the keys themselves are hashes,
 which means they are randomly distributed (similar keys do not refer to
 similar content), and they do not compress well. However, we can create an
 index which takes advantage of these abilites, rather than suffering from
@@ -296,7 +296,7 @@ Scaling up
 ----------
 
 We have said we want to be able to scale to a tree with 1M files and 1M
-commits. With a 255-way fan out for chk pages, you need a 2 internal nodes,
+commits. With a 255-way fan out for chk pages, you need 2 internal nodes,
 and a leaf node with 16 items. (You maintain 2 internal nodes up until 16.5M
 nodes, when you get another internal node, and your leaf nodes shrink down to
 1 again.) If we assume every commit averages 10 changes (large, but possible,
@@ -321,7 +321,7 @@ As a point of reference, one of the largest projects today OOo, has only 170k
 revisions, and something less than 100k files (and probably 4-5 changes per
 commit, but their history has very few merges, being a conversion from CVS).
 At 100k files, they are probably just starting to hit 2-internal nodes, so
-they would end up with 10 pages per commit (as an fair-but-high estimate), and
+they would end up with 10 pages per commit (as a fair-but-high estimate), and
 at 170k revs, that would be 1.7M chk nodes.
 
 
@@ -404,7 +404,7 @@ storing uncompressed offset + length
 ------------------------------------
 
 To get the smallest index possible, we store only a 2-byte 'record indicator'
-inside the index, and then assume that it can be decode once we've read the
+inside the index, and then assume that it can be decoded once we've read the
 actual group. This is certainly possible, but it represents yet another layer
 of indirection before you can actually get content. If we went with
 variable-length index entries, we could probably get most of the benefit with
@@ -434,7 +434,6 @@ better for our purpose, but wouldn't let us write groups that had a record
 after 16MiB, which doesn't work for the ISO case. Though it works *absolutely*
 fine for the CHK inventory cases (what we have today).
 
-If we change the analysis
 
 null content
 ------------
@@ -460,6 +459,16 @@ We use ``VF.keys()`` during 'pack' and 'autopack' to avoid asking for content
 we don't have, and to put a counter on the progress bar. For the latter, we
 can just use ``index.key_count()`` for the former, we could just properly
 handle ``AbsentContentFactory``.
+
+
+More than 64k groups
+--------------------
+Doing a streaming conversion all at once is still something to consider. As it
+would default to creating all chk pages in separate groups (300-400k easily).
+However, just making the number of group block entries variable, and allowing
+the pointer in each entry to be variable should suffice. At 3 bytes for the
+group pointer, we can refer to 16.7M groups. It does add complexity, but it is
+likely necessary to allow for arbitrary cases.
 
 .. 
   vim: ft=rst tw=78 ai
