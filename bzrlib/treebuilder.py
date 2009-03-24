@@ -16,7 +16,7 @@
 
 """TreeBuilder helper class.
 
-TreeBuilders are used to build trees of various shapres or properties. This 
+TreeBuilders are used to build trees of various shapres or properties. This
 can be extremely useful in testing for instance.
 """
 
@@ -58,7 +58,7 @@ class TreeBuilder(object):
         """Raise NotBuilding if there is no current tree being built."""
         if self._tree is None:
             raise errors.NotBuilding
-            
+
     def finish_tree(self):
         """Finish building the current tree."""
         self._ensure_building()
@@ -68,8 +68,8 @@ class TreeBuilder(object):
 
     def start_tree(self, tree):
         """Start building on tree.
-        
-        :param tree: A tree to start building on. It must provide the 
+
+        :param tree: A tree to start building on. It must provide the
             MutableTree interface.
         """
         if self._tree is not None:

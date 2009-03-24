@@ -32,7 +32,7 @@ class TestTagging(TestCaseWithTransport):
 
     # as of 0.14, the default format doesn't do tags so we need to use a
     # specific format
-    
+
     def make_branch_and_tree(self, relpath):
         format = bzrdir.format_registry.make_bzrdir('dirstate-with-subtree')
         return TestCaseWithTransport.make_branch_and_tree(self, relpath,
@@ -159,6 +159,44 @@ class TestTagging(TestCaseWithTransport):
         out, err = self.run_bzr('tags -d branch2', encoding='utf-8')
         self.assertEquals(err, '')
         self.assertContainsRe(out, r'tagD  *3\n')
+
+    def test_list_tags_revision_filtering(self):
+        tree1 = self.make_branch_and_tree('.')
+        tree1.commit(allow_pointless=True, message='revision 1',
+                rev_id='revid-1')
+        tree1.commit(allow_pointless=True, message='revision 2',
+                rev_id='revid-2')
+        tree1.commit(allow_pointless=True, message='revision 3',
+                rev_id='revid-3')
+        tree1.commit(allow_pointless=True, message='revision 4',
+                rev_id='revid-4')
+        b1 = tree1.branch
+        b1.tags.set_tag(u'tag 1', 'revid-1')
+        b1.tags.set_tag(u'tag 2', 'revid-2')
+        b1.tags.set_tag(u'tag 3', 'revid-3')
+        b1.tags.set_tag(u'tag 4', 'revid-4')
+        self._check_tag_filter('', (1, 2, 3, 4))
+        self._check_tag_filter('-r ..', (1, 2, 3, 4))
+        self._check_tag_filter('-r ..2', (1, 2))
+        self._check_tag_filter('-r 2..', (2, 3, 4))
+        self._check_tag_filter('-r 2..3', (2, 3))
+        self._check_tag_filter('-r 3..2', ())
+        self.run_bzr_error(args="tags -r 123",
+            error_regexes=["bzr: ERROR: Requested revision: '123' "
+                "does not exist in branch:"])
+        self.run_bzr_error(args="tags -r ..123",
+            error_regexes=["bzr: ERROR: Requested revision: '123' "
+                "does not exist in branch:"])
+        self.run_bzr_error(args="tags -r 123.123",
+            error_regexes=["bzr: ERROR: Requested revision: '123.123' "
+                "does not exist in branch:"])
+
+    def _check_tag_filter(self, argstr, expected_revnos):
+        #upper bound of laziness
+        out, err = self.run_bzr('tags ' + argstr)
+        self.assertEquals(err, '')
+        self.assertContainsRe(out, "^" + ''.join(["tag %s +%s\n" % (
+            revno, revno) for revno in expected_revnos]) + "$")
 
     def test_conflicting_tags(self):
         # setup two empty branches with different tags

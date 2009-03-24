@@ -24,26 +24,34 @@ over SSH), and pass them to and from the protocol logic.  See the overview in
 bzrlib/transport/smart/__init__.py.
 """
 
+import errno
 import os
 import socket
 import sys
 import urllib
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+import atexit
+import weakref
 from bzrlib import (
+    debug,
     errors,
     osutils,
     symbol_versioning,
+    trace,
+    ui,
     urlutils,
     )
-from bzrlib.smart.protocol import (
-    MESSAGE_VERSION_THREE,
-    REQUEST_VERSION_TWO,
-    SmartClientRequestProtocolOne,
-    SmartServerRequestProtocolOne,
-    SmartServerRequestProtocolTwo,
-    build_server_protocol_three
-    )
+from bzrlib.smart import client, protocol
 from bzrlib.transport import ssh
+""")
+
+
+# We must not read any more than 64k at a time so we don't risk "no buffer
+# space available" errors on some platforms.  Windows in particular is likely
+# to give error 10053 or 10055 if we read more than 64k from a socket.
+_MAX_READ_SIZE = 64 * 1024
 
 
 def _get_protocol_factory_for_bytes(bytes):
@@ -67,44 +75,43 @@ def _get_protocol_factory_for_bytes(bytes):
         root_client_path.  unused_bytes are any bytes that were not part of a
         protocol version marker.
     """
-    if bytes.startswith(MESSAGE_VERSION_THREE):
-        protocol_factory = build_server_protocol_three
-        bytes = bytes[len(MESSAGE_VERSION_THREE):]
-    elif bytes.startswith(REQUEST_VERSION_TWO):
-        protocol_factory = SmartServerRequestProtocolTwo
-        bytes = bytes[len(REQUEST_VERSION_TWO):]
+    if bytes.startswith(protocol.MESSAGE_VERSION_THREE):
+        protocol_factory = protocol.build_server_protocol_three
+        bytes = bytes[len(protocol.MESSAGE_VERSION_THREE):]
+    elif bytes.startswith(protocol.REQUEST_VERSION_TWO):
+        protocol_factory = protocol.SmartServerRequestProtocolTwo
+        bytes = bytes[len(protocol.REQUEST_VERSION_TWO):]
     else:
-        protocol_factory = SmartServerRequestProtocolOne
+        protocol_factory = protocol.SmartServerRequestProtocolOne
     return protocol_factory, bytes
 
 
-class SmartServerStreamMedium(object):
-    """Handles smart commands coming over a stream.
+def _get_line(read_bytes_func):
+    """Read bytes using read_bytes_func until a newline byte.
 
-    The stream may be a pipe connected to sshd, or a tcp socket, or an
-    in-process fifo for testing.
+    This isn't particularly efficient, so should only be used when the
+    expected size of the line is quite short.
 
-    One instance is created for each connected client; it can serve multiple
-    requests in the lifetime of the connection.
-
-    The server passes requests through to an underlying backing transport, 
-    which will typically be a LocalTransport looking at the server's filesystem.
-
-    :ivar _push_back_buffer: a str of bytes that have been read from the stream
-        but not used yet, or None if there are no buffered bytes.  Subclasses
-        should make sure to exhaust this buffer before reading more bytes from
-        the stream.  See also the _push_back method.
+    :returns: a tuple of two strs: (line, excess)
     """
+    newline_pos = -1
+    bytes = ''
+    while newline_pos == -1:
+        new_bytes = read_bytes_func(1)
+        bytes += new_bytes
+        if new_bytes == '':
+            # Ran out of bytes before receiving a complete line.
+            return bytes, ''
+        newline_pos = bytes.find('\n')
+    line = bytes[:newline_pos+1]
+    excess = bytes[newline_pos+1:]
+    return line, excess
 
-    def __init__(self, backing_transport, root_client_path='/'):
-        """Construct new server.
 
-        :param backing_transport: Transport for the directory served.
-        """
-        # backing_transport could be passed to serve instead of __init__
-        self.backing_transport = backing_transport
-        self.root_client_path = root_client_path
-        self.finished = False
+class SmartMedium(object):
+    """Base class for smart protocol media, both client- and server-side."""
+
+    def __init__(self):
         self._push_back_buffer = None
 
     def _push_back(self, bytes):
@@ -129,6 +136,74 @@ class SmartServerStreamMedium(object):
         bytes = self._push_back_buffer
         self._push_back_buffer = None
         return bytes
+
+    def read_bytes(self, desired_count):
+        """Read some bytes from this medium.
+
+        :returns: some bytes, possibly more or less than the number requested
+            in 'desired_count' depending on the medium.
+        """
+        if self._push_back_buffer is not None:
+            return self._get_push_back_buffer()
+        bytes_to_read = min(desired_count, _MAX_READ_SIZE)
+        return self._read_bytes(bytes_to_read)
+
+    def _read_bytes(self, count):
+        raise NotImplementedError(self._read_bytes)
+
+    def _get_line(self):
+        """Read bytes from this request's response until a newline byte.
+
+        This isn't particularly efficient, so should only be used when the
+        expected size of the line is quite short.
+
+        :returns: a string of bytes ending in a newline (byte 0x0A).
+        """
+        line, excess = _get_line(self.read_bytes)
+        self._push_back(excess)
+        return line
+
+    def _report_activity(self, bytes, direction):
+        """Notify that this medium has activity.
+
+        Implementations should call this from all methods that actually do IO.
+        Be careful that it's not called twice, if one method is implemented on
+        top of another.
+
+        :param bytes: Number of bytes read or written.
+        :param direction: 'read' or 'write' or None.
+        """
+        ui.ui_factory.report_transport_activity(self, bytes, direction)
+
+
+class SmartServerStreamMedium(SmartMedium):
+    """Handles smart commands coming over a stream.
+
+    The stream may be a pipe connected to sshd, or a tcp socket, or an
+    in-process fifo for testing.
+
+    One instance is created for each connected client; it can serve multiple
+    requests in the lifetime of the connection.
+
+    The server passes requests through to an underlying backing transport,
+    which will typically be a LocalTransport looking at the server's filesystem.
+
+    :ivar _push_back_buffer: a str of bytes that have been read from the stream
+        but not used yet, or None if there are no buffered bytes.  Subclasses
+        should make sure to exhaust this buffer before reading more bytes from
+        the stream.  See also the _push_back method.
+    """
+
+    def __init__(self, backing_transport, root_client_path='/'):
+        """Construct new server.
+
+        :param backing_transport: Transport for the directory served.
+        """
+        # backing_transport could be passed to serve instead of __init__
+        self.backing_transport = backing_transport
+        self.root_client_path = root_client_path
+        self.finished = False
+        SmartMedium.__init__(self)
 
     def serve(self):
         """Serve requests until the client disconnects."""
@@ -161,7 +236,7 @@ class SmartServerStreamMedium(object):
 
     def _serve_one_request(self, protocol):
         """Read one request from input, process, send back a response.
-        
+
         :param protocol: a SmartServerRequestProtocol.
         """
         try:
@@ -175,34 +250,13 @@ class SmartServerStreamMedium(object):
         """Called when an unhandled exception from the protocol occurs."""
         raise NotImplementedError(self.terminate_due_to_error)
 
-    def _get_bytes(self, desired_count):
+    def _read_bytes(self, desired_count):
         """Get some bytes from the medium.
 
         :param desired_count: number of bytes we want to read.
         """
-        raise NotImplementedError(self._get_bytes)
+        raise NotImplementedError(self._read_bytes)
 
-    def _get_line(self):
-        """Read bytes from this request's response until a newline byte.
-        
-        This isn't particularly efficient, so should only be used when the
-        expected size of the line is quite short.
-
-        :returns: a string of bytes ending in a newline (byte 0x0A).
-        """
-        newline_pos = -1
-        bytes = ''
-        while newline_pos == -1:
-            new_bytes = self._get_bytes(1)
-            bytes += new_bytes
-            if new_bytes == '':
-                # Ran out of bytes before receiving a complete line.
-                return bytes
-            newline_pos = bytes.find('\n')
-        line = bytes[:newline_pos+1]
-        self._push_back(bytes[newline_pos+1:])
-        return line
- 
 
 class SmartServerSocketStreamMedium(SmartServerStreamMedium):
 
@@ -219,21 +273,24 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
 
     def _serve_one_request_unguarded(self, protocol):
         while protocol.next_read_size():
-            bytes = self._get_bytes(4096)
+            # We can safely try to read large chunks.  If there is less data
+            # than _MAX_READ_SIZE ready, the socket wil just return a short
+            # read immediately rather than block.
+            bytes = self.read_bytes(_MAX_READ_SIZE)
             if bytes == '':
                 self.finished = True
                 return
             protocol.accept_bytes(bytes)
-        
+
         self._push_back(protocol.unused_data)
 
-    def _get_bytes(self, desired_count):
-        if self._push_back_buffer is not None:
-            return self._get_push_back_buffer()
+    def _read_bytes(self, desired_count):
         # We ignore the desired_count because on sockets it's more efficient to
-        # read 4k at a time.
-        return self.socket.recv(4096)
-    
+        # read large chunks (of _MAX_READ_SIZE bytes) at a time.
+        bytes = osutils.until_no_eintr(self.socket.recv, _MAX_READ_SIZE)
+        self._report_activity(len(bytes), 'read')
+        return bytes
+
     def terminate_due_to_error(self):
         # TODO: This should log to a server log file, but no such thing
         # exists yet.  Andrew Bennetts 2006-09-29.
@@ -241,7 +298,7 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
         self.finished = True
 
     def _write_out(self, bytes):
-        osutils.send_all(self.socket, bytes)
+        osutils.send_all(self.socket, bytes, self._report_activity)
 
 
 class SmartServerPipeStreamMedium(SmartServerStreamMedium):
@@ -266,12 +323,15 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
 
     def _serve_one_request_unguarded(self, protocol):
         while True:
+            # We need to be careful not to read past the end of the current
+            # request, or else the read from the pipe will block, so we use
+            # protocol.next_read_size().
             bytes_to_read = protocol.next_read_size()
             if bytes_to_read == 0:
                 # Finished serving this request.
                 self._out.flush()
                 return
-            bytes = self._get_bytes(bytes_to_read)
+            bytes = self.read_bytes(bytes_to_read)
             if bytes == '':
                 # Connection has been closed.
                 self.finished = True
@@ -279,9 +339,7 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
                 return
             protocol.accept_bytes(bytes)
 
-    def _get_bytes(self, desired_count):
-        if self._push_back_buffer is not None:
-            return self._get_push_back_buffer()
+    def _read_bytes(self, desired_count):
         return self._in.read(desired_count)
 
     def terminate_due_to_error(self):
@@ -307,8 +365,8 @@ class SmartClientMediumRequest(object):
     request.finished_reading()
 
     It is up to the individual SmartClientMedium whether multiple concurrent
-    requests can exist. See SmartClientMedium.get_request to obtain instances 
-    of SmartClientMediumRequest, and the concrete Medium you are using for 
+    requests can exist. See SmartClientMedium.get_request to obtain instances
+    of SmartClientMediumRequest, and the concrete Medium you are using for
     details on concurrency and pipelining.
     """
 
@@ -360,7 +418,7 @@ class SmartClientMediumRequest(object):
     def _finished_reading(self):
         """Helper for finished_reading.
 
-        finished_reading checks the state of the request to determine if 
+        finished_reading checks the state of the request to determine if
         finished_reading is allowed, and if it is hands off to _finished_reading
         to perform the action.
         """
@@ -380,7 +438,7 @@ class SmartClientMediumRequest(object):
     def _finished_writing(self):
         """Helper for finished_writing.
 
-        finished_writing checks the state of the request to determine if 
+        finished_writing checks the state of the request to determine if
         finished_writing is allowed, and if it is hands off to _finished_writing
         to perform the action.
         """
@@ -401,36 +459,86 @@ class SmartClientMediumRequest(object):
         return self._read_bytes(count)
 
     def _read_bytes(self, count):
-        """Helper for read_bytes.
+        """Helper for SmartClientMediumRequest.read_bytes.
 
         read_bytes checks the state of the request to determing if bytes
         should be read. After that it hands off to _read_bytes to do the
         actual read.
+
+        By default this forwards to self._medium.read_bytes because we are
+        operating on the medium's stream.
         """
-        raise NotImplementedError(self._read_bytes)
+        return self._medium.read_bytes(count)
 
     def read_line(self):
-        """Read bytes from this request's response until a newline byte.
-        
-        This isn't particularly efficient, so should only be used when the
-        expected size of the line is quite short.
-
-        :returns: a string of bytes ending in a newline (byte 0x0A).
-        """
-        # XXX: this duplicates SmartClientRequestProtocolOne._recv_tuple
-        line = ''
-        while not line or line[-1] != '\n':
-            new_char = self.read_bytes(1)
-            line += new_char
-            if new_char == '':
-                # end of file encountered reading from server
-                raise errors.ConnectionReset(
-                    "please check connectivity and permissions",
-                    "(and try -Dhpss if further diagnosis is required)")
+        line = self._read_line()
+        if not line.endswith('\n'):
+            # end of file encountered reading from server
+            raise errors.ConnectionReset(
+                "please check connectivity and permissions")
         return line
 
+    def _read_line(self):
+        """Helper for SmartClientMediumRequest.read_line.
 
-class SmartClientMedium(object):
+        By default this forwards to self._medium._get_line because we are
+        operating on the medium's stream.
+        """
+        return self._medium._get_line()
+
+
+class _DebugCounter(object):
+    """An object that counts the HPSS calls made to each client medium.
+
+    When a medium is garbage-collected, or failing that when atexit functions
+    are run, the total number of calls made on that medium are reported via
+    trace.note.
+    """
+
+    def __init__(self):
+        self.counts = weakref.WeakKeyDictionary()
+        client._SmartClient.hooks.install_named_hook(
+            'call', self.increment_call_count, 'hpss call counter')
+        atexit.register(self.flush_all)
+
+    def track(self, medium):
+        """Start tracking calls made to a medium.
+
+        This only keeps a weakref to the medium, so shouldn't affect the
+        medium's lifetime.
+        """
+        medium_repr = repr(medium)
+        # Add this medium to the WeakKeyDictionary
+        self.counts[medium] = [0, medium_repr]
+        # Weakref callbacks are fired in reverse order of their association
+        # with the referenced object.  So we add a weakref *after* adding to
+        # the WeakKeyDict so that we can report the value from it before the
+        # entry is removed by the WeakKeyDict's own callback.
+        ref = weakref.ref(medium, self.done)
+
+    def increment_call_count(self, params):
+        # Increment the count in the WeakKeyDictionary
+        value = self.counts[params.medium]
+        value[0] += 1
+
+    def done(self, ref):
+        value = self.counts[ref]
+        count, medium_repr = value
+        # In case this callback is invoked for the same ref twice (by the
+        # weakref callback and by the atexit function), set the call count back
+        # to 0 so this item won't be reported twice.
+        value[0] = 0
+        if count != 0:
+            trace.note('HPSS calls: %d %s', count, medium_repr)
+
+    def flush_all(self):
+        for ref in list(self.counts.keys()):
+            self.done(ref)
+
+_debug_counter = None
+
+
+class SmartClientMedium(SmartMedium):
     """Smart client is a medium for sending smart protocol requests over."""
 
     def __init__(self, base):
@@ -440,9 +548,55 @@ class SmartClientMedium(object):
         self._protocol_version = None
         self._done_hello = False
         # Be optimistic: we assume the remote end can accept new remote
-        # requests until we get an error saying otherwise.  (1.2 adds some
-        # requests that send bodies, which confuses older servers.)
-        self._remote_is_at_least_1_2 = True
+        # requests until we get an error saying otherwise.
+        # _remote_version_is_before tracks the bzr version the remote side
+        # can be based on what we've seen so far.
+        self._remote_version_is_before = None
+        # Install debug hook function if debug flag is set.
+        if 'hpss' in debug.debug_flags:
+            global _debug_counter
+            if _debug_counter is None:
+                _debug_counter = _DebugCounter()
+            _debug_counter.track(self)
+
+    def _is_remote_before(self, version_tuple):
+        """Is it possible the remote side supports RPCs for a given version?
+
+        Typical use::
+
+            needed_version = (1, 2)
+            if medium._is_remote_before(needed_version):
+                fallback_to_pre_1_2_rpc()
+            else:
+                try:
+                    do_1_2_rpc()
+                except UnknownSmartMethod:
+                    medium._remember_remote_is_before(needed_version)
+                    fallback_to_pre_1_2_rpc()
+
+        :seealso: _remember_remote_is_before
+        """
+        if self._remote_version_is_before is None:
+            # So far, the remote side seems to support everything
+            return False
+        return version_tuple >= self._remote_version_is_before
+
+    def _remember_remote_is_before(self, version_tuple):
+        """Tell this medium that the remote side is older the given version.
+
+        :seealso: _is_remote_before
+        """
+        if (self._remote_version_is_before is not None and
+            version_tuple > self._remote_version_is_before):
+            # We have been told that the remote side is older than some version
+            # which is newer than a previously supplied older-than version.
+            # This indicates that some smart verb call is not guarded
+            # appropriately (it should simply not have been tried).
+            raise AssertionError(
+                "_remember_remote_is_before(%r) called, but "
+                "_remember_remote_is_before(%r) was called previously."
+                % (version_tuple, self._remote_version_is_before))
+        self._remote_version_is_before = version_tuple
 
     def protocol_version(self):
         """Find out if 'hello' smart request works."""
@@ -453,7 +607,7 @@ class SmartClientMedium(object):
                 medium_request = self.get_request()
                 # Send a 'hello' request in protocol version one, for maximum
                 # backwards compatibility.
-                client_protocol = SmartClientRequestProtocolOne(medium_request)
+                client_protocol = protocol.SmartClientRequestProtocolOne(medium_request)
                 client_protocol.query_version()
                 self._done_hello = True
             except errors.SmartProtocolError, e:
@@ -481,13 +635,13 @@ class SmartClientMedium(object):
 
     def disconnect(self):
         """If this medium maintains a persistent connection, close it.
-        
+
         The default implementation does nothing.
         """
-        
+
     def remote_path_from_transport(self, transport):
         """Convert transport into a path suitable for using in a request.
-        
+
         Note that the resulting remote path doesn't encode the host name or
         anything but path, so it is only safe to use it in requests sent over
         the medium from the matching transport.
@@ -521,7 +675,7 @@ class SmartClientStreamMedium(SmartClientMedium):
 
     def _flush(self):
         """Flush the output stream.
-        
+
         This method is used by the SmartClientStreamMediumRequest to ensure that
         all data for a request is sent, to avoid long timeouts or deadlocks.
         """
@@ -535,13 +689,10 @@ class SmartClientStreamMedium(SmartClientMedium):
         """
         return SmartClientStreamMediumRequest(self)
 
-    def read_bytes(self, count):
-        return self._read_bytes(count)
-
 
 class SmartSimplePipesClientMedium(SmartClientStreamMedium):
     """A client medium using simple pipes.
-    
+
     This client does not manage the pipes: it assumes they will always be open.
     """
 
@@ -553,6 +704,7 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
     def _accept_bytes(self, bytes):
         """See SmartClientStreamMedium.accept_bytes."""
         self._writeable_pipe.write(bytes)
+        self._report_activity(len(bytes), 'write')
 
     def _flush(self):
         """See SmartClientStreamMedium._flush()."""
@@ -560,40 +712,52 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
 
     def _read_bytes(self, count):
         """See SmartClientStreamMedium._read_bytes."""
-        return self._readable_pipe.read(count)
+        bytes = self._readable_pipe.read(count)
+        self._report_activity(len(bytes), 'read')
+        return bytes
 
 
 class SmartSSHClientMedium(SmartClientStreamMedium):
     """A client medium using SSH."""
-    
+
     def __init__(self, host, port=None, username=None, password=None,
             base=None, vendor=None, bzr_remote_path=None):
         """Creates a client that will connect on the first use.
-        
+
         :param vendor: An optional override for the ssh vendor to use. See
             bzrlib.transport.ssh for details on ssh vendors.
         """
-        SmartClientStreamMedium.__init__(self, base)
         self._connected = False
         self._host = host
         self._password = password
         self._port = port
         self._username = username
+        # SmartClientStreamMedium stores the repr of this object in its
+        # _DebugCounter so we have to store all the values used in our repr
+        # method before calling the super init.
+        SmartClientStreamMedium.__init__(self, base)
         self._read_from = None
         self._ssh_connection = None
         self._vendor = vendor
         self._write_to = None
         self._bzr_remote_path = bzr_remote_path
-        if self._bzr_remote_path is None:
-            symbol_versioning.warn(
-                'bzr_remote_path is required as of bzr 0.92',
-                DeprecationWarning, stacklevel=2)
-            self._bzr_remote_path = os.environ.get('BZR_REMOTE_PATH', 'bzr')
+        # for the benefit of progress making a short description of this
+        # transport
+        self._scheme = 'bzr+ssh'
+
+    def __repr__(self):
+        return "%s(connected=%r, username=%r, host=%r, port=%r)" % (
+            self.__class__.__name__,
+            self._connected,
+            self._username,
+            self._host,
+            self._port)
 
     def _accept_bytes(self, bytes):
         """See SmartClientStreamMedium.accept_bytes."""
         self._ensure_connection()
         self._write_to.write(bytes)
+        self._report_activity(len(bytes), 'write')
 
     def disconnect(self):
         """See SmartClientMedium.disconnect()."""
@@ -628,17 +792,20 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         """See SmartClientStreamMedium.read_bytes."""
         if not self._connected:
             raise errors.MediumNotConnected(self)
-        return self._read_from.read(count)
+        bytes_to_read = min(count, _MAX_READ_SIZE)
+        bytes = self._read_from.read(bytes_to_read)
+        self._report_activity(len(bytes), 'read')
+        return bytes
 
 
 # Port 4155 is the default port for bzr://, registered with IANA.
-BZR_DEFAULT_INTERFACE = '0.0.0.0'
+BZR_DEFAULT_INTERFACE = None
 BZR_DEFAULT_PORT = 4155
 
 
 class SmartTCPClientMedium(SmartClientStreamMedium):
     """A client medium using TCP."""
-    
+
     def __init__(self, host, port, base):
         """Creates a client that will connect on the first use."""
         SmartClientStreamMedium.__init__(self, base)
@@ -650,7 +817,7 @@ class SmartTCPClientMedium(SmartClientStreamMedium):
     def _accept_bytes(self, bytes):
         """See SmartClientMedium.accept_bytes."""
         self._ensure_connection()
-        osutils.send_all(self._socket, bytes)
+        osutils.send_all(self._socket, bytes, self._report_activity)
 
     def disconnect(self):
         """See SmartClientMedium.disconnect()."""
@@ -664,15 +831,31 @@ class SmartTCPClientMedium(SmartClientStreamMedium):
         """Connect this medium if not already connected."""
         if self._connected:
             return
-        self._socket = socket.socket()
-        self._socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         if self._port is None:
             port = BZR_DEFAULT_PORT
         else:
             port = int(self._port)
         try:
-            self._socket.connect((self._host, port))
-        except socket.error, err:
+            sockaddrs = socket.getaddrinfo(self._host, port, socket.AF_UNSPEC,
+                socket.SOCK_STREAM, 0, 0)
+        except socket.gaierror, (err_num, err_msg):
+            raise errors.ConnectionError("failed to lookup %s:%d: %s" %
+                    (self._host, port, err_msg))
+        # Initialize err in case there are no addresses returned:
+        err = socket.error("no address found for %s" % self._host)
+        for (family, socktype, proto, canonname, sockaddr) in sockaddrs:
+            try:
+                self._socket = socket.socket(family, socktype, proto)
+                self._socket.setsockopt(socket.IPPROTO_TCP,
+                                        socket.TCP_NODELAY, 1)
+                self._socket.connect(sockaddr)
+            except socket.error, err:
+                if self._socket is not None:
+                    self._socket.close()
+                self._socket = None
+                continue
+            break
+        if self._socket is None:
             # socket errors either have a (string) or (errno, string) as their
             # args.
             if type(err.args) is str:
@@ -685,8 +868,8 @@ class SmartTCPClientMedium(SmartClientStreamMedium):
 
     def _flush(self):
         """See SmartClientStreamMedium._flush().
-        
-        For TCP we do no flushing. We may want to turn off TCP_NODELAY and 
+
+        For TCP we do no flushing. We may want to turn off TCP_NODELAY and
         add a means to do a flush, but that can be done in the future.
         """
 
@@ -694,7 +877,19 @@ class SmartTCPClientMedium(SmartClientStreamMedium):
         """See SmartClientMedium.read_bytes."""
         if not self._connected:
             raise errors.MediumNotConnected(self)
-        return self._socket.recv(count)
+        # We ignore the desired_count because on sockets it's more efficient to
+        # read large chunks (of _MAX_READ_SIZE bytes) at a time.
+        try:
+            bytes = osutils.until_no_eintr(self._socket.recv, _MAX_READ_SIZE)
+        except socket.error, e:
+            if len(e.args) and e.args[0] == errno.ECONNRESET:
+                # Callers expect an empty string in that case
+                return ''
+            else:
+                raise
+        else:
+            self._report_activity(len(bytes), 'read')
+            return bytes
 
 
 class SmartClientStreamMediumRequest(SmartClientMediumRequest):
@@ -713,7 +908,7 @@ class SmartClientStreamMediumRequest(SmartClientMediumRequest):
 
     def _accept_bytes(self, bytes):
         """See SmartClientMediumRequest._accept_bytes.
-        
+
         This forwards to self._medium._accept_bytes because we are operating
         on the mediums stream.
         """
@@ -722,25 +917,17 @@ class SmartClientStreamMediumRequest(SmartClientMediumRequest):
     def _finished_reading(self):
         """See SmartClientMediumRequest._finished_reading.
 
-        This clears the _current_request on self._medium to allow a new 
+        This clears the _current_request on self._medium to allow a new
         request to be created.
         """
         if self._medium._current_request is not self:
             raise AssertionError()
         self._medium._current_request = None
-        
+
     def _finished_writing(self):
         """See SmartClientMediumRequest._finished_writing.
 
         This invokes self._medium._flush to ensure all bytes are transmitted.
         """
         self._medium._flush()
-
-    def _read_bytes(self, count):
-        """See SmartClientMediumRequest._read_bytes.
-        
-        This forwards to self._medium._read_bytes because we are operating
-        on the mediums stream.
-        """
-        return self._medium._read_bytes(count)
 

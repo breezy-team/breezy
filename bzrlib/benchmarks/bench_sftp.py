@@ -39,7 +39,7 @@ class SFTPBenchmark(Benchmark):
         if not paramiko_loaded:
             raise TestSkipped('you must have paramiko to run this test')
         test_sftp_transport.set_test_transport_to_sftp(self)
-         
+
     def test_branch(self):
         os.mkdir("a")
         tree, files = self.create_with_commits(100, 100, "a")
@@ -56,7 +56,7 @@ class SFTPBenchmark(Benchmark):
 
     def test_pull_1(self):
         self.create_commit_and_pull(1)
-        
+
     def test_pull_10(self):
         self.create_commit_and_pull(10)
 

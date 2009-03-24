@@ -81,7 +81,7 @@ class TestJoin(tests.TestCaseWithTransport):
     def test_references_check_repository_support(self):
         """Users are stopped from adding a reference that can't be committed."""
         # in 0.15 the default format has a dirstate workingtree, that can
-        # support tree references, but the default repository format 
+        # support tree references, but the default repository format
         # cannot.
         tree = self.make_branch_and_tree('tree', format='dirstate')
         tree2 = self.make_branch_and_tree('tree/subtree')

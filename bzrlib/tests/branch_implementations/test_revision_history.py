@@ -124,8 +124,6 @@ class TestRevisionHistoryCaching(TestCaseWithBranch):
         cause the revision history to be cached.
         """
         branch, calls = self.get_instrumented_branch()
-        # Lock the branch, set the revision history, then repeatedly call
-        # revision_history.
         branch.set_revision_history([])
         branch.revision_history()
         self.assertEqual(['_gen_revision_history'], calls)
@@ -203,4 +201,12 @@ class TestRevisionHistoryCaching(TestCaseWithBranch):
             branch.unlock()
 
 
+class TestRevisionHistory(TestCaseWithBranch):
 
+    def test_parent_ghost(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.add_parent_tree_id('ghost-revision',
+                                allow_leftmost_as_ghost=True)
+        tree.commit('first non-ghost commit', rev_id='non-ghost-revision')
+        self.assertEqual(['non-ghost-revision'],
+                         tree.branch.revision_history())

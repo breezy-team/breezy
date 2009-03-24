@@ -70,8 +70,17 @@ class TestTrace(TestCase):
 
     def test_format_os_error(self):
         try:
+            os.rmdir('nosuchfile22222')
+        except OSError:
+            pass
+        msg = _format_exception()
+        self.assertContainsRe(msg,
+            r'^bzr: ERROR: \[Errno .*\] No such file.*nosuchfile22222')
+
+    def test_format_io_error(self):
+        try:
             file('nosuchfile22222')
-        except (OSError, IOError):
+        except IOError:
             pass
         msg = _format_exception()
         self.assertContainsRe(msg, r'^bzr: ERROR: \[Errno .*\] No such file.*nosuchfile')
@@ -93,12 +102,34 @@ class TestTrace(TestCase):
         self.assertTrue(len(msg) > 0)
         self.assertEqualDiff(msg, 'bzr: ERROR: Not a branch: \"wibble\".\n')
 
+    def test_report_external_import_error(self):
+        """Short friendly message for missing system modules."""
+        try:
+            import ImaginaryModule
+        except ImportError, e:
+            pass
+        else:
+            self.fail("somehow succeeded in importing %r" % ImaginaryModule)
+        msg = _format_exception()
+        self.assertEqual(msg,
+            'bzr: ERROR: No module named ImaginaryModule\n'
+            'You may need to install this Python library separately.\n')
+
+    def test_report_import_syntax_error(self):
+        try:
+            raise ImportError("syntax error")
+        except ImportError, e:
+            pass
+        msg = _format_exception()
+        self.assertContainsRe(msg,
+            r"Traceback \(most recent call last\)")
+
     def test_trace_unicode(self):
         """Write Unicode to trace log"""
         self.log(u'the unicode character for benzene is \N{BENZENE RING}')
         self.assertContainsRe(self._get_log(keep_log_file=True),
                               "the unicode character for benzene is")
-    
+
     def test_trace_argument_unicode(self):
         """Write a Unicode argument to the trace log"""
         mutter(u'the unicode character for benzene is %s', u'\N{BENZENE RING}')
@@ -164,7 +195,7 @@ class TestTrace(TestCase):
     def test_push_log_file(self):
         """Can push and pop log file, and this catches mutter messages.
 
-        This is primarily for use in the test framework. 
+        This is primarily for use in the test framework.
         """
         tmp1 = tempfile.NamedTemporaryFile()
         tmp2 = tempfile.NamedTemporaryFile()

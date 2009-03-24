@@ -148,7 +148,8 @@ class _BaseMergeDirective(object):
         else:
             revno = branch.get_revision_id_to_revno_map().get(self.revision_id,
                 ['merge'])
-        return '%s-%s' % (branch.nick, '.'.join(str(n) for n in revno))
+        nick = re.sub('(\W+)', '-', branch.nick).strip('-')
+        return '%s-%s' % (nick, '.'.join(str(n) for n in revno))
 
     @staticmethod
     def _generate_diff(repository, revision_id, ancestor_id):
@@ -209,7 +210,11 @@ class _BaseMergeDirective(object):
                 except errors.RevisionNotPresent:
                     # At least one dependency isn't present.  Try installing
                     # missing revisions from the submit branch
-                    submit_branch = _mod_branch.Branch.open(self.target_branch)
+                    try:
+                        submit_branch = \
+                            _mod_branch.Branch.open(self.target_branch)
+                    except errors.NotBranchError:
+                        raise errors.TargetNotBranch(self.target_branch)
                     missing_revisions = []
                     bundle_revisions = set(r.revision_id for r in
                                            info.real_revisions)

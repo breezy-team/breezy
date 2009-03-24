@@ -21,7 +21,6 @@
 import errno
 import os
 from cStringIO import StringIO
-import urllib
 from warnings import warn
 
 from bzrlib import (
@@ -69,7 +68,7 @@ class VersionedFileStore(TransportStore):
                 if relpath.endswith(suffix):
                     # TODO: use standard remove_suffix function
                     escaped_id = os.path.basename(relpath[:-len(suffix)])
-                    file_id = self._unescape(escaped_id)
+                    file_id = self._mapper.unmap(escaped_id)[0]
                     if file_id not in ids:
                         ids.add(file_id)
                         yield file_id
@@ -134,7 +133,7 @@ class VersionedFileStore(TransportStore):
     def _make_new_versionedfile(self, file_id, transaction,
         known_missing=False, _filename=None):
         """Make a new versioned file.
-        
+
         :param _filename: filename that would be returned from self.filename for
         file_id. This is used to reduce duplicate filename calculations when
         using 'get_weave_or_empty'. FOR INTERNAL USE ONLY.
@@ -153,7 +152,8 @@ class VersionedFileStore(TransportStore):
                 # unexpected error - NoSuchFile is expected to be raised on a
                 # missing dir only and that only occurs when we are prefixed.
                 raise
-            self._transport.mkdir(self.hash_prefix(file_id), mode=self._dir_mode)
+            dirname = osutils.dirname(_filename)
+            self._transport.mkdir(dirname, mode=self._dir_mode)
             weave = self._versionedfile_class(_filename, self._transport,
                                               self._file_mode, create=True,
                                               get_scope=self.get_scope,
@@ -162,7 +162,7 @@ class VersionedFileStore(TransportStore):
 
     def get_weave_or_empty(self, file_id, transaction):
         """Return a weave, or an empty one if it doesn't exist."""
-        # This is typically used from 'commit' and 'fetch/push/pull' where 
+        # This is typically used from 'commit' and 'fetch/push/pull' where
         # we scan across many versioned files once. As such the small overhead
         # of calculating the filename before doing a cache lookup is more than
         # compensated for by not calculating the filename when making new
@@ -178,13 +178,10 @@ class VersionedFileStore(TransportStore):
     def _put_weave(self, file_id, weave, transaction):
         """Preserved here for upgrades-to-weaves to use."""
         myweave = self._make_new_versionedfile(file_id, transaction)
-        myweave.insert_record_stream(weave.get_record_stream(weave.versions(),
+        myweave.insert_record_stream(weave.get_record_stream(
+            [(version,) for version in weave.versions()],
             'topological', False))
 
-    def copy(self, source, result_id, transaction):
-        """Copy the source versioned file to result_id in this store."""
-        source.copy_to(self.filename(result_id), self._transport)
- 
     def copy_all_ids(self, store_from, pb=None, from_transaction=None,
                      to_transaction=None):
         """Copy all the file ids from store_from into self."""
@@ -211,7 +208,7 @@ class VersionedFileStore(TransportStore):
     def copy_multi(self, from_store, file_ids, pb=None, from_transaction=None,
                    to_transaction=None):
         """Copy all the versions for multiple file_ids from from_store.
-        
+
         :param from_transaction: required current transaction in from_store.
         """
         from bzrlib.transactions import PassThroughTransaction
@@ -241,7 +238,8 @@ class VersionedFileStore(TransportStore):
                 target = self._make_new_versionedfile(f, to_transaction)
                 source = from_store.get_weave(f, from_transaction)
                 target.insert_record_stream(source.get_record_stream(
-                    source.versions(), 'topological', False))
+                    [(version,) for version in source.versions()],
+                    'topological', False))
         finally:
             pb.finished()
 

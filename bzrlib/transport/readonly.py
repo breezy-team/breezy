@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
 
 """Implementation of Transport that adapts another transport to be readonly."""
 
-from bzrlib.errors import TransportNotPossible, NoSmartServer, NoSmartMedium
+from bzrlib.errors import TransportNotPossible, NoSmartMedium
 from bzrlib.transport.decorator import TransportDecorator, DecoratorServer
 
 
@@ -29,11 +29,11 @@ class ReadonlyTransportDecorator(TransportDecorator):
     def append_file(self, relpath, f, mode=None):
         """See Transport.append_file()."""
         raise TransportNotPossible('readonly transport')
-    
+
     def append_bytes(self, relpath, bytes, mode=None):
         """See Transport.append_bytes()."""
         raise TransportNotPossible('readonly transport')
-    
+
     @classmethod
     def _get_url_prefix(self):
         """Readonly transport decorators are invoked via 'readonly+'"""

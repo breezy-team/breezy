@@ -48,7 +48,8 @@ def help(topic=None, outfile=None):
         for index, topic in topics[1:]:
             shadowed_terms.append('%s%s' % (index.prefix,
                 topic.get_help_topic()))
-        outfile.write(topics[0][1].get_help_text(shadowed_terms))
+        source = topics[0][1]
+        outfile.write(source.get_help_text(shadowed_terms))
     except errors.NoHelpTopic:
         if alias is None:
             raise
@@ -112,7 +113,7 @@ help_topics.topic_registry.register("hidden-commands",
 
 class HelpIndices(object):
     """Maintainer of help topics across multiple indices.
-    
+
     It is currently separate to the HelpTopicRegistry because of its ordered
     nature, but possibly we should instead structure it as a search within the
     registry and add ordering and searching facilities to the registry. The
@@ -143,7 +144,7 @@ class HelpIndices(object):
 
     def search(self, topic):
         """Search for topic across the help search path.
-        
+
         :param topic: A string naming the help topic to search for.
         :raises: NoHelpTopic if none of the indexs in search_path have topic.
         :return: A list of HelpTopics which matched 'topic'.

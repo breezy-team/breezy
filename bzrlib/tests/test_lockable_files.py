@@ -27,7 +27,10 @@ from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.symbol_versioning import (
     deprecated_in,
     )
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests import (
+    TestCaseInTempDir,
+    TestNotApplicable,
+    )
 from bzrlib.tests.test_smart import TestCaseWithSmartMedium
 from bzrlib.tests.test_transactions import DummyWeave
 from bzrlib.transactions import (PassThroughTransaction,
@@ -142,7 +145,7 @@ class _TestLockableFiles_mixin(object):
 
     def test__escape(self):
         self.assertEqual('%25', self.lockable._escape('%'))
-        
+
     def test__escape_empty(self):
         self.assertEqual('', self.lockable._escape(''))
 
@@ -154,7 +157,7 @@ class _TestLockableFiles_mixin(object):
         except NotImplementedError:
             # this lock cannot be broken
             self.lockable.unlock()
-            return
+            raise TestNotApplicable("%r is not breakable" % (self.lockable,))
         l2 = self.get_lockable()
         orig_factory = bzrlib.ui.ui_factory
         # silent ui - no need for stdout
@@ -177,7 +180,7 @@ class _TestLockableFiles_mixin(object):
             if token is not None:
                 # This test does not apply, because this lockable supports
                 # tokens.
-                return
+                raise TestNotApplicable("%r uses tokens" % (self.lockable,))
             self.assertRaises(errors.TokenLockingNotSupported,
                               self.lockable.lock_write, token='token')
         finally:
@@ -353,9 +356,9 @@ class _TestLockableFiles_mixin(object):
         third_lockable.unlock()
 
 
-# This method of adapting tests to parameters is different to 
-# the TestProviderAdapters used elsewhere, but seems simpler for this 
-# case.  
+# This method of adapting tests to parameters is different to
+# the TestProviderAdapters used elsewhere, but seems simpler for this
+# case.
 class TestLockableFiles_TransportLock(TestCaseInTempDir,
                                       _TestLockableFiles_mixin):
 
@@ -371,11 +374,14 @@ class TestLockableFiles_TransportLock(TestCaseInTempDir,
         super(TestLockableFiles_TransportLock, self).tearDown()
         # free the subtransport so that we do not get a 5 second
         # timeout due to the SFTP connection cache.
-        del self.sub_transport
+        try:
+            del self.sub_transport
+        except AttributeError:
+            pass
 
     def get_lockable(self):
         return LockableFiles(self.sub_transport, 'my-lock', TransportLock)
-        
+
 
 class TestLockableFiles_LockDir(TestCaseInTempDir,
                               _TestLockableFiles_mixin):
@@ -385,8 +391,8 @@ class TestLockableFiles_LockDir(TestCaseInTempDir,
         TestCaseInTempDir.setUp(self)
         self.transport = get_transport('.')
         self.lockable = self.get_lockable()
-        # the lock creation here sets mode - test_permissions on branch 
-        # tests that implicitly, but it might be a good idea to factor 
+        # the lock creation here sets mode - test_permissions on branch
+        # tests that implicitly, but it might be a good idea to factor
         # out the mode checking logic and have it applied to loackable files
         # directly. RBC 20060418
         self.lockable.create_lock()

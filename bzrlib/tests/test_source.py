@@ -55,6 +55,8 @@ class TestSourceHelper(TestCase):
 
     def source_file_name(self, package):
         """Return the path of the .py file for package."""
+        if getattr(sys, "frozen", None) is not None:
+            raise TestSkipped("can't test sources in frozen distributions.")
         path = package.__file__
         if path[-1] in 'co':
             return path[:-1]
@@ -80,7 +82,7 @@ class TestApiUsage(TestSourceHelper):
         # do not even think of increasing this number. If you think you need to
         # increase it, then you almost certainly are doing something wrong as
         # the relationship from working_tree to branch is one way.
-        # Note that this is an exact equality so that when the number drops, 
+        # Note that this is an exact equality so that when the number drops,
         #it is not given a buffer but rather has this test updated immediately.
         self.assertEqual(0, occurences)
 
@@ -110,7 +112,7 @@ class TestSource(TestSourceHelper):
 
     def get_source_files(self):
         """Yield all source files for bzr and bzrlib
-        
+
         :param our_files_only: If true, exclude files from included libraries
             or plugins.
         """
@@ -261,21 +263,76 @@ class TestSource(TestSourceHelper):
 
             self.fail('\n'.join(help_text))
 
-    def test_no_tabs(self):
-        """bzrlib source files should not contain any tab characters."""
-        incorrect = []
+    def _push_file(self, dict_, fname, line_no):
+        if fname not in dict_:
+            dict_[fname] = [line_no]
+        else:
+            dict_[fname].append(line_no)
 
+    def _format_message(self, dict_, message):
+        files = ["%s: %s" % (f, ', '.join([str(i+1) for i in lines]))
+                for f, lines in dict_.items()]
+        files.sort()
+        return message + '\n\n    %s' % ('\n    '.join(files))
+
+    def test_coding_style(self):
+        """Check if bazaar code conforms to some coding style conventions.
+
+        Currently we check for:
+         * any tab characters
+         * trailing white space
+         * non-unix newlines
+         * no newline at end of files
+         * lines longer than 79 chars
+           (only print how many files and lines are in violation)
+        """
+        tabs = {}
+        trailing_ws = {}
+        illegal_newlines = {}
+        long_lines = {}
+        no_newline_at_eof = []
         for fname, text in self.get_source_file_contents():
             if not self.is_our_code(fname):
                 continue
-            if '\t' in text:
-                incorrect.append(fname)
-
-        if incorrect:
-            self.fail('Tab characters were found in the following source files.'
-              '\nThey should either be replaced by "\\t" or by spaces:'
-              '\n\n    %s'
-              % ('\n    '.join(incorrect)))
+            lines = text.splitlines(True)
+            last_line_no = len(lines) - 1
+            for line_no, line in enumerate(lines):
+                if '\t' in line:
+                    self._push_file(tabs, fname, line_no)
+                if not line.endswith('\n') or line.endswith('\r\n'):
+                    if line_no != last_line_no: # not no_newline_at_eof
+                        self._push_file(illegal_newlines, fname, line_no)
+                if line.endswith(' \n'):
+                    self._push_file(trailing_ws, fname, line_no)
+                if len(line) > 80:
+                    self._push_file(long_lines, fname, line_no)
+            if not lines[-1].endswith('\n'):
+                no_newline_at_eof.append(fname)
+        problems = []
+        if tabs:
+            problems.append(self._format_message(tabs,
+                'Tab characters were found in the following source files.'
+                '\nThey should either be replaced by "\\t" or by spaces:'))
+        if trailing_ws:
+            problems.append(self._format_message(trailing_ws,
+                'Trailing white space was found in the following source files:'
+                ))
+        if illegal_newlines:
+            problems.append(self._format_message(illegal_newlines,
+                'Non-unix newlines were found in the following source files:'))
+        if long_lines:
+            print ("There are %i lines longer than 79 characters in %i files."
+                % (sum([len(lines) for f, lines in long_lines.items()]),
+                    len(long_lines)))
+        if no_newline_at_eof:
+            no_newline_at_eof.sort()
+            problems.append("The following source files doesn't have a "
+                "newline at the end:"
+               '\n\n    %s'
+               % ('\n    '.join(no_newline_at_eof)))
+        if problems:
+            raise KnownFailure("test_coding_style has failed")
+            self.fail('\n\n'.join(problems))
 
     def test_no_asserts(self):
         """bzr shouldn't use the 'assert' statement."""

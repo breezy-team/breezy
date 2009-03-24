@@ -40,14 +40,11 @@ the names of the groups to be defined, the corresponding values the lists of
 the users belonging to the given groups. (User names must be separated by
 commas.)
 
-All other sections names should be path names (starting with '/'), defining
-the permissions for the given path. The options in those sections are user
-names or group references (group name with a leading '@'), the corresponding
-values are the permissions: 'rw', 'r' and '' (without the quotes) for
-read-write, read-only and no access, respectively.
-
-Only the options in the section with the longest matching name are evaluated.
-The last relevant option for the user is used.
+Right now only one section is supported [/], defining the permissions for the
+repository. The options in those sections are user names or group references
+(group name with a leading '@'), the corresponding values are the 
+permissions: 'rw', 'r' and '' (without the quotes)
+for read-write, read-only and no access, respectively.
 
 Sample bzr_access.conf::
 
@@ -55,14 +52,9 @@ Sample bzr_access.conf::
    admins = alpha
    devels = beta, gamma, delta
    
-   [/test/trunk]
+   [/]
    @admins = rw
    @devels = r
-   
-   [/test/branches]
-   @admins = rw
-   @devels = rw
-
 
 This allows you to set up a single SSH user, and customize the access based on
 ssh key. Your ``.ssh/authorized_key`` file should look something like this::
@@ -131,30 +123,23 @@ class AccessManager(object):
                 self.groups[group] = set([ s.strip() for s in users.split(",")])
         
 
-    def permission(self, user, path):
+    def permission(self, user):
         """Determines the permission for a given user and a given path
         :param user: user to look for.
-        :param path: path to look for.
         :return: permission.
         """
-        if not path.startswith("/"):
-            return PERM_DENIED
+        configSection = "/"
         perm = PERM_DENIED
-        pathFound = False
-        while not pathFound and path != "/":
-            print >>sys.stderr, "DEBUG:", path
-            pathFound = self.config.has_section(path)
-            if (pathFound):
-                options = reversed(self.config.options(path))
-                for option in options:
-                    value = PERM_DICT.get(self.config.get(path, option),
-                                          PERM_DENIED)
-                    if self._is_relevant(option, user):
-                        perm = value
-            else:
-                path = os.path.dirname(path)
+        pathFound = self.config.has_section(configSection)
+        if (pathFound):
+            options = reversed(self.config.options(configSection))
+            for option in options:
+                value = PERM_DICT.get(self.config.get(configSection, option),
+                                      PERM_DENIED)
+                if self._is_relevant(option, user):
+                    perm = value
         return perm
-      
+
       
     def _is_relevant(self, option, user):
         """Decides if a certain option is relevant for a given user.
@@ -225,9 +210,8 @@ def main():
         error("Can't read config file.", EXIT_NOCONF)
     
     # Determine permission and execute bzr with appropriate options
-    perm = accessMan.permission(user, directory)
-    absDir = os.path.join(repoRoot, directory)
-    command = [bzrExec] + BZR_OPTIONS + [absDir]
+    perm = accessMan.permission(user)
+    command = [bzrExec] + BZR_OPTIONS + [repoRoot]
     if perm == PERM_READ:
         # Nothing extra needed for readonly operations
         pass

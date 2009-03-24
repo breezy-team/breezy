@@ -52,6 +52,22 @@ doesn't work, please contact us via email or IRC so we can help you
 get things working.
 
 
+Installing into site-wide locations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Instead of adding the directory to your PATH, you can install bzr into the
+system locations using::
+
+  python setup.py install
+
+If you do not have a compiler, or do not have the python development tools
+installed, bzr supplies a (slower) pure-python implementation of all
+extensions. You can install without compiling extensions with::
+
+  python setup.py install build_ext --allow-python-fallbacks
+
+
+
 Running the development version
 -------------------------------
 

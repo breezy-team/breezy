@@ -33,6 +33,7 @@ class Options:
 class TestGenerateDocs(TestCase):
 
     def setUp(self):
+        TestCase.setUp(self)
         self.sio = StringIO()
         self.options = Options()
         self.options.bzr_name = 'bzr'

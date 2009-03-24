@@ -51,7 +51,7 @@ def vfs_enabled():
 
 class VfsRequest(request.SmartServerRequest):
     """Base class for VFS requests.
-    
+
     VFS requests are disabled if vfs_enabled() returns False.
     """
 
@@ -72,13 +72,7 @@ class GetRequest(VfsRequest):
 
     def do(self, relpath):
         relpath = self.translate_client_path(relpath)
-        try:
-            backing_bytes = self._backing_transport.get_bytes(relpath)
-        except errors.ReadError:
-            # cannot read the file
-            return request.FailedSmartServerResponse(('ReadError', ))
-        except errors.PermissionDenied:
-            return request.FailedSmartServerResponse(('PermissionDenied',))
+        backing_bytes = self._backing_transport.get_bytes(relpath)
         return request.SuccessfulSmartServerResponse(('ok',), backing_bytes)
 
 
@@ -88,7 +82,7 @@ class AppendRequest(VfsRequest):
         relpath = self.translate_client_path(relpath)
         self._relpath = relpath
         self._mode = _deserialise_optional_mode(mode)
-    
+
     def do_body(self, body_bytes):
         old_length = self._backing_transport.append_bytes(
             self._relpath, body_bytes, self._mode)

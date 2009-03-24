@@ -17,13 +17,13 @@
 """File annotate based on weave storage"""
 
 # TODO: Choice of more or less verbose formats:
-# 
+#
 # interposed: show more details between blocks of modified lines
 
 # TODO: Show which revision caused a line to merge into the parent
 
 # TODO: perhaps abbreviate timescales depending on how recent they are
-# e.g. "3:12 Tue", "13 Oct", "Oct 2005", etc.  
+# e.g. "3:12 Tue", "13 Oct", "Oct 2005", etc.
 
 import sys
 import time
@@ -35,6 +35,8 @@ from bzrlib import (
     tsort,
     )
 from bzrlib.config import extract_email_address
+from bzrlib.repository import _strip_NULL_ghosts
+from bzrlib.revision import CURRENT_REVISION, Revision
 
 
 def annotate_file(branch, rev_id, file_id, verbose=False, full=False,
@@ -57,21 +59,59 @@ def annotate_file(branch, rev_id, file_id, verbose=False, full=False,
         to_file = sys.stdout
 
     # Handle the show_ids case
-    last_rev_id = None
+    annotations = _annotations(branch.repository, file_id, rev_id)
     if show_ids:
-        annotations = _annotations(branch.repository, file_id, rev_id)
-        max_origin_len = max(len(origin) for origin, text in annotations)
-        for origin, text in annotations:
-            if full or last_rev_id != origin:
-                this = origin
-            else:
-                this = ''
-            to_file.write('%*s | %s' % (max_origin_len, this, text))
-            last_rev_id = origin
-        return
+        return _show_id_annotations(annotations, to_file, full)
 
     # Calculate the lengths of the various columns
-    annotation = list(_annotate_file(branch, rev_id, file_id))
+    annotation = list(_expand_annotations(annotations, branch))
+    _print_annotations(annotation, verbose, to_file, full)
+
+
+def annotate_file_tree(tree, file_id, to_file, verbose=False, full=False,
+    show_ids=False):
+    """Annotate file_id in a tree.
+
+    The tree should already be read_locked() when annotate_file_tree is called.
+
+    :param tree: The tree to look for revision numbers and history from.
+    :param file_id: The file_id to annotate.
+    :param to_file: The file to output the annotation to.
+    :param verbose: Show all details rather than truncating to ensure
+        reasonable text width.
+    :param full: XXXX Not sure what this does.
+    :param show_ids: Show revision ids in the annotation output.
+    """
+    rev_id = tree.last_revision()
+    branch = tree.branch
+
+    # Handle the show_ids case
+    annotations = list(tree.annotate_iter(file_id))
+    if show_ids:
+        return _show_id_annotations(annotations, to_file, full)
+
+    # Create a virtual revision to represent the current tree state.
+    # Should get some more pending commit attributes, like pending tags,
+    # bugfixes etc.
+    current_rev = Revision(CURRENT_REVISION)
+    current_rev.parent_ids = tree.get_parent_ids()
+    current_rev.committer = tree.branch.get_config().username()
+    current_rev.message = "?"
+    current_rev.timestamp = round(time.time(), 3)
+    current_rev.timezone = osutils.local_time_offset()
+    annotation = list(_expand_annotations(annotations, tree.branch,
+        current_rev))
+    _print_annotations(annotation, verbose, to_file, full)
+
+
+def _print_annotations(annotation, verbose, to_file, full):
+    """Print annotations to to_file.
+
+    :param to_file: The file to output the annotation to.
+    :param verbose: Show all details rather than truncating to ensure
+        reasonable text width.
+    :param full: XXXX Not sure what this does.
+    """
     if len(annotation) == 0:
         max_origin_len = max_revno_len = max_revid_len = 0
     else:
@@ -110,26 +150,70 @@ def annotate_file(branch, rev_id, file_id, verbose=False, full=False,
         prevanno = anno
 
 
+def _show_id_annotations(annotations, to_file, full):
+    if not annotations:
+        return
+    last_rev_id = None
+    max_origin_len = max(len(origin) for origin, text in annotations)
+    for origin, text in annotations:
+        if full or last_rev_id != origin:
+            this = origin
+        else:
+            this = ''
+        to_file.write('%*s | %s' % (max_origin_len, this, text))
+        last_rev_id = origin
+    return
+
+
 def _annotations(repo, file_id, rev_id):
-    """Return the list of (origin,text) for a revision of a file in a repository."""
-    w = repo.weave_store.get_weave(file_id, repo.get_transaction())
-    return w.annotate(rev_id)
+    """Return the list of (origin_revision_id, line_text) for a revision of a file in a repository."""
+    annotations = repo.texts.annotate((file_id, rev_id))
+    #
+    return [(key[-1], line) for (key, line) in annotations]
 
 
-def _annotate_file(branch, rev_id, file_id):
-    """Yield the origins for each line of a file.
+def _expand_annotations(annotations, branch, current_rev=None):
+    """Expand a a files annotations into command line UI ready tuples.
 
-    This includes detailed information, such as the author name, and
-    date string for the commit, rather than just the revision id.
+    Each tuple includes detailed information, such as the author name, and date
+    string for the commit, rather than just the revision id.
+
+    :param annotations: The annotations to expand.
+    :param revision_id_to_revno: A map from id to revision numbers.
+    :param branch: A locked branch to query for revision details.
     """
-    revision_id_to_revno = branch.get_revision_id_to_revno_map()
-    annotations = _annotations(branch.repository, file_id, rev_id)
+    repository = branch.repository
+    if current_rev is not None:
+        # This can probably become a function on MutableTree, get_revno_map there,
+        # or something.
+        last_revision = current_rev.revision_id
+        # XXX: Partially Cloned from branch, uses the old_get_graph, eep.
+        graph = repository.get_graph()
+        revision_graph = dict(((key, value) for key, value in
+            graph.iter_ancestry(current_rev.parent_ids) if value is not None))
+        revision_graph = _strip_NULL_ghosts(revision_graph)
+        revision_graph[last_revision] = current_rev.parent_ids
+        merge_sorted_revisions = tsort.merge_sort(
+            revision_graph,
+            last_revision,
+            None,
+            generate_revno=True)
+        revision_id_to_revno = dict((rev_id, revno)
+            for seq_num, rev_id, depth, revno, end_of_merge in
+                merge_sorted_revisions)
+    else:
+        revision_id_to_revno = branch.get_revision_id_to_revno_map()
     last_origin = None
     revision_ids = set(o for o, t in annotations)
-    revision_ids = [o for o in revision_ids if 
-                    branch.repository.has_revision(o)]
-    revisions = dict((r.revision_id, r) for r in 
-                     branch.repository.get_revisions(revision_ids))
+    revisions = {}
+    if CURRENT_REVISION in revision_ids:
+        revision_id_to_revno[CURRENT_REVISION] = (
+            "%d?" % (branch.revno() + 1),)
+        revisions[CURRENT_REVISION] = current_rev
+    revision_ids = [o for o in revision_ids if
+                    repository.has_revision(o)]
+    revisions.update((r.revision_id, r) for r in
+                     repository.get_revisions(revision_ids))
     for origin, text in annotations:
         text = text.rstrip('\r\n')
         if origin == last_origin:
@@ -147,7 +231,7 @@ def _annotate_file(branch, rev_id, file_id):
                                      time.gmtime(rev.timestamp + tz))
             # a lazy way to get something like the email address
             # TODO: Get real email address
-            author = rev.get_apparent_author()
+            author = rev.get_apparent_authors()[0]
             try:
                 author = extract_email_address(author)
             except errors.NoEmailInUsername:
@@ -159,7 +243,7 @@ def reannotate(parents_lines, new_lines, new_revision_id,
                _left_matching_blocks=None,
                heads_provider=None):
     """Create a new annotated version from new lines and parent annotations.
-    
+
     :param parents_lines: List of annotated lines for all parents
     :param new_lines: The un-annotated new lines
     :param new_revision_id: The revision-id to associate with new lines
@@ -284,16 +368,9 @@ def _find_matching_unannotated_lines(output_lines, plain_child_lines,
                     if len(heads) == 1:
                         output_append((iter(heads).next(), left[1]))
                     else:
-                        # Both claim different origins
-                        output_append((revision_id, left[1]))
-                        # We know that revision_id is the head for
-                        # left and right, so cache it
-                        heads_provider.cache(
-                            (revision_id, left[0]),
-                            (revision_id,))
-                        heads_provider.cache(
-                            (revision_id, right[0]),
-                            (revision_id,))
+                        # Both claim different origins, sort lexicographically
+                        # so that we always get a stable result.
+                        output_append(sorted([left, right])[0])
         last_child_idx = child_idx + match_len
 
 

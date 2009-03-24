@@ -28,51 +28,24 @@ from bzrlib import (
 
 
 class TestCaseWithLock(tests.TestCaseWithTransport):
-
-    write_lock = None
-    read_lock = None
+    pass
 
 
-class LockTestProviderAdapter(object):
-    """A tool to generate a suite testing multiple lock formats at once.
-
-    This is done by copying the test once for each lock and injecting the
-    read_lock and write_lock classes.
-    They are also given a new test id.
-    """
-
-    def __init__(self, lock_classes):
-        self._lock_classes = lock_classes
-
-    def _clone_test(self, test, write_lock, read_lock, variation):
-        """Clone test for adaption."""
-        new_test = deepcopy(test)
-        new_test.write_lock = write_lock
-        new_test.read_lock = read_lock
-        def make_new_test_id():
-            new_id = "%s(%s)" % (test.id(), variation)
-            return lambda: new_id
-        new_test.id = make_new_test_id()
-        return new_test
-
-    def adapt(self, test):
-        result = tests.TestSuite()
-        for name, write_lock, read_lock in self._lock_classes:
-            new_test = self._clone_test(test, write_lock, read_lock, name)
-            result.addTest(new_test)
-        return result
+def make_scenarios(lock_classes):
+    result = []
+    for name, write_lock, read_lock in lock_classes:
+        result.append(
+            (name, {'write_lock': write_lock, 'read_lock': read_lock}))
+    return result
 
 
-def load_tests(basic_tests, module, loader):
-    result = loader.suiteClass()
-    # add the tests for this module
-    result.addTests(basic_tests)
 
-    test_lock_implementations = [
+def load_tests(standard_tests, module, loader):
+    submod_tests = loader.loadTestsFromModuleNames([
         'bzrlib.tests.per_lock.test_lock',
         'bzrlib.tests.per_lock.test_temporary_write_lock',
-        ]
-    adapter = LockTestProviderAdapter(lock._lock_classes)
+        ])
+    scenarios = make_scenarios(lock._lock_classes)
     # add the tests for the sub modules
-    tests.adapt_modules(test_lock_implementations, adapter, loader, result)
-    return result
+    return tests.multiply_tests(submod_tests, scenarios,
+        standard_tests)

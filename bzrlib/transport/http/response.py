@@ -24,6 +24,7 @@ responses.
 
 import httplib
 from cStringIO import StringIO
+import rfc822
 
 from bzrlib import (
     errors,
@@ -90,7 +91,7 @@ class RangeFile(object):
 
     def set_boundary(self, boundary):
         """Define the boundary used in a multi parts message.
-        
+
         The file should be at the beginning of the body, the first range
         definition is read and taken into account.
         """
@@ -107,11 +108,21 @@ class RangeFile(object):
             # string entity.
             # To be on the safe side we allow it before any boundary line
             boundary_line = self._file.readline()
+
         if boundary_line != '--' + self._boundary + '\r\n':
-            raise errors.InvalidHttpResponse(
-                self._path,
-                "Expected a boundary (%s) line, got '%s'" % (self._boundary,
-                                                             boundary_line))
+            # rfc822.unquote() incorrectly unquotes strings enclosed in <>
+            # IIS 6 and 7 incorrectly wrap boundary strings in <>
+            # together they make a beautiful bug, which we will be gracious
+            # about here
+            if (self._unquote_boundary(boundary_line) !=
+                '--' + self._boundary + '\r\n'):
+                raise errors.InvalidHttpResponse(
+                    self._path,
+                    "Expected a boundary (%s) line, got '%s'"
+                    % (self._boundary, boundary_line))
+
+    def _unquote_boundary(self, b):
+        return b[:2] + rfc822.unquote(b[2:-2]) + b[-2:]
 
     def read_range_definition(self):
         """Read a new range definition in a multi parts message.
@@ -277,7 +288,7 @@ def handle_response(url, code, msg, data):
     :param msg: An HTTPMessage containing the headers for the response
     :param data: A file-like object that can be read() to get the
                  requested data
-    :return: A file-like object that can seek()+read() the 
+    :return: A file-like object that can seek()+read() the
              ranges indicated by the headers.
     """
     rfile = RangeFile(url, data)

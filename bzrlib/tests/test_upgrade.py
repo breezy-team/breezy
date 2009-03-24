@@ -16,7 +16,7 @@
 
 """Tests for upgrade of old trees.
 
-This file contains canned versions of some old trees, which are instantiated 
+This file contains canned versions of some old trees, which are instantiated
 and then upgraded to the new format."""
 
 # TODO queue for upgrade:
@@ -42,7 +42,7 @@ from bzrlib.upgrade import upgrade
 
 
 class TestUpgrade(TestCaseWithTransport):
-    
+
     def test_build_tree(self):
         """Test tree-building test helper"""
         self.build_tree_contents(_upgrade1_template)
@@ -105,11 +105,11 @@ class TestUpgrade(TestCaseWithTransport):
         """Upgrade v0.0.4 tree containing ghost references.
 
         That is, some of the parents of revisions mentioned in the branch
-        aren't present in the branch's storage. 
+        aren't present in the branch's storage.
 
-        This shouldn't normally happen in branches created entirely in 
+        This shouldn't normally happen in branches created entirely in
         bzr, but can happen in branches imported from baz and arch, or from
-        other systems, where the importer knows about a revision but not 
+        other systems, where the importer knows about a revision but not
         its contents."""
         eq = self.assertEquals
         self.build_tree_contents(_ghost_template)
@@ -125,21 +125,20 @@ class TestUpgrade(TestCaseWithTransport):
         old_repodir = bzrlib.bzrdir.BzrDir.open_unsupported('.')
         old_repo_format = old_repodir.open_repository()._format
         upgrade('.')
-        # this is the path to the literal file. As format changes 
+        # this is the path to the literal file. As format changes
         # occur it needs to be updated. FIXME: ask the store for the
         # path.
         repo = bzrlib.repository.Repository.open('.')
         # it should have changed the format
         self.assertNotEqual(old_repo_format.__class__, repo._format.__class__)
-        # and we should be able to read the names for the file id 
+        # and we should be able to read the names for the file id
         # 'dir-20051005095101-da1441ea3fa6917a'
         repo.lock_read()
         self.addCleanup(repo.unlock)
-        self.assertNotEqual(
-            [],
-            repo.weave_store.get_weave(
-                'dir-20051005095101-da1441ea3fa6917a',
-                repo.get_transaction()).versions())
+        text_keys = repo.texts.keys()
+        dir_keys = [key for key in text_keys if key[0] ==
+                'dir-20051005095101-da1441ea3fa6917a']
+        self.assertNotEqual([], dir_keys)
 
     def test_upgrade_to_meta_sets_workingtree_last_revision(self):
         self.build_tree_contents(_upgrade_dir_template)

@@ -16,7 +16,7 @@
 
 """Utilities for distinguishing binary files from text files"""
 
-from itertools import chain 
+from itertools import chain
 
 from bzrlib.errors import BinaryFile
 from bzrlib.iterablefile import IterableFile

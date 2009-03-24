@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -126,7 +126,7 @@ def _help_on_topics(dummy):
 
     topics = topic_registry.keys()
     lmax = max(len(topic) for topic in topics)
-        
+
     out = []
     for topic in topics:
         summary = topic_registry.get_summary(topic)
@@ -149,14 +149,37 @@ def _help_on_revisionspec(name):
     import bzrlib.revisionspec
 
     out = []
-    out.append("Revision Identifiers\n")
-    out.append("A revision, or a range bound, can be one of the following.\n")
+    out.append(
+"""Revision Identifiers
+
+A revision identifier refers to a specific state of a branch's history. It can
+be a revision number, or a keyword followed by ':' and often other
+parameters. Some examples of identifiers are '3', 'last:1', 'before:yesterday'
+and 'submit:'.
+
+If 'REV1' and 'REV2' are revision identifiers, then 'REV1..REV2' denotes a
+revision range. Examples: '3647..3649', 'date:yesterday..-1' and
+'branch:/path/to/branch1/..branch:/branch2' (note that there are no quotes or
+spaces around the '..').
+
+Ranges are interpreted differently by different commands. To the "log" command,
+a range is a sequence of log messages, but to the "diff" command, the range
+denotes a change between revisions (and not a sequence of changes).  In
+addition, "log" considers a closed range whereas "diff" and "merge" consider it
+to be open-ended, that is, they include one end but not the other.  For example:
+"bzr log -r 3647..3649" shows the messages of revisions 3647, 3648 and 3649,
+while "bzr diff -r 3647..3649" includes the changes done in revisions 3648 and
+3649, but not 3647.
+
+The keywords used as revision selection methods are the following:
+""")
     details = []
-    details.append("\nFurther details are given below.\n")
+    details.append("\nIn addition, plugins can provide other keywords.")
+    details.append("\nA detailed description of each keyword is given below.\n")
 
     # The help text is indented 4 spaces - this re cleans that up below
     indent_re = re.compile(r'^    ', re.MULTILINE)
-    for i in bzrlib.revisionspec.SPEC_TYPES:
+    for prefix, i in bzrlib.revisionspec.revspec_registry.iteritems():
         doc = i.help_txt
         if doc == bzrlib.revisionspec.RevisionSpec.help_txt:
             summary = "N/A"
@@ -168,7 +191,7 @@ def _help_on_revisionspec(name):
             #doc = indent_re.sub('', doc)
             while (doc[-2:] == '\n\n' or doc[-1:] == ' '):
                 doc = doc[:-1]
-        
+
         # Note: The leading : here are HACKs to get reStructuredText
         # 'field' formatting - we know that the prefix ends in a ':'.
         out.append(":%s\n\t%s" % (i.prefix, summary))
@@ -241,6 +264,7 @@ Basic commands:
 
   bzr merge          pull in changes from another branch
   bzr commit         save some or all changes
+  bzr send           send changes via email
 
   bzr log            show history of changes
   bzr check          validate storage
@@ -275,30 +299,14 @@ command.  (e.g. "bzr --profile help").
 
 See doc/developers/profiling.txt for more information on profiling.
 A number of debug flags are also available to assist troubleshooting and
-development.
-
--Dauth            Trace authentication sections used.
--Derror           Instead of normal error handling, always print a traceback
-                  on error.
--Devil            Capture call sites that do expensive or badly-scaling
-                  operations.
--Dfetch           Trace history copying between repositories.
--Dhashcache       Log every time a working file is read to determine its hash.
--Dhooks           Trace hook execution.
--Dhpss            Trace smart protocol requests and responses.
--Dhttp            Trace http connections, requests and responses
--Dindex           Trace major index operations.
--Dknit            Trace knit operations.
--Dlock            Trace when lockdir locks are taken or released.
--Dmerge           Emit information for debugging merges.
--Dpack            Emit information about pack operations.
+development.  See `bzr help debug-flags`.
 """
 
 _standard_options = \
 """Standard Options
 
 Standard options are legal for all commands.
-      
+
 --help, -h     Show help message.
 --verbose, -v  Display more information.
 --quiet, -q    Only display errors and warnings.
@@ -356,7 +364,7 @@ the same disk then there won't be a noticeable difference.
 
 Another possible use for a checkout is to use it with a treeless repository
 containing your branches, where you maintain only one working tree by
-switching the master branch that the checkout points to when you want to 
+switching the master branch that the checkout points to when you want to
 work on a different branch.
 
 Obviously to commit on a checkout you need to be able to write to the master
@@ -377,7 +385,7 @@ Related commands::
               checkout
   update      Pull any changes in the master branch in to your checkout
   commit      Make a commit that is sent to the master branch. If you have
-              a heavy checkout then the --local option will commit to the 
+              a heavy checkout then the --local option will commit to the
               checkout without sending the commit to the master
   bind        Change the master branch that the commits in the checkout will
               be sent to
@@ -393,7 +401,7 @@ a repository associated with every branch.
 
 Repositories are a form of database. Bzr will usually maintain this for
 good performance automatically, but in some situations (e.g. when doing
-very many commits in a short time period) you may want to ask bzr to 
+very many commits in a short time period) you may want to ask bzr to
 optimise the database indices. This can be done by the 'bzr pack' command.
 
 By default just running 'bzr init' will create a repository within the new
@@ -480,7 +488,7 @@ repository (a shared repository). Branches can be copied and merged.
 
 Related commands::
 
-  init    Make a directory into a versioned branch.
+  init    Change a directory into a versioned branch.
   branch  Create a new copy of a branch.
   merge   Perform a three-way merge.
 """
@@ -516,6 +524,7 @@ Column 1 - versioning/renames::
   - File unversioned
   R File renamed
   ? File unknown
+  X File nonexistent (and unknown to bzr)
   C File has conflicts
   P Entry for a pending merge (not a file)
 
@@ -625,15 +634,71 @@ useful, you can "push --overwrite" or "pull --overwrite" instead.
 """
 
 
+_storage_formats = \
+"""Storage Formats
+
+To ensure that older clients do not access data incorrectly,
+Bazaar's policy is to introduce a new storage format whenever
+new features requiring new metadata are added. New storage
+formats may also be introduced to improve performance and
+scalability.
+
+Use the following guidelines to select a format (stopping
+as soon as a condition is true):
+
+* If you are working on an existing project, use whatever
+  format that project is using. (Bazaar will do this for you
+  by default).
+
+* If you are using bzr-svn to interoperate with a Subversion
+  repository, use 1.9-rich-root.
+
+* If you are working on a project with big trees (5000+ paths)
+  or deep history (5000+ revisions), use 1.9.
+
+* Otherwise, use the default format - it is good enough for
+  most projects.
+
+If some of your developers are unable to use the most recent
+version of Bazaar (due to distro package availability say), be
+sure to adjust the guidelines above accordingly. For example,
+you may need to select 1.6 instead of 1.9 if your project has
+standardized on Bazaar 1.7.
+
+Note: Many of the currently supported formats have two variants:
+a plain one and a rich-root one. The latter include an additional
+field about the root of the tree. There is no performance cost
+for using a rich-root format but you cannot easily merge changes
+from a rich-root format into a plain format. As a consequence,
+moving a project to a rich-root format takes some co-ordination
+in that all contributors need to upgrade their repositories
+around the same time. (It is for this reason that we have delayed
+making a rich-root format the default so far, though we will do
+so at some appropriate time in the future.)
+
+See ``bzr help current-formats`` for the complete list of
+currently supported formats. See ``bzr help other-formats`` for
+descriptions of any available experimental and deprecated formats.
+"""
+
+
 # Register help topics
 topic_registry.register("revisionspec", _help_on_revisionspec,
                         "Explain how to use --revision")
 topic_registry.register('basic', _basic_help, "Basic commands", SECT_HIDDEN)
 topic_registry.register('topics', _help_on_topics, "Topics list", SECT_HIDDEN)
-def get_format_topic(topic):
+def get_current_formats_topic(topic):
     from bzrlib import bzrdir
-    return "Storage Formats\n\n" + bzrdir.format_registry.help_topic(topic)
-topic_registry.register('formats', get_format_topic, 'Directory formats')
+    return "Current Storage Formats\n\n" + \
+        bzrdir.format_registry.help_topic(topic)
+def get_other_formats_topic(topic):
+    from bzrlib import bzrdir
+    return "Other Storage Formats\n\n" + \
+        bzrdir.format_registry.help_topic(topic)
+topic_registry.register('current-formats', get_current_formats_topic,
+    'Current storage formats')
+topic_registry.register('other-formats', get_other_formats_topic,
+    'Experimental and deprecated storage formats')
 topic_registry.register('standard-options', _standard_options,
                         'Options that can be used with any command')
 topic_registry.register('global-options', _global_options,
@@ -644,23 +709,29 @@ topic_registry.register('status-flags', _status_flags,
                         "Help on status flags")
 def get_bugs_topic(topic):
     from bzrlib import bugtracker
-    return ("Bug Tracker Settings\n\n" + 
+    return ("Bug Tracker Settings\n\n" +
         bugtracker.tracker_registry.help_topic(topic))
 topic_registry.register('bugs', get_bugs_topic, 'Bug tracker settings')
 topic_registry.register('env-variables', _env_variables,
                         'Environment variable names and values')
 topic_registry.register('files', _files,
                         'Information on configuration and log files')
+topic_registry.register_lazy('hooks', 'bzrlib.hooks', 'hooks_help_text',
+                        'Points at which custom processing can be added')
 
-# Load some of the help topics from files
+# Load some of the help topics from files. Note that topics which reproduce API
+# details will tend to skew (quickly usually!) so please seek other solutions
+# for such things.
 topic_registry.register('authentication', _load_from_file,
                         'Information on configuring authentication')
 topic_registry.register('configuration', _load_from_file,
                         'Details on the configuration settings available')
 topic_registry.register('conflicts', _load_from_file,
                         'Types of conflicts and what to do about them')
-topic_registry.register('hooks', _load_from_file,
-                        'Points at which custom processing can be added')
+topic_registry.register('debug-flags', _load_from_file,
+                        'Options to show or record debug information')
+topic_registry.register('log-formats', _load_from_file,
+                        'Details on the logging formats available')
 
 
 # Register concept topics.
@@ -671,8 +742,20 @@ topic_registry.register('branches', _branches,
                         'Information on what a branch is', SECT_CONCEPT)
 topic_registry.register('checkouts', _checkouts,
                         'Information on what a checkout is', SECT_CONCEPT)
+topic_registry.register('content-filters', _load_from_file,
+                        'Conversion of content into/from working trees',
+                        SECT_CONCEPT)
+topic_registry.register('formats', _storage_formats,
+                        'Information on choosing a storage format',
+                        SECT_CONCEPT)
+topic_registry.register('patterns', _load_from_file,
+                        'Information on the pattern syntax',
+                        SECT_CONCEPT)
 topic_registry.register('repositories', _repositories,
                         'Basic information on shared repositories.',
+                        SECT_CONCEPT)
+topic_registry.register('rules', _load_from_file,
+                        'Information on defining rule-based preferences',
                         SECT_CONCEPT)
 topic_registry.register('standalone-trees', _standalone_trees,
                         'Information on what a standalone tree is',
@@ -682,7 +765,8 @@ topic_registry.register('working-trees', _working_trees,
 topic_registry.register('criss-cross', _criss_cross,
                         'Information on criss-cross merging', SECT_CONCEPT)
 topic_registry.register('sync-for-reconfigure', _branches_out_of_sync,
-                        'Information on criss-cross merging', SECT_CONCEPT)
+                        'Steps to resolve "out-of-sync" when reconfiguring',
+                        SECT_CONCEPT)
 
 
 class HelpTopicIndex(object):
@@ -729,7 +813,7 @@ class RegisteredTopic(object):
             returned instead of plain text.
         """
         result = topic_registry.get_detail(self.topic)
-        # there is code duplicated here and in bzrlib/plugin.py's 
+        # there is code duplicated here and in bzrlib/plugin.py's
         # matching Topic code. This should probably be factored in
         # to a helper function and a common base class.
         if additional_see_also is not None:

@@ -21,7 +21,7 @@
 
 # TODO: Check for extra files in the control directory.
 
-# TODO: Check revision, inventory and entry objects have all 
+# TODO: Check revision, inventory and entry objects have all
 # required fields.
 
 # TODO: Get every revision in the revision-store even if they're not
@@ -32,12 +32,17 @@
 # raising them.  If there's more than one exception it'd be good to see them
 # all.
 
-from bzrlib import errors
+from bzrlib import errors, osutils
 from bzrlib import repository as _mod_repository
 from bzrlib import revision
+from bzrlib.branch import Branch
+from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import BzrCheckError
-import bzrlib.ui
+from bzrlib.repository import Repository
+from bzrlib.symbol_versioning import deprecated_function, deprecated_in
 from bzrlib.trace import log_error, note
+import bzrlib.ui
+from bzrlib.workingtree import WorkingTree
 
 class Check(object):
     """Check a repository"""
@@ -55,9 +60,11 @@ class Check(object):
         self.missing_revision_cnt = 0
         # maps (file-id, version) -> sha1; used by InventoryFile._check
         self.checked_texts = {}
-        self.checked_weaves = {}
+        self.checked_weaves = set()
         self.unreferenced_versions = set()
         self.inconsistent_parents = []
+        self.rich_roots = repository.supports_rich_root()
+        self.text_key_references = {}
 
     def check(self):
         self.repository.lock_read()
@@ -66,7 +73,7 @@ class Check(object):
             self.progress.update('retrieving inventory', 0, 2)
             # do not put in init, as it should be done with progess,
             # and inside the lock.
-            self.inventory_weave = self.repository.get_inventory_weave()
+            self.inventory_weave = self.repository.inventories
             self.progress.update('checking revision graph', 1)
             self.check_revision_graph()
             self.plan_revisions()
@@ -96,7 +103,7 @@ class Check(object):
         repository = self.repository
         self.planned_revisions = repository.all_revision_ids()
         self.progress.clear()
-        inventoried = set(self.inventory_weave.versions())
+        inventoried = set(key[-1] for key in self.inventory_weave.keys())
         awol = set(self.planned_revisions) - inventoried
         if len(awol) > 0:
             raise BzrCheckError('Stored revisions missing from inventory'
@@ -161,13 +168,14 @@ class Check(object):
         rev_id - the one to check
         """
         rev = self.repository.get_revision(rev_id)
-                
+
         if rev.revision_id != rev_id:
             raise BzrCheckError('wrong internal revision id in revision {%s}'
                                 % rev_id)
 
         for parent in rev.parent_ids:
             if not parent in self.planned_revisions:
+                # rev has a parent we didn't know about.
                 missing_links = self.missing_parent_links.get(parent, [])
                 missing_links.append(rev_id)
                 self.missing_parent_links[parent] = missing_links
@@ -176,13 +184,18 @@ class Check(object):
                 if self.repository.has_revision(parent):
                     missing_ancestry = self.repository.get_ancestry(parent)
                     for missing in missing_ancestry:
-                        if (missing is not None 
+                        if (missing is not None
                             and missing not in self.planned_revisions):
                             self.planned_revisions.append(missing)
                 else:
                     self.ghosts.append(rev_id)
 
         if rev.inventory_sha1:
+            # Loopback - this is currently circular logic as the
+            # knit get_inventory_sha1 call returns rev.inventory_sha1.
+            # Repository.py's get_inventory_sha1 should instead return
+            # inventories.get_record_stream([(revid,)]).next().sha1 or
+            # similar.
             inv_sha1 = self.repository.get_inventory_sha1(rev_id)
             if inv_sha1 != rev.inventory_sha1:
                 raise BzrCheckError('Inventory sha1 hash doesn\'t match'
@@ -193,69 +206,129 @@ class Check(object):
     def check_weaves(self):
         """Check all the weaves we can get our hands on.
         """
-        n_weaves = 1
         weave_ids = []
-        if self.repository.weave_store.listable():
-            weave_ids = list(self.repository.weave_store)
-            n_weaves = len(weave_ids) + 1
-        self.progress.update('checking versionedfile', 0, n_weaves)
+        self.progress.update('checking inventory', 0, 2)
         self.inventory_weave.check(progress_bar=self.progress)
-        files_in_revisions = {}
-        revisions_of_files = {}
-        weave_checker = self.repository._get_versioned_file_checker()
-        for i, weave_id in enumerate(weave_ids):
-            self.progress.update('checking versionedfile', i, n_weaves)
-            w = self.repository.weave_store.get_weave(weave_id,
-                    self.repository.get_transaction())
-            # No progress here, because it looks ugly.
-            w.check()
-            result = weave_checker.check_file_version_parents(w, weave_id)
-            bad_parents, unused_versions = result
-            bad_parents = bad_parents.items()
-            for revision_id, (weave_parents, correct_parents) in bad_parents:
-                self.inconsistent_parents.append(
-                    (revision_id, weave_id, weave_parents, correct_parents))
-            for revision_id in unused_versions:
-                self.unreferenced_versions.add((weave_id, revision_id))
-            self.checked_weaves[weave_id] = True
+        self.progress.update('checking text storage', 1, 2)
+        self.repository.texts.check(progress_bar=self.progress)
+        weave_checker = self.repository._get_versioned_file_checker(
+            text_key_references=self.text_key_references)
+        result = weave_checker.check_file_version_parents(
+            self.repository.texts, progress_bar=self.progress)
+        self.checked_weaves = weave_checker.file_ids
+        bad_parents, unused_versions = result
+        bad_parents = bad_parents.items()
+        for text_key, (stored_parents, correct_parents) in bad_parents:
+            # XXX not ready for id join/split operations.
+            weave_id = text_key[0]
+            revision_id = text_key[-1]
+            weave_parents = tuple([parent[-1] for parent in stored_parents])
+            correct_parents = tuple([parent[-1] for parent in correct_parents])
+            self.inconsistent_parents.append(
+                (revision_id, weave_id, weave_parents, correct_parents))
+        self.unreferenced_versions.update(unused_versions)
 
     def _check_revision_tree(self, rev_id):
         tree = self.repository.revision_tree(rev_id)
         inv = tree.inventory
-        seen_ids = {}
-        for file_id in inv:
+        seen_ids = set()
+        seen_names = set()
+        for path, ie in inv.iter_entries():
+            self._add_entry_to_text_key_references(inv, ie)
+            file_id = ie.file_id
             if file_id in seen_ids:
                 raise BzrCheckError('duplicated file_id {%s} '
                                     'in inventory for revision {%s}'
                                     % (file_id, rev_id))
-            seen_ids[file_id] = True
-        for file_id in inv:
-            ie = inv[file_id]
+            seen_ids.add(file_id)
             ie.check(self, rev_id, inv, tree)
-        seen_names = {}
-        for path, ie in inv.iter_entries():
             if path in seen_names:
                 raise BzrCheckError('duplicated path %s '
                                     'in inventory for revision {%s}'
                                     % (path, rev_id))
-            seen_names[path] = True
+            seen_names.add(path)
+
+    def _add_entry_to_text_key_references(self, inv, entry):
+        if not self.rich_roots and entry == inv.root:
+            return
+        key = (entry.file_id, entry.revision)
+        self.text_key_references.setdefault(key, False)
+        if entry.revision == inv.revision_id:
+            self.text_key_references[key] = True
 
 
+@deprecated_function(deprecated_in((1,6,0)))
 def check(branch, verbose):
     """Run consistency checks on a branch.
-    
+
     Results are reported through logging.
-    
+
+    Deprecated in 1.6.  Please use check_branch instead.
+
+    :raise BzrCheckError: if there's a consistency error.
+    """
+    check_branch(branch, verbose)
+
+
+def check_branch(branch, verbose):
+    """Run consistency checks on a branch.
+
+    Results are reported through logging.
+
     :raise BzrCheckError: if there's a consistency error.
     """
     branch.lock_read()
     try:
         branch_result = branch.check()
-        repo_result = branch.repository.check([branch.last_revision()])
     finally:
         branch.unlock()
     branch_result.report_results(verbose)
-    repo_result.report_results(verbose)
 
 
+def check_dwim(path, verbose, do_branch=False, do_repo=False, do_tree=False):
+    try:
+        tree, branch, repo, relpath = \
+                        BzrDir.open_containing_tree_branch_or_repository(path)
+    except errors.NotBranchError:
+        tree = branch = repo = None
 
+    if do_tree:
+        if tree is not None:
+            note("Checking working tree at '%s'."
+                 % (tree.bzrdir.root_transport.base,))
+            tree._check()
+        else:
+            log_error("No working tree found at specified location.")
+
+    if branch is not None:
+        # We have a branch
+        if repo is None:
+            # The branch is in a shared repository
+            repo = branch.repository
+        branches = [branch]
+    elif repo is not None:
+        branches = repo.find_branches(using=True)
+
+    if repo is not None:
+        repo.lock_read()
+        try:
+            if do_repo:
+                note("Checking repository at '%s'."
+                     % (repo.bzrdir.root_transport.base,))
+                result = repo.check()
+                result.report_results(verbose)
+            if do_branch:
+                if branches == []:
+                    log_error("No branch found at specified location.")
+                else:
+                    for branch in branches:
+                        note("Checking branch at '%s'."
+                             % (branch.bzrdir.root_transport.base,))
+                        check_branch(branch, verbose)
+        finally:
+            repo.unlock()
+    else:
+        if do_branch:
+            log_error("No branch found at specified location.")
+        if do_repo:
+            log_error("No repository found at specified location.")

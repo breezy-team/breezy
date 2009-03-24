@@ -33,16 +33,30 @@ from bzrlib.util import bencode
 from bzrlib.tuned_gzip import GzipFile
 
 
+def topo_iter_keys(vf, keys=None):
+    if keys is None:
+        keys = vf.keys()
+    parents = vf.get_parent_map(keys)
+    return _topo_iter(parents, keys)
+
 def topo_iter(vf, versions=None):
-    seen = set()
-    descendants = {}
     if versions is None:
         versions = vf.versions()
     parents = vf.get_parent_map(versions)
+    return _topo_iter(parents, versions)
+
+def _topo_iter(parents, versions):
+    seen = set()
+    descendants = {}
     def pending_parents(version):
+        if parents[version] is None:
+            return []
         return [v for v in parents[version] if v in versions and
                 v not in seen]
     for version_id in versions:
+        if parents[version_id] is None:
+            # parentless
+            continue
         for parent_id in parents[version_id]:
             descendants.setdefault(parent_id, []).append(version_id)
     cur = [v for v in versions if len(pending_parents(v)) == 0]
@@ -276,7 +290,7 @@ class ParentText(object):
             ' %(num_lines)r)' % self.__dict__
 
     def __eq__(self, other):
-        if self.__class__ != other.__class__:
+        if self.__class__ is not other.__class__:
             return False
         return (self.__dict__ == other.__dict__)
 

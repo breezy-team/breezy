@@ -25,12 +25,12 @@ class _Serializer_v4(Serializer):
     """Version 0.0.4 serializer
 
     You should use the serializer_v4 singleton.
-    
+
     v4 serialisation is no longer supported, only deserialisation.
     """
-    
+
     __slots__ = []
-    
+
     def _pack_entry(self, ie):
         """Convert InventoryEntry to XML element"""
         e = Element('entry')
@@ -57,7 +57,7 @@ class _Serializer_v4(Serializer):
         return e
 
 
-    def _unpack_inventory(self, elt, revision_id=None):
+    def _unpack_inventory(self, elt, revision_id=None, entry_cache=None):
         """Construct from XML Element
 
         :param revision_id: Ignored parameter used by xml5.
@@ -65,14 +65,14 @@ class _Serializer_v4(Serializer):
         root_id = elt.get('file_id') or ROOT_ID
         inv = Inventory(root_id)
         for e in elt:
-            ie = self._unpack_entry(e)
+            ie = self._unpack_entry(e, entry_cache=entry_cache)
             if ie.parent_id == ROOT_ID:
                 ie.parent_id = root_id
             inv.add(ie)
         return inv
 
 
-    def _unpack_entry(self, elt):
+    def _unpack_entry(self, elt, entry_cache=None):
         ## original format inventories don't have a parent_id for
         ## nodes in the root directory, but it's cleaner to use one
         ## internally.
@@ -134,10 +134,10 @@ class _Serializer_v4(Serializer):
                     p.set('revision_sha1', rev.parent_sha1s[i])
         return root
 
-    
+
     def _unpack_revision(self, elt):
         """XML Element -> Revision object"""
-        
+
         # <changeset> is deprecated...
         if elt.tag not in ('revision', 'changeset'):
             raise BzrError("unexpected tag in revision file: %r" % elt)

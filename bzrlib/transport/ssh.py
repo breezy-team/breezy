@@ -180,7 +180,7 @@ class SocketAsChannelAdapter(object):
 
     def get_name(self):
         return "bzr SocketAsChannelAdapter"
-    
+
     def send(self, data):
         return self.__socket.send(data)
 
@@ -211,7 +211,7 @@ class SSHVendor(object):
 
     def connect_sftp(self, username, password, host, port):
         """Make an SSH connection, and return an SFTPClient.
-        
+
         :param username: an ascii string
         :param password: an ascii string
         :param host: a host name as an ascii string
@@ -226,7 +226,7 @@ class SSHVendor(object):
 
     def connect_ssh(self, username, password, host, port, command):
         """Make an SSH connection.
-        
+
         :returns: something with a `close` method, and a `get_filelike_channels`
             method that returns a pair of (read, write) filelike objects.
         """
@@ -391,7 +391,7 @@ class SubprocessVendor(SSHVendor):
     def _get_vendor_specific_argv(self, username, host, port, subsystem=None,
                                   command=None):
         """Returns the argument list to run the subprocess with.
-        
+
         Exactly one of 'subsystem' and 'command' must be specified.
         """
         raise NotImplementedError(self._get_vendor_specific_argv)
@@ -458,18 +458,10 @@ register_ssh_vendor('plink', PLinkSubprocessVendor())
 
 
 def _paramiko_auth(username, password, host, port, paramiko_transport):
-    # paramiko requires a username, but it might be none if nothing was supplied
-    # use the local username, just in case.
-    # We don't override username, because if we aren't using paramiko,
-    # the username might be specified in ~/.ssh/config and we don't want to
-    # force it to something else
-    # Also, it would mess up the self.relpath() functionality
-    auth = config.AuthenticationConfig()
+    # paramiko requires a username, but it might be none if nothing was
+    # supplied.  If so, use the local username.
     if username is None:
-        username = auth.get_user('ssh', host, port=port)
-        if username is None:
-            # Default to local user
-            username = getpass.getuser()
+        username = getpass.getuser()
 
     if _use_ssh_agent:
         agent = paramiko.Agent()
@@ -496,6 +488,7 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
             pass
 
     # give up and ask for a password
+    auth = config.AuthenticationConfig()
     password = auth.get_password('ssh', host, username, port=port)
     try:
         paramiko_transport.auth_password(username, password)
@@ -569,11 +562,11 @@ def save_host_keys():
 def os_specific_subprocess_params():
     """Get O/S specific subprocess parameters."""
     if sys.platform == 'win32':
-        # setting the process group and closing fds is not supported on 
+        # setting the process group and closing fds is not supported on
         # win32
         return {}
     else:
-        # We close fds other than the pipes as the child process does not need 
+        # We close fds other than the pipes as the child process does not need
         # them to be open.
         #
         # We also set the child process to ignore SIGINT.  Normally the signal
@@ -581,7 +574,7 @@ def os_specific_subprocess_params():
         # this causes it to be seen only by bzr and not by ssh.  Python will
         # generate a KeyboardInterrupt in bzr, and we will then have a chance
         # to release locks or do other cleanup over ssh before the connection
-        # goes away.  
+        # goes away.
         # <https://launchpad.net/products/bzr/+bug/5987>
         #
         # Running it in a separate process group is not good because then it

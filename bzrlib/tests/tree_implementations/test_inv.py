@@ -64,8 +64,6 @@ class TestPreviousHeads(TestCaseWithTree):
         self.tree.lock_read()
         self.addCleanup(self.tree.unlock)
         self.file_active = get_entry(self.tree, 'fileid')
-        self.weave = self.branch.repository.weave_store.get_weave('fileid',
-            self.branch.repository.get_transaction())
 
     # TODO: test two inventories with the same file revision
 
@@ -105,3 +103,60 @@ class TestInventory(TestCaseWithTree):
         entry = get_entry(self.tree, self.tree.path2id('symlink'))
         self.assertEqual(entry.kind, 'symlink')
         self.assertEqual(None, entry.text_size)
+
+    def test_paths2ids_recursive(self):
+        work_tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/dir/', 'tree/dir/file'])
+        work_tree.add(['dir', 'dir/file'], ['dir-id', 'file-id'])
+        tree = self._convert_tree(work_tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertEqual(set(['dir-id', 'file-id']), tree.paths2ids(['dir']))
+
+    def test_paths2ids_forget_old(self):
+        work_tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/file'])
+        work_tree.add('file', 'first-id')
+        work_tree.commit('commit old state')
+        work_tree.remove('file')
+        tree = self._convert_tree(work_tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertEqual(set([]), tree.paths2ids(['file'],
+                         require_versioned=False))
+
+    def _make_canonical_test_tree(self, commit=True):
+        # make a tree used by all the 'canonical' tests below.
+        work_tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/dir/', 'tree/dir/file'])
+        work_tree.add(['dir', 'dir/file'])
+        if commit:
+            work_tree.commit('commit 1')
+        return work_tree
+
+    def test_canonical_path(self):
+        work_tree = self._make_canonical_test_tree()
+        self.assertEqual(work_tree.get_canonical_inventory_path('Dir/File'), 'dir/file')
+
+    def test_canonical_path_before_commit(self):
+        work_tree = self._make_canonical_test_tree(False)
+        # note: not committed.
+        self.assertEqual(work_tree.get_canonical_inventory_path('Dir/File'), 'dir/file')
+
+    def test_canonical_path_dir(self):
+        # check it works when asked for just the directory portion.
+        work_tree = self._make_canonical_test_tree()
+        self.assertEqual(work_tree.get_canonical_inventory_path('Dir'), 'dir')
+
+    def test_canonical_path_root(self):
+        work_tree = self._make_canonical_test_tree()
+        self.assertEqual(work_tree.get_canonical_inventory_path(''), '')
+        self.assertEqual(work_tree.get_canonical_inventory_path('/'), '/')
+
+    def test_canonical_path_invalid_all(self):
+        work_tree = self._make_canonical_test_tree()
+        self.assertEqual(work_tree.get_canonical_inventory_path('foo/bar'), 'foo/bar')
+
+    def test_canonical_invalid_child(self):
+        work_tree = self._make_canonical_test_tree()
+        self.assertEqual(work_tree.get_canonical_inventory_path('Dir/None'), 'dir/None')

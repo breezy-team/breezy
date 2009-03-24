@@ -18,22 +18,12 @@
 """Black-box tests for bzr.
 
 These check that it behaves properly when it's invoked through the regular
-command-line interface. This doesn't actually run a new interpreter but 
+command-line interface. This doesn't actually run a new interpreter but
 rather starts again from the run_bzr function.
 """
 
-import sys
 
-from bzrlib.tests import (
-                          adapt_modules,
-                          TestCaseWithTransport,
-                          iter_suite_tests,
-                          )
-from bzrlib.tests.EncodingAdapter import EncodingTestAdapter
-from bzrlib.symbol_versioning import (
-    deprecated_method,
-    )
-import bzrlib.ui as ui
+from bzrlib.tests import TestCaseWithTransport
 
 
 def load_tests(basic_tests, module, loader):
@@ -44,6 +34,7 @@ def load_tests(basic_tests, module, loader):
     testmod_names = [
                      'bzrlib.tests.blackbox.test_add',
                      'bzrlib.tests.blackbox.test_added',
+                     'bzrlib.tests.blackbox.test_alias',
                      'bzrlib.tests.blackbox.test_aliases',
                      'bzrlib.tests.blackbox.test_ancestry',
                      'bzrlib.tests.blackbox.test_annotate',
@@ -56,13 +47,17 @@ def load_tests(basic_tests, module, loader):
                      'bzrlib.tests.blackbox.test_cat_revision',
                      'bzrlib.tests.blackbox.test_check',
                      'bzrlib.tests.blackbox.test_checkout',
+                     'bzrlib.tests.blackbox.test_clean_tree',
                      'bzrlib.tests.blackbox.test_command_encoding',
                      'bzrlib.tests.blackbox.test_commit',
                      'bzrlib.tests.blackbox.test_conflicts',
                      'bzrlib.tests.blackbox.test_debug',
                      'bzrlib.tests.blackbox.test_diff',
+                     'bzrlib.tests.blackbox.test_dump_btree',
                      'bzrlib.tests.blackbox.test_exceptions',
                      'bzrlib.tests.blackbox.test_export',
+                     'bzrlib.tests.blackbox.test_filesystem_cicp',
+                     'bzrlib.tests.blackbox.test_filtered_view_ops',
                      'bzrlib.tests.blackbox.test_find_merge_base',
                      'bzrlib.tests.blackbox.test_help',
                      'bzrlib.tests.blackbox.test_hooks',
@@ -80,8 +75,10 @@ def load_tests(basic_tests, module, loader):
                      'bzrlib.tests.blackbox.test_merge',
                      'bzrlib.tests.blackbox.test_merge_directive',
                      'bzrlib.tests.blackbox.test_missing',
+                     'bzrlib.tests.blackbox.test_modified',
                      'bzrlib.tests.blackbox.test_mv',
                      'bzrlib.tests.blackbox.test_nick',
+                     'bzrlib.tests.blackbox.test_non_ascii',
                      'bzrlib.tests.blackbox.test_outside_wt',
                      'bzrlib.tests.blackbox.test_pack',
                      'bzrlib.tests.blackbox.test_pull',
@@ -100,6 +97,7 @@ def load_tests(basic_tests, module, loader):
                      'bzrlib.tests.blackbox.test_send',
                      'bzrlib.tests.blackbox.test_serve',
                      'bzrlib.tests.blackbox.test_shared_repository',
+                     'bzrlib.tests.blackbox.test_shelve',
                      'bzrlib.tests.blackbox.test_sign_my_commits',
                      'bzrlib.tests.blackbox.test_split',
                      'bzrlib.tests.blackbox.test_status',
@@ -114,18 +112,11 @@ def load_tests(basic_tests, module, loader):
                      'bzrlib.tests.blackbox.test_version',
                      'bzrlib.tests.blackbox.test_version_info',
                      'bzrlib.tests.blackbox.test_versioning',
+                     'bzrlib.tests.blackbox.test_view',
                      'bzrlib.tests.blackbox.test_whoami',
                      ]
     # add the tests for the sub modules
     suite.addTests(loader.loadTestsFromModuleNames(testmod_names))
-
-    test_encodings = [
-        'bzrlib.tests.blackbox.test_non_ascii',
-    ]
-
-    adapter = EncodingTestAdapter()
-    adapt_modules(test_encodings, adapter, loader, suite)
-
     return suite
 
 

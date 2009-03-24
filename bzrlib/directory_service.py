@@ -20,7 +20,13 @@ Directory services are utilities that provide a mapping from URL-like strings
 to true URLs.  Examples include lp:urls and per-user location aliases.
 """
 
-from bzrlib import registry
+from bzrlib import errors, registry
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib.branch import Branch
+from bzrlib import urlutils
+""")
+
 
 class DirectoryServiceRegistry(registry.Registry):
     """This object maintains and uses a list of directory services.
@@ -52,3 +58,42 @@ class DirectoryServiceRegistry(registry.Registry):
         return service().look_up(name, url)
 
 directories = DirectoryServiceRegistry()
+
+
+class AliasDirectory(object):
+    """Directory lookup for locations associated with a branch.
+
+    :parent, :submit, :public, :push, :this, and :bound are currently
+    supported.  On error, a subclass of DirectoryLookupFailure will be raised.
+    """
+
+    def look_up(self, name, url):
+        branch = Branch.open_containing('.')[0]
+        lookups = {
+            'parent': branch.get_parent,
+            'submit': branch.get_submit_branch,
+            'public': branch.get_public_branch,
+            'bound': branch.get_bound_location,
+            'push': branch.get_push_location,
+            'this': lambda: branch.base
+        }
+        parts = url.split('/', 1)
+        if len(parts) == 2:
+            name, extra = parts
+        else:
+            (name,) = parts
+            extra = None
+        try:
+            method = lookups[name[1:]]
+        except KeyError:
+            raise errors.InvalidLocationAlias(url)
+        else:
+            result = method()
+        if result is None:
+            raise errors.UnsetLocationAlias(url)
+        if extra is not None:
+            result = urlutils.join(result, extra)
+        return result
+
+directories.register(':', AliasDirectory,
+                     'Easy access to remembered branch locations')

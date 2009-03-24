@@ -29,7 +29,7 @@ from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
 class TestPull(TestCaseWithBranch):
 
     def test_pull_convergence_simple(self):
-        # when revisions are pulled, the left-most accessible parents must 
+        # when revisions are pulled, the left-most accessible parents must
         # become the revision-history.
         parent = self.make_branch_and_tree('parent')
         parent.commit('1st post', rev_id='P1', allow_pointless=True)
@@ -81,6 +81,23 @@ class TestPull(TestCaseWithBranch):
         self.assertRaises(errors.BoundBranchConnectionFailure,
                 checkout.branch.pull, other.branch)
 
+    def test_pull_returns_result(self):
+        parent = self.make_branch_and_tree('parent')
+        parent.commit('1st post', rev_id='P1')
+        mine = parent.bzrdir.sprout('mine').open_workingtree()
+        mine.commit('my change', rev_id='M1')
+        result = parent.branch.pull(mine.branch)
+        self.assertIsNot(None, result)
+        self.assertIs(mine.branch, result.source_branch)
+        self.assertIs(parent.branch, result.target_branch)
+        self.assertIs(parent.branch, result.master_branch)
+        self.assertIs(None, result.local_branch)
+        self.assertEqual(1, result.old_revno)
+        self.assertEqual('P1', result.old_revid)
+        self.assertEqual(2, result.new_revno)
+        self.assertEqual('M1', result.new_revid)
+        self.assertEqual(None, result.tag_conflicts)
+
     def test_pull_overwrite(self):
         tree_a = self.make_branch_and_tree('tree_a')
         tree_a.commit('message 1')
@@ -110,7 +127,7 @@ class TestPullHook(TestCaseWithBranch):
 
     def capture_post_pull_hook(self, result):
         """Capture post pull hook calls to self.hook_calls.
-        
+
         The call is logged, as is some state of the two branches.
         """
         if result.local_branch:
@@ -144,7 +161,7 @@ class TestPullHook(TestCaseWithBranch):
     def test_post_pull_bound_branch(self):
         # pulling to a bound branch should pass in the master branch to the
         # hook, allowing the correct number of emails to be sent, while still
-        # allowing hooks that want to modify the target to do so to both 
+        # allowing hooks that want to modify the target to do so to both
         # instances.
         target = self.make_branch('target')
         local = self.make_branch('local')
