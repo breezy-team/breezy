@@ -3019,6 +3019,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_reconfigure',
                    'bzrlib.tests.test_registry',
                    'bzrlib.tests.test_remote',
+                   'bzrlib.tests.test_rename_map',
                    'bzrlib.tests.test_repository',
                    'bzrlib.tests.test_revert',
                    'bzrlib.tests.test_revision',

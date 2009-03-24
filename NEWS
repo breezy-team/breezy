@@ -19,6 +19,9 @@ Compatibility Breaks
 New Features
 ************
 
+* New ``guess-renames`` command recognizes renames after they occur.
+  (Aaron Bentley)
+
 * ``bzr shelve`` can now apply changes without storing anything on the
   shelf, via the new --destroy option.  (Aaron Bentley)
 
