@@ -589,10 +589,11 @@ def _make_search_filter(branch, generate_delta, search, log_rev_iterator):
         return log_rev_iterator
     # Compile the search now to get early errors.
     try:
-        searchRE = re.compile(search, re.IGNORECASE) 
+        searchRE = re.compile(search, re.IGNORECASE)
         searchRE.search("")
     except:
-        raise errors.BzrCommandError('Invalid regular expression')
+        raise errors.BzrCommandError('Invalid regular expression: %r'
+            % (search,))
     return _filter_message_re(searchRE, log_rev_iterator)
 
 

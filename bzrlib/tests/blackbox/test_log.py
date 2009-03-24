@@ -1,5 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
-# -*- coding: utf-8 -*-
+# Copyright (C) 2005, 2006, 2007, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -243,6 +242,15 @@ class TestLog(ExternalBase):
         self.assertContainsRe(log, r'revno: 2\n')
         self.assertContainsRe(log, r'revno: 3\n')
 
+    def test_log_bad_message_re(self):
+        """Bad --message argument gives a sensible message
+        
+        See https://bugs.launchpad.net/bzr/+bug/251352
+        """
+        self._prepare()
+        out, err = self.run_bzr(['log', '-m', '*'], retcode=3)
+        self.assertEqual("bzr: ERROR: Invalid regular expression: '*'\n", err)
+        self.assertEqual('', out)
 
 class TestLogVerbose(TestCaseWithTransport):
 
