@@ -22,6 +22,7 @@ import codecs
 import warnings
 
 from bzrlib import (
+    counted_lock,
     errors,
     osutils,
     transactions,
@@ -115,7 +116,7 @@ class LockableFiles(object):
         self._lock = lock_class(transport, esc_name,
                                 file_modebits=self._file_mode,
                                 dir_modebits=self._dir_mode)
-        self._counted_lock = CountedLock(self._lock)
+        self._counted_lock = counted_lock.CountedLock(self._lock)
 
     def create_lock(self):
         """Create the lock.
