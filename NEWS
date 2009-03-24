@@ -211,6 +211,10 @@ Internals
   make visible data inserted into the repository by a smart server
   fetch operation. (Robert Collins, Andrew Bennetts)
 
+* ``RemoteRepository`` will now negatively cache missing revisions during
+  ``get_parent_map`` while read-locked. Write-locks are unaffected.
+  (Robert Collins, Andrew Bennetts)
+
 * Removed ``InterRemoteToOther``, ``InterOtherToRemote`` and
   ``InterPackToRemotePack`` classes, as they are now unnecessary.
   (Andrew Bennetts)
@@ -218,6 +222,11 @@ Internals
 * ``RepositoryFormat`` as a new attribute ``fast_deltas`` to indicate
   whether the repository can efficiently generate deltas between trees
   regardless of tree size. (Robert Collins)
+
+* The smart server verb ``Repository.get_parent_map`` can now include
+  information about ghosts when the special revision ``include-missing:``
+  is in the requested parents map list. With this flag, ghosts are
+  included as ``missing:REVISION_ID``. (Robert Collins, Andrew Bennetts)
 
 * ``_walk_to_common_revisions`` will now batch up at least 50
   revisions before calling ``get_parent_map`` on the target,

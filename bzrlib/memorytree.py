@@ -212,8 +212,7 @@ class MemoryTree(mutabletree.MutableTree):
 
     def _populate_from_branch(self):
         """Populate the in-tree state from the branch."""
-        self._basis_tree = self.branch.repository.revision_tree(
-            self._branch_revision_id)
+        self._set_basis()
         if self._branch_revision_id == _mod_revision.NULL_REVISION:
             self._parent_ids = []
         else:
@@ -280,13 +279,23 @@ class MemoryTree(mutabletree.MutableTree):
             _mod_revision.check_not_reserved_id(revision_id)
         if len(revision_ids) == 0:
             self._parent_ids = []
-            self._basis_tree = self.branch.repository.revision_tree(
-                                    _mod_revision.NULL_REVISION)
+            self._branch_revision_id = _mod_revision.NULL_REVISION
         else:
             self._parent_ids = revision_ids
-            self._basis_tree = self.branch.repository.revision_tree(
-                                    revision_ids[0])
             self._branch_revision_id = revision_ids[0]
+        self._allow_leftmost_as_ghost = allow_leftmost_as_ghost
+        self._set_basis()
+    
+    def _set_basis(self):
+        try:
+            self._basis_tree = self.branch.repository.revision_tree(
+                self._branch_revision_id)
+        except errors.NoSuchRevision:
+            if self._allow_leftmost_as_ghost:
+                self._basis_tree = self.branch.repository.revision_tree(
+                    _mod_revision.NULL_REVISION)
+            else:
+                raise
 
     def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
         """See MutableTree.set_parent_trees()."""

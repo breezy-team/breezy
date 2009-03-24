@@ -839,7 +839,7 @@ class RemoteRepository(_RpcHelper):
         if not self._lock_mode:
             self._lock_mode = 'r'
             self._lock_count = 1
-            self._unstacked_provider.enable_cache(cache_misses=False)
+            self._unstacked_provider.enable_cache(cache_misses=True)
             if self._real_repository is not None:
                 self._real_repository.lock_read()
         else:
@@ -1241,15 +1241,26 @@ class RemoteRepository(_RpcHelper):
         # TODO: Manage this incrementally to avoid covering the same path
         # repeatedly. (The server will have to on each request, but the less
         # work done the better).
+        #
+        # Negative caching notes:
+        # new server sends missing when a request including the revid
+        # 'include-missing:' is present in the request.
+        # missing keys are serialised as missing:X, and we then call
+        # provider.note_missing(X) for-all X
         parents_map = self._unstacked_provider.get_cached_map()
         if parents_map is None:
             # Repository is not locked, so there's no cache.
             parents_map = {}
+        # start_set is all the keys in the cache
         start_set = set(parents_map)
+        # result set is all the references to keys in the cache
         result_parents = set()
         for parents in parents_map.itervalues():
             result_parents.update(parents)
         stop_keys = result_parents.difference(start_set)
+        # We don't need to send ghosts back to the server as a position to
+        # stop either.
+        stop_keys.difference_update(self._unstacked_provider.missing_keys)
         included_keys = start_set.intersection(result_parents)
         start_set.difference_update(included_keys)
         recipe = ('manual', start_set, stop_keys, len(parents_map))
@@ -1260,7 +1271,7 @@ class RemoteRepository(_RpcHelper):
                 raise ValueError(
                     "key %r not a plain string" % (key,))
         verb = 'Repository.get_parent_map'
-        args = (path,) + tuple(keys)
+        args = (path, 'include-missing:') + tuple(keys)
         try:
             response = self._call_with_body_bytes_expecting_body(
                 verb, args, body)
@@ -1294,8 +1305,14 @@ class RemoteRepository(_RpcHelper):
                 if len(d) > 1:
                     revision_graph[d[0]] = d[1:]
                 else:
-                    # No parents - so give the Graph result (NULL_REVISION,).
-                    revision_graph[d[0]] = (NULL_REVISION,)
+                    # No parents:
+                    if d[0].startswith('missing:'):
+                        revid = d[0][8:]
+                        self._unstacked_provider.note_missing_key(revid)
+                    else:
+                        # no parents - so give the Graph result
+                        # (NULL_REVISION,).
+                        revision_graph[d[0]] = (NULL_REVISION,)
             return revision_graph
 
     @needs_read_lock
