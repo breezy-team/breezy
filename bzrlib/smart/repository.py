@@ -134,6 +134,10 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
         from revision_ids is returned. The verb takes a body containing the
         current search state, see do_body for details.
 
+        If 'include-missing' is in revision_ids, ghosts encountered in the
+        graph traversal for getting parent data are included in the result with
+        a prefix of 'missing:'.
+
         :param repository: The repository to query in.
         :param revision_ids: The utf8 encoded revision_id to answer for.
         """
@@ -158,6 +162,9 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
     def _do_repository_request(self, body_bytes):
         repository = self._repository
         revision_ids = set(self._revision_ids)
+        include_missing = 'include-missing:' in revision_ids
+        if include_missing:
+            revision_ids.remove('include-missing:')
         body_lines = body_bytes.split('\n')
         search_result, error = self.recreate_search_from_recipe(
             repository, body_lines)
@@ -178,19 +185,29 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
         while next_revs:
             queried_revs.update(next_revs)
             parent_map = repo_graph.get_parent_map(next_revs)
+            current_revs = next_revs
             next_revs = set()
-            for revision_id, parents in parent_map.iteritems():
-                # adjust for the wire
-                if parents == (_mod_revision.NULL_REVISION,):
-                    parents = ()
-                # prepare the next query
-                next_revs.update(parents)
-                if revision_id not in client_seen_revs:
+            for revision_id in current_revs:
+                missing_rev = False
+                parents = parent_map.get(revision_id)
+                if parents is not None:
+                    # adjust for the wire
+                    if parents == (_mod_revision.NULL_REVISION,):
+                        parents = ()
+                    # prepare the next query
+                    next_revs.update(parents)
+                    encoded_id = revision_id
+                else:
+                    missing_rev = True
+                    encoded_id = "missing:" + revision_id
+                    parents = []
+                if (revision_id not in client_seen_revs and
+                    (not missing_rev or include_missing)):
                     # Client does not have this revision, give it to it.
                     # add parents to the result
-                    result[revision_id] = parents
+                    result[encoded_id] = parents
                     # Approximate the serialized cost of this revision_id.
-                    size_so_far += 2 + len(revision_id) + sum(map(len, parents))
+                    size_so_far += 2 + len(encoded_id) + sum(map(len, parents))
             # get all the directly asked for parents, and then flesh out to
             # 64K (compressed) or so. We do one level of depth at a time to
             # stay in sync with the client. The 250000 magic number is

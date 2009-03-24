@@ -1230,11 +1230,19 @@ class RemoteRepository(_RpcHelper):
         # TODO: Manage this incrementally to avoid covering the same path
         # repeatedly. (The server will have to on each request, but the less
         # work done the better).
+        #
+        # Negative caching notes:
+        # new server sends missing when a request including the revid
+        # 'include-missing:' is present in the request.
+        # missing keys are serialised as missing:X, and we then call
+        # provider.note_missing(X) for-all X
         parents_map = self._unstacked_provider.get_cached_map()
         if parents_map is None:
             # Repository is not locked, so there's no cache.
             parents_map = {}
+        # start_set is all the keys in the cache
         start_set = set(parents_map)
+        # result set is all the references to keys in the cache
         result_parents = set()
         for parents in parents_map.itervalues():
             result_parents.update(parents)
