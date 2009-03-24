@@ -90,7 +90,8 @@ class TestLRUCache(tests.TestCase):
         # 'foo' is now most recent, so final cleanup will call it last
         cache['foo']
         cache.clear()
-        self.assertEqual([('baz', '1'), ('biz', '3'), ('foo', '2')], cleanup_called)
+        self.assertEqual([('baz', '1'), ('biz', '3'), ('foo', '2')],
+                         cleanup_called)
 
     def test_cleanup_on_replace(self):
         """Replacing an object should cleanup the old value."""
@@ -177,7 +178,7 @@ class TestLRUCache(tests.TestCase):
         cache.cleanup()
         self.assertEqual(2, len(cache))
 
-    def test_compact_preserves_last_access_order(self):
+    def test_preserve_last_access_order(self):
         cache = lru_cache.LRUCache(max_cache=5)
 
         # Add these in order
@@ -311,6 +312,22 @@ class TestLRUSizeCache(tests.TestCase):
         cache.add('test4', 'bikey')
         self.assertEqual(3, cache._value_size)
         self.assertEqual({'test':'key'}, cache.items())
+
+    def test_no_add_over_size_cleanup(self):
+        """If a large value is not cached, we will call cleanup right away."""
+        cleanup_calls = []
+        def cleanup(key, value):
+            cleanup_calls.append((key, value))
+
+        cache = lru_cache.LRUSizeCache(max_size=10, after_cleanup_size=5)
+        self.assertEqual(0, cache._value_size)
+        self.assertEqual({}, cache.items())
+        cache.add('test', 'key that is too big', cleanup=cleanup)
+        # key was not added
+        self.assertEqual(0, cache._value_size)
+        self.assertEqual({}, cache.items())
+        # and cleanup was called
+        self.assertEqual([('test', 'key that is too big')], cleanup_calls)
 
     def test_adding_clears_cache_based_on_size(self):
         """The cache is cleared in LRU order until small enough"""

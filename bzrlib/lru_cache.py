@@ -16,9 +16,10 @@
 
 """A simple least-recently-used (LRU) cache."""
 
-from collections import deque
-
-from bzrlib import symbol_versioning
+from bzrlib import (
+    symbol_versioning,
+    trace,
+    )
 
 
 class _LRUNode(object):
@@ -139,13 +140,13 @@ class LRUCache(object):
     def add(self, key, value, cleanup=None):
         """Add a new value to the cache.
 
-        Also, if the entry is ever removed from the queue, call cleanup.
-        Passing it the key and value being removed.
+        Also, if the entry is ever removed from the cache, call
+        cleanup(key, value).
 
         :param key: The key to store it under
         :param value: The object to store
         :param cleanup: None or a function taking (key, value) to indicate
-                        'value' sohuld be cleaned up.
+                        'value' should be cleaned up.
         """
         if key in self._cache:
             node = self._cache[key]
@@ -196,8 +197,6 @@ class LRUCache(object):
         # Make sure the cache is shrunk to the correct size
         while len(self._cache) > self._after_cleanup_count:
             self._remove_lru()
-        # No need to compact the queue at this point, because the code that
-        # calls this would have already triggered it based on queue length
 
     def __setitem__(self, key, value):
         """Add a value to the cache, there will be no cleanup function."""
@@ -272,7 +271,8 @@ class LRUSizeCache(LRUCache):
     This differs in that it doesn't care how many actual items there are,
     it just restricts the cache to be cleaned up after so much data is stored.
 
-    The values that are added must support len(value).
+    The size of items added will be computed using compute_size(value), which
+    defaults to len() if not supplied.
     """
 
     def __init__(self, max_size=1024*1024, after_cleanup_size=None,
@@ -300,21 +300,28 @@ class LRUSizeCache(LRUCache):
     def add(self, key, value, cleanup=None):
         """Add a new value to the cache.
 
-        Also, if the entry is ever removed from the queue, call cleanup.
-        Passing it the key and value being removed.
+        Also, if the entry is ever removed from the cache, call
+        cleanup(key, value).
 
         :param key: The key to store it under
         :param value: The object to store
         :param cleanup: None or a function taking (key, value) to indicate
-                        'value' sohuld be cleaned up.
+                        'value' should be cleaned up.
         """
         node = self._cache.get(key, None)
         value_len = self._compute_size(value)
         if value_len >= self._after_cleanup_size:
+            # The new value is 'too big to fit', as it would fill up/overflow
+            # the cache all by itself
+            trace.mutter('Adding the key %r to an LRUSizeCache failed.'
+                         ' value %d is too big to fit in a the cache'
+                         ' with size %d %d', key, value_len,
+                         self._after_cleanup_size, self._max_size)
             if node is not None:
-                # The new value is too large, we won't be replacing the value,
-                # just removing the node completely
+                # We won't be replacing the old node, so just remove it
                 self._remove_node(node)
+            if cleanup is not None:
+                cleanup(key, value)
             return
         if node is None:
             node = _LRUNode(key, value, cleanup=cleanup)
