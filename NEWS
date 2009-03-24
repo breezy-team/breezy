@@ -16,6 +16,9 @@ IN DEVELOPMENT
 
   NEW FEATURES:
 
+    * new ``guess-renames`` command recognizes renames after they occur.
+      (Aaron Bentley)
+
     * shelve can now apply changes without storing anything on the shelf, via
       the new --destroy option.  (Aaron Bentley)
 
