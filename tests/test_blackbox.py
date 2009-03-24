@@ -109,3 +109,8 @@ class TestGitBlackBox(ExternalBase):
         self.assertEquals(error, '')
         self.assertEquals(output, 'Created tag bar.\n')
 
+    def test_init_repo(self):
+        output, error = self.run_bzr(["init-repo", "--git", "bla.git"])
+        self.assertEquals(error, '')
+        self.assertEquals(output, 'Repository branch (format: git)\nLocation:\n  shared repository: bla.git\n  repository branch: bla.git\n')
+

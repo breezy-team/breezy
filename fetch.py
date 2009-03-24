@@ -137,17 +137,24 @@ def import_git_tree(texts, mapping, path, tree, inv, parent_invs, shagitmap,
     """
     file_id = mapping.generate_file_id(path)
     ie = inv.add_path(path, "directory", file_id)
+    ie.revision = None
     parent_keys = []
     for pinv in parent_invs:
         if not file_id in pinv:
             continue
         try:
-            if shagitmap.lookup_tree(path, pinv.revision_id) == tree.id:
-                ie.revision = pinv[file_id].revision
-                return
+            tree_sha = shagitmap.lookup_tree(path, pinv[file_id].revision)
         except KeyError:
             pass
+        else:
+            if tree_sha == tree.id:
+                ie.revision = pinv[file_id].revision
+                break
         parent_keys.append((file_id, pinv[file_id].revision))
+    if ie.revision is None:
+        ie.revision = inv.revision_id
+        texts.add_lines((file_id, ie.revision), parent_keys, [])
+        shagitmap.add_entry(tree.id, "tree", (file_id, ie.revision))
     for mode, name, hexsha in tree.entries():
         entry_kind = (mode & 0700000) / 0100000
         basename = name.decode("utf-8")
@@ -165,9 +172,6 @@ def import_git_tree(texts, mapping, path, tree, inv, parent_invs, shagitmap,
                 shagitmap, bool(fs_mode & 0111))
         else:
             raise AssertionError("Unknown blob kind, perms=%r." % (mode,))
-    ie.revision = inv.revision_id
-    texts.add_lines((file_id, ie.revision), parent_keys, [])
-    shagitmap.add_entry(tree.id, "tree", (file_id, ie.revision))
     return ie
 
 

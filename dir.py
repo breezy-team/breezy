@@ -126,3 +126,6 @@ class LocalGitDir(GitDir):
 
     def create_repository(self, shared=False):
         return self.open_repository()
+
+    def create_branch(self):
+        return self.open_branch()
