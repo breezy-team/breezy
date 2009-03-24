@@ -198,7 +198,7 @@ Internals
 
 * ``RemoteRepository`` will now negatively cache missing revisions during
   ``get_parent_map`` while read-locked. Write-locks are unaffected.
-   (Robert Collins, Andrew Bennetts)
+  (Robert Collins, Andrew Bennetts)
 
 * Removed ``InterRemoteToOther``, ``InterOtherToRemote`` and
   ``InterPackToRemotePack`` classes, as they are now unnecessary.
