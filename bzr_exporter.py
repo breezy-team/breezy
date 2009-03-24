@@ -195,64 +195,67 @@ class BzrFastExporter(object):
             tree_new = self.branch.repository.revision_tree(revision_id)
         except bazErrors.UnexpectedInventoryFormat:
             # We can't really do anything anymore
-            self.warning("Revision %s is malformed - skipping", revision_id)
+            self.warning("Revision %s is malformed - skipping" % revision_id)
         return tree_old, tree_new
 
     def _get_filecommands(self, parent, revision_id):
         """Get the list of FileCommands for the changes between two revisions."""
         tree_old, tree_new = self._get_revision_trees(parent, revision_id)
-        changes = tree_new.changes_from(tree_old)
+        if tree_old and tree_new:
+            changes = tree_new.changes_from(tree_old)
 
-        # Make "modified" have 3-tuples, as added does
-        my_modified = [ x[0:3] for x in changes.modified ]
+            # Make "modified" have 3-tuples, as added does
+            my_modified = [ x[0:3] for x in changes.modified ]
 
-        # We have to keep track of previous renames in this commit
-        file_cmds = []
-        renamed = []
-        for (oldpath, newpath, id_, kind,
-                text_modified, meta_modified) in changes.renamed:
-            if (self.is_empty_dir(tree_old, oldpath)):
-                self.note("Skipping empty dir %s in rev %s" % (oldpath,
-                    revision_id))
-                continue
-            for old, new in renamed:
-                # If a previous rename is found in this rename, we should
-                # adjust the path
-                if old in oldpath:
-                    oldpath = oldpath.replace(old + "/", new + "/") 
-                    self.note("Fixing recursive rename for %s" % oldpath)
-            renamed.append([oldpath, newpath])
-            file_cmds.append(commands.FileRenameCommand(oldpath, newpath))
-            if text_modified or meta_modified:
-                my_modified.append((newpath, id_, kind))
+            # We have to keep track of previous renames in this commit
+            file_cmds = []
+            renamed = []
+            for (oldpath, newpath, id_, kind,
+                    text_modified, meta_modified) in changes.renamed:
+                if (self.is_empty_dir(tree_old, oldpath)):
+                    self.note("Skipping empty dir %s in rev %s" % (oldpath,
+                        revision_id))
+                    continue
+                for old, new in renamed:
+                    # If a previous rename is found in this rename, we should
+                    # adjust the path
+                    if old in oldpath:
+                        oldpath = oldpath.replace(old + "/", new + "/") 
+                        self.note("Fixing recursive rename for %s" % oldpath)
+                renamed.append([oldpath, newpath])
+                file_cmds.append(commands.FileRenameCommand(oldpath, newpath))
+                if text_modified or meta_modified:
+                    my_modified.append((newpath, id_, kind))
 
-        # Record deletes
-        for path, id_, kind in changes.removed:
-            for old, new in renamed:
-                path = path.replace(old + "/", new + "/")
-            file_cmds.append(commands.FileDeleteCommand(path))
+            # Record deletes
+            for path, id_, kind in changes.removed:
+                for old, new in renamed:
+                    path = path.replace(old + "/", new + "/")
+                file_cmds.append(commands.FileDeleteCommand(path))
 
-        # Map kind changes to a delete followed by an add
-        for path, id_, kind1, kind2 in changes.kind_changed:
-            for old, new in renamed:
-                path = path.replace(old + "/", new + "/")
-            file_cmds.append(commands.FileDeleteCommand(path))
-            my_modified.append((path, id_, kind2))
+            # Map kind changes to a delete followed by an add
+            for path, id_, kind1, kind2 in changes.kind_changed:
+                for old, new in renamed:
+                    path = path.replace(old + "/", new + "/")
+                file_cmds.append(commands.FileDeleteCommand(path))
+                my_modified.append((path, id_, kind2))
 
-        # Record modifications
-        for path, id_, kind in changes.added + my_modified:
-            if kind == 'file':
-                text = tree_new.get_file_text(id_)
-                file_cmds.append(commands.FileModifyCommand(path, 'file',
-                    tree_new.is_executable(id_), None, text))
-            elif kind == 'symlink':
-                file_cmds.append(commands.FileModifyCommand(path, 'symlink',
-                    False, None, tree_new.get_symlink_target(id_)))
-            else:
-                # Should we do something here for importers that
-                # can handle directory and tree-reference changes?
-                continue
-        return file_cmds
+            # Record modifications
+            for path, id_, kind in changes.added + my_modified:
+                if kind == 'file':
+                    text = tree_new.get_file_text(id_)
+                    file_cmds.append(commands.FileModifyCommand(path, 'file',
+                        tree_new.is_executable(id_), None, text))
+                elif kind == 'symlink':
+                    file_cmds.append(commands.FileModifyCommand(path, 'symlink',
+                        False, None, tree_new.get_symlink_target(id_)))
+                else:
+                    # Should we do something here for importers that
+                    # can handle directory and tree-reference changes?
+                    continue
+            return file_cmds
+        else:
+            return []
 
     def emit_tags(self):
         for tag, revid in self.branch.tags.get_tag_dict().items():
