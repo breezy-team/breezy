@@ -1778,10 +1778,10 @@ class CHKInventory(CommonInventory):
         """
         for key, entry in self.id_to_entry.iteritems():
             file_id = key[0]
-            ie = self._entry_cache.get(file_id, None)
+            ie = self._fileid_to_entry_cache.get(file_id, None)
             if ie is None:
                 ie = self._bytes_to_entry(entry)
-                self._entry_cache[file_id] = ie
+                self._fileid_to_entry_cache[file_id] = ie
             yield ie
 
     def iter_changes(self, basis):
