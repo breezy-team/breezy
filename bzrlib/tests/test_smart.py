@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the smart wire/domain protocol.
 
@@ -177,7 +177,7 @@ class TestSmartServerBzrDirRequestCloningMetaDir(
         self.assertEqual(expected, request.execute('', 'False'))
 
     def test_cloning_metadir_reference(self):
-        """The request works when bzrdir contains a branch reference."""
+        """The request fails when bzrdir contains a branch reference."""
         backing = self.get_transport()
         referenced_branch = self.make_branch('referenced')
         dir = self.make_bzrdir('.')
@@ -189,10 +189,7 @@ class TestSmartServerBzrDirRequestCloningMetaDir(
         backing.rename('referenced', 'moved')
         request_class = smart_dir.SmartServerBzrDirRequestCloningMetaDir
         request = request_class(backing)
-        expected = SuccessfulSmartServerResponse(
-            (local_result.network_name(),
-            local_result.repository_format.network_name(),
-            ('ref', reference_url)))
+        expected = FailedSmartServerResponse(('BranchReference',))
         self.assertEqual(expected, request.execute('', 'False'))
 
 
@@ -388,6 +385,26 @@ class TestSmartServerRequestOpenBranchV2(TestCaseWithChrootedTransport):
         self.assertFileEqual(reference_url, 'reference/.bzr/branch/location')
         self.assertEqual(SuccessfulSmartServerResponse(('ref', reference_url)),
             request.execute('reference'))
+
+    def test_stacked_branch(self):
+        """Opening a stacked branch does not open the stacked-on branch."""
+        trunk = self.make_branch('trunk')
+        feature = self.make_branch('feature', format='1.9')
+        feature.set_stacked_on_url(trunk.base)
+        opened_branches = []
+        Branch.hooks.install_named_hook('open', opened_branches.append, None)
+        backing = self.get_transport()
+        request = smart.bzrdir.SmartServerRequestOpenBranchV2(backing)
+        request.setup_jail()
+        try:
+            response = request.execute('feature')
+        finally:
+            request.teardown_jail()
+        expected_format = feature._format.network_name()
+        self.assertEqual(
+            SuccessfulSmartServerResponse(('branch', expected_format)),
+            response)
+        self.assertLength(1, opened_branches)
 
 
 class TestSmartServerRequestRevisionHistory(tests.TestCaseWithMemoryTransport):
@@ -1114,9 +1131,6 @@ class TestSmartServerRepositoryIsShared(tests.TestCaseWithMemoryTransport):
 
 class TestSmartServerRepositoryLockWrite(tests.TestCaseWithMemoryTransport):
 
-    def setUp(self):
-        tests.TestCaseWithMemoryTransport.setUp(self)
-
     def test_lock_write_on_unlocked_repo(self):
         backing = self.get_transport()
         request = smart.repository.SmartServerRepositoryLockWrite(backing)
@@ -1147,6 +1161,54 @@ class TestSmartServerRepositoryLockWrite(tests.TestCaseWithMemoryTransport):
         response = request.execute('')
         self.assertFalse(response.is_successful())
         self.assertEqual('LockFailed', response.args[0])
+
+
+class TestInsertStreamBase(tests.TestCaseWithMemoryTransport):
+
+    def make_empty_byte_stream(self, repo):
+        byte_stream = smart.repository._stream_to_byte_stream([], repo._format)
+        return ''.join(byte_stream)
+
+
+class TestSmartServerRepositoryInsertStream(TestInsertStreamBase):
+
+    def test_insert_stream_empty(self):
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryInsertStream(backing)
+        repository = self.make_repository('.')
+        response = request.execute('', '')
+        self.assertEqual(None, response)
+        response = request.do_chunk(self.make_empty_byte_stream(repository))
+        self.assertEqual(None, response)
+        response = request.do_end()
+        self.assertEqual(SmartServerResponse(('ok', )), response)
+        
+
+class TestSmartServerRepositoryInsertStreamLocked(TestInsertStreamBase):
+
+    def test_insert_stream_empty(self):
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryInsertStreamLocked(
+            backing)
+        repository = self.make_repository('.', format='knit')
+        lock_token = repository.lock_write()
+        response = request.execute('', '', lock_token)
+        self.assertEqual(None, response)
+        response = request.do_chunk(self.make_empty_byte_stream(repository))
+        self.assertEqual(None, response)
+        response = request.do_end()
+        self.assertEqual(SmartServerResponse(('ok', )), response)
+        repository.unlock()
+
+    def test_insert_stream_with_wrong_lock_token(self):
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryInsertStreamLocked(
+            backing)
+        repository = self.make_repository('.', format='knit')
+        lock_token = repository.lock_write()
+        self.assertRaises(
+            errors.TokenMismatch, request.execute, '', '', 'wrong-token')
+        repository.unlock()
 
 
 class TestSmartServerRepositoryUnlock(tests.TestCaseWithMemoryTransport):
@@ -1237,6 +1299,8 @@ class TestSmartServerPackRepositoryAutopack(tests.TestCaseWithTransport):
 
     def test_autopack_needed(self):
         repo = self.make_repo_needing_autopacking()
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
         backing = self.get_transport()
         request = smart.packrepository.SmartServerPackRepositoryAutopack(
             backing)
@@ -1248,6 +1312,8 @@ class TestSmartServerPackRepositoryAutopack(tests.TestCaseWithTransport):
     def test_autopack_not_needed(self):
         tree = self.make_branch_and_tree('.', format='pack-0.92')
         repo = tree.branch.repository
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
         for x in range(9):
             tree.commit('commit %s' % x)
         backing = self.get_transport()
@@ -1339,17 +1405,23 @@ class TestHandlers(tests.TestCase):
                 'Repository.get_revision_graph'),
             smart.repository.SmartServerRepositoryGetRevisionGraph)
         self.assertEqual(
+            smart.request.request_handlers.get('Repository.get_stream'),
+            smart.repository.SmartServerRepositoryGetStream)
+        self.assertEqual(
             smart.request.request_handlers.get('Repository.has_revision'),
             smart.repository.SmartServerRequestHasRevision)
+        self.assertEqual(
+            smart.request.request_handlers.get('Repository.insert_stream'),
+            smart.repository.SmartServerRepositoryInsertStream)
+        self.assertEqual(
+            smart.request.request_handlers.get('Repository.insert_stream_locked'),
+            smart.repository.SmartServerRepositoryInsertStreamLocked)
         self.assertEqual(
             smart.request.request_handlers.get('Repository.is_shared'),
             smart.repository.SmartServerRepositoryIsShared)
         self.assertEqual(
             smart.request.request_handlers.get('Repository.lock_write'),
             smart.repository.SmartServerRepositoryLockWrite)
-        self.assertEqual(
-            smart.request.request_handlers.get('Repository.get_stream'),
-            smart.repository.SmartServerRepositoryGetStream)
         self.assertEqual(
             smart.request.request_handlers.get('Repository.tarball'),
             smart.repository.SmartServerRepositoryTarball)

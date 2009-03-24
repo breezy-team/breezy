@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Knit versionedfile implementation.
 
@@ -299,7 +299,19 @@ class KnitContentFactory(ContentFactory):
             if self._network_bytes is None:
                 self._create_network_bytes()
             return self._network_bytes
+        if ('-ft-' in self.storage_kind and
+            storage_kind in ('chunked', 'fulltext')):
+            adapter_key = (self.storage_kind, 'fulltext')
+            adapter_factory = adapter_registry.get(adapter_key)
+            adapter = adapter_factory(None)
+            bytes = adapter.get_bytes(self)
+            if storage_kind == 'chunked':
+                return [bytes]
+            else:
+                return bytes
         if self._knit is not None:
+            # Not redundant with direct conversion above - that only handles
+            # fulltext cases.
             if storage_kind == 'chunked':
                 return self._knit.get_lines(self.key[0])
             elif storage_kind == 'fulltext':
@@ -1662,6 +1674,7 @@ class KnitVersionedFiles(VersionedFiles):
          * If a requested key did not change any lines (or didn't have any
            lines), it may not be mentioned at all in the result.
 
+        :param pb: Progress bar supplied by caller.
         :return: An iterator over (line, key).
         """
         if pb is None:

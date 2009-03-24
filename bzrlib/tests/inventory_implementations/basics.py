@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for different inventory implementations"""
 
@@ -41,6 +41,20 @@ class TestInventory(TestCase):
 
     def make_inventory(self, root_id):
         return self.inventory_class(root_id=root_id)
+
+    def prepare_inv_with_nested_dirs(self):
+        inv = self.make_inventory('tree-root')
+        for args in [('src', 'directory', 'src-id'),
+                     ('doc', 'directory', 'doc-id'),
+                     ('src/hello.c', 'file', 'hello-id'),
+                     ('src/bye.c', 'file', 'bye-id'),
+                     ('zz', 'file', 'zz-id'),
+                     ('src/sub/', 'directory', 'sub-id'),
+                     ('src/zz.c', 'file', 'zzc-id'),
+                     ('src/sub/a', 'file', 'a-id'),
+                     ('Makefile', 'file', 'makefile-id')]:
+            inv.add_path(*args)
+        return inv
 
 
 class TestInventoryUpdates(TestInventory):
@@ -209,17 +223,7 @@ class TestInventoryReads(TestInventory):
             ], [(path, ie.file_id) for path, ie in inv.iter_entries()])
 
     def test_iter_entries_by_dir(self):
-        inv = self.make_inventory('tree-root')
-        for args in [('src', 'directory', 'src-id'),
-                     ('doc', 'directory', 'doc-id'),
-                     ('src/hello.c', 'file', 'hello-id'),
-                     ('src/bye.c', 'file', 'bye-id'),
-                     ('zz', 'file', 'zz-id'),
-                     ('src/sub/', 'directory', 'sub-id'),
-                     ('src/zz.c', 'file', 'zzc-id'),
-                     ('src/sub/a', 'file', 'a-id'),
-                     ('Makefile', 'file', 'makefile-id')]:
-            inv.add_path(*args)
+        inv = self. prepare_inv_with_nested_dirs()
         self.assertEqual([
             ('', 'tree-root'),
             ('Makefile', 'makefile-id'),
@@ -283,3 +287,50 @@ class TestInventoryReads(TestInventory):
             ('src/bye.c', 'bye-id'),
             ], [(path, ie.file_id) for path, ie in inv.iter_entries_by_dir(
                 specific_file_ids=('bye-id',), yield_parents=True)])
+ 
+
+class TestInventoryFiltering(TestInventory):
+
+    def test_inv_filter_empty(self):
+        inv = self.prepare_inv_with_nested_dirs()
+        new_inv = inv.filter([])
+        self.assertEqual([
+            ('', 'tree-root'),
+            ], [(path, ie.file_id) for path, ie in new_inv.iter_entries()])
+    
+    def test_inv_filter_files(self):
+        inv = self.prepare_inv_with_nested_dirs()
+        new_inv = inv.filter(['zz-id', 'hello-id', 'a-id'])
+        self.assertEqual([
+            ('', 'tree-root'),
+            ('src', 'src-id'),
+            ('src/hello.c', 'hello-id'),
+            ('src/sub', 'sub-id'),
+            ('src/sub/a', 'a-id'),
+            ('zz', 'zz-id'),
+            ], [(path, ie.file_id) for path, ie in new_inv.iter_entries()])
+    
+    def test_inv_filter_dirs(self):
+        inv = self.prepare_inv_with_nested_dirs()
+        new_inv = inv.filter(['doc-id', 'sub-id'])
+        self.assertEqual([
+            ('', 'tree-root'),
+            ('doc', 'doc-id'),
+            ('src', 'src-id'),
+            ('src/sub', 'sub-id'),
+            ('src/sub/a', 'a-id'),
+            ], [(path, ie.file_id) for path, ie in new_inv.iter_entries()])
+
+    def test_inv_filter_files_and_dirs(self):
+        inv = self.prepare_inv_with_nested_dirs()
+        new_inv = inv.filter(['makefile-id', 'src-id'])
+        self.assertEqual([
+            ('', 'tree-root'),
+            ('Makefile', 'makefile-id'),
+            ('src', 'src-id'),
+            ('src/bye.c', 'bye-id'),
+            ('src/hello.c', 'hello-id'),
+            ('src/sub', 'sub-id'),
+            ('src/sub/a', 'a-id'),
+            ('src/zz.c', 'zzc-id'),
+            ], [(path, ie.file_id) for path, ie in new_inv.iter_entries()])

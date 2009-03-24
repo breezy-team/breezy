@@ -15,7 +15,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Versioned text file storage api."""
 
@@ -1484,7 +1484,7 @@ class VirtualVersionedFiles(VersionedFiles):
         """See VersionedFile.iter_lines_added_or_present_in_versions()."""
         for i, (key,) in enumerate(keys):
             if pb is not None:
-                pb.update("iterating texts", i, len(keys))
+                pb.update("Finding changed lines", i, len(keys))
             for l in self._get_lines(key):
                 yield (l, key)
 

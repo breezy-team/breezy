@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Deprecated weave-based repository formats.
 
@@ -268,6 +268,7 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
     supports_external_lookups = False
     _fetch_order = 'topological'
     _fetch_reconcile = True
+    fast_deltas = False
 
     def initialize(self, a_bzrdir, shared=False, _internal=False):
         """Create a weave repository."""
@@ -475,6 +476,7 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
     supports_ghosts = False
     _fetch_order = 'topological'
     _fetch_reconcile = True
+    fast_deltas = False
     @property
     def _serializer(self):
         return xml5.serializer_v5

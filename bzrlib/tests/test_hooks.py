@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the core Hooks logic."""
 
@@ -28,7 +28,6 @@ from bzrlib.errors import (
     UnknownHook,
     )
 
-from bzrlib.symbol_versioning import one_five
 from bzrlib.tests import TestCase
 
 
@@ -96,19 +95,6 @@ class TestHooks(TestCase):
             "ChangeBranchTipParams object. Hooks should raise TipChangeRejected to\n"
             "signal that a tip change is not permitted.\n", hooks.docs())
 
-    def test_install_hook_raises_unknown_hook(self):
-        """install_hook should raise UnknownHook if a hook is unknown."""
-        hooks = Hooks()
-        self.assertRaises(UnknownHook, self.applyDeprecated, one_five,
-                          hooks.install_hook, 'silly', None)
-
-    def test_install_hook_appends_known_hook(self):
-        """install_hook should append the callable for known hooks."""
-        hooks = Hooks()
-        hooks['set_rh'] = []
-        self.applyDeprecated(one_five, hooks.install_hook, 'set_rh', None)
-        self.assertEqual(hooks['set_rh'], [None])
-
     def test_install_named_hook_raises_unknown_hook(self):
         hooks = Hooks()
         self.assertRaises(UnknownHook, hooks.install_named_hook, 'silly',
@@ -125,20 +111,6 @@ class TestHooks(TestCase):
         hooks['set_rh'] = []
         hooks.install_named_hook('set_rh', None, "demo")
         self.assertEqual("demo", hooks.get_hook_name(None))
-
-    def test_name_hook_and_retrieve_name(self):
-        """name_hook puts the name in the names mapping."""
-        hooks = Hooks()
-        hooks['set_rh'] = []
-        self.applyDeprecated(one_five, hooks.install_hook, 'set_rh', None)
-        hooks.name_hook(None, 'demo')
-        self.assertEqual("demo", hooks.get_hook_name(None))
-
-    def test_get_unnamed_hook_name_is_unnamed(self):
-        hooks = Hooks()
-        hooks['set_rh'] = []
-        self.applyDeprecated(one_five, hooks.install_hook, 'set_rh', None)
-        self.assertEqual("No hook name", hooks.get_hook_name(None))
 
 
 class TestHook(TestCase):

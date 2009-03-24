@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -52,12 +52,6 @@ class _KnitParentsProvider(object):
 
     def __repr__(self):
         return 'KnitParentsProvider(%r)' % self._knit
-
-    @symbol_versioning.deprecated_method(symbol_versioning.one_one)
-    def get_parents(self, revision_ids):
-        """See graph._StackedParentsProvider.get_parents"""
-        parent_map = self.get_parent_map(revision_ids)
-        return [parent_map.get(r, None) for r in revision_ids]
 
     def get_parent_map(self, keys):
         """See graph._StackedParentsProvider.get_parent_map"""
@@ -213,6 +207,17 @@ class KnitRepository(MetaDirRepository):
         revision_id = osutils.safe_revision_id(revision_id)
         return self.get_revision_reconcile(revision_id)
 
+    def _refresh_data(self):
+        if not self.is_locked():
+            return
+        # Create a new transaction to force all knits to see the scope change.
+        # This is safe because we're outside a write group.
+        self.control_files._finish_transaction()
+        if self.is_write_locked():
+            self.control_files._set_write_transaction()
+        else:
+            self.control_files._set_read_transaction()
+
     @needs_write_lock
     def reconcile(self, other=None, thorough=False):
         """Reconcile this repository."""
@@ -288,6 +293,7 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
     supports_external_lookups = False
     _fetch_order = 'topological'
     _fetch_uses_deltas = True
+    fast_deltas = False
 
     def _get_inventories(self, repo_transport, repo, name='inventory'):
         mapper = versionedfile.ConstantMapper(name)

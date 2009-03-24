@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """The 'medium' layer for the smart servers and clients.
 
@@ -741,6 +741,9 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         self._vendor = vendor
         self._write_to = None
         self._bzr_remote_path = bzr_remote_path
+        # for the benefit of progress making a short description of this
+        # transport
+        self._scheme = 'bzr+ssh'
 
     def __repr__(self):
         return "%s(connected=%r, username=%r, host=%r, port=%r)" % (

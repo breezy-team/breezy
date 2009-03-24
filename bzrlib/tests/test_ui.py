@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the bzrlib ui
 """
@@ -28,6 +28,7 @@ import bzrlib.errors as errors
 from bzrlib.progress import (
     DotsProgressBar,
     ProgressBarStack,
+    ProgressTask,
     TTYProgressBar,
     )
 from bzrlib.symbol_versioning import (
@@ -43,7 +44,10 @@ from bzrlib.ui import (
     CLIUIFactory,
     SilentUIFactory,
     )
-from bzrlib.ui.text import TextUIFactory
+from bzrlib.ui.text import (
+    TextProgressView,
+    TextUIFactory,
+    )
 
 
 class UITests(TestCase):
@@ -249,3 +253,63 @@ class UITests(TestCase):
             pb.tick()
         finally:
             pb.finished()
+
+
+class TestTextProgressView(TestCase):
+    """Tests for text display of progress bars.
+    """
+    # XXX: These might be a bit easier to write if the rendering and
+    # state-maintaining parts of TextProgressView were more separate, and if
+    # the progress task called back directly to its own view not to the ui
+    # factory. -- mbp 20090312
+    
+    def _make_factory(self):
+        out = StringIO()
+        uif = TextUIFactory(stderr=out)
+        uif._progress_view._width = 80
+        return out, uif
+
+    def test_render_progress_easy(self):
+        """Just one task and one quarter done"""
+        out, uif = self._make_factory()
+        task = uif.nested_progress_bar()
+        task.update('reticulating splines', 5, 20)
+        self.assertEqual(
+'\r[####/               ] reticulating splines 5/20                               \r'
+            , out.getvalue())
+
+    def test_render_progress_nested(self):
+        """Tasks proportionally contribute to overall progress"""
+        out, uif = self._make_factory()
+        task = uif.nested_progress_bar()
+        task.update('reticulating splines', 0, 2)
+        task2 = uif.nested_progress_bar()
+        task2.update('stage2', 1, 2)
+        # so we're in the first half of the main task, and half way through
+        # that
+        self.assertEqual(
+r'[####\               ] reticulating splines:stage2 1/2'
+            , uif._progress_view._render_line())
+        # if the nested task is complete, then we're all the way through the
+        # first half of the overall work
+        task2.update('stage2', 2, 2)
+        self.assertEqual(
+r'[#########|          ] reticulating splines:stage2 2/2'
+            , uif._progress_view._render_line())
+
+    def test_render_progress_sub_nested(self):
+        """Intermediate tasks don't mess up calculation."""
+        out, uif = self._make_factory()
+        task_a = uif.nested_progress_bar()
+        task_a.update('a', 0, 2)
+        task_b = uif.nested_progress_bar()
+        task_b.update('b')
+        task_c = uif.nested_progress_bar()
+        task_c.update('c', 1, 2)
+        # the top-level task is in its first half; the middle one has no
+        # progress indication, just a label; and the bottom one is half done,
+        # so the overall fraction is 1/4
+        self.assertEqual(
+            r'[####|               ] a:b:c 1/2'
+            , uif._progress_view._render_line())
+

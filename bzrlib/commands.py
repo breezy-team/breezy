@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 # TODO: probably should say which arguments are candidates for glob
@@ -331,7 +331,7 @@ class Command(object):
         return s
 
     def get_help_text(self, additional_see_also=None, plain=True,
-                      see_also_as_links=False):
+                      see_also_as_links=False, verbose=True):
         """Return a text string with help for this command.
 
         :param additional_see_also: Additional help topics to be
@@ -340,6 +340,10 @@ class Command(object):
             returned instead of plain text.
         :param see_also_as_links: if True, convert items in 'See also'
             list to internal links (used by bzr_man rstx generator)
+        :param verbose: if True, display the full help, otherwise
+            leave out the descriptive sections and just display
+            usage help (e.g. Purpose, Usage, Options) with a
+            message explaining how to obtain full help.
         """
         doc = self.help()
         if doc is None:
@@ -374,19 +378,24 @@ class Command(object):
             result += options
         result += '\n'
 
-        # Add the description, indenting it 2 spaces
-        # to match the indentation of the options
-        if sections.has_key(None):
-            text = sections.pop(None)
-            text = '\n  '.join(text.splitlines())
-            result += ':%s:\n  %s\n\n' % ('Description',text)
+        if verbose:
+            # Add the description, indenting it 2 spaces
+            # to match the indentation of the options
+            if sections.has_key(None):
+                text = sections.pop(None)
+                text = '\n  '.join(text.splitlines())
+                result += ':%s:\n  %s\n\n' % ('Description',text)
 
-        # Add the custom sections (e.g. Examples). Note that there's no need
-        # to indent these as they must be indented already in the source.
-        if sections:
-            for label in order:
-                if sections.has_key(label):
-                    result += ':%s:\n%s\n\n' % (label,sections[label])
+            # Add the custom sections (e.g. Examples). Note that there's no need
+            # to indent these as they must be indented already in the source.
+            if sections:
+                for label in order:
+                    if sections.has_key(label):
+                        result += ':%s:\n%s\n' % (label,sections[label])
+                result += '\n'
+        else:
+            result += ("See bzr help %s for more details and examples.\n\n"
+                % self.name())
 
         # Add the aliases, source (plug-in) and see also links, if any
         if self.aliases:
@@ -522,6 +531,9 @@ class Command(object):
         # Process the standard options
         if 'help' in opts:  # e.g. bzr add --help
             sys.stdout.write(self.get_help_text())
+            return 0
+        if 'usage' in opts:  # e.g. bzr add --usage
+            sys.stdout.write(self.get_help_text(verbose=False))
             return 0
         trace.set_verbosity_level(option._verbosity_level)
         if 'verbose' in self.supported_std_options:

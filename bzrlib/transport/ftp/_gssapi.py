@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Support for secure authentication using GSSAPI over FTP.
 
@@ -150,9 +150,8 @@ class GSSAPIFtpTransport(FtpTransport):
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    from bzrlib import tests
-    if tests.FTPServerFeature.available():
-        from bzrlib.tests import ftp_server
-        return [(GSSAPIFtpTransport, ftp_server.FTPServer)]
+    from bzrlib.tests import ftp_server
+    if ftp_server.FTPServerFeature.available():
+        return [(GSSAPIFtpTransport, ftp_server.FTPTestServer)]
     else:
         return []

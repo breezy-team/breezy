@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Server-side repository related request implmentations."""
 
@@ -97,7 +97,7 @@ class SmartServerRepositoryRequest(SmartServerRequest):
                     break
                 search.stop_searching_any(exclude_keys.intersection(next_revs))
             search_result = search.get_result()
-            if search_result.get_recipe()[2] != revision_count:
+            if search_result.get_recipe()[3] != revision_count:
                 # we got back a different amount of data than expected, this
                 # gets reported as NoSuchRevision, because less revisions
                 # indicates missing revisions, and more should never happen as
@@ -524,17 +524,22 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
             tarball.close()
 
 
-class SmartServerRepositoryInsertStream(SmartServerRepositoryRequest):
+class SmartServerRepositoryInsertStreamLocked(SmartServerRepositoryRequest):
     """Insert a record stream from a RemoteSink into a repository.
 
     This gets bytes pushed to it by the network infrastructure and turns that
     into a bytes iterator using a thread. That is then processed by
     _byte_stream_to_stream.
+
+    New in 1.14.
     """
 
-    def do_repository_request(self, repository, resume_tokens):
+    def do_repository_request(self, repository, resume_tokens, lock_token):
         """StreamSink.insert_stream for a remote repository."""
-        repository.lock_write()
+        repository.lock_write(token=lock_token)
+        self.do_insert_stream_request(repository, resume_tokens)
+
+    def do_insert_stream_request(self, repository, resume_tokens):
         tokens = [token for token in resume_tokens.split(' ') if token]
         self.tokens = tokens
         self.repository = repository
@@ -582,3 +587,21 @@ class SmartServerRepositoryInsertStream(SmartServerRepositoryRequest):
         else:
             self.repository.unlock()
             return SuccessfulSmartServerResponse(('ok', ))
+
+
+class SmartServerRepositoryInsertStream(SmartServerRepositoryInsertStreamLocked):
+    """Insert a record stream from a RemoteSink into an unlocked repository.
+
+    This is the same as SmartServerRepositoryInsertStreamLocked, except it
+    takes no lock_tokens; i.e. it works with an unlocked (or lock-free, e.g.
+    like pack format) repository.
+
+    New in 1.13.
+    """
+
+    def do_repository_request(self, repository, resume_tokens):
+        """StreamSink.insert_stream for a remote repository."""
+        repository.lock_write()
+        self.do_insert_stream_request(repository, resume_tokens)
+
+
