@@ -109,14 +109,16 @@ def import_git_blob(texts, mapping, path, blob, inv, parent_invs, shagitmap,
     # See if this is the same revision as one of the parents unchanged
     parent_keys = []
     for pinv in parent_invs:
-        if file_id in pinv and pinv[file_id].text_sha1 == ie.text_sha1:
+        if not file_id in pinv:
+            continue
+        if pinv[file_id].text_sha1 == ie.text_sha1:
             ie.revision = pinv[file_id].revision
             return
+        parent_keys.append((file_id, pinv[file_id].revision)
     ie.revision = inv.revision_id
     assert file_id is not None
     assert ie.revision is not None
-    texts.add_lines((file_id, ie.revision),
-        [(file_id, p[file_id].revision) for p in parent_invs if file_id in p],
+    texts.add_lines((file_id, ie.revision), parent_keys,
         osutils.split_lines(blob.data))
     shagitmap.add_entry(blob.sha().hexdigest(), "blob",
         (ie.file_id, ie.revision))
