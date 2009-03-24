@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import difflib
 import os
@@ -41,9 +41,8 @@ from bzrlib import (
 """)
 
 from bzrlib.symbol_versioning import (
-        deprecated_function,
-        one_three
-        )
+    deprecated_function,
+    )
 from bzrlib.trace import mutter, note, warning
 
 
@@ -440,13 +439,6 @@ def _patch_header_date(tree, file_id, path):
     mtime = tree.get_file_mtime(file_id, path)
     return timestamp.format_patch_date(mtime)
 
-
-@deprecated_function(one_three)
-def get_prop_change(meta_modified):
-    if meta_modified:
-        return " (properties changed)"
-    else:
-        return  ""
 
 def get_executable_change(old_is_x, new_is_x):
     descr = { True:"+x", False:"-x", None:"??" }

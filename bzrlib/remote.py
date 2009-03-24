@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 # TODO: At some point, handle upgrades by just passing the whole request
 # across to run on the server.
@@ -153,6 +153,15 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         except errors.UnknownSmartMethod:
             medium._remember_remote_is_before((1, 13))
             return self._vfs_cloning_metadir(require_stacking=require_stacking)
+        except errors.UnknownErrorFromSmartServer, err:
+            if err.error_tuple != ('BranchReference',):
+                raise
+            # We need to resolve the branch reference to determine the
+            # cloning_metadir.  This causes unnecessary RPCs to open the
+            # referenced branch (and bzrdir, etc) but only when the caller
+            # didn't already resolve the branch reference.
+            referenced_branch = self.open_branch()
+            return referenced_branch.bzrdir.cloning_metadir()
         if len(response) != 3:
             raise errors.UnexpectedSmartServerResponse(response)
         control_name, repo_name, branch_info = response
@@ -256,7 +265,7 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         """See BzrDir._get_tree_branch()."""
         return None, self.open_branch()
 
-    def open_branch(self, _unsupported=False):
+    def open_branch(self, _unsupported=False, ignore_fallbacks=False):
         if _unsupported:
             raise NotImplementedError('unsupported flag support not implemented yet.')
         if self._next_open_branch_result is not None:
@@ -268,12 +277,14 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         if response[0] == 'ref':
             # a branch reference, use the existing BranchReference logic.
             format = BranchReferenceFormat()
-            return format.open(self, _found=True, location=response[1])
+            return format.open(self, _found=True, location=response[1],
+                ignore_fallbacks=ignore_fallbacks)
         branch_format_name = response[1]
         if not branch_format_name:
             branch_format_name = None
         format = RemoteBranchFormat(network_name=branch_format_name)
-        return RemoteBranch(self, self.find_repository(), format=format)
+        return RemoteBranch(self, self.find_repository(), format=format,
+            setup_stacking=not ignore_fallbacks)
 
     def _open_repo_v1(self, path):
         verb = 'BzrDir.find_repository'
@@ -415,6 +426,11 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
         self._supports_external_lookups = None
         self._supports_tree_reference = None
         self._rich_root_data = None
+
+    @property
+    def fast_deltas(self):
+        self._ensure_real()
+        return self._custom_format.fast_deltas
 
     @property
     def rich_root_data(self):
@@ -694,11 +710,6 @@ class RemoteRepository(_RpcHelper):
         """
         self._ensure_real()
         return self._real_repository._generate_text_key_index()
-
-    @symbol_versioning.deprecated_method(symbol_versioning.one_four)
-    def get_revision_graph(self, revision_id=None):
-        """See Repository.get_revision_graph()."""
-        return self._get_revision_graph(revision_id)
 
     def _get_revision_graph(self, revision_id):
         """Private method for using with old (< 1.2) servers to fallback."""
@@ -1198,11 +1209,12 @@ class RemoteRepository(_RpcHelper):
             # We already found out that the server can't understand
             # Repository.get_parent_map requests, so just fetch the whole
             # graph.
-            # XXX: Note that this will issue a deprecation warning. This is ok
-            # :- its because we're working with a deprecated server anyway, and
-            # the user will almost certainly have seen a warning about the
-            # server version already.
-            rg = self.get_revision_graph()
+            #
+            # Note that this reads the whole graph, when only some keys are
+            # wanted.  On this old server there's no way (?) to get them all
+            # in one go, and the user probably will have seen a warning about
+            # the server being old anyhow.
+            rg = self._get_revision_graph(None)
             # There is an api discrepency between get_parent_map and
             # get_revision_graph. Specifically, a "key:()" pair in
             # get_revision_graph just means a node has no parents. For
@@ -1274,7 +1286,8 @@ class RemoteRepository(_RpcHelper):
             # To avoid having to disconnect repeatedly, we keep track of the
             # fact the server doesn't understand remote methods added in 1.2.
             medium._remember_remote_is_before((1, 2))
-            return self.get_revision_graph(None)
+            # Recurse just once and we should use the fallback code.
+            return self._get_parent_map_rpc(keys)
         response_tuple, response_handler = response
         if response_tuple[0] not in ['ok']:
             response_handler.cancel_read_body()
@@ -1299,13 +1312,6 @@ class RemoteRepository(_RpcHelper):
     def get_signature_text(self, revision_id):
         self._ensure_real()
         return self._real_repository.get_signature_text(revision_id)
-
-    @needs_read_lock
-    @symbol_versioning.deprecated_method(symbol_versioning.one_three)
-    def get_revision_graph_with_ghosts(self, revision_ids=None):
-        self._ensure_real()
-        return self._real_repository.get_revision_graph_with_ghosts(
-            revision_ids=revision_ids)
 
     @needs_read_lock
     def get_inventory_xml(self, revision_id):
@@ -1748,8 +1754,8 @@ class RemoteBranchFormat(branch.BranchFormat):
     def network_name(self):
         return self._network_name
 
-    def open(self, a_bzrdir):
-        return a_bzrdir.open_branch()
+    def open(self, a_bzrdir, ignore_fallbacks=False):
+        return a_bzrdir.open_branch(ignore_fallbacks=ignore_fallbacks)
 
     def _vfs_initialize(self, a_bzrdir):
         # Initialisation when using a local bzrdir object, or a non-vfs init

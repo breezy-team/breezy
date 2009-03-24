@@ -14,7 +14,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 # Author: Martin Pool <mbp@canonical.com>
 
@@ -973,13 +973,6 @@ class WeaveFile(Weave):
 
     def insert_record_stream(self, stream):
         super(WeaveFile, self).insert_record_stream(stream)
-        self._save()
-
-    @deprecated_method(one_five)
-    def join(self, other, pb=None, msg=None, version_ids=None,
-             ignore_missing=False):
-        """Join other into self and save."""
-        super(WeaveFile, self).join(other, pb, msg, version_ids, ignore_missing)
         self._save()
 
 

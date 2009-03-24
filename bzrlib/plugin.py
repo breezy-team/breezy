@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """bzr python plugin support.
@@ -41,7 +41,6 @@ lazy_import(globals(), """
 import imp
 import re
 import types
-import zipfile
 
 from bzrlib import (
     _format_version_tuple,
@@ -53,7 +52,7 @@ from bzrlib import (
 from bzrlib import plugins as _mod_plugins
 """)
 
-from bzrlib.symbol_versioning import deprecated_function, one_three
+from bzrlib.symbol_versioning import deprecated_function
 
 
 DEFAULT_PLUGIN_PATH = None
@@ -249,87 +248,6 @@ def load_from_dir(d):
                         "it to %r." % (name, d, sanitised_name))
             else:
                 trace.warning('Unable to load plugin %r from %r' % (name, d))
-            trace.log_exception_quietly()
-            if 'error' in debug.debug_flags:
-                trace.print_exception(sys.exc_info(), sys.stderr)
-
-
-@deprecated_function(one_three)
-def load_from_zip(zip_name):
-    """Load all the plugins in a zip."""
-    valid_suffixes = ('.py', '.pyc', '.pyo')    # only python modules/packages
-                                                # is allowed
-    try:
-        index = zip_name.rindex('.zip')
-    except ValueError:
-        return
-    archive = zip_name[:index+4]
-    prefix = zip_name[index+5:]
-
-    trace.mutter('Looking for plugins in %r', zip_name)
-
-    # use zipfile to get list of files/dirs inside zip
-    try:
-        z = zipfile.ZipFile(archive)
-        namelist = z.namelist()
-        z.close()
-    except zipfile.error:
-        # not a valid zip
-        return
-
-    if prefix:
-        prefix = prefix.replace('\\','/')
-        if prefix[-1] != '/':
-            prefix += '/'
-        ix = len(prefix)
-        namelist = [name[ix:]
-                    for name in namelist
-                    if name.startswith(prefix)]
-
-    trace.mutter('Names in archive: %r', namelist)
-
-    for name in namelist:
-        if not name or name.endswith('/'):
-            continue
-
-        # '/' is used to separate pathname components inside zip archives
-        ix = name.rfind('/')
-        if ix == -1:
-            head, tail = '', name
-        else:
-            head, tail = name.rsplit('/',1)
-        if '/' in head:
-            # we don't need looking in subdirectories
-            continue
-
-        base, suffix = osutils.splitext(tail)
-        if suffix not in valid_suffixes:
-            continue
-
-        if base == '__init__':
-            # package
-            plugin_name = head
-        elif head == '':
-            # module
-            plugin_name = base
-        else:
-            continue
-
-        if not plugin_name:
-            continue
-        if getattr(_mod_plugins, plugin_name, None):
-            trace.mutter('Plugin name %s already loaded', plugin_name)
-            continue
-
-        try:
-            exec "import bzrlib.plugins.%s" % plugin_name in {}
-            trace.mutter('Load plugin %s from zip %r', plugin_name, zip_name)
-        except KeyboardInterrupt:
-            raise
-        except Exception, e:
-            ## import pdb; pdb.set_trace()
-            trace.warning('Unable to load plugin %r from %r'
-                    % (name, zip_name))
             trace.log_exception_quietly()
             if 'error' in debug.debug_flags:
                 trace.print_exception(sys.exc_info(), sys.stderr)
