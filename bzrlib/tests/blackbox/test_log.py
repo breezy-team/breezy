@@ -255,6 +255,7 @@ class TestLog(ExternalBase):
             ": nothing to repeat\n", err)
         self.assertEqual('', out)
 
+
 class TestLogVerbose(TestCaseWithTransport):
 
     def setUp(self):
@@ -511,6 +512,12 @@ def subst_dates(string):
     """Replace date strings with constant values."""
     return re.sub(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} [-\+]\d{4}',
                   'YYYY-MM-DD HH:MM:SS +ZZZZ', string)
+
+
+def subst_short_dates(string):
+    """Replace date strings (without time or timezone) with constant values."""
+    return re.sub(r'\d{4}-\d{2}-\d{2}',
+                  'YYYY-MM-DD', string)
 
 
 class TestLogDiff(TestCaseWithoutPropsHandler):
@@ -985,3 +992,105 @@ class TestLogFile(TestCaseWithTransport):
         self.assertNotContainsRe(log, '^3:', re.MULTILINE)
         self.assertNotContainsRe(log, '^3.1.1:', re.MULTILINE)
         self.assertNotContainsRe(log, '^4:', re.MULTILINE)
+
+
+class TestLogMultiple(TestCaseWithTransport):
+
+    def prepare_tree(self):
+        tree = self.make_branch_and_tree('parent')
+        self.build_tree([
+            'parent/file1',
+            'parent/file2',
+            'parent/dir1/',
+            'parent/dir1/file5',
+            'parent/dir1/dir2/',
+            'parent/dir1/dir2/file3',
+            'parent/file4'])
+        tree.add('file1')
+        tree.commit('add file1', committer='Lorem Ipsum <test@example.com>')
+        tree.add('file2')
+        tree.commit('add file2', committer='Lorem Ipsum <test@example.com>')
+        tree.add(['dir1', 'dir1/dir2', 'dir1/dir2/file3'])
+        tree.commit('add file3', committer='Lorem Ipsum <test@example.com>')
+        tree.add('file4')
+        tree.commit('add file4', committer='Lorem Ipsum <test@example.com>')
+        tree.add('dir1/file5')
+        tree.commit('add file5', committer='Lorem Ipsum <test@example.com>')
+        child_tree = tree.bzrdir.sprout('child').open_workingtree()
+        self.build_tree_contents([('child/file2', 'hello')])
+        child_tree.commit(message='branch 1',
+            committer='Lorem Ipsum <test@example.com>')
+        tree.merge_from_branch(child_tree.branch)
+        tree.commit(message='merge child branch',
+            committer='Lorem Ipsum <test@example.com>')
+        os.chdir('parent')
+
+    def test_log_files(self):
+        """The log for multiple file should only list revs for those files"""
+        self.prepare_tree()
+        out, err = self.run_bzr('log --line -n0 file1 file2 dir1/dir2/file3')
+        self.assertEqual('', err)
+        log = normalize_log(out)
+        self.assertEqualDiff(subst_short_dates(log), """\
+6: Lorem Ipsum YYYY-MM-DD [merge] merge child branch
+  5.1.1: Lorem Ipsum YYYY-MM-DD branch 1
+3: Lorem Ipsum YYYY-MM-DD add file3
+2: Lorem Ipsum YYYY-MM-DD add file2
+1: Lorem Ipsum YYYY-MM-DD add file1
+""")
+
+    def test_log_directory(self):
+        """The log for a directory should show all nested files."""
+        self.prepare_tree()
+        out, err = self.run_bzr('log --line -n0 dir1')
+        self.assertEqual('', err)
+        log = normalize_log(out)
+        self.assertEqualDiff(subst_short_dates(log), """\
+5: Lorem Ipsum YYYY-MM-DD add file5
+3: Lorem Ipsum YYYY-MM-DD add file3
+""")
+
+    def test_log_nested_directory(self):
+        """The log for a directory should show all nested files."""
+        self.prepare_tree()
+        out, err = self.run_bzr('log --line -n0 dir1/dir2')
+        self.assertEqual('', err)
+        log = normalize_log(out)
+        self.assertEqualDiff(subst_short_dates(log), """\
+3: Lorem Ipsum YYYY-MM-DD add file3
+""")
+
+    def test_log_in_nested_directory(self):
+        """The log for a directory should show all nested files."""
+        self.prepare_tree()
+        os.chdir("dir1")
+        out, err = self.run_bzr('log --line -n0 .')
+        self.assertEqual('', err)
+        log = normalize_log(out)
+        self.assertEqualDiff(subst_short_dates(log), """\
+5: Lorem Ipsum YYYY-MM-DD add file5
+3: Lorem Ipsum YYYY-MM-DD add file3
+""")
+
+    def test_log_files_and_directories(self):
+        """Logging files and directories together should be fine."""
+        self.prepare_tree()
+        out, err = self.run_bzr('log --line -n0 file4 dir1/dir2')
+        self.assertEqual('', err)
+        log = normalize_log(out)
+        self.assertEqualDiff(subst_short_dates(log), """\
+4: Lorem Ipsum YYYY-MM-DD add file4
+3: Lorem Ipsum YYYY-MM-DD add file3
+""")
+
+    def test_log_files_and_dirs_in_nested_directory(self):
+        """The log for a directory should show all nested files."""
+        self.prepare_tree()
+        os.chdir("dir1")
+        out, err = self.run_bzr('log --line -n0 dir2 file5')
+        self.assertEqual('', err)
+        log = normalize_log(out)
+        self.assertEqualDiff(subst_short_dates(log), """\
+5: Lorem Ipsum YYYY-MM-DD add file5
+3: Lorem Ipsum YYYY-MM-DD add file3
+""")

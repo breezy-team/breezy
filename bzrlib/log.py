@@ -65,6 +65,7 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 
 from bzrlib import (
+    bzrdir,
     config,
     diff,
     errors,
@@ -140,6 +141,99 @@ def _enumerate_history(branch):
     return rh
 
 
+class LogRequest(object):
+    """Query parameters for logging a branch."""
+
+    def __init__(self,
+        direction='reverse',
+        specific_fileids=None,
+        start_revision=None,
+        end_revision=None,
+        limit=None,
+        message_search=None,
+        levels=1,
+        generate_tags=True,
+        delta_type=None,
+        diff_type=None,
+        _match_using_deltas=True,
+        ):
+        """Create a logging request.
+
+        Each of these parameter become a public attribute of the object.
+
+        :param direction: 'reverse' (default) is latest to earliest;
+          'forward' is earliest to latest.
+
+        :param specific_fileids: If not None, only include revisions
+          affecting the specified files, rather than all revisions.
+
+        :param start_revision: If not None, only generate
+          revisions >= start_revision
+
+        :param end_revision: If not None, only generate
+          revisions <= end_revision
+
+        :param limit: If set, generate only 'limit' revisions, all revisions
+          are shown if None or 0.
+
+        :param message_search: If not None, only include revisions with
+          matching commit messages
+
+        :param levels: the number of levels of revisions to
+          generate; 1 for just the mainline; 0 for all levels.
+
+        :param generate_tags: If True, include tags for matched revisions.
+
+        :param delta_type: Either 'full', 'partial' or None.
+          'full' means generate the complete delta - adds/deletes/modifies/etc;
+          'partial' means filter the delta using specific_fileids;
+          None means do not generate any delta.
+
+        :param diff_type: Either 'full', 'partial' or None.
+          'full' means generate the complete diff - adds/deletes/modifies/etc;
+          'partial' means filter the diff using specific_fileids;
+          None means do not generate any diff.
+
+        :param _match_using_deltas: a private parameter controlling the
+          algorithm used for matching specific_fileids. This parameter
+          may be removed in the future so bzrlib client code should NOT
+          use it.
+        """
+        self.direction = direction
+        self.specific_fileids = specific_fileids
+        self.start_revision = start_revision
+        self.end_revision = end_revision
+        self.limit = limit
+        self.message_search = message_search
+        self.levels = levels
+        self.generate_tags = generate_tags
+        self.delta_type = delta_type
+        self.diff_type = diff_type
+        # Add 'private' attributes for features that may be deprecated
+        self._match_using_deltas = _match_using_deltas
+        self._allow_single_merge_revision = True
+
+
+def show_log_request(branch, lf, rqst):
+    """Write out human-readable log of commits to this branch.
+
+    :param lf: The LogFormatter object showing the output.
+
+    :param rqst: The LogRequest object specifying the query parameters.
+    """
+    branch.lock_read()
+    try:
+        if getattr(lf, 'begin_log', None):
+            lf.begin_log()
+
+        _show_log_request(branch, lf, rqst)
+
+        if getattr(lf, 'end_log', None):
+            lf.end_log()
+    finally:
+        branch.unlock()
+
+
 def show_log(branch,
              lf,
              specific_fileid=None,
@@ -151,6 +245,10 @@ def show_log(branch,
              limit=None,
              show_diff=False):
     """Write out human-readable log of commits to this branch.
+
+    Note: show_log_request() is now the preferred API to this one.
+    This function is being retained for backwards compatibility but
+    should not be extended with new parameters.
 
     :param lf: The LogFormatter object showing the output.
 
@@ -174,150 +272,166 @@ def show_log(branch,
 
     :param show_diff: If True, output a diff after each revision.
     """
-    branch.lock_read()
-    try:
-        if getattr(lf, 'begin_log', None):
-            lf.begin_log()
+    # Convert old-style parameters to new-style parameters
+    if specific_fileid is not None:
+        file_ids = [specific_fileid]
+    else:
+        file_ids = None
+    if verbose:
+        if file_ids:
+            delta_type = 'partial'
+        else:
+            delta_type = 'full'
+    else:
+        delta_type = None
+    if show_diff:
+        if file_ids:
+            diff_type = 'partial'
+        else:
+            diff_type = 'full'
+    else:
+        diff_type = None
 
-        _show_log(branch, lf, specific_fileid, verbose, direction,
-                  start_revision, end_revision, search, limit, show_diff)
+    # Build the request and execute it
+    rqst = LogRequest(direction=direction, specific_fileids=file_ids,
+        start_revision=start_revision, end_revision=end_revision,
+        limit=limit, message_search=search,
+        delta_type=delta_type, diff_type=diff_type)
+    show_log_request(branch, lf, rqst)
 
-        if getattr(lf, 'end_log', None):
-            lf.end_log()
-    finally:
-        branch.unlock()
 
-
-def _show_log(branch,
-             lf,
-             specific_fileid=None,
-             verbose=False,
-             direction='reverse',
-             start_revision=None,
-             end_revision=None,
-             search=None,
-             limit=None,
-             show_diff=False):
-    """Worker function for show_log - see show_log."""
+def _show_log_request(branch, lf, rqst):
+    """Worker function for show_log_request - see show_log_request."""
     if not isinstance(lf, LogFormatter):
         warn("not a LogFormatter instance: %r" % lf)
-    if specific_fileid:
-        trace.mutter('get log for file_id %r', specific_fileid)
 
-    # Consult the LogFormatter about what it needs and can handle
-    levels_to_display = lf.get_levels()
-    generate_merge_revisions = levels_to_display != 1
-    allow_single_merge_revision = True
+    # Tweak the LogRequest based on what the LogFormatter can handle.
+    # (There's no point generating stuff if the formatter can't display it.)
+    rqst.levels = lf.get_levels()
+    if not getattr(lf, 'supports_tags', False):
+        rqst.generate_tags = False
+    if not getattr(lf, 'supports_delta', False):
+        rqst.delta_type = None
+    if not getattr(lf, 'supports_diff', False):
+        rqst.diff_type = None
     if not getattr(lf, 'supports_merge_revisions', False):
-        allow_single_merge_revision = getattr(lf,
+        rqst._allow_single_merge_revision = getattr(lf,
             'supports_single_merge_revision', False)
-    generate_tags = getattr(lf, 'supports_tags', False)
-    if generate_tags and branch.supports_tags():
-        rev_tag_dict = branch.tags.get_reverse_tag_dict()
-    else:
-        rev_tag_dict = {}
-    generate_delta = verbose and getattr(lf, 'supports_delta', False)
-    generate_diff = show_diff and getattr(lf, 'supports_diff', False)
 
     # Find and print the interesting revisions
-    repo = branch.repository
-    log_count = 0
-    revision_iterator = _create_log_revision_iterator(branch,
-        start_revision, end_revision, direction, specific_fileid, search,
-        generate_merge_revisions, allow_single_merge_revision,
-        generate_delta, limited_output=limit > 0)
-    for revs in revision_iterator:
-        for (rev_id, revno, merge_depth), rev, delta in revs:
-            # Note: 0 levels means show everything; merge_depth counts from 0
-            if levels_to_display != 0 and merge_depth >= levels_to_display:
-                continue
-            if generate_diff:
-                diff = _format_diff(repo, rev, rev_id, specific_fileid)
-            else:
-                diff = None
-            lr = LogRevision(rev, revno, merge_depth, delta,
-                             rev_tag_dict.get(rev_id), diff)
-            lf.log_revision(lr)
-            if limit:
-                log_count += 1
-                if log_count >= limit:
-                    return
-
-
-def _format_diff(repo, rev, rev_id, specific_fileid):
-    if len(rev.parent_ids) == 0:
-        ancestor_id = _mod_revision.NULL_REVISION
-    else:
-        ancestor_id = rev.parent_ids[0]
-    tree_1 = repo.revision_tree(ancestor_id)
-    tree_2 = repo.revision_tree(rev_id)
-    if specific_fileid:
-        specific_files = [tree_2.id2path(specific_fileid)]
-    else:
-        specific_files = None
-    s = StringIO()
-    diff.show_diff_trees(tree_1, tree_2, s, specific_files, old_label='',
-        new_label='')
-    return s.getvalue()
+    generator = _LogGenerator(branch, rqst)
+    for lr in generator.iter_log_revisions():
+        lf.log_revision(lr)
 
 
 class _StartNotLinearAncestor(Exception):
     """Raised when a start revision is not found walking left-hand history."""
 
 
-def _create_log_revision_iterator(branch, start_revision, end_revision,
-    direction, specific_fileid, search, generate_merge_revisions,
-    allow_single_merge_revision, generate_delta, limited_output=False):
-    """Create a revision iterator for log.
+class _LogGenerator(object):
+    """A generator of log revisions given a branch and a LogRequest."""
 
-    :param branch: The branch being logged.
-    :param start_revision: If not None, only show revisions >= start_revision
-    :param end_revision: If not None, only show revisions <= end_revision
-    :param direction: 'reverse' (default) is latest to earliest; 'forward' is
-        earliest to latest.
-    :param specific_fileid: If not None, list only the commits affecting the
-        specified file.
-    :param search: If not None, only show revisions with matching commit
-        messages.
-    :param generate_merge_revisions: If False, show only mainline revisions.
-    :param allow_single_merge_revision: If True, logging of a single
-        revision off the mainline is to be allowed
-    :param generate_delta: Whether to generate a delta for each revision.
-    :param limited_output: if True, the user only wants a limited result
+    def __init__(self, branch, rqst):
+        self.branch = branch
+        self.rqst = rqst
+        if rqst.generate_tags and branch.supports_tags():
+            self.rev_tag_dict = branch.tags.get_reverse_tag_dict()
+        else:
+            self.rev_tag_dict = {}
 
-    :return: An iterator over lists of ((rev_id, revno, merge_depth), rev,
-        delta).
-    """
-    start_rev_id, end_rev_id = _get_revision_limits(branch, start_revision,
-        end_revision)
+    def iter_log_revisions(self):
+        """Iterate over LogRevision objects.
 
-    # Decide how file-ids are matched: delta-filtering vs per-file graph.
-    # Delta filtering allows revisions to be displayed incrementally
-    # though the total time is much slower for huge repositories: log -v
-    # is the *lower* performance bound. At least until the split
-    # inventory format arrives, per-file-graph needs to remain the
-    # default except in verbose mode. Delta filtering should give more
-    # accurate results (e.g. inclusion of FILE deletions) so arguably
-    # it should always be used in the future.
-    use_deltas_for_matching = specific_fileid and generate_delta
-    delayed_graph_generation = not specific_fileid and (
-            start_rev_id or end_rev_id or limited_output)
-    generate_merges = generate_merge_revisions or (specific_fileid and
-        not use_deltas_for_matching)
-    view_revisions = _calc_view_revisions(branch, start_rev_id, end_rev_id,
-        direction, generate_merges, allow_single_merge_revision,
-        delayed_graph_generation=delayed_graph_generation)
-    search_deltas_for_fileids = None
-    if use_deltas_for_matching:
-        search_deltas_for_fileids = set([specific_fileid])
-    elif specific_fileid:
+        :return: An iterator yielding LogRevision objects.
+        """
+        rqst = self.rqst
+        log_count = 0
+        revision_iterator = self._create_log_revision_iterator()
+        for revs in revision_iterator:
+            for (rev_id, revno, merge_depth), rev, delta in revs:
+                # 0 levels means show everything; merge_depth counts from 0
+                if rqst.levels != 0 and merge_depth >= rqst.levels:
+                    continue
+                diff = self._format_diff(rev, rev_id)
+                yield LogRevision(rev, revno, merge_depth, delta,
+                    self.rev_tag_dict.get(rev_id), diff)
+                if rqst.limit:
+                    log_count += 1
+                    if log_count >= rqst.limit:
+                        return
+
+    def _format_diff(self, rev, rev_id):
+        diff_type = self.rqst.diff_type
+        if diff_type is None:
+            return None
+        repo = self.branch.repository
+        if len(rev.parent_ids) == 0:
+            ancestor_id = _mod_revision.NULL_REVISION
+        else:
+            ancestor_id = rev.parent_ids[0]
+        tree_1 = repo.revision_tree(ancestor_id)
+        tree_2 = repo.revision_tree(rev_id)
+        file_ids = self.rqst.specific_fileids
+        if diff_type == 'partial' and file_ids is not None:
+            specific_files = [tree_2.id2path(id) for id in file_ids]
+        else:
+            specific_files = None
+        s = StringIO()
+        diff.show_diff_trees(tree_1, tree_2, s, specific_files, old_label='',
+            new_label='')
+        return s.getvalue()
+
+    def _create_log_revision_iterator(self):
+        """Create a revision iterator for log.
+
+        :return: An iterator over lists of ((rev_id, revno, merge_depth), rev,
+            delta).
+        """
+        self.start_rev_id, self.end_rev_id = _get_revision_limits(
+            self.branch, self.rqst.start_revision, self.rqst.end_revision)
+        if self.rqst._match_using_deltas:
+            return self._log_revision_iterator_using_delta_matching()
+        else:
+            # We're using the per-file-graph algorithm. This scales really
+            # well but only makes sense if there is a single file and it's
+            # not a directory
+            file_count = len(self.rqst.specific_fileids)
+            if file_count != 1:
+                raise BzrError("illegal LogRequest: must match-using-deltas "
+                    "when logging %d files" % file_count)
+            return self._log_revision_iterator_using_per_file_graph()
+
+    def _log_revision_iterator_using_delta_matching(self):
+        # Get the base revisions, filtering by the revision range
+        rqst = self.rqst
+        generate_merge_revisions = rqst.levels != 1
+        delayed_graph_generation = not rqst.specific_fileids and (
+                rqst.limit or self.start_rev_id or self.end_rev_id)
+        view_revisions = _calc_view_revisions(self.branch, self.start_rev_id,
+            self.end_rev_id, rqst.direction, generate_merge_revisions,
+            rqst._allow_single_merge_revision,
+            delayed_graph_generation=delayed_graph_generation)
+
+        # Apply the other filters
+        return make_log_rev_iterator(self.branch, view_revisions,
+            rqst.delta_type, rqst.message_search,
+            file_ids=rqst.specific_fileids, direction=rqst.direction)
+
+    def _log_revision_iterator_using_per_file_graph(self):
+        # Get the base revisions, filtering by the revision range.
+        # Note that we always generate the merge revisions because
+        # filter_revisions_touching_file_id() requires them ...
+        rqst = self.rqst
+        view_revisions = _calc_view_revisions(self.branch, self.start_rev_id,
+            self.end_rev_id, rqst.direction, True,
+            rqst._allow_single_merge_revision)
         if not isinstance(view_revisions, list):
             view_revisions = list(view_revisions)
-        view_revisions = _filter_revisions_touching_file_id(branch,
-            specific_fileid, view_revisions,
-            include_merges=generate_merge_revisions)
-    return make_log_rev_iterator(branch, view_revisions, generate_delta,
-        search, file_ids=search_deltas_for_fileids, direction=direction)
+        view_revisions = _filter_revisions_touching_file_id(self.branch,
+            rqst.specific_fileids[0], view_revisions,
+            include_merges=rqst.levels != 1)
+        return make_log_rev_iterator(self.branch, view_revisions,
+            rqst.delta_type, rqst.message_search)
 
 
 def _calc_view_revisions(branch, start_rev_id, end_rev_id, direction,
@@ -336,37 +450,54 @@ def _calc_view_revisions(branch, start_rev_id, end_rev_id, direction,
     generate_single_revision = (end_rev_id and start_rev_id == end_rev_id and
         (not generate_merge_revisions or not _has_merges(branch, end_rev_id)))
     if generate_single_revision:
-        if end_rev_id == br_rev_id:
-            # It's the tip
-            return [(br_rev_id, br_revno, 0)]
-        else:
-            revno = branch.revision_id_to_dotted_revno(end_rev_id)
-            if len(revno) > 1 and not allow_single_merge_revision:
-                # It's a merge revision and the log formatter is
-                # completely brain dead. This "feature" of allowing
-                # log formatters incapable of displaying dotted revnos
-                # ought to be deprecated IMNSHO. IGC 20091022
-                raise errors.BzrCommandError('Selected log formatter only'
-                    ' supports mainline revisions.')
-            revno_str = '.'.join(str(n) for n in revno)
-            return [(end_rev_id, revno_str, 0)]
+        return _generate_one_revision(branch, end_rev_id, br_rev_id, br_revno,
+            allow_single_merge_revision)
 
     # If we only want to see linear revisions, we can iterate ...
     if not generate_merge_revisions:
-        result = _linear_view_revisions(branch, start_rev_id, end_rev_id)
-        # If a start limit was given and it's not obviously an
-        # ancestor of the end limit, check it before outputting anything
-        if direction == 'forward' or (start_rev_id
-            and not _is_obvious_ancestor(branch, start_rev_id, end_rev_id)):
-            try:
-                result = list(result)
-            except _StartNotLinearAncestor:
-                raise errors.BzrCommandError('Start revision not found in'
-                    ' left-hand history of end revision.')
-        if direction == 'forward':
-            result = reversed(list(result))
-        return result
+        return _generate_flat_revisions(branch, start_rev_id, end_rev_id,
+            direction)
+    else:
+        return _generate_all_revisions(branch, start_rev_id, end_rev_id,
+            direction, delayed_graph_generation)
 
+
+def _generate_one_revision(branch, rev_id, br_rev_id, br_revno,
+    allow_single_merge_revision):
+    if rev_id == br_rev_id:
+        # It's the tip
+        return [(br_rev_id, br_revno, 0)]
+    else:
+        revno = branch.revision_id_to_dotted_revno(rev_id)
+        if len(revno) > 1 and not allow_single_merge_revision:
+            # It's a merge revision and the log formatter is
+            # completely brain dead. This "feature" of allowing
+            # log formatters incapable of displaying dotted revnos
+            # ought to be deprecated IMNSHO. IGC 20091022
+            raise errors.BzrCommandError('Selected log formatter only'
+                ' supports mainline revisions.')
+        revno_str = '.'.join(str(n) for n in revno)
+        return [(rev_id, revno_str, 0)]
+
+
+def _generate_flat_revisions(branch, start_rev_id, end_rev_id, direction):
+    result = _linear_view_revisions(branch, start_rev_id, end_rev_id)
+    # If a start limit was given and it's not obviously an
+    # ancestor of the end limit, check it before outputting anything
+    if direction == 'forward' or (start_rev_id
+        and not _is_obvious_ancestor(branch, start_rev_id, end_rev_id)):
+        try:
+            result = list(result)
+        except _StartNotLinearAncestor:
+            raise errors.BzrCommandError('Start revision not found in'
+                ' left-hand history of end revision.')
+    if direction == 'forward':
+        result = reversed(result)
+    return result
+
+
+def _generate_all_revisions(branch, start_rev_id, end_rev_id, direction,
+    delayed_graph_generation):
     # On large trees, generating the merge graph can take 30-60 seconds
     # so we delay doing it until a merge is detected, incrementally
     # returning initial (non-merge) revisions while we can.
@@ -544,6 +675,7 @@ def make_log_rev_iterator(branch, view_revisions, generate_delta, search,
     :param branch: The branch being logged.
     :param view_revisions: The revisions being viewed.
     :param generate_delta: Whether to generate a delta for each revision.
+      Permitted values are None, 'full' and 'partial'.
     :param search: A user text search string.
     :param file_ids: If non empty, only revisions matching one or more of
       the file-ids are to be kept.
@@ -608,6 +740,7 @@ def _make_delta_filter(branch, generate_delta, search, log_rev_iterator,
 
     :param branch: The branch being logged.
     :param generate_delta: Whether to generate a delta for each revision.
+      Permitted values are None, 'full' and 'partial'.
     :param search: A user text search string.
     :param log_rev_iterator: An input iterator containing all revisions that
         could be displayed, in lists.
@@ -623,7 +756,7 @@ def _make_delta_filter(branch, generate_delta, search, log_rev_iterator,
         generate_delta, fileids, direction)
 
 
-def _generate_deltas(repository, log_rev_iterator, always_delta, fileids,
+def _generate_deltas(repository, log_rev_iterator, delta_type, fileids,
     direction):
     """Create deltas for each batch of revisions in log_rev_iterator.
 
@@ -647,50 +780,50 @@ def _generate_deltas(repository, log_rev_iterator, always_delta, fileids,
         if check_fileids and not fileid_set:
             return
         revisions = [rev[1] for rev in revs]
-        deltas = repository.get_deltas_for_revisions(revisions)
         new_revs = []
-        for rev, delta in izip(revs, deltas):
-            if check_fileids:
-                if not _delta_matches_fileids(delta, fileid_set, stop_on):
-                    continue
-                elif not always_delta:
-                    # Delta was created just for matching - ditch it
-                    # Note: It would probably be a better UI to return
-                    # a delta filtered by the file-ids, rather than
-                    # None at all. That functional enhancement can
-                    # come later ...
-                    delta = None
-            new_revs.append((rev[0], rev[1], delta))
+        if delta_type == 'full' and not check_fileids:
+            deltas = repository.get_deltas_for_revisions(revisions)
+            for rev, delta in izip(revs, deltas):
+                new_revs.append((rev[0], rev[1], delta))
+        else:
+            deltas = repository.get_deltas_for_revisions(revisions, fileid_set)
+            for rev, delta in izip(revs, deltas):
+                if check_fileids:
+                    if delta is None or not delta.has_changed():
+                        continue
+                    else:
+                        _update_fileids(delta, fileid_set, stop_on)
+                        if delta_type is None:
+                            delta = None
+                        elif delta_type == 'full':
+                            # If the file matches all the time, rebuilding
+                            # a full delta like this in addition to a partial
+                            # one could be slow. However, it's likely the
+                            # most revisions won't get this far, making it
+                            # faster to filter on the partial deltas and
+                            # build the occasional full delta than always
+                            # building full deltas and filtering those.
+                            rev_id = rev[0][0]
+                            delta = repository.get_revision_delta(rev_id)
+                new_revs.append((rev[0], rev[1], delta))
         yield new_revs
 
 
-def _delta_matches_fileids(delta, fileids, stop_on='add'):
-    """Check is a delta matches one of more file-ids.
-
-    :param fileids: a set of fileids to match against.
+def _update_fileids(delta, fileids, stop_on):
+    """Update the set of file-ids to search based on file lifecycle events.
+    
+    :param fileids: a set of fileids to update
     :param stop_on: either 'add' or 'remove' - take file-ids out of the
       fileids set once their add or remove entry is detected respectively
     """
-    if not fileids:
-        return False
-    result = False
-    for item in delta.added:
-        if item[1] in fileids:
-            if stop_on == 'add':
-                fileids.remove(item[1])
-            result = True
-    for item in delta.removed:
-        if item[1] in fileids:
-            if stop_on == 'delete':
-                fileids.remove(item[1])
-            result = True
-    if result:
-        return True
-    for l in (delta.modified, delta.renamed, delta.kind_changed):
-        for item in l:
+    if stop_on == 'add':
+        for item in delta.added:
             if item[1] in fileids:
-                return True
-    return False
+                fileids.remove(item[1])
+    elif stop_on == 'delete':
+        for item in delta.removed:
+            if item[1] in fileids:
+                fileids.remove(item[1])
 
 
 def _make_revision_objects(branch, generate_delta, search, log_rev_iterator):
@@ -1617,55 +1750,100 @@ def show_flat_log(repository, history, last_revno, lf):
         lf.log_revision(lr)
 
 
-def _get_fileid_to_log(revision, tree, b, fp):
-    """Find the file-id to log for a file path in a revision range.
+def _get_info_for_log_files(revisionspec_list, file_list):
+    """Find file-ids and kinds given a list of files and a revision range.
 
-    :param revision: the revision range as parsed on the command line
-    :param tree: the working tree, if any
-    :param b: the branch
-    :param fp: file path
+    We search for files at the end of the range. If not found there,
+    we try the start of the range.
+
+    :param revisionspec_list: revision range as parsed on the command line
+    :param file_list: the list of paths given on the command line;
+      the first of these can be a branch location or a file path,
+      the remainder must be file paths
+    :return: (branch, info_list, start_rev_info, end_rev_info) where
+      info_list is a list of (relative_path, file_id, kind) tuples where
+      kind is one of values 'directory', 'file', 'symlink', 'tree-reference'.
     """
-    if revision is None:
+    from builtins import _get_revision_range, safe_relpath_files
+    tree, b, path = bzrdir.BzrDir.open_containing_tree_or_branch(file_list[0])
+    # XXX: It's damn messy converting a list of paths to relative paths when
+    # those paths might be deleted ones, they might be on a case-insensitive
+    # filesystem and/or they might be in silly locations (like another branch).
+    # For example, what should "log bzr://branch/dir/file1 file2" do? (Is
+    # file2 implicitly in the same dir as file1 or should its directory be
+    # taken from the current tree somehow?) For now, this solves the common
+    # case of running log in a nested directory, assuming paths beyond the
+    # first one haven't been deleted ...
+    if tree:
+        relpaths = [path] + safe_relpath_files(tree, file_list[1:])
+    else:
+        relpaths = [path] + file_list[1:]
+    info_list = []
+    start_rev_info, end_rev_info = _get_revision_range(revisionspec_list, b,
+        "log")
+    if start_rev_info is None and end_rev_info is None:
         if tree is None:
             tree = b.basis_tree()
-        file_id = tree.path2id(fp)
-        if file_id is None:
-            # go back to when time began
-            try:
-                rev1 = b.get_rev_id(1)
-            except errors.NoSuchRevision:
-                # No history at all
-                file_id = None
-            else:
-                tree = b.repository.revision_tree(rev1)
-                file_id = tree.path2id(fp)
+        tree1 = None
+        for fp in relpaths:
+            file_id = tree.path2id(fp)
+            kind = _get_kind_for_file_id(tree, file_id)
+            if file_id is None:
+                # go back to when time began
+                if tree1 is None:
+                    try:
+                        rev1 = b.get_rev_id(1)
+                    except errors.NoSuchRevision:
+                        # No history at all
+                        file_id = None
+                        kind = None
+                    else:
+                        tree1 = b.repository.revision_tree(rev1)
+                if tree1:
+                    file_id = tree1.path2id(fp)
+                    kind = _get_kind_for_file_id(tree1, file_id)
+            info_list.append((fp, file_id, kind))
 
-    elif len(revision) == 1:
+    elif start_rev_info == end_rev_info:
         # One revision given - file must exist in it
-        tree = revision[0].as_tree(b)
-        file_id = tree.path2id(fp)
+        tree = b.repository.revision_tree(end_rev_info.rev_id)
+        for fp in relpaths:
+            file_id = tree.path2id(fp)
+            kind = _get_kind_for_file_id(tree, file_id)
+            info_list.append((fp, file_id, kind))
 
-    elif len(revision) == 2:
+    else:
         # Revision range given. Get the file-id from the end tree.
         # If that fails, try the start tree.
-        rev_id = revision[1].as_revision_id(b)
+        rev_id = end_rev_info.rev_id
         if rev_id is None:
             tree = b.basis_tree()
         else:
-            tree = revision[1].as_tree(b)
-        file_id = tree.path2id(fp)
-        if file_id is None:
-            rev_id = revision[0].as_revision_id(b)
-            if rev_id is None:
-                rev1 = b.get_rev_id(1)
-                tree = b.repository.revision_tree(rev1)
-            else:
-                tree = revision[0].as_tree(b)
+            tree = b.repository.revision_tree(rev_id)
+        tree1 = None
+        for fp in relpaths:
             file_id = tree.path2id(fp)
+            kind = _get_kind_for_file_id(tree, file_id)
+            if file_id is None:
+                if tree1 is None:
+                    rev_id = start_rev_info.rev_id
+                    if rev_id is None:
+                        rev1 = b.get_rev_id(1)
+                        tree1 = b.repository.revision_tree(rev1)
+                    else:
+                        tree1 = b.repository.revision_tree(rev_id)
+                file_id = tree1.path2id(fp)
+                kind = _get_kind_for_file_id(tree1, file_id)
+            info_list.append((fp, file_id, kind))
+    return b, info_list, start_rev_info, end_rev_info
+
+
+def _get_kind_for_file_id(tree, file_id):
+    """Return the kind of a file-id or None if it doesn't exist."""
+    if file_id is not None:
+        return tree.kind(file_id)
     else:
-        raise errors.BzrCommandError(
-            'bzr log --revision takes one or two values.')
-    return file_id
+        return None
 
 
 properties_handler_registry = registry.Registry()

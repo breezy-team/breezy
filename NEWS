@@ -22,6 +22,10 @@ New Features
 * New ``guess-renames`` command recognizes renames after they occur.
   (Aaron Bentley)
 
+* ``bzr log`` now supports filtering of multiple files and directories.
+  Directory filtering shows the changes to that directory object and
+  to any children of that directory.  (Ian Clatworthy, #97715)
+
 * ``bzr shelve`` can now apply changes without storing anything on the
   shelf, via the new --destroy option.  (Aaron Bentley)
 
