@@ -195,12 +195,16 @@ class BzrFastExporter(object):
             tree_new = self.branch.repository.revision_tree(revision_id)
         except bazErrors.UnexpectedInventoryFormat:
             # We can't really do anything anymore
-            self.warning("Revision %s is malformed - skipping", revision_id)
+            self.warning("Revision %s is malformed - skipping" % revision_id)
         return tree_old, tree_new
 
     def _get_filecommands(self, parent, revision_id):
         """Get the list of FileCommands for the changes between two revisions."""
         tree_old, tree_new = self._get_revision_trees(parent, revision_id)
+        if not(tree_old and tree_new):
+            # Something is wrong with this revision - ignore the filecommands
+            return []
+
         changes = tree_new.changes_from(tree_old)
 
         # Make "modified" have 3-tuples, as added does
