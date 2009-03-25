@@ -19,7 +19,6 @@ from email.Message import Message
 import errno
 import smtplib
 import socket
-import sys
 
 from bzrlib import (
     config,

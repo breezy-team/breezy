@@ -23,7 +23,7 @@ import socket
 
 from bzrlib import (
     config,
-    ui,
+    osutils,
     )
 from bzrlib.errors import (
     NoDestinationAddress,
@@ -113,14 +113,12 @@ class SMTPConnection(object):
 
         # smtplib requires that the username and password be byte
         # strings.  The CRAM-MD5 spec doesn't give any guidance on
-        # encodings, but the SASL PLAIN says UTF-8, so that's what
-        # we'll use.
-        if isinstance(self._smtp_username, unicode):
-            self._smtp_username = self._smtp_username.encode('utf-8')
-        if isinstance(self._smtp_password, unicode):
-            self._smtp_password = self._smtp_password.encode('utf-8')
+        # encodings, but the SASL PLAIN spec says UTF-8, so that's
+        # what we'll use.
+        username = osutils.safe_utf8(self._smtp_username)
+        password = osutils.safe_utf8(self._smtp_password)
 
-        self._connection.login(self._smtp_username, self._smtp_password)
+        self._connection.login(username, password)
 
     @staticmethod
     def get_message_addresses(message):
