@@ -76,8 +76,8 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         try:
             builder = tree.branch.get_commit_builder([])
             try:
-                builder.record_iter_changes(tree, tree.last_revision(),
-                    tree.iter_changes(tree.basis_tree()))
+                list(builder.record_iter_changes(tree, tree.last_revision(),
+                    tree.iter_changes(tree.basis_tree())))
                 builder.finish_inventory()
             except:
                 builder.abort()
@@ -107,7 +107,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
                 basis = tree.basis_tree()
                 last_rev = tree.last_revision()
                 changes = tree.iter_changes(basis)
-                builder.record_iter_changes(tree, last_rev, changes)
+                list(builder.record_iter_changes(tree, last_rev, changes))
                 builder.finish_inventory()
             finally:
                 builder.abort()
@@ -179,8 +179,8 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
                 return
             self.assertFalse(builder.random_revid)
             try:
-                builder.record_iter_changes(tree, tree.last_revision(),
-                    tree.iter_changes(tree.basis_tree()))
+                list(builder.record_iter_changes(tree, tree.last_revision(),
+                    tree.iter_changes(tree.basis_tree())))
                 builder.finish_inventory()
             except:
                 builder.abort()
@@ -255,7 +255,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         tree.lock_write()
         builder = tree.branch.get_commit_builder([old_revision_id])
         try:
-            builder.record_iter_changes(tree, old_revision_id, [])
+            list(builder.record_iter_changes(tree, old_revision_id, []))
             # Regardless of repository root behaviour we should consider this a
             # pointless commit.
             self.assertFalse(builder.any_changes())
@@ -393,7 +393,8 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
                 delete_change = ('foo-id', ('foo', None), True, (True, False),
                     (tree.path2id(''), None), ('foo', None), ('file', None),
                     (False, None))
-                builder.record_iter_changes(tree, rev_id, [delete_change])
+                list(builder.record_iter_changes(tree, rev_id,
+                    [delete_change]))
                 self.assertEqual(("foo", None, "foo-id", None),
                     builder._basis_delta[0])
                 self.assertTrue(builder.any_changes())
@@ -448,8 +449,9 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         try:
             builder = tree.branch.get_commit_builder([])
             try:
-                builder.record_iter_changes(tree, _mod_revision.NULL_REVISION,
-                    tree.iter_changes(tree.basis_tree()))
+                list(builder.record_iter_changes(tree,
+                    _mod_revision.NULL_REVISION,
+                    tree.iter_changes(tree.basis_tree())))
                 builder.finish_inventory()
                 rev_id = builder.commit('foo bar')
             except:
@@ -849,8 +851,8 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
             record a new version.
         :param delta_against_basis: True of the commit of new_name is expected
             to have a delta against the basis.
-        :param expect_fs_hash: ignored, present for compatibility with test
-            driver code for 'mini_commit'.
+        :param expect_fs_hash: If true, looks for a fs hash output from
+            record_iter_changes.
         """
         tree.lock_write()
         try:
@@ -866,10 +868,21 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
                 parent_invs.append(tree.branch.repository.revision_tree(
                     parent_id).inventory)
             changes = list(tree.iter_changes(parent_tree))
-            builder.record_iter_changes(tree, parent_ids[0], changes)
+            result = list(builder.record_iter_changes(tree, parent_ids[0],
+                changes))
+            file_id = tree.path2id(new_name)
+            if expect_fs_hash:
+                tree_file_stat = tree.get_file_with_stat(file_id)
+                tree_file_stat[0].close()
+                self.assertLength(1, result)
+                result = result[0]
+                self.assertEqual(result[:2], (file_id, new_name))
+                self.assertEqual(result[2][0], tree.get_file_sha1(file_id))
+                self.assertEqualStat(result[2][1], tree_file_stat[1])
+            else:
+                self.assertEqual([], result)
             delta = builder._basis_delta
             delta_dict = dict((change[2], change) for change in delta)
-            file_id = tree.path2id(new_name)
             version_recorded = (file_id in delta_dict and
                 delta_dict[file_id][3] is not None and
                 delta_dict[file_id][3].revision == builder._new_revision_id)

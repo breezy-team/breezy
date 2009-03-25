@@ -564,7 +564,8 @@ class CommitBuilder(object):
             to basis_revision_id.
         :param _entry_factory: Private method to bind entry_factory locally for
             performance.
-        :return: None
+        :return: A generator of (file_id, relpath, fs_hash) tuples for use with
+            tree._observed_sha1.
         """
         # Create an inventory delta based on deltas between all the parents and
         # deltas between all the parent inventories. We use inventory delta's 
@@ -726,8 +727,10 @@ class CommitBuilder(object):
                     try:
                         entry.text_sha1, entry.text_size = self._add_text_to_weave(
                             file_id, lines, heads, nostore_sha)
+                        yield file_id, change[1][1], (entry.text_sha1, stat_value)
                     except errors.ExistingContent:
                         # No content change against a carry_over parent
+                        # Perhaps this should also yield a fs hash update?
                         carried_over = True
                         entry.text_size = parent_entry.text_size
                         entry.text_sha1 = parent_entry.text_sha1
