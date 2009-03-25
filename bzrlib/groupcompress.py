@@ -840,7 +840,6 @@ class PythonGroupCompressor(_CommonGroupCompressor):
         :param delta: If False, do not compress records.
         """
         super(PythonGroupCompressor, self).__init__()
-        self.line_offsets = []
         self.line_locations = EquivalenceTable([])
         self.lines = self.line_locations.lines
         self._present_prefixes = set()
@@ -946,8 +945,8 @@ class PythonGroupCompressor(_CommonGroupCompressor):
         if old_start_linenum == 0:
             first_byte = 0
         else:
-            first_byte = self.line_offsets[old_start_linenum - 1]
-        stop_byte = self.line_offsets[old_start_linenum + num_lines - 1]
+            first_byte = self.line_locations.line_offsets[old_start_linenum - 1]
+        stop_byte = self.line_locations.line_offsets[old_start_linenum + num_lines - 1]
         num_bytes = stop_byte - first_byte
         # The data stream allows >64kB in a copy, but to match the compiled
         # code, we will also limit it to a 64kB copy
@@ -978,7 +977,6 @@ class PythonGroupCompressor(_CommonGroupCompressor):
         self.line_locations.extend_lines(new_lines, index_lines)
         for line in new_lines:
             endpoint += len(line)
-            self.line_offsets.append(endpoint)
         self.endpoint = endpoint
 
 
