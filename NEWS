@@ -126,6 +126,8 @@ Bug Fixes
 Documentation
 *************
 
+* Expanded the index of the developer documentation. (Eric Siegerman)
+
 * New topic `bzr help debug-flags`.  (Martin Pool)
 
 * The generated manpage now explicitly lists aliases as commands.
