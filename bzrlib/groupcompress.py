@@ -84,38 +84,6 @@ def decode_base128_int(bytes):
     return val, offset
 
 
-def encode_copy_instruction(offset, length):
-    """Convert this offset into a control code and bytes."""
-    copy_command = 0x80
-    copy_bytes = [None]
-
-    for copy_bit in (0x01, 0x02, 0x04, 0x08):
-        base_byte = offset & 0xff
-        if base_byte:
-            copy_command |= copy_bit
-            copy_bytes.append(chr(base_byte))
-        offset >>= 8
-    if length is None:
-        # None is used by the test suite
-        copy_bytes[0] = chr(copy_command)
-        return ''.join(copy_bytes)
-    if length > 0x10000:
-        raise ValueError("we don't emit copy records for lengths > 64KiB")
-    if length == 0:
-        raise ValueError("We cannot emit a copy of length 0")
-    if length != 0x10000:
-        # A copy of length exactly 64*1024 == 0x10000 is sent as a length of 0,
-        # since that saves bytes for large chained copies
-        for copy_bit in (0x10, 0x20):
-            base_byte = length & 0xff
-            if base_byte:
-                copy_command |= copy_bit
-                copy_bytes.append(chr(base_byte))
-            length >>= 8
-    copy_bytes[0] = chr(copy_command)
-    return ''.join(copy_bytes)
-
-
 def sort_gc_optimal(parent_map):
     """Sort and group the keys in parent_map into groupcompress order.
 
@@ -878,21 +846,8 @@ class PythonGroupCompressor(_CommonGroupCompressor):
             raise errors.ExistingContent()
         if key[-1] is None:
             key = key[:-1] + ('sha1:' + sha1,)
-        # reserved for content type, content length, source_len, target_len
-        out_lines = ['', '', '', '']
-        index_lines = [False, False, False, False]
-        blocks = self.line_locations.get_matching_blocks(new_lines, soft=soft)
-        current_line_num = 0
-        # We either copy a range (while there are reusable lines) or we
-        # insert new lines. To find reusable lines we traverse
-        for old_start, new_start, range_len in blocks:
-            if new_start != current_line_num:
-                # non-matching region, insert the content
-                self._flush_insert(current_line_num, new_start,
-                                   new_lines, out_lines, index_lines)
-            current_line_num = new_start + range_len
-            if range_len:
-                self._flush_copy(old_start, range_len, out_lines, index_lines)
+        out_lines, index_lines = self.line_locations.make_delta(new_lines,
+                                                                soft=soft)
         delta_length = sum(map(len, out_lines))
         if delta_length * 2 > bytes_length:
             # The delta is longer than the fulltext, insert a fulltext
@@ -906,11 +861,7 @@ class PythonGroupCompressor(_CommonGroupCompressor):
             # this is a worthy delta, output it
             type = 'delta'
             out_lines[0] = 'd'
-            # A delta record includes the source and target lengths
-            out_lines[2] = encode_base128_int(self.endpoint)
-            out_lines[3] = encode_base128_int(bytes_length)
             # Update the delta_length to include those two encoded integers
-            delta_length += len(out_lines[2]) + len(out_lines[3])
             out_lines[1] = encode_base128_int(delta_length)
             out_length = len(out_lines[3]) + 1 + delta_length
         self._block.add_entry(key, type=type, sha1=sha1,
@@ -923,38 +874,6 @@ class PythonGroupCompressor(_CommonGroupCompressor):
         self.labels_deltas[key] = (delta_start, delta_end)
         # FIXME: lot of guessing below
         return sha1, start, self.endpoint, 'delta', out_length
-
-    def _flush_insert(self, start_linenum, end_linenum,
-                      new_lines, out_lines, index_lines):
-        """Add an 'insert' request to the data stream."""
-        bytes_to_insert = ''.join(new_lines[start_linenum:end_linenum])
-        insert_length = len(bytes_to_insert)
-        # Each insert instruction is at most 127 bytes long
-        for start_byte in xrange(0, insert_length, 127):
-            insert_count = min(insert_length - start_byte, 127)
-            assert insert_count <= 127
-            out_lines.append(chr(insert_count))
-            # Don't index the 'insert' instruction
-            index_lines.append(False)
-            insert = bytes_to_insert[start_byte:start_byte+insert_count]
-            out_lines.append(insert)
-            index_lines.append(True)
-
-    def _flush_copy(self, old_start_linenum, num_lines,
-                    out_lines, index_lines):
-        if old_start_linenum == 0:
-            first_byte = 0
-        else:
-            first_byte = self.line_locations.line_offsets[old_start_linenum - 1]
-        stop_byte = self.line_locations.line_offsets[old_start_linenum + num_lines - 1]
-        num_bytes = stop_byte - first_byte
-        # The data stream allows >64kB in a copy, but to match the compiled
-        # code, we will also limit it to a 64kB copy
-        for start_byte in xrange(first_byte, stop_byte, 64*1024):
-            num_bytes = min(64*1024, stop_byte - first_byte)
-            copy_bytes = encode_copy_instruction(start_byte, num_bytes)
-            out_lines.append(copy_bytes)
-            index_lines.append(False)
 
     def flush(self):
         # FIXME: ugly hack to masquerade ourself as the pyrex version
@@ -1989,6 +1908,7 @@ class _GCGraphIndex(object):
 
 from bzrlib._groupcompress_py import (
     apply_delta,
+    encode_copy_instruction,
     EquivalenceTable,
     )
 try:

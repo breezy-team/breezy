@@ -127,15 +127,22 @@ class TestPyrexGroupCompressor(TestGroupCompressor):
 
     def test_stats(self):
         compressor = self.compressor()
-        compressor.compress(('label',), 'strange\ncommon long line\n'
-                                        'plus more text\n', None)
+        compressor.compress(('label',),
+                            'strange\n'
+                            'common very very long line\n'
+                            'plus more text\n', None)
         compressor.compress(('newlabel',),
-                            'common long line\nplus more text\n'
-                            'different\nmoredifferent\n', None)
+                            'common very very long line\n'
+                            'plus more text\n'
+                            'different\n'
+                            'moredifferent\n', None)
         compressor.compress(('label3',),
-                            'new\ncommon long line\nplus more text\n'
-                            '\ndifferent\nmoredifferent\n', None)
-        self.assertAlmostEqual(1.4, compressor.ratio(), 1)
+                            'new\n'
+                            'common very very long line\n'
+                            'plus more text\n'
+                            'different\n'
+                            'moredifferent\n', None)
+        self.assertAlmostEqual(1.9, compressor.ratio(), 1)
 
     def test_two_nosha_delta(self):
         compressor = self.compressor()
@@ -199,15 +206,22 @@ class TestPythonGroupCompressor(TestGroupCompressor):
 
     def test_stats(self):
         compressor = self.compressor()
-        compressor.compress(('label',), 'strange\ncommon long line\n'
-                                        'plus more text\n', None)
+        compressor.compress(('label',),
+                            'strange\n'
+                            'common very very long line\n'
+                            'plus more text\n', None)
         compressor.compress(('newlabel',),
-                            'common long line\nplus more text\n'
-                            'different\nmoredifferent\n', None)
+                            'common very very long line\n'
+                            'plus more text\n'
+                            'different\n'
+                            'moredifferent\n', None)
         compressor.compress(('label3',),
-                            'new\ncommon long line\nplus more text\n'
-                            '\ndifferent\nmoredifferent\n', None)
-        self.assertAlmostEqual(1.1, compressor.ratio(), 1)
+                            'new\n'
+                            'common very very long line\n'
+                            'plus more text\n'
+                            'different\n'
+                            'moredifferent\n', None)
+        self.assertAlmostEqual(1.9, compressor.ratio(), 1)
 
     def test_two_nosha_delta(self):
         compressor = self.compressor()
