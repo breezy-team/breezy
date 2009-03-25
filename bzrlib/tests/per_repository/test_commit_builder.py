@@ -502,7 +502,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
 
     def _add_commit_check_unchanged(self, tree, name, mini_commit=None):
         tree.add([name], [name + 'id'])
-        self._commit_check_unchanged(self, tree, name, name + 'id',
+        self._commit_check_unchanged(tree, name, name + 'id',
             mini_commit=mini_commit)
 
     def _commit_check_unchanged(self, tree, name, file_id, mini_commit=None):
@@ -735,10 +735,10 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
     def _add_commit_change_check_changed(self, tree, name, changer,
         expect_fs_hash=False, mini_commit=None):
         tree.add([name], [name + 'id'])
-        self._commit_change_check_changed(self, tree, name, name + 'id',
+        self._commit_change_check_changed(tree, name, name + 'id',
             changer, expect_fs_hash=expect_fs_hash, mini_commit=mini_commit)
 
-    def _commit_change_check_changed(self, tree,name, file_id, changer,
+    def _commit_change_check_changed(self, tree, name, file_id, changer,
         expect_fs_hash=False, mini_commit=None):
         rev1 = tree.commit('')
         changer()
