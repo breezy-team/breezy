@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for maps built on a CHK versionedfiles facility."""
 
@@ -123,8 +123,10 @@ class TestMap(TestCaseWithStore):
                 # Internal nodes must have identical references
                 self.assertEqual(sorted(node_one._items.keys()),
                                  sorted(node_two._items.keys()))
-                node_one_stack.extend(node_one._iter_nodes(map_one._store))
-                node_two_stack.extend(node_two._iter_nodes(map_two._store))
+                node_one_stack.extend([n for n, _ in
+                                       node_one._iter_nodes(map_one._store)])
+                node_two_stack.extend([n for n, _ in
+                                       node_two._iter_nodes(map_two._store)])
             else:
                 # Leaf nodes must have identical contents
                 self.assertEqual(node_one._items, node_two._items)
@@ -1505,6 +1507,60 @@ class TestInternalNode(TestCaseWithStore):
 #    def test_add_node_one_oversized_second_kept_minimum_fan(self):
 #    def test_add_node_two_oversized_third_kept_minimum_fan(self):
 #    def test_add_node_one_oversized_second_splits_errors(self):
+
+    def test__iter_nodes_no_key_filter(self):
+        node = InternalNode('')
+        child = LeafNode()
+        child.set_maximum_size(100)
+        child.map(None, ("foo",), "bar")
+        node.add_node("f", child)
+        child = LeafNode()
+        child.set_maximum_size(100)
+        child.map(None, ("bar",), "baz")
+        node.add_node("b", child)
+
+        for child, node_key_filter in node._iter_nodes(None, key_filter=None):
+            self.assertEqual(None, node_key_filter)
+
+    def test__iter_nodes_splits_key_filter(self):
+        node = InternalNode('')
+        child = LeafNode()
+        child.set_maximum_size(100)
+        child.map(None, ("foo",), "bar")
+        node.add_node("f", child)
+        child = LeafNode()
+        child.set_maximum_size(100)
+        child.map(None, ("bar",), "baz")
+        node.add_node("b", child)
+
+        # foo and bar both match exactly one leaf node, but 'cat' should not
+        # match any, and should not be placed in one.
+        key_filter = (('foo',), ('bar',), ('cat',))
+        for child, node_key_filter in node._iter_nodes(None,
+                                                       key_filter=key_filter):
+            # each child could only match one key filter, so make sure it was
+            # properly filtered
+            self.assertEqual(1, len(node_key_filter))
+
+    def test__iter_nodes_with_multiple_matches(self):
+        node = InternalNode('')
+        child = LeafNode()
+        child.set_maximum_size(100)
+        child.map(None, ("foo",), "val")
+        child.map(None, ("fob",), "val")
+        node.add_node("f", child)
+        child = LeafNode()
+        child.set_maximum_size(100)
+        child.map(None, ("bar",), "val")
+        child.map(None, ("baz",), "val")
+        node.add_node("b", child)
+
+        key_filter = (('foo',), ('fob',), ('bar',), ('baz',))
+        for child, node_key_filter in node._iter_nodes(None,
+                                                       key_filter=key_filter):
+            # each child could matches two key filters, so make sure they were
+            # both included.
+            self.assertEqual(2, len(node_key_filter))
 
     def test_iteritems_empty_new(self):
         node = InternalNode()

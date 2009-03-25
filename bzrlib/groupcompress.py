@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Core compression logic for compressing streams of related files."""
 
@@ -549,7 +549,10 @@ class _LazyGroupContentManager(object):
             factory._bytes = None
             # XXX: this is not safe, the smart fetch code requests the content
             #      as both a 'fulltext', and then later on as a
-            #      groupcompress-block
+            #      groupcompress-block. The iter_interesting_nodes code also is
+            #      still buffering multiple records and returning them later.
+            #      So that code would need to be updated to either re-fetch the
+            #      original object, or buffer it somehow.
             # factory._manager = None
         # TODO: Consider setting self._factories = None after the above loop,
         #       as it will break the reference cycle
