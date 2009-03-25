@@ -1486,7 +1486,7 @@ class SearchResult(object):
         return self._keys
 
     def is_empty(self):
-        """Return true if the search lists 1 or more revisions."""
+        """Return false if the search lists 1 or more revisions."""
         return self._recipe[3] == 0
 
     def refine(self, seen, referenced):
@@ -1560,7 +1560,7 @@ class PendingAncestryResult(object):
         return keys
 
     def is_empty(self):
-        """Return true if the search lists 1 or more revisions."""
+        """Return false if the search lists 1 or more revisions."""
         if revision.NULL_REVISION in self.heads:
             return len(self.heads) == 1
         else:
