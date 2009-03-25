@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """A collection of extra help information for using bzr.
 
@@ -742,6 +742,9 @@ topic_registry.register('branches', _branches,
                         'Information on what a branch is', SECT_CONCEPT)
 topic_registry.register('checkouts', _checkouts,
                         'Information on what a checkout is', SECT_CONCEPT)
+topic_registry.register('content-filters', _load_from_file,
+                        'Conversion of content into/from working trees',
+                        SECT_CONCEPT)
 topic_registry.register('formats', _storage_formats,
                         'Information on choosing a storage format',
                         SECT_CONCEPT)

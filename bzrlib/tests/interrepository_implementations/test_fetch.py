@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 import sys
@@ -76,7 +76,7 @@ class TestInterRepository(TestCaseWithInterRepository):
 
     def test_fetch_inconsistent_last_changed_entries(self):
         """If an inventory has odd data we should still get what it references.
-        
+
         This test tests that we do fetch a file text created in a revision not
         being fetched, but referenced from the revision we are fetching when the
         adjacent revisions to the one being fetched do not reference that text.

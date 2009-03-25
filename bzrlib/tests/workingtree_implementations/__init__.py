@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """WorkingTree implementation tests for bzr.
@@ -77,6 +77,7 @@ def load_tests(standard_tests, module, loader):
         'bzrlib.tests.workingtree_implementations.test_basis_tree',
         'bzrlib.tests.workingtree_implementations.test_break_lock',
         'bzrlib.tests.workingtree_implementations.test_changes_from',
+        'bzrlib.tests.workingtree_implementations.test_content_filters',
         'bzrlib.tests.workingtree_implementations.test_commit',
         'bzrlib.tests.workingtree_implementations.test_executable',
         'bzrlib.tests.workingtree_implementations.test_flush',

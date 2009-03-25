@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
 import re
@@ -595,6 +595,24 @@ def sha_file(f):
             break
         s.update(b)
     return s.hexdigest()
+
+
+def size_sha_file(f):
+    """Calculate the size and hexdigest of an open file.
+
+    The file cursor should be already at the start and
+    the caller is responsible for closing the file afterwards.
+    """
+    size = 0
+    s = sha()
+    BUFSIZE = 128<<10
+    while True:
+        b = f.read(BUFSIZE)
+        if not b:
+            break
+        size += len(b)
+        s.update(b)
+    return size, s.hexdigest()
 
 
 def sha_file_by_name(fname):
@@ -1721,6 +1739,28 @@ def until_no_eintr(f, *a, **kw):
             if e.errno == errno.EINTR:
                 continue
             raise
+
+def re_compile_checked(re_string, flags=0, where=""):
+    """Return a compiled re, or raise a sensible error.
+    
+    This should only be used when compiling user-supplied REs.
+
+    :param re_string: Text form of regular expression.
+    :param flags: eg re.IGNORECASE
+    :param where: Message explaining to the user the context where 
+        it occurred, eg 'log search filter'.
+    """
+    # from https://bugs.launchpad.net/bzr/+bug/251352
+    try:
+        re_obj = re.compile(re_string, flags)
+        re_obj.search("")
+        return re_obj
+    except re.error, e:
+        if where:
+            where = ' in ' + where
+        # despite the name 'error' is a type
+        raise errors.BzrCommandError('Invalid regular expression%s: %r: %s'
+            % (where, re_string, e))
 
 
 if sys.platform == "win32":

@@ -699,7 +699,7 @@ Test coverage
 =============
 
 All code should be exercised by the test suite.  See `Guide to Testing
-Bazaar <testing.html>`_ for detailed information about writing tests.
+Bazaar <../../developers/testing.html>`_ for detailed information about writing tests.
 
 
 Core Topics

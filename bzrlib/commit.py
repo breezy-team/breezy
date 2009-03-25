@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 # The newly committed revision is going to have a shape corresponding
@@ -259,7 +259,6 @@ class Commit(object):
                                " parameter is required for commit().")
 
         self.bound_branch = None
-        self.any_entries_changed = False
         self.any_entries_deleted = False
         if exclude is not None:
             self.exclude = sorted(
@@ -438,7 +437,7 @@ class Commit(object):
         # unless deletes occured, in which case the length is irrelevant.
         if (self.any_entries_deleted or
             (len(self.builder.new_inventory) != 1 and
-             self.any_entries_changed)):
+             self.builder.any_changes())):
             return
         raise PointlessCommit()
 
@@ -689,10 +688,8 @@ class Commit(object):
                 # required after that changes.
                 if len(self.parents) > 1:
                     ie.revision = None
-                _, version_recorded, _ = self.builder.record_entry_contents(
-                    ie, self.parent_invs, path, self.basis_tree, None)
-                if version_recorded:
-                    self.any_entries_changed = True
+                self.builder.record_entry_contents(ie, self.parent_invs, path,
+                    self.basis_tree, None)
 
     def _report_and_accumulate_deletes(self):
         # XXX: Could the list of deleted paths and ids be instead taken from
@@ -854,10 +851,8 @@ class Commit(object):
             ie.revision = None
         # For carried over entries we don't care about the fs hash - the repo
         # isn't generating a sha, so we're not saving computation time.
-        _, version_recorded, fs_hash = self.builder.record_entry_contents(
+        _, _, fs_hash = self.builder.record_entry_contents(
             ie, self.parent_invs, path, self.work_tree, content_summary)
-        if version_recorded:
-            self.any_entries_changed = True
         if report_changes:
             self._report_change(ie, path)
         if fs_hash:

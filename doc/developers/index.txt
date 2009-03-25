@@ -24,7 +24,7 @@ Overall developer documentation
   can set arbitrary per-revision key/value pairs to store app-specific
   data.
 
-* `Testing <testing.html>`_ |--| Testing bzr.
+* `Testing <testing.html>`_ |--| Guide to writing tests for Bazaar.
 
 * `Writing plugins <http://bazaar-vcs.org/WritingPlugins>`_ (wiki) 
   |--| specific advice on writing Bazaar plugins.
@@ -46,8 +46,8 @@ Process
 * `Profiling notes <profiling.html>`_ |--| Instructions on how to profile 
   bzr code and visualize the results.
 
-* `EC2 Windows server <ec2-windows.html>`_ |--| A team resource for 
-  Windows packaging and testing.
+* `EC2 resources <ec2.html>`_ |--| A team resource for 
+  Windows packaging and testing, and Ubuntu testing.
 
 Plans
 =====

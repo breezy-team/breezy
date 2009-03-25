@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tree classes, representing directory at point in time.
 """
@@ -24,7 +24,9 @@ from cStringIO import StringIO
 import bzrlib
 from bzrlib import (
     conflicts as _mod_conflicts,
+    debug,
     delta,
+    filters,
     osutils,
     revision as _mod_revision,
     rules,
@@ -94,10 +96,6 @@ class Tree(object):
             include_root=include_root,
             want_unversioned=want_unversioned,
             )
-
-    @symbol_versioning.deprecated_method(symbol_versioning.one_three)
-    def _iter_changes(self, *args, **kwargs):
-        return self.iter_changes(*args, **kwargs)
 
     def iter_changes(self, from_tree, include_unchanged=False,
                      specific_files=None, pb=None, extra_trees=None,
@@ -546,12 +544,6 @@ class Tree(object):
         for child in getattr(entry, 'children', {}).itervalues():
             yield child.file_id
 
-    @symbol_versioning.deprecated_method(symbol_versioning.one_six)
-    def print_file(self, file_id):
-        """Print file with id `file_id` to stdout."""
-        import sys
-        sys.stdout.write(self.get_file_text(file_id))
-
     def lock_read(self):
         pass
 
@@ -626,6 +618,43 @@ class Tree(object):
 
     def supports_content_filtering(self):
         return False
+
+    def _content_filter_stack(self, path=None, file_id=None):
+        """The stack of content filters for a path if filtering is supported.
+
+        Readers will be applied in first-to-last order.
+        Writers will be applied in last-to-first order.
+        Either the path or the file-id needs to be provided.
+
+        :param path: path relative to the root of the tree
+            or None if unknown
+        :param file_id: file_id or None if unknown
+        :return: the list of filters - [] if there are none
+        """
+        filter_pref_names = filters._get_registered_names()
+        if len(filter_pref_names) == 0:
+            return []
+        if path is None:
+            path = self.id2path(file_id)
+        prefs = self.iter_search_rules([path], filter_pref_names).next()
+        stk = filters._get_filter_stack_for(prefs)
+        if 'filters' in debug.debug_flags:
+            note("*** %s content-filter: %s => %r" % (path,prefs,stk))
+        return stk
+
+    def _content_filter_stack_provider(self):
+        """A function that returns a stack of ContentFilters.
+
+        The function takes a path (relative to the top of the tree) and a
+        file-id as parameters.
+
+        :return: None if content filtering is not supported by this tree.
+        """
+        if self.supports_content_filtering():
+            return lambda path, file_id: \
+                    self._content_filter_stack(path, file_id)
+        else:
+            return None
 
     def iter_search_rules(self, path_names, pref_names=None,
         _default_searcher=rules._per_user_searcher):
@@ -941,11 +970,7 @@ class InterTree(InterObject):
             if kind[0] != kind[1]:
                 changed_content = True
             elif from_kind == 'file':
-                from_size = self.source._file_size(from_entry, from_stat)
-                to_size = self.target._file_size(to_entry, to_stat)
-                if from_size != to_size:
-                    changed_content = True
-                elif (self.source.get_file_sha1(file_id, from_path, from_stat) !=
+                if (self.source.get_file_sha1(file_id, from_path, from_stat) !=
                     self.target.get_file_sha1(file_id, to_path, to_stat)):
                     changed_content = True
             elif from_kind == 'symlink':

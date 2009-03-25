@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the Branch facility that are not interface  tests.
 
@@ -151,7 +151,7 @@ class SampleBranchFormat(BranchFormat):
     def is_supported(self):
         return False
 
-    def open(self, transport, _found=False):
+    def open(self, transport, _found=False, ignore_fallbacks=False):
         return "opened branch."
 
 
@@ -471,6 +471,7 @@ class TestRunWithWriteLockedTarget(TestCase):
     """Tests for _run_with_write_locked_target."""
 
     def setUp(self):
+        TestCase.setUp(self)
         self._calls = []
 
     def func_that_returns_ok(self):

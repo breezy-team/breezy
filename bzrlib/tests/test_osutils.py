@@ -12,13 +12,14 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the osutils wrapper."""
 
 from cStringIO import StringIO
 import errno
 import os
+import re
 import socket
 import stat
 import sys
@@ -376,6 +377,7 @@ class TestCanonicalRelPath(TestCaseInTempDir):
 class TestPumpFile(TestCase):
     """Test pumpfile method."""
     def setUp(self):
+        TestCase.setUp(self)
         # create a test datablock
         self.block_size = 512
         pattern = '0123456789ABCDEF'
@@ -1474,6 +1476,28 @@ class TestLocalTimeOffset(TestCase):
         self.assertTrue(-eighteen_hours < offset < eighteen_hours)
 
 
+class TestSizeShaFile(TestCaseInTempDir):
+
+    def test_sha_empty(self):
+        self.build_tree_contents([('foo', '')])
+        expected_sha = osutils.sha_string('')
+        f = open('foo')
+        self.addCleanup(f.close)
+        size, sha = osutils.size_sha_file(f)
+        self.assertEqual(0, size)
+        self.assertEqual(expected_sha, sha)
+
+    def test_sha_mixed_endings(self):
+        text = 'test\r\nwith\nall\rpossible line endings\r\n'
+        self.build_tree_contents([('foo', text)])
+        expected_sha = osutils.sha_string(text)
+        f = open('foo')
+        self.addCleanup(f.close)
+        size, sha = osutils.size_sha_file(f)
+        self.assertEqual(38, size)
+        self.assertEqual(expected_sha, sha)
+
+
 class TestShaFileByName(TestCaseInTempDir):
 
     def test_sha_empty(self):
@@ -1502,3 +1526,21 @@ class TestResourceLoading(TestCaseInTempDir):
             'yyy.xx')
         # test unknown resource
         self.assertRaises(IOError, osutils.resource_string, 'bzrlib', 'yyy.xx')
+
+
+class TestReCompile(TestCase):
+
+    def test_re_compile_checked(self):
+        r = osutils.re_compile_checked(r'A*', re.IGNORECASE)
+        self.assertTrue(r.match('aaaa'))
+        self.assertTrue(r.match('aAaA'))
+
+    def test_re_compile_checked_error(self):
+        # like https://bugs.launchpad.net/bzr/+bug/251352
+        err = self.assertRaises(
+            errors.BzrCommandError,
+            osutils.re_compile_checked, '*', re.IGNORECASE, 'test case')
+        self.assertEqual(
+            "Invalid regular expression in test case: '*': "
+            "nothing to repeat",
+            str(err))

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 # TODO: Some way to get a list of external commands (defined by shell
 # scripts) so that they can be included in the help listing as well.
@@ -48,7 +48,8 @@ def help(topic=None, outfile=None):
         for index, topic in topics[1:]:
             shadowed_terms.append('%s%s' % (index.prefix,
                 topic.get_help_topic()))
-        outfile.write(topics[0][1].get_help_text(shadowed_terms))
+        source = topics[0][1]
+        outfile.write(source.get_help_text(shadowed_terms))
     except errors.NoHelpTopic:
         if alias is None:
             raise

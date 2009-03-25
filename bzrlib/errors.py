@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Exceptions for bzr, and reporting of them.
 """
@@ -2307,15 +2307,6 @@ class NoSmartMedium(InternalBzrError):
 
     def __init__(self, transport):
         self.transport = transport
-
-
-class NoSmartServer(NotBranchError):
-
-    _fmt = "No smart server available at %(url)s"
-
-    @symbol_versioning.deprecated_method(symbol_versioning.one_four)
-    def __init__(self, url):
-        self.url = url
 
 
 class UnknownSSH(BzrError):

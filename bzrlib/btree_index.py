@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
 """B+Tree indices"""
@@ -180,6 +180,34 @@ class BTreeBuilder(index.GraphIndexBuilder):
         combine mem with the first and second indexes, creating a new one of
         size 4x. On the fifth create a single new one, etc.
         """
+        if self._combine_backing_indices:
+            (new_backing_file, size,
+             backing_pos) = self._spill_mem_keys_and_combine()
+        else:
+            new_backing_file, size = self._spill_mem_keys_without_combining()
+        dir_path, base_name = osutils.split(new_backing_file.name)
+        # Note: The transport here isn't strictly needed, because we will use
+        #       direct access to the new_backing._file object
+        new_backing = BTreeGraphIndex(get_transport(dir_path),
+                                      base_name, size)
+        # GC will clean up the file
+        new_backing._file = new_backing_file
+        if self._combine_backing_indices:
+            if len(self._backing_indices) == backing_pos:
+                self._backing_indices.append(None)
+            self._backing_indices[backing_pos] = new_backing
+            for backing_pos in range(backing_pos):
+                self._backing_indices[backing_pos] = None
+        else:
+            self._backing_indices.append(new_backing)
+        self._keys = set()
+        self._nodes = {}
+        self._nodes_by_key = None
+
+    def _spill_mem_keys_without_combining(self):
+        return self._write_nodes(self._iter_mem_nodes(), allow_optimize=False)
+
+    def _spill_mem_keys_and_combine(self):
         iterators_to_combine = [self._iter_mem_nodes()]
         pos = -1
         for pos, backing in enumerate(self._backing_indices):
@@ -189,22 +217,9 @@ class BTreeBuilder(index.GraphIndexBuilder):
             iterators_to_combine.append(backing.iter_all_entries())
         backing_pos = pos + 1
         new_backing_file, size = \
-            self._write_nodes(self._iter_smallest(iterators_to_combine))
-        dir_path, base_name = osutils.split(new_backing_file.name)
-        # Note: The transport here isn't strictly needed, because we will use
-        #       direct access to the new_backing._file object
-        new_backing = BTreeGraphIndex(get_transport(dir_path),
-                                      base_name, size)
-        # GC will clean up the file
-        new_backing._file = new_backing_file
-        if len(self._backing_indices) == backing_pos:
-            self._backing_indices.append(None)
-        self._backing_indices[backing_pos] = new_backing
-        for pos in range(backing_pos):
-            self._backing_indices[pos] = None
-        self._keys = set()
-        self._nodes = {}
-        self._nodes_by_key = None
+            self._write_nodes(self._iter_smallest(iterators_to_combine),
+                              allow_optimize=False)
+        return new_backing_file, size, backing_pos
 
     def add_nodes(self, nodes):
         """Add nodes to the index.
@@ -262,11 +277,14 @@ class BTreeBuilder(index.GraphIndexBuilder):
             except StopIteration:
                 current_values[pos] = None
 
-    def _add_key(self, string_key, line, rows):
+    def _add_key(self, string_key, line, rows, allow_optimize=True):
         """Add a key to the current chunk.
 
         :param string_key: The key to add.
         :param line: The fully serialised key and value.
+        :param allow_optimize: If set to False, prevent setting the optimize
+            flag when writing out. This is used by the _spill_mem_keys_to_disk
+            functionality.
         """
         if rows[-1].writer is None:
             # opening a new leaf chunk;
@@ -277,8 +295,12 @@ class BTreeBuilder(index.GraphIndexBuilder):
                     length = _PAGE_SIZE
                     if internal_row.nodes == 0:
                         length -= _RESERVED_HEADER_BYTES # padded
+                    if allow_optimize:
+                        optimize_for_size = self._optimize_for_size
+                    else:
+                        optimize_for_size = False
                     internal_row.writer = chunk_writer.ChunkWriter(length, 0,
-                        optimize_for_size=self._optimize_for_size)
+                        optimize_for_size=optimize_for_size)
                     internal_row.writer.write(_INTERNAL_FLAG)
                     internal_row.writer.write(_INTERNAL_OFFSET +
                         str(rows[pos + 1].nodes) + "\n")
@@ -322,13 +344,16 @@ class BTreeBuilder(index.GraphIndexBuilder):
                 new_row.writer.write(_INTERNAL_OFFSET +
                     str(rows[1].nodes - 1) + "\n")
                 new_row.writer.write(key_line)
-            self._add_key(string_key, line, rows)
+            self._add_key(string_key, line, rows, allow_optimize=allow_optimize)
 
-    def _write_nodes(self, node_iterator):
+    def _write_nodes(self, node_iterator, allow_optimize=True):
         """Write node_iterator out as a B+Tree.
 
         :param node_iterator: An iterator of sorted nodes. Each node should
             match the output given by iter_all_entries.
+        :param allow_optimize: If set to False, prevent setting the optimize
+            flag when writing out. This is used by the _spill_mem_keys_to_disk
+            functionality.
         :return: A file handle for a temporary file containing a B+Tree for
             the nodes.
         """
@@ -353,11 +378,11 @@ class BTreeBuilder(index.GraphIndexBuilder):
             key_count += 1
             string_key, line = _btree_serializer._flatten_node(node,
                                     self.reference_lists)
-            self._add_key(string_key, line, rows)
+            self._add_key(string_key, line, rows, allow_optimize=allow_optimize)
         for row in reversed(rows):
             pad = (type(row) != _LeafBuilderRow)
             row.finish_node(pad=pad)
-        result = tempfile.NamedTemporaryFile()
+        result = tempfile.NamedTemporaryFile(prefix='bzr-index-')
         lines = [_BTSIGNATURE]
         lines.append(_OPTION_NODE_REFS + str(self.reference_lists) + '\n')
         lines.append(_OPTION_KEY_ELEMENTS + str(self._key_length) + '\n')

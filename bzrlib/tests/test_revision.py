@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 import os
@@ -32,7 +32,6 @@ from bzrlib.errors import (
 from bzrlib.deprecated_graph import Graph
 from bzrlib.revision import (find_present_ancestors,
                              NULL_REVISION)
-from bzrlib.symbol_versioning import one_three
 from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree

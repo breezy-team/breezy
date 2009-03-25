@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the Repository facility that are not interface tests.
 
@@ -929,6 +929,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         packs = tree.branch.repository._pack_collection
+        packs.reset()
         packs.ensure_loaded()
         name = packs.names()[0]
         pack_1 = packs.get_pack_by_name(name)

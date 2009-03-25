@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for fetch between repositories of the same type."""
 
@@ -44,6 +44,17 @@ class TestFetchSameRepository(TestCaseWithRepository):
             raise TestSkipped('Cannot fetch from model2 to model1')
         repo.fetch(tree_a.branch.repository,
                    revision_id=None)
+
+    def test_fetch_fails_in_write_group(self):
+        # fetch() manages a write group itself, fetching within one isn't safe.
+        repo = self.make_repository('a')
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        self.addCleanup(repo.abort_write_group)
+        # Don't need a specific class - not expecting flow control based on
+        # this.
+        self.assertRaises(errors.BzrError, repo.fetch, repo)
 
     def test_fetch_to_knit3(self):
         # create a repository of the sort we are testing.
