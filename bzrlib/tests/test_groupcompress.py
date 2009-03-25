@@ -26,10 +26,7 @@ from bzrlib import (
     versionedfile,
     )
 from bzrlib.osutils import sha_string
-from bzrlib.tests import (
-    TestCaseWithTransport,
-    multiply_tests,
-    )
+from bzrlib.tests.test__groupcompress import CompiledGroupCompressFeature
 
 
 def load_tests(standard_tests, module, loader):
@@ -39,25 +36,10 @@ def load_tests(standard_tests, module, loader):
     scenarios = [
         ('python', {'compressor': groupcompress.PythonGroupCompressor}),
         ]
-    if CompiledGroupcompressFeature.available():
+    if CompiledGroupCompressFeature.available():
         scenarios.append(('C',
             {'compressor': groupcompress.PyrexGroupCompressor}))
-    return multiply_tests(to_adapt, scenarios, result)
-
-
-class _CompiledGroupcompressFeature(tests.Feature):
-
-    def _probe(self):
-        try:
-            import bzrlib._groupcompress_pyx
-        except ImportError:
-            return False
-        return True
-
-    def feature_name(self):
-        return "bzrlib._groupcompress_pyx"
-
-CompiledGroupcompressFeature = _CompiledGroupcompressFeature()
+    return tests.multiply_tests(to_adapt, scenarios, result)
 
 
 class TestGroupCompressor(tests.TestCase):
@@ -140,7 +122,7 @@ class TestAllGroupCompressors(TestGroupCompressor):
 
 class TestPyrexGroupCompressor(TestGroupCompressor):
 
-    _test_needs_features = [CompiledGroupcompressFeature]
+    _test_needs_features = [CompiledGroupCompressFeature]
     compressor = groupcompress.PyrexGroupCompressor
 
     def test_stats(self):

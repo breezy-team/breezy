@@ -57,6 +57,83 @@ class EquivalenceTable(object):
         except KeyError:
             return None
 
+    def _get_longest_match(self, pos, max_pos, locations):
+        """Get the longest possible match for the current position."""
+        range_start = pos
+        range_len = 0
+        copy_ends = None
+        while pos < max_pos:
+            if locations is None:
+                locations = self.get_idx_matches(pos)
+            if locations is None:
+                # No more matches, just return whatever we have, but we know that
+                # this last position is not going to match anything
+                pos += 1
+                break
+            else:
+                if copy_ends is None:
+                    # We are starting a new range
+                    copy_ends = [loc + 1 for loc in locations]
+                    range_len = 1
+                    locations = None # Consumed
+                else:
+                    # We are currently in the middle of a match
+                    next_locations = set(copy_ends).intersection(locations)
+                    if len(next_locations):
+                        # range continues
+                        copy_ends = [loc + 1 for loc in next_locations]
+                        range_len += 1
+                        locations = None # Consumed
+                    else:
+                        # But we are done with this match, we should be
+                        # starting a new one, though. We will pass back
+                        # 'locations' so that we don't have to do another
+                        # lookup.
+                        break
+            pos += 1
+        if copy_ends is None:
+            return None, pos, locations
+        return (((min(copy_ends) - range_len, range_start, range_len)),
+                pos, locations)
+
+    def get_matching_blocks(self, lines, soft=False):
+        """Return the ranges in lines which match self.lines.
+
+        :param lines: lines to compress
+        :return: A list of (old_start, new_start, length) tuples which reflect
+            a region in self.lines that is present in lines.  The last element
+            of the list is always (old_len, new_len, 0) to provide a end point
+            for generating instructions from the matching blocks list.
+        """
+        result = []
+        pos = 0
+        self.set_right_lines(lines)
+        locations = None
+        max_pos = len(lines)
+        result_append = result.append
+        min_match_bytes = 10
+        if soft:
+            min_match_bytes = 200
+        while pos < max_pos:
+            block, pos, locations = self._get_longest_match(pos, max_pos,
+                                                            locations)
+            if block is not None:
+                # Check to see if we are matching fewer than 5 characters,
+                # which is turned into a simple 'insert', rather than a copy
+                # If we have more than 5 lines, we definitely have more than 5
+                # chars
+                if block[-1] < min_match_bytes:
+                    # This block may be a 'short' block, check
+                    old_start, new_start, range_len = block
+                    matched_bytes = sum(map(len,
+                        lines[new_start:new_start + range_len]))
+                    if matched_bytes < min_match_bytes:
+                        block = None
+            if block is not None:
+                result_append(block)
+        result_append((len(self.lines), len(lines), 0))
+        return result
+
     def _get_matching_lines(self):
         """Return a dictionary showing matching lines."""
         matching = {}
@@ -87,42 +164,11 @@ class EquivalenceTable(object):
         self._right_lines = lines
 
 
-def _get_longest_match(equivalence_table, pos, max_pos, locations):
-    """Get the longest possible match for the current position."""
-    range_start = pos
-    range_len = 0
-    copy_ends = None
-    while pos < max_pos:
-        if locations is None:
-            locations = equivalence_table.get_idx_matches(pos)
-        if locations is None:
-            # No more matches, just return whatever we have, but we know that
-            # this last position is not going to match anything
-            pos += 1
-            break
-        else:
-            if copy_ends is None:
-                # We are starting a new range
-                copy_ends = [loc + 1 for loc in locations]
-                range_len = 1
-                locations = None # Consumed
-            else:
-                # We are currently in the middle of a match
-                next_locations = set(copy_ends).intersection(locations)
-                if len(next_locations):
-                    # range continues
-                    copy_ends = [loc + 1 for loc in next_locations]
-                    range_len += 1
-                    locations = None # Consumed
-                else:
-                    # But we are done with this match, we should be
-                    # starting a new one, though. We will pass back 'locations'
-                    # so that we don't have to do another lookup.
-                    break
-        pos += 1
-    if copy_ends is None:
-        return None, pos, locations
-    return ((min(copy_ends) - range_len, range_start, range_len)), pos, locations
+
+def make_delta(source_bytes, target_bytes):
+    """Create a delta from source to target."""
+    line_locations = EquivalenceTable([])
+    return None
 
 
 def apply_delta(basis, delta):

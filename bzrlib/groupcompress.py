@@ -845,45 +845,6 @@ class PythonGroupCompressor(_CommonGroupCompressor):
         self.lines = self.line_locations.lines
         self._present_prefixes = set()
 
-    def get_matching_blocks(self, lines, soft=False):
-        """Return the ranges in lines which match self.lines.
-
-        :param lines: lines to compress
-        :return: A list of (old_start, new_start, length) tuples which reflect
-            a region in self.lines that is present in lines.  The last element
-            of the list is always (old_len, new_len, 0) to provide a end point
-            for generating instructions from the matching blocks list.
-        """
-        result = []
-        pos = 0
-        line_locations = self.line_locations
-        line_locations.set_right_lines(lines)
-        locations = None
-        max_pos = len(lines)
-        result_append = result.append
-        min_match_bytes = 10
-        if soft:
-            min_match_bytes = 200
-        while pos < max_pos:
-            block, pos, locations = _get_longest_match(line_locations, pos,
-                                                       max_pos, locations)
-            if block is not None:
-                # Check to see if we are matching fewer than 5 characters,
-                # which is turned into a simple 'insert', rather than a copy
-                # If we have more than 5 lines, we definitely have more than 5
-                # chars
-                if block[-1] < min_match_bytes:
-                    # This block may be a 'short' block, check
-                    old_start, new_start, range_len = block
-                    matched_bytes = sum(map(len,
-                        lines[new_start:new_start + range_len]))
-                    if matched_bytes < min_match_bytes:
-                        block = None
-            if block is not None:
-                result_append(block)
-        result_append((len(self.lines), len(lines), 0))
-        return result
-
     # FIXME: implement nostore_sha
     def compress(self, key, bytes, expected_sha, nostore_sha=None, soft=False):
         """Compress lines with label key.
@@ -921,7 +882,7 @@ class PythonGroupCompressor(_CommonGroupCompressor):
         # reserved for content type, content length, source_len, target_len
         out_lines = ['', '', '', '']
         index_lines = [False, False, False, False]
-        blocks = self.get_matching_blocks(new_lines, soft=soft)
+        blocks = self.line_locations.get_matching_blocks(new_lines, soft=soft)
         current_line_num = 0
         # We either copy a range (while there are reusable lines) or we
         # insert new lines. To find reusable lines we traverse
@@ -2031,7 +1992,6 @@ class _GCGraphIndex(object):
 from bzrlib._groupcompress_py import (
     apply_delta,
     EquivalenceTable,
-    _get_longest_match,
     )
 try:
     from bzrlib._groupcompress_pyx import (
