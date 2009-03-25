@@ -2112,10 +2112,7 @@ class cmd_log(Command):
             message=None,
             limit=None,
             show_diff=False):
-        from bzrlib.log import (
-            LogRequest,
-            show_log_request,
-            _get_info_for_log_files)
+        from bzrlib.log import Logger, LogRequest, _get_info_for_log_files
         direction = (forward and 'forward') or 'reverse'
 
         if change is not None:
@@ -2203,7 +2200,7 @@ class cmd_log(Command):
                 start_revision=rev1, end_revision=rev2, limit=limit,
                 message_search=message, delta_type=delta_type,
                 diff_type=diff_type, _match_using_deltas=match_using_deltas)
-            show_log_request(b, lf, rqst)
+            Logger(b, rqst).show(lf)
         finally:
             b.unlock()
 

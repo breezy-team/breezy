@@ -141,6 +141,73 @@ def _enumerate_history(branch):
     return rh
 
 
+def show_log(branch,
+             lf,
+             specific_fileid=None,
+             verbose=False,
+             direction='reverse',
+             start_revision=None,
+             end_revision=None,
+             search=None,
+             limit=None,
+             show_diff=False):
+    """Write out human-readable log of commits to this branch.
+
+    This function is being retained for backwards compatibility but
+    should not be extended with new parameters. Use the new Logger class
+    instead, eg. Logger(branch, rqst).show(lf), adding parameters to the
+    LogRequest class.
+
+    :param lf: The LogFormatter object showing the output.
+
+    :param specific_fileid: If not None, list only the commits affecting the
+        specified file, rather than all commits.
+
+    :param verbose: If True show added/changed/deleted/renamed files.
+
+    :param direction: 'reverse' (default) is latest to earliest; 'forward' is
+        earliest to latest.
+
+    :param start_revision: If not None, only show revisions >= start_revision
+
+    :param end_revision: If not None, only show revisions <= end_revision
+
+    :param search: If not None, only show revisions with matching commit
+        messages
+
+    :param limit: If set, shows only 'limit' revisions, all revisions are shown
+        if None or 0.
+
+    :param show_diff: If True, output a diff after each revision.
+    """
+    # Convert old-style parameters to new-style parameters
+    if specific_fileid is not None:
+        file_ids = [specific_fileid]
+    else:
+        file_ids = None
+    if verbose:
+        if file_ids:
+            delta_type = 'partial'
+        else:
+            delta_type = 'full'
+    else:
+        delta_type = None
+    if show_diff:
+        if file_ids:
+            diff_type = 'partial'
+        else:
+            diff_type = 'full'
+    else:
+        diff_type = None
+
+    # Build the request and execute it
+    rqst = LogRequest(direction=direction, specific_fileids=file_ids,
+        start_revision=start_revision, end_revision=end_revision,
+        limit=limit, message_search=search,
+        delta_type=delta_type, diff_type=diff_type)
+    Logger(branch, rqst).show(lf)
+
+
 class LogRequest(object):
     """Query parameters for logging a branch."""
 
@@ -214,121 +281,84 @@ class LogRequest(object):
         self._allow_single_merge_revision = True
 
 
-def show_log_request(branch, lf, rqst):
-    """Write out human-readable log of commits to this branch.
+class LogGenerator(object):
+    """A generator of log revisions."""
 
-    :param lf: The LogFormatter object showing the output.
+    def iter_log_revisions(self):
+        """Iterate over LogRevision objects.
 
-    :param rqst: The LogRequest object specifying the query parameters.
-    """
-    branch.lock_read()
-    try:
-        if getattr(lf, 'begin_log', None):
-            lf.begin_log()
-
-        _show_log_request(branch, lf, rqst)
-
-        if getattr(lf, 'end_log', None):
-            lf.end_log()
-    finally:
-        branch.unlock()
+        :return: An iterator yielding LogRevision objects.
+        """
+        raise NotImplementedError(self.iter_log_revisions)
 
 
-def show_log(branch,
-             lf,
-             specific_fileid=None,
-             verbose=False,
-             direction='reverse',
-             start_revision=None,
-             end_revision=None,
-             search=None,
-             limit=None,
-             show_diff=False):
-    """Write out human-readable log of commits to this branch.
+class Logger(object):
+    """An object the generates, formats and displays a log."""
 
-    Note: show_log_request() is now the preferred API to this one.
-    This function is being retained for backwards compatibility but
-    should not be extended with new parameters.
+    def __init__(self, branch, rqst):
+        """Create a Logger.
 
-    :param lf: The LogFormatter object showing the output.
+        :param branch: the branch to log
+        :param rqst: The LogRequest object specifying the query parameters.
+        """
+        self.branch = branch
+        self.rqst = rqst
 
-    :param specific_fileid: If not None, list only the commits affecting the
-        specified file, rather than all commits.
+    def show(self, lf):
+        """Display the log.
 
-    :param verbose: If True show added/changed/deleted/renamed files.
+        :param lf: The LogFormatter object to send the output to.
+        """
+        if not isinstance(lf, LogFormatter):
+            warn("not a LogFormatter instance: %r" % lf)
 
-    :param direction: 'reverse' (default) is latest to earliest; 'forward' is
-        earliest to latest.
+        self.branch.lock_read()
+        try:
+            if getattr(lf, 'begin_log', None):
+                lf.begin_log()
+            self._show_body(lf)
+            if getattr(lf, 'end_log', None):
+                lf.end_log()
+        finally:
+            self.branch.unlock()
 
-    :param start_revision: If not None, only show revisions >= start_revision
+    def _show_body(self, lf):
+        """Show the main log output.
 
-    :param end_revision: If not None, only show revisions <= end_revision
+        Subclasses may wish to override this.
+        """
+        # Tweak the LogRequest based on what the LogFormatter can handle.
+        # (There's no point generating stuff if the formatter can't display it.)
+        rqst = self.rqst
+        rqst.levels = lf.get_levels()
+        if not getattr(lf, 'supports_tags', False):
+            rqst.generate_tags = False
+        if not getattr(lf, 'supports_delta', False):
+            rqst.delta_type = None
+        if not getattr(lf, 'supports_diff', False):
+            rqst.diff_type = None
+        if not getattr(lf, 'supports_merge_revisions', False):
+            rqst._allow_single_merge_revision = getattr(lf,
+                'supports_single_merge_revision', False)
 
-    :param search: If not None, only show revisions with matching commit
-        messages
+        # Find and print the interesting revisions
+        generator = self._generator_factory(self.branch, rqst)
+        for lr in generator.iter_log_revisions():
+            lf.log_revision(lr)
 
-    :param limit: If set, shows only 'limit' revisions, all revisions are shown
-        if None or 0.
-
-    :param show_diff: If True, output a diff after each revision.
-    """
-    # Convert old-style parameters to new-style parameters
-    if specific_fileid is not None:
-        file_ids = [specific_fileid]
-    else:
-        file_ids = None
-    if verbose:
-        if file_ids:
-            delta_type = 'partial'
-        else:
-            delta_type = 'full'
-    else:
-        delta_type = None
-    if show_diff:
-        if file_ids:
-            diff_type = 'partial'
-        else:
-            diff_type = 'full'
-    else:
-        diff_type = None
-
-    # Build the request and execute it
-    rqst = LogRequest(direction=direction, specific_fileids=file_ids,
-        start_revision=start_revision, end_revision=end_revision,
-        limit=limit, message_search=search,
-        delta_type=delta_type, diff_type=diff_type)
-    show_log_request(branch, lf, rqst)
-
-
-def _show_log_request(branch, lf, rqst):
-    """Worker function for show_log_request - see show_log_request."""
-    if not isinstance(lf, LogFormatter):
-        warn("not a LogFormatter instance: %r" % lf)
-
-    # Tweak the LogRequest based on what the LogFormatter can handle.
-    # (There's no point generating stuff if the formatter can't display it.)
-    rqst.levels = lf.get_levels()
-    if not getattr(lf, 'supports_tags', False):
-        rqst.generate_tags = False
-    if not getattr(lf, 'supports_delta', False):
-        rqst.delta_type = None
-    if not getattr(lf, 'supports_diff', False):
-        rqst.diff_type = None
-    if not getattr(lf, 'supports_merge_revisions', False):
-        rqst._allow_single_merge_revision = getattr(lf,
-            'supports_single_merge_revision', False)
-
-    # Find and print the interesting revisions
-    generator = _LogGenerator(branch, rqst)
-    for lr in generator.iter_log_revisions():
-        lf.log_revision(lr)
+    def _generator_factory(self, branch, rqst):
+        """Make the LogGenerator object to use.
+        
+        Subclasses may wish to override this.
+        """
+        return _DefaultLogGenerator(branch, rqst)
 
 
 class _StartNotLinearAncestor(Exception):
     """Raised when a start revision is not found walking left-hand history."""
 
 
-class _LogGenerator(object):
+class _DefaultLogGenerator(object):
     """A generator of log revisions given a branch and a LogRequest."""
 
     def __init__(self, branch, rqst):
