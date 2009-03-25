@@ -44,6 +44,7 @@ class EquivalenceTable(object):
     def _update_matching_lines(self, new_lines, index):
         matches = self._matching_lines
         start_idx = len(self.lines)
+        assert len(new_lines) == len(index)
         for idx, do_index in enumerate(index):
             if not do_index:
                 continue
@@ -124,30 +125,6 @@ def _get_longest_match(equivalence_table, pos, max_pos, locations):
     return ((min(copy_ends) - range_len, range_start, range_len)), pos, locations
 
 
-def parse(line_list):
-    result = []
-    lines = iter(line_list)
-    next = lines.next
-    label_line = next()
-    sha1_line = next()
-    if (not label_line.startswith('label: ') or
-        not sha1_line.startswith('sha1: ')):
-        raise AssertionError("bad text record %r" % lines)
-    label = tuple(label_line[7:-1].split('\x00'))
-    sha1 = sha1_line[6:-1]
-    for header in lines:
-        op = header[0]
-        numbers = header[2:]
-        numbers = [int(n) for n in header[2:].split(',')]
-        if op == 'c':
-            result.append((op, numbers[0], numbers[1], None))
-        else:
-            contents = [next() for i in xrange(numbers[0])]
-            result.append((op, None, numbers[0], contents))
-    ## return result
-    return label, sha1, result
-
-
 def apply_delta(basis, delta):
     """Apply delta to this object to become new_version_id."""
     lines = []
@@ -159,15 +136,7 @@ def apply_delta(basis, delta):
             lines.append(basis[start:start+count])
         else:
             lines.extend(delta_lines)
-    trim_encoding_newline(lines)
     return lines
-
-
-def trim_encoding_newline(lines):
-    if lines[-1] == '\n':
-        del lines[-1]
-    else:
-        lines[-1] = lines[-1][:-1]
 
 
 ### ^ imported from gc plugin@revno30

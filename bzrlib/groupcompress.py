@@ -767,9 +767,65 @@ class _CommonGroupCompressor(object):
     def __init__(self):
         """Create a GroupCompressor."""
         self.lines = []
+        self._last = None
         self.endpoint = 0
         self.input_bytes = 0
         self.labels_deltas = {}
+        self._block = GroupCompressBlock()
+
+    def extract(self, key):
+        """Extract a key previously added to the compressor.
+
+        :param key: The key to extract.
+        :return: An iterable over bytes and the sha1.
+        """
+        delta_details = self.labels_deltas[key]
+        delta_chunks = self.lines[delta_details[0][1]:delta_details[1][1]]
+        stored_bytes = ''.join(delta_chunks)
+        # TODO: Fix this, we shouldn't really be peeking here
+        entry = self._block._entries[key]
+        if entry.type == 'fulltext':
+            if stored_bytes[0] != 'f':
+                raise ValueError('Index claimed fulltext, but stored bytes'
+                                 ' indicate %s' % (stored_bytes[0],))
+            fulltext_len, offset = decode_base128_int(stored_bytes[1:10])
+            if fulltext_len + 1 + offset != len(stored_bytes):
+                raise ValueError('Index claimed fulltext len, but stored bytes'
+                                 ' claim %s != %s'
+                                 % (len(stored_bytes),
+                                    fulltext_len + 1 + offset))
+            bytes = stored_bytes[offset + 1:]
+        else:
+            if entry.type != 'delta':
+                raise ValueError('Unknown entry type: %s' % (entry.type,))
+            # XXX: This is inefficient at best
+            source = ''.join(self.lines)
+            if stored_bytes[0] != 'd':
+                raise ValueError('Entry type claims delta, bytes claim %s'
+                                 % (stored_bytes[0],))
+            delta_len, offset = decode_base128_int(stored_bytes[1:10])
+            if delta_len + 1 + offset != len(stored_bytes):
+                raise ValueError('Index claimed delta len, but stored bytes'
+                                 ' claim %s != %s'
+                                 % (len(stored_bytes),
+                                    delta_len + 1 + offset))
+            bytes = apply_delta(source, stored_bytes[offset + 1:])
+        bytes_sha1 = osutils.sha_string(bytes)
+        if entry.sha1 != bytes_sha1:
+            raise ValueError('Recorded sha1 != measured %s != %s'
+                             % (entry.sha1, bytes_sha1))
+        return bytes, entry.sha1
+
+    def pop_last(self):
+        """Call this if you want to 'revoke' the last compression.
+
+        After this, the data structures will be rolled back, but you cannot do
+        more compression.
+        """
+        self._delta_index = None
+        del self.lines[self._last[0]:]
+        self.endpoint = self._last[1]
+        self._last = None
 
     def ratio(self):
         """Return the overall compression ratio."""
@@ -848,52 +904,65 @@ class PythonGroupCompressor(_CommonGroupCompressor):
             the group output so far.
         :seealso VersionedFiles.add_lines:
         """
+        if not bytes: # empty, like a dir entry, etc
+            if nostore_sha == _null_sha1:
+                raise errors.ExistingContent()
+            self._block.add_entry(key, type='empty',
+                                  sha1=None, start=0,
+                                  length=0)
+            return _null_sha1, 0, 0, 'fulltext', 0
+        bytes_length = len(bytes)
         new_lines = osutils.split_lines(bytes)
         sha1 = osutils.sha_string(bytes)
+        if sha1 == nostore_sha:
+            raise errors.ExistingContent()
         if key[-1] is None:
             key = key[:-1] + ('sha1:' + sha1,)
-        out_lines = []
-        index_lines = []
+        # reserved for content type, content length, source_len, target_len
+        out_lines = ['', '', '', '']
+        index_lines = [False, False, False, False]
         blocks = self.get_matching_blocks(new_lines, soft=soft)
         current_line_num = 0
         # We either copy a range (while there are reusable lines) or we
         # insert new lines. To find reusable lines we traverse
         for old_start, new_start, range_len in blocks:
             if new_start != current_line_num:
-                # non-matching region
-                self.flush_insert(current_line_num, new_start,
-                                  new_lines, out_lines, index_lines)
+                # non-matching region, insert the content
+                self._flush_insert(current_line_num, new_start,
+                                   new_lines, out_lines, index_lines)
             current_line_num = new_start + range_len
-            if not range_len:
-                continue
-            self._flush_copy(old_start, range_len,
-                             new_lines, out_lines, index_lines)
+            if range_len:
+                self._flush_copy(old_start, range_len, out_lines, index_lines)
+        delta_length = sum(map(len, out_lines))
+        if delta_length * 2 > bytes_length:
+            # The delta is longer than the fulltext, insert a fulltext
+            type = 'fulltext'
+            out_lines = ['f', encode_base128_int(bytes_length)]
+            out_lines.extend(new_lines)
+            index_lines = [False, False]
+            index_lines.extend([True] * len(new_lines))
+            out_length = len(out_lines[1]) + bytes_length + 1
+        else:
+            # this is a worthy delta, output it
+            type = 'delta'
+            out_lines[0] = 'd'
+            # A delta record includes the source and target lengths
+            out_lines[2] = encode_base128_int(self.endpoint)
+            out_lines[3] = encode_base128_int(bytes_length)
+            # Update the delta_length to include those two encoded integers
+            delta_length += len(out_lines[2]) + len(out_lines[3])
+            out_lines[1] = encode_base128_int(delta_length)
+            out_length = len(out_lines[3]) + 1 + delta_length
+        self._block.add_entry(key, type=type, sha1=sha1,
+                              start=self.endpoint, length=out_length)
         start = self.endpoint # Keep it
         delta_start = (self.endpoint, len(self.lines))
         self.output_lines(out_lines, index_lines)
-        length = len(bytes)
-        self.input_bytes += length
+        self.input_bytes += bytes_length
         delta_end = (self.endpoint, len(self.lines))
         self.labels_deltas[key] = (delta_start, delta_end)
         # FIXME: lot of guessing below
-        return sha1, start, self.endpoint, 'delta', length
-
-    def extract(self, key):
-        """Extract a key previously added to the compressor.
-
-        :param key: The key to extract.
-        :return: An iterable over bytes and the sha1.
-        """
-        delta_details = self.labels_deltas[key]
-        delta_lines = self.lines[delta_details[0][1]:delta_details[1][1]]
-        label, sha1, delta = parse(delta_lines)
-        ## delta = parse(delta_lines)
-        if label != key:
-            raise AssertionError("wrong key: %r, wanted %r" % (label, key))
-        # Perhaps we want to keep the line offsets too in memory at least?
-        chunks = apply_delta(''.join(self.lines), delta)
-        sha1 = osutils.sha_strings(chunks)
-        return chunks, sha1
+        return sha1, start, self.endpoint, 'delta', out_length
 
     def _flush_insert(self, start_linenum, end_linenum,
                       new_lines, out_lines, index_lines):
@@ -923,45 +992,14 @@ class PythonGroupCompressor(_CommonGroupCompressor):
         # code, we will also limit it to a 64kB copy
         for start_byte in xrange(first_byte, stop_byte, 64*1024):
             num_bytes = min(64*1024, stop_byte - first_byte)
-            copy_command, copy_bytes = encode_copy_instruction(start_byte,
-                                                               num_bytes)
-
-    def flush_range(self, new_line_start, source_line_start, match_num_lines,
-                    new_lines, out_lines, index_lines):
-        """Insert the control codes for this copy & insert instruction.
-
-        :param range_start: 
-        """
-        if copy_start is not None:
-            # range stops, flush and start a new copy range
-            stop_byte = self.line_offsets[copy_start + range_len - 1]
-            if copy_start == 0:
-                start_byte = 0
-            else:
-                start_byte = self.line_offsets[copy_start - 1]
-            bytes = stop_byte - start_byte
-            copy_byte = 0
-            copy_control_instruction =0
-            new_lines.append(copy_control_instruction)
+            copy_bytes = encode_copy_instruction(start_byte, num_bytes)
+            out_lines.append(copy_bytes)
             index_lines.append(False)
-            return
-        # not copying, or inserting is shorter than copying, so insert.
-        new_lines.append(insert_instruction)
-        new_lines.extend(lines[range_start:range_start+range_len])
-        index_lines.append(False)
-        index_lines.extend([copy_start is None]*range_len)
 
     def flush(self):
         # FIXME: ugly hack to masquerade ourself as the pyrex version
-        class content(object):
-
-            def __init__(self, s):
-                self.s = s
-
-            def to_bytes(self):
-                return self.s
-
-        return content(zlib.compress(''.join(self.lines)))
+        self._block.set_content(''.join(self.lines))
+        return self._block
 
     def output_lines(self, new_lines, index_lines):
         """Output some lines.
@@ -974,6 +1012,7 @@ class PythonGroupCompressor(_CommonGroupCompressor):
         #                          if val and new_lines[idx] == '\n']
         # if indexed_newlines:
         #     import pdb; pdb.set_trace()
+        self._last = (len(self.lines), self.endpoint)
         endpoint = self.endpoint
         self.line_locations.extend_lines(new_lines, index_lines)
         for line in new_lines:
@@ -999,11 +1038,9 @@ class PyrexGroupCompressor(_CommonGroupCompressor):
     """
 
     def __init__(self):
-        super(PythonGroupCompressor, self).__init__()
+        super(PyrexGroupCompressor, self).__init__()
         self.num_keys = 0
-        self._last = None
         self._delta_index = DeltaIndex()
-        self._block = GroupCompressBlock()
 
     def compress(self, key, bytes, expected_sha, nostore_sha=None, soft=False):
         """Compress lines with label key.
@@ -1149,17 +1186,6 @@ class PyrexGroupCompressor(_CommonGroupCompressor):
         self.lines.extend(new_chunks)
         endpoint += sum(map(len, new_chunks))
         self.endpoint = endpoint
-
-    def pop_last(self):
-        """Call this if you want to 'revoke' the last compression.
-
-        After this, the data structures will be rolled back, but you cannot do
-        more compression.
-        """
-        self._delta_index = None
-        del self.lines[self._last[0]:]
-        self.endpoint = self._last[1]
-        self._last = None
 
 
 def make_pack_factory(graph, delta, keylength):
@@ -2002,6 +2028,11 @@ class _GCGraphIndex(object):
         return node[0], start, stop, basis_end, delta_end
 
 
+from bzrlib._groupcompress_py import (
+    apply_delta,
+    EquivalenceTable,
+    _get_longest_match,
+    )
 try:
     from bzrlib._groupcompress_pyx import (
         apply_delta,
@@ -2009,11 +2040,5 @@ try:
         )
     GroupCompressor = PyrexGroupCompressor
 except ImportError:
-    from bzrlib._groupcompress_py import (
-        apply_delta,
-        EquivalenceTable,
-        _get_longest_match,
-        trim_encoding_newline,
-        )
     GroupCompressor = PythonGroupCompressor
 
