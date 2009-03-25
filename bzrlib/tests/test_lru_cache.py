@@ -25,6 +25,16 @@ from bzrlib import (
 class TestLRUCache(tests.TestCase):
     """Test that LRU cache properly keeps track of entries."""
 
+    def test_cache_size(self):
+        cache = lru_cache.LRUCache(max_cache=10)
+        self.assertEqual(10, cache.cache_size())
+
+        cache = lru_cache.LRUCache(max_cache=256)
+        self.assertEqual(256, cache.cache_size())
+
+        cache.resize(512)
+        self.assertEqual(512, cache.cache_size())
+
     def test_missing(self):
         cache = lru_cache.LRUCache(max_cache=10)
 
@@ -63,18 +73,6 @@ class TestLRUCache(tests.TestCase):
 
         self.failIf('foo' in cache)
 
-    def test_queue_stays_bounded(self):
-        """Lots of accesses does not cause the queue to grow without bound."""
-        cache = lru_cache.LRUCache(max_cache=10)
-
-        cache['baz'] = 'biz'
-        cache['foo'] = 'bar'
-
-        for i in xrange(1000):
-            cache['baz']
-
-        self.failUnless(len(cache._queue) < 40)
-
     def test_cleanup(self):
         """Test that we can use a cleanup function."""
         cleanup_called = []
@@ -92,7 +90,8 @@ class TestLRUCache(tests.TestCase):
         # 'foo' is now most recent, so final cleanup will call it last
         cache['foo']
         cache.clear()
-        self.assertEqual([('baz', '1'), ('biz', '3'), ('foo', '2')], cleanup_called)
+        self.assertEqual([('baz', '1'), ('biz', '3'), ('foo', '2')],
+                         cleanup_called)
 
     def test_cleanup_on_replace(self):
         """Replacing an object should cleanup the old value."""
@@ -179,7 +178,7 @@ class TestLRUCache(tests.TestCase):
         cache.cleanup()
         self.assertEqual(2, len(cache))
 
-    def test_compact_preserves_last_access_order(self):
+    def test_preserve_last_access_order(self):
         cache = lru_cache.LRUCache(max_cache=5)
 
         # Add these in order
@@ -189,20 +188,14 @@ class TestLRUCache(tests.TestCase):
         cache.add(4, 30)
         cache.add(5, 35)
 
-        self.assertEqual([1, 2, 3, 4, 5], list(cache._queue))
+        self.assertEqual([5, 4, 3, 2, 1], [n.key for n in cache._walk_lru()])
 
         # Now access some randomly
         cache[2]
         cache[5]
         cache[3]
         cache[2]
-        self.assertEqual([1, 2, 3, 4, 5, 2, 5, 3, 2], list(cache._queue))
-        self.assertEqual({1:1, 2:3, 3:2, 4:1, 5:2}, cache._refcount)
-
-        # Compacting should save the last position
-        cache._compact_queue()
-        self.assertEqual([1, 4, 5, 3, 2], list(cache._queue))
-        self.assertEqual({1:1, 2:1, 3:1, 4:1, 5:1}, cache._refcount)
+        self.assertEqual([2, 3, 5, 4, 1], [n.key for n in cache._walk_lru()])
 
     def test_get(self):
         cache = lru_cache.LRUCache(max_cache=5)
@@ -213,6 +206,9 @@ class TestLRUCache(tests.TestCase):
         self.assertIs(None, cache.get(3))
         obj = object()
         self.assertIs(obj, cache.get(3, obj))
+        self.assertEqual([2, 1], [n.key for n in cache._walk_lru()])
+        self.assertEqual(10, cache.get(1))
+        self.assertEqual([1, 2], [n.key for n in cache._walk_lru()])
 
     def test_keys(self):
         cache = lru_cache.LRUCache(max_cache=5, after_cleanup_count=5)
@@ -278,7 +274,6 @@ class TestLRUSizeCache(tests.TestCase):
     def test_basic_init(self):
         cache = lru_cache.LRUSizeCache()
         self.assertEqual(2048, cache._max_cache)
-        self.assertEqual(4*2048, cache._compact_queue_length)
         self.assertEqual(int(cache._max_size*0.8), cache._after_cleanup_size)
         self.assertEqual(0, cache._value_size)
 
@@ -293,29 +288,46 @@ class TestLRUSizeCache(tests.TestCase):
         self.assertEqual(0, cache._value_size)
         cache.add('my key', 'my value text')
         self.assertEqual(13, cache._value_size)
-        cache._remove('my key')
+        node = cache._cache['my key']
+        cache._remove_node(node)
         self.assertEqual(0, cache._value_size)
 
     def test_no_add_over_size(self):
         """Adding a large value may not be cached at all."""
         cache = lru_cache.LRUSizeCache(max_size=10, after_cleanup_size=5)
         self.assertEqual(0, cache._value_size)
-        self.assertEqual({}, cache._cache)
+        self.assertEqual({}, cache.items())
         cache.add('test', 'key')
         self.assertEqual(3, cache._value_size)
-        self.assertEqual({'test':'key'}, cache._cache)
+        self.assertEqual({'test': 'key'}, cache.items())
         cache.add('test2', 'key that is too big')
         self.assertEqual(3, cache._value_size)
-        self.assertEqual({'test':'key'}, cache._cache)
+        self.assertEqual({'test':'key'}, cache.items())
         # If we would add a key, only to cleanup and remove all cached entries,
         # then obviously that value should not be stored
         cache.add('test3', 'bigkey')
         self.assertEqual(3, cache._value_size)
-        self.assertEqual({'test':'key'}, cache._cache)
+        self.assertEqual({'test':'key'}, cache.items())
 
         cache.add('test4', 'bikey')
         self.assertEqual(3, cache._value_size)
-        self.assertEqual({'test':'key'}, cache._cache)
+        self.assertEqual({'test':'key'}, cache.items())
+
+    def test_no_add_over_size_cleanup(self):
+        """If a large value is not cached, we will call cleanup right away."""
+        cleanup_calls = []
+        def cleanup(key, value):
+            cleanup_calls.append((key, value))
+
+        cache = lru_cache.LRUSizeCache(max_size=10, after_cleanup_size=5)
+        self.assertEqual(0, cache._value_size)
+        self.assertEqual({}, cache.items())
+        cache.add('test', 'key that is too big', cleanup=cleanup)
+        # key was not added
+        self.assertEqual(0, cache._value_size)
+        self.assertEqual({}, cache.items())
+        # and cleanup was called
+        self.assertEqual([('test', 'key that is too big')], cleanup_calls)
 
     def test_adding_clears_cache_based_on_size(self):
         """The cache is cleared in LRU order until small enough"""
@@ -329,7 +341,7 @@ class TestLRUSizeCache(tests.TestCase):
         # We have to remove 2 keys to get back under limit
         self.assertEqual(6+8, cache._value_size)
         self.assertEqual({'key2':'value2', 'key4':'value234'},
-                         cache._cache)
+                         cache.items())
 
     def test_adding_clears_to_after_cleanup_size(self):
         cache = lru_cache.LRUSizeCache(max_size=20, after_cleanup_size=10)
@@ -341,7 +353,7 @@ class TestLRUSizeCache(tests.TestCase):
         cache.add('key4', 'value234') # 8 chars, over limit
         # We have to remove 3 keys to get back under limit
         self.assertEqual(8, cache._value_size)
-        self.assertEqual({'key4':'value234'}, cache._cache)
+        self.assertEqual({'key4':'value234'}, cache.items())
 
     def test_custom_sizes(self):
         def size_of_list(lst):
@@ -357,7 +369,7 @@ class TestLRUSizeCache(tests.TestCase):
         cache.add('key4', ['value', '234']) # 8 chars, over limit
         # We have to remove 3 keys to get back under limit
         self.assertEqual(8, cache._value_size)
-        self.assertEqual({'key4':['value', '234']}, cache._cache)
+        self.assertEqual({'key4':['value', '234']}, cache.items())
 
     def test_cleanup(self):
         cache = lru_cache.LRUSizeCache(max_size=20, after_cleanup_size=10)
