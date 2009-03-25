@@ -19,6 +19,9 @@ Compatibility Breaks
 New Features
 ************
 
+* New ``guess-renames`` command recognizes renames after they occur.
+  (Aaron Bentley)
+
 * ``bzr shelve`` can now apply changes without storing anything on the
   shelf, via the new --destroy option.  (Aaron Bentley)
 
@@ -64,6 +67,10 @@ Improvements
 * Progress bars now show the rate of network activity for
   ``bzr+ssh://`` and ``bzr://`` connections.  (Andrew Bennetts)
 
+* Pushing to a stacked pack-format branch on a 1.12 or older smart server
+  now takes many less round trips.  (Andrew Bennetts, Robert Collins,
+  #294479)
+  
 * Streaming push can be done to older repository formats.  This is
   implemented using a new ``Repository.insert_stream_locked`` RPC.
   (Andrew Bennetts, Robert Collins)
@@ -101,7 +108,7 @@ Bug Fixes
 * ``merge --force`` works again. (Robert Collins, #342105)
 
 * No more warnings are issued about ``sha`` being deprecated under python-2.6.
-  (Vincent Ladeuil, #345593)
+  (Vincent Ladeuil, #346593)
 
 * Pushing a new branch to a server that has a stacking policy will now
   upgrade from the local branch format when the stacking policy points at
@@ -208,6 +215,10 @@ Internals
   make visible data inserted into the repository by a smart server
   fetch operation. (Robert Collins, Andrew Bennetts)
 
+* ``RemoteRepository`` will now negatively cache missing revisions during
+  ``get_parent_map`` while read-locked. Write-locks are unaffected.
+  (Robert Collins, Andrew Bennetts)
+
 * Removed ``InterRemoteToOther``, ``InterOtherToRemote`` and
   ``InterPackToRemotePack`` classes, as they are now unnecessary.
   (Andrew Bennetts)
@@ -215,6 +226,11 @@ Internals
 * ``RepositoryFormat`` as a new attribute ``fast_deltas`` to indicate
   whether the repository can efficiently generate deltas between trees
   regardless of tree size. (Robert Collins)
+
+* The smart server verb ``Repository.get_parent_map`` can now include
+  information about ghosts when the special revision ``include-missing:``
+  is in the requested parents map list. With this flag, ghosts are
+  included as ``missing:REVISION_ID``. (Robert Collins, Andrew Bennetts)
 
 * ``_walk_to_common_revisions`` will now batch up at least 50
   revisions before calling ``get_parent_map`` on the target,
@@ -2409,7 +2425,6 @@ Internals
 
 * Knit record serialisation is now stricter on what it will accept, to
   guard against potential internal bugs, or broken input. (Robert Collins)
-
 
 bzr 1.6beta1 2008-06-02
 #######################
