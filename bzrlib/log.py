@@ -828,7 +828,7 @@ def _generate_deltas(repository, log_rev_iterator, delta_type, fileids,
                         elif delta_type == 'full':
                             # If the file matches all the time, rebuilding
                             # a full delta like this in addition to a partial
-                            # one could be slow. However, it's likely the
+                            # one could be slow. However, it's likely that
                             # most revisions won't get this far, making it
                             # faster to filter on the partial deltas and
                             # build the occasional full delta than always
