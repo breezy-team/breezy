@@ -110,13 +110,15 @@ class TestSource(TestSourceHelper):
                               % source_dir)
         return source_dir
 
-    def get_source_files(self):
+    def get_source_files(self, extensions=None):
         """Yield all source files for bzr and bzrlib
 
         :param our_files_only: If true, exclude files from included libraries
             or plugins.
         """
         bzrlib_dir = self.get_bzrlib_dir()
+        if extensions is None:
+            extensions = ('.py',)
 
         # This is the front-end 'bzr' script
         bzr_path = self.get_bzr_path()
@@ -127,12 +129,16 @@ class TestSource(TestSourceHelper):
                 if d.endswith('.tmp'):
                     dirs.remove(d)
             for f in files:
-                if not f.endswith('.py'):
+                for extension in extensions:
+                    if f.endswith(extension):
+                        break
+                else:
+                    # Did not match the accepted extensions
                     continue
                 yield osutils.pathjoin(root, f)
 
-    def get_source_file_contents(self):
-        for fname in self.get_source_files():
+    def get_source_file_contents(self, extensions=None):
+        for fname in self.get_source_files(extensions=extensions):
             f = open(fname, 'rb')
             try:
                 text = f.read()
@@ -176,9 +182,7 @@ class TestSource(TestSourceHelper):
                           % filename)
 
     def test_copyright(self):
-        """Test that all .py files have a valid copyright statement"""
-        # These are files which contain a different copyright statement
-        # and that is okay.
+        """Test that all .py and .pyx files have a valid copyright statement"""
         incorrect = []
 
         copyright_re = re.compile('#\\s*copyright.*(?=\n)', re.I)
@@ -188,7 +192,8 @@ class TestSource(TestSourceHelper):
             r'.*Canonical Ltd' # And containing 'Canonical Ltd'
             )
 
-        for fname, text in self.get_source_file_contents():
+        for fname, text in self.get_source_file_contents(
+                extensions=('.py', '.pyx')):
             if self.is_copyright_exception(fname):
                 continue
             match = copyright_canonical_re.search(text)
@@ -223,7 +228,7 @@ class TestSource(TestSourceHelper):
             self.fail('\n'.join(help_text))
 
     def test_gpl(self):
-        """Test that all .py files have a GPL disclaimer"""
+        """Test that all .py and .pyx files have a GPL disclaimer."""
         incorrect = []
 
         gpl_txt = """
@@ -243,7 +248,8 @@ class TestSource(TestSourceHelper):
 """
         gpl_re = re.compile(re.escape(gpl_txt), re.MULTILINE)
 
-        for fname, text in self.get_source_file_contents():
+        for fname, text in self.get_source_file_contents(
+                extensions=('.py', '.pyx')):
             if self.is_license_exception(fname):
                 continue
             if not gpl_re.search(text):
@@ -291,7 +297,8 @@ class TestSource(TestSourceHelper):
         illegal_newlines = {}
         long_lines = {}
         no_newline_at_eof = []
-        for fname, text in self.get_source_file_contents():
+        for fname, text in self.get_source_file_contents(
+                extensions=('.py', '.pyx')):
             if not self.is_our_code(fname):
                 continue
             lines = text.splitlines(True)
