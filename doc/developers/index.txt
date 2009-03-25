@@ -20,6 +20,10 @@ Overall developer documentation
 * `Integrating with Bazaar <http://bazaar-vcs.org/Integrating_with_Bazaar>`_
   (wiki) |--| a guide for writing Python programs that work with Bazaar.
 
+* `Revision Properties <revision-properties.html>`_ |--| An application
+  can set arbitrary per-revision key/value pairs to store app-specific
+  data.
+
 * `Testing <testing.html>`_ |--| Testing bzr.
 
 * `Writing plugins <http://bazaar-vcs.org/WritingPlugins>`_ (wiki) 
@@ -50,6 +54,13 @@ Plans
 
 * `Performance roadmap <performance-roadmap.html>`_ |--| The roadmap 
   for fixing performance in bzr over the next few releases.
+
+* `Co-located branches <colocated-branches.html>`_ |--| Planned(?) support
+  for storing multiple branches in one file-system directory.
+
+* `Bazaar Windows Shell Extension Options <tortoise-strategy.html>`_ |--|
+  Implmentation strategy for Bazaar Windows Shell Extensions, aka
+  TortoiseBzr.
 
 Specifications
 ==============
@@ -86,27 +97,22 @@ Specifications
   |--| How Bazaar operates on case-insensitive file systems such as commonly
   found on Windows, USB sticks, etc.
 
+* `Development repository formats <development-repo.html>`_ |--| How to
+  work with repository formats that are still under development.
+  Contains instructions for those implementing new formats, of course,
+  but also for (bleeding-edge) end users of those formats.
+
 Data formats
 ============
 
 * `Knit pack repositories <packrepo.html>`_ |--| KnitPack repositories 
   (new in Bazaar 0.92).
 
-Uncategorized documents
-=======================
+Implementation notes
+====================
 
 * `BTree Index Prefetch <btree_index_prefetch.html>`_ |--| How bzr decides
   to pre-read extra nodes in the btree index.
-
-* `Co-located branches <colocated-branches.html>`_ |--| Planned(?) support
-  for storing multiple branches in one file-system directory.
-
-* `Development repository formats <development-repo.html>`_ |--| How to
-  work with repository formats that are still under development.
-  Contains instructions for those implementing new formats, of course,
-  but also for (bleeding-edge) end users of those formats.
-
-* `dirstate <dirstate.html>`_ |--| An observation re. the dirstate file
 
 * `Computing last_modified values <last-modified.html>`_ for inventory
   entries
@@ -114,13 +120,10 @@ Uncategorized documents
 * `LCA Tree Merging <lca_tree_merging.html>`_ |--| Merging tree-shape when
   there is not a single unique ancestor (criss-cross merge).
 
-* `Revision Properties <revision-properties.html>`_ |--| An application
-  can set arbitrary per-revision key/value pairs to store app-specific
-  data.
+Uncategorized documents
+=======================
 
-* `Bazaar Windows Shell Extension Options <tortoise-strategy.html>`_ |--|
-  Implmentation strategy for Bazaar Windows Shell Extensions, aka
-  TortoiseBzr.
+* `dirstate <dirstate.html>`_ |--| An observation re. the dirstate file
 
 * `"bzr update" performance analysis <update.html>`_ |--| "bzr update"
   performance analysis
