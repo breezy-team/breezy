@@ -2426,7 +2426,6 @@ Internals
 * Knit record serialisation is now stricter on what it will accept, to
   guard against potential internal bugs, or broken input. (Robert Collins)
 
-
 bzr 1.6beta1 2008-06-02
 #######################
 

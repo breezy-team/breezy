@@ -296,7 +296,8 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
         try:
             transport.mkdir_multi(['revision-store', 'weaves'],
                 mode=a_bzrdir._get_dir_mode())
-            transport.put_bytes_non_atomic('inventory.weave', empty_weave)
+            transport.put_bytes_non_atomic('inventory.weave', empty_weave,
+                mode=a_bzrdir._get_file_mode())
         finally:
             control_files.unlock()
         return self.open(a_bzrdir, _found=True)
