@@ -181,7 +181,7 @@ class GitRepositoryFormat(tests.TestCase):
 
     def setUp(self):
         super(GitRepositoryFormat, self).setUp()
-        self.format = repository.GitFormat()
+        self.format = repository.GitRepositoryFormat()
 
     def test_get_format_description(self):
         self.assertEquals("Git Repository", self.format.get_format_description())
