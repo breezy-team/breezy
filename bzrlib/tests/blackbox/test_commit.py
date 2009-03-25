@@ -124,10 +124,13 @@ class TestCommit(ExternalBase):
         wt.rename_one('hello.txt', 'subdir/hello.txt')
         out, err = self.run_bzr('commit -m renamed')
         self.assertEqual('', out)
-        self.assertContainsRe(err, '^Committing to: .*\n'
-                              'added subdir\n'
-                              'renamed hello\.txt => subdir/hello\.txt\n'
-                              'Committed revision 2\.\n$')
+        self.assertEqual(set([
+            'Committing to: %s/' % osutils.getcwd(),
+            'added subdir',
+            'renamed hello.txt => subdir/hello.txt',
+            'Committed revision 2.',
+            '',
+            ]), set(err.split('\n')))
 
     def test_verbose_commit_with_unknown(self):
         """Unknown files should not be listed by default in verbose output"""
@@ -220,20 +223,20 @@ class TestCommit(ExternalBase):
         os.chdir('this')
         out,err = self.run_bzr('commit -m added')
         self.assertEqual('', out)
-        expected = '%s/' % (osutils.getcwd(), )
-        self.assertEqualDiff(
-            'Committing to: %s\n'
-            'modified filetomodify\n'
-            'added newdir\n'
-            'added newfile\n'
-            'renamed dirtorename => renameddir\n'
-            'renamed filetorename => renamedfile\n'
-            'renamed dirtoreparent => renameddir/reparenteddir\n'
-            'renamed filetoreparent => renameddir/reparentedfile\n'
-            'deleted dirtoremove\n'
-            'deleted filetoremove\n'
-            'Committed revision 2.\n' % (expected, ),
-            err)
+        self.assertEqual(set([
+            'Committing to: %s/' % osutils.getcwd(),
+            'modified filetomodify',
+            'added newdir',
+            'added newfile',
+            'renamed dirtorename => renameddir',
+            'renamed filetorename => renamedfile',
+            'renamed dirtoreparent => renameddir/reparenteddir',
+            'renamed filetoreparent => renameddir/reparentedfile',
+            'deleted dirtoremove',
+            'deleted filetoremove',
+            'Committed revision 2.',
+            ''
+            ]), set(err.split('\n')))
 
     def test_empty_commit_message(self):
         tree = self.make_branch_and_tree('.')

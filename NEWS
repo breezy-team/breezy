@@ -121,6 +121,10 @@ Documentation
 API Changes
 ***********
 
+* ``CommitReporter`` is no longer called with ``unchanged`` status during
+  commit - this was a full-tree overhead that bzr no longer performs.
+  (Robert Collins)
+
 * New API ``Inventory.filter()`` added that filters an inventory by
   a set of file-ids so that only those fileids, their parents and
   their children are included.  (Ian Clatworthy)

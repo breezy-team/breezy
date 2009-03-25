@@ -107,8 +107,8 @@ class TestCommit(TestCaseWithTransport):
         tree2.unlock()
         self.assertEqual('version 2', text)
 
-    def test_delete_commit(self):
-        """Test a commit with a deleted file"""
+    def test_missing_commit(self):
+        """Test a commit with a missing file"""
         wt = self.make_branch_and_tree('.')
         b = wt.branch
         file('hello', 'w').write('hello world')
@@ -550,10 +550,7 @@ class TestCommit(TestCaseWithTransport):
         this_tree.merge_from_branch(other_tree.branch)
         reporter = CapturingReporter()
         this_tree.commit('do the commit', reporter=reporter)
-        self.assertEqual([
-            ('change', 'unchanged', ''),
-            ('change', 'unchanged', 'dirtoleave'),
-            ('change', 'unchanged', 'filetoleave'),
+        expected = set([
             ('change', 'modified', 'filetomodify'),
             ('change', 'added', 'newdir'),
             ('change', 'added', 'newfile'),
@@ -563,8 +560,11 @@ class TestCommit(TestCaseWithTransport):
             ('renamed', 'renamed', 'filetoreparent', 'renameddir/reparentedfile'),
             ('deleted', 'dirtoremove'),
             ('deleted', 'filetoremove'),
-            ],
-            reporter.calls)
+            ])
+        result = set(reporter.calls)
+        missing = expected - result
+        new = result - expected
+        self.assertEqual((set(), set()), (missing, new))
 
     def test_commit_removals_respects_filespec(self):
         """Commit respects the specified_files for removals."""
