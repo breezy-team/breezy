@@ -47,7 +47,7 @@ from bzrlib.plugins.git.converter import (
 from bzrlib.plugins.git.repository import (
     LocalGitRepository, 
     GitRepository, 
-    GitFormat,
+    GitRepositoryFormat,
     )
 from bzrlib.plugins.git.remote import (
     RemoteGitRepository,
@@ -221,7 +221,7 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
 
 class InterGitNonGitRepository(InterRepository):
 
-    _matching_repo_format = GitFormat()
+    _matching_repo_format = GitRepositoryFormat()
 
     @staticmethod
     def _get_repo_format_to_test():
@@ -296,7 +296,7 @@ class InterGitNonGitRepository(InterRepository):
 
 class InterGitRepository(InterRepository):
 
-    _matching_repo_format = GitFormat()
+    _matching_repo_format = GitRepositoryFormat()
 
     @staticmethod
     def _get_repo_format_to_test():

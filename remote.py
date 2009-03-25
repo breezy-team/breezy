@@ -15,9 +15,20 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import bzrlib
-from bzrlib import branch, tag, urlutils
-from bzrlib.bzrdir import BzrDir, BzrDirFormat
-from bzrlib.errors import BzrError, NoSuchFile, NotLocalUrl
+from bzrlib import (
+    branch,
+    tag,
+    urlutils,
+    )
+from bzrlib.bzrdir import (
+    BzrDir,
+    BzrDirFormat,
+    )
+from bzrlib.errors import (
+    BzrError,
+    NoSuchFile,
+    NotLocalUrl,
+    )
 from bzrlib.lockable_files import TransportLock
 from bzrlib.repository import Repository
 from bzrlib.trace import info
@@ -30,16 +41,23 @@ from bzrlib.plugins.git.branch import GitBranch
 from bzrlib.plugins.git.errors import NoSuchRef
 from bzrlib.plugins.git.dir import GitDir
 from bzrlib.plugins.git.foreign import ForeignBranch
-from bzrlib.plugins.git.repository import GitFormat, GitRepository
+from bzrlib.plugins.git.repository import (
+    GitRepositoryFormat,
+    GitRepository,
+    )
 
+import dulwich as git
+from dulwich.errors import GitProtocolError
+from dulwich.pack import (
+    Pack,
+    PackData,
+    PackIndex,
+    )
 import os
 import tempfile
 import urllib
 import urlparse
 
-import dulwich as git
-from dulwich.errors import GitProtocolError
-from dulwich.pack import PackData, Pack, PackIndex
 
 # Don't run any tests on GitSmartTransport as it is not intended to be 
 # a full implementation of Transport

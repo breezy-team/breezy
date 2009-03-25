@@ -17,10 +17,6 @@
 
 """An adapter between a Git Repository and a Bazaar Branch"""
 
-import dulwich as git
-import os
-import time
-
 import bzrlib
 from bzrlib import (
     errors,
@@ -50,6 +46,10 @@ from bzrlib.plugins.git.mapping import (
     )
 from bzrlib.plugins.git.versionedfiles import GitTexts
 
+import dulwich as git
+import os
+import time
+
 
 class GitTags(object):
 
@@ -66,7 +66,8 @@ class GitRepository(ForeignRepository):
     _serializer = None
 
     def __init__(self, gitdir, lockfiles):
-        ForeignRepository.__init__(self, GitFormat(), gitdir, lockfiles)
+        ForeignRepository.__init__(self, GitRepositoryFormat(), gitdir, 
+            lockfiles)
         from bzrlib.plugins.git import fetch
         for optimiser in [fetch.InterGitRepository, 
                           fetch.InterGitNonGitRepository]:
@@ -336,7 +337,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
                 self._build_inventory(hexsha, child_ie, child_path)
 
 
-class GitFormat(object):
+class GitRepositoryFormat(repository.RepositoryFormat):
 
     supports_tree_reference = False
     rich_root_data = True
