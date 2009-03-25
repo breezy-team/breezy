@@ -122,8 +122,8 @@ Implementation notes
 * `LCA Tree Merging <lca_tree_merging.html>`_ |--| Merging tree-shape when
   there is not a single unique ancestor (criss-cross merge).
 
-Uncategorized documents
-=======================
+Miscellaneous
+=============
 
 * `dirstate <dirstate.html>`_ |--| An observation re. the dirstate file
 
