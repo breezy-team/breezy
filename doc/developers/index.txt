@@ -62,6 +62,8 @@ Plans
   Implmentation strategy for Bazaar Windows Shell Extensions, aka
   TortoiseBzr.
 
+* `CHK Optimized index <improved_chk_index.html>`_
+
 Specifications
 ==============
 
