@@ -1854,7 +1854,7 @@ class Repository(object):
         for record in self.texts.get_record_stream(text_keys, 'unordered', True):
             if record.storage_kind == 'absent':
                 raise errors.RevisionNotPresent(record.key, self)
-            yield text_keys[record.key], record.get_bytes_as('fulltext')
+            yield text_keys[record.key], record.get_bytes_as('chunked')
 
     def _generate_text_key_index(self, text_key_references=None,
         ancestors=None):

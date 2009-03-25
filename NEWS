@@ -227,6 +227,12 @@ Internals
   whether the repository can efficiently generate deltas between trees
   regardless of tree size. (Robert Collins)
 
+* ``Repository.iter_files_bytes()`` now properly returns an "iterable of
+  byte strings" (aka 'chunked') for the content. It previously was
+  returning a plain string, which worked, but performed very poorly when
+  building a working tree (file.writelines(str) is very inefficient). This
+  can have a large effect on ``bzr checkout`` times. (John Arbash Meinel)
+
 * The smart server verb ``Repository.get_parent_map`` can now include
   information about ghosts when the special revision ``include-missing:``
   is in the requested parents map list. With this flag, ghosts are
