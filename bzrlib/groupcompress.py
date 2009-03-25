@@ -87,7 +87,7 @@ def decode_base128_int(bytes):
 def encode_copy_instruction(offset, length):
     """Convert this offset into a control code and bytes."""
     copy_command = 0x80
-    copy_bytes = []
+    copy_bytes = [None]
 
     for copy_bit in (0x01, 0x02, 0x04, 0x08):
         base_byte = offset & 0xff
@@ -97,7 +97,8 @@ def encode_copy_instruction(offset, length):
         offset >>= 8
     if length is None:
         # None is used by the test suite
-        return copy_command, copy_bytes
+        copy_bytes[0] = chr(copy_command)
+        return ''.join(copy_bytes)
     if length > 0x10000:
         raise ValueError("we don't emit copy records for lengths > 64KiB")
     if length == 0:
@@ -111,7 +112,8 @@ def encode_copy_instruction(offset, length):
                 copy_command |= copy_bit
                 copy_bytes.append(chr(base_byte))
             length >>= 8
-    return copy_command, copy_bytes
+    copy_bytes[0] = chr(copy_command)
+    return ''.join(copy_bytes)
 
 
 def sort_gc_optimal(parent_map):
@@ -921,25 +923,8 @@ class PythonGroupCompressor(_CommonGroupCompressor):
         # code, we will also limit it to a 64kB copy
         for start_byte in xrange(first_byte, stop_byte, 64*1024):
             num_bytes = min(64*1024, stop_byte - first_byte)
-            copy_command = 0x80
-            copy_bytes = []
-            base_byte = start_byte & 0x000000ff
-            if base_byte:
-                copy_command |= 0x01
-                assert 0 <= base_byte <= 255
-                copy_bytes.append(chr(base_byte))
-            base_byte = (start_byte & 0x0000ff00) >> 8
-            if base_byte:
-                copy_bytes |= 0x02
-                copy_bytes.append(chr(base_byte))
-            base_byte = (start_byte & 0x00ff0000) >> 16
-            if base_byte:
-                copy_bytes |= 0x03
-                copy_bytes.append(chr(base_byte))
-            base_byte = (start_byte & 0xff000000) >> 24
-            if base_byte:
-                copy_bytes |= 0x04
-                copy_bytes.append(chr(base_byte))
+            copy_command, copy_bytes = encode_copy_instruction(start_byte,
+                                                               num_bytes)
 
     def flush_range(self, new_line_start, source_line_start, match_num_lines,
                     new_lines, out_lines, index_lines):

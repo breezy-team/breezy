@@ -176,55 +176,50 @@ class TestGroupCompressor(tests.TestCase):
 
 class TestEncodeCopyInstruction(tests.TestCase):
 
-    def assertCopyInstruction(self, control, bytes, offset, length):
-        self.assertEqual((control, bytes),
-                         groupcompress.encode_copy_instruction(offset, length))
+    def assertCopyInstruction(self, expected, offset, length):
+        bytes = groupcompress.encode_copy_instruction(offset, length)
+        if expected != bytes:
+            self.assertEqual([hex(ord(e)) for e in expected],
+                             [hex(ord(b)) for b in bytes])
 
     def test_encode_no_length(self):
-        self.assertCopyInstruction(0x80, [], 0, None)
-        self.assertCopyInstruction(0x81, ['\x01'], 1, None)
-        self.assertCopyInstruction(0x81, ['\x0a'], 10, None)
-        self.assertCopyInstruction(0x81, ['\xff'], 255, None)
-        self.assertCopyInstruction(0x82, ['\x01'], 256, None)
-        self.assertCopyInstruction(0x83, ['\x01', '\x01'], 257, None)
-        self.assertCopyInstruction(0x8F, ['\xff', '\xff', '\xff', '\xff'],
-                                   0xFFFFFFFF, None)
-        self.assertCopyInstruction(0x8E, ['\xff', '\xff', '\xff'],
-                                   0xFFFFFF00, None)
-        self.assertCopyInstruction(0x8D, ['\xff', '\xff', '\xff'],
-                                   0xFFFF00FF, None)
-        self.assertCopyInstruction(0x8B, ['\xff', '\xff', '\xff'],
-                                   0xFF00FFFF, None)
-        self.assertCopyInstruction(0x87, ['\xff', '\xff', '\xff'],
-                                   0x00FFFFFF, None)
-        self.assertCopyInstruction(0x8F, ['\x04', '\x03', '\x02', '\x01'],
-                                   0x01020304, None)
+        self.assertCopyInstruction('\x80', 0, None)
+        self.assertCopyInstruction('\x81\x01', 1, None)
+        self.assertCopyInstruction('\x81\x0a', 10, None)
+        self.assertCopyInstruction('\x81\xff', 255, None)
+        self.assertCopyInstruction('\x82\x01', 256, None)
+        self.assertCopyInstruction('\x83\x01\x01', 257, None)
+        self.assertCopyInstruction('\x8F\xff\xff\xff\xff', 0xFFFFFFFF, None)
+        self.assertCopyInstruction('\x8E\xff\xff\xff', 0xFFFFFF00, None)
+        self.assertCopyInstruction('\x8D\xff\xff\xff', 0xFFFF00FF, None)
+        self.assertCopyInstruction('\x8B\xff\xff\xff', 0xFF00FFFF, None)
+        self.assertCopyInstruction('\x87\xff\xff\xff', 0x00FFFFFF, None)
+        self.assertCopyInstruction('\x8F\x04\x03\x02\x01', 0x01020304, None)
 
     def test_encode_no_offset(self):
-        self.assertCopyInstruction(0x90, ['\x01'], 0, 1)
-        self.assertCopyInstruction(0x90, ['\x0a'], 0, 10)
-        self.assertCopyInstruction(0x90, ['\xff'], 0, 255)
-        self.assertCopyInstruction(0xA0, ['\x01'], 0, 256)
-        self.assertCopyInstruction(0xB0, ['\x01', '\x01'], 0, 257)
-        self.assertCopyInstruction(0xB0, ['\x01', '\x01'], 0, 257)
-        self.assertCopyInstruction(0xB0, ['\xff', '\xff'], 0, 0xFFFF)
+        self.assertCopyInstruction('\x90\x01', 0, 1)
+        self.assertCopyInstruction('\x90\x0a', 0, 10)
+        self.assertCopyInstruction('\x90\xff', 0, 255)
+        self.assertCopyInstruction('\xA0\x01', 0, 256)
+        self.assertCopyInstruction('\xB0\x01\x01', 0, 257)
+        self.assertCopyInstruction('\xB0\x01\x01', 0, 257)
+        self.assertCopyInstruction('\xB0\xff\xff', 0, 0xFFFF)
         # Special case, if copy == 64KiB, then we store exactly 0
         # Note that this puns with a copy of exactly 0 bytes, but we don't care
         # about that, as we would never actually copy 0 bytes
-        self.assertCopyInstruction(0x80, [], 0, 64*1024)
+        self.assertCopyInstruction('\x80', 0, 64*1024)
 
     def test_encode(self):
-        self.assertCopyInstruction(0x91, ['\x01', '\x01'], 1, 1)
-        self.assertCopyInstruction(0x91, ['\x09', '\x0a'], 9, 10)
-        self.assertCopyInstruction(0x91, ['\xfe', '\xff'], 254, 255)
-        self.assertCopyInstruction(0xA2, ['\x02', '\x01'], 512, 256)
-        self.assertCopyInstruction(0xB3, ['\x02', '\x01', '\x01', '\x01'],
-                                   258, 257)
-        self.assertCopyInstruction(0xB0, ['\x01', '\x01'], 0, 257)
+        self.assertCopyInstruction('\x91\x01\x01', 1, 1)
+        self.assertCopyInstruction('\x91\x09\x0a', 9, 10)
+        self.assertCopyInstruction('\x91\xfe\xff', 254, 255)
+        self.assertCopyInstruction('\xA2\x02\x01', 512, 256)
+        self.assertCopyInstruction('\xB3\x02\x01\x01\x01', 258, 257)
+        self.assertCopyInstruction('\xB0\x01\x01', 0, 257)
         # Special case, if copy == 64KiB, then we store exactly 0
         # Note that this puns with a copy of exactly 0 bytes, but we don't care
         # about that, as we would never actually copy 0 bytes
-        self.assertCopyInstruction(0x81, ['\x0a'], 10, 64*1024)
+        self.assertCopyInstruction('\x81\x0a', 10, 64*1024)
 
 
 class TestBase128Int(tests.TestCase):
