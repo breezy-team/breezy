@@ -55,3 +55,7 @@ def convert_dulwich_error(error):
     if isinstance(error, git_errors.HangupException):
         raise bzr_errors.ConnectionReset(error.msg, "")
     raise error
+
+
+class NoPushSupport(bzr_errors.BzrError):
+    _fmt = "Push is not yet supported for bzr-git. Try dpush instead."

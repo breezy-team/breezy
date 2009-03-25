@@ -68,9 +68,10 @@ class GitRepository(ForeignRepository):
     def __init__(self, gitdir, lockfiles):
         ForeignRepository.__init__(self, GitRepositoryFormat(), gitdir, 
             lockfiles)
-        from bzrlib.plugins.git import fetch
+        from bzrlib.plugins.git import fetch, push
         for optimiser in [fetch.InterGitRepository, 
-                          fetch.InterGitNonGitRepository]:
+                          fetch.InterGitNonGitRepository,
+                          push.InterToGitRepository]:
             repository.InterRepository.register_optimiser(optimiser)
 
     def is_shared(self):

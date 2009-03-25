@@ -220,6 +220,8 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
 
 
 class InterGitNonGitRepository(InterRepository):
+    """InterRepository that copies revisions from a Git into a non-Git 
+    repository."""
 
     _matching_repo_format = GitRepositoryFormat()
 
@@ -295,6 +297,7 @@ class InterGitNonGitRepository(InterRepository):
 
 
 class InterGitRepository(InterRepository):
+    """InterRepository that copies between Git repositories."""
 
     _matching_repo_format = GitRepositoryFormat()
 

@@ -74,6 +74,17 @@ class TestGitBlackBox(ExternalBase):
         self.assertTrue("branch: Git Branch" in output)
         self.assertTrue("repository: Git Repository" in output)
 
+    def test_push(self):
+        os.mkdir("bla")
+        os.chdir("bla")
+        tests.run_git("init")
+        os.chdir("..")
+        self.run_bzr(['init', 'foo'])
+        self.run_bzr(['commit', '--unchanged', '-m', 'bla', 'foo'])
+        output, error = self.run_bzr(['push', '-d', 'foo', 'bla'], retcode=3)
+        self.assertEquals('bzr: ERROR: Push is not yet supported for bzr-git. Try dpush instead.\n', error)
+        self.assertEquals("", output)
+
     def test_log(self):
         # Smoke test for "bzr log" in a git repository.
         self.simple_commit()
