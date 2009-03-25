@@ -532,7 +532,7 @@ class AggregateIndex(object):
     # XXX: Probably 'can be written to' could/should be separated from 'acts
     # like a knit index' -- mbp 20071024
 
-    def __init__(self, reload_func=None):
+    def __init__(self, reload_func=None, flush_func=None):
         """Create an AggregateIndex.
 
         :param reload_func: A function to call if we find we are missing an
@@ -543,7 +543,8 @@ class AggregateIndex(object):
         self.index_to_pack = {}
         self.combined_index = CombinedGraphIndex([], reload_func=reload_func)
         self.data_access = _DirectPackAccess(self.index_to_pack,
-                                             reload_func=reload_func)
+                                             reload_func=reload_func,
+                                             flush_func=flush_func)
         self.add_callback = None
 
     def replace_indices(self, index_to_pack, indices):
@@ -1322,10 +1323,11 @@ class RepositoryPackCollection(object):
         # when a pack is being created by this object, the state of that pack.
         self._new_pack = None
         # aggregated revision index data
-        self.revision_index = AggregateIndex(self.reload_pack_names)
-        self.inventory_index = AggregateIndex(self.reload_pack_names)
-        self.text_index = AggregateIndex(self.reload_pack_names)
-        self.signature_index = AggregateIndex(self.reload_pack_names)
+        flush = self._flush_new_pack
+        self.revision_index = AggregateIndex(self.reload_pack_names, flush)
+        self.inventory_index = AggregateIndex(self.reload_pack_names, flush)
+        self.text_index = AggregateIndex(self.reload_pack_names, flush)
+        self.signature_index = AggregateIndex(self.reload_pack_names, flush)
         # resumed packs
         self._resumed_packs = []
 
@@ -1451,6 +1453,10 @@ class RepositoryPackCollection(object):
         # Move the old packs out of the way now they are no longer referenced.
         for revision_count, packs in pack_operations:
             self._obsolete_packs(packs)
+
+    def _flush_new_pack(self):
+        if self._new_pack is not None:
+            self._new_pack.flush()
 
     def lock_names(self):
         """Acquire the mutex around the pack-names index.
