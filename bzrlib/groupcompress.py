@@ -18,7 +18,6 @@
 
 from itertools import izip
 from cStringIO import StringIO
-import struct
 import time
 import zlib
 try:
@@ -39,11 +38,6 @@ from bzrlib import (
     )
 from bzrlib.graph import Graph
 from bzrlib.knit import _DirectPackAccess
-from bzrlib.osutils import (
-    contains_whitespace,
-    sha_string,
-    split_lines,
-    )
 from bzrlib.btree_index import BTreeBuilder
 from bzrlib.lru_cache import LRUSizeCache
 from bzrlib.tsort import topo_sort
@@ -368,7 +362,7 @@ class GroupCompressBlock(object):
         if c == 'f':
             bytes = content
         elif c == 'd':
-            bytes = _groupcompress_pyx.apply_delta(self._content, content)
+            bytes = apply_delta(self._content, content)
         return bytes
 
     def add_entry(self, key, type, sha1, start, length):
@@ -733,7 +727,242 @@ def network_block_to_records(storage_kind, bytes, line_end):
     return manager.get_record_stream()
 
 
-class GroupCompressor(object):
+class _CommonGroupCompressor(object):
+
+    def __init__(self):
+        """Create a GroupCompressor."""
+        # Consider seeding the lines with some sort of GC Start flag, or
+        # putting it as part of the output stream, rather than in the
+        # compressed bytes.
+        self.lines = []
+        self.endpoint = 0
+        self.input_bytes = 0
+        self.labels_deltas = {}
+
+    def ratio(self):
+        """Return the overall compression ratio."""
+        return float(self.input_bytes) / float(self.endpoint)
+
+
+class PythonGroupCompressor(_CommonGroupCompressor):
+
+    def __init__(self, delta=True):
+        """Create a GroupCompressor.
+
+        :param delta: If False, do not compress records.
+        """
+        super(PythonGroupCompressor, self).__init__()
+        self._delta = delta
+        self.line_offsets = []
+        self.line_locations = EquivalenceTable([])
+        self.lines = self.line_locations.lines
+        self._present_prefixes = set()
+
+    def get_matching_blocks(self, lines, soft=False):
+        """Return the ranges in lines which match self.lines.
+
+        :param lines: lines to compress
+        :return: A list of (old_start, new_start, length) tuples which reflect
+            a region in self.lines that is present in lines.  The last element
+            of the list is always (old_len, new_len, 0) to provide a end point
+            for generating instructions from the matching blocks list.
+        """
+        result = []
+        pos = 0
+        line_locations = self.line_locations
+        line_locations.set_right_lines(lines)
+        # We either copy a range (while there are reusable lines) or we 
+        # insert new lines. To find reusable lines we traverse 
+        locations = None
+        max_pos = len(lines)
+        result_append = result.append
+        min_match_bytes = 10
+        if soft:
+            min_match_bytes = 200
+        while pos < max_pos:
+            block, pos, locations = _get_longest_match(line_locations, pos,
+                                                       max_pos, locations)
+            if block is not None:
+                # Check to see if we are matching fewer than 5 characters,
+                # which is turned into a simple 'insert', rather than a copy
+                # If we have more than 5 lines, we definitely have more than 5
+                # chars
+                if block[-1] < min_match_bytes:
+                    # This block may be a 'short' block, check
+                    old_start, new_start, range_len = block
+                    matched_bytes = sum(map(len,
+                        lines[new_start:new_start + range_len]))
+                    if matched_bytes < min_match_bytes:
+                        block = None
+            if block is not None:
+                result_append(block)
+        result_append((len(self.lines), len(lines), 0))
+        return result
+
+    # FIXME: implement nostore_sha
+    def compress(self, key, lines, expected_sha, nostore_sha=False, soft=False):
+        """Compress lines with label key.
+
+        :param key: A key tuple. It is stored in the output
+            for identification of the text during decompression. If the last
+            element is 'None' it is replaced with the sha1 of the text -
+            e.g. sha1:xxxxxxx.
+        :param lines: The lines to be compressed. Must be split
+            on \n, with the \n preserved.'
+        :param expected_sha: If non-None, the sha the lines are believed to
+            have. During compression the sha is calculated; a mismatch will
+            cause an error.
+        :param soft: Do a 'soft' compression. This means that we require larger
+            ranges to match to be considered for a copy command.
+        :return: The sha1 of lines, and the number of bytes accumulated in
+            the group output so far.
+        """
+        lines = osutils.split_lines(lines)
+        sha1 = osutils.sha_strings(lines)
+        if key[-1] is None:
+            key = key[:-1] + ('sha1:' + sha1,)
+        label = '\x00'.join(key)
+        ## new_lines = []
+        new_lines = ['label: %s\n' % label,
+                     'sha1: %s\n' % sha1,
+                    ]
+        ## index_lines = []
+        index_lines = [False, False]
+        # setup good encoding for trailing \n support.
+        if not lines or lines[-1].endswith('\n'):
+            lines.append('\n')
+        else:
+            lines[-1] = lines[-1] + '\n'
+        pos = 0
+        range_len = 0
+        range_start = 0
+        flush_range = self.flush_range
+        copy_ends = None
+        blocks = self.get_matching_blocks(lines, soft=soft)
+        current_pos = 0
+        #copies_without_insertion = []
+        # We either copy a range (while there are reusable lines) or we
+        # insert new lines. To find reusable lines we traverse
+        for old_start, new_start, range_len in blocks:
+            if new_start != current_pos:
+                # if copies_without_insertion:
+                #     self.flush_multi(copies_without_insertion,
+                #                      lines, new_lines, index_lines)
+                #     copies_without_insertion = []
+                # non-matching region
+                flush_range(current_pos, None, new_start - current_pos,
+                    lines, new_lines, index_lines)
+            current_pos = new_start + range_len
+            if not range_len:
+                continue
+            # copies_without_insertion.append((new_start, old_start, range_len))
+            flush_range(new_start, old_start, range_len,
+                        lines, new_lines, index_lines)
+        # if copies_without_insertion:
+        #     self.flush_multi(copies_without_insertion,
+        #                      lines, new_lines, index_lines)
+        #     copies_without_insertion = []
+        start = self.endpoint # Keep it
+        delta_start = (self.endpoint, len(self.lines))
+        self.output_lines(new_lines, index_lines)
+        trim_encoding_newline(lines)
+        length = sum(map(len, lines))
+        self.input_bytes += length
+        delta_end = (self.endpoint, len(self.lines))
+        self.labels_deltas[key] = (delta_start, delta_end)
+        # FIXME: lot of guessing below
+        return sha1, start, self.endpoint, 'delta', length
+
+    def extract(self, key):
+        """Extract a key previously added to the compressor.
+        
+        :param key: The key to extract.
+        :return: An iterable over bytes and the sha1.
+        """
+        delta_details = self.labels_deltas[key]
+        delta_lines = self.lines[delta_details[0][1]:delta_details[1][1]]
+        label, sha1, delta = parse(delta_lines)
+        ## delta = parse(delta_lines)
+        if label != key:
+            raise AssertionError("wrong key: %r, wanted %r" % (label, key))
+        # Perhaps we want to keep the line offsets too in memory at least?
+        chunks = apply_delta(''.join(self.lines), delta)
+        sha1 = osutils.sha_strings(chunks)
+        return chunks, sha1
+
+    def flush_multi(self, instructions, lines, new_lines, index_lines):
+        """Flush a bunch of different ranges out.
+
+        This should only be called with data that are "pure" copies.
+        """
+        flush_range = self.flush_range
+        if len(instructions) > 2:
+            # This is the number of lines to be copied
+            total_copy_range = sum(i[2] for i in instructions)
+            if len(instructions) > 0.5 * total_copy_range:
+                # We are copying N lines, but taking more than N/2
+                # copy instructions to do so. We will go ahead and expand this
+                # text so that other code is able to match against it
+                flush_range(instructions[0][0], None, total_copy_range,
+                            lines, new_lines, index_lines)
+                return
+        for ns, os, rl in instructions:
+            flush_range(ns, os, rl, lines, new_lines, index_lines)
+
+    def flush_range(self, range_start, copy_start, range_len, lines, new_lines, index_lines):
+        insert_instruction = "i,%d\n" % range_len
+        if copy_start is not None:
+            # range stops, flush and start a new copy range
+            stop_byte = self.line_offsets[copy_start + range_len - 1]
+            if copy_start == 0:
+                start_byte = 0
+            else:
+                start_byte = self.line_offsets[copy_start - 1]
+            bytes = stop_byte - start_byte
+            copy_control_instruction = "c,%d,%d\n" % (start_byte, bytes)
+            if (bytes + len(insert_instruction) >
+                len(copy_control_instruction)):
+                new_lines.append(copy_control_instruction)
+                index_lines.append(False)
+                return
+        # not copying, or inserting is shorter than copying, so insert.
+        new_lines.append(insert_instruction)
+        new_lines.extend(lines[range_start:range_start+range_len])
+        index_lines.append(False)
+        index_lines.extend([copy_start is None]*range_len)
+
+    def flush(self):
+        # FIXME: ugly hack to masquerade ourself as the pyrex version
+        class content(object):
+
+            def __init__(self, s):
+                self.s = s
+
+            def to_bytes(self):
+                return self.s
+
+        return content(zlib.compress(''.join(self.lines)))
+
+    def output_lines(self, new_lines, index_lines):
+        """Output some lines.
+
+        :param new_lines: The lines to output.
+        :param index_lines: A boolean flag for each line - when True, index
+            that line.
+        """
+        # indexed_newlines = [idx for idx, val in enumerate(index_lines)
+        #                          if val and new_lines[idx] == '\n']
+        # if indexed_newlines:
+        #     import pdb; pdb.set_trace()
+        endpoint = self.endpoint
+        self.line_locations.extend_lines(new_lines, index_lines)
+        for line in new_lines:
+            endpoint += len(line)
+            self.line_offsets.append(endpoint)
+        self.endpoint = endpoint
+
+
+class PyrexGroupCompressor(_CommonGroupCompressor):
     """Produce a serialised group of compressed texts.
 
     It contains code very similar to SequenceMatcher because of having a similar
@@ -750,17 +979,10 @@ class GroupCompressor(object):
     """
 
     def __init__(self):
-        """Create a GroupCompressor."""
-        # Consider seeding the lines with some sort of GC Start flag, or
-        # putting it as part of the output stream, rather than in the
-        # compressed bytes.
-        self.lines = []
-        self.endpoint = 0
-        self.input_bytes = 0
+        super(PythonGroupCompressor, self).__init__()
         self.num_keys = 0
-        self.labels_deltas = {}
         self._last = None
-        self._delta_index = _groupcompress_pyx.DeltaIndex()
+        self._delta_index = DeltaIndex()
         self._block = GroupCompressBlock()
 
     def compress(self, key, bytes, expected_sha, nostore_sha=None, soft=False):
@@ -883,9 +1105,8 @@ class GroupCompressor(object):
                                  ' claim %s != %s'
                                  % (len(stored_bytes),
                                     delta_len + 1 + offset))
-            bytes = _groupcompress_pyx.apply_delta(source,
-                                                   stored_bytes[offset + 1:])
-        bytes_sha1 = sha_string(bytes)
+            bytes = apply_delta(source, stored_bytes[offset + 1:])
+        bytes_sha1 = osutils.sha_string(bytes)
         if entry.sha1 != bytes_sha1:
             raise ValueError('Recorded sha1 != measured %s != %s'
                              % (entry.sha1, bytes_sha1))
@@ -919,10 +1140,6 @@ class GroupCompressor(object):
         del self.lines[self._last[0]:]
         self.endpoint = self._last[1]
         self._last = None
-
-    def ratio(self):
-        """Return the overall compression ratio."""
-        return float(self.input_bytes) / float(self.endpoint)
 
 
 def make_pack_factory(graph, delta, keylength):
@@ -1075,7 +1292,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
         """check that version_id and lines are safe to add."""
         version_id = key[-1]
         if version_id is not None:
-            if contains_whitespace(version_id):
+            if osutils.contains_whitespace(version_id):
                 raise errors.InvalidRevisionId(version_id, self)
         self.check_not_reserved_id(version_id)
         # TODO: If random_id==False and the key is already present, we should
@@ -1367,7 +1584,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 result[record.key] = record.sha1
             else:
                 if record.storage_kind != 'absent':
-                    result[record.key] = sha_string(record.get_bytes_as(
+                    result[record.key] = olsutils.sha_string(record.get_bytes_as(
                         'fulltext'))
         return result
 
@@ -1572,7 +1789,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
             pb.update('Walking content', key_idx, total)
             if record.storage_kind == 'absent':
                 raise errors.RevisionNotPresent(key, self)
-            lines = split_lines(record.get_bytes_as('fulltext'))
+            lines = osutils.split_lines(record.get_bytes_as('fulltext'))
             for line in lines:
                 yield line, key
         pb.update('Walking content', total, total)
@@ -1766,6 +1983,17 @@ class _GCGraphIndex(object):
 
 
 try:
-    from bzrlib import _groupcompress_pyx
+    from bzrlib._groupcompress_pyx import (
+        apply_delta,
+        DeltaIndex,
+        )
+    GroupCompressor = PyrexCompressor
 except ImportError:
-    pass
+    from bzrlib._groupcompress_py import (
+        apply_delta,
+        EquivalenceTable,
+        _get_longest_match,
+        trim_encoding_newline,
+        )
+    GroupCompressor = PythonGroupCompressor
+

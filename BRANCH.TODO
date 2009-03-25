@@ -19,3 +19,6 @@ Group compress todo
  * Investigate sha1 overhead. Currently when doing 'bzr pack' we sha once on
    extraction, and then one more time on insertion. Removing both calls saves
    6s out of 32s for 'bzr pack' (and 8s=>5.5s for 'repository-details')
+
+ * don't require the pyx.c version or ~600 tests errors out,
+   write a pure python version instead
