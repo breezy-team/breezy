@@ -514,12 +514,6 @@ def subst_dates(string):
                   'YYYY-MM-DD HH:MM:SS +ZZZZ', string)
 
 
-def subst_short_dates(string):
-    """Replace date strings (without time or timezone) with constant values."""
-    return re.sub(r'\d{4}-\d{2}-\d{2}',
-                  'YYYY-MM-DD', string)
-
-
 class TestLogDiff(TestCaseWithoutPropsHandler):
 
     def _prepare(self):
@@ -1007,90 +1001,58 @@ class TestLogMultiple(TestCaseWithTransport):
             'parent/dir1/dir2/file3',
             'parent/file4'])
         tree.add('file1')
-        tree.commit('add file1', committer='Lorem Ipsum <test@example.com>')
+        tree.commit('add file1')
         tree.add('file2')
-        tree.commit('add file2', committer='Lorem Ipsum <test@example.com>')
+        tree.commit('add file2')
         tree.add(['dir1', 'dir1/dir2', 'dir1/dir2/file3'])
-        tree.commit('add file3', committer='Lorem Ipsum <test@example.com>')
+        tree.commit('add file3')
         tree.add('file4')
-        tree.commit('add file4', committer='Lorem Ipsum <test@example.com>')
+        tree.commit('add file4')
         tree.add('dir1/file5')
-        tree.commit('add file5', committer='Lorem Ipsum <test@example.com>')
+        tree.commit('add file5')
         child_tree = tree.bzrdir.sprout('child').open_workingtree()
         self.build_tree_contents([('child/file2', 'hello')])
-        child_tree.commit(message='branch 1',
-            committer='Lorem Ipsum <test@example.com>')
+        child_tree.commit(message='branch 1')
         tree.merge_from_branch(child_tree.branch)
-        tree.commit(message='merge child branch',
-            committer='Lorem Ipsum <test@example.com>')
+        tree.commit(message='merge child branch')
         os.chdir('parent')
+
+    def assertRevnos(self, paths_str, expected_revnos):
+        # confirm the revision numbers in log --line output are those expected
+        out, err = self.run_bzr('log --line -n0 %s' % (paths_str,))
+        self.assertEqual('', err)
+        revnos = [s.split(':', 1)[0].lstrip() for s in out.splitlines()]
+        self.assertEqual(revnos, expected_revnos)
 
     def test_log_files(self):
         """The log for multiple file should only list revs for those files"""
         self.prepare_tree()
-        out, err = self.run_bzr('log --line -n0 file1 file2 dir1/dir2/file3')
-        self.assertEqual('', err)
-        log = normalize_log(out)
-        self.assertEqualDiff(subst_short_dates(log), """\
-6: Lorem Ipsum YYYY-MM-DD [merge] merge child branch
-  5.1.1: Lorem Ipsum YYYY-MM-DD branch 1
-3: Lorem Ipsum YYYY-MM-DD add file3
-2: Lorem Ipsum YYYY-MM-DD add file2
-1: Lorem Ipsum YYYY-MM-DD add file1
-""")
+        self.assertRevnos('file1 file2 dir1/dir2/file3',
+            ['6', '5.1.1', '3', '2', '1'])
 
     def test_log_directory(self):
         """The log for a directory should show all nested files."""
         self.prepare_tree()
-        out, err = self.run_bzr('log --line -n0 dir1')
-        self.assertEqual('', err)
-        log = normalize_log(out)
-        self.assertEqualDiff(subst_short_dates(log), """\
-5: Lorem Ipsum YYYY-MM-DD add file5
-3: Lorem Ipsum YYYY-MM-DD add file3
-""")
+        self.assertRevnos('dir1', ['5', '3'])
 
     def test_log_nested_directory(self):
         """The log for a directory should show all nested files."""
         self.prepare_tree()
-        out, err = self.run_bzr('log --line -n0 dir1/dir2')
-        self.assertEqual('', err)
-        log = normalize_log(out)
-        self.assertEqualDiff(subst_short_dates(log), """\
-3: Lorem Ipsum YYYY-MM-DD add file3
-""")
+        self.assertRevnos('dir1/dir2', ['3'])
 
     def test_log_in_nested_directory(self):
         """The log for a directory should show all nested files."""
         self.prepare_tree()
         os.chdir("dir1")
-        out, err = self.run_bzr('log --line -n0 .')
-        self.assertEqual('', err)
-        log = normalize_log(out)
-        self.assertEqualDiff(subst_short_dates(log), """\
-5: Lorem Ipsum YYYY-MM-DD add file5
-3: Lorem Ipsum YYYY-MM-DD add file3
-""")
+        self.assertRevnos('.', ['5', '3'])
 
     def test_log_files_and_directories(self):
         """Logging files and directories together should be fine."""
         self.prepare_tree()
-        out, err = self.run_bzr('log --line -n0 file4 dir1/dir2')
-        self.assertEqual('', err)
-        log = normalize_log(out)
-        self.assertEqualDiff(subst_short_dates(log), """\
-4: Lorem Ipsum YYYY-MM-DD add file4
-3: Lorem Ipsum YYYY-MM-DD add file3
-""")
+        self.assertRevnos('file4 dir1/dir2', ['4', '3'])
 
     def test_log_files_and_dirs_in_nested_directory(self):
         """The log for a directory should show all nested files."""
         self.prepare_tree()
         os.chdir("dir1")
-        out, err = self.run_bzr('log --line -n0 dir2 file5')
-        self.assertEqual('', err)
-        log = normalize_log(out)
-        self.assertEqualDiff(subst_short_dates(log), """\
-5: Lorem Ipsum YYYY-MM-DD add file5
-3: Lorem Ipsum YYYY-MM-DD add file3
-""")
+        self.assertRevnos('dir2 file5', ['5', '3'])
