@@ -84,7 +84,7 @@ class CountedLock(object):
         else:
             self._real_lock.validate_token(token)
             self._lock_count += 1
-            return token
+            return self._token
 
     def unlock(self):
         if self._lock_count == 0:
