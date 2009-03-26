@@ -180,7 +180,7 @@ def import_git_tree(texts, mapping, path, tree, inv, parent_invs, shagitmap,
 
 
 def import_git_objects(repo, mapping, object_iter, target_git_object_retriever, 
-        pb=None):
+        heads, pb=None):
     """Import a set of git objects into a bzr repository.
 
     :param repo: Bazaar repository
@@ -191,23 +191,34 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
     graph = []
     root_trees = {}
     revisions = {}
+    checked = set()
+    heads = list(heads)
     # Find and convert commit objects
-    for o in object_iter.iterobjects():
+    while heads:
+        if pb is not None:
+            pb.update("finding revisions to fetch", len(graph), None)
+        head = heads.pop()
+        assert isinstance(head, str)
+        o = object_iter[head]
         if isinstance(o, Commit):
             rev = mapping.import_commit(o)
             if repo.has_revision(rev.revision_id):
                 continue
-            root_trees[rev.revision_id] = object_iter[o.tree]
+            root_trees[rev.revision_id] = o.tree
             revisions[rev.revision_id] = rev
             graph.append((rev.revision_id, rev.parent_ids))
             target_git_object_retriever._idmap.add_entry(o.sha().hexdigest(),
                 "commit", (rev.revision_id, o._tree))
+            heads.extend([p for p in o.parents if p not in checked])
+        else:
+            trace.warning("Unable to import head object %r" % o)
+        checked.add(head)
     # Order the revisions
     # Create the inventory objects
     for i, revid in enumerate(topo_sort(graph)):
         if pb is not None:
             pb.update("fetching revisions", i, len(graph))
-        root_tree = root_trees[revid]
+        root_tree = object_iter[root_trees[revid]]
         rev = revisions[revid]
         # We have to do this here, since we have to walk the tree and 
         # we need to make sure to import the blobs / trees with the right 
@@ -247,18 +258,25 @@ class InterGitNonGitRepository(InterRepository):
         if pb is None:
             create_pb = pb = ui.ui_factory.nested_progress_bar()
         target_git_object_retriever = GitObjectConverter(self.target, mapping)
+        recorded_wants = []
+
+        def record_determine_wants(heads):
+            wants = determine_wants(heads)
+            recorded_wants.extend(wants)
+            return wants
         
         try:
             self.target.lock_write()
             try:
                 self.target.start_write_group()
                 try:
-                    objects_iter = self.source.fetch_objects(determine_wants, 
+                    objects_iter = self.source.fetch_objects(
+                                record_determine_wants, 
                                 graph_walker, 
                                 target_git_object_retriever.__getitem__, 
                                 progress)
                     import_git_objects(self.target, mapping, objects_iter, 
-                            target_git_object_retriever, pb)
+                            target_git_object_retriever, recorded_wants, pb)
                 finally:
                     self.target.commit_write_group()
             finally:
