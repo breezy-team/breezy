@@ -26,12 +26,25 @@ import sys
 
 import bzrlib
 import bzrlib.api
-from bzrlib import bzrdir, errors as bzr_errors
-from bzrlib.foreign import foreign_vcs_registry
-from bzrlib.lockable_files import TransportLock
-from bzrlib.transport import register_lazy_transport
-from bzrlib.commands import plugin_cmds
-from bzrlib.trace import warning
+from bzrlib import (
+    bzrdir,
+    errors as bzr_errors,
+    )
+from bzrlib.foreign import (
+    foreign_vcs_registry,
+    )
+from bzrlib.lockable_files import (
+    TransportLock,
+    )
+from bzrlib.transport import (
+    register_lazy_transport,
+    )
+from bzrlib.commands import (
+    plugin_cmds,
+    )
+from bzrlib.trace import (
+    warning,
+    )
 
 # versions ending in 'exp' mean experimental mappings
 # versions ending in 'dev' mean development version
@@ -72,15 +85,9 @@ bzrdir.format_registry.register_lazy('git',
     help='GIT repository.', native=False, experimental=True,
     )
 
-try:
-    from bzrlib.revisionspec import revspec_registry
-    revspec_registry.register_lazy("git:", "bzrlib.plugins.git.revspec", 
-        "RevisionSpec_git")
-except ImportError:
-    lazy_check_versions()
-    from bzrlib.revisionspec import SPEC_TYPES
-    from bzrlib.plugins.git.revspec import RevisionSpec_git
-    SPEC_TYPES.append(RevisionSpec_git)
+from bzrlib.revisionspec import revspec_registry
+revspec_registry.register_lazy("git:", "bzrlib.plugins.git.revspec", 
+    "RevisionSpec_git")
 
 class GitBzrDirFormat(bzrdir.BzrDirFormat):
     _lock_class = TransportLock

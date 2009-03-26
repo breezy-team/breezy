@@ -16,6 +16,9 @@
 
 """An adapter between a Git index and a Bazaar Working Tree"""
 
+from dulwich.index import (
+    Index,
+    )
 import os
 
 from bzrlib import (
@@ -26,8 +29,6 @@ from bzrlib import (
     urlutils,
     workingtree,
     )
-
-from dulwich.index import Index
 
 class GitWorkingTree(workingtree.WorkingTree):
     """A Git working tree."""

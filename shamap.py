@@ -16,11 +16,12 @@
 
 """Map from Git sha's to Bazaar objects."""
 
-import bzrlib
-
-from bzrlib.errors import NoSuchRevision
-
 import os
+
+import bzrlib
+from bzrlib.errors import (
+    NoSuchRevision,
+    )
 
 
 def check_pysqlite_version(sqlite3):

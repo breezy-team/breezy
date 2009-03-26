@@ -20,10 +20,16 @@
 
 """Git-specific subcommands for Bazaar."""
 
-from bzrlib.commands import Command
-from bzrlib.option import Option
+from bzrlib.commands import (
+    Command,
+    )
+from bzrlib.option import (
+    Option,
+    )
 
-from bzrlib.plugins.git import get_rich_root_format
+from bzrlib.plugins.git import (
+    get_rich_root_format,
+    )
 
 class cmd_git_serve(Command):
     """Provide access to a Bazaar branch using the git protocol.

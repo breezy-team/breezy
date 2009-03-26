@@ -14,21 +14,48 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.bzrdir import BzrDir
-from bzrlib.repository import Repository
-from bzrlib.inventory import InventoryDirectory, InventoryFile
-from bzrlib.osutils import splitpath
-
-from bzrlib.plugins.git.fetch import import_git_objects
-from bzrlib.plugins.git.mapping import default_mapping, revision_to_commit, inventory_to_tree_and_blobs
-
-from dulwich.server import Backend
-from dulwich.pack import Pack, PackData, write_pack_index_v2
-from dulwich.objects import ShaFile, Commit, Tree, Blob
-
-import os, tempfile
-
+import os
 import stat
+import tempfile
+
+from bzrlib.bzrdir import (
+    BzrDir,
+    )
+from bzrlib.inventory import (
+    InventoryDirectory,
+    InventoryFile,
+    )
+from bzrlib.osutils import (
+    splitpath,
+    )
+from bzrlib.repository import (
+    Repository,
+    )
+
+from bzrlib.plugins.git.fetch import (
+    import_git_objects,
+    )
+from bzrlib.plugins.git.mapping import (
+    default_mapping,
+    inventory_to_tree_and_blobs,
+    revision_to_commit,
+    )
+
+from dulwich.server import (
+    Backend,
+    )
+from dulwich.pack import (
+    Pack,
+    PackData,
+    write_pack_index_v2,
+    )
+from dulwich.objects import (
+    Blob,
+    Commit,
+    ShaFile,
+    Tree,
+    )
+
 S_IFGITLINK = 0160000
 
 #S_IFREG | 0664 # *Might* see this; would fail fsck --strict

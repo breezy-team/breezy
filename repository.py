@@ -30,10 +30,14 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.foreign import (
-        ForeignRepository,
-        )
-from bzrlib.trace import mutter
-from bzrlib.transport import get_transport
+    ForeignRepository,
+    )
+from bzrlib.trace import (
+    mutter,
+    )
+from bzrlib.transport import (
+    get_transport,
+    )
 
 from bzrlib.plugins.git.foreign import (
     versionedfiles,
@@ -44,7 +48,9 @@ from bzrlib.plugins.git.mapping import (
     mapping_registry,
     revision_to_commit,
     )
-from bzrlib.plugins.git.versionedfiles import GitTexts
+from bzrlib.plugins.git.versionedfiles import (
+    GitTexts,
+    )
 
 import dulwich as git
 import os

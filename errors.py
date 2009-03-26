@@ -16,9 +16,9 @@
 
 """A grouping of Exceptions for bzr-git"""
 
-from bzrlib import errors as bzr_errors
 from dulwich import errors as git_errors
 
+from bzrlib import errors as bzr_errors
 
 class BzrGitError(bzr_errors.BzrError):
     """The base-level exception for bzr-git errors."""

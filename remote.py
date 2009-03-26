@@ -29,25 +29,45 @@ from bzrlib.errors import (
     NoSuchFile,
     NotLocalUrl,
     )
-from bzrlib.lockable_files import TransportLock
-from bzrlib.repository import Repository
-from bzrlib.trace import info
-from bzrlib.transport import Transport
+from bzrlib.lockable_files import (
+    TransportLock,
+    )
+from bzrlib.repository import (
+    Repository,
+    )
+from bzrlib.trace import (
+    info,
+    )
+from bzrlib.transport import (
+    Transport,
+    )
 
-from bzrlib.plugins.git import lazy_check_versions
+from bzrlib.plugins.git import (
+    lazy_check_versions,
+    )
 lazy_check_versions()
 
-from bzrlib.plugins.git.branch import GitBranch
-from bzrlib.plugins.git.errors import NoSuchRef
-from bzrlib.plugins.git.dir import GitDir
-from bzrlib.plugins.git.foreign import ForeignBranch
+from bzrlib.plugins.git.branch import (
+    GitBranch,
+    )
+from bzrlib.plugins.git.errors import (
+    NoSuchRef,
+    )
+from bzrlib.plugins.git.dir import (
+    GitDir,
+    )
+from bzrlib.plugins.git.foreign import (
+    ForeignBranch,
+    )
 from bzrlib.plugins.git.repository import (
     GitRepositoryFormat,
     GitRepository,
     )
 
 import dulwich as git
-from dulwich.errors import GitProtocolError
+from dulwich.errors import (
+    GitProtocolError,
+    )
 from dulwich.pack import (
     Pack,
     PackData,

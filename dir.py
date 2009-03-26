@@ -29,8 +29,8 @@ LockWarner = getattr(lockable_files, "_LockWarner", None)
 
 from bzrlib.plugins.git import (
     LocalGitBzrDirFormat,
-    errors,
     branch,
+    errors,
     get_rich_root_format,
     repository,
     workingtree,

@@ -14,7 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from cStringIO import StringIO
+from cStringIO import (
+    StringIO,
+    )
 import dulwich as git
 from dulwich.client import (
     SimpleFetchGraphWalker,
@@ -39,7 +41,9 @@ from bzrlib.inventory import (
 from bzrlib.repository import (
     InterRepository,
     )
-from bzrlib.tsort import topo_sort
+from bzrlib.tsort import (
+    topo_sort,
+    )
 
 from bzrlib.plugins.git.converter import (
     GitObjectConverter,

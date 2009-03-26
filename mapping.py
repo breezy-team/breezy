@@ -18,13 +18,19 @@
 
 """Converters, etc for going between Bazaar and Git ids."""
 
-from bzrlib import errors, foreign, urlutils
-from bzrlib.inventory import ROOT_ID
+from bzrlib import (
+    errors,
+    foreign,
+    urlutils,
+    )
+from bzrlib.inventory import (
+    ROOT_ID,
+    )
 from bzrlib.foreign import (
-        ForeignVcs, 
-        VcsMappingRegistry, 
-        ForeignRevision,
-        )
+    ForeignVcs, 
+    VcsMappingRegistry, 
+    ForeignRevision,
+    )
 
 def escape_file_id(file_id):
     return file_id.replace('_', '__').replace(' ', '_s')
