@@ -36,6 +36,11 @@ class TestGitBlackBox(ExternalBase):
         builder.commit('Joe Foo <joe@foo.com>', u'<The commit message>')
         builder.finish()
 
+    def test_nick(self):
+        tests.run_git('init')
+        output, error = self.run_bzr(['nick'])
+        self.assertEquals("HEAD\n", output)
+
     def test_info(self):
         self.simple_commit()
         output, error = self.run_bzr(['info'])
