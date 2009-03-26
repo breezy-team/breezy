@@ -41,6 +41,9 @@ from bzrlib.inventory import (
     InventoryFile,
     InventoryLink,
     )
+from bzrlib.lru_cache import (
+    LRUCache,
+    )
 from bzrlib.repository import (
     InterRepository,
     )
@@ -229,6 +232,7 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
     revisions = {}
     checked = set()
     heads = list(heads)
+    parent_invs_cache = LRUCache(50)
     # Find and convert commit objects
     while heads:
         if pb is not None:
@@ -260,10 +264,18 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
         # we need to make sure to import the blobs / trees with the right 
         # path; this may involve adding them more than once.
         def lookup_object(sha):
-            if sha in object_iter:
+            try:
                 return object_iter[sha]
-            return target_git_object_retriever[sha]
-        parent_invs = list(repo.iter_inventories(rev.parent_ids))
+            except KeyError:
+                return target_git_object_retriever[sha]
+        parent_invs = []
+        for parent_id in rev.parent_ids:
+            try:
+                parent_invs.append(parent_invs_cache[parent_id])
+            except KeyError:
+                parent_inv = repo.get_inventory(parent_id)
+                parent_invs.append(parent_inv)
+                parent_invs_cache[parent_id] = parent_inv
         if parent_invs == []:
             base_inv = Inventory(root_id=None)
         else:
@@ -277,6 +289,7 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
             basis_id = NULL_REVISION
         rev.inventory_sha1, inv = repo.add_inventory_by_delta(basis_id,
                   inv_delta, rev.revision_id, rev.parent_ids)
+        parent_invs_cache[rev.revision_id] = inv
         repo.add_revision(rev.revision_id, rev)
     target_git_object_retriever._idmap.commit()
 
