@@ -538,7 +538,11 @@ class _LazyGroupContentManager(object):
         # Note that this creates a reference cycle....
         factory = _LazyGroupCompressFactory(key, parents, self,
             start, end, first=first)
-        self._last_byte = max(end, self._last_byte)
+        # max() works here, but as a function call, doing a compare seems to be
+        # significantly faster, timeit says 250ms for max() and 100ms for the
+        # comparison
+        if end > self._last_byte:
+            self._last_byte = end
         self._factories.append(factory)
 
     def get_record_stream(self):
