@@ -195,6 +195,8 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
     for o in object_iter.iterobjects():
         if isinstance(o, Commit):
             rev = mapping.import_commit(o)
+            if repo.has_revision(rev.revision_id):
+                continue
             root_trees[rev.revision_id] = object_iter[o.tree]
             revisions[rev.revision_id] = rev
             graph.append((rev.revision_id, rev.parent_ids))
@@ -208,7 +210,7 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
         root_tree = root_trees[revid]
         rev = revisions[revid]
         # We have to do this here, since we have to walk the tree and 
-        # we need to make sure to import the blobs / trees with the riht 
+        # we need to make sure to import the blobs / trees with the right 
         # path; this may involve adding them more than once.
         inv = Inventory()
         inv.revision_id = rev.revision_id
@@ -265,8 +267,8 @@ class InterGitNonGitRepository(InterRepository):
             if create_pb:
                 create_pb.finished()
 
-    def fetch(self, revision_id=None, pb=None, find_ghosts=False, 
-              mapping=None, fetch_spec=None):
+    def fetch(self, revision_id=None, pb=None, find_ghosts=False, mapping=None,
+            fetch_spec=None):
         self.fetch_refs(revision_id=revision_id, pb=pb, find_ghosts=find_ghosts,
                 mapping=mapping, fetch_spec=fetch_spec)
 
