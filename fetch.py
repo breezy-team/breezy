@@ -179,12 +179,12 @@ def import_git_tree(texts, mapping, path, tree, base_inv, parent_id,
         except KeyError:
             pass
         else:
-            if tree_sha == tree.id:
+            if base_sha == tree.id:
                 # If nothing has changed since the base revision, we're done
                 return []
     # Remember for next time
-    shagitmap.add_entry(tree.id, "tree", (file_id, revision_id))
     existing_children = set()
+    shagitmap.add_entry(tree.id, "tree", (file_id, revision_id))
     for mode, name, hexsha in tree.entries():
         entry_kind = (mode & 0700000) / 0100000
         basename = name.decode("utf-8")
@@ -206,11 +206,12 @@ def import_git_tree(texts, mapping, path, tree, base_inv, parent_id,
             raise AssertionError("Unknown blob kind, perms=%r." % (mode,))
     # Remove any children that have disappeared
     if file_id in base_inv:
-        for x in set(base_inv[file_id].children).difference(existing_children):
-            # TODO: Remove recursively if child is a directory
-            child_file_id = base_inv[file_id].children[x].file_id
-            ret.append((base_inv.id2path(child_file_id), None, child_file_id,
-                        None))
+        deletable = [v for k,v in base_inv[file_id].children.iteritems() if k not in existing_children]
+        while deletable:
+            ie = deletable.pop()
+            ret.append((base_inv.id2path(ie.file_id), None, ie.file_id, None))
+            if ie.kind == "directory":
+                deletable.extend(ie.children.values())
     return ret
 
 
