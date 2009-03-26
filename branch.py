@@ -116,6 +116,15 @@ class GitBranch(ForeignBranch):
         self.head = head
         self.base = bzrdir.transport.base
 
+    def _get_nick(self, local=False, possible_master_transports=None):
+        """Find the nick name for this branch.
+
+        :return: Branch nick
+        """
+        return self.name
+
+    nick = property(_get_nick)
+
     def dpull(self, source, stop_revision=None):
         if stop_revision is None:
             stop_revision = source.last_revision()
@@ -234,6 +243,7 @@ class InterGitGenericBranch(branch.InterBranch):
                 return []
             return [head]
         interrepo.fetch_objects(determine_wants, self.source.mapping)
+        # FIXME: Check that self._last_revid is a descendant of self.target.last_revision()
         self.target.generate_revision_history(self._last_revid)
 
 
