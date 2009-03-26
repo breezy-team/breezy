@@ -68,9 +68,9 @@ def load_tests(standard_tests, module, loader):
     to_adapt, result = split_suite_by_condition(
         standard_tests, condition_isinstance(BasicRemoteObjectTests))
     smart_server_version_scenarios = [
-        ('HPSS-v2', 
+        ('HPSS-v2',
             {'transport_server': server.SmartTCPServer_for_testing_v2_only}),
-        ('HPSS-v3', 
+        ('HPSS-v3',
             {'transport_server': server.SmartTCPServer_for_testing})]
     return multiply_tests(to_adapt, smart_server_version_scenarios, result)
 
@@ -270,7 +270,11 @@ class FakeClient(_SmartClient):
         stream = list(stream)
         self._check_call(args[0], args[1:])
         self._calls.append(('call_with_body_stream', args[0], args[1:], stream))
-        return self._get_next_response()[1]
+        result = self._get_next_response()
+        # The second value returned from call_with_body_stream is supposed to
+        # be a response_handler object, but so far no tests depend on that.
+        response_handler = None 
+        return result[1], response_handler
 
 
 class FakeMedium(medium.SmartClientMedium):
@@ -1825,6 +1829,65 @@ class TestRepositoryHasRevision(TestRemoteRepository):
         self.assertEqual([], client._calls)
 
 
+class TestRepositoryInsertStream(TestRemoteRepository):
+
+    def test_unlocked_repo(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'Repository.insert_stream', ('quack/', ''),
+            'success', ('ok',))
+        client.add_expected_call(
+            'Repository.insert_stream', ('quack/', ''),
+            'success', ('ok',))
+        sink = repo._get_sink()
+        fmt = repository.RepositoryFormat.get_default_format()
+        resume_tokens, missing_keys = sink.insert_stream([], fmt, [])
+        self.assertEqual([], resume_tokens)
+        self.assertEqual(set(), missing_keys)
+        client.finished_test()
+
+    def test_locked_repo_with_no_lock_token(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'Repository.lock_write', ('quack/', ''),
+            'success', ('ok', ''))
+        client.add_expected_call(
+            'Repository.insert_stream', ('quack/', ''),
+            'success', ('ok',))
+        client.add_expected_call(
+            'Repository.insert_stream', ('quack/', ''),
+            'success', ('ok',))
+        repo.lock_write()
+        sink = repo._get_sink()
+        fmt = repository.RepositoryFormat.get_default_format()
+        resume_tokens, missing_keys = sink.insert_stream([], fmt, [])
+        self.assertEqual([], resume_tokens)
+        self.assertEqual(set(), missing_keys)
+        client.finished_test()
+
+    def test_locked_repo_with_lock_token(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'Repository.lock_write', ('quack/', ''),
+            'success', ('ok', 'a token'))
+        client.add_expected_call(
+            'Repository.insert_stream_locked', ('quack/', '', 'a token'),
+            'success', ('ok',))
+        client.add_expected_call(
+            'Repository.insert_stream_locked', ('quack/', '', 'a token'),
+            'success', ('ok',))
+        repo.lock_write()
+        sink = repo._get_sink()
+        fmt = repository.RepositoryFormat.get_default_format()
+        resume_tokens, missing_keys = sink.insert_stream([], fmt, [])
+        self.assertEqual([], resume_tokens)
+        self.assertEqual(set(), missing_keys)
+        client.finished_test()
+
+
 class TestRepositoryTarball(TestRemoteRepository):
 
     # This is a canned tarball reponse we can validate against
@@ -1882,7 +1945,14 @@ class TestRemoteRepositoryCopyContent(tests.TestCaseWithTransport):
 class _StubRealPackRepository(object):
 
     def __init__(self, calls):
+        self.calls = calls
         self._pack_collection = _StubPackCollection(calls)
+
+    def is_in_write_group(self):
+        return False
+
+    def refresh_data(self):
+        self.calls.append(('pack collection reload_pack_names',))
 
 
 class _StubPackCollection(object):
@@ -1892,9 +1962,6 @@ class _StubPackCollection(object):
 
     def autopack(self):
         self.calls.append(('pack collection autopack',))
-
-    def reload_pack_names(self):
-        self.calls.append(('pack collection reload_pack_names',))
 
 
 class TestRemotePackRepositoryAutoPack(TestRemoteRepository):
@@ -2155,13 +2222,13 @@ class TestStacking(tests.TestCaseWithTransport):
         # revision, then open it over hpss - we should be able to see that
         # revision.
         base_transport = self.get_transport()
-        base_builder = self.make_branch_builder('base', format='1.6')
+        base_builder = self.make_branch_builder('base', format='1.9')
         base_builder.start_series()
         base_revid = base_builder.build_snapshot('rev-id', None,
             [('add', ('', None, 'directory', None))],
             'message')
         base_builder.finish_series()
-        stacked_branch = self.make_branch('stacked', format='1.6')
+        stacked_branch = self.make_branch('stacked', format='1.9')
         stacked_branch.set_stacked_on_url('../base')
         # start a server looking at this
         smart_server = server.SmartTCPServer_for_testing()
@@ -2188,29 +2255,96 @@ class TestStacking(tests.TestCaseWithTransport):
             remote_repo.unlock()
 
     def prepare_stacked_remote_branch(self):
-        smart_server = server.SmartTCPServer_for_testing()
-        smart_server.setUp()
-        self.addCleanup(smart_server.tearDown)
-        tree1 = self.make_branch_and_tree('tree1')
+        """Get stacked_upon and stacked branches with content in each."""
+        self.setup_smart_server_with_call_log()
+        tree1 = self.make_branch_and_tree('tree1', format='1.9')
         tree1.commit('rev1', rev_id='rev1')
-        tree2 = self.make_branch_and_tree('tree2', format='1.6')
-        tree2.branch.set_stacked_on_url(tree1.branch.base)
-        branch2 = Branch.open(smart_server.get_url() + '/tree2')
+        tree2 = tree1.branch.bzrdir.sprout('tree2', stacked=True
+            ).open_workingtree()
+        tree2.commit('local changes make me feel good.')
+        branch2 = Branch.open(self.get_url('tree2'))
         branch2.lock_read()
         self.addCleanup(branch2.unlock)
-        return branch2
+        return tree1.branch, branch2
 
     def test_stacked_get_parent_map(self):
         # the public implementation of get_parent_map obeys stacking
-        branch = self.prepare_stacked_remote_branch()
+        _, branch = self.prepare_stacked_remote_branch()
         repo = branch.repository
         self.assertEqual(['rev1'], repo.get_parent_map(['rev1']).keys())
 
     def test_unstacked_get_parent_map(self):
         # _unstacked_provider.get_parent_map ignores stacking
-        branch = self.prepare_stacked_remote_branch()
+        _, branch = self.prepare_stacked_remote_branch()
         provider = branch.repository._unstacked_provider
         self.assertEqual([], provider.get_parent_map(['rev1']).keys())
+
+    def fetch_stream_to_rev_order(self, stream):
+        result = []
+        for kind, substream in stream:
+            if not kind == 'revisions':
+                list(substream)
+            else:
+                for content in substream:
+                    result.append(content.key[-1])
+        return result
+
+    def get_ordered_revs(self, format, order):
+        """Get a list of the revisions in a stream to format format.
+
+        :param format: The format of the target.
+        :param order: the order that target should have requested.
+        :result: The revision ids in the stream, in the order seen,
+            the topological order of revisions in the source.
+        """
+        unordered_format = bzrdir.format_registry.get(format)()
+        target_repository_format = unordered_format.repository_format
+        # Cross check
+        self.assertEqual(order, target_repository_format._fetch_order)
+        trunk, stacked = self.prepare_stacked_remote_branch()
+        source = stacked.repository._get_source(target_repository_format)
+        tip = stacked.last_revision()
+        revs = stacked.repository.get_ancestry(tip)
+        search = graph.PendingAncestryResult([tip], stacked.repository)
+        self.reset_smart_call_log()
+        stream = source.get_stream(search)
+        if None in revs:
+            revs.remove(None)
+        # We trust that if a revision is in the stream the rest of the new
+        # content for it is too, as per our main fetch tests; here we are
+        # checking that the revisions are actually included at all, and their
+        # order.
+        return self.fetch_stream_to_rev_order(stream), revs
+
+    def test_stacked_get_stream_unordered(self):
+        # Repository._get_source.get_stream() from a stacked repository with
+        # unordered yields the full data from both stacked and stacked upon
+        # sources.
+        rev_ord, expected_revs = self.get_ordered_revs('1.9', 'unordered')
+        self.assertEqual(set(expected_revs), set(rev_ord))
+        # Getting unordered results should have made a streaming data request
+        # from the server, then one from the backing branch.
+        self.assertLength(2, self.hpss_calls)
+
+    def test_stacked_get_stream_topological(self):
+        # Repository._get_source.get_stream() from a stacked repository with
+        # topological sorting yields the full data from both stacked and
+        # stacked upon sources in topological order.
+        rev_ord, expected_revs = self.get_ordered_revs('knit', 'topological')
+        self.assertEqual(expected_revs, rev_ord)
+        # Getting topological sort requires VFS calls still
+        self.assertLength(14, self.hpss_calls)
+
+    def test_stacked_get_stream_groupcompress(self):
+        # Repository._get_source.get_stream() from a stacked repository with
+        # groupcompress sorting yields the full data from both stacked and
+        # stacked upon sources in groupcompress order.
+        raise tests.TestSkipped('No groupcompress ordered format available')
+        rev_ord, expected_revs = self.get_ordered_revs('dev5', 'groupcompress')
+        self.assertEqual(expected_revs, reversed(rev_ord))
+        # Getting unordered results should have made a streaming data request
+        # from the backing branch, and one from the stacked on branch.
+        self.assertLength(2, self.hpss_calls)
 
 
 class TestRemoteBranchEffort(tests.TestCaseWithTransport):

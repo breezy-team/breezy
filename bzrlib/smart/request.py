@@ -344,6 +344,10 @@ def _translate_error(err):
         return ('ReadError', err.path)
     elif isinstance(err, errors.PermissionDenied):
         return ('PermissionDenied', err.path, err.extra)
+    elif isinstance(err, errors.TokenMismatch):
+        return ('TokenMismatch', err.given_token, err.lock_token)
+    elif isinstance(err, errors.LockContention):
+        return ('LockContention', err.lock, err.msg)
     # Unserialisable error.  Log it, and return a generic error
     trace.log_exception_quietly()
     return ('error', str(err))
@@ -481,6 +485,8 @@ request_handlers.register_lazy(
     'Repository.has_revision', 'bzrlib.smart.repository', 'SmartServerRequestHasRevision')
 request_handlers.register_lazy(
     'Repository.insert_stream', 'bzrlib.smart.repository', 'SmartServerRepositoryInsertStream')
+request_handlers.register_lazy(
+    'Repository.insert_stream_locked', 'bzrlib.smart.repository', 'SmartServerRepositoryInsertStreamLocked')
 request_handlers.register_lazy(
     'Repository.is_shared', 'bzrlib.smart.repository', 'SmartServerRepositoryIsShared')
 request_handlers.register_lazy(

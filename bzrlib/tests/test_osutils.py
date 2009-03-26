@@ -376,6 +376,7 @@ class TestCanonicalRelPath(TestCaseInTempDir):
 class TestPumpFile(TestCase):
     """Test pumpfile method."""
     def setUp(self):
+        TestCase.setUp(self)
         # create a test datablock
         self.block_size = 512
         pattern = '0123456789ABCDEF'
@@ -1472,6 +1473,28 @@ class TestLocalTimeOffset(TestCase):
         self.assertTrue(isinstance(offset, int))
         eighteen_hours = 18 * 3600
         self.assertTrue(-eighteen_hours < offset < eighteen_hours)
+
+
+class TestSizeShaFile(TestCaseInTempDir):
+
+    def test_sha_empty(self):
+        self.build_tree_contents([('foo', '')])
+        expected_sha = osutils.sha_string('')
+        f = open('foo')
+        self.addCleanup(f.close)
+        size, sha = osutils.size_sha_file(f)
+        self.assertEqual(0, size)
+        self.assertEqual(expected_sha, sha)
+
+    def test_sha_mixed_endings(self):
+        text = 'test\r\nwith\nall\rpossible line endings\r\n'
+        self.build_tree_contents([('foo', text)])
+        expected_sha = osutils.sha_string(text)
+        f = open('foo')
+        self.addCleanup(f.close)
+        size, sha = osutils.size_sha_file(f)
+        self.assertEqual(38, size)
+        self.assertEqual(expected_sha, sha)
 
 
 class TestShaFileByName(TestCaseInTempDir):

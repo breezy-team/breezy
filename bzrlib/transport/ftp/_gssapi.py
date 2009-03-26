@@ -150,9 +150,8 @@ class GSSAPIFtpTransport(FtpTransport):
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    from bzrlib import tests
-    if tests.FTPServerFeature.available():
-        from bzrlib.tests import ftp_server
-        return [(GSSAPIFtpTransport, ftp_server.FTPServer)]
+    from bzrlib.tests import ftp_server
+    if ftp_server.FTPServerFeature.available():
+        return [(GSSAPIFtpTransport, ftp_server.FTPTestServer)]
     else:
         return []
