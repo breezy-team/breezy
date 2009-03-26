@@ -641,7 +641,11 @@ class BTreeGraphIndex(object):
         # Default max size is 100,000 leave values
         self._leaf_value_cache = None # lru_cache.LRUCache(100*1000)
         self._leaf_node_cache = lru_cache.LRUCache(_NODE_CACHE_SIZE)
-        self._internal_node_cache = lru_cache.LRUCache()
+        # We could limit this, but even a 300k record btree has only 3k leaf
+        # nodes, and only 20 internal nodes. So the default of 100 nodes in an
+        # LRU would mean we always cache everything anyway, no need to pay the
+        # overhead of LRU
+        self._internal_node_cache = {}
         self._key_count = None
         self._row_lengths = None
         self._row_offsets = None # Start of each row, [-1] is the end
