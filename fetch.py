@@ -37,9 +37,15 @@ from bzrlib.errors import (
     )
 from bzrlib.inventory import (
     Inventory,
+    InventoryDirectory,
+    InventoryFile,
+    InventoryLink,
     )
 from bzrlib.repository import (
     InterRepository,
+    )
+from bzrlib.revision import (
+    NULL_REVISION,
     )
 from bzrlib.tsort import (
     topo_sort,
@@ -97,88 +103,115 @@ class BzrFetchGraphWalker(object):
         return None
 
 
-def import_git_blob(texts, mapping, path, blob, inv, parent_invs, shagitmap,
-    executable):
+def import_git_blob(texts, mapping, path, blob, base_inv, parent_id, 
+    revision_id, parent_invs, shagitmap, executable):
     """Import a git blob object into a bzr repository.
 
     :param texts: VersionedFiles to add to
     :param path: Path in the tree
     :param blob: A git blob
-    :return: Inventory entry
+    :return: Inventory delta for this file
     """
     file_id = mapping.generate_file_id(path)
     # We just have to hope this is indeed utf-8:
-    ie = inv.add_path(path.decode("utf-8"), "file", file_id)
+    ie = InventoryFile(file_id, urlutils.basename(path).decode("utf-8"), 
+        parent_id)
     ie.text_size = len(blob.data)
     ie.text_sha1 = osutils.sha_string(blob.data)
     ie.executable = executable
-    # See if this is the same revision as one of the parents unchanged
+    # If there were no changes compared to the base inventory, there's no need 
+    # for a delta
+    if (file_id in base_inv and 
+        base_inv[file_id].parent_id == ie.parent_id and
+        base_inv[file_id].text_sha1 == ie.text_sha1 and
+        base_inv[file_id].executable == ie.executable):
+        return []
+    # Check what revision we should store
     parent_keys = []
     for pinv in parent_invs:
         if not file_id in pinv:
             continue
         if pinv[file_id].text_sha1 == ie.text_sha1:
+            # found a revision in one of the parents to use
             ie.revision = pinv[file_id].revision
-            return ie
+            break
         parent_keys.append((file_id, pinv[file_id].revision))
-    ie.revision = inv.revision_id
-    assert file_id is not None
-    assert ie.revision is not None
-    texts.add_lines((file_id, ie.revision), parent_keys,
-        osutils.split_lines(blob.data))
-    shagitmap.add_entry(blob.sha().hexdigest(), "blob",
-        (ie.file_id, ie.revision))
-    return ie
+    if ie.revision is None:
+        # Need to store a new revision
+        ie.revision = revision_id
+        assert file_id is not None
+        assert ie.revision is not None
+        texts.add_lines((file_id, ie.revision), parent_keys,
+            osutils.split_lines(blob.data))
+        shagitmap.add_entry(blob.sha().hexdigest(), "blob",
+            (ie.file_id, ie.revision))
+    if file_id in base_inv:
+        old_path = base_inv.id2path(file_id)
+    else:
+        old_path = None
+    return [(old_path, path, file_id, ie)]
 
 
-def import_git_tree(texts, mapping, path, tree, inv, parent_invs, shagitmap,
-    lookup_object):
+def import_git_tree(texts, mapping, path, tree, base_inv, parent_id, 
+    revision_id, parent_invs, shagitmap, lookup_object):
     """Import a git tree object into a bzr repository.
 
     :param texts: VersionedFiles object to add to
     :param path: Path in the tree
     :param tree: A git tree object
-    :param inv: Inventory object
+    :param base_inv: Base inventory against which to return inventory delta
+    :return: Inventory delta for this subtree
     """
+    ret = []
     file_id = mapping.generate_file_id(path)
     # We just have to hope this is indeed utf-8:
-    ie = inv.add_path(path.decode("utf-8"), "directory", file_id)
-    ie.revision = None
-    parent_keys = []
-    for pinv in parent_invs:
-        if not file_id in pinv:
-            continue
+    ie = InventoryDirectory(file_id, urlutils.basename(path.decode("utf-8")), 
+        parent_id)
+    if not file_id in base_inv:
+        # Newly appeared here
+        ie.revision = revision_id
+        texts.add_lines((file_id, ie.revision), [], [])
+        ret.append((None, path, file_id, ie))
+    else:
+        # See if this has changed at all
         try:
-            tree_sha = shagitmap.lookup_tree(path, pinv[file_id].revision)
+            base_sha = shagitmap.lookup_tree(path, base_inv.revision_id)
         except KeyError:
             pass
         else:
             if tree_sha == tree.id:
-                ie.revision = pinv[file_id].revision
-                break
-        parent_keys.append((file_id, pinv[file_id].revision))
-    if ie.revision is None:
-        ie.revision = inv.revision_id
-        texts.add_lines((file_id, ie.revision), parent_keys, [])
-        shagitmap.add_entry(tree.id, "tree", (file_id, ie.revision))
+                # If nothing has changed since the base revision, we're done
+                return []
+    # Remember for next time
+    shagitmap.add_entry(tree.id, "tree", (file_id, revision_id))
+    existing_children = set()
     for mode, name, hexsha in tree.entries():
         entry_kind = (mode & 0700000) / 0100000
         basename = name.decode("utf-8")
+        existing_children.add(basename)
         if path == "":
             child_path = name
         else:
             child_path = urlutils.join(path, name)
         obj = lookup_object(hexsha)
         if entry_kind == 0:
-            import_git_tree(texts, mapping, child_path, obj, inv, parent_invs,
-                shagitmap, lookup_object)
+            ret.extend(import_git_tree(texts, mapping, child_path, obj, base_inv, 
+                file_id, revision_id, parent_invs, shagitmap, lookup_object))
         elif entry_kind == 1:
             fs_mode = mode & 0777
-            import_git_blob(texts, mapping, child_path, obj, inv, parent_invs,
-                shagitmap, bool(fs_mode & 0111))
+            ret.extend(import_git_blob(texts, mapping, child_path, obj, base_inv, 
+                file_id, revision_id, parent_invs, shagitmap, 
+                bool(fs_mode & 0111)))
         else:
             raise AssertionError("Unknown blob kind, perms=%r." % (mode,))
-    return ie
+    # Remove any children that have disappeared
+    if file_id in base_inv:
+        for x in set(base_inv[file_id].children).difference(existing_children):
+            # TODO: Remove recursively if child is a directory
+            child_file_id = base_inv[file_id].children[x].file_id
+            ret.append((base_inv.id2path(child_file_id), None, child_file_id,
+                        None))
+    return ret
 
 
 def import_git_objects(repo, mapping, object_iter, target_git_object_retriever, 
@@ -225,16 +258,25 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
         # We have to do this here, since we have to walk the tree and 
         # we need to make sure to import the blobs / trees with the right 
         # path; this may involve adding them more than once.
-        inv = Inventory()
-        inv.revision_id = rev.revision_id
         def lookup_object(sha):
             if sha in object_iter:
                 return object_iter[sha]
             return target_git_object_retriever[sha]
-        parent_invs = [repo.get_inventory(r) for r in rev.parent_ids]
-        import_git_tree(repo.texts, mapping, "", root_tree, inv, parent_invs, 
+        parent_invs = list(repo.iter_inventories(rev.parent_ids))
+        if parent_invs == []:
+            base_inv = Inventory(root_id=None)
+        else:
+            base_inv = parent_invs[0]
+        inv_delta = import_git_tree(repo.texts, mapping, "", root_tree, 
+            base_inv, None, revid, parent_invs, 
             target_git_object_retriever._idmap, lookup_object)
-        repo.add_revision(rev.revision_id, rev, inv)
+        try:
+            basis_id = rev.parent_ids[0]
+        except IndexError:
+            basis_id = NULL_REVISION
+        rev.inventory_sha1, inv = repo.add_inventory_by_delta(basis_id,
+                  inv_delta, rev.revision_id, rev.parent_ids)
+        repo.add_revision(rev.revision_id, rev)
     target_git_object_retriever._idmap.commit()
 
 
