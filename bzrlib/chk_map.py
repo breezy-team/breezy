@@ -1441,7 +1441,10 @@ def iter_interesting_nodes(store, interesting_root_keys,
                 # nodes).
                 # small.difference_update(large) scales O(large), but
                 # small.difference(large) scales O(small).
-                chks = set(node.refs()).difference(all_uninteresting_chks)
+                # Also, we know we just _deserialised this node, so we can
+                # access the dict directly.
+                chks = set(node._items.itervalues()).difference(
+                            all_uninteresting_chks)
                 # Is set() and .difference_update better than:
                 # chks = [chk for chk in node.refs()
                 #              if chk not in all_uninteresting_chks]
