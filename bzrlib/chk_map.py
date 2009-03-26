@@ -172,7 +172,7 @@ class CHKMap(object):
                 key_str = ' None'
         result.append('%s%r %s%s' % (indent, prefix, node.__class__.__name__,
                                      key_str))
-        if isinstance(node, InternalNode):
+        if type(node) is InternalNode:
             # Trigger all child nodes to get loaded
             list(node._iter_nodes(self._store))
             for prefix, sub in sorted(node._items.iteritems()):
@@ -437,7 +437,7 @@ class CHKMap(object):
 
     def key(self):
         """Return the key for this map."""
-        if isinstance(self._root_node, tuple):
+        if type(self._root_node) is tuple:
             return self._root_node
         else:
             return self._root_node._key
@@ -471,7 +471,7 @@ class CHKMap(object):
     def unmap(self, key, check_remap=True):
         """remove key from the map."""
         self._ensure_root()
-        if isinstance(self._root_node, InternalNode):
+        if type(self._root_node) is InternalNode:
             unmapped = self._root_node.unmap(self._store, key,
                 check_remap=check_remap)
         else:
@@ -481,7 +481,7 @@ class CHKMap(object):
     def _check_remap(self):
         """Check if nodes can be collapsed."""
         self._ensure_root()
-        if isinstance(self._root_node, InternalNode):
+        if type(self._root_node) is InternalNode:
             self._root_node._check_remap(self._store)
 
     def _save(self):
@@ -1047,7 +1047,7 @@ class InternalNode(Node):
             # new child needed:
             child = self._new_child(search_key, LeafNode)
         old_len = len(child)
-        if isinstance(child, LeafNode):
+        if type(child) is LeafNode:
             old_size = child._current_size()
         else:
             old_size = None
@@ -1059,7 +1059,7 @@ class InternalNode(Node):
             self._items[search_key] = child
             self._key = None
             new_node = self
-            if isinstance(child, LeafNode):
+            if type(child) is LeafNode:
                 if old_size is None:
                     # The old node was an InternalNode which means it has now
                     # collapsed, so we need to check if it will chain to a
@@ -1213,7 +1213,7 @@ class InternalNode(Node):
         if len(self._items) == 1:
             # this node is no longer needed:
             return self._items.values()[0]
-        if isinstance(unmapped, InternalNode):
+        if type(unmapped) is InternalNode:
             return self
         if check_remap:
             return self._check_remap(store)
@@ -1259,7 +1259,7 @@ class InternalNode(Node):
         #   c) With 255-way fan out, we don't want to read all 255 and destroy
         #      the page cache, just to determine that we really don't need it.
         for node, _ in self._iter_nodes(store, batch_size=16):
-            if isinstance(node, InternalNode):
+            if type(node) is InternalNode:
                 # Without looking at any leaf nodes, we are sure
                 return self
             for key, value in node._items.iteritems():
@@ -1300,7 +1300,7 @@ def _find_children_info(store, interesting_keys, uninteresting_keys, pb):
         # care about external references.
         node = _deserialise(bytes, record.key, search_key_func=None)
         if record.key in uninteresting_keys:
-            if isinstance(node, InternalNode):
+            if type(node) is InternalNode:
                 next_uninteresting.update(node.refs())
             else:
                 # We know we are at a LeafNode, so we can pass None for the
@@ -1308,7 +1308,7 @@ def _find_children_info(store, interesting_keys, uninteresting_keys, pb):
                 uninteresting_items.update(node.iteritems(None))
         else:
             interesting_records.append(record)
-            if isinstance(node, InternalNode):
+            if type(node) is InternalNode:
                 next_interesting.update(node.refs())
             else:
                 interesting_items.update(node.iteritems(None))
@@ -1364,7 +1364,7 @@ def _find_all_uninteresting(store, interesting_root_keys,
             # We don't care about search_key_func for this code, because we
             # only care about external references.
             node = _deserialise(bytes, record.key, search_key_func=None)
-            if isinstance(node, InternalNode):
+            if type(node) is InternalNode:
                 # uninteresting_prefix_chks.update(node._items.iteritems())
                 chks = node._items.values()
                 # TODO: We remove the entries that are already in
@@ -1435,7 +1435,7 @@ def iter_interesting_nodes(store, interesting_root_keys,
             # We don't care about search_key_func for this code, because we
             # only care about external references.
             node = _deserialise(bytes, record.key, search_key_func=None)
-            if isinstance(node, InternalNode):
+            if type(node) is InternalNode:
                 # all_uninteresting_chks grows large, as it lists all nodes we
                 # don't want to process (including already seen interesting
                 # nodes).
