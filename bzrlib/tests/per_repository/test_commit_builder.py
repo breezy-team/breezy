@@ -571,7 +571,8 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         self._add_commit_check_unchanged(tree, 'link')
 
     def test_last_modified_revision_after_commit_link_unchanged_ric(self):
-        # committing without changing a subtree does not change the last modified.
+        # committing without changing a link does not change the last modified.
+        self.requireFeature(tests.SymlinkFeature)
         tree = self.make_branch_and_tree('.')
         os.symlink('target', 'link')
         self._add_commit_check_unchanged(tree, 'link',
