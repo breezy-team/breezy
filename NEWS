@@ -241,6 +241,11 @@ Internals
   building a working tree (file.writelines(str) is very inefficient). This
   can have a large effect on ``bzr checkout`` times. (John Arbash Meinel)
 
+* ``tests.run_suite`` has a new parameter ``suite_decorators``, a list of 
+  callables to use to decorate the test suite. Such decorators can add or
+  remove tests, or even remote the test suite to another machine if
+  desired. (Robert Collins)
+
 * The smart server verb ``Repository.get_parent_map`` can now include
   information about ghosts when the special revision ``include-missing:``
   is in the requested parents map list. With this flag, ghosts are

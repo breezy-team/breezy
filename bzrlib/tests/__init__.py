@@ -589,7 +589,7 @@ def iter_suite_tests(suite):
     if isinstance(suite, unittest.TestCase):
         yield suite
     elif isinstance(suite, unittest.TestSuite):
-        for item in suite._tests:
+        for item in suite:
             for r in iter_suite_tests(item):
                 yield r
     else:
@@ -2628,7 +2628,8 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
               random_seed=None,
               exclude_pattern=None,
               strict=False,
-              runner_class=None):
+              runner_class=None,
+              suite_decorators=None):
     """Run a test suite for bzr selftest.
 
     :param runner_class: The class of runner to use. Must support the
@@ -2650,42 +2651,189 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
                             list_only=list_only,
                             )
     runner.stop_on_failure=stop_on_failure
-    # Initialise the random number generator and display the seed used.
-    # We convert the seed to a long to make it reuseable across invocations.
-    random_order = False
-    if random_seed is not None:
-        random_order = True
-        if random_seed == "now":
-            random_seed = long(time.time())
+    # built in decorator factories:
+    decorators = [
+        random_order(random_seed, runner),
+        exclude_tests(exclude_pattern),
+        ]
+    if matching_tests_first:
+        decorators.append(tests_first(pattern))
+    else:
+        decorators.append(filter_tests(pattern))
+    if suite_decorators:
+        decorators.extend(suite_decorators)
+    for decorator in decorators:
+        suite = decorator(suite)
+    result = runner.run(suite)
+    if strict:
+        return result.wasStrictlySuccessful()
+    else:
+        return result.wasSuccessful()
+
+
+def exclude_tests(exclude_pattern):
+    """Return a test suite decorator that excludes tests."""
+    if exclude_pattern is None:
+        return identity_decorator
+    def decorator(suite):
+        return ExcludeDecorator(suite, exclude_pattern)
+    return decorator
+
+
+def filter_tests(pattern):
+    if pattern == '.*':
+        return identity_decorator
+    def decorator(suite):
+        return FilterTestsDecorator(suite, pattern)
+    return decorator
+
+
+def random_order(random_seed, runner):
+    """Return a test suite decorator factory for randomising tests order.
+    
+    :param random_seed: now, a string which casts to a long, or a long.
+    :param runner: A test runner with a stream attribute to report on.
+    """
+    if random_seed is None:
+        return identity_decorator
+    def decorator(suite):
+        return RandomDecorator(suite, random_seed, runner.stream)
+    return decorator
+
+
+def tests_first(pattern):
+    if pattern == '.*':
+        return identity_decorator
+    def decorator(suite):
+        return TestFirstDecorator(suite, pattern)
+    return decorator
+
+
+def identity_decorator(suite):
+    """Return suite."""
+    return suite
+
+
+class TestDecorator(TestSuite):
+    """A decorator for TestCase/TestSuite objects.
+    
+    Usually, subclasses should override __iter__(used when flattening test
+    suites), which we do to filter, reorder, parallelise and so on, run() and
+    debug().
+    """
+
+    def __init__(self, suite):
+        TestSuite.__init__(self)
+        self.addTest(suite)
+
+    def countTestCases(self):
+        cases = 0
+        for test in self:
+            cases += test.countTestCases()
+        return cases
+
+    def debug(self):
+        for test in self:
+            test.debug()
+
+    def run(self, result):
+        # Use iteration on self, not self._tests, to allow subclasses to hook
+        # into __iter__.
+        for test in self:
+            if result.shouldStop:
+                break
+            test.run(result)
+        return result
+
+
+class ExcludeDecorator(TestDecorator):
+    """A decorator which excludes test matching an exclude pattern."""
+
+    def __init__(self, suite, exclude_pattern):
+        TestDecorator.__init__(self, suite)
+        self.exclude_pattern = exclude_pattern
+        self.excluded = False
+
+    def __iter__(self):
+        if self.excluded:
+            return iter(self._tests)
+        self.excluded = True
+        suite = exclude_tests_by_re(self, self.exclude_pattern)
+        del self._tests[:]
+        self.addTests(suite)
+        return iter(self._tests)
+
+
+class FilterTestsDecorator(TestDecorator):
+    """A decorator which filters tests to those matching a pattern."""
+
+    def __init__(self, suite, pattern):
+        TestDecorator.__init__(self, suite)
+        self.pattern = pattern
+        self.filtered = False
+
+    def __iter__(self):
+        if self.filtered:
+            return iter(self._tests)
+        self.filtered = True
+        suite = filter_suite_by_re(self, self.pattern)
+        del self._tests[:]
+        self.addTests(suite)
+        return iter(self._tests)
+
+
+class RandomDecorator(TestDecorator):
+    """A decorator which randomises the order of its tests."""
+
+    def __init__(self, suite, random_seed, stream):
+        TestDecorator.__init__(self, suite)
+        self.random_seed = random_seed
+        self.randomised = False
+        self.stream = stream
+
+    def __iter__(self):
+        if self.randomised:
+            return iter(self._tests)
+        self.randomised = True
+        self.stream.writeln("Randomizing test order using seed %s\n" %
+            (self.actual_seed()))
+        # Initialise the random number generator.
+        random.seed(self.actual_seed())
+        suite = randomize_suite(self)
+        del self._tests[:]
+        self.addTests(suite)
+        return iter(self._tests)
+
+    def actual_seed(self):
+        if self.random_seed == "now":
+            # We convert the seed to a long to make it reuseable across
+            # invocations (because the user can reenter it).
+            self.random_seed = long(time.time())
         else:
             # Convert the seed to a long if we can
             try:
-                random_seed = long(random_seed)
+                self.random_seed = long(self.random_seed)
             except:
                 pass
-        runner.stream.writeln("Randomizing test order using seed %s\n" %
-            (random_seed))
-        random.seed(random_seed)
-    # Customise the list of tests if requested
-    if exclude_pattern is not None:
-        suite = exclude_tests_by_re(suite, exclude_pattern)
-    if random_order:
-        order_changer = randomize_suite
-    else:
-        order_changer = preserve_input
-    if pattern != '.*' or random_order:
-        if matching_tests_first:
-            suites = map(order_changer, split_suite_by_re(suite, pattern))
-            suite = TestUtil.TestSuite(suites)
-        else:
-            suite = order_changer(filter_suite_by_re(suite, pattern))
+        return self.random_seed
 
-    result = runner.run(suite)
 
-    if strict:
-        return result.wasStrictlySuccessful()
+class TestFirstDecorator(TestDecorator):
+    """A decorator which moves named tests to the front."""
 
-    return result.wasSuccessful()
+    def __init__(self, suite, pattern):
+        TestDecorator.__init__(self, suite)
+        self.pattern = pattern
+        self.filtered = False
+
+    def __iter__(self):
+        if self.filtered:
+            return iter(self._tests)
+        self.filtered = True
+        suites = split_suite_by_re(self, self.pattern)
+        del self._tests[:]
+        self.addTests(suites)
+        return iter(self._tests)
 
 
 # Controlled by "bzr selftest -E=..." option
