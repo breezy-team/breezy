@@ -104,7 +104,7 @@ def import_git_blob(texts, mapping, path, blob, inv, parent_invs, shagitmap,
     :param texts: VersionedFiles to add to
     :param path: Path in the tree
     :param blob: A git blob
-    :return: Inventory entry
+    :return: Inventory delta for this file
     """
     file_id = mapping.generate_file_id(path)
     # We just have to hope this is indeed utf-8:
@@ -139,6 +139,7 @@ def import_git_tree(texts, mapping, path, tree, inv, parent_invs, shagitmap,
     :param path: Path in the tree
     :param tree: A git tree object
     :param inv: Inventory object
+    :return: Inventory delta for this subtree
     """
     file_id = mapping.generate_file_id(path)
     # We just have to hope this is indeed utf-8:
@@ -178,7 +179,6 @@ def import_git_tree(texts, mapping, path, tree, inv, parent_invs, shagitmap,
                 shagitmap, bool(fs_mode & 0111))
         else:
             raise AssertionError("Unknown blob kind, perms=%r." % (mode,))
-    return ie
 
 
 def import_git_objects(repo, mapping, object_iter, target_git_object_retriever, 
@@ -225,16 +225,32 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
         # We have to do this here, since we have to walk the tree and 
         # we need to make sure to import the blobs / trees with the right 
         # path; this may involve adding them more than once.
-        inv = Inventory()
-        inv.revision_id = rev.revision_id
         def lookup_object(sha):
             if sha in object_iter:
                 return object_iter[sha]
             return target_git_object_retriever[sha]
-        parent_invs = [repo.get_inventory(r) for r in rev.parent_ids]
-        import_git_tree(repo.texts, mapping, "", root_tree, inv, parent_invs, 
-            target_git_object_retriever._idmap, lookup_object)
-        repo.add_revision(rev.revision_id, rev, inv)
+        parent_invs = list(repo.iter_inventories(rev.parent_ids))
+        if parent_invs == []:
+            base_inv = Inventory()
+        else:
+            base_inv = parent_invs[0]
+        inv_delta = import_git_tree(repo.texts, mapping, "", root_tree, inv, 
+            parent_invs, target_git_object_retriever._idmap, lookup_object)
+        if getattr(repo, "add_inventory_by_delta", None) is not None:
+            try:
+                basis_id = rev.parent_ids[0]
+            except IndexError:
+                basis_id = NULL_REVISION
+            rev.inventory_sha1, inv = self.target.add_inventory_by_delta(basis_id,
+                      inv_delta, rev.revision_id,
+                      [r for r in rev.parent_ids if r in repo.has_revisions(rev.parent_ids)])
+        else:
+            inv = base_inv
+            inv.apply_delta(inv_delta)
+            self.inventory.revision_id = rev.revision_id
+            rev.inventory_sha1 = repo.add_inventory(rev.revision_id, inv, 
+                rev.parent_ids)
+        repo.add_revision(rev.revision_id, rev)
     target_git_object_retriever._idmap.commit()
 
 
