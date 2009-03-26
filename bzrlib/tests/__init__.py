@@ -3224,6 +3224,7 @@ def multiply_tests(tests, scenarios, result):
     the scenario name at the end of its id(), and updating the test object's
     __dict__ with the scenario_param_dict.
 
+    >>> import bzrlib.tests.test_sampler
     >>> r = multiply_tests(
     ...     bzrlib.tests.test_sampler.DemoTest('test_nothing'),
     ...     [('one', dict(param=1)),
