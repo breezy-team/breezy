@@ -19,6 +19,7 @@
 import threading
 
 from bzrlib import errors
+from bzrlib.bzrdir import BzrDir
 from bzrlib.smart import request
 from bzrlib.tests import TestCase, TestCaseWithMemoryTransport
 from bzrlib.transport import get_transport
@@ -202,4 +203,22 @@ class TestJailHook(TestCaseWithMemoryTransport):
         # A completely unrelated transport is not allowed
         self.assertRaises(
             errors.BzrError, _pre_open_hook, get_transport('http://host/'))
+
+    def test_open_bzrdir_in_non_main_thread(self):
+        """Opening a bzrdir in a non-main thread should work ok.
+        
+        This makes sure that the globally-installed
+        bzrlib.smart.request._pre_open_hook, which uses a threading.local(),
+        works in a newly created thread.
+        """
+        bzrdir = self.make_bzrdir('.')
+        transport = bzrdir.root_transport
+        thread_result = []
+        def t():
+            BzrDir.open_from_transport(transport)
+            thread_result.append('ok')
+        thread = threading.Thread(target=t)
+        thread.start()
+        thread.join()
+        self.assertEqual(['ok'], thread_result)
 
