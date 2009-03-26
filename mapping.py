@@ -63,9 +63,12 @@ class BzrGitMapping(foreign.VcsMapping):
         return bzr_rev_id[len(cls.revid_prefix)+1:], cls()
 
     def generate_file_id(self, path):
+        # Git paths are just bytestrings
+        # We must just hope they are valid UTF-8..
+        assert isinstance(path, str)
         if path == "":
             return ROOT_ID
-        return escape_file_id(path.encode('utf-8'))
+        return escape_file_id(path)
 
     def import_commit(self, commit):
         """Convert a git commit to a bzr revision.

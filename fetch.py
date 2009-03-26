@@ -107,7 +107,8 @@ def import_git_blob(texts, mapping, path, blob, inv, parent_invs, shagitmap,
     :return: Inventory entry
     """
     file_id = mapping.generate_file_id(path)
-    ie = inv.add_path(path, "file", file_id)
+    # We just have to hope this is indeed utf-8:
+    ie = inv.add_path(path.decode("utf-8"), "file", file_id)
     ie.text_size = len(blob.data)
     ie.text_sha1 = osutils.sha_string(blob.data)
     ie.executable = executable
@@ -140,7 +141,8 @@ def import_git_tree(texts, mapping, path, tree, inv, parent_invs, shagitmap,
     :param inv: Inventory object
     """
     file_id = mapping.generate_file_id(path)
-    ie = inv.add_path(path, "directory", file_id)
+    # We just have to hope this is indeed utf-8:
+    ie = inv.add_path(path.decode("utf-8"), "directory", file_id)
     ie.revision = None
     parent_keys = []
     for pinv in parent_invs:
