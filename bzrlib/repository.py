@@ -2021,6 +2021,7 @@ class Repository(object):
         inventories in memory, but will only parse a single inventory at a
         time.
 
+        :param revision_ids: The expected revision ids of the inventories.
         :return: An iterator of inventories.
         """
         if ((None in revision_ids)
