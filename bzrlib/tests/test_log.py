@@ -536,7 +536,7 @@ added:
         wt.commit('merge branch 1')
         b = wt.branch
         sio = self.make_utf8_encoded_stringio()
-        lf = log.LongLogFormatter(to_file=sio)
+        lf = log.LongLogFormatter(to_file=sio, levels=0)
         log.show_log(b, lf, verbose=True)
         the_log = normalize_log(sio.getvalue())
         self.assertEqualDiff("""\
@@ -593,7 +593,7 @@ message:
         wt.commit('merge branch 1')
         b = wt.branch
         sio = self.make_utf8_encoded_stringio()
-        lf = log.LongLogFormatter(to_file=sio)
+        lf = log.LongLogFormatter(to_file=sio, levels=0)
         log.show_log(b, lf, verbose=True)
         the_log = normalize_log(sio.getvalue())
         self.assertEqualDiff("""\

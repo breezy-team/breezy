@@ -1379,6 +1379,7 @@ class LogFormatter(object):
 class LongLogFormatter(LogFormatter):
 
     supports_merge_revisions = True
+    preferred_levels = 1
     supports_delta = True
     supports_tags = True
     supports_diff = True
