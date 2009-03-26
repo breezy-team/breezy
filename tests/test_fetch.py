@@ -1,4 +1,5 @@
 # Copyright (C) 2009 Jelmer Vernooij <jelmer@samba.org>
+# -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -154,6 +155,20 @@ class RepositoryFetchTests:
         self.assertEquals(True, tree.inventory[tree.path2id("foobar")].executable)
         self.assertTrue(tree.has_filename("notexec"))
         self.assertEquals(False, tree.inventory[tree.path2id("notexec")].executable)
+
+    def test_non_ascii_characters(self):
+        self.make_git_repo("d")
+        os.chdir("d")
+        bb = GitBranchBuilder()
+        bb.set_file(u"foőbar", "foo\nbar\n", False)
+        mark = bb.commit("Somebody <somebody@someorg.org>", "mymsg")
+        gitsha = bb.finish()[mark]
+        os.chdir("..")
+        oldrepo = self.open_git_repo("d")
+        newrepo = self.clone_git_repo("d", "f")
+        revid = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha)
+        tree = newrepo.revision_tree(revid)
+        self.assertTrue(tree.has_filename(u"foőbar"))
 
 
 class LocalRepositoryFetchTests(RepositoryFetchTests, TestCaseWithTransport):
