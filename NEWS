@@ -12,6 +12,11 @@ In Development
 Compatibility Breaks
 ********************
 
+* ``bzr ls`` is no longer recursive by default. To recurse, use the
+  new ``-R`` option. The old ``--non-recursive`` option has been removed.
+  If you alias ``ls`` to ``ls -R``, you can disable recursion using
+  ``--no-recursive`` instead.  (Ian Clatworthy)
+
 * bzr no longer autodetects nested trees as 'tree-references'.  They
   must now be explicitly added tree references.  At the commandline, use
   join --reference instead of add.  (Aaron Bentley)

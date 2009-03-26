@@ -2284,12 +2284,11 @@ class cmd_ls(Command):
 
     _see_also = ['status', 'cat']
     takes_args = ['path?']
-    # TODO: Take a revision or remote path and list that tree instead.
     takes_options = [
             'verbose',
             'revision',
-            Option('non-recursive',
-                   help='Don\'t recurse into subdirectories.'),
+            Option('recursive', short_name='R',
+                   help='Recurse into subdirectories.'),
             Option('from-root',
                    help='Print paths relative to the root of the branch.'),
             Option('unknown', help='Print unknown files.'),
@@ -2306,7 +2305,7 @@ class cmd_ls(Command):
             ]
     @display_command
     def run(self, revision=None, verbose=False,
-            non_recursive=False, from_root=False,
+            recursive=False, from_root=False,
             unknown=False, versioned=False, ignored=False,
             null=False, kind=None, show_ids=False, path=None):
 
@@ -2350,7 +2349,7 @@ class cmd_ls(Command):
             for fp, fc, fkind, fid, entry in tree.list_files(include_root=False):
                 if fp.startswith(relpath):
                     fp = osutils.pathjoin(prefix, fp[len(relpath):])
-                    if non_recursive and '/' in fp:
+                    if not recursive and '/' in fp:
                         continue
                     if not all and not selection[fc]:
                         continue
