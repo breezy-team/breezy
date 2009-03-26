@@ -1977,9 +1977,9 @@ class cmd_log(Command):
 
     :Path filtering:
 
-      If a parameter is given and it's not a branch, the log will be filtered
-      to show only those revisions that changed the nominated file or
-      directory.
+      If parameters are given and the first one is not a branch, the log
+      will be filtered to show only those revisions that changed the
+      nominated files or directories.
 
       Filenames are interpreted within their historical context. To log a
       deleted file, specify a revision range so that the file existed at
@@ -2008,11 +2008,6 @@ class cmd_log(Command):
       explicitly ask for this (and no way to stop logging a file back
       until it was last renamed).
 
-      Note: If the path is a directory, only revisions that directly changed
-      that directory object are currently shown. This is considered a bug.
-      (Support for filtering against multiple files and for files within a
-      directory is under development.)
-
     :Other filtering:
 
       The --message option can be used for finding revisions that match a
@@ -2033,7 +2028,7 @@ class cmd_log(Command):
 
         [ALIASES]
         tip = log -r-1 -n1
-        top = log -r-10.. --short --forward
+        top = log -l10 --line
         show = log -v -p -n1 --long
 
       ``bzr tip`` will then show the latest revision while ``bzr top``
@@ -2112,7 +2107,11 @@ class cmd_log(Command):
             message=None,
             limit=None,
             show_diff=False):
-        from bzrlib.log import Logger, LogRequest, _get_info_for_log_files
+        from bzrlib.log import (
+            Logger,
+            make_log_request_dict,
+            _get_info_for_log_files,
+            )
         direction = (forward and 'forward') or 'reverse'
 
         if change is not None:
@@ -2145,7 +2144,7 @@ class cmd_log(Command):
                     kind in ['directory', 'tree-reference'])
         else:
             # log everything
-            # FIXME ? log the current subdir only RBC 20060203 
+            # FIXME ? log the current subdir only RBC 20060203
             if revision is not None \
                     and len(revision) > 0 and revision[0].get_branch():
                 location = revision[0].get_branch()
@@ -2196,7 +2195,8 @@ class cmd_log(Command):
             # Build the LogRequest and execute it
             if len(file_ids) == 0:
                 file_ids = None
-            rqst = LogRequest(direction=direction, specific_fileids=file_ids,
+            rqst = make_log_request_dict(
+                direction=direction, specific_fileids=file_ids,
                 start_revision=rev1, end_revision=rev2, limit=limit,
                 message_search=message, delta_type=delta_type,
                 diff_type=diff_type, _match_using_deltas=match_using_deltas)

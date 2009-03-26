@@ -201,84 +201,94 @@ def show_log(branch,
         diff_type = None
 
     # Build the request and execute it
-    rqst = LogRequest(direction=direction, specific_fileids=file_ids,
+    rqst = make_log_request_dict(direction=direction, specific_fileids=file_ids,
         start_revision=start_revision, end_revision=end_revision,
         limit=limit, message_search=search,
         delta_type=delta_type, diff_type=diff_type)
     Logger(branch, rqst).show(lf)
 
 
-class LogRequest(object):
-    """Query parameters for logging a branch."""
+# Note: This needs to be kept this in sync with the defaults in
+# make_log_request_dict() below
+_DEFAULT_REQUEST_PARAMS = {
+    'direction': 'reverse',
+    'levels': 1,
+    'generate_tags': True,
+    '_match_using_deltas': True,
+    }
 
-    def __init__(self,
-        direction='reverse',
-        specific_fileids=None,
-        start_revision=None,
-        end_revision=None,
-        limit=None,
-        message_search=None,
-        levels=1,
-        generate_tags=True,
-        delta_type=None,
-        diff_type=None,
-        _match_using_deltas=True,
-        ):
-        """Create a logging request.
 
-        Each of these parameter become a public attribute of the object.
+def make_log_request_dict(direction='reverse', specific_fileids=None,
+    start_revision=None, end_revision=None, limit=None,
+    message_search=None, levels=1, generate_tags=True, delta_type=None,
+    diff_type=None, _match_using_deltas=True):
+    """Convenience function for making a logging request dictionary.
 
-        :param direction: 'reverse' (default) is latest to earliest;
-          'forward' is earliest to latest.
+    Using this function may make code slightly safer by ensuring
+    parameters have the correct names. It also provides a reference
+    point for documenting the supported parameters.
 
-        :param specific_fileids: If not None, only include revisions
-          affecting the specified files, rather than all revisions.
+    :param direction: 'reverse' (default) is latest to earliest;
+      'forward' is earliest to latest.
 
-        :param start_revision: If not None, only generate
-          revisions >= start_revision
+    :param specific_fileids: If not None, only include revisions
+      affecting the specified files, rather than all revisions.
 
-        :param end_revision: If not None, only generate
-          revisions <= end_revision
+    :param start_revision: If not None, only generate
+      revisions >= start_revision
 
-        :param limit: If set, generate only 'limit' revisions, all revisions
-          are shown if None or 0.
+    :param end_revision: If not None, only generate
+      revisions <= end_revision
 
-        :param message_search: If not None, only include revisions with
-          matching commit messages
+    :param limit: If set, generate only 'limit' revisions, all revisions
+      are shown if None or 0.
 
-        :param levels: the number of levels of revisions to
-          generate; 1 for just the mainline; 0 for all levels.
+    :param message_search: If not None, only include revisions with
+      matching commit messages
 
-        :param generate_tags: If True, include tags for matched revisions.
+    :param levels: the number of levels of revisions to
+      generate; 1 for just the mainline; 0 for all levels.
 
-        :param delta_type: Either 'full', 'partial' or None.
-          'full' means generate the complete delta - adds/deletes/modifies/etc;
-          'partial' means filter the delta using specific_fileids;
-          None means do not generate any delta.
+    :param generate_tags: If True, include tags for matched revisions.
 
-        :param diff_type: Either 'full', 'partial' or None.
-          'full' means generate the complete diff - adds/deletes/modifies/etc;
-          'partial' means filter the diff using specific_fileids;
-          None means do not generate any diff.
+    :param delta_type: Either 'full', 'partial' or None.
+      'full' means generate the complete delta - adds/deletes/modifies/etc;
+      'partial' means filter the delta using specific_fileids;
+      None means do not generate any delta.
 
-        :param _match_using_deltas: a private parameter controlling the
-          algorithm used for matching specific_fileids. This parameter
-          may be removed in the future so bzrlib client code should NOT
-          use it.
-        """
-        self.direction = direction
-        self.specific_fileids = specific_fileids
-        self.start_revision = start_revision
-        self.end_revision = end_revision
-        self.limit = limit
-        self.message_search = message_search
-        self.levels = levels
-        self.generate_tags = generate_tags
-        self.delta_type = delta_type
-        self.diff_type = diff_type
+    :param diff_type: Either 'full', 'partial' or None.
+      'full' means generate the complete diff - adds/deletes/modifies/etc;
+      'partial' means filter the diff using specific_fileids;
+      None means do not generate any diff.
+
+    :param _match_using_deltas: a private parameter controlling the
+      algorithm used for matching specific_fileids. This parameter
+      may be removed in the future so bzrlib client code should NOT
+      use it.
+    """
+    return {
+        'direction': direction,
+        'specific_fileids': specific_fileids,
+        'start_revision': start_revision,
+        'end_revision': end_revision,
+        'limit': limit,
+        'message_search': message_search,
+        'levels': levels,
+        'generate_tags': generate_tags,
+        'delta_type': delta_type,
+        'diff_type': diff_type,
         # Add 'private' attributes for features that may be deprecated
-        self._match_using_deltas = _match_using_deltas
-        self._allow_single_merge_revision = True
+        '_match_using_deltas': _match_using_deltas,
+        '_allow_single_merge_revision': True,
+    }
+
+
+def _apply_log_request_defaults(rqst):
+    """Apply default values to a request dictionary."""
+    result = _DEFAULT_REQUEST_PARAMS
+    if rqst:
+        result.update(rqst)
+    return result
 
 
 class LogGenerator(object):
@@ -299,10 +309,11 @@ class Logger(object):
         """Create a Logger.
 
         :param branch: the branch to log
-        :param rqst: The LogRequest object specifying the query parameters.
+        :param rqst: A dictionary specifying the query parameters.
+          See make_log_request_dict() for supported values.
         """
         self.branch = branch
-        self.rqst = rqst
+        self.rqst = _apply_log_request_defaults(rqst)
 
     def show(self, lf):
         """Display the log.
@@ -330,15 +341,15 @@ class Logger(object):
         # Tweak the LogRequest based on what the LogFormatter can handle.
         # (There's no point generating stuff if the formatter can't display it.)
         rqst = self.rqst
-        rqst.levels = lf.get_levels()
+        rqst['levels'] = lf.get_levels()
         if not getattr(lf, 'supports_tags', False):
-            rqst.generate_tags = False
+            rqst['generate_tags'] = False
         if not getattr(lf, 'supports_delta', False):
-            rqst.delta_type = None
+            rqst['delta_type'] = None
         if not getattr(lf, 'supports_diff', False):
-            rqst.diff_type = None
+            rqst['diff_type'] = None
         if not getattr(lf, 'supports_merge_revisions', False):
-            rqst._allow_single_merge_revision = getattr(lf,
+            rqst['_allow_single_merge_revision'] = getattr(lf,
                 'supports_single_merge_revision', False)
 
         # Find and print the interesting revisions
@@ -358,13 +369,13 @@ class _StartNotLinearAncestor(Exception):
     """Raised when a start revision is not found walking left-hand history."""
 
 
-class _DefaultLogGenerator(object):
-    """A generator of log revisions given a branch and a LogRequest."""
+class _DefaultLogGenerator(LogGenerator):
+    """The default generator of log revisions."""
 
     def __init__(self, branch, rqst):
         self.branch = branch
         self.rqst = rqst
-        if rqst.generate_tags and branch.supports_tags():
+        if rqst.get('generate_tags') and branch.supports_tags():
             self.rev_tag_dict = branch.tags.get_reverse_tag_dict()
         else:
             self.rev_tag_dict = {}
@@ -380,18 +391,20 @@ class _DefaultLogGenerator(object):
         for revs in revision_iterator:
             for (rev_id, revno, merge_depth), rev, delta in revs:
                 # 0 levels means show everything; merge_depth counts from 0
-                if rqst.levels != 0 and merge_depth >= rqst.levels:
+                levels = rqst.get('levels')
+                if levels != 0 and merge_depth >= levels:
                     continue
                 diff = self._format_diff(rev, rev_id)
                 yield LogRevision(rev, revno, merge_depth, delta,
                     self.rev_tag_dict.get(rev_id), diff)
-                if rqst.limit:
+                limit = rqst.get('limit')
+                if limit:
                     log_count += 1
-                    if log_count >= rqst.limit:
+                    if log_count >= limit:
                         return
 
     def _format_diff(self, rev, rev_id):
-        diff_type = self.rqst.diff_type
+        diff_type = self.rqst.get('diff_type')
         if diff_type is None:
             return None
         repo = self.branch.repository
@@ -401,7 +414,7 @@ class _DefaultLogGenerator(object):
             ancestor_id = rev.parent_ids[0]
         tree_1 = repo.revision_tree(ancestor_id)
         tree_2 = repo.revision_tree(rev_id)
-        file_ids = self.rqst.specific_fileids
+        file_ids = self.rqst.get('specific_fileids')
         if diff_type == 'partial' and file_ids is not None:
             specific_files = [tree_2.id2path(id) for id in file_ids]
         else:
@@ -418,14 +431,15 @@ class _DefaultLogGenerator(object):
             delta).
         """
         self.start_rev_id, self.end_rev_id = _get_revision_limits(
-            self.branch, self.rqst.start_revision, self.rqst.end_revision)
-        if self.rqst._match_using_deltas:
+            self.branch, self.rqst.get('start_revision'),
+            self.rqst.get('end_revision'))
+        if self.rqst.get('_match_using_deltas'):
             return self._log_revision_iterator_using_delta_matching()
         else:
             # We're using the per-file-graph algorithm. This scales really
             # well but only makes sense if there is a single file and it's
             # not a directory
-            file_count = len(self.rqst.specific_fileids)
+            file_count = len(self.rqst.get('specific_fileids'))
             if file_count != 1:
                 raise BzrError("illegal LogRequest: must match-using-deltas "
                     "when logging %d files" % file_count)
@@ -434,18 +448,19 @@ class _DefaultLogGenerator(object):
     def _log_revision_iterator_using_delta_matching(self):
         # Get the base revisions, filtering by the revision range
         rqst = self.rqst
-        generate_merge_revisions = rqst.levels != 1
-        delayed_graph_generation = not rqst.specific_fileids and (
-                rqst.limit or self.start_rev_id or self.end_rev_id)
+        generate_merge_revisions = rqst.get('levels') != 1
+        delayed_graph_generation = not rqst.get('specific_fileids') and (
+                rqst.get('limit') or self.start_rev_id or self.end_rev_id)
         view_revisions = _calc_view_revisions(self.branch, self.start_rev_id,
-            self.end_rev_id, rqst.direction, generate_merge_revisions,
-            rqst._allow_single_merge_revision,
+            self.end_rev_id, rqst.get('direction'), generate_merge_revisions,
+            rqst.get('_allow_single_merge_revision'),
             delayed_graph_generation=delayed_graph_generation)
 
         # Apply the other filters
         return make_log_rev_iterator(self.branch, view_revisions,
-            rqst.delta_type, rqst.message_search,
-            file_ids=rqst.specific_fileids, direction=rqst.direction)
+            rqst.get('delta_type'), rqst.get('message_search'),
+            file_ids=rqst.get('specific_fileids'),
+            direction=rqst.get('direction'))
 
     def _log_revision_iterator_using_per_file_graph(self):
         # Get the base revisions, filtering by the revision range.
@@ -453,15 +468,15 @@ class _DefaultLogGenerator(object):
         # filter_revisions_touching_file_id() requires them ...
         rqst = self.rqst
         view_revisions = _calc_view_revisions(self.branch, self.start_rev_id,
-            self.end_rev_id, rqst.direction, True,
-            rqst._allow_single_merge_revision)
+            self.end_rev_id, rqst.get('direction'), True,
+            rqst.get('_allow_single_merge_revision'))
         if not isinstance(view_revisions, list):
             view_revisions = list(view_revisions)
         view_revisions = _filter_revisions_touching_file_id(self.branch,
-            rqst.specific_fileids[0], view_revisions,
-            include_merges=rqst.levels != 1)
+            rqst.get('specific_fileids')[0], view_revisions,
+            include_merges=rqst.get('levels') != 1)
         return make_log_rev_iterator(self.branch, view_revisions,
-            rqst.delta_type, rqst.message_search)
+            rqst.get('delta_type'), rqst.get('message_search'))
 
 
 def _calc_view_revisions(branch, start_rev_id, end_rev_id, direction,

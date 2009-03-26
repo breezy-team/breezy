@@ -1022,7 +1022,7 @@ class TestLogMultiple(TestCaseWithTransport):
         out, err = self.run_bzr('log --line -n0 %s' % (paths_str,))
         self.assertEqual('', err)
         revnos = [s.split(':', 1)[0].lstrip() for s in out.splitlines()]
-        self.assertEqual(revnos, expected_revnos)
+        self.assertEqual(expected_revnos, revnos)
 
     def test_log_files(self):
         """The log for multiple file should only list revs for those files"""
