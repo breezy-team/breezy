@@ -292,7 +292,8 @@ class Commit(object):
             not self.specific_files and
             not self.exclude and 
             not self.branch.repository._format.supports_tree_reference and
-            self.branch.repository._format.fast_deltas or len(self.parents) < 2)
+            (self.branch.repository._format.fast_deltas or
+             len(self.parents) < 2))
         self.pb = bzrlib.ui.ui_factory.nested_progress_bar()
         self.basis_revid = self.work_tree.last_revision()
         self.basis_tree = self.work_tree.basis_tree()
