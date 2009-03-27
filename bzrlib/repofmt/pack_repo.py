@@ -2000,12 +2000,14 @@ class RepositoryPackCollection(object):
             self._new_pack)
         self.text_index.add_writable_index(self._new_pack.text_index,
             self._new_pack)
+        self._new_pack.text_index.set_optimize(combine_backing_indices=False)
         self.signature_index.add_writable_index(self._new_pack.signature_index,
             self._new_pack)
         if self.chk_index is not None:
             self.chk_index.add_writable_index(self._new_pack.chk_index,
                 self._new_pack)
             self.repo.chk_bytes._index._add_callback = self.chk_index.add_callback
+            self._new_pack.chk_index.set_optimize(combine_backing_indices=False)
 
         self.repo.inventories._index._add_callback = self.inventory_index.add_callback
         self.repo.revisions._index._add_callback = self.revision_index.add_callback
