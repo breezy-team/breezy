@@ -30,6 +30,7 @@ from bzrlib import (
     chunk_writer,
     debug,
     errors,
+    fifo_cache,
     index,
     lru_cache,
     osutils,
@@ -645,7 +646,7 @@ class BTreeGraphIndex(object):
         # nodes, and only 20 internal nodes. So the default of 100 nodes in an
         # LRU would mean we always cache everything anyway, no need to pay the
         # overhead of LRU
-        self._internal_node_cache = {}
+        self._internal_node_cache = fifo_cache.FIFOCache(100)
         self._key_count = None
         self._row_lengths = None
         self._row_offsets = None # Start of each row, [-1] is the end
