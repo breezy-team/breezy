@@ -531,3 +531,108 @@ class TestCHKInventory(TestCaseWithTransport):
         self.assertEqual(
             {('', ''): 'TREE_ROOT', ('TREE_ROOT', 'file'): 'fileid'},
             dict(chk_inv.parent_id_basename_to_file_id.iteritems()))
+
+    def test_file_entry_to_bytes(self):
+        inv = CHKInventory(None)
+        ie = inventory.InventoryFile('file-id', 'filename', 'parent-id')
+        ie.executable = True
+        ie.revision = 'file-rev-id'
+        ie.text_sha1 = 'abcdefgh'
+        ie.text_size = 100
+        bytes = inv._entry_to_bytes(ie)
+        self.assertEqual('file: file-id\nparent-id\nfilename\n'
+                         'file-rev-id\nabcdefgh\n100\nY', bytes)
+        ie2 = inv._bytes_to_entry(bytes)
+        self.assertEqual(ie, ie2)
+        self.assertIsInstance(ie2.name, unicode)
+        self.assertEqual(('filename', 'file-id', 'file-rev-id'),
+                         inv._bytes_to_utf8name_key(bytes))
+
+    def test_file2_entry_to_bytes(self):
+        inv = CHKInventory(None)
+        # \u30a9 == 'omega'
+        ie = inventory.InventoryFile('file-id', u'\u03a9name', 'parent-id')
+        ie.executable = False
+        ie.revision = 'file-rev-id'
+        ie.text_sha1 = '123456'
+        ie.text_size = 25
+        bytes = inv._entry_to_bytes(ie)
+        self.assertEqual('file: file-id\nparent-id\n\xce\xa9name\n'
+                         'file-rev-id\n123456\n25\nN', bytes)
+        ie2 = inv._bytes_to_entry(bytes)
+        self.assertEqual(ie, ie2)
+        self.assertIsInstance(ie2.name, unicode)
+        self.assertEqual(('\xce\xa9name', 'file-id', 'file-rev-id'),
+                         inv._bytes_to_utf8name_key(bytes))
+
+    def test_dir_entry_to_bytes(self):
+        inv = CHKInventory(None)
+        ie = inventory.InventoryDirectory('dir-id', 'dirname', 'parent-id')
+        ie.revision = 'dir-rev-id'
+        bytes = inv._entry_to_bytes(ie)
+        self.assertEqual('dir: dir-id\nparent-id\ndirname\ndir-rev-id', bytes)
+        ie2 = inv._bytes_to_entry(bytes)
+        self.assertEqual(ie, ie2)
+        self.assertIsInstance(ie2.name, unicode)
+        self.assertEqual(('dirname', 'dir-id', 'dir-rev-id'),
+                         inv._bytes_to_utf8name_key(bytes))
+
+    def test_dir2_entry_to_bytes(self):
+        inv = CHKInventory(None)
+        ie = inventory.InventoryDirectory('dir-id', u'dir\u03a9name',
+                                          None)
+        ie.revision = 'dir-rev-id'
+        bytes = inv._entry_to_bytes(ie)
+        self.assertEqual('dir: dir-id\n\ndir\xce\xa9name\n'
+                         'dir-rev-id', bytes)
+        ie2 = inv._bytes_to_entry(bytes)
+        self.assertEqual(ie, ie2)
+        self.assertIsInstance(ie2.name, unicode)
+        self.assertIs(ie2.parent_id, None)
+        self.assertEqual(('dir\xce\xa9name', 'dir-id', 'dir-rev-id'),
+                         inv._bytes_to_utf8name_key(bytes))
+
+    def test_symlink_entry_to_bytes(self):
+        inv = CHKInventory(None)
+        ie = inventory.InventoryLink('link-id', 'linkname', 'parent-id')
+        ie.revision = 'link-rev-id'
+        ie.symlink_target = u'target/path'
+        bytes = inv._entry_to_bytes(ie)
+        self.assertEqual('symlink: link-id\nparent-id\nlinkname\n'
+                         'link-rev-id\ntarget/path', bytes)
+        ie2 = inv._bytes_to_entry(bytes)
+        self.assertEqual(ie, ie2)
+        self.assertIsInstance(ie2.name, unicode)
+        self.assertIsInstance(ie2.symlink_target, unicode)
+        self.assertEqual(('linkname', 'link-id', 'link-rev-id'),
+                         inv._bytes_to_utf8name_key(bytes))
+
+    def test_symlink2_entry_to_bytes(self):
+        inv = CHKInventory(None)
+        ie = inventory.InventoryLink('link-id', u'link\u03a9name', 'parent-id')
+        ie.revision = 'link-rev-id'
+        ie.symlink_target = u'target/\u03a9path'
+        bytes = inv._entry_to_bytes(ie)
+        self.assertEqual('symlink: link-id\nparent-id\nlink\xce\xa9name\n'
+                         'link-rev-id\ntarget/\xce\xa9path', bytes)
+        ie2 = inv._bytes_to_entry(bytes)
+        self.assertEqual(ie, ie2)
+        self.assertIsInstance(ie2.name, unicode)
+        self.assertIsInstance(ie2.symlink_target, unicode)
+        self.assertEqual(('link\xce\xa9name', 'link-id', 'link-rev-id'),
+                         inv._bytes_to_utf8name_key(bytes))
+
+    def test_tree_reference_entry_to_bytes(self):
+        inv = CHKInventory(None)
+        ie = inventory.TreeReference('tree-root-id', u'tree\u03a9name',
+                                     'parent-id')
+        ie.revision = 'tree-rev-id'
+        ie.reference_revision = 'ref-rev-id'
+        bytes = inv._entry_to_bytes(ie)
+        self.assertEqual('tree: tree-root-id\nparent-id\ntree\xce\xa9name\n'
+                         'tree-rev-id\nref-rev-id', bytes)
+        ie2 = inv._bytes_to_entry(bytes)
+        self.assertEqual(ie, ie2)
+        self.assertIsInstance(ie2.name, unicode)
+        self.assertEqual(('tree\xce\xa9name', 'tree-root-id', 'tree-rev-id'),
+                         inv._bytes_to_utf8name_key(bytes))

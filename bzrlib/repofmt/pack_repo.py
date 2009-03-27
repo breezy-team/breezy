@@ -2468,23 +2468,23 @@ class CHKInventoryRepository(KnitPackRepository):
             interesting_root_keys.add(inv.id_to_entry.key())
         revision_ids = frozenset(revision_ids)
         file_id_revisions = {}
+        bytes_to_info = CHKInventory._bytes_to_utf8name_key
         for records, items in chk_map.iter_interesting_nodes(self.chk_bytes,
                     interesting_root_keys, uninteresting_root_keys,
                     pb=pb):
             # This is cheating a bit to use the last grabbed 'inv', but it
             # works
             for name, bytes in items:
-                # TODO: We should use something cheaper than _bytes_to_entry,
-                #       which has to .decode() the entry name, etc.
-                #       We only care about a couple of the fields in the bytes.
-                entry = inv._bytes_to_entry(bytes)
-                if entry.name == '' and not rich_root:
+                (name_utf8, file_id, revision_id) = bytes_to_info(bytes)
+                if not rich_root and name_utf8 == '':
                     continue
-                if entry.revision in revision_ids:
+                if revision_id in revision_ids:
                     # Would we rather build this up into file_id => revision
                     # maps?
-                    s = file_id_revisions.setdefault(entry.file_id, set())
-                    s.add(entry.revision)
+                    try:
+                        file_id_revisions[file_id].add(revision_id)
+                    except KeyError:
+                        file_id_revisions[file_id] = set([revision_id])
         for file_id, revisions in file_id_revisions.iteritems():
             yield ('file', file_id, revisions)
 

@@ -1503,6 +1503,15 @@ class CHKInventory(CommonInventory):
         else:
             raise ValueError("unknown kind %r" % entry.kind)
 
+    @staticmethod
+    def _bytes_to_utf8name_key(bytes):
+        """Get the file_id, revision_id key out of bytes."""
+        # We don't normally care about name, except for times when we want
+        # to filter out empty names because of non rich-root...
+        sections = bytes.split('\n')
+        kind, file_id = sections[0].split(': ')
+        return (sections[2], file_id, sections[3])
+
     def _bytes_to_entry(self, bytes):
         """Deserialise a serialised entry."""
         sections = bytes.split('\n')
@@ -1521,7 +1530,7 @@ class CHKInventory(CommonInventory):
             result = InventoryLink(sections[0][9:],
                 sections[2].decode('utf8'),
                 sections[1])
-            result.symlink_target = sections[4]
+            result.symlink_target = sections[4].decode('utf8')
         elif sections[0].startswith("tree: "):
             result = TreeReference(sections[0][6:],
                 sections[2].decode('utf8'),
