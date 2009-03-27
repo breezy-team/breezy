@@ -55,33 +55,6 @@ _USE_LZMA = False and (pylzma is not None)
 _null_sha1 = 'da39a3ee5e6b4b0d3255bfef95601890afd80709'
 
 
-def encode_base128_int(val):
-    """Convert an integer into a 7-bit lsb encoding."""
-    bytes = []
-    count = 0
-    while val >= 0x80:
-        bytes.append(chr((val | 0x80) & 0xFF))
-        val >>= 7
-    bytes.append(chr(val))
-    return ''.join(bytes)
-
-
-def decode_base128_int(bytes):
-    """Decode an integer from a 7-bit lsb encoding."""
-    offset = 0
-    val = 0
-    shift = 0
-    bval = ord(bytes[offset])
-    while bval >= 0x80:
-        val |= (bval & 0x7F) << shift
-        shift += 7
-        offset += 1
-        bval = ord(bytes[offset])
-    val |= bval << shift
-    offset += 1
-    return val, offset
-
-
 def sort_gc_optimal(parent_map):
     """Sort and group the keys in parent_map into groupcompress order.
 
@@ -784,8 +757,7 @@ class PythonGroupCompressor(_CommonGroupCompressor):
         bytes_length = len(bytes)
         new_lines = osutils.split_lines(bytes)
         out_lines, index_lines = self.line_locations.make_delta(new_lines,
-                                                                soft=soft)
-        out_lines[2] = encode_base128_int(bytes_length)
+            bytes_length=bytes_length, soft=soft)
         delta_length = sum(map(len, out_lines))
         if delta_length > max_delta_size:
             # The delta is longer than the fulltext, insert a fulltext
@@ -1809,6 +1781,8 @@ class _GCGraphIndex(object):
 
 from bzrlib._groupcompress_py import (
     apply_delta,
+    encode_base128_int,
+    decode_base128_int,
     encode_copy_instruction,
     EquivalenceTable,
     )

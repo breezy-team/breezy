@@ -206,10 +206,12 @@ class EquivalenceTable(object):
             out_lines.append(copy_bytes)
             index_lines.append(False)
 
-    def make_delta(self, new_lines, soft=False):
+    def make_delta(self, new_lines, bytes_length=None, soft=False):
         """Compute the delta for this content versus the original content."""
-        # reserved for content type, content length, target_len
-        out_lines = ['', '', '']
+        if bytes_length is None:
+            bytes_length = sum(map(len, new_lines))
+        # reserved for content type, content length
+        out_lines = ['', '', encode_base128_int(bytes_length)]
         index_lines = [False, False, False]
         blocks = self.get_matching_blocks(new_lines, soft=soft)
         current_line_num = 0
@@ -224,6 +226,33 @@ class EquivalenceTable(object):
             if range_len:
                 self._flush_copy(old_start, range_len, out_lines, index_lines)
         return out_lines, index_lines
+
+
+def encode_base128_int(val):
+    """Convert an integer into a 7-bit lsb encoding."""
+    bytes = []
+    count = 0
+    while val >= 0x80:
+        bytes.append(chr((val | 0x80) & 0xFF))
+        val >>= 7
+    bytes.append(chr(val))
+    return ''.join(bytes)
+
+
+def decode_base128_int(bytes):
+    """Decode an integer from a 7-bit lsb encoding."""
+    offset = 0
+    val = 0
+    shift = 0
+    bval = ord(bytes[offset])
+    while bval >= 0x80:
+        val |= (bval & 0x7F) << shift
+        shift += 7
+        offset += 1
+        bval = ord(bytes[offset])
+    val |= bval << shift
+    offset += 1
+    return val, offset
 
 
 def encode_copy_instruction(offset, length):
@@ -258,27 +287,87 @@ def encode_copy_instruction(offset, length):
     return ''.join(copy_bytes)
 
 
+def decode_copy_instruction(bytes, cmd, pos):
+    """Decode a copy instruction from the next few bytes.
+
+    A copy instruction is a variable number of bytes, so we will parse the
+    bytes we care about, and return the new position, as well as the offset and
+    length referred to in the bytes.
+
+    :param bytes: A string of bytes
+    :param cmd: The command code
+    :param pos: The position in bytes right after the copy command
+    :return: (offset, length, newpos)
+        The offset of the copy start, the number of bytes to copy, and the
+        position after the last byte of the copy
+    """
+    if cmd & 0x80 != 0x80:
+        raise ValueError('copy instructions must have bit 0x80 set')
+    offset = 0
+    length = 0
+    if (cmd & 0x01):
+        offset = ord(bytes[pos])
+        pos += 1
+    if (cmd & 0x02):
+        offset = offset | (ord(bytes[pos]) << 8)
+        pos += 1
+    if (cmd & 0x04):
+        offset = offset | (ord(bytes[pos]) << 16)
+        pos += 1
+    if (cmd & 0x08):
+        offset = offset | (ord(bytes[pos]) << 24)
+        pos += 1
+    if (cmd & 0x10):
+        length = ord(bytes[pos])
+        pos += 1
+    if (cmd & 0x20):
+        length = length | (ord(bytes[pos]) << 8)
+        pos += 1
+    if (cmd & 0x40):
+        length = length | (ord(bytes[pos]) << 16)
+        pos += 1
+    if length == 0:
+        length = 65536
+    return (offset, length, pos)
+
 
 def make_delta(source_bytes, target_bytes):
     """Create a delta from source to target."""
     # TODO: The checks below may not be a the right place yet.
-    if not isinstance(source_bytes, str):
+    if type(source_bytes) is not str:
         raise TypeError('source is not a str')
-    if not isinstance(target_bytes, str):
+    if type(target_bytes) is not str:
         raise TypeError('target is not a str')
     line_locations = EquivalenceTable([])
-    return None
+    source_lines = osutils.split_lines(source_bytes)
+    line_locations.extend_lines(source_lines, [True]*len(source_lines))
+    delta, _ = line_locations.make_delta(osutils.split_lines(target_bytes),
+                                         bytes_length=len(target_bytes))
+    return ''.join(delta)
 
 
 def apply_delta(basis, delta):
     """Apply delta to this object to become new_version_id."""
+    if type(basis) is not str:
+        raise TypeError('basis is not a str')
+    if type(delta) is not str:
+        raise TypeError('delta is not a str')
+    target_length, pos = decode_base128_int(delta)
     lines = []
-    last_offset = 0
-    # eq ranges occur where gaps occur
-    # start, end refer to offsets in basis
-    for op, start, count, delta_lines in delta:
-        if op == 'c':
-            lines.append(basis[start:start+count])
-        else:
-            lines.extend(delta_lines)
-    return lines
+    len_delta = len(delta)
+    while pos < len_delta:
+        cmd = ord(delta[pos])
+        pos += 1
+        if cmd & 0x80:
+            offset, length, pos = decode_copy_instruction(delta, cmd, pos)
+            lines.append(basis[offset:offset+length])
+        else: # Insert of 'cmd' bytes
+            if cmd == 0:
+                raise ValueError('Command == 0 not supported yet')
+            lines.append(delta[pos:pos+cmd])
+            pos += cmd
+    bytes = ''.join(lines)
+    if len(bytes) != target_length:
+        raise ValueError('Delta claimed to be %d long, but ended up'
+                         ' %d long' % (target_length, len(bytes)))
+    return bytes

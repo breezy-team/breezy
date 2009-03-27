@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for the pyrex extension of groupcompress"""
+"""Tests for the python and pyrex extensions of groupcompress"""
 
 from bzrlib import (
     groupcompress,
@@ -138,16 +138,35 @@ class TestMakeAndApplyDelta(tests.TestCase):
         ident_delta = self.make_delta(_text3, _text3)
         self.assertEqual('\x87\x01\x90\x87', ident_delta)
 
+    def assertDeltaIn(self, delta1, delta2, delta):
+        """Make sure that the delta bytes match one of the expectations."""
+        # In general, the python delta matcher gives different results than the
+        # pyrex delta matcher. Both should be valid deltas, though.
+        if delta not in (delta1, delta2):
+            self.fail("Delta bytes:\n"
+                      "       %r\n"
+                      "not in %r\n"
+                      "    or %r"
+                      % (delta, delta1, delta2))
+
     def test_make_delta(self):
         delta = self.make_delta(_text1, _text2)
-        self.assertEqual('N\x90/\x1fdiffer from\nagainst other text\n', delta)
+        self.assertDeltaIn(
+            'N\x90/\x1fdiffer from\nagainst other text\n',
+            'N\x90\x1d\x1ewhich is meant to differ from\n\x91:\x13',
+            delta)
         delta = self.make_delta(_text2, _text1)
-        self.assertEqual('M\x90/\x1ebe matched\nagainst other text\n', delta)
+        self.assertDeltaIn(
+            'M\x90/\x1ebe matched\nagainst other text\n',
+            'M\x90\x1d\x1dwhich is meant to be matched\n\x91;\x13',
+            delta)
         delta = self.make_delta(_text3, _text1)
         self.assertEqual('M\x90M', delta)
         delta = self.make_delta(_text3, _text2)
-        self.assertEqual('N\x90/\x1fdiffer from\nagainst other text\n',
-                         delta)
+        self.assertDeltaIn(
+            'N\x90/\x1fdiffer from\nagainst other text\n',
+            'N\x90\x1d\x1ewhich is meant to differ from\n\x91:\x13',
+            delta)
 
     def test_apply_delta_is_typesafe(self):
         self.apply_delta(_text1, 'M\x90M')
@@ -263,3 +282,133 @@ class TestDeltaIndex(tests.TestCase):
         self.assertEqual(_fourth_text,
                          self._gc_module.apply_delta(source, fifth_delta))
         self.assertEqual('\x80\x01\x91\xa7\x7f\x01\n', fifth_delta)
+
+
+class TestCopyInstruction(tests.TestCase):
+
+    def assertEncode(self, expected, offset, length):
+        bytes = _groupcompress_py.encode_copy_instruction(offset, length)
+        if expected != bytes:
+            self.assertEqual([hex(ord(e)) for e in expected],
+                             [hex(ord(b)) for b in bytes])
+
+    def assertDecode(self, exp_offset, exp_length, exp_newpos, bytes, pos):
+        cmd = ord(bytes[pos])
+        pos += 1
+        out = _groupcompress_py.decode_copy_instruction(bytes, cmd, pos)
+        self.assertEqual((exp_offset, exp_length, exp_newpos), out)
+
+    def test_encode_no_length(self):
+        self.assertEncode('\x80', 0, None)
+        self.assertEncode('\x81\x01', 1, None)
+        self.assertEncode('\x81\x0a', 10, None)
+        self.assertEncode('\x81\xff', 255, None)
+        self.assertEncode('\x82\x01', 256, None)
+        self.assertEncode('\x83\x01\x01', 257, None)
+        self.assertEncode('\x8F\xff\xff\xff\xff', 0xFFFFFFFF, None)
+        self.assertEncode('\x8E\xff\xff\xff', 0xFFFFFF00, None)
+        self.assertEncode('\x8D\xff\xff\xff', 0xFFFF00FF, None)
+        self.assertEncode('\x8B\xff\xff\xff', 0xFF00FFFF, None)
+        self.assertEncode('\x87\xff\xff\xff', 0x00FFFFFF, None)
+        self.assertEncode('\x8F\x04\x03\x02\x01', 0x01020304, None)
+
+    def test_encode_no_offset(self):
+        self.assertEncode('\x90\x01', 0, 1)
+        self.assertEncode('\x90\x0a', 0, 10)
+        self.assertEncode('\x90\xff', 0, 255)
+        self.assertEncode('\xA0\x01', 0, 256)
+        self.assertEncode('\xB0\x01\x01', 0, 257)
+        self.assertEncode('\xB0\xff\xff', 0, 0xFFFF)
+        # Special case, if copy == 64KiB, then we store exactly 0
+        # Note that this puns with a copy of exactly 0 bytes, but we don't care
+        # about that, as we would never actually copy 0 bytes
+        self.assertEncode('\x80', 0, 64*1024)
+
+    def test_encode(self):
+        self.assertEncode('\x91\x01\x01', 1, 1)
+        self.assertEncode('\x91\x09\x0a', 9, 10)
+        self.assertEncode('\x91\xfe\xff', 254, 255)
+        self.assertEncode('\xA2\x02\x01', 512, 256)
+        self.assertEncode('\xB3\x02\x01\x01\x01', 258, 257)
+        self.assertEncode('\xB0\x01\x01', 0, 257)
+        # Special case, if copy == 64KiB, then we store exactly 0
+        # Note that this puns with a copy of exactly 0 bytes, but we don't care
+        # about that, as we would never actually copy 0 bytes
+        self.assertEncode('\x81\x0a', 10, 64*1024)
+
+    def test_decode_no_length(self):
+        # If length is 0, it is interpreted as 64KiB
+        # The shortest possible instruction is a copy of 64KiB from offset 0
+        self.assertDecode(0, 65536, 1, '\x80', 0)
+        self.assertDecode(1, 65536, 2, '\x81\x01', 0)
+        self.assertDecode(10, 65536, 2, '\x81\x0a', 0)
+        self.assertDecode(255, 65536, 2, '\x81\xff', 0)
+        self.assertDecode(256, 65536, 2, '\x82\x01', 0)
+        self.assertDecode(257, 65536, 3, '\x83\x01\x01', 0)
+        self.assertDecode(0xFFFFFFFF, 65536, 5, '\x8F\xff\xff\xff\xff', 0)
+        self.assertDecode(0xFFFFFF00, 65536, 4, '\x8E\xff\xff\xff', 0)
+        self.assertDecode(0xFFFF00FF, 65536, 4, '\x8D\xff\xff\xff', 0)
+        self.assertDecode(0xFF00FFFF, 65536, 4, '\x8B\xff\xff\xff', 0)
+        self.assertDecode(0x00FFFFFF, 65536, 4, '\x87\xff\xff\xff', 0)
+        self.assertDecode(0x01020304, 65536, 5, '\x8F\x04\x03\x02\x01', 0)
+
+    def test_decode_no_offset(self):
+        self.assertDecode(0, 1, 2, '\x90\x01', 0)
+        self.assertDecode(0, 10, 2, '\x90\x0a', 0)
+        self.assertDecode(0, 255, 2, '\x90\xff', 0)
+        self.assertDecode(0, 256, 2, '\xA0\x01', 0)
+        self.assertDecode(0, 257, 3, '\xB0\x01\x01', 0)
+        self.assertDecode(0, 65535, 3, '\xB0\xff\xff', 0)
+        # Special case, if copy == 64KiB, then we store exactly 0
+        # Note that this puns with a copy of exactly 0 bytes, but we don't care
+        # about that, as we would never actually copy 0 bytes
+        self.assertDecode(0, 65536, 1, '\x80', 0)
+
+    def test_decode(self):
+        self.assertDecode(1, 1, 3, '\x91\x01\x01', 0)
+        self.assertDecode(9, 10, 3, '\x91\x09\x0a', 0)
+        self.assertDecode(254, 255, 3, '\x91\xfe\xff', 0)
+        self.assertDecode(512, 256, 3, '\xA2\x02\x01', 0)
+        self.assertDecode(258, 257, 5, '\xB3\x02\x01\x01\x01', 0)
+        self.assertDecode(0, 257, 3, '\xB0\x01\x01', 0)
+
+    def test_decode_not_start(self):
+        self.assertDecode(1, 1, 6, 'abc\x91\x01\x01def', 3)
+        self.assertDecode(9, 10, 5, 'ab\x91\x09\x0ade', 2)
+        self.assertDecode(254, 255, 6, 'not\x91\xfe\xffcopy', 3)
+
+
+class TestBase128Int(tests.TestCase):
+
+    def assertEqualEncode(self, bytes, val):
+        self.assertEqual(bytes, _groupcompress_py.encode_base128_int(val))
+
+    def assertEqualDecode(self, val, num_decode, bytes):
+        self.assertEqual((val, num_decode),
+                         _groupcompress_py.decode_base128_int(bytes))
+
+    def test_encode(self):
+        self.assertEqualEncode('\x01', 1)
+        self.assertEqualEncode('\x02', 2)
+        self.assertEqualEncode('\x7f', 127)
+        self.assertEqualEncode('\x80\x01', 128)
+        self.assertEqualEncode('\xff\x01', 255)
+        self.assertEqualEncode('\x80\x02', 256)
+        self.assertEqualEncode('\xff\xff\xff\xff\x0f', 0xFFFFFFFF)
+
+    def test_decode(self):
+        self.assertEqualDecode(1, 1, '\x01')
+        self.assertEqualDecode(2, 1, '\x02')
+        self.assertEqualDecode(127, 1, '\x7f')
+        self.assertEqualDecode(128, 2, '\x80\x01')
+        self.assertEqualDecode(255, 2, '\xff\x01')
+        self.assertEqualDecode(256, 2, '\x80\x02')
+        self.assertEqualDecode(0xFFFFFFFF, 5, '\xff\xff\xff\xff\x0f')
+
+    def test_decode_with_trailing_bytes(self):
+        self.assertEqualDecode(1, 1, '\x01abcdef')
+        self.assertEqualDecode(127, 1, '\x7f\x01')
+        self.assertEqualDecode(128, 2, '\x80\x01abcdef')
+        self.assertEqualDecode(255, 2, '\xff\x01\xff')
+
+
