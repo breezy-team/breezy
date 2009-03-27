@@ -167,6 +167,8 @@ class TemporaryPackIterator(Pack):
     @property
     def idx(self):
         if self._idx is None:
+            if self._data is None:
+                self._data = PackData(self._data_path)
             self._data.create_index_v2(self._idx_path, self.resolve_ext_ref)
             self._idx = PackIndex(self._idx_path)
         return self._idx
