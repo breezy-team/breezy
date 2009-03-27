@@ -23,27 +23,23 @@ useless stuff.
 from bzrlib import osutils
 
 
-class EquivalenceTable(object):
-    """This class tracks equivalencies between lists of hashable objects.
+class LinesDeltaIndex(object):
+    """This class indexes matches between strings.
 
     :ivar lines: The 'static' lines that will be preserved between runs.
-    :ival _matching_lines: A dict of {line:[matching offsets]}
+    :ivar _matching_lines: A dict of {line:[matching offsets]}
+    :ivar line_offsets: The byte offset for the end of each line, used to
+        quickly map between a matching line number and the byte location
+    :ivar endpoint: The total number of bytes in self.line_offsets
     """
 
     def __init__(self, lines):
-        self.lines = lines
+        self.lines = []
         self.line_offsets = []
-        self.endpoint = sum(map(len, lines))
+        self.endpoint = 0
+        self._matching_lines = {}
+        self.extend_lines(lines, [True]*len(lines))
         self._right_lines = None
-        # For each line in 'left' give the offset to the other lines which
-        # match it.
-        self._generate_matching_lines()
-
-    def _generate_matching_lines(self):
-        matches = {}
-        for idx, line in enumerate(self.lines):
-            matches.setdefault(line, []).append(idx)
-        self._matching_lines = matches
 
     def _update_matching_lines(self, new_lines, index):
         matches = self._matching_lines
@@ -338,9 +334,7 @@ def make_delta(source_bytes, target_bytes):
         raise TypeError('source is not a str')
     if type(target_bytes) is not str:
         raise TypeError('target is not a str')
-    line_locations = EquivalenceTable([])
-    source_lines = osutils.split_lines(source_bytes)
-    line_locations.extend_lines(source_lines, [True]*len(source_lines))
+    line_locations = LinesDeltaIndex(osutils.split_lines(source_bytes))
     delta, _ = line_locations.make_delta(osutils.split_lines(target_bytes),
                                          bytes_length=len(target_bytes))
     return ''.join(delta)

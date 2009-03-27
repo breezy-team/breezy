@@ -748,7 +748,7 @@ class PythonGroupCompressor(_CommonGroupCompressor):
         :param delta: If False, do not compress records.
         """
         super(PythonGroupCompressor, self).__init__()
-        self.line_locations = EquivalenceTable([])
+        self.line_locations = LinesDeltaIndex([])
         self.lines = self.line_locations.lines
         self._present_prefixes = set()
 
@@ -1784,7 +1784,7 @@ from bzrlib._groupcompress_py import (
     encode_base128_int,
     decode_base128_int,
     encode_copy_instruction,
-    EquivalenceTable,
+    LinesDeltaIndex,
     )
 try:
     from bzrlib._groupcompress_pyx import (
