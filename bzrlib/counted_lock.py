@@ -27,6 +27,9 @@ class CountedLock(object):
 
     This can be used with any object that provides a basic Lock interface,
     including LockDirs and OS file locks.
+
+    :ivar _token: While a write lock is held, this is the token 
+        for it.
     """
 
     def __init__(self, real_lock):
@@ -65,19 +68,23 @@ class CountedLock(object):
 
         If the lock was originally acquired in read mode this will fail.
 
-        :param token: If non-None, reacquire the lock using this token.
+        :param token: If given and the lock is already held, 
+            then validate that we already hold the real
+            lock with this token.
+
+        :returns: The token from the underlying lock.
         """
         if self._lock_count == 0:
-            return_token = self._real_lock.lock_write(token)
+            self._token = self._real_lock.lock_write(token=token)
             self._lock_mode = 'w'
             self._lock_count += 1
-            return return_token
+            return self._token
         elif self._lock_mode != 'w':
             raise errors.ReadOnlyError(self)
         else:
             self._real_lock.validate_token(token)
             self._lock_count += 1
-            return token
+            return self._token
 
     def unlock(self):
         if self._lock_count == 0:

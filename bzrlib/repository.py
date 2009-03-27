@@ -1892,7 +1892,7 @@ class Repository(object):
         for record in self.texts.get_record_stream(text_keys, 'unordered', True):
             if record.storage_kind == 'absent':
                 raise errors.RevisionNotPresent(record.key, self)
-            yield text_keys[record.key], record.get_bytes_as('fulltext')
+            yield text_keys[record.key], record.get_bytes_as('chunked')
 
     def _generate_text_key_index(self, text_key_references=None,
         ancestors=None):
@@ -2067,6 +2067,7 @@ class Repository(object):
         inventories in memory, but will only parse a single inventory at a
         time.
 
+        :param revision_ids: The expected revision ids of the inventories.
         :return: An iterator of inventories.
         """
         if ((None in revision_ids)
@@ -3922,6 +3923,24 @@ class StreamSink(object):
     def _locked_insert_stream(self, stream, src_format):
         to_serializer = self.target_repo._format._serializer
         src_serializer = src_format._serializer
+        if to_serializer == src_serializer:
+            # If serializers match and the target is a pack repository, set the
+            # write cache size on the new pack.  This avoids poor performance
+            # on transports where append is unbuffered (such as
+            # RemoteTransport).  This is safe to do because nothing should read
+            # back from the target repository while a stream with matching
+            # serialization is being inserted.
+            # The exception is that a delta record from the source that should
+            # be a fulltext may need to be expanded by the target (see
+            # test_fetch_revisions_with_deltas_into_pack); but we take care to
+            # explicitly flush any buffered writes first in that rare case.
+            try:
+                new_pack = self.target_repo._pack_collection._new_pack
+            except AttributeError:
+                # Not a pack repository
+                pass
+            else:
+                new_pack.set_write_cache_size(1024*1024)
         for substream_type, substream in stream:
             if substream_type == 'texts':
                 self.target_repo.texts.insert_record_stream(substream)

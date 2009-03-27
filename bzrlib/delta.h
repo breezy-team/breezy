@@ -84,10 +84,10 @@ create_delta(const struct delta_index *index,
  * This must be called twice on the delta data buffer, first to get the
  * expected source buffer size, and again to get the target buffer size.
  */
-static inline unsigned long get_delta_hdr_size(const unsigned char **datap,
-                                               const unsigned char *top)
+static unsigned long
+get_delta_hdr_size(unsigned char **datap, const unsigned char *top)
 {
-    const unsigned char *data = *datap;
+    unsigned char *data = *datap;
     unsigned char cmd;
     unsigned long size = 0;
     int i = 0;
