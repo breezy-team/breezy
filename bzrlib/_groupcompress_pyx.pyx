@@ -245,13 +245,57 @@ def apply_delta(source_bytes, delta_bytes):
     return _apply_delta(source, source_size, delta, delta_size)
 
 
+cdef unsigned char *_decode_copy_instruction(unsigned char *bytes,
+    unsigned char cmd, unsigned int *offset, unsigned int *length):
+    """Decode a copy instruction from the next few bytes.
+
+    A copy instruction is a variable number of bytes, so we will parse the
+    bytes we care about, and return the new position, as well as the offset and
+    length referred to in the bytes.
+
+    :param bytes: Pointer to the start of bytes after cmd
+    :param cmd: The command code
+    :return: Pointer to the bytes just after the last decode byte
+    """
+    cdef unsigned int off, size, count
+    off = 0
+    size = 0
+    count = 0
+    if (cmd & 0x01):
+        off = bytes[count]
+        count = count + 1
+    if (cmd & 0x02):
+        off = off | (bytes[count] << 8)
+        count = count + 1
+    if (cmd & 0x04):
+        off = off | (bytes[count] << 16)
+        count = count + 1
+    if (cmd & 0x08):
+        off = off | (bytes[count] << 24)
+        count = count + 1
+    if (cmd & 0x10):
+        size = bytes[count]
+        count = count + 1
+    if (cmd & 0x20):
+        size = size | (bytes[count] << 8)
+        count = count + 1
+    if (cmd & 0x40):
+        size = size | (bytes[count] << 16)
+        count = count + 1
+    if (size == 0):
+        size = 0x10000
+    offset[0] = off
+    length[0] = size
+    return bytes + count
+
+
 cdef object _apply_delta(char *source, Py_ssize_t source_size,
                          char *delta, Py_ssize_t delta_size):
     """common functionality between apply_delta and apply_delta_to_source."""
     cdef unsigned char *data, *top
     cdef unsigned char *dst_buf, *out, cmd
     cdef Py_ssize_t size
-    cdef unsigned long cp_off, cp_size
+    cdef unsigned int cp_off, cp_size
 
     data = <unsigned char *>delta
     top = data + delta_size
@@ -260,39 +304,14 @@ cdef object _apply_delta(char *source, Py_ssize_t source_size,
     size = get_delta_hdr_size(&data, top)
     result = PyString_FromStringAndSize(NULL, size)
     dst_buf = <unsigned char*>PyString_AS_STRING(result)
-    # XXX: The original code added a trailing null here, but this shouldn't be
-    #      necessary when using PyString_FromStringAndSize
-    # dst_buf[size] = 0
 
     out = dst_buf
     while (data < top):
         cmd = data[0]
         data = data + 1
         if (cmd & 0x80):
-            cp_off = cp_size = 0
-            if (cmd & 0x01):
-                cp_off = data[0]
-                data = data + 1
-            if (cmd & 0x02):
-                cp_off = cp_off | (data[0] << 8)
-                data = data + 1
-            if (cmd & 0x04):
-                cp_off = cp_off | (data[0] << 16)
-                data = data + 1
-            if (cmd & 0x08):
-                cp_off = cp_off | (data[0] << 24)
-                data = data + 1
-            if (cmd & 0x10):
-                cp_size = data[0]
-                data = data + 1
-            if (cmd & 0x20):
-                cp_size = cp_size | (data[0] << 8)
-                data = data + 1
-            if (cmd & 0x40):
-                cp_size = cp_size | (data[0] << 16)
-                data = data + 1
-            if (cp_size == 0):
-                cp_size = 0x10000
+            # Copy instruction
+            data = _decode_copy_instruction(data, cmd, &cp_off, &cp_size)
             if (cp_off + cp_size < cp_size or
                 cp_off + cp_size > source_size or
                 cp_size > size):
@@ -303,7 +322,13 @@ cdef object _apply_delta(char *source, Py_ssize_t source_size,
             memcpy(out, source + cp_off, cp_size)
             out = out + cp_size
             size = size - cp_size
-        elif (cmd):
+        else:
+            # Insert instruction
+            if cmd == 0:
+                # cmd == 0 is reserved for future encoding
+                # extensions. In the mean time we must fail when
+                # encountering them (might be data corruption).
+                raise RuntimeError('Got delta opcode: 0, not supported')
             if (cmd > size):
                 raise RuntimeError('Insert instruction longer than remaining'
                     ' bytes: %d > %d' % (cmd, size))
@@ -311,25 +336,18 @@ cdef object _apply_delta(char *source, Py_ssize_t source_size,
             out = out + cmd
             data = data + cmd
             size = size - cmd
-        else:
-            # /*
-            #  * cmd == 0 is reserved for future encoding
-            #  * extensions. In the mean time we must fail when
-            #  * encountering them (might be data corruption).
-            #  */
-            ## /* XXX: error("unexpected delta opcode 0"); */
-            raise RuntimeError('Got delta opcode: 0, not supported')
 
-    # /* sanity check */
+    # sanity check
     if (data != top or size != 0):
-        ## /* XXX: error("delta replay has gone wild"); */
         raise RuntimeError('Did not extract the number of bytes we expected'
             ' we were left with %d bytes in "size", and top - data = %d'
             % (size, <int>(top - data)))
         return None
 
     # *dst_size = out - dst_buf;
-    assert (out - dst_buf) == PyString_GET_SIZE(result)
+    if (out - dst_buf) != PyString_GET_SIZE(result):
+        raise RuntimeError('Number of bytes extracted did not match the'
+            ' size encoded in the delta header.')
     return result
 
 
