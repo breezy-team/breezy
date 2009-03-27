@@ -287,12 +287,13 @@ class TestGroupCompressBlock(tests.TestCase):
         start = 0
         for key in sorted(key_to_text):
             compressor.compress(key, key_to_text[key], None)
+        locs = dict((key, (start, end)) for key, (start, _, end, _)
+                    in compressor.labels_deltas.iteritems())
         block = compressor.flush()
-        entries = block._entries
+        raw_bytes = block.to_bytes()
         # Go through from_bytes(to_bytes()) so that we start with a compressed
         # content object
-        return entries, groupcompress.GroupCompressBlock.from_bytes(
-            block.to_bytes())
+        return locs, groupcompress.GroupCompressBlock.from_bytes(raw_bytes)
 
     def test_from_empty_bytes(self):
         self.assertRaises(ValueError,
@@ -302,7 +303,6 @@ class TestGroupCompressBlock(tests.TestCase):
         block = groupcompress.GroupCompressBlock.from_bytes(
             'gcb1z\n0\n0\n')
         self.assertIsInstance(block, groupcompress.GroupCompressBlock)
-        self.assertEqual({}, block._entries)
         self.assertIs(None, block._content)
         self.assertEqual('', block._z_content)
         block._ensure_content()
@@ -329,22 +329,10 @@ class TestGroupCompressBlock(tests.TestCase):
         self.assertEqual(z_content, block._z_content)
         self.assertEqual(content, block._content)
 
-    def test_add_entry(self):
-        gcb = groupcompress.GroupCompressBlock()
-        e = gcb.add_entry(('foo', 'bar'), 'fulltext', 'abcd'*10, 0, 100)
-        self.assertIsInstance(e, groupcompress.GroupCompressBlockEntry)
-        self.assertEqual(('foo', 'bar'), e.key)
-        self.assertEqual('fulltext', e.type)
-        self.assertEqual('abcd'*10, e.sha1)
-        self.assertEqual(0, e.start)
-        self.assertEqual(100, e.length)
-
     def test_to_bytes(self):
         content = ('this is some content\n'
                    'this content will be compressed\n')
         gcb = groupcompress.GroupCompressBlock()
-        gcb.add_entry(('foo', 'bar'), 'fulltext', 'abcd'*10, 0, 100)
-        gcb.add_entry(('bing',), 'fulltext', 'abcd'*10, 100, 100)
         gcb.set_content(content)
         bytes = gcb.to_bytes()
         self.assertEqual(gcb._z_content_length, len(gcb._z_content))
@@ -612,20 +600,21 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
         start = 0
         for key in sorted(key_to_text):
             compressor.compress(key, key_to_text[key], None)
+        locs = dict((key, (start, end)) for key, (start, _, end, _)
+                    in compressor.labels_deltas.iteritems())
         block = compressor.flush()
-        entries = block._entries
         raw_bytes = block.to_bytes()
-        return entries, groupcompress.GroupCompressBlock.from_bytes(raw_bytes)
+        return locs, groupcompress.GroupCompressBlock.from_bytes(raw_bytes)
 
-    def add_key_to_manager(self, key, entries, block, manager):
-        entry = entries[key]
-        manager.add_factory(entry.key, (), entry.start, entry.end)
+    def add_key_to_manager(self, key, locations, block, manager):
+        start, end = locations[key]
+        manager.add_factory(key, (), start, end)
 
     def test_get_fulltexts(self):
-        entries, block = self.make_block(self._texts)
+        locations, block = self.make_block(self._texts)
         manager = groupcompress._LazyGroupContentManager(block)
-        self.add_key_to_manager(('key1',), entries, block, manager)
-        self.add_key_to_manager(('key2',), entries, block, manager)
+        self.add_key_to_manager(('key1',), locations, block, manager)
+        self.add_key_to_manager(('key2',), locations, block, manager)
         result_order = []
         for record in manager.get_record_stream():
             result_order.append(record.key)
@@ -636,8 +625,8 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
         # If we build the manager in the opposite order, we should get them
         # back in the opposite order
         manager = groupcompress._LazyGroupContentManager(block)
-        self.add_key_to_manager(('key2',), entries, block, manager)
-        self.add_key_to_manager(('key1',), entries, block, manager)
+        self.add_key_to_manager(('key2',), locations, block, manager)
+        self.add_key_to_manager(('key1',), locations, block, manager)
         result_order = []
         for record in manager.get_record_stream():
             result_order.append(record.key)
@@ -646,7 +635,7 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
         self.assertEqual([('key2',), ('key1',)], result_order)
 
     def test__wire_bytes_no_keys(self):
-        entries, block = self.make_block(self._texts)
+        locations, block = self.make_block(self._texts)
         manager = groupcompress._LazyGroupContentManager(block)
         wire_bytes = manager._wire_bytes()
         block_length = len(block.to_bytes())
@@ -665,10 +654,10 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
                          wire_bytes)
 
     def test__wire_bytes(self):
-        entries, block = self.make_block(self._texts)
+        locations, block = self.make_block(self._texts)
         manager = groupcompress._LazyGroupContentManager(block)
-        self.add_key_to_manager(('key1',), entries, block, manager)
-        self.add_key_to_manager(('key4',), entries, block, manager)
+        self.add_key_to_manager(('key1',), locations, block, manager)
+        self.add_key_to_manager(('key4',), locations, block, manager)
         block_bytes = block.to_bytes()
         wire_bytes = manager._wire_bytes()
         (storage_kind, z_header_len, header_len,
@@ -683,8 +672,8 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
         z_header = rest[:z_header_len]
         header = zlib.decompress(z_header)
         self.assertEqual(header_len, len(header))
-        entry1 = entries[('key1',)]
-        entry4 = entries[('key4',)]
+        entry1 = locations[('key1',)]
+        entry4 = locations[('key4',)]
         self.assertEqualDiff('key1\n'
                              '\n'  # no parents
                              '%d\n' # start offset
@@ -693,17 +682,17 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
                              '\n'
                              '%d\n'
                              '%d\n'
-                             % (entry1.start, entry1.end,
-                                entry4.start, entry4.end),
+                             % (entry1[0], entry1[1],
+                                entry4[0], entry4[1]),
                             header)
         z_block = rest[z_header_len:]
         self.assertEqual(block_bytes, z_block)
 
     def test_from_bytes(self):
-        entries, block = self.make_block(self._texts)
+        locations, block = self.make_block(self._texts)
         manager = groupcompress._LazyGroupContentManager(block)
-        self.add_key_to_manager(('key1',), entries, block, manager)
-        self.add_key_to_manager(('key4',), entries, block, manager)
+        self.add_key_to_manager(('key1',), locations, block, manager)
+        self.add_key_to_manager(('key4',), locations, block, manager)
         wire_bytes = manager._wire_bytes()
         self.assertStartsWith(wire_bytes, 'groupcompress-block\n')
         manager = groupcompress._LazyGroupContentManager.from_bytes(wire_bytes)
@@ -718,21 +707,21 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
         self.assertEqual([('key1',), ('key4',)], result_order)
 
     def test__check_rebuild_no_changes(self):
-        entries, block = self.make_block(self._texts)
+        locations, block = self.make_block(self._texts)
         manager = groupcompress._LazyGroupContentManager(block)
         # Request all the keys, which ensures that we won't rebuild
-        self.add_key_to_manager(('key1',), entries, block, manager)
-        self.add_key_to_manager(('key2',), entries, block, manager)
-        self.add_key_to_manager(('key3',), entries, block, manager)
-        self.add_key_to_manager(('key4',), entries, block, manager)
+        self.add_key_to_manager(('key1',), locations, block, manager)
+        self.add_key_to_manager(('key2',), locations, block, manager)
+        self.add_key_to_manager(('key3',), locations, block, manager)
+        self.add_key_to_manager(('key4',), locations, block, manager)
         manager._check_rebuild_block()
         self.assertIs(block, manager._block)
 
     def test__check_rebuild_only_one(self):
-        entries, block = self.make_block(self._texts)
+        locations, block = self.make_block(self._texts)
         manager = groupcompress._LazyGroupContentManager(block)
         # Request just the first key, which should trigger a 'strip' action
-        self.add_key_to_manager(('key1',), entries, block, manager)
+        self.add_key_to_manager(('key1',), locations, block, manager)
         manager._check_rebuild_block()
         self.assertIsNot(block, manager._block)
         self.assertTrue(block._content_length > manager._block._content_length)
@@ -744,10 +733,10 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
                              record.get_bytes_as('fulltext'))
 
     def test__check_rebuild_middle(self):
-        entries, block = self.make_block(self._texts)
+        locations, block = self.make_block(self._texts)
         manager = groupcompress._LazyGroupContentManager(block)
         # Request a small key in the middle should trigger a 'rebuild'
-        self.add_key_to_manager(('key4',), entries, block, manager)
+        self.add_key_to_manager(('key4',), locations, block, manager)
         manager._check_rebuild_block()
         self.assertIsNot(block, manager._block)
         self.assertTrue(block._content_length > manager._block._content_length)

@@ -83,29 +83,6 @@ def sort_gc_optimal(parent_map):
     return present_keys
 
 
-class GroupCompressBlockEntry(object):
-    """Track the information about a single object inside a GC group.
-
-    This is generally just the dumb data structure.
-    """
-
-    def __init__(self, key, type, sha1, start, length):
-        self.key = key
-        self.type = type # delta, fulltext, external?
-        self.sha1 = sha1 # Sha1 of content
-        self.start = start # Byte offset to start of data
-        self.length = length # Length of content
-
-    def __repr__(self):
-        return '%s(%s, %s, %s, %s, %s)' % (
-            self.__class__.__name__,
-            self.key, self.type, self.sha1, self.start, self.length
-            )
-
-    @property
-    def end(self):
-        return self.start + self.length
-
 # The max zlib window size is 32kB, so if we set 'max_size' output of the
 # decompressor to the requested bytes + 32kB, then we should guarantee
 # num_bytes coming out.
@@ -123,7 +100,6 @@ class GroupCompressBlock(object):
 
     def __init__(self):
         # map by key? or just order in file?
-        self._entries = {}
         self._compressor_name = None
         self._z_content = None
         self._z_content_decompressor = None
@@ -278,22 +254,6 @@ class GroupCompressBlock(object):
         elif c == 'd':
             bytes = apply_delta(self._content, content)
         return bytes
-
-    def add_entry(self, key, type, sha1, start, length):
-        """Add new meta info about an entry.
-
-        :param key: The key for the new content
-        :param type: Whether this is a delta or fulltext entry (external?)
-        :param sha1: sha1sum of the fulltext of this entry
-        :param start: where the encoded bytes start
-        :param length: total number of bytes in the encoded form
-        :return: The entry?
-        """
-        entry = GroupCompressBlockEntry(key, type, sha1, start, length)
-        if key in self._entries:
-            raise ValueError('Duplicate key found: %s' % (key,))
-        self._entries[key] = entry
-        return entry
 
     def set_content(self, content):
         """Set the content of this block."""
@@ -643,9 +603,6 @@ class _CommonGroupCompressor(object):
         if not bytes: # empty, like a dir entry, etc
             if nostore_sha == _null_sha1:
                 raise errors.ExistingContent()
-            self._block.add_entry(key, type='empty',
-                                  sha1=None, start=0,
-                                  length=0)
             return _null_sha1, 0, 0, 'fulltext', 0
         # we assume someone knew what they were doing when they passed it in
         if expected_sha is not None:
@@ -688,42 +645,32 @@ class _CommonGroupCompressor(object):
         :param key: The key to extract.
         :return: An iterable over bytes and the sha1.
         """
-        delta_details = self.labels_deltas[key]
-        delta_chunks = self.chunks[delta_details[0][1]:delta_details[1][1]]
+        (start_byte, start_chunk, end_byte, end_chunk) = self.labels_deltas[key]
+        delta_chunks = self.chunks[start_chunk:end_chunk]
         stored_bytes = ''.join(delta_chunks)
-        # TODO: Fix this, we shouldn't really be peeking here
-        entry = self._block._entries[key]
-        if entry.type == 'fulltext':
-            if stored_bytes[0] != 'f':
-                raise ValueError('Index claimed fulltext, but stored bytes'
-                                 ' indicate %s' % (stored_bytes[0],))
+        if stored_bytes[0] == 'f':
             fulltext_len, offset = decode_base128_int(stored_bytes[1:10])
-            if fulltext_len + 1 + offset != len(stored_bytes):
+            data_len = fulltext_len + 1 + offset
+            if  data_len != len(stored_bytes):
                 raise ValueError('Index claimed fulltext len, but stored bytes'
                                  ' claim %s != %s'
-                                 % (len(stored_bytes),
-                                    fulltext_len + 1 + offset))
+                                 % (len(stored_bytes), data_len))
             bytes = stored_bytes[offset + 1:]
         else:
-            if entry.type != 'delta':
-                raise ValueError('Unknown entry type: %s' % (entry.type,))
             # XXX: This is inefficient at best
-            source = ''.join(self.chunks)
+            source = ''.join(self.chunks[:start_chunk])
             if stored_bytes[0] != 'd':
-                raise ValueError('Entry type claims delta, bytes claim %s'
+                raise ValueError('Unknown content kind, bytes claim %s'
                                  % (stored_bytes[0],))
             delta_len, offset = decode_base128_int(stored_bytes[1:10])
-            if delta_len + 1 + offset != len(stored_bytes):
+            data_len = delta_len + 1 + offset
+            if data_len != len(stored_bytes):
                 raise ValueError('Index claimed delta len, but stored bytes'
                                  ' claim %s != %s'
-                                 % (len(stored_bytes),
-                                    delta_len + 1 + offset))
+                                 % (len(stored_bytes), data_len))
             bytes = apply_delta(source, stored_bytes[offset + 1:])
         bytes_sha1 = osutils.sha_string(bytes)
-        if entry.sha1 != bytes_sha1:
-            raise ValueError('Recorded sha1 != measured %s != %s'
-                             % (entry.sha1, bytes_sha1))
-        return bytes, entry.sha1
+        return bytes, bytes_sha1
 
     def flush(self):
         """Finish this group, creating a formatted stream.
@@ -786,15 +733,14 @@ class PythonGroupCompressor(_CommonGroupCompressor):
             # Update the delta_length to include those two encoded integers
             out_lines[1] = encode_base128_int(delta_length)
             out_length = len(out_lines[3]) + 1 + delta_length
-        self._block.add_entry(key, type=type, sha1=sha1,
-                              start=self.endpoint, length=out_length)
         start = self.endpoint # Before insertion
-        delta_start = (start, len(self._delta_index.lines))
+        chunk_start = len(self._delta_index.lines)
         self._delta_index.extend_lines(out_lines, index_lines)
         self.endpoint = self._delta_index.endpoint
         self.input_bytes += bytes_length
-        delta_end = (self.endpoint, len(self._delta_index.lines))
-        self.labels_deltas[key] = (delta_start, delta_end)
+        chunk_end = len(self._delta_index.lines)
+        self.labels_deltas[key] = (start, chunk_start,
+                                   self.endpoint, chunk_end)
         return sha1, start, self.endpoint, type, out_length
 
 
@@ -849,14 +795,15 @@ class PyrexGroupCompressor(_CommonGroupCompressor):
             length = len(delta) + len_mini_header
             new_chunks = ['d', enc_length, delta]
             self._delta_index.add_delta_source(delta, len_mini_header)
-        self._block.add_entry(key, type=type, sha1=sha1,
-                              start=self.endpoint, length=length)
-        start = self.endpoint # Before insertion
-        delta_start = (self.endpoint, len(self.chunks))
+        # Before insertion
+        start = self.endpoint
+        chunk_start = len(self.chunks)
+        # Now output these bytes
         self._output_chunks(new_chunks)
         self.input_bytes += input_len
-        delta_end = (self.endpoint, len(self.chunks))
-        self.labels_deltas[key] = (delta_start, delta_end)
+        chunk_end = len(self.chunks)
+        self.labels_deltas[key] = (start, chunk_start,
+                                   self.endpoint, chunk_end)
         if not self._delta_index._source_offset == self.endpoint:
             raise AssertionError('the delta index is out of sync'
                 'with the output lines %s != %s'
