@@ -24,7 +24,7 @@ from bzrlib import (
 
 
 def load_tests(standard_tests, module, loader):
-    """Parameterize tests for view-aware vs not."""
+    """Parameterize tests for all versions of groupcompress."""
     to_adapt, result = tests.split_suite_by_condition(
         standard_tests, tests.condition_isinstance(TestMakeAndApplyDelta))
     scenarios = [
@@ -49,6 +49,7 @@ class _CompiledGroupCompressFeature(tests.Feature):
 
     def feature_name(self):
         return 'bzrlib._groupcompress_pyx'
+
 
 CompiledGroupCompressFeature = _CompiledGroupCompressFeature()
 
@@ -120,14 +121,14 @@ class TestMakeAndApplyDelta(tests.TestCase):
 
     def test_make_delta_is_typesafe(self):
         self.make_delta('a string', 'another string')
-        self.assertRaises(TypeError,
-            self.make_delta, 'a string', object())
-        self.assertRaises(TypeError,
-            self.make_delta, 'a string', u'not a string')
-        self.assertRaises(TypeError,
-            self.make_delta, object(), 'a string')
-        self.assertRaises(TypeError,
-            self.make_delta, u'not a string', 'a string')
+
+        def _check_make_delta(string1, string2):
+            self.assertRaises(TypeError, self.make_delta, string1, string2)
+
+        _check_make_delta('a string', object())
+        _check_make_delta('a string', u'not a string')
+        _check_make_delta(object(), 'a string')
+        _check_make_delta(u'not a string', 'a string')
 
     def test_make_noop_delta(self):
         ident_delta = self.make_delta(_text1, _text1)
@@ -150,14 +151,11 @@ class TestMakeAndApplyDelta(tests.TestCase):
 
     def test_apply_delta_is_typesafe(self):
         self.apply_delta(_text1, 'MM\x90M')
-        self.assertRaises(TypeError,
-            self.apply_delta, object(), 'MM\x90M')
-        self.assertRaises(TypeError,
-            self.apply_delta, unicode(_text1), 'MM\x90M')
-        self.assertRaises(TypeError,
-            self.apply_delta, _text1, u'MM\x90M')
-        self.assertRaises(TypeError,
-            self.apply_delta, _text1, object())
+        self.assertRaises(TypeError, self.apply_delta, object(), 'MM\x90M')
+        self.assertRaises(TypeError, self.apply_delta,
+                          unicode(_text1), 'MM\x90M')
+        self.assertRaises(TypeError, self.apply_delta, _text1, u'MM\x90M')
+        self.assertRaises(TypeError, self.apply_delta, _text1, object())
 
     def test_apply_delta(self):
         target = self.apply_delta(_text1,
@@ -193,7 +191,8 @@ class TestDeltaIndex(tests.TestCase):
         di.add_source(_first_text, 0)
         self.assertEqual(len(_first_text), di._source_offset)
         di.add_source(_second_text, 0)
-        self.assertEqual(len(_first_text) + len(_second_text), di._source_offset)
+        self.assertEqual(len(_first_text) + len(_second_text),
+                         di._source_offset)
         delta = di.make_delta(_third_text)
         result = self._gc_module.apply_delta(_first_text + _second_text, delta)
         self.assertEqualDiff(_third_text, result)
@@ -230,8 +229,8 @@ class TestDeltaIndex(tests.TestCase):
         second_delta = di.make_delta(_third_text)
         result = self._gc_module.apply_delta(source, second_delta)
         self.assertEqualDiff(_third_text, result)
-        # We should be able to match against the 'previous text\nand has some...'
-        # that was part of the delta bytes
+        # We should be able to match against the
+        # 'previous text\nand has some...'  that was part of the delta bytes
         # Note that we don't match the 'common with the', because it isn't long
         # enough to match in the original text, and those bytes are not present
         # in the delta for the second text.

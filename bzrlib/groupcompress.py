@@ -87,8 +87,8 @@ def decode_base128_int(bytes):
 def sort_gc_optimal(parent_map):
     """Sort and group the keys in parent_map into groupcompress order.
 
-    groupcompress is defined (currently) as reverse-topological order, grouped by
-    the key prefix.
+    groupcompress is defined (currently) as reverse-topological order, grouped
+    by the key prefix.
 
     :return: A sorted-list of keys
     """
@@ -741,6 +741,70 @@ class _CommonGroupCompressor(object):
         self.labels_deltas = {}
         self._block = GroupCompressBlock()
 
+    def compress(self, key, bytes, expected_sha, nostore_sha=None, soft=False):
+        """Compress lines with label key.
+
+        :param key: A key tuple. It is stored in the output
+            for identification of the text during decompression. If the last
+            element is 'None' it is replaced with the sha1 of the text -
+            e.g. sha1:xxxxxxx.
+        :param bytes: The bytes to be compressed
+        :param expected_sha: If non-None, the sha the lines are believed to
+            have. During compression the sha is calculated; a mismatch will
+            cause an error.
+        :param nostore_sha: If the computed sha1 sum matches, we will raise
+            ExistingContent rather than adding the text.
+        :param soft: Do a 'soft' compression. This means that we require larger
+            ranges to match to be considered for a copy command.
+
+        :return: The sha1 of lines, the start and end offsets in the delta, the
+            type ('fulltext' or 'delta') and the number of bytes accumulated in
+            the group output so far.
+
+        :seealso VersionedFiles.add_lines:
+        """
+        if not bytes: # empty, like a dir entry, etc
+            if nostore_sha == _null_sha1:
+                raise errors.ExistingContent()
+            self._block.add_entry(key, type='empty',
+                                  sha1=None, start=0,
+                                  length=0)
+            return _null_sha1, 0, 0, 'fulltext', 0
+        # we assume someone knew what they were doing when they passed it in
+        if expected_sha is not None:
+            sha1 = expected_sha
+        else:
+            sha1 = osutils.sha_string(bytes)
+        if nostore_sha is not None:
+            if sha1 == nostore_sha:
+                raise errors.ExistingContent()
+        if key[-1] is None:
+            key = key[:-1] + ('sha1:' + sha1,)
+
+        return self._compress(key, bytes, sha1, len(bytes) / 2, soft)
+
+    def _compress(self, key, bytes, sha1, max_delta_size, soft=False):
+        """Compress lines with label key.
+
+        :param key: A key tuple. It is stored in the output for identification
+            of the text during decompression.
+
+        :param bytes: The bytes to be compressed
+
+        :param sha1: The sha1 for 'bytes'.
+
+        :param max_delta_size: The size above which we issue a fulltext instead
+            of a delta.
+
+        :param soft: Do a 'soft' compression. This means that we require larger
+            ranges to match to be considered for a copy command.
+
+        :return: The sha1 of lines, the start and end offsets in the delta, the
+            type ('fulltext' or 'delta') and the number of bytes accumulated in
+            the group output so far.
+        """
+        raise NotImplementedError(self._compress)
+
     def extract(self, key):
         """Extract a key previously added to the compressor.
 
@@ -812,44 +876,14 @@ class PythonGroupCompressor(_CommonGroupCompressor):
         self.lines = self.line_locations.lines
         self._present_prefixes = set()
 
-    # FIXME: implement nostore_sha
-    def compress(self, key, bytes, expected_sha, nostore_sha=None, soft=False):
-        """Compress lines with label key.
-
-        :param key: A key tuple. It is stored in the output
-            for identification of the text during decompression. If the last
-            element is 'None' it is replaced with the sha1 of the text -
-            e.g. sha1:xxxxxxx.
-        :param bytes: The bytes to be compressed
-        :param expected_sha: If non-None, the sha the lines are believed to
-            have. During compression the sha is calculated; a mismatch will
-            cause an error.
-        :param nostore_sha: If the computed sha1 sum matches, we will raise
-            ExistingContent rather than adding the text.
-        :param soft: Do a 'soft' compression. This means that we require larger
-            ranges to match to be considered for a copy command.
-        :return: The sha1 of lines, and the number of bytes accumulated in
-            the group output so far.
-        :seealso VersionedFiles.add_lines:
-        """
-        if not bytes: # empty, like a dir entry, etc
-            if nostore_sha == _null_sha1:
-                raise errors.ExistingContent()
-            self._block.add_entry(key, type='empty',
-                                  sha1=None, start=0,
-                                  length=0)
-            return _null_sha1, 0, 0, 'fulltext', 0
+    def _compress(self, key, bytes, sha1, max_delta_size, soft=False):
+        """see _CommonGroupCompressor._compress"""
         bytes_length = len(bytes)
         new_lines = osutils.split_lines(bytes)
-        sha1 = osutils.sha_string(bytes)
-        if sha1 == nostore_sha:
-            raise errors.ExistingContent()
-        if key[-1] is None:
-            key = key[:-1] + ('sha1:' + sha1,)
         out_lines, index_lines = self.line_locations.make_delta(new_lines,
                                                                 soft=soft)
         delta_length = sum(map(len, out_lines))
-        if delta_length * 2 > bytes_length:
+        if delta_length > max_delta_size:
             # The delta is longer than the fulltext, insert a fulltext
             type = 'fulltext'
             out_lines = ['f', encode_base128_int(bytes_length)]
@@ -866,17 +900,15 @@ class PythonGroupCompressor(_CommonGroupCompressor):
             out_length = len(out_lines[3]) + 1 + delta_length
         self._block.add_entry(key, type=type, sha1=sha1,
                               start=self.endpoint, length=out_length)
-        start = self.endpoint # Keep it
+        start = self.endpoint # Before insertion
         delta_start = (self.endpoint, len(self.lines))
         self.output_lines(out_lines, index_lines)
         self.input_bytes += bytes_length
         delta_end = (self.endpoint, len(self.lines))
         self.labels_deltas[key] = (delta_start, delta_end)
-        # FIXME: lot of guessing below
-        return sha1, start, self.endpoint, 'delta', out_length
+        return sha1, start, self.endpoint, type, out_length
 
     def flush(self):
-        # FIXME: ugly hack to masquerade ourself as the pyrex version
         self._block.set_content(''.join(self.lines))
         return self._block
 
@@ -920,42 +952,8 @@ class PyrexGroupCompressor(_CommonGroupCompressor):
         self.num_keys = 0
         self._delta_index = DeltaIndex()
 
-    def compress(self, key, bytes, expected_sha, nostore_sha=None, soft=False):
-        """Compress lines with label key.
-
-        :param key: A key tuple. It is stored in the output
-            for identification of the text during decompression. If the last
-            element is 'None' it is replaced with the sha1 of the text -
-            e.g. sha1:xxxxxxx.
-        :param bytes: The bytes to be compressed
-        :param expected_sha: If non-None, the sha the lines are believed to
-            have. During compression the sha is calculated; a mismatch will
-            cause an error.
-        :param nostore_sha: If the computed sha1 sum matches, we will raise
-            ExistingContent rather than adding the text.
-        :param soft: Do a 'soft' compression. This means that we require larger
-            ranges to match to be considered for a copy command.
-        :return: The sha1 of lines, and the number of bytes accumulated in
-            the group output so far.
-        :seealso VersionedFiles.add_lines:
-        """
-        if not bytes: # empty, like a dir entry, etc
-            if nostore_sha == _null_sha1:
-                raise errors.ExistingContent()
-            self._block.add_entry(key, type='empty',
-                                  sha1=None, start=0,
-                                  length=0)
-            return _null_sha1, 0, 0, 'fulltext', 0
-        # we assume someone knew what they were doing when they passed it in
-        if expected_sha is not None:
-            sha1 = expected_sha
-        else:
-            sha1 = osutils.sha_string(bytes)
-        if nostore_sha is not None:
-            if sha1 == nostore_sha:
-                raise errors.ExistingContent()
-        if key[-1] is None:
-            key = key[:-1] + ('sha1:' + sha1,)
+    def _compress(self, key, bytes, sha1, max_delta_size, soft=False):
+        """see _CommonGroupCompressor._compress"""
         input_len = len(bytes)
         # By having action/label/sha1/len, we can parse the group if the index
         # was ever destroyed, we have the key in 'label', we know the final
@@ -970,7 +968,6 @@ class PyrexGroupCompressor(_CommonGroupCompressor):
             raise AssertionError('_source_offset != endpoint'
                 ' somehow the DeltaIndex got out of sync with'
                 ' the output lines')
-        max_delta_size = len(bytes) / 2
         delta = self._delta_index.make_delta(bytes, max_delta_size)
         if (delta is None):
             type = 'fulltext'
@@ -991,7 +988,7 @@ class PyrexGroupCompressor(_CommonGroupCompressor):
                 self._delta_index.add_delta_source(delta, len_mini_header)
         self._block.add_entry(key, type=type, sha1=sha1,
                               start=self.endpoint, length=length)
-        start = self.endpoint
+        start = self.endpoint # Before insertion
         delta_start = (self.endpoint, len(self.lines))
         self.num_keys += 1
         self.output_chunks(new_chunks)

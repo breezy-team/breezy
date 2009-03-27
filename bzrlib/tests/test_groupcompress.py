@@ -30,7 +30,7 @@ from bzrlib.tests.test__groupcompress import CompiledGroupCompressFeature
 
 
 def load_tests(standard_tests, module, loader):
-    """Parameterize tests for view-aware vs not."""
+    """Parameterize tests for all versions of groupcompress."""
     to_adapt, result = tests.split_suite_by_condition(
         standard_tests, tests.condition_isinstance(TestAllGroupCompressors))
     scenarios = [
@@ -113,7 +113,7 @@ class TestAllGroupCompressors(TestGroupCompressor):
         # get the first out
         self.assertEqual(('strange\ncommon long line\n'
                           'that needs a 16 byte match\n', sha1_1),
-            compressor.extract(('label',)))
+                         compressor.extract(('label',)))
         # and the second
         self.assertEqual(('common long line\nthat needs a 16 byte match\n'
                           'different\n', sha1_2),

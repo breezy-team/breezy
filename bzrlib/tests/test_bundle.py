@@ -1342,10 +1342,14 @@ class V4BundleTester(BundleTester, TestCaseWithTransport):
         install_bundle(target_repo, serializer.read(s))
         target_repo.lock_read()
         self.addCleanup(target_repo.unlock)
+        # Turn the 'iterators_of_bytes' back into simple strings for comparison
+        repo_texts = dict((i, ''.join(content)) for i, content
+                          in target_repo.iter_files_bytes(
+                                [('fileid-2', 'rev1', '1'),
+                                 ('fileid-2', 'rev2', '2')]))
         self.assertEqual({'1':'contents1\nstatic\n',
-            '2':'contents2\nstatic\n'},
-            dict(target_repo.iter_files_bytes(
-                [('fileid-2', 'rev1', '1'), ('fileid-2', 'rev2', '2')])))
+                          '2':'contents2\nstatic\n'},
+                         repo_texts)
         rtree = target_repo.revision_tree('rev2')
         inventory_vf = target_repo.inventories
         # If the inventory store has a graph, it must match the revision graph.

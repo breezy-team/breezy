@@ -89,10 +89,6 @@ cdef class DeltaIndex:
     cdef readonly unsigned int _max_num_sources
     cdef public unsigned long _source_offset
 
-    def __repr__(self):
-        return '%s(%d, %d)' % (self.__class__.__name__,
-            len(self._sources), self._source_offset)
-
     def __init__(self, source=None):
         self._sources = []
         self._index = NULL
@@ -103,6 +99,10 @@ cdef class DeltaIndex:
 
         if source is not None:
             self.add_source(source, 0)
+
+    def __repr__(self):
+        return '%s(%d, %d)' % (self.__class__.__name__,
+            len(self._sources), self._source_offset)
 
     def __dealloc__(self):
         if self._index != NULL:

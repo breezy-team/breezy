@@ -1,8 +1,9 @@
-# Copyright (C) 2009 Canonical Limited.
+# Copyright (C) 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License version 2 as published
-# by the Free Software Foundation.
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -11,8 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
-#
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Python version of compiled extensions for doing compression.
 
@@ -23,7 +23,6 @@ useless stuff.
 from bzrlib import osutils
 
 
-### v imported from gc plugin@revno30
 class EquivalenceTable(object):
     """This class tracks equivalencies between lists of hashable objects.
 
@@ -71,8 +70,8 @@ class EquivalenceTable(object):
             if locations is None:
                 locations = self.get_idx_matches(pos)
             if locations is None:
-                # No more matches, just return whatever we have, but we know that
-                # this last position is not going to match anything
+                # No more matches, just return whatever we have, but we know
+                # that this last position is not going to match anything
                 pos += 1
                 break
             else:
@@ -230,7 +229,6 @@ class EquivalenceTable(object):
         return out_lines, index_lines
 
 
-
 def encode_copy_instruction(offset, length):
     """Convert this offset into a control code and bytes."""
     copy_command = 0x80
@@ -266,6 +264,11 @@ def encode_copy_instruction(offset, length):
 
 def make_delta(source_bytes, target_bytes):
     """Create a delta from source to target."""
+    # TODO: The checks below may not be a the right place yet.
+    if not isinstance(source_bytes, str):
+        raise TypeError('source is not a str')
+    if not isinstance(target_bytes, str):
+        raise TypeError('target is not a str')
     line_locations = EquivalenceTable([])
     return None
 
@@ -282,6 +285,3 @@ def apply_delta(basis, delta):
         else:
             lines.extend(delta_lines)
     return lines
-
-
-### ^ imported from gc plugin@revno30
