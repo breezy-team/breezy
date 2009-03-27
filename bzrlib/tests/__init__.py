@@ -2967,8 +2967,6 @@ def reinvoke_for_tests(suite):
         try:
             argv = [bzr_path, 'selftest', '--load-list', test_list_file_name,
                 '--subunit']
-            # Note that without subunit in core - epic FAIL. But we don't really
-            # care anyway because load-list means we don't get plugin tests.
             if '--no-plugins' in sys.argv:
                 argv.append('--no-plugins')
             # stderr=STDOUT would be ideal, but until we prevent noise on
