@@ -1719,7 +1719,8 @@ class DirStateRevisionTree(Tree):
         return self.inventory[file_id].text_size
 
     def get_file_text(self, file_id, path=None):
-        return list(self.iter_files_bytes([(file_id, None)]))[0][1]
+        _, content = list(self.iter_files_bytes([(file_id, None)]))[0]
+        return ''.join(content)
 
     def get_reference_revision(self, file_id, path=None):
         return self.inventory[file_id].reference_revision
