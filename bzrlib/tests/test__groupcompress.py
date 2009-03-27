@@ -45,7 +45,8 @@ def load_tests(standard_tests, module, loader):
                     'apply_delta': _groupcompress_py.apply_delta}),
             ])
     to_adapt, result = tests.split_suite_by_condition(
-        standard_tests, tests.condition_isinstance(TestMakeAndApplyDelta))
+        standard_tests, tests.condition_isinstance((TestMakeAndApplyDelta,
+                                                    TestBase128Int)))
     result = tests.multiply_tests(to_adapt, scenarios, result)
     to_adapt, result = tests.split_suite_by_condition(result,
         tests.condition_isinstance(TestMakeAndApplyCompatible))
@@ -203,8 +204,8 @@ class TestMakeAndApplyDelta(tests.TestCase):
 
 class TestMakeAndApplyCompatible(tests.TestCase):
 
-    make_delta = None # filled in by multiply_tests
-    apply_delta = None # filled in by multiply_tests
+    make_delta = None # Set by load_tests
+    apply_delta = None # Set by load_tests
 
     def assertMakeAndApply(self, source, target):
         """Assert that generating a delta and applying gives success."""
@@ -416,12 +417,14 @@ class TestCopyInstruction(tests.TestCase):
 
 class TestBase128Int(tests.TestCase):
 
+    _gc_module = None # Set by load_tests
+
     def assertEqualEncode(self, bytes, val):
-        self.assertEqual(bytes, _groupcompress_py.encode_base128_int(val))
+        self.assertEqual(bytes, self._gc_module.encode_base128_int(val))
 
     def assertEqualDecode(self, val, num_decode, bytes):
         self.assertEqual((val, num_decode),
-                         _groupcompress_py.decode_base128_int(bytes))
+                         self._gc_module.decode_base128_int(bytes))
 
     def test_encode(self):
         self.assertEqualEncode('\x01', 1)

@@ -1790,6 +1790,8 @@ try:
     from bzrlib._groupcompress_pyx import (
         apply_delta,
         DeltaIndex,
+        encode_base128_int,
+        decode_base128_int,
         )
     GroupCompressor = PyrexGroupCompressor
 except ImportError:

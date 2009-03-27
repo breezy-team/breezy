@@ -326,3 +326,57 @@ def apply_delta(source_bytes, delta_bytes):
     # *dst_size = out - dst_buf;
     assert (out - dst_buf) == PyString_GET_SIZE(result)
     return result
+
+
+def encode_base128_int(val):
+    """Convert an integer into a 7-bit lsb encoding."""
+    cdef unsigned int c_val
+    cdef Py_ssize_t count
+    cdef unsigned int num_bytes
+    cdef unsigned char c_bytes[8] # max size for 32-bit int is 5 bytes
+
+    c_val = val
+    count = 0
+    while c_val >= 0x80 and count < 8:
+        c_bytes[count] = <unsigned char>((c_val | 0x80) & 0xFF)
+        c_val = c_val >> 7
+        count = count + 1
+    if count >= 8 or c_val >= 0x80:
+        raise ValueError('encode_base128_int overflowed the buffer')
+    c_bytes[count] = <unsigned char>(c_val & 0xFF)
+    count = count + 1
+    return PyString_FromStringAndSize(<char *>c_bytes, count)
+
+
+def decode_base128_int(bytes):
+    """Decode an integer from a 7-bit lsb encoding."""
+    cdef int offset
+    cdef int val
+    cdef unsigned int uval
+    cdef int shift
+    cdef Py_ssize_t num_low_bytes
+    cdef unsigned char *c_bytes
+
+    offset = 0
+    val = 0
+    shift = 0
+    if not PyString_CheckExact(bytes):
+        raise TypeError('bytes is not a string')
+    c_bytes = <unsigned char*>PyString_AS_STRING(bytes)
+    # We take off 1, because we have to be able to decode the non-expanded byte
+    num_low_bytes = PyString_GET_SIZE(bytes) - 1
+    while (c_bytes[offset] & 0x80) and offset < num_low_bytes:
+        val |= (c_bytes[offset] & 0x7F) << shift
+        shift = shift + 7
+        offset = offset + 1
+    if c_bytes[offset] & 0x80:
+        raise ValueError('Data not properly formatted, we ran out of'
+                         ' bytes before 0x80 stopped being set.')
+    val |= c_bytes[offset] << shift
+    offset = offset + 1
+    if val < 0:
+        uval = <unsigned int> val
+        return uval, offset
+    return val, offset
+
+
