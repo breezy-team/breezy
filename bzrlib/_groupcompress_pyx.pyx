@@ -251,15 +251,6 @@ def apply_delta(source_bytes, delta_bytes):
     data = <unsigned char *>delta
     top = data + delta_size
 
-    # make sure the orig file size matches what we expect
-    # XXX: gcc warns because data isn't defined as 'const'
-    size = get_delta_hdr_size(&data, top)
-    if (size > source_size):
-        # XXX: mismatched source size
-        raise RuntimeError('source size %d < expected source size %d'
-                           % (source_size, size))
-    source_size = size
-
     # now the result size
     size = get_delta_hdr_size(&data, top)
     result = PyString_FromStringAndSize(NULL, size)

@@ -100,9 +100,9 @@ class TestGroupCompressor(tests.TestCase):
                                     'different\n'), sha1_2)
         expected_lines.extend([
             # 'delta', delta length
-            'd\x10',
-            # source and target length
-            '\x36\x36',
+            'd\x0f',
+            # target length
+            '\x36',
             # copy the line common
             '\x91\x0a\x2c', #copy, offset 0x0a, len 0x2c
             # add the line different, and the trailing newline
@@ -130,9 +130,9 @@ class TestGroupCompressor(tests.TestCase):
             sha1_3)
         expected_lines.extend([
             # 'delta', delta length
-            'd\x0c',
-            # source and target length
-            '\x67\x5f'
+            'd\x0b',
+            # target length
+            '\x5f'
             # insert new
             '\x03new',
             # Copy of first parent 'common' range
@@ -661,6 +661,7 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
         entries, block = self.make_block(self._texts)
         manager = groupcompress._LazyGroupContentManager(block)
         self.add_key_to_manager(('key1',), entries, block, manager)
+        self.add_key_to_manager(('key3',), entries, block, manager)
         self.add_key_to_manager(('key4',), entries, block, manager)
         block_bytes = block.to_bytes()
         wire_bytes = manager._wire_bytes()
@@ -670,23 +671,29 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
         header_len = int(header_len)
         block_len = int(block_len)
         self.assertEqual('groupcompress-block', storage_kind)
-        self.assertEqual(33, z_header_len)
-        self.assertEqual(25, header_len)
+        self.assertEqual(41, z_header_len)
+        self.assertEqual(39, header_len)
         self.assertEqual(len(block_bytes), block_len)
         z_header = rest[:z_header_len]
         header = zlib.decompress(z_header)
         self.assertEqual(header_len, len(header))
         entry1 = entries[('key1',)]
+        entry3 = entries[('key3',)]
         entry4 = entries[('key4',)]
         self.assertEqualDiff('key1\n'
                              '\n'  # no parents
                              '%d\n' # start offset
                              '%d\n' # end byte
+                             'key3\n'
+                             '\n'
+                             '%d\n'
+                             '%d\n'
                              'key4\n'
                              '\n'
                              '%d\n'
                              '%d\n'
                              % (entry1.start, entry1.end,
+                                entry3.start, entry3.end,
                                 entry4.start, entry4.end),
                             header)
         z_block = rest[z_header_len:]
@@ -696,19 +703,20 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
         entries, block = self.make_block(self._texts)
         manager = groupcompress._LazyGroupContentManager(block)
         self.add_key_to_manager(('key1',), entries, block, manager)
+        self.add_key_to_manager(('key3',), entries, block, manager)
         self.add_key_to_manager(('key4',), entries, block, manager)
         wire_bytes = manager._wire_bytes()
         self.assertStartsWith(wire_bytes, 'groupcompress-block\n')
         manager = groupcompress._LazyGroupContentManager.from_bytes(wire_bytes)
         self.assertIsInstance(manager, groupcompress._LazyGroupContentManager)
-        self.assertEqual(2, len(manager._factories))
+        self.assertEqual(3, len(manager._factories))
         self.assertEqual(block._z_content, manager._block._z_content)
         result_order = []
         for record in manager.get_record_stream():
             result_order.append(record.key)
             text = self._texts[record.key]
             self.assertEqual(text, record.get_bytes_as('fulltext'))
-        self.assertEqual([('key1',), ('key4',)], result_order)
+        self.assertEqual([('key1',), ('key3',), ('key4',)], result_order)
 
     def test__check_rebuild_no_changes(self):
         entries, block = self.make_block(self._texts)

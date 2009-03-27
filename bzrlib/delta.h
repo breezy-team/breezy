@@ -77,8 +77,10 @@ create_delta(const struct delta_index *index,
          const void *buf, unsigned long bufsize,
          unsigned long *delta_size, unsigned long max_delta_size);
 
-/* the smallest possible delta size is 4 bytes */
-#define DELTA_SIZE_MIN  4
+/* the smallest possible delta size is 3 bytes
+ * Target size, Copy command, Copy length
+ */
+#define DELTA_SIZE_MIN  3
 
 /*
  * This must be called twice on the delta data buffer, first to get the

@@ -1462,6 +1462,9 @@ class GroupCompressVersionedFiles(VersionedFiles):
                     value = "%d %d %d %d" % (block_start, block_length,
                                              record._start, record._end)
                     nodes = [(record.key, value, (record.parents,))]
+                    # TODO: Consider buffering up many nodes to be added, not
+                    #       sure how much overhead this has, but we're seeing
+                    #       ~23s / 120s in add_records calls
                     self._index.add_records(nodes, random_id=random_id)
                     continue
             try:
