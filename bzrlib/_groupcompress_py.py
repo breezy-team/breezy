@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Limited.
+# Copyright (C) 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as published
@@ -23,7 +23,6 @@ useless stuff.
 from bzrlib import osutils
 
 
-### v imported from gc plugin@revno30
 class EquivalenceTable(object):
     """This class tracks equivalencies between lists of hashable objects.
 
@@ -71,8 +70,8 @@ class EquivalenceTable(object):
             if locations is None:
                 locations = self.get_idx_matches(pos)
             if locations is None:
-                # No more matches, just return whatever we have, but we know that
-                # this last position is not going to match anything
+                # No more matches, just return whatever we have, but we know
+                # that this last position is not going to match anything
                 pos += 1
                 break
             else:
@@ -230,7 +229,6 @@ class EquivalenceTable(object):
         return out_lines, index_lines
 
 
-
 def encode_copy_instruction(offset, length):
     """Convert this offset into a control code and bytes."""
     copy_command = 0x80
@@ -282,6 +280,3 @@ def apply_delta(basis, delta):
         else:
             lines.extend(delta_lines)
     return lines
-
-
-### ^ imported from gc plugin@revno30

@@ -87,8 +87,8 @@ def decode_base128_int(bytes):
 def sort_gc_optimal(parent_map):
     """Sort and group the keys in parent_map into groupcompress order.
 
-    groupcompress is defined (currently) as reverse-topological order, grouped by
-    the key prefix.
+    groupcompress is defined (currently) as reverse-topological order, grouped
+    by the key prefix.
 
     :return: A sorted-list of keys
     """
@@ -812,7 +812,6 @@ class PythonGroupCompressor(_CommonGroupCompressor):
         self.lines = self.line_locations.lines
         self._present_prefixes = set()
 
-    # FIXME: implement nostore_sha
     def compress(self, key, bytes, expected_sha, nostore_sha=None, soft=False):
         """Compress lines with label key.
 
@@ -872,11 +871,9 @@ class PythonGroupCompressor(_CommonGroupCompressor):
         self.input_bytes += bytes_length
         delta_end = (self.endpoint, len(self.lines))
         self.labels_deltas[key] = (delta_start, delta_end)
-        # FIXME: lot of guessing below
         return sha1, start, self.endpoint, 'delta', out_length
 
     def flush(self):
-        # FIXME: ugly hack to masquerade ourself as the pyrex version
         self._block.set_content(''.join(self.lines))
         return self._block
 
