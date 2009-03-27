@@ -25,8 +25,10 @@ from bzrlib import (
 
 def load_tests(standard_tests, module, loader):
     """Parameterize tests for all versions of groupcompress."""
-    to_adapt, result = tests.split_suite_by_condition(
-        standard_tests, tests.condition_isinstance(TestMakeAndApplyDelta))
+    two_way_scenarios = [
+        ('PP', {'make_delta': _groupcompress_py.make_delta,
+                'apply_delta': _groupcompress_py.apply_delta})
+        ]
     scenarios = [
         ('python', {'_gc_module': _groupcompress_py}),
         ]
@@ -34,7 +36,21 @@ def load_tests(standard_tests, module, loader):
         from bzrlib import _groupcompress_pyx
         scenarios.append(('C',
             {'_gc_module': _groupcompress_pyx}))
-    return tests.multiply_tests(to_adapt, scenarios, result)
+        two_way_scenarios.extend([
+            ('CC', {'make_delta': _groupcompress_pyx.make_delta,
+                    'apply_delta': _groupcompress_pyx.apply_delta}),
+            ('PC', {'make_delta': _groupcompress_py.make_delta,
+                    'apply_delta': _groupcompress_pyx.apply_delta}),
+            ('CP', {'make_delta': _groupcompress_pyx.make_delta,
+                    'apply_delta': _groupcompress_py.apply_delta}),
+            ])
+    to_adapt, result = tests.split_suite_by_condition(
+        standard_tests, tests.condition_isinstance(TestMakeAndApplyDelta))
+    result = tests.multiply_tests(to_adapt, scenarios, result)
+    to_adapt, result = tests.split_suite_by_condition(result,
+        tests.condition_isinstance(TestMakeAndApplyCompatible))
+    result = tests.multiply_tests(to_adapt, two_way_scenarios, result)
+    return result
 
 
 class _CompiledGroupCompressFeature(tests.Feature):
@@ -183,6 +199,26 @@ class TestMakeAndApplyDelta(tests.TestCase):
         target = self.apply_delta(_text2,
                     'M\x90/\x1ebe matched\nagainst other text\n')
         self.assertEqual(_text1, target)
+
+
+class TestMakeAndApplyCompatible(tests.TestCase):
+
+    make_delta = None # filled in by multiply_tests
+    apply_delta = None # filled in by multiply_tests
+
+    def assertMakeAndApply(self, source, target):
+        """Assert that generating a delta and applying gives success."""
+        delta = self.make_delta(source, target)
+        bytes = self.apply_delta(source, delta)
+        self.assertEqualDiff(target, bytes)
+
+    def test_direct(self):
+        self.assertMakeAndApply(_text1, _text2)
+        self.assertMakeAndApply(_text2, _text1)
+        self.assertMakeAndApply(_text1, _text3)
+        self.assertMakeAndApply(_text3, _text1)
+        self.assertMakeAndApply(_text2, _text3)
+        self.assertMakeAndApply(_text3, _text2)
 
 
 class TestDeltaIndex(tests.TestCase):
