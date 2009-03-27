@@ -785,13 +785,6 @@ class TestCase(unittest.TestCase):
         import pdb
         pdb.Pdb().set_trace(sys._getframe().f_back)
 
-    def exc_info(self):
-        absent_attr = object()
-        exc_info = getattr(self, '_exc_info', absent_attr)
-        if exc_info is absent_attr:
-            exc_info = getattr(self, '_TestCase__exc_info')
-        return exc_info()
-
     def _check_leaked_threads(self):
         active = threading.activeCount()
         leaked_threads = active - TestCase._active_threads
@@ -1306,7 +1299,7 @@ class TestCase(unittest.TestCase):
     def _do_skip(self, result, reason):
         addSkip = getattr(result, 'addSkip', None)
         if not callable(addSkip):
-            result.addError(self, self.exc_info())
+            result.addError(self, sys.exc_info())
         else:
             addSkip(self, reason)
 
@@ -1345,7 +1338,7 @@ class TestCase(unittest.TestCase):
                         self.tearDown()
                         return
                     except:
-                        result.addError(self, self.exc_info())
+                        result.addError(self, sys.exc_info())
                         return
 
                     ok = False
@@ -1353,7 +1346,7 @@ class TestCase(unittest.TestCase):
                         testMethod()
                         ok = True
                     except self.failureException:
-                        result.addFailure(self, self.exc_info())
+                        result.addFailure(self, sys.exc_info())
                     except TestSkipped, e:
                         if not e.args:
                             reason = "No reason given."
@@ -1363,7 +1356,7 @@ class TestCase(unittest.TestCase):
                     except KeyboardInterrupt:
                         raise
                     except:
-                        result.addError(self, self.exc_info())
+                        result.addError(self, sys.exc_info())
 
                     try:
                         self.tearDown()
@@ -1374,7 +1367,7 @@ class TestCase(unittest.TestCase):
                     except KeyboardInterrupt:
                         raise
                     except:
-                        result.addError(self, self.exc_info())
+                        result.addError(self, sys.exc_info())
                         ok = False
                     if ok: result.addSuccess(self)
                 finally:
