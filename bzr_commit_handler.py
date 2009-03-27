@@ -226,8 +226,9 @@ class GenericCommitHandler(processor.CommitHandler):
             try:
                 self.record_new(path, ie)
             except:
-                print "failed to add path '%s' with entry '%s'" % (path, ie)
-                print "directory entries are:\n%r\n" % (self.directory_entries,)
+                print "failed to add path '%s' with entry '%s' in command %s" \
+                    % (path, ie, self.command.id)
+                print "parent's children are:\n%r\n" % (ie.parent_id.children,)
                 raise
 
     def _ensure_directory(self, path, inv):
@@ -320,6 +321,11 @@ class GenericCommitHandler(processor.CommitHandler):
 
     def _rename_item(self, old_path, new_path, inv):
         file_id = inv.path2id(old_path)
+        if file_id is None:
+            self.warning(
+                "ignoring rename of %s to %s - old path does not exist" %
+                (old_path, new_path))
+            return
         ie = inv[file_id]
         rev_id = ie.revision
         new_file_id = inv.path2id(new_path)

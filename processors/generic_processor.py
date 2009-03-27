@@ -178,8 +178,8 @@ class GenericProcessor(processor.ImportProcessor):
             self.info = None
 
         # Decide which CommitHandler to use
-        supports_chk = getattr(self.repo._format, 'supports_chks', False)
-        if supports_chk:
+        self.supports_chk = getattr(self.repo._format, 'supports_chks', False)
+        if self.supports_chk:
             self.commit_handler_factory = \
                 bzr_commit_handler.CHKInventoryCommitHandler
         else:
@@ -199,7 +199,7 @@ class GenericProcessor(processor.ImportProcessor):
         # Decide how big to make the inventory cache
         cache_size = int(self.params.get('inv-cache', -1))
         if cache_size == -1:
-            if supports_chk:
+            if self.supports_chk:
                 cache_size = _DEFAULT_CHK_INV_CACHE_SIZE
             else:
                 cache_size = _DEFAULT_INV_CACHE_SIZE
@@ -320,18 +320,19 @@ class GenericProcessor(processor.ImportProcessor):
             note("To refresh the working tree for a branch, "
                 "use 'bzr update'.")
 
-    def _pack_repository(self):
+    def _pack_repository(self, final=True):
         # Before packing, free whatever memory we can and ensure
         # that groupcompress is configured to optimise disk space
         import gc
-        self.cache_mgr.clear_all()
+        if final:
+            self.cache_mgr.clear_all()
+            try:
+                from bzrlib.plugins.groupcompress import groupcompress
+            except ImportError:
+                pass
+            else:
+                groupcompress._FAST = False
         gc.collect()
-        try:
-            from bzrlib.plugins.groupcompress import groupcompress
-        except ImportError:
-            pass
-        else:
-            groupcompress._FAST = False
         self.note("Packing repository ...")
         self.repo.pack()
 
@@ -343,6 +344,10 @@ class GenericProcessor(processor.ImportProcessor):
         repo_transport = self.repo._pack_collection.transport
         repo_transport.clone('obsolete_packs').delete_multi(
             repo_transport.list_dir('obsolete_packs'))
+
+        # If we're not done, free whatever memory we can
+        if not final:
+            gc.collect()
 
     def _get_working_trees(self, branches):
         """Get the working trees for branches in the repository."""
@@ -404,11 +409,13 @@ class GenericProcessor(processor.ImportProcessor):
             dataref = osutils.sha_strings(cmd.data)
         self.cache_mgr.store_blob(dataref, cmd.data)
 
-    def checkpoint_handler(self, cmd):
+    def checkpoint_handler(self, cmd, pack_repo=False):
         """Process a CheckpointCommand."""
         # Commit the current write group and start a new one
         self.repo.commit_write_group()
         self._save_id_map()
+        if pack_repo:
+            self._pack_repository(final=False)
         self.repo.start_write_group()
 
     def commit_handler(self, cmd):
@@ -444,7 +451,7 @@ class GenericProcessor(processor.ImportProcessor):
         elif self._revision_count % self.checkpoint_every == 0:
             self.note("%d commits - automatic checkpoint triggered",
                 self._revision_count)
-            self.checkpoint_handler(None)
+            self.checkpoint_handler(None, pack_repo=self.supports_chk)
 
     def report_progress(self, details=''):
         if self._revision_count % self.progress_every == 0:
