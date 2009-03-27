@@ -56,7 +56,6 @@ from bzrlib.versionedfile import (
     )
 
 _USE_LZMA = False and (pylzma is not None)
-_FAST = False
 
 # osutils.sha_string('')
 _null_sha1 = 'da39a3ee5e6b4b0d3255bfef95601890afd80709'
@@ -735,10 +734,7 @@ class GroupCompressor(object):
             len_mini_header = 1 + len(enc_length)
             length = len(delta) + len_mini_header
             new_chunks = ['d', enc_length, delta]
-            if _FAST:
-                self._delta_index._source_offset += length
-            else:
-                self._delta_index.add_delta_source(delta, len_mini_header)
+            self._delta_index.add_delta_source(delta, len_mini_header)
         self._block.add_entry(key, type=type, sha1=sha1,
                               start=self.endpoint, length=length)
         start = self.endpoint
