@@ -3156,7 +3156,7 @@ class cmd_selftest(Command):
                      Option('list-only',
                             help='List the tests instead of running them.'),
                      RegistryOption('parallel',
-                        help="Run the test suite in parallel",
+                        help="Run the test suite in parallel.",
                         lazy_registry=('bzrlib.tests', 'parallel_registry'),
                         value_switches=False,
                         ),
