@@ -226,27 +226,32 @@ def apply_delta(source_bytes, delta_bytes):
     cdef Py_ssize_t source_size
     cdef char *delta
     cdef Py_ssize_t delta_size
-    cdef unsigned char *data, *top
-    cdef unsigned char *dst_buf, *out, cmd
-    cdef Py_ssize_t size
-    cdef unsigned long cp_off, cp_size
 
     if not PyString_CheckExact(source_bytes):
         raise TypeError('source is not a str')
     if not PyString_CheckExact(delta_bytes):
         raise TypeError('delta is not a str')
-
     source = PyString_AS_STRING(source_bytes)
     source_size = PyString_GET_SIZE(source_bytes)
     delta = PyString_AS_STRING(delta_bytes)
     delta_size = PyString_GET_SIZE(delta_bytes)
-
     # Code taken from patch-delta.c, only brought here to give better error
     # handling, and to avoid double allocating memory
     if (delta_size < DELTA_SIZE_MIN):
         # XXX: Invalid delta block
         raise RuntimeError('delta_size %d smaller than min delta size %d'
                            % (delta_size, DELTA_SIZE_MIN))
+
+    return _apply_delta(source, source_size, delta, delta_size)
+
+
+cdef object _apply_delta(char *source, Py_ssize_t source_size,
+                         char *delta, Py_ssize_t delta_size):
+    """common functionality between apply_delta and apply_delta_to_source."""
+    cdef unsigned char *data, *top
+    cdef unsigned char *dst_buf, *out, cmd
+    cdef Py_ssize_t size
+    cdef unsigned long cp_off, cp_size
 
     data = <unsigned char *>delta
     top = data + delta_size
@@ -326,6 +331,34 @@ def apply_delta(source_bytes, delta_bytes):
     # *dst_size = out - dst_buf;
     assert (out - dst_buf) == PyString_GET_SIZE(result)
     return result
+
+
+def apply_delta_to_source(source, delta_start, delta_end):
+    """Extract a delta from source bytes, and apply it."""
+    cdef char *c_source
+    cdef Py_ssize_t c_source_size
+    cdef char *c_delta
+    cdef Py_ssize_t c_delta_size
+    cdef Py_ssize_t c_delta_start, c_delta_end
+
+    if not PyString_CheckExact(source):
+        raise TypeError('source is not a str')
+    c_source_size = PyString_GET_SIZE(source)
+    c_delta_start = delta_start
+    c_delta_end = delta_end
+    if c_delta_start >= c_source_size:
+        raise ValueError('delta starts after source')
+    if c_delta_end > c_source_size:
+        raise ValueError('delta ends after source')
+    if c_delta_start >= c_delta_end:
+        raise ValueError('delta starts after it ends')
+
+    c_delta_size = c_delta_end - c_delta_start
+    c_source = PyString_AS_STRING(source)
+    c_delta = c_source + c_delta_start
+    # We don't use source_size, because we know the delta should not refer to
+    # any bytes after it starts
+    return _apply_delta(c_source, c_delta_start, c_delta, c_delta_size)
 
 
 def encode_base128_int(val):

@@ -135,6 +135,7 @@ class TestMakeAndApplyDelta(tests.TestCase):
         super(TestMakeAndApplyDelta, self).setUp()
         self.make_delta = self._gc_module.make_delta
         self.apply_delta = self._gc_module.apply_delta
+        self.apply_delta_to_source = self._gc_module.apply_delta_to_source
 
     def test_make_delta_is_typesafe(self):
         self.make_delta('a string', 'another string')
@@ -200,6 +201,27 @@ class TestMakeAndApplyDelta(tests.TestCase):
         target = self.apply_delta(_text2,
                     'M\x90/\x1ebe matched\nagainst other text\n')
         self.assertEqual(_text1, target)
+
+    def test_apply_delta_to_source_is_safe(self):
+        self.assertRaises(TypeError,
+            self.apply_delta_to_source, object(), 0, 1)
+        self.assertRaises(TypeError,
+            self.apply_delta_to_source, u'unicode str', 0, 1)
+        # end > length
+        self.assertRaises(ValueError,
+            self.apply_delta_to_source, 'foo', 1, 4)
+        # start > length
+        self.assertRaises(ValueError,
+            self.apply_delta_to_source, 'foo', 5, 3)
+        # start > end
+        self.assertRaises(ValueError,
+            self.apply_delta_to_source, 'foo', 3, 2)
+
+    def test_apply_delta_to_source(self):
+        source_and_delta = (_text1
+                            + 'N\x90/\x1fdiffer from\nagainst other text\n')
+        self.assertEqual(_text2, self.apply_delta_to_source(source_and_delta,
+                                    len(_text1), len(source_and_delta)))
 
 
 class TestMakeAndApplyCompatible(tests.TestCase):

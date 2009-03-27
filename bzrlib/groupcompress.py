@@ -248,11 +248,10 @@ class GroupCompressBlock(object):
         if end != content_start + content_len:
             raise ValueError('end != len according to field header'
                 ' %s != %s' % (end, content_start + content_len))
-        content = self._content[content_start:end]
         if c == 'f':
-            bytes = content
+            bytes = self._content[content_start:end]
         elif c == 'd':
-            bytes = apply_delta(self._content, content)
+            bytes = apply_delta_to_source(self._content, content_start, end)
         return bytes
 
     def set_content(self, content):
@@ -1641,6 +1640,7 @@ class _GCGraphIndex(object):
 
 from bzrlib._groupcompress_py import (
     apply_delta,
+    apply_delta_to_source,
     encode_base128_int,
     decode_base128_int,
     LinesDeltaIndex,
@@ -1648,6 +1648,7 @@ from bzrlib._groupcompress_py import (
 try:
     from bzrlib._groupcompress_pyx import (
         apply_delta,
+        apply_delta_to_source,
         DeltaIndex,
         encode_base128_int,
         decode_base128_int,

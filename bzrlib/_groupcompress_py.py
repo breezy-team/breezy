@@ -362,7 +362,11 @@ def apply_delta(basis, delta):
         pos += 1
         if cmd & 0x80:
             offset, length, pos = decode_copy_instruction(delta, cmd, pos)
-            lines.append(basis[offset:offset+length])
+            last = offset + length
+            if last > len(basis):
+                raise ValueError('data would copy bytes past the'
+                                 'end of source')
+            lines.append(basis[offset:last])
         else: # Insert of 'cmd' bytes
             if cmd == 0:
                 raise ValueError('Command == 0 not supported yet')
@@ -373,3 +377,16 @@ def apply_delta(basis, delta):
         raise ValueError('Delta claimed to be %d long, but ended up'
                          ' %d long' % (target_length, len(bytes)))
     return bytes
+
+
+def apply_delta_to_source(source, delta_start, delta_end):
+    """Extract a delta from source bytes, and apply it."""
+    source_size = len(source)
+    if delta_start >= source_size:
+        raise ValueError('delta starts after source')
+    if delta_end > source_size:
+        raise ValueError('delta ends after source')
+    if delta_start >= delta_end:
+        raise ValueError('delta starts after it ends')
+    delta_bytes = source[delta_start:delta_end]
+    return apply_delta(source, delta_bytes)
