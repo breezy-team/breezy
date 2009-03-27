@@ -16,12 +16,28 @@
 
 """Tests for the pyrex extension of groupcompress"""
 
-from bzrlib import tests
+from bzrlib import (
+    groupcompress,
+    _groupcompress_py,
+    tests,
+    )
 
-from bzrlib import groupcompress
+
+def load_tests(standard_tests, module, loader):
+    """Parameterize tests for view-aware vs not."""
+    to_adapt, result = tests.split_suite_by_condition(
+        standard_tests, tests.condition_isinstance(TestMakeAndApplyDelta))
+    scenarios = [
+        ('python', {'_gc_module': _groupcompress_py}),
+        ]
+    if CompiledGroupCompressFeature.available():
+        from bzrlib import _groupcompress_pyx
+        scenarios.append(('C',
+            {'_gc_module': _groupcompress_pyx}))
+    return tests.multiply_tests(to_adapt, scenarios, result)
 
 
-class _CompiledGroupCompress(tests.Feature):
+class _CompiledGroupCompressFeature(tests.Feature):
 
     def _probe(self):
         try:
@@ -34,7 +50,7 @@ class _CompiledGroupCompress(tests.Feature):
     def feature_name(self):
         return 'bzrlib._groupcompress_pyx'
 
-CompiledGroupCompress = _CompiledGroupCompress()
+CompiledGroupCompressFeature = _CompiledGroupCompressFeature()
 
 _text1 = """\
 This is a bit
@@ -93,17 +109,9 @@ same rabin hash
 same rabin hash
 """
 
-class Test_GroupCompress(tests.TestCase):
-    """Direct tests for the compiled extension."""
+class TestMakeAndApplyDelta(tests.TestCase):
 
-    def setUp(self):
-        super(Test_GroupCompress, self).setUp()
-        self.requireFeature(CompiledGroupCompress)
-        from bzrlib import _groupcompress_pyx
-        self._gc_module = _groupcompress_pyx
-
-
-class TestMakeAndApplyDelta(Test_GroupCompress):
+    _gc_module = None # Set by load_tests
 
     def setUp(self):
         super(TestMakeAndApplyDelta, self).setUp()
@@ -160,7 +168,16 @@ class TestMakeAndApplyDelta(Test_GroupCompress):
         self.assertEqual(_text1, target)
 
 
-class TestDeltaIndex(Test_GroupCompress):
+class TestDeltaIndex(tests.TestCase):
+
+    def setUp(self):
+        super(TestDeltaIndex, self).setUp()
+        # This test isn't multiplied, because we only have DeltaIndex for the
+        # compiled form
+        # We call this here, because _test_needs_features happens after setUp
+        self.requireFeature(CompiledGroupCompressFeature)
+        from bzrlib import _groupcompress_pyx
+        self._gc_module = _groupcompress_pyx
 
     def test_repr(self):
         di = self._gc_module.DeltaIndex('test text\n')
