@@ -28,6 +28,7 @@ from bzrlib import (
     repository,
     revision,
     tag,
+    transport,
     )
 from bzrlib.decorators import (
     needs_read_lock,
@@ -41,9 +42,6 @@ from bzrlib.plugins.git.errors import (
     )
 from bzrlib.plugins.git.foreign import (
     ForeignBranch,
-    )
-from bzrlib.plugins.git.errors import (
-    LightWeightCheckoutsNotSupported,
     )
 
 
@@ -169,11 +167,28 @@ class LocalGitBranch(GitBranch):
             return revision.NULL_REVISION
         return self.mapping.revision_id_foreign_to_bzr(self.head)
 
+    def _get_checkout_format(self):
+        """Return the most suitable metadir for a checkout of this branch.
+        Weaves are used if this branch's repository uses weaves.
+        """
+        format = self.repository.bzrdir.checkout_metadir()
+        format.set_branch_format(self._format)
+        return format
+
     def create_checkout(self, to_location, revision_id=None, lightweight=False,
         accelerator_tree=None, hardlink=False):
         if lightweight:
-            raise LightWeightCheckoutsNotSupported()
-        return self._create_heavyweight_checkout(to_location, revision_id,
+            t = transport.get_transport(to_location)
+            t.ensure_base()
+            format = self._get_checkout_format()
+            checkout = format.initialize_on_transport(t)
+            from_branch = branch.BranchReferenceFormat().initialize(checkout, 
+                self)
+            tree = checkout.create_workingtree(revision_id,
+                from_branch=from_branch, hardlink=hardlink)
+            return tree
+        else:
+            return self._create_heavyweight_checkout(to_location, revision_id,
             hardlink)
 
     def _create_heavyweight_checkout(self, to_location, revision_id=None, 
