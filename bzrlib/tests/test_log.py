@@ -541,14 +541,14 @@ added:
         the_log = normalize_log(sio.getvalue())
         self.assertEqualDiff("""\
 ------------------------------------------------------------
-revno: 2
+revno: 2 [merge]
 committer: Lorem Ipsum <test@example.com>
 branch nick: parent
 timestamp: Just now
 message:
   merge branch 1
     ------------------------------------------------------------
-    revno: 1.1.2
+    revno: 1.1.2 [merge]
     committer: Lorem Ipsum <test@example.com>
     branch nick: child
     timestamp: Just now
@@ -598,7 +598,7 @@ message:
         the_log = normalize_log(sio.getvalue())
         self.assertEqualDiff("""\
 ------------------------------------------------------------
-revno: 2
+revno: 2 [merge]
 committer: Lorem Ipsum <test@example.com>
 branch nick: parent
 timestamp: Just now
@@ -890,7 +890,7 @@ added:
         the_log = normalize_log(sio.getvalue())
         self.assertEqualDiff("""\
 ------------------------------------------------------------
-revno: 2
+revno: 2 [merge]
 committer: Lorem Ipsum <test@example.com>
 branch nick: parent
 timestamp: Just now
@@ -910,6 +910,8 @@ message:
 added:
   f1
   f2
+------------------------------------------------------------
+Use -n0 to see merged revisions.
 """,
                              the_log)
 

@@ -81,6 +81,11 @@ Improvements
   implemented using a new ``Repository.insert_stream_locked`` RPC.
   (Andrew Bennetts, Robert Collins)
 
+* The ``long`` log formatter now shows [merge] indicators. If
+  only one level of revisions is displayed and merges are found,
+  the ``long`` and ``short`` log formatters now tell the user
+  how to see the hidden merged revisions.  (Ian Clatworthy)
+
 * Tildes are no longer escaped. No more %7Euser/project/branch!
   (Jonathan Lange)
 
