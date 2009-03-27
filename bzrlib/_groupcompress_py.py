@@ -39,7 +39,6 @@ class LinesDeltaIndex(object):
         self.endpoint = 0
         self._matching_lines = {}
         self.extend_lines(lines, [True]*len(lines))
-        self._right_lines = None
 
     def _update_matching_lines(self, new_lines, index):
         matches = self._matching_lines
@@ -57,14 +56,17 @@ class LinesDeltaIndex(object):
         except KeyError:
             return None
 
-    def _get_longest_match(self, pos, max_pos, locations):
+    def _get_longest_match(self, lines, pos, max_pos, locations):
         """Get the longest possible match for the current position."""
         range_start = pos
         range_len = 0
         copy_ends = None
         while pos < max_pos:
             if locations is None:
-                locations = self.get_idx_matches(pos)
+                try:
+                    locations = self._matching_lines[lines[pos]]
+                except KeyError:
+                    locations = None
             if locations is None:
                 # No more matches, just return whatever we have, but we know
                 # that this last position is not going to match anything
@@ -107,7 +109,6 @@ class LinesDeltaIndex(object):
         """
         result = []
         pos = 0
-        self.set_right_lines(lines)
         locations = None
         max_pos = len(lines)
         result_append = result.append
@@ -115,13 +116,14 @@ class LinesDeltaIndex(object):
         if soft:
             min_match_bytes = 200
         while pos < max_pos:
-            block, pos, locations = self._get_longest_match(pos, max_pos,
-                                                            locations)
+            block, pos, locations = self._get_longest_match(lines, pos,
+                                                            max_pos, locations)
             if block is not None:
-                # Check to see if we are matching fewer than 5 characters,
-                # which is turned into a simple 'insert', rather than a copy
-                # If we have more than 5 lines, we definitely have more than 5
-                # chars
+                # Check to see if we match fewer than min_match_bytes. As we
+                # will turn this into a pure 'insert', rather than a copy.
+                # block[-1] is the number of lines. A quick check says if we
+                # have more lines than min_match_bytes, then we know we have
+                # enough bytes.
                 if block[-1] < min_match_bytes:
                     # This block may be a 'short' block, check
                     old_start, new_start, range_len = block
@@ -133,21 +135,6 @@ class LinesDeltaIndex(object):
                 result_append(block)
         result_append((len(self.lines), len(lines), 0))
         return result
-
-    def _get_matching_lines(self):
-        """Return a dictionary showing matching lines."""
-        matching = {}
-        for line in self.lines:
-            matching[line] = self.get_matches(line)
-        return matching
-
-    def get_idx_matches(self, right_idx):
-        """Return the left lines matching the right line at the given offset."""
-        line = self._right_lines[right_idx]
-        try:
-            return self._matching_lines[line]
-        except KeyError:
-            return None
 
     def extend_lines(self, lines, index):
         """Add more lines to the left-lines list.
@@ -164,10 +151,6 @@ class LinesDeltaIndex(object):
             self.line_offsets.append(endpoint)
         assert len(self.line_offsets) == len(self.lines)
         self.endpoint = endpoint
-
-    def set_right_lines(self, lines):
-        """Set the lines we will be matching against."""
-        self._right_lines = lines
 
     def _flush_insert(self, start_linenum, end_linenum,
                       new_lines, out_lines, index_lines):
