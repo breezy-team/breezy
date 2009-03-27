@@ -29,22 +29,22 @@ character is detected in the file.
 Here is the suggested rule for users on Windows working on a cross-platform
 project::
 
-  [*]
+  [name *]
   eol = unix
 
 For developers working on a project using DOS newlines as the project standard,
 this rule is suggested::
 
-  [*]
+  [name *]
   eol = dos
 
 To override the conversion for certain files, give more explicit patterns
 earlier in the rules file. For example::
 
-  [*.bat]
+  [name *.bat]
   eol = dos
 
-  [*]
+  [name *]
   eol = unix
 
 This will store ``*.bat`` files using Windows (``\r\n``) conventions and
