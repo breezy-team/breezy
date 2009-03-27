@@ -23,6 +23,7 @@ from dulwich.client import (
     )
 from dulwich.objects import (
     Commit,
+    Tag,
     )
 
 from bzrlib import (
@@ -250,6 +251,8 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
             target_git_object_retriever._idmap.add_entry(o.sha().hexdigest(),
                 "commit", (rev.revision_id, o._tree))
             heads.extend([p for p in o.parents if p not in checked])
+        elif isinstance(o, Tag):
+            heads.append(o.object[1])
         else:
             trace.warning("Unable to import head object %r" % o)
         checked.add(head)
