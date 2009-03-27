@@ -264,6 +264,11 @@ def encode_copy_instruction(offset, length):
 
 def make_delta(source_bytes, target_bytes):
     """Create a delta from source to target."""
+    # TODO: The checks below may not be a the right place yet.
+    if not isinstance(source_bytes, str):
+        raise TypeError('source is not a str')
+    if not isinstance(target_bytes, str):
+        raise TypeError('target is not a str')
     line_locations = EquivalenceTable([])
     return None
 
