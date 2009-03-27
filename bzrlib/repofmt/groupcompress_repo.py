@@ -270,7 +270,7 @@ class GCCHKPacker(Packer):
                     # just want its entries
                     for file_id, bytes in node.iteritems(None):
                         name_utf8, file_id, revision_id = bytes_to_info(bytes)
-                        self._text_refs.add((file_id, revision))
+                        self._text_refs.add((file_id, revision_id))
                 def next_stream():
                     stream = source_vf.get_record_stream(cur_keys,
                                                          'as-requested', True)
