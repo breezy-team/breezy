@@ -3108,6 +3108,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_directory_service',
                    'bzrlib.tests.test_dirstate',
                    'bzrlib.tests.test_email_message',
+                   'bzrlib.tests.test_eol_filters',
                    'bzrlib.tests.test_errors',
                    'bzrlib.tests.test_export',
                    'bzrlib.tests.test_extract',

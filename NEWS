@@ -46,6 +46,10 @@ New Features
   trees). See ``bzr help content-filters`` for further details.
   (Ian Clatworthy, Alexander Belchenko)
 
+* End-of-line conversion is now supported for formats supporting
+  content filtering. See ``bzr help eol`` for details.
+  (Ian Clatworthy)
+
 Improvements
 ************
 

@@ -1,0 +1,53 @@
+End of Line Conversion
+======================
+
+EOL conversion is provided as a content filter where Bazaar internally
+stores a canonical format but outputs a convenience format. See
+``bzr help content-filters`` for general information about using these.
+
+Note: Content filtering is only supported in recently added formats,
+e.g. --development-wt5 and the (pending) CHK format.
+
+EOL conversion needs to be enabled for selected branches and files using
+rules. See ``bzr help rules`` for general information on defining rules.
+
+To configure which files to filter, set ``eol`` to one of the values below.
+
+  ====== ======================= ========================================
+  Value  Commit newlines as      On checkout, convert newlines to
+  ====== ======================= ========================================
+  exact  exactly as in file      No conversion
+  ------ ----------------------- ----------------------------------------
+  unix   lf                      crlf on Windows, lf otherwise
+  ------ ----------------------- ----------------------------------------
+  dos    crlf                    crlf on Windows, lf otherwise
+  ====== ======================= ========================================
+
+Note: For safety reasons, no conversion is applied to any file where a null
+character is detected in the file.
+
+Here is the suggested rule for users on Windows working on a cross-platform
+project::
+
+  [*]
+  eol = unix
+
+For developers working on a project using DOS newlines as the project standard,
+this rule is suggested::
+
+  [*]
+  eol = dos
+
+To override the conversion for certain files, give more explicit patterns
+earlier in the rules file. For example::
+
+  [*.bat]
+  eol = dos
+
+  [*]
+  eol = unix
+
+This will store ``*.bat`` files using Windows (``\r\n``) conventions and
+remaining files using native (``\n``) conventions, but all files will be
+checked out with ``\r\n`` newlines on Windows and ``\n`` newlines on other
+platforms.
