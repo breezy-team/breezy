@@ -19,13 +19,19 @@ from bzrlib.revision import (
     )
 from bzrlib.versionedfile import (
     AbsentContentFactory,
+    FulltextContentFactory,
     VersionedFiles,
+    )
+
+from bzrlib.plugins.git.converter import (
+    GitObjectConverter,
     )
 
 class GitTexts(VersionedFiles):
 
     def __init__(self, repository):
         self.repository = repository
+        
 
     def check(self, progressbar=None):
         return True
@@ -35,10 +41,23 @@ class GitTexts(VersionedFiles):
 
     def get_record_stream(self, keys, ordering, include_delta_closure):
         for key in keys:
-            yield AbsentContentFactory(key)
+            (fileid, revid) = key
+            (foreign_revid, mapping) = self.repository.revision_id_bzr_to_foreign(revid)
+            idmap = GitObjectConverter(self.repository, mapping)._idmap
+            path = mapping.parse_file_id(fileid)
+            try:
+                sha = idmap.lookup_tree(path, revid)
+            except KeyError:
+                try:
+                    sha = idmap.lookup_blob(fileid, revid)
+                except KeyError:
+                    yield AbsentContentFactory(key)
+                else:
+                    blob = self.repository.object_store[sha]
+                    yield FulltextContentFactory(key, None, None, "")
+            else:
+                yield FulltextContentFactory(key, None, None, blob)
 
     def get_parent_map(self, keys):
         raise NotImplementedError(self.get_parent_map)
-
-
 

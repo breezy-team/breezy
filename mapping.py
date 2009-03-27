@@ -70,6 +70,11 @@ class BzrGitMapping(foreign.VcsMapping):
             return ROOT_ID
         return escape_file_id(path)
 
+    def parse_file_id(self, file_id):
+        if file_id == ROOT_ID:
+            return ""
+        return unescape_file_id(file_id)
+
     def import_commit(self, commit):
         """Convert a git commit to a bzr revision.
 

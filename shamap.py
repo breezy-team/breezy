@@ -59,6 +59,9 @@ class GitShaMap(object):
         """Lookup the SHA of a git tree."""
         raise NotImplementedError(self.lookup_tree)
 
+    def lookup_blob(self, fileid, revid):
+        raise NotImplementedError(self.lookup_blob)
+
     def lookup_git_sha(self, sha):
         """Lookup a Git sha in the database.
 
@@ -92,6 +95,12 @@ class DictGitShaMap(GitShaMap):
             if v == ("tree", (path, revid)):
                 return k
         raise KeyError((path, revid))
+
+    def lookup_blob(self, fileid, revid):
+        for k, v in self.dict.iteritems():
+            if v == ("blob", (fileid, revid)):
+                return k
+        raise KeyError((fileid, revid))
 
     def revids(self):
         for key, (type, type_data) in self.dict.iteritems():
@@ -144,6 +153,12 @@ class SqliteGitShaMap(GitShaMap):
         row = self.db.execute("select sha1 from trees where path = ? and revid = ?", (path,revid)).fetchone()
         if row is None:
             raise KeyError((path, revid))
+        return row[0]
+
+    def lookup_blob(self, fileid, revid):
+        row = self.db.execute("select sha1 from trees where fileid = ? and revid = ?", (fileid, revid)).fetchone()
+        if row is None:
+            raise KeyError((fileid, revid))
         return row[0]
 
     def lookup_git_sha(self, sha):
