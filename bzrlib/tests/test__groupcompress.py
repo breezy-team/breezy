@@ -132,37 +132,37 @@ class TestMakeAndApplyDelta(tests.TestCase):
 
     def test_make_noop_delta(self):
         ident_delta = self.make_delta(_text1, _text1)
-        self.assertEqual('MM\x90M', ident_delta)
+        self.assertEqual('M\x90M', ident_delta)
         ident_delta = self.make_delta(_text2, _text2)
-        self.assertEqual('NN\x90N', ident_delta)
+        self.assertEqual('N\x90N', ident_delta)
         ident_delta = self.make_delta(_text3, _text3)
-        self.assertEqual('\x87\x01\x87\x01\x90\x87', ident_delta)
+        self.assertEqual('\x87\x01\x90\x87', ident_delta)
 
     def test_make_delta(self):
         delta = self.make_delta(_text1, _text2)
-        self.assertEqual('MN\x90/\x1fdiffer from\nagainst other text\n', delta)
+        self.assertEqual('N\x90/\x1fdiffer from\nagainst other text\n', delta)
         delta = self.make_delta(_text2, _text1)
-        self.assertEqual('NM\x90/\x1ebe matched\nagainst other text\n', delta)
+        self.assertEqual('M\x90/\x1ebe matched\nagainst other text\n', delta)
         delta = self.make_delta(_text3, _text1)
-        self.assertEqual('\x87\x01M\x90M', delta)
+        self.assertEqual('M\x90M', delta)
         delta = self.make_delta(_text3, _text2)
-        self.assertEqual('\x87\x01N\x90/\x1fdiffer from\nagainst other text\n',
+        self.assertEqual('N\x90/\x1fdiffer from\nagainst other text\n',
                          delta)
 
     def test_apply_delta_is_typesafe(self):
-        self.apply_delta(_text1, 'MM\x90M')
-        self.assertRaises(TypeError, self.apply_delta, object(), 'MM\x90M')
+        self.apply_delta(_text1, 'M\x90M')
+        self.assertRaises(TypeError, self.apply_delta, object(), 'M\x90M')
         self.assertRaises(TypeError, self.apply_delta,
-                          unicode(_text1), 'MM\x90M')
-        self.assertRaises(TypeError, self.apply_delta, _text1, u'MM\x90M')
+                          unicode(_text1), 'M\x90M')
+        self.assertRaises(TypeError, self.apply_delta, _text1, u'M\x90M')
         self.assertRaises(TypeError, self.apply_delta, _text1, object())
 
     def test_apply_delta(self):
         target = self.apply_delta(_text1,
-                    'MN\x90/\x1fdiffer from\nagainst other text\n')
+                    'N\x90/\x1fdiffer from\nagainst other text\n')
         self.assertEqual(_text2, target)
         target = self.apply_delta(_text2,
-                    'NM\x90/\x1ebe matched\nagainst other text\n')
+                    'M\x90/\x1ebe matched\nagainst other text\n')
         self.assertEqual(_text1, target)
 
 
@@ -184,7 +184,7 @@ class TestDeltaIndex(tests.TestCase):
     def test_make_delta(self):
         di = self._gc_module.DeltaIndex(_text1)
         delta = di.make_delta(_text2)
-        self.assertEqual('MN\x90/\x1fdiffer from\nagainst other text\n', delta)
+        self.assertEqual('N\x90/\x1fdiffer from\nagainst other text\n', delta)
 
     def test_delta_against_multiple_sources(self):
         di = self._gc_module.DeltaIndex()
@@ -196,7 +196,7 @@ class TestDeltaIndex(tests.TestCase):
         delta = di.make_delta(_third_text)
         result = self._gc_module.apply_delta(_first_text + _second_text, delta)
         self.assertEqualDiff(_third_text, result)
-        self.assertEqual('\xac\x01\x85\x01\x90\x14\x0chas some in '
+        self.assertEqual('\x85\x01\x90\x14\x0chas some in '
                          '\x91v6\x03and\x91d"\x91:\n', delta)
 
     def test_delta_with_offsets(self):
@@ -212,7 +212,7 @@ class TestDeltaIndex(tests.TestCase):
             '12345' + _first_text + '1234567890' + _second_text, delta)
         self.assertIsNot(None, result)
         self.assertEqualDiff(_third_text, result)
-        self.assertEqual('\xbb\x01\x85\x01\x91\x05\x14\x0chas some in '
+        self.assertEqual('\x85\x01\x91\x05\x14\x0chas some in '
                          '\x91\x856\x03and\x91s"\x91?\n', delta)
 
     def test_delta_with_delta_bytes(self):
@@ -221,7 +221,7 @@ class TestDeltaIndex(tests.TestCase):
         di.add_source(_first_text, 0)
         self.assertEqual(len(_first_text), di._source_offset)
         delta = di.make_delta(_second_text)
-        self.assertEqual('Dh\tsome more\x91\x019'
+        self.assertEqual('h\tsome more\x91\x019'
                          '&previous text\nand has some extra text\n', delta)
         di.add_delta_source(delta, 0)
         source += delta
@@ -234,8 +234,8 @@ class TestDeltaIndex(tests.TestCase):
         # Note that we don't match the 'common with the', because it isn't long
         # enough to match in the original text, and those bytes are not present
         # in the delta for the second text.
-        self.assertEqual('z\x85\x01\x90\x14\x1chas some in common with the '
-                         '\x91T&\x03and\x91\x18,', second_delta)
+        self.assertEqual('\x85\x01\x90\x14\x1chas some in common with the '
+                         '\x91S&\x03and\x91\x18,', second_delta)
         # Add this delta, and create a new delta for the same text. We should
         # find the remaining text, and only insert the short 'and' text.
         di.add_delta_source(second_delta, 0)
@@ -243,14 +243,14 @@ class TestDeltaIndex(tests.TestCase):
         third_delta = di.make_delta(_third_text)
         result = self._gc_module.apply_delta(source, third_delta)
         self.assertEqualDiff(_third_text, result)
-        self.assertEqual('\xa6\x01\x85\x01\x90\x14\x91\x80\x1c'
-                         '\x91T&\x03and\x91\x18,', third_delta)
+        self.assertEqual('\x85\x01\x90\x14\x91\x7e\x1c'
+                         '\x91S&\x03and\x91\x18,', third_delta)
         # Now create a delta, which we know won't be able to be 'fit' into the
         # existing index
         fourth_delta = di.make_delta(_fourth_text)
         self.assertEqual(_fourth_text,
                          self._gc_module.apply_delta(source, fourth_delta))
-        self.assertEqual('\xa6\x01\x80\x01'
+        self.assertEqual('\x80\x01'
                          '\x7f123456789012345\nsame rabin hash\n'
                          '123456789012345\nsame rabin hash\n'
                          '123456789012345\nsame rabin hash\n'
@@ -262,4 +262,4 @@ class TestDeltaIndex(tests.TestCase):
         fifth_delta = di.make_delta(_fourth_text)
         self.assertEqual(_fourth_text,
                          self._gc_module.apply_delta(source, fifth_delta))
-        self.assertEqual('\xac\x02\x80\x01\x91\xab\x7f\x01\n', fifth_delta)
+        self.assertEqual('\x80\x01\x91\xa7\x7f\x01\n', fifth_delta)

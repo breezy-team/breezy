@@ -156,9 +156,9 @@ class TestPyrexGroupCompressor(TestGroupCompressor):
                                     'different\n'), sha1_2)
         expected_lines.extend([
             # 'delta', delta length
-            'd\x10',
+            'd\x0f',
             # source and target length
-            '\x36\x36',
+            '\x36',
             # copy the line common
             '\x91\x0a\x2c', #copy, offset 0x0a, len 0x2c
             # add the line different, and the trailing newline
@@ -186,9 +186,9 @@ class TestPyrexGroupCompressor(TestGroupCompressor):
             sha1_3)
         expected_lines.extend([
             # 'delta', delta length
-            'd\x0c',
+            'd\x0b',
             # source and target length
-            '\x67\x5f'
+            '\x5f'
             # insert new
             '\x03new',
             # Copy of first parent 'common' range
@@ -235,9 +235,9 @@ class TestPythonGroupCompressor(TestGroupCompressor):
                                     'different\n'), sha1_2)
         expected_lines.extend([
             # 'delta', delta length
-            'd\x10',
-            # source and target length
-            '\x36\x36',
+            'd\x0f',
+            # target length
+            '\x36',
             # copy the line common
             '\x91\x0a\x2c', #copy, offset 0x0a, len 0x2c
             # add the line different, and the trailing newline
@@ -265,9 +265,9 @@ class TestPythonGroupCompressor(TestGroupCompressor):
             sha1_3)
         expected_lines.extend([
             # 'delta', delta length
-            'd\x0d',
-            # source and target length
-            '\x67\x5f'
+            'd\x0c',
+            # target length
+            '\x5f'
             # insert new
             '\x04new\n',
             # Copy of first parent 'common' range
@@ -382,7 +382,7 @@ class TestGroupCompressBlock(tests.TestCase):
 
     def test_from_minimal_bytes(self):
         block = groupcompress.GroupCompressBlock.from_bytes(
-            'gcb1z\n0\n0\n0\n0\n')
+            'gcb1z\n0\n0\n')
         self.assertIsInstance(block, groupcompress.GroupCompressBlock)
         self.assertEqual({}, block._entries)
         self.assertIs(None, block._content)
@@ -392,70 +392,21 @@ class TestGroupCompressBlock(tests.TestCase):
         self.assertEqual('', block._z_content)
         block._ensure_content() # Ensure content is safe to call 2x
 
-    def test_from_bytes_with_labels(self):
-        header = ('key:bing\n'
-            'sha1:abcdabcdabcdabcdabcdabcdabcdabcdabcdabcd\n'
-            'type:fulltext\n'
-            'start:100\n'
-            'length:100\n'
-            '\n'
-            'key:foo\x00bar\n'
-            'sha1:abcdabcdabcdabcdabcdabcdabcdabcdabcdabcd\n'
-            'type:fulltext\n'
-            'start:0\n'
-            'length:100\n'
-            '\n')
-        z_header = zlib.compress(header)
+    def test_from_bytes(self):
         content = ('a tiny bit of content\n')
         z_content = zlib.compress(content)
         z_bytes = (
             'gcb1z\n' # group compress block v1 plain
-            '%d\n' # Length of zlib bytes
-            '%d\n' # Length of all meta-info
             '%d\n' # Length of compressed content
             '%d\n' # Length of uncompressed content
-            '%s'   # Compressed header
             '%s'   # Compressed content
-            ) % (len(z_header), len(header),
-                 len(z_content), len(content),
-                 z_header, z_content)
+            ) % (len(z_content), len(content), z_content)
         block = groupcompress.GroupCompressBlock.from_bytes(
             z_bytes)
-        block._parse_header()
-        self.assertIsInstance(block, groupcompress.GroupCompressBlock)
-        self.assertEqual([('bing',), ('foo', 'bar')], sorted(block._entries))
-        bing = block._entries[('bing',)]
-        self.assertEqual(('bing',), bing.key)
-        self.assertEqual('fulltext', bing.type)
-        self.assertEqual('abcd'*10, bing.sha1)
-        self.assertEqual(100, bing.start)
-        self.assertEqual(100, bing.length)
-        foobar = block._entries[('foo', 'bar')]
-        self.assertEqual(('foo', 'bar'), foobar.key)
-        self.assertEqual('fulltext', foobar.type)
-        self.assertEqual('abcd'*10, foobar.sha1)
-        self.assertEqual(0, foobar.start)
-        self.assertEqual(100, foobar.length)
         self.assertEqual(z_content, block._z_content)
         self.assertIs(None, block._content)
-        block._ensure_content()
-        self.assertEqual(z_content, block._z_content)
-        self.assertEqual(content, block._content)
-
-    def test_from_old_bytes(self):
-        # Backwards compatibility, with groups that didn't define content length
-        content = ('a tiny bit of content\n')
-        z_content = zlib.compress(content)
-        z_bytes = (
-            'gcb1z\n' # group compress block v1 plain
-            '0\n' # Length of zlib bytes
-            '0\n' # Length of all meta-info
-            ''    # Compressed header
-            '%s'   # Compressed content
-            ) % (z_content)
-        block = groupcompress.GroupCompressBlock.from_bytes(
-            z_bytes)
-        self.assertIsInstance(block, groupcompress.GroupCompressBlock)
+        self.assertEqual(len(z_content), block._z_content_length)
+        self.assertEqual(len(content), block._content_length)
         block._ensure_content()
         self.assertEqual(z_content, block._z_content)
         self.assertEqual(content, block._content)
@@ -471,38 +422,23 @@ class TestGroupCompressBlock(tests.TestCase):
         self.assertEqual(100, e.length)
 
     def test_to_bytes(self):
-        no_labels = groupcompress._NO_LABELS
-        def reset():
-            groupcompress._NO_LABELS = no_labels
-        self.addCleanup(reset)
-        groupcompress._NO_LABELS = False
+        content = ('this is some content\n'
+                   'this content will be compressed\n')
         gcb = groupcompress.GroupCompressBlock()
         gcb.add_entry(('foo', 'bar'), 'fulltext', 'abcd'*10, 0, 100)
         gcb.add_entry(('bing',), 'fulltext', 'abcd'*10, 100, 100)
-        gcb.set_content('this is some content\n'
-                        'this content will be compressed\n')
+        gcb.set_content(content)
         bytes = gcb.to_bytes()
+        self.assertEqual(gcb._z_content_length, len(gcb._z_content))
+        self.assertEqual(gcb._content_length, len(content))
         expected_header =('gcb1z\n' # group compress block v1 zlib
-                          '76\n' # Length of compressed bytes
-                          '183\n' # Length of uncompressed meta-info
-                          '50\n' # Length of compressed content
-                          '53\n' # Length of uncompressed content
-                         )
+                          '%d\n' # Length of compressed content
+                          '%d\n' # Length of uncompressed content
+                         ) % (gcb._z_content_length, gcb._content_length)
         self.assertStartsWith(bytes, expected_header)
         remaining_bytes = bytes[len(expected_header):]
         raw_bytes = zlib.decompress(remaining_bytes)
-        self.assertEqualDiff('key:bing\n'
-                             'sha1:abcdabcdabcdabcdabcdabcdabcdabcdabcdabcd\n'
-                             'type:fulltext\n'
-                             'start:100\n'
-                             'length:100\n'
-                             '\n'
-                             'key:foo\x00bar\n'
-                             'sha1:abcdabcdabcdabcdabcdabcdabcdabcdabcdabcd\n'
-                             'type:fulltext\n'
-                             'start:0\n'
-                             'length:100\n'
-                             '\n', raw_bytes)
+        self.assertEqual(content, raw_bytes)
 
     def test_partial_decomp(self):
         content_chunks = []
@@ -748,7 +684,7 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
         ('key3',): "yet another text which won't be extracted\n"
                    "with a reasonable amount of compressible bytes\n",
         ('key4',): "this will be extracted\n"
-                   "but references bytes from\n"
+                   "but references most of its bytes from\n"
                    "yet another text which won't be extracted\n"
                    "with a reasonable amount of compressible bytes\n",
     }
@@ -834,7 +770,7 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
         self.assertEqualDiff('key1\n'
                              '\n'  # no parents
                              '%d\n' # start offset
-                             '%d\n' # end byte
+                             '%d\n' # end offset
                              'key4\n'
                              '\n'
                              '%d\n'

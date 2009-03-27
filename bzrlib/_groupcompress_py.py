@@ -208,10 +208,9 @@ class EquivalenceTable(object):
 
     def make_delta(self, new_lines, soft=False):
         """Compute the delta for this content versus the original content."""
-        # reserved for content type, content length, source_len, target_len
-        from bzrlib.groupcompress import encode_base128_int
-        out_lines = ['', '', '', '']
-        index_lines = [False, False, False, False]
+        # reserved for content type, content length, target_len
+        out_lines = ['', '', '']
+        index_lines = [False, False, False]
         blocks = self.get_matching_blocks(new_lines, soft=soft)
         current_line_num = 0
         # We either copy a range (while there are reusable lines) or we
@@ -224,8 +223,6 @@ class EquivalenceTable(object):
             current_line_num = new_start + range_len
             if range_len:
                 self._flush_copy(old_start, range_len, out_lines, index_lines)
-        out_lines[2] = encode_base128_int(self.endpoint)
-        out_lines[3] = encode_base128_int(sum(map(len, new_lines)))
         return out_lines, index_lines
 
 
