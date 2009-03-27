@@ -56,7 +56,6 @@ from bzrlib.versionedfile import (
     )
 
 _USE_LZMA = False and (pylzma is not None)
-_NO_LABELS = True
 _FAST = False
 
 # osutils.sha_string('')
@@ -160,9 +159,6 @@ class GroupCompressBlock(object):
         # map by key? or just order in file?
         self._entries = {}
         self._compressor_name = None
-        self._z_header_length = None
-        self._header_length = None
-        self._z_header = None
         self._z_content = None
         self._z_content_decompressor = None
         self._z_content_length = None
@@ -170,39 +166,10 @@ class GroupCompressBlock(object):
         self._content = None
 
     def __len__(self):
-        return self._content_length + self._header_length
-
-    def _parse_header(self):
-        """Parse the header part of the block."""
-        assert self._z_header is not None
-        if self._z_header == '':
-            # Nothing to process
-            self._z_header = None
-            return
-        if self._compressor_name == 'lzma':
-            header = pylzma.decompress(self._z_header)
-        else:
-            assert self._compressor_name == 'zlib'
-            header = zlib.decompress(self._z_header)
-        self._z_header = None # We have consumed the header
-        lines = header.split('\n')
-        del header
-        info_dict = {}
-        for line in lines:
-            if not line: #End of record
-                if not info_dict:
-                    break
-                self.add_entry(**info_dict)
-                info_dict = {}
-                continue
-            key, value = line.split(':', 1)
-            if key == 'key':
-                value = tuple(map(intern, value.split('\x00')))
-            elif key in ('start', 'length'):
-                value = int(value)
-            elif key == 'type':
-                value = intern(value)
-            info_dict[key] = value
+        # This is the maximum number of bytes this object will reference if
+        # everything is decompressed. However, if we decompress less than
+        # everything... (this would cause some problems for LRUSizeCache)
+        return self._content_length + self._z_content_length
 
     def _ensure_content(self, num_bytes=None):
         """Make sure that content has been expanded enough.
@@ -277,48 +244,25 @@ class GroupCompressBlock(object):
                 # The stream is finished
                 self._z_content_decompressor = None
 
-    def _parse_bytes(self, bytes):
+    def _parse_bytes(self, bytes, pos):
         """Read the various lengths from the header.
 
         This also populates the various 'compressed' buffers.
 
         :return: The position in bytes just after the last newline
         """
-        # At present, there are 4 lengths to be read, we have 2 integers for
-        # the length of the compressed and uncompressed header, and 2 integers
-        # for the compressed and uncompressed content
-        # 14 bytes can represent > 1TB, so to avoid checking too far, cap the
-        # search to 14 bytes.
-        pos = bytes.index('\n', 6, 20)
-        self._z_header_length = int(bytes[6:pos])
-        pos += 1
+        # At present, we have 2 integers for the compressed and uncompressed
+        # content. In base10 (ascii) 14 bytes can represent > 1TB, so to avoid
+        # checking too far, cap the search to 14 bytes.
         pos2 = bytes.index('\n', pos, pos + 14)
-        self._header_length = int(bytes[pos:pos2])
-        end_of_z_lengths = pos2
-        pos2 += 1
-        # Older versions don't have the content lengths, if we want to preserve
-        # backwards compatibility, we could try/except over these, and allow
-        # them to be skipped
-        try:
-            pos = bytes.index('\n', pos2, pos2 + 14)
-            self._z_content_length = int(bytes[pos2:pos])
-            pos += 1
-            pos2 = bytes.index('\n', pos, pos + 14)
-            self._content_length = int(bytes[pos:pos2])
-            pos = pos2 + 1
-            assert len(bytes) == (pos + self._z_header_length +
-                                  self._z_content_length)
-            pos2 = pos + self._z_header_length
-            self._z_header = bytes[pos:pos2]
-            self._z_content = bytes[pos2:]
-            assert len(self._z_content) == self._z_content_length
-        except ValueError:
-            # This is the older form, which did not encode its content length
-            pos = end_of_z_lengths + 1
-            pos2 = pos + self._z_header_length
-            self._z_header = bytes[pos:pos2]
-            self._z_content = bytes[pos2:]
-            self._z_content_length = len(self._z_content)
+        self._z_content_length = int(bytes[pos:pos2])
+        pos = pos2 + 1
+        pos2 = bytes.index('\n', pos, pos + 14)
+        self._content_length = int(bytes[pos:pos2])
+        pos = pos2 + 1
+        assert len(bytes) == (pos + self._z_content_length)
+        self._z_content = bytes[pos:]
+        assert len(self._z_content) == self._z_content_length
 
     @classmethod
     def from_bytes(cls, bytes):
@@ -331,9 +275,7 @@ class GroupCompressBlock(object):
             out._compressor_name = 'lzma'
         else:
             raise ValueError('unknown compressor: %r' % (bytes,))
-        out._parse_bytes(bytes)
-        if not _NO_LABELS:
-            out._parse_header()
+        out._parse_bytes(bytes, 6)
         return out
 
     def extract(self, key, start, end, sha1=None):
@@ -392,66 +334,24 @@ class GroupCompressBlock(object):
         self._content_length = len(content)
         self._content = content
         self._z_content = None
-        self._z_header_length = None
 
     def to_bytes(self):
         """Encode the information into a byte stream."""
         compress = zlib.compress
         if _USE_LZMA:
             compress = pylzma.compress
-        chunks = []
-        for key in sorted(self._entries):
-            entry = self._entries[key]
-            chunk = ('key:%s\n'
-                     'sha1:%s\n'
-                     'type:%s\n'
-                     'start:%s\n'
-                     'length:%s\n'
-                     '\n'
-                     ) % ('\x00'.join(entry.key),
-                          entry.sha1,
-                          entry.type,
-                          entry.start,
-                          entry.length,
-                          )
-            chunks.append(chunk)
-        bytes = ''.join(chunks)
-        info_len = len(bytes)
-        z_header_bytes = compress(bytes)
-        del bytes, chunks
-        z_header_len = len(z_header_bytes)
-        # TODO: we may want to have the header compressed in the same chain
-        #       as the data, or we may not, evaulate it
-        #       having them compressed together is probably a win for
-        #       revisions and the 'inv' portion of chk inventories. As the
-        #       label in the header is duplicated in the text.
-        #       For chk pages and real bytes, I would guess this is not
-        #       true.
-        if _NO_LABELS:
-            z_header_bytes = ''
-            z_header_len = 0
-            info_len = 0
-        if self._z_content is not None:
-            content_len = self._content_length
-            z_content_len = self._z_content_length
-            z_content_bytes = self._z_content
-        else:
+        if self._z_content is None:
             assert self._content is not None
-            content_len = self._content_length
-            z_content_bytes = compress(self._content)
-            self._z_content = z_content_bytes
-            z_content_len = len(z_content_bytes)
-            self._z_content_length = z_content_len
+            self._z_content = compress(self._content)
+            self._z_content_length = len(self._z_content)
         if _USE_LZMA:
             header = self.GCB_LZ_HEADER
         else:
             header = self.GCB_HEADER
         chunks = [header,
-                  '%d\n%d\n%d\n%d\n' % (z_header_len, info_len,
-                                        z_content_len, content_len)
+                  '%d\n%d\n' % (self._z_content_length, self._content_length),
+                  self._z_content,
                  ]
-        chunks.append(z_header_bytes)
-        chunks.append(z_content_bytes)
         return ''.join(chunks)
 
 
