@@ -67,7 +67,7 @@ class TestAllGroupCompressors(TestGroupCompressor):
 
     def test_empty_delta(self):
         compressor = self.compressor()
-        self.assertEqual([], compressor.lines)
+        self.assertEqual([], compressor.chunks)
 
     def test_one_nosha_delta(self):
         # diff against NUKK
@@ -76,7 +76,7 @@ class TestAllGroupCompressors(TestGroupCompressor):
             'strange\ncommon\n', None)
         self.assertEqual(sha_string('strange\ncommon\n'), sha1)
         expected_lines = 'f' '\x0f' 'strange\ncommon\n'
-        self.assertEqual(expected_lines, ''.join(compressor.lines))
+        self.assertEqual(expected_lines, ''.join(compressor.chunks))
         self.assertEqual(0, start_point)
         self.assertEqual(sum(map(len, expected_lines)), end_point)
 
@@ -90,7 +90,7 @@ class TestAllGroupCompressors(TestGroupCompressor):
         self.assertEqual('fulltext', kind)
         self.assertEqual(groupcompress._null_sha1, sha1)
         self.assertEqual(0, compressor.endpoint)
-        self.assertEqual([], compressor.lines)
+        self.assertEqual([], compressor.chunks)
         # Even after adding some content
         compressor.compress(('content',), 'some\nbytes\n', None)
         self.assertTrue(compressor.endpoint > 0)
@@ -107,7 +107,7 @@ class TestAllGroupCompressors(TestGroupCompressor):
         compressor = self.compressor()
         sha1_1, _, _, _, _ = compressor.compress(('label',),
             'strange\ncommon long line\nthat needs a 16 byte match\n', None)
-        expected_lines = list(compressor.lines)
+        expected_lines = list(compressor.chunks)
         sha1_2, _, end_point, _, _ = compressor.compress(('newlabel',),
             'common long line\nthat needs a 16 byte match\ndifferent\n', None)
         # get the first out
@@ -148,7 +148,7 @@ class TestPyrexGroupCompressor(TestGroupCompressor):
         compressor = self.compressor()
         sha1_1, _, _, _, _ = compressor.compress(('label',),
             'strange\ncommon long line\nthat needs a 16 byte match\n', None)
-        expected_lines = list(compressor.lines)
+        expected_lines = list(compressor.chunks)
         sha1_2, start_point, end_point, _, _ = compressor.compress(('newlabel',),
             'common long line\nthat needs a 16 byte match\ndifferent\n', None)
         self.assertEqual(sha_string('common long line\n'
@@ -164,7 +164,7 @@ class TestPyrexGroupCompressor(TestGroupCompressor):
             # add the line different, and the trailing newline
             '\x0adifferent\n', # insert 10 bytes
             ])
-        self.assertEqualDiffEncoded(expected_lines, compressor.lines)
+        self.assertEqualDiffEncoded(expected_lines, compressor.chunks)
         self.assertEqual(sum(map(len, expected_lines)), end_point)
 
     def test_three_nosha_delta(self):
@@ -175,7 +175,7 @@ class TestPyrexGroupCompressor(TestGroupCompressor):
             'strange\ncommon very very long line\nwith some extra text\n', None)
         sha1_2, _, _, _, _ = compressor.compress(('newlabel',),
             'different\nmoredifferent\nand then some more\n', None)
-        expected_lines = list(compressor.lines)
+        expected_lines = list(compressor.chunks)
         sha1_3, start_point, end_point, _, _ = compressor.compress(('label3',),
             'new\ncommon very very long line\nwith some extra text\n'
             'different\nmoredifferent\nand then some more\n',
@@ -196,7 +196,7 @@ class TestPyrexGroupCompressor(TestGroupCompressor):
             # Copy of second parent 'different' range
             '\x91\x3c\x2b' # copy, offset 0x3c, 0x2b bytes
             ])
-        self.assertEqualDiffEncoded(expected_lines, compressor.lines)
+        self.assertEqualDiffEncoded(expected_lines, compressor.chunks)
         self.assertEqual(sum(map(len, expected_lines)), end_point)
 
 
@@ -227,7 +227,7 @@ class TestPythonGroupCompressor(TestGroupCompressor):
         compressor = self.compressor()
         sha1_1, _, _, _, _ = compressor.compress(('label',),
             'strange\ncommon long line\nthat needs a 16 byte match\n', None)
-        expected_lines = list(compressor.lines)
+        expected_lines = list(compressor.chunks)
         sha1_2, start_point, end_point, _, _ = compressor.compress(('newlabel',),
             'common long line\nthat needs a 16 byte match\ndifferent\n', None)
         self.assertEqual(sha_string('common long line\n'
@@ -243,7 +243,7 @@ class TestPythonGroupCompressor(TestGroupCompressor):
             # add the line different, and the trailing newline
             '\x0adifferent\n', # insert 10 bytes
             ])
-        self.assertEqualDiffEncoded(expected_lines, compressor.lines)
+        self.assertEqualDiffEncoded(expected_lines, compressor.chunks)
         self.assertEqual(sum(map(len, expected_lines)), end_point)
 
     def test_three_nosha_delta(self):
@@ -254,7 +254,7 @@ class TestPythonGroupCompressor(TestGroupCompressor):
             'strange\ncommon very very long line\nwith some extra text\n', None)
         sha1_2, _, _, _, _ = compressor.compress(('newlabel',),
             'different\nmoredifferent\nand then some more\n', None)
-        expected_lines = list(compressor.lines)
+        expected_lines = list(compressor.chunks)
         sha1_3, start_point, end_point, _, _ = compressor.compress(('label3',),
             'new\ncommon very very long line\nwith some extra text\n'
             'different\nmoredifferent\nand then some more\n',
@@ -275,7 +275,7 @@ class TestPythonGroupCompressor(TestGroupCompressor):
             # Copy of second parent 'different' range
             '\x91\x3c\x2b' # copy, offset 0x3c, 0x2b bytes
             ])
-        self.assertEqualDiffEncoded(expected_lines, compressor.lines)
+        self.assertEqualDiffEncoded(expected_lines, compressor.chunks)
         self.assertEqual(sum(map(len, expected_lines)), end_point)
 
 
