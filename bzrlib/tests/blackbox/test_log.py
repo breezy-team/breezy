@@ -1,5 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
-# -*- coding: utf-8 -*-
+# Copyright (C) 2005, 2006, 2007, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -13,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Black-box tests for bzr log."""
@@ -242,6 +241,19 @@ class TestLog(ExternalBase):
         self.assertNotContainsRe(log, r'revno: 1\n')
         self.assertContainsRe(log, r'revno: 2\n')
         self.assertContainsRe(log, r'revno: 3\n')
+
+    def test_log_bad_message_re(self):
+        """Bad --message argument gives a sensible message
+        
+        See https://bugs.launchpad.net/bzr/+bug/251352
+        """
+        self._prepare()
+        out, err = self.run_bzr(['log', '-m', '*'], retcode=3)
+        self.assertEqual("bzr: ERROR: Invalid regular expression"
+            " in log message filter"
+            ": '*'"
+            ": nothing to repeat\n", err)
+        self.assertEqual('', out)
 
 
 class TestLogVerbose(TestCaseWithTransport):
@@ -974,3 +986,73 @@ class TestLogFile(TestCaseWithTransport):
         self.assertNotContainsRe(log, '^3:', re.MULTILINE)
         self.assertNotContainsRe(log, '^3.1.1:', re.MULTILINE)
         self.assertNotContainsRe(log, '^4:', re.MULTILINE)
+
+
+class TestLogMultiple(TestCaseWithTransport):
+
+    def prepare_tree(self):
+        tree = self.make_branch_and_tree('parent')
+        self.build_tree([
+            'parent/file1',
+            'parent/file2',
+            'parent/dir1/',
+            'parent/dir1/file5',
+            'parent/dir1/dir2/',
+            'parent/dir1/dir2/file3',
+            'parent/file4'])
+        tree.add('file1')
+        tree.commit('add file1')
+        tree.add('file2')
+        tree.commit('add file2')
+        tree.add(['dir1', 'dir1/dir2', 'dir1/dir2/file3'])
+        tree.commit('add file3')
+        tree.add('file4')
+        tree.commit('add file4')
+        tree.add('dir1/file5')
+        tree.commit('add file5')
+        child_tree = tree.bzrdir.sprout('child').open_workingtree()
+        self.build_tree_contents([('child/file2', 'hello')])
+        child_tree.commit(message='branch 1')
+        tree.merge_from_branch(child_tree.branch)
+        tree.commit(message='merge child branch')
+        os.chdir('parent')
+
+    def assertRevnos(self, paths_str, expected_revnos):
+        # confirm the revision numbers in log --line output are those expected
+        out, err = self.run_bzr('log --line -n0 %s' % (paths_str,))
+        self.assertEqual('', err)
+        revnos = [s.split(':', 1)[0].lstrip() for s in out.splitlines()]
+        self.assertEqual(expected_revnos, revnos)
+
+    def test_log_files(self):
+        """The log for multiple file should only list revs for those files"""
+        self.prepare_tree()
+        self.assertRevnos('file1 file2 dir1/dir2/file3',
+            ['6', '5.1.1', '3', '2', '1'])
+
+    def test_log_directory(self):
+        """The log for a directory should show all nested files."""
+        self.prepare_tree()
+        self.assertRevnos('dir1', ['5', '3'])
+
+    def test_log_nested_directory(self):
+        """The log for a directory should show all nested files."""
+        self.prepare_tree()
+        self.assertRevnos('dir1/dir2', ['3'])
+
+    def test_log_in_nested_directory(self):
+        """The log for a directory should show all nested files."""
+        self.prepare_tree()
+        os.chdir("dir1")
+        self.assertRevnos('.', ['5', '3'])
+
+    def test_log_files_and_directories(self):
+        """Logging files and directories together should be fine."""
+        self.prepare_tree()
+        self.assertRevnos('file4 dir1/dir2', ['4', '3'])
+
+    def test_log_files_and_dirs_in_nested_directory(self):
+        """The log for a directory should show all nested files."""
+        self.prepare_tree()
+        os.chdir("dir1")
+        self.assertRevnos('dir2 file5', ['5', '3'])

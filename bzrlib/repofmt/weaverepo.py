@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Deprecated weave-based repository formats.
 
@@ -296,7 +296,8 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
         try:
             transport.mkdir_multi(['revision-store', 'weaves'],
                 mode=a_bzrdir._get_dir_mode())
-            transport.put_bytes_non_atomic('inventory.weave', empty_weave)
+            transport.put_bytes_non_atomic('inventory.weave', empty_weave,
+                mode=a_bzrdir._get_file_mode())
         finally:
             control_files.unlock()
         return self.open(a_bzrdir, _found=True)

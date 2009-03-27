@@ -12,21 +12,27 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Basic server-side logic for dealing with requests.
+"""Infrastructure for server-side request handlers.
 
-**XXX**:
-
-The class names are a little confusing: the protocol will instantiate a
-SmartServerRequestHandler, whose dispatch_command method creates an instance of
-a SmartServerRequest subclass.
-
-The request_handlers registry tracks SmartServerRequest classes (rather than
-SmartServerRequestHandler).
+Interesting module attributes:
+    * The request_handlers registry maps verb names to SmartServerRequest
+      classes.
+    * The jail_info threading.local() object is used to prevent accidental
+      opening of BzrDirs outside of the backing transport, or any other
+      transports placed in jail_info.transports.  The jail_info is reset on
+      every call into a request handler (which can happen an arbitrary number
+      of times during a request).
 """
 
+# XXX: The class names are a little confusing: the protocol will instantiate a
+# SmartServerRequestHandler, whose dispatch_command method creates an instance
+# of a SmartServerRequest subclass.
+
+
 import tempfile
+import threading
 
 from bzrlib import (
     bzrdir,
@@ -40,6 +46,33 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib.bundle import serializer
 """)
+
+
+jail_info = threading.local()
+jail_info.transports = None
+
+
+def _install_hook():
+    bzrdir.BzrDir.hooks.install_named_hook(
+        'pre_open', _pre_open_hook, 'checking server jail')
+
+
+def _pre_open_hook(transport):
+    allowed_transports = getattr(jail_info, 'transports', None)
+    if allowed_transports is None:
+        return
+    abspath = transport.base
+    for allowed_transport in allowed_transports:
+        try:
+            allowed_transport.relpath(abspath)
+        except errors.PathNotChild:
+            continue
+        else:
+            return
+    raise errors.BzrError('jail break: %r' % (abspath,))
+
+
+_install_hook()
 
 
 class SmartServerRequest(object):
@@ -120,6 +153,12 @@ class SmartServerRequest(object):
         body_bytes = ''.join(self._body_chunks)
         self._body_chunks = None
         return self.do_body(body_bytes)
+
+    def setup_jail(self):
+        jail_info.transports = [self._backing_transport]
+
+    def teardown_jail(self):
+        jail_info.transports = None
 
     def translate_client_path(self, client_path):
         """Translate a path received from a network client into a local
@@ -277,7 +316,11 @@ class SmartServerRequestHandler(object):
         # XXX: most of this error conversion is VFS-related, and thus ought to
         # be in SmartServerVFSRequestHandler somewhere.
         try:
-            return callable(*args, **kwargs)
+            self._command.setup_jail()
+            try:
+                return callable(*args, **kwargs)
+            finally:
+                self._command.teardown_jail()
         except (KeyboardInterrupt, SystemExit):
             raise
         except Exception, err:

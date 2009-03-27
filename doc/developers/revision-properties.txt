@@ -43,4 +43,4 @@ by bzrlib:
    '<URL> <status>'. Currently, bzrlib uses only status 'fixed'. See
    `Bug Trackers`_ for more details about using this feature.
 
-.. _Bug Trackers: ../bug_trackers.htm
+.. _Bug Trackers: ../en/user-guide/index.html#bug-trackers

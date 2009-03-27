@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """WorkingTree object and friends.
 
@@ -766,7 +766,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def _set_merges_from_parent_ids(self, parent_ids):
         merges = parent_ids[1:]
         self._transport.put_bytes('pending-merges', '\n'.join(merges),
-            mode=self._control_files._file_mode)
+            mode=self.bzrdir._get_file_mode())
 
     def _filter_parent_ids_by_ancestry(self, revision_ids):
         """Check that all merged revisions are proper 'heads'.
@@ -872,7 +872,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         self._must_be_locked()
         my_file = rio_file(stanzas, header)
         self._transport.put_file(filename, my_file,
-            mode=self._control_files._file_mode)
+            mode=self.bzrdir._get_file_mode())
 
     @needs_write_lock # because merge pulls data into the branch.
     def merge_from_branch(self, branch, to_revision=None, from_revision=None,
@@ -1104,7 +1104,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         self._serialize(self._inventory, sio)
         sio.seek(0)
         self._transport.put_file('inventory', sio,
-            mode=self._control_files._file_mode)
+            mode=self.bzrdir._get_file_mode())
         self._inventory_is_modified = False
 
     def _kind(self, relpath):
@@ -1828,7 +1828,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         path = self._basis_inventory_name()
         sio = StringIO(xml)
         self._transport.put_file(path, sio,
-            mode=self._control_files._file_mode)
+            mode=self.bzrdir._get_file_mode())
 
     def _create_basis_xml_from_inventory(self, revision_id, inventory):
         """Create the text that will be saved in basis-inventory"""
@@ -2624,7 +2624,7 @@ class WorkingTree3(WorkingTree):
             return False
         else:
             self._transport.put_bytes('last-revision', revision_id,
-                mode=self._control_files._file_mode)
+                mode=self.bzrdir._get_file_mode())
             return True
 
     @needs_tree_write_lock
@@ -2905,7 +2905,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         control_files.create_lock()
         control_files.lock_write()
         transport.put_bytes('format', self.get_format_string(),
-            mode=control_files._file_mode)
+            mode=a_bzrdir._get_file_mode())
         if from_branch is not None:
             branch = from_branch
         else:

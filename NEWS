@@ -19,6 +19,15 @@ Compatibility Breaks
 New Features
 ************
 
+* New ``guess-renames`` command recognizes renames after they occur.
+  (Aaron Bentley)
+
+* ``bzr log`` now supports filtering of multiple files and directories
+  and will show changes that touch any of them. Furthermore,
+  directory filtering now shows the changes to any children of that
+  directory, not just the directory object itself.
+  (Ian Clatworthy, #97715)
+
 * ``bzr shelve`` can now apply changes without storing anything on the
   shelf, via the new --destroy option.  (Aaron Bentley)
 
@@ -64,6 +73,10 @@ Improvements
 * Progress bars now show the rate of network activity for
   ``bzr+ssh://`` and ``bzr://`` connections.  (Andrew Bennetts)
 
+* Pushing to a stacked pack-format branch on a 1.12 or older smart server
+  now takes many less round trips.  (Andrew Bennetts, Robert Collins,
+  #294479)
+  
 * Streaming push can be done to older repository formats.  This is
   implemented using a new ``Repository.insert_stream_locked`` RPC.
   (Andrew Bennetts, Robert Collins)
@@ -78,6 +91,9 @@ Bug Fixes
   itself (aka host, port, realm, path, etc). Previously, only the 
   authentication section name, username and encoded password were 
   provided. (Jean-Francois Roy)
+
+* bzr gives a better message if an invalid regexp is passed to ``bzr log
+  -m``.  (Anne Mohsen, Martin Pool)
 
 * Fix "is not a stackable format" error when pushing a
   stackable-format branch with an unstackable-format repository to a
@@ -97,6 +113,9 @@ Bug Fixes
 
 * ``merge --force`` works again. (Robert Collins, #342105)
 
+* No more warnings are issued about ``sha`` being deprecated under python-2.6.
+  (Vincent Ladeuil, #346593)
+
 * Pushing a new branch to a server that has a stacking policy will now
   upgrade from the local branch format when the stacking policy points at
   a branch which is itself stackable, because we know the client can read
@@ -113,6 +132,8 @@ Bug Fixes
 Documentation
 *************
 
+* Expanded the index of the developer documentation. (Eric Siegerman)
+
 * New topic `bzr help debug-flags`.  (Martin Pool)
 
 * The generated manpage now explicitly lists aliases as commands.
@@ -120,6 +141,9 @@ Documentation
 
 API Changes
 ***********
+
+* APIs deprecated in 1.6 and previous verisons of bzr are now removed.
+  (Martin Pool)
 
 * ``CommitReporter`` is no longer called with ``unchanged`` status during
   commit - this was a full-tree overhead that bzr no longer performs.
@@ -146,6 +170,11 @@ API Changes
 * The ``pb`` argument to ``fetch()`` is deprecated.
   (Martin Pool)
 
+* The smart server jail now hooks into BzrDir.open to prevent any BzrDir
+  that is not inside the backing transport from being opened.  See the
+  module documentation for ``bzrlib.smart.request`` for details.
+  (Andrew Bennetts, Robert Collins)
+
 Testing
 *******
 
@@ -154,6 +183,9 @@ Testing
   forget to upcall when overriding ``setUp`` and ``tearDown``.  Those
   faulty tests were not properly isolated.
   (Andrew Bennetts, Robert Collins)
+
+* Fix test_msgeditor.MsgEditorTest test isolation.
+  (Vincent Ladeuil, #347130)
 
 * ``medusa`` is not used anymore as an FTP test server starting with
   python2.6. A new FTP test server based on ``pyftplib`` can be used
@@ -164,14 +196,18 @@ Testing
 Internals
 *********
 
-* ``bzr selftest`` now accepts ``--subunit`` to run in subunit output
-  mode. Requires ``lp:subunit`` installed to work, but is not a hard
-  dependency. (Robert Collins)
-
 * ``BtreeIndex._spill_mem_keys_to_disk()`` now generates disk index with
   optmizations turned off. This only has effect when processing > 100,000
   keys during something like ``bzr pack``. (John Arbash Meinel)
 
+* ``bzr selftest`` now accepts ``--subunit`` to run in subunit output
+  mode. Requires ``lp:subunit`` installed to work, but is not a hard
+  dependency. (Robert Collins)
+
+* ``BzrDir.open_branch`` now takes an optional ``ignore_fallbacks``
+  parameter for controlling opening of stacked branches.
+  (Andrew Bennetts, Robert Collins)
+  
 * ``CommitBuilder`` has a new method, ``record_iter_changes`` which works
   in terms of an iter_changes iterator rather than full tree scanning.
   (Robert Collins)
@@ -191,6 +227,10 @@ Internals
   make visible data inserted into the repository by a smart server
   fetch operation. (Robert Collins, Andrew Bennetts)
 
+* ``RemoteRepository`` will now negatively cache missing revisions during
+  ``get_parent_map`` while read-locked. Write-locks are unaffected.
+  (Robert Collins, Andrew Bennetts)
+
 * Removed ``InterRemoteToOther``, ``InterOtherToRemote`` and
   ``InterPackToRemotePack`` classes, as they are now unnecessary.
   (Andrew Bennetts)
@@ -199,11 +239,26 @@ Internals
   whether the repository can efficiently generate deltas between trees
   regardless of tree size. (Robert Collins)
 
+* ``Repository.iter_files_bytes()`` now properly returns an "iterable of
+  byte strings" (aka 'chunked') for the content. It previously was
+  returning a plain string, which worked, but performed very poorly when
+  building a working tree (file.writelines(str) is very inefficient). This
+  can have a large effect on ``bzr checkout`` times. (John Arbash Meinel)
+
+* ``tests.run_suite`` has a new parameter ``suite_decorators``, a list of 
+  callables to use to decorate the test suite. Such decorators can add or
+  remove tests, or even remote the test suite to another machine if
+  desired. (Robert Collins)
+
+* The smart server verb ``Repository.get_parent_map`` can now include
+  information about ghosts when the special revision ``include-missing:``
+  is in the requested parents map list. With this flag, ghosts are
+  included as ``missing:REVISION_ID``. (Robert Collins, Andrew Bennetts)
+
 * ``_walk_to_common_revisions`` will now batch up at least 50
   revisions before calling ``get_parent_map`` on the target,
   regardless of ``InterRepository``.
   (Andrew Bennetts, Robert Collins)
-
 
 bzr 1.13
 ########
@@ -211,11 +266,31 @@ bzr 1.13
 :Codename: paraskavedekatriaphobia
 :1.13: 2009-03-14
 :1.13rc1: 2009-03-10
+:1.13.1: 2009-03-23
 
-This release includes bug fixes and a few performance and feature improvements.
-GNU Changelog output can now be produced by ``bzr log --gnu-changelog``.
-Debug flags can now be set in ``~/.bazaar/bazaar.conf``.  Lightweight checkouts
-and stacked branches should both be much faster over remote connections.
+GNU Changelog output can now be produced by ``bzr log --gnu-changelog``.  Debug
+flags can now be set in ``~/.bazaar/bazaar.conf``.  Lightweight checkouts and
+stacked branches should both be much faster over remote connections.  
+
+Changes From 1.13 to 1.13.1
+***************************
+A couple regessions where found in the 1.13 release. The pyrex-generated C
+extensions are missing from the .tar.gz and .zip files.  Documentation on how
+to generate GNU ChangeLogs is wrong.
+
+Bug Fixes
+*********
+
+* Change ``./bzr``'s ``_script_version`` to match ./bzrlib/__init__.py
+  version_info. (Bob Tanner, Martin Pool, #345232)
+
+* Distribution archives for 1.13 do not contain generated C extension modules
+  (Jean-Francois Roy, Bob Tanner, #344465)
+
+* GNU ChangeLog output can now be produced by bzr log --format gnu-changelog is
+  incorrect (Deejay, Bob Tanner, Martin Pool, Robert Collins, #343928)
+
+* ``merge --force`` works again. (Robert Collins, #342105)
 
 Changes From RC1 to Final
 *************************
@@ -323,6 +398,9 @@ Improvements
 Bug Fixes
 *********
 
+* Allows ``bzr log <FILE>`` to be called in an empty branch without
+  backtracing. (Vincent Ladeuil, #346431)
+
 * Bazaar now gives a better message including the filename if it's
   unable to read a file in the working directory, for example because
   of a permission error.  (Martin Pool, #338653)
@@ -377,8 +455,7 @@ Bug Fixes
 
 * Under rare circumstances (aka nobody reported a bug about it), the ftp
   transport could revert to ascii mode. It now stays in binary mode except
-  when needed.
-  (Vincent Ladeuil)
+  when needed.  (Vincent Ladeuil)
 
 * Unshelve does not generate warnings about progress bars.
   (Aaron Bentley, #328148)
@@ -2371,7 +2448,6 @@ Internals
 
 * Knit record serialisation is now stricter on what it will accept, to
   guard against potential internal bugs, or broken input. (Robert Collins)
-
 
 bzr 1.6beta1 2008-06-02
 #######################

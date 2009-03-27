@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the smart wire/domain protocol.
 
@@ -177,7 +177,7 @@ class TestSmartServerBzrDirRequestCloningMetaDir(
         self.assertEqual(expected, request.execute('', 'False'))
 
     def test_cloning_metadir_reference(self):
-        """The request works when bzrdir contains a branch reference."""
+        """The request fails when bzrdir contains a branch reference."""
         backing = self.get_transport()
         referenced_branch = self.make_branch('referenced')
         dir = self.make_bzrdir('.')
@@ -189,10 +189,7 @@ class TestSmartServerBzrDirRequestCloningMetaDir(
         backing.rename('referenced', 'moved')
         request_class = smart_dir.SmartServerBzrDirRequestCloningMetaDir
         request = request_class(backing)
-        expected = SuccessfulSmartServerResponse(
-            (local_result.network_name(),
-            local_result.repository_format.network_name(),
-            ('ref', reference_url)))
+        expected = FailedSmartServerResponse(('BranchReference',))
         self.assertEqual(expected, request.execute('', 'False'))
 
 
@@ -388,6 +385,26 @@ class TestSmartServerRequestOpenBranchV2(TestCaseWithChrootedTransport):
         self.assertFileEqual(reference_url, 'reference/.bzr/branch/location')
         self.assertEqual(SuccessfulSmartServerResponse(('ref', reference_url)),
             request.execute('reference'))
+
+    def test_stacked_branch(self):
+        """Opening a stacked branch does not open the stacked-on branch."""
+        trunk = self.make_branch('trunk')
+        feature = self.make_branch('feature', format='1.9')
+        feature.set_stacked_on_url(trunk.base)
+        opened_branches = []
+        Branch.hooks.install_named_hook('open', opened_branches.append, None)
+        backing = self.get_transport()
+        request = smart.bzrdir.SmartServerRequestOpenBranchV2(backing)
+        request.setup_jail()
+        try:
+            response = request.execute('feature')
+        finally:
+            request.teardown_jail()
+        expected_format = feature._format.network_name()
+        self.assertEqual(
+            SuccessfulSmartServerResponse(('branch', expected_format)),
+            response)
+        self.assertLength(1, opened_branches)
 
 
 class TestSmartServerRequestRevisionHistory(tests.TestCaseWithMemoryTransport):
@@ -914,9 +931,21 @@ class TestSmartServerRepositoryGetParentMap(tests.TestCaseWithMemoryTransport):
 
         self.assertEqual(None,
             request.execute('', 'missing-id'))
-        # Note that it returns a body (of '' bzipped).
+        # Note that it returns a body that is bzipped.
         self.assertEqual(
             SuccessfulSmartServerResponse(('ok', ), bz2.compress('')),
+            request.do_body('\n\n0\n'))
+
+    def test_trivial_include_missing(self):
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryGetParentMap(backing)
+        tree = self.make_branch_and_memory_tree('.')
+
+        self.assertEqual(None,
+            request.execute('', 'missing-id', 'include-missing:'))
+        self.assertEqual(
+            SuccessfulSmartServerResponse(('ok', ),
+                bz2.compress('missing:missing-id')),
             request.do_body('\n\n0\n'))
 
 

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from bzrlib import (
     errors,
@@ -1385,6 +1385,12 @@ class TestFindMergeOrder(TestGraphBase):
 
 
 class TestCachingParentsProvider(tests.TestCase):
+    """These tests run with:
+
+    self.inst_pp, a recording parents provider with a graph of a->b, and b is a
+    ghost.
+    self.caching_pp, a CachingParentsProvider layered on inst_pp.
+    """
 
     def setUp(self):
         super(TestCachingParentsProvider, self).setUp()
@@ -1409,7 +1415,6 @@ class TestCachingParentsProvider(tests.TestCase):
         self.assertEqual({}, self.caching_pp.get_parent_map(['b']))
         # No new calls
         self.assertEqual(['b'], self.inst_pp.calls)
-        self.assertEqual({'b':None}, self.caching_pp._cache)
 
     def test_get_parent_map_mixed(self):
         """Anything that can be returned from cache, should be"""
@@ -1426,6 +1431,13 @@ class TestCachingParentsProvider(tests.TestCase):
         # Use sorted because we don't care about the order, just that each is
         # only present 1 time.
         self.assertEqual(['a', 'b'], sorted(self.inst_pp.calls))
+
+    def test_note_missing_key(self):
+        """After noting that a key is missing it is cached."""
+        self.caching_pp.note_missing_key('b')
+        self.assertEqual({}, self.caching_pp.get_parent_map(['b']))
+        self.assertEqual([], self.inst_pp.calls)
+        self.assertEqual(set(['b']), self.caching_pp.missing_keys)
 
 
 class TestCachingParentsProviderExtras(tests.TestCaseWithTransport):
