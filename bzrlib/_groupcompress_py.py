@@ -43,7 +43,10 @@ class LinesDeltaIndex(object):
     def _update_matching_lines(self, new_lines, index):
         matches = self._matching_lines
         start_idx = len(self.lines)
-        assert len(new_lines) == len(index)
+        if len(new_lines) != len(index):
+            raise AssertionError('The number of lines to be indexed does'
+                ' not match the index/don\'t index flags: %d != %d'
+                % (len(new_lines), len(index)))
         for idx, do_index in enumerate(index):
             if not do_index:
                 continue
@@ -56,13 +59,26 @@ class LinesDeltaIndex(object):
         except KeyError:
             return None
 
-    def _get_longest_match(self, lines, pos, max_pos, locations):
-        """Get the longest possible match for the current position."""
+    def _get_longest_match(self, lines, pos, locations):
+        """Look at all matches for the current line, return the longest.
+
+        :param lines: The lines we are matching against
+        :param pos: The current location we care about
+        :param locations: A list of lines that matched the current location.
+            This may be None, but often we'll have already found matches for
+            this line.
+        :return: (start_in_self, start_in_lines, num_lines)
+            All values are the offset in the list (aka the line number)
+            If start_in_self is None, then we have no matches, and this line
+            should be inserted in the target.
+        """
         range_start = pos
         range_len = 0
         copy_ends = None
+        max_pos = len(lines)
         while pos < max_pos:
             if locations is None:
+                # TODO: is try/except better than get(..., None)?
                 try:
                     locations = self._matching_lines[lines[pos]]
                 except KeyError:
@@ -73,27 +89,30 @@ class LinesDeltaIndex(object):
                 pos += 1
                 break
             else:
+                # We have a match
                 if copy_ends is None:
-                    # We are starting a new range
+                    # This is the first match in a range
                     copy_ends = [loc + 1 for loc in locations]
                     range_len = 1
                     locations = None # Consumed
                 else:
-                    # We are currently in the middle of a match
+                    # We have a match started, compare to see if any of the
+                    # current matches can be continued
                     next_locations = set(copy_ends).intersection(locations)
-                    if len(next_locations):
-                        # range continues
+                    if next_locations:
+                        # At least one of the regions continues to match
                         copy_ends = [loc + 1 for loc in next_locations]
                         range_len += 1
                         locations = None # Consumed
                     else:
-                        # But we are done with this match, we should be
-                        # starting a new one, though. We will pass back
-                        # 'locations' so that we don't have to do another
-                        # lookup.
+                        # All current regions no longer match.
+                        # This line does still match something, just not at the
+                        # end of the previous matches. We will return locations
+                        # so that we can avoid another _matching_lines lookup.
                         break
             pos += 1
         if copy_ends is None:
+            # We have no matches, this is a pure insert
             return None, pos, locations
         return (((min(copy_ends) - range_len, range_start, range_len)),
                 pos, locations)
@@ -107,6 +126,11 @@ class LinesDeltaIndex(object):
             of the list is always (old_len, new_len, 0) to provide a end point
             for generating instructions from the matching blocks list.
         """
+        # In this code, we iterate over multiple _get_longest_match calls, to
+        # find the next longest copy, and possible insert regions. We then
+        # convert that to the simple matching_blocks representation, since
+        # otherwise inserting 10 lines in a row would show up as 10
+        # instructions.
         result = []
         pos = 0
         locations = None
@@ -117,7 +141,7 @@ class LinesDeltaIndex(object):
             min_match_bytes = 200
         while pos < max_pos:
             block, pos, locations = self._get_longest_match(lines, pos,
-                                                            max_pos, locations)
+                                                            locations)
             if block is not None:
                 # Check to see if we match fewer than min_match_bytes. As we
                 # will turn this into a pure 'insert', rather than a copy.
@@ -149,7 +173,9 @@ class LinesDeltaIndex(object):
         for line in lines:
             endpoint += len(line)
             self.line_offsets.append(endpoint)
-        assert len(self.line_offsets) == len(self.lines)
+        if len(self.line_offsets) != len(self.lines):
+            raise AssertionError('Somehow the line offset indicator'
+                ' got out of sync with the line counter.')
         self.endpoint = endpoint
 
     def _flush_insert(self, start_linenum, end_linenum,
@@ -160,7 +186,6 @@ class LinesDeltaIndex(object):
         # Each insert instruction is at most 127 bytes long
         for start_byte in xrange(0, insert_length, 127):
             insert_count = min(insert_length - start_byte, 127)
-            assert insert_count <= 127
             out_lines.append(chr(insert_count))
             # Don't index the 'insert' instruction
             index_lines.append(False)
