@@ -27,8 +27,8 @@ being masked accordingly.
 
 Note: Bazaar's default format does not yet support filtered views. That
 is likely to change in the near future. To use filtered views in the
-meantime, you currently need to upgrade to ``development-wt5`` (or
-``development-wt5-rich-root``) format first.
+meantime, you currently need to upgrade to ``1.14`` (or
+``1.14-rich-root``) format first.
 
 
 Creating a view
