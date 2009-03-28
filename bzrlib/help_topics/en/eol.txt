@@ -13,15 +13,15 @@ rules. See ``bzr help rules`` for general information on defining rules.
 
 To configure which files to filter, set ``eol`` to one of the values below.
 
-  ====== ======================= ========================================
-  Value  Commit newlines as      On checkout, convert newlines to
-  ====== ======================= ========================================
-  exact  exactly as in file      No conversion
-  ------ ----------------------- ----------------------------------------
-  unix   lf                      crlf on Windows, lf otherwise
-  ------ ----------------------- ----------------------------------------
-  dos    crlf                    crlf on Windows, lf otherwise
-  ====== ======================= ========================================
+  ======= ======================= ========================================
+  Value   Commit newlines as      On checkout, convert newlines to
+  ======= ======================= ========================================
+  unix    lf                      crlf on Windows, lf otherwise
+  ------- ----------------------- ----------------------------------------
+  windows crlf                    crlf on Windows, lf otherwise
+  ------- ----------------------- ----------------------------------------
+  exact   exactly as in file      No conversion
+  ======= ======================= ========================================
 
 Note: For safety reasons, no conversion is applied to any file where a null
 character is detected in the file.
@@ -32,17 +32,17 @@ project::
   [name *]
   eol = unix
 
-For developers working on a project using DOS newlines as the project standard,
-this rule is suggested::
+For developers working on a project using Windows newlines as the project
+standard, this rule is suggested::
 
   [name *]
-  eol = dos
+  eol = windows
 
 To override the conversion for certain files, give more explicit patterns
 earlier in the rules file. For example::
 
   [name *.bat]
-  eol = dos
+  eol = windows
 
   [name *]
   eol = unix

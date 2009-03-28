@@ -24,9 +24,10 @@ from bzrlib.workingtree import WorkingTree
 
 
 # Sample files
-_sample_file1         = """hello\nworld\r\n"""
-_sample_file1_on_dos  = """hello\r\nworld\r\n"""
-_sample_file1_on_unix = """hello\nworld\n"""
+_sample_text         = """hello\nworld\r\n"""
+_sample_text_on_win  = """hello\r\nworld\r\n"""
+_sample_text_on_unix = """hello\nworld\n"""
+_sample_binary       = """hello\nworld\r\n\x00"""
 
 
 class TestEolConversion(TestCaseWithWorkingTree):
@@ -71,43 +72,59 @@ class TestEolConversion(TestCaseWithWorkingTree):
         self.addCleanup(basis.unlock)
         return t, basis
 
-    def assertNewContentForSetting(self, wt, eol, expected_unix, expected_dos):
+    def assertNewContentForSetting(self, wt, eol, expected_unix, expected_win):
         """Clone a working tree and check the convenience content."""
         self.patch_rules_searcher(eol)
         wt2 = wt.bzrdir.sprout('tree-%s' % eol).open_workingtree()
         # To see exactly what got written to disk, we need an unfiltered read
         content = wt2.get_file('file1-id', filtered=False).read()
         if sys.platform == 'win32':
-            self.assertEqual(expected_dos, content)
+            self.assertEqual(expected_win, content)
         else:
             self.assertEqual(expected_unix, content)
 
     def assertContent(self, wt, basis, expected_raw, expected_unix,
-        expected_dos):
+        expected_win):
         """Check the committed content and content in cloned trees."""
         basis_content = basis.get_file('file1-id').read()
         self.assertEqual(expected_raw, basis_content)
         self.assertNewContentForSetting(wt, None, expected_raw, expected_raw)
+        self.assertNewContentForSetting(wt, 'unix', expected_unix, expected_win)
+        self.assertNewContentForSetting(wt, 'windows', expected_unix,
+            expected_win)
         self.assertNewContentForSetting(wt, 'exact', expected_raw, expected_raw)
-        self.assertNewContentForSetting(wt, 'dos', expected_unix, expected_dos)
-        self.assertNewContentForSetting(wt, 'unix', expected_unix, expected_dos)
 
     def test_eol_no_rules(self):
-        wt, basis = self.prepare_tree(_sample_file1)
-        self.assertContent(wt, basis, _sample_file1,
-            _sample_file1_on_unix, _sample_file1_on_dos)
-
-    def test_eol_exact(self):
-        wt, basis = self.prepare_tree(_sample_file1, eol='exact')
-        self.assertContent(wt, basis, _sample_file1,
-            _sample_file1_on_unix, _sample_file1_on_dos)
-
-    def test_eol_dos(self):
-        wt, basis = self.prepare_tree(_sample_file1, eol='dos')
-        self.assertContent(wt, basis, _sample_file1_on_dos,
-            _sample_file1_on_unix, _sample_file1_on_dos)
+        wt, basis = self.prepare_tree(_sample_text)
+        self.assertContent(wt, basis, _sample_text,
+            _sample_text_on_unix, _sample_text_on_win)
 
     def test_eol_unix(self):
-        wt, basis = self.prepare_tree(_sample_file1, eol='unix')
-        self.assertContent(wt, basis, _sample_file1_on_unix,
-            _sample_file1_on_unix, _sample_file1_on_dos)
+        wt, basis = self.prepare_tree(_sample_text, eol='unix')
+        self.assertContent(wt, basis, _sample_text_on_unix,
+            _sample_text_on_unix, _sample_text_on_win)
+
+    def test_eol_unix_binary(self):
+        wt, basis = self.prepare_tree(_sample_binary, eol='unix')
+        self.assertContent(wt, basis, _sample_binary, _sample_binary,
+            _sample_binary)
+
+    def test_eol_windows(self):
+        wt, basis = self.prepare_tree(_sample_text, eol='windows')
+        self.assertContent(wt, basis, _sample_text_on_win,
+            _sample_text_on_unix, _sample_text_on_win)
+
+    def test_eol_windows_binary(self):
+        wt, basis = self.prepare_tree(_sample_binary, eol='windows')
+        self.assertContent(wt, basis, _sample_binary, _sample_binary,
+            _sample_binary)
+
+    def test_eol_exact(self):
+        wt, basis = self.prepare_tree(_sample_text, eol='exact')
+        self.assertContent(wt, basis, _sample_text,
+            _sample_text_on_unix, _sample_text_on_win)
+
+    def test_eol_exact_binary(self):
+        wt, basis = self.prepare_tree(_sample_binary, eol='exact')
+        self.assertContent(wt, basis, _sample_binary, _sample_binary,
+            _sample_binary)
