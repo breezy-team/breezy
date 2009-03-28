@@ -55,7 +55,11 @@ class Convert(object):
             # https://bugs.launchpad.net/bzr/+bug/253891
             pass
         if self.format is None:
-            if self.bzrdir.find_repository()._format.rich_root_data:
+            try:
+                rich_root = self.bzrdir.find_repository()._format.rich_root_data
+            except errors.NoRepositoryPresent:
+                rich_root = False # assume no rich roots
+            if rich_root:
                 format_name = "default-rich-root"
             else:
                 format_name = "default"
