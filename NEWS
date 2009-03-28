@@ -134,6 +134,9 @@ Bug Fixes
 * Shelve can now shelve changes to a symlink target.
   (James Westby, #341558)
 
+* Upgrade will now use a sensible default format if the source repository
+  uses rich roots.  (Jelmer Vernooij, #252908)
+
 Documentation
 *************
 
