@@ -95,7 +95,7 @@ def tree_files_for_add(file_list):
             if view_files:
                 file_list = view_files
                 view_str = views.view_display_str(view_files)
-                note("ignoring files outside view: %s" % view_str)
+                note("Ignoring files outside view. View is %s" % view_str)
     return tree, file_list
 
 
@@ -151,7 +151,7 @@ def internal_tree_files(file_list, default_branch=u'.', canonicalize=True,
             if view_files:
                 file_list = view_files
                 view_str = views.view_display_str(view_files)
-                note("ignoring files outside view: %s" % view_str)
+                note("Ignoring files outside view. View is %s" % view_str)
         return tree, file_list
     tree = WorkingTree.open_containing(osutils.realpath(file_list[0]))[0]
     return tree, safe_relpath_files(tree, file_list, canonicalize,
@@ -2343,7 +2343,7 @@ class cmd_ls(Command):
             if view_files:
                 apply_view = True
                 view_str = views.view_display_str(view_files)
-                note("ignoring files outside view: %s" % view_str)
+                note("Ignoring files outside view. View is %s" % view_str)
 
         tree.lock_read()
         try:

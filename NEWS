@@ -81,6 +81,11 @@ Improvements
   implemented using a new ``Repository.insert_stream_locked`` RPC.
   (Andrew Bennetts, Robert Collins)
 
+* The "ignoring files outside view: .." message has been re-worded
+  to "Ignoring files outside view. View is .." to reduce confusion
+  about what was being considered and what was being ignored.
+  (Ian Clatworthy)
+
 * Tildes are no longer escaped. No more %7Euser/project/branch!
   (Jonathan Lange)
 
