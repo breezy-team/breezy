@@ -156,7 +156,7 @@ class SqliteGitShaMap(GitShaMap):
         return row[0]
 
     def lookup_blob(self, fileid, revid):
-        row = self.db.execute("select sha1 from trees where fileid = ? and revid = ?", (fileid, revid)).fetchone()
+        row = self.db.execute("select sha1 from blobs where fileid = ? and revid = ?", (fileid, revid)).fetchone()
         if row is None:
             raise KeyError((fileid, revid))
         return row[0]
