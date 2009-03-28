@@ -12,13 +12,17 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for smart server request infrastructure (bzrlib.smart.request)."""
 
+import threading
+
 from bzrlib import errors
+from bzrlib.bzrdir import BzrDir
 from bzrlib.smart import request
-from bzrlib.tests import TestCase
+from bzrlib.tests import TestCase, TestCaseWithMemoryTransport
+from bzrlib.transport import get_transport
 
 
 class NoBodyRequest(request.SmartServerRequest):
@@ -61,6 +65,22 @@ class EndErrorRequest(request.SmartServerRequest):
         raise errors.NoSuchFile('xyzzy')
 
 
+class CheckJailRequest(request.SmartServerRequest):
+
+    def __init__(self, *args):
+        request.SmartServerRequest.__init__(self, *args)
+        self.jail_transports_log = []
+
+    def do(self):
+        self.jail_transports_log.append(request.jail_info.transports)
+
+    def do_chunk(self, bytes):
+        self.jail_transports_log.append(request.jail_info.transports)
+
+    def do_end(self):
+        self.jail_transports_log.append(request.jail_info.transports)
+
+
 class TestSmartRequest(TestCase):
 
     def test_request_class_without_do_body(self):
@@ -75,6 +95,20 @@ class TestSmartRequest(TestCase):
         handler.args_received(('foo',))
         handler.end_received()
         # Request done, no exception was raised.
+
+    def test_only_request_code_is_jailed(self):
+        transport = 'dummy transport'
+        handler = request.SmartServerRequestHandler(
+            transport, {'foo': CheckJailRequest}, '/')
+        handler.args_received(('foo',))
+        self.assertEqual(None, request.jail_info.transports)
+        handler.accept_body('bytes')
+        self.assertEqual(None, request.jail_info.transports)
+        handler.end_received()
+        self.assertEqual(None, request.jail_info.transports)
+        self.assertEqual(
+            [[transport]] * 3, handler._command.jail_transports_log)
+
 
 
 class TestSmartRequestHandlerErrorTranslation(TestCase):
@@ -133,4 +167,58 @@ class TestRequestHanderErrorTranslation(TestCase):
         self.assertTranslationEqual(
             ('TokenMismatch', 'some-token', 'actual-token'),
             errors.TokenMismatch('some-token', 'actual-token'))
+
+
+class TestRequestJail(TestCaseWithMemoryTransport):
+    
+    def test_jail(self):
+        transport = self.get_transport('blah')
+        req = request.SmartServerRequest(transport)
+        self.assertEqual(None, request.jail_info.transports)
+        req.setup_jail()
+        self.assertEqual([transport], request.jail_info.transports)
+        req.teardown_jail()
+        self.assertEqual(None, request.jail_info.transports)
+
+
+class TestJailHook(TestCaseWithMemoryTransport):
+
+    def tearDown(self):
+        request.jail_info.transports = None
+        TestCaseWithMemoryTransport.tearDown(self)
+
+    def test_jail_hook(self):
+        request.jail_info.transports = None
+        _pre_open_hook = request._pre_open_hook
+        # Any transport is fine if jail_info.transports is None
+        t = self.get_transport('foo')
+        _pre_open_hook(t)
+        # A transport in jail_info.transports is allowed
+        request.jail_info.transports = [t]
+        _pre_open_hook(t)
+        # A child of a transport in jail_info is allowed
+        _pre_open_hook(t.clone('child'))
+        # A parent is not allowed
+        self.assertRaises(errors.BzrError, _pre_open_hook, t.clone('..'))
+        # A completely unrelated transport is not allowed
+        self.assertRaises(
+            errors.BzrError, _pre_open_hook, get_transport('http://host/'))
+
+    def test_open_bzrdir_in_non_main_thread(self):
+        """Opening a bzrdir in a non-main thread should work ok.
+        
+        This makes sure that the globally-installed
+        bzrlib.smart.request._pre_open_hook, which uses a threading.local(),
+        works in a newly created thread.
+        """
+        bzrdir = self.make_bzrdir('.')
+        transport = bzrdir.root_transport
+        thread_result = []
+        def t():
+            BzrDir.open_from_transport(transport)
+            thread_result.append('ok')
+        thread = threading.Thread(target=t)
+        thread.start()
+        thread.join()
+        self.assertEqual(['ok'], thread_result)
 

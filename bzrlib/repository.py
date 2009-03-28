@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -57,9 +57,6 @@ from bzrlib.inventory import (
 from bzrlib import registry
 from bzrlib.symbol_versioning import (
         deprecated_method,
-        one_one,
-        one_two,
-        one_six,
         )
 from bzrlib.trace import (
     log_exception_quietly, note, mutter, mutter_callsite, warning)
@@ -1307,24 +1304,6 @@ class Repository(object):
         return InterRepository.get(other, self).search_missing_revision_ids(
             revision_id, find_ghosts)
 
-    @deprecated_method(one_two)
-    @needs_read_lock
-    def missing_revision_ids(self, other, revision_id=None, find_ghosts=True):
-        """Return the revision ids that other has that this does not.
-
-        These are returned in topological order.
-
-        revision_id: only return revision ids included by revision_id.
-        """
-        keys =  self.search_missing_revision_ids(
-            other, revision_id, find_ghosts).get_keys()
-        other.lock_read()
-        try:
-            parents = other.get_graph().get_parent_map(keys)
-        finally:
-            other.unlock()
-        return tsort.topo_sort(parents)
-
     @staticmethod
     def open(base):
         """Open the repository rooted at base.
@@ -1875,7 +1854,7 @@ class Repository(object):
         for record in self.texts.get_record_stream(text_keys, 'unordered', True):
             if record.storage_kind == 'absent':
                 raise errors.RevisionNotPresent(record.key, self)
-            yield text_keys[record.key], record.get_bytes_as('fulltext')
+            yield text_keys[record.key], record.get_bytes_as('chunked')
 
     def _generate_text_key_index(self, text_key_references=None,
         ancestors=None):
@@ -2042,6 +2021,7 @@ class Repository(object):
         inventories in memory, but will only parse a single inventory at a
         time.
 
+        :param revision_ids: The expected revision ids of the inventories.
         :return: An iterator of inventories.
         """
         if ((None in revision_ids)
@@ -2253,33 +2233,8 @@ class Repository(object):
         implicitly lock for the user.
         """
 
-    @needs_read_lock
-    @deprecated_method(one_six)
-    def print_file(self, file, revision_id):
-        """Print `file` to stdout.
-
-        FIXME RBC 20060125 as John Meinel points out this is a bad api
-        - it writes to stdout, it assumes that that is valid etc. Fix
-        by creating a new more flexible convenience function.
-        """
-        tree = self.revision_tree(revision_id)
-        # use inventory as it was in that revision
-        file_id = tree.inventory.path2id(file)
-        if not file_id:
-            # TODO: jam 20060427 Write a test for this code path
-            #       it had a bug in it, and was raising the wrong
-            #       exception.
-            raise errors.BzrError("%r is not present in revision %s" % (file, revision_id))
-        tree.print_file(file_id)
-
     def get_transaction(self):
         return self.control_files.get_transaction()
-
-    @deprecated_method(one_one)
-    def get_parents(self, revision_ids):
-        """See StackedParentsProvider.get_parents"""
-        parent_map = self.get_parent_map(revision_ids)
-        return [parent_map.get(r, None) for r in revision_ids]
 
     def get_parent_map(self, revision_ids):
         """See graph._StackedParentsProvider.get_parent_map"""
@@ -2661,6 +2616,9 @@ class RepositoryFormat(object):
     # Should fetch trigger a reconcile after the fetch? Only needed for
     # some repository formats that can suffer internal inconsistencies.
     _fetch_reconcile = False
+    # Does this format have < O(tree_size) delta generation. Used to hint what
+    # code path for commit, amongst other things.
+    fast_deltas = None
 
     def __str__(self):
         return "<%s>" % self.__class__.__name__
@@ -3043,21 +3001,6 @@ class InterRepository(InterObject):
             if searcher_exhausted:
                 break
         return searcher.get_result()
-
-    @deprecated_method(one_two)
-    @needs_read_lock
-    def missing_revision_ids(self, revision_id=None, find_ghosts=True):
-        """Return the revision ids that source has that target does not.
-
-        These are returned in topological order.
-
-        :param revision_id: only return revision ids included by this
-                            revision_id.
-        :param find_ghosts: If True find missing revisions in deep history
-            rather than just finding the surface difference.
-        """
-        return list(self.search_missing_revision_ids(
-            revision_id, find_ghosts).get_keys())
 
     @needs_read_lock
     def search_missing_revision_ids(self, revision_id=None, find_ghosts=True):
@@ -3808,6 +3751,24 @@ class StreamSink(object):
     def _locked_insert_stream(self, stream, src_format):
         to_serializer = self.target_repo._format._serializer
         src_serializer = src_format._serializer
+        if to_serializer == src_serializer:
+            # If serializers match and the target is a pack repository, set the
+            # write cache size on the new pack.  This avoids poor performance
+            # on transports where append is unbuffered (such as
+            # RemoteTransport).  This is safe to do because nothing should read
+            # back from the target repository while a stream with matching
+            # serialization is being inserted.
+            # The exception is that a delta record from the source that should
+            # be a fulltext may need to be expanded by the target (see
+            # test_fetch_revisions_with_deltas_into_pack); but we take care to
+            # explicitly flush any buffered writes first in that rare case.
+            try:
+                new_pack = self.target_repo._pack_collection._new_pack
+            except AttributeError:
+                # Not a pack repository
+                pass
+            else:
+                new_pack.set_write_cache_size(1024*1024)
         for substream_type, substream in stream:
             if substream_type == 'texts':
                 self.target_repo.texts.insert_record_stream(substream)

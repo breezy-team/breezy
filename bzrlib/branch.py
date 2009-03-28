@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 import sys
@@ -1321,11 +1321,14 @@ class BranchFormat(object):
         """
         raise NotImplementedError(self.network_name)
 
-    def open(self, a_bzrdir, _found=False):
+    def open(self, a_bzrdir, _found=False, ignore_fallbacks=False):
         """Return the branch object for a_bzrdir
 
-        _found is a private parameter, do not use it. It is used to indicate
-               if format probing has already be done.
+        :param a_bzrdir: A BzrDir that contains a branch.
+        :param _found: a private parameter, do not use it. It is used to
+            indicate if format probing has already be done.
+        :param ignore_fallbacks: when set, no fallback branches will be opened
+            (if there are any).  Default is to open fallbacks.
         """
         raise NotImplementedError(self.open)
 
@@ -1503,12 +1506,8 @@ class BzrBranchFormat4(BranchFormat):
         """The network name for this format is the control dirs disk label."""
         return self._matchingbzrdir.get_format_string()
 
-    def open(self, a_bzrdir, _found=False):
-        """Return the branch object for a_bzrdir
-
-        _found is a private parameter, do not use it. It is used to indicate
-               if format probing has already be done.
-        """
+    def open(self, a_bzrdir, _found=False, ignore_fallbacks=False):
+        """See BranchFormat.open()."""
         if not _found:
             # we are being called directly and must probe.
             raise NotImplementedError
@@ -1535,12 +1534,8 @@ class BranchFormatMetadir(BranchFormat):
         """
         return self.get_format_string()
 
-    def open(self, a_bzrdir, _found=False):
-        """Return the branch object for a_bzrdir.
-
-        _found is a private parameter, do not use it. It is used to indicate
-               if format probing has already be done.
-        """
+    def open(self, a_bzrdir, _found=False, ignore_fallbacks=False):
+        """See BranchFormat.open()."""
         if not _found:
             format = BranchFormat.find_format(a_bzrdir)
             if format.__class__ != self.__class__:
@@ -1553,7 +1548,8 @@ class BranchFormatMetadir(BranchFormat):
             return self._branch_class()(_format=self,
                               _control_files=control_files,
                               a_bzrdir=a_bzrdir,
-                              _repository=a_bzrdir.find_repository())
+                              _repository=a_bzrdir.find_repository(),
+                              ignore_fallbacks=ignore_fallbacks)
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)
 
@@ -1739,11 +1735,18 @@ class BranchReferenceFormat(BranchFormat):
         return clone
 
     def open(self, a_bzrdir, _found=False, location=None,
-             possible_transports=None):
+             possible_transports=None, ignore_fallbacks=False):
         """Return the branch that the branch reference in a_bzrdir points at.
 
-        _found is a private parameter, do not use it. It is used to indicate
-               if format probing has already be done.
+        :param a_bzrdir: A BzrDir that contains a branch.
+        :param _found: a private parameter, do not use it. It is used to
+            indicate if format probing has already be done.
+        :param ignore_fallbacks: when set, no fallback branches will be opened
+            (if there are any).  Default is to open fallbacks.
+        :param location: The location of the referenced branch.  If
+            unspecified, this will be determined from the branch reference in
+            a_bzrdir.
+        :param possible_transports: An optional reusable transports list.
         """
         if not _found:
             format = BranchFormat.find_format(a_bzrdir)
@@ -1754,7 +1757,7 @@ class BranchReferenceFormat(BranchFormat):
             location = self.get_reference(a_bzrdir)
         real_bzrdir = bzrdir.BzrDir.open(
             location, possible_transports=possible_transports)
-        result = real_bzrdir.open_branch()
+        result = real_bzrdir.open_branch(ignore_fallbacks=ignore_fallbacks)
         # this changes the behaviour of result.clone to create a new reference
         # rather than a copy of the content of the branch.
         # I did not use a proxy object because that needs much more extensive
@@ -1807,7 +1810,8 @@ class BzrBranch(Branch):
     """
 
     def __init__(self, _format=None,
-                 _control_files=None, a_bzrdir=None, _repository=None):
+                 _control_files=None, a_bzrdir=None, _repository=None,
+                 ignore_fallbacks=False):
         """Create new branch object at a particular location."""
         if a_bzrdir is None:
             raise ValueError('a_bzrdir must be supplied')
@@ -2235,6 +2239,8 @@ class BzrBranch7(BzrBranch5):
             self._get_fallback_repository(url))
 
     def _open_hook(self):
+        if self._ignore_fallbacks:
+            return
         try:
             url = self.get_stacked_on_url()
         except (errors.UnstackableRepositoryFormat, errors.NotStacked,
@@ -2256,6 +2262,7 @@ class BzrBranch7(BzrBranch5):
                 self.repository.base)
 
     def __init__(self, *args, **kwargs):
+        self._ignore_fallbacks = kwargs.get('ignore_fallbacks', False)
         super(BzrBranch7, self).__init__(*args, **kwargs)
         self._last_revision_info_cache = None
         self._partial_revision_history_cache = []

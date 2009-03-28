@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for remote bzrdir/branch/repo/etc
 
@@ -36,6 +36,7 @@ from bzrlib import (
     repository,
     smart,
     tests,
+    treebuilder,
     urlutils,
     )
 from bzrlib.branch import Branch
@@ -46,11 +47,12 @@ from bzrlib.remote import (
     RemoteBzrDir,
     RemoteBzrDirFormat,
     RemoteRepository,
+    RemoteRepositoryFormat,
     )
+from bzrlib.repofmt import pack_repo
 from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import server, medium
 from bzrlib.smart.client import _SmartClient
-from bzrlib.symbol_versioning import one_four
 from bzrlib.tests import (
     condition_isinstance,
     split_suite_by_condition,
@@ -406,6 +408,26 @@ class TestBzrDirCloningMetaDir(TestRemote):
         call_count = len([call for call in self.hpss_calls if
             call.call.method == verb])
         self.assertEqual(1, call_count)
+
+    def test_branch_reference(self):
+        transport = self.get_transport('quack')
+        referenced = self.make_branch('referenced')
+        expected = referenced.bzrdir.cloning_metadir()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'BzrDir.cloning_metadir', ('quack/', 'False'),
+            'error', ('BranchReference',)),
+        client.add_expected_call(
+            'BzrDir.open_branchV2', ('quack/',),
+            'success', ('ref', self.get_url('referenced'))),
+        a_bzrdir = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
+            _client=client)
+        result = a_bzrdir.cloning_metadir()
+        # We should have got a control dir matching the referenced branch.
+        self.assertEqual(bzrdir.BzrDirMetaFormat1, type(result))
+        self.assertEqual(expected._repository_format, result._repository_format)
+        self.assertEqual(expected._branch_format, result._branch_format)
+        client.finished_test()
 
     def test_current_server(self):
         transport = self.get_transport('.')
@@ -1450,6 +1472,19 @@ class TestRemoteRepository(TestRemote):
         return repo, client
 
 
+class TestRepositoryFormat(TestRemoteRepository):
+
+    def test_fast_delta(self):
+        true_name = pack_repo.RepositoryFormatPackDevelopment2().network_name()
+        true_format = RemoteRepositoryFormat()
+        true_format._network_name = true_name
+        self.assertEqual(True, true_format.fast_deltas)
+        false_name = pack_repo.RepositoryFormatKnitPack1().network_name()
+        false_format = RemoteRepositoryFormat()
+        false_format._network_name = false_name
+        self.assertEqual(False, false_format.fast_deltas)
+
+
 class TestRepositoryGatherStats(TestRemoteRepository):
 
     def test_revid_none(self):
@@ -1543,7 +1578,8 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         self.assertEqual({r1: (NULL_REVISION,)}, parents)
         self.assertEqual(
             [('call_with_body_bytes_expecting_body',
-              'Repository.get_parent_map', ('quack/', r2), '\n\n0')],
+              'Repository.get_parent_map', ('quack/', 'include-missing:', r2),
+              '\n\n0')],
             client._calls)
         repo.unlock()
         # now we call again, and it should use the second response.
@@ -1553,34 +1589,34 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         self.assertEqual({r1: (NULL_REVISION,)}, parents)
         self.assertEqual(
             [('call_with_body_bytes_expecting_body',
-              'Repository.get_parent_map', ('quack/', r2), '\n\n0'),
+              'Repository.get_parent_map', ('quack/', 'include-missing:', r2),
+              '\n\n0'),
              ('call_with_body_bytes_expecting_body',
-              'Repository.get_parent_map', ('quack/', r1), '\n\n0'),
+              'Repository.get_parent_map', ('quack/', 'include-missing:', r1),
+              '\n\n0'),
             ],
             client._calls)
         repo.unlock()
 
     def test_get_parent_map_reconnects_if_unknown_method(self):
         transport_path = 'quack'
-        repo, client = self.setup_fake_client_and_repository(transport_path)
-        client.add_unknown_method_response('Repository,get_parent_map')
-        client.add_success_response_with_body('', 'ok')
-        self.assertFalse(client._medium._is_remote_before((1, 2)))
         rev_id = 'revision-id'
-        expected_deprecations = [
-            'bzrlib.remote.RemoteRepository.get_revision_graph was deprecated '
-            'in version 1.4.']
-        parents = self.callDeprecated(
-            expected_deprecations, repo.get_parent_map, [rev_id])
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_unknown_method_response('Repository.get_parent_map')
+        client.add_success_response_with_body(rev_id, 'ok')
+        self.assertFalse(client._medium._is_remote_before((1, 2)))
+        parents = repo.get_parent_map([rev_id])
         self.assertEqual(
             [('call_with_body_bytes_expecting_body',
-              'Repository.get_parent_map', ('quack/', rev_id), '\n\n0'),
+              'Repository.get_parent_map', ('quack/', 'include-missing:',
+              rev_id), '\n\n0'),
              ('disconnect medium',),
              ('call_expecting_body', 'Repository.get_revision_graph',
               ('quack/', ''))],
             client._calls)
         # The medium is now marked as being connected to an older server
         self.assertTrue(client._medium._is_remote_before((1, 2)))
+        self.assertEqual({rev_id: ('null:',)}, parents)
 
     def test_get_parent_map_fallback_parentless_node(self):
         """get_parent_map falls back to get_revision_graph on old servers.  The
@@ -1598,11 +1634,7 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_success_response_with_body(rev_id, 'ok')
         client._medium._remember_remote_is_before((1, 2))
-        expected_deprecations = [
-            'bzrlib.remote.RemoteRepository.get_revision_graph was deprecated '
-            'in version 1.4.']
-        parents = self.callDeprecated(
-            expected_deprecations, repo.get_parent_map, [rev_id])
+        parents = repo.get_parent_map([rev_id])
         self.assertEqual(
             [('call_expecting_body', 'Repository.get_revision_graph',
              ('quack/', ''))],
@@ -1615,6 +1647,57 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         self.assertRaises(
             errors.UnexpectedSmartServerResponse,
             repo.get_parent_map, ['a-revision-id'])
+
+    def test_get_parent_map_negative_caches_missing_keys(self):
+        self.setup_smart_server_with_call_log()
+        repo = self.make_repository('foo')
+        self.assertIsInstance(repo, RemoteRepository)
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        self.reset_smart_call_log()
+        graph = repo.get_graph()
+        self.assertEqual({},
+            graph.get_parent_map(['some-missing', 'other-missing']))
+        self.assertLength(1, self.hpss_calls)
+        # No call if we repeat this
+        self.reset_smart_call_log()
+        graph = repo.get_graph()
+        self.assertEqual({},
+            graph.get_parent_map(['some-missing', 'other-missing']))
+        self.assertLength(0, self.hpss_calls)
+        # Asking for more unknown keys makes a request.
+        self.reset_smart_call_log()
+        graph = repo.get_graph()
+        self.assertEqual({},
+            graph.get_parent_map(['some-missing', 'other-missing',
+                'more-missing']))
+        self.assertLength(1, self.hpss_calls)
+
+    def test_get_parent_map_gets_ghosts_from_result(self):
+        # asking for a revision should negatively cache close ghosts in its
+        # ancestry.
+        self.setup_smart_server_with_call_log()
+        tree = self.make_branch_and_memory_tree('foo')
+        tree.lock_write()
+        try:
+            builder = treebuilder.TreeBuilder()
+            builder.start_tree(tree)
+            builder.build([])
+            builder.finish_tree()
+            tree.set_parent_ids(['non-existant'], allow_leftmost_as_ghost=True)
+            rev_id = tree.commit('')
+        finally:
+            tree.unlock()
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        repo = tree.branch.repository
+        self.assertIsInstance(repo, RemoteRepository)
+        # ask for rev_id
+        repo.get_parent_map([rev_id])
+        self.reset_smart_call_log()
+        # Now asking for rev_id's ghost parent should not make calls
+        self.assertEqual({}, repo.get_parent_map(['non-existant']))
+        self.assertLength(0, self.hpss_calls)
 
 
 class TestGetParentMapAllowsNew(tests.TestCaseWithTransport):
@@ -1645,8 +1728,9 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
         transport_path = 'empty'
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_success_response('notused')
-        result = self.applyDeprecated(one_four, repo.get_revision_graph,
-            NULL_REVISION)
+        # actual RemoteRepository.get_revision_graph is gone, but there's an
+        # equivalent private method for testing
+        result = repo._get_revision_graph(NULL_REVISION)
         self.assertEqual([], client._calls)
         self.assertEqual({}, result)
 
@@ -1660,7 +1744,9 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
         transport_path = 'sinhala'
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_success_response_with_body(encoded_body, 'ok')
-        result = self.applyDeprecated(one_four, repo.get_revision_graph)
+        # actual RemoteRepository.get_revision_graph is gone, but there's an
+        # equivalent private method for testing
+        result = repo._get_revision_graph(None)
         self.assertEqual(
             [('call_expecting_body', 'Repository.get_revision_graph',
              ('sinhala/', ''))],
@@ -1679,7 +1765,7 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
         transport_path = 'sinhala'
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_success_response_with_body(encoded_body, 'ok')
-        result = self.applyDeprecated(one_four, repo.get_revision_graph, r2)
+        result = repo._get_revision_graph(r2)
         self.assertEqual(
             [('call_expecting_body', 'Repository.get_revision_graph',
              ('sinhala/', r2))],
@@ -1693,7 +1779,7 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
         client.add_error_response('nosuchrevision', revid)
         # also check that the right revision is reported in the error
         self.assertRaises(errors.NoSuchRevision,
-            self.applyDeprecated, one_four, repo.get_revision_graph, revid)
+            repo._get_revision_graph, revid)
         self.assertEqual(
             [('call_expecting_body', 'Repository.get_revision_graph',
              ('sinhala/', revid))],
@@ -1705,7 +1791,7 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_error_response('AnUnexpectedError')
         e = self.assertRaises(errors.UnknownErrorFromSmartServer,
-            self.applyDeprecated, one_four, repo.get_revision_graph, revid)
+            repo._get_revision_graph, revid)
         self.assertEqual(('AnUnexpectedError',), e.error_tuple)
 
 
@@ -2333,7 +2419,7 @@ class TestStacking(tests.TestCaseWithTransport):
         rev_ord, expected_revs = self.get_ordered_revs('knit', 'topological')
         self.assertEqual(expected_revs, rev_ord)
         # Getting topological sort requires VFS calls still
-        self.assertLength(14, self.hpss_calls)
+        self.assertLength(12, self.hpss_calls)
 
     def test_stacked_get_stream_groupcompress(self):
         # Repository._get_source.get_stream() from a stacked repository with

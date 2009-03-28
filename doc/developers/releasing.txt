@@ -127,7 +127,7 @@ Now you have the releasable product.  The next step is making it
 available to the world.
 
 #. In <https://launchpad.net/bzr/> click the "Release series" for this
-   series, to take you to e.g. <https://launchpad.net/bzr/1.1>.  Then
+   series, to take you to e.g. <https://launchpad.net/bzr/1.14>.  Then
    click "Register a release", and add information about this release.
 
 #. Within that release, upload the source tarball and zipfile and the GPG
@@ -187,7 +187,7 @@ Now that the release is publicly available, tell people about it.
    you do not have a Freshmeat account yet, ask one of the existing
    admins.
 
-#. Update http://en.wikipedia.org/wiki/Bazaar_(software) -- this should be done
+#. Update `<http://en.wikipedia.org/wiki/Bazaar_(software)>`_ -- this should be done
 for final releases but not for Release Candidates.
 
 #. Update the python package index: <http://pypi.python.org/pypi/bzr> - best
