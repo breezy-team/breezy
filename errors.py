@@ -45,10 +45,6 @@ class NoSuchRef(BzrGitError):
         self.present_refs = present_refs
 
 
-class LightWeightCheckoutsNotSupported(BzrGitError):
-    _fmt = "bzr-git does not support creating lightweight checkouts at the moment."
-
-
 def convert_dulwich_error(error):
     """Convert a Dulwich error to a Bazaar error."""
 
