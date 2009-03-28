@@ -196,18 +196,23 @@ _filter_stacks_registry = registry.Registry()
 _stack_cache = {}
 
 
-def register_filter_stack_map(name, stack_map):
+def register_filter_stack_map(name, stack_map, fallback=None):
     """Register the filter stacks to use for various preference values.
 
     :param name: the preference/filter-stack name
     :param stack_map: a dictionary where
       the keys are preference values to match and
       the values are the matching stack of filters for each
+    :param fallback: if non-None, a callable that will be
+      invoked if a preference value is found that doesn't
+      match a key in the stack_map. The callable is expected
+      to take the value as a parameter and either return
+      the matching stack of filters or None if none.
     """
     if name in _filter_stacks_registry:
         raise errors.BzrError(
             "filter stack for %s already installed" % name)
-    _filter_stacks_registry.register(name, stack_map)
+    _filter_stacks_registry.register(name, (stack_map, fallback))
 
 
 def lazy_register_filter_stack_map(name, module_name, member_name):
@@ -246,11 +251,13 @@ def _get_filter_stack_for(preferences):
     stack = []
     for k, v in preferences:
         try:
-            stacks_by_values = _filter_stacks_registry.get(k)
+            stacks_by_values, fallback = _filter_stacks_registry.get(k)
         except KeyError:
             # Some preferences may not have associated filters
             continue
         items = stacks_by_values.get(v)
+        if items is None and fallback is not None:
+            items = fallback(v)
         if items:
             stack.extend(items)
     _stack_cache[preferences] = stack
