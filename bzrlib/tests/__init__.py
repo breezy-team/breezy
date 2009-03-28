@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 # TODO: Perhaps there should be an API to find out if bzr running under the
@@ -33,13 +33,14 @@ import difflib
 import doctest
 import errno
 import logging
+import math
 import os
 from pprint import pformat
 import random
 import re
 import shlex
 import stat
-from subprocess import Popen, PIPE
+from subprocess import Popen, PIPE, STDOUT
 import sys
 import tempfile
 import threading
@@ -77,7 +78,7 @@ except ImportError:
 from bzrlib.merge import merge_inner
 import bzrlib.merge3
 import bzrlib.plugin
-from bzrlib.smart import client, server
+from bzrlib.smart import client, request, server
 import bzrlib.store
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (
@@ -543,7 +544,15 @@ class TextTestRunner(object):
                 run += 1
             actionTaken = "Listed"
         else:
-            test.run(result)
+            try:
+                from testtools import ThreadsafeForwardingResult
+            except ImportError:
+                test.run(result)
+            else:
+                if type(result) == ThreadsafeForwardingResult:
+                    test.run(BZRTransformingResult(result))
+                else:
+                    test.run(result)
             run = result.testsRun
             actionTaken = "Ran"
         stopTime = time.time()
@@ -589,7 +598,7 @@ def iter_suite_tests(suite):
     if isinstance(suite, unittest.TestCase):
         yield suite
     elif isinstance(suite, unittest.TestSuite):
-        for item in suite._tests:
+        for item in suite:
             for r in iter_suite_tests(item):
                 yield r
     else:
@@ -827,6 +836,8 @@ class TestCase(unittest.TestCase):
         for key, factory in hooks.known_hooks.items():
             parent, name = hooks.known_hooks_key_to_parent_and_attribute(key)
             setattr(parent, name, factory())
+        # this hook should always be installed
+        request._install_hook()
 
     def _silenceUI(self):
         """Turn off UI for duration of test"""
@@ -1250,6 +1261,8 @@ class TestCase(unittest.TestCase):
             # bzr now uses the Win32 API and doesn't rely on APPDATA, but the
             # tests do check our impls match APPDATA
             'BZR_EDITOR': None, # test_msgeditor manipulates this variable
+            'VISUAL': None,
+            'EDITOR': None,
             'BZR_EMAIL': None,
             'BZREMAIL': None, # may still be present in the environment
             'EMAIL': None,
@@ -2223,7 +2236,8 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         For TestCaseInTempDir we create a temporary directory based on the test
         name and then create two subdirs - test and home under it.
         """
-        name_prefix = osutils.pathjoin(self.TEST_ROOT, self._getTestDirPrefix())
+        name_prefix = osutils.pathjoin(TestCaseWithMemoryTransport.TEST_ROOT,
+            self._getTestDirPrefix())
         name = name_prefix
         for i in range(100):
             if os.path.exists(name):
@@ -2247,7 +2261,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
         self.addCleanup(self.deleteTestDir)
 
     def deleteTestDir(self):
-        os.chdir(self.TEST_ROOT)
+        os.chdir(TestCaseWithMemoryTransport.TEST_ROOT)
         _rmtree_temp_dir(self.test_base_dir)
 
     def build_tree(self, shape, line_endings='binary', transport=None):
@@ -2432,7 +2446,8 @@ def condition_id_re(pattern):
     :param pattern: A regular expression string.
     :return: A callable that returns True if the re matches.
     """
-    filter_re = re.compile(pattern)
+    filter_re = osutils.re_compile_checked(pattern, 0,
+        'test filter')
     def condition(test):
         test_id = test.id()
         return filter_re.search(test_id)
@@ -2623,7 +2638,8 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
               random_seed=None,
               exclude_pattern=None,
               strict=False,
-              runner_class=None):
+              runner_class=None,
+              suite_decorators=None):
     """Run a test suite for bzr selftest.
 
     :param runner_class: The class of runner to use. Must support the
@@ -2645,42 +2661,393 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
                             list_only=list_only,
                             )
     runner.stop_on_failure=stop_on_failure
-    # Initialise the random number generator and display the seed used.
-    # We convert the seed to a long to make it reuseable across invocations.
-    random_order = False
-    if random_seed is not None:
-        random_order = True
-        if random_seed == "now":
-            random_seed = long(time.time())
+    # built in decorator factories:
+    decorators = [
+        random_order(random_seed, runner),
+        exclude_tests(exclude_pattern),
+        ]
+    if matching_tests_first:
+        decorators.append(tests_first(pattern))
+    else:
+        decorators.append(filter_tests(pattern))
+    if suite_decorators:
+        decorators.extend(suite_decorators)
+    for decorator in decorators:
+        suite = decorator(suite)
+    result = runner.run(suite)
+    if strict:
+        return result.wasStrictlySuccessful()
+    else:
+        return result.wasSuccessful()
+
+
+# A registry where get() returns a suite decorator.
+parallel_registry = registry.Registry()
+def fork_decorator(suite):
+    concurrency = local_concurrency()
+    if concurrency == 1:
+        return suite
+    from testtools import ConcurrentTestSuite
+    return ConcurrentTestSuite(suite, fork_for_tests)
+parallel_registry.register('fork', fork_decorator)
+def subprocess_decorator(suite):
+    concurrency = local_concurrency()
+    if concurrency == 1:
+        return suite
+    from testtools import ConcurrentTestSuite
+    return ConcurrentTestSuite(suite, reinvoke_for_tests)
+parallel_registry.register('subprocess', subprocess_decorator)
+
+
+def exclude_tests(exclude_pattern):
+    """Return a test suite decorator that excludes tests."""
+    if exclude_pattern is None:
+        return identity_decorator
+    def decorator(suite):
+        return ExcludeDecorator(suite, exclude_pattern)
+    return decorator
+
+
+def filter_tests(pattern):
+    if pattern == '.*':
+        return identity_decorator
+    def decorator(suite):
+        return FilterTestsDecorator(suite, pattern)
+    return decorator
+
+
+def random_order(random_seed, runner):
+    """Return a test suite decorator factory for randomising tests order.
+    
+    :param random_seed: now, a string which casts to a long, or a long.
+    :param runner: A test runner with a stream attribute to report on.
+    """
+    if random_seed is None:
+        return identity_decorator
+    def decorator(suite):
+        return RandomDecorator(suite, random_seed, runner.stream)
+    return decorator
+
+
+def tests_first(pattern):
+    if pattern == '.*':
+        return identity_decorator
+    def decorator(suite):
+        return TestFirstDecorator(suite, pattern)
+    return decorator
+
+
+def identity_decorator(suite):
+    """Return suite."""
+    return suite
+
+
+class TestDecorator(TestSuite):
+    """A decorator for TestCase/TestSuite objects.
+    
+    Usually, subclasses should override __iter__(used when flattening test
+    suites), which we do to filter, reorder, parallelise and so on, run() and
+    debug().
+    """
+
+    def __init__(self, suite):
+        TestSuite.__init__(self)
+        self.addTest(suite)
+
+    def countTestCases(self):
+        cases = 0
+        for test in self:
+            cases += test.countTestCases()
+        return cases
+
+    def debug(self):
+        for test in self:
+            test.debug()
+
+    def run(self, result):
+        # Use iteration on self, not self._tests, to allow subclasses to hook
+        # into __iter__.
+        for test in self:
+            if result.shouldStop:
+                break
+            test.run(result)
+        return result
+
+
+class ExcludeDecorator(TestDecorator):
+    """A decorator which excludes test matching an exclude pattern."""
+
+    def __init__(self, suite, exclude_pattern):
+        TestDecorator.__init__(self, suite)
+        self.exclude_pattern = exclude_pattern
+        self.excluded = False
+
+    def __iter__(self):
+        if self.excluded:
+            return iter(self._tests)
+        self.excluded = True
+        suite = exclude_tests_by_re(self, self.exclude_pattern)
+        del self._tests[:]
+        self.addTests(suite)
+        return iter(self._tests)
+
+
+class FilterTestsDecorator(TestDecorator):
+    """A decorator which filters tests to those matching a pattern."""
+
+    def __init__(self, suite, pattern):
+        TestDecorator.__init__(self, suite)
+        self.pattern = pattern
+        self.filtered = False
+
+    def __iter__(self):
+        if self.filtered:
+            return iter(self._tests)
+        self.filtered = True
+        suite = filter_suite_by_re(self, self.pattern)
+        del self._tests[:]
+        self.addTests(suite)
+        return iter(self._tests)
+
+
+class RandomDecorator(TestDecorator):
+    """A decorator which randomises the order of its tests."""
+
+    def __init__(self, suite, random_seed, stream):
+        TestDecorator.__init__(self, suite)
+        self.random_seed = random_seed
+        self.randomised = False
+        self.stream = stream
+
+    def __iter__(self):
+        if self.randomised:
+            return iter(self._tests)
+        self.randomised = True
+        self.stream.writeln("Randomizing test order using seed %s\n" %
+            (self.actual_seed()))
+        # Initialise the random number generator.
+        random.seed(self.actual_seed())
+        suite = randomize_suite(self)
+        del self._tests[:]
+        self.addTests(suite)
+        return iter(self._tests)
+
+    def actual_seed(self):
+        if self.random_seed == "now":
+            # We convert the seed to a long to make it reuseable across
+            # invocations (because the user can reenter it).
+            self.random_seed = long(time.time())
         else:
             # Convert the seed to a long if we can
             try:
-                random_seed = long(random_seed)
+                self.random_seed = long(self.random_seed)
             except:
                 pass
-        runner.stream.writeln("Randomizing test order using seed %s\n" %
-            (random_seed))
-        random.seed(random_seed)
-    # Customise the list of tests if requested
-    if exclude_pattern is not None:
-        suite = exclude_tests_by_re(suite, exclude_pattern)
-    if random_order:
-        order_changer = randomize_suite
-    else:
-        order_changer = preserve_input
-    if pattern != '.*' or random_order:
-        if matching_tests_first:
-            suites = map(order_changer, split_suite_by_re(suite, pattern))
-            suite = TestUtil.TestSuite(suites)
+        return self.random_seed
+
+
+class TestFirstDecorator(TestDecorator):
+    """A decorator which moves named tests to the front."""
+
+    def __init__(self, suite, pattern):
+        TestDecorator.__init__(self, suite)
+        self.pattern = pattern
+        self.filtered = False
+
+    def __iter__(self):
+        if self.filtered:
+            return iter(self._tests)
+        self.filtered = True
+        suites = split_suite_by_re(self, self.pattern)
+        del self._tests[:]
+        self.addTests(suites)
+        return iter(self._tests)
+
+
+def partition_tests(suite, count):
+    """Partition suite into count lists of tests."""
+    result = []
+    tests = list(iter_suite_tests(suite))
+    tests_per_process = int(math.ceil(float(len(tests)) / count))
+    for block in range(count):
+        low_test = block * tests_per_process
+        high_test = low_test + tests_per_process
+        process_tests = tests[low_test:high_test]
+        result.append(process_tests)
+    return result
+
+
+def fork_for_tests(suite):
+    """Take suite and start up one runner per CPU by forking()
+
+    :return: An iterable of TestCase-like objects which can each have
+        run(result) called on them to feed tests to result, and
+        cleanup() called on them to stop them/kill children/end threads.
+    """
+    concurrency = local_concurrency()
+    result = []
+    from subunit import TestProtocolClient, ProtocolTestCase
+    class TestInOtherProcess(ProtocolTestCase):
+        # Should be in subunit, I think. RBC.
+        def __init__(self, stream, pid):
+            ProtocolTestCase.__init__(self, stream)
+            self.pid = pid
+
+        def run(self, result):
+            try:
+                ProtocolTestCase.run(self, result)
+            finally:
+                os.waitpid(self.pid, os.WNOHANG)
+            # print "pid %d finished" % finished_process
+
+    test_blocks = partition_tests(suite, concurrency)
+    for process_tests in test_blocks:
+        process_suite = TestSuite()
+        process_suite.addTests(process_tests)
+        c2pread, c2pwrite = os.pipe()
+        pid = os.fork()
+        if pid == 0:
+            try:
+                os.close(c2pread)
+                # Leave stderr and stdout open so we can see test noise
+                # Close stdin so that the child goes away if it decides to
+                # read from stdin (otherwise its a roulette to see what
+                # child actually gets keystrokes for pdb etc.
+                sys.stdin.close()
+                sys.stdin = None
+                stream = os.fdopen(c2pwrite, 'wb', 0)
+                subunit_result = TestProtocolClient(stream)
+                process_suite.run(subunit_result)
+            finally:
+                os._exit(0)
         else:
-            suite = order_changer(filter_suite_by_re(suite, pattern))
+            os.close(c2pwrite)
+            stream = os.fdopen(c2pread, 'rb', 1)
+            test = TestInOtherProcess(stream, pid)
+            result.append(test)
+    return result
 
-    result = runner.run(suite)
 
-    if strict:
-        return result.wasStrictlySuccessful()
+def reinvoke_for_tests(suite):
+    """Take suite and start up one runner per CPU using subprocess().
 
-    return result.wasSuccessful()
+    :return: An iterable of TestCase-like objects which can each have
+        run(result) called on them to feed tests to result, and
+        cleanup() called on them to stop them/kill children/end threads.
+    """
+    concurrency = local_concurrency()
+    result = []
+    from subunit import TestProtocolClient, ProtocolTestCase
+    class TestInSubprocess(ProtocolTestCase):
+        def __init__(self, process, name):
+            ProtocolTestCase.__init__(self, process.stdout)
+            self.process = process
+            self.process.stdin.close()
+            self.name = name
+
+        def run(self, result):
+            try:
+                ProtocolTestCase.run(self, result)
+            finally:
+                self.process.wait()
+                os.unlink(self.name)
+            # print "pid %d finished" % finished_process
+    test_blocks = partition_tests(suite, concurrency)
+    for process_tests in test_blocks:
+        # ugly; currently reimplement rather than reuses TestCase methods.
+        bzr_path = os.path.dirname(os.path.dirname(bzrlib.__file__))+'/bzr'
+        if not os.path.isfile(bzr_path):
+            # We are probably installed. Assume sys.argv is the right file
+            bzr_path = sys.argv[0]
+        fd, test_list_file_name = tempfile.mkstemp()
+        test_list_file = os.fdopen(fd, 'wb', 1)
+        for test in process_tests:
+            test_list_file.write(test.id() + '\n')
+        test_list_file.close()
+        try:
+            argv = [bzr_path, 'selftest', '--load-list', test_list_file_name,
+                '--subunit']
+            if '--no-plugins' in sys.argv:
+                argv.append('--no-plugins')
+            # stderr=STDOUT would be ideal, but until we prevent noise on
+            # stderr it can interrupt the subunit protocol.
+            process = Popen(argv, stdin=PIPE, stdout=PIPE, stderr=PIPE,
+                bufsize=1)
+            test = TestInSubprocess(process, test_list_file_name)
+            result.append(test)
+        except:
+            os.unlink(test_list_file_name)
+            raise
+    return result
+
+
+def cpucount(content):
+    lines = content.splitlines()
+    prefix = 'processor'
+    for line in lines:
+        if line.startswith(prefix):
+            concurrency = int(line[line.find(':')+1:]) + 1
+    return concurrency
+
+
+def local_concurrency():
+    try:
+        content = file('/proc/cpuinfo', 'rb').read()
+        concurrency = cpucount(content)
+    except Exception, e:
+        concurrency = 1
+    return concurrency
+
+
+class BZRTransformingResult(unittest.TestResult):
+
+    def __init__(self, target):
+        unittest.TestResult.__init__(self)
+        self.result = target
+
+    def startTest(self, test):
+        self.result.startTest(test)
+
+    def stopTest(self, test):
+        self.result.stopTest(test)
+
+    def addError(self, test, err):
+        feature = self._error_looks_like('UnavailableFeature: ', err)
+        if feature is not None:
+            self.result.addNotSupported(test, feature)
+        else:
+            self.result.addError(test, err)
+
+    def addFailure(self, test, err):
+        known = self._error_looks_like('KnownFailure: ', err)
+        if known is not None:
+            self.result._addKnownFailure(test, [KnownFailure,
+                                                KnownFailure(known), None])
+        else:
+            self.result.addFailure(test, err)
+
+    def addSkip(self, test, reason):
+        self.result.addSkip(test, reason)
+
+    def addSuccess(self, test):
+        self.result.addSuccess(test)
+
+    def _error_looks_like(self, prefix, err):
+        """Deserialize exception and returns the stringify value."""
+        import subunit
+        value = None
+        typ, exc, _ = err
+        if isinstance(exc, subunit.RemoteException):
+            # stringify the exception gives access to the remote traceback
+            # We search the last line for 'prefix'
+            lines = str(exc).split('\n')
+            if len(lines) > 1:
+                last = lines[-2] # -1 is empty, final \n
+            else:
+                last = lines[-1]
+            if last.startswith(prefix):
+                value = last[len(prefix):]
+        return value
 
 
 # Controlled by "bzr selftest -E=..." option
@@ -2701,6 +3068,7 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              debug_flags=None,
              starting_with=None,
              runner_class=None,
+             suite_decorators=None,
              ):
     """Run the whole test suite under the enhanced runner"""
     # XXX: Very ugly way to do this...
@@ -2738,6 +3106,7 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
                      exclude_pattern=exclude_pattern,
                      strict=strict,
                      runner_class=runner_class,
+                     suite_decorators=suite_decorators,
                      )
     finally:
         default_transport = old_transport
@@ -3014,6 +3383,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_reconfigure',
                    'bzrlib.tests.test_registry',
                    'bzrlib.tests.test_remote',
+                   'bzrlib.tests.test_rename_map',
                    'bzrlib.tests.test_repository',
                    'bzrlib.tests.test_revert',
                    'bzrlib.tests.test_revision',

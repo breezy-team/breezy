@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Server-side branch related request implmentations."""
 
@@ -45,7 +45,7 @@ class SmartServerBranchRequest(SmartServerRequest):
         bzrdir = BzrDir.open_from_transport(transport)
         if bzrdir.get_branch_reference() is not None:
             raise errors.NotBranchError(transport.base)
-        branch = bzrdir.open_branch()
+        branch = bzrdir.open_branch(ignore_fallbacks=True)
         return self.do_with_branch(branch, *args)
 
 

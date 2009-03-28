@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
 """B+Tree indices"""
@@ -30,6 +30,7 @@ from bzrlib import (
     chunk_writer,
     debug,
     errors,
+    fifo_cache,
     index,
     lru_cache,
     osutils,
@@ -180,6 +181,34 @@ class BTreeBuilder(index.GraphIndexBuilder):
         combine mem with the first and second indexes, creating a new one of
         size 4x. On the fifth create a single new one, etc.
         """
+        if self._combine_backing_indices:
+            (new_backing_file, size,
+             backing_pos) = self._spill_mem_keys_and_combine()
+        else:
+            new_backing_file, size = self._spill_mem_keys_without_combining()
+        dir_path, base_name = osutils.split(new_backing_file.name)
+        # Note: The transport here isn't strictly needed, because we will use
+        #       direct access to the new_backing._file object
+        new_backing = BTreeGraphIndex(get_transport(dir_path),
+                                      base_name, size)
+        # GC will clean up the file
+        new_backing._file = new_backing_file
+        if self._combine_backing_indices:
+            if len(self._backing_indices) == backing_pos:
+                self._backing_indices.append(None)
+            self._backing_indices[backing_pos] = new_backing
+            for backing_pos in range(backing_pos):
+                self._backing_indices[backing_pos] = None
+        else:
+            self._backing_indices.append(new_backing)
+        self._keys = set()
+        self._nodes = {}
+        self._nodes_by_key = None
+
+    def _spill_mem_keys_without_combining(self):
+        return self._write_nodes(self._iter_mem_nodes(), allow_optimize=False)
+
+    def _spill_mem_keys_and_combine(self):
         iterators_to_combine = [self._iter_mem_nodes()]
         pos = -1
         for pos, backing in enumerate(self._backing_indices):
@@ -191,21 +220,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
         new_backing_file, size = \
             self._write_nodes(self._iter_smallest(iterators_to_combine),
                               allow_optimize=False)
-        dir_path, base_name = osutils.split(new_backing_file.name)
-        # Note: The transport here isn't strictly needed, because we will use
-        #       direct access to the new_backing._file object
-        new_backing = BTreeGraphIndex(get_transport(dir_path),
-                                      base_name, size)
-        # GC will clean up the file
-        new_backing._file = new_backing_file
-        if len(self._backing_indices) == backing_pos:
-            self._backing_indices.append(None)
-        self._backing_indices[backing_pos] = new_backing
-        for pos in range(backing_pos):
-            self._backing_indices[pos] = None
-        self._keys = set()
-        self._nodes = {}
-        self._nodes_by_key = None
+        return new_backing_file, size, backing_pos
 
     def add_nodes(self, nodes):
         """Add nodes to the index.
@@ -627,7 +642,11 @@ class BTreeGraphIndex(object):
         # Default max size is 100,000 leave values
         self._leaf_value_cache = None # lru_cache.LRUCache(100*1000)
         self._leaf_node_cache = lru_cache.LRUCache(_NODE_CACHE_SIZE)
-        self._internal_node_cache = lru_cache.LRUCache()
+        # We could limit this, but even a 300k record btree has only 3k leaf
+        # nodes, and only 20 internal nodes. So the default of 100 nodes in an
+        # LRU would mean we always cache everything anyway, no need to pay the
+        # overhead of LRU
+        self._internal_node_cache = fifo_cache.FIFOCache(100)
         self._key_count = None
         self._row_lengths = None
         self._row_offsets = None # Start of each row, [-1] is the end

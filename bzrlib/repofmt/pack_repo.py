@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import re
 import sys
@@ -532,7 +532,7 @@ class AggregateIndex(object):
     # XXX: Probably 'can be written to' could/should be separated from 'acts
     # like a knit index' -- mbp 20071024
 
-    def __init__(self, reload_func=None):
+    def __init__(self, reload_func=None, flush_func=None):
         """Create an AggregateIndex.
 
         :param reload_func: A function to call if we find we are missing an
@@ -543,7 +543,8 @@ class AggregateIndex(object):
         self.index_to_pack = {}
         self.combined_index = CombinedGraphIndex([], reload_func=reload_func)
         self.data_access = _DirectPackAccess(self.index_to_pack,
-                                             reload_func=reload_func)
+                                             reload_func=reload_func,
+                                             flush_func=flush_func)
         self.add_callback = None
 
     def replace_indices(self, index_to_pack, indices):
@@ -725,8 +726,15 @@ class Packer(object):
 
     def open_pack(self):
         """Open a pack for the pack we are creating."""
-        return NewPack(self._pack_collection, upload_suffix=self.suffix,
+        new_pack = NewPack(self._pack_collection, upload_suffix=self.suffix,
                 file_mode=self._pack_collection.repo.bzrdir._get_file_mode())
+        # We know that we will process all nodes in order, and don't need to
+        # query, so don't combine any indices spilled to disk until we are done
+        new_pack.revision_index.set_optimize(combine_backing_indices=False)
+        new_pack.inventory_index.set_optimize(combine_backing_indices=False)
+        new_pack.text_index.set_optimize(combine_backing_indices=False)
+        new_pack.signature_index.set_optimize(combine_backing_indices=False)
+        return new_pack
 
     def _update_pack_order(self, entries, index_to_pack_map):
         """Determine how we want our packs to be ordered.
@@ -1315,10 +1323,11 @@ class RepositoryPackCollection(object):
         # when a pack is being created by this object, the state of that pack.
         self._new_pack = None
         # aggregated revision index data
-        self.revision_index = AggregateIndex(self.reload_pack_names)
-        self.inventory_index = AggregateIndex(self.reload_pack_names)
-        self.text_index = AggregateIndex(self.reload_pack_names)
-        self.signature_index = AggregateIndex(self.reload_pack_names)
+        flush = self._flush_new_pack
+        self.revision_index = AggregateIndex(self.reload_pack_names, flush)
+        self.inventory_index = AggregateIndex(self.reload_pack_names, flush)
+        self.text_index = AggregateIndex(self.reload_pack_names, flush)
+        self.signature_index = AggregateIndex(self.reload_pack_names, flush)
         # resumed packs
         self._resumed_packs = []
 
@@ -1444,6 +1453,10 @@ class RepositoryPackCollection(object):
         # Move the old packs out of the way now they are no longer referenced.
         for revision_count, packs in pack_operations:
             self._obsolete_packs(packs)
+
+    def _flush_new_pack(self):
+        if self._new_pack is not None:
+            self._new_pack.flush()
 
     def lock_names(self):
         """Acquire the mutex around the pack-names index.
@@ -2124,12 +2137,6 @@ class KnitPackRepository(KnitRepository):
             pb.finished()
         return result
 
-    @symbol_versioning.deprecated_method(symbol_versioning.one_one)
-    def get_parents(self, revision_ids):
-        """See graph._StackedParentsProvider.get_parents."""
-        parent_map = self.get_parent_map(revision_ids)
-        return [parent_map.get(r, None) for r in revision_ids]
-
     def _make_parents_provider(self):
         return graph.CachingParentsProvider(self)
 
@@ -2271,6 +2278,7 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
     index_builder_class = None
     index_class = None
     _fetch_uses_deltas = True
+    fast_deltas = False
 
     def initialize(self, a_bzrdir, shared=False):
         """Create a pack based repository.
@@ -2666,6 +2674,9 @@ class RepositoryFormatPackDevelopment2(RepositoryFormatPack):
     # What index classes to use
     index_builder_class = BTreeBuilder
     index_class = BTreeGraphIndex
+    # Set to true to get the fast-commit code path tested until a really fast
+    # format lands in trunk. Not actually fast in this format.
+    fast_deltas = True
 
     @property
     def _serializer(self):

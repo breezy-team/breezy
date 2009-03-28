@@ -12,13 +12,14 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the osutils wrapper."""
 
 from cStringIO import StringIO
 import errno
 import os
+import re
 import socket
 import stat
 import sys
@@ -1525,3 +1526,21 @@ class TestResourceLoading(TestCaseInTempDir):
             'yyy.xx')
         # test unknown resource
         self.assertRaises(IOError, osutils.resource_string, 'bzrlib', 'yyy.xx')
+
+
+class TestReCompile(TestCase):
+
+    def test_re_compile_checked(self):
+        r = osutils.re_compile_checked(r'A*', re.IGNORECASE)
+        self.assertTrue(r.match('aaaa'))
+        self.assertTrue(r.match('aAaA'))
+
+    def test_re_compile_checked_error(self):
+        # like https://bugs.launchpad.net/bzr/+bug/251352
+        err = self.assertRaises(
+            errors.BzrCommandError,
+            osutils.re_compile_checked, '*', re.IGNORECASE, 'test case')
+        self.assertEqual(
+            "Invalid regular expression in test case: '*': "
+            "nothing to repeat",
+            str(err))

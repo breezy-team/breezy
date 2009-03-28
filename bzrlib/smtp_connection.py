@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """A convenience class around smtplib."""
 
@@ -23,7 +23,7 @@ import socket
 
 from bzrlib import (
     config,
-    ui,
+    osutils,
     )
 from bzrlib.errors import (
     NoDestinationAddress,
@@ -111,7 +111,14 @@ class SMTPConnection(object):
             self._smtp_password = auth.get_password(
                 'smtp', self._smtp_server, self._smtp_username)
 
-        self._connection.login(self._smtp_username, self._smtp_password)
+        # smtplib requires that the username and password be byte
+        # strings.  The CRAM-MD5 spec doesn't give any guidance on
+        # encodings, but the SASL PLAIN spec says UTF-8, so that's
+        # what we'll use.
+        username = osutils.safe_utf8(self._smtp_username)
+        password = osutils.safe_utf8(self._smtp_password)
+
+        self._connection.login(username, password)
 
     @staticmethod
     def get_message_addresses(message):
