@@ -54,7 +54,7 @@ else:
     _native_output = _to_lf_converter
 _eol_filter_stack_map = {
     'exact': [],
-    'unix': [filters.ContentFilter(_to_lf_converter, _native_output)],
-    'windows': [filters.ContentFilter(_to_crlf_converter, _native_output)],
+    'lf':    [filters.ContentFilter(_to_lf_converter, _native_output)],
+    'crlf':  [filters.ContentFilter(_to_crlf_converter, _native_output)],
     }
 filters.register_filter_stack_map('eol', _eol_filter_stack_map)

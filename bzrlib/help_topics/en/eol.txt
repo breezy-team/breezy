@@ -16,12 +16,18 @@ To configure which files to filter, set ``eol`` to one of the values below.
   ======= ======================= ========================================
   Value   Commit newlines as      On checkout, convert newlines to
   ======= ======================= ========================================
-  unix    lf                      crlf on Windows, lf otherwise
+  lf      lf                      crlf on Windows, lf otherwise
   ------- ----------------------- ----------------------------------------
-  windows crlf                    crlf on Windows, lf otherwise
+  crlf    crlf                    crlf on Windows, lf otherwise
   ------- ----------------------- ----------------------------------------
   exact   exactly as in file      No conversion
   ======= ======================= ========================================
+
+To summarize, the ``eol`` value specfies how to **store** the file - Bazaar
+will checkout files matching either ``lf`` or ``crlf`` using your native
+platform conventions. If a value is not set, Bazaar leaves things alone
+so ``exact`` is rarely required. (An example of when it is useful though
+is given below.)
 
 Note: For safety reasons, no conversion is applied to any file where a null
 character is detected in the file.
@@ -30,24 +36,45 @@ Here is the suggested rule for users on Windows working on a cross-platform
 project::
 
   [name *]
-  eol = unix
+  eol = lf
 
-For developers working on a project using Windows newlines as the project
-standard, this rule is suggested::
+For developers working on a project using Windows newline conventions as
+the project standard, this rule is suggested::
 
   [name *]
-  eol = windows
+  eol = crlf
 
 To override the conversion for certain files, give more explicit patterns
 earlier in the rules file. For example::
 
   [name *.bat]
-  eol = windows
+  eol = crlf
 
   [name *]
-  eol = unix
+  eol = lf
 
 This will store ``*.bat`` files using Windows (``\r\n``) conventions and
-remaining files using native (``\n``) conventions, but all files will be
+remaining files using Linux/Unix (``\n``) conventions, but all files will be
 checked out with ``\r\n`` newlines on Windows and ``\n`` newlines on other
 platforms.
+
+If you have sample test data that deliberately has text files with mixed
+newline conventions, you can ask for those to be left alone by combining
+rule ordering and ``exact`` like this::
+
+  [name test_data/]
+  eol = exact
+
+  [name *]
+  eol = lf
+
+The same trick can be used if your working tree is on a network drive
+shared between a developer and tester using different operating systems.
+In that case, take care to create and commit OS-specific files in their
+native conventions and use a set of rules like this::
+
+  [name *.bat *.sh]
+  eol = exact
+
+  [name *]
+  eol = lf

@@ -89,9 +89,8 @@ class TestEolConversion(TestCaseWithWorkingTree):
         basis_content = basis.get_file('file1-id').read()
         self.assertEqual(expected_raw, basis_content)
         self.assertNewContentForSetting(wt, None, expected_raw, expected_raw)
-        self.assertNewContentForSetting(wt, 'unix', expected_unix, expected_win)
-        self.assertNewContentForSetting(wt, 'windows', expected_unix,
-            expected_win)
+        self.assertNewContentForSetting(wt, 'lf', expected_unix, expected_win)
+        self.assertNewContentForSetting(wt, 'crlf', expected_unix, expected_win)
         self.assertNewContentForSetting(wt, 'exact', expected_raw, expected_raw)
 
     def test_eol_no_rules(self):
@@ -99,23 +98,23 @@ class TestEolConversion(TestCaseWithWorkingTree):
         self.assertContent(wt, basis, _sample_text,
             _sample_text_on_unix, _sample_text_on_win)
 
-    def test_eol_unix(self):
-        wt, basis = self.prepare_tree(_sample_text, eol='unix')
+    def test_eol_lf(self):
+        wt, basis = self.prepare_tree(_sample_text, eol='lf')
         self.assertContent(wt, basis, _sample_text_on_unix,
             _sample_text_on_unix, _sample_text_on_win)
 
-    def test_eol_unix_binary(self):
-        wt, basis = self.prepare_tree(_sample_binary, eol='unix')
+    def test_eol_lf_binary(self):
+        wt, basis = self.prepare_tree(_sample_binary, eol='lf')
         self.assertContent(wt, basis, _sample_binary, _sample_binary,
             _sample_binary)
 
-    def test_eol_windows(self):
-        wt, basis = self.prepare_tree(_sample_text, eol='windows')
+    def test_eol_crlf(self):
+        wt, basis = self.prepare_tree(_sample_text, eol='crlf')
         self.assertContent(wt, basis, _sample_text_on_win,
             _sample_text_on_unix, _sample_text_on_win)
 
-    def test_eol_windows_binary(self):
-        wt, basis = self.prepare_tree(_sample_binary, eol='windows')
+    def test_eol_crlf_binary(self):
+        wt, basis = self.prepare_tree(_sample_binary, eol='crlf')
         self.assertContent(wt, basis, _sample_binary, _sample_binary,
             _sample_binary)
 
