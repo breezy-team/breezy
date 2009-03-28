@@ -8,7 +8,7 @@ VERSIONS = {
     'qbzr': '0.9.8',
     'bzrtools': '1.12.0',
     'bzr-svn': '0.5.2',
-    'bzr-rebase': '0.4.3',
+    'bzr-rebase': '0.4.4',
     'subvertpy': '0.6.4',
 }
 
