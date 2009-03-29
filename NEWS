@@ -86,6 +86,11 @@ Improvements
   about what was being considered and what was being ignored.
   (Ian Clatworthy)
 
+* The ``long`` log formatter now shows [merge] indicators. If
+  only one level of revisions is displayed and merges are found,
+  the ``long`` and ``short`` log formatters now tell the user
+  how to see the hidden merged revisions.  (Ian Clatworthy)
+
 * Tildes are no longer escaped. No more %7Euser/project/branch!
   (Jonathan Lange)
 
