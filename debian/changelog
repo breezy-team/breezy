@@ -1,4 +1,4 @@
-bzr (1.13-1) unstable; urgency=low
+bzr (1.13.1-1) unstable; urgency=low
 
   * New upstream release.
   * Move to section vcs.
