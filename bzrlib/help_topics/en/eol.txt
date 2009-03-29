@@ -13,21 +13,25 @@ rules. See ``bzr help rules`` for general information on defining rules.
 
 To configure which files to filter, set ``eol`` to one of the values below.
 
-  ======= ======================= ========================================
-  Value   Commit newlines as      On checkout, convert newlines to
-  ======= ======================= ========================================
-  lf      lf                      crlf on Windows, lf otherwise
-  ------- ----------------------- ----------------------------------------
-  crlf    crlf                    crlf on Windows, lf otherwise
-  ------- ----------------------- ----------------------------------------
-  exact   exactly as in file      No conversion
-  ======= ======================= ========================================
+  ============== ======================= ==================================
+  Value          Commit newlines as      On checkout, convert newlines to
+  ============== ======================= ==================================
+  lf             lf                      crlf on Windows, lf otherwise
+  -------------- ----------------------- ----------------------------------
+  crlf           crlf                    crlf on Windows, lf otherwise
+  -------------- ----------------------- ----------------------------------
+  lf-always      lf                      lf
+  -------------- ----------------------- ----------------------------------
+  crlf-always    crlf                    crlf
+  -------------- ----------------------- ----------------------------------
+  exact          exactly as in file      No conversion
+  ============== ======================= ==================================
 
 To summarize, the ``eol`` value specfies how to **store** the file - Bazaar
 will checkout files matching either ``lf`` or ``crlf`` using your native
-platform conventions. If a value is not set, Bazaar leaves things alone
-so ``exact`` is rarely required. (An example of when it is useful though
-is given below.)
+platform conventions. On some occasions, it is necessary to force a
+particular convention or to ensure no conversion is done - ``lf-always``,
+``crlf-always`` and ``exact`` are useful then.
 
 Note: For safety reasons, no conversion is applied to any file where a null
 character is detected in the file.
@@ -58,22 +62,26 @@ remaining files using Linux/Unix (``\n``) conventions, but all files will be
 checked out with ``\r\n`` newlines on Windows and ``\n`` newlines on other
 platforms.
 
+If your working tree is on a network drive shared by users on different
+operating systems, you typically want to force certain conventions for
+certain files. In that way, if a file is created with the wrong line
+endings, it gets committed correctly and gets checked out correctly.
+For example::
+
+  [name *.bat]
+  eol = crlf-always
+
+  [name *.sh]
+  eol = lf-always
+
+  [name *]
+  eol = lf
+
 If you have sample test data that deliberately has text files with mixed
 newline conventions, you can ask for those to be left alone by combining
 rule ordering and ``exact`` like this::
 
   [name test_data/]
-  eol = exact
-
-  [name *]
-  eol = lf
-
-The same trick can be used if your working tree is on a network drive
-shared between a developer and tester using different operating systems.
-In that case, take care to create and commit OS-specific files in their
-native conventions and use a set of rules like this::
-
-  [name *.bat *.sh]
   eol = exact
 
   [name *]

@@ -72,8 +72,11 @@ class TestEolConversion(TestCaseWithWorkingTree):
         self.addCleanup(basis.unlock)
         return t, basis
 
-    def assertNewContentForSetting(self, wt, eol, expected_unix, expected_win):
+    def assertNewContentForSetting(self, wt, eol, expected_unix,
+        expected_win=None):
         """Clone a working tree and check the convenience content."""
+        if expected_win is None:
+            expected_win = expected_unix
         self.patch_rules_searcher(eol)
         wt2 = wt.bzrdir.sprout('tree-%s' % eol).open_workingtree()
         # To see exactly what got written to disk, we need an unfiltered read
@@ -88,10 +91,14 @@ class TestEolConversion(TestCaseWithWorkingTree):
         """Check the committed content and content in cloned trees."""
         basis_content = basis.get_file('file1-id').read()
         self.assertEqual(expected_raw, basis_content)
-        self.assertNewContentForSetting(wt, None, expected_raw, expected_raw)
+        self.assertNewContentForSetting(wt, None, expected_raw)
         self.assertNewContentForSetting(wt, 'lf', expected_unix, expected_win)
         self.assertNewContentForSetting(wt, 'crlf', expected_unix, expected_win)
-        self.assertNewContentForSetting(wt, 'exact', expected_raw, expected_raw)
+        self.assertNewContentForSetting(wt, 'lf-always', expected_unix,
+            expected_unix)
+        self.assertNewContentForSetting(wt, 'crlf-always', expected_win,
+            expected_win)
+        self.assertNewContentForSetting(wt, 'exact', expected_raw)
 
     def test_eol_no_rules(self):
         wt, basis = self.prepare_tree(_sample_text)
@@ -115,6 +122,26 @@ class TestEolConversion(TestCaseWithWorkingTree):
 
     def test_eol_crlf_binary(self):
         wt, basis = self.prepare_tree(_sample_binary, eol='crlf')
+        self.assertContent(wt, basis, _sample_binary, _sample_binary,
+            _sample_binary)
+
+    def test_eol_lf_always(self):
+        wt, basis = self.prepare_tree(_sample_text, eol='lf-always')
+        self.assertContent(wt, basis, _sample_text_on_unix,
+            _sample_text_on_unix, _sample_text_on_win)
+
+    def test_eol_lf_always_binary(self):
+        wt, basis = self.prepare_tree(_sample_binary, eol='lf-always')
+        self.assertContent(wt, basis, _sample_binary, _sample_binary,
+            _sample_binary)
+
+    def test_eol_crlf_always(self):
+        wt, basis = self.prepare_tree(_sample_text, eol='crlf-always')
+        self.assertContent(wt, basis, _sample_text_on_win,
+            _sample_text_on_unix, _sample_text_on_win)
+
+    def test_eol_crlf_always_binary(self):
+        wt, basis = self.prepare_tree(_sample_binary, eol='crlf-always')
         self.assertContent(wt, basis, _sample_binary, _sample_binary,
             _sample_binary)
 

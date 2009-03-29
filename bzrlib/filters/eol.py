@@ -56,5 +56,8 @@ _eol_filter_stack_map = {
     'exact': [],
     'lf':    [filters.ContentFilter(_to_lf_converter, _native_output)],
     'crlf':  [filters.ContentFilter(_to_crlf_converter, _native_output)],
+    'lf-always':   [filters.ContentFilter(_to_lf_converter, _to_lf_converter)],
+    'crlf-always': [filters.ContentFilter(_to_crlf_converter,
+        _to_crlf_converter)],
     }
 filters.register_filter_stack_map('eol', _eol_filter_stack_map)
