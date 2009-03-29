@@ -398,7 +398,7 @@ timestamp: Just now
 message:
   first post
 ------------------------------------------------------------
-Use -n0 to see merged revisions.
+Use --levels 0 (or -n0) to see merged revisions.
 """)
 
     def test_force_merge_revisions_on(self):

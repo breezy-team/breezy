@@ -911,7 +911,7 @@ added:
   f1
   f2
 ------------------------------------------------------------
-Use -n0 to see merged revisions.
+Use --levels 0 (or -n0) to see merged revisions.
 """,
                              the_log)
 
