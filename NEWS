@@ -231,6 +231,12 @@ Internals
   make visible data inserted into the repository by a smart server
   fetch operation. (Robert Collins, Andrew Bennetts)
 
+* ``register_filter_stack_map`` now takes an optional fallback parameter,
+  a callable to invoke if a preference has a value not in the map
+  of filter stacks. This enhancement allows, for example,  bzr-svn to
+  handle existing svn properties that define a list of keywords to be
+  expanded.  (Ian Clatworthy)
+
 * ``RemoteRepository`` will now negatively cache missing revisions during
   ``get_parent_map`` while read-locked. Write-locks are unaffected.
   (Robert Collins, Andrew Bennetts)
