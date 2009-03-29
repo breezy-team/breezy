@@ -220,7 +220,8 @@ def lazy_register_filter_stack_map(name, module_name, member_name):
 
     :param name: the preference/filter-stack name
     :param module_name: The python path to the module of the filter stack map.
-    :param member_name: The name of the filter stack map in the module.
+    :param member_name: The name of the (filter stack map, fallback) tuple
+      in the module.
     """
     if name in _filter_stacks_registry:
         raise errors.BzrError(
