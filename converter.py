@@ -108,7 +108,7 @@ class GitObjectConverter(object):
                 tree.add(stat.S_IFDIR, name.encode('UTF-8'),
                     subtree.sha().hexdigest())
             elif ie.kind == "file":
-                blob = self._get_blob(ie.file_id, revid)
+                blob = self._get_blob(ie.file_id, ie.revision)
                 mode = stat.S_IFREG | 0644
                 if ie.executable:
                     mode |= 0111
@@ -121,6 +121,11 @@ class GitObjectConverter(object):
     def _get_commit(self, revid, tree_sha):
         rev = self.repository.get_revision(revid)
         return revision_to_commit(rev, tree_sha, self._idmap._parent_lookup)
+
+    def get_raw(self, sha):
+        obj = self[sha]
+        assert obj.id == sha
+        return obj._text
 
     def __getitem__(self, sha):
         # See if sha is in map

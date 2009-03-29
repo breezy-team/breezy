@@ -247,7 +247,10 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
             pb.update("finding revisions to fetch", len(graph), None)
         head = heads.pop()
         assert isinstance(head, str)
-        o = object_iter[head]
+        try:
+            o = object_iter[head]
+        except KeyError:
+            continue
         if isinstance(o, Commit):
             rev = mapping.import_commit(o)
             if repo.has_revision(rev.revision_id):
@@ -372,7 +375,7 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
                     objects_iter = self.source.fetch_objects(
                                 record_determine_wants, 
                                 graph_walker, 
-                                target_git_object_retriever.__getitem__, 
+                                target_git_object_retriever.get_raw, 
                                 progress)
                     import_git_objects(self.target, mapping, objects_iter, 
                             target_git_object_retriever, recorded_wants, pb)

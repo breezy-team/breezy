@@ -180,8 +180,8 @@ class EmptyObjectStoreIterator(dict):
 class TemporaryPackIterator(Pack):
 
     def __init__(self, path, resolve_ext_ref):
-        self.resolve_ext_ref = resolve_ext_ref
         super(TemporaryPackIterator, self).__init__(path)
+        self.resolve_ext_ref = resolve_ext_ref
 
     @property
     def idx(self):

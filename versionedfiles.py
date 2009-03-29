@@ -42,7 +42,7 @@ class GitTexts(VersionedFiles):
     def get_record_stream(self, keys, ordering, include_delta_closure):
         for key in keys:
             (fileid, revid) = key
-            (foreign_revid, mapping) = self.repository.revision_id_bzr_to_foreign(revid)
+            (foreign_revid, mapping) = self.repository.lookup_git_revid(revid)
             idmap = GitObjectConverter(self.repository, mapping)._idmap
             path = mapping.parse_file_id(fileid)
             try:
