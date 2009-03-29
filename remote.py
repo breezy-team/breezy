@@ -94,7 +94,6 @@ class GitSmartTransport(Transport):
     def __init__(self, url, _client=None):
         Transport.__init__(self, url)
         (scheme, _, loc, _, _) = urlparse.urlsplit(url)
-        assert scheme == "git"
         hostport, self._path = urllib.splithost(loc)
         (self._host, self._port) = urllib.splitnport(hostport, git.protocol.TCP_GIT_PORT)
         self._client = _client
@@ -103,11 +102,7 @@ class GitSmartTransport(Transport):
         return False
 
     def _get_client(self):
-        if self._client is not None:
-            ret = self._client
-            self._client = None
-            return ret
-        return git.client.TCPGitClient(self._host, self._port, thin_packs=False)
+        raise NotImplementedError(self._get_client)
 
     def fetch_pack(self, determine_wants, graph_walker, pack_data, progress=None):
         if progress is None:
@@ -133,7 +128,27 @@ class GitSmartTransport(Transport):
         else:
             newurl = urlutils.join(self.base, offset)
 
-        return GitSmartTransport(newurl, self._client)
+        return self.__class__(newurl, self._client)
+
+
+class TCPGitSmartTransport(GitSmartTransport):
+
+    def _get_client(self):
+        if self._client is not None:
+            ret = self._client
+            self._client = None
+            return ret
+        return git.client.TCPGitClient(self._host, self._port, thin_packs=False)
+
+
+class SSHGitSmartTransport(GitSmartTransport):
+
+    def _get_client(self):
+        if self._client is not None:
+            ret = self._client
+            self._client = None
+            return ret
+        return git.client.TCPGitClient(self._host, self._port, thin_packs=False)
 
 
 class RemoteGitDir(GitDir):

@@ -221,7 +221,10 @@ bzrdir.BzrDirFormat.register_control_format(LocalGitBzrDirFormat)
 bzrdir.BzrDirFormat.register_control_format(RemoteGitBzrDirFormat)
 
 register_lazy_transport("git://", 'bzrlib.plugins.git.remote',
-                        'GitSmartTransport')
+                        'TCPGitSmartTransport')
+
+register_lazy_transport("git+ssh://", 'bzrlib.plugins.git.remote',
+                        'SSHGitSmartTransport')
 
 foreign_vcs_registry.register_lazy("git", 
                         "bzrlib.plugins.git.mapping", 
