@@ -148,7 +148,7 @@ class SSHGitSmartTransport(GitSmartTransport):
             ret = self._client
             self._client = None
             return ret
-        return git.client.TCPGitClient(self._host, self._port, thin_packs=False)
+        return git.client.SSHGitClient(self._host, self._port, thin_packs=False)
 
 
 class RemoteGitDir(GitDir):

@@ -38,6 +38,7 @@ from bzrlib.lockable_files import (
     )
 from bzrlib.transport import (
     register_lazy_transport,
+    register_transport_proto,
     )
 from bzrlib.commands import (
     plugin_cmds,
@@ -219,6 +220,11 @@ class RemoteGitBzrDirFormat(GitBzrDirFormat):
 
 bzrdir.BzrDirFormat.register_control_format(LocalGitBzrDirFormat)
 bzrdir.BzrDirFormat.register_control_format(RemoteGitBzrDirFormat)
+
+register_transport_proto('git://', 
+        help="Access using the Git smart server protocol.")
+register_transport_proto('git+ssh://', 
+        help="Access using the Git smart server protocol over SSH.")
 
 register_lazy_transport("git://", 'bzrlib.plugins.git.remote',
                         'TCPGitSmartTransport')
