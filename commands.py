@@ -82,9 +82,11 @@ class cmd_git_import(Command):
             NoRepositoryPresent,
             NotBranchError,
             )
-        from bzrlib.repository import Repository
+        from bzrlib.repository import (
+            InterRepository,
+            Repository,
+            )
         from bzrlib.plugins.git.branch import GitBranch
-        from bzrlib.plugins.git.fetch import InterGitNonGitRepository
         from bzrlib.plugins.git.repository import GitRepository
 
         if dest_location is None:
@@ -103,7 +105,7 @@ class cmd_git_import(Command):
         except NoRepositoryPresent:
             target_repo = target_bzrdir.create_repository(shared=True)
 
-        interrepo = InterGitNonGitRepository(source_repo, target_repo)
+        interrepo = InterRepository.get(source_repo, target_repo)
         mapping = source_repo.get_mapping()
         refs = interrepo.fetch_refs()
         pb = ui.ui_factory.nested_progress_bar()

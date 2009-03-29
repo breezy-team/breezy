@@ -71,12 +71,16 @@ from dulwich.errors import (
 from dulwich.pack import (
     Pack,
     PackData,
-    PackIndex,
     )
 import os
 import tempfile
 import urllib
 import urlparse
+
+try:
+    from dulwich.pack import load_pack_index
+except ImportError:
+    from dulwich.pack import PackIndex as load_pack_index
 
 
 # Don't run any tests on GitSmartTransport as it is not intended to be 
@@ -170,7 +174,7 @@ class TemporaryPackIterator(Pack):
             if self._data is None:
                 self._data = PackData(self._data_path)
             self._data.create_index_v2(self._idx_path, self.resolve_ext_ref)
-            self._idx = PackIndex(self._idx_path)
+            self._idx = load_pack_index(self._idx_path)
         return self._idx
 
     def __del__(self):

@@ -304,7 +304,7 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
 
 
 class InterGitNonGitRepository(InterRepository):
-    """InterRepository that copies revisions from a Git into a non-Git 
+    """Base InterRepository that copies revisions from a Git into a non-Git 
     repository."""
 
     _matching_repo_format = GitRepositoryFormat()
@@ -316,6 +316,38 @@ class InterGitNonGitRepository(InterRepository):
     def copy_content(self, revision_id=None, pb=None):
         """See InterRepository.copy_content."""
         self.fetch(revision_id, pb, find_ghosts=False)
+
+    def fetch(self, revision_id=None, pb=None, find_ghosts=False, mapping=None,
+            fetch_spec=None):
+        self.fetch_refs(revision_id=revision_id, pb=pb, find_ghosts=find_ghosts,
+                mapping=mapping, fetch_spec=fetch_spec)
+
+    def fetch_refs(self, revision_id=None, pb=None, find_ghosts=False, 
+              mapping=None, fetch_spec=None):
+        if mapping is None:
+            mapping = self.source.get_mapping()
+        if revision_id is not None:
+            interesting_heads = [revision_id]
+        elif fetch_spec is not None:
+            interesting_heads = fetch_spec.heads
+        else:
+            interesting_heads = None
+        self._refs = {}
+        def determine_wants(refs):
+            self._refs = refs
+            if interesting_heads is None:
+                ret = [sha for (ref, sha) in refs.iteritems() if not ref.endswith("^{}")]
+            else:
+                ret = [mapping.revision_id_bzr_to_foreign(revid)[0] for revid in interesting_heads]
+            return [rev for rev in ret if not self.target.has_revision(mapping.revision_id_foreign_to_bzr(rev))]
+        self.fetch_objects(determine_wants, mapping, pb)
+        return self._refs
+
+
+
+class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
+    """InterRepository that copies revisions from a remote Git into a non-Git 
+    repository."""
 
     def fetch_objects(self, determine_wants, mapping, pb=None):
         def progress(text):
@@ -352,37 +384,46 @@ class InterGitNonGitRepository(InterRepository):
             if create_pb:
                 create_pb.finished()
 
-    def fetch(self, revision_id=None, pb=None, find_ghosts=False, mapping=None,
-            fetch_spec=None):
-        self.fetch_refs(revision_id=revision_id, pb=pb, find_ghosts=find_ghosts,
-                mapping=mapping, fetch_spec=fetch_spec)
+    @staticmethod
+    def is_compatible(source, target):
+        """Be compatible with GitRepository."""
+        # FIXME: Also check target uses VersionedFile
+        return (isinstance(source, RemoteGitRepository) and 
+                target.supports_rich_root() and
+                not isinstance(target, GitRepository))
 
-    def fetch_refs(self, revision_id=None, pb=None, find_ghosts=False, 
-              mapping=None, fetch_spec=None):
-        if mapping is None:
-            mapping = self.source.get_mapping()
-        if revision_id is not None:
-            interesting_heads = [revision_id]
-        elif fetch_spec is not None:
-            interesting_heads = fetch_spec.heads
-        else:
-            interesting_heads = None
-        self._refs = {}
-        def determine_wants(refs):
-            self._refs = refs
-            if interesting_heads is None:
-                ret = [sha for (ref, sha) in refs.iteritems() if not ref.endswith("^{}")]
-            else:
-                ret = [mapping.revision_id_bzr_to_foreign(revid)[0] for revid in interesting_heads]
-            return [rev for rev in ret if not self.target.has_revision(mapping.revision_id_foreign_to_bzr(rev))]
-        self.fetch_objects(determine_wants, mapping, pb)
-        return self._refs
+
+class InterLocalGitNonGitRepository(InterGitNonGitRepository):
+    """InterRepository that copies revisions from a remote Git into a non-Git 
+    repository."""
+
+    def fetch_objects(self, determine_wants, mapping, pb=None):
+        wants = determine_wants(self.source._git.get_refs())
+        create_pb = None
+        if pb is None:
+            create_pb = pb = ui.ui_factory.nested_progress_bar()
+        target_git_object_retriever = GitObjectConverter(self.target, mapping)
+        try:
+            self.target.lock_write()
+            try:
+                self.target.start_write_group()
+                try:
+                    import_git_objects(self.target, mapping, 
+                            self.source._git.object_store, 
+                            target_git_object_retriever, wants, pb)
+                finally:
+                    self.target.commit_write_group()
+            finally:
+                self.target.unlock()
+        finally:
+            if create_pb:
+                create_pb.finished()
 
     @staticmethod
     def is_compatible(source, target):
         """Be compatible with GitRepository."""
         # FIXME: Also check target uses VersionedFile
-        return (isinstance(source, GitRepository) and 
+        return (isinstance(source, LocalGitRepository) and 
                 target.supports_rich_root() and
                 not isinstance(target, GitRepository))
 

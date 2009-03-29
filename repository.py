@@ -75,8 +75,9 @@ class GitRepository(ForeignRepository):
         ForeignRepository.__init__(self, GitRepositoryFormat(), gitdir, 
             lockfiles)
         from bzrlib.plugins.git import fetch, push
-        for optimiser in [fetch.InterGitRepository, 
-                          fetch.InterGitNonGitRepository,
+        for optimiser in [fetch.InterRemoteGitNonGitRepository, 
+                          fetch.InterLocalGitNonGitRepository,
+                          fetch.InterGitRepository,
                           push.InterToGitRepository]:
             repository.InterRepository.register_optimiser(optimiser)
 

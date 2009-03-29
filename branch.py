@@ -258,7 +258,6 @@ class InterGitGenericBranch(branch.InterBranch):
                 return []
             return [head]
         interrepo.fetch_objects(determine_wants, self.source.mapping)
-        # FIXME: Check that self._last_revid is a descendant of self.target.last_revision()
         self.target.generate_revision_history(self._last_revid)
 
 
