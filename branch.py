@@ -246,26 +246,28 @@ class InterGitGenericBranch(branch.InterBranch):
     def update_revisions(self, stop_revision=None, overwrite=False,
         graph=None):
         """See InterBranch.update_revisions()."""
-        # TODO: stop_revision
         interrepo = repository.InterRepository.get(self.source.repository, 
             self.target.repository)
         self._last_revid = None
         def determine_wants(heads):
             if not self.source.name in heads:
                 raise NoSuchRef(self.source.name, heads.keys())
-            head = heads[self.source.name]
-            self._last_revid = self.source.mapping.revision_id_foreign_to_bzr(
-                head)
+            if stop_revision is not None:
+                self._last_revid = stop_revision
+                head, mapping = self.source.lookup_git_revid(stop_revision)
+            else:
+                head = heads[self.source.name]
+                self._last_revid = self.source.mapping.revision_id_foreign_to_bzr(
+                    head)
             if self.target.repository.has_revision(self._last_revid):
                 return []
             return [head]
         interrepo.fetch_objects(determine_wants, self.source.mapping)
         if overwrite:
-            last_revid = None
+            prev_last_revid = None
         else:
-            last_revid = self.target.last_revision()
-        self.target.generate_revision_history(self._last_revid, 
-                self.target.last_revision())
+            prev_last_revid = self.target.last_revision()
+        self.target.generate_revision_history(self._last_revid, prev_last_revid)
 
 
 branch.InterBranch.register_optimiser(InterGitGenericBranch)
