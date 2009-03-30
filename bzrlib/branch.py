@@ -2665,13 +2665,7 @@ class BranchPushResult(_Result):
 
     def report(self, to_file):
         """Write a human-readable description of the result."""
-        if self.old_revid is None:
-            if self.stacked_on is not None:
-                note('Created new stacked branch referring to %s.' %
-                    self.stacked_on)
-            else:
-                note('Created new branch.')
-        elif self.old_revid == self.new_revid:
+        if self.old_revid == self.new_revid:
             note('No new revisions to push.')
         else:
             note('Pushed up to revision %d.' % self.new_revno)
@@ -2782,16 +2776,29 @@ class InterBranch(InterObject):
     """
 
     _optimisers = []
-    """The available optimised InterBranchBzrDir types."""
+    """The available optimised InterBranch types."""
 
-    def push(self, revision_id=None, overwrite=True, remember=False):
-        """Push the source branch into the target BzrDir."""
-        raise NotImplementedError(self.push)
+    @staticmethod
+    def _get_branch_formats_to_test():
+        """Return a tuple with the Branch formats to use when testing."""
+        raise NotImplementedError(self._get_branch_formats_to_test)
+
+    def update_revisions(self, stop_revision=None, overwrite=False,
+                         graph=None):
+        """Pull in new perfect-fit revisions.
+
+        :param stop_revision: Updated until the given revision
+        :param overwrite: Always set the branch pointer, rather than checking
+            to see if it is a proper descendant.
+        :param graph: A Graph object that can be used to query history
+            information. This can be None.
+        :return: None
+        """
+        raise NotImplementedError(self.update_revisions)
 
 
-class GenericInterBranchBzrDir(InterBranchBzrDir):
-    """Generic implementation of InterBranchBzrDir using standard public APIs.
-
+class GenericInterBranch(InterBranch):
+    """InterBranch implementation that uses public Branch functions.
     """
 
     @staticmethod
@@ -2848,86 +2855,3 @@ class GenericInterBranchBzrDir(InterBranchBzrDir):
 
 
 InterBranch.register_optimiser(GenericInterBranch)
-
-
-class InterBranchBzrDir(InterObject):
-    """This class represents ops taking place between a Branch and a BzrDir.
-
-    Its instances have methods like push() and branch(), and create a new 
-    instance of a branch in a target BzrDir based on the base branch.
-    """
-    _optimisers = []
-    """The available optimised InterBranchBzrDir types."""
-
-    def push(self, revision_id=None, overwrite=True, remember=False):
-        """Push the source branch into the target BzrDir."""
-        raise NotImplementedError(self.push)
-
-
-class GenericInterBranchBzrDir(InterBranchBzrDir):
-    """Generic implementation of InterBranchBzrDir using standard public APIs.
-
-    """
-
-    def push(self, revision_id=None, overwrite=False, remember=False):
-        """See InterBranchBzrDir.push."""
-        br_to = None
-        # If we can open a branch, use its direct repository, otherwise see
-        # if there is a repository without a branch.
-        try:
-            br_to = self.target.open_branch()
-        except errors.NotBranchError:
-            # Didn't find a branch, can we find a repository?
-            repository_to = self.target.find_repository()
-        else:
-            # Found a branch, so we must have found a repository
-            repository_to = br_to.repository
-
-        if br_to is None:
-            # We have a repository but no branch, copy the revisions, and then
-            # create a branch.
-            repository_to.fetch(self.source.repository, revision_id=revision_id)
-            br_to = self.source.clone(self.target, revision_id=revision_id)
-            if self.source.get_push_location() is None or remember:
-                self.source.set_push_location(br_to.base)
-            push_result = PushResult()
-            push_result.stacked_on = None
-            push_result.old_revno = None
-            push_result.old_revid = None
-            (push_result.new_revno, push_result.new_revid) = \
-                    br_to.last_revision_info()
-            push_result.source_branch = self.source
-            push_result.target_branch = br_to
-            push_result.master_branch = None
-            push_result.workingtree_updated = False
-        else:
-            # We have successfully opened the branch, remember if necessary:
-            if self.source.get_push_location() is None or remember:
-                self.source.set_push_location(br_to.base)
-            try:
-                tree_to = self.target.open_workingtree()
-            except errors.NotLocalUrl:
-                push_result = self.source.push(br_to, overwrite,
-                                           stop_revision=revision_id)
-                push_result.workingtree_updated = False
-            except errors.NoWorkingTree:
-                push_result = self.source.push(br_to, overwrite,
-                                           stop_revision=revision_id)
-                push_result.workingtree_updated = False
-            else:
-                tree_to.lock_write()
-                try:
-                    push_result = self.source.push(tree_to.branch, overwrite,
-                                                   stop_revision=revision_id)
-                    tree_to.update()
-                finally:
-                    tree_to.unlock()
-                push_result.workingtree_updated = True
-        return push_result
-
-    @classmethod
-    def is_compatible(cls, source, target):
-        return True
-
-
-InterBranchBzrDir.register_optimiser(GenericInterBranchBzrDir)

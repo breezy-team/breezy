@@ -18,6 +18,9 @@
 
 from bzrlib import (builtins, branch, bzrdir, errors, revision as _mod_revision,
                     transport)
+from bzrlib.inter import (
+    InterObject,
+    )
 from bzrlib.trace import note, warning
 
 
@@ -25,12 +28,16 @@ class PushResult(object):
     """Result of a push operation.
 
     :ivar branch_push_result: Result of a push between branches
+    :ivar target_branch: The target branch
     :ivar stacked_on: URL of the branch on which the result is stacked
+    :ivar workingtree_updated: Whether or not the target workingtree was updated.
     """
 
     def __init__(self):
         self.branch_push_result = None
         self.stacked_on = None
+        self.workingtree_updated = None
+        self.target_branch = None
 
     def report(self, to_file):
         """Write a human-readable description of the result."""
@@ -121,41 +128,23 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
             push_result.stacked_on = None
         (push_result.new_revno, push_result.new_revid) = \
             br_to.last_revision_info()
+        push_result.target_branch = br_to
         if br_from.get_push_location() is None or remember:
             br_from.set_push_location(br_from.base)
     else:
         if stacked_on is not None:
             warning("Ignoring request for a stacked branch as repository "
                     "already exists at the destination location.")
-        inter = branch.InterBranchBzrDir.get(br_from, dir_to)
+        inter = InterBranchBzrDir.get(br_from, dir_to)
         try:
-            try:
-                tree_to = dir_to.open_workingtree()
-            except errors.NotLocalUrl:
-                note("This transport does not update the working "
-                        "tree of: %s. See 'bzr help working-trees' for "
-                        "more information." % br_to.base)
-                push_result.branch_push_result = br_from.push(br_to, overwrite,
-                                                   stop_revision=revision_id)
-            except errors.NoWorkingTree:
-                push_result.branch_push_result = br_from.push(br_to, overwrite,
-                                                   stop_revision=revision_id)
-            else:
-                tree_to.lock_write()
-                try:
-                    push_result.branch_push_result = br_from.push(tree_to.branch,
-                        overwrite, stop_revision=revision_id)
-                    tree_to.update()
-                finally:
-                    tree_to.unlock()
+            push_result = inter.push(revision_id, overwrite, remember)
         except errors.DivergedBranches:
             raise errors.BzrCommandError('These branches have diverged.'
                                     '  Try using "merge" and then "push".')
-        if not push_result.workingtree_updated:
+        if push_result.workingtree_updated == False:
             warning("This transport does not update the working " 
                     "tree of: %s. See 'bzr help working-trees' for "
                     "more information." % push_result.target_branch.base)
-
 
     push_result.report(to_file)
     if push_result.branch_push_result is not None:
@@ -165,9 +154,96 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
         old_revid = _mod_revision.NULL_REVISION
         old_revno = 0
     if verbose:
+        br_to = push_result.target_branch
         br_to.lock_read()
         try:
             from bzrlib.log import show_branch_change
             show_branch_change(br_to, to_file, old_revno, old_revid)
         finally:
             br_to.unlock()
+
+
+class InterBranchBzrDir(InterObject):
+    """This class represents ops taking place between a Branch and a BzrDir.
+
+    Its instances have methods like push() and branch(), and create a new 
+    instance of a branch in a target BzrDir based on the base branch.
+    """
+
+    _optimisers = []
+    """The available optimised InterBranchBzrDir types."""
+
+    def push(self, revision_id=None, overwrite=True, remember=False):
+        """Push the source branch into the target BzrDir."""
+        raise NotImplementedError(self.push)
+
+
+class GenericInterBranchBzrDir(InterBranchBzrDir):
+    """Generic implementation of InterBranchBzrDir using standard public APIs.
+
+    """
+
+    def push(self, revision_id=None, overwrite=False, remember=False):
+        """See InterBranchBzrDir.push."""
+        br_to = None
+        # If we can open a branch, use its direct repository, otherwise see
+        # if there is a repository without a branch.
+        try:
+            br_to = self.target.open_branch()
+        except errors.NotBranchError:
+            # Didn't find a branch, can we find a repository?
+            repository_to = self.target.find_repository()
+        else:
+            # Found a branch, so we must have found a repository
+            repository_to = br_to.repository
+
+        push_result = PushResult()
+        if br_to is None:
+            # We have a repository but no branch, copy the revisions, and then
+            # create a branch.
+            repository_to.fetch(self.source.repository, revision_id=revision_id)
+            br_to = self.source.clone(self.target, revision_id=revision_id)
+            if self.source.get_push_location() is None or remember:
+                self.source.set_push_location(br_to.base)
+            push_result.stacked_on = None
+            push_result.branch_push_result = None
+            push_result.old_revno = None
+            push_result.old_revid = None
+            (push_result.new_revno, push_result.new_revid) = \
+                    br_to.last_revision_info()
+            push_result.source_branch = self.source
+            push_result.target_branch = br_to
+            push_result.master_branch = None
+            push_result.workingtree_updated = False
+        else:
+            # We have successfully opened the branch, remember if necessary:
+            if self.source.get_push_location() is None or remember:
+                self.source.set_push_location(br_to.base)
+            try:
+                tree_to = self.target.open_workingtree()
+            except errors.NotLocalUrl:
+                push_result.branch_push_result = self.source.push(br_to, 
+                    overwrite, stop_revision=revision_id)
+                push_result.workingtree_updated = False
+            except errors.NoWorkingTree:
+                push_result.branch_push_result = self.source.push(br_to,
+                    overwrite, stop_revision=revision_id)
+                push_result.workingtree_updated = False
+            else:
+                tree_to.lock_write()
+                try:
+                    push_result.branch_push_result = self.source.push(
+                        tree_to.branch, overwrite, stop_revision=revision_id)
+                    tree_to.update()
+                finally:
+                    tree_to.unlock()
+                push_result.workingtree_updated = True
+            push_result.target_branch = push_result.branch_push_result.target_branch
+        return push_result
+
+    @classmethod
+    def is_compatible(cls, source, target):
+        return True
+
+
+InterBranchBzrDir.register_optimiser(GenericInterBranchBzrDir)
