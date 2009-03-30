@@ -16,12 +16,21 @@
 
 """UI helper for the push command."""
 
-from bzrlib import (builtins, branch, bzrdir, errors, revision as _mod_revision,
-                    transport)
+from bzrlib import (
+    builtins,
+    branch,
+    bzrdir,
+    errors,
+    revision as _mod_revision,
+    transport,
+    )
 from bzrlib.inter import (
     InterObject,
     )
-from bzrlib.trace import note, warning
+from bzrlib.trace import (
+    note,
+    warning,
+    )
 
 
 class PushResult(object):
@@ -126,11 +135,11 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
                 errors.UnstackableRepositoryFormat,
                 errors.NotStacked):
             push_result.stacked_on = None
-        (push_result.new_revno, push_result.new_revid) = \
-            br_to.last_revision_info()
         push_result.target_branch = br_to
+        push_result.old_revid = _mod_revision.NULL_REVISION
+        push_result.old_revno = 0
         if br_from.get_push_location() is None or remember:
-            br_from.set_push_location(br_from.base)
+            br_from.set_push_location(br_to.base)
     else:
         if stacked_on is not None:
             warning("Ignoring request for a stacked branch as repository "
@@ -141,24 +150,25 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
         except errors.DivergedBranches:
             raise errors.BzrCommandError('These branches have diverged.'
                                     '  Try using "merge" and then "push".')
+        except errors.NoRepositoryPresent:
+            # we have a bzrdir but no branch or repository
+            # XXX: Figure out what to do other than complain.
+            raise errors.BzrCommandError("At %s you have a valid .bzr"
+                " control directory, but not a branch or repository. This"
+                " is an unsupported configuration. Please move the target"
+                " directory out of the way and try again." % location)
         if push_result.workingtree_updated == False:
             warning("This transport does not update the working " 
                     "tree of: %s. See 'bzr help working-trees' for "
                     "more information." % push_result.target_branch.base)
-
     push_result.report(to_file)
-    if push_result.branch_push_result is not None:
-        old_revid = push_result.branch_push_result.old_revid
-        old_revno = push_result.branch_push_result.old_revno
-    else:
-        old_revid = _mod_revision.NULL_REVISION
-        old_revno = 0
     if verbose:
         br_to = push_result.target_branch
         br_to.lock_read()
         try:
             from bzrlib.log import show_branch_change
-            show_branch_change(br_to, to_file, old_revno, old_revid)
+            show_branch_change(br_to, to_file, push_result.old_revno, 
+                               push_result.old_revid)
         finally:
             br_to.unlock()
 
@@ -208,9 +218,7 @@ class GenericInterBranchBzrDir(InterBranchBzrDir):
             push_result.stacked_on = None
             push_result.branch_push_result = None
             push_result.old_revno = None
-            push_result.old_revid = None
-            (push_result.new_revno, push_result.new_revid) = \
-                    br_to.last_revision_info()
+            push_result.old_revid = _mod_revision.NULL_REVISION
             push_result.source_branch = self.source
             push_result.target_branch = br_to
             push_result.master_branch = None
@@ -228,7 +236,7 @@ class GenericInterBranchBzrDir(InterBranchBzrDir):
             except errors.NoWorkingTree:
                 push_result.branch_push_result = self.source.push(br_to,
                     overwrite, stop_revision=revision_id)
-                push_result.workingtree_updated = False
+                push_result.workingtree_updated = None # Not applicable
             else:
                 tree_to.lock_write()
                 try:
@@ -238,6 +246,8 @@ class GenericInterBranchBzrDir(InterBranchBzrDir):
                 finally:
                     tree_to.unlock()
                 push_result.workingtree_updated = True
+            push_result.old_revno = push_result.branch_push_result.old_revno
+            push_result.old_revid = push_result.branch_push_result.old_revid
             push_result.target_branch = push_result.branch_push_result.target_branch
         return push_result
 
