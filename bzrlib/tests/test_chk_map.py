@@ -1985,6 +1985,13 @@ class TestIterInterestingNodes(TestCaseWithStore):
              ([aac_key], [(('aac',), 'other')]),
             ], [target2, target3], [target1])
 
+        # This may be a case that we relax. A root node is a deep child of the
+        # excluded set. The cost is buffering root nodes until we have
+        # determined all possible exclusions. (Because a prefix of '', cannot
+        # be excluded.)
+        self.assertIterInteresting(
+            [], [target1], [target3])
+
     def test_multiple_maps(self):
         basis1 = self.get_map_key({('aaa',): 'common',
                                    ('aab',): 'basis1',
