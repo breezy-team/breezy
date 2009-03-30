@@ -28,8 +28,10 @@ class TestUpdateRevisions(TestCaseWithInterBranch):
         super(TestUpdateRevisions, self).setUp()
         self.tree1 = self.make_branch_and_tree('tree1')
         rev1 = self.tree1.commit('one')
-        dir2 = self.sprout_to(self.tree1.bzrdir, 'tree2')
-        self.tree2 = dir2.open_workingtree()
+        branch2 = self.make_to_branch('tree2')
+        branch2.repository.fetch(self.tree1.branch.repository)
+        self.tree1.branch.copy_content_into(branch2)
+        self.tree2 = branch2.bzrdir.create_workingtree()
 
     def test_accepts_graph(self):
         # An implementation may not use it, but it should allow a 'graph' to be
