@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2007 Canonical Ltd
+# Copyright (C) 2004, 2005, 2007, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -89,7 +89,8 @@ class TestPush(TestCaseWithInterBranch):
             return
         rev1 = checkout.commit('master')
 
-        other = self.sprout_from(master_tree.branch.bzrdir, 'other').open_workingtree()
+        other_bzrdir = self.sprout_from(master_tree.branch.bzrdir, 'other')
+        other = other_bzrdir.open_workingtree()
         rev2 = other.commit('other commit')
         # now push, which should update both checkout and master.
         other.branch.push(checkout.branch)
@@ -104,7 +105,8 @@ class TestPush(TestCaseWithInterBranch):
         except errors.UpgradeRequired:
             # cant bind this format, the test is irrelevant.
             return
-        other = self.sprout_from(master_tree.branch.bzrdir, 'other').open_workingtree()
+        other_bzrdir = self.sprout_from(master_tree.branch.bzrdir, 'other')
+        other = other_bzrdir.open_workingtree()
         # move the branch out of the way on disk to cause a connection
         # error.
         os.rename('master', 'master_gone')
@@ -151,7 +153,7 @@ class TestPush(TestCaseWithInterBranch):
             if self.vfs_transport_factory is LocalURLServer:
                 # the branch is colocated on disk, we cannot create a checkout.
                 # hopefully callers will expect this.
-                local_controldir= bzrdir.BzrDir.open(self.get_vfs_only_url('repo/tree'))
+                local_controldir = bzrdir.BzrDir.open(self.get_vfs_only_url('repo/tree'))
                 tree = local_controldir.create_workingtree()
             else:
                 tree = a_branch.create_checkout('repo/tree', lightweight=True)
