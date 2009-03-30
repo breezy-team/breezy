@@ -325,6 +325,12 @@ def _break_annotation_tie(annotated_lines):
          do so have performance implications.
     """
     # sort lexicographically so that we always get a stable result.
+
+    # TODO: while 'sort' is the easiest (and nearly the only possible solution)
+    # with the current implementation, chosing the oldest revision is known to
+    # provide better results (as in matching user expectations). The most
+    # common use case being manual cherry-pick from an already existing
+    # revision.
     return sorted(annotated_lines)[0]
 
 
@@ -384,8 +390,10 @@ def _find_matching_unannotated_lines(output_lines, plain_child_lines,
                     if len(heads) == 1:
                         output_append((iter(heads).next(), left[1]))
                     else:
-                        # Both claim different origins, sort lexicographically
-                        # so that we always get a stable result.
+                        # Both claim different origins, get a stable result.
+                        # If the result is not stable, there is a risk a
+                        # performance degradation as criss-cross merges will
+                        # flip-flop the attribution.
                         output_append(_break_annotation_tie([left, right]))
         last_child_idx = child_idx + match_len
 
