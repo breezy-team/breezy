@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,7 +23,11 @@ Specific tests for individual variations are in other places such as:
 """
 
 import bzrlib
-import bzrlib.errors as errors
+from bzrlib import (
+    errors,
+    revisiontree,
+    tests,
+    )
 from bzrlib.transport import get_transport
 from bzrlib.transform import TransformPreview
 from bzrlib.tests import (
@@ -39,6 +43,7 @@ from bzrlib.tree import InterTree
 from bzrlib.workingtree import (
     WorkingTreeFormat3,
     )
+from bzrlib.workingtree_4 import WorkingTreeFormat4
 
 
 def return_provided_trees(test_case, source, target):
@@ -47,6 +52,23 @@ def return_provided_trees(test_case, source, target):
 
 
 class TestCaseWithTwoTrees(TestCaseWithTree):
+
+    def not_applicable_if_cannot_represent_unversioned(self, tree):
+        if isinstance(tree, revisiontree.RevisionTree):
+            # The locked test trees conversion could not preserve the
+            # unversioned file status. This is normal (e.g. InterDirstateTree
+            # falls back to InterTree if the basis is not a
+            # DirstateRevisionTree, and revision trees cannot have unversioned
+            # files.
+            raise tests.TestNotApplicable('cannot represent unversioned files')
+
+    def not_applicable_if_missing_in(self, relpath, tree):
+        if not tree.path2id(relpath):
+            # The locked test trees conversion could not preserve the missing
+            # file status. This is normal (e.g. InterDirstateTree falls back
+            # to InterTree if the basis is not a DirstateRevisionTree, and
+            # revision trees cannot have missing files.
+            raise tests.TestNotApplicable('cannot represent missing files')
 
     def make_to_branch_and_tree(self, relpath):
         """Make a to_workingtree_format branch and tree."""
@@ -94,6 +116,11 @@ def mutable_trees_to_preview_trees(test_case, source, target):
     test_case.addCleanup(preview.finalize)
     return source, preview.get_preview_tree()
 
+def mutable_trees_to_revision_trees(test_case, source, target):
+    """Convert both trees to repository based revision trees."""
+    return (revision_tree_from_workingtree(test_case, source),
+        revision_tree_from_workingtree(test_case, target))
+
 
 def load_tests(standard_tests, module, loader):
     default_tree_format = WorkingTreeFormat3()
@@ -105,7 +132,11 @@ def load_tests(standard_tests, module, loader):
         (InterTree.__name__, InterTree, default_tree_format, default_tree_format,
          return_provided_trees)]
     for optimiser in InterTree._optimisers:
-        if optimiser is bzrlib.workingtree_4.InterDirStateTree:
+        if optimiser is revisiontree.InterCHKRevisionTree:
+            # XXX: we shouldn't use an Intertree object to detect inventories
+            # -- vila 20090311
+            continue
+        elif optimiser is bzrlib.workingtree_4.InterDirStateTree:
             # Its a little ugly to be conditional here, but less so than having
             # the optimiser listed twice.
             # Add once, compiled version
@@ -136,6 +167,16 @@ def load_tests(standard_tests, module, loader):
          default_tree_format,
          default_tree_format,
          mutable_trees_to_preview_trees))
+    # CHKInventory does not have an InterTree optimiser class (yet).
+    chk_tree_format = WorkingTreeFormat4()
+    chk_tree_format._get_matchingbzrdir = \
+        lambda:bzrlib.bzrdir.format_registry.make_bzrdir('development5')
+    test_intertree_permutations.append(
+        (InterTree.__name__ + "(CHKInventory)",
+         InterTree,
+         chk_tree_format,
+         chk_tree_format,
+         mutable_trees_to_revision_trees))
     scenarios = make_scenarios(
         default_transport,
         # None here will cause a readonly decorator to be created

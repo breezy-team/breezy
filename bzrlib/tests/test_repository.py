@@ -32,6 +32,7 @@ from bzrlib.errors import (NotBranchError,
                            UnsupportedFormatError,
                            )
 from bzrlib import graph
+from bzrlib.branchbuilder import BranchBuilder
 from bzrlib.btree_index import BTreeBuilder, BTreeGraphIndex
 from bzrlib.index import GraphIndex, InMemoryGraphIndex
 from bzrlib.repository import RepositoryFormat
@@ -664,6 +665,80 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
         self.assertFalse(repo._format.supports_external_lookups)
 
 
+class TestDevelopment5(TestCaseWithTransport):
+
+    def test_inventories_use_chk_map_with_parent_base_dict(self):
+        tree = self.make_branch_and_tree('repo', format="development5")
+        revid = tree.commit("foo")
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        inv = tree.branch.repository.get_inventory(revid)
+        self.assertNotEqual(None, inv.parent_id_basename_to_file_id)
+        inv.parent_id_basename_to_file_id._ensure_root()
+        inv.id_to_entry._ensure_root()
+        self.assertEqual(4096, inv.id_to_entry._root_node.maximum_size)
+        self.assertEqual(4096,
+            inv.parent_id_basename_to_file_id._root_node.maximum_size)
+
+
+class TestDevelopment5FindRevisionOutsideSet(TestCaseWithTransport):
+    """Tests for _find_revision_outside_set."""
+
+    def setUp(self):
+        super(TestDevelopment5FindRevisionOutsideSet, self).setUp()
+        self.builder = self.make_branch_builder('source', format='development5')
+        self.builder.start_series()
+        self.builder.build_snapshot('initial', None,
+            [('add', ('', 'tree-root', 'directory', None))])
+        self.repo = self.builder.get_branch().repository
+        self.addCleanup(self.builder.finish_series)
+
+    def assertRevisionOutsideSet(self, expected_result, rev_set):
+        self.assertEqual(
+            expected_result, self.repo._find_revision_outside_set(rev_set))
+
+    def test_simple(self):
+        self.builder.build_snapshot('revid1', None, [])
+        self.builder.build_snapshot('revid2', None, [])
+        rev_set = ['revid2']
+        self.assertRevisionOutsideSet('revid1', rev_set)
+
+    def test_not_first_parent(self):
+        self.builder.build_snapshot('revid1', None, [])
+        self.builder.build_snapshot('revid2', None, [])
+        self.builder.build_snapshot('revid3', None, [])
+        rev_set = ['revid3', 'revid2']
+        self.assertRevisionOutsideSet('revid1', rev_set)
+
+    def test_not_null(self):
+        rev_set = ['initial']
+        self.assertRevisionOutsideSet(_mod_revision.NULL_REVISION, rev_set)
+
+    def test_not_null_set(self):
+        self.builder.build_snapshot('revid1', None, [])
+        rev_set = [_mod_revision.NULL_REVISION]
+        self.assertRevisionOutsideSet(_mod_revision.NULL_REVISION, rev_set)
+
+    def test_ghost(self):
+        self.builder.build_snapshot('revid1', None, [])
+        rev_set = ['ghost', 'revid1']
+        self.assertRevisionOutsideSet('initial', rev_set)
+
+    def test_ghost_parent(self):
+        self.builder.build_snapshot('revid1', None, [])
+        self.builder.build_snapshot('revid2', ['revid1', 'ghost'], [])
+        rev_set = ['revid2', 'revid1']
+        self.assertRevisionOutsideSet('initial', rev_set)
+
+    def test_righthand_parent(self):
+        self.builder.build_snapshot('revid1', None, [])
+        self.builder.build_snapshot('revid2a', ['revid1'], [])
+        self.builder.build_snapshot('revid2b', ['revid1'], [])
+        self.builder.build_snapshot('revid3', ['revid2a', 'revid2b'], [])
+        rev_set = ['revid3', 'revid2a']
+        self.assertRevisionOutsideSet('revid2b', rev_set)
+
+
 class TestWithBrokenRepo(TestCaseWithTransport):
     """These tests seem to be more appropriate as interface tests?"""
 
@@ -1050,13 +1125,15 @@ class TestNewPack(TestCaseWithTransport):
         pack_transport = self.get_transport('pack')
         index_transport = self.get_transport('index')
         upload_transport.mkdir('.')
-        collection = pack_repo.RepositoryPackCollection(repo=None,
+        collection = pack_repo.RepositoryPackCollection(
+            repo=None,
             transport=self.get_transport('.'),
             index_transport=index_transport,
             upload_transport=upload_transport,
             pack_transport=pack_transport,
             index_builder_class=BTreeBuilder,
-            index_class=BTreeGraphIndex)
+            index_class=BTreeGraphIndex,
+            use_chk_index=False)
         pack = pack_repo.NewPack(collection)
         self.assertIsInstance(pack.revision_index, BTreeBuilder)
         self.assertIsInstance(pack.inventory_index, BTreeBuilder)

@@ -23,12 +23,14 @@ import time
 from bzrlib import (
     bzrdir,
     check,
+    chk_map,
     debug,
     errors,
     fifo_cache,
     generate_ids,
     gpg,
     graph,
+    inventory,
     lazy_regex,
     lockable_files,
     lockdir,
@@ -197,11 +199,21 @@ class CommitBuilder(object):
 
     def finish_inventory(self):
         """Tell the builder that the inventory is finished.
-        
+
         :return: The inventory id in the repository, which can be used with
             repository.get_inventory.
         """
         if self.new_inventory is None:
+            # XXX: Using these asserts causes test failures. However, at least
+            #      "self._recording_deletes" seems like a useful check to do,
+            #      as it ensure the delta is completely valid. Most likely this
+            #      just exposes that the test suite isn't using CommitBuilder
+            #      100% correctly.
+            # if (not self.repository._format._commit_inv_deltas
+            #     or not self._recording_deletes):
+            #     raise AssertionError('new_inventory is None, but we did not'
+            #         ' set the flag that the repository format supports'
+            #         ' partial inventory generation.')
             # an inventory delta was accumulated without creating a new
             # inventory.
             basis_id = self.basis_delta_revision
@@ -866,16 +878,18 @@ class Repository(object):
     which views a particular line of development through that history.
 
     The Repository builds on top of some byte storage facilies (the revisions,
-    signatures, inventories and texts attributes) and a Transport, which
-    respectively provide byte storage and a means to access the (possibly
+    signatures, inventories, texts and chk_bytes attributes) and a Transport,
+    which respectively provide byte storage and a means to access the (possibly
     remote) disk.
 
     The byte storage facilities are addressed via tuples, which we refer to
     as 'keys' throughout the code base. Revision_keys, inventory_keys and
     signature_keys are all 1-tuples: (revision_id,). text_keys are two-tuples:
-    (file_id, revision_id). We use this interface because it allows low
-    friction with the underlying code that implements disk indices, network
-    encoding and other parts of bzrlib.
+    (file_id, revision_id). chk_bytes uses CHK keys - a 1-tuple with a single
+    byte string made up of a hash identifier and a hash value.
+    We use this interface because it allows low friction with the underlying
+    code that implements disk indices, network encoding and other parts of
+    bzrlib.
 
     :ivar revisions: A bzrlib.versionedfile.VersionedFiles instance containing
         the serialised revisions for the repository. This can be used to obtain
@@ -897,6 +911,11 @@ class Repository(object):
         texts of files and directories for the repository. This can be used to
         obtain file texts or file graphs. Note that Repository.iter_file_bytes
         is usually a better interface for accessing file texts.
+        The result of trying to insert data into the repository via this store
+        is undefined: it should be considered read-only except for implementors
+        of repositories.
+    :ivar chk_bytes: A bzrlib.versionedfile.VersioedFiles instance containing
+        any data the repository chooses to store or have indexed by its hash.
         The result of trying to insert data into the repository via this store
         is undefined: it should be considered read-only except for implementors
         of repositories.
@@ -926,7 +945,9 @@ class Repository(object):
         """
         if self._write_group is not self.get_transaction():
             # has an unlock or relock occured ?
-            raise errors.BzrError('mismatched lock context and write group.')
+            raise errors.BzrError(
+                'mismatched lock context and write group. %r, %r' %
+                (self._write_group, self.get_transaction()))
         try:
             self._abort_write_group()
         except Exception, exc:
@@ -964,6 +985,9 @@ class Repository(object):
         self.inventories.add_fallback_versioned_files(repository.inventories)
         self.revisions.add_fallback_versioned_files(repository.revisions)
         self.signatures.add_fallback_versioned_files(repository.signatures)
+        if self.chk_bytes is not None:
+            self.chk_bytes.add_fallback_versioned_files(repository.chk_bytes)
+        self._fetch_order = 'topological'
 
     def _check_fallback_repository(self, repository):
         """Check that this repository can fallback to repository safely.
@@ -993,12 +1017,21 @@ class Repository(object):
                 % (inv.revision_id, revision_id))
         if inv.root is None:
             raise AssertionError()
+        return self._add_inventory_checked(revision_id, inv, parents)
+
+    def _add_inventory_checked(self, revision_id, inv, parents):
+        """Add inv to the repository after checking the inputs.
+
+        This function can be overridden to allow different inventory styles.
+
+        :seealso: add_inventory, for the contract.
+        """
         inv_lines = self._serialise_inventory_to_lines(inv)
         return self._inventory_add_lines(revision_id, parents,
             inv_lines, check_content=False)
 
     def add_inventory_by_delta(self, basis_revision_id, delta, new_revision_id,
-                               parents):
+                               parents, basis_inv=None, propagate_caches=False):
         """Add a new inventory expressed as a delta against another revision.
 
         :param basis_revision_id: The inventory id the delta was created
@@ -1012,6 +1045,10 @@ class Repository(object):
             for repositories that depend on the inventory graph for revision
             graph access, as well as for those that pun ancestry with delta
             compression.
+        :param basis_inv: The basis inventory if it is already known,
+            otherwise None.
+        :param propagate_caches: If True, the caches for this inventory are
+          copied to and updated for the result if possible.
 
         :returns: (validator, new_inv)
             The validator(which is a sha1 digest, though what is sha'd is
@@ -1028,7 +1065,8 @@ class Repository(object):
             # inventory implementations may support: A better idiom would be to
             # return a new inventory, but as there is no revision tree cache in
             # repository this is safe for now - RBC 20081013
-            basis_inv = basis_tree.inventory
+            if basis_inv is None:
+                basis_inv = basis_tree.inventory
             basis_inv.apply_delta(delta)
             basis_inv.revision_id = new_revision_id
             return (self.add_inventory(new_revision_id, basis_inv, parents),
@@ -1991,7 +2029,10 @@ class Repository(object):
                             except KeyError:
                                 inv = self.revision_tree(parent_id).inventory
                                 inventory_cache[parent_id] = inv
-                            parent_entry = inv._byid.get(text_key[0], None)
+                            try:
+                                parent_entry = inv[text_key[0]]
+                            except (KeyError, errors.NoSuchId):
+                                parent_entry = None
                             if parent_entry is not None:
                                 parent_text_key = (
                                     text_key[0], parent_entry.revision)
@@ -2022,6 +2063,13 @@ class Repository(object):
             versions).  knit-kind is one of 'file', 'inventory', 'signatures',
             'revisions'.  file-id is None unless knit-kind is 'file'.
         """
+        for result in self._find_file_keys_to_fetch(revision_ids, _files_pb):
+            yield result
+        del _files_pb
+        for result in self._find_non_file_keys_to_fetch(revision_ids):
+            yield result
+
+    def _find_file_keys_to_fetch(self, revision_ids, pb):
         # XXX: it's a bit weird to control the inventory weave caching in this
         # generator.  Ideally the caching would be done in fetch.py I think.  Or
         # maybe this generator should explicitly have the contract that it
@@ -2034,14 +2082,12 @@ class Repository(object):
         count = 0
         num_file_ids = len(file_ids)
         for file_id, altered_versions in file_ids.iteritems():
-            if _files_pb is not None:
-                _files_pb.update("fetch texts", count, num_file_ids)
+            if pb is not None:
+                pb.update("fetch texts", count, num_file_ids)
             count += 1
             yield ("file", file_id, altered_versions)
-        # We're done with the files_pb.  Note that it finished by the caller,
-        # just as it was created by the caller.
-        del _files_pb
 
+    def _find_non_file_keys_to_fetch(self, revision_ids):
         # inventory
         yield ("inventory", None, revision_ids)
 
@@ -2487,8 +2533,10 @@ def install_revisions(repository, iterable, num_revisions=None, pb=None):
     """
     repository.start_write_group()
     try:
+        inventory_cache = lru_cache.LRUCache(10)
         for n, (revision, revision_tree, signature) in enumerate(iterable):
-            _install_revision(repository, revision, revision_tree, signature)
+            _install_revision(repository, revision, revision_tree, signature,
+                inventory_cache)
             if pb is not None:
                 pb.update('Transferring revisions', n + 1, num_revisions)
     except:
@@ -2498,7 +2546,8 @@ def install_revisions(repository, iterable, num_revisions=None, pb=None):
         repository.commit_write_group()
 
 
-def _install_revision(repository, rev, revision_tree, signature):
+def _install_revision(repository, rev, revision_tree, signature,
+    inventory_cache):
     """Install all revision data into a repository."""
     present_parents = []
     parent_trees = {}
@@ -2541,7 +2590,19 @@ def _install_revision(repository, rev, revision_tree, signature):
         repository.texts.add_lines(text_key, text_parents, lines)
     try:
         # install the inventory
-        repository.add_inventory(rev.revision_id, inv, present_parents)
+        if repository._format._commit_inv_deltas and len(rev.parent_ids):
+            # Cache this inventory
+            inventory_cache[rev.revision_id] = inv
+            try:
+                basis_inv = inventory_cache[rev.parent_ids[0]]
+            except KeyError:
+                repository.add_inventory(rev.revision_id, inv, present_parents)
+            else:
+                delta = inv._make_delta(basis_inv)
+                repository.add_inventory_by_delta(rev.parent_ids[0], delta,
+                    rev.revision_id, present_parents)
+        else:
+            repository.add_inventory(rev.revision_id, inv, present_parents)
     except errors.RevisionAlreadyPresent:
         pass
     if signature is not None:
@@ -2654,6 +2715,11 @@ class RepositoryFormat(object):
     # Can this repository be given external locations to lookup additional
     # data. Set to True or False in derived classes.
     supports_external_lookups = None
+    # Does this format support CHK bytestring lookups. Set to True or False in
+    # derived classes.
+    supports_chks = None
+    # Should commit add an inventory, or an inventory delta to the repository.
+    _commit_inv_deltas = True
     # What order should fetch operations request streams in?
     # The default is unordered as that is the cheapest for an origin to
     # provide.
@@ -2938,6 +3004,55 @@ format_registry.register_lazy(
         "(needs bzr.dev from before 1.8)\n"),
     'bzrlib.repofmt.pack_repo',
     'RepositoryFormatPackDevelopment2Subtree',
+    )
+# 1.9->1.110 go below here
+format_registry.register_lazy(
+    # merge-bbc-dev4-to-bzr.dev
+    "Bazaar development format 5 (needs bzr.dev from before 1.13)\n",
+    'bzrlib.repofmt.pack_repo',
+    'RepositoryFormatPackDevelopment5',
+    )
+format_registry.register_lazy(
+    # merge-bbc-dev4-to-bzr.dev
+    ("Bazaar development format 5 with subtree support"
+     " (needs bzr.dev from before 1.13)\n"),
+    'bzrlib.repofmt.pack_repo',
+    'RepositoryFormatPackDevelopment5Subtree',
+    )
+format_registry.register_lazy(
+    # merge-bbc-dev4-to-bzr.dev
+    ('Bazaar development format 5 hash 16'
+     ' (needs bzr.dev from before 1.13)\n'),
+    'bzrlib.repofmt.pack_repo',
+    'RepositoryFormatPackDevelopment5Hash16',
+    )
+format_registry.register_lazy(
+    # merge-bbc-dev4-to-bzr.dev
+    ('Bazaar development format 5 hash 255'
+     ' (needs bzr.dev from before 1.13)\n'),
+    'bzrlib.repofmt.pack_repo',
+    'RepositoryFormatPackDevelopment5Hash255',
+    )
+# XXX: This format is scheduled for termination
+# format_registry.register_lazy(
+#     'Bazaar development format - btree+gc (needs bzr.dev from 1.13)\n',
+#     'bzrlib.repofmt.groupcompress_repo',
+#     'RepositoryFormatPackGCPlain',
+#     )
+format_registry.register_lazy(
+    'Bazaar development format - hash16chk+gc rich-root (needs bzr.dev from 1.13)\n',
+    'bzrlib.repofmt.groupcompress_repo',
+    'RepositoryFormatPackGCCHK16',
+    )
+format_registry.register_lazy(
+    'Bazaar development format - hash255chk+gc rich-root (needs bzr.dev from 1.13)\n',
+    'bzrlib.repofmt.groupcompress_repo',
+    'RepositoryFormatPackGCCHK255',
+    )
+format_registry.register_lazy(
+    'Bazaar development format - hash255chk+gc rich-root bigpage (needs bzr.dev from 1.13)\n',
+    'bzrlib.repofmt.groupcompress_repo',
+    'RepositoryFormatPackGCCHK255Big',
     )
 
 
@@ -3308,14 +3423,26 @@ class InterPackRepo(InterSameDataRepository):
         We don't test for the stores being of specific types because that
         could lead to confusing results, and there is no need to be
         overly general.
+
+        Do not support CHK based repositories at this point.
         """
         from bzrlib.repofmt.pack_repo import RepositoryFormatPack
+        # XXX: This format is scheduled for termination
+        # from bzrlib.repofmt.groupcompress_repo import (
+        #     RepositoryFormatPackGCPlain,
+        #     )
         try:
             are_packs = (isinstance(source._format, RepositoryFormatPack) and
                 isinstance(target._format, RepositoryFormatPack))
         except AttributeError:
             return False
-        return are_packs and InterRepository._same_model(source, target)
+        if not are_packs:
+            return False
+        # if (isinstance(source._format, RepositoryFormatPackGCPlain)
+        #     or isinstance(target._format, RepositoryFormatPackGCPlain)):
+        #     return False
+        return (InterRepository._same_model(source, target) and
+            not source._format.supports_chks)
 
     @needs_write_lock
     def fetch(self, revision_id=None, pb=None, find_ghosts=False,
@@ -3436,13 +3563,15 @@ class InterDifferingSerializer(InterKnitRepo):
     @staticmethod
     def is_compatible(source, target):
         """Be compatible with Knit2 source and Knit3 target"""
-        if source.supports_rich_root() != target.supports_rich_root():
-            return False
+        # XXX: What do we need to do to support fetching them?
+        # if source.supports_rich_root() != target.supports_rich_root():
+        #     return False
         # Ideally, we'd support fetching if the source had no tree references
         # even if it supported them...
-        if (getattr(source, '_format.supports_tree_reference', False) and
-            not getattr(target, '_format.supports_tree_reference', False)):
-            return False
+        # XXX: What do we need to do to support fetching them?
+        # if (getattr(source._format, 'supports_tree_reference', False) and
+        #     not getattr(target._format, 'supports_tree_reference', False)):
+        #    return False
         return True
 
     def _get_delta_for_revision(self, tree, parent_ids, basis_id, cache):
@@ -3477,22 +3606,36 @@ class InterDifferingSerializer(InterKnitRepo):
         # Walk though all revisions; get inventory deltas, copy referenced
         # texts that delta references, insert the delta, revision and
         # signature.
+        root_keys_to_create = set()
         text_keys = set()
         pending_deltas = []
         pending_revisions = []
         parent_map = self.source.get_parent_map(revision_ids)
+        # NB: This fails with dubious inventory data (when inv A has rev OLD
+        # for file F, and in B, after A, has rev A for file F) when A and B are
+        # in different groups.
         for tree in self.source.revision_trees(revision_ids):
             current_revision_id = tree.get_revision_id()
             parent_ids = parent_map.get(current_revision_id, ())
             basis_id, delta = self._get_delta_for_revision(tree, parent_ids,
                                                            basis_id, cache)
+            if self._converting_to_rich_root:
+                self._revision_id_to_root_id[current_revision_id] = \
+                    tree.get_root_id()
             # Find text entries that need to be copied
             for old_path, new_path, file_id, entry in delta:
                 if new_path is not None:
-                    if not (new_path or self.target.supports_rich_root()):
-                        # We don't copy the text for the root node unless the
-                        # target supports_rich_root.
-                        continue
+                    if not new_path:
+                        # This is the root
+                        if not self.target.supports_rich_root():
+                            # The target doesn't support rich root, so we don't
+                            # copy
+                            continue
+                        if self._converting_to_rich_root:
+                            # This can't be copied normally, we have to insert
+                            # it specially
+                            root_keys_to_create.add((file_id, entry.revision))
+                            continue
                     text_keys.add((file_id, entry.revision))
             revision = self.source.get_revision(current_revision_id)
             pending_deltas.append((basis_id, delta,
@@ -3503,6 +3646,23 @@ class InterDifferingSerializer(InterKnitRepo):
         # Copy file texts
         from_texts = self.source.texts
         to_texts = self.target.texts
+        if root_keys_to_create:
+            NULL_REVISION = _mod_revision.NULL_REVISION
+            def _get_parent_keys(root_key):
+                root_id, rev_id = root_key
+                # Include direct parents of the revision, but only if they used
+                # the same root_id.
+                parent_keys = tuple([(root_id, parent_id)
+                    for parent_id in parent_map[rev_id]
+                    if parent_id != NULL_REVISION and
+                        self._revision_id_to_root_id.get(parent_id, root_id) == root_id])
+                return parent_keys
+            def new_root_data_stream():
+                for root_key in root_keys_to_create:
+                    parent_keys = _get_parent_keys(root_key)
+                    yield versionedfile.FulltextContentFactory(root_key,
+                        parent_keys, None, '')
+            to_texts.insert_record_stream(new_root_data_stream())
         to_texts.insert_record_stream(from_texts.get_record_stream(
             text_keys, self.target._format._fetch_order,
             not self.target._format._fetch_uses_deltas))
@@ -3555,12 +3715,24 @@ class InterDifferingSerializer(InterKnitRepo):
         """See InterRepository.fetch()."""
         if fetch_spec is not None:
             raise AssertionError("Not implemented yet...")
+        if (not self.source.supports_rich_root()
+            and self.target.supports_rich_root()):
+            self._converting_to_rich_root = True
+            self._revision_id_to_root_id = {}
+        else:
+            self._converting_to_rich_root = False
         revision_ids = self.target.search_missing_revision_ids(self.source,
             revision_id, find_ghosts=find_ghosts).get_keys()
         if not revision_ids:
             return 0, 0
         revision_ids = tsort.topo_sort(
             self.source.get_graph().get_parent_map(revision_ids))
+        if not revision_ids:
+            return 0, 0
+        # Walk though all revisions; get inventory deltas, copy referenced
+        # texts that delta references, insert the delta, revision and
+        # signature.
+        first_rev = self.source.get_revision(revision_ids[0])
         if pb is None:
             my_pb = ui.ui_factory.nested_progress_bar()
             pb = my_pb
@@ -3829,6 +4001,10 @@ class StreamSink(object):
                 else:
                     self._extract_and_insert_inventories(
                         substream, src_serializer)
+            elif substream_type == 'chk_bytes':
+                # XXX: This doesn't support conversions, as it assumes the
+                #      conversion was done in the fetch code.
+                self.target_repo.chk_bytes.insert_record_stream(substream)
             elif substream_type == 'revisions':
                 # This may fallback to extract-and-insert more often than
                 # required if the serializers are different only in terms of
@@ -3983,10 +4159,8 @@ class StreamSource(object):
                 # know for unselected inventories whether all their required
                 # texts are present in the other repository - it could be
                 # corrupt.
-                yield ('inventories', from_weave.get_record_stream(
-                    [(rev_id,) for rev_id in revs],
-                    self.inventory_fetch_order(),
-                    not self.delta_on_metadata()))
+                for info in self._get_inventory_stream(revs):
+                    yield info
             elif knit_kind == "signatures":
                 # Nothing to do here; this will be taken care of when
                 # _fetch_revision_texts happens.
@@ -4032,4 +4206,128 @@ class StreamSource(object):
     def _rich_root_upgrade(self):
         return (not self.from_repository._format.rich_root_data and
             self.to_format.rich_root_data)
+
+    def _get_inventory_stream(self, revision_ids):
+        from_format = self.from_repository._format
+        if (from_format.supports_chks and self.to_format.supports_chks
+            and (from_format._serializer == self.to_format._serializer)):
+            # Both sides support chks, and they use the same serializer, so it
+            # is safe to transmit the chk pages and inventory pages across
+            # as-is.
+            return self._get_chk_inventory_stream(revision_ids)
+        elif (not from_format.supports_chks):
+            # Source repository doesn't support chks. So we can transmit the
+            # inventories 'as-is' and either they are just accepted on the
+            # target, or the Sink will properly convert it.
+            return self._get_simple_inventory_stream(revision_ids)
+        else:
+            # XXX: Hack to make not-chk->chk fetch: copy the inventories as
+            #      inventories. Note that this should probably be done somehow
+            #      as part of bzrlib.repository.StreamSink. Except JAM couldn't
+            #      figure out how a non-chk repository could possibly handle
+            #      deserializing an inventory stream from a chk repo, as it
+            #      doesn't have a way to understand individual pages.
+            return self._get_convertable_inventory_stream(revision_ids)
+
+    def _get_simple_inventory_stream(self, revision_ids):
+        from_weave = self.from_repository.inventories
+        yield ('inventories', from_weave.get_record_stream(
+            [(rev_id,) for rev_id in revision_ids],
+            self.inventory_fetch_order(),
+            not self.delta_on_metadata()))
+
+    def _get_chk_inventory_stream(self, revision_ids):
+        """Fetch the inventory texts, along with the associated chk maps."""
+        # We want an inventory outside of the search set, so that we can filter
+        # out uninteresting chk pages. For now we use
+        # _find_revision_outside_set, but if we had a Search with cut_revs, we
+        # could use that instead.
+        start_rev_id = self.from_repository._find_revision_outside_set(
+                            revision_ids)
+        start_rev_key = (start_rev_id,)
+        inv_keys_to_fetch = [(rev_id,) for rev_id in revision_ids]
+        if start_rev_id != _mod_revision.NULL_REVISION:
+            inv_keys_to_fetch.append((start_rev_id,))
+        # Any repo that supports chk_bytes must also support out-of-order
+        # insertion. At least, that is how we expect it to work
+        # We use get_record_stream instead of iter_inventories because we want
+        # to be able to insert the stream as well. We could instead fetch
+        # allowing deltas, and then iter_inventories, but we don't know whether
+        # source or target is more 'local' anway.
+        inv_stream = self.from_repository.inventories.get_record_stream(
+            inv_keys_to_fetch, 'unordered',
+            True) # We need them as full-texts so we can find their references
+        uninteresting_chk_roots = set()
+        interesting_chk_roots = set()
+        def filter_inv_stream(inv_stream):
+            for idx, record in enumerate(inv_stream):
+                ### child_pb.update('fetch inv', idx, len(inv_keys_to_fetch))
+                bytes = record.get_bytes_as('fulltext')
+                chk_inv = inventory.CHKInventory.deserialise(
+                    self.from_repository.chk_bytes, bytes, record.key)
+                if record.key == start_rev_key:
+                    uninteresting_chk_roots.add(chk_inv.id_to_entry.key())
+                    p_id_map = chk_inv.parent_id_basename_to_file_id
+                    if p_id_map is not None:
+                        uninteresting_chk_roots.add(p_id_map.key())
+                else:
+                    yield record
+                    interesting_chk_roots.add(chk_inv.id_to_entry.key())
+                    p_id_map = chk_inv.parent_id_basename_to_file_id
+                    if p_id_map is not None:
+                        interesting_chk_roots.add(p_id_map.key())
+        ### pb.update('fetch inventory', 0, 2)
+        yield ('inventories', filter_inv_stream(inv_stream))
+        # Now that we have worked out all of the interesting root nodes, grab
+        # all of the interesting pages and insert them
+        ### pb.update('fetch inventory', 1, 2)
+        interesting = chk_map.iter_interesting_nodes(
+            self.from_repository.chk_bytes, interesting_chk_roots,
+            uninteresting_chk_roots)
+        def to_stream_adapter():
+            """Adapt the iter_interesting_nodes result to a single stream.
+
+            iter_interesting_nodes returns records as it processes them, which
+            can be in batches. But we only want a single stream to be inserted.
+            """
+            for record, items in interesting:
+                for value in record.itervalues():
+                    yield value
+        # XXX: We could instead call get_record_stream(records.keys())
+        #      ATM, this will always insert the records as fulltexts, and
+        #      requires that you can hang on to records once you have gone
+        #      on to the next one. Further, it causes the target to
+        #      recompress the data. Testing shows it to be faster than
+        #      requesting the records again, though.
+        yield ('chk_bytes', to_stream_adapter())
+        ### pb.update('fetch inventory', 2, 2)
+
+    def _get_convertable_inventory_stream(self, revision_ids):
+        # XXX: One of source or target is using chks, and they don't have
+        #      compatible serializations. The StreamSink code expects to be
+        #      able to convert on the target, so we need to put
+        #      bytes-on-the-wire that can be converted
+        yield ('inventories', self._stream_invs_as_fulltexts(revision_ids))
+
+    def _stream_invs_as_fulltexts(self, revision_ids):
+        from_repo = self.from_repository
+        from_serializer = from_repo._format._serializer
+        revision_keys = [(rev_id,) for rev_id in revision_ids]
+        parent_map = from_repo.inventories.get_parent_map(revision_keys)
+        for inv in self.from_repository.iter_inventories(revision_ids):
+            # XXX: This is a bit hackish, but it works. Basically,
+            #      CHKSerializer 'accidentally' supports
+            #      read/write_inventory_to_string, even though that is never
+            #      the format that is stored on disk. It *does* give us a
+            #      single string representation for an inventory, so live with
+            #      it for now.
+            #      This would be far better if we had a 'serialized inventory
+            #      delta' form. Then we could use 'inventory._make_delta', and
+            #      transmit that. This would both be faster to generate, and
+            #      result in fewer bytes-on-the-wire.
+            as_bytes = from_serializer.write_inventory_to_string(inv)
+            key = (inv.revision_id,)
+            parent_keys = parent_map.get(key, ())
+            yield versionedfile.FulltextContentFactory(
+                key, parent_keys, None, as_bytes)
 
