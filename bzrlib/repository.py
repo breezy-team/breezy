@@ -324,6 +324,7 @@ class CommitBuilder(object):
             raise AssertionError("recording deletes not activated.")
         delta = (path, None, file_id, None)
         self._basis_delta.append(delta)
+        self._any_changes = True
         return delta
 
     def will_record_deletes(self):
@@ -558,10 +559,13 @@ class CommitBuilder(object):
             has been generated against. Currently assumed to be the same
             as self.parents[0] - if it is not, errors may occur.
         :param iter_changes: An iter_changes iterator with the changes to apply
-            to basis_revision_id.
+            to basis_revision_id. The iterator must not include any items with
+            a current kind of None - missing items must be either filtered out
+            or errored-on beefore record_iter_changes sees the item.
         :param _entry_factory: Private method to bind entry_factory locally for
             performance.
-        :return: None
+        :return: A generator of (file_id, relpath, fs_hash) tuples for use with
+            tree._observed_sha1.
         """
         # Create an inventory delta based on deltas between all the parents and
         # deltas between all the parent inventories. We use inventory delta's 
@@ -574,7 +578,21 @@ class CommitBuilder(object):
         # {file_id -> revision_id -> inventory entry, for entries in parent
         # trees that are not parents[0]
         parent_entries = {}
-        revtrees = list(self.repository.revision_trees(self.parents))
+        ghost_basis = False
+        try:
+            revtrees = list(self.repository.revision_trees(self.parents))
+        except errors.NoSuchRevision:
+            # one or more ghosts, slow path.
+            revtrees = []
+            for revision_id in self.parents:
+                try:
+                    revtrees.append(self.repository.revision_tree(revision_id))
+                except errors.NoSuchRevision:
+                    if not revtrees:
+                        basis_revision_id = _mod_revision.NULL_REVISION
+                        ghost_basis = True
+                    revtrees.append(self.repository.revision_tree(
+                        _mod_revision.NULL_REVISION))
         # The basis inventory from a repository 
         if revtrees:
             basis_inv = revtrees[0].inventory
@@ -582,7 +600,7 @@ class CommitBuilder(object):
             basis_inv = self.repository.revision_tree(
                 _mod_revision.NULL_REVISION).inventory
         if len(self.parents) > 0:
-            if basis_revision_id != self.parents[0]:
+            if basis_revision_id != self.parents[0] and not ghost_basis:
                 raise Exception(
                     "arbitrary basis parents not yet supported with merges")
             for revtree in revtrees[1:]:
@@ -592,12 +610,21 @@ class CommitBuilder(object):
                         continue
                     if change[2] not in merged_ids:
                         if change[0] is not None:
+                            basis_entry = basis_inv[change[2]]
                             merged_ids[change[2]] = [
-                                basis_inv[change[2]].revision,
+                                # basis revid
+                                basis_entry.revision,
+                                # new tree revid
                                 change[3].revision]
+                            parent_entries[change[2]] = {
+                                # basis parent
+                                basis_entry.revision:basis_entry,
+                                # this parent 
+                                change[3].revision:change[3],
+                                }
                         else:
                             merged_ids[change[2]] = [change[3].revision]
-                        parent_entries[change[2]] = {change[3].revision:change[3]}
+                            parent_entries[change[2]] = {change[3].revision:change[3]}
                     else:
                         merged_ids[change[2]].append(change[3].revision)
                         parent_entries[change[2]][change[3].revision] = change[3]
@@ -628,15 +655,23 @@ class CommitBuilder(object):
             # inv delta  change: (file_id, (path_in_source, path_in_target),
             #   changed_content, versioned, parent, name, kind,
             #   executable)
-            basis_entry = basis_inv[file_id]
-            change = (file_id,
-                (basis_inv.id2path(file_id), tree.id2path(file_id)),
-                False, (True, True),
-                (basis_entry.parent_id, basis_entry.parent_id),
-                (basis_entry.name, basis_entry.name),
-                (basis_entry.kind, basis_entry.kind),
-                (basis_entry.executable, basis_entry.executable))
-            changes[file_id] = (change, merged_ids[file_id])
+            try:
+                basis_entry = basis_inv[file_id]
+            except errors.NoSuchId:
+                # a change from basis->some_parents but file_id isn't in basis
+                # so was new in the merge, which means it must have changed
+                # from basis -> current, and as it hasn't the add was reverted
+                # by the user. So we discard this change.
+                pass
+            else:
+                change = (file_id,
+                    (basis_inv.id2path(file_id), tree.id2path(file_id)),
+                    False, (True, True),
+                    (basis_entry.parent_id, basis_entry.parent_id),
+                    (basis_entry.name, basis_entry.name),
+                    (basis_entry.kind, basis_entry.kind),
+                    (basis_entry.executable, basis_entry.executable))
+                changes[file_id] = (change, merged_ids[file_id])
         # changes contains tuples with the change and a set of inventory
         # candidates for the file.
         # inv delta is:
@@ -723,8 +758,10 @@ class CommitBuilder(object):
                     try:
                         entry.text_sha1, entry.text_size = self._add_text_to_weave(
                             file_id, lines, heads, nostore_sha)
+                        yield file_id, change[1][1], (entry.text_sha1, stat_value)
                     except errors.ExistingContent:
                         # No content change against a carry_over parent
+                        # Perhaps this should also yield a fs hash update?
                         carried_over = True
                         entry.text_size = parent_entry.text_size
                         entry.text_sha1 = parent_entry.text_sha1
@@ -733,7 +770,7 @@ class CommitBuilder(object):
                     entry.symlink_target = tree.get_symlink_target(file_id)
                     if (carry_over_possible and
                         parent_entry.symlink_target == entry.symlink_target):
-                            carried_over = True
+                        carried_over = True
                     else:
                         self._add_text_to_weave(change[0], [], heads, None)
                 elif kind == 'directory':
@@ -745,7 +782,20 @@ class CommitBuilder(object):
                         if change[1][1] != '' or self.repository.supports_rich_root():
                             self._add_text_to_weave(change[0], [], heads, None)
                 elif kind == 'tree-reference':
-                    raise AssertionError('unknown kind %r' % kind)
+                    if not self.repository._format.supports_tree_reference:
+                        # This isn't quite sane as an error, but we shouldn't
+                        # ever see this code path in practice: tree's don't
+                        # permit references when the repo doesn't support tree
+                        # references.
+                        raise errors.UnsupportedOperation(tree.add_reference,
+                            self.repository)
+                    entry.reference_revision = \
+                        tree.get_reference_revision(change[0])
+                    if (carry_over_possible and
+                        parent_entry.reference_revision == reference_revision):
+                        carried_over = True
+                    else:
+                        self._add_text_to_weave(change[0], [], heads, None)
                 else:
                     raise AssertionError('unknown kind %r' % kind)
                 if not carried_over:

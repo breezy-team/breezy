@@ -351,11 +351,9 @@ class DirStateWorkingTree(WorkingTree3):
                     parent_ies[(dirname + '/' + name).strip('/')] = inv_entry
                 elif kind == 'tree-reference':
                     if not self._repo_supports_tree_reference:
-                        raise AssertionError(
-                            "repository of %r "
-                            "doesn't support tree references "
-                            "required by entry %r"
-                            % (self, name))
+                        raise errors.UnsupportedOperation(
+                            self._generate_inventory,
+                            self.branch.repository)
                     inv_entry.reference_revision = link_or_sha1 or None
                 elif kind != 'symlink':
                     raise AssertionError("unknown kind %r" % kind)
