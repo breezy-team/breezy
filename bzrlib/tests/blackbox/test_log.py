@@ -495,20 +495,6 @@ message:
   branch 1
 """)
 
-    def test_merges_nonsupporting_formatter(self):
-        # This "feature" of log formatters is madness. If a log
-        # formatter cannot display a dotted-revno, it ought to ignore it.
-        # Otherwise, a linear sequence is always expected to be handled now.
-        raise KnownFailure('log formatters must support linear sequences now')
-        self._prepare()
-        err_msg = 'Selected log formatter only supports mainline revisions.'
-        # The single revision case is tested in the core tests
-        # since all standard formatters support single merge revisions.
-        out,err = self.run_bzr('log --short -r1..1.1.2', retcode=3)
-        self.assertContainsRe(err, err_msg)
-        out,err = self.run_bzr('log --short -r1.1.1..1.1.2', retcode=3)
-        self.assertContainsRe(err, err_msg)
-
 
 def subst_dates(string):
     """Replace date strings with constant values."""
