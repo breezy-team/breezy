@@ -182,7 +182,7 @@ def get_snapshot_revision(upstream_version):
     return None
 
 
-def get_export_upstream_revision(self, config, version=None):
+def get_export_upstream_revision(config, version=None):
     rev = None
     if version is not None:
         rev = get_snapshot_revision(str(version.upstream_version))
