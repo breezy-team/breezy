@@ -593,16 +593,15 @@ class _CommonGroupCompressor(object):
         :param soft: Do a 'soft' compression. This means that we require larger
             ranges to match to be considered for a copy command.
 
-        :return: The sha1 of lines, the start and end offsets in the delta, the
-            type ('fulltext' or 'delta') and the number of bytes accumulated in
-            the group output so far.
+        :return: The sha1 of lines, the start and end offsets in the delta, and
+            the type ('fulltext' or 'delta').
 
         :seealso VersionedFiles.add_lines:
         """
         if not bytes: # empty, like a dir entry, etc
             if nostore_sha == _null_sha1:
                 raise errors.ExistingContent()
-            return _null_sha1, 0, 0, 'fulltext', 0
+            return _null_sha1, 0, 0, 'fulltext'
         # we assume someone knew what they were doing when they passed it in
         if expected_sha is not None:
             sha1 = expected_sha

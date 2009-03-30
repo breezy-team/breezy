@@ -83,8 +83,8 @@ class TestAllGroupCompressors(TestGroupCompressor):
     def test_empty_content(self):
         compressor = self.compressor()
         # Adding empty bytes should return the 'null' record
-        sha1, start_point, end_point, kind, _ = compressor.compress(('empty',),
-            '', None)
+        sha1, start_point, end_point, kind = compressor.compress(('empty',),
+                                                                 '', None)
         self.assertEqual(0, start_point)
         self.assertEqual(0, end_point)
         self.assertEqual('fulltext', kind)
@@ -94,8 +94,8 @@ class TestAllGroupCompressors(TestGroupCompressor):
         # Even after adding some content
         compressor.compress(('content',), 'some\nbytes\n', None)
         self.assertTrue(compressor.endpoint > 0)
-        sha1, start_point, end_point, kind, _ = compressor.compress(('empty2',),
-            '', None)
+        sha1, start_point, end_point, kind = compressor.compress(('empty2',),
+                                                                 '', None)
         self.assertEqual(0, start_point)
         self.assertEqual(0, end_point)
         self.assertEqual('fulltext', kind)
