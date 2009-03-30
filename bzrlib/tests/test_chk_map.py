@@ -1847,26 +1847,28 @@ class TestIterInterestingNodes(TestCaseWithStore):
         iter_nodes = chk_map.iter_interesting_nodes(store, interesting_keys,
                                                     uninteresting_keys)
         nodes = list(iter_nodes)
-        for exp, act in izip(expected, nodes):
+        for count, (exp, act) in enumerate(izip(expected, nodes)):
             exp_record_keys, exp_items = exp
             records, items = act
             exp_tuple = (sorted(exp_record_keys), sorted(exp_items))
             act_tuple = (sorted(records.keys()), sorted(items))
-            self.assertEqual(exp_tuple, act_tuple)
+            self.assertEqual(exp_tuple, act_tuple,
+                             'entry %d did not match expected' % count)
         self.assertEqual(len(expected), len(nodes))
 
     def test_empty_to_one_keys(self):
         target = self.get_map_key({('a',): 'content'})
         self.assertIterInteresting(
-            [([target], [(('a',), 'content')])],
-            [target], [])
+            [([target], [(('a',), 'content')]),
+            ], [target], [])
 
     def test_none_to_one_key(self):
         basis = self.get_map_key({})
         target = self.get_map_key({('a',): 'content'})
         self.assertIterInteresting(
-            [([target], [(('a',), 'content')])],
-            [target], [basis])
+            [([], [(('a',), 'content')]),
+             ([target], []),
+            ], [target], [basis])
 
     def test_one_to_none_key(self):
         basis = self.get_map_key({('a',): 'content'})
@@ -1972,14 +1974,18 @@ class TestIterInterestingNodes(TestCaseWithStore):
         a_key = target3_map._root_node._items['a'].key()
         aac_key = target3_map._root_node._items['a']._items['aac'].key()
         self.assertIterInteresting(
-            [([target1, target2, target3], [(('aaa',), 'common')]),
+            [([], [(('aaa',), 'common')]),
+             ([target1], []),
+             ([target2], []),
+             ([target3], []),
              ([b_key], [(('bbb',), 'new')]),
              ([a_key], []),
              ([aac_key], [(('aac',), 'other')]),
             ], [target1, target2, target3], [basis])
 
         self.assertIterInteresting(
-            [([target2, target3], []),
+            [([target2], []),
+             ([target3], []),
              ([b_key], [(('bbb',), 'new')]),
              ([a_key], []),
              ([aac_key], [(('aac',), 'other')]),
@@ -2039,7 +2045,8 @@ class TestIterInterestingNodes(TestCaseWithStore):
         # The key for the leaf bba node
         bba_key = target2_map._root_node._items['b']._items['bba'].key()
         self.assertIterInteresting(
-            [([target1, target2], []),
+            [([target1], []),
+             ([target2], []),
              ([a_key], []),
              ([b_key], []),
              ([aac_key], [(('aac',), 'target1')]),
