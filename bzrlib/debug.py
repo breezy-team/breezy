@@ -12,15 +12,34 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Set of flags that enable different debug behaviour.
 
-These are set with eg ``-Dlock`` on the bzr command line.
+These are set with eg ``-Dlock`` on the bzr command line or in
+~/.bazaar/bazaar.conf debug_flags.
 
-See "bzr help global-options" or bzrlib/help_topics/__init__.py
+See `bzr help debug-flags` or `bzrlib/help_topics/en/debug-flags.txt`
 for a list of the available options.
 """
 
+
 debug_flags = set()
+
+
+def set_debug_flags_from_config():
+    """Turn on debug flags based on the global configuration"""
+
+    from bzrlib.config import GlobalConfig
+
+    c = GlobalConfig()
+    value = c.get_user_option("debug_flags")
+    if value is not None:
+        # configobject gives us either a string if there's just one or a list
+        # if there's multiple
+        if isinstance(value, basestring):
+            value = [value]
+        for w in value:
+            w = w.strip()
+            debug_flags.add(w)

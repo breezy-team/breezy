@@ -13,14 +13,18 @@ Overall developer documentation
 * `Architectural Overview <overview.html>`_ |--| describes some of the
   most important classes and concepts.
 
-* `bzrlib API reference <http://starship.python.net/crew/mwh/bzrlibapi-oe/>`_ 
+* `bzrlib API reference <http://starship.python.net/crew/mwh/bzrlibapi/>`_ 
   (external link)
   |--| automatically generated API reference information
 
 * `Integrating with Bazaar <http://bazaar-vcs.org/Integrating_with_Bazaar>`_
   (wiki) |--| a guide for writing Python programs that work with Bazaar.
 
-* `Testing <testing.html>`_ |--| Testing bzr.
+* `Revision Properties <revision-properties.html>`_ |--| An application
+  can set arbitrary per-revision key/value pairs to store app-specific
+  data.
+
+* `Testing <testing.html>`_ |--| Guide to writing tests for Bazaar.
 
 * `Writing plugins <http://bazaar-vcs.org/WritingPlugins>`_ (wiki) 
   |--| specific advice on writing Bazaar plugins.
@@ -42,11 +46,23 @@ Process
 * `Profiling notes <profiling.html>`_ |--| Instructions on how to profile 
   bzr code and visualize the results.
 
+* `EC2 resources <ec2.html>`_ |--| A team resource for 
+  Windows packaging and testing, and Ubuntu testing.
+
 Plans
 =====
 
 * `Performance roadmap <performance-roadmap.html>`_ |--| The roadmap 
   for fixing performance in bzr over the next few releases.
+
+* `Co-located branches <colocated-branches.html>`_ |--| Planned(?) support
+  for storing multiple branches in one file-system directory.
+
+* `Bazaar Windows Shell Extension Options <tortoise-strategy.html>`_ |--|
+  Implmentation strategy for Bazaar Windows Shell Extensions, aka
+  TortoiseBzr.
+
+* `CHK Optimized index <improved_chk_index.html>`_
 
 Specifications
 ==============
@@ -83,11 +99,36 @@ Specifications
   |--| How Bazaar operates on case-insensitive file systems such as commonly
   found on Windows, USB sticks, etc.
 
+* `Development repository formats <development-repo.html>`_ |--| How to
+  work with repository formats that are still under development.
+  Contains instructions for those implementing new formats, of course,
+  but also for (bleeding-edge) end users of those formats.
+
 Data formats
 ============
 
 * `Knit pack repositories <packrepo.html>`_ |--| KnitPack repositories 
   (new in Bazaar 0.92).
+
+Implementation notes
+====================
+
+* `BTree Index Prefetch <btree_index_prefetch.html>`_ |--| How bzr decides
+  to pre-read extra nodes in the btree index.
+
+* `Computing last_modified values <last-modified.html>`_ for inventory
+  entries
+
+* `LCA Tree Merging <lca_tree_merging.html>`_ |--| Merging tree-shape when
+  there is not a single unique ancestor (criss-cross merge).
+
+Miscellaneous
+=============
+
+* `dirstate <dirstate.html>`_ |--| An observation re. the dirstate file
+
+* `"bzr update" performance analysis <update.html>`_ |--| "bzr update"
+  performance analysis
 
 
 .. |--| unicode:: U+2014

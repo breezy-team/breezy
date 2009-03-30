@@ -12,11 +12,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tags stored within a branch
 
-The tags are actually in the Branch.tags namespace, but these are 
+The tags are actually in the Branch.tags namespace, but these are
 1:1 with Branch implementations so can be tested from here.
 """
 
@@ -38,16 +38,12 @@ from bzrlib.tests.branch_implementations.test_branch \
 class TestBranchTags(TestCaseWithBranch):
 
     def setUp(self):
-        # formats that don't support tags can skip the rest of these 
-        # tests...
-        fmt = self.branch_format
-        f = getattr(fmt, 'supports_tags')
-        if f is None:
-            raise TestSkipped("format %s doesn't declare whether it "
-                "supports tags, assuming not" % fmt)
-        if not f():
-            raise TestSkipped("format %s doesn't support tags" % fmt)
         TestCaseWithBranch.setUp(self)
+        # formats that don't support tags can skip the rest of these
+        # tests...
+        branch = self.make_branch('probe')
+        if not branch._format.supports_tags():
+            raise TestSkipped("format %s doesn't support tags" % branch._format)
 
     def test_tags_initially_empty(self):
         b = self.make_branch('b')
@@ -156,18 +152,13 @@ class TestUnsupportedTags(TestCaseWithBranch):
     """Formats that don't support tags should give reasonable errors."""
 
     def setUp(self):
-        fmt = self.branch_format
-        supported = getattr(fmt, 'supports_tags')
-        if supported is None:
-            warn("Format %s doesn't declare whether it supports tags or not"
-                 % fmt)
-            raise TestSkipped('No tag support at all')
-        if supported():
-            raise TestSkipped("Format %s declares that tags are supported"
-                              % fmt)
-            # it's covered by TestBranchTags
         TestCaseWithBranch.setUp(self)
-    
+        branch = self.make_branch('probe')
+        if branch._format.supports_tags():
+            raise TestSkipped("Format %s declares that tags are supported"
+                              % branch._format)
+            # it's covered by TestBranchTags
+
     def test_tag_methods_raise(self):
         b = self.make_branch('b')
         self.assertRaises(errors.TagsNotSupported,

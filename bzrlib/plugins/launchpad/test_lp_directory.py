@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for directory lookup through Launchpad.net"""
 
@@ -153,7 +153,7 @@ class DirectoryUrlTests(TestCaseInTempDir):
             directory._resolve('lp:///apt', factory, _lp_login='username'))
 
     def test_no_rewrite_of_other_bzr_ssh(self):
-        # Test that we don't rewrite bzr+ssh URLs for other 
+        # Test that we don't rewrite bzr+ssh URLs for other
         self.assertEqual(None, get_lp_login())
         factory = FakeResolveFactory(
             self, 'apt', dict(urls=[

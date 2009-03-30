@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for WorkingTree.set_root_id"""
 
@@ -37,7 +37,7 @@ class TestSetRootId(TestCaseWithWorkingTree):
             self.assertEqual(old_id, reference_tree.get_root_id())
         finally:
             tree.unlock()
-        # having unlocked the tree, the value should have been 
+        # having unlocked the tree, the value should have been
         # preserved into the next lock, which is an implicit read
         # lock around the get_root_id call.
         self.assertEqual(root_id, tree.get_root_id())

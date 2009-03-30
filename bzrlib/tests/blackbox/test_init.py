@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Test "bzr init"""
@@ -81,12 +81,12 @@ Using shared repository: %s
             out)
         self.assertEqual('', err)
         WorkingTree.open('subdir1')
-        
+
         self.run_bzr_error(['Parent directory of subdir2/nothere does not exist'],
                             'init subdir2/nothere')
         out, err = self.run_bzr('init subdir2/nothere', retcode=3)
         self.assertEqual('', out)
-        
+
         os.mkdir('subdir2')
         out, err = self.run_bzr('init subdir2')
         self.assertEqual("""Created a standalone tree (format: pack-0.92)\n""",

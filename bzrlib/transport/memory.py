@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Implementation of Transport that uses memory for its storage.
 
@@ -183,7 +183,7 @@ class MemoryTransport(Transport):
         for file in self._files:
             if file.startswith(self._cwd):
                 yield urlutils.escape(file[len(self._cwd):])
-    
+
     def list_dir(self, relpath):
         """See Transport.list_dir()."""
         _abspath = self._abspath(relpath)
@@ -222,7 +222,7 @@ class MemoryTransport(Transport):
                     del container[path]
         do_renames(self._files)
         do_renames(self._dirs)
-    
+
     def rmdir(self, relpath):
         """See Transport.rmdir."""
         _abspath = self._abspath(relpath)
@@ -243,7 +243,7 @@ class MemoryTransport(Transport):
         """See Transport.stat()."""
         _abspath = self._abspath(relpath)
         if _abspath in self._files:
-            return MemoryStat(len(self._files[_abspath][0]), False, 
+            return MemoryStat(len(self._files[_abspath][0]), False,
                               self._files[_abspath][1])
         elif _abspath in self._dirs:
             return MemoryStat(0, True, self._dirs[_abspath])

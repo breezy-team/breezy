@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests that use BrokenRepoScenario objects.
 
@@ -48,7 +48,7 @@ class TestFileParentReconciliation(TestCaseWithRepository):
 
     def add_revision(self, repo, revision_id, inv, parent_ids):
         """Add a revision with a given inventory and parents to a repository.
-        
+
         :param repo: a repository.
         :param revision_id: the revision ID for the new revision.
         :param inv: an inventory (such as created by
@@ -142,7 +142,7 @@ class TestFileParentReconciliation(TestCaseWithRepository):
 
     def shas_for_versions_of_file(self, repo, versions):
         """Get the SHA-1 hashes of the versions of 'a-file' in the repository.
-        
+
         :param repo: the repository to get the hashes from.
         :param versions: a list of versions to get hashes for.
 

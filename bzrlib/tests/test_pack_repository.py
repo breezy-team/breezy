@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for pack repositories.
 
@@ -28,6 +28,7 @@ from bzrlib import (
     bzrdir,
     errors,
     inventory,
+    osutils,
     progress,
     repository,
     revision as _mod_revision,
@@ -72,13 +73,13 @@ class TestPackRepository(TestCaseWithTransport):
         """Packs do not need ordered data retrieval."""
         format = self.get_format()
         repo = self.make_repository('.', format=format)
-        self.assertEqual('unordered', repo._fetch_order)
+        self.assertEqual('unordered', repo._format._fetch_order)
 
     def test_attribute__fetch_uses_deltas(self):
         """Packs reuse deltas."""
         format = self.get_format()
         repo = self.make_repository('.', format=format)
-        self.assertEqual(True, repo._fetch_uses_deltas)
+        self.assertEqual(True, repo._format._fetch_uses_deltas)
 
     def test_disk_layout(self):
         format = self.get_format()
@@ -261,7 +262,7 @@ class TestPackRepository(TestCaseWithTransport):
         self.addCleanup(tree.unlock)
         pack = tree.branch.repository._pack_collection.get_pack_by_name(
             tree.branch.repository._pack_collection.names()[0])
-        # revision access tends to be tip->ancestor, so ordering that way on 
+        # revision access tends to be tip->ancestor, so ordering that way on
         # disk is a good idea.
         for _1, key, val, refs in pack.revision_index.iter_all_entries():
             if key == ('1',):
@@ -533,6 +534,48 @@ class TestPackRepository(TestCaseWithTransport):
         self.assertRaises(errors.NoSuchRevision,
             missing_ghost.get_inventory, 'ghost')
 
+    def make_write_ready_repo(self):
+        repo = self.make_repository('.', format=self.get_format())
+        repo.lock_write()
+        repo.start_write_group()
+        return repo
+
+    def test_missing_inventories_compression_parent_prevents_commit(self):
+        repo = self.make_write_ready_repo()
+        key = ('junk',)
+        repo.inventories._index._missing_compression_parents.add(key)
+        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        repo.abort_write_group()
+        repo.unlock()
+
+    def test_missing_revisions_compression_parent_prevents_commit(self):
+        repo = self.make_write_ready_repo()
+        key = ('junk',)
+        repo.revisions._index._missing_compression_parents.add(key)
+        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        repo.abort_write_group()
+        repo.unlock()
+
+    def test_missing_signatures_compression_parent_prevents_commit(self):
+        repo = self.make_write_ready_repo()
+        key = ('junk',)
+        repo.signatures._index._missing_compression_parents.add(key)
+        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        repo.abort_write_group()
+        repo.unlock()
+
+    def test_missing_text_compression_parent_prevents_commit(self):
+        repo = self.make_write_ready_repo()
+        key = ('some', 'junk')
+        repo.texts._index._missing_compression_parents.add(key)
+        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        e = self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        repo.abort_write_group()
+        repo.unlock()
+
     def test_supports_external_lookups(self):
         repo = self.make_repository('.', format=self.get_format())
         self.assertEqual(self.format_supports_external_lookups,
@@ -558,7 +601,7 @@ class TestPackRepository(TestCaseWithTransport):
         self.assertContainsRe(log_file, r'INFO  bzr: ERROR \(ignored\):')
         if token is not None:
             repo.leave_lock_in_place()
-        
+
     def test_abort_write_group_does_raise_when_not_suppressed(self):
         self.vfs_transport_factory = memory.MemoryServer
         repo = self.make_repository('repo')
@@ -571,7 +614,64 @@ class TestPackRepository(TestCaseWithTransport):
         self.assertRaises(Exception, repo.abort_write_group)
         if token is not None:
             repo.leave_lock_in_place()
-        
+
+    def test_suspend_write_group(self):
+        self.vfs_transport_factory = memory.MemoryServer
+        repo = self.make_repository('repo')
+        token = repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        repo.texts.add_lines(('file-id', 'revid'), (), ['lines'])
+        wg_tokens = repo.suspend_write_group()
+        expected_pack_name = wg_tokens[0] + '.pack'
+        upload_transport = repo._pack_collection._upload_transport
+        limbo_files = upload_transport.list_dir('')
+        self.assertTrue(expected_pack_name in limbo_files, limbo_files)
+        md5 = osutils.md5(upload_transport.get_bytes(expected_pack_name))
+        self.assertEqual(wg_tokens[0], md5.hexdigest())
+
+    def test_resume_write_group_then_abort(self):
+        # Create a repo, start a write group, insert some data, suspend.
+        self.vfs_transport_factory = memory.MemoryServer
+        repo = self.make_repository('repo')
+        token = repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        text_key = ('file-id', 'revid')
+        repo.texts.add_lines(text_key, (), ['lines'])
+        wg_tokens = repo.suspend_write_group()
+        # Get a fresh repository object for the repo on the filesystem.
+        same_repo = repo.bzrdir.open_repository()
+        # Resume
+        same_repo.lock_write()
+        self.addCleanup(same_repo.unlock)
+        same_repo.resume_write_group(wg_tokens)
+        same_repo.abort_write_group()
+        self.assertEqual(
+            [], same_repo._pack_collection._upload_transport.list_dir(''))
+        self.assertEqual(
+            [], same_repo._pack_collection._pack_transport.list_dir(''))
+
+    def test_resume_malformed_token(self):
+        self.vfs_transport_factory = memory.MemoryServer
+        # Make a repository with a suspended write group
+        repo = self.make_repository('repo')
+        token = repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        text_key = ('file-id', 'revid')
+        repo.texts.add_lines(text_key, (), ['lines'])
+        wg_tokens = repo.suspend_write_group()
+        # Make a new repository
+        new_repo = self.make_repository('new_repo')
+        token = new_repo.lock_write()
+        self.addCleanup(new_repo.unlock)
+        hacked_wg_token = (
+            '../../../../repo/.bzr/repository/upload/' + wg_tokens[0])
+        self.assertRaises(
+            errors.UnresumableWriteGroup,
+            new_repo.resume_write_group, [hacked_wg_token])
+
 
 class TestPackRepositoryStacking(TestCaseWithTransport):
 
@@ -579,7 +679,7 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
 
     def setUp(self):
         if not self.format_supports_external_lookups:
-            raise TestNotApplicable("%r doesn't support stacking" 
+            raise TestNotApplicable("%r doesn't support stacking"
                 % (self.format_name,))
         super(TestPackRepositoryStacking, self).setUp()
 
@@ -716,7 +816,7 @@ class TestSmartServerAutopack(TestCaseWithTransport):
     def get_format(self):
         return bzrdir.format_registry.make_bzrdir(self.format_name)
 
-    def test_autopack_rpc_is_used_when_using_hpss(self):
+    def test_autopack_or_streaming_rpc_is_used_when_using_hpss(self):
         # Make local and remote repos
         tree = self.make_branch_and_tree('local', format=self.get_format())
         self.make_branch_and_tree('remote', format=self.get_format())
@@ -731,10 +831,24 @@ class TestSmartServerAutopack(TestCaseWithTransport):
         self.hpss_calls = []
         tree.commit('commit triggering pack')
         tree.branch.push(remote_branch)
-        self.assertTrue('PackRepository.autopack' in self.hpss_calls)
+        autopack_calls = len([call for call in self.hpss_calls if call ==
+            'PackRepository.autopack'])
+        streaming_calls = len([call for call in self.hpss_calls if call ==
+            'Repository.insert_stream'])
+        if autopack_calls:
+            # Non streaming server
+            self.assertEqual(1, autopack_calls)
+            self.assertEqual(0, streaming_calls)
+        else:
+            # Streaming was used, which autopacks on the remote end.
+            self.assertEqual(0, autopack_calls)
+            # NB: The 2 calls are because of the sanity check that the server
+            # supports the verb (see remote.py:RemoteSink.insert_stream for
+            # details).
+            self.assertEqual(2, streaming_calls)
 
 
-def load_tests(basic_tests, module, test_loader):
+def load_tests(basic_tests, module, loader):
     # these give the bzrdir canned format name, and the repository on-disk
     # format string
     scenarios_params = [
@@ -776,9 +890,6 @@ def load_tests(basic_tests, module, test_loader):
               format_supports_external_lookups=True,
               index_class=BTreeGraphIndex),
          ]
-    adapter = tests.TestScenarioApplier()
     # name of the scenario is the format name
-    adapter.scenarios = [(s['format_name'], s) for s in scenarios_params]
-    suite = tests.TestSuite()
-    tests.adapt_tests(basic_tests, adapter, suite)
-    return suite
+    scenarios = [(s['format_name'], s) for s in scenarios_params]
+    return tests.multiply_tests(basic_tests, scenarios, loader.suiteClass())

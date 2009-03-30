@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Test Tree.changes_from() for WorkingTree specific scenarios."""
 
@@ -21,7 +21,7 @@ from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 
 
 class TestChangesFrom(TestCaseWithWorkingTree):
-    
+
     def setUp(self):
         super(TestChangesFrom, self).setUp()
         self.tree = self.make_branch_and_tree('tree')
@@ -43,7 +43,7 @@ class TestChangesFrom(TestCaseWithWorkingTree):
         self.build_tree(['tree/unknown'])
         empty_tree = self.tree.branch.repository.revision_tree(
                         revision.NULL_REVISION)
-                        
+
         # If a specific_files list is present, even if none of the
         # files are versioned, only paths that are present in the list
         # should be compared

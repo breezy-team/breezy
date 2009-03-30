@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Base implementation of TreeCreator classes
 
@@ -39,7 +39,7 @@ class TreeCreator(object):
                  hot_cache=True):
         """Instantiate a new creator object, supply the id of the tree
 
-        :param test: A TestCaseWithTransport object (most creators need 
+        :param test: A TestCaseWithTransport object (most creators need
             we need the build_tree functionality)
         """
 
@@ -62,7 +62,7 @@ class TreeCreator(object):
         if cache_dir is None:
             return False
         return os.path.exists(cache_dir)
-        
+
     def disable_cache(self):
         """Do not use the cache"""
         self._cache_root = None

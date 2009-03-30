@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the Command.encoding_type interface."""
 
@@ -46,7 +46,7 @@ class cmd_echo_replace(cmd_echo_exact):
 
 
 class TestCommandEncoding(TestCase):
-    
+
     def test_exact(self):
         def bzr(*args, **kwargs):
             return self.run_bzr(*args, **kwargs)[0]

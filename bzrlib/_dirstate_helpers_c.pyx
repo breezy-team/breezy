@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Helper functions for DirState.
 
@@ -841,6 +841,8 @@ cdef _update_entry(self, entry, abspath, stat_value):
     packed_stat = _pack_stat(stat_value)
     details = PyList_GetItem_void_void(PyTuple_GetItem_void_void(<void *>entry, 1), 0)
     saved_minikind = PyString_AsString_obj(<PyObject *>PyTuple_GetItem_void_void(details, 0))[0]
+    if minikind == c'd' and saved_minikind == c't':
+        minikind = c't'
     saved_link_or_sha1 = PyTuple_GetItem_void_object(details, 1)
     saved_file_size = PyTuple_GetItem_void_object(details, 2)
     saved_executable = PyTuple_GetItem_void_object(details, 3)
@@ -1142,14 +1144,9 @@ cdef class ProcessEntryC:
                         if target_details[2] == source_details[2]:
                             if link_or_sha1 is None:
                                 # Stat cache miss:
-                                file_obj = file(path_info[4], 'rb')
-                                try:
-                                    # XXX: TODO: Use lower level file IO rather
-                                    # than python objects for sha-misses.
-                                    statvalue = self.fstat(file_obj.fileno())
-                                    link_or_sha1 = self.sha_file(file_obj)
-                                finally:
-                                    file_obj.close()
+                                statvalue, link_or_sha1 = \
+                                    self.state._sha1_provider.stat_and_sha1(
+                                    path_info[4])
                                 self.state._observed_sha1(entry, link_or_sha1,
                                     statvalue)
                             content_change = (link_or_sha1 != source_details[1])
@@ -1256,8 +1253,14 @@ cdef class ProcessEntryC:
             path = self.pathjoin(entry[0][0], entry[0][1])
             # parent id is the entry for the path in the target tree
             # TODO: these are the same for an entire directory: cache em.
-            parent_id = self.state._get_entry(self.target_index,
-                                         path_utf8=entry[0][0])[0][2]
+            parent_entry = self.state._get_entry(self.target_index,
+                                                 path_utf8=entry[0][0])
+            if parent_entry is None:
+                raise errors.DirstateCorrupt(self.state,
+                    "We could not find the parent entry in index %d"
+                    " for the entry: %s"
+                    % (self.target_index, entry[0]))
+            parent_id = parent_entry[0][2]
             if parent_id == entry[0][2]:
                 parent_id = None
             if path_info is not None:

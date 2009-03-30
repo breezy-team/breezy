@@ -12,13 +12,13 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Testament - a summary of a revision for signing.
 
-A testament can be defined as "something that serves as tangible 
+A testament can be defined as "something that serves as tangible
 proof or evidence."  In bzr we use them to allow people to certify
-particular revisions as authentic.  
+particular revisions as authentic.
 
 The goal is that if two revisions are semantically equal, then they will
 have a byte-for-byte equal testament.  We can define different versions of
@@ -61,7 +61,7 @@ Testament format 1
 
 # XXX: At the moment, clients trust that the graph described in a weave
 # is accurate, but that's not covered by the testament.  Perhaps the best
-# fix is when verifying a revision to make sure that every file mentioned 
+# fix is when verifying a revision to make sure that every file mentioned
 # in the revision has compatible ancestry links.
 
 # TODO: perhaps write timestamp in a more readable form
@@ -81,7 +81,7 @@ from bzrlib.osutils import (
 class Testament(object):
     """Reduced summary of a revision.
 
-    Testaments can be 
+    Testaments can be
 
       - produced from a revision
       - written to a stream
@@ -180,7 +180,7 @@ class Testament(object):
 
     def as_short_text(self):
         """Return short digest-based testament."""
-        return (self.short_header + 
+        return (self.short_header +
                 'revision-id: %s\n'
                 'sha1: %s\n'
                 % (self.revision_id, self.as_sha1()))
@@ -218,7 +218,7 @@ class StrictTestament(Testament):
 
 class StrictTestament3(StrictTestament):
     """This testament format is for use as a checksum in bundle format 0.9+
-    
+
     It differs from StrictTestament by including data about the tree root.
     """
 

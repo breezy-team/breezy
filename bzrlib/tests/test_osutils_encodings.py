@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the osutils wrapper."""
 
@@ -27,13 +27,13 @@ from bzrlib import (
     )
 from bzrlib.tests import (
         StringIOWrapper,
-        TestCase, 
+        TestCase,
         )
 
 
 class FakeCodec(object):
     """Special class that helps testing over several non-existed encodings.
-    
+
     Clients can add new encoding names, but because of how codecs is
     implemented they cannot be removed. Be careful with naming to avoid
     collisions between tests.
@@ -51,7 +51,7 @@ class FakeCodec(object):
             self._registered = True
         if encoding_name is not None:
             self._enabled_encodings.add(encoding_name)
-        
+
     def __call__(self, encoding_name):
         """Called indirectly by codecs module during lookup"""
         if encoding_name in self._enabled_encodings:
@@ -62,7 +62,7 @@ fake_codec = FakeCodec()
 
 
 class TestFakeCodec(TestCase):
-    
+
     def test_fake_codec(self):
         self.assertRaises(LookupError, codecs.lookup, 'fake')
 
@@ -74,6 +74,7 @@ class TestTerminalEncoding(TestCase):
     """Test the auto-detection of proper terminal encoding."""
 
     def setUp(self):
+        TestCase.setUp(self)
         self._stdout = sys.stdout
         self._stderr = sys.stderr
         self._stdin = sys.stdin
@@ -81,7 +82,7 @@ class TestTerminalEncoding(TestCase):
 
         self.addCleanup(self._reset)
 
-    def make_wrapped_streams(self, 
+    def make_wrapped_streams(self,
                              stdout_encoding,
                              stderr_encoding,
                              stdin_encoding,
@@ -143,19 +144,20 @@ class TestTerminalEncoding(TestCase):
                                   'cp-unknown',
                                   user_encoding='latin-1',
                                   enable_fake_encodings=False)
-        
+
         self.assertEqual('latin-1', osutils.get_terminal_encoding())
 
         # check stderr
         self.assertEquals('bzr: warning: unknown terminal encoding cp-unknown.\n'
-                          '  Using encoding latin-1 instead.\n', 
+                          '  Using encoding latin-1 instead.\n',
                           sys.stderr.getvalue())
 
 
 class TestUserEncoding(TestCase):
     """Test detection of default user encoding."""
-    
+
     def setUp(self):
+        TestCase.setUp(self)
         self._stderr = sys.stderr
         self._getpreferredencoding = locale.getpreferredencoding
         self.addCleanup(self._reset)

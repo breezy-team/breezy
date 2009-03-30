@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 from cStringIO import StringIO
@@ -107,7 +107,7 @@ class TestTransport(TestCase):
         finally:
             # restore original values
             _set_protocol_handlers(saved_handlers)
-            
+
     def test_transport_fallback(self):
         """Transport with missing dependency causes no error"""
         saved_handlers = _get_protocol_handlers()
@@ -122,6 +122,19 @@ class TestTransport(TestCase):
             self.assertTrue(isinstance(t, BackupTransportHandler))
         finally:
             _set_protocol_handlers(saved_handlers)
+
+    def test_ssh_hints(self):
+        """Transport ssh:// should raise an error pointing out bzr+ssh://"""
+        try:
+            get_transport('ssh://fooserver/foo')
+        except UnsupportedProtocol, e:
+            e_str = str(e)
+            self.assertEquals('Unsupported protocol'
+                              ' for url "ssh://fooserver/foo":'
+                              ' bzr supports bzr+ssh to operate over ssh, use "bzr+ssh://fooserver/foo".',
+                              str(e))
+        else:
+            self.fail('Did not raise UnsupportedProtocol')
 
     def test_LateReadError(self):
         """The LateReadError helper should raise on read()."""
@@ -368,7 +381,7 @@ class ChrootDecoratorTransportTest(TestCase):
         self.assertEqual(server, relpath_cloned.server)
         self.assertEqual(server, abspath_cloned.server)
         server.tearDown()
-    
+
     def test_chroot_url_preserves_chroot(self):
         """Calling get_transport on a chroot transport's base should produce a
         transport with exactly the same behaviour as the original chroot
@@ -386,7 +399,7 @@ class ChrootDecoratorTransportTest(TestCase):
         self.assertEqual(transport.server, new_transport.server)
         self.assertEqual(transport.base, new_transport.base)
         server.tearDown()
-        
+
     def test_urljoin_preserves_chroot(self):
         """Using urlutils.join(url, '..') on a chroot URL should not produce a
         URL that escapes the intended chroot.
@@ -551,26 +564,26 @@ class BackupTransportHandler(Transport):
 
 class TestTransportImplementation(TestCaseInTempDir):
     """Implementation verification for transports.
-    
+
     To verify a transport we need a server factory, which is a callable
     that accepts no parameters and returns an implementation of
     bzrlib.transport.Server.
-    
+
     That Server is then used to construct transport instances and test
     the transport via loopback activity.
 
-    Currently this assumes that the Transport object is connected to the 
-    current working directory.  So that whatever is done 
-    through the transport, should show up in the working 
+    Currently this assumes that the Transport object is connected to the
+    current working directory.  So that whatever is done
+    through the transport, should show up in the working
     directory, and vice-versa. This is a bug, because its possible to have
-    URL schemes which provide access to something that may not be 
-    result in storage on the local disk, i.e. due to file system limits, or 
+    URL schemes which provide access to something that may not be
+    result in storage on the local disk, i.e. due to file system limits, or
     due to it being a database or some other non-filesystem tool.
 
     This also tests to make sure that the functions work with both
     generators and lists (assuming iter(list) is effectively a generator)
     """
-    
+
     def setUp(self):
         super(TestTransportImplementation, self).setUp()
         self._server = self.transport_server()

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
 
@@ -32,7 +32,7 @@ class TestRevert(tests.TestCaseWithTransport):
         source_tree.commit('added dir')
         target_tree.lock_write()
         self.addCleanup(target_tree.unlock)
-        merge.merge_inner(target_tree.branch, source_tree.basis_tree(), 
+        merge.merge_inner(target_tree.branch, source_tree.basis_tree(),
                           target_tree.basis_tree(), this_tree=target_tree)
         self.failUnlessExists('target/dir')
         self.failUnlessExists('target/dir/contents')
@@ -67,7 +67,7 @@ class TestRevert(tests.TestCaseWithTransport):
         tree.commit('add new_file')
         tree.revert(old_tree=basis_tree)
         self.failIfExists('tree/new_file')
-        
+
         # files should be deleted if their changes came from merges
         merge_target.merge_from_branch(tree.branch)
         self.failUnlessExists('merge_target/new_file')

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """http/https transport using pycurl"""
 
@@ -59,7 +59,7 @@ except ImportError, e:
 try:
     # see if we can actually initialize PyCurl - sometimes it will load but
     # fail to start up due to this bug:
-    #  
+    #
     #   32. (At least on Windows) If libcurl is built with c-ares and there's
     #   no DNS server configured in the system, the ares_init() call fails and
     #   thus curl_easy_init() fails as well. This causes weird effects for
@@ -180,7 +180,7 @@ class PyCurlTransport(HttpTransportBase):
 
         :param curl: The curl object to place the request on
         :param relpath: The relative path that we want to get
-        :return: (abspath, data, header) 
+        :return: (abspath, data, header)
                  abspath: full url
                  data: file that will be filled with the body
                  header: file that will be filled with the headers

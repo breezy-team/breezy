@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 # A relatively simple Makefile to assist in building parts of bzr. Mostly for
 # building documentation, etc.
@@ -111,6 +111,26 @@ dev_htm_files := $(patsubst %.txt, %.html, $(dev_txt_files))
 doc/en/user-guide/index.html: $(wildcard $(addsuffix /*.txt, doc/en/user-guide)) 
 	$(rst2html) --stylesheet=../../default.css doc/en/user-guide/index.txt $@
 
+# Set the paper size for PDF files.
+# Options:  'a4' (ISO A4 size), 'letter' (US Letter size)
+PAPERSIZE = a4
+PDF_DOCS := doc/en/user-guide/user-guide.$(PAPERSIZE).pdf
+
+# Copy and modify the RST sources, and convert SVG images to PDF
+# files for use a images in the LaTeX-generated PDF.
+# Then generate the PDF output from the modified RST sources.
+doc/en/user-guide/user-guide.$(PAPERSIZE).pdf: $(wildcard $(addsuffix /*.txt, doc/en/user-guide))
+	mkdir -p doc/en/user-guide/latex_prepared
+	$(PYTHON) tools/prepare_for_latex.py \
+	    --out-dir=doc/en/user-guide/latex_prepared \
+	    --in-dir=doc/en/user-guide
+	cd doc/en/user-guide/latex_prepared && \
+	    $(PYTHON) ../../../../tools/rst2pdf.py \
+	        --documentoptions=10pt,$(PAPERSIZE)paper \
+	        --input-encoding=UTF-8:strict --output-encoding=UTF-8:strict \
+	        --strict --title="Bazaar User Guide" \
+	        index.txt ../user-guide.$(PAPERSIZE).pdf
+
 doc/developers/%.html: doc/developers/%.txt
 	$(rst2html) --stylesheet=../default.css $< $@
 
@@ -163,10 +183,15 @@ HTMLDIR := html_docs
 html-docs: docs
 	$(PYTHON) tools/win32/ostools.py copytree $(WEB_DOCS) $(HTMLDIR)
 
+# Produce PDF documents.  Requires pdfLaTeX, rubber, and Inkscape.
+pdf-docs: $(PDF_DOCS)
+
 # clean produced docs
 clean-docs:
 	$(PYTHON) tools/win32/ostools.py remove $(ALL_DOCS) \
-	$(HTMLDIR) $(derived_txt_files)
+	    $(HTMLDIR) $(derived_txt_files)
+	rm -f doc/en/user-guide/*.pdf
+	rm -rf doc/en/user-guide/latex_prepared
 
 
 ### Windows Support ###

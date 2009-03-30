@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Black-box tests for bzr export.
@@ -187,7 +187,7 @@ class TestExport(ExternalBase):
         tree.add('goodbye')
         tree.commit('setup')
         return tree
-        
+
     def test_basic_directory_export(self):
         self.example_branch()
         os.chdir('branch')
@@ -262,7 +262,7 @@ class TestExport(ExternalBase):
             self.assertEqual('foo', zf.read('pizza/hello'))
         finally:
             zf.close()
-        
+
         self.run_bzr('export ../first-zip --format=zip -r 1')
         zf = zipfile.ZipFile('../first-zip')
         try:

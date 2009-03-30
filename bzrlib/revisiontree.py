@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """RevisionTree - a Tree implementation backed by repository data for a revision."""
 
@@ -34,9 +34,9 @@ class RevisionTree(Tree):
     """
 
     def __init__(self, branch, inv, revision_id):
-        # for compatability the 'branch' parameter has not been renamed to 
+        # for compatability the 'branch' parameter has not been renamed to
         # repository at this point. However, we should change RevisionTree's
-        # construction to always be via Repository and not via direct 
+        # construction to always be via Repository and not via direct
         # construction - this will mean that we can change the constructor
         # with much less chance of breaking client code.
         self._repository = branch
@@ -58,13 +58,14 @@ class RevisionTree(Tree):
             parent_ids = self._repository.get_revision(
                 self._revision_id).parent_ids
         return parent_ids
-        
+
     def get_revision_id(self):
         """Return the revision id associated with this tree."""
         return self._revision_id
 
     def get_file_text(self, file_id, path=None):
-        return list(self.iter_files_bytes([(file_id, None)]))[0][1]
+        _, content = list(self.iter_files_bytes([(file_id, None)]))[0]
+        return ''.join(content)
 
     def get_file(self, file_id, path=None):
         return StringIO(self.get_file_text(file_id))

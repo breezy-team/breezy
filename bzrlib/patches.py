@@ -13,7 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 class PatchSyntax(Exception):
@@ -92,7 +92,7 @@ def parse_range(textrange):
     range = int(range)
     return (pos, range)
 
- 
+
 def hunk_from_header(line):
     import re
     matches = re.match(r'\@\@ ([^@]*) \@\@( (.*))?\n', line)
@@ -164,8 +164,6 @@ def parse_line(line):
         return InsertLine(line[1:])
     elif line.startswith("-"):
         return RemoveLine(line[1:])
-    elif line == NO_NL:
-        return NO_NL
     else:
         raise MalformedLine("Unknown line type", line)
 __pychecker__=""
@@ -268,7 +266,7 @@ class Patch:
         self.hunks = []
 
     def __str__(self):
-        ret = self.get_header() 
+        ret = self.get_header()
         ret += "".join([str(h) for h in self.hunks])
         return ret
 
@@ -300,10 +298,10 @@ class Patch:
                 return None
             newpos += shift
         return newpos
-            
+
     def iter_inserted(self):
         """Iteraties through inserted lines
-        
+
         :return: Pair of line number, line
         :rtype: iterator of (int, InsertLine)
         """
@@ -318,6 +316,7 @@ class Patch:
 
 
 def parse_patch(iter_lines):
+    iter_lines = iter_lines_handle_nl(iter_lines)
     (orig_name, mod_name) = get_patch_names(iter_lines)
     patch = Patch(orig_name, mod_name)
     for hunk in iter_hunks(iter_lines):
@@ -370,7 +369,6 @@ def iter_lines_handle_nl(iter_lines):
 
 
 def parse_patches(iter_lines):
-    iter_lines = iter_lines_handle_nl(iter_lines)
     return [parse_patch(f.__iter__()) for f in iter_file_patch(iter_lines)]
 
 

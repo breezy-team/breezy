@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for interface conformance of 'WorkingTree.add'"""
 
@@ -148,7 +148,7 @@ class TestAdd(TestCaseWithWorkingTree):
                           tree.add, ['dir/subdir'])
 
     def test_add_root(self):
-        # adding the root should be a no-op, or at least not 
+        # adding the root should be a no-op, or at least not
         # do anything whacky.
         tree = self.make_branch_and_tree('.')
         tree.lock_write()

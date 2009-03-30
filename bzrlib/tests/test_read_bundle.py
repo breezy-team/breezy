@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Test read_bundle works properly across various transports."""
 
@@ -26,7 +26,7 @@ import bzrlib.errors as errors
 from bzrlib.symbol_versioning import deprecated_in
 from bzrlib import tests
 from bzrlib.tests.test_transport import TestTransportImplementation
-from bzrlib.tests.test_transport_implementations import TransportTestProviderAdapter
+from bzrlib.tests.test_transport_implementations import transport_test_permutations
 import bzrlib.transport
 from bzrlib.transport.memory import MemoryTransport
 import bzrlib.urlutils
@@ -34,17 +34,10 @@ import bzrlib.urlutils
 
 def load_tests(standard_tests, module, loader):
     """Multiply tests for tranport implementations."""
-    result = loader.suiteClass()
     transport_tests, remaining_tests = tests.split_suite_by_condition(
-        standard_tests, tests.condition_isinstance((TestReadBundleFromURL)))
-
-    adapter = TransportTestProviderAdapter()
-    tests.adapt_tests(transport_tests, adapter, result)
-
-    # No parametrization for the remaining tests
-    result.addTests(remaining_tests)
-
-    return result
+        standard_tests, tests.condition_isinstance(TestReadBundleFromURL))
+    return tests.multiply_tests(transport_tests, transport_test_permutations(),
+        remaining_tests)
 
 
 def create_bundle_file(test_case):
@@ -72,8 +65,10 @@ class TestDeprecations(tests.TestCaseInTempDir):
     def create_test_bundle(self):
         out, wt = create_bundle_file(self)
         f = open('test_bundle', 'wb')
-        f.write(out.getvalue())
-        f.close()
+        try:
+            f.write(out.getvalue())
+        finally:
+            f.close()
         return wt
 
     def test_read_bundle_from_url_deprecated(self):
@@ -96,8 +91,10 @@ class TestReadBundleFromURL(TestTransportImplementation):
         out, wt = create_bundle_file(self)
         if self.get_transport().is_readonly():
             f = open('test_bundle', 'wb')
-            f.write(out.getvalue())
-            f.close()
+            try:
+                f.write(out.getvalue())
+            finally:
+                f.close()
         else:
             self.get_transport().put_file('test_bundle', out)
             self.log('Put to: %s', self.get_url('test_bundle'))

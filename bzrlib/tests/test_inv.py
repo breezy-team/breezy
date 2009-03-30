@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 from bzrlib import errors, inventory, osutils
@@ -140,7 +140,7 @@ class TestDescribeChanges(TestCase):
         # perhaps a bit questionable but seems like the most reasonable thing...
         self.assertChangeDescription('unchanged', None, None)
 
-        # in this case it's both renamed and modified; show a rename and 
+        # in this case it's both renamed and modified; show a rename and
         # modification:
         new_a.name = 'newfilename'
         self.assertChangeDescription('modified and renamed', old_a, new_a)

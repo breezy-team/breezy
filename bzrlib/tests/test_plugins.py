@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for plugins"""
 
@@ -31,7 +31,6 @@ import bzrlib.plugin
 import bzrlib.plugins
 import bzrlib.commands
 import bzrlib.help
-from bzrlib.symbol_versioning import one_three
 from bzrlib.tests import (
     TestCase,
     TestCaseInTempDir,
@@ -71,7 +70,7 @@ class TestLoadingPlugins(TestCaseInTempDir):
         # create two plugin directories
         os.mkdir('first')
         os.mkdir('second')
-        # write a plugin that will record when its loaded in the 
+        # write a plugin that will record when its loaded in the
         # tempattribute list.
         template = ("from bzrlib.tests.test_plugins import TestLoadingPlugins\n"
                     "TestLoadingPlugins.activeattributes[%r].append('%s')\n")
@@ -119,7 +118,7 @@ class TestLoadingPlugins(TestCaseInTempDir):
         # create two plugin directories
         os.mkdir('first')
         os.mkdir('second')
-        # write plugins that will record when they are loaded in the 
+        # write plugins that will record when they are loaded in the
         # tempattribute list.
         template = ("from bzrlib.tests.test_plugins import TestLoadingPlugins\n"
                     "TestLoadingPlugins.activeattributes[%r].append('%s')\n")
@@ -171,7 +170,7 @@ class TestLoadingPlugins(TestCaseInTempDir):
         self.failUnless(tempattribute in self.activeattributes)
         # create a directory for the plugin
         os.mkdir('plugin_test')
-        # write a plugin that will record when its loaded in the 
+        # write a plugin that will record when its loaded in the
         # tempattribute list.
         template = ("from bzrlib.tests.test_plugins import TestLoadingPlugins\n"
                     "TestLoadingPlugins.activeattributes[%r].append('%s')\n")
@@ -195,7 +194,7 @@ class TestLoadingPlugins(TestCaseInTempDir):
 
     def load_and_capture(self, name):
         """Load plugins from '.' capturing the output.
-        
+
         :param name: The name of the plugin.
         :return: A string with the log from the plugin loading call.
         """
@@ -221,7 +220,7 @@ class TestLoadingPlugins(TestCaseInTempDir):
             return stream.getvalue()
         finally:
             stream.close()
-    
+
     def test_plugin_with_bad_api_version_reports(self):
         # This plugin asks for bzrlib api version 1.0.0, which is not supported
         # anymore.
@@ -258,7 +257,7 @@ class TestPlugins(TestCaseInTempDir):
         file('plugin.py', 'w').write(source + '\n')
         self.addCleanup(self.teardown_plugin)
         bzrlib.plugin.load_from_path(['.'])
-    
+
     def teardown_plugin(self):
         # remove the plugin 'plugin'
         if 'bzrlib.plugins.plugin' in sys.modules:
@@ -455,42 +454,8 @@ class TestPluginHelp(TestCaseInTempDir):
                 delattr(bzrlib.plugins, 'myplug')
 
 
-class TestPluginFromZip(TestCaseInTempDir):
-
-    def make_zipped_plugin(self, zip_name, filename):
-        z = zipfile.ZipFile(zip_name, 'w')
-        z.writestr(filename, PLUGIN_TEXT)
-        z.close()
-
-    def check_plugin_load(self, zip_name, plugin_name):
-        self.assertFalse(plugin_name in dir(bzrlib.plugins),
-                         'Plugin already loaded')
-        old_path = bzrlib.plugins.__path__
-        try:
-            # this is normally done by load_plugins -> set_plugins_path
-            bzrlib.plugins.__path__ = [zip_name]
-            self.applyDeprecated(one_three,
-                bzrlib.plugin.load_from_zip, zip_name)
-            self.assertTrue(plugin_name in dir(bzrlib.plugins),
-                            'Plugin is not loaded')
-        finally:
-            # unregister plugin
-            if getattr(bzrlib.plugins, plugin_name, None):
-                delattr(bzrlib.plugins, plugin_name)
-                del sys.modules['bzrlib.plugins.' + plugin_name]
-            bzrlib.plugins.__path__ = old_path
-
-    def test_load_module(self):
-        self.make_zipped_plugin('./test.zip', 'ziplug.py')
-        self.check_plugin_load('./test.zip', 'ziplug')
-
-    def test_load_package(self):
-        self.make_zipped_plugin('./test.zip', 'ziplug/__init__.py')
-        self.check_plugin_load('./test.zip', 'ziplug')
-
-
 class TestSetPluginsPath(TestCase):
-    
+
     def test_set_plugins_path(self):
         """set_plugins_path should set the module __path__ correctly."""
         old_path = bzrlib.plugins.__path__

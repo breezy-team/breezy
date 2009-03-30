@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """A convenience class around email.Message and email.MIMEMultipart."""
 
@@ -31,7 +31,7 @@ from bzrlib.smtp_connection import SMTPConnection
 
 class EmailMessage(object):
     """An email message.
-    
+
     The constructor needs an origin address, a destination address or addresses
     and a subject, and accepts a body as well. Add additional parts to the
     message with add_inline_attachment(). Retrieve the entire formatted message
@@ -95,7 +95,7 @@ class EmailMessage(object):
 
     def as_string(self, boundary=None):
         """Return the entire formatted message as a string.
-        
+
         :param boundary: The boundary to use between MIME parts, if applicable.
             Used for tests.
         """
@@ -136,7 +136,7 @@ class EmailMessage(object):
 
     def __getitem__(self, header):
         """Get a header from the message, returning None if not present.
-        
+
         This method intentionally does not raise KeyError to mimic the behavior
         of __getitem__ in email.Message.
         """

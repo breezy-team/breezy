@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests of the parent related functions of WorkingTrees."""
 
@@ -24,6 +24,7 @@ from bzrlib import (
     osutils,
     revision as _mod_revision,
     symbol_versioning,
+    tests,
     )
 from bzrlib.inventory import (
     Inventory,
@@ -32,12 +33,6 @@ from bzrlib.inventory import (
     InventoryLink,
     )
 from bzrlib.revision import Revision
-from bzrlib.tests import (
-    KnownFailure,
-    SymlinkFeature,
-    TestNotApplicable,
-    UnicodeFilenameFeature,
-    )
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 from bzrlib.uncommit import uncommit
 
@@ -234,8 +229,8 @@ class TestSetParents(TestParents):
 
     def test_unicode_symlink(self):
         # this tests bug #272444
-        self.requireFeature(SymlinkFeature)
-        self.requireFeature(UnicodeFilenameFeature)
+        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(tests.UnicodeFilenameFeature)
 
         tree = self.make_branch_and_tree('tree1')
 
@@ -245,16 +240,9 @@ class TestSetParents(TestParents):
         os.symlink(u'\u03a9','tree1/link_name')
         tree.add(['link_name'],['link-id'])
 
-        try:
-            # the actual commit occurs without errors (strangely):
-            revision1 = tree.commit('added a link to a Unicode target')
-            # python 2.4 failed with UnicodeDecodeError on this commit:
-            revision2 = tree.commit('this revision will be discarded')
-            # python 2.5 failed with UnicodeEncodeError on set_parent_ids:
-            tree.set_parent_ids([revision1])
-        except (UnicodeEncodeError, UnicodeDecodeError):
-            raise KnownFailure('there is no support for'
-                               ' symlinks to non-ASCII targets (bug #272444)')
+        revision1 = tree.commit('added a link to a Unicode target')
+        revision2 = tree.commit('this revision will be discarded')
+        tree.set_parent_ids([revision1])
 
 
 class TestAddParent(TestParents):
@@ -266,13 +254,13 @@ class TestAddParent(TestParents):
         uncommit(tree.branch, tree=tree)
         tree.add_parent_tree_id(first_revision)
         self.assertConsistentParents([first_revision], tree)
-        
+
     def test_add_first_parent_id_ghost_rejects(self):
         """Test adding the first parent id - as a ghost"""
         tree = self.make_branch_and_tree('.')
         self.assertRaises(errors.GhostRevisionUnusableHere,
             tree.add_parent_tree_id, 'first-revision')
-        
+
     def test_add_first_parent_id_ghost_force(self):
         """Test adding the first parent id - as a ghost"""
         tree = self.make_branch_and_tree('.')
@@ -285,7 +273,7 @@ class TestAddParent(TestParents):
         tree.add_parent_tree_id('first-revision', allow_leftmost_as_ghost=True)
         tree.add_parent_tree_id('second')
         self.assertConsistentParents(['first-revision', 'second'], tree)
-        
+
     def test_add_second_parent_id(self):
         """Test adding the second parent id"""
         tree = self.make_branch_and_tree('.')
@@ -294,14 +282,14 @@ class TestAddParent(TestParents):
         second_revision = tree.commit('second post')
         tree.add_parent_tree_id(first_revision)
         self.assertConsistentParents([second_revision, first_revision], tree)
-        
+
     def test_add_second_parent_id_ghost(self):
         """Test adding the second parent id - as a ghost"""
         tree = self.make_branch_and_tree('.')
         first_revision = tree.commit('first post')
         tree.add_parent_tree_id('second')
         self.assertConsistentParents([first_revision, 'second'], tree)
-        
+
     def test_add_first_parent_tree(self):
         """Test adding the first parent id"""
         tree = self.make_branch_and_tree('.')
@@ -310,20 +298,20 @@ class TestAddParent(TestParents):
         tree.add_parent_tree((first_revision,
             tree.branch.repository.revision_tree(first_revision)))
         self.assertConsistentParents([first_revision], tree)
-        
+
     def test_add_first_parent_tree_ghost_rejects(self):
         """Test adding the first parent id - as a ghost"""
         tree = self.make_branch_and_tree('.')
         self.assertRaises(errors.GhostRevisionUnusableHere,
             tree.add_parent_tree, ('first-revision', None))
-        
+
     def test_add_first_parent_tree_ghost_force(self):
         """Test adding the first parent id - as a ghost"""
         tree = self.make_branch_and_tree('.')
         tree.add_parent_tree(('first-revision', None),
             allow_leftmost_as_ghost=True)
         self.assertConsistentParents(['first-revision'], tree)
-        
+
     def test_add_second_parent_tree(self):
         """Test adding the second parent id"""
         tree = self.make_branch_and_tree('.')
@@ -333,7 +321,7 @@ class TestAddParent(TestParents):
         tree.add_parent_tree((first_revision,
             tree.branch.repository.revision_tree(first_revision)))
         self.assertConsistentParents([second_revision, first_revision], tree)
-        
+
     def test_add_second_parent_tree_ghost(self):
         """Test adding the second parent id - as a ghost"""
         tree = self.make_branch_and_tree('.')
@@ -344,7 +332,7 @@ class TestAddParent(TestParents):
 
 class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
     """Tests for the update_basis_by_delta call.
-    
+
     This is intuitively defined as 'apply an inventory delta to the basis and
     discard other parents', but for trees that have an inventory that is not
     managed as a tree-by-id, the implementation requires roughly duplicated

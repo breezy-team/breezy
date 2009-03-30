@@ -13,7 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the behaviour of the Transaction concept in bzr."""
 
@@ -60,12 +60,12 @@ class TestReadOnlyTransaction(TestCase):
         self.transaction.register_clean("anobject")
 
     def test_register_dirty_raises(self):
-        self.assertRaises(errors.ReadOnlyError, 
+        self.assertRaises(errors.ReadOnlyError,
                           self.transaction.register_dirty,"anobject")
-    
+
     def test_map(self):
         self.assertNotEqual(None, getattr(self.transaction, "map", None))
-    
+
     def test_add_and_get(self):
         weave = "a weave"
         self.transaction.map.add_weave("id", weave)
@@ -99,7 +99,7 @@ class TestReadOnlyTransaction(TestCase):
         # its not a weakref system
         self.assertEqual(DummyWeave("another weave"),
                          self.transaction.map.find_weave("id"))
-        
+
     def test_small_cache(self):
         self.transaction.set_cache_size(1)
         # add an object, should not fall right out if there are no references
@@ -151,21 +151,21 @@ class TestPassThroughTransaction(TestCase):
     def test_register_clean(self):
         transaction = transactions.PassThroughTransaction()
         transaction.register_clean("anobject")
-    
+
     def test_register_dirty(self):
         transaction = transactions.PassThroughTransaction()
         transaction.register_dirty("anobject")
-    
+
     def test_map(self):
         transaction = transactions.PassThroughTransaction()
         self.assertNotEqual(None, getattr(transaction, "map", None))
-    
+
     def test_add_and_get(self):
         transaction = transactions.PassThroughTransaction()
         weave = "a weave"
         transaction.map.add_weave("id", weave)
         self.assertEqual(None, transaction.map.find_weave("id"))
-        
+
     def test_finish_returns(self):
         transaction = transactions.PassThroughTransaction()
         transaction.finish()
@@ -189,7 +189,7 @@ class TestPassThroughTransaction(TestCase):
     def test_writable(self):
         transaction = transactions.PassThroughTransaction()
         self.assertTrue(transaction.writeable())
-        
+
 
 class TestWriteTransaction(TestCase):
 
@@ -199,18 +199,18 @@ class TestWriteTransaction(TestCase):
 
     def test_register_clean(self):
         self.transaction.register_clean("anobject")
-    
+
     def test_register_dirty(self):
         self.transaction.register_dirty("anobject")
-    
+
     def test_map(self):
         self.assertNotEqual(None, getattr(self.transaction, "map", None))
-    
+
     def test_add_and_get(self):
         weave = "a weave"
         self.transaction.map.add_weave("id", weave)
         self.assertEqual(weave, self.transaction.map.find_weave("id"))
-        
+
     def test_finish_returns(self):
         self.transaction.finish()
 
@@ -250,7 +250,7 @@ class TestWriteTransaction(TestCase):
         weave = None
         self.transaction.register_dirty(self.transaction.map.find_weave("id"))
         self.assertNotEqual(None, self.transaction.map.find_weave("id"))
-    
+
     def test_clean_to_dirty(self):
         # a clean object may become dirty.
         weave = DummyWeave('A weave')

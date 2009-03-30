@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Test for 'bzr mv'"""
 
@@ -77,7 +77,7 @@ class TestMove(TestCaseWithTransport):
 
     def test_mv_unqualified(self):
         self.run_bzr_error(['^bzr: ERROR: missing file argument$'], 'mv')
-        
+
     def test_mv_invalid(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['test.txt', 'sub1/'])
@@ -91,7 +91,7 @@ class TestMove(TestCaseWithTransport):
             ["^bzr: ERROR: Could not move test.txt => .*hello.txt: "
              "sub1 is not versioned\.$"],
             'mv test.txt sub1/hello.txt')
-        
+
     def test_mv_dirs(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['hello.txt', 'sub1/'])

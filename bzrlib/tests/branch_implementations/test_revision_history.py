@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for Branch.revision_history and last_revision."""
 
@@ -124,8 +124,6 @@ class TestRevisionHistoryCaching(TestCaseWithBranch):
         cause the revision history to be cached.
         """
         branch, calls = self.get_instrumented_branch()
-        # Lock the branch, set the revision history, then repeatedly call
-        # revision_history.
         branch.set_revision_history([])
         branch.revision_history()
         self.assertEqual(['_gen_revision_history'], calls)

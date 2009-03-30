@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import bzrlib
 from bzrlib.smart import message, protocol
@@ -66,7 +66,7 @@ class _SmartClient(object):
         params = CallHookParams(method, args, body, readv_body, self._medium)
         for hook in _SmartClient.hooks['call']:
             hook(params)
-            
+
     def _call_and_read_response(self, method, args, body=None, readv_body=None,
             body_stream=None, expect_response_body=True):
         self._run_call_hooks(method, args, body, readv_body)
@@ -132,7 +132,7 @@ class _SmartClient(object):
 
     def call_expecting_body(self, method, *args):
         """Call a method and return the result and the protocol object.
-        
+
         The body can be read like so::
 
             result, smart_protocol = smart_client.call_expecting_body(...)
@@ -180,7 +180,7 @@ class _SmartClient(object):
 
     def remote_path_from_transport(self, transport):
         """Convert transport into a path suitable for using in a request.
-        
+
         Note that the resulting remote path doesn't encode the host name or
         anything but path, so it is only safe to use it in requests sent over
         the medium from the matching transport.
@@ -192,14 +192,18 @@ class SmartClientHooks(hooks.Hooks):
 
     def __init__(self):
         hooks.Hooks.__init__(self)
-        self['call'] = []
+        self.create_hook(hooks.HookPoint('call',
+            "Called when the smart client is submitting a request to the "
+            "smart server. Called with a bzrlib.smart.client.CallHookParams "
+            "object. Streaming request bodies, and responses, are not "
+            "accessible.", None, None))
 
-        
+
 _SmartClient.hooks = SmartClientHooks()
 
 
 class CallHookParams(object):
-    
+
     def __init__(self, method, args, body, readv_body, medium):
         self.method = method
         self.args = args

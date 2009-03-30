@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
 import sys
@@ -42,7 +42,7 @@ class FileIdInvolvedBase(TestCaseWithRepository):
                 delta.modified]
         return set(l2)
 
-    
+
 class TestFileIdInvolved(FileIdInvolvedBase):
 
     def setUp(self):
@@ -55,7 +55,7 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         #  \           /      /
         #   \---> E---/----> F                 (branch1)
 
-        # A changes: 
+        # A changes:
         # B changes: 'a-file-id-2006-01-01-abcd'
         # C changes:  Nothing (perfect merge)
         # D changes: 'b-file-id-2006-01-01-defg'
@@ -76,7 +76,7 @@ class TestFileIdInvolved(FileIdInvolvedBase):
             main_wt.commit("Commit one", rev_id="rev-A")
         except IllegalPath:
             # TODO: jam 20060701 Consider raising a different exception
-            #       newer formats do support this, and nothin can done to 
+            #       newer formats do support this, and nothin can done to
             #       correct this test - its not a bug.
             if sys.platform == 'win32':
                 raise TestSkipped('Old repository formats do not'
@@ -141,6 +141,7 @@ class TestFileIdInvolved(FileIdInvolvedBase):
             print set(self.branch.repository.get_ancestry(new)).difference(set(self.branch.repository.get_ancestry(old)))
         self.branch.lock_read()
         self.addCleanup(self.branch.unlock)
+        self.branch.repository.fileids_altered_by_revision_ids(["rev-J","rev-K"])
         self.assertEqual(
             {'b-file-id-2006-01-01-defg':set(['rev-J']),
              'c-funky<file-id>quiji%bo':set(['rev-K'])
@@ -155,9 +156,9 @@ class TestFileIdInvolved(FileIdInvolvedBase):
 
         self.assertEqual(
             {
-             'b-file-id-2006-01-01-defg': set(['rev-<D>', 'rev-G', 'rev-J']), 
+             'b-file-id-2006-01-01-defg': set(['rev-<D>', 'rev-G', 'rev-J']),
              'c-funky<file-id>quiji%bo': set(['rev-K']),
-             'file-d': set(['rev-F']), 
+             'file-d': set(['rev-F']),
              },
             self.branch.repository.fileids_altered_by_revision_ids(
                 ['rev-<D>', 'rev-G', 'rev-F', 'rev-K', 'rev-J']))
@@ -191,7 +192,7 @@ class TestFileIdInvolved(FileIdInvolvedBase):
             self.fileids_altered_by_revision_ids(["rev-A"]))
         self.assertEqual(
             {'a-file-id-2006-01-01-abcd':set(['rev-B'])
-             }, 
+             },
             self.branch.repository.fileids_altered_by_revision_ids(["rev-B"]))
         self.assertEqual(
             {'b-file-id-2006-01-01-defg':set(['rev-<D>'])
@@ -199,9 +200,9 @@ class TestFileIdInvolved(FileIdInvolvedBase):
             self.branch.repository.fileids_altered_by_revision_ids(["rev-<D>"]))
 
     def test_fileids_involved_full_compare(self):
-        # this tests that the result of each fileid_involved calculation 
+        # this tests that the result of each fileid_involved calculation
         # along a revision history selects only the fileids selected by
-        # comparing the trees - no less, and no more. This is correct 
+        # comparing the trees - no less, and no more. This is correct
         # because in our sample data we do not revert any file ids along
         # the revision history.
         self.branch.lock_read()
@@ -271,7 +272,7 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
             main_wt.commit("Commit one", rev_id="rev-A")
         except IllegalPath:
             # TODO: jam 20060701 Consider raising a different exception
-            #       newer formats do support this, and nothin can done to 
+            #       newer formats do support this, and nothin can done to
             #       correct this test - its not a bug.
             if sys.platform == 'win32':
                 raise TestSkipped('Old repository formats do not'
@@ -294,8 +295,8 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
         self.branch = main_branch
 
     def test_fileid_involved_full_compare2(self):
-        # this tests that fileids_alteted_by_revision_ids returns 
-        # more information than compare_tree can, because it 
+        # this tests that fileids_alteted_by_revision_ids returns
+        # more information than compare_tree can, because it
         # sees each change rather than the aggregate delta.
         self.branch.lock_read()
         self.addCleanup(self.branch.unlock)

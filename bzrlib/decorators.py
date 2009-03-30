@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 __all__ = ['needs_read_lock',
@@ -71,9 +71,9 @@ def _pretty_needs_read_lock(unbound):
 
     This decorator can be applied to methods of any class with lock_read() and
     unlock() methods.
-    
+
     Typical usage:
-        
+
     class Branch(...):
         @needs_read_lock
         def branch_method(self, ...):
@@ -124,9 +124,9 @@ def _fast_needs_read_lock(unbound):
 
     This decorator can be applied to methods of any class with lock_read() and
     unlock() methods.
-    
+
     Typical usage:
-        
+
     class Branch(...):
         @needs_read_lock
         def branch_method(self, ...):

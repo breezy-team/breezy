@@ -12,13 +12,36 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """UI helper for the push command."""
 
 from bzrlib import (builtins, branch, bzrdir, errors, revision as _mod_revision,
                     transport)
 from bzrlib.trace import note, warning
+
+
+class PushResult(object):
+    """Result of a push operation.
+
+    :ivar branch_push_result: Result of a push between branches
+    :ivar stacked_on: URL of the branch on which the result is stacked
+    """
+
+    def __init__(self):
+        self.branch_push_result = None
+        self.stacked_on = None
+
+    def report(self, to_file):
+        """Write a human-readable description of the result."""
+        if self.branch_push_result is None:
+            if self.stacked_on is not None:
+                note('Created new stacked branch referring to %s.' %
+                    self.stacked_on)
+            else:
+                note('Created new branch.')
+        else:
+            self.branch_push_result.report(to_file)
 
 
 def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
@@ -49,6 +72,7 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
     except errors.NotBranchError:
         pass # Didn't find anything
 
+    push_result = PushResult()
     if dir_to is None:
         # The destination doesn't exist; create it.
         # XXX: Refactor the create_prefix/no_create_prefix code into a
@@ -86,14 +110,8 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
         # Now the target directory exists, but doesn't have a .bzr
         # directory. So we need to create it, along with any work to create
         # all of the dependent branches, etc.
-        dir_to = br_from.bzrdir.clone_on_transport(to_transport,
+        br_to = br_from.create_clone_on_transport(to_transport,
             revision_id=revision_id, stacked_on=stacked_on)
-        br_to = dir_to.open_branch()
-        push_result = branch.PushResult()
-        push_result.old_revno = None
-        push_result.old_revid = None
-        push_result.source_branch = br_from
-        push_result.target_branch = br_to
         # TODO: Some more useful message about what was copied
         try:
             push_result.stacked_on = br_to.get_stacked_on_url()
@@ -111,16 +129,25 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
                     "already exists at the destination location.")
         inter = branch.InterBranchBzrDir.get(br_from, dir_to)
         try:
-            push_result = inter.push(revision_id=revision_id, 
-                overwrite=overwrite, remember=remember)
-        except errors.NoRepositoryPresent:
-            # we have a bzrdir but no branch or repository
-            # XXX: Figure out what to do other than complain.
-            raise errors.BzrCommandError("At %s you have a valid .bzr control"
-                " directory, but not a branch or repository. This is an"
-                " unsupported configuration. Please move the target directory"
-                " out of the way and try again."
-                % location)
+            try:
+                tree_to = dir_to.open_workingtree()
+            except errors.NotLocalUrl:
+                note("This transport does not update the working "
+                        "tree of: %s. See 'bzr help working-trees' for "
+                        "more information." % br_to.base)
+                push_result.branch_push_result = br_from.push(br_to, overwrite,
+                                                   stop_revision=revision_id)
+            except errors.NoWorkingTree:
+                push_result.branch_push_result = br_from.push(br_to, overwrite,
+                                                   stop_revision=revision_id)
+            else:
+                tree_to.lock_write()
+                try:
+                    push_result.branch_push_result = br_from.push(tree_to.branch,
+                        overwrite, stop_revision=revision_id)
+                    tree_to.update()
+                finally:
+                    tree_to.unlock()
         except errors.DivergedBranches:
             raise errors.BzrCommandError('These branches have diverged.'
                                     '  Try using "merge" and then "push".')
@@ -131,9 +158,12 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
 
 
     push_result.report(to_file)
-    old_revid = push_result.old_revid
-    old_revno = push_result.old_revno
-    br_to = push_result.target_branch
+    if push_result.branch_push_result is not None:
+        old_revid = push_result.branch_push_result.old_revid
+        old_revno = push_result.branch_push_result.old_revno
+    else:
+        old_revid = _mod_revision.NULL_REVISION
+        old_revno = 0
     if verbose:
         br_to.lock_read()
         try:

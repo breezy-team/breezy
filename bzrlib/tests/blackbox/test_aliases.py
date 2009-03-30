@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 """Black-box tests for bzr aliases.
 """
 
@@ -36,8 +36,8 @@ class TestAliases(ExternalBase):
 
 
         if os.path.isfile(config_filename()):
-            # Something is wrong in environment, 
-            # we risk overwriting users config 
+            # Something is wrong in environment,
+            # we risk overwriting users config
             self.assert_(config_filename() + "exists, abort")
 
         ensure_config_dir_exists()

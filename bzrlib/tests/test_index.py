@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for indices."""
 
@@ -558,7 +558,7 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         # not create a new transport request, and should return False (cannot
         # be in the index) - even when the byte location we ask for is outside
         # the parsed region
-        # 
+        #
         result = index._lookup_keys_via_location([(4000, self.make_key(40))])
         self.assertEqual(
             [((4000, self.make_key(40)),
@@ -922,6 +922,37 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         index = self.make_index(nodes=[(('key', ), 'value', ())])
         index.validate()
 
+    # XXX: external_references tests are duplicated in test_btree_index.  We
+    # probably should have per_graph_index tests...
+    def test_external_references_no_refs(self):
+        index = self.make_index(ref_lists=0, nodes=[])
+        self.assertRaises(ValueError, index.external_references, 0)
+
+    def test_external_references_no_results(self):
+        index = self.make_index(ref_lists=1, nodes=[
+            (('key',), 'value', ([],))])
+        self.assertEqual(set(), index.external_references(0))
+
+    def test_external_references_missing_ref(self):
+        missing_key = ('missing',)
+        index = self.make_index(ref_lists=1, nodes=[
+            (('key',), 'value', ([missing_key],))])
+        self.assertEqual(set([missing_key]), index.external_references(0))
+
+    def test_external_references_multiple_ref_lists(self):
+        missing_key = ('missing',)
+        index = self.make_index(ref_lists=2, nodes=[
+            (('key',), 'value', ([], [missing_key]))])
+        self.assertEqual(set([]), index.external_references(0))
+        self.assertEqual(set([missing_key]), index.external_references(1))
+
+    def test_external_references_two_records(self):
+        index = self.make_index(ref_lists=1, nodes=[
+            (('key-1',), 'value', ([('key-2',)],)),
+            (('key-2',), 'value', ([],)),
+            ])
+        self.assertEqual(set([]), index.external_references(0))
+
 
 class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
 
@@ -1047,7 +1078,7 @@ class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
         self.assertEqual(set([(index1, ('name', ), 'data', ((('ref', ), ), )),
             (index2, ('ref', ), 'refdata', ((), ))]),
             set(index.iter_entries([('name', ), ('ref', )])))
- 
+
     def test_iter_all_keys_dup_entry(self):
         index1 = self.make_index('1', 1, nodes=[
             (('name', ), 'data', ([('ref', )], )),
@@ -1058,7 +1089,7 @@ class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
         self.assertEqual(set([(index1, ('name', ), 'data', ((('ref',),),)),
             (index1, ('ref', ), 'refdata', ((), ))]),
             set(index.iter_entries([('name', ), ('ref', )])))
- 
+
     def test_iter_missing_entry_empty(self):
         index = CombinedGraphIndex([])
         self.assertEqual([], list(index.iter_entries([('a', )])))
@@ -1073,7 +1104,7 @@ class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
         index2 = self.make_index('2')
         index = CombinedGraphIndex([index1, index2])
         self.assertEqual([], list(index.iter_entries([('a', )])))
- 
+
     def test_iter_entry_present_one_index_only(self):
         index1 = self.make_index('1', nodes=[(('key', ), '', ())])
         index2 = self.make_index('2', nodes=[])

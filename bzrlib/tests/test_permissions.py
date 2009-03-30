@@ -13,7 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Tests for bzr setting permissions.
@@ -26,7 +26,7 @@ permissions should be inherited individually, rather than all be the same.
 """
 
 # TODO: jam 20051215 There are no tests for ftp yet, because we have no ftp server
-# TODO: jam 20051215 Currently the default behavior for 'bzr branch' is just 
+# TODO: jam 20051215 Currently the default behavior for 'bzr branch' is just
 #                    defined by the local umask. This isn't terrible, is it
 #                    the truly desired behavior?
 
@@ -96,7 +96,7 @@ class TestPermissions(TestCaseWithTransport):
 
         # although we are modifying the filesystem
         # underneath the objects, they are not locked, and thus it must
-        # be safe for most operations. But here we want to observe a 
+        # be safe for most operations. But here we want to observe a
         # mode change in the control bits, which current do not refresh
         # when a new lock is taken out.
         t = WorkingTree.open('.')

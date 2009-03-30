@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tree creators for kernel-like trees"""
 
@@ -69,8 +69,8 @@ class KernelLikeTreeCreator(TreeCreator):
         return tree
 
     def _create_tree(self, root, in_cache=False):
-        # a kernel tree has ~10000 and 500 directory, with most files around 
-        # 3-4 levels deep. 
+        # a kernel tree has ~10000 and 500 directory, with most files around
+        # 3-4 levels deep.
         # we simulate this by three levels of dirs named 0-7, givin 512 dirs,
         # and 20 files each.
         files = []

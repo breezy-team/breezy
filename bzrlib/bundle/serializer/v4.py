@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from cStringIO import StringIO
 import bz2
@@ -270,14 +270,14 @@ class BundleWriteOperation(object):
         self.repository = repository
         bundle = BundleWriter(fileobj)
         self.bundle = bundle
-        self.base_ancestry = set(repository.get_ancestry(base,
-                                                         topo_sorted=False))
         if revision_ids is not None:
             self.revision_ids = revision_ids
         else:
-            revision_ids = set(repository.get_ancestry(target,
-                                                       topo_sorted=False))
-            self.revision_ids = revision_ids.difference(self.base_ancestry)
+            graph = repository.get_graph()
+            revision_ids = graph.find_unique_ancestors(target, [base])
+            # Strip ghosts
+            parents = graph.get_parent_map(revision_ids)
+            self.revision_ids = [r for r in revision_ids if r in parents]
         self.revision_keys = set([(revid,) for revid in self.revision_ids])
 
     def do_write(self):
@@ -455,7 +455,7 @@ class RevisionInstaller(object):
 
     def install(self):
         """Perform the installation.
-        
+
         Must be called with the Repository locked.
         """
         self._repository.start_write_group()

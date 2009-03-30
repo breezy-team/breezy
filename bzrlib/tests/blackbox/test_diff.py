@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Black-box tests for bzr diff.
@@ -202,7 +202,7 @@ class TestDiff(DiffBase):
 
     def test_diff_branches(self):
         self.example_branches()
-        # should open branch1 and diff against branch2, 
+        # should open branch1 and diff against branch2,
         self.check_b2_vs_b1('diff -r branch:branch2 branch1')
         # Compare two working trees using various syntax forms
         self.check_b2_vs_b1('diff --old branch2 --new branch1')
@@ -371,7 +371,7 @@ class TestExternalDiff(DiffBase):
                 del os.environ['BZR_PROGRESS_BAR']
             else:
                 os.environ['BZR_PROGRESS_BAR'] = orig_progress
-            
+
         if 'Diff is not installed on this machine' in err:
             raise TestSkipped("No external 'diff' is available")
         self.assertEqual('', err)

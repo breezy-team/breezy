@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for selection of the right Launchpad service by environment"""
 
@@ -126,7 +126,7 @@ class TestURLInference(TestCase):
             NotLaunchpadBranch, service.get_web_url_from_branch_url,
             'bzr+ssh://example.com/~foo/bar/baz')
         self.assertEqual(
-            'bzr+ssh://example.com/~foo/bar/baz is not hosted on Launchpad.',
+            'bzr+ssh://example.com/~foo/bar/baz is not registered on Launchpad.',
             str(error))
 
     def test_dodgy_launchpad_url(self):
