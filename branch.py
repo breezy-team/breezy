@@ -142,9 +142,11 @@ class GitBranch(ForeignBranch):
 
     def get_parent(self):
         """See Branch.get_parent()."""
+        # FIXME: Set "origin" url from .git/config ?
         return None
 
     def set_parent(self, url):
+        # FIXME: Set "origin" url in .git/config ?
         pass
 
     def lock_read(self):
