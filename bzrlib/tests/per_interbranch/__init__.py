@@ -81,9 +81,6 @@ def default_test_list():
 
 class TestCaseWithInterBranch(TestCaseWithTransport):
 
-    def setUp(self):
-        super(TestCaseWithInterBranch, self).setUp()
-
     def make_from_branch(self, relpath):
         repo = self.make_repository(relpath)
         return self.branch_format_from.initialize(repo.bzrdir)
@@ -98,11 +95,6 @@ class TestCaseWithInterBranch(TestCaseWithTransport):
         b = self.make_from_branch(relpath)
         return b.bzrdir.create_workingtree()
 
-    def make_to_repository(self, relpath):
-        made_control = self.make_bzrdir(relpath,
-            format=self.branch_format_to._matchingbzrdir)
-        return made_control.create_repository()
-
     def make_to_branch(self, relpath):
         repo = self.make_repository(relpath)
         return self.branch_format_to.initialize(repo.bzrdir)
@@ -115,7 +107,9 @@ class TestCaseWithInterBranch(TestCaseWithTransport):
     def sprout_to(self, origdir, to_url):
         """Sprout a bzrdir, using to_format for the new bzrdir."""
         newbranch = self.make_to_branch(to_url)
-        origdir.open_branch().copy_content_into(newbranch)
+        origbranch = origdir.open_branch()
+        newbranch.repository.fetch(origbranch.repository)
+        origbranch.copy_content_into(newbranch)
         newbranch.bzrdir.create_workingtree()
         return newbranch.bzrdir
 
