@@ -98,7 +98,7 @@ class TestRepackTarball(TestCaseInTempDir):
         finally:
             tar.close()
         self.assertEqual(members,
-                         [self.basedir] +
+                         [self.basedir.rstrip("/")] +
                          [os.path.join(self.basedir, file).rstrip("/") for file in self.files])
 
     def test_repack_tarball_with_target_dir(self):
