@@ -254,11 +254,12 @@ class InterGitGenericBranch(branch.InterBranch):
                 raise NoSuchRef(self.source.name, heads.keys())
             if stop_revision is not None:
                 self._last_revid = stop_revision
-                head, mapping = self.source.lookup_git_revid(stop_revision)
+                head, mapping = self.source.repository.lookup_git_revid(
+                    stop_revision)
             else:
                 head = heads[self.source.name]
-                self._last_revid = self.source.mapping.revision_id_foreign_to_bzr(
-                    head)
+                self._last_revid = \
+                    self.source.mapping.revision_id_foreign_to_bzr(head)
             if self.target.repository.has_revision(self._last_revid):
                 return []
             return [head]
