@@ -1848,10 +1848,13 @@ class TestIterInterestingNodes(TestCaseWithStore):
                                                     uninteresting_keys)
         nodes = list(iter_nodes)
         for count, (exp, act) in enumerate(izip(expected, nodes)):
-            exp_record_keys, exp_items = exp
-            records, items = act
-            exp_tuple = (sorted(exp_record_keys), sorted(exp_items))
-            act_tuple = (sorted(records.keys()), sorted(items))
+            exp_record, exp_items = exp
+            record, items = act
+            exp_tuple = (exp_record, sorted(exp_items))
+            if record is None:
+                act_tuple = (None, sorted(items))
+            else:
+                act_tuple = (record.key, sorted(items))
             self.assertEqual(exp_tuple, act_tuple,
                              'entry %d did not match expected' % count)
         self.assertEqual(len(expected), len(nodes))
@@ -1859,22 +1862,22 @@ class TestIterInterestingNodes(TestCaseWithStore):
     def test_empty_to_one_keys(self):
         target = self.get_map_key({('a',): 'content'})
         self.assertIterInteresting(
-            [([target], [(('a',), 'content')]),
+            [(target, [(('a',), 'content')]),
             ], [target], [])
 
     def test_none_to_one_key(self):
         basis = self.get_map_key({})
         target = self.get_map_key({('a',): 'content'})
         self.assertIterInteresting(
-            [([], [(('a',), 'content')]),
-             ([target], []),
+            [(None, [(('a',), 'content')]),
+             (target, []),
             ], [target], [basis])
 
     def test_one_to_none_key(self):
         basis = self.get_map_key({('a',): 'content'})
         target = self.get_map_key({})
         self.assertIterInteresting(
-            [([target], [])],
+            [(target, [])],
             [target], [basis])
 
     def test_common_pages(self):
@@ -1899,8 +1902,8 @@ class TestIterInterestingNodes(TestCaseWithStore):
         b_key = target_map._root_node._items['b'].key()
         # This should return the root node, and the node for the 'b' key
         self.assertIterInteresting(
-            [([target], []),
-             ([b_key], [(('b',), 'other content')])],
+            [(target, []),
+             (b_key, [(('b',), 'other content')])],
             [target], [basis])
 
     def test_common_sub_page(self):
@@ -1927,9 +1930,9 @@ class TestIterInterestingNodes(TestCaseWithStore):
         # The key for the leaf aab node
         aab_key = target_map._root_node._items['a']._items['aab'].key()
         self.assertIterInteresting(
-            [([target], []),
-             ([a_key], []),
-             ([aab_key], [(('aab',), 'new')])],
+            [(target, []),
+             (a_key, []),
+             (aab_key, [(('aab',), 'new')])],
             [target], [basis])
 
     def test_common_leaf(self):
@@ -1974,21 +1977,21 @@ class TestIterInterestingNodes(TestCaseWithStore):
         a_key = target3_map._root_node._items['a'].key()
         aac_key = target3_map._root_node._items['a']._items['aac'].key()
         self.assertIterInteresting(
-            [([], [(('aaa',), 'common')]),
-             ([target1], []),
-             ([target2], []),
-             ([target3], []),
-             ([b_key], [(('bbb',), 'new')]),
-             ([a_key], []),
-             ([aac_key], [(('aac',), 'other')]),
+            [(None, [(('aaa',), 'common')]),
+             (target1, []),
+             (target2, []),
+             (target3, []),
+             (b_key, [(('bbb',), 'new')]),
+             (a_key, []),
+             (aac_key, [(('aac',), 'other')]),
             ], [target1, target2, target3], [basis])
 
         self.assertIterInteresting(
-            [([target2], []),
-             ([target3], []),
-             ([b_key], [(('bbb',), 'new')]),
-             ([a_key], []),
-             ([aac_key], [(('aac',), 'other')]),
+            [(target2, []),
+             (target3, []),
+             (b_key, [(('bbb',), 'new')]),
+             (a_key, []),
+             (aac_key, [(('aac',), 'other')]),
             ], [target2, target3], [target1])
 
         # This may be a case that we relax. A root node is a deep child of the
@@ -2045,10 +2048,10 @@ class TestIterInterestingNodes(TestCaseWithStore):
         # The key for the leaf bba node
         bba_key = target2_map._root_node._items['b']._items['bba'].key()
         self.assertIterInteresting(
-            [([target1], []),
-             ([target2], []),
-             ([a_key], []),
-             ([b_key], []),
-             ([aac_key], [(('aac',), 'target1')]),
-             ([bba_key], [(('bba',), 'target2')]),
+            [(target1, []),
+             (target2, []),
+             (a_key, []),
+             (b_key, []),
+             (aac_key, [(('aac',), 'target1')]),
+             (bba_key, [(('bba',), 'target2')]),
             ], [target1, target2], [basis1, basis2])

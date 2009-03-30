@@ -1383,7 +1383,7 @@ def iter_interesting_nodes(store, interesting_root_keys,
     :param uninteresting_root_keys: keys which should be filtered out of the
         result set.
     :return: Yield
-        (interesting records, interesting key:values)
+        (interesting record, {interesting key:values})
     """
     # TODO: consider that it may be more memory efficient to use the 20-byte
     #       sha1 string, rather than tuples of hexidecimal sha1 strings.
@@ -1401,13 +1401,13 @@ def iter_interesting_nodes(store, interesting_root_keys,
     interesting_items.difference_update(all_uninteresting_items)
     interesting_to_yield = set(interesting_to_yield) - all_uninteresting_chks
     if interesting_items:
-        yield {}, interesting_items
+        yield None, interesting_items
     if interesting_to_yield:
         # We request these records again, rather than buffering the root
         # records, most likely they are still in the _group_cache anyway.
         for record in store.get_record_stream(interesting_to_yield,
                                               'unordered', False):
-            yield {record.key: record}, []
+            yield record, []
     all_uninteresting_chks.update(interesting_to_yield)
     interesting_keys.difference_update(all_uninteresting_chks)
 
@@ -1449,7 +1449,7 @@ def iter_interesting_nodes(store, interesting_root_keys,
                 #       whole thing, but it does mean that callers need to
                 #       understand they may get duplicate values.
                 # all_uninteresting_items.update(interesting_items)
-            yield {record.key: record}, interesting_items
+            yield record, interesting_items
         chks_to_read = next_chks
 
 
