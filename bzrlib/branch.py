@@ -764,13 +764,13 @@ class Branch(object):
         """
         raise NotImplementedError(self.pull)
 
-    def push(self, target, overwrite=False, stop_revision=None, *args, 
+    def push(self, target, overwrite=False, stop_revision=None, *args,
         **kwargs):
         """Mirror this branch into target.
 
         This branch is considered to be 'local', having low latency.
         """
-        return InterBranch.get(self, target).push(overwrite, stop_revision, 
+        return InterBranch.get(self, target).push(overwrite, stop_revision,
             *args, **kwargs)
 
     def basis_tree(self):
@@ -2057,10 +2057,10 @@ class BzrBranch(Branch):
             # We assume that during 'push' this repository is closer than
             # the target.
             graph = self.repository.get_graph(target.repository)
-            target.update_revisions(self, stop_revision, 
+            target.update_revisions(self, stop_revision,
                 overwrite=overwrite, graph=graph)
         if self._push_should_merge_tags():
-            result.tag_conflicts = self.tags.merge_to(target.tags, 
+            result.tag_conflicts = self.tags.merge_to(target.tags,
                 overwrite)
         result.new_revno, result.new_revid = target.last_revision_info()
         return result
@@ -2734,6 +2734,14 @@ class InterBranch(InterObject):
         """
         raise NotImplementedError(self.update_revisions)
 
+    def push(self, overwrite=False, stop_revision=None,
+             _override_hook_source_branch=None):
+        """Mirror the source branch into the target branch.
+
+        The source branch is considered to be 'local', having low latency.
+        """
+        raise NotImplementedError(self.push)
+
 
 class GenericInterBranch(InterBranch):
     """InterBranch implementation that uses public Branch functions.
@@ -2827,12 +2835,12 @@ class GenericInterBranch(InterBranch):
             master_branch = self.target.get_master_branch()
             master_branch.lock_write()
             try:
-                # push into the master from this branch.
+                # push into the master from the source branch.
                 self.source._basic_push(master_branch, overwrite, stop_revision)
-                # and push into the target branch from this. Note that we push from
-                # this branch again, because its considered the highest bandwidth
-                # repository.
-                result = self.source._basic_push(self.target, overwrite, 
+                # and push into the target branch from the source. Note that we
+                # push from the source branch again, because its considered the
+                # highest bandwidth repository.
+                result = self.source._basic_push(self.target, overwrite,
                     stop_revision)
                 result.master_branch = master_branch
                 result.local_branch = self.target
@@ -2842,7 +2850,7 @@ class GenericInterBranch(InterBranch):
                 master_branch.unlock()
         else:
             # no master branch
-            result = self.source._basic_push(self.target, overwrite, 
+            result = self.source._basic_push(self.target, overwrite,
                 stop_revision)
             # TODO: Why set master_branch and local_branch if there's no
             # binding?  Maybe cleaner to just leave them unset? -- mbp
