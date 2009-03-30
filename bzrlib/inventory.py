@@ -1983,7 +1983,6 @@ class CHKInventoryDirectory(InventoryDirectory):
         self._children = result
         return result
 
-
 entry_factory = {
     'directory': InventoryDirectory,
     'file': InventoryFile,

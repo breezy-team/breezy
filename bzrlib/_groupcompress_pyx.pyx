@@ -89,10 +89,6 @@ cdef class DeltaIndex:
     cdef readonly unsigned int _max_num_sources
     cdef public unsigned long _source_offset
 
-    def __repr__(self):
-        return '%s(%d, %d)' % (self.__class__.__name__,
-            len(self._sources), self._source_offset)
-
     def __init__(self, source=None):
         self._sources = []
         self._index = NULL
@@ -103,6 +99,10 @@ cdef class DeltaIndex:
 
         if source is not None:
             self.add_source(source, 0)
+
+    def __repr__(self):
+        return '%s(%d, %d)' % (self.__class__.__name__,
+            len(self._sources), self._source_offset)
 
     def __dealloc__(self):
         if self._index != NULL:
@@ -226,21 +226,15 @@ def apply_delta(source_bytes, delta_bytes):
     cdef Py_ssize_t source_size
     cdef char *delta
     cdef Py_ssize_t delta_size
-    cdef unsigned char *data, *top
-    cdef unsigned char *dst_buf, *out, cmd
-    cdef Py_ssize_t size
-    cdef unsigned long cp_off, cp_size
 
     if not PyString_CheckExact(source_bytes):
         raise TypeError('source is not a str')
     if not PyString_CheckExact(delta_bytes):
         raise TypeError('delta is not a str')
-
     source = PyString_AS_STRING(source_bytes)
     source_size = PyString_GET_SIZE(source_bytes)
     delta = PyString_AS_STRING(delta_bytes)
     delta_size = PyString_GET_SIZE(delta_bytes)
-
     # Code taken from patch-delta.c, only brought here to give better error
     # handling, and to avoid double allocating memory
     if (delta_size < DELTA_SIZE_MIN):
@@ -248,55 +242,76 @@ def apply_delta(source_bytes, delta_bytes):
         raise RuntimeError('delta_size %d smaller than min delta size %d'
                            % (delta_size, DELTA_SIZE_MIN))
 
+    return _apply_delta(source, source_size, delta, delta_size)
+
+
+cdef unsigned char *_decode_copy_instruction(unsigned char *bytes,
+    unsigned char cmd, unsigned int *offset, unsigned int *length):
+    """Decode a copy instruction from the next few bytes.
+
+    A copy instruction is a variable number of bytes, so we will parse the
+    bytes we care about, and return the new position, as well as the offset and
+    length referred to in the bytes.
+
+    :param bytes: Pointer to the start of bytes after cmd
+    :param cmd: The command code
+    :return: Pointer to the bytes just after the last decode byte
+    """
+    cdef unsigned int off, size, count
+    off = 0
+    size = 0
+    count = 0
+    if (cmd & 0x01):
+        off = bytes[count]
+        count = count + 1
+    if (cmd & 0x02):
+        off = off | (bytes[count] << 8)
+        count = count + 1
+    if (cmd & 0x04):
+        off = off | (bytes[count] << 16)
+        count = count + 1
+    if (cmd & 0x08):
+        off = off | (bytes[count] << 24)
+        count = count + 1
+    if (cmd & 0x10):
+        size = bytes[count]
+        count = count + 1
+    if (cmd & 0x20):
+        size = size | (bytes[count] << 8)
+        count = count + 1
+    if (cmd & 0x40):
+        size = size | (bytes[count] << 16)
+        count = count + 1
+    if (size == 0):
+        size = 0x10000
+    offset[0] = off
+    length[0] = size
+    return bytes + count
+
+
+cdef object _apply_delta(char *source, Py_ssize_t source_size,
+                         char *delta, Py_ssize_t delta_size):
+    """common functionality between apply_delta and apply_delta_to_source."""
+    cdef unsigned char *data, *top
+    cdef unsigned char *dst_buf, *out, cmd
+    cdef Py_ssize_t size
+    cdef unsigned int cp_off, cp_size
+
     data = <unsigned char *>delta
     top = data + delta_size
-
-    # make sure the orig file size matches what we expect
-    # XXX: gcc warns because data isn't defined as 'const'
-    size = get_delta_hdr_size(&data, top)
-    if (size > source_size):
-        # XXX: mismatched source size
-        raise RuntimeError('source size %d < expected source size %d'
-                           % (source_size, size))
-    source_size = size
 
     # now the result size
     size = get_delta_hdr_size(&data, top)
     result = PyString_FromStringAndSize(NULL, size)
     dst_buf = <unsigned char*>PyString_AS_STRING(result)
-    # XXX: The original code added a trailing null here, but this shouldn't be
-    #      necessary when using PyString_FromStringAndSize
-    # dst_buf[size] = 0
 
     out = dst_buf
     while (data < top):
         cmd = data[0]
         data = data + 1
         if (cmd & 0x80):
-            cp_off = cp_size = 0
-            if (cmd & 0x01):
-                cp_off = data[0]
-                data = data + 1
-            if (cmd & 0x02):
-                cp_off = cp_off | (data[0] << 8)
-                data = data + 1
-            if (cmd & 0x04):
-                cp_off = cp_off | (data[0] << 16)
-                data = data + 1
-            if (cmd & 0x08):
-                cp_off = cp_off | (data[0] << 24)
-                data = data + 1
-            if (cmd & 0x10):
-                cp_size = data[0]
-                data = data + 1
-            if (cmd & 0x20):
-                cp_size = cp_size | (data[0] << 8)
-                data = data + 1
-            if (cmd & 0x40):
-                cp_size = cp_size | (data[0] << 16)
-                data = data + 1
-            if (cp_size == 0):
-                cp_size = 0x10000
+            # Copy instruction
+            data = _decode_copy_instruction(data, cmd, &cp_off, &cp_size)
             if (cp_off + cp_size < cp_size or
                 cp_off + cp_size > source_size or
                 cp_size > size):
@@ -307,7 +322,13 @@ def apply_delta(source_bytes, delta_bytes):
             memcpy(out, source + cp_off, cp_size)
             out = out + cp_size
             size = size - cp_size
-        elif (cmd):
+        else:
+            # Insert instruction
+            if cmd == 0:
+                # cmd == 0 is reserved for future encoding
+                # extensions. In the mean time we must fail when
+                # encountering them (might be data corruption).
+                raise RuntimeError('Got delta opcode: 0, not supported')
             if (cmd > size):
                 raise RuntimeError('Insert instruction longer than remaining'
                     ' bytes: %d > %d' % (cmd, size))
@@ -315,23 +336,98 @@ def apply_delta(source_bytes, delta_bytes):
             out = out + cmd
             data = data + cmd
             size = size - cmd
-        else:
-            # /*
-            #  * cmd == 0 is reserved for future encoding
-            #  * extensions. In the mean time we must fail when
-            #  * encountering them (might be data corruption).
-            #  */
-            ## /* XXX: error("unexpected delta opcode 0"); */
-            raise RuntimeError('Got delta opcode: 0, not supported')
 
-    # /* sanity check */
+    # sanity check
     if (data != top or size != 0):
-        ## /* XXX: error("delta replay has gone wild"); */
         raise RuntimeError('Did not extract the number of bytes we expected'
             ' we were left with %d bytes in "size", and top - data = %d'
             % (size, <int>(top - data)))
         return None
 
     # *dst_size = out - dst_buf;
-    assert (out - dst_buf) == PyString_GET_SIZE(result)
+    if (out - dst_buf) != PyString_GET_SIZE(result):
+        raise RuntimeError('Number of bytes extracted did not match the'
+            ' size encoded in the delta header.')
     return result
+
+
+def apply_delta_to_source(source, delta_start, delta_end):
+    """Extract a delta from source bytes, and apply it."""
+    cdef char *c_source
+    cdef Py_ssize_t c_source_size
+    cdef char *c_delta
+    cdef Py_ssize_t c_delta_size
+    cdef Py_ssize_t c_delta_start, c_delta_end
+
+    if not PyString_CheckExact(source):
+        raise TypeError('source is not a str')
+    c_source_size = PyString_GET_SIZE(source)
+    c_delta_start = delta_start
+    c_delta_end = delta_end
+    if c_delta_start >= c_source_size:
+        raise ValueError('delta starts after source')
+    if c_delta_end > c_source_size:
+        raise ValueError('delta ends after source')
+    if c_delta_start >= c_delta_end:
+        raise ValueError('delta starts after it ends')
+
+    c_delta_size = c_delta_end - c_delta_start
+    c_source = PyString_AS_STRING(source)
+    c_delta = c_source + c_delta_start
+    # We don't use source_size, because we know the delta should not refer to
+    # any bytes after it starts
+    return _apply_delta(c_source, c_delta_start, c_delta, c_delta_size)
+
+
+def encode_base128_int(val):
+    """Convert an integer into a 7-bit lsb encoding."""
+    cdef unsigned int c_val
+    cdef Py_ssize_t count
+    cdef unsigned int num_bytes
+    cdef unsigned char c_bytes[8] # max size for 32-bit int is 5 bytes
+
+    c_val = val
+    count = 0
+    while c_val >= 0x80 and count < 8:
+        c_bytes[count] = <unsigned char>((c_val | 0x80) & 0xFF)
+        c_val = c_val >> 7
+        count = count + 1
+    if count >= 8 or c_val >= 0x80:
+        raise ValueError('encode_base128_int overflowed the buffer')
+    c_bytes[count] = <unsigned char>(c_val & 0xFF)
+    count = count + 1
+    return PyString_FromStringAndSize(<char *>c_bytes, count)
+
+
+def decode_base128_int(bytes):
+    """Decode an integer from a 7-bit lsb encoding."""
+    cdef int offset
+    cdef int val
+    cdef unsigned int uval
+    cdef int shift
+    cdef Py_ssize_t num_low_bytes
+    cdef unsigned char *c_bytes
+
+    offset = 0
+    val = 0
+    shift = 0
+    if not PyString_CheckExact(bytes):
+        raise TypeError('bytes is not a string')
+    c_bytes = <unsigned char*>PyString_AS_STRING(bytes)
+    # We take off 1, because we have to be able to decode the non-expanded byte
+    num_low_bytes = PyString_GET_SIZE(bytes) - 1
+    while (c_bytes[offset] & 0x80) and offset < num_low_bytes:
+        val |= (c_bytes[offset] & 0x7F) << shift
+        shift = shift + 7
+        offset = offset + 1
+    if c_bytes[offset] & 0x80:
+        raise ValueError('Data not properly formatted, we ran out of'
+                         ' bytes before 0x80 stopped being set.')
+    val |= c_bytes[offset] << shift
+    offset = offset + 1
+    if val < 0:
+        uval = <unsigned int> val
+        return uval, offset
+    return val, offset
+
+
