@@ -23,7 +23,10 @@ import shutil
 import subprocess
 import tarfile
 
+from bzrlib import tests
+
 from bzrlib.plugins.builddeb.tests import BuilddebTestCase
+from bzrlib.plugins.builddeb.tests.test_import_dsc import PristineTarFeature
 
 
 class TestImportDsc(BuilddebTestCase):
@@ -72,6 +75,7 @@ class TestImportDsc(BuilddebTestCase):
     shutil.rmtree(self.upstream_dir)
 
   def test_import_dsc(self):
+    self.requireFeature(PristineTarFeature)
     self.make_real_source_package()
     tree = self.make_branch_and_tree('.')
     self.run_bzr('import-dsc %s' % self.dsc_name)

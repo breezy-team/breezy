@@ -20,18 +20,33 @@
 #
 
 import os
+import os.path
 import shutil
 
 from debian_bundle.changelog import Version
 
-from bzrlib.errors import DivergedBranches
-from bzrlib.tests import TestCaseWithTransport, KnownFailure
+from bzrlib import (
+  errors,
+  tests,
+  )
 
 from bzrlib.plugins.builddeb.import_dsc import (
         DistributionBranch,
         DistributionBranchSet,
         )
 from bzrlib.plugins.builddeb.tests import SourcePackageBuilder
+
+
+class _PristineTarFeature(tests.Feature):
+
+  def feature_name(self):
+    return '/usr/bin/pristine-tar'
+
+  def _probe(self):
+    return os.path.exists("/usr/bin/pristine-tar")
+
+
+PristineTarFeature = _PristineTarFeature()
 
 
 def write_to_file(filename, contents):
@@ -42,7 +57,7 @@ def write_to_file(filename, contents):
     f.close()
 
 
-class DistributionBranchTests(TestCaseWithTransport):
+class DistributionBranchTests(tests.TestCaseWithTransport):
 
     def setUp(self):
         super(DistributionBranchTests, self).setUp()
@@ -796,6 +811,7 @@ class DistributionBranchTests(TestCaseWithTransport):
                 modified=["README"])
 
     def test_import_package_init_from_other(self):
+        self.requireFeature(PristineTarFeature)
         version1 = Version("0.1-1")
         version2 = Version("0.2-1")
         builder = SourcePackageBuilder("package", version1)
@@ -820,6 +836,7 @@ class DistributionBranchTests(TestCaseWithTransport):
         self.assertEqual(len(self.tree1.branch.revision_history()), 2)
 
     def test_import_package_double(self):
+        self.requireFeature(PristineTarFeature)
         version1 = Version("0.1-1")
         version2 = Version("0.2-1")
         builder = SourcePackageBuilder("package", version1)
@@ -881,6 +898,7 @@ class DistributionBranchTests(TestCaseWithTransport):
         self.assertEqual(props["deb-thanks"], "Bar\nFoo <foo@foo.org>")
 
     def test_import_two_roots(self):
+        self.requireFeature(PristineTarFeature)
         version1 = Version("0.1-0ubuntu1")
         version2 = Version("0.2-1")
         builder = SourcePackageBuilder("package", version1)
@@ -920,6 +938,7 @@ class DistributionBranchTests(TestCaseWithTransport):
                 modified=["README"])
 
     def test_sync_to_other_branch(self):
+        self.requireFeature(PristineTarFeature)
         version1 = Version("0.1-1")
         version2 = Version("0.1-1ubuntu1")
         version3 = Version("0.2-1")
@@ -968,6 +987,7 @@ class DistributionBranchTests(TestCaseWithTransport):
                 modified=["README", "debian/changelog"])
 
     def test_pull_from_other(self):
+        self.requireFeature(PristineTarFeature)
         version1 = Version("0.1-1")
         version2 = Version("0.2-1")
         version3 = Version("0.3-1")
@@ -984,8 +1004,8 @@ class DistributionBranchTests(TestCaseWithTransport):
         self.db1.import_package(builder.dsc_name())
         try:
             self.db2.import_package(builder.dsc_name())
-        except DivergedBranches:
-            raise KnownFailure("Pulling from another branch after "
+        except errors.DivergedBranches:
+            raise tests.KnownFailure("Pulling from another branch after "
                     "merge the other way fails due to assuming the "
                     "upstream branch can be pulled too, but we never "
                     "merge upstream branches.")
@@ -1082,6 +1102,7 @@ class DistributionBranchTests(TestCaseWithTransport):
         self.assertTrue(self.db1.is_version_native(version2))
 
     def test_import_non_native_to_native(self):
+        self.requireFeature(PristineTarFeature)
         version1 = Version("1.0-1")
         version2 = Version("1.0-2")
         builder = SourcePackageBuilder("package", version1)
@@ -1118,6 +1139,7 @@ class DistributionBranchTests(TestCaseWithTransport):
         self.assertTrue(self.db1.is_version_native(version2))
 
     def test_import_native_to_non_native(self):
+        self.requireFeature(PristineTarFeature)
         version1 = Version("1.0")
         version2 = Version("1.1-1")
         builder = SourcePackageBuilder("package", version1, native=True)
@@ -1173,6 +1195,7 @@ class DistributionBranchTests(TestCaseWithTransport):
         version we assume that it was accidental, and so don't include
         the native revision in the upstream branch's history.
         """
+        self.requireFeature(PristineTarFeature)
         version1 = Version("1.0-1")
         version2 = Version("1.0-2")
         version3 = Version("1.0-3")
@@ -1219,6 +1242,7 @@ class DistributionBranchTests(TestCaseWithTransport):
         As we get a new upstream we want to link that to the previous
         upstream.
         """
+        self.requireFeature(PristineTarFeature)
         version1 = Version("1.0-1")
         version2 = Version("1.0-2")
         version3 = Version("1.1-1")
@@ -1271,6 +1295,7 @@ class DistributionBranchTests(TestCaseWithTransport):
         the second version's packaging branch revision as the second
         parent).
         """
+        self.requireFeature(PristineTarFeature)
         version1 = Version("1.0-1")
         version2 = Version("1.1")
         version3 = Version("1.2-1")
