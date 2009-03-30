@@ -25,16 +25,20 @@ itself rather than in tests/per_interbranch/*.py.
 """
 
 
+from bzrlib import (
+    memorytree,
+    )
 from bzrlib.branch import (
                            GenericInterBranch,
                            InterBranch,
                            )
 from bzrlib.errors import (
     FileExists,
+    NotBranchError,
     UninitializableFormat,
     )
 from bzrlib.tests import multiply_tests
-from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.transport import get_transport
 
 
@@ -75,47 +79,44 @@ def default_test_list():
     return result
 
 
-class TestCaseWithInterBranch(TestCaseWithBzrDir):
+class TestCaseWithInterBranch(TestCaseWithTransport):
 
-    def setUp(self):
-        super(TestCaseWithInterBranch, self).setUp()
+    def make_from_branch(self, relpath):
+        repo = self.make_repository(relpath)
+        return self.branch_format_from.initialize(repo.bzrdir)
 
-    def make_branch(self, relpath, format=None):
-        repo = self.make_repository(relpath, format=format)
-        return repo.bzrdir.create_branch()
+    def make_from_branch_and_memory_tree(self, relpath):
+        """Create a branch on the default transport and a MemoryTree for it."""
+        b = self.make_from_branch(relpath)
+        return memorytree.MemoryTree.create_on_branch(b)
 
-    def make_bzrdir(self, relpath, format=None):
-        try:
-            url = self.get_url(relpath)
-            segments = url.split('/')
-            if segments and segments[-1] not in ('', '.'):
-                parent = '/'.join(segments[:-1])
-                t = get_transport(parent)
-                try:
-                    t.mkdir(segments[-1])
-                except FileExists:
-                    pass
-            if format is None:
-                format = self.branch_format_from._matchingbzrdir
-            return format.initialize(url)
-        except UninitializableFormat:
-            raise TestSkipped("Format %s is not initializable." % format)
-
-    def make_repository(self, relpath, format=None):
-        made_control = self.make_bzrdir(relpath, format=format)
-        return made_control.create_repository()
-
-    def make_to_bzrdir(self, relpath):
-        return self.make_bzrdir(relpath,
-            self.branch_format_to._matchingbzrdir)
+    def make_from_branch_and_tree(self, relpath):
+        """Create a branch on the default transport and a working tree for it."""
+        b = self.make_from_branch(relpath)
+        return b.bzrdir.create_workingtree()
 
     def make_to_branch(self, relpath):
-        made_control = self.make_to_bzrdir(relpath)
-        return self.branch_format_to.initialize(made_control)
+        repo = self.make_repository(relpath)
+        return self.branch_format_to.initialize(repo.bzrdir)
+
+    def make_to_branch_and_memory_tree(self, relpath):
+        """Create a branch on the default transport and a MemoryTree for it."""
+        b = self.make_to_branch(relpath)
+        return memorytree.MemoryTree.create_on_branch(b)
+
+    def sprout_to(self, origdir, to_url):
+        """Sprout a bzrdir, using to_format for the new bzrdir."""
+        newbranch = self.make_to_branch(to_url)
+        origbranch = origdir.open_branch()
+        newbranch.repository.fetch(origbranch.repository)
+        origbranch.copy_content_into(newbranch)
+        newbranch.bzrdir.create_workingtree()
+        return newbranch.bzrdir
 
 
 def load_tests(standard_tests, module, loader):
     submod_tests = loader.loadTestsFromModuleNames([
+        'bzrlib.tests.per_interbranch.test_pull',
         'bzrlib.tests.per_interbranch.test_update_revisions',
         ])
     scenarios = make_scenarios(default_test_list())
