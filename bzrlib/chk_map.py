@@ -1418,13 +1418,9 @@ def iter_interesting_nodes(store, interesting_root_keys,
     if records or interesting_items:
         yield records, interesting_items
     interesting_keys.difference_update(all_uninteresting_chks)
-    # TODO: We need a test for this
-    #       This handles the case where after a split, one of the child trees
-    #       is identical to one of the interesting root keys. Like if you had a
-    #       leaf node, with "aa" "ab", that then overflowed at "bb". You would
-    #       get a new internal node, but it would have one leaf node with
-    #       ("aa", "ab") and another leaf node with "bb". And you don't want to
-    #       re-transmit that ("aa", "ab") node again
+    # Don't return things that we've already returned, and make sure not to
+    # request them later.
+    interesting_keys.difference_update(records)
     all_uninteresting_chks.update(interesting_root_keys)
 
     chks_to_read = interesting_keys

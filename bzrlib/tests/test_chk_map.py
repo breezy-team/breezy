@@ -1846,13 +1846,14 @@ class TestIterInterestingNodes(TestCaseWithStore):
         store = self.get_chk_bytes()
         iter_nodes = chk_map.iter_interesting_nodes(store, interesting_keys,
                                                     uninteresting_keys)
-        for count, (exp, act) in enumerate(izip(expected, iter_nodes)):
+        nodes = list(iter_nodes)
+        for exp, act in izip(expected, nodes):
             exp_record_keys, exp_items = exp
             records, items = act
             exp_tuple = (sorted(exp_record_keys), sorted(exp_items))
             act_tuple = (sorted(records.keys()), sorted(items))
             self.assertEqual(exp_tuple, act_tuple)
-        self.assertEqual(len(expected), count + 1)
+        self.assertEqual(len(expected), len(nodes))
 
     def test_empty_to_one_keys(self):
         target = self.get_map_key({('a',): 'content'})
@@ -1928,6 +1929,61 @@ class TestIterInterestingNodes(TestCaseWithStore):
              ([a_key], []),
              ([aab_key], [(('aab',), 'new')])],
             [target], [basis])
+
+    def test_common_leaf(self):
+        basis = self.get_map_key({})
+        target1 = self.get_map_key({('aaa',): 'common'})
+        target2 = self.get_map_key({('aaa',): 'common',
+                                    ('bbb',): 'new',
+                                   })
+        target3 = self.get_map_key({('aaa',): 'common',
+                                    ('aac',): 'other',
+                                    ('bbb',): 'new',
+                                   })
+        # The LeafNode containing 'aaa': 'common' occurs at 3 different levels.
+        # Once as a root node, once as a second layer, and once as a third
+        # layer. It should only be returned one time regardless
+        target1_map = CHKMap(self.get_chk_bytes(), target1)
+        self.assertEqualDiff(
+            "'' LeafNode\n"
+            "      ('aaa',) 'common'\n",
+            target1_map._dump_tree())
+        target2_map = CHKMap(self.get_chk_bytes(), target2)
+        self.assertEqualDiff(
+            "'' InternalNode\n"
+            "  'a' LeafNode\n"
+            "      ('aaa',) 'common'\n"
+            "  'b' LeafNode\n"
+            "      ('bbb',) 'new'\n",
+            target2_map._dump_tree())
+        target3_map = CHKMap(self.get_chk_bytes(), target3)
+        self.assertEqualDiff(
+            "'' InternalNode\n"
+            "  'a' InternalNode\n"
+            "    'aaa' LeafNode\n"
+            "      ('aaa',) 'common'\n"
+            "    'aac' LeafNode\n"
+            "      ('aac',) 'other'\n"
+            "  'b' LeafNode\n"
+            "      ('bbb',) 'new'\n",
+            target3_map._dump_tree())
+        aaa_key = target1_map._root_node.key()
+        b_key = target2_map._root_node._items['b'].key()
+        a_key = target3_map._root_node._items['a'].key()
+        aac_key = target3_map._root_node._items['a']._items['aac'].key()
+        self.assertIterInteresting(
+            [([target1, target2, target3], [(('aaa',), 'common')]),
+             ([b_key], [(('bbb',), 'new')]),
+             ([a_key], []),
+             ([aac_key], [(('aac',), 'other')]),
+            ], [target1, target2, target3], [basis])
+
+        self.assertIterInteresting(
+            [([target2, target3], []),
+             ([b_key], [(('bbb',), 'new')]),
+             ([a_key], []),
+             ([aac_key], [(('aac',), 'other')]),
+            ], [target2, target3], [target1])
 
     def test_multiple_maps(self):
         basis1 = self.get_map_key({('aaa',): 'common',
