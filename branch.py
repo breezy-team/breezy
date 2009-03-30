@@ -246,7 +246,7 @@ class InterGitGenericBranch(branch.InterBranch):
     def update_revisions(self, stop_revision=None, overwrite=False,
         graph=None):
         """See InterBranch.update_revisions()."""
-        # TODO: stop_revision, overwrite
+        # TODO: stop_revision
         interrepo = repository.InterRepository.get(self.source.repository, 
             self.target.repository)
         self._last_revid = None
@@ -260,6 +260,10 @@ class InterGitGenericBranch(branch.InterBranch):
                 return []
             return [head]
         interrepo.fetch_objects(determine_wants, self.source.mapping)
+        if overwrite:
+            last_revid = None
+        else:
+            last_revid = self.target.last_revision()
         self.target.generate_revision_history(self._last_revid, 
                 self.target.last_revision())
 
