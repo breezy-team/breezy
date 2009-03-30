@@ -105,7 +105,7 @@ Limitations of bzr-svn
 
 Bazaar and Subversion are different tools with different capabilities
 so there will always be some limited interoperability issues.
-Here are some examples current as of bzr-svn 0.5.1:
+Here are some examples current as of bzr-svn 0.5.4:
 
  * Bazaar doesn't support versioned properties
 
