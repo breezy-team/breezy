@@ -417,13 +417,13 @@ def decode_base128_int(bytes):
     # We take off 1, because we have to be able to decode the non-expanded byte
     num_low_bytes = PyString_GET_SIZE(bytes) - 1
     while (c_bytes[offset] & 0x80) and offset < num_low_bytes:
-        val |= (c_bytes[offset] & 0x7F) << shift
+        val = val | ((c_bytes[offset] & 0x7F) << shift)
         shift = shift + 7
         offset = offset + 1
     if c_bytes[offset] & 0x80:
         raise ValueError('Data not properly formatted, we ran out of'
                          ' bytes before 0x80 stopped being set.')
-    val |= c_bytes[offset] << shift
+    val = val | (c_bytes[offset] << shift)
     offset = offset + 1
     if val < 0:
         uval = <unsigned int> val
