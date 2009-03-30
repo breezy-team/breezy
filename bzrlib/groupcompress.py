@@ -406,8 +406,8 @@ class _LazyGroupContentManager(object):
         end_point = 0
         for factory in self._factories:
             bytes = factory.get_bytes_as('fulltext')
-            (found_sha1, start_point, end_point, type,
-             length) = compressor.compress(factory.key, bytes, factory.sha1)
+            (found_sha1, start_point, end_point,
+             type) = compressor.compress(factory.key, bytes, factory.sha1)
             # Now update this factory with the new offsets, etc
             factory.sha1 = found_sha1
             factory._start = start_point
@@ -614,7 +614,8 @@ class _CommonGroupCompressor(object):
         if key[-1] is None:
             key = key[:-1] + ('sha1:' + sha1,)
 
-        return self._compress(key, bytes, sha1, len(bytes) / 2, soft)
+        (sha1, start, end, type) = self._compress(key, bytes, sha1, len(bytes) / 2, soft)
+        return sha1, start, end, type
 
     def _compress(self, key, bytes, sha1, max_delta_size, soft=False):
         """Compress lines with label key.
@@ -632,9 +633,8 @@ class _CommonGroupCompressor(object):
         :param soft: Do a 'soft' compression. This means that we require larger
             ranges to match to be considered for a copy command.
 
-        :return: The sha1 of lines, the start and end offsets in the delta, the
-            type ('fulltext' or 'delta') and the number of bytes accumulated in
-            the group output so far.
+        :return: The sha1 of lines, the start and end offsets in the delta, and
+            the type ('fulltext' or 'delta').
         """
         raise NotImplementedError(self._compress)
 
@@ -703,7 +703,7 @@ class PythonGroupCompressor(_CommonGroupCompressor):
     def __init__(self):
         """Create a GroupCompressor.
 
-        :param delta: If False, do not compress records.
+        Used only if the pyrex version is not available.
         """
         super(PythonGroupCompressor, self).__init__()
         self._delta_index = LinesDeltaIndex([])
@@ -712,35 +712,34 @@ class PythonGroupCompressor(_CommonGroupCompressor):
 
     def _compress(self, key, bytes, sha1, max_delta_size, soft=False):
         """see _CommonGroupCompressor._compress"""
-        bytes_length = len(bytes)
+        input_len = len(bytes)
         new_lines = osutils.split_lines(bytes)
-        out_lines, index_lines = self._delta_index.make_delta(new_lines,
-            bytes_length=bytes_length, soft=soft)
+        out_lines, index_lines = self._delta_index.make_delta(
+            new_lines, bytes_length=input_len, soft=soft)
         delta_length = sum(map(len, out_lines))
         if delta_length > max_delta_size:
             # The delta is longer than the fulltext, insert a fulltext
             type = 'fulltext'
-            out_lines = ['f', encode_base128_int(bytes_length)]
+            out_lines = ['f', encode_base128_int(input_len)]
             out_lines.extend(new_lines)
             index_lines = [False, False]
             index_lines.extend([True] * len(new_lines))
-            out_length = len(out_lines[1]) + bytes_length + 1
         else:
             # this is a worthy delta, output it
             type = 'delta'
             out_lines[0] = 'd'
             # Update the delta_length to include those two encoded integers
             out_lines[1] = encode_base128_int(delta_length)
-            out_length = len(out_lines[3]) + 1 + delta_length
-        start = self.endpoint # Before insertion
-        chunk_start = len(self._delta_index.lines)
+        # Before insertion
+        start = self.endpoint
+        chunk_start = len(self.chunks)
         self._delta_index.extend_lines(out_lines, index_lines)
         self.endpoint = self._delta_index.endpoint
-        self.input_bytes += bytes_length
-        chunk_end = len(self._delta_index.lines)
+        self.input_bytes += input_len
+        chunk_end = len(self.chunks)
         self.labels_deltas[key] = (start, chunk_start,
                                    self.endpoint, chunk_end)
-        return sha1, start, self.endpoint, type, out_length
+        return sha1, start, self.endpoint, type
 
 
 class PyrexGroupCompressor(_CommonGroupCompressor):
@@ -784,14 +783,12 @@ class PyrexGroupCompressor(_CommonGroupCompressor):
             type = 'fulltext'
             enc_length = encode_base128_int(len(bytes))
             len_mini_header = 1 + len(enc_length)
-            length = len(bytes) + len_mini_header
             self._delta_index.add_source(bytes, len_mini_header)
             new_chunks = ['f', enc_length, bytes]
         else:
             type = 'delta'
             enc_length = encode_base128_int(len(delta))
             len_mini_header = 1 + len(enc_length)
-            length = len(delta) + len_mini_header
             new_chunks = ['d', enc_length, delta]
             self._delta_index.add_delta_source(delta, len_mini_header)
         # Before insertion
@@ -807,7 +804,7 @@ class PyrexGroupCompressor(_CommonGroupCompressor):
             raise AssertionError('the delta index is out of sync'
                 'with the output lines %s != %s'
                 % (self._delta_index._source_offset, self.endpoint))
-        return sha1, start, self.endpoint, type, length
+        return sha1, start, self.endpoint, type
 
     def _output_chunks(self, new_chunks):
         """Output some chunks.
@@ -1321,7 +1318,6 @@ class GroupCompressVersionedFiles(VersionedFiles):
             self._compressor = GroupCompressor()
 
         last_prefix = None
-        last_fulltext_len = None
         max_fulltext_len = 0
         max_fulltext_prefix = None
         insert_manager = None
@@ -1335,8 +1331,8 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 raise errors.RevisionNotPresent(record.key, self)
             if random_id:
                 if record.key in inserted_keys:
-                    trace.note('Insert claimed random_id=True, but then inserted'
-                               ' %r two times', record.key)
+                    trace.note('Insert claimed random_id=True,'
+                               ' but then inserted %r two times', record.key)
                     continue
                 inserted_keys.add(record.key)
             if reuse_blocks:
@@ -1379,11 +1375,11 @@ class GroupCompressVersionedFiles(VersionedFiles):
             if max_fulltext_len < len(bytes):
                 max_fulltext_len = len(bytes)
                 max_fulltext_prefix = prefix
-            (found_sha1, start_point, end_point, type,
-             length) = self._compressor.compress(record.key,
-                bytes, record.sha1, soft=soft,
-                nostore_sha=nostore_sha)
-            # delta_ratio = float(len(bytes)) / length
+            (found_sha1, start_point, end_point,
+             type) = self._compressor.compress(record.key,
+                                               bytes, record.sha1, soft=soft,
+                                               nostore_sha=nostore_sha)
+            # delta_ratio = float(len(bytes)) / (end_point - start_point)
             # Check if we want to continue to include that text
             if (prefix == max_fulltext_prefix
                 and end_point < 2 * max_fulltext_len):
@@ -1402,10 +1398,9 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 self._compressor.pop_last()
                 flush()
                 max_fulltext_len = len(bytes)
-                (found_sha1, start_point, end_point, type,
-                 length) = self._compressor.compress(record.key,
-                    bytes, record.sha1)
-                last_fulltext_len = length
+                (found_sha1, start_point, end_point,
+                 type) = self._compressor.compress(record.key, bytes,
+                                                   record.sha1)
             if record.key[-1] is None:
                 key = record.key[:-1] + ('sha1:' + found_sha1,)
             else:
