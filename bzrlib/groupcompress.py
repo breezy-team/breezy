@@ -614,18 +614,16 @@ class _CommonGroupCompressor(object):
         if key[-1] is None:
             key = key[:-1] + ('sha1:' + sha1,)
 
-        (sha1, start, end, type) = self._compress(key, bytes, sha1, len(bytes) / 2, soft)
+        start, end, type = self._compress(key, bytes, len(bytes) / 2, soft)
         return sha1, start, end, type
 
-    def _compress(self, key, bytes, sha1, max_delta_size, soft=False):
+    def _compress(self, key, bytes, max_delta_size, soft=False):
         """Compress lines with label key.
 
         :param key: A key tuple. It is stored in the output for identification
             of the text during decompression.
 
         :param bytes: The bytes to be compressed
-
-        :param sha1: The sha1 for 'bytes'.
 
         :param max_delta_size: The size above which we issue a fulltext instead
             of a delta.
@@ -710,7 +708,7 @@ class PythonGroupCompressor(_CommonGroupCompressor):
         # The actual content is managed by LinesDeltaIndex
         self.chunks = self._delta_index.lines
 
-    def _compress(self, key, bytes, sha1, max_delta_size, soft=False):
+    def _compress(self, key, bytes, max_delta_size, soft=False):
         """see _CommonGroupCompressor._compress"""
         input_len = len(bytes)
         new_lines = osutils.split_lines(bytes)
@@ -739,7 +737,7 @@ class PythonGroupCompressor(_CommonGroupCompressor):
         chunk_end = len(self.chunks)
         self.labels_deltas[key] = (start, chunk_start,
                                    self.endpoint, chunk_end)
-        return sha1, start, self.endpoint, type
+        return start, self.endpoint, type
 
 
 class PyrexGroupCompressor(_CommonGroupCompressor):
@@ -762,7 +760,7 @@ class PyrexGroupCompressor(_CommonGroupCompressor):
         super(PyrexGroupCompressor, self).__init__()
         self._delta_index = DeltaIndex()
 
-    def _compress(self, key, bytes, sha1, max_delta_size, soft=False):
+    def _compress(self, key, bytes, max_delta_size, soft=False):
         """see _CommonGroupCompressor._compress"""
         input_len = len(bytes)
         # By having action/label/sha1/len, we can parse the group if the index
@@ -804,7 +802,7 @@ class PyrexGroupCompressor(_CommonGroupCompressor):
             raise AssertionError('the delta index is out of sync'
                 'with the output lines %s != %s'
                 % (self._delta_index._source_offset, self.endpoint))
-        return sha1, start, self.endpoint, type
+        return start, self.endpoint, type
 
     def _output_chunks(self, new_chunks):
         """Output some chunks.
