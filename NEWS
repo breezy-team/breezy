@@ -22,6 +22,12 @@ New Features
 * New ``guess-renames`` command recognizes renames after they occur.
   (Aaron Bentley)
 
+* ``bzr log`` now supports filtering of multiple files and directories
+  and will show changes that touch any of them. Furthermore,
+  directory filtering now shows the changes to any children of that
+  directory, not just the directory object itself.
+  (Ian Clatworthy, #97715)
+
 * ``bzr shelve`` can now apply changes without storing anything on the
   shelf, via the new --destroy option.  (Aaron Bentley)
 
@@ -67,6 +73,10 @@ Improvements
 * Progress bars now show the rate of network activity for
   ``bzr+ssh://`` and ``bzr://`` connections.  (Andrew Bennetts)
 
+* Pushing to a stacked pack-format branch on a 1.12 or older smart server
+  now takes many less round trips.  (Andrew Bennetts, Robert Collins,
+  #294479)
+  
 * Streaming push can be done to older repository formats.  This is
   implemented using a new ``Repository.insert_stream_locked`` RPC.
   (Andrew Bennetts, Robert Collins)
@@ -121,6 +131,8 @@ Bug Fixes
 
 Documentation
 *************
+
+* Expanded the index of the developer documentation. (Eric Siegerman)
 
 * New topic `bzr help debug-flags`.  (Martin Pool)
 
@@ -211,6 +223,10 @@ Internals
   make visible data inserted into the repository by a smart server
   fetch operation. (Robert Collins, Andrew Bennetts)
 
+* ``RemoteRepository`` will now negatively cache missing revisions during
+  ``get_parent_map`` while read-locked. Write-locks are unaffected.
+  (Robert Collins, Andrew Bennetts)
+
 * Removed ``InterRemoteToOther``, ``InterOtherToRemote`` and
   ``InterPackToRemotePack`` classes, as they are now unnecessary.
   (Andrew Bennetts)
@@ -218,6 +234,22 @@ Internals
 * ``RepositoryFormat`` as a new attribute ``fast_deltas`` to indicate
   whether the repository can efficiently generate deltas between trees
   regardless of tree size. (Robert Collins)
+
+* ``Repository.iter_files_bytes()`` now properly returns an "iterable of
+  byte strings" (aka 'chunked') for the content. It previously was
+  returning a plain string, which worked, but performed very poorly when
+  building a working tree (file.writelines(str) is very inefficient). This
+  can have a large effect on ``bzr checkout`` times. (John Arbash Meinel)
+
+* ``tests.run_suite`` has a new parameter ``suite_decorators``, a list of 
+  callables to use to decorate the test suite. Such decorators can add or
+  remove tests, or even remote the test suite to another machine if
+  desired. (Robert Collins)
+
+* The smart server verb ``Repository.get_parent_map`` can now include
+  information about ghosts when the special revision ``include-missing:``
+  is in the requested parents map list. With this flag, ghosts are
+  included as ``missing:REVISION_ID``. (Robert Collins, Andrew Bennetts)
 
 * ``_walk_to_common_revisions`` will now batch up at least 50
   revisions before calling ``get_parent_map`` on the target,
@@ -2412,7 +2444,6 @@ Internals
 
 * Knit record serialisation is now stricter on what it will accept, to
   guard against potential internal bugs, or broken input. (Robert Collins)
-
 
 bzr 1.6beta1 2008-06-02
 #######################

@@ -551,7 +551,7 @@ class AggregateIndex(object):
     # XXX: Probably 'can be written to' could/should be separated from 'acts
     # like a knit index' -- mbp 20071024
 
-    def __init__(self, reload_func=None):
+    def __init__(self, reload_func=None, flush_func=None):
         """Create an AggregateIndex.
 
         :param reload_func: A function to call if we find we are missing an
@@ -562,7 +562,8 @@ class AggregateIndex(object):
         self.index_to_pack = {}
         self.combined_index = CombinedGraphIndex([], reload_func=reload_func)
         self.data_access = _DirectPackAccess(self.index_to_pack,
-                                             reload_func=reload_func)
+                                             reload_func=reload_func,
+                                             flush_func=flush_func)
         self.add_callback = None
 
     def replace_indices(self, index_to_pack, indices):
@@ -1388,12 +1389,13 @@ class RepositoryPackCollection(object):
         # when a pack is being created by this object, the state of that pack.
         self._new_pack = None
         # aggregated revision index data
-        self.revision_index = AggregateIndex(self.reload_pack_names)
-        self.inventory_index = AggregateIndex(self.reload_pack_names)
-        self.text_index = AggregateIndex(self.reload_pack_names)
-        self.signature_index = AggregateIndex(self.reload_pack_names)
+        flush = self._flush_new_pack
+        self.revision_index = AggregateIndex(self.reload_pack_names, flush)
+        self.inventory_index = AggregateIndex(self.reload_pack_names, flush)
+        self.text_index = AggregateIndex(self.reload_pack_names, flush)
+        self.signature_index = AggregateIndex(self.reload_pack_names, flush)
         if use_chk_index:
-            self.chk_index = AggregateIndex(self.reload_pack_names)
+            self.chk_index = AggregateIndex(self.reload_pack_names, flush)
         else:
             # used to determine if we're using a chk_index elsewhere.
             self.chk_index = None
@@ -1523,6 +1525,10 @@ class RepositoryPackCollection(object):
         # Move the old packs out of the way now they are no longer referenced.
         for revision_count, packs in pack_operations:
             self._obsolete_packs(packs)
+
+    def _flush_new_pack(self):
+        if self._new_pack is not None:
+            self._new_pack.flush()
 
     def lock_names(self):
         """Acquire the mutex around the pack-names index.
@@ -1994,12 +2000,14 @@ class RepositoryPackCollection(object):
             self._new_pack)
         self.text_index.add_writable_index(self._new_pack.text_index,
             self._new_pack)
+        self._new_pack.text_index.set_optimize(combine_backing_indices=False)
         self.signature_index.add_writable_index(self._new_pack.signature_index,
             self._new_pack)
         if self.chk_index is not None:
             self.chk_index.add_writable_index(self._new_pack.chk_index,
                 self._new_pack)
             self.repo.chk_bytes._index._add_callback = self.chk_index.add_callback
+            self._new_pack.chk_index.set_optimize(combine_backing_indices=False)
 
         self.repo.inventories._index._add_callback = self.inventory_index.add_callback
         self.repo.revisions._index._add_callback = self.revision_index.add_callback
@@ -2462,23 +2470,23 @@ class CHKInventoryRepository(KnitPackRepository):
             interesting_root_keys.add(inv.id_to_entry.key())
         revision_ids = frozenset(revision_ids)
         file_id_revisions = {}
+        bytes_to_info = CHKInventory._bytes_to_utf8name_key
         for records, items in chk_map.iter_interesting_nodes(self.chk_bytes,
                     interesting_root_keys, uninteresting_root_keys,
                     pb=pb):
             # This is cheating a bit to use the last grabbed 'inv', but it
             # works
             for name, bytes in items:
-                # TODO: We should use something cheaper than _bytes_to_entry,
-                #       which has to .decode() the entry name, etc.
-                #       We only care about a couple of the fields in the bytes.
-                entry = inv._bytes_to_entry(bytes)
-                if entry.name == '' and not rich_root:
+                (name_utf8, file_id, revision_id) = bytes_to_info(bytes)
+                if not rich_root and name_utf8 == '':
                     continue
-                if entry.revision in revision_ids:
+                if revision_id in revision_ids:
                     # Would we rather build this up into file_id => revision
                     # maps?
-                    s = file_id_revisions.setdefault(entry.file_id, set())
-                    s.add(entry.revision)
+                    try:
+                        file_id_revisions[file_id].add(revision_id)
+                    except KeyError:
+                        file_id_revisions[file_id] = set([revision_id])
         for file_id, revisions in file_id_revisions.iteritems():
             yield ('file', file_id, revisions)
 

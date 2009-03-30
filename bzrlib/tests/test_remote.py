@@ -36,6 +36,7 @@ from bzrlib import (
     repository,
     smart,
     tests,
+    treebuilder,
     urlutils,
     )
 from bzrlib.branch import Branch
@@ -1577,7 +1578,8 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         self.assertEqual({r1: (NULL_REVISION,)}, parents)
         self.assertEqual(
             [('call_with_body_bytes_expecting_body',
-              'Repository.get_parent_map', ('quack/', r2), '\n\n0')],
+              'Repository.get_parent_map', ('quack/', 'include-missing:', r2),
+              '\n\n0')],
             client._calls)
         repo.unlock()
         # now we call again, and it should use the second response.
@@ -1587,9 +1589,11 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         self.assertEqual({r1: (NULL_REVISION,)}, parents)
         self.assertEqual(
             [('call_with_body_bytes_expecting_body',
-              'Repository.get_parent_map', ('quack/', r2), '\n\n0'),
+              'Repository.get_parent_map', ('quack/', 'include-missing:', r2),
+              '\n\n0'),
              ('call_with_body_bytes_expecting_body',
-              'Repository.get_parent_map', ('quack/', r1), '\n\n0'),
+              'Repository.get_parent_map', ('quack/', 'include-missing:', r1),
+              '\n\n0'),
             ],
             client._calls)
         repo.unlock()
@@ -1604,7 +1608,8 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         parents = repo.get_parent_map([rev_id])
         self.assertEqual(
             [('call_with_body_bytes_expecting_body',
-              'Repository.get_parent_map', ('quack/', rev_id), '\n\n0'),
+              'Repository.get_parent_map', ('quack/', 'include-missing:',
+              rev_id), '\n\n0'),
              ('disconnect medium',),
              ('call_expecting_body', 'Repository.get_revision_graph',
               ('quack/', ''))],
@@ -1642,6 +1647,57 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         self.assertRaises(
             errors.UnexpectedSmartServerResponse,
             repo.get_parent_map, ['a-revision-id'])
+
+    def test_get_parent_map_negative_caches_missing_keys(self):
+        self.setup_smart_server_with_call_log()
+        repo = self.make_repository('foo')
+        self.assertIsInstance(repo, RemoteRepository)
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        self.reset_smart_call_log()
+        graph = repo.get_graph()
+        self.assertEqual({},
+            graph.get_parent_map(['some-missing', 'other-missing']))
+        self.assertLength(1, self.hpss_calls)
+        # No call if we repeat this
+        self.reset_smart_call_log()
+        graph = repo.get_graph()
+        self.assertEqual({},
+            graph.get_parent_map(['some-missing', 'other-missing']))
+        self.assertLength(0, self.hpss_calls)
+        # Asking for more unknown keys makes a request.
+        self.reset_smart_call_log()
+        graph = repo.get_graph()
+        self.assertEqual({},
+            graph.get_parent_map(['some-missing', 'other-missing',
+                'more-missing']))
+        self.assertLength(1, self.hpss_calls)
+
+    def test_get_parent_map_gets_ghosts_from_result(self):
+        # asking for a revision should negatively cache close ghosts in its
+        # ancestry.
+        self.setup_smart_server_with_call_log()
+        tree = self.make_branch_and_memory_tree('foo')
+        tree.lock_write()
+        try:
+            builder = treebuilder.TreeBuilder()
+            builder.start_tree(tree)
+            builder.build([])
+            builder.finish_tree()
+            tree.set_parent_ids(['non-existant'], allow_leftmost_as_ghost=True)
+            rev_id = tree.commit('')
+        finally:
+            tree.unlock()
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        repo = tree.branch.repository
+        self.assertIsInstance(repo, RemoteRepository)
+        # ask for rev_id
+        repo.get_parent_map([rev_id])
+        self.reset_smart_call_log()
+        # Now asking for rev_id's ghost parent should not make calls
+        self.assertEqual({}, repo.get_parent_map(['non-existant']))
+        self.assertLength(0, self.hpss_calls)
 
 
 class TestGetParentMapAllowsNew(tests.TestCaseWithTransport):
@@ -2363,7 +2419,7 @@ class TestStacking(tests.TestCaseWithTransport):
         rev_ord, expected_revs = self.get_ordered_revs('knit', 'topological')
         self.assertEqual(expected_revs, rev_ord)
         # Getting topological sort requires VFS calls still
-        self.assertLength(14, self.hpss_calls)
+        self.assertLength(12, self.hpss_calls)
 
     def test_stacked_get_stream_groupcompress(self):
         # Repository._get_source.get_stream() from a stacked repository with

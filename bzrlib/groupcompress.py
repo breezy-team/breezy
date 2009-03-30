@@ -538,7 +538,11 @@ class _LazyGroupContentManager(object):
         # Note that this creates a reference cycle....
         factory = _LazyGroupCompressFactory(key, parents, self,
             start, end, first=first)
-        self._last_byte = max(end, self._last_byte)
+        # max() works here, but as a function call, doing a compare seems to be
+        # significantly faster, timeit says 250ms for max() and 100ms for the
+        # comparison
+        if end > self._last_byte:
+            self._last_byte = end
         self._factories.append(factory)
 
     def get_record_stream(self):
@@ -1381,7 +1385,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
         :return: None
         :seealso VersionedFiles.get_record_stream:
         """
-        for _ in self._insert_record_stream(stream):
+        for _ in self._insert_record_stream(stream, random_id=True):
             pass
 
     def _insert_record_stream(self, stream, random_id=False, nostore_sha=None,
@@ -1434,10 +1438,18 @@ class GroupCompressVersionedFiles(VersionedFiles):
         insert_manager = None
         block_start = None
         block_length = None
+        # XXX: TODO: remove this, it is just for safety checking for now
+        inserted_keys = set()
         for record in stream:
             # Raise an error when a record is missing.
             if record.storage_kind == 'absent':
                 raise errors.RevisionNotPresent(record.key, self)
+            if random_id:
+                if record.key in inserted_keys:
+                    trace.note('Insert claimed random_id=True, but then inserted'
+                               ' %r two times', record.key)
+                    continue
+                inserted_keys.add(record.key)
             if reuse_blocks:
                 # If the reuse_blocks flag is set, check to see if we can just
                 # copy a groupcompress block as-is.

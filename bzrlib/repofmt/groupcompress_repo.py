@@ -242,9 +242,7 @@ class GCCHKPacker(Packer):
         remaining_keys = set(keys)
         counter = [0]
         if self._gather_text_refs:
-            # Just to get _bytes_to_entry, so we don't care about the
-            # search_key_name
-            inv = inventory.CHKInventory(None)
+            bytes_to_info = inventory.CHKInventory._bytes_to_utf8name_key
             self._text_refs = set()
         def _get_referenced_stream(root_keys, parse_leaf_nodes=False):
             cur_keys = root_keys
@@ -271,8 +269,8 @@ class GCCHKPacker(Packer):
                     # Store is None, because we know we have a LeafNode, and we
                     # just want its entries
                     for file_id, bytes in node.iteritems(None):
-                        entry = inv._bytes_to_entry(bytes)
-                        self._text_refs.add((entry.file_id, entry.revision))
+                        name_utf8, file_id, revision_id = bytes_to_info(bytes)
+                        self._text_refs.add((file_id, revision_id))
                 def next_stream():
                     stream = source_vf.get_record_stream(cur_keys,
                                                          'as-requested', True)
