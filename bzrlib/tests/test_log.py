@@ -198,33 +198,6 @@ class TestShowLog(tests.TestCaseWithTransport):
         self.assertEqual('add file1 and file2', logentry.rev.message)
         self.checkDelta(logentry.delta, added=['file1', 'file2'])
 
-    def test_merges_nonsupporting_formatter(self):
-        """Tests that show_log will raise if the formatter doesn't
-        support merge revisions."""
-        wt = self.make_branch_and_memory_tree('.')
-        wt.lock_write()
-        self.addCleanup(wt.unlock)
-        wt.add('')
-        wt.commit('rev-1', rev_id='rev-1',
-                  timestamp=1132586655, timezone=36000,
-                  committer='Joe Foo <joe@foo.com>')
-        wt.commit('rev-merged', rev_id='rev-2a',
-                  timestamp=1132586700, timezone=36000,
-                  committer='Joe Foo <joe@foo.com>')
-        wt.set_parent_ids(['rev-1', 'rev-2a'])
-        wt.branch.set_last_revision_info(1, 'rev-1')
-        wt.commit('rev-2', rev_id='rev-2b',
-                  timestamp=1132586800, timezone=36000,
-                  committer='Joe Foo <joe@foo.com>')
-        logfile = self.make_utf8_encoded_stringio()
-        formatter = log.ShortLogFormatter(to_file=logfile)
-        wtb = wt.branch
-        lf = LogCatcher()
-        revspec = revisionspec.RevisionSpec.from_string('1.1.1')
-        rev = revspec.in_history(wtb)
-        self.assertRaises(errors.BzrCommandError, log.show_log, wtb, lf,
-                          start_revision=rev, end_revision=rev)
-
 
 def make_commits_with_trailing_newlines(wt):
     """Helper method for LogFormatter tests"""
@@ -1344,7 +1317,6 @@ class TestGetViewRevisions(tests.TestCaseWithTransport):
                 direction, # direction
                 file_id, # specific_fileid
                 True, # generate_merge_revisions
-                True, # allow_single_merge_revision
                 )
             return revs
 
