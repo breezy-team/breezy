@@ -610,12 +610,21 @@ class CommitBuilder(object):
                         continue
                     if change[2] not in merged_ids:
                         if change[0] is not None:
+                            basis_entry = basis_inv[change[2]]
                             merged_ids[change[2]] = [
-                                basis_inv[change[2]].revision,
+                                # basis revid
+                                basis_entry.revision,
+                                # new tree revid
                                 change[3].revision]
+                            parent_entries[change[2]] = {
+                                # basis parent
+                                basis_entry.revision:basis_entry,
+                                # this parent 
+                                change[3].revision:change[3],
+                                }
                         else:
                             merged_ids[change[2]] = [change[3].revision]
-                        parent_entries[change[2]] = {change[3].revision:change[3]}
+                            parent_entries[change[2]] = {change[3].revision:change[3]}
                     else:
                         merged_ids[change[2]].append(change[3].revision)
                         parent_entries[change[2]][change[3].revision] = change[3]

@@ -1035,20 +1035,31 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         # Make a merge which just incorporates a change from a branch:
         # The per-file graph is straight line, and no alteration occurs
         # in the inventory.
+        # Part 1: change in the merged branch.
         rev1, tree2 = self._commit_sprout(tree1, name)
         # change on the other side to merge back
         rev2 = self._rename_in_tree(tree2, name)
         tree1.merge_from_branch(tree2.branch)
         if mini_commit is None:
             mini_commit = self.mini_commit
-        rev3 = mini_commit(tree1, name, 'new_' + name, False)
-        tree3, = self._get_revtrees(tree1, [rev2])
-        self.assertEqual(rev2, tree3.inventory[name + 'id'].revision)
-        file_id = name + 'id'
-        expected_graph = {}
-        expected_graph[(file_id, rev1)] = ()
-        expected_graph[(file_id, rev2)] = ((file_id, rev1),)
-        self.assertFileGraph(expected_graph, tree1, (file_id, rev2))
+        def _check_graph(in_tree, changed_in_tree):
+            rev3 = mini_commit(in_tree, name, 'new_' + name, False,
+                delta_against_basis=changed_in_tree)
+            tree3, = self._get_revtrees(in_tree, [rev2])
+            self.assertEqual(rev2, tree3.inventory[name + 'id'].revision)
+            file_id = name + 'id'
+            expected_graph = {}
+            expected_graph[(file_id, rev1)] = ()
+            expected_graph[(file_id, rev2)] = ((file_id, rev1),)
+            self.assertFileGraph(expected_graph, in_tree, (file_id, rev2))
+        _check_graph(tree1, True)
+        # Part 2: change in the merged into branch - we use tree2 that has a
+        # change to name, branch tree1 and give it an unrelated change, then
+        # merge that to t2.
+        other_tree = tree1.bzrdir.sprout('t3').open_workingtree()
+        other_rev = other_tree.commit('')
+        tree2.merge_from_branch(other_tree.branch)
+        _check_graph(tree2, False)
 
     def _commit_sprout_make_merge(self, tree1, make, mini_commit=None):
         # Make a merge which incorporates the addition of a new object to
