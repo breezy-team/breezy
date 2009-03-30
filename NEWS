@@ -16,6 +16,12 @@ Compatibility Breaks
   must now be explicitly added tree references.  At the commandline, use
   join --reference instead of add.  (Aaron Bentley)
 
+* The ``--long`` log format (the default) no longer shows merged
+  revisions implicitly, making it consistent with the ``short`` and
+  ``line`` log formats.  To see merged revisions for just a given
+  revision, use ``bzr log -n0 -rX``. To see every merged revision,
+  use ``bzr log -n0``.  (Ian Clatworthy)
+
 New Features
 ************
 
@@ -86,6 +92,11 @@ Improvements
   about what was being considered and what was being ignored.
   (Ian Clatworthy)
 
+* The ``long`` log formatter now shows [merge] indicators. If
+  only one level of revisions is displayed and merges are found,
+  the ``long`` and ``short`` log formatters now tell the user
+  how to see the hidden merged revisions.  (Ian Clatworthy)
+
 * Tildes are no longer escaped. No more %7Euser/project/branch!
   (Jonathan Lange)
 
@@ -152,6 +163,10 @@ API Changes
 
 * APIs deprecated in 1.6 and previous verisons of bzr are now removed.
   (Martin Pool)
+
+* ``CommitReporter`` is no longer called with ``unchanged`` status during
+  commit - this was a full-tree overhead that bzr no longer performs.
+  (Robert Collins)
 
 * New API ``Inventory.filter()`` added that filters an inventory by
   a set of file-ids so that only those fileids, their parents and
@@ -230,6 +245,12 @@ Internals
 * New repository method ``refresh_data`` to cause any repository to
   make visible data inserted into the repository by a smart server
   fetch operation. (Robert Collins, Andrew Bennetts)
+
+* ``register_filter_stack_map`` now takes an optional fallback parameter,
+  a callable to invoke if a preference has a value not in the map
+  of filter stacks. This enhancement allows, for example,  bzr-svn to
+  handle existing svn properties that define a list of keywords to be
+  expanded.  (Ian Clatworthy)
 
 * ``RemoteRepository`` will now negatively cache missing revisions during
   ``get_parent_map`` while read-locked. Write-locks are unaffected.

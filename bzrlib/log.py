@@ -356,6 +356,7 @@ class Logger(object):
         generator = self._generator_factory(self.branch, rqst)
         for lr in generator.iter_log_revisions():
             lf.log_revision(lr)
+        lf.show_advice()
 
     def _generator_factory(self, branch, rqst):
         """Make the LogGenerator object to use.
@@ -1333,6 +1334,7 @@ class LogFormatter(object):
             delta_format = 2 # long format
         self.delta_format = delta_format
         self.levels = levels
+        self._merge_count = 0
 
     def get_levels(self):
         """Get the number of levels to display or 0 for all."""
@@ -1350,6 +1352,19 @@ class LogFormatter(object):
         """
         raise NotImplementedError('not implemented in abstract base')
 
+    def show_advice(self):
+        """Output user advice, if any, when the log is completed."""
+        if self.levels == 1 and self._merge_count > 0:
+            advice_sep = self.get_advice_separator()
+            if advice_sep:
+                self.to_file.write(advice_sep)
+            self.to_file.write(
+                "Use --levels 0 (or -n0) to see merged revisions.\n")
+
+    def get_advice_separator(self):
+        """Get the text separating the log from the closing advice."""
+        return ''
+
     def short_committer(self, rev):
         name, address = config.parse_username(rev.committer)
         if name:
@@ -1361,6 +1376,14 @@ class LogFormatter(object):
         if name:
             return name
         return address
+
+    def merge_marker(self, revision):
+        """Get the merge marker to include in the output or '' if none."""
+        if len(revision.rev.parent_ids) > 1:
+            self._merge_count += 1
+            return ' [merge]'
+        else:
+            return ''
 
     def show_properties(self, revision, indent):
         """Displays the custom properties returned by each registered handler.
@@ -1379,6 +1402,7 @@ class LogFormatter(object):
 class LongLogFormatter(LogFormatter):
 
     supports_merge_revisions = True
+    preferred_levels = 1
     supports_delta = True
     supports_tags = True
     supports_diff = True
@@ -1389,7 +1413,8 @@ class LongLogFormatter(LogFormatter):
         to_file = self.to_file
         to_file.write(indent + '-' * 60 + '\n')
         if revision.revno is not None:
-            to_file.write(indent + 'revno: %s\n' % (revision.revno,))
+            to_file.write(indent + 'revno: %s%s\n' % (revision.revno,
+                self.merge_marker(revision)))
         if revision.tags:
             to_file.write(indent + 'tags: %s\n' % (', '.join(revision.tags)))
         if self.show_ids:
@@ -1431,6 +1456,10 @@ class LongLogFormatter(LogFormatter):
             # revision information) so that the output can be fed to patch -p0
             self.show_diff(self.to_exact_file, revision.diff, indent)
 
+    def get_advice_separator(self):
+        """Get the text separating the log from the closing advice."""
+        return '-' * 60 + '\n'
+
 
 class ShortLogFormatter(LogFormatter):
 
@@ -1465,9 +1494,6 @@ class ShortLogFormatter(LogFormatter):
         offset = ' ' * (revno_width + 1)
 
         to_file = self.to_file
-        is_merge = ''
-        if len(revision.rev.parent_ids) > 1:
-            is_merge = ' [merge]'
         tags = ''
         if revision.tags:
             tags = ' {%s}' % (', '.join(revision.tags))
@@ -1477,7 +1503,7 @@ class ShortLogFormatter(LogFormatter):
                             revision.rev.timezone or 0,
                             self.show_timezone, date_fmt="%Y-%m-%d",
                             show_offset=False),
-                tags, is_merge))
+                tags, self.merge_marker(revision)))
         self.show_properties(revision.rev, indent+offset)
         if self.show_ids:
             to_file.write(indent + offset + 'revision-id:%s\n'

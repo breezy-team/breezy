@@ -456,6 +456,7 @@ class TestCommit(TestCaseWithWorkingTree):
         self.build_tree(['subtree/file'])
         subtree.add(['file'], ['file-id'])
         rev_id = tree.commit('added reference', allow_pointless=False)
+        tree.get_reference_revision(tree.path2id('subtree'))
         child_revid = subtree.last_revision()
         # now change the child tree
         self.build_tree_contents([('subtree/file', 'new-content')])
@@ -525,8 +526,8 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         tree.commit('second post', specific_files=['b'])
         # 5 steps, the first of which is reported 2 times, once per dir
         self.assertEqual(
-            [('update', 1, 5, 'Collecting changes [Directory 0] - Stage'),
-             ('update', 1, 5, 'Collecting changes [Directory 1] - Stage'),
+            [('update', 1, 5, 'Collecting changes [0] - Stage'),
+             ('update', 1, 5, 'Collecting changes [1] - Stage'),
              ('update', 2, 5, 'Saving data locally - Stage'),
              ('update', 3, 5, 'Running pre_commit hooks - Stage'),
              ('update', 4, 5, 'Updating the working tree - Stage'),
@@ -548,8 +549,8 @@ class TestCommitProgress(TestCaseWithWorkingTree):
                                                'hook name')
         tree.commit('first post')
         self.assertEqual(
-            [('update', 1, 5, 'Collecting changes [Directory 0] - Stage'),
-             ('update', 1, 5, 'Collecting changes [Directory 1] - Stage'),
+            [('update', 1, 5, 'Collecting changes [0] - Stage'),
+             ('update', 1, 5, 'Collecting changes [1] - Stage'),
              ('update', 2, 5, 'Saving data locally - Stage'),
              ('update', 3, 5, 'Running pre_commit hooks - Stage'),
              ('update', 4, 5, 'Updating the working tree - Stage'),
@@ -573,8 +574,8 @@ class TestCommitProgress(TestCaseWithWorkingTree):
                                                'hook name')
         tree.commit('first post')
         self.assertEqual(
-            [('update', 1, 5, 'Collecting changes [Directory 0] - Stage'),
-             ('update', 1, 5, 'Collecting changes [Directory 1] - Stage'),
+            [('update', 1, 5, 'Collecting changes [0] - Stage'),
+             ('update', 1, 5, 'Collecting changes [1] - Stage'),
              ('update', 2, 5, 'Saving data locally - Stage'),
              ('update', 3, 5, 'Running pre_commit hooks - Stage'),
              ('update', 3, 5, 'Running pre_commit hooks [hook name] - Stage'),
