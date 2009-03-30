@@ -73,8 +73,9 @@ def provide_with_uscan(package, upstream_version, watch_file, target_dir):
     info("Using uscan to look for the upstream tarball.")
     r = os.system("uscan --upstream-version %s --force-download --rename "
                   "--package %s --watchfile %s --check-dirname-level 0 " 
-                  "--download --repack --destdir %s" %
-                  (upstream_version, package, watch_file, target_dir))
+                  "--download --repack --destdir %s --download-version %s" %
+                  (upstream_version, package, watch_file, target_dir,
+                   upstream_version))
     if r != 0:
         info("uscan could not find the needed tarball.")
         return False
