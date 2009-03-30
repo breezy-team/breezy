@@ -1289,8 +1289,7 @@ def _find_children_info(store, interesting_keys, uninteresting_keys, pb):
     next_interesting = set()
     uninteresting_items = set()
     interesting_items = set()
-    interesting_records = []
-    # records_read = set()
+    interesting_to_yield = []
     for record in store.get_record_stream(chks_to_read, 'unordered', True):
         # records_read.add(record.key())
         if pb is not None:
@@ -1307,20 +1306,17 @@ def _find_children_info(store, interesting_keys, uninteresting_keys, pb):
                 # store
                 uninteresting_items.update(node.iteritems(None))
         else:
-            interesting_records.append(record)
+            interesting_to_yield.append(record.key)
             if type(node) is InternalNode:
                 next_interesting.update(node.refs())
             else:
                 interesting_items.update(node.iteritems(None))
-    # TODO: Filter out records that have already been read, as node splitting
-    #       can cause us to reference the same nodes via shorter and longer
-    #       paths
     return (next_uninteresting, uninteresting_items,
-            next_interesting, interesting_records, interesting_items)
+            next_interesting, interesting_to_yield, interesting_items)
 
 
 def _find_all_uninteresting(store, interesting_root_keys,
-                            uninteresting_root_keys, adapter, pb):
+                            uninteresting_root_keys, pb):
     """Determine the full set of uninteresting keys."""
     # What about duplicates between interesting_root_keys and
     # uninteresting_root_keys?
@@ -1336,7 +1332,7 @@ def _find_all_uninteresting(store, interesting_root_keys,
     # First step, find the direct children of both the interesting and
     # uninteresting set
     (uninteresting_keys, uninteresting_items,
-     interesting_keys, interesting_records,
+     interesting_keys, interesting_to_yield,
      interesting_items) = _find_children_info(store, interesting_root_keys,
                                               uninteresting_root_keys,
                                               pb=pb)
@@ -1357,10 +1353,7 @@ def _find_all_uninteresting(store, interesting_root_keys,
             # TODO: Handle 'absent'
             if pb is not None:
                 pb.tick()
-            try:
-                bytes = record.get_bytes_as('fulltext')
-            except errors.UnavailableRepresentation:
-                bytes = adapter.get_bytes(record)
+            bytes = record.get_bytes_as('fulltext')
             # We don't care about search_key_func for this code, because we
             # only care about external references.
             node = _deserialise(bytes, record.key, search_key_func=None)
@@ -1375,7 +1368,7 @@ def _find_all_uninteresting(store, interesting_root_keys,
                 all_uninteresting_items.update(node._items.iteritems())
         chks_to_read = next_chks
     return (all_uninteresting_chks, all_uninteresting_items,
-            interesting_keys, interesting_records, interesting_items)
+            interesting_keys, interesting_to_yield, interesting_items)
 
 
 def iter_interesting_nodes(store, interesting_root_keys,
@@ -1390,7 +1383,7 @@ def iter_interesting_nodes(store, interesting_root_keys,
     :param uninteresting_root_keys: keys which should be filtered out of the
         result set.
     :return: Yield
-        (interesting records, interesting chk's, interesting key:values)
+        (interesting record, {interesting key:values})
     """
     # TODO: consider that it may be more memory efficient to use the 20-byte
     #       sha1 string, rather than tuples of hexidecimal sha1 strings.
@@ -1399,33 +1392,24 @@ def iter_interesting_nodes(store, interesting_root_keys,
     #       able to use nodes from the _page_cache as well as actually
     #       requesting bytes from the store.
 
-    # A way to adapt from the compressed texts back into fulltexts
-    # In a way, this seems like a layering inversion to have CHKMap know the
-    # details of versionedfile
-    adapter_class = versionedfile.adapter_registry.get(
-        ('knit-ft-gz', 'fulltext'))
-    adapter = adapter_class(store)
-
     (all_uninteresting_chks, all_uninteresting_items, interesting_keys,
-     interesting_records, interesting_items) = _find_all_uninteresting(store,
-        interesting_root_keys, uninteresting_root_keys, adapter, pb)
+     interesting_to_yield, interesting_items) = _find_all_uninteresting(store,
+        interesting_root_keys, uninteresting_root_keys, pb)
 
     # Now that we know everything uninteresting, we can yield information from
     # our first request
     interesting_items.difference_update(all_uninteresting_items)
-    records = dict((record.key, record) for record in interesting_records
-                    if record.key not in all_uninteresting_chks)
-    if records or interesting_items:
-        yield records, interesting_items
+    interesting_to_yield = set(interesting_to_yield) - all_uninteresting_chks
+    if interesting_items:
+        yield None, interesting_items
+    if interesting_to_yield:
+        # We request these records again, rather than buffering the root
+        # records, most likely they are still in the _group_cache anyway.
+        for record in store.get_record_stream(interesting_to_yield,
+                                              'unordered', False):
+            yield record, []
+    all_uninteresting_chks.update(interesting_to_yield)
     interesting_keys.difference_update(all_uninteresting_chks)
-    # TODO: We need a test for this
-    #       This handles the case where after a split, one of the child trees
-    #       is identical to one of the interesting root keys. Like if you had a
-    #       leaf node, with "aa" "ab", that then overflowed at "bb". You would
-    #       get a new internal node, but it would have one leaf node with
-    #       ("aa", "ab") and another leaf node with "bb". And you don't want to
-    #       re-transmit that ("aa", "ab") node again
-    all_uninteresting_chks.update(interesting_root_keys)
 
     chks_to_read = interesting_keys
     counter = 0
@@ -1436,10 +1420,7 @@ def iter_interesting_nodes(store, interesting_root_keys,
             if pb is not None:
                 pb.update('find chk pages', counter)
             # TODO: Handle 'absent'?
-            try:
-                bytes = record.get_bytes_as('fulltext')
-            except errors.UnavailableRepresentation:
-                bytes = adapter.get_bytes(record)
+            bytes = record.get_bytes_as('fulltext')
             # We don't care about search_key_func for this code, because we
             # only care about external references.
             node = _deserialise(bytes, record.key, search_key_func=None)
@@ -1468,7 +1449,7 @@ def iter_interesting_nodes(store, interesting_root_keys,
                 #       whole thing, but it does mean that callers need to
                 #       understand they may get duplicate values.
                 # all_uninteresting_items.update(interesting_items)
-            yield {record.key: record}, interesting_items
+            yield record, interesting_items
         chks_to_read = next_chks
 
 

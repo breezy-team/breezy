@@ -4237,12 +4237,12 @@ class StreamSource(object):
         def to_stream_adapter():
             """Adapt the iter_interesting_nodes result to a single stream.
 
-            iter_interesting_nodes returns records as it processes them, which
-            can be in batches. But we only want a single stream to be inserted.
+            iter_interesting_nodes returns records as it processes them, along
+            with keys. However, we only want to return the records themselves.
             """
             for record, items in interesting:
-                for value in record.itervalues():
-                    yield value
+                if record is not None:
+                    yield record
         # XXX: We could instead call get_record_stream(records.keys())
         #      ATM, this will always insert the records as fulltexts, and
         #      requires that you can hang on to records once you have gone
