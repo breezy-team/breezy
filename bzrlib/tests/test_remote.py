@@ -1683,14 +1683,15 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
 
     def test_get_parent_map_copes_with_non_lhs_ghosts(self):
         self.setup_smart_server_with_call_log()
-        self.disableExtraResults()
+        # Make a revision graph with an early null: on the right hand side (as
+        # happens with a merge of an unrelated branch).  A breadth-first
+        # traversal of the graph will encounter the merged null: before the
+        # mainline's null:.
         builder = self.make_branch_builder('foo')
         builder.start_series()
         builder.build_snapshot('first', None, [
             ('add', ('', 'root-id', 'directory', ''))])
         builder.build_snapshot('second', ['first'], [])
-        builder.build_snapshot('third', ['second'], [])
-        builder.build_snapshot('fourth', ['third', 'other'], [])
         builder.finish_series()
         branch = builder.get_branch()
         repo = branch.repository
@@ -1703,19 +1704,23 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         repo.lock_write()
         repo.fetch(builder.get_branch().repository, revision_id='other')
         repo.unlock()
+        # Stop the server from sending extra results.
+        self.disableExtraResults()
         repo.lock_read()
         self.addCleanup(repo.unlock)
         self.reset_smart_call_log()
         graph = repo.get_graph()
-        self.assertEqual({'fourth': ('third', 'other')},
-            graph.get_parent_map(['fourth']))
-        self.assertEqual({'third': ('second',), 'other': ('null:',)},
-            graph.get_parent_map(['third', 'other']))
+        self.assertEqual({'other': ('null:',)},
+            graph.get_parent_map(['other']))
         self.assertEqual({'second': ('first',)},
             graph.get_parent_map(['second', 'null:']))
+        # At this point the client's cache knows that null: is "missing" from
+        # the server.
         self.assertEqual({'first': ('null:',)},
             graph.get_parent_map(['first']))
-        self.assertLength(-99, self.hpss_calls)
+        # This assertion guards against disableExtraResults silently failing to
+        # work, thus invalidating the test.
+        self.assertLength(3, self.hpss_calls)
 
     def test_get_parent_map_gets_ghosts_from_result(self):
         # asking for a revision should negatively cache close ghosts in its
