@@ -171,7 +171,7 @@ def inventory_to_tree_and_blobs(repo, mapping, revision_id):
             #FIXME: We can make potentially make this Lazy to avoid shaing lots of stuff
             # and having all these objects in memory at once
             blob = Blob()
-            _, blob._text = repo.iter_files_bytes([(entry.file_id, entry.revision, path)]).next()
+            blob._text = repo.texts.get_record_stream([(entry.file_id, entry.revision)], 'unordered', True).next().get_bytes_as('fulltext')
             sha = blob.sha().hexdigest()
             yield sha, blob, path
 
