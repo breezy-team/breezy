@@ -2983,24 +2983,18 @@ format_registry.register_lazy(
     'bzrlib.repofmt.pack_repo',
     'RepositoryFormatPackDevelopment5Hash255',
     )
-# XXX: This format is scheduled for termination
-# format_registry.register_lazy(
-#     'Bazaar development format - btree+gc (needs bzr.dev from 1.13)\n',
-#     'bzrlib.repofmt.groupcompress_repo',
-#     'RepositoryFormatPackGCPlain',
-#     )
 format_registry.register_lazy(
-    'Bazaar development format - hash16chk+gc rich-root (needs bzr.dev from 1.13)\n',
+    'Bazaar development format - hash16chk+gc rich-root (needs bzr.dev from 1.14)\n',
     'bzrlib.repofmt.groupcompress_repo',
     'RepositoryFormatPackGCCHK16',
     )
 format_registry.register_lazy(
-    'Bazaar development format - hash255chk+gc rich-root (needs bzr.dev from 1.13)\n',
+    'Bazaar development format - hash255chk+gc rich-root (needs bzr.dev from 1.14)\n',
     'bzrlib.repofmt.groupcompress_repo',
     'RepositoryFormatPackGCCHK255',
     )
 format_registry.register_lazy(
-    'Bazaar development format - hash255chk+gc rich-root bigpage (needs bzr.dev from 1.13)\n',
+    'Bazaar development format - hash255chk+gc rich-root bigpage (needs bzr.dev from 1.14)\n',
     'bzrlib.repofmt.groupcompress_repo',
     'RepositoryFormatPackGCCHK255Big',
     )

@@ -725,42 +725,6 @@ class GCCHKPackRepository(CHKInventoryRepository):
         return packer.pack(pb)
 
 
-# This format has been disabled for now. It is not expected that this will be a
-# useful next-generation format.
-#
-# class RepositoryFormatPackGCPlain(RepositoryFormatKnitPack6):
-#     """A B+Tree index using pack repository."""
-#
-#     repository_class = GCPackRepository
-#     rich_root_data = False
-#     # Note: We cannot unpack a delta that references a text we haven't
-#     # seen yet. There are 2 options, work in fulltexts, or require
-#     # topological sorting. Using fulltexts is more optimal for local
-#     # operations, because the source can be smart about extracting
-#     # multiple in-a-row (and sharing strings). Topological is better
-#     # for remote, because we access less data.
-#     _fetch_order = 'unordered'
-#     _fetch_uses_deltas = False
-#
-#     def _get_matching_bzrdir(self):
-#         return bzrdir.format_registry.make_bzrdir('gc-no-rich-root')
-#
-#     def _ignore_setting_bzrdir(self, format):
-#         pass
-#
-#     _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
-#
-#     def get_format_string(self):
-#         """See RepositoryFormat.get_format_string()."""
-#         return ("Bazaar development format - btree+gc "
-#             "(needs bzr.dev from 1.13)\n")
-#
-#     def get_format_description(self):
-#         """See RepositoryFormat.get_format_description()."""
-#         return ("Development repository format - btree+groupcompress "
-#             ", interoperates with pack-0.92\n")
-#
-
 class RepositoryFormatPackGCCHK16(RepositoryFormatPackDevelopment5Hash16):
     """A hashed CHK+group compress pack repository."""
 
@@ -790,7 +754,7 @@ class RepositoryFormatPackGCCHK16(RepositoryFormatPackDevelopment5Hash16):
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
         return ('Bazaar development format - hash16chk+gc rich-root'
-                ' (needs bzr.dev from 1.13)\n')
+                ' (needs bzr.dev from 1.14)\n')
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -827,7 +791,7 @@ class RepositoryFormatPackGCCHK255(RepositoryFormatPackDevelopment5Hash255):
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
         return ('Bazaar development format - hash255chk+gc rich-root'
-                ' (needs bzr.dev from 1.13)\n')
+                ' (needs bzr.dev from 1.14)\n')
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -872,7 +836,7 @@ class RepositoryFormatPackGCCHK255Big(RepositoryFormatPackGCCHK255):
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
         return ('Bazaar development format - hash255chk+gc rich-root bigpage'
-                ' (needs bzr.dev from 1.13)\n')
+                ' (needs bzr.dev from 1.14)\n')
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
