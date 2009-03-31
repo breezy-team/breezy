@@ -194,6 +194,10 @@ API Changes
   module documentation for ``bzrlib.smart.request`` for details.
   (Andrew Bennetts, Robert Collins)
 
+* ``Tree.get_symlink_target`` now always returns a unicode string result
+  or None. Previously it would return the bytes from reading the link
+  which could be in any arbitrary encoding. (Robert Collins)
+
 Testing
 *******
 
