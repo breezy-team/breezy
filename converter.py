@@ -35,7 +35,8 @@ from bzrlib.plugins.git.shamap import (
     )
 
 
-class GitObjectConverter(object):
+class BazaarObjectStore(object):
+    """A Git-style object store backed onto a Bazaar repository."""
 
     def __init__(self, repository, mapping=None):
         self.repository = repository

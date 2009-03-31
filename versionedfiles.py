@@ -14,6 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from dulwich.object_store import (
+    tree_lookup_path,
+    )
+from dulwich.objects import (
+    Blob,
+    Tree,
+    )
+
 from bzrlib.revision import (
     NULL_REVISION,
     )
@@ -24,14 +32,15 @@ from bzrlib.versionedfile import (
     )
 
 from bzrlib.plugins.git.converter import (
-    GitObjectConverter,
+    BazaarObjectStore,
     )
 
 class GitTexts(VersionedFiles):
+    """A texts VersionedFiles instance that is backed onto a Git object store."""
 
     def __init__(self, repository):
         self.repository = repository
-        
+        self.object_store = self.repository._git.object_store
 
     def check(self, progressbar=None):
         return True
@@ -43,20 +52,19 @@ class GitTexts(VersionedFiles):
         for key in keys:
             (fileid, revid) = key
             (foreign_revid, mapping) = self.repository.lookup_git_revid(revid)
-            idmap = GitObjectConverter(self.repository, mapping)._idmap
+            root_tree = self.object_store[foreign_revid].tree
             path = mapping.parse_file_id(fileid)
             try:
-                sha = idmap.lookup_tree(path, revid)
+                obj = tree_lookup_path(self.object_store, root_tree, path)
             except KeyError:
-                try:
-                    sha = idmap.lookup_blob(fileid, revid)
-                except KeyError:
-                    yield AbsentContentFactory(key)
-                else:
-                    blob = self.repository.object_store[sha]
-                    yield FulltextContentFactory(key, None, None, "")
+                yield AbsentContentFactory(key)
             else:
-                yield FulltextContentFactory(key, None, None, blob)
+                if isinstance(obj, Tree):
+                    yield FulltextContentFactory(key, None, None, "")
+                elif isinstance(obj, Blob):
+                    yield FulltextContentFactory(key, None, None, obj._text)
+                else:
+                    yield AbsentContentFactory(key)
 
     def get_parent_map(self, keys):
         raise NotImplementedError(self.get_parent_map)

@@ -106,7 +106,7 @@ class LocalGitDir(GitDir):
     get_repository_transport = get_branch_transport
     get_workingtree_transport = get_branch_transport
 
-    def open_branch(self, ignored=None):
+    def open_branch(self, ignore_fallbacks=None):
         """'create' a branch for this dir."""
         repo = self.open_repository()
         return branch.LocalGitBranch(self, repo, "HEAD", repo._git.head(),

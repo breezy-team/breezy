@@ -287,7 +287,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
 
     def __init__(self, repository, revision_id):
         self._repository = repository
-        self.revision_id = revision_id
+        self._revision_id = revision_id
         assert isinstance(revision_id, str)
         git_id, self.mapping = repository.lookup_git_revid(revision_id)
         try:
@@ -300,7 +300,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
         self._build_inventory(self.tree, self._inventory.root, "")
 
     def get_revision_id(self):
-        return self.revision_id
+        return self._revision_id
 
     def get_file_text(self, file_id):
         entry = self._inventory[file_id]
@@ -328,6 +328,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
                     child_ie.text_sha1 = osutils.sha_string(b.data)
                 elif file_kind == 2:
                     child_ie = inventory.InventoryLink(file_id, basename, ie.file_id)
+                    child_ie.symlink_target = b.data
                     child_ie.text_sha1 = osutils.sha_string("")
                 else:
                     raise AssertionError(
@@ -339,7 +340,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
                     "Unknown blob kind, perms=%r." % (mode,))
             fs_mode = mode & 0777
             child_ie.executable = bool(fs_mode & 0111)
-            child_ie.revision = self.revision_id
+            child_ie.revision = self._revision_id
             self._inventory.add(child_ie)
             if entry_kind == 0:
                 self._build_inventory(hexsha, child_ie, child_path)

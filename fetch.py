@@ -56,7 +56,7 @@ from bzrlib.tsort import (
     )
 
 from bzrlib.plugins.git.converter import (
-    GitObjectConverter,
+    BazaarObjectStore,
     )
 from bzrlib.plugins.git.repository import (
     LocalGitRepository, 
@@ -108,7 +108,7 @@ class BzrFetchGraphWalker(object):
 
 
 def import_git_blob(texts, mapping, path, hexsha, base_inv, parent_id, 
-    revision_id, parent_invs, shagitmap, lookup_object, executable):
+    revision_id, parent_invs, shagitmap, lookup_object, executable, symlink):
     """Import a git blob object into a bzr repository.
 
     :param texts: VersionedFiles to add to
@@ -117,27 +117,38 @@ def import_git_blob(texts, mapping, path, hexsha, base_inv, parent_id,
     :return: Inventory delta for this file
     """
     file_id = mapping.generate_file_id(path)
+    if symlink:
+        cls = InventoryLink
+    else:
+        cls = InventoryFile
+    # We just have to hope this is indeed utf-8:
+    ie = cls(file_id, urlutils.basename(path).decode("utf-8"), 
+                parent_id)
+    ie.executable = executable
     # See if this has changed at all
     try:
         base_sha = shagitmap.lookup_blob(file_id, base_inv.revision_id)
     except KeyError:
         base_sha = None
     else:
-        if base_sha == hexsha and base_inv[file_id].executable == executable:
+        if (base_sha == hexsha and base_inv[file_id].executable == ie.executable
+            and base_inv[file_id].kind == ie.kind):
             # If nothing has changed since the base revision, we're done
             return []
-    # We just have to hope this is indeed utf-8:
-    ie = InventoryFile(file_id, urlutils.basename(path).decode("utf-8"), 
-        parent_id)
     if base_sha == hexsha:
         ie.text_size = base_inv[file_id].text_size
         ie.text_sha1 = base_inv[file_id].text_sha1
+        ie.symlink_target = base_inv[file_id].symlink_target
         ie.revision = base_inv[file_id].revision
     else:
         blob = lookup_object(hexsha)
-        ie.text_size = len(blob.data)
-        ie.text_sha1 = osutils.sha_string(blob.data)
-    ie.executable = executable
+        if ie.kind == "symlink":
+            ie.symlink_target = blob.data
+            ie.text_size = None
+            ie.text_sha1 = None
+        else:
+            ie.text_size = len(blob.data)
+            ie.text_sha1 = osutils.sha_string(blob.data)
     # Check what revision we should store
     parent_keys = []
     for pinv in parent_invs:
@@ -210,11 +221,18 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id,
                 file_id, revision_id, parent_invs, shagitmap, lookup_object))
         elif entry_kind == 1:
             fs_mode = mode & 0777
+            file_kind = (mode & 070000) / 010000
+            if file_kind == 0: # regular file
+                symlink = False
+            elif file_kind == 2:
+                symlink = True
+            else:
+                raise AssertionError("Unknown file kind, mode=%r" % (mode,))
             ret.extend(import_git_blob(texts, mapping, child_path, hexsha, base_inv, 
                 file_id, revision_id, parent_invs, shagitmap, lookup_object,
-                bool(fs_mode & 0111)))
+                bool(fs_mode & 0111), symlink))
         else:
-            raise AssertionError("Unknown blob kind, perms=%r." % (mode,))
+            raise AssertionError("Unknown object kind, perms=%r." % (mode,))
     # Remove any children that have disappeared
     if file_id in base_inv:
         deletable = [v for k,v in base_inv[file_id].children.iteritems() if k not in existing_children]
@@ -359,7 +377,7 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
         create_pb = None
         if pb is None:
             create_pb = pb = ui.ui_factory.nested_progress_bar()
-        target_git_object_retriever = GitObjectConverter(self.target, mapping)
+        target_git_object_retriever = BazaarObjectStore(self.target, mapping)
         recorded_wants = []
 
         def record_determine_wants(heads):
@@ -405,7 +423,7 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
         create_pb = None
         if pb is None:
             create_pb = pb = ui.ui_factory.nested_progress_bar()
-        target_git_object_retriever = GitObjectConverter(self.target, mapping)
+        target_git_object_retriever = BazaarObjectStore(self.target, mapping)
         try:
             self.target.lock_write()
             try:
