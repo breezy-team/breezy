@@ -340,6 +340,8 @@ class GitRevisionTree(revisiontree.RevisionTree):
                     "Unknown blob kind, perms=%r." % (mode,))
             fs_mode = mode & 0777
             child_ie.executable = bool(fs_mode & 0111)
+            # TODO: This should be set to the revision id in which 
+            # child_ie was last changed instead.
             child_ie.revision = self._revision_id
             self._inventory.add(child_ie)
             if entry_kind == 0:

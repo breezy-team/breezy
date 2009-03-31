@@ -177,14 +177,16 @@ class RemoteGitBzrDirFormat(GitBzrDirFormat):
         """Open this directory.
 
         """
-        from bzrlib.plugins.git.remote import RemoteGitDir, GitSmartTransport
-        if not isinstance(transport, GitSmartTransport):
-            raise bzr_errors.NotBranchError(transport.base)
         # we dont grok readonly - git isn't integrated with transport.
         url = transport.base
         if url.startswith('readonly+'):
             url = url[len('readonly+'):]
-
+        if (not url.startswith("git://") and 
+            not url.startswith("git+")):
+            raise bzr_errors.NotBranchError(transport.base)
+        from bzrlib.plugins.git.remote import RemoteGitDir, GitSmartTransport
+        if not isinstance(transport, GitSmartTransport):
+            raise bzr_errors.NotBranchError(transport.base)
         from bzrlib.plugins.git.dir import GitLockableFiles, GitLock
         lockfiles = GitLockableFiles(transport, GitLock())
         return RemoteGitDir(transport, lockfiles, self)
@@ -192,6 +194,12 @@ class RemoteGitBzrDirFormat(GitBzrDirFormat):
     @classmethod
     def probe_transport(klass, transport):
         """Our format is present if the transport ends in '.not/'."""
+        url = transport.base
+        if url.startswith('readonly+'):
+            url = url[len('readonly+'):]
+        if (not url.startswith("git://") and 
+            not url.startswith("git+")):
+            raise bzr_errors.NotBranchError(transport.base)
         # little ugly, but works
         format = klass()
         from bzrlib.plugins.git.remote import GitSmartTransport
