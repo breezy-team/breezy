@@ -739,7 +739,7 @@ class LeafNode(Node):
         :return: (common_serialised_prefix, [(node_serialised_prefix, node)])
         """
         if self._search_prefix is _unknown:
-            raise AssertionError('%r must be known' % self._search_prefix)
+            raise AssertionError('Search prefix must be known')
         common_prefix = self._search_prefix
         split_at = len(common_prefix) + 1
         result = {}

@@ -155,7 +155,7 @@ class GroupCompressBlock(object):
                     self._content = self._z_content_decompressor.decompress(
                         self._z_content, num_bytes + _ZLIB_DECOMP_WINDOW)
             else:
-                raise AssertionError('Unkown compressor: %r'
+                raise AssertionError('Unknown compressor: %r'
                                      % self._z_content_decompressor)
         # Any bytes remaining to be decompressed will be in the decompressors
         # 'unconsumed_tail'
@@ -169,7 +169,7 @@ class GroupCompressBlock(object):
         # If we got this far, and don't have a decompressor, something is wrong
         if self._z_content_decompressor is None:
             raise AssertionError(
-                'No decompresor to decompress %d bytes' % num_bytes)
+                'No decompressor to decompress %d bytes' % num_bytes)
         remaining_decomp = self._z_content_decompressor.unconsumed_tail
         if num_bytes is None:
             if remaining_decomp:
