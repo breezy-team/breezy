@@ -301,6 +301,7 @@ class TestShortLogFormatter(tests.TestCaseWithTransport):
     1 Joe Foo\t2005-11-22
       rev-1
 
+Use --levels 0 (or -n0) to see merged revisions.
 """,
                              logfile.getvalue())
 
@@ -339,6 +340,7 @@ class TestShortLogFormatter(tests.TestCaseWithTransport):
     2 Joe Foo\t2005-11-22 [merge]
       rev-2b
 
+Use --levels 0 (or -n0) to see merged revisions.
 """,
                              logfile.getvalue())
 
@@ -357,6 +359,7 @@ class TestShortLogFormatter(tests.TestCaseWithTransport):
     1 Joe Foo\t2005-11-22
       rev-1
 
+Use --levels 0 (or -n0) to see merged revisions.
 """,
                              logfile.getvalue())
 
