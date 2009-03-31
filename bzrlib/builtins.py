@@ -3916,7 +3916,8 @@ class cmd_missing(Command):
             type=_parse_revision_str,
             help='Filter on local branch revisions (inclusive). '
                 'See "help revisionspec" for details.'),
-        Option('include-merges', 'Show merged revisions.'),
+        Option('include-merges',
+               'Show all revisions in addition to the mainline ones.'),
         ]
     encoding_type = 'replace'
 
