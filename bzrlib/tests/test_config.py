@@ -1456,7 +1456,7 @@ class TestAuthenticationStorage(tests.TestCaseInTempDir):
 class TestAuthenticationConfig(tests.TestCase):
     """Test AuthenticationConfig behaviour"""
 
-    def _check_default_prompt(self, expected_prompt_format, scheme,
+    def _check_default_password_prompt(self, expected_prompt_format, scheme,
                               host=None, port=None, realm=None, path=None):
         if host is None:
             host = 'bar.org'
@@ -1475,23 +1475,23 @@ class TestAuthenticationConfig(tests.TestCase):
                                             realm=realm, path=path))
         self.assertEquals(stdout.getvalue(), expected_prompt)
 
-    def test_default_prompts(self):
+    def test_password_default_prompts(self):
         # HTTP prompts can't be tested here, see test_http.py
-        self._check_default_prompt('FTP %(user)s@%(host)s password: ', 'ftp')
-        self._check_default_prompt('FTP %(user)s@%(host)s:%(port)d password: ',
-                                   'ftp', port=10020)
-
-        self._check_default_prompt('SSH %(user)s@%(host)s:%(port)d password: ',
-                                   'ssh', port=12345)
+        self._check_default_password_prompt(
+            'FTP %(user)s@%(host)s password: ', 'ftp')
+        self._check_default_password_prompt(
+            'FTP %(user)s@%(host)s:%(port)d password: ', 'ftp', port=10020)
+        self._check_default_password_prompt(
+            'SSH %(user)s@%(host)s:%(port)d password: ', 'ssh', port=12345)
         # SMTP port handling is a bit special (it's handled if embedded in the
         # host too)
         # FIXME: should we: forbid that, extend it to other schemes, leave
         # things as they are that's fine thank you ?
-        self._check_default_prompt('SMTP %(user)s@%(host)s password: ',
+        self._check_default_password_prompt('SMTP %(user)s@%(host)s password: ',
                                    'smtp')
-        self._check_default_prompt('SMTP %(user)s@%(host)s password: ',
+        self._check_default_password_prompt('SMTP %(user)s@%(host)s password: ',
                                    'smtp', host='bar.org:10025')
-        self._check_default_prompt(
+        self._check_default_password_prompt(
             'SMTP %(user)s@%(host)s:%(port)d password: ',
             'smtp', port=10025)
 
