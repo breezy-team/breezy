@@ -55,4 +55,4 @@ bzrlib/_*.pyd
 doc/en/user-reference/*.txt
 ./doc/en/user-guide/latex_prepared
 ./doc/en/user-guide/*.pdf
-.ccache
+./.ccache
