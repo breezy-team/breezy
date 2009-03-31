@@ -1683,44 +1683,34 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
 
     def test_get_parent_map_copes_with_non_lhs_ghosts(self):
         self.setup_smart_server_with_call_log()
-        # Make a revision graph with an early null: on the right hand side (as
-        # happens with a merge of an unrelated branch).  A breadth-first
-        # traversal of the graph will encounter the merged null: before the
-        # mainline's null:.
+        # Make a branch with a single revision.
         builder = self.make_branch_builder('foo')
         builder.start_series()
         builder.build_snapshot('first', None, [
             ('add', ('', 'root-id', 'directory', ''))])
-        builder.build_snapshot('second', ['first'], [])
         builder.finish_series()
         branch = builder.get_branch()
         repo = branch.repository
         self.assertIsInstance(repo, RemoteRepository)
-        builder = self.make_branch_builder('other')
-        builder.start_series()
-        builder.build_snapshot('other', None, [
-            ('add', ('', 'root-id', 'directory', ''))])
-        builder.finish_series()
-        repo.lock_write()
-        repo.fetch(builder.get_branch().repository, revision_id='other')
-        repo.unlock()
         # Stop the server from sending extra results.
         self.disableExtraResults()
         repo.lock_read()
         self.addCleanup(repo.unlock)
         self.reset_smart_call_log()
         graph = repo.get_graph()
-        self.assertEqual({'other': ('null:',)},
-            graph.get_parent_map(['other']))
-        self.assertEqual({'second': ('first',)},
-            graph.get_parent_map(['second', 'null:']))
-        # At this point the client's cache knows that null: is "missing" from
-        # the server.
+        # Query for 'first' and 'null:'.  Because 'null:' is a parent of
+        # 'first' it will be in stop_keys of subsequent requests, and because
+        # 'null:' was queried but not returned it will be cached as missing.
         self.assertEqual({'first': ('null:',)},
-            graph.get_parent_map(['first']))
+            graph.get_parent_map(['first', 'null:']))
+        # Now query for another key.  This request will pass along a recipe of
+        # start and stop keys describing the already cached results, and this
+        # recipe's revision count is correct (or else it will trigger an
+        # error from the server).
+        self.assertEqual({}, graph.get_parent_map(['frob']))
         # This assertion guards against disableExtraResults silently failing to
         # work, thus invalidating the test.
-        self.assertLength(3, self.hpss_calls)
+        self.assertLength(2, self.hpss_calls)
 
     def test_get_parent_map_gets_ghosts_from_result(self):
         # asking for a revision should negatively cache close ghosts in its
