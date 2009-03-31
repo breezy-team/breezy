@@ -607,6 +607,7 @@ diff:
       @@ -0,0 +1,1 @@
       +contents of parent/file2
 
+Use --levels 0 (or -n0) to see merged revisions.
 """)
 
     def test_log_show_diff_line(self):
@@ -644,6 +645,7 @@ diff:
       @@ -0,0 +1,1 @@
       +contents of parent/file2
 
+Use --levels 0 (or -n0) to see merged revisions.
 """)
         out,err = self.run_bzr('log -p --short file1')
         self.assertEqual('', err)
