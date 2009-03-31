@@ -707,8 +707,6 @@ create_delta_index_from_delta(const struct source_info *src,
     /* then populate the index for the new data */
     prev_val = ~0;
     data = buffer;
-    /* source size */
-    get_delta_hdr_size(&data, top);
     /* target size */
     get_delta_hdr_size(&data, top);
     entry = entries; /* start at the first slot */
@@ -881,14 +879,7 @@ create_delta(const struct delta_index *index,
     if (!out)
         return NULL;
 
-    /* store reference buffer size */
     source_size = index->last_src->size + index->last_src->agg_offset;
-    i = source_size;
-    while (i >= 0x80) {
-        out[outpos++] = i | 0x80;
-        i >>= 7;
-    }
-    out[outpos++] = i;
 
     /* store target buffer size */
     i = trg_size;
