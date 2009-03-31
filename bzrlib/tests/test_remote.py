@@ -1681,7 +1681,7 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
             SmartServerRepositoryGetParentMap.no_extra_results = old_flag
         self.addCleanup(reset_values)
 
-    def test_get_parent_map_copes_with_non_lhs_ghosts(self):
+    def test_null_cached_missing_and_stop_key(self):
         self.setup_smart_server_with_call_log()
         # Make a branch with a single revision.
         builder = self.make_branch_builder('foo')
@@ -1699,15 +1699,16 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         self.reset_smart_call_log()
         graph = repo.get_graph()
         # Query for 'first' and 'null:'.  Because 'null:' is a parent of
-        # 'first' it will be in stop_keys of subsequent requests, and because
-        # 'null:' was queried but not returned it will be cached as missing.
+        # 'first' it will be a candidate for the stop_keys of subsequent
+        # requests, and because 'null:' was queried but not returned it will be
+        # cached as missing.
         self.assertEqual({'first': ('null:',)},
             graph.get_parent_map(['first', 'null:']))
         # Now query for another key.  This request will pass along a recipe of
         # start and stop keys describing the already cached results, and this
-        # recipe's revision count is correct (or else it will trigger an
+        # recipe's revision count must be correct (or else it will trigger an
         # error from the server).
-        self.assertEqual({}, graph.get_parent_map(['frob']))
+        self.assertEqual({}, graph.get_parent_map(['another-key']))
         # This assertion guards against disableExtraResults silently failing to
         # work, thus invalidating the test.
         self.assertLength(2, self.hpss_calls)
