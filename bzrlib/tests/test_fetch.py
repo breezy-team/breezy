@@ -602,3 +602,30 @@ class Test1To2Fetch(TestCaseWithTransport):
         self.make_two_commits(change_root=False, fetch_twice=True)
         self.assertEqual((('TREE_ROOT', 'first-id'),),
             self.get_parents('TREE_ROOT', 'second-id'))
+
+
+class TestGCCHKToGCCHKFetch(TestCaseWithTransport):
+
+    def test_simple_fetch(self):
+        builder = self.make_branch_builder('source', format='gc-chk255-big')
+        builder.start_series()
+        try:
+            builder.build_snapshot('A', None, [
+                ('add', ('', 'TREE_ROOT', 'directory', None))])
+            builder.build_snapshot('B', ['A'], [
+                ('add', ('foo', 'foo-id', 'file', 'foo content\n'))])
+            builder.build_snapshot('C', ['B'], [
+                ('add', ('bar', 'bar-id', 'file', 'bar content\n'))])
+        finally:
+            builder.finish_series()
+        source_branch = builder.get_branch()
+
+        target_branch = self.make_branch('target', format='gc-chk255-big')
+        target_branch.lock_write()
+        self.addCleanup(target_branch.unlock)
+        target = target_branch.repository
+        target.fetch(source_branch.repository, 'B')
+        self.assertEqual({'B': ('A',)}, target.get_parent_map(['B', 'C']))
+        target.fetch(source_branch.repository, 'C')
+        self.assertEqual({'B': ('A',), 'C': ('B',)},
+                         target.get_parent_map(['B', 'C']))
