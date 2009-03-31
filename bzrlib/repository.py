@@ -3563,7 +3563,7 @@ class InterDifferingSerializer(InterRepository):
         if source.supports_rich_root() and not target.supports_rich_root():
             return False
         if (source._format.supports_tree_reference
-            and not target.supports_tree_reference):
+            and not target._format.supports_tree_reference):
             return False
         return True
 
