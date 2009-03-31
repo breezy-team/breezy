@@ -20,10 +20,11 @@ New Features
 ************
 
 * New formats ``1.14`` and ``1.14-rich-root`` supporting End-Of-Line
-  (EOL) conversions, keyword templating (via a plugin), content filtering
-  and filtered views (staging areas). These formats replace the
-  experimental ``development-wt5`` and ``development-wt5-rich-root``
-  formats respectively.  (Ian Clatworthy)
+  (EOL) conversions, keyword templating (via a plugin) and generic
+  content filtering. These formats replace the experimental
+  ``development-wt5`` and ``development-wt5-rich-root`` formats
+  respectively, but have support for filtered views disabled.
+  (Ian Clatworthy)
 
 * New ``guess-renames`` command recognizes renames after they occur.
   (Aaron Bentley)
@@ -109,8 +110,8 @@ Bug Fixes
   when pushing to a smart server.  (Andrew Bennetts, #334114)
 
 * Fixed "Specified file 'x/y/z' is outside current view: " occurring
-  on ``bzr add x/y/z`` in WorkingTree5 formats (e.g. ``1.14``)
-  when no view is defined.  (Ian Clatworthy, #344708)
+  on ``bzr add x/y/z`` in formats supporting views when no view is
+  defined.  (Ian Clatworthy, #344708)
 
 * It is no longer possible to fetch between repositories while the
   target repository is in a write group. This prevents race conditions

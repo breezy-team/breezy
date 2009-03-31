@@ -162,6 +162,8 @@ class TestInfo(tests.TestCaseWithTransport):
         for key in bzrdir.format_registry.keys():
             if key in bzrdir.format_registry.aliases():
                 continue
+            if bzrdir.format_registry.get_info(key).hidden:
+                continue
             expected = None
             if key in ('dirstate', 'knit'):
                 expected = 'dirstate or knit'
@@ -174,6 +176,8 @@ class TestInfo(tests.TestCaseWithTransport):
     def test_describe_repo_format(self):
         for key in bzrdir.format_registry.keys():
             if key in bzrdir.format_registry.aliases():
+                continue
+            if bzrdir.format_registry.get_info(key).hidden:
                 continue
             expected = None
             if key in ('dirstate', 'knit', 'dirstate-tags'):

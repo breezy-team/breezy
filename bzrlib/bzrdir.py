@@ -2751,6 +2751,11 @@ class ConvertMetaToMeta(Converter):
                 isinstance(self.target_format.workingtree_format,
                     workingtree_4.WorkingTreeFormat5)):
                 workingtree_4.Converter4to5().convert(tree)
+            if (isinstance(tree, workingtree_4.DirStateWorkingTree) and
+                not isinstance(tree, workingtree_4.WorkingTree6) and
+                isinstance(self.target_format.workingtree_format,
+                    workingtree_4.WorkingTreeFormat6)):
+                workingtree_4.Converter4or5to6().convert(tree)
         return to_convert
 
 
@@ -3344,7 +3349,7 @@ format_registry.register_metadir('1.9-rich-root',
     )
 format_registry.register_metadir('1.14',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6',
-    help='A working-tree format that supports views and content filtering.',
+    help='A working-tree format that supports content filtering.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat5',
     )
@@ -3402,6 +3407,28 @@ format_registry.register_metadir('development2-subtree',
         'before use.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    hidden=True,
+    experimental=True,
+    )
+# These next two formats should be removed when the gc formats are
+# updated to use WorkingTreeFormat6 and are merged into bzr.dev
+format_registry.register_metadir('development-wt6',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6',
+    help='1.14 with filtered views. '
+        'Please read '
+        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+        'before use.',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat6',
+    hidden=True,
+    experimental=True,
+    )
+format_registry.register_metadir('development-wt6-rich-root',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6RichRoot',
+    help='A variant of development-wt6 that supports rich-root data '
+         '(needed for bzr-svn and bzr-git).',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat6',
     hidden=True,
     experimental=True,
     )

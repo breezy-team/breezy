@@ -1339,10 +1339,19 @@ class WorkingTree5(DirStateWorkingTree):
 
     This differs from WorkingTree4 by:
      - Supporting content filtering.
+
+    This is new in bzr 1.11.
+    """
+
+
+class WorkingTree6(DirStateWorkingTree):
+    """This is the Format 6 working tree.
+
+    This differs from WorkingTree5 by:
      - Supporting a current view that may mask the set of files in a tree
        impacted by most user operations.
 
-    This is new in bzr 1.11.
+    This is new in bzr 1.14.
     """
 
     def _make_views(self):
@@ -1492,7 +1501,7 @@ class WorkingTreeFormat4(DirStateWorkingTreeFormat):
 
 
 class WorkingTreeFormat5(DirStateWorkingTreeFormat):
-    """WorkingTree format supporting views.
+    """WorkingTree format supporting content filtering.
     """
 
     upgrade_recommended = False
@@ -1506,6 +1515,26 @@ class WorkingTreeFormat5(DirStateWorkingTreeFormat):
     def get_format_description(self):
         """See WorkingTreeFormat.get_format_description()."""
         return "Working tree format 5"
+
+    def supports_content_filtering(self):
+        return True
+
+
+class WorkingTreeFormat6(DirStateWorkingTreeFormat):
+    """WorkingTree format supporting views.
+    """
+
+    upgrade_recommended = False
+
+    _tree_class = WorkingTree6
+
+    def get_format_string(self):
+        """See WorkingTreeFormat.get_format_string()."""
+        return "Bazaar Working Tree Format 6 (bzr 1.14)\n"
+
+    def get_format_description(self):
+        """See WorkingTreeFormat.get_format_description()."""
+        return "Working tree format 6"
 
     def _init_custom_control_files(self, wt):
         """Subclasses with custom control files should override this method."""
@@ -2101,6 +2130,29 @@ class Converter4to5(object):
 
     def __init__(self):
         self.target_format = WorkingTreeFormat5()
+
+    def convert(self, tree):
+        # lock the control files not the tree, so that we don't get tree
+        # on-unlock behaviours, and so that no-one else diddles with the
+        # tree during upgrade.
+        tree._control_files.lock_write()
+        try:
+            self.update_format(tree)
+        finally:
+            tree._control_files.unlock()
+
+    def update_format(self, tree):
+        """Change the format marker."""
+        tree._transport.put_bytes('format',
+            self.target_format.get_format_string(),
+            mode=tree.bzrdir._get_file_mode())
+
+
+class Converter4or5to6(object):
+    """Perform an in-place upgrade of format 4 or 5 to format 6 trees."""
+
+    def __init__(self):
+        self.target_format = WorkingTreeFormat6()
 
     def convert(self, tree):
         # lock the control files not the tree, so that we don't get tree

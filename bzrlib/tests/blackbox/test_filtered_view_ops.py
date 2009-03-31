@@ -28,7 +28,7 @@ class TestViewFileOperations(TestCaseWithTransport):
     def make_abc_tree_with_ab_view(self):
         # we need to use a specific format because the default format
         # doesn't support views yet
-        format = bzrdir.format_registry.make_bzrdir('1.14')
+        format = bzrdir.format_registry.make_bzrdir('development-wt6')
         wt = TestCaseWithTransport.make_branch_and_tree(self, '.',
             format=format)
         self.build_tree(['a', 'b', 'c'])
@@ -157,7 +157,7 @@ class TestViewTreeOperationss(TestCaseWithTransport):
     def make_abc_tree_and_clone_with_ab_view(self):
         # we need to use a specific format because the default format
         # doesn't support views yet
-        format = bzrdir.format_registry.make_bzrdir('1.14')
+        format = bzrdir.format_registry.make_bzrdir('development-wt6')
         # Build the first tree
         wt1 = TestCaseWithTransport.make_branch_and_tree(self, 'tree_1',
             format=format)
