@@ -79,6 +79,9 @@ Improvements
 * Progress bars now show the rate of network activity for
   ``bzr+ssh://`` and ``bzr://`` connections.  (Andrew Bennetts)
 
+* Prompt for user names if they are not in the configuration. 
+  (Jelmer Vernooij, #256612)
+
 * Pushing to a stacked pack-format branch on a 1.12 or older smart server
   now takes many less round trips.  (Andrew Bennetts, Robert Collins,
   #294479)

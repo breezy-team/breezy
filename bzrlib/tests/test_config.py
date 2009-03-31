@@ -1475,6 +1475,32 @@ class TestAuthenticationConfig(tests.TestCase):
                                             realm=realm, path=path))
         self.assertEquals(stdout.getvalue(), expected_prompt)
 
+    def _check_default_username_prompt(self, expected_prompt_format, scheme,
+                              host=None, port=None, realm=None, path=None):
+        if host is None:
+            host = 'bar.org'
+        username = 'jim'
+        expected_prompt = expected_prompt_format % {
+            'scheme': scheme, 'host': host, 'port': port,
+            'realm': realm}
+        stdout = tests.StringIOWrapper()
+        ui.ui_factory = tests.TestUIFactory(stdin=username+ '\n',
+                                            stdout=stdout)
+        # We use an empty conf so that the user is always prompted
+        conf = config.AuthenticationConfig()
+        self.assertEquals(username,
+                          conf.get_user(scheme, host, port=port,
+                                            realm=realm, path=path))
+        self.assertEquals(stdout.getvalue(), expected_prompt)
+
+    def test_username_defaults_prompts(self):
+        # HTTP prompts can't be tested here, see test_http.py
+        self._check_default_username_prompt('FTP %(host)s username: ', 'ftp')
+        self._check_default_username_prompt(
+            'FTP %(host)s:%(port)d username: ', 'ftp', port=10020)
+        self._check_default_username_prompt(
+            'SSH %(host)s:%(port)d username: ', 'ssh', port=12345)
+
     def test_password_default_prompts(self):
         # HTTP prompts can't be tested here, see test_http.py
         self._check_default_password_prompt(

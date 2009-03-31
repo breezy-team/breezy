@@ -1152,6 +1152,17 @@ class AuthenticationConfig(object):
             user = credentials['user']
         else:
             user = None
+        # Prompt user if we couldn't find a username
+        if user is None:
+            if prompt is None:
+                # Create a default prompt suitable for most cases
+                prompt = scheme.upper() + ' %(host)s username'
+            # Special handling for optional fields in the prompt
+            if port is not None:
+                prompt_host = '%s:%d' % (host, port)
+            else:
+                prompt_host = host
+            user = ui.ui_factory.get_username(prompt, host=prompt_host)
         return user
 
     def get_password(self, scheme, host, user, port=None,
