@@ -95,7 +95,7 @@ def tree_files_for_add(file_list):
             if view_files:
                 file_list = view_files
                 view_str = views.view_display_str(view_files)
-                note("ignoring files outside view: %s" % view_str)
+                note("Ignoring files outside view. View is %s" % view_str)
     return tree, file_list
 
 
@@ -151,7 +151,7 @@ def internal_tree_files(file_list, default_branch=u'.', canonicalize=True,
             if view_files:
                 file_list = view_files
                 view_str = views.view_display_str(view_files)
-                note("ignoring files outside view: %s" % view_str)
+                note("Ignoring files outside view. View is %s" % view_str)
         return tree, file_list
     tree = WorkingTree.open_containing(osutils.realpath(file_list[0]))[0]
     return tree, safe_relpath_files(tree, file_list, canonicalize,
@@ -1301,11 +1301,11 @@ class cmd_info(Command):
       basic statistics (like the number of files in the working tree and
       number of revisions in the branch and repository):
 
-        bzr -v info
+        bzr info -v
 
       Display the above together with number of committers to the branch:
 
-        bzr -vv info
+        bzr info -vv
     """
     _see_also = ['revno', 'working-trees', 'repositories']
     takes_args = ['location?']
@@ -1933,9 +1933,8 @@ class cmd_log(Command):
         --show-ids  display revision-ids (and file-ids), not just revnos
 
       Note that the default number of levels to display is a function of the
-      log format. If the -n option is not used, ``short`` and ``line`` show
-      just the top level (mainline) while ``long`` shows all levels of merged
-      revisions.
+      log format. If the -n option is not used, the standard log formats show
+      just the top level (mainline).
 
       Status summaries are shown using status flags like A, M, etc. To see
       the changes explained using words like ``added`` and ``modified``
@@ -2027,21 +2026,16 @@ class cmd_log(Command):
       You may find it useful to add the aliases below to ``bazaar.conf``::
 
         [ALIASES]
-        tip = log -r-1 -n1
+        tip = log -r-1
         top = log -l10 --line
-        show = log -v -p -n1 --long
+        show = log -v -p
 
       ``bzr tip`` will then show the latest revision while ``bzr top``
       will show the last 10 mainline revisions. To see the details of a
       particular revision X,  ``bzr show -rX``.
 
-      As many GUI tools and Web interfaces do, you may prefer viewing
-      history collapsed initially. If you are interested in looking deeper
-      into a particular merge X, use ``bzr log -n0 -rX``. If you like
-      working this way, you may wish to either:
-
-      * change your default log format to short (or line)
-      * add this alias: log = log -n1
+      If you are interested in looking deeper into a particular merge X,
+      use ``bzr log -n0 -rX``.
 
       ``bzr log -v`` on a branch with lots of history is currently
       very slow. A fix for this issue is currently under development.
@@ -2343,7 +2337,7 @@ class cmd_ls(Command):
             if view_files:
                 apply_view = True
                 view_str = views.view_display_str(view_files)
-                note("ignoring files outside view: %s" % view_str)
+                note("Ignoring files outside view. View is %s" % view_str)
 
         tree.lock_read()
         try:
@@ -2953,8 +2947,6 @@ class cmd_upgrade(Command):
 
     def run(self, url='.', format=None):
         from bzrlib.upgrade import upgrade
-        if format is None:
-            format = bzrdir.format_registry.make_bzrdir('default')
         upgrade(url, format)
 
 
