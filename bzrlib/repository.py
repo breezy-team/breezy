@@ -3548,7 +3548,7 @@ class InterPackRepo(InterSameDataRepository):
         return self.source.revision_ids_to_search_result(result_set)
 
 
-class InterDifferingSerializer(InterKnitRepo):
+class InterDifferingSerializer(InterRepository):
 
     @classmethod
     def _get_repo_format_to_test(self):
@@ -3557,15 +3557,6 @@ class InterDifferingSerializer(InterKnitRepo):
     @staticmethod
     def is_compatible(source, target):
         """Be compatible with Knit2 source and Knit3 target"""
-        # XXX: What do we need to do to support fetching them?
-        # if source.supports_rich_root() != target.supports_rich_root():
-        #     return False
-        # Ideally, we'd support fetching if the source had no tree references
-        # even if it supported them...
-        # XXX: What do we need to do to support fetching them?
-        # if (getattr(source._format, 'supports_tree_reference', False) and
-        #     not getattr(target._format, 'supports_tree_reference', False)):
-        #    return False
         return True
 
     def _get_delta_for_revision(self, tree, parent_ids, basis_id, cache):
