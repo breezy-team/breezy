@@ -53,6 +53,7 @@ from bzrlib.repofmt import pack_repo
 from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import server, medium
 from bzrlib.smart.client import _SmartClient
+from bzrlib.smart.repository import SmartServerRepositoryGetParentMap
 from bzrlib.tests import (
     condition_isinstance,
     split_suite_by_condition,
@@ -1672,6 +1673,52 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
             graph.get_parent_map(['some-missing', 'other-missing',
                 'more-missing']))
         self.assertLength(1, self.hpss_calls)
+
+    def disableExtraResults(self):
+        old_flag = SmartServerRepositoryGetParentMap.no_extra_results
+        SmartServerRepositoryGetParentMap.no_extra_results = True
+        def reset_values():
+            SmartServerRepositoryGetParentMap.no_extra_results = old_flag
+        self.addCleanup(reset_values)
+
+    def test_get_parent_map_copes_with_non_lhs_ghosts(self):
+        self.setup_smart_server_with_call_log()
+        self.disableExtraResults()
+        builder = self.make_branch_builder('foo')
+        builder.start_series()
+        builder.build_snapshot('first', None, [
+            ('add', ('', 'root-id', 'directory', ''))])
+        builder.build_snapshot('second', ['first'], [])
+        builder.build_snapshot('third', ['second'], [])
+        builder.build_snapshot('fourth', ['third', 'other'], [])
+        builder.build_snapshot('fifth', ['fourth'], [])
+        builder.finish_series()
+        branch = builder.get_branch()
+        repo = branch.repository
+        self.assertIsInstance(repo, RemoteRepository)
+        builder = self.make_branch_builder('other')
+        builder.start_series()
+        builder.build_snapshot('other', None, [
+            ('add', ('', 'root-id', 'directory', ''))])
+        builder.finish_series()
+        repo.lock_write()
+        repo.fetch(builder.get_branch().repository, revision_id='other')
+        repo.unlock()
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        self.reset_smart_call_log()
+        graph = repo.get_graph()
+        self.assertEqual({'fifth': ('fourth',)},
+            graph.get_parent_map(['fifth']))
+        self.assertEqual({'fourth': ('third', 'other')},
+            graph.get_parent_map(['fourth']))
+        self.assertEqual({'third': ('second',), 'other': ('null:',)},
+            graph.get_parent_map(['third', 'other']))
+        self.assertEqual({'second': ('first',)},
+            graph.get_parent_map(['second', 'null:']))
+        self.assertEqual({'first': ('null:',)},
+            graph.get_parent_map(['first']))
+        self.assertLength(-99, self.hpss_calls)
 
     def test_get_parent_map_gets_ghosts_from_result(self):
         # asking for a revision should negatively cache close ghosts in its
