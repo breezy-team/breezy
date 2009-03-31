@@ -1691,7 +1691,6 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         builder.build_snapshot('second', ['first'], [])
         builder.build_snapshot('third', ['second'], [])
         builder.build_snapshot('fourth', ['third', 'other'], [])
-        builder.build_snapshot('fifth', ['fourth'], [])
         builder.finish_series()
         branch = builder.get_branch()
         repo = branch.repository
@@ -1708,8 +1707,6 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         self.addCleanup(repo.unlock)
         self.reset_smart_call_log()
         graph = repo.get_graph()
-        self.assertEqual({'fifth': ('fourth',)},
-            graph.get_parent_map(['fifth']))
         self.assertEqual({'fourth': ('third', 'other')},
             graph.get_parent_map(['fourth']))
         self.assertEqual({'third': ('second',), 'other': ('null:',)},
