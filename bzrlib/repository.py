@@ -3586,6 +3586,40 @@ class InterDifferingSerializer(InterRepository):
         deltas.sort()
         return deltas[0][1:]
 
+    def _get_parent_keys(self, root_key, parent_map):
+        """Get the parent keys for a given root id."""
+        root_id, rev_id = root_key
+        # Include direct parents of the revision, but only if they used
+        # the same root_id.
+        parent_keys = []
+        for parent_id in parent_map[rev_id]:
+            if parent_id == _mod_revision.NULL_REVISION:
+                continue
+            if parent_id not in self._revision_id_to_root_id:
+                # We probably didn't read this revision, go spend the
+                # extra effort to actually check
+                try:
+                    tree = self.source.revision_tree(parent_id)
+                except errors.NoSuchRevision:
+                    # Ghost, fill out _revision_id_to_root_id in case we
+                    # encounter this again.
+                    # But set parent_root_id to None since we don't really know
+                    parent_root_id = None
+                else:
+                    parent_root_id = tree.get_root_id()
+                self._revision_id_to_root_id[parent_id] = None
+            else:
+                parent_root_id = self._revision_id_to_root_id[parent_id]
+            if root_id == parent_root_id or parent_root_id is None:
+                parent_keys.append((root_id, parent_id))
+        return tuple(parent_keys)
+
+    def _new_root_data_stream(self, root_keys_to_create, parent_map):
+        for root_key in root_keys_to_create:
+            parent_keys = self._get_parent_keys(root_key, parent_map)
+            yield versionedfile.FulltextContentFactory(root_key,
+                parent_keys, None, '')
+
     def _fetch_batch(self, revision_ids, basis_id, cache):
         """Fetch across a few revisions.
 
@@ -3640,32 +3674,9 @@ class InterDifferingSerializer(InterRepository):
         from_texts = self.source.texts
         to_texts = self.target.texts
         if root_keys_to_create:
-            NULL_REVISION = _mod_revision.NULL_REVISION
-            def _get_parent_keys(root_key):
-                root_id, rev_id = root_key
-                # Include direct parents of the revision, but only if they used
-                # the same root_id.
-                parent_keys = []
-                for parent_id in parent_map[rev_id]:
-                    if parent_id == NULL_REVISION:
-                        continue
-                    if parent_id not in self._revision_id_to_root_id:
-                        # We probably didn't read this revision, go spend the
-                        # extra effort to actually check
-                        tree = self.source.revision_tree(parent_id)
-                        parent_root_id = tree.get_root_id()
-                        self._revision_id_to_root_id[parent_id] = parent_root_id
-                    else:
-                        parent_root_id = self._revision_id_to_root_id[parent_id]
-                    if root_id == parent_root_id:
-                        parent_keys.append((root_id, parent_id))
-                return tuple(parent_keys)
-            def new_root_data_stream():
-                for root_key in root_keys_to_create:
-                    parent_keys = _get_parent_keys(root_key)
-                    yield versionedfile.FulltextContentFactory(root_key,
-                        parent_keys, None, '')
-            to_texts.insert_record_stream(new_root_data_stream())
+            root_stream = self._new_root_data_stream(root_keys_to_create,
+                                                     parent_map)
+            to_texts.insert_record_stream(root_stream)
         to_texts.insert_record_stream(from_texts.get_record_stream(
             text_keys, self.target._format._fetch_order,
             not self.target._format._fetch_uses_deltas))
