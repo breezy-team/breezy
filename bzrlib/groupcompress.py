@@ -1261,7 +1261,11 @@ class GroupCompressVersionedFiles(VersionedFiles):
         :return: None
         :seealso VersionedFiles.get_record_stream:
         """
-        for _ in self._insert_record_stream(stream, random_id=True):
+        # XXX: Setting random_id=True makes
+        # test_insert_record_stream_existing_keys fail for groupcompress and
+        # groupcompress-nograph, this needs to be revisited while addressing
+        # 'bzr branch' performance issues.
+        for _ in self._insert_record_stream(stream, random_id=False):
             pass
 
     def _insert_record_stream(self, stream, random_id=False, nostore_sha=None,
