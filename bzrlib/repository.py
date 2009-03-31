@@ -3557,6 +3557,14 @@ class InterDifferingSerializer(InterRepository):
     @staticmethod
     def is_compatible(source, target):
         """Be compatible with Knit2 source and Knit3 target"""
+        # This is redundant with format.check_conversion_target(), however that
+        # raises an exception, and we just want to say "False" as in we won't
+        # support converting between these formats.
+        if source.supports_rich_root() and not target.supports_rich_root():
+            return False
+        if (source._format.supports_tree_reference
+            and not target.supports_tree_reference):
+            return False
         return True
 
     def _get_delta_for_revision(self, tree, parent_ids, basis_id, cache):
@@ -3637,11 +3645,21 @@ class InterDifferingSerializer(InterRepository):
                 root_id, rev_id = root_key
                 # Include direct parents of the revision, but only if they used
                 # the same root_id.
-                parent_keys = tuple([(root_id, parent_id)
-                    for parent_id in parent_map[rev_id]
-                    if parent_id != NULL_REVISION and
-                        self._revision_id_to_root_id.get(parent_id, root_id) == root_id])
-                return parent_keys
+                parent_keys = []
+                for parent_id in parent_map[rev_id]:
+                    if parent_id == NULL_REVISION:
+                        continue
+                    if parent_id not in self._revision_id_to_root_id:
+                        # We probably didn't read this revision, go spend the
+                        # extra effort to actually check
+                        tree = self.source.revision_tree(parent_id)
+                        parent_root_id = tree.get_root_id()
+                        self._revision_id_to_root_id[parent_id] = parent_root_id
+                    else:
+                        parent_root_id = self._revision_id_to_root_id[parent_id]
+                    if root_id == parent_root_id:
+                        parent_keys.append((root_id, parent_id))
+                return tuple(parent_keys)
             def new_root_data_stream():
                 for root_key in root_keys_to_create:
                     parent_keys = _get_parent_keys(root_key)
