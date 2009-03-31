@@ -413,7 +413,9 @@ class CHKMap(object):
                             self_pending)
                         basis_prefix, _, basis_node, basis_path = heapq.heappop(
                             basis_pending)
-                        assert self_prefix == basis_prefix
+                        if self_prefix != basis_prefix:
+                            raise AssertionError(
+                                '%r != %r' % (self_prefix, basis_prefix))
                         process_common_prefix_nodes(
                             self_node, self_path,
                             basis_node, basis_path)
@@ -736,7 +738,8 @@ class LeafNode(Node):
 
         :return: (common_serialised_prefix, [(node_serialised_prefix, node)])
         """
-        assert self._search_prefix is not _unknown
+        if self._search_prefix is _unknown:
+            raise AssertionError('%r must be known' % self._search_prefix)
         common_prefix = self._search_prefix
         split_at = len(common_prefix) + 1
         result = {}
@@ -772,7 +775,8 @@ class LeafNode(Node):
         if self._map_no_split(key, value):
             return self._split(store)
         else:
-            assert self._search_prefix is not _unknown
+            if self._search_prefix is _unknown:
+                raise AssertionError('%r must be known' % self._search_prefix)
             return self._search_prefix, [("", self)]
 
     def serialise(self, store):

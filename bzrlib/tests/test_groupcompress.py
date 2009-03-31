@@ -310,6 +310,11 @@ class TestGroupCompressBlock(tests.TestCase):
         self.assertEqual('', block._z_content)
         block._ensure_content() # Ensure content is safe to call 2x
 
+    def test_from_invalid(self):
+        self.assertRaises(ValueError,
+                          groupcompress.GroupCompressBlock.from_bytes,
+                          'this is not a valid header')
+
     def test_from_bytes(self):
         content = ('a tiny bit of content\n')
         z_content = zlib.compress(content)

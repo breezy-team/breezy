@@ -96,7 +96,9 @@ class GroupCompressBlock(object):
 
     # Group Compress Block v1 Zlib
     GCB_HEADER = 'gcb1z\n'
+    # Group Compress Block v1 Lzma
     GCB_LZ_HEADER = 'gcb1l\n'
+    GCB_KNOWN_HEADERS = (GCB_HEADER, GCB_LZ_HEADER)
 
     def __init__(self):
         # map by key? or just order in file?
@@ -128,18 +130,22 @@ class GroupCompressBlock(object):
         #       _z_content because of this.
         if num_bytes is None:
             num_bytes = self._content_length
-        if self._content_length is not None:
-            assert num_bytes <= self._content_length
+        elif (self._content_length is not None
+              and num_bytes > self._content_length):
+            raise AssertionError(
+                'requested num_bytes (%d) > content length (%d)'
+                % (num_bytes, self._content_length))
+        # Expand the content if required
         if self._content is None:
-            assert self._z_content is not None
+            if self._z_content is None:
+                raise AssertionError('No content to decompress')
             if self._z_content == '':
                 self._content = ''
             elif self._compressor_name == 'lzma':
                 # We don't do partial lzma decomp yet
                 self._content = pylzma.decompress(self._z_content)
-            else:
+            elif self._compressor_name == 'zlib':
                 # Start a zlib decompressor
-                assert self._compressor_name == 'zlib'
                 if num_bytes is None:
                     self._content = zlib.decompress(self._z_content)
                 else:
@@ -148,8 +154,12 @@ class GroupCompressBlock(object):
                     # that the rest of the code is simplified
                     self._content = self._z_content_decompressor.decompress(
                         self._z_content, num_bytes + _ZLIB_DECOMP_WINDOW)
-                # Any bytes remaining to be decompressed will be in the
-                # decompressors 'unconsumed_tail'
+            else:
+                raise AssertionError('Unkown compressor: %r'
+                                     % self._z_content_decompressor)
+        # Any bytes remaining to be decompressed will be in the decompressors
+        # 'unconsumed_tail'
+
         # Do we have enough bytes already?
         if num_bytes is not None and len(self._content) >= num_bytes:
             return
@@ -157,23 +167,26 @@ class GroupCompressBlock(object):
             # We must have already decompressed everything
             return
         # If we got this far, and don't have a decompressor, something is wrong
-        assert self._z_content_decompressor is not None
+        if self._z_content_decompressor is None:
+            raise AssertionError(
+                'No decompresor to decompress %d bytes' % num_bytes)
         remaining_decomp = self._z_content_decompressor.unconsumed_tail
         if num_bytes is None:
             if remaining_decomp:
                 # We don't know how much is left, but we'll decompress it all
                 self._content += self._z_content_decompressor.decompress(
                     remaining_decomp)
-                # Note: There what I consider a bug in zlib.decompressobj
+                # Note: There's what I consider a bug in zlib.decompressobj
                 #       If you pass back in the entire unconsumed_tail, only
                 #       this time you don't pass a max-size, it doesn't
                 #       change the unconsumed_tail back to None/''.
                 #       However, we know we are done with the whole stream
                 self._z_content_decompressor = None
+            # XXX: Why is this the only place in this routine we set this?
             self._content_length = len(self._content)
         else:
-            # If we have nothing left to decomp, we ran out of decomp bytes
-            assert remaining_decomp
+            if not remaining_decomp:
+                raise AssertionError('Nothing left to decompress')
             needed_bytes = num_bytes - len(self._content)
             # We always set max_size to 32kB over the minimum needed, so that
             # zlib will give us as much as we really want.
@@ -181,7 +194,9 @@ class GroupCompressBlock(object):
             #       that keeps expanding the request until we get enough
             self._content += self._z_content_decompressor.decompress(
                 remaining_decomp, needed_bytes + _ZLIB_DECOMP_WINDOW)
-            assert len(self._content) >= num_bytes
+            if len(self._content) < num_bytes:
+                raise AssertionError('%d bytes wanted, only %d available'
+                                     % (num_bytes, len(self._content)))
             if not self._z_content_decompressor.unconsumed_tail:
                 # The stream is finished
                 self._z_content_decompressor = None
@@ -202,15 +217,19 @@ class GroupCompressBlock(object):
         pos2 = bytes.index('\n', pos, pos + 14)
         self._content_length = int(bytes[pos:pos2])
         pos = pos2 + 1
-        assert len(bytes) == (pos + self._z_content_length)
+        if len(bytes) != (pos + self._z_content_length):
+            # XXX: Define some GCCorrupt error ?
+            raise AssertionError('Invalid bytes: (%d) != %d + %d' %
+                                 (len(bytes), pos, self._z_content_length))
         self._z_content = bytes[pos:]
-        assert len(self._z_content) == self._z_content_length
 
     @classmethod
     def from_bytes(cls, bytes):
         out = cls()
-        if bytes[:6] not in (cls.GCB_HEADER, cls.GCB_LZ_HEADER):
-            raise ValueError('bytes did not start with %r' % (cls.GCB_HEADER,))
+        if bytes[:6] not in cls.GCB_KNOWN_HEADERS:
+            raise ValueError('bytes did not start with any of %r'
+                             % (cls.GCB_KNOWN_HEADERS,))
+        # XXX: why not testing the whole header ?
         if bytes[4] == 'z':
             out._compressor_name = 'zlib'
         elif bytes[4] == 'l':
@@ -266,7 +285,8 @@ class GroupCompressBlock(object):
         if _USE_LZMA:
             compress = pylzma.compress
         if self._z_content is None:
-            assert self._content is not None
+            if self._content is None:
+                raise AssertionError('Nothing to compress')
             self._z_content = compress(self._content)
             self._z_content_length = len(self._z_content)
         if _USE_LZMA:
@@ -1344,8 +1364,8 @@ class GroupCompressVersionedFiles(VersionedFiles):
                     block_length = length
                 if record.storage_kind in ('groupcompress-block',
                                            'groupcompress-block-ref'):
-                    assert insert_manager is not None
-                    assert record._manager is insert_manager
+                    if insert_manager is None:
+                        raise AssertionError('No insert_manager set')
                     value = "%d %d %d %d" % (block_start, block_length,
                                              record._start, record._end)
                     nodes = [(record.key, value, (record.parents,))]

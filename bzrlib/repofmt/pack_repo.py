@@ -2225,7 +2225,8 @@ class KnitPackRepository(KnitRepository):
             for index, key, value, refs in revision_nodes:
                 node = (index, key, value, refs)
                 index_memo = self.revisions._index._node_to_position(node)
-                assert index_memo[0] == index
+                if index_memo[0] != index:
+                    raise AssertionError('%r != %r' % (index_memo[0], index))
                 index_positions.append((index_memo, key[0],
                                        tuple(parent[0] for parent in refs[0])))
                 pb.update("Reading revision index", 0, 0)

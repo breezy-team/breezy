@@ -1653,7 +1653,8 @@ class CHKInventory(CommonInventory):
         :return: A CHKInventory
         """
         lines = bytes.split('\n')
-        assert lines[-1] == ''
+        if lines[-1] != '':
+            raise AssertionError('bytes to deserialize must end with an eol')
         lines.pop()
         if lines[0] != 'chkinventory:':
             raise ValueError("not a serialised CHKInventory: %r" % bytes)

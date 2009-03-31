@@ -142,6 +142,8 @@ def _deserialise_internal_node(bytes, key, search_key_func=None):
         line = common_prefix + line
         prefix, flat_key = line.rsplit('\x00', 1)
         items[prefix] = (flat_key,)
+    if len(items) == 0:
+        raise AssertionError("We didn't find any item for %s" % key)
     result._items = items
     result._len = length
     result._maximum_size = maximum_size
@@ -151,7 +153,6 @@ def _deserialise_internal_node(bytes, key, search_key_func=None):
     #      change if we add prefix compression
     result._raw_size = None # len(bytes)
     result._node_width = len(prefix)
-    assert len(items) > 0
     result._search_prefix = common_prefix
     return result
 
