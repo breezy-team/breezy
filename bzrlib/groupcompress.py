@@ -331,12 +331,9 @@ class _LazyGroupCompressFactory(object):
                 self._manager._prepare_for_extract()
                 block = self._manager._block
                 self._bytes = block.extract(self.key, self._start, self._end)
-                # XXX: It seems the smart fetch extracts inventories and chk
-                #      pages as fulltexts to find the next chk pages, but then
-                #      passes them down to be inserted as a
-                #      groupcompress-block, so this is not safe to do. Perhaps
-                #      we could just change the storage kind to "fulltext" at
-                #      that point?
+                # There are code paths that first extract as fulltext, and then
+                # extract as storage_kind (smart fetch). So we don't break the
+                # refcycle here, but instead in manager.get_record_stream()
                 # self._manager = None
             if storage_kind == 'fulltext':
                 return self._bytes
@@ -376,13 +373,7 @@ class _LazyGroupContentManager(object):
             yield factory
             # Break the ref-cycle
             factory._bytes = None
-            # XXX: this is not safe, the smart fetch code requests the content
-            #      as both a 'fulltext', and then later on as a
-            #      groupcompress-block. The iter_interesting_nodes code also is
-            #      still buffering multiple records and returning them later.
-            #      So that code would need to be updated to either re-fetch the
-            #      original object, or buffer it somehow.
-            # factory._manager = None
+            factory._manager = None
         # TODO: Consider setting self._factories = None after the above loop,
         #       as it will break the reference cycle
 
@@ -492,6 +483,8 @@ class _LazyGroupContentManager(object):
             record_header = '%s\n%s\n%d\n%d\n' % (
                 key_bytes, parent_bytes, factory._start, factory._end)
             header_lines.append(record_header)
+            # TODO: Can we break the refcycle at this point and set
+            #       factory._manager = None?
         header_bytes = ''.join(header_lines)
         del header_lines
         header_bytes_len = len(header_bytes)

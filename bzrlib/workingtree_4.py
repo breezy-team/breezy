@@ -1743,10 +1743,9 @@ class DirStateRevisionTree(Tree):
         if entry[1][parent_index][0] != 'l':
             return None
         else:
-            # At present, none of the tree implementations supports non-ascii
-            # symlink targets. So we will just assume that the dirstate path is
-            # correct.
-            return entry[1][parent_index][1]
+            target = entry[1][parent_index][1]
+            target = target.decode('utf8')
+            return target
 
     def get_revision_id(self):
         """Return the revision id for this tree."""
