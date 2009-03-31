@@ -1,4 +1,4 @@
-bzr-builddeb (2.1.2) UNRELEASED; urgency=low
+bzr-builddeb (2.1.2~ubuntu1) jaunty; urgency=low
 
   * Add --download-version to the uscan command line.
   * Make --export-upstream work again by not trying to use a removed attribute
