@@ -969,7 +969,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         return file_id
 
     def get_symlink_target(self, file_id):
-        return os.readlink(self.id2abspath(file_id).encode(osutils._fs_enc))
+        return os.readlink(self.id2abspath(file_id).encode(osutils._fs_enc)
+            ).decode(osutils._fs_enc)
 
     @needs_write_lock
     def subsume(self, other_tree):
@@ -1527,10 +1528,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         :raises: NoSuchId if any fileid is not currently versioned.
         """
         for file_id in file_ids:
+            if file_id not in self._inventory:
+                raise errors.NoSuchId(self, file_id)
+        for file_id in file_ids:
             if self._inventory.has_id(file_id):
                 self._inventory.remove_recursive_id(file_id)
-            else:
-                raise errors.NoSuchId(self, file_id)
         if len(file_ids):
             # in the future this should just set a dirty bit to wait for the
             # final unlock. However, until all methods of workingtree start

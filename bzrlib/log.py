@@ -279,7 +279,6 @@ def make_log_request_dict(direction='reverse', specific_fileids=None,
         'diff_type': diff_type,
         # Add 'private' attributes for features that may be deprecated
         '_match_using_deltas': _match_using_deltas,
-        '_allow_single_merge_revision': True,
     }
 
 
@@ -348,14 +347,12 @@ class Logger(object):
             rqst['delta_type'] = None
         if not getattr(lf, 'supports_diff', False):
             rqst['diff_type'] = None
-        if not getattr(lf, 'supports_merge_revisions', False):
-            rqst['_allow_single_merge_revision'] = getattr(lf,
-                'supports_single_merge_revision', False)
 
         # Find and print the interesting revisions
         generator = self._generator_factory(self.branch, rqst)
         for lr in generator.iter_log_revisions():
             lf.log_revision(lr)
+        lf.show_advice()
 
     def _generator_factory(self, branch, rqst):
         """Make the LogGenerator object to use.
@@ -453,7 +450,6 @@ class _DefaultLogGenerator(LogGenerator):
                 rqst.get('limit') or self.start_rev_id or self.end_rev_id)
         view_revisions = _calc_view_revisions(self.branch, self.start_rev_id,
             self.end_rev_id, rqst.get('direction'), generate_merge_revisions,
-            rqst.get('_allow_single_merge_revision'),
             delayed_graph_generation=delayed_graph_generation)
 
         # Apply the other filters
@@ -468,8 +464,7 @@ class _DefaultLogGenerator(LogGenerator):
         # filter_revisions_touching_file_id() requires them ...
         rqst = self.rqst
         view_revisions = _calc_view_revisions(self.branch, self.start_rev_id,
-            self.end_rev_id, rqst.get('direction'), True,
-            rqst.get('_allow_single_merge_revision'))
+            self.end_rev_id, rqst.get('direction'), True)
         if not isinstance(view_revisions, list):
             view_revisions = list(view_revisions)
         view_revisions = _filter_revisions_touching_file_id(self.branch,
@@ -480,8 +475,7 @@ class _DefaultLogGenerator(LogGenerator):
 
 
 def _calc_view_revisions(branch, start_rev_id, end_rev_id, direction,
-    generate_merge_revisions, allow_single_merge_revision,
-    delayed_graph_generation=False):
+    generate_merge_revisions, delayed_graph_generation=False):
     """Calculate the revisions to view.
 
     :return: An iterator of (revision_id, dotted_revno, merge_depth) tuples OR
@@ -495,8 +489,7 @@ def _calc_view_revisions(branch, start_rev_id, end_rev_id, direction,
     generate_single_revision = (end_rev_id and start_rev_id == end_rev_id and
         (not generate_merge_revisions or not _has_merges(branch, end_rev_id)))
     if generate_single_revision:
-        return _generate_one_revision(branch, end_rev_id, br_rev_id, br_revno,
-            allow_single_merge_revision)
+        return _generate_one_revision(branch, end_rev_id, br_rev_id, br_revno)
 
     # If we only want to see linear revisions, we can iterate ...
     if not generate_merge_revisions:
@@ -507,20 +500,12 @@ def _calc_view_revisions(branch, start_rev_id, end_rev_id, direction,
             direction, delayed_graph_generation)
 
 
-def _generate_one_revision(branch, rev_id, br_rev_id, br_revno,
-    allow_single_merge_revision):
+def _generate_one_revision(branch, rev_id, br_rev_id, br_revno):
     if rev_id == br_rev_id:
         # It's the tip
         return [(br_rev_id, br_revno, 0)]
     else:
         revno = branch.revision_id_to_dotted_revno(rev_id)
-        if len(revno) > 1 and not allow_single_merge_revision:
-            # It's a merge revision and the log formatter is
-            # completely brain dead. This "feature" of allowing
-            # log formatters incapable of displaying dotted revnos
-            # ought to be deprecated IMNSHO. IGC 20091022
-            raise errors.BzrCommandError('Selected log formatter only'
-                ' supports mainline revisions.')
         revno_str = '.'.join(str(n) for n in revno)
         return [(rev_id, revno_str, 0)]
 
@@ -682,7 +667,7 @@ def _graph_view_revisions(branch, start_rev_id, end_rev_id,
 
 
 def calculate_view_revisions(branch, start_revision, end_revision, direction,
-        specific_fileid, generate_merge_revisions, allow_single_merge_revision):
+        specific_fileid, generate_merge_revisions):
     """Calculate the revisions to view.
 
     :return: An iterator of (revision_id, dotted_revno, merge_depth) tuples OR
@@ -694,8 +679,7 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
     start_rev_id, end_rev_id = _get_revision_limits(branch, start_revision,
         end_revision)
     view_revisions = list(_calc_view_revisions(branch, start_rev_id, end_rev_id,
-        direction, generate_merge_revisions or specific_fileid,
-        allow_single_merge_revision))
+        direction, generate_merge_revisions or specific_fileid))
     if specific_fileid:
         view_revisions = _filter_revisions_touching_file_id(branch,
             specific_fileid, view_revisions,
@@ -1283,17 +1267,12 @@ class LogFormatter(object):
         one (2) should be used.
 
     - supports_merge_revisions must be True if this log formatter supports
-        merge revisions.  If not, and if supports_single_merge_revision is
-        also not True, then only mainline revisions will be passed to the
-        formatter.
+        merge revisions.  If not, then only mainline revisions will be passed
+        to the formatter.
 
     - preferred_levels is the number of levels this formatter defaults to.
         The default value is zero meaning display all levels.
         This value is only relevant if supports_merge_revisions is True.
-
-    - supports_single_merge_revision must be True if this log formatter
-        supports logging only a single merge revision.  This flag is
-        only relevant if supports_merge_revisions is not True.
 
     - supports_tags must be True if this log formatter supports tags.
         Otherwise the tags attribute may not be populated.
@@ -1333,15 +1312,16 @@ class LogFormatter(object):
             delta_format = 2 # long format
         self.delta_format = delta_format
         self.levels = levels
+        self._merge_count = 0
 
     def get_levels(self):
         """Get the number of levels to display or 0 for all."""
         if getattr(self, 'supports_merge_revisions', False):
             if self.levels is None or self.levels == -1:
-                return self.preferred_levels
-            else:
-                return self.levels
-        return 1
+                self.levels = self.preferred_levels
+        else:
+            self.levels = 1
+        return self.levels
 
     def log_revision(self, revision):
         """Log a revision.
@@ -1349,6 +1329,19 @@ class LogFormatter(object):
         :param  revision:   The LogRevision to be logged.
         """
         raise NotImplementedError('not implemented in abstract base')
+
+    def show_advice(self):
+        """Output user advice, if any, when the log is completed."""
+        if self.levels == 1 and self._merge_count > 0:
+            advice_sep = self.get_advice_separator()
+            if advice_sep:
+                self.to_file.write(advice_sep)
+            self.to_file.write(
+                "Use --levels 0 (or -n0) to see merged revisions.\n")
+
+    def get_advice_separator(self):
+        """Get the text separating the log from the closing advice."""
+        return ''
 
     def short_committer(self, rev):
         name, address = config.parse_username(rev.committer)
@@ -1361,6 +1354,14 @@ class LogFormatter(object):
         if name:
             return name
         return address
+
+    def merge_marker(self, revision):
+        """Get the merge marker to include in the output or '' if none."""
+        if len(revision.rev.parent_ids) > 1:
+            self._merge_count += 1
+            return ' [merge]'
+        else:
+            return ''
 
     def show_properties(self, revision, indent):
         """Displays the custom properties returned by each registered handler.
@@ -1379,6 +1380,7 @@ class LogFormatter(object):
 class LongLogFormatter(LogFormatter):
 
     supports_merge_revisions = True
+    preferred_levels = 1
     supports_delta = True
     supports_tags = True
     supports_diff = True
@@ -1389,7 +1391,8 @@ class LongLogFormatter(LogFormatter):
         to_file = self.to_file
         to_file.write(indent + '-' * 60 + '\n')
         if revision.revno is not None:
-            to_file.write(indent + 'revno: %s\n' % (revision.revno,))
+            to_file.write(indent + 'revno: %s%s\n' % (revision.revno,
+                self.merge_marker(revision)))
         if revision.tags:
             to_file.write(indent + 'tags: %s\n' % (', '.join(revision.tags)))
         if self.show_ids:
@@ -1431,6 +1434,10 @@ class LongLogFormatter(LogFormatter):
             # revision information) so that the output can be fed to patch -p0
             self.show_diff(self.to_exact_file, revision.diff, indent)
 
+    def get_advice_separator(self):
+        """Get the text separating the log from the closing advice."""
+        return '-' * 60 + '\n'
+
 
 class ShortLogFormatter(LogFormatter):
 
@@ -1465,9 +1472,6 @@ class ShortLogFormatter(LogFormatter):
         offset = ' ' * (revno_width + 1)
 
         to_file = self.to_file
-        is_merge = ''
-        if len(revision.rev.parent_ids) > 1:
-            is_merge = ' [merge]'
         tags = ''
         if revision.tags:
             tags = ' {%s}' % (', '.join(revision.tags))
@@ -1477,7 +1481,7 @@ class ShortLogFormatter(LogFormatter):
                             revision.rev.timezone or 0,
                             self.show_timezone, date_fmt="%Y-%m-%d",
                             show_offset=False),
-                tags, is_merge))
+                tags, self.merge_marker(revision)))
         self.show_properties(revision.rev, indent+offset)
         if self.show_ids:
             to_file.write(indent + offset + 'revision-id:%s\n'

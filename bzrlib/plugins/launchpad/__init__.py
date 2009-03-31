@@ -226,6 +226,7 @@ class cmd_launchpad_login(Command):
                 self.outf.write('No Launchpad user ID configured.\n')
                 return 1
         else:
+            name = name.lower()
             if check_account:
                 account.check_lp_login(name)
             account.set_lp_login(name)

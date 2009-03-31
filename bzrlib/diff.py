@@ -367,7 +367,7 @@ def _get_trees_to_diff(path_list, revision_specs, old_url, new_url,
             if view_files:
                 specific_files = view_files
                 view_str = views.view_display_str(view_files)
-                note("*** ignoring files outside view: %s" % view_str)
+                note("*** Ignoring files outside view. View is %s" % view_str)
 
     # Get extra trees that ought to be searched for file-ids
     extra_trees = None

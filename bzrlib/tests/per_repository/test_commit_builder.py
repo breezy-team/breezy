@@ -76,8 +76,8 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         try:
             builder = tree.branch.get_commit_builder([])
             try:
-                builder.record_iter_changes(tree, tree.last_revision(),
-                    tree.iter_changes(tree.basis_tree()))
+                list(builder.record_iter_changes(tree, tree.last_revision(),
+                    tree.iter_changes(tree.basis_tree())))
                 builder.finish_inventory()
             except:
                 builder.abort()
@@ -107,7 +107,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
                 basis = tree.basis_tree()
                 last_rev = tree.last_revision()
                 changes = tree.iter_changes(basis)
-                builder.record_iter_changes(tree, last_rev, changes)
+                list(builder.record_iter_changes(tree, last_rev, changes))
                 builder.finish_inventory()
             finally:
                 builder.abort()
@@ -179,8 +179,8 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
                 return
             self.assertFalse(builder.random_revid)
             try:
-                builder.record_iter_changes(tree, tree.last_revision(),
-                    tree.iter_changes(tree.basis_tree()))
+                list(builder.record_iter_changes(tree, tree.last_revision(),
+                    tree.iter_changes(tree.basis_tree())))
                 builder.finish_inventory()
             except:
                 builder.abort()
@@ -254,7 +254,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         tree.lock_write()
         builder = tree.branch.get_commit_builder([old_revision_id])
         try:
-            builder.record_iter_changes(tree, old_revision_id, [])
+            list(builder.record_iter_changes(tree, old_revision_id, []))
             # Regardless of repository root behaviour we should consider this a
             # pointless commit.
             self.assertFalse(builder.any_changes())
@@ -392,7 +392,8 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
                 delete_change = ('foo-id', ('foo', None), True, (True, False),
                     (tree.path2id(''), None), ('foo', None), ('file', None),
                     (False, None))
-                builder.record_iter_changes(tree, rev_id, [delete_change])
+                list(builder.record_iter_changes(tree, rev_id,
+                    [delete_change]))
                 self.assertEqual(("foo", None, "foo-id", None),
                     builder._basis_delta[0])
                 self.assertTrue(builder.any_changes())
@@ -447,8 +448,9 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         try:
             builder = tree.branch.get_commit_builder([])
             try:
-                builder.record_iter_changes(tree, _mod_revision.NULL_REVISION,
-                    tree.iter_changes(tree.basis_tree()))
+                list(builder.record_iter_changes(tree,
+                    _mod_revision.NULL_REVISION,
+                    tree.iter_changes(tree.basis_tree())))
                 builder.finish_inventory()
                 rev_id = builder.commit('foo bar')
             except:
@@ -501,14 +503,17 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
 
     def _add_commit_check_unchanged(self, tree, name, mini_commit=None):
         tree.add([name], [name + 'id'])
+        self._commit_check_unchanged(tree, name, name + 'id',
+            mini_commit=mini_commit)
+
+    def _commit_check_unchanged(self, tree, name, file_id, mini_commit=None):
         rev1 = tree.commit('')
         if mini_commit is None:
             mini_commit = self.mini_commit
         rev2 = mini_commit(tree, name, name, False, False)
         tree1, tree2 = self._get_revtrees(tree, [rev1, rev2])
-        self.assertEqual(rev1, tree1.inventory[name + 'id'].revision)
-        self.assertEqual(rev1, tree2.inventory[name + 'id'].revision)
-        file_id = name + 'id'
+        self.assertEqual(rev1, tree1.inventory[file_id].revision)
+        self.assertEqual(rev1, tree2.inventory[file_id].revision)
         expected_graph = {}
         expected_graph[(file_id, rev1)] = ()
         self.assertFileGraph(expected_graph, tree, (file_id, rev1))
@@ -572,13 +577,43 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         self._add_commit_check_unchanged(tree, 'link',
             mini_commit=self.mini_commit_record_iter_changes)
 
+    def test_last_modified_revision_after_commit_reference_unchanged(self):
+        # committing without changing a subtree does not change the last
+        # modified.
+        tree = self.make_branch_and_tree('.')
+        subtree = self.make_reference('reference')
+        try:
+            tree.add_reference(subtree)
+            self._commit_check_unchanged(tree, 'reference',
+                subtree.get_root_id())
+        except errors.UnsupportedOperation:
+            return
+
+    def test_last_modified_revision_after_commit_reference_unchanged_ric(self):
+        # committing without changing a subtree does not change the last
+        # modified.
+        tree = self.make_branch_and_tree('.')
+        subtree = self.make_reference('reference')
+        try:
+            tree.add_reference(subtree)
+            self._commit_check_unchanged(tree, 'reference',
+                subtree.get_root_id(),
+                mini_commit=self.mini_commit_record_iter_changes)
+        except errors.UnsupportedOperation:
+            return
+
     def _add_commit_renamed_check_changed(self, tree, name,
         expect_fs_hash=False, mini_commit=None):
         def rename():
             tree.rename_one(name, 'new_' + name)
-        if mini_commit is None:
-            mini_commit = self.mini_commit
         self._add_commit_change_check_changed(tree, name, rename,
+            expect_fs_hash=expect_fs_hash, mini_commit=mini_commit)
+
+    def _commit_renamed_check_changed(self, tree, name, file_id,
+        expect_fs_hash=False, mini_commit=None):
+        def rename():
+            tree.rename_one(name, 'new_' + name)
+        self._commit_change_check_changed(tree, name, file_id, rename,
             expect_fs_hash=expect_fs_hash, mini_commit=mini_commit)
 
     def test_last_modified_revision_after_rename_dir_changes(self):
@@ -623,6 +658,29 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         os.symlink('target', 'link')
         self._add_commit_renamed_check_changed(tree, 'link',
             mini_commit=self.mini_commit_record_iter_changes)
+
+    def test_last_modified_revision_after_rename_ref_changes(self):
+        # renaming a reference changes the last modified.
+        tree = self.make_branch_and_tree('.')
+        subtree = self.make_reference('reference')
+        try:
+            tree.add_reference(subtree)
+            self._commit_renamed_check_changed(tree, 'reference',
+                subtree.get_root_id())
+        except errors.UnsupportedOperation:
+            return
+
+    def test_last_modified_revision_after_rename_ref_changes_ric(self):
+        # renaming a reference changes the last modified.
+        tree = self.make_branch_and_tree('.')
+        subtree = self.make_reference('reference')
+        try:
+            tree.add_reference(subtree)
+            self._commit_renamed_check_changed(tree, 'reference',
+                subtree.get_root_id(),
+                mini_commit=self.mini_commit_record_iter_changes)
+        except errors.UnsupportedOperation:
+            return
 
     def _add_commit_reparent_check_changed(self, tree, name,
         expect_fs_hash=False, mini_commit=None):
@@ -679,16 +737,20 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
     def _add_commit_change_check_changed(self, tree, name, changer,
         expect_fs_hash=False, mini_commit=None):
         tree.add([name], [name + 'id'])
+        self._commit_change_check_changed(tree, name, name + 'id',
+            changer, expect_fs_hash=expect_fs_hash, mini_commit=mini_commit)
+
+    def _commit_change_check_changed(self, tree, name, file_id, changer,
+        expect_fs_hash=False, mini_commit=None):
         rev1 = tree.commit('')
         changer()
         if mini_commit is None:
             mini_commit = self.mini_commit
-        rev2 = mini_commit(tree, name, tree.id2path(name + 'id'),
+        rev2 = mini_commit(tree, name, tree.id2path(file_id),
             expect_fs_hash=expect_fs_hash)
         tree1, tree2 = self._get_revtrees(tree, [rev1, rev2])
-        self.assertEqual(rev1, tree1.inventory[name + 'id'].revision)
-        self.assertEqual(rev2, tree2.inventory[name + 'id'].revision)
-        file_id = name + 'id'
+        self.assertEqual(rev1, tree1.inventory[file_id].revision)
+        self.assertEqual(rev2, tree2.inventory[file_id].revision)
         expected_graph = {}
         expected_graph[(file_id, rev1)] = ()
         expected_graph[(file_id, rev2)] = ((file_id, rev1),)
@@ -731,8 +793,12 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
                 path = tree.id2path(file_id)
                 ie = inventory.make_entry(tree.kind(file_id), old_ie.name,
                     old_ie.parent_id, file_id)
+                content_summary = tree.path_content_summary(path)
+                if content_summary[0] == 'tree-reference':
+                    content_summary = content_summary[:3] + (
+                        tree.get_reference_revision(file_id),)
                 return builder.record_entry_contents(ie, parent_invs, path,
-                    tree, tree.path_content_summary(path))
+                    tree, content_summary)
 
             file_id = tree.path2id(new_name)
             parent_id = tree.inventory[file_id].parent_id
@@ -786,8 +852,8 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
             record a new version.
         :param delta_against_basis: True of the commit of new_name is expected
             to have a delta against the basis.
-        :param expect_fs_hash: ignored, present for compatibility with test
-            driver code for 'mini_commit'.
+        :param expect_fs_hash: If true, looks for a fs hash output from
+            record_iter_changes.
         """
         tree.lock_write()
         try:
@@ -803,10 +869,21 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
                 parent_invs.append(tree.branch.repository.revision_tree(
                     parent_id).inventory)
             changes = list(tree.iter_changes(parent_tree))
-            builder.record_iter_changes(tree, parent_ids[0], changes)
+            result = list(builder.record_iter_changes(tree, parent_ids[0],
+                changes))
+            file_id = tree.path2id(new_name)
+            if expect_fs_hash:
+                tree_file_stat = tree.get_file_with_stat(file_id)
+                tree_file_stat[0].close()
+                self.assertLength(1, result)
+                result = result[0]
+                self.assertEqual(result[:2], (file_id, new_name))
+                self.assertEqual(result[2][0], tree.get_file_sha1(file_id))
+                self.assertEqualStat(result[2][1], tree_file_stat[1])
+            else:
+                self.assertEqual([], result)
             delta = builder._basis_delta
             delta_dict = dict((change[2], change) for change in delta)
-            file_id = tree.path2id(new_name)
             version_recorded = (file_id in delta_dict and
                 delta_dict[file_id][3] is not None and
                 delta_dict[file_id][3].revision == builder._new_revision_id)
@@ -958,20 +1035,31 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         # Make a merge which just incorporates a change from a branch:
         # The per-file graph is straight line, and no alteration occurs
         # in the inventory.
+        # Part 1: change in the merged branch.
         rev1, tree2 = self._commit_sprout(tree1, name)
         # change on the other side to merge back
         rev2 = self._rename_in_tree(tree2, name)
         tree1.merge_from_branch(tree2.branch)
         if mini_commit is None:
             mini_commit = self.mini_commit
-        rev3 = mini_commit(tree1, name, 'new_' + name, False)
-        tree3, = self._get_revtrees(tree1, [rev2])
-        self.assertEqual(rev2, tree3.inventory[name + 'id'].revision)
-        file_id = name + 'id'
-        expected_graph = {}
-        expected_graph[(file_id, rev1)] = ()
-        expected_graph[(file_id, rev2)] = ((file_id, rev1),)
-        self.assertFileGraph(expected_graph, tree1, (file_id, rev2))
+        def _check_graph(in_tree, changed_in_tree):
+            rev3 = mini_commit(in_tree, name, 'new_' + name, False,
+                delta_against_basis=changed_in_tree)
+            tree3, = self._get_revtrees(in_tree, [rev2])
+            self.assertEqual(rev2, tree3.inventory[name + 'id'].revision)
+            file_id = name + 'id'
+            expected_graph = {}
+            expected_graph[(file_id, rev1)] = ()
+            expected_graph[(file_id, rev2)] = ((file_id, rev1),)
+            self.assertFileGraph(expected_graph, in_tree, (file_id, rev2))
+        _check_graph(tree1, True)
+        # Part 2: change in the merged into branch - we use tree2 that has a
+        # change to name, branch tree1 and give it an unrelated change, then
+        # merge that to t2.
+        other_tree = tree1.bzrdir.sprout('t3').open_workingtree()
+        other_rev = other_tree.commit('')
+        tree2.merge_from_branch(other_tree.branch)
+        _check_graph(tree2, False)
 
     def _commit_sprout_make_merge(self, tree1, make, mini_commit=None):
         # Make a merge which incorporates the addition of a new object to
@@ -1078,6 +1166,11 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
     def make_link(self, name):
         self.requireFeature(tests.SymlinkFeature)
         os.symlink('target', name)
+
+    def make_reference(self, name):
+        tree = self.make_branch_and_tree(name, format='1.9-rich-root')
+        tree.commit('foo')
+        return tree
 
     def _check_kind_change(self, make_before, make_after, expect_fs_hash=False,
         mini_commit=None):
