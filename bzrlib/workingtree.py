@@ -969,7 +969,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         return file_id
 
     def get_symlink_target(self, file_id):
-        return os.readlink(self.id2abspath(file_id).encode(osutils._fs_enc))
+        return os.readlink(self.id2abspath(file_id).encode(osutils._fs_enc)
+            ).decode(osutils._fs_enc)
 
     @needs_write_lock
     def subsume(self, other_tree):
