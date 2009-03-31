@@ -222,7 +222,7 @@ class GCCHKPacker(Packer):
             # don't need these sets anymore
             id_roots_set.clear()
             p_id_roots_set.clear()
-        return 'inventories', _filtered_inv_stream()
+        return _filtered_inv_stream()
 
     def _get_chk_streams(self, source_vf, keys, pb=None):
         # We want to stream the keys from 'id_roots', and things they
@@ -871,6 +871,8 @@ class GroupCHKStreamSource(repository.StreamSource):
     def _get_text_stream(self):
         # Note: We know we don't have to handle adding root keys, because both
         # the source and target are GCCHK, and those always support rich-roots
+        # We may want to request as 'unordered', in case the source has done a
+        # 'split' packing
         return ('texts', self.from_repository.texts.get_record_stream(
                             self._text_keys, 'groupcompress', False))
 
