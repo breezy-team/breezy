@@ -55,3 +55,7 @@ def convert_dulwich_error(error):
 
 class NoPushSupport(bzr_errors.BzrError):
     _fmt = "Push is not yet supported for bzr-git. Try dpush instead."
+
+
+class GitSmartRemoteNotSupported(bzr_errors.BzrError):
+    _fmt = "This operation is not supported by the Git smart server protocol."

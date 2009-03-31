@@ -51,6 +51,7 @@ from bzrlib.plugins.git.branch import (
     GitBranch,
     )
 from bzrlib.plugins.git.errors import (
+    GitSmartRemoteNotSupported,
     NoSuchRef,
     )
 from bzrlib.plugins.git.dir import (
@@ -202,6 +203,18 @@ class RemoteGitRepository(GitRepository):
     def __init__(self, gitdir, lockfiles):
         GitRepository.__init__(self, gitdir, lockfiles)
         self._refs = None
+
+    @property
+    def inventories(self):
+        raise GitSmartRemoteNotSupported()
+
+    @property
+    def revisions(self):
+        raise GitSmartRemoteNotSupported()
+
+    @property
+    def texts(self):
+        raise GitSmartRemoteNotSupported()
 
     def get_refs(self):
         if self._refs is not None:
