@@ -26,52 +26,23 @@ from bzrlib import (
     versionedfile,
     )
 from bzrlib.osutils import sha_string
-from bzrlib.tests import (
-    TestCaseWithTransport,
-    multiply_tests,
-    )
+from bzrlib.tests.test__groupcompress import CompiledGroupCompressFeature
+
+
+def load_tests(standard_tests, module, loader):
+    """Parameterize tests for all versions of groupcompress."""
+    to_adapt, result = tests.split_suite_by_condition(
+        standard_tests, tests.condition_isinstance(TestAllGroupCompressors))
+    scenarios = [
+        ('python', {'compressor': groupcompress.PythonGroupCompressor}),
+        ]
+    if CompiledGroupCompressFeature.available():
+        scenarios.append(('C',
+            {'compressor': groupcompress.PyrexGroupCompressor}))
+    return tests.multiply_tests(to_adapt, scenarios, result)
 
 
 class TestGroupCompressor(tests.TestCase):
-    """Tests for GroupCompressor"""
-
-    def test_empty_delta(self):
-        compressor = groupcompress.GroupCompressor()
-        self.assertEqual([], compressor.lines)
-
-    def test_one_nosha_delta(self):
-        # diff against NUKK
-        compressor = groupcompress.GroupCompressor()
-        sha1, start_point, end_point, _, _ = compressor.compress(('label',),
-            'strange\ncommon\n', None)
-        self.assertEqual(sha_string('strange\ncommon\n'), sha1)
-        expected_lines = [
-            'f', '\x0f', 'strange\ncommon\n',
-            ]
-        self.assertEqual(expected_lines, compressor.lines)
-        self.assertEqual(0, start_point)
-        self.assertEqual(sum(map(len, expected_lines)), end_point)
-
-    def test_empty_content(self):
-        compressor = groupcompress.GroupCompressor()
-        # Adding empty bytes should return the 'null' record
-        sha1, start_point, end_point, kind, _ = compressor.compress(('empty',),
-            '', None)
-        self.assertEqual(0, start_point)
-        self.assertEqual(0, end_point)
-        self.assertEqual('fulltext', kind)
-        self.assertEqual(groupcompress._null_sha1, sha1)
-        self.assertEqual(0, compressor.endpoint)
-        self.assertEqual([], compressor.lines)
-        # Even after adding some content
-        compressor.compress(('content',), 'some\nbytes\n', None)
-        self.assertTrue(compressor.endpoint > 0)
-        sha1, start_point, end_point, kind, _ = compressor.compress(('empty2',),
-            '', None)
-        self.assertEqual(0, start_point)
-        self.assertEqual(0, end_point)
-        self.assertEqual('fulltext', kind)
-        self.assertEqual(groupcompress._null_sha1, sha1)
 
     def _chunks_to_repr_lines(self, chunks):
         return '\n'.join(map(repr, ''.join(chunks).split('\n')))
@@ -88,12 +59,176 @@ class TestGroupCompressor(tests.TestCase):
         self.assertEqualDiff(self._chunks_to_repr_lines(expected),
                              self._chunks_to_repr_lines(actual))
 
-    def test_two_nosha_delta(self):
-        compressor = groupcompress.GroupCompressor()
-        sha1_1, _, _, _, _ = compressor.compress(('label',),
+
+class TestAllGroupCompressors(TestGroupCompressor):
+    """Tests for GroupCompressor"""
+
+    compressor = None # Set by multiply_tests
+
+    def test_empty_delta(self):
+        compressor = self.compressor()
+        self.assertEqual([], compressor.chunks)
+
+    def test_one_nosha_delta(self):
+        # diff against NUKK
+        compressor = self.compressor()
+        sha1, start_point, end_point, _ = compressor.compress(('label',),
+            'strange\ncommon\n', None)
+        self.assertEqual(sha_string('strange\ncommon\n'), sha1)
+        expected_lines = 'f' '\x0f' 'strange\ncommon\n'
+        self.assertEqual(expected_lines, ''.join(compressor.chunks))
+        self.assertEqual(0, start_point)
+        self.assertEqual(sum(map(len, expected_lines)), end_point)
+
+    def test_empty_content(self):
+        compressor = self.compressor()
+        # Adding empty bytes should return the 'null' record
+        sha1, start_point, end_point, kind = compressor.compress(('empty',),
+                                                                 '', None)
+        self.assertEqual(0, start_point)
+        self.assertEqual(0, end_point)
+        self.assertEqual('fulltext', kind)
+        self.assertEqual(groupcompress._null_sha1, sha1)
+        self.assertEqual(0, compressor.endpoint)
+        self.assertEqual([], compressor.chunks)
+        # Even after adding some content
+        compressor.compress(('content',), 'some\nbytes\n', None)
+        self.assertTrue(compressor.endpoint > 0)
+        sha1, start_point, end_point, kind = compressor.compress(('empty2',),
+                                                                 '', None)
+        self.assertEqual(0, start_point)
+        self.assertEqual(0, end_point)
+        self.assertEqual('fulltext', kind)
+        self.assertEqual(groupcompress._null_sha1, sha1)
+
+    def test_extract_from_compressor(self):
+        # Knit fetching will try to reconstruct texts locally which results in
+        # reading something that is in the compressor stream already.
+        compressor = self.compressor()
+        sha1_1, _, _, _ = compressor.compress(('label',),
             'strange\ncommon long line\nthat needs a 16 byte match\n', None)
-        expected_lines = list(compressor.lines)
-        sha1_2, start_point, end_point, _, _ = compressor.compress(('newlabel',),
+        expected_lines = list(compressor.chunks)
+        sha1_2, _, end_point, _ = compressor.compress(('newlabel',),
+            'common long line\nthat needs a 16 byte match\ndifferent\n', None)
+        # get the first out
+        self.assertEqual(('strange\ncommon long line\n'
+                          'that needs a 16 byte match\n', sha1_1),
+                         compressor.extract(('label',)))
+        # and the second
+        self.assertEqual(('common long line\nthat needs a 16 byte match\n'
+                          'different\n', sha1_2),
+                         compressor.extract(('newlabel',)))
+
+
+class TestPyrexGroupCompressor(TestGroupCompressor):
+
+    _test_needs_features = [CompiledGroupCompressFeature]
+    compressor = groupcompress.PyrexGroupCompressor
+
+    def test_stats(self):
+        compressor = self.compressor()
+        compressor.compress(('label',),
+                            'strange\n'
+                            'common very very long line\n'
+                            'plus more text\n', None)
+        compressor.compress(('newlabel',),
+                            'common very very long line\n'
+                            'plus more text\n'
+                            'different\n'
+                            'moredifferent\n', None)
+        compressor.compress(('label3',),
+                            'new\n'
+                            'common very very long line\n'
+                            'plus more text\n'
+                            'different\n'
+                            'moredifferent\n', None)
+        self.assertAlmostEqual(1.9, compressor.ratio(), 1)
+
+    def test_two_nosha_delta(self):
+        compressor = self.compressor()
+        sha1_1, _, _, _ = compressor.compress(('label',),
+            'strange\ncommon long line\nthat needs a 16 byte match\n', None)
+        expected_lines = list(compressor.chunks)
+        sha1_2, start_point, end_point, _ = compressor.compress(('newlabel',),
+            'common long line\nthat needs a 16 byte match\ndifferent\n', None)
+        self.assertEqual(sha_string('common long line\n'
+                                    'that needs a 16 byte match\n'
+                                    'different\n'), sha1_2)
+        expected_lines.extend([
+            # 'delta', delta length
+            'd\x0f',
+            # source and target length
+            '\x36',
+            # copy the line common
+            '\x91\x0a\x2c', #copy, offset 0x0a, len 0x2c
+            # add the line different, and the trailing newline
+            '\x0adifferent\n', # insert 10 bytes
+            ])
+        self.assertEqualDiffEncoded(expected_lines, compressor.chunks)
+        self.assertEqual(sum(map(len, expected_lines)), end_point)
+
+    def test_three_nosha_delta(self):
+        # The first interesting test: make a change that should use lines from
+        # both parents.
+        compressor = self.compressor()
+        sha1_1, _, _, _ = compressor.compress(('label',),
+            'strange\ncommon very very long line\nwith some extra text\n', None)
+        sha1_2, _, _, _ = compressor.compress(('newlabel',),
+            'different\nmoredifferent\nand then some more\n', None)
+        expected_lines = list(compressor.chunks)
+        sha1_3, start_point, end_point, _ = compressor.compress(('label3',),
+            'new\ncommon very very long line\nwith some extra text\n'
+            'different\nmoredifferent\nand then some more\n',
+            None)
+        self.assertEqual(
+            sha_string('new\ncommon very very long line\nwith some extra text\n'
+                       'different\nmoredifferent\nand then some more\n'),
+            sha1_3)
+        expected_lines.extend([
+            # 'delta', delta length
+            'd\x0b',
+            # source and target length
+            '\x5f'
+            # insert new
+            '\x03new',
+            # Copy of first parent 'common' range
+            '\x91\x09\x31' # copy, offset 0x09, 0x31 bytes
+            # Copy of second parent 'different' range
+            '\x91\x3c\x2b' # copy, offset 0x3c, 0x2b bytes
+            ])
+        self.assertEqualDiffEncoded(expected_lines, compressor.chunks)
+        self.assertEqual(sum(map(len, expected_lines)), end_point)
+
+
+class TestPythonGroupCompressor(TestGroupCompressor):
+
+    compressor = groupcompress.PythonGroupCompressor
+
+    def test_stats(self):
+        compressor = self.compressor()
+        compressor.compress(('label',),
+                            'strange\n'
+                            'common very very long line\n'
+                            'plus more text\n', None)
+        compressor.compress(('newlabel',),
+                            'common very very long line\n'
+                            'plus more text\n'
+                            'different\n'
+                            'moredifferent\n', None)
+        compressor.compress(('label3',),
+                            'new\n'
+                            'common very very long line\n'
+                            'plus more text\n'
+                            'different\n'
+                            'moredifferent\n', None)
+        self.assertAlmostEqual(1.9, compressor.ratio(), 1)
+
+    def test_two_nosha_delta(self):
+        compressor = self.compressor()
+        sha1_1, _, _, _ = compressor.compress(('label',),
+            'strange\ncommon long line\nthat needs a 16 byte match\n', None)
+        expected_lines = list(compressor.chunks)
+        sha1_2, start_point, end_point, _ = compressor.compress(('newlabel',),
             'common long line\nthat needs a 16 byte match\ndifferent\n', None)
         self.assertEqual(sha_string('common long line\n'
                                     'that needs a 16 byte match\n'
@@ -108,19 +243,19 @@ class TestGroupCompressor(tests.TestCase):
             # add the line different, and the trailing newline
             '\x0adifferent\n', # insert 10 bytes
             ])
-        self.assertEqualDiffEncoded(expected_lines, compressor.lines)
+        self.assertEqualDiffEncoded(expected_lines, compressor.chunks)
         self.assertEqual(sum(map(len, expected_lines)), end_point)
 
     def test_three_nosha_delta(self):
         # The first interesting test: make a change that should use lines from
         # both parents.
-        compressor = groupcompress.GroupCompressor()
-        sha1_1, _, _, _, _ = compressor.compress(('label',),
+        compressor = self.compressor()
+        sha1_1, _, _, _ = compressor.compress(('label',),
             'strange\ncommon very very long line\nwith some extra text\n', None)
-        sha1_2, _, _, _, _ = compressor.compress(('newlabel',),
+        sha1_2, _, _, _ = compressor.compress(('newlabel',),
             'different\nmoredifferent\nand then some more\n', None)
-        expected_lines = list(compressor.lines)
-        sha1_3, start_point, end_point, _, _ = compressor.compress(('label3',),
+        expected_lines = list(compressor.chunks)
+        sha1_3, start_point, end_point, _ = compressor.compress(('label3',),
             'new\ncommon very very long line\nwith some extra text\n'
             'different\nmoredifferent\nand then some more\n',
             None)
@@ -130,82 +265,18 @@ class TestGroupCompressor(tests.TestCase):
             sha1_3)
         expected_lines.extend([
             # 'delta', delta length
-            'd\x0b',
+            'd\x0c',
             # target length
             '\x5f'
             # insert new
-            '\x03new',
+            '\x04new\n',
             # Copy of first parent 'common' range
-            '\x91\x09\x31' # copy, offset 0x09, 0x31 bytes
+            '\x91\x0a\x30' # copy, offset 0x0a, 0x30 bytes
             # Copy of second parent 'different' range
             '\x91\x3c\x2b' # copy, offset 0x3c, 0x2b bytes
             ])
-        self.assertEqualDiffEncoded(expected_lines, compressor.lines)
+        self.assertEqualDiffEncoded(expected_lines, compressor.chunks)
         self.assertEqual(sum(map(len, expected_lines)), end_point)
-
-    def test_stats(self):
-        compressor = groupcompress.GroupCompressor()
-        compressor.compress(('label',), 'strange\ncommon long line\n'
-                                        'plus more text\n', None)
-        compressor.compress(('newlabel',),
-                            'common long line\nplus more text\n'
-                            'different\nmoredifferent\n', None)
-        compressor.compress(('label3',),
-                            'new\ncommon long line\nplus more text\n'
-                            '\ndifferent\nmoredifferent\n', None)
-        self.assertAlmostEqual(1.4, compressor.ratio(), 1)
-
-    def test_extract_from_compressor(self):
-        # Knit fetching will try to reconstruct texts locally which results in
-        # reading something that is in the compressor stream already.
-        compressor = groupcompress.GroupCompressor()
-        sha1_1, _, _, _, _ = compressor.compress(('label',),
-            'strange\ncommon long line\nthat needs a 16 byte match\n', None)
-        expected_lines = list(compressor.lines)
-        sha1_2, _, end_point, _, _ = compressor.compress(('newlabel',),
-            'common long line\nthat needs a 16 byte match\ndifferent\n', None)
-        # get the first out
-        self.assertEqual(('strange\ncommon long line\n'
-                          'that needs a 16 byte match\n', sha1_1),
-            compressor.extract(('label',)))
-        # and the second
-        self.assertEqual(('common long line\nthat needs a 16 byte match\n'
-                          'different\n', sha1_2),
-                         compressor.extract(('newlabel',)))
-
-
-class TestBase128Int(tests.TestCase):
-
-    def assertEqualEncode(self, bytes, val):
-        self.assertEqual(bytes, groupcompress.encode_base128_int(val))
-
-    def assertEqualDecode(self, val, num_decode, bytes):
-        self.assertEqual((val, num_decode),
-                         groupcompress.decode_base128_int(bytes))
-
-    def test_encode(self):
-        self.assertEqualEncode('\x01', 1)
-        self.assertEqualEncode('\x02', 2)
-        self.assertEqualEncode('\x7f', 127)
-        self.assertEqualEncode('\x80\x01', 128)
-        self.assertEqualEncode('\xff\x01', 255)
-        self.assertEqualEncode('\x80\x02', 256)
-        self.assertEqualEncode('\xff\xff\xff\xff\x0f', 0xFFFFFFFF)
-
-    def test_decode(self):
-        self.assertEqualDecode(1, 1, '\x01')
-        self.assertEqualDecode(2, 1, '\x02')
-        self.assertEqualDecode(127, 1, '\x7f')
-        self.assertEqualDecode(128, 2, '\x80\x01')
-        self.assertEqualDecode(255, 2, '\xff\x01')
-        self.assertEqualDecode(256, 2, '\x80\x02')
-        self.assertEqualDecode(0xFFFFFFFF, 5, '\xff\xff\xff\xff\x0f')
-
-    def test_decode_with_trailing_bytes(self):
-        self.assertEqualDecode(1, 1, '\x01abcdef')
-        self.assertEqualDecode(127, 1, '\x7f\x01')
-        self.assertEqualDecode(128, 2, '\x80\x01abcdef')
-        self.assertEqualDecode(255, 2, '\xff\x01\xff')
 
 
 class TestGroupCompressBlock(tests.TestCase):
@@ -216,12 +287,13 @@ class TestGroupCompressBlock(tests.TestCase):
         start = 0
         for key in sorted(key_to_text):
             compressor.compress(key, key_to_text[key], None)
+        locs = dict((key, (start, end)) for key, (start, _, end, _)
+                    in compressor.labels_deltas.iteritems())
         block = compressor.flush()
-        entries = block._entries
+        raw_bytes = block.to_bytes()
         # Go through from_bytes(to_bytes()) so that we start with a compressed
         # content object
-        return entries, groupcompress.GroupCompressBlock.from_bytes(
-            block.to_bytes())
+        return locs, groupcompress.GroupCompressBlock.from_bytes(raw_bytes)
 
     def test_from_empty_bytes(self):
         self.assertRaises(ValueError,
@@ -231,7 +303,6 @@ class TestGroupCompressBlock(tests.TestCase):
         block = groupcompress.GroupCompressBlock.from_bytes(
             'gcb1z\n0\n0\n')
         self.assertIsInstance(block, groupcompress.GroupCompressBlock)
-        self.assertEqual({}, block._entries)
         self.assertIs(None, block._content)
         self.assertEqual('', block._z_content)
         block._ensure_content()
@@ -258,22 +329,10 @@ class TestGroupCompressBlock(tests.TestCase):
         self.assertEqual(z_content, block._z_content)
         self.assertEqual(content, block._content)
 
-    def test_add_entry(self):
-        gcb = groupcompress.GroupCompressBlock()
-        e = gcb.add_entry(('foo', 'bar'), 'fulltext', 'abcd'*10, 0, 100)
-        self.assertIsInstance(e, groupcompress.GroupCompressBlockEntry)
-        self.assertEqual(('foo', 'bar'), e.key)
-        self.assertEqual('fulltext', e.type)
-        self.assertEqual('abcd'*10, e.sha1)
-        self.assertEqual(0, e.start)
-        self.assertEqual(100, e.length)
-
     def test_to_bytes(self):
         content = ('this is some content\n'
                    'this content will be compressed\n')
         gcb = groupcompress.GroupCompressBlock()
-        gcb.add_entry(('foo', 'bar'), 'fulltext', 'abcd'*10, 0, 100)
-        gcb.add_entry(('bing',), 'fulltext', 'abcd'*10, 100, 100)
         gcb.set_content(content)
         bytes = gcb.to_bytes()
         self.assertEqual(gcb._z_content_length, len(gcb._z_content))
@@ -541,20 +600,21 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
         start = 0
         for key in sorted(key_to_text):
             compressor.compress(key, key_to_text[key], None)
+        locs = dict((key, (start, end)) for key, (start, _, end, _)
+                    in compressor.labels_deltas.iteritems())
         block = compressor.flush()
-        entries = block._entries
         raw_bytes = block.to_bytes()
-        return entries, groupcompress.GroupCompressBlock.from_bytes(raw_bytes)
+        return locs, groupcompress.GroupCompressBlock.from_bytes(raw_bytes)
 
-    def add_key_to_manager(self, key, entries, block, manager):
-        entry = entries[key]
-        manager.add_factory(entry.key, (), entry.start, entry.end)
+    def add_key_to_manager(self, key, locations, block, manager):
+        start, end = locations[key]
+        manager.add_factory(key, (), start, end)
 
     def test_get_fulltexts(self):
-        entries, block = self.make_block(self._texts)
+        locations, block = self.make_block(self._texts)
         manager = groupcompress._LazyGroupContentManager(block)
-        self.add_key_to_manager(('key1',), entries, block, manager)
-        self.add_key_to_manager(('key2',), entries, block, manager)
+        self.add_key_to_manager(('key1',), locations, block, manager)
+        self.add_key_to_manager(('key2',), locations, block, manager)
         result_order = []
         for record in manager.get_record_stream():
             result_order.append(record.key)
@@ -565,8 +625,8 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
         # If we build the manager in the opposite order, we should get them
         # back in the opposite order
         manager = groupcompress._LazyGroupContentManager(block)
-        self.add_key_to_manager(('key2',), entries, block, manager)
-        self.add_key_to_manager(('key1',), entries, block, manager)
+        self.add_key_to_manager(('key2',), locations, block, manager)
+        self.add_key_to_manager(('key1',), locations, block, manager)
         result_order = []
         for record in manager.get_record_stream():
             result_order.append(record.key)
@@ -575,7 +635,7 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
         self.assertEqual([('key2',), ('key1',)], result_order)
 
     def test__wire_bytes_no_keys(self):
-        entries, block = self.make_block(self._texts)
+        locations, block = self.make_block(self._texts)
         manager = groupcompress._LazyGroupContentManager(block)
         wire_bytes = manager._wire_bytes()
         block_length = len(block.to_bytes())
@@ -594,10 +654,10 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
                          wire_bytes)
 
     def test__wire_bytes(self):
-        entries, block = self.make_block(self._texts)
+        locations, block = self.make_block(self._texts)
         manager = groupcompress._LazyGroupContentManager(block)
-        self.add_key_to_manager(('key1',), entries, block, manager)
-        self.add_key_to_manager(('key4',), entries, block, manager)
+        self.add_key_to_manager(('key1',), locations, block, manager)
+        self.add_key_to_manager(('key4',), locations, block, manager)
         block_bytes = block.to_bytes()
         wire_bytes = manager._wire_bytes()
         (storage_kind, z_header_len, header_len,
@@ -612,8 +672,8 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
         z_header = rest[:z_header_len]
         header = zlib.decompress(z_header)
         self.assertEqual(header_len, len(header))
-        entry1 = entries[('key1',)]
-        entry4 = entries[('key4',)]
+        entry1 = locations[('key1',)]
+        entry4 = locations[('key4',)]
         self.assertEqualDiff('key1\n'
                              '\n'  # no parents
                              '%d\n' # start offset
@@ -622,17 +682,17 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
                              '\n'
                              '%d\n'
                              '%d\n'
-                             % (entry1.start, entry1.end,
-                                entry4.start, entry4.end),
+                             % (entry1[0], entry1[1],
+                                entry4[0], entry4[1]),
                             header)
         z_block = rest[z_header_len:]
         self.assertEqual(block_bytes, z_block)
 
     def test_from_bytes(self):
-        entries, block = self.make_block(self._texts)
+        locations, block = self.make_block(self._texts)
         manager = groupcompress._LazyGroupContentManager(block)
-        self.add_key_to_manager(('key1',), entries, block, manager)
-        self.add_key_to_manager(('key4',), entries, block, manager)
+        self.add_key_to_manager(('key1',), locations, block, manager)
+        self.add_key_to_manager(('key4',), locations, block, manager)
         wire_bytes = manager._wire_bytes()
         self.assertStartsWith(wire_bytes, 'groupcompress-block\n')
         manager = groupcompress._LazyGroupContentManager.from_bytes(wire_bytes)
@@ -647,21 +707,21 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
         self.assertEqual([('key1',), ('key4',)], result_order)
 
     def test__check_rebuild_no_changes(self):
-        entries, block = self.make_block(self._texts)
+        locations, block = self.make_block(self._texts)
         manager = groupcompress._LazyGroupContentManager(block)
         # Request all the keys, which ensures that we won't rebuild
-        self.add_key_to_manager(('key1',), entries, block, manager)
-        self.add_key_to_manager(('key2',), entries, block, manager)
-        self.add_key_to_manager(('key3',), entries, block, manager)
-        self.add_key_to_manager(('key4',), entries, block, manager)
+        self.add_key_to_manager(('key1',), locations, block, manager)
+        self.add_key_to_manager(('key2',), locations, block, manager)
+        self.add_key_to_manager(('key3',), locations, block, manager)
+        self.add_key_to_manager(('key4',), locations, block, manager)
         manager._check_rebuild_block()
         self.assertIs(block, manager._block)
 
     def test__check_rebuild_only_one(self):
-        entries, block = self.make_block(self._texts)
+        locations, block = self.make_block(self._texts)
         manager = groupcompress._LazyGroupContentManager(block)
         # Request just the first key, which should trigger a 'strip' action
-        self.add_key_to_manager(('key1',), entries, block, manager)
+        self.add_key_to_manager(('key1',), locations, block, manager)
         manager._check_rebuild_block()
         self.assertIsNot(block, manager._block)
         self.assertTrue(block._content_length > manager._block._content_length)
@@ -673,10 +733,10 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
                              record.get_bytes_as('fulltext'))
 
     def test__check_rebuild_middle(self):
-        entries, block = self.make_block(self._texts)
+        locations, block = self.make_block(self._texts)
         manager = groupcompress._LazyGroupContentManager(block)
         # Request a small key in the middle should trigger a 'rebuild'
-        self.add_key_to_manager(('key4',), entries, block, manager)
+        self.add_key_to_manager(('key4',), locations, block, manager)
         manager._check_rebuild_block()
         self.assertIsNot(block, manager._block)
         self.assertTrue(block._content_length > manager._block._content_length)
