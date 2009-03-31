@@ -73,6 +73,9 @@ Improvements
   version controlled files match the ignore pattern. (Neil
   Martinsen-Burrell, #248895)
 
+* ``bzr log`` now has ``--include-merges`` as an alias for ``--levels 0``.
+  (Ian Clatworthy)
+
 * ``bzr send`` is faster on repositories with deep histories.
   (Ian Clatworthy)
 

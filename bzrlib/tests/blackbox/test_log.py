@@ -398,7 +398,7 @@ timestamp: Just now
 message:
   first post
 ------------------------------------------------------------
-Use --levels 0 (or -n0) to see merged revisions.
+Use --include-merges or -n0 to see merged revisions.
 """)
 
     def test_force_merge_revisions_on(self):
@@ -423,6 +423,14 @@ Use --levels 0 (or -n0) to see merged revisions.
       first post
 
 """)
+
+    def test_include_merges(self):
+        # Confirm --include-merges gives the same output as -n0
+        self._prepare_short()
+        out_im, err_im = self.run_bzr('log --include-merges')
+        out_n0, err_n0 = self.run_bzr('log -n0')
+        self.assertEqual(err_im, err_n0)
+        self.assertEqual(out_im, out_n0)
 
     def test_force_merge_revisions_N(self):
         self._prepare_short()
@@ -607,7 +615,7 @@ diff:
       @@ -0,0 +1,1 @@
       +contents of parent/file2
 
-Use --levels 0 (or -n0) to see merged revisions.
+Use --include-merges or -n0 to see merged revisions.
 """)
 
     def test_log_show_diff_line(self):
@@ -645,7 +653,7 @@ Use --levels 0 (or -n0) to see merged revisions.
       @@ -0,0 +1,1 @@
       +contents of parent/file2
 
-Use --levels 0 (or -n0) to see merged revisions.
+Use --include-merges or -n0 to see merged revisions.
 """)
         out,err = self.run_bzr('log -p --short file1')
         self.assertEqual('', err)
