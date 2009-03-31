@@ -1318,10 +1318,10 @@ class LogFormatter(object):
         """Get the number of levels to display or 0 for all."""
         if getattr(self, 'supports_merge_revisions', False):
             if self.levels is None or self.levels == -1:
-                return self.preferred_levels
-            else:
-                return self.levels
-        return 1
+                self.levels = self.preferred_levels
+        else:
+            self.levels = 1
+        return self.levels
 
     def log_revision(self, revision):
         """Log a revision.
