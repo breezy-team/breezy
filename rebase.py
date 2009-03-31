@@ -402,6 +402,10 @@ def commit_rebase(wt, oldrev, newrevid):
             authors = None
     else:
         authors.append(oldrev.committer)
+    if 'author' in revprops:
+        del revprops['author']
+    if 'authors' in revprops:
+        del revprops['authors']
     wt.commit(message=oldrev.message, timestamp=oldrev.timestamp, 
               timezone=oldrev.timezone, revprops=revprops, rev_id=newrevid,
               committer=committer, authors=authors)
