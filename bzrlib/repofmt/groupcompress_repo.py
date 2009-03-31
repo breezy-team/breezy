@@ -175,7 +175,8 @@ class GCCHKPacker(Packer):
                                           reload_func=reload_func)
         self._pack_collection = pack_collection
         # ATM, We only support this for GCCHK repositories
-        assert pack_collection.chk_index is not None
+        if pack_collection.chk_index is None:
+            raise AssertionError('pack_collection.chk_index should not be None')
         self._gather_text_refs = False
         self._chk_id_roots = []
         self._chk_p_id_roots = []
@@ -210,7 +211,8 @@ class GCCHKPacker(Packer):
                     self._chk_id_roots.append(key)
                     id_roots_set.add(key)
                 p_id_map = chk_inv.parent_id_basename_to_file_id
-                assert p_id_map is not None
+                if p_id_map is None:
+                    raise AssertionError('Parent id -> file_id map not set')
                 key = p_id_map.key()
                 if key not in p_id_roots_set:
                     p_id_roots_set.add(key)
@@ -330,7 +332,8 @@ class GCCHKPacker(Packer):
         access = knit._DirectPackAccess(index_to_pack)
         if for_write:
             # Use new_pack
-            assert self.new_pack is not None
+            if self.new_pack is None:
+                raise AssertionError('No new pack has been set')
             index = getattr(self.new_pack, index_name)
             index_to_pack[index] = self.new_pack.access_tuple()
             index.set_optimize(for_size=True)
@@ -720,7 +723,6 @@ class GCCHKPackRepository(CHKInventoryRepository):
         raise errors.UnsuspendableWriteGroup(self)
 
     def _reconcile_pack(self, collection, packs, extension, revs, pb):
-        # assert revs is None
         packer = GCCHKReconcilePacker(collection, packs, extension)
         return packer.pack(pb)
 
