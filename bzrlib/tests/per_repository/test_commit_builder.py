@@ -185,7 +185,6 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
             except:
                 builder.abort()
                 raise
-            builder.finish_inventory()
             self.assertEqual(revision_id, builder.commit('foo bar'))
         finally:
             tree.unlock()

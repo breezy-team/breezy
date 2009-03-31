@@ -2471,7 +2471,7 @@ class CHKInventoryRepository(KnitPackRepository):
         revision_ids = frozenset(revision_ids)
         file_id_revisions = {}
         bytes_to_info = CHKInventory._bytes_to_utf8name_key
-        for records, items in chk_map.iter_interesting_nodes(self.chk_bytes,
+        for record, items in chk_map.iter_interesting_nodes(self.chk_bytes,
                     interesting_root_keys, uninteresting_root_keys,
                     pb=pb):
             # This is cheating a bit to use the last grabbed 'inv', but it
