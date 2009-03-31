@@ -836,7 +836,6 @@ class GroupCHKStreamSource(repository.StreamSource):
         return ('inventories', _filtered_inv_stream())
 
     def _get_filtered_chk_streams(self, excluded_keys):
-        import pdb; pdb.set_trace()
         self._text_keys = set()
         excluded_keys.discard(_mod_revision.NULL_REVISION)
         if not excluded_keys:
