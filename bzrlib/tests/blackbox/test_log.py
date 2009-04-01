@@ -213,9 +213,9 @@ class TestLog(ExternalBase):
         os.chdir('branch2')
         self.run_bzr('merge ../branch1') # tags don't propagate otherwise
         branch2_tree.commit(message='merge branch 1')
-        log = self.run_bzr("log -r-1")[0]
+        log = self.run_bzr("log -n0 -r-1")[0]
         self.assertContainsRe(log, r'    tags: tag1')
-        log = self.run_bzr("log -r3.1.1")[0]
+        log = self.run_bzr("log -n0 -r3.1.1")[0]
         self.assertContainsRe(log, r'tags: tag1')
 
     def test_log_limit(self):
@@ -336,19 +336,19 @@ class TestLogMerges(TestCaseWithoutPropsHandler):
 
     def test_merges_are_indented_by_level(self):
         self._prepare()
-        out,err = self.run_bzr('log')
+        out,err = self.run_bzr('log -n0')
         self.assertEqual('', err)
         log = normalize_log(out)
         self.assertEqualDiff(log, """\
 ------------------------------------------------------------
-revno: 2
+revno: 2 [merge]
 committer: Lorem Ipsum <test@example.com>
 branch nick: parent
 timestamp: Just now
 message:
   merge branch 1
     ------------------------------------------------------------
-    revno: 1.1.2
+    revno: 1.1.2 [merge]
     committer: Lorem Ipsum <test@example.com>
     branch nick: child
     timestamp: Just now
@@ -384,7 +384,7 @@ message:
         log = normalize_log(out)
         self.assertEqualDiff(log, """\
 ------------------------------------------------------------
-revno: 2
+revno: 2 [merge]
 committer: Lorem Ipsum <test@example.com>
 branch nick: parent
 timestamp: Just now
@@ -397,6 +397,8 @@ branch nick: parent
 timestamp: Just now
 message:
   first post
+------------------------------------------------------------
+Use --levels 0 (or -n0) to see merged revisions.
 """)
 
     def test_force_merge_revisions_on(self):
@@ -444,12 +446,12 @@ message:
 
     def test_merges_single_merge_rev(self):
         self._prepare()
-        out,err = self.run_bzr('log -r1.1.2')
+        out,err = self.run_bzr('log -n0 -r1.1.2')
         self.assertEqual('', err)
         log = normalize_log(out)
         self.assertEqualDiff(log, """\
 ------------------------------------------------------------
-revno: 1.1.2
+revno: 1.1.2 [merge]
 committer: Lorem Ipsum <test@example.com>
 branch nick: child
 timestamp: Just now
@@ -466,12 +468,12 @@ message:
 
     def test_merges_partial_range(self):
         self._prepare()
-        out, err = self.run_bzr('log -r1.1.1..1.1.2')
+        out, err = self.run_bzr('log -n0 -r1.1.1..1.1.2')
         self.assertEqual('', err)
         log = normalize_log(out)
         self.assertEqualDiff(log, """\
 ------------------------------------------------------------
-revno: 1.1.2
+revno: 1.1.2 [merge]
 committer: Lorem Ipsum <test@example.com>
 branch nick: child
 timestamp: Just now
@@ -492,20 +494,6 @@ timestamp: Just now
 message:
   branch 1
 """)
-
-    def test_merges_nonsupporting_formatter(self):
-        # This "feature" of log formatters is madness. If a log
-        # formatter cannot display a dotted-revno, it ought to ignore it.
-        # Otherwise, a linear sequence is always expected to be handled now.
-        raise KnownFailure('log formatters must support linear sequences now')
-        self._prepare()
-        err_msg = 'Selected log formatter only supports mainline revisions.'
-        # The single revision case is tested in the core tests
-        # since all standard formatters support single merge revisions.
-        out,err = self.run_bzr('log --short -r1..1.1.2', retcode=3)
-        self.assertContainsRe(err, err_msg)
-        out,err = self.run_bzr('log --short -r1.1.1..1.1.2', retcode=3)
-        self.assertContainsRe(err, err_msg)
 
 
 def subst_dates(string):
@@ -535,14 +523,14 @@ class TestLogDiff(TestCaseWithoutPropsHandler):
             committer='Lorem Ipsum <test@example.com>')
         os.chdir('parent')
 
-    def test_log_show_diff_long(self):
+    def test_log_show_diff_long_with_merges(self):
         self._prepare()
-        out,err = self.run_bzr('log -p')
+        out,err = self.run_bzr('log -p -n0')
         self.assertEqual('', err)
         log = normalize_log(out)
         self.assertEqualDiff(subst_dates(log), """\
 ------------------------------------------------------------
-revno: 2
+revno: 2 [merge]
 committer: Lorem Ipsum <test@example.com>
 branch nick: parent
 timestamp: Just now
@@ -619,6 +607,7 @@ diff:
       @@ -0,0 +1,1 @@
       +contents of parent/file2
 
+Use --levels 0 (or -n0) to see merged revisions.
 """)
 
     def test_log_show_diff_line(self):
@@ -656,6 +645,7 @@ diff:
       @@ -0,0 +1,1 @@
       +contents of parent/file2
 
+Use --levels 0 (or -n0) to see merged revisions.
 """)
         out,err = self.run_bzr('log -p --short file1')
         self.assertEqual('', err)
@@ -831,48 +821,48 @@ class TestLogFile(TestCaseWithTransport):
     def test_log_file(self):
         """The log for a particular file should only list revs for that file"""
         self.prepare_tree()
-        log = self.run_bzr('log file1')[0]
+        log = self.run_bzr('log -n0 file1')[0]
         self.assertContainsRe(log, 'revno: 1\n')
         self.assertNotContainsRe(log, 'revno: 2\n')
         self.assertNotContainsRe(log, 'revno: 3\n')
         self.assertNotContainsRe(log, 'revno: 3.1.1\n')
-        self.assertNotContainsRe(log, 'revno: 4\n')
-        log = self.run_bzr('log file2')[0]
+        self.assertNotContainsRe(log, 'revno: 4 ')
+        log = self.run_bzr('log -n0 file2')[0]
         self.assertNotContainsRe(log, 'revno: 1\n')
         self.assertContainsRe(log, 'revno: 2\n')
         self.assertNotContainsRe(log, 'revno: 3\n')
         self.assertContainsRe(log, 'revno: 3.1.1\n')
-        self.assertContainsRe(log, 'revno: 4\n')
-        log = self.run_bzr('log file3')[0]
+        self.assertContainsRe(log, 'revno: 4 ')
+        log = self.run_bzr('log -n0 file3')[0]
         self.assertNotContainsRe(log, 'revno: 1\n')
         self.assertNotContainsRe(log, 'revno: 2\n')
         self.assertContainsRe(log, 'revno: 3\n')
         self.assertNotContainsRe(log, 'revno: 3.1.1\n')
-        self.assertNotContainsRe(log, 'revno: 4\n')
-        log = self.run_bzr('log -r3.1.1 file2')[0]
+        self.assertNotContainsRe(log, 'revno: 4 ')
+        log = self.run_bzr('log -n0 -r3.1.1 file2')[0]
         self.assertNotContainsRe(log, 'revno: 1\n')
         self.assertNotContainsRe(log, 'revno: 2\n')
         self.assertNotContainsRe(log, 'revno: 3\n')
         self.assertContainsRe(log, 'revno: 3.1.1\n')
-        self.assertNotContainsRe(log, 'revno: 4\n')
-        log = self.run_bzr('log -r4 file2')[0]
+        self.assertNotContainsRe(log, 'revno: 4 ')
+        log = self.run_bzr('log -n0 -r4 file2')[0]
         self.assertNotContainsRe(log, 'revno: 1\n')
         self.assertNotContainsRe(log, 'revno: 2\n')
         self.assertNotContainsRe(log, 'revno: 3\n')
         self.assertContainsRe(log, 'revno: 3.1.1\n')
-        self.assertContainsRe(log, 'revno: 4\n')
-        log = self.run_bzr('log -r3.. file2')[0]
+        self.assertContainsRe(log, 'revno: 4 ')
+        log = self.run_bzr('log -n0 -r3.. file2')[0]
         self.assertNotContainsRe(log, 'revno: 1\n')
         self.assertNotContainsRe(log, 'revno: 2\n')
         self.assertNotContainsRe(log, 'revno: 3\n')
         self.assertContainsRe(log, 'revno: 3.1.1\n')
-        self.assertContainsRe(log, 'revno: 4\n')
-        log = self.run_bzr('log -r..3 file2')[0]
+        self.assertContainsRe(log, 'revno: 4 ')
+        log = self.run_bzr('log -n0 -r..3 file2')[0]
         self.assertNotContainsRe(log, 'revno: 1\n')
         self.assertContainsRe(log, 'revno: 2\n')
         self.assertNotContainsRe(log, 'revno: 3\n')
         self.assertNotContainsRe(log, 'revno: 3.1.1\n')
-        self.assertNotContainsRe(log, 'revno: 4\n')
+        self.assertNotContainsRe(log, 'revno: 4 ')
 
     def test_log_file_historical_missing(self):
         # Check logging a deleted file gives an error if the
@@ -886,13 +876,13 @@ class TestLogFile(TestCaseWithTransport):
         # Check logging a deleted file is ok if the file existed
         # at the end the revision range
         self.prepare_tree(complex=True)
-        log, err = self.run_bzr('log -r..4 file2')
+        log, err = self.run_bzr('log -n0 -r..4 file2')
         self.assertEquals('', err)
         self.assertNotContainsRe(log, 'revno: 1\n')
         self.assertContainsRe(log, 'revno: 2\n')
         self.assertNotContainsRe(log, 'revno: 3\n')
         self.assertContainsRe(log, 'revno: 3.1.1\n')
-        self.assertContainsRe(log, 'revno: 4\n')
+        self.assertContainsRe(log, 'revno: 4 ')
 
     def test_log_file_historical_start(self):
         # Check logging a deleted file is ok if the file existed
@@ -904,7 +894,7 @@ class TestLogFile(TestCaseWithTransport):
         self.assertNotContainsRe(log, 'revno: 2\n')
         self.assertNotContainsRe(log, 'revno: 3\n')
         self.assertNotContainsRe(log, 'revno: 3.1.1\n')
-        self.assertNotContainsRe(log, 'revno: 4\n')
+        self.assertNotContainsRe(log, 'revno: 4 ')
 
     def test_log_file_renamed(self):
         """File matched against revision range, not current tree."""
@@ -922,7 +912,7 @@ class TestLogFile(TestCaseWithTransport):
         self.assertNotContainsRe(log, 'revno: 2\n')
         self.assertContainsRe(log, 'revno: 3\n')
         self.assertNotContainsRe(log, 'revno: 3.1.1\n')
-        self.assertNotContainsRe(log, 'revno: 4\n')
+        self.assertNotContainsRe(log, 'revno: 4 ')
 
     def test_line_log_file(self):
         """The line log for a file should only list relevant mainline revs"""

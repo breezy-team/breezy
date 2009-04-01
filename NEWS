@@ -16,6 +16,12 @@ Compatibility Breaks
   must now be explicitly added tree references.  At the commandline, use
   join --reference instead of add.  (Aaron Bentley)
 
+* The ``--long`` log format (the default) no longer shows merged
+  revisions implicitly, making it consistent with the ``short`` and
+  ``line`` log formats.  To see merged revisions for just a given
+  revision, use ``bzr log -n0 -rX``. To see every merged revision,
+  use ``bzr log -n0``.  (Ian Clatworthy)
+
 New Features
 ************
 
@@ -85,6 +91,16 @@ Improvements
   implemented using a new ``Repository.insert_stream_locked`` RPC.
   (Andrew Bennetts, Robert Collins)
 
+* The "ignoring files outside view: .." message has been re-worded
+  to "Ignoring files outside view. View is .." to reduce confusion
+  about what was being considered and what was being ignored.
+  (Ian Clatworthy)
+
+* The ``long`` log formatter now shows [merge] indicators. If
+  only one level of revisions is displayed and merges are found,
+  the ``long`` and ``short`` log formatters now tell the user
+  how to see the hidden merged revisions.  (Ian Clatworthy)
+
 * Tildes are no longer escaped. No more %7Euser/project/branch!
   (Jonathan Lange)
 
@@ -133,6 +149,12 @@ Bug Fixes
 * Shelve can now shelve changes to a symlink target.
   (James Westby, #341558)
 
+* The help for the ``info`` command has been corrected.
+  (Ian Clatworthy, #351931)
+
+* Upgrade will now use a sensible default format if the source repository
+  uses rich roots.  (Jelmer Vernooij, #252908)
+
 Documentation
 *************
 
@@ -148,6 +170,10 @@ API Changes
 
 * APIs deprecated in 1.6 and previous verisons of bzr are now removed.
   (Martin Pool)
+
+* ``CommitReporter`` is no longer called with ``unchanged`` status during
+  commit - this was a full-tree overhead that bzr no longer performs.
+  (Robert Collins)
 
 * New API ``Inventory.filter()`` added that filters an inventory by
   a set of file-ids so that only those fileids, their parents and
@@ -174,6 +200,10 @@ API Changes
   that is not inside the backing transport from being opened.  See the
   module documentation for ``bzrlib.smart.request`` for details.
   (Andrew Bennetts, Robert Collins)
+
+* ``Tree.get_symlink_target`` now always returns a unicode string result
+  or None. Previously it would return the bytes from reading the link
+  which could be in any arbitrary encoding. (Robert Collins)
 
 Testing
 *******
@@ -227,6 +257,12 @@ Internals
   make visible data inserted into the repository by a smart server
   fetch operation. (Robert Collins, Andrew Bennetts)
 
+* ``register_filter_stack_map`` now takes an optional fallback parameter,
+  a callable to invoke if a preference has a value not in the map
+  of filter stacks. This enhancement allows, for example,  bzr-svn to
+  handle existing svn properties that define a list of keywords to be
+  expanded.  (Ian Clatworthy)
+
 * ``RemoteRepository`` will now negatively cache missing revisions during
   ``get_parent_map`` while read-locked. Write-locks are unaffected.
   (Robert Collins, Andrew Bennetts)
@@ -244,6 +280,11 @@ Internals
   returning a plain string, which worked, but performed very poorly when
   building a working tree (file.writelines(str) is very inefficient). This
   can have a large effect on ``bzr checkout`` times. (John Arbash Meinel)
+
+* selftest now supports a --parallel option, with values of 'fork' or
+  'subprocess' to run the test suite in parallel. Currently only linux
+  machine work, other platforms need patches submitted. (Robert Collins,
+  Vincent Ladeuil)
 
 * ``tests.run_suite`` has a new parameter ``suite_decorators``, a list of 
   callables to use to decorate the test suite. Such decorators can add or
