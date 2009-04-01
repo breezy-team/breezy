@@ -61,7 +61,12 @@ from bzrlib import (
     upgrade,
     workingtree,
     )
-from bzrlib.repofmt import knitrepo, weaverepo, pack_repo
+from bzrlib.repofmt import (
+    groupcompress_repo,
+    knitrepo,
+    pack_repo,
+    weaverepo,
+    )
 
 
 class TestDefaultFormat(TestCase):
@@ -1198,3 +1203,19 @@ class TestOptimisingPacker(TestCaseWithTransport):
         self.assertTrue(new_pack.inventory_index._optimize_for_size)
         self.assertTrue(new_pack.text_index._optimize_for_size)
         self.assertTrue(new_pack.signature_index._optimize_for_size)
+
+
+class TestGCCHKPackCollection(TestCaseWithTransport):
+
+    def test_stream_source_to_gc(self):
+        source = self.make_repository('source', format='gc-chk255-big')
+        target = self.make_repository('target', format='gc-chk255-big')
+        stream = source._get_source(target._format)
+        self.assertIsInstance(stream, groupcompress_repo.GroupCHKStreamSource)
+
+    def test_stream_source_to_non_gc(self):
+        source = self.make_repository('source', format='gc-chk255-big')
+        target = self.make_repository('target', format='rich-root-pack')
+        stream = source._get_source(target._format)
+        # We don't want the child GroupCHKStreamSource
+        self.assertIs(type(stream), repository.StreamSource)
