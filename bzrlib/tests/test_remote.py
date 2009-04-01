@@ -999,11 +999,10 @@ class TestBranch_get_stacked_on_url(TestRemote):
         result = branch.get_stacked_on_url()
         self.assertEqual('../base', result)
         client.finished_test()
-        # it's in the fallback list both for the RemoteRepository and its vfs
-        # repository
+        # it's in the fallback list both for the RemoteRepository.
         self.assertEqual(1, len(branch.repository._fallback_repositories))
-        self.assertEqual(1,
-            len(branch.repository._real_repository._fallback_repositories))
+        # And we haven't had to construct a real repository.
+        self.assertEqual(None, branch.repository._real_repository)
 
 
 class TestBranchSetLastRevision(RemoteBranchTestCase):
