@@ -6,7 +6,6 @@ Things to consider:
     :name1: value1
     :name2: value2
     .. $end-keywords$
-  * warn if bzr version too early?
 
 * Add tests for:
   * global keyword values (including date formatting)

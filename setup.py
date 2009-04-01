@@ -4,7 +4,7 @@ from distutils.core import setup
 bzr_plugin_name = 'keywords'
 
 bzr_plugin_version = (0, 1, 0, 'dev', 0)
-bzr_minimum_version = (1, 6, 0)
+bzr_minimum_version = (1, 14, 0)
 bzr_maximum_version = None
 
 if __name__ == 'main':
