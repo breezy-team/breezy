@@ -90,6 +90,7 @@ class DummyForeignVcsBranch(branch.BzrBranch6,foreign.ForeignBranch):
     def __init__(self, _format, _control_files, a_bzrdir, *args, **kwargs):
         self._format = _format
         self._base = a_bzrdir.transport.base
+        self._ignore_fallbacks = False
         foreign.ForeignBranch.__init__(self, DummyForeignVcsMapping(DummyForeignVcs()))
         branch.BzrBranch6.__init__(self, _format, _control_files, a_bzrdir, *args, **kwargs)
 
@@ -287,16 +288,20 @@ class WorkingTreeFileUpdateTests(TestCaseWithTransport):
         a.add_path("bla", "directory", "bla-a")
         b = Inventory()
         b.add_path("bla", "directory", "bla-a")
-        self.assertEquals( {}, foreign.determine_fileid_renames(a, b))
+        self.assertEquals({
+            '': ('TREE_ROOT', 'TREE_ROOT'), 
+            'bla': ('bla-a', 'bla-a')},
+            foreign.determine_fileid_renames(a, b))
 
     def test_det_renames_simple(self):
         a = Inventory()
         a.add_path("bla", "directory", "bla-a")
         b = Inventory()
         b.add_path("bla", "directory", "bla-b")
-        self.assertEquals(
-                {"bla": ("bla-a", "bla-b")},
-                foreign.determine_fileid_renames(a, b))
+        self.assertEquals({
+            '': ('TREE_ROOT', 'TREE_ROOT'), 
+            'bla': ('bla-a', 'bla-b'),
+            }, foreign.determine_fileid_renames(a, b))
 
     def test_det_renames_root(self):
         a = Inventory()
