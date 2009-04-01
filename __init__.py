@@ -14,12 +14,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-r'''Keywords
-========
+r'''Keyword Templating
+==================
 
 Keyword templating is provided as a content filter where Bazaar internally
 stores a canonical format but outputs a convenience format. See
 ``bzr help content-filters`` for general information about using these.
+
+Note: Content filtering is only supported in recently added formats,
+e.g. 1.14.
 
 Keyword templates are specified using the following patterns:
 
@@ -39,9 +42,7 @@ these lines to your ``BZR_HOME/rules`` file::
   [name *.txt]
   keywords = on
 
-You can also enable or disable them on a per branch basis by adding lines
-to ``.bzrrules``. For example, to disable keywords for ``txt`` files
-but enable them for ``html`` files::
+To disable keywords for ``txt`` files but enable them for ``html`` files::
 
   [name *.txt]
   keywords = off
