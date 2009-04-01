@@ -1261,9 +1261,17 @@ class RemoteRepository(_RpcHelper):
         # We don't need to send ghosts back to the server as a position to
         # stop either.
         stop_keys.difference_update(self._unstacked_provider.missing_keys)
+        key_count = len(parents_map)
+        if (NULL_REVISION in result_parents
+            and NULL_REVISION in self._unstacked_provider.missing_keys):
+            # If we pruned NULL_REVISION from the stop_keys because it's also
+            # in our cache of "missing" keys we need to increment our key count
+            # by 1, because the reconsitituted SearchResult on the server will
+            # still consider NULL_REVISION to be an included key.
+            key_count += 1
         included_keys = start_set.intersection(result_parents)
         start_set.difference_update(included_keys)
-        recipe = ('manual', start_set, stop_keys, len(parents_map))
+        recipe = ('manual', start_set, stop_keys, key_count)
         body = self._serialise_search_recipe(recipe)
         path = self.bzrdir._path_for_remote_call(self._client)
         for key in keys:
