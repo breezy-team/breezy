@@ -5287,22 +5287,6 @@ class cmd_switch(Command):
             urlutils.unescape_for_display(to_branch.base, 'utf-8'))
 
 
-class cmd_guess_renames(Command):
-    """Guess which files have been have been renamed, based on their content.
-
-    Only versioned files which have been deleted are candidates for rename
-    detection, and renames to ignored files will not be detected.
-    """
-
-    def run(self):
-        work_tree, file_list = tree_files(None, default_branch='.')
-        work_tree.lock_write()
-        try:
-            rename_map.RenameMap.guess_renames(work_tree)
-        finally:
-            work_tree.unlock()
-
-
 class cmd_view(Command):
     """Manage filtered views.
 
