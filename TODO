@@ -8,7 +8,6 @@ Things to consider:
     .. $end-keywords$
 
 * Add tests for:
-  * global keyword values (including date formatting)
-  * filters
+  * untested keyword values (including date formatting)
   * escaping
   * style formatting
