@@ -646,7 +646,7 @@ class GCCHKPackRepository(CHKInventoryRepository):
             # We must be exactly the same format, otherwise stuff like the chk
             # page layout might be different
             return GroupCHKStreamSource(self, to_format)
-        return StreamSource(self, to_format)
+        return super(GCCHKPackRepository, self)._get_source(to_format)
 
     def suspend_write_group(self):
         raise errors.UnsuspendableWriteGroup(self)
@@ -793,9 +793,6 @@ class GroupCHKStreamSource(repository.StreamSource):
         super(GroupCHKStreamSource, self).__init__(from_repository, to_format)
         self._revision_keys = None
         self._text_keys = None
-        # These are the 'exclusion' set
-        self._chk_id_roots_no_fetch = None
-        self._chk_p_id_roots_no_fetch = None
         self._chk_id_roots = None
         self._chk_p_id_roots = None
 
@@ -882,7 +879,7 @@ class GroupCHKStreamSource(repository.StreamSource):
             yield stream_info
         self._revision_keys = [(rev_id,) for rev_id in revision_ids]
         yield self._get_filtered_inv_stream()
-        # Can we get this from the search?
+        # The keys to exclude are part of the search recipe
         _, _, exclude_keys, _ = search.get_recipe()
         for stream_info in self._get_filtered_chk_streams(exclude_keys):
             yield stream_info
