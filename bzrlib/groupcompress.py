@@ -156,7 +156,7 @@ class GroupCompressBlock(object):
                         self._z_content, num_bytes + _ZLIB_DECOMP_WINDOW)
             else:
                 raise AssertionError('Unknown compressor: %r'
-                                     % self._z_content_decompressor)
+                                     % self._compressor_name)
         # Any bytes remaining to be decompressed will be in the decompressors
         # 'unconsumed_tail'
 
