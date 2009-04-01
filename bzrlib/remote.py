@@ -2288,17 +2288,6 @@ class RemoteBranch(branch.Branch, _RpcHelper):
             self._ensure_real()
             return self._real_branch._set_parent_location(url)
 
-    def set_stacked_on_url(self, stacked_location):
-        """Set the URL this branch is stacked against.
-
-        :raises UnstackableBranchFormat: If the branch does not support
-            stacking.
-        :raises UnstackableRepositoryFormat: If the repository does not support
-            stacking.
-        """
-        self._ensure_real()
-        return self._real_branch.set_stacked_on_url(stacked_location)
-
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
              **kwargs):

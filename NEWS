@@ -222,6 +222,11 @@ Testing
 Internals
 *********
 
+* ``Branch`` now implements ``set_stacked_on_url`` in the base class as
+  the implementation is generic and should impact foreign formats. This
+  helps performance for ``RemoteBranch`` push operations to new stacked
+  branches. (Robert Collins, Andrew Bennetts)
+
 * ``BtreeIndex._spill_mem_keys_to_disk()`` now generates disk index with
   optmizations turned off. This only has effect when processing > 100,000
   keys during something like ``bzr pack``. (John Arbash Meinel)
