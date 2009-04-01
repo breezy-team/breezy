@@ -742,6 +742,9 @@ class cmd_mv(Command):
             tree.unlock()
 
     def run_auto(self, names_list):
+        if names_list is not None and len(names_list) > 1:
+            raise errors.BzrCommandError('Only one path may be specified to'
+                                         ' --auto.')
         work_tree, file_list = tree_files(names_list, default_branch='.')
         work_tree.lock_write()
         try:
