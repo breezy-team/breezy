@@ -722,14 +722,17 @@ class cmd_mv(Command):
     takes_args = ['names*']
     takes_options = [Option("after", help="Move only the bzr identifier"
         " of the file, because the file has already been moved."),
-        Option('auto', help='Automatically guess renames.')
+        Option('auto', help='Automatically guess renames.'),
+        Option('dry-run', help='Avoid making changes when guessing renames.'),
         ]
     aliases = ['move', 'rename']
     encoding_type = 'replace'
 
-    def run(self, names_list, after=False, auto=False):
+    def run(self, names_list, after=False, auto=False, dry_run=False):
         if auto:
-            return self.run_auto(names_list)
+            return self.run_auto(names_list, after, dry_run)
+        elif dry_run:
+            raise errors.BzrCommandError('--dry-run requires --auto.')
         if names_list is None:
             names_list = []
         if len(names_list) < 2:
@@ -741,14 +744,17 @@ class cmd_mv(Command):
         finally:
             tree.unlock()
 
-    def run_auto(self, names_list):
+    def run_auto(self, names_list, after, dry_run):
         if names_list is not None and len(names_list) > 1:
             raise errors.BzrCommandError('Only one path may be specified to'
+                                         ' --auto.')
+        if after:
+            raise errors.BzrCommandError('--after cannot be specified with'
                                          ' --auto.')
         work_tree, file_list = tree_files(names_list, default_branch='.')
         work_tree.lock_write()
         try:
-            rename_map.RenameMap.guess_renames(work_tree)
+            rename_map.RenameMap.guess_renames(work_tree, dry_run)
         finally:
             work_tree.unlock()
 
