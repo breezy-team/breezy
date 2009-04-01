@@ -722,14 +722,16 @@ class cmd_mv(Command):
     takes_args = ['names*']
     takes_options = [Option("after", help="Move only the bzr identifier"
         " of the file, because the file has already been moved."),
+        Option('auto', help='Automatically guess renames.')
         ]
     aliases = ['move', 'rename']
     encoding_type = 'replace'
 
-    def run(self, names_list, after=False):
+    def run(self, names_list, after=False, auto=False):
+        if auto:
+            return self.run_auto(names_list)
         if names_list is None:
             names_list = []
-
         if len(names_list) < 2:
             raise errors.BzrCommandError("missing file argument")
         tree, rel_names = tree_files(names_list, canonicalize=False)
@@ -738,6 +740,14 @@ class cmd_mv(Command):
             self._run(tree, names_list, rel_names, after)
         finally:
             tree.unlock()
+
+    def run_auto(self, names_list):
+        work_tree, file_list = tree_files(names_list, default_branch='.')
+        work_tree.lock_write()
+        try:
+            rename_map.RenameMap.guess_renames(work_tree)
+        finally:
+            work_tree.unlock()
 
     def _run(self, tree, names_list, rel_names, after):
         into_existing = osutils.isdir(names_list[-1])

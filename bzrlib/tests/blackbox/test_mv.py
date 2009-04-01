@@ -430,3 +430,17 @@ class TestMove(TestCaseWithTransport):
         self.assertNotInWorkingTree('c')
         self.failUnlessExists('d')
         self.assertInWorkingTree('d')
+
+    def test_mv_auto(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/a', 'tree/c'])
+        tree.add(['a', 'c'])
+        tree.commit('record old names')
+        osutils.rename('tree/a', 'tree/b')
+        osutils.rename('tree/c', 'tree/d')
+        out, err = self.run_bzr('mv --auto', working_dir='tree')
+        self.assertEqual(out, '')
+        self.assertEqual(err, 'a => b\nc => d\n')
+        tree = workingtree.WorkingTree.open('tree')
+        self.assertIsNot(None, tree.path2id('b'))
+        self.assertIsNot(None, tree.path2id('d'))
