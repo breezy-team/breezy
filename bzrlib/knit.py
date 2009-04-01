@@ -1609,6 +1609,7 @@ class KnitVersionedFiles(VersionedFiles):
                 # KnitVersionedFiles doesn't permit deltas (_max_delta_chain ==
                 # 0) or because it depends on a base only present in the
                 # fallback kvfs.
+                self._access.flush()
                 try:
                     # Try getting a fulltext directly from the record.
                     bytes = record.get_bytes_as('fulltext')
@@ -3049,6 +3050,13 @@ class _KnitKeyAccess(object):
             result.append((key, base, size))
         return result
 
+    def flush(self):
+        """Flush pending writes on this access object.
+        
+        For .knit files this is a no-op.
+        """
+        pass
+
     def get_raw_records(self, memos_for_retrieval):
         """Get the raw bytes for a records.
 
@@ -3079,7 +3087,7 @@ class _KnitKeyAccess(object):
 class _DirectPackAccess(object):
     """Access to data in one or more packs with less translation."""
 
-    def __init__(self, index_to_packs, reload_func=None):
+    def __init__(self, index_to_packs, reload_func=None, flush_func=None):
         """Create a _DirectPackAccess object.
 
         :param index_to_packs: A dict mapping index objects to the transport
@@ -3092,6 +3100,7 @@ class _DirectPackAccess(object):
         self._write_index = None
         self._indices = index_to_packs
         self._reload_func = reload_func
+        self._flush_func = flush_func
 
     def add_raw_records(self, key_sizes, raw_data):
         """Add raw knit bytes to a storage area.
@@ -3119,6 +3128,14 @@ class _DirectPackAccess(object):
             result.append((self._write_index, p_offset, p_length))
         return result
 
+    def flush(self):
+        """Flush pending writes on this access object.
+
+        This will flush any buffered writes to a NewPack.
+        """
+        if self._flush_func is not None:
+            self._flush_func()
+            
     def get_raw_records(self, memos_for_retrieval):
         """Get the raw bytes for a records.
 

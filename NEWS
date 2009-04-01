@@ -16,11 +16,30 @@ Compatibility Breaks
   must now be explicitly added tree references.  At the commandline, use
   join --reference instead of add.  (Aaron Bentley)
 
+* The ``--long`` log format (the default) no longer shows merged
+  revisions implicitly, making it consistent with the ``short`` and
+  ``line`` log formats.  To see merged revisions for just a given
+  revision, use ``bzr log -n0 -rX``. To see every merged revision,
+  use ``bzr log -n0``.  (Ian Clatworthy)
+
 New Features
 ************
 
+* New formats ``1.14`` and ``1.14-rich-root`` supporting End-Of-Line
+  (EOL) conversions, keyword templating (via the bzr-keywords plugin)
+  and generic content filtering. These formats replace the experimental
+  ``development-wt5`` and ``development-wt5-rich-root`` formats
+  respectively, but have support for filtered views disabled.
+  (Ian Clatworthy)
+
 * New ``guess-renames`` command recognizes renames after they occur.
   (Aaron Bentley)
+
+* ``bzr log`` now supports filtering of multiple files and directories
+  and will show changes that touch any of them. Furthermore,
+  directory filtering now shows the changes to any children of that
+  directory, not just the directory object itself.
+  (Ian Clatworthy, #97715)
 
 * ``bzr shelve`` can now apply changes without storing anything on the
   shelf, via the new --destroy option.  (Aaron Bentley)
@@ -71,9 +90,23 @@ Improvements
 * Progress bars now show the rate of network activity for
   ``bzr+ssh://`` and ``bzr://`` connections.  (Andrew Bennetts)
 
+* Pushing to a stacked pack-format branch on a 1.12 or older smart server
+  now takes many less round trips.  (Andrew Bennetts, Robert Collins,
+  #294479)
+  
 * Streaming push can be done to older repository formats.  This is
   implemented using a new ``Repository.insert_stream_locked`` RPC.
   (Andrew Bennetts, Robert Collins)
+
+* The "ignoring files outside view: .." message has been re-worded
+  to "Ignoring files outside view. View is .." to reduce confusion
+  about what was being considered and what was being ignored.
+  (Ian Clatworthy)
+
+* The ``long`` log formatter now shows [merge] indicators. If
+  only one level of revisions is displayed and merges are found,
+  the ``long`` and ``short`` log formatters now tell the user
+  how to see the hidden merged revisions.  (Ian Clatworthy)
 
 * Tildes are no longer escaped. No more %7Euser/project/branch!
   (Jonathan Lange)
@@ -97,8 +130,8 @@ Bug Fixes
   when pushing to a smart server.  (Andrew Bennetts, #334114)
 
 * Fixed "Specified file 'x/y/z' is outside current view: " occurring
-  on ``bzr add x/y/z`` in WorkingTree5 formats (e.g. ``development-wt5``)
-  when no view is defined.  (Ian Clatworthy, #344708)
+  on ``bzr add x/y/z`` in formats supporting views when no view is
+  defined.  (Ian Clatworthy, #344708)
 
 * It is no longer possible to fetch between repositories while the
   target repository is in a write group. This prevents race conditions
@@ -123,8 +156,16 @@ Bug Fixes
 * Shelve can now shelve changes to a symlink target.
   (James Westby, #341558)
 
+* The help for the ``info`` command has been corrected.
+  (Ian Clatworthy, #351931)
+
+* Upgrade will now use a sensible default format if the source repository
+  uses rich roots.  (Jelmer Vernooij, #252908)
+
 Documentation
 *************
+
+* Expanded the index of the developer documentation. (Eric Siegerman)
 
 * New topic `bzr help debug-flags`.  (Martin Pool)
 
@@ -136,6 +177,10 @@ API Changes
 
 * APIs deprecated in 1.6 and previous verisons of bzr are now removed.
   (Martin Pool)
+
+* ``CommitReporter`` is no longer called with ``unchanged`` status during
+  commit - this was a full-tree overhead that bzr no longer performs.
+  (Robert Collins)
 
 * New API ``Inventory.filter()`` added that filters an inventory by
   a set of file-ids so that only those fileids, their parents and
@@ -163,6 +208,10 @@ API Changes
   module documentation for ``bzrlib.smart.request`` for details.
   (Andrew Bennetts, Robert Collins)
 
+* ``Tree.get_symlink_target`` now always returns a unicode string result
+  or None. Previously it would return the bytes from reading the link
+  which could be in any arbitrary encoding. (Robert Collins)
+
 Testing
 *******
 
@@ -183,6 +232,11 @@ Testing
 
 Internals
 *********
+
+* ``Branch`` now implements ``set_stacked_on_url`` in the base class as
+  the implementation is generic and should impact foreign formats. This
+  helps performance for ``RemoteBranch`` push operations to new stacked
+  branches. (Robert Collins, Andrew Bennetts)
 
 * ``BtreeIndex._spill_mem_keys_to_disk()`` now generates disk index with
   optmizations turned off. This only has effect when processing > 100,000
@@ -215,6 +269,16 @@ Internals
   make visible data inserted into the repository by a smart server
   fetch operation. (Robert Collins, Andrew Bennetts)
 
+* ``register_filter_stack_map`` now takes an optional fallback parameter,
+  a callable to invoke if a preference has a value not in the map
+  of filter stacks. This enhancement allows, for example,  bzr-svn to
+  handle existing svn properties that define a list of keywords to be
+  expanded.  (Ian Clatworthy)
+
+* ``RemoteRepository`` will now negatively cache missing revisions during
+  ``get_parent_map`` while read-locked. Write-locks are unaffected.
+  (Robert Collins, Andrew Bennetts)
+
 * Removed ``InterRemoteToOther``, ``InterOtherToRemote`` and
   ``InterPackToRemotePack`` classes, as they are now unnecessary.
   (Andrew Bennetts)
@@ -222,6 +286,27 @@ Internals
 * ``RepositoryFormat`` as a new attribute ``fast_deltas`` to indicate
   whether the repository can efficiently generate deltas between trees
   regardless of tree size. (Robert Collins)
+
+* ``Repository.iter_files_bytes()`` now properly returns an "iterable of
+  byte strings" (aka 'chunked') for the content. It previously was
+  returning a plain string, which worked, but performed very poorly when
+  building a working tree (file.writelines(str) is very inefficient). This
+  can have a large effect on ``bzr checkout`` times. (John Arbash Meinel)
+
+* selftest now supports a --parallel option, with values of 'fork' or
+  'subprocess' to run the test suite in parallel. Currently only linux
+  machine work, other platforms need patches submitted. (Robert Collins,
+  Vincent Ladeuil)
+
+* ``tests.run_suite`` has a new parameter ``suite_decorators``, a list of 
+  callables to use to decorate the test suite. Such decorators can add or
+  remove tests, or even remote the test suite to another machine if
+  desired. (Robert Collins)
+
+* The smart server verb ``Repository.get_parent_map`` can now include
+  information about ghosts when the special revision ``include-missing:``
+  is in the requested parents map list. With this flag, ghosts are
+  included as ``missing:REVISION_ID``. (Robert Collins, Andrew Bennetts)
 
 * ``_walk_to_common_revisions`` will now batch up at least 50
   revisions before calling ``get_parent_map`` on the target,
@@ -2416,7 +2501,6 @@ Internals
 
 * Knit record serialisation is now stricter on what it will accept, to
   guard against potential internal bugs, or broken input. (Robert Collins)
-
 
 bzr 1.6beta1 2008-06-02
 #######################

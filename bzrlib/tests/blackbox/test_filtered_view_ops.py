@@ -28,7 +28,7 @@ class TestViewFileOperations(TestCaseWithTransport):
     def make_abc_tree_with_ab_view(self):
         # we need to use a specific format because the default format
         # doesn't support views yet
-        format = bzrdir.format_registry.make_bzrdir('development-wt5')
+        format = bzrdir.format_registry.make_bzrdir('development-wt6')
         wt = TestCaseWithTransport.make_branch_and_tree(self, '.',
             format=format)
         self.build_tree(['a', 'b', 'c'])
@@ -38,7 +38,7 @@ class TestViewFileOperations(TestCaseWithTransport):
     def test_view_on_status(self):
         wt = self.make_abc_tree_with_ab_view()
         out, err = self.run_bzr('status')
-        self.assertEquals('ignoring files outside view: a, b\n', err)
+        self.assertEquals('Ignoring files outside view. View is a, b\n', err)
         self.assertEquals('unknown:\n  a\n  b\n', out)
 
     def test_view_on_status_selected(self):
@@ -54,7 +54,7 @@ class TestViewFileOperations(TestCaseWithTransport):
     def test_view_on_add(self):
         wt = self.make_abc_tree_with_ab_view()
         out, err = self.run_bzr('add')
-        self.assertEquals('ignoring files outside view: a, b\n', err)
+        self.assertEquals('Ignoring files outside view. View is a, b\n', err)
         self.assertEquals('adding a\nadding b\n', out)
 
     def test_view_on_add_selected(self):
@@ -71,7 +71,7 @@ class TestViewFileOperations(TestCaseWithTransport):
         wt = self.make_abc_tree_with_ab_view()
         self.run_bzr('add')
         out, err = self.run_bzr('diff', retcode=1)
-        self.assertEquals('*** ignoring files outside view: a, b\n', err)
+        self.assertEquals('*** Ignoring files outside view. View is a, b\n', err)
 
     def test_view_on_diff_selected(self):
         wt = self.make_abc_tree_with_ab_view()
@@ -89,7 +89,7 @@ class TestViewFileOperations(TestCaseWithTransport):
         self.run_bzr('add')
         out, err = self.run_bzr('commit -m "testing commit"')
         err_lines = err.splitlines()
-        self.assertEquals('ignoring files outside view: a, b', err_lines[0])
+        self.assertEquals('Ignoring files outside view. View is a, b', err_lines[0])
         self.assertStartsWith(err_lines[1], 'Committing to:')
         self.assertEquals('added a', err_lines[2])
         self.assertEquals('added b', err_lines[3])
@@ -126,7 +126,7 @@ class TestViewFileOperations(TestCaseWithTransport):
         self.run_bzr('add')
         out, err = self.run_bzr('revert')
         err_lines = err.splitlines()
-        self.assertEquals('ignoring files outside view: a, b', err_lines[0])
+        self.assertEquals('Ignoring files outside view. View is a, b', err_lines[0])
         self.assertEquals('-   a', err_lines[1])
         self.assertEquals('-   b', err_lines[2])
         self.assertEquals('', out)
@@ -147,7 +147,7 @@ class TestViewFileOperations(TestCaseWithTransport):
         self.run_bzr('add')
         out, err = self.run_bzr('ls')
         out_lines = out.splitlines()
-        self.assertEquals('ignoring files outside view: a, b\n', err)
+        self.assertEquals('Ignoring files outside view. View is a, b\n', err)
         self.assertEquals('a', out_lines[0])
         self.assertEquals('b', out_lines[1])
 
@@ -157,7 +157,7 @@ class TestViewTreeOperationss(TestCaseWithTransport):
     def make_abc_tree_and_clone_with_ab_view(self):
         # we need to use a specific format because the default format
         # doesn't support views yet
-        format = bzrdir.format_registry.make_bzrdir('development-wt5')
+        format = bzrdir.format_registry.make_bzrdir('development-wt6')
         # Build the first tree
         wt1 = TestCaseWithTransport.make_branch_and_tree(self, 'tree_1',
             format=format)

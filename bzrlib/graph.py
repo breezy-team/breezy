@@ -121,8 +121,8 @@ class CachingParentsProvider(object):
             self._get_parent_map = self._real_provider.get_parent_map
         else:
             self._get_parent_map = get_parent_map
-        self._cache = {}
-        self._cache_misses = True
+        self._cache = None
+        self.enable_cache(True)
 
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self._real_provider)
@@ -133,38 +133,47 @@ class CachingParentsProvider(object):
             raise AssertionError('Cache enabled when already enabled.')
         self._cache = {}
         self._cache_misses = cache_misses
+        self.missing_keys = set()
 
     def disable_cache(self):
         """Disable and clear the cache."""
         self._cache = None
+        self._cache_misses = None
+        self.missing_keys = set()
 
     def get_cached_map(self):
         """Return any cached get_parent_map values."""
         if self._cache is None:
             return None
-        return dict((k, v) for k, v in self._cache.items()
-                    if v is not None)
+        return dict(self._cache)
 
     def get_parent_map(self, keys):
         """See _StackedParentsProvider.get_parent_map."""
-        # Hack to build up the caching logic.
-        ancestry = self._cache
-        if ancestry is None:
-            # Caching is disabled.
-            missing_revisions = set(keys)
-            ancestry = {}
+        cache = self._cache
+        if cache is None:
+            cache = self._get_parent_map(keys)
         else:
-            missing_revisions = set(key for key in keys if key not in ancestry)
-        if missing_revisions:
-            parent_map = self._get_parent_map(missing_revisions)
-            ancestry.update(parent_map)
-            if self._cache_misses:
-                # None is never a valid parents list, so it can be used to
-                # record misses.
-                ancestry.update(dict((k, None) for k in missing_revisions
-                                     if k not in parent_map))
-        present_keys = [k for k in keys if ancestry.get(k) is not None]
-        return dict((k, ancestry[k]) for k in present_keys)
+            needed_revisions = set(key for key in keys if key not in cache)
+            # Do not ask for negatively cached keys
+            needed_revisions.difference_update(self.missing_keys)
+            if needed_revisions:
+                parent_map = self._get_parent_map(needed_revisions)
+                cache.update(parent_map)
+                if self._cache_misses:
+                    for key in needed_revisions:
+                        if key not in parent_map:
+                            self.note_missing_key(key)
+        result = {}
+        for key in keys:
+            value = cache.get(key)
+            if value is not None:
+                result[key] = value
+        return result
+
+    def note_missing_key(self, key):
+        """Note that key is a missing key."""
+        if self._cache_misses:
+            self.missing_keys.add(key)
 
 
 class Graph(object):
@@ -1477,7 +1486,7 @@ class SearchResult(object):
         return self._keys
 
     def is_empty(self):
-        """Return true if the search lists 1 or more revisions."""
+        """Return false if the search lists 1 or more revisions."""
         return self._recipe[3] == 0
 
     def refine(self, seen, referenced):
@@ -1551,7 +1560,7 @@ class PendingAncestryResult(object):
         return keys
 
     def is_empty(self):
-        """Return true if the search lists 1 or more revisions."""
+        """Return false if the search lists 1 or more revisions."""
         if revision.NULL_REVISION in self.heads:
             return len(self.heads) == 1
         else:

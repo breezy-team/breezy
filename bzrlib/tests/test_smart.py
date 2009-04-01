@@ -931,9 +931,21 @@ class TestSmartServerRepositoryGetParentMap(tests.TestCaseWithMemoryTransport):
 
         self.assertEqual(None,
             request.execute('', 'missing-id'))
-        # Note that it returns a body (of '' bzipped).
+        # Note that it returns a body that is bzipped.
         self.assertEqual(
             SuccessfulSmartServerResponse(('ok', ), bz2.compress('')),
+            request.do_body('\n\n0\n'))
+
+    def test_trivial_include_missing(self):
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryGetParentMap(backing)
+        tree = self.make_branch_and_memory_tree('.')
+
+        self.assertEqual(None,
+            request.execute('', 'missing-id', 'include-missing:'))
+        self.assertEqual(
+            SuccessfulSmartServerResponse(('ok', ),
+                bz2.compress('missing:missing-id')),
             request.do_body('\n\n0\n'))
 
 

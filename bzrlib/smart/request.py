@@ -58,7 +58,7 @@ def _install_hook():
 
 
 def _pre_open_hook(transport):
-    allowed_transports = jail_info.transports
+    allowed_transports = getattr(jail_info, 'transports', None)
     if allowed_transports is None:
         return
     abspath = transport.base

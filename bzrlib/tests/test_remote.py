@@ -36,6 +36,7 @@ from bzrlib import (
     repository,
     smart,
     tests,
+    treebuilder,
     urlutils,
     )
 from bzrlib.branch import Branch
@@ -52,6 +53,7 @@ from bzrlib.repofmt import pack_repo
 from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import server, medium
 from bzrlib.smart.client import _SmartClient
+from bzrlib.smart.repository import SmartServerRepositoryGetParentMap
 from bzrlib.tests import (
     condition_isinstance,
     split_suite_by_condition,
@@ -997,11 +999,10 @@ class TestBranch_get_stacked_on_url(TestRemote):
         result = branch.get_stacked_on_url()
         self.assertEqual('../base', result)
         client.finished_test()
-        # it's in the fallback list both for the RemoteRepository and its vfs
-        # repository
+        # it's in the fallback list both for the RemoteRepository.
         self.assertEqual(1, len(branch.repository._fallback_repositories))
-        self.assertEqual(1,
-            len(branch.repository._real_repository._fallback_repositories))
+        # And we haven't had to construct a real repository.
+        self.assertEqual(None, branch.repository._real_repository)
 
 
 class TestBranchSetLastRevision(RemoteBranchTestCase):
@@ -1577,7 +1578,8 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         self.assertEqual({r1: (NULL_REVISION,)}, parents)
         self.assertEqual(
             [('call_with_body_bytes_expecting_body',
-              'Repository.get_parent_map', ('quack/', r2), '\n\n0')],
+              'Repository.get_parent_map', ('quack/', 'include-missing:', r2),
+              '\n\n0')],
             client._calls)
         repo.unlock()
         # now we call again, and it should use the second response.
@@ -1587,9 +1589,11 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         self.assertEqual({r1: (NULL_REVISION,)}, parents)
         self.assertEqual(
             [('call_with_body_bytes_expecting_body',
-              'Repository.get_parent_map', ('quack/', r2), '\n\n0'),
+              'Repository.get_parent_map', ('quack/', 'include-missing:', r2),
+              '\n\n0'),
              ('call_with_body_bytes_expecting_body',
-              'Repository.get_parent_map', ('quack/', r1), '\n\n0'),
+              'Repository.get_parent_map', ('quack/', 'include-missing:', r1),
+              '\n\n0'),
             ],
             client._calls)
         repo.unlock()
@@ -1604,7 +1608,8 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         parents = repo.get_parent_map([rev_id])
         self.assertEqual(
             [('call_with_body_bytes_expecting_body',
-              'Repository.get_parent_map', ('quack/', rev_id), '\n\n0'),
+              'Repository.get_parent_map', ('quack/', 'include-missing:',
+              rev_id), '\n\n0'),
              ('disconnect medium',),
              ('call_expecting_body', 'Repository.get_revision_graph',
               ('quack/', ''))],
@@ -1642,6 +1647,96 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         self.assertRaises(
             errors.UnexpectedSmartServerResponse,
             repo.get_parent_map, ['a-revision-id'])
+
+    def test_get_parent_map_negative_caches_missing_keys(self):
+        self.setup_smart_server_with_call_log()
+        repo = self.make_repository('foo')
+        self.assertIsInstance(repo, RemoteRepository)
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        self.reset_smart_call_log()
+        graph = repo.get_graph()
+        self.assertEqual({},
+            graph.get_parent_map(['some-missing', 'other-missing']))
+        self.assertLength(1, self.hpss_calls)
+        # No call if we repeat this
+        self.reset_smart_call_log()
+        graph = repo.get_graph()
+        self.assertEqual({},
+            graph.get_parent_map(['some-missing', 'other-missing']))
+        self.assertLength(0, self.hpss_calls)
+        # Asking for more unknown keys makes a request.
+        self.reset_smart_call_log()
+        graph = repo.get_graph()
+        self.assertEqual({},
+            graph.get_parent_map(['some-missing', 'other-missing',
+                'more-missing']))
+        self.assertLength(1, self.hpss_calls)
+
+    def disableExtraResults(self):
+        old_flag = SmartServerRepositoryGetParentMap.no_extra_results
+        SmartServerRepositoryGetParentMap.no_extra_results = True
+        def reset_values():
+            SmartServerRepositoryGetParentMap.no_extra_results = old_flag
+        self.addCleanup(reset_values)
+
+    def test_null_cached_missing_and_stop_key(self):
+        self.setup_smart_server_with_call_log()
+        # Make a branch with a single revision.
+        builder = self.make_branch_builder('foo')
+        builder.start_series()
+        builder.build_snapshot('first', None, [
+            ('add', ('', 'root-id', 'directory', ''))])
+        builder.finish_series()
+        branch = builder.get_branch()
+        repo = branch.repository
+        self.assertIsInstance(repo, RemoteRepository)
+        # Stop the server from sending extra results.
+        self.disableExtraResults()
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        self.reset_smart_call_log()
+        graph = repo.get_graph()
+        # Query for 'first' and 'null:'.  Because 'null:' is a parent of
+        # 'first' it will be a candidate for the stop_keys of subsequent
+        # requests, and because 'null:' was queried but not returned it will be
+        # cached as missing.
+        self.assertEqual({'first': ('null:',)},
+            graph.get_parent_map(['first', 'null:']))
+        # Now query for another key.  This request will pass along a recipe of
+        # start and stop keys describing the already cached results, and this
+        # recipe's revision count must be correct (or else it will trigger an
+        # error from the server).
+        self.assertEqual({}, graph.get_parent_map(['another-key']))
+        # This assertion guards against disableExtraResults silently failing to
+        # work, thus invalidating the test.
+        self.assertLength(2, self.hpss_calls)
+
+    def test_get_parent_map_gets_ghosts_from_result(self):
+        # asking for a revision should negatively cache close ghosts in its
+        # ancestry.
+        self.setup_smart_server_with_call_log()
+        tree = self.make_branch_and_memory_tree('foo')
+        tree.lock_write()
+        try:
+            builder = treebuilder.TreeBuilder()
+            builder.start_tree(tree)
+            builder.build([])
+            builder.finish_tree()
+            tree.set_parent_ids(['non-existant'], allow_leftmost_as_ghost=True)
+            rev_id = tree.commit('')
+        finally:
+            tree.unlock()
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        repo = tree.branch.repository
+        self.assertIsInstance(repo, RemoteRepository)
+        # ask for rev_id
+        repo.get_parent_map([rev_id])
+        self.reset_smart_call_log()
+        # Now asking for rev_id's ghost parent should not make calls
+        self.assertEqual({}, repo.get_parent_map(['non-existant']))
+        self.assertLength(0, self.hpss_calls)
 
 
 class TestGetParentMapAllowsNew(tests.TestCaseWithTransport):
@@ -2363,7 +2458,7 @@ class TestStacking(tests.TestCaseWithTransport):
         rev_ord, expected_revs = self.get_ordered_revs('knit', 'topological')
         self.assertEqual(expected_revs, rev_ord)
         # Getting topological sort requires VFS calls still
-        self.assertLength(14, self.hpss_calls)
+        self.assertLength(12, self.hpss_calls)
 
     def test_stacked_get_stream_groupcompress(self):
         # Repository._get_source.get_stream() from a stacked repository with
