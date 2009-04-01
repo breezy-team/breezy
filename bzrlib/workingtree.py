@@ -80,7 +80,11 @@ from bzrlib import (
 import bzrlib.branch
 from bzrlib.transport import get_transport
 import bzrlib.ui
-from bzrlib.workingtree_4 import WorkingTreeFormat4, WorkingTreeFormat5
+from bzrlib.workingtree_4 import (
+    WorkingTreeFormat4,
+    WorkingTreeFormat5,
+    WorkingTreeFormat6,
+    )
 """)
 
 from bzrlib import symbol_versioning
@@ -766,7 +770,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def _set_merges_from_parent_ids(self, parent_ids):
         merges = parent_ids[1:]
         self._transport.put_bytes('pending-merges', '\n'.join(merges),
-            mode=self._control_files._file_mode)
+            mode=self.bzrdir._get_file_mode())
 
     def _filter_parent_ids_by_ancestry(self, revision_ids):
         """Check that all merged revisions are proper 'heads'.
@@ -872,7 +876,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         self._must_be_locked()
         my_file = rio_file(stanzas, header)
         self._transport.put_file(filename, my_file,
-            mode=self._control_files._file_mode)
+            mode=self.bzrdir._get_file_mode())
 
     @needs_write_lock # because merge pulls data into the branch.
     def merge_from_branch(self, branch, to_revision=None, from_revision=None,
@@ -969,7 +973,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         return file_id
 
     def get_symlink_target(self, file_id):
-        return os.readlink(self.id2abspath(file_id).encode(osutils._fs_enc))
+        return os.readlink(self.id2abspath(file_id).encode(osutils._fs_enc)
+            ).decode(osutils._fs_enc)
 
     @needs_write_lock
     def subsume(self, other_tree):
@@ -1104,7 +1109,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         self._serialize(self._inventory, sio)
         sio.seek(0)
         self._transport.put_file('inventory', sio,
-            mode=self._control_files._file_mode)
+            mode=self.bzrdir._get_file_mode())
         self._inventory_is_modified = False
 
     def _kind(self, relpath):
@@ -1527,10 +1532,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         :raises: NoSuchId if any fileid is not currently versioned.
         """
         for file_id in file_ids:
+            if file_id not in self._inventory:
+                raise errors.NoSuchId(self, file_id)
+        for file_id in file_ids:
             if self._inventory.has_id(file_id):
                 self._inventory.remove_recursive_id(file_id)
-            else:
-                raise errors.NoSuchId(self, file_id)
         if len(file_ids):
             # in the future this should just set a dirty bit to wait for the
             # final unlock. However, until all methods of workingtree start
@@ -1827,7 +1833,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         path = self._basis_inventory_name()
         sio = StringIO(xml)
         self._transport.put_file(path, sio,
-            mode=self._control_files._file_mode)
+            mode=self.bzrdir._get_file_mode())
 
     def _create_basis_xml_from_inventory(self, revision_id, inventory):
         """Create the text that will be saved in basis-inventory"""
@@ -2623,7 +2629,7 @@ class WorkingTree3(WorkingTree):
             return False
         else:
             self._transport.put_bytes('last-revision', revision_id,
-                mode=self._control_files._file_mode)
+                mode=self.bzrdir._get_file_mode())
             return True
 
     @needs_tree_write_lock
@@ -2904,7 +2910,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         control_files.create_lock()
         control_files.lock_write()
         transport.put_bytes('format', self.get_format_string(),
-            mode=control_files._file_mode)
+            mode=a_bzrdir._get_file_mode())
         if from_branch is not None:
             branch = from_branch
         else:
@@ -2980,6 +2986,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
 
 __default_format = WorkingTreeFormat4()
 WorkingTreeFormat.register_format(__default_format)
+WorkingTreeFormat.register_format(WorkingTreeFormat6())
 WorkingTreeFormat.register_format(WorkingTreeFormat5())
 WorkingTreeFormat.register_format(WorkingTreeFormat3())
 WorkingTreeFormat.set_default_format(__default_format)

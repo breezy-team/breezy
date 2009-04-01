@@ -1051,9 +1051,8 @@ def safe_unicode(unicode_or_utf8_string):
     """Coerce unicode_or_utf8_string into unicode.
 
     If it is unicode, it is returned.
-    Otherwise it is decoded from utf-8. If a decoding error
-    occurs, it is wrapped as a If the decoding fails, the exception is wrapped
-    as a BzrBadParameter exception.
+    Otherwise it is decoded from utf-8. If decoding fails, the exception is
+    wrapped in a BzrBadParameterNotUnicode exception.
     """
     if isinstance(unicode_or_utf8_string, unicode):
         return unicode_or_utf8_string

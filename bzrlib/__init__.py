@@ -102,7 +102,7 @@ def _format_version_tuple(version_info):
     else:
         raise ValueError("version_info %r not valid" % (version_info,))
 
-    version_string = '%d.%d.%d.%s.%d' % version_info
+    version_string = '%d.%d.%d.%s.%d' % tuple(version_info)
     return main_version + sub_string
 
 

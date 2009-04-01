@@ -839,11 +839,13 @@ class RemoteRepository(_RpcHelper):
         if not self._lock_mode:
             self._lock_mode = 'r'
             self._lock_count = 1
-            self._unstacked_provider.enable_cache(cache_misses=False)
+            self._unstacked_provider.enable_cache(cache_misses=True)
             if self._real_repository is not None:
                 self._real_repository.lock_read()
         else:
             self._lock_count += 1
+        for repo in self._fallback_repositories:
+            repo.lock_read()
 
     def _remote_lock_write(self, token):
         path = self.bzrdir._path_for_remote_call(self._client)
@@ -884,6 +886,9 @@ class RemoteRepository(_RpcHelper):
             raise errors.ReadOnlyError(self)
         else:
             self._lock_count += 1
+        for repo in self._fallback_repositories:
+            # Writes don't affect fallback repos
+            repo.lock_read()
         return self._lock_token or None
 
     def leave_lock_in_place(self):
@@ -1053,10 +1058,6 @@ class RemoteRepository(_RpcHelper):
         if self._real_repository is not None:
             if repository not in self._real_repository._fallback_repositories:
                 self._real_repository.add_fallback_repository(repository)
-        else:
-            # They are also seen by the fallback repository.  If it doesn't
-            # exist yet they'll be added then.  This implicitly copies them.
-            self._ensure_real()
 
     def add_inventory(self, revid, inv, parents):
         self._ensure_real()
@@ -1241,18 +1242,37 @@ class RemoteRepository(_RpcHelper):
         # TODO: Manage this incrementally to avoid covering the same path
         # repeatedly. (The server will have to on each request, but the less
         # work done the better).
+        #
+        # Negative caching notes:
+        # new server sends missing when a request including the revid
+        # 'include-missing:' is present in the request.
+        # missing keys are serialised as missing:X, and we then call
+        # provider.note_missing(X) for-all X
         parents_map = self._unstacked_provider.get_cached_map()
         if parents_map is None:
             # Repository is not locked, so there's no cache.
             parents_map = {}
+        # start_set is all the keys in the cache
         start_set = set(parents_map)
+        # result set is all the references to keys in the cache
         result_parents = set()
         for parents in parents_map.itervalues():
             result_parents.update(parents)
         stop_keys = result_parents.difference(start_set)
+        # We don't need to send ghosts back to the server as a position to
+        # stop either.
+        stop_keys.difference_update(self._unstacked_provider.missing_keys)
+        key_count = len(parents_map)
+        if (NULL_REVISION in result_parents
+            and NULL_REVISION in self._unstacked_provider.missing_keys):
+            # If we pruned NULL_REVISION from the stop_keys because it's also
+            # in our cache of "missing" keys we need to increment our key count
+            # by 1, because the reconsitituted SearchResult on the server will
+            # still consider NULL_REVISION to be an included key.
+            key_count += 1
         included_keys = start_set.intersection(result_parents)
         start_set.difference_update(included_keys)
-        recipe = ('manual', start_set, stop_keys, len(parents_map))
+        recipe = ('manual', start_set, stop_keys, key_count)
         body = self._serialise_search_recipe(recipe)
         path = self.bzrdir._path_for_remote_call(self._client)
         for key in keys:
@@ -1260,7 +1280,7 @@ class RemoteRepository(_RpcHelper):
                 raise ValueError(
                     "key %r not a plain string" % (key,))
         verb = 'Repository.get_parent_map'
-        args = (path,) + tuple(keys)
+        args = (path, 'include-missing:') + tuple(keys)
         try:
             response = self._call_with_body_bytes_expecting_body(
                 verb, args, body)
@@ -1294,8 +1314,14 @@ class RemoteRepository(_RpcHelper):
                 if len(d) > 1:
                     revision_graph[d[0]] = d[1:]
                 else:
-                    # No parents - so give the Graph result (NULL_REVISION,).
-                    revision_graph[d[0]] = (NULL_REVISION,)
+                    # No parents:
+                    if d[0].startswith('missing:'):
+                        revid = d[0][8:]
+                        self._unstacked_provider.note_missing_key(revid)
+                    else:
+                        # no parents - so give the Graph result
+                        # (NULL_REVISION,).
+                        revision_graph[d[0]] = (NULL_REVISION,)
             return revision_graph
 
     @needs_read_lock
@@ -1909,12 +1935,7 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         except (errors.NotStacked, errors.UnstackableBranchFormat,
             errors.UnstackableRepositoryFormat), e:
             return
-        # it's relative to this branch...
-        fallback_url = urlutils.join(self.base, fallback_url)
-        transports = [self.bzrdir.root_transport]
-        stacked_on = branch.Branch.open(fallback_url,
-                                        possible_transports=transports)
-        self.repository.add_fallback_repository(stacked_on.repository)
+        self._activate_fallback_location(fallback_url)
 
     def _get_real_transport(self):
         # if we try vfs access, return the real branch's vfs transport
@@ -2261,17 +2282,6 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         else:
             self._ensure_real()
             return self._real_branch._set_parent_location(url)
-
-    def set_stacked_on_url(self, stacked_location):
-        """Set the URL this branch is stacked against.
-
-        :raises UnstackableBranchFormat: If the branch does not support
-            stacking.
-        :raises UnstackableRepositoryFormat: If the repository does not support
-            stacking.
-        """
-        self._ensure_real()
-        return self._real_branch.set_stacked_on_url(stacked_location)
 
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,

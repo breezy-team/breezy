@@ -95,7 +95,7 @@ def tree_files_for_add(file_list):
             if view_files:
                 file_list = view_files
                 view_str = views.view_display_str(view_files)
-                note("ignoring files outside view: %s" % view_str)
+                note("Ignoring files outside view. View is %s" % view_str)
     return tree, file_list
 
 
@@ -151,7 +151,7 @@ def internal_tree_files(file_list, default_branch=u'.', canonicalize=True,
             if view_files:
                 file_list = view_files
                 view_str = views.view_display_str(view_files)
-                note("ignoring files outside view: %s" % view_str)
+                note("Ignoring files outside view. View is %s" % view_str)
         return tree, file_list
     tree = WorkingTree.open_containing(osutils.realpath(file_list[0]))[0]
     return tree, safe_relpath_files(tree, file_list, canonicalize,
@@ -1320,11 +1320,11 @@ class cmd_info(Command):
       basic statistics (like the number of files in the working tree and
       number of revisions in the branch and repository):
 
-        bzr -v info
+        bzr info -v
 
       Display the above together with number of committers to the branch:
 
-        bzr -vv info
+        bzr info -vv
     """
     _see_also = ['revno', 'working-trees', 'repositories']
     takes_args = ['location?']
@@ -1952,9 +1952,8 @@ class cmd_log(Command):
         --show-ids  display revision-ids (and file-ids), not just revnos
 
       Note that the default number of levels to display is a function of the
-      log format. If the -n option is not used, ``short`` and ``line`` show
-      just the top level (mainline) while ``long`` shows all levels of merged
-      revisions.
+      log format. If the -n option is not used, the standard log formats show
+      just the top level (mainline).
 
       Status summaries are shown using status flags like A, M, etc. To see
       the changes explained using words like ``added`` and ``modified``
@@ -1996,9 +1995,9 @@ class cmd_log(Command):
 
     :Path filtering:
 
-      If a parameter is given and it's not a branch, the log will be filtered
-      to show only those revisions that changed the nominated file or
-      directory.
+      If parameters are given and the first one is not a branch, the log
+      will be filtered to show only those revisions that changed the
+      nominated files or directories.
 
       Filenames are interpreted within their historical context. To log a
       deleted file, specify a revision range so that the file existed at
@@ -2027,11 +2026,6 @@ class cmd_log(Command):
       explicitly ask for this (and no way to stop logging a file back
       until it was last renamed).
 
-      Note: If the path is a directory, only revisions that directly changed
-      that directory object are currently shown. This is considered a bug.
-      (Support for filtering against multiple files and for files within a
-      directory is under development.)
-
     :Other filtering:
 
       The --message option can be used for finding revisions that match a
@@ -2051,21 +2045,16 @@ class cmd_log(Command):
       You may find it useful to add the aliases below to ``bazaar.conf``::
 
         [ALIASES]
-        tip = log -r-1 -n1
-        top = log -r-10.. --short --forward
-        show = log -v -p -n1 --long
+        tip = log -r-1
+        top = log -l10 --line
+        show = log -v -p
 
       ``bzr tip`` will then show the latest revision while ``bzr top``
       will show the last 10 mainline revisions. To see the details of a
       particular revision X,  ``bzr show -rX``.
 
-      As many GUI tools and Web interfaces do, you may prefer viewing
-      history collapsed initially. If you are interested in looking deeper
-      into a particular merge X, use ``bzr log -n0 -rX``. If you like
-      working this way, you may wish to either:
-
-      * change your default log format to short (or line)
-      * add this alias: log = log -n1
+      If you are interested in looking deeper into a particular merge X,
+      use ``bzr log -n0 -rX``.
 
       ``bzr log -v`` on a branch with lots of history is currently
       very slow. A fix for this issue is currently under development.
@@ -2082,7 +2071,7 @@ class cmd_log(Command):
       the revnocache plugin. This plugin buffers historical information
       trading disk space for faster speed.
     """
-    takes_args = ['location?']
+    takes_args = ['file*']
     _see_also = ['log-formats', 'revisionspec']
     takes_options = [
             Option('forward',
@@ -2120,7 +2109,7 @@ class cmd_log(Command):
     encoding_type = 'replace'
 
     @display_command
-    def run(self, location=None, timezone='original',
+    def run(self, file_list=None, timezone='original',
             verbose=False,
             show_ids=False,
             forward=False,
@@ -2131,7 +2120,11 @@ class cmd_log(Command):
             message=None,
             limit=None,
             show_diff=False):
-        from bzrlib.log import show_log, _get_fileid_to_log
+        from bzrlib.log import (
+            Logger,
+            make_log_request_dict,
+            _get_info_for_log_files,
+            )
         direction = (forward and 'forward') or 'reverse'
 
         if change is not None:
@@ -2143,21 +2136,27 @@ class cmd_log(Command):
             else:
                 revision = change
 
-        # log everything
-        file_id = None
-        if location:
-            # find the file id to log:
-
-            tree, b, fp = bzrdir.BzrDir.open_containing_tree_or_branch(
-                location)
-            if fp != '':
-                file_id = _get_fileid_to_log(revision, tree, b, fp)
+        file_ids = []
+        filter_by_dir = False
+        if file_list:
+            # find the file ids to log and check for directory filtering
+            b, file_info_list, rev1, rev2 = _get_info_for_log_files(revision,
+                file_list)
+            for relpath, file_id, kind in file_info_list:
                 if file_id is None:
                     raise errors.BzrCommandError(
                         "Path unknown at end or start of revision range: %s" %
-                        location)
+                        relpath)
+                # If the relpath is the top of the tree, we log everything
+                if relpath == '':
+                    file_ids = []
+                    break
+                else:
+                    file_ids.append(file_id)
+                filter_by_dir = filter_by_dir or (
+                    kind in ['directory', 'tree-reference'])
         else:
-            # local dir only
+            # log everything
             # FIXME ? log the current subdir only RBC 20060203
             if revision is not None \
                     and len(revision) > 0 and revision[0].get_branch():
@@ -2166,28 +2165,55 @@ class cmd_log(Command):
                 location = '.'
             dir, relpath = bzrdir.BzrDir.open_containing(location)
             b = dir.open_branch()
+            rev1, rev2 = _get_revision_range(revision, b, self.name())
+
+        # Decide on the type of delta & diff filtering to use
+        # TODO: add an --all-files option to make this configurable & consistent
+        if not verbose:
+            delta_type = None
+        else:
+            delta_type = 'full'
+        if not show_diff:
+            diff_type = None
+        elif file_ids:
+            diff_type = 'partial'
+        else:
+            diff_type = 'full'
 
         b.lock_read()
         try:
-            rev1, rev2 = _get_revision_range(revision, b, self.name())
+            # Build the log formatter
             if log_format is None:
                 log_format = log.log_formatter_registry.get_default(b)
-
             lf = log_format(show_ids=show_ids, to_file=self.outf,
                             show_timezone=timezone,
                             delta_format=get_verbosity_level(),
                             levels=levels)
 
-            show_log(b,
-                     lf,
-                     file_id,
-                     verbose=verbose,
-                     direction=direction,
-                     start_revision=rev1,
-                     end_revision=rev2,
-                     search=message,
-                     limit=limit,
-                     show_diff=show_diff)
+            # Choose the algorithm for doing the logging. It's annoying
+            # having multiple code paths like this but necessary until
+            # the underlying repository format is faster at generating
+            # deltas or can provide everything we need from the indices.
+            # The default algorithm - match-using-deltas - works for
+            # multiple files and directories and is faster for small
+            # amounts of history (200 revisions say). However, it's too
+            # slow for logging a single file in a repository with deep
+            # history, i.e. > 10K revisions. In the spirit of "do no
+            # evil when adding features", we continue to use the
+            # original algorithm - per-file-graph - for the "single
+            # file that isn't a directory without showing a delta" case.
+            match_using_deltas = (len(file_ids) != 1 or filter_by_dir
+                or delta_type)
+
+            # Build the LogRequest and execute it
+            if len(file_ids) == 0:
+                file_ids = None
+            rqst = make_log_request_dict(
+                direction=direction, specific_fileids=file_ids,
+                start_revision=rev1, end_revision=rev2, limit=limit,
+                message_search=message, delta_type=delta_type,
+                diff_type=diff_type, _match_using_deltas=match_using_deltas)
+            Logger(b, rqst).show(lf)
         finally:
             b.unlock()
 
@@ -2196,7 +2222,7 @@ def _get_revision_range(revisionspec_list, branch, command_name):
     """Take the input of a revision option and turn it into a revision range.
 
     It returns RevisionInfo objects which can be used to obtain the rev_id's
-    of the desired revisons. It does some user input validations.
+    of the desired revisions. It does some user input validations.
     """
     if revisionspec_list is None:
         rev1 = None
@@ -2330,7 +2356,7 @@ class cmd_ls(Command):
             if view_files:
                 apply_view = True
                 view_str = views.view_display_str(view_files)
-                note("ignoring files outside view: %s" % view_str)
+                note("Ignoring files outside view. View is %s" % view_str)
 
         tree.lock_read()
         try:
@@ -2940,8 +2966,6 @@ class cmd_upgrade(Command):
 
     def run(self, url='.', format=None):
         from bzrlib.upgrade import upgrade
-        if format is None:
-            format = bzrdir.format_registry.make_bzrdir('default')
         upgrade(url, format)
 
 
@@ -3174,6 +3198,11 @@ class cmd_selftest(Command):
                             ),
                      Option('list-only',
                             help='List the tests instead of running them.'),
+                     RegistryOption('parallel',
+                        help="Run the test suite in parallel.",
+                        lazy_registry=('bzrlib.tests', 'parallel_registry'),
+                        value_switches=False,
+                        ),
                      Option('randomize', type=str, argname="SEED",
                             help='Randomize the order of tests using the given'
                                  ' seed or "now" for the current time.'),
@@ -3205,7 +3234,8 @@ class cmd_selftest(Command):
             lsprof_timed=None, cache_dir=None,
             first=False, list_only=False,
             randomize=None, exclude=None, strict=False,
-            load_list=None, debugflag=None, starting_with=None, subunit=False):
+            load_list=None, debugflag=None, starting_with=None, subunit=False,
+            parallel=None):
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
         from bzrlib.benchmarks import tree_creator
@@ -3234,6 +3264,9 @@ class cmd_selftest(Command):
                 raise errors.BzrCommandError("subunit not available. subunit "
                     "needs to be installed to use --subunit.")
             self.additional_selftest_args['runner_class'] = SubUnitBzrRunner
+        if parallel:
+            self.additional_selftest_args.setdefault(
+                'suite_decorators', []).append(parallel)
         if benchmark:
             test_suite_factory = benchmarks.test_suite
             # Unless user explicitly asks for quiet, be verbose in benchmarks
@@ -3902,7 +3935,8 @@ class cmd_missing(Command):
             type=_parse_revision_str,
             help='Filter on local branch revisions (inclusive). '
                 'See "help revisionspec" for details.'),
-        Option('include-merges', 'Show merged revisions.'),
+        Option('include-merges',
+               'Show all revisions in addition to the mainline ones.'),
         ]
     encoding_type = 'replace'
 
