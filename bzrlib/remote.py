@@ -1935,12 +1935,7 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         except (errors.NotStacked, errors.UnstackableBranchFormat,
             errors.UnstackableRepositoryFormat), e:
             return
-        # it's relative to this branch...
-        fallback_url = urlutils.join(self.base, fallback_url)
-        transports = [self.bzrdir.root_transport]
-        stacked_on = branch.Branch.open(fallback_url,
-                                        possible_transports=transports)
-        self.repository.add_fallback_repository(stacked_on.repository)
+        self._activate_fallback_location(fallback_url)
 
     def _get_real_transport(self):
         # if we try vfs access, return the real branch's vfs transport
