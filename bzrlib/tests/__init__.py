@@ -730,6 +730,22 @@ class TestUIFactory(ui.CLIUIFactory):
             password = password[:-1]
         return password
 
+    def get_username(self, prompt, **kwargs):
+        """Prompt the user for a password.
+
+        :param prompt: The prompt to present the user
+        :param kwargs: Arguments which will be expanded into the prompt.
+                       This lets front ends display different things if
+                       they so choose.
+        :return: The username string, return None if the user
+                 canceled the request.
+        """
+        self.clear_term()
+        prompt += ': '
+        prompt = (prompt % kwargs)
+        self.prompt(prompt.encode(self.stdout.encoding, 'replace'))
+        return self.stdin.readline().rstrip("\n")
+
 
 def _report_leaked_threads():
     bzrlib.trace.warning('%s is leaking threads among %d leaking tests',

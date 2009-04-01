@@ -199,6 +199,8 @@ class CLIUIFactory(UIFactory):
         :return: The username string, return None if the user
                  canceled the request.
         """
+        if not sys.stdin.isatty():
+            raise errors.NotATerminal()
         self.clear_term()
         prompt += ': '
         prompt = (prompt % kwargs)
