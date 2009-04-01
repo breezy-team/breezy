@@ -199,13 +199,10 @@ class CLIUIFactory(UIFactory):
         :return: The username string, return None if the user
                  canceled the request.
         """
-        if not sys.stdin.isatty():
-            raise errors.NotATerminal()
         self.clear_term()
         prompt += ': '
         prompt = (prompt % kwargs)
-        encoding = osutils.get_terminal_encoding()
-        self.prompt(prompt.encode(encoding, 'replace'))
+        self.prompt(prompt.encode(self.stdout.encoding, 'replace'))
         return self.stdin.readline().rstrip("\n")
 
     def prompt(self, prompt):
