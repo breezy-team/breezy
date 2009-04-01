@@ -51,6 +51,7 @@ class VirtualRevisionTextsTests(TestCase, BasicTextsTests):
         return self
 
     def setUp(self):
+        TestCase.setUp(self)
         self.texts = VirtualRevisionTexts(self)
 
     def get_parent_map(self, keys):
@@ -69,6 +70,7 @@ class VirtualInventoryTextsTests(TestCase, BasicTextsTests):
         return {("A",): (("B",))}
 
     def setUp(self):
+        TestCase.setUp(self)
         self.texts = VirtualInventoryTexts(self)
 
     def test_get_sha1s(self):
@@ -81,6 +83,7 @@ class VirtualSignatureTextsTests(TestCase, BasicTextsTests):
         return self
 
     def setUp(self):
+        TestCase.setUp(self)
         self.texts = VirtualSignatureTexts(self)
 
     def get_parent_map(self, keys):
