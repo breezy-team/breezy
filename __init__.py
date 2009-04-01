@@ -105,11 +105,13 @@ def test_suite():
     from unittest import TestSuite, TestLoader
     from bzrlib.plugins.keywords.tests import (
          test_conversion,
+         test_keywords_in_trees,
          )
     loader = TestLoader()
     suite = TestSuite()
     for module in [
         test_conversion,
+        test_keywords_in_trees,
         ]:
         suite.addTests(loader.loadTestsFromModule(module))
     return suite
@@ -139,9 +141,9 @@ keyword_registry.register('Date',
     lambda c: format_date(c.revision().timestamp, c.revision().timezone,
     c.config(), 'Date'))
 keyword_registry.register('Author',
-    lambda c: c.revision().get_apparent_author())
+    lambda c: c.revision().get_apparent_authors()[0])
 keyword_registry.register('Author-Email',
-    lambda c: extract_email(c.revision().get_apparent_author()))
+    lambda c: extract_email(c.revision().get_apparent_authors()[0]))
 keyword_registry.register('Revision-Id',
     lambda c: c.revision_id())
 keyword_registry.register('Path',
@@ -157,9 +159,9 @@ keyword_registry.register('File-Id',
 keyword_registry.register('Now',
     lambda c: format_date(time.time(), time.timezone, c.config(), 'Now'))
 keyword_registry.register('User',
-    lambda c: c.config()._get_user_id())
+    lambda c: c.config().username())
 keyword_registry.register('User-Email',
-    lambda c: extract_email(c.config()._get_user_id()))
+    lambda c: extract_email(c.config().username()))
 
 
 def format_date(timestamp, offset=0, cfg=None, name=None):
@@ -181,7 +183,7 @@ def extract_email(userid):
 
     user-id strings have the format 'name <email>'.
     """
-    if userid[-1] == '>':
+    if userid and userid[-1] == '>':
         return userid[:-1].rsplit('<', 1)[1]
     else:
         return userid
@@ -230,11 +232,6 @@ def expand_keywords(s, keyword_dicts, context=None, encoder=None, style=None):
         result += rest[:match.start()]
         keyword = match.group(1)
         expansion = _get_from_dicts(keyword_dicts, keyword)
-        if expansion is None:
-            # Unknown expansion - leave as is
-            result += match.group(0)
-            rest = rest[match.end():]
-            continue
         if callable(expansion):
             try:
                 expansion = expansion(context)
@@ -243,6 +240,11 @@ def expand_keywords(s, keyword_dicts, context=None, encoder=None, style=None):
                     trace.note("error evaluating %s for keyword %s: %s",
                         expansion, keyword, err)
                 expansion = "(evaluation error)"
+        if expansion is None:
+            # Unknown expansion - leave as is
+            result += match.group(0)
+            rest = rest[match.end():]
+            continue
         if '$' in expansion:
             # Expansion is not safe to be collapsed later
             expansion = "(value unsafe to expand)"
