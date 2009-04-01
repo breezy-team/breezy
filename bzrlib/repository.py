@@ -16,7 +16,6 @@
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-import cStringIO
 import re
 import time
 
@@ -1636,15 +1635,13 @@ class Repository(object):
 
     @needs_read_lock
     def get_revision_xml(self, revision_id):
-        # TODO: jam 20070210 This shouldn't be necessary since get_revision
-        #       would have already do it.
-        # TODO: jam 20070210 Just use _serializer.write_revision_to_string()
-        rev = self.get_revision(revision_id)
-        rev_tmp = cStringIO.StringIO()
-        # the current serializer..
-        self._serializer.write_revision(rev, rev_tmp)
-        rev_tmp.seek(0)
-        return rev_tmp.getvalue()
+        """Return the XML representation of a revision.
+
+        :param revision_id: Revision for which to return the XML.
+        :return: XML string
+        """
+        return self._serializer.write_revision_to_string(
+            self.get_revision(revision_id))
 
     def get_deltas_for_revisions(self, revisions, specific_fileids=None):
         """Produce a generator of revision deltas.
