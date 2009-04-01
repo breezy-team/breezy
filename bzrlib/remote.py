@@ -844,6 +844,8 @@ class RemoteRepository(_RpcHelper):
                 self._real_repository.lock_read()
         else:
             self._lock_count += 1
+        for repo in self._fallback_repositories:
+            repo.lock_read()
 
     def _remote_lock_write(self, token):
         path = self.bzrdir._path_for_remote_call(self._client)
@@ -884,6 +886,9 @@ class RemoteRepository(_RpcHelper):
             raise errors.ReadOnlyError(self)
         else:
             self._lock_count += 1
+        for repo in self._fallback_repositories:
+            # Writes don't affect fallback repos
+            repo.lock_read()
         return self._lock_token or None
 
     def leave_lock_in_place(self):
@@ -1053,10 +1058,6 @@ class RemoteRepository(_RpcHelper):
         if self._real_repository is not None:
             if repository not in self._real_repository._fallback_repositories:
                 self._real_repository.add_fallback_repository(repository)
-        else:
-            # They are also seen by the fallback repository.  If it doesn't
-            # exist yet they'll be added then.  This implicitly copies them.
-            self._ensure_real()
 
     def add_inventory(self, revid, inv, parents):
         self._ensure_real()
