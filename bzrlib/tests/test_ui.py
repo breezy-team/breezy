@@ -267,6 +267,7 @@ class UITests(TestCase):
         factory = TextUIFactory(None, None, None)
         factory.stdin = StringIO("someuser\n\n")
         factory.stdout = StringIO()
+        factory.stdout.encoding = "utf8"
         # there is no output from the base factory
         self.assertEqual("someuser", 
             factory.get_username('Hello %(host)s', host='some'))
@@ -274,6 +275,22 @@ class UITests(TestCase):
         self.assertEqual("", factory.get_username("Gebruiker"))
         # stdin should be empty
         self.assertEqual('', factory.stdin.readline())
+
+    def test_text_ui_getusername_utf8(self):
+        ui = TestUIFactory(stdin=u'someuser\u1234'.encode('utf8'),
+                           stdout=StringIOWrapper())
+        ui.stdin.encoding = "utf8"
+        ui.stdout.encoding = ui.stdin.encoding
+        pb = ui.nested_progress_bar()
+        try:
+            # there is no output from the base factory
+            password = ui.get_username(u'Hello\u1234 %(host)s',
+                host=u'some\u1234')
+            self.assertEquals(u"someuser\u1234", password.decode('utf8'))
+            self.assertEquals(ui.stdout.getvalue().decode("utf8"),
+              u"Hello\u1234 some\u1234: ")
+        finally:
+            pb.finished()
 
 
 class TestTextProgressView(TestCase):

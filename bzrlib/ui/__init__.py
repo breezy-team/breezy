@@ -196,12 +196,13 @@ class CLIUIFactory(UIFactory):
         :param kwargs: Arguments which will be expanded into the prompt.
                        This lets front ends display different things if
                        they so choose.
-        :return: The password string, return None if the user
+        :return: The username string, return None if the user
                  canceled the request.
         """
+        self.clear_term()
         prompt += ': '
         prompt = (prompt % kwargs)
-        self.prompt(prompt)
+        self.prompt(prompt.encode(self.stdout.encoding, 'replace'))
         return self.stdin.readline().rstrip("\n")
 
     def prompt(self, prompt):
