@@ -191,7 +191,8 @@ class ImportObjects(TestCaseWithTransport):
         base_inv = Inventory()
         objs = { "blobname": blob}
         ret = import_git_blob(self._texts, self._mapping, "bla", "blobname", 
-            base_inv, None, "somerevid", [], self._map, objs.__getitem__, False)
+            base_inv, None, "somerevid", [], self._map, objs.__getitem__, False,
+            False)
         self.assertEquals(set([('bla', 'somerevid')]), self._texts.keys())
         self.assertEquals(self._texts.get_record_stream([('bla', 'somerevid')],
             "unordered", True).next().get_bytes_as("fulltext"), "bar")
