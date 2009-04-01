@@ -92,18 +92,34 @@ class TestEolConversion(TestCaseWithWorkingTree):
         basis_content = basis.get_file('file1-id').read()
         self.assertEqual(expected_raw, basis_content)
         self.assertNewContentForSetting(wt, None, expected_raw)
-        self.assertNewContentForSetting(wt, 'lf', expected_unix, expected_win)
-        self.assertNewContentForSetting(wt, 'crlf', expected_unix, expected_win)
-        self.assertNewContentForSetting(wt, 'lf-always', expected_unix,
-            expected_unix)
-        self.assertNewContentForSetting(wt, 'crlf-always', expected_win,
-            expected_win)
+        self.assertNewContentForSetting(wt, 'native',
+            expected_unix, expected_win)
+        self.assertNewContentForSetting(wt, 'lf',
+            expected_unix, expected_unix)
+        self.assertNewContentForSetting(wt, 'crlf',
+            expected_win, expected_win)
+        self.assertNewContentForSetting(wt, 'native-with-crlf-in-repo',
+            expected_unix, expected_win)
+        self.assertNewContentForSetting(wt, 'lf-with-crlf-in-repo',
+            expected_unix, expected_unix)
+        self.assertNewContentForSetting(wt, 'crlf-with-crlf-in-repo',
+            expected_win, expected_win)
         self.assertNewContentForSetting(wt, 'exact', expected_raw)
 
     def test_eol_no_rules(self):
         wt, basis = self.prepare_tree(_sample_text)
         self.assertContent(wt, basis, _sample_text,
             _sample_text_on_unix, _sample_text_on_win)
+
+    def test_eol_native(self):
+        wt, basis = self.prepare_tree(_sample_text, eol='native')
+        self.assertContent(wt, basis, _sample_text_on_unix,
+            _sample_text_on_unix, _sample_text_on_win)
+
+    def test_eol_native_binary(self):
+        wt, basis = self.prepare_tree(_sample_binary, eol='native')
+        self.assertContent(wt, basis, _sample_binary, _sample_binary,
+            _sample_binary)
 
     def test_eol_lf(self):
         wt, basis = self.prepare_tree(_sample_text, eol='lf')
@@ -117,7 +133,7 @@ class TestEolConversion(TestCaseWithWorkingTree):
 
     def test_eol_crlf(self):
         wt, basis = self.prepare_tree(_sample_text, eol='crlf')
-        self.assertContent(wt, basis, _sample_text_on_win,
+        self.assertContent(wt, basis, _sample_text_on_unix,
             _sample_text_on_unix, _sample_text_on_win)
 
     def test_eol_crlf_binary(self):
@@ -125,23 +141,35 @@ class TestEolConversion(TestCaseWithWorkingTree):
         self.assertContent(wt, basis, _sample_binary, _sample_binary,
             _sample_binary)
 
-    def test_eol_lf_always(self):
-        wt, basis = self.prepare_tree(_sample_text, eol='lf-always')
-        self.assertContent(wt, basis, _sample_text_on_unix,
-            _sample_text_on_unix, _sample_text_on_win)
-
-    def test_eol_lf_always_binary(self):
-        wt, basis = self.prepare_tree(_sample_binary, eol='lf-always')
-        self.assertContent(wt, basis, _sample_binary, _sample_binary,
-            _sample_binary)
-
-    def test_eol_crlf_always(self):
-        wt, basis = self.prepare_tree(_sample_text, eol='crlf-always')
+    def test_eol_native_with_crlf_in_repo(self):
+        wt, basis = self.prepare_tree(_sample_text,
+            eol='native-with-crlf-in-repo')
         self.assertContent(wt, basis, _sample_text_on_win,
             _sample_text_on_unix, _sample_text_on_win)
 
-    def test_eol_crlf_always_binary(self):
-        wt, basis = self.prepare_tree(_sample_binary, eol='crlf-always')
+    def test_eol_native_with_crlf_in_repo_binary(self):
+        wt, basis = self.prepare_tree(_sample_binary,
+            eol='native-with-crlf-in-repo')
+        self.assertContent(wt, basis, _sample_binary, _sample_binary,
+            _sample_binary)
+
+    def test_eol_lf_with_crlf_in_repo(self):
+        wt, basis = self.prepare_tree(_sample_text, eol='lf-with-crlf-in-repo')
+        self.assertContent(wt, basis, _sample_text_on_win,
+            _sample_text_on_unix, _sample_text_on_win)
+
+    def test_eol_lf_with_crlf_in_repo_binary(self):
+        wt, basis = self.prepare_tree(_sample_binary, eol='lf-with-crlf-in-repo')
+        self.assertContent(wt, basis, _sample_binary, _sample_binary,
+            _sample_binary)
+
+    def test_eol_crlf_with_crlf_in_repo(self):
+        wt, basis = self.prepare_tree(_sample_text, eol='crlf-with-crlf-in-repo')
+        self.assertContent(wt, basis, _sample_text_on_win,
+            _sample_text_on_unix, _sample_text_on_win)
+
+    def test_eol_crlf_with_crlf_in_repo_binary(self):
+        wt, basis = self.prepare_tree(_sample_binary, eol='crlf-with-crlf-in-repo')
         self.assertContent(wt, basis, _sample_binary, _sample_binary,
             _sample_binary)
 

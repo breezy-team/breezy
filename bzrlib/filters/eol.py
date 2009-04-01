@@ -54,10 +54,14 @@ else:
     _native_output = _to_lf_converter
 _eol_filter_stack_map = {
     'exact': [],
-    'lf':    [filters.ContentFilter(_to_lf_converter, _native_output)],
-    'crlf':  [filters.ContentFilter(_to_crlf_converter, _native_output)],
-    'lf-always':   [filters.ContentFilter(_to_lf_converter, _to_lf_converter)],
-    'crlf-always': [filters.ContentFilter(_to_crlf_converter,
-        _to_crlf_converter)],
+    'native': [filters.ContentFilter(_to_lf_converter, _native_output)],
+    'lf':     [filters.ContentFilter(_to_lf_converter, _to_lf_converter)],
+    'crlf':   [filters.ContentFilter(_to_lf_converter, _to_crlf_converter)],
+    'native-with-crlf-in-repo':
+        [filters.ContentFilter(_to_crlf_converter, _native_output)],
+    'lf-with-crlf-in-repo':
+        [filters.ContentFilter(_to_crlf_converter, _to_lf_converter)],
+    'crlf-with-crlf-in-repo':
+        [filters.ContentFilter(_to_crlf_converter, _to_crlf_converter)],
     }
 filters.register_filter_stack_map('eol', _eol_filter_stack_map)

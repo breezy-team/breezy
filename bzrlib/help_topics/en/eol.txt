@@ -6,47 +6,54 @@ stores a canonical format but outputs a convenience format. See
 ``bzr help content-filters`` for general information about using these.
 
 Note: Content filtering is only supported in recently added formats,
-e.g. --development-wt5 and the (pending) CHK format.
+e.g. 1.14.
 
 EOL conversion needs to be enabled for selected branches and files using
 rules. See ``bzr help rules`` for general information on defining rules.
 
 To configure which files to filter, set ``eol`` to one of the values below.
 
-  ============== ======================= ==================================
-  Value          Commit newlines as      On checkout, convert newlines to
-  ============== ======================= ==================================
-  lf             lf                      crlf on Windows, lf otherwise
-  -------------- ----------------------- ----------------------------------
-  crlf           crlf                    crlf on Windows, lf otherwise
-  -------------- ----------------------- ----------------------------------
-  lf-always      lf                      lf
-  -------------- ----------------------- ----------------------------------
-  crlf-always    crlf                    crlf
-  -------------- ----------------------- ----------------------------------
-  exact          exactly as in file      No conversion
-  ============== ======================= ==================================
-
-To summarize, the ``eol`` value specfies how to **store** the file - Bazaar
-will checkout files matching either ``lf`` or ``crlf`` using your native
-platform conventions. On some occasions, it is necessary to force a
-particular convention or to ensure no conversion is done - ``lf-always``,
-``crlf-always`` and ``exact`` are useful then.
+ ============== ============================== ======================
+ Value          Checkout end-of-lines as       Commit end-of-lines as
+ ============== ============================== ======================
+ native         crlf on Windows, lf otherwise  lf
+ -------------- ------------------------------ ----------------------
+ lf             lf                             lf
+ -------------- ------------------------------ ----------------------
+ crlf           crlf                           lf
+ -------------- ------------------------------ ----------------------
+ exact          No conversion                  exactly as in file
+ ============== ============================== ======================
 
 Note: For safety reasons, no conversion is applied to any file where a null
 character is detected in the file.
 
-Here is the suggested rule for users on Windows working on a cross-platform
-project::
+If you have an existing repository with text files already stored using
+Windows newline conventions (crlf), then you may want to keep using that
+convention in the repository. Forcing certain files to this convention
+may also help users who do not have rules configured. To do this, set
+``eol`` to one of the values below.
+
+ ========================= ============================== ======================
+ Value                     Checkout end-of-lines as       Commit end-of-lines as
+ ========================= ============================== ======================
+ native-with-crlf-in-repo  crlf on Windows, lf otherwise  crlf
+ ------------------------- ------------------------------ ----------------------
+ lf-with-crlf-in-repo      lf                             crlf
+ ------------------------- ------------------------------ ----------------------
+ crlf-with-crlf-in-repo    crlf                           crlf
+ ========================= ============================== ======================
+
+Here is the suggested rule for users working on a cross-platform project::
 
   [name *]
-  eol = lf
+  eol = native
 
 For developers working on a project using Windows newline conventions as
 the project standard, this rule is suggested::
 
   [name *]
-  eol = crlf
+  eol = native-with-crlf-in-repo
 
 To override the conversion for certain files, give more explicit patterns
 earlier in the rules file. For example::
@@ -55,27 +62,22 @@ earlier in the rules file. For example::
   eol = crlf
 
   [name *]
-  eol = lf
-
-This will store ``*.bat`` files using Windows (``\r\n``) conventions and
-remaining files using Linux/Unix (``\n``) conventions, but all files will be
-checked out with ``\r\n`` newlines on Windows and ``\n`` newlines on other
-platforms.
+  eol = native
 
 If your working tree is on a network drive shared by users on different
 operating systems, you typically want to force certain conventions for
 certain files. In that way, if a file is created with the wrong line
-endings, it gets committed correctly and gets checked out correctly.
-For example::
+endings or line endings get mixed during editing, it gets committed
+correctly and gets checked out correctly. For example::
 
   [name *.bat]
-  eol = crlf-always
+  eol = crlf-with-crlf-in-repo
 
   [name *.sh]
-  eol = lf-always
+  eol = lf
 
   [name *]
-  eol = lf
+  eol = native
 
 If you have sample test data that deliberately has text files with mixed
 newline conventions, you can ask for those to be left alone by combining
@@ -85,4 +87,7 @@ rule ordering and ``exact`` like this::
   eol = exact
 
   [name *]
-  eol = lf
+  eol = native
+
+Note that ``exact`` does not imply the file is binary but it does mean
+that no conversion of end-of-lines will be done.
