@@ -1307,7 +1307,7 @@ class RedirectedRequest(_urllib2_wrappers.Request):
         # Since the tests using this class will replace
         # _urllib2_wrappers.Request, we can't just call the base class __init__
         # or we'll loop.
-        RedirectedRequest.init_orig(self, method, url, args, kwargs)
+        RedirectedRequest.init_orig(self, method, url, *args, **kwargs)
         self.follow_redirections = True
 
 
