@@ -53,6 +53,7 @@ from bzrlib.repofmt import pack_repo
 from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import server, medium
 from bzrlib.smart.client import _SmartClient
+from bzrlib.smart.repository import SmartServerRepositoryGetParentMap
 from bzrlib.tests import (
     condition_isinstance,
     split_suite_by_condition,
@@ -998,11 +999,10 @@ class TestBranch_get_stacked_on_url(TestRemote):
         result = branch.get_stacked_on_url()
         self.assertEqual('../base', result)
         client.finished_test()
-        # it's in the fallback list both for the RemoteRepository and its vfs
-        # repository
+        # it's in the fallback list both for the RemoteRepository.
         self.assertEqual(1, len(branch.repository._fallback_repositories))
-        self.assertEqual(1,
-            len(branch.repository._real_repository._fallback_repositories))
+        # And we haven't had to construct a real repository.
+        self.assertEqual(None, branch.repository._real_repository)
 
 
 class TestBranchSetLastRevision(RemoteBranchTestCase):
@@ -1672,6 +1672,45 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
             graph.get_parent_map(['some-missing', 'other-missing',
                 'more-missing']))
         self.assertLength(1, self.hpss_calls)
+
+    def disableExtraResults(self):
+        old_flag = SmartServerRepositoryGetParentMap.no_extra_results
+        SmartServerRepositoryGetParentMap.no_extra_results = True
+        def reset_values():
+            SmartServerRepositoryGetParentMap.no_extra_results = old_flag
+        self.addCleanup(reset_values)
+
+    def test_null_cached_missing_and_stop_key(self):
+        self.setup_smart_server_with_call_log()
+        # Make a branch with a single revision.
+        builder = self.make_branch_builder('foo')
+        builder.start_series()
+        builder.build_snapshot('first', None, [
+            ('add', ('', 'root-id', 'directory', ''))])
+        builder.finish_series()
+        branch = builder.get_branch()
+        repo = branch.repository
+        self.assertIsInstance(repo, RemoteRepository)
+        # Stop the server from sending extra results.
+        self.disableExtraResults()
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        self.reset_smart_call_log()
+        graph = repo.get_graph()
+        # Query for 'first' and 'null:'.  Because 'null:' is a parent of
+        # 'first' it will be a candidate for the stop_keys of subsequent
+        # requests, and because 'null:' was queried but not returned it will be
+        # cached as missing.
+        self.assertEqual({'first': ('null:',)},
+            graph.get_parent_map(['first', 'null:']))
+        # Now query for another key.  This request will pass along a recipe of
+        # start and stop keys describing the already cached results, and this
+        # recipe's revision count must be correct (or else it will trigger an
+        # error from the server).
+        self.assertEqual({}, graph.get_parent_map(['another-key']))
+        # This assertion guards against disableExtraResults silently failing to
+        # work, thus invalidating the test.
+        self.assertLength(2, self.hpss_calls)
 
     def test_get_parent_map_gets_ghosts_from_result(self):
         # asking for a revision should negatively cache close ghosts in its
