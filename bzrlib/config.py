@@ -1130,8 +1130,8 @@ class AuthenticationConfig(object):
         config.update({name: values})
         self._save()
 
-    def get_user(self, scheme, host, port=None,
-                 realm=None, path=None, prompt=None):
+    def get_user(self, scheme, host, port=None, realm=None, path=None, 
+                 prompt=None, ask=False):
         """Get a user from authentication file.
 
         :param scheme: protocol
@@ -1144,6 +1144,9 @@ class AuthenticationConfig(object):
 
         :param path: the absolute path on the server (optional)
 
+        :param ask: Ask the user if there is no explicitly configured username 
+                    (optional)
+
         :return: The found user.
         """
         credentials = self.get_credentials(scheme, host, port, user=None,
@@ -1152,17 +1155,20 @@ class AuthenticationConfig(object):
             user = credentials['user']
         else:
             user = None
-        # Prompt user if we couldn't find a username
         if user is None:
-            if prompt is None:
-                # Create a default prompt suitable for most cases
-                prompt = scheme.upper() + ' %(host)s username'
-            # Special handling for optional fields in the prompt
-            if port is not None:
-                prompt_host = '%s:%d' % (host, port)
+            if ask:
+                if prompt is None:
+                    # Create a default prompt suitable for most cases
+                    prompt = scheme.upper() + ' %(host)s username'
+                # Special handling for optional fields in the prompt
+                if port is not None:
+                    prompt_host = '%s:%d' % (host, port)
+                else:
+                    prompt_host = host
+                user = ui.ui_factory.get_username(prompt, host=prompt_host)
             else:
-                prompt_host = host
-            user = ui.ui_factory.get_username(prompt, host=prompt_host)
+                import getpass
+                user = getpass.getuser()
         return user
 
     def get_password(self, scheme, host, user, port=None,

@@ -1127,7 +1127,7 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         if user is None:
             user = auth_conf.get_user(auth['protocol'], auth['host'],
                                       port=auth['port'], path=auth['path'],
-                                      realm=realm)
+                                      realm=realm, ask=True)
         if user is not None and password is None:
             password = auth_conf.get_password(
                 auth['protocol'], auth['host'], user, port=auth['port'],
