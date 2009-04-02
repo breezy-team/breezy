@@ -40,7 +40,7 @@ class InfoProcessor(processor.ImportProcessor):
     the source.
     """
 
-    def __init__(self, target=None, params=None, verbose=False):
+    def __init__(self, target=None, params=None, verbose=0):
         # Allow creation without a target
         processor.ImportProcessor.__init__(self, target, params, verbose)
 
@@ -62,8 +62,9 @@ class InfoProcessor(processor.ImportProcessor):
         self.lightweight_tags = 0
         # Blob usage tracking
         self.blobs = {}
-        for usage in ['new', 'used', 'multi', 'unknown', 'unmarked']:
+        for usage in ['new', 'used', 'unknown', 'unmarked']:
             self.blobs[usage] = set()
+        self.blob_ref_counts = {}
         # Head tracking - delegate to the cache manager
         self.cache_mgr = cache_manager.CacheManager(inventory_cache_size=0)
         # Stuff to cache: a map from mark to # of times that mark is merged
@@ -108,10 +109,18 @@ class InfoProcessor(processor.ImportProcessor):
             # note("\t%d\t%s" % (len(self.committers), 'unique committers'))
             self._dump_stats_group("Merges", self.merges.keys(),
                 self.merges.values(), None)
-            self._dump_stats_group("Rename old paths", self.rename_old_paths.keys(),
-                self.rename_old_paths.values(), len, _iterable_as_config_list)
-            self._dump_stats_group("Copy source paths", self.copy_source_paths.keys(),
-                self.copy_source_paths.values(), len, _iterable_as_config_list)
+            # We only show the rename old path and copy source paths when -vv
+            # (verbose=2) is specified. The output here for mysql's data can't
+            # be parsed currently so this bit of code needs more work anyhow ..
+            if self.verbose >= 2:
+                self._dump_stats_group("Rename old paths",
+                    self.rename_old_paths.keys(),
+                    self.rename_old_paths.values(), len,
+                    _iterable_as_config_list)
+                self._dump_stats_group("Copy source paths",
+                    self.copy_source_paths.keys(),
+                    self.copy_source_paths.values(), len,
+                    _iterable_as_config_list)
 
         # Blob stats
         if self.cmd_counts['blob']:
@@ -120,6 +129,11 @@ class InfoProcessor(processor.ImportProcessor):
                 del self.blobs['used']
             self._dump_stats_group("Blob usage tracking", self.blobs.keys(),
                 self.blobs.values(), len, _iterable_as_config_list)
+        if self.blob_ref_counts:
+            blobs_by_count = helpers.invert_dict(self.blob_ref_counts)
+            self._dump_stats_group("Blob reference counts",
+                blobs_by_count.keys(),
+                blobs_by_count.values(), len, _iterable_as_config_list)
 
         # Other stats
         if self.cmd_counts['reset']:
@@ -145,14 +159,16 @@ class InfoProcessor(processor.ImportProcessor):
             for name, value in zip(names, values):
                 if verbose_formatter is not None:
                     value = verbose_formatter(value)
-                print "%s = %s" % (name.replace(' ', '-'),value)
+                if type(name) == str:
+                    name = name.replace(' ', '-')
+                print "%s = %s" % (name, value)
             print ""
         else:
             print "%s:" % (title,)
             for name, value in zip(names, values):
                 if normal_formatter is not None:
                     value = normal_formatter(value)
-                print "\t%s\t%s" % (value,name)
+                print "\t%s\t%s" % (value, name)
 
     def progress_handler(self, cmd):
         """Process a ProgressCommand."""
@@ -235,10 +251,11 @@ class InfoProcessor(processor.ImportProcessor):
         self.cmd_counts[cmd.name] += 1
 
     def _track_blob(self, mark):
-        if mark in self.blobs['multi']:
+        if mark in self.blob_ref_counts:
+            self.blob_ref_counts[mark] += 1
             pass
         elif mark in self.blobs['used']:
-            self.blobs['multi'].add(mark)
+            self.blob_ref_counts[mark] = 2
             self.blobs['used'].remove(mark)
         elif mark in self.blobs['new']:
             self.blobs['used'].add(mark)

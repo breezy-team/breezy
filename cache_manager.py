@@ -54,10 +54,15 @@ class CacheManager(object):
         self.heads = {}
 
         # Work out the blobs to make sticky - None means all
-        self._blobs_to_keep = None
+        self._blob_ref_counts = {}
         if info is not None:
             try:
-                self._blobs_to_keep = info['Blob usage tracking']['multi']
+                blobs_by_counts = info['Blob reference counts']
+                # The parser hands values back as lists, already parsed
+                for count, blob_list in blobs_by_counts.items():
+                    n = int(count)
+                    for b in blob_list:
+                        self._blob_ref_counts[b] = n
             except KeyError:
                 # info not in file - possible when no blobs used
                 pass
@@ -86,8 +91,15 @@ class CacheManager(object):
         else:
             size = sum(map(len, dict.keys()))
         size += sum(map(len, dict.values()))
-        kbytes = size * 1.0 / 1024
-        note("    %-12s: %8.1f kB (%d %s)" % (label, kbytes, count,
+        size = size * 1.0 / 1024
+        unit = 'K'
+        if size > 1024:
+            size = size / 1024
+            unit = 'M'
+            if size > 1024:
+                size = size / 1024
+                unit = 'G'
+        note("    %-12s: %8.1f %s (%d %s)" % (label, size, unit, count,
             helpers.single_plural(count, "item", "items")))
 
     def clear_all(self):
@@ -102,8 +114,7 @@ class CacheManager(object):
 
     def store_blob(self, id, data):
         """Store a blob of data."""
-        if (self._blobs_to_keep is None or data == '' or
-            id in self._blobs_to_keep):
+        if data == '' or id in self._blob_ref_counts:
             self._sticky_blobs[id] = data
         else:
             self._blobs[id] = data
@@ -111,7 +122,12 @@ class CacheManager(object):
     def fetch_blob(self, id):
         """Fetch a blob of data."""
         try:
-            return self._sticky_blobs[id]
+            b = self._sticky_blobs[id]
+            if b != '':
+                self._blob_ref_counts[id] -= 1
+                if self._blob_ref_counts[id] == 0:
+                    del self._sticky_blobs[id]
+            return b
         except KeyError:
             return self._blobs.pop(id)
 

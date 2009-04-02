@@ -153,7 +153,7 @@ class GenericProcessor(processor.ImportProcessor):
         # We want to repack at the end anyhow when more information
         # is available to do a better job of saving space.
         try:
-            from bzrlib.plugins.groupcompress import groupcompress
+            from bzrlib import groupcompress
             groupcompress._FAST = True
         except ImportError:
             pass
@@ -285,7 +285,7 @@ class GenericProcessor(processor.ImportProcessor):
                 branch_name = lost_info[0]
                 self.note("\t %s = %s", head_revision, branch_name)
 
-        # Update the working trees as requested and dump stats
+        # Update the working trees as requested
         self._tree_count = 0
         remind_about_update = True
         if self._branch_count == 0:
@@ -306,15 +306,19 @@ class GenericProcessor(processor.ImportProcessor):
                 remind_about_update = False
             else:
                 self.warning("No working trees available to update")
-        self.dump_stats()
 
+        # Dum pthe cache stats now because we clear it before the final pack
+        if self.verbose:
+            self.cache_mgr.dump_stats()
         if self._original_max_pack_count:
             # We earlier disabled autopacking, creating one pack every
             # checkpoint instead. We now pack the repository to optimise
             # how data is stored.
+            self.cache_mgr.clear_all()
             self._pack_repository()
 
-        # Finish up by telling the user what to do next.
+        # Finish up by dumping stats & telling the user what to do next.
+        self.dump_stats()
         if remind_about_update:
             # This message is explicitly not timestamped.
             note("To refresh the working tree for a branch, "
@@ -325,9 +329,8 @@ class GenericProcessor(processor.ImportProcessor):
         # that groupcompress is configured to optimise disk space
         import gc
         if final:
-            self.cache_mgr.clear_all()
             try:
-                from bzrlib.plugins.groupcompress import groupcompress
+                from bzrlib import groupcompress
             except ImportError:
                 pass
             else:
@@ -377,8 +380,6 @@ class GenericProcessor(processor.ImportProcessor):
             bc, helpers.single_plural(bc, "branch", "branches"),
             wtc, helpers.single_plural(wtc, "tree", "trees"),
             time_required)
-        if self.verbose:
-            self.cache_mgr.dump_stats()
 
     def _init_id_map(self):
         """Load the id-map and check it matches the repository.
