@@ -36,7 +36,7 @@ from bzrlib import (
         ui,
         urlutils,
         )
-from bzrlib.config import BranchConfig
+from bzrlib.config import BranchConfig, TransportConfig
 from bzrlib.repofmt.pack_repo import RepositoryFormatKnitPack5RichRoot
 from bzrlib.tag import (
     BasicTags,
@@ -166,6 +166,18 @@ class Branch(object):
 
     def get_config(self):
         return BranchConfig(self)
+
+    def _get_config(self):
+        """Get the concrete config for just the config in this branch.
+
+        This is not intended for client use; see Branch.get_config for the
+        public API.
+
+        Added in 1.14.
+
+        :return: An object supporting get_option and set_option.
+        """
+        raise NotImplementedError(self._get_config)
 
     def _get_fallback_repository(self, url):
         """Get the repository we fallback to at url."""
@@ -1879,6 +1891,9 @@ class BzrBranch(Branch):
         return self._base
 
     base = property(_get_base, doc="The URL for the root of this branch.")
+
+    def _get_config(self):
+        return TransportConfig(self._transport, 'branch.conf')
 
     def is_locked(self):
         return self.control_files.is_locked()

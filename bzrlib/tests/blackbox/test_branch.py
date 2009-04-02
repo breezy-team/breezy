@@ -267,13 +267,12 @@ class TestSmartServerBranching(ExternalBase):
         self.reset_smart_call_log()
         out, err = self.run_bzr(['branch', self.get_url('from'),
             self.get_url('target')])
-        rpc_count = len(self.hpss_calls)
         # This figure represent the amount of work to perform this use case. It
         # is entirely ok to reduce this number if a test fails due to rpc_count
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertEqual(53, rpc_count)
+        self.assertLength(52, self.hpss_calls)
 
     def test_branch_from_trivial_branch_streaming_acceptance(self):
         self.setup_smart_server_with_call_log()
@@ -283,13 +282,12 @@ class TestSmartServerBranching(ExternalBase):
         self.reset_smart_call_log()
         out, err = self.run_bzr(['branch', self.get_url('from'),
             'local-target'])
-        rpc_count = len(self.hpss_calls)
         # This figure represent the amount of work to perform this use case. It
         # is entirely ok to reduce this number if a test fails due to rpc_count
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertEqual(10, rpc_count)
+        self.assertLength(10, self.hpss_calls)
 
     def test_branch_from_trivial_stacked_branch_streaming_acceptance(self):
         self.setup_smart_server_with_call_log()
