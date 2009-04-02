@@ -114,7 +114,11 @@ class CacheManager(object):
 
     def store_blob(self, id, data):
         """Store a blob of data."""
-        if data == '' or id in self._blob_ref_counts:
+        # Note: If we're not reference counting, everything has to be sticky
+        if not self._blob_ref_counts or id in self._blob_ref_counts:
+            self._sticky_blobs[id] = data
+        elif data == '':
+            # Empty data is always sticky
             self._sticky_blobs[id] = data
         else:
             self._blobs[id] = data
@@ -123,7 +127,7 @@ class CacheManager(object):
         """Fetch a blob of data."""
         try:
             b = self._sticky_blobs[id]
-            if b != '':
+            if self._blob_ref_counts and b != '':
                 self._blob_ref_counts[id] -= 1
                 if self._blob_ref_counts[id] == 0:
                     del self._sticky_blobs[id]
