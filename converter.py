@@ -23,11 +23,13 @@ from dulwich.objects import (
 import stat
 
 from bzrlib import (
+    errors,
     ui,
     )
 
 from bzrlib.plugins.git.mapping import (
     inventory_to_tree_and_blobs,
+    mapping_registry,
     revision_to_commit,
     )
 from bzrlib.plugins.git.shamap import (
@@ -78,8 +80,14 @@ class BazaarObjectStore(object):
         rev = self.repository.get_revision(revid)
         commit_obj = revision_to_commit(rev, tree_sha,
             self._idmap._parent_lookup)
-        self._idmap.add_entry(commit_obj.sha().hexdigest(), "commit",
-            (revid, tree_sha))
+        try:
+            foreign_revid, mapping = mapping_registry.parse_revision_id(revid)
+        except errors.InvalidRevisionId:
+            pass
+        else:
+            if foreign_revid != commit_obj.id:
+                raise AssertionError("recreated git commit had different sha1: expected %s, got %s" % (foreign_revid, commit_obj.id))
+        self._idmap.add_entry(commit_obj.id, "commit", (revid, tree_sha))
 
     def _get_blob(self, fileid, revision):
         """Return a Git Blob object from a fileid and revision stored in bzr.
@@ -106,14 +114,13 @@ class BazaarObjectStore(object):
         for name, ie in inv[fileid].children.iteritems():
             if ie.kind == "directory":
                 subtree = self._get_tree(inv.id2path(ie.file_id), revid, inv)
-                tree.add(stat.S_IFDIR, name.encode('UTF-8'),
-                    subtree.sha().hexdigest())
+                tree.add(stat.S_IFDIR, name.encode('UTF-8'), subtree.id)
             elif ie.kind == "file":
                 blob = self._get_blob(ie.file_id, ie.revision)
                 mode = stat.S_IFREG | 0644
                 if ie.executable:
                     mode |= 0111
-                tree.add(mode, name.encode('UTF-8'), blob.sha().hexdigest())
+                tree.add(mode, name.encode('UTF-8'), blob.id)
             elif ie.kind == "symlink":
                 raise AssertionError("Symlinks not yet supported")
         tree.serialize()
