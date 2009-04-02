@@ -167,7 +167,19 @@ class CLIUIFactory(UIFactory):
                 return False
 
     def get_non_echoed_password(self):
-        return getpass.getpass('')
+        isatty = getattr(self.stdin, 'isatty', None)
+        if isatty is not None and isatty():
+            # getpass() ensure the password is not echoed and other
+            # cross-platform niceties
+            password = getpass.getpass('')
+        else:
+            # echo doesn't make sense without a terminal
+            password = self.stdin.readline()
+            if not password:
+                password = None
+            elif password[-1] == '\n':
+                password = password[:-1]
+        return password
 
     def get_password(self, prompt='', **kwargs):
         """Prompt the user for a password.
