@@ -549,7 +549,7 @@ class TextTestRunner(object):
             except ImportError:
                 test.run(result)
             else:
-                if type(test) == testtools.ConcurrentTestSuite:
+                if isinstance(testtools.ConcurrentTestSuite, test):
                     # We need to catch bzr specific behaviors
                     test.run(BZRTransformingResult(result))
                 else:
@@ -2685,8 +2685,6 @@ def fork_decorator(suite):
         return suite
     from testtools import ConcurrentTestSuite
     return ConcurrentTestSuite(suite, fork_for_tests)
-
-
 parallel_registry.register('fork', fork_decorator)
 
 
@@ -2696,8 +2694,6 @@ def subprocess_decorator(suite):
         return suite
     from testtools import ConcurrentTestSuite
     return ConcurrentTestSuite(suite, reinvoke_for_tests)
-
-
 parallel_registry.register('subprocess', subprocess_decorator)
 
 
