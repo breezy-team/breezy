@@ -1332,16 +1332,9 @@ class TestBranchSetLastRevisionInfo(RemoteBranchTestCase):
         self.assertEqual('rejection message', err.msg)
 
 
-class TestBranchControlGetBranchConf(RemoteBranchTestCase):
-    """Getting the branch configuration should use an abstract method not vfs.
-    """
+class TestBranchGetSetConfig(RemoteBranchTestCase):
 
     def test_get_branch_conf(self):
-        # We should see that branch.get_config() does a single rpc to get the
-        # remote configuration file, abstracting away where that is stored on
-        # the server.  However at the moment it always falls back to using the
-        # vfs, and this would need some changes in config.py.
-
         # in an empty branch we decode the response properly
         client = FakeClient()
         client.add_expected_call(
@@ -1356,6 +1349,41 @@ class TestBranchControlGetBranchConf(RemoteBranchTestCase):
             [('call', 'Branch.get_stacked_on_url', ('memory:///',)),
              ('call_expecting_body', 'Branch.get_config_file', ('memory:///',))],
             client._calls)
+
+    def test_set_option(self):
+        client = FakeClient()
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('memory:///',),
+            'error', ('NotStacked',),)
+        client.add_expected_call(
+            'Branch.lock_write', ('memory:///', '', ''),
+            'success', ('ok', 'branch token', 'repo token'))
+        client.add_expected_call(
+            'Branch.set_config_option', ('memory:///', 'branch token',
+            'repo token', 'foo', 'bar', ''),
+            'success', ())
+        client.add_expected_call(
+            'Branch.unlock', ('memory:///', 'branch token', 'repo token'),
+            'success', ('ok',))
+        transport = MemoryTransport()
+        branch = self.make_remote_branch(transport, client)
+        branch.lock_write()
+        config = branch._get_config()
+        config.set_option('foo', 'bar')
+        branch.unlock()
+        client.finished_test()
+
+    def test_backwards_compat_set_option(self):
+        self.setup_smart_server_with_call_log()
+        branch = self.make_branch('.')
+        verb = 'Branch.set_config_option'
+        self.disable_verb(verb)
+        branch.lock_write()
+        self.addCleanup(branch.unlock)
+        self.reset_smart_call_log()
+        branch._get_config().set_option('value', 'name')
+        self.assertLength(10, self.hpss_calls)
+        self.assertEqual('value', branch._get_config().get_option('name'))
 
 
 class TestBranchLockWrite(RemoteBranchTestCase):

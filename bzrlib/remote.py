@@ -2389,8 +2389,7 @@ class RemoteBranchConfig(object):
         return section_obj.get(name, default)
 
     def _get_configobj(self):
-        path = self._branch.bzrdir._path_for_remote_call(
-            self._branch._client)
+        path = self._branch._remote_path()
         response = self._branch._client.call_expecting_body(
             'Branch.get_config_file', path)
         if response[0][0] != 'ok':
@@ -2405,7 +2404,19 @@ class RemoteBranchConfig(object):
         :param name: The name of the value to set
         :param section: The section the option is in (if any)
         """
-        return self._vfs_set_option(value, name, section)
+        medium = self._branch._client._medium
+        if medium._is_remote_before((1, 14)):
+            return self._vfs_set_option(value, name, section)
+        try:
+            path = self._branch._remote_path()
+            response = self._branch._client.call('Branch.set_config_option',
+                path, self._branch._lock_token, self._branch._repo_lock_token,
+                value, name, section or '')
+        except errors.UnknownSmartMethod:
+            medium._remember_remote_is_before((1, 14))
+            return self._vfs_set_option(value, name, section)
+        if response != ():
+            raise errors.UnexpectedSmartServerResponse(response)
 
     def _vfs_set_option(self, value, name, section=None):
         self._branch._ensure_real()

@@ -148,6 +148,16 @@ class SmartServerSetTipRequest(SmartServerLockedBranchRequest):
             return FailedSmartServerResponse(('TipChangeRejected', msg))
 
 
+class SmartServerBranchRequestSetConfigOption(SmartServerLockedBranchRequest):
+    """Set an option in the branch configuration."""
+
+    def do_with_locked_branch(self, branch, value, name, section):
+        if not section:
+            section = None
+        branch._get_config().set_option(value, name, section)
+        return SuccessfulSmartServerResponse(())
+
+
 class SmartServerBranchRequestSetLastRevision(SmartServerSetTipRequest):
 
     def do_tip_change_with_locked_branch(self, branch, new_last_revision_id):
