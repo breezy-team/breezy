@@ -44,7 +44,7 @@ parent: null:
 version: entry-version
 versioned_root: true
 tree_references: true
-/\x00an-id\x00\x00a@e\xc3\xa5ample.com--2004\x00dir
+None\x00/\x00an-id\x00\x00a@e\xc3\xa5ample.com--2004\x00dir
 """
 
 
@@ -69,7 +69,7 @@ parent: null:
 version: entry-version
 versioned_root: false
 tree_references: false
-/\x00TREE_ROOT\x00\x00null:\x00dir
+None\x00/\x00TREE_ROOT\x00\x00null:\x00dir
 """
 
 reference_lines = """format: bzr inventory delta v1 (bzr 1.14)
@@ -77,8 +77,8 @@ parent: null:
 version: entry-version
 versioned_root: true
 tree_references: true
-/\x00TREE_ROOT\x00\x00a@e\xc3\xa5ample.com--2004\x00dir
-/foo\x00id\x00TREE_ROOT\x00changed\x00tree\x00subtree-version
+None\x00/\x00TREE_ROOT\x00\x00a@e\xc3\xa5ample.com--2004\x00dir
+None\x00/foo\x00id\x00TREE_ROOT\x00changed\x00tree\x00subtree-version
 """
 
 change_tree_lines = """format: bzr inventory delta v1 (bzr 1.14)
@@ -421,14 +421,14 @@ parent: null:
 version: something
 versioned_root: true
 tree_references: true
-/\x00new-root-id\x00\x00changed-in\x00dir
-/configure\x00exec-id\x00new-root-id\x00old-rev\x00file\x0030\x00Y\x00some-sha
-/old-root\x00TREE_ROOT\x00new-root-id\x00moved-root\x00dir
-/old-root/dir\x00deep-id\x00TREE_ROOT\x00new-rev\x00dir
-/old-root/dir/link\x00link-id\x00deep-id\x00new-rev\x00link\x00target
-/old-root/under-old-root\x00moved-id\x00TREE_ROOT\x00old-rev\x00file\x0030\x00\x00some-sha
-/ref\x00ref-id\x00new-root-id\x00new-rev\x00tree\x00tree-reference-id
-None\x00deleted-id\x00\x00null:\x00deleted\x00\x00
+/\x00/old-root\x00TREE_ROOT\x00new-root-id\x00moved-root\x00dir
+/dir\x00/old-root/dir\x00deep-id\x00TREE_ROOT\x00new-rev\x00dir
+/dir/link\x00/old-root/dir/link\x00link-id\x00deep-id\x00new-rev\x00link\x00target
+/old-file\x00None\x00deleted-id\x00\x00null:\x00deleted\x00\x00
+/ref\x00/ref\x00ref-id\x00new-root-id\x00new-rev\x00tree\x00tree-reference-id
+/under-old-root\x00/old-root/under-old-root\x00moved-id\x00TREE_ROOT\x00old-rev\x00file\x0030\x00\x00some-sha
+None\x00/\x00new-root-id\x00\x00changed-in\x00dir
+None\x00/configure\x00exec-id\x00new-root-id\x00old-rev\x00file\x0030\x00Y\x00some-sha
 """
         serialised = ''.join(lines)
         self.assertIsInstance(serialised, str)

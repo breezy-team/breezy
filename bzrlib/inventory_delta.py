@@ -180,14 +180,19 @@ class InventoryDeltaSerializer(object):
 
     def _delta_item_to_line(self, delta_item):
         """Convert delta_item to a line."""
-        _, newpath, file_id, entry = delta_item
+        oldpath, newpath, file_id, entry = delta_item
         if newpath is None:
             # delete
+            oldpath_utf8 = '/' + oldpath.encode('utf8')
             newpath_utf8 = 'None'
             parent_id = ''
             last_modified = NULL_REVISION
             content = 'deleted\x00\x00'
         else:
+            if oldpath is None:
+                oldpath_utf8 = 'None'
+            else:
+                oldpath_utf8 = '/' + oldpath.encode('utf8')
             # TODO: Test real-world utf8 cache hit rate. It may be a win.
             newpath_utf8 = '/' + newpath.encode('utf8')
             # Serialise None as ''
@@ -206,8 +211,9 @@ class InventoryDeltaSerializer(object):
             if last_modified is None:
                 raise errors.BzrError("no version for fileid %s" % file_id)
             content = self._entry_to_content[entry.kind](entry)
-        return ("%s\x00%s\x00%s\x00%s\x00%s\n" %
-            (newpath_utf8, file_id, parent_id, last_modified, content))
+        return ("%s\x00%s\x00%s\x00%s\x00%s\x00%s\n" %
+            (oldpath_utf8, newpath_utf8, file_id, parent_id, last_modified,
+                content))
 
     def _deserialize_bool(self, value):
         if value == "true":
@@ -253,8 +259,8 @@ class InventoryDeltaSerializer(object):
         for i in range(5):
             line_iter.next()
         for line in line_iter:
-            newpath_utf8, file_id, parent_id, last_modified, content \
-                = line.split('\x00', 4)
+            (oldpath_utf8, newpath_utf8, file_id, parent_id, last_modified,
+                content) = line.split('\x00', 5)
             parent_id = parent_id or None
             if file_id in seen_ids:
                 raise errors.BzrError(
@@ -270,8 +276,15 @@ class InventoryDeltaSerializer(object):
             content_tuple = tuple(content.split('\x00'))
             entry = _parse_entry(
                 newpath_utf8, file_id, parent_id, last_modified, content_tuple)
-            oldpath = None # XXX: apply_delta ignores this value.
-            delta_item = (oldpath, newpath_utf8, file_id, entry)
+            if oldpath_utf8 == 'None':
+                oldpath = None
+            else:
+                oldpath = oldpath_utf8.decode('utf8')
+            if newpath_utf8 == 'None':
+                newpath = None
+            else:
+                newpath = newpath_utf8.decode('utf8')
+            delta_item = (oldpath, newpath, file_id, entry)
             result.append(delta_item)
         return journal_parent_id, journal_version_id, result
 
