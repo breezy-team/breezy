@@ -38,7 +38,7 @@ New Features
   respectively, but have support for filtered views disabled.
   (Ian Clatworthy)
 
-* New ``guess-renames`` command recognizes renames after they occur.
+* New ``mv --auto`` option recognizes renames after they occur.
   (Aaron Bentley)
 
 * ``bzr log`` now supports filtering of multiple files and directories
