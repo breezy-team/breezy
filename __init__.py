@@ -22,6 +22,7 @@ import bzrlib.bzrdir
 from bzrlib.commands import Command, register_command
 from bzrlib.errors import BzrCommandError
 from bzrlib.option import Option
+from bzrlib.trace import info
 
 from meta import *
 
@@ -312,7 +313,7 @@ class cmd_bisect(Command):
     def _check(self):
         "Check preconditions for most operations to work."
         if not os.path.exists(bisect_info_path):
-            raise BzrCommandError("No bisect info found")
+            raise BzrCommandError("No bisection in progress.")
 
     def _set_state(self, revspec, state):
         """Set the state of the given revspec and bisecting.
@@ -373,16 +374,12 @@ class cmd_bisect(Command):
 
     def reset(self):
         "Reset the bisect state to no state."
-
-        if os.path.exists(bisect_info_path):
-            BisectCurrent().reset()
-            os.unlink(bisect_info_path)
-        else:
-            self.outf.write("No bisection in progress; nothing to do.\n")
+        self._check()
+        BisectCurrent().reset()
+        os.unlink(bisect_info_path)
 
     def start(self):
         "Reset the bisect state, then prepare for a new bisection."
-
         if os.path.exists(bisect_info_path):
             BisectCurrent().reset()
             os.unlink(bisect_info_path)
@@ -393,26 +390,21 @@ class cmd_bisect(Command):
 
     def yes(self, revspec):
         "Mark that a given revision has the state we're looking for."
-
         self._set_state(revspec, "yes")
 
     def no(self, revspec):
         "Mark that a given revision does not have the state we're looking for."
-
         self._set_state(revspec, "no")
 
     def move(self, revspec):
         "Move to a different revision manually."
-
         current = BisectCurrent()
         current.switch(revspec)
         current.show_rev_log(out=self.outf)
 
     def log(self, filename):
         "Write the current bisect log to a file."
-
         self._check()
-
         bisect_log = BisectLog()
         bisect_log.change_file_name(filename)
         bisect_log.save()
@@ -420,9 +412,9 @@ class cmd_bisect(Command):
     def replay(self, filename):
         """Apply the given log file to a clean state, so the state is
         exactly as it was when the log was saved."""
-
-        self.reset()
-
+        if os.path.exists(bisect_info_path):
+            BisectCurrent().reset()
+            os.unlink(bisect_info_path)
         bisect_log = BisectLog(filename)
         bisect_log.change_file_name(bisect_info_path)
         bisect_log.save()
@@ -431,7 +423,7 @@ class cmd_bisect(Command):
 
     def run_bisect(self, script):
         import subprocess
-        print "Starting bisect."
+        info("Starting bisect.")
         self.start()
         while True:
             try:

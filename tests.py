@@ -301,7 +301,8 @@ class BisectFuncTests(BisectTestCase):
         test_file.write("keep me")
         test_file.close()
 
-        self.run_bzr(['bisect', 'reset'])
+        out, err = self.run_bzr(['bisect', 'reset'], retcode=3)
+        self.assert_("No bisection in progress." in err)
 
         test_file = open("test_file")
         content = test_file.read().strip()
