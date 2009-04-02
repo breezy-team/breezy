@@ -24,14 +24,14 @@ In this module the interesting classes are:
 
 __all__ = ['InventoryDeltaSerializer']
 
-from bzrlib import errors, lazy_regex
+from bzrlib import errors
 from bzrlib.osutils import basename
 from bzrlib import inventory
 from bzrlib.revision import NULL_REVISION
 
 
 def _directory_content(entry):
-    """Serialise the content component of entry which is a directory.
+    """Serialize the content component of entry which is a directory.
     
     :param entry: An InventoryDirectory.
     """
@@ -39,7 +39,7 @@ def _directory_content(entry):
 
 
 def _file_content(entry):
-    """Serialise the content component of entry which is a file.
+    """Serialize the content component of entry which is a file.
     
     :param entry: An InventoryFile.
     """
@@ -54,7 +54,7 @@ def _file_content(entry):
 
 
 def _link_content(entry):
-    """Serialise the content component of entry which is a symlink.
+    """Serialize the content component of entry which is a symlink.
     
     :param entry: An InventoryLink.
     """
@@ -65,7 +65,7 @@ def _link_content(entry):
 
 
 def _reference_content(entry):
-    """Serialise the content component of entry which is a tree-reference.
+    """Serialize the content component of entry which is a tree-reference.
     
     :param entry: A TreeReference.
     """
@@ -120,10 +120,6 @@ class InventoryDeltaSerializer(object):
     """Serialize and deserialize inventory deltas."""
 
     FORMAT_1 = 'bzr inventory delta v1 (bzr 1.14)'
-    _file_ids_altered_regex = lazy_regex.lazy_compile(
-        '^(?P<path_utf8>[^\x00]+)\x00(?P<file_id>[^\x00]+)\x00[^\x00]*\x00'
-        '(?P<revision_id>[^\x00]+)\x00'
-        )
 
     def __init__(self, versioned_root, tree_references):
         """Create an InventoryDeltaSerializer.
@@ -152,7 +148,7 @@ class InventoryDeltaSerializer(object):
             delta.
         :param delta_to_new: An inventory delta such as Inventory.apply_delta
             takes.
-        :return: The serialised delta as lines.
+        :return: The serialized delta as lines.
         """
         lines = ['', '', '', '', '']
         to_line = self._delta_item_to_line
@@ -194,9 +190,9 @@ class InventoryDeltaSerializer(object):
                 oldpath_utf8 = '/' + oldpath.encode('utf8')
             # TODO: Test real-world utf8 cache hit rate. It may be a win.
             newpath_utf8 = '/' + newpath.encode('utf8')
-            # Serialise None as ''
+            # Serialize None as ''
             parent_id = entry.parent_id or ''
-            # Serialise unknown revisions as NULL_REVISION
+            # Serialize unknown revisions as NULL_REVISION
             last_modified = entry.revision
             # special cases for /
             if newpath_utf8 == '/' and not self._versioned_root:
@@ -223,7 +219,7 @@ class InventoryDeltaSerializer(object):
             raise errors.BzrError("value %r is not a bool" % (value,))
 
     def parse_text_bytes(self, bytes):
-        """Parse the text bytes of a journal entry.
+        """Parse the text bytes of a serialized inventory delta.
 
         :param bytes: The bytes to parse. This can be obtained by calling
             delta_to_lines and then doing ''.join(delta_lines).
@@ -234,24 +230,24 @@ class InventoryDeltaSerializer(object):
             raise errors.BzrError('unknown format %r' % lines[0:1])
         if len(lines) < 2 or not lines[1].startswith('parent: '):
             raise errors.BzrError('missing parent: marker')
-        journal_parent_id = lines[1][8:]
+        delta_parent_id = lines[1][8:]
         if len(lines) < 3 or not lines[2].startswith('version: '):
             raise errors.BzrError('missing version: marker')
-        journal_version_id = lines[2][9:]
+        delta_version_id = lines[2][9:]
         if len(lines) < 4 or not lines[3].startswith('versioned_root: '):
             raise errors.BzrError('missing versioned_root: marker')
-        journal_versioned_root = self._deserialize_bool(lines[3][16:])
+        delta_versioned_root = self._deserialize_bool(lines[3][16:])
         if len(lines) < 5 or not lines[4].startswith('tree_references: '):
             raise errors.BzrError('missing tree_references: marker')
-        journal_tree_references = self._deserialize_bool(lines[4][17:])
-        if journal_versioned_root != self._versioned_root:
+        delta_tree_references = self._deserialize_bool(lines[4][17:])
+        if delta_versioned_root != self._versioned_root:
             raise errors.BzrError(
                 "serialized versioned_root flag is wrong: %s" %
-                (journal_versioned_root,))
-        if journal_tree_references != self._tree_references:
+                (delta_versioned_root,))
+        if delta_tree_references != self._tree_references:
             raise errors.BzrError(
                 "serialized tree_references flag is wrong: %s" %
-                (journal_tree_references,))
+                (delta_tree_references,))
         result = []
         seen_ids = set()
         line_iter = iter(lines)
@@ -263,14 +259,14 @@ class InventoryDeltaSerializer(object):
             parent_id = parent_id or None
             if file_id in seen_ids:
                 raise errors.BzrError(
-                    "duplicate file id in journal entry %r" % lines)
+                    "duplicate file id in inventory delta %r" % lines)
             seen_ids.add(file_id)
-            if newpath_utf8 == '/' and not journal_versioned_root and (
+            if newpath_utf8 == '/' and not delta_versioned_root and (
                 last_modified != 'null:' or file_id != 'TREE_ROOT'):
                     raise errors.BzrError("Versioned root found: %r" % line)
             elif last_modified[-1] == ':':
                     raise errors.BzrError('special revisionid found: %r' % line)
-            if not journal_tree_references and content.startswith('tree\x00'):
+            if not delta_tree_references and content.startswith('tree\x00'):
                 raise errors.BzrError("Tree reference found: %r" % line)
             content_tuple = tuple(content.split('\x00'))
             entry = _parse_entry(
@@ -285,7 +281,7 @@ class InventoryDeltaSerializer(object):
                 newpath = newpath_utf8.decode('utf8')
             delta_item = (oldpath, newpath, file_id, entry)
             result.append(delta_item)
-        return journal_parent_id, journal_version_id, result
+        return delta_parent_id, delta_version_id, result
 
 
 def _parse_entry(utf8_path, file_id, parent_id, last_modified, content):

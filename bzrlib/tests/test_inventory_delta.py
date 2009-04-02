@@ -446,9 +446,9 @@ tree_references: true
 None\x00/\x00new-root-id\x00\x00changed-in\x00dir
 None\x00/configure\x00exec-id\x00new-root-id\x00old-rev\x00file\x0030\x00Y\x00some-sha
 """
-        serialised = ''.join(lines)
-        self.assertIsInstance(serialised, str)
-        self.assertEqual(expected, serialised)
+        serialized = ''.join(lines)
+        self.assertIsInstance(serialized, str)
+        self.assertEqual(expected, serialized)
 
 
 class TestContent(TestCase):
