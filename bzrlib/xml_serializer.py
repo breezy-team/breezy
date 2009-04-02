@@ -22,7 +22,7 @@
 # importing this module is fairly slow because it has to load several
 # ElementTree bits
 
-from bzrlib import registry
+from bzrlib.serializer import Serializer
 from bzrlib.trace import mutter, warning
 
 try:
@@ -49,15 +49,8 @@ except ImportError:
 from bzrlib import errors
 
 
-class Serializer(object):
-    """Abstract object serialize/deserialize"""
-
-    def write_inventory(self, inv, f):
-        """Write inventory to a file"""
-        raise NotImplementedError(self.write_inventory)
-
-    def write_inventory_to_string(self, inv):
-        raise NotImplementedError(self.write_inventory_to_string)
+class XMLSerializer(Serializer):
+    """Abstract XML object serialize/deserialize"""
 
     def read_inventory_from_string(self, xml_string, revision_id=None,
                                    entry_cache=None):
@@ -173,15 +166,3 @@ def _escape_cdata(text, encoding=None, replace=None):
         elementtree.ElementTree._raise_serialization_error(text)
 
 elementtree.ElementTree._escape_cdata = _escape_cdata
-
-
-class SerializerRegistry(registry.Registry):
-    """Registry for serializer objects"""
-
-
-format_registry = SerializerRegistry()
-format_registry.register_lazy('4', 'bzrlib.xml4', 'serializer_v4')
-format_registry.register_lazy('5', 'bzrlib.xml5', 'serializer_v5')
-format_registry.register_lazy('6', 'bzrlib.xml6', 'serializer_v6')
-format_registry.register_lazy('7', 'bzrlib.xml7', 'serializer_v7')
-format_registry.register_lazy('8', 'bzrlib.xml8', 'serializer_v8')

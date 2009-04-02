@@ -21,7 +21,7 @@ from bzrlib import (
     inventory,
     xml7,
     xml8,
-    xml_serializer,
+    serializer,
     )
 from bzrlib.tests import TestCase
 from bzrlib.inventory import Inventory, InventoryEntry
@@ -494,15 +494,15 @@ class TestSerializer(TestCase):
 
     def test_registry(self):
         self.assertIs(serializer_v4,
-                      xml_serializer.format_registry.get('4'))
+                      serializer.format_registry.get('4'))
         self.assertIs(bzrlib.xml5.serializer_v5,
-                      xml_serializer.format_registry.get('5'))
+                      serializer.format_registry.get('5'))
         self.assertIs(bzrlib.xml6.serializer_v6,
-                      xml_serializer.format_registry.get('6'))
+                      serializer.format_registry.get('6'))
         self.assertIs(bzrlib.xml7.serializer_v7,
-                      xml_serializer.format_registry.get('7'))
+                      serializer.format_registry.get('7'))
         self.assertIs(bzrlib.xml8.serializer_v8,
-                      xml_serializer.format_registry.get('8'))
+                      serializer.format_registry.get('8'))
 
 
 class TestEncodeAndEscape(TestCase):
