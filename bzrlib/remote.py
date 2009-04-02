@@ -22,6 +22,7 @@ import bz2
 from bzrlib import (
     branch,
     bzrdir,
+    config,
     debug,
     errors,
     graph,
@@ -1937,6 +1938,9 @@ class RemoteBranch(branch.Branch, _RpcHelper):
             return
         self._activate_fallback_location(fallback_url)
 
+    def _get_config(self):
+        return RemoteBranchConfig(self)
+
     def _get_real_transport(self):
         # if we try vfs access, return the real branch's vfs transport
         self._ensure_real()
@@ -2353,6 +2357,60 @@ class RemoteBranch(branch.Branch, _RpcHelper):
     def set_push_location(self, location):
         self._ensure_real()
         return self._real_branch.set_push_location(location)
+
+
+class RemoteBranchConfig(object):
+    """A Config that reads from a smart branch and writes via smart methods.
+
+    It is a low-level object that considers config data to be name/value pairs
+    that may be associated with a section. Assigning meaning to the these
+    values is done at higher levels like bzrlib.config.TreeConfig.
+    """
+
+    def __init__(self, branch):
+        self._branch = branch
+
+    def get_option(self, name, section=None, default=None):
+        """Return the value associated with a named option.
+
+        :param name: The name of the value
+        :param section: The section the option is in (if any)
+        :param default: The value to return if the value is not set
+        :return: The value or default value
+        """
+        configobj = self._get_configobj()
+        if section is None:
+            section_obj = configobj
+        else:
+            try:
+                section_obj = configobj[section]
+            except KeyError:
+                return default
+        return section_obj.get(name, default)
+
+    def _get_configobj(self):
+        path = self._branch.bzrdir._path_for_remote_call(
+            self._branch._client)
+        response = self._branch._client.call_expecting_body(
+            'Branch.get_config_file', path)
+        if response[0][0] != 'ok':
+            raise UnexpectedSmartServerResponse(response)
+        bytes = response[1].read_body_bytes()
+        return config.ConfigObj([bytes], encoding='utf-8')
+
+    def set_option(self, value, name, section=None):
+        """Set the value associated with a named option.
+
+        :param value: The value to set
+        :param name: The name of the value to set
+        :param section: The section the option is in (if any)
+        """
+        return self._vfs_set_option(value, name, section)
+
+    def _vfs_set_option(self, value, name, section=None):
+        self._branch._ensure_real()
+        return self._branch._real_branch._get_config().set_option(
+            value, name, section)
 
 
 def _extract_tar(tar, to_dir):
