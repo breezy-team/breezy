@@ -186,6 +186,10 @@ Testing
 Internals
 *********
 
+* Added ``bzrlib.inventory_delta`` module.  This will be used for
+  serializing and deserializing inventory deltas for more efficient
+  streaming on the the network.  (Robert Collins, Andrew Bennetts)
+
 * ``BtreeIndex._spill_mem_keys_to_disk()`` now generates disk index with
   optmizations turned off. This only has effect when processing > 100,000
   keys during something like ``bzr pack``. (John Arbash Meinel)
