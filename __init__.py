@@ -320,8 +320,8 @@ class cmd_bisect(Command):
         Returns boolean indicating if bisection is done."""
         bisect_log = BisectLog()
         if bisect_log.is_done():
-            sys.stdout.write("No further bisection is possible.\n")
-            bisect_log._current.show_rev_log(sys.stdout)
+            self.outf.write("No further bisection is possible.\n")
+            bisect_log._current.show_rev_log(self.outf)
             return True
 
         if revspec:
@@ -378,7 +378,7 @@ class cmd_bisect(Command):
             BisectCurrent().reset()
             os.unlink(bisect_info_path)
         else:
-            sys.stdout.write("No bisection in progress; nothing to do.\n")
+            self.outf.write("No bisection in progress; nothing to do.\n")
 
     def start(self):
         "Reset the bisect state, then prepare for a new bisection."
@@ -406,7 +406,7 @@ class cmd_bisect(Command):
 
         current = BisectCurrent()
         current.switch(revspec)
-        current.show_rev_log()
+        current.show_rev_log(out=self.outf)
 
     def log(self, filename):
         "Write the current bisect log to a file."

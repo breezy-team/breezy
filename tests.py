@@ -17,6 +17,7 @@
 "Test suite for the bzr bisect plugin."
 
 import os
+from cStringIO import StringIO
 import shutil
 import bzrlib
 import bzrlib.bzrdir
@@ -130,13 +131,15 @@ class BisectCurrentUnitTests(BisectTestCase):
         "Test that the log can be shown."
         # Not a very good test; just makes sure the code doesn't fail,
         # not that the output makes any sense.
-        bisect.BisectCurrent().show_rev_log()
+        sio = StringIO()
+        bisect.BisectCurrent().show_rev_log(out=sio)
 
     def testShowLogSubtree(self):
         "Test that a subtree's log can be shown."
         current = bisect.BisectCurrent()
         current.switch(self.subtree_rev)
-        current.show_rev_log()
+        sio = StringIO()
+        current.show_rev_log(out=sio)
 
     def testSwitchVersions(self):
         "Test switching versions."
