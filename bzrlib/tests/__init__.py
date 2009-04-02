@@ -549,7 +549,7 @@ class TextTestRunner(object):
             except ImportError:
                 test.run(result)
             else:
-                if isinstance(testtools.ConcurrentTestSuite, test):
+                if isinstance(test, testtools.ConcurrentTestSuite):
                     # We need to catch bzr specific behaviors
                     test.run(BZRTransformingResult(result))
                 else:
