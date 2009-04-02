@@ -146,32 +146,33 @@ class BisectLog(object):
 
         repo = self._bzrbranch.repository
         repo.lock_read()
-        rev_sequence = repo.iter_reverse_revision_history(last_revid)
-        high_revid = None
-        low_revid = None
-        between_revs = []
-        for revision in rev_sequence:
-            between_revs.insert(0, revision)
-            matches = [x[1] for x in self._items
-                       if x[0] == revision and x[1] in ('yes', 'no')]
-            if not matches:
-                continue
-            if len(matches) > 1:
-                raise RuntimeError("revision %s duplicated" % revision)
-            if matches[0] == "yes":
-                high_revid = revision
-                between_revs = []
-            elif matches[0] == "no":
-                low_revid = revision
-                del between_revs[0]
-                break
+        try:
+            rev_sequence = repo.iter_reverse_revision_history(last_revid)
+            high_revid = None
+            low_revid = None
+            between_revs = []
+            for revision in rev_sequence:
+                between_revs.insert(0, revision)
+                matches = [x[1] for x in self._items
+                           if x[0] == revision and x[1] in ('yes', 'no')]
+                if not matches:
+                    continue
+                if len(matches) > 1:
+                    raise RuntimeError("revision %s duplicated" % revision)
+                if matches[0] == "yes":
+                    high_revid = revision
+                    between_revs = []
+                elif matches[0] == "no":
+                    low_revid = revision
+                    del between_revs[0]
+                    break
 
-        if not high_revid:
-            high_revid = last_revid
-        if not low_revid:
-            low_revid = self._bzrbranch.get_rev_id(1)
-
-        repo.unlock()
+            if not high_revid:
+                high_revid = last_revid
+            if not low_revid:
+                low_revid = self._bzrbranch.get_rev_id(1)
+        finally:
+            repo.unlock()
 
         # The spread must include the high revision, to bias
         # odd numbers of intervening revisions towards the high
@@ -321,7 +322,7 @@ class cmd_bisect(Command):
         Returns boolean indicating if bisection is done."""
         bisect_log = BisectLog()
         if bisect_log.is_done():
-            self.outf.write("No further bisection is possible.\n")
+            info("No further bisection is possible.\n")
             bisect_log._current.show_rev_log(self.outf)
             return True
 
