@@ -127,7 +127,7 @@ class InventoryDeltaSerializer(object):
         )
 
     def __init__(self, versioned_root, tree_references):
-        """Create an InventoryDelta.
+        """Create an InventoryDeltaSerializer.
 
         :param versioned_root: If True, any root entry that is seen is expected
             to be versioned, and root entries can have any fileid.
