@@ -16,19 +16,18 @@
 
 """Inventory delta serialisation.
 
-See doc/developers/inventory.txt for the design and rationalisation.
+See doc/developers/inventory.txt for the description of the format.
 
 In this module the interesting classes are:
- - InventoryDelta - object to read/write journalled inventories.
+ - InventoryDeltaSerializer - object to read/write inventory deltas.
 """
 
-__all__ = ['InventoryDelta']
+__all__ = ['InventoryDeltaSerializer']
 
 from bzrlib import errors, lazy_regex
-from bzrlib.osutils import basename, sha_string, sha_strings
+from bzrlib.osutils import basename
 from bzrlib import inventory
 from bzrlib.revision import NULL_REVISION
-from bzrlib.tsort import topo_sort
 
 
 def _directory_content(entry):

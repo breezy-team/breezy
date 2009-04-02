@@ -26,7 +26,6 @@ from bzrlib import (
     inventory,
     inventory_delta,
     )
-from bzrlib.osutils import sha_string
 from bzrlib.inventory import Inventory
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCase
