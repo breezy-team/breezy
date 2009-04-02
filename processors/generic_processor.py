@@ -47,6 +47,9 @@ _DEFAULT_AUTO_PROGRESS = 1000
 # How many commits before automatically checkpointing
 _DEFAULT_AUTO_CHECKPOINT = 10000
 
+# How many checkpoints before automatically packing
+_DEFAULT_AUTO_PACK = 4
+
 # How many inventories to cache
 _DEFAULT_INV_CACHE_SIZE = 10
 _DEFAULT_CHK_INV_CACHE_SIZE = 100
@@ -82,13 +85,15 @@ class GenericProcessor(processor.ImportProcessor):
       and branches and the user needs to run 'bzr update' for the
       branches of interest afterwards.
 
+    * count - only import this many commits then exit. If not set
+      or negative, all commits are imported.
+    
     * checkpoint - automatically checkpoint every n commits over and
       above any checkpoints contained in the import stream.
       The default is 10000.
 
-    * count - only import this many commits then exit. If not set
-      or negative, all commits are imported.
-    
+    * autopack - pack every n checkpoints. The default is 4.
+
     * inv-cache - number of inventories to cache.
       If not set, the default is 100 for CHK formats and 10 otherwise.
 
@@ -103,8 +108,9 @@ class GenericProcessor(processor.ImportProcessor):
     known_params = [
         'info',
         'trees',
-        'checkpoint',
         'count',
+        'checkpoint',
+        'autopack',
         'inv-cache',
         'experimental',
         'import-marks',
@@ -192,9 +198,14 @@ class GenericProcessor(processor.ImportProcessor):
         if self.verbose:
             self.progress_every = self.progress_every / 10
 
-        # Decide how often to automatically checkpoint
+        # Decide how often (# of commits) to automatically checkpoint
         self.checkpoint_every = int(self.params.get('checkpoint',
             _DEFAULT_AUTO_CHECKPOINT))
+
+        # Decide how often (# of checkpoints) to automatically pack
+        self.checkpoint_count = 0
+        self.autopack_every = int(self.params.get('autopack',
+            _DEFAULT_AUTO_PACK))
 
         # Decide how big to make the inventory cache
         cache_size = int(self.params.get('inv-cache', -1))
@@ -410,12 +421,13 @@ class GenericProcessor(processor.ImportProcessor):
             dataref = osutils.sha_strings(cmd.data)
         self.cache_mgr.store_blob(dataref, cmd.data)
 
-    def checkpoint_handler(self, cmd, pack_repo=False):
+    def checkpoint_handler(self, cmd):
         """Process a CheckpointCommand."""
         # Commit the current write group and start a new one
         self.repo.commit_write_group()
         self._save_id_map()
-        if pack_repo:
+        self.checkpoint_count += 1
+        if self.checkpoint_count % self.autopack_every == 0:
             self._pack_repository(final=False)
         self.repo.start_write_group()
 
@@ -452,7 +464,7 @@ class GenericProcessor(processor.ImportProcessor):
         elif self._revision_count % self.checkpoint_every == 0:
             self.note("%d commits - automatic checkpoint triggered",
                 self._revision_count)
-            self.checkpoint_handler(None, pack_repo=self.supports_chk)
+            self.checkpoint_handler(None)
 
     def report_progress(self, details=''):
         if self._revision_count % self.progress_every == 0:

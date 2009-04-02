@@ -163,11 +163,15 @@ class cmd_fast_import(Command):
                     Option('trees',
                         help="Update working trees.",
                         ),
-                    Option('checkpoint', type=int,
-                        help="Checkpoint automatically every N revisions.",
-                        ),
                     Option('count', type=int,
                         help="Import this many revisions then exit.",
+                        ),
+                    Option('checkpoint', type=int,
+                        help="Checkpoint automatically every N revisions."
+                             " The default is 10000.",
+                        ),
+                    Option('autopack', type=int,
+                        help="Pack every N checkpoints. The default is 4.",
                         ),
                     Option('inv-cache', type=int,
                         help="Number of inventories to cache.",
@@ -184,7 +188,7 @@ class cmd_fast_import(Command):
                      ]
     aliases = []
     def run(self, source, verbose=False, info=None, trees=False,
-        checkpoint=10000, count=-1, inv_cache=-1,
+        count=-1, checkpoint=10000, autopack=4, inv_cache=-1,
         experimental=False, import_marks=None, export_marks=None):
         from bzrlib import bzrdir
         from bzrlib.errors import BzrCommandError, NotBranchError
@@ -198,8 +202,9 @@ class cmd_fast_import(Command):
         params = {
             'info': info,
             'trees': trees,
-            'checkpoint': checkpoint,
             'count': count,
+            'checkpoint': checkpoint,
+            'autopack': autopack,
             'inv-cache': inv_cache,
             'experimental': experimental,
             'import-marks': import_marks,
