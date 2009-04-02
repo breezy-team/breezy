@@ -432,9 +432,7 @@ None\x00deleted-id\x00\x00null:\x00deleted\x00\x00
 """
         serialised = ''.join(lines)
         self.assertIsInstance(serialised, str)
-        serialised = '\n'.join(l.encode('string_escape') for l in serialised.splitlines())
-        expected = '\n'.join(l.encode('string_escape') for l in expected.splitlines())
-        self.assertEqualDiff(expected, serialised)
+        self.assertEqual(expected, serialised)
 
 
 class TestContent(TestCase):
