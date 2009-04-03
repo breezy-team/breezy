@@ -505,9 +505,8 @@ class PackReconciler(RepoReconciler):
             total_inventories = len(list(
                 collection.inventory_index.combined_index.iter_all_entries()))
             if len(all_revisions):
-                self._packer = repofmt.pack_repo.ReconcilePacker(
-                    collection, packs, ".reconcile", all_revisions)
-                new_pack = self._packer.pack(pb=self.pb)
+                new_pack =  self.repo._reconcile_pack(collection, packs,
+                    ".reconcile", all_revisions, self.pb)
                 if new_pack is not None:
                     self._discard_and_save(packs)
             else:

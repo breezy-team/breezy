@@ -166,3 +166,18 @@ def _escape_cdata(text, encoding=None, replace=None):
         elementtree.ElementTree._raise_serialization_error(text)
 
 elementtree.ElementTree._escape_cdata = _escape_cdata
+
+
+def escape_invalid_chars(message):
+    """Escape the XML-invalid characters in a commit message.
+
+    :param message: Commit message to escape
+    :param count: Number of characters that were escaped
+    """
+    # Python strings can include characters that can't be
+    # represented in well-formed XML; escape characters that
+    # aren't listed in the XML specification
+    # (http://www.w3.org/TR/REC-xml/#NT-Char).
+    return re.subn(u'[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
+            lambda match: match.group(0).encode('unicode_escape'),
+            message)

@@ -38,8 +38,11 @@ New Features
   respectively, but have support for filtered views disabled.
   (Ian Clatworthy)
 
-* New ``guess-renames`` command recognizes renames after they occur.
+* New ``mv --auto`` option recognizes renames after they occur.
   (Aaron Bentley)
+
+* ``bzr`` can now get passwords from stdin without requiring a controlling
+  terminal (i.e. by redirecting stdin). (Vincent Ladeuil)
 
 * ``bzr log`` now supports filtering of multiple files and directories
   and will show changes that touch any of them. Furthermore,
@@ -127,6 +130,9 @@ Bug Fixes
 
 * bzr gives a better message if an invalid regexp is passed to ``bzr log
   -m``.  (Anne Mohsen, Martin Pool)
+
+* ``bzr version-info`` now works in empty branches. (Jelmer Vernooij, 
+  #313028)
 
 * Fix "is not a stackable format" error when pushing a
   stackable-format branch with an unstackable-format repository to a
@@ -242,6 +248,10 @@ Testing
 Internals
 *********
 
+* Added ``bzrlib.inventory_delta`` module.  This will be used for
+  serializing and deserializing inventory deltas for more efficient
+  streaming on the the network.  (Robert Collins, Andrew Bennetts)
+
 * ``Branch._get_config`` has been added, which splits out access to the
   specific config file from the branch. This is used to let RemoteBranch
   avoid constructing real branch objects to access configuration settings.
@@ -288,6 +298,11 @@ Internals
   of filter stacks. This enhancement allows, for example,  bzr-svn to
   handle existing svn properties that define a list of keywords to be
   expanded.  (Ian Clatworthy)
+
+* ``RemoteBranchConfig`` will use a new verb ``Branch.set_config_option``
+  to write config settings to smart servers that support this, saving
+  5 round trips on the stacked streaming acceptance test.
+  (Robert Collins, Andrew Bennetts)
 
 * ``RemoteBranch`` now provides ``_get_config`` for access to just the
   branch specific configuration from a remote server, which uses the 

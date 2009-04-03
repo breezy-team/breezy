@@ -20,6 +20,7 @@ from cStringIO import StringIO
 from bzrlib import (
     osutils,
     progress,
+    trace,
 )
 from bzrlib.ui import ui_factory
 
@@ -202,7 +203,7 @@ class RenameMap(object):
         return missing_files, missing_parents, candidate_files
 
     @classmethod
-    def guess_renames(klass, tree):
+    def guess_renames(klass, tree, dry_run=False):
         """Guess which files to rename, and perform the rename.
 
         We assume that unversioned files and missing files indicate that
@@ -235,12 +236,16 @@ class RenameMap(object):
                                                    missing_parents)
                 matches.update(parents_matches)
             pp.next_phase()
-            rn._update_tree(required_parents, matches)
+            delta = rn._make_inventory_delta(matches)
+            for old, new, file_id, entry in delta:
+                trace.note("%s => %s", old, new)
+            if not dry_run:
+                tree.add(required_parents)
+                tree.apply_inventory_delta(delta)
         finally:
             task.finished()
 
-    def _update_tree(self, required_parents, matches):
-        self.tree.add(required_parents)
+    def _make_inventory_delta(self, matches):
         delta = []
         file_id_matches = dict((f, p) for p, f in matches.items())
         for old_path, entry in self.tree.iter_entries_by_dir(matches.values()):
@@ -249,8 +254,10 @@ class RenameMap(object):
             parent_id = matches.get(parent_path)
             if parent_id is None:
                 parent_id = self.tree.path2id(parent_path)
+            if entry.name == new_name and entry.parent_id == parent_id:
+                continue
             new_entry = entry.copy()
             new_entry.parent_id = parent_id
             new_entry.name = new_name
             delta.append((old_path, new_path, new_entry.file_id, new_entry))
-        self.tree.apply_inventory_delta(delta)
+        return delta
