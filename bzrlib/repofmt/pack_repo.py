@@ -2223,6 +2223,10 @@ class KnitPackRepository(KnitRepository):
         reconciler.reconcile()
         return reconciler
 
+    def _reconcile_pack(self, collection, packs, extension, revs, pb):
+        packer = ReconcilePacker(collection, packs, extension, revs)
+        return packer.pack(pb)
+
     def unlock(self):
         if self._write_lock_count == 1 and self._write_group is not None:
             self.abort_write_group()
