@@ -24,9 +24,9 @@
 from itertools import chain, izip
 from StringIO import StringIO
 
-import bzrlib
 from bzrlib import (
     errors,
+    knit as _mod_knit,
     osutils,
     progress,
     )
@@ -35,7 +35,6 @@ from bzrlib.errors import (
                            RevisionAlreadyPresent,
                            WeaveParentMismatch
                            )
-from bzrlib import knit as _mod_knit
 from bzrlib.knit import (
     cleanup_pack_knit,
     make_file_factory,
@@ -179,7 +178,7 @@ def get_diamond_vf(f, trailing_eol=True, left_only=False):
 
 
 def get_diamond_files(files, key_length, trailing_eol=True, left_only=False,
-    nograph=False):
+    nograph=False, nokeys=False):
     """Get a diamond graph to exercise deltas and merges.
 
     This creates a 5-node graph in files. If files supports 2-length keys two
@@ -192,8 +191,12 @@ def get_diamond_files(files, key_length, trailing_eol=True, left_only=False,
     :param nograph: If True, do not provide parents to the add_lines calls;
         this is useful for tests that need inserted data but have graphless
         stores.
+    :param nokeys: If True, pass None is as the key for all insertions.
+        Currently implies nograph.
     :return: The results of the add_lines calls.
     """
+    if nokeys:
+        nograph = True
     if key_length == 1:
         prefixes = [()]
     else:
@@ -210,25 +213,30 @@ def get_diamond_files(files, key_length, trailing_eol=True, left_only=False,
         else:
             result = [prefix + suffix for suffix in suffix_list]
             return result
+    def get_key(suffix):
+        if nokeys:
+            return (None, )
+        else:
+            return (suffix,)
     # we loop over each key because that spreads the inserts across prefixes,
     # which is how commit operates.
     for prefix in prefixes:
-        result.append(files.add_lines(prefix + ('origin',), (),
+        result.append(files.add_lines(prefix + get_key('origin'), (),
             ['origin' + last_char]))
     for prefix in prefixes:
-        result.append(files.add_lines(prefix + ('base',),
+        result.append(files.add_lines(prefix + get_key('base'),
             get_parents([('origin',)]), ['base' + last_char]))
     for prefix in prefixes:
-        result.append(files.add_lines(prefix + ('left',),
+        result.append(files.add_lines(prefix + get_key('left'),
             get_parents([('base',)]),
             ['base\n', 'left' + last_char]))
     if not left_only:
         for prefix in prefixes:
-            result.append(files.add_lines(prefix + ('right',),
+            result.append(files.add_lines(prefix + get_key('right'),
                 get_parents([('base',)]),
                 ['base\n', 'right' + last_char]))
         for prefix in prefixes:
-            result.append(files.add_lines(prefix + ('merged',),
+            result.append(files.add_lines(prefix + get_key('merged'),
                 get_parents([('left',), ('right',)]),
                 ['base\n', 'left\n', 'right\n', 'merged' + last_char]))
     return result
@@ -1487,10 +1495,11 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         """Each parameterised test can be constructed on a transport."""
         files = self.get_versionedfiles()
 
-    def get_diamond_files(self, files, trailing_eol=True, left_only=False):
+    def get_diamond_files(self, files, trailing_eol=True, left_only=False,
+        nokeys=False):
         return get_diamond_files(files, self.key_length,
             trailing_eol=trailing_eol, nograph=not self.graph,
-            left_only=left_only)
+            left_only=left_only, nokeys=nokeys)
 
     def test_add_lines_nostoresha(self):
         """When nostore_sha is supplied using old content raises."""
@@ -1544,6 +1553,60 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
                 ('ed8bce375198ea62444dc71952b22cfc2b09226d', 23)],
                 results)
 
+    def test_add_lines_no_key_generates_chk_key(self):
+        files = self.get_versionedfiles()
+        # save code by using the stock data insertion helper.
+        adds = self.get_diamond_files(files, nokeys=True)
+        results = []
+        # We can only validate the first 2 elements returned from add_lines.
+        for add in adds:
+            self.assertEqual(3, len(add))
+            results.append(add[:2])
+        if self.key_length == 1:
+            self.assertEqual([
+                ('00e364d235126be43292ab09cb4686cf703ddc17', 7),
+                ('51c64a6f4fc375daf0d24aafbabe4d91b6f4bb44', 5),
+                ('a8478686da38e370e32e42e8a0c220e33ee9132f', 10),
+                ('9ef09dfa9d86780bdec9219a22560c6ece8e0ef1', 11),
+                ('ed8bce375198ea62444dc71952b22cfc2b09226d', 23)],
+                results)
+            # Check the added items got CHK keys.
+            self.assertEqual(set([
+                ('sha1:00e364d235126be43292ab09cb4686cf703ddc17',),
+                ('sha1:51c64a6f4fc375daf0d24aafbabe4d91b6f4bb44',),
+                ('sha1:9ef09dfa9d86780bdec9219a22560c6ece8e0ef1',),
+                ('sha1:a8478686da38e370e32e42e8a0c220e33ee9132f',),
+                ('sha1:ed8bce375198ea62444dc71952b22cfc2b09226d',),
+                ]),
+                files.keys())
+        elif self.key_length == 2:
+            self.assertEqual([
+                ('00e364d235126be43292ab09cb4686cf703ddc17', 7),
+                ('00e364d235126be43292ab09cb4686cf703ddc17', 7),
+                ('51c64a6f4fc375daf0d24aafbabe4d91b6f4bb44', 5),
+                ('51c64a6f4fc375daf0d24aafbabe4d91b6f4bb44', 5),
+                ('a8478686da38e370e32e42e8a0c220e33ee9132f', 10),
+                ('a8478686da38e370e32e42e8a0c220e33ee9132f', 10),
+                ('9ef09dfa9d86780bdec9219a22560c6ece8e0ef1', 11),
+                ('9ef09dfa9d86780bdec9219a22560c6ece8e0ef1', 11),
+                ('ed8bce375198ea62444dc71952b22cfc2b09226d', 23),
+                ('ed8bce375198ea62444dc71952b22cfc2b09226d', 23)],
+                results)
+            # Check the added items got CHK keys.
+            self.assertEqual(set([
+                ('FileA', 'sha1:00e364d235126be43292ab09cb4686cf703ddc17'),
+                ('FileA', 'sha1:51c64a6f4fc375daf0d24aafbabe4d91b6f4bb44'),
+                ('FileA', 'sha1:9ef09dfa9d86780bdec9219a22560c6ece8e0ef1'),
+                ('FileA', 'sha1:a8478686da38e370e32e42e8a0c220e33ee9132f'),
+                ('FileA', 'sha1:ed8bce375198ea62444dc71952b22cfc2b09226d'),
+                ('FileB', 'sha1:00e364d235126be43292ab09cb4686cf703ddc17'),
+                ('FileB', 'sha1:51c64a6f4fc375daf0d24aafbabe4d91b6f4bb44'),
+                ('FileB', 'sha1:9ef09dfa9d86780bdec9219a22560c6ece8e0ef1'),
+                ('FileB', 'sha1:a8478686da38e370e32e42e8a0c220e33ee9132f'),
+                ('FileB', 'sha1:ed8bce375198ea62444dc71952b22cfc2b09226d'),
+                ]),
+                files.keys())
+
     def test_empty_lines(self):
         """Empty files can be stored."""
         f = self.get_versionedfiles()
@@ -1591,8 +1654,9 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         for factory in entries:
             on_seen(factory.key)
             self.assertValidStorageKind(factory.storage_kind)
-            self.assertEqual(f.get_sha1s([factory.key])[factory.key],
-                factory.sha1)
+            if factory.sha1 is not None:
+                self.assertEqual(f.get_sha1s([factory.key])[factory.key],
+                    factory.sha1)
             self.assertEqual(parents[factory.key], factory.parents)
             self.assertIsInstance(factory.get_bytes_as(factory.storage_kind),
                 str)
@@ -1735,8 +1799,9 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         for factory in entries:
             seen.add(factory.key)
             self.assertValidStorageKind(factory.storage_kind)
-            self.assertEqual(files.get_sha1s([factory.key])[factory.key],
-                factory.sha1)
+            if factory.sha1 is not None:
+                self.assertEqual(files.get_sha1s([factory.key])[factory.key],
+                                 factory.sha1)
             self.assertEqual(parent_map[factory.key], factory.parents)
             # currently no stream emits mpdiff
             self.assertRaises(errors.UnavailableRepresentation,
@@ -1940,8 +2005,9 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
                 self.assertEqual(None, factory.parents)
             else:
                 self.assertValidStorageKind(factory.storage_kind)
-                self.assertEqual(files.get_sha1s([factory.key])[factory.key],
-                    factory.sha1)
+                if factory.sha1 is not None:
+                    sha1 = files.get_sha1s([factory.key])[factory.key]
+                    self.assertEqual(sha1, factory.sha1)
                 self.assertEqual(parents[factory.key], factory.parents)
                 self.assertIsInstance(factory.get_bytes_as(factory.storage_kind),
                     str)
