@@ -1199,7 +1199,8 @@ class BzrDir(object):
                     basis.unlock()
         return result
 
-    def push(self, source, revision_id=None, overwrite=False, remember=False):
+    def push_branch(self, source, revision_id=None, overwrite=False, 
+        remember=False):
         """Push the source branch into this BzrDir."""
         br_to = None
         # If we can open a branch, use its direct repository, otherwise see
@@ -1254,7 +1255,8 @@ class BzrDir(object):
                 push_result.workingtree_updated = True
             push_result.old_revno = push_result.branch_push_result.old_revno
             push_result.old_revid = push_result.branch_push_result.old_revid
-            push_result.target_branch = push_result.branch_push_result.target_branch
+            push_result.target_branch = \
+                push_result.branch_push_result.target_branch
         return push_result
 
 

@@ -142,7 +142,8 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
             warning("Ignoring request for a stacked branch as repository "
                     "already exists at the destination location.")
         try:
-            push_result = dir_to.push(br_from, revision_id, overwrite, remember)
+            push_result = dir_to.push_branch(br_from, revision_id, overwrite, 
+                remember)
         except errors.DivergedBranches:
             raise errors.BzrCommandError('These branches have diverged.'
                                     '  Try using "merge" and then "push".')
