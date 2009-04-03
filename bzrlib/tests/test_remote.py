@@ -1350,6 +1350,20 @@ class TestBranchGetSetConfig(RemoteBranchTestCase):
              ('call_expecting_body', 'Branch.get_config_file', ('memory:///',))],
             client._calls)
 
+    def test_get_multi_line_branch_conf(self):
+        # Make sure that multiple-line branch.conf files are supported
+        #
+        # https://bugs.edge.launchpad.net/bzr/+bug/354075
+        client = FakeClient()
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('memory:///',),
+            'error', ('NotStacked',),)
+        client.add_success_response_with_body('a = 1\nb = 2\nc = 3\n', 'ok')
+        transport = MemoryTransport()
+        branch = self.make_remote_branch(transport, client)
+        config = branch.get_config()
+        self.assertEqual(u'2', config.get_user_option('b'))
+
     def test_set_option(self):
         client = FakeClient()
         client.add_expected_call(

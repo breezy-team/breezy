@@ -2393,8 +2393,8 @@ class RemoteBranchConfig(object):
             'Branch.get_config_file', path)
         if response[0][0] != 'ok':
             raise UnexpectedSmartServerResponse(response)
-        bytes = response[1].read_body_bytes()
-        return config.ConfigObj([bytes], encoding='utf-8')
+        lines = response[1].read_body_bytes().splitlines()
+        return config.ConfigObj(lines, encoding='utf-8')
 
     def set_option(self, value, name, section=None):
         """Set the value associated with a named option.
