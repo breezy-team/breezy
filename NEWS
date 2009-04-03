@@ -12,6 +12,12 @@ In Development
 Compatibility Breaks
 ********************
 
+* A previously disabled code path to accelerate getting configuration
+  settings from a smart server has been reinstated. We think this *may*
+  cause a incompatibility with servers older than bzr 0.15. We intend
+  to issue a point release to address this if it turns out to be a
+  problem. (Robert Collins, Andrew Bennetts)
+
 * bzr no longer autodetects nested trees as 'tree-references'.  They
   must now be explicitly added tree references.  At the commandline, use
   join --reference instead of add.  (Aaron Bentley)
@@ -25,8 +31,18 @@ Compatibility Breaks
 New Features
 ************
 
-* New ``guess-renames`` command recognizes renames after they occur.
+* New formats ``1.14`` and ``1.14-rich-root`` supporting End-Of-Line
+  (EOL) conversions, keyword templating (via the bzr-keywords plugin)
+  and generic content filtering. These formats replace the experimental
+  ``development-wt5`` and ``development-wt5-rich-root`` formats
+  respectively, but have support for filtered views disabled.
+  (Ian Clatworthy)
+
+* New ``mv --auto`` option recognizes renames after they occur.
   (Aaron Bentley)
+
+* ``bzr`` can now get passwords from stdin without requiring a controlling
+  terminal (i.e. by redirecting stdin). (Vincent Ladeuil)
 
 * ``bzr log`` now supports filtering of multiple files and directories
   and will show changes that touch any of them. Furthermore,
@@ -51,6 +67,10 @@ New Features
   the convenience format of content (i.e. as created in working
   trees). See ``bzr help content-filters`` for further details.
   (Ian Clatworthy, Alexander Belchenko)
+
+* End-of-line conversion is now supported for formats supporting
+  content filtering. See ``bzr help eol`` for details.
+  (Ian Clatworthy)
 
 Improvements
 ************
@@ -122,8 +142,8 @@ Bug Fixes
   when pushing to a smart server.  (Andrew Bennetts, #334114)
 
 * Fixed "Specified file 'x/y/z' is outside current view: " occurring
-  on ``bzr add x/y/z`` in WorkingTree5 formats (e.g. ``development-wt5``)
-  when no view is defined.  (Ian Clatworthy, #344708)
+  on ``bzr add x/y/z`` in formats supporting views when no view is
+  defined.  (Ian Clatworthy, #344708)
 
 * It is no longer possible to fetch between repositories while the
   target repository is in a write group. This prevents race conditions
@@ -229,6 +249,20 @@ Testing
 Internals
 *********
 
+* Added ``bzrlib.inventory_delta`` module.  This will be used for
+  serializing and deserializing inventory deltas for more efficient
+  streaming on the the network.  (Robert Collins, Andrew Bennetts)
+
+* ``Branch._get_config`` has been added, which splits out access to the
+  specific config file from the branch. This is used to let RemoteBranch
+  avoid constructing real branch objects to access configuration settings.
+  (Robert Collins, Andrew Bennetts)
+
+* ``Branch`` now implements ``set_stacked_on_url`` in the base class as
+  the implementation is generic and should impact foreign formats. This
+  helps performance for ``RemoteBranch`` push operations to new stacked
+  branches. (Robert Collins, Andrew Bennetts)
+
 * ``BtreeIndex._spill_mem_keys_to_disk()`` now generates disk index with
   optmizations turned off. This only has effect when processing > 100,000
   keys during something like ``bzr pack``. (John Arbash Meinel)
@@ -265,6 +299,11 @@ Internals
   of filter stacks. This enhancement allows, for example,  bzr-svn to
   handle existing svn properties that define a list of keywords to be
   expanded.  (Ian Clatworthy)
+
+* ``RemoteBranch`` now provides ``_get_config`` for access to just the
+  branch specific configuration from a remote server, which uses the 
+  already existing ``Branch.get_config_file`` smart verb.
+  (Robert Collins, Andrew Bennetts)
 
 * ``RemoteRepository`` will now negatively cache missing revisions during
   ``get_parent_map`` while read-locked. Write-locks are unaffected.

@@ -322,9 +322,12 @@ class BundleWriteOperation(object):
             revision_order.append(self.target)
         self._add_mp_records_keys('inventory', inv_vf, [(revid,) for revid in revision_order])
         parent_map = self.repository.get_parent_map(revision_order)
-        for revision_id in revision_order:
+        revision_to_str = self.repository._serializer.write_revision_to_string
+        revisions = self.repository.get_revisions(revision_order)
+        for revision in revisions:
+            revision_id = revision.revision_id
             parents = parent_map.get(revision_id, None)
-            revision_text = self.repository.get_revision_xml(revision_id)
+            revision_text = revision_to_str(revision)
             self.bundle.add_fulltext_record(revision_text, parents,
                                        'revision', revision_id)
             try:
