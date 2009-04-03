@@ -293,6 +293,11 @@ Internals
   handle existing svn properties that define a list of keywords to be
   expanded.  (Ian Clatworthy)
 
+* ``RemoteBranchConfig`` will use a new verb ``Branch.set_config_option``
+  to write config settings to smart servers that support this, saving
+  5 round trips on the stacked streaming acceptance test.
+  (Robert Collins, Andrew Bennetts)
+
 * ``RemoteBranch`` now provides ``_get_config`` for access to just the
   branch specific configuration from a remote server, which uses the 
   already existing ``Branch.get_config_file`` smart verb.
