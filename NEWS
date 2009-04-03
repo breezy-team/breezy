@@ -181,7 +181,7 @@ Documentation
 API Changes
 ***********
 
-* APIs deprecated in 1.6 and previous verisons of bzr are now removed.
+* APIs deprecated in 1.6 and previous versions of bzr are now removed.
   (Martin Pool)
 
 * ``CommitReporter`` is no longer called with ``unchanged`` status during
@@ -208,6 +208,9 @@ API Changes
 
 * The ``pb`` argument to ``fetch()`` is deprecated.
   (Martin Pool)
+
+* The ``Serializer`` class and the serializer ``format registry`` have moved
+  from ``bzrlib.xml_serializer`` to ``bzrlib.serializer``. (Jelmer Vernooij)
 
 * The smart server jail now hooks into BzrDir.open to prevent any BzrDir
   that is not inside the backing transport from being opened.  See the
