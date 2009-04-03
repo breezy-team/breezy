@@ -1677,6 +1677,11 @@ class Repository(object):
         # TODO: jam 20070210 This shouldn't be necessary since get_revision
         #       would have already do it.
         # TODO: jam 20070210 Just use _serializer.write_revision_to_string()
+        # TODO: this can't just be replaced by:
+        # return self._serializer.write_revision_to_string(
+        #     self.get_revision(revision_id))
+        # as cStringIO preservers the encoding unlike write_revision_to_string
+        # or some other call down the path.
         rev = self.get_revision(revision_id)
         rev_tmp = cStringIO.StringIO()
         # the current serializer..
