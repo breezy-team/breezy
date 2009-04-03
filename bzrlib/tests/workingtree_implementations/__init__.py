@@ -79,6 +79,7 @@ def load_tests(standard_tests, module, loader):
         'bzrlib.tests.workingtree_implementations.test_changes_from',
         'bzrlib.tests.workingtree_implementations.test_content_filters',
         'bzrlib.tests.workingtree_implementations.test_commit',
+        'bzrlib.tests.workingtree_implementations.test_eol_conversion',
         'bzrlib.tests.workingtree_implementations.test_executable',
         'bzrlib.tests.workingtree_implementations.test_flush',
         'bzrlib.tests.workingtree_implementations.test_get_file_with_stat',
