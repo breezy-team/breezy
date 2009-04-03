@@ -1488,9 +1488,8 @@ class TestAuthenticationConfig(tests.TestCase):
                                             stdout=stdout)
         # We use an empty conf so that the user is always prompted
         conf = config.AuthenticationConfig()
-        self.assertEquals(username,
-                          conf.get_user(scheme, host, port=port,
-                                            realm=realm, path=path))
+        self.assertEquals(username, conf.get_user(scheme, host, port=port,
+                          realm=realm, path=path, ask=True))
         self.assertEquals(stdout.getvalue(), expected_prompt)
 
     def test_username_defaults_prompts(self):
