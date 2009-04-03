@@ -72,6 +72,9 @@ New Features
   content filtering. See ``bzr help eol`` for details.
   (Ian Clatworthy)
 
+* Newly-blessed `join` command allows combining two trees into one.
+  (Aaron Bentley)
+
 Improvements
 ************
 

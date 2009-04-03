@@ -4601,7 +4601,6 @@ class cmd_join(Command):
     takes_options = [
             Option('reference', help='Join by reference.', hidden=True),
             ]
-    hidden = True
 
     def run(self, tree, reference=False):
         sub_tree = WorkingTree.open(tree)
