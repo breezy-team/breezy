@@ -2071,6 +2071,7 @@ class KnitPackRepository(KnitRepository):
                 deltas=True, parents=True, is_locked=self.is_locked),
             data_access=self._pack_collection.text_index.data_access,
             max_delta_chain=200)
+        self.chk_bytes = None
         # True when the repository object is 'write locked' (as opposed to the
         # physical lock only taken out around changes to the pack-names list.)
         # Another way to represent this would be a decorator around the control
@@ -2278,6 +2279,8 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
     supports_ghosts = True
     # External references are not supported in pack repositories yet.
     supports_external_lookups = False
+    # Most pack formats do not use chk lookups.
+    supports_chks = False
     # What index classes to use
     index_builder_class = None
     index_class = None
