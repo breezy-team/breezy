@@ -281,7 +281,7 @@ class ShowForeignPropertiesTests(TestCase):
 
 
 class WorkingTreeFileUpdateTests(TestCaseWithTransport):
-    """Tests for determine_fileid_renames()."""
+    """Tests for _determine_fileid_renames()."""
 
     def test_det_renames_same(self):
         a = Inventory()
@@ -291,7 +291,7 @@ class WorkingTreeFileUpdateTests(TestCaseWithTransport):
         self.assertEquals({
             '': ('TREE_ROOT', 'TREE_ROOT'), 
             'bla': ('bla-a', 'bla-a')},
-            foreign.determine_fileid_renames(a, b))
+            foreign._determine_fileid_renames(a, b))
 
     def test_det_renames_simple(self):
         a = Inventory()
@@ -301,7 +301,7 @@ class WorkingTreeFileUpdateTests(TestCaseWithTransport):
         self.assertEquals({
             '': ('TREE_ROOT', 'TREE_ROOT'), 
             'bla': ('bla-a', 'bla-b'),
-            }, foreign.determine_fileid_renames(a, b))
+            }, foreign._determine_fileid_renames(a, b))
 
     def test_det_renames_root(self):
         a = Inventory()
@@ -310,7 +310,7 @@ class WorkingTreeFileUpdateTests(TestCaseWithTransport):
         b.add_path("", "directory", "bla-b")
         self.assertEquals(
                 {"": ("bla-a", "bla-b")},
-                foreign.determine_fileid_renames(a, b))
+                foreign._determine_fileid_renames(a, b))
 
     def test_update_workinginv(self):
         a = Inventory()

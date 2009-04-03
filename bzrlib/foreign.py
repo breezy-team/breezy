@@ -262,11 +262,14 @@ class ForeignBranch(Branch):
 
         :param source: Source branch
         :param stop_revision: Revision to pull, defaults to last revision.
+        :return: Dictionary mapping revision ids from the source branch 
+            to new revision ids in the target branch, for each 
+            revision that was pull.
         """
         raise NotImplementedError(self.dpull)
 
 
-def determine_fileid_renames(old_inv, new_inv):
+def _determine_fileid_renames(old_inv, new_inv):
     """Determine the file ids based on a old and a new inventory that 
     are equal in content.
 
@@ -279,11 +282,12 @@ def determine_fileid_renames(old_inv, new_inv):
     if len(old_inv) != len(new_inv):
         raise AssertionError("Inventories are not of the same size")
     for old_file_id in old_inv:
-        new_file_id = new_inv.path2id(old_inv.id2path(old_file_id))
+        path = old_inv.id2path(old_file_id)
+        new_file_id = new_inv.path2id(path)
         if new_file_id is None:
             raise AssertionError(
                 "Unable to find %s in new inventory" % old_file_id)
-        ret[new_inv.id2path(new_file_id)] = (old_file_id, new_file_id)
+        ret[path] = (old_file_id, new_file_id)
     return ret
 
 
@@ -293,7 +297,7 @@ def update_workinginv_fileids(wt, old_inv, new_inv):
     old_tree and new_tree should be two RevisionTree's that differ only
     in file ids.
     """
-    fileid_renames = determine_fileid_renames(old_inv, new_inv)
+    fileid_renames = _determine_fileid_renames(old_inv, new_inv)
     old_fileids = []
     new_fileids = []
     new_root_id = None
@@ -326,6 +330,7 @@ class cmd_dpush(Command):
     branch unless the --no-rebase option is used, in which case 
     the two branches will be out of sync. 
     """
+    hidden = True
     takes_args = ['location?']
     takes_options = ['remember', Option('directory',
             help='Branch to push from, '
@@ -349,7 +354,7 @@ class cmd_dpush(Command):
             source_wt = WorkingTree.open_containing(directory)[0]
             source_branch = source_wt.branch
         except NoWorkingTree:
-            source_branch = Branch.open_containing(directory)[0]
+            source_branch = Branch.open(directory)
             source_wt = None
         stored_loc = source_branch.get_push_location()
         if location is None:
@@ -376,8 +381,7 @@ class cmd_dpush(Command):
             if not no_rebase:
                 _, old_last_revid = source_branch.last_revision_info()
                 new_last_revid = revid_map[old_last_revid]
-                source_branch.pull(target_branch, overwrite=True, 
-                                   stop_revision=new_last_revid)
+                source_branch.pull(target_branch, overwrite=True)
                 if source_wt is not None:
                     source_wt.lock_write()
                     try:
