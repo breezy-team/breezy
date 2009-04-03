@@ -917,7 +917,22 @@ class RemoteRepository(_RpcHelper):
         if isinstance(repository, RemoteRepository):
             raise AssertionError()
         self._real_repository = repository
-        if (len(self._real_repository._fallback_repositories) !=
+        # three code paths happen here:
+        # 1) old servers, RemoteBranch.open() calls _ensure_real before setting
+        # up stacking. In this case self._fallback_repositories is [], and the
+        # real repo is already setup. Preserve the real repo and
+        # RemoteRepository.add_fallback_repository will avoid adding
+        # duplicates.
+        # 2) new servers, RemoteBranch.open() sets up stacking, and when
+        # ensure_real is triggered from a branch, the real repository to
+        # set already has a matching list with separate instances, but
+        # as they are also RemoteRepositories we don't worry about making the
+        # lists be identical.
+        # 3) new servers, RemoteRepository.ensure_real is triggered before
+        # RemoteBranch.ensure real, in this case we get a repo with no fallbacks
+        # and need to populate it.
+        if (self._fallback_repositories and
+            len(self._real_repository._fallback_repositories) !=
             len(self._fallback_repositories)):
             if len(self._real_repository._fallback_repositories):
                 raise AssertionError(
@@ -1056,7 +1071,9 @@ class RemoteRepository(_RpcHelper):
         # _real_branch had its get_stacked_on_url method called), then the
         # repository to be added may already be in the _real_repositories list.
         if self._real_repository is not None:
-            if repository not in self._real_repository._fallback_repositories:
+            fallback_locations = [repo.bzrdir.root_transport.base for repo in
+                self._real_repository._fallback_repositories]
+            if repository.bzrdir.root_transport.base not in fallback_locations:
                 self._real_repository.add_fallback_repository(repository)
 
     def add_inventory(self, revid, inv, parents):
