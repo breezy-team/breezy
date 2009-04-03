@@ -704,7 +704,7 @@ class TestDiffTree(TestCaseWithTransport):
             r'--- olddir/oldfile.*\n\+\+\+ newdir/newfile.*\n\@\@ -1,1 \+0,0'
              ' \@\@\n-old\n\n')
         self.assertContainsRe(self.differ.to_file.getvalue(),
-                              "=== target is 'new'\n")
+                              "=== target is u'new'\n")
 
     def test_diff_directory(self):
         self.build_tree(['new-tree/new-dir/'])

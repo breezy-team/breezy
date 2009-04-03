@@ -709,7 +709,6 @@ class BranchConfig(Config):
                         trace.warning('Value "%s" is masked by "%s" from'
                                       ' branch.conf', value, mask_value)
 
-
     def _gpg_signing_command(self):
         """See Config.gpg_signing_command."""
         return self._get_safe_value('_gpg_signing_command')
@@ -917,10 +916,7 @@ class TreeConfig(IniBasedConfig):
     # XXX: Really needs a better name, as this is not part of the tree! -- mbp 20080507
 
     def __init__(self, branch):
-        # XXX: Really this should be asking the branch for its configuration
-        # data, rather than relying on a Transport, so that it can work
-        # more cleanly with a RemoteBranch that has no transport.
-        self._config = TransportConfig(branch._transport, 'branch.conf')
+        self._config = branch._get_config()
         self.branch = branch
 
     def _get_parser(self, file=None):

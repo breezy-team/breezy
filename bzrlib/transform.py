@@ -2152,6 +2152,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
 def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
                   hardlink):
     total = len(desired_files) + offset
+    wt = tt._tree
     if accelerator_tree is None:
         new_desired_files = desired_files
     else:
@@ -2171,8 +2172,8 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
                                    trans_id)
             else:
                 contents = accelerator_tree.get_file(file_id, accelerator_path)
-                if tree.supports_content_filtering():
-                    filters = tree._content_filter_stack(tree_path)
+                if wt.supports_content_filtering():
+                    filters = wt._content_filter_stack(tree_path)
                     contents = filtered_output_bytes(contents, filters,
                         ContentFilterContext(tree_path, tree))
                 try:
@@ -2187,8 +2188,8 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
         offset += count
     for count, ((trans_id, tree_path), contents) in enumerate(
             tree.iter_files_bytes(new_desired_files)):
-        if tree.supports_content_filtering():
-            filters = tree._content_filter_stack(tree_path)
+        if wt.supports_content_filtering():
+            filters = wt._content_filter_stack(tree_path)
             contents = filtered_output_bytes(contents, filters,
                 ContentFilterContext(tree_path, tree))
         tt.create_file(contents, trans_id)

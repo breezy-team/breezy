@@ -545,11 +545,12 @@ class TextTestRunner(object):
             actionTaken = "Listed"
         else:
             try:
-                from testtools import ThreadsafeForwardingResult
+                import testtools
             except ImportError:
                 test.run(result)
             else:
-                if type(result) == ThreadsafeForwardingResult:
+                if isinstance(test, testtools.ConcurrentTestSuite):
+                    # We need to catch bzr specific behaviors
                     test.run(BZRTransformingResult(result))
                 else:
                     test.run(result)
@@ -793,13 +794,6 @@ class TestCase(unittest.TestCase):
         # debug a frame up.
         import pdb
         pdb.Pdb().set_trace(sys._getframe().f_back)
-
-    def exc_info(self):
-        absent_attr = object()
-        exc_info = getattr(self, '_exc_info', absent_attr)
-        if exc_info is absent_attr:
-            exc_info = getattr(self, '_TestCase__exc_info')
-        return exc_info()
 
     def _check_leaked_threads(self):
         active = threading.activeCount()
@@ -1280,9 +1274,9 @@ class TestCase(unittest.TestCase):
             'NO_PROXY': None,
             'all_proxy': None,
             'ALL_PROXY': None,
-            # Nobody cares about these ones AFAIK. So far at
+            # Nobody cares about ftp_proxy, FTP_PROXY AFAIK. So far at
             # least. If you do (care), please update this comment
-            # -- vila 20061212
+            # -- vila 20080401
             'ftp_proxy': None,
             'FTP_PROXY': None,
             'BZR_REMOTE_PATH': None,
@@ -1315,7 +1309,7 @@ class TestCase(unittest.TestCase):
     def _do_skip(self, result, reason):
         addSkip = getattr(result, 'addSkip', None)
         if not callable(addSkip):
-            result.addError(self, self.exc_info())
+            result.addError(self, sys.exc_info())
         else:
             addSkip(self, reason)
 
@@ -1354,7 +1348,7 @@ class TestCase(unittest.TestCase):
                         self.tearDown()
                         return
                     except:
-                        result.addError(self, self.exc_info())
+                        result.addError(self, sys.exc_info())
                         return
 
                     ok = False
@@ -1362,7 +1356,7 @@ class TestCase(unittest.TestCase):
                         testMethod()
                         ok = True
                     except self.failureException:
-                        result.addFailure(self, self.exc_info())
+                        result.addFailure(self, sys.exc_info())
                     except TestSkipped, e:
                         if not e.args:
                             reason = "No reason given."
@@ -1372,7 +1366,7 @@ class TestCase(unittest.TestCase):
                     except KeyboardInterrupt:
                         raise
                     except:
-                        result.addError(self, self.exc_info())
+                        result.addError(self, sys.exc_info())
 
                     try:
                         self.tearDown()
@@ -1383,7 +1377,7 @@ class TestCase(unittest.TestCase):
                     except KeyboardInterrupt:
                         raise
                     except:
-                        result.addError(self, self.exc_info())
+                        result.addError(self, sys.exc_info())
                         ok = False
                     if ok: result.addSuccess(self)
                 finally:
@@ -2683,6 +2677,8 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
 
 # A registry where get() returns a suite decorator.
 parallel_registry = registry.Registry()
+
+
 def fork_decorator(suite):
     concurrency = local_concurrency()
     if concurrency == 1:
@@ -2690,6 +2686,8 @@ def fork_decorator(suite):
     from testtools import ConcurrentTestSuite
     return ConcurrentTestSuite(suite, fork_for_tests)
 parallel_registry.register('fork', fork_decorator)
+
+
 def subprocess_decorator(suite):
     concurrency = local_concurrency()
     if concurrency == 1:
@@ -2881,8 +2879,7 @@ def fork_for_tests(suite):
     """Take suite and start up one runner per CPU by forking()
 
     :return: An iterable of TestCase-like objects which can each have
-        run(result) called on them to feed tests to result, and
-        cleanup() called on them to stop them/kill children/end threads.
+        run(result) called on them to feed tests to result.
     """
     concurrency = local_concurrency()
     result = []
@@ -2898,7 +2895,6 @@ def fork_for_tests(suite):
                 ProtocolTestCase.run(self, result)
             finally:
                 os.waitpid(self.pid, os.WNOHANG)
-            # print "pid %d finished" % finished_process
 
     test_blocks = partition_tests(suite, concurrency)
     for process_tests in test_blocks:
@@ -2912,10 +2908,10 @@ def fork_for_tests(suite):
                 # Leave stderr and stdout open so we can see test noise
                 # Close stdin so that the child goes away if it decides to
                 # read from stdin (otherwise its a roulette to see what
-                # child actually gets keystrokes for pdb etc.
+                # child actually gets keystrokes for pdb etc).
                 sys.stdin.close()
                 sys.stdin = None
-                stream = os.fdopen(c2pwrite, 'wb', 0)
+                stream = os.fdopen(c2pwrite, 'wb', 1)
                 subunit_result = TestProtocolClient(stream)
                 process_suite.run(subunit_result)
             finally:
@@ -2932,8 +2928,7 @@ def reinvoke_for_tests(suite):
     """Take suite and start up one runner per CPU using subprocess().
 
     :return: An iterable of TestCase-like objects which can each have
-        run(result) called on them to feed tests to result, and
-        cleanup() called on them to stop them/kill children/end threads.
+        run(result) called on them to feed tests to result.
     """
     concurrency = local_concurrency()
     result = []
@@ -3324,6 +3319,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_directory_service',
                    'bzrlib.tests.test_dirstate',
                    'bzrlib.tests.test_email_message',
+                   'bzrlib.tests.test_eol_filters',
                    'bzrlib.tests.test_errors',
                    'bzrlib.tests.test_export',
                    'bzrlib.tests.test_extract',
@@ -3349,6 +3345,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_index',
                    'bzrlib.tests.test_info',
                    'bzrlib.tests.test_inv',
+                   'bzrlib.tests.test_inventory_delta',
                    'bzrlib.tests.test_knit',
                    'bzrlib.tests.test_lazy_import',
                    'bzrlib.tests.test_lazy_regex',
@@ -3588,6 +3585,7 @@ def multiply_tests(tests, scenarios, result):
     the scenario name at the end of its id(), and updating the test object's
     __dict__ with the scenario_param_dict.
 
+    >>> import bzrlib.tests.test_sampler
     >>> r = multiply_tests(
     ...     bzrlib.tests.test_sampler.DemoTest('test_nothing'),
     ...     [('one', dict(param=1)),

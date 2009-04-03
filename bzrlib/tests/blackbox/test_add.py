@@ -34,7 +34,7 @@ def load_tests(standard_tests, module, loader):
         standard_tests, condition_isinstance(TestAdd))
     scenarios = [
         ('pre-views', {'branch_tree_format': 'pack-0.92'}),
-        ('view-aware', {'branch_tree_format': 'development-wt5'}),
+        ('view-aware', {'branch_tree_format': 'development-wt6'}),
         ]
     return multiply_tests(to_adapt, scenarios, result)
 
