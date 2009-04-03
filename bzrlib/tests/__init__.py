@@ -675,31 +675,17 @@ class TestUIFactory(ui.CLIUIFactory):
     Allows get_password to be tested without real tty attached.
     """
 
-    def __init__(self,
-                 stdout=None,
-                 stderr=None,
-                 stdin=None):
-        super(TestUIFactory, self).__init__()
+    def __init__(self, stdout=None, stderr=None, stdin=None):
         if stdin is not None:
             # We use a StringIOWrapper to be able to test various
             # encodings, but the user is still responsible to
             # encode the string and to set the encoding attribute
             # of StringIOWrapper.
-            self.stdin = StringIOWrapper(stdin)
-        if stdout is None:
-            self.stdout = sys.stdout
-        else:
-            self.stdout = stdout
-        if stderr is None:
-            self.stderr = sys.stderr
-        else:
-            self.stderr = stderr
+            stdin = StringIOWrapper(stdin)
+        super(TestUIFactory, self).__init__(stdin, stdout, stderr)
 
     def clear(self):
         """See progress.ProgressBar.clear()."""
-
-    def clear_term(self):
-        """See progress.ProgressBar.clear_term()."""
 
     def clear_term(self):
         """See progress.ProgressBar.clear_term()."""
@@ -720,10 +706,8 @@ class TestUIFactory(ui.CLIUIFactory):
     def update(self, message, count=None, total=None):
         """See progress.ProgressBar.update()."""
 
-    def get_non_echoed_password(self, prompt):
+    def get_non_echoed_password(self):
         """Get password from stdin without trying to handle the echo mode"""
-        if prompt:
-            self.stdout.write(prompt.encode(self.stdout.encoding, 'replace'))
         password = self.stdin.readline()
         if not password:
             raise EOFError
