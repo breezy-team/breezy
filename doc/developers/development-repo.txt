@@ -257,6 +257,12 @@ Development2[Subtree]
 These formats use B+Tree indices which are considerably faster than
 the earlier indices in bzr.
 
+Development5[Subtree]
+---------------------
+
+These formats use B+Tree indices and also offer a CHK based byte store
+in addition to the revision/inventory/signatures and text stores.
+
 
 ..
    vim: tw=72 ft=rst expandtab
