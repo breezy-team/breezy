@@ -41,6 +41,9 @@ New Features
 * New ``mv --auto`` option recognizes renames after they occur.
   (Aaron Bentley)
 
+* ``bzr`` can now get passwords from stdin without requiring a controlling
+  terminal (i.e. by redirecting stdin). (Vincent Ladeuil)
+
 * ``bzr log`` now supports filtering of multiple files and directories
   and will show changes that touch any of them. Furthermore,
   directory filtering now shows the changes to any children of that
