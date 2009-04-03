@@ -4583,11 +4583,9 @@ class cmd_serve(Command):
 
 
 class cmd_join(Command):
-    """Combine a subtree into its containing tree.
+    """Combine a tree into its containing tree.
 
-    This command is for experimental use only.  It requires the target tree
-    to be in dirstate-with-subtree format, which cannot be converted into
-    earlier formats.
+    This command requires the target tree to be in a rich-root format.
 
     The TREE argument should be an independent tree, inside another tree, but
     not part of it.  (Such trees can be produced by "bzr split", but also by
@@ -4596,17 +4594,12 @@ class cmd_join(Command):
     The result is a combined tree, with the subtree no longer an independant
     part.  This is marked as a merge of the subtree into the containing tree,
     and all history is preserved.
-
-    If --reference is specified, the subtree retains its independence.  It can
-    be branched by itself, and can be part of multiple projects at the same
-    time.  But operations performed in the containing tree, such as commit
-    and merge, will recurse into the subtree.
     """
 
     _see_also = ['split']
     takes_args = ['tree']
     takes_options = [
-            Option('reference', help='Join by reference.'),
+            Option('reference', help='Join by reference.', hidden=True),
             ]
     hidden = True
 
