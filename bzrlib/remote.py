@@ -917,12 +917,11 @@ class RemoteRepository(_RpcHelper):
         if isinstance(repository, RemoteRepository):
             raise AssertionError()
         self._real_repository = repository
-        # If the _real_repository has _fallback_repositories, clear them out,
-        # because we want it to have the same set as this repository.  This is
-        # reasonable to do because the fallbacks we clear here are from a
-        # "real" branch, and we're about to replace them with the equivalents
-        # from a RemoteBranch.
-        self._real_repository._fallback_repositories = []
+        if (len(self._real_repository._fallback_repositories) !=
+            len(self._fallback_repositories)):
+            if len(self._real_repository._fallback_repositories):
+                raise AssertionError(
+                    "cannot cleanly remove existing _fallback_repositories")
         for fb in self._fallback_repositories:
             self._real_repository.add_fallback_repository(fb)
         if self._lock_mode == 'w':
@@ -2411,7 +2410,7 @@ class RemoteBranchConfig(object):
             path = self._branch._remote_path()
             response = self._branch._client.call('Branch.set_config_option',
                 path, self._branch._lock_token, self._branch._repo_lock_token,
-                value, name, section or '')
+                value.encode('utf8'), name, section or '')
         except errors.UnknownSmartMethod:
             medium._remember_remote_is_before((1, 14))
             return self._vfs_set_option(value, name, section)

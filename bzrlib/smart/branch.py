@@ -154,7 +154,7 @@ class SmartServerBranchRequestSetConfigOption(SmartServerLockedBranchRequest):
     def do_with_locked_branch(self, branch, value, name, section):
         if not section:
             section = None
-        branch._get_config().set_option(value, name, section)
+        branch._get_config().set_option(value.decode('utf8'), name, section)
         return SuccessfulSmartServerResponse(())
 
 
