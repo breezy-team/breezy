@@ -59,7 +59,6 @@ def load_tests(basic_tests, module, loader):
                      'bzrlib.tests.blackbox.test_filesystem_cicp',
                      'bzrlib.tests.blackbox.test_filtered_view_ops',
                      'bzrlib.tests.blackbox.test_find_merge_base',
-                     'bzrlib.tests.blackbox.test_guess_renames',
                      'bzrlib.tests.blackbox.test_help',
                      'bzrlib.tests.blackbox.test_hooks',
                      'bzrlib.tests.blackbox.test_ignore',

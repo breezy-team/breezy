@@ -62,6 +62,7 @@ from bzrlib import (
     revision,
     trace,
     tree,
+    xml_serializer,
     )
 from bzrlib.branch import Branch
 import bzrlib.config
@@ -607,14 +608,7 @@ class Commit(object):
         # serialiser not by commit. Then we can also add an unescaper
         # in the deserializer and start roundtripping revision messages
         # precisely. See repository_implementations/test_repository.py
-
-        # Python strings can include characters that can't be
-        # represented in well-formed XML; escape characters that
-        # aren't listed in the XML specification
-        # (http://www.w3.org/TR/REC-xml/#NT-Char).
-        self.message, escape_count = re.subn(
-            u'[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
-            lambda match: match.group(0).encode('unicode_escape'),
+        self.message, escape_count = xml_serializer.escape_invalid_chars(
             self.message)
         if escape_count:
             self.reporter.escaped(escape_count, self.message)
