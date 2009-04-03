@@ -1215,6 +1215,7 @@ class BzrDir(object):
             repository_to = br_to.repository
 
         push_result = PushResult()
+        push_result.source_branch = source
         if br_to is None:
             # We have a repository but no branch, copy the revisions, and then
             # create a branch.
@@ -1226,7 +1227,6 @@ class BzrDir(object):
             push_result.branch_push_result = None
             push_result.old_revno = None
             push_result.old_revid = _mod_revision.NULL_REVISION
-            push_result.source_branch = source
             push_result.target_branch = br_to
             push_result.master_branch = None
             push_result.workingtree_updated = False
