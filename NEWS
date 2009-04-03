@@ -239,6 +239,10 @@ Testing
 Internals
 *********
 
+* Added ``bzrlib.inventory_delta`` module.  This will be used for
+  serializing and deserializing inventory deltas for more efficient
+  streaming on the the network.  (Robert Collins, Andrew Bennetts)
+
 * ``Branch._get_config`` has been added, which splits out access to the
   specific config file from the branch. This is used to let RemoteBranch
   avoid constructing real branch objects to access configuration settings.
