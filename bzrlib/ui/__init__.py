@@ -198,7 +198,7 @@ class CLIUIFactory(UIFactory):
         return self.get_non_echoed_password()
 
     def get_username(self, prompt, **kwargs):
-        """Prompt the user for a password.
+        """Prompt the user for a username.
 
         :param prompt: The prompt to present the user
         :param kwargs: Arguments which will be expanded into the prompt.
