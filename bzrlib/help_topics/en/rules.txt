@@ -33,4 +33,4 @@ the top of the file. Rule patterns use exactly the same conventions
 as ignore patterns. See ``bzr help patterns`` for details.
 
 Note: Patterns containing square brackets or spaces should be
-surrounded in quotes to ensure they are corrected parsed.
+surrounded in quotes to ensure they are correctly parsed.

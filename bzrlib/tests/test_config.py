@@ -150,6 +150,9 @@ class FakeBranch(object):
         self._transport = self.control_files = \
             FakeControlFilesAndTransport(user_id=user_id)
 
+    def _get_config(self):
+        return config.TransportConfig(self._transport, 'branch.conf')
+
     def lock_write(self):
         pass
 
