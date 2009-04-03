@@ -545,11 +545,12 @@ class TextTestRunner(object):
             actionTaken = "Listed"
         else:
             try:
-                from testtools import ThreadsafeForwardingResult
+                import testtools
             except ImportError:
                 test.run(result)
             else:
-                if type(result) == ThreadsafeForwardingResult:
+                if isinstance(test, testtools.ConcurrentTestSuite):
+                    # We need to catch bzr specific behaviors
                     test.run(BZRTransformingResult(result))
                 else:
                     test.run(result)
@@ -2676,6 +2677,8 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
 
 # A registry where get() returns a suite decorator.
 parallel_registry = registry.Registry()
+
+
 def fork_decorator(suite):
     concurrency = local_concurrency()
     if concurrency == 1:
@@ -2683,6 +2686,8 @@ def fork_decorator(suite):
     from testtools import ConcurrentTestSuite
     return ConcurrentTestSuite(suite, fork_for_tests)
 parallel_registry.register('fork', fork_decorator)
+
+
 def subprocess_decorator(suite):
     concurrency = local_concurrency()
     if concurrency == 1:
@@ -2874,8 +2879,7 @@ def fork_for_tests(suite):
     """Take suite and start up one runner per CPU by forking()
 
     :return: An iterable of TestCase-like objects which can each have
-        run(result) called on them to feed tests to result, and
-        cleanup() called on them to stop them/kill children/end threads.
+        run(result) called on them to feed tests to result.
     """
     concurrency = local_concurrency()
     result = []
@@ -2891,7 +2895,6 @@ def fork_for_tests(suite):
                 ProtocolTestCase.run(self, result)
             finally:
                 os.waitpid(self.pid, os.WNOHANG)
-            # print "pid %d finished" % finished_process
 
     test_blocks = partition_tests(suite, concurrency)
     for process_tests in test_blocks:
@@ -2905,10 +2908,10 @@ def fork_for_tests(suite):
                 # Leave stderr and stdout open so we can see test noise
                 # Close stdin so that the child goes away if it decides to
                 # read from stdin (otherwise its a roulette to see what
-                # child actually gets keystrokes for pdb etc.
+                # child actually gets keystrokes for pdb etc).
                 sys.stdin.close()
                 sys.stdin = None
-                stream = os.fdopen(c2pwrite, 'wb', 0)
+                stream = os.fdopen(c2pwrite, 'wb', 1)
                 subunit_result = TestProtocolClient(stream)
                 process_suite.run(subunit_result)
             finally:
@@ -2925,8 +2928,7 @@ def reinvoke_for_tests(suite):
     """Take suite and start up one runner per CPU using subprocess().
 
     :return: An iterable of TestCase-like objects which can each have
-        run(result) called on them to feed tests to result, and
-        cleanup() called on them to stop them/kill children/end threads.
+        run(result) called on them to feed tests to result.
     """
     concurrency = local_concurrency()
     result = []
@@ -3317,6 +3319,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_directory_service',
                    'bzrlib.tests.test_dirstate',
                    'bzrlib.tests.test_email_message',
+                   'bzrlib.tests.test_eol_filters',
                    'bzrlib.tests.test_errors',
                    'bzrlib.tests.test_export',
                    'bzrlib.tests.test_extract',
@@ -3342,6 +3345,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_index',
                    'bzrlib.tests.test_info',
                    'bzrlib.tests.test_inv',
+                   'bzrlib.tests.test_inventory_delta',
                    'bzrlib.tests.test_knit',
                    'bzrlib.tests.test_lazy_import',
                    'bzrlib.tests.test_lazy_regex',

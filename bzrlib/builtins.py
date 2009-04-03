@@ -722,14 +722,19 @@ class cmd_mv(Command):
     takes_args = ['names*']
     takes_options = [Option("after", help="Move only the bzr identifier"
         " of the file, because the file has already been moved."),
+        Option('auto', help='Automatically guess renames.'),
+        Option('dry-run', help='Avoid making changes when guessing renames.'),
         ]
     aliases = ['move', 'rename']
     encoding_type = 'replace'
 
-    def run(self, names_list, after=False):
+    def run(self, names_list, after=False, auto=False, dry_run=False):
+        if auto:
+            return self.run_auto(names_list, after, dry_run)
+        elif dry_run:
+            raise errors.BzrCommandError('--dry-run requires --auto.')
         if names_list is None:
             names_list = []
-
         if len(names_list) < 2:
             raise errors.BzrCommandError("missing file argument")
         tree, rel_names = tree_files(names_list, canonicalize=False)
@@ -738,6 +743,20 @@ class cmd_mv(Command):
             self._run(tree, names_list, rel_names, after)
         finally:
             tree.unlock()
+
+    def run_auto(self, names_list, after, dry_run):
+        if names_list is not None and len(names_list) > 1:
+            raise errors.BzrCommandError('Only one path may be specified to'
+                                         ' --auto.')
+        if after:
+            raise errors.BzrCommandError('--after cannot be specified with'
+                                         ' --auto.')
+        work_tree, file_list = tree_files(names_list, default_branch='.')
+        work_tree.lock_write()
+        try:
+            rename_map.RenameMap.guess_renames(work_tree, dry_run)
+        finally:
+            work_tree.unlock()
 
     def _run(self, tree, names_list, rel_names, after):
         into_existing = osutils.isdir(names_list[-1])
@@ -2183,8 +2202,9 @@ class cmd_log(Command):
             # evil when adding features", we continue to use the
             # original algorithm - per-file-graph - for the "single
             # file that isn't a directory without showing a delta" case.
+            partial_history = revision and b.repository._format.supports_chks
             match_using_deltas = (len(file_ids) != 1 or filter_by_dir
-                or delta_type)
+                or delta_type or partial_history)
 
             # Build the LogRequest and execute it
             if len(file_ids) == 0:
@@ -5266,22 +5286,6 @@ class cmd_switch(Command):
             branch.nick = to_branch.nick
         note('Switched to branch: %s',
             urlutils.unescape_for_display(to_branch.base, 'utf-8'))
-
-
-class cmd_guess_renames(Command):
-    """Guess which files have been have been renamed, based on their content.
-
-    Only versioned files which have been deleted are candidates for rename
-    detection, and renames to ignored files will not be detected.
-    """
-
-    def run(self):
-        work_tree, file_list = tree_files(None, default_branch='.')
-        work_tree.lock_write()
-        try:
-            rename_map.RenameMap.guess_renames(work_tree)
-        finally:
-            work_tree.unlock()
 
 
 class cmd_view(Command):
