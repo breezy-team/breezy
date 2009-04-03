@@ -155,7 +155,7 @@ class TestInfo(tests.TestCaseWithTransport):
             elif key in ('knit', 'metaweave'):
                 expected = 'knit or metaweave'
             elif key in ('1.14', '1.14-rich-root'):
-                expected = '1.14 or 1.14-rich-root'
+                expected = '1.14 or 1.14-rich-root or gc-chk16 or gc-chk255 or gc-chk255-big'
             self.assertCheckoutDescription(key, expected)
 
     def test_describe_branch_format(self):
