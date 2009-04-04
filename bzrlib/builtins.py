@@ -4640,8 +4640,7 @@ class cmd_split(Command):
     branch.  Commits in the top-level tree will not apply to the new subtree.
     """
 
-    # join is not un-hidden yet
-    #_see_also = ['join']
+    _see_also = ['join']
     takes_args = ['tree']
 
     def run(self, tree):
