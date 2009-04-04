@@ -1,6 +1,4 @@
-# Bazaar -- distributed version control
-#
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -687,3 +685,49 @@ def determine_relative_path(from_path, to_path):
     if len(segments) == 0:
         return '.'
     return osutils.pathjoin(*segments)
+
+
+
+def parse_url(url):
+    """Extract the server address, the credentials and the path from the url.
+
+    user, password, host and path should be quoted if they contain reserved
+    chars.
+
+    :param url: an quoted url
+
+    :return: (scheme, user, password, host, port, path) tuple, all fields
+        are unquoted.
+    """
+    if isinstance(url, unicode):
+        raise errors.InvalidURL('should be ascii:\n%r' % url)
+    url = url.encode('utf-8')
+    (scheme, netloc, path, params,
+     query, fragment) = urlparse.urlparse(url, allow_fragments=False)
+    user = password = host = port = None
+    if '@' in netloc:
+        user, host = netloc.rsplit('@', 1)
+        if ':' in user:
+            user, password = user.split(':', 1)
+            password = urllib.unquote(password)
+        user = urllib.unquote(user)
+    else:
+        host = netloc
+
+        if ':' in host and not (host[0] == '[' and host[-1] == ']'): #there *is* port
+            host, port = host.rsplit(':',1)
+            try:
+                port = int(port)
+            except ValueError:
+                raise errors.InvalidURL('invalid port number %s in url:\n%s' %
+                                        (port, url))
+        if host[0] == '[' and host[-1] == ']': #IPv6
+            host = host[1:-1]
+
+    if host == '':
+        raise errors.InvalidURL('Host empty in: %s' % url)
+
+    host = urllib.unquote(host)
+    path = urllib.unquote(path)
+
+    return (scheme, user, password, host, port, path)

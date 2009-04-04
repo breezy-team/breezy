@@ -96,6 +96,9 @@ Improvements
 * ``bzr send`` is faster on repositories with deep histories.
   (Ian Clatworthy)
 
+* IPv6 literals are accepted in URLs.
+  (stlman, Martin Pool, #165014)
+
 * Progress bars now show the rate of network activity for
   ``bzr+ssh://`` and ``bzr://`` connections.  (Andrew Bennetts)
 
