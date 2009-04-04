@@ -52,8 +52,8 @@ class GenericCommitHandler(processor.CommitHandler):
         self.revision_id = self.gen_revision_id()
         # cache of texts for this commit, indexed by file-id
         self.lines_for_commit = {}
-        if self.rev_store.expects_rich_root():
-            self.lines_for_commit[inventory.ROOT_ID] = []
+        #if self.rev_store.expects_rich_root():
+        self.lines_for_commit[inventory.ROOT_ID] = []
 
         # Track the heads and get the real parent list
         parents = self.cache_mgr.track_heads(self.command)
@@ -503,11 +503,11 @@ class InventoryCommitHandler(GenericCommitHandler):
         self._delete_all_items(self.inventory)
 
 
-class CHKInventoryCommitHandler(GenericCommitHandler):
-    """A CommitHandler that builds and saves CHKInventory objects."""
+class InventoryDeltaCommitHandler(GenericCommitHandler):
+    """A CommitHandler that builds Inventories by applying a delta."""
 
     def pre_process_files(self):
-        super(CHKInventoryCommitHandler, self).pre_process_files()
+        super(InventoryDeltaCommitHandler, self).pre_process_files()
         # A given file-id can only appear once so we accumulate
         # the entries in a dict then build the actual delta at the end
         self._delta_entries_by_fileid = {}
@@ -519,10 +519,6 @@ class CHKInventoryCommitHandler(GenericCommitHandler):
             # Need to explicitly add the root entry for the first revision
             # and for non rich-root inventories
             root_id = inventory.ROOT_ID
-            # XXX: We *could* make this a CHKInventoryDirectory but it
-            # seems that deltas ought to use normal InventoryDirectory's
-            # because they simply don't know the chk_inventory that they
-            # are about to become a part of.
             root_ie = inventory.InventoryDirectory(root_id, u'', None)
             root_ie.revision = self.revision_id
             self._add_entry((old_path, '', root_id, root_ie))
@@ -531,8 +527,8 @@ class CHKInventoryCommitHandler(GenericCommitHandler):
         """Save the revision."""
         delta = list(self._delta_entries_by_fileid.values())
         #print "delta:\n%s\n\n" % "\n".join([str(de) for de in delta])
-        inv = self.rev_store.chk_load(self.revision, self.basis_inventory,
-            delta, None,
+        inv = self.rev_store.load_using_delta(self.revision,
+            self.basis_inventory, delta, None,
             lambda file_id: self._get_lines(file_id),
             lambda file_id: self._get_per_file_parents(file_id),
             lambda revision_ids: self._get_inventories(revision_ids))

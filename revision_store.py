@@ -205,12 +205,12 @@ class AbstractRevisionStore(object):
             self.repo.add_signature_text(rev.revision_id, signature)
         self._add_revision(rev, inv)
 
-    def chk_load(self, rev, basis_inv, inv_delta, signature,
+    def load_using_delta(self, rev, basis_inv, inv_delta, signature,
         text_provider, parents_provider, inventories_provider=None):
-        """Load a revision for a CHKInventory.
+        """Load a revision by applying a delta to a (CHK)Inventory.
 
         :param rev: the Revision
-        :param basis_inv: the basis CHKInventory
+        :param basis_inv: the basis Inventory or CHKInventory
         :param inv_delta: the inventory delta
         :param signature: signing information
         :param text_provider: a callable expecting a file_id parameter
@@ -292,7 +292,7 @@ class AbstractRevisionStore(object):
         parents, parent_invs):
         """Add the inventory to the repository as revision_id.
         
-        :param basis_inv: the basis CHKInventory
+        :param basis_inv: the basis Inventory or CHKInventory
         :param inv_delta: the inventory delta
         :param parents: The revision ids of the parents that revision_id
                         is known to have and are in the repository already.
@@ -304,11 +304,21 @@ class AbstractRevisionStore(object):
           inv is the generated inventory
         """
         if len(parents):
-            validator, new_inv = self.repo.add_inventory_by_delta(parents[0],
-                inv_delta, revision_id, parents, basis_inv=basis_inv,
-                propagate_caches=False)
+            if self._supports_chks:
+                validator, new_inv = self.repo.add_inventory_by_delta(parents[0],
+                    inv_delta, revision_id, parents, basis_inv=basis_inv,
+                    propagate_caches=False)
+            else:
+                validator, new_inv = self.repo.add_inventory_by_delta(parents[0],
+                    inv_delta, revision_id, parents)
         else:
-            new_inv = basis_inv.create_by_apply_delta(inv_delta, revision_id)
+            if hasattr(basis_inv, 'create_by_apply_delta'):
+                new_inv = basis_inv.create_by_apply_delta(inv_delta, revision_id)
+            else:
+                new_inv = inventory.Inventory(revision_id=revision_id)
+                # This is set in the delta so remove it to prevent a duplicate
+                del new_inv[inventory.ROOT_ID]
+                new_inv.apply_delta(inv_delta)
             validator = self.repo.add_inventory(revision_id, new_inv, parents)
         return validator, new_inv
 

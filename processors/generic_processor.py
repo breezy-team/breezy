@@ -97,8 +97,7 @@ class GenericProcessor(processor.ImportProcessor):
     * inv-cache - number of inventories to cache.
       If not set, the default is 100 for CHK formats and 10 otherwise.
 
-    * experimental - enable experimental mode, i.e. use features
-      not yet fully tested.
+    * mode - import algorithm to use: default, experimental or classic.
 
     * import-marks - name of file to read to load mark information from
 
@@ -112,7 +111,7 @@ class GenericProcessor(processor.ImportProcessor):
         'checkpoint',
         'autopack',
         'inv-cache',
-        'experimental',
+        'mode',
         'import-marks',
         'export-marks',
         ]
@@ -169,7 +168,8 @@ class GenericProcessor(processor.ImportProcessor):
         self.repo.start_write_group()
 
     def _load_info_and_params(self):
-        self._experimental = bool(self.params.get('experimental', False))
+        self._mode = bool(self.params.get('mode', 'default'))
+        self._experimental = self._mode == 'experimental'
 
         # This is currently hard-coded but might be configurable via
         # parameters one day if that's needed
@@ -185,12 +185,16 @@ class GenericProcessor(processor.ImportProcessor):
 
         # Decide which CommitHandler to use
         self.supports_chk = getattr(self.repo._format, 'supports_chks', False)
-        if self.supports_chk:
-            self.commit_handler_factory = \
-                bzr_commit_handler.CHKInventoryCommitHandler
-        else:
+        if self.supports_chk and self._mode == 'classic':
+            note("Cannot use classic algorithm on CHK repositories"
+                 " - using default one instead")
+            self._mode = 'default'
+        if self._mode == 'classic':
             self.commit_handler_factory = \
                 bzr_commit_handler.InventoryCommitHandler
+        else:
+            self.commit_handler_factory = \
+                bzr_commit_handler.InventoryDeltaCommitHandler
 
         # Decide how often to automatically report progress
         # (not a parameter yet)

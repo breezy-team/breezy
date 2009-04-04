@@ -48,7 +48,7 @@ page on Launchpad, https://launchpad.net/bzr-fastimport.
 version_info = (0, 8, 0, 'dev', 0)
 
 from bzrlib.commands import Command, register_command
-from bzrlib.option import Option, ListOption
+from bzrlib.option import Option, ListOption, RegistryOption
 
 
 def test_suite():
@@ -176,8 +176,13 @@ class cmd_fast_import(Command):
                     Option('inv-cache', type=int,
                         help="Number of inventories to cache.",
                         ),
-                    Option('experimental',
-                        help="Enable experimental features.",
+                    RegistryOption.from_kwargs('mode',
+                        'The import algorithm to use.',
+                        title='Import Algorithm',
+                        default='Use the preferred algorithm (inventory deltas).',
+                        classic="Use the original algorithm (mutable inventories).",
+                        experimental="Enable experimental features.",
+                        value_switches=True, enum_switch=False,
                         ),
                     Option('import-marks', type=str,
                         help="Import marks from file."
@@ -189,10 +194,12 @@ class cmd_fast_import(Command):
     aliases = []
     def run(self, source, verbose=False, info=None, trees=False,
         count=-1, checkpoint=10000, autopack=4, inv_cache=-1,
-        experimental=False, import_marks=None, export_marks=None):
+        mode=None, import_marks=None, export_marks=None):
         from bzrlib import bzrdir
         from bzrlib.errors import BzrCommandError, NotBranchError
         from bzrlib.plugins.fastimport.processors import generic_processor
+        if mode is None:
+            mode = 'default'
         try:
             control, relpath = bzrdir.BzrDir.open_containing('.')
         except NotBranchError:
@@ -206,7 +213,7 @@ class cmd_fast_import(Command):
             'checkpoint': checkpoint,
             'autopack': autopack,
             'inv-cache': inv_cache,
-            'experimental': experimental,
+            'mode': mode,
             'import-marks': import_marks,
             'export-marks': export_marks,
             }
