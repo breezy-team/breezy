@@ -23,6 +23,7 @@ from bzrlib import (
     foreign,
     lockable_files,
     lockdir,
+    trace,
     )
 from bzrlib.bzrdir import (
     BzrDir,
@@ -114,6 +115,8 @@ class DummyForeignVcsBranch(branch.BzrBranch6,foreign.ForeignBranch):
                     path, tree, None)
             builder.finish_inventory()
             revidmap[revid] = builder.commit(rev.message)
+            trace.mutter('lossily pushed revision %s -> %s', 
+                revid, revidmap[revid])
         return revidmap
 
 
@@ -198,7 +201,7 @@ class DummyForeignVcsDir(BzrDirMeta1):
         self._control_files = lockable_files.LockableFiles(self.transport,
             "lock", lockable_files.TransportLock)
 
-    def open_branch(self):
+    def open_branch(self, ignore_fallbacks=True):
         return self._format.get_branch_format().open(self, _found=True)
 
     def cloning_metadir(self, stacked=False):

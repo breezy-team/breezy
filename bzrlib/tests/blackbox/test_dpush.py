@@ -39,6 +39,14 @@ class TestDpush(ExternalBase):
         except ValueError:
             pass
 
+    def make_dummy_builder(self, relpath):
+        builder = self.make_branch_builder(relpath, 
+                format=DummyForeignVcsDirFormat())
+        builder.build_snapshot('revid', None, 
+            [('add', ('', 'TREE_ROOT', 'directory', None)),
+             ('add', ('foo', 'fooid', 'file', 'bar'))])
+        return builder
+
     def test_dpush_native(self):
         target_tree = self.make_branch_and_tree("dp")
         source_tree = self.make_branch_and_tree("dc")
@@ -46,12 +54,9 @@ class TestDpush(ExternalBase):
         self.assertContainsRe(error, 'not a foreign branch, use regular push')
 
     def test_dpush(self):
-        tree = self.make_branch_and_tree("d", format=DummyForeignVcsDirFormat())
-        self.build_tree(("d/foo", "bar"))
-        tree.add("foo")
-        tree.commit("msg")
+        branch = self.make_dummy_builder('d').get_branch()
 
-        dc = tree.bzrdir.sprout('dc') 
+        dc = branch.bzrdir.sprout('dc', force_new_repo=True)
         self.build_tree(("dc/foo", "blaaaa"))
         dc.open_workingtree().commit('msg')
 
@@ -59,34 +64,26 @@ class TestDpush(ExternalBase):
         self.check_output("", "status dc")
 
     def test_dpush_new(self):
-        tree = self.make_branch_and_tree("d", format=DummyForeignVcsDirFormat())
+        branch = self.make_dummy_builder('d').get_branch()
 
-        self.build_tree(("d/foo", "bar"))
-        tree.add("foo")
-        tree.commit("msg") # rev 1
-
-        dc = tree.bzrdir.sprout('dc')
+        dc = branch.bzrdir.sprout('dc', force_new_repo=True)
         self.build_tree(("dc/foofile", "blaaaa"))
         dc_tree = dc.open_workingtree()
-        dc.add("foofile")
-        dc.commit("msg")
+        dc_tree.add("foofile")
+        dc_tree.commit("msg")
 
         self.run_bzr("dpush -d dc d")
         self.check_output("2\n", "revno dc")
         self.check_output("", "status dc")
 
     def test_dpush_wt_diff(self):
-        tree = self.make_branch_and_tree("d", format=DummyForeignVcsDirFormat())
-        
-        self.build_tree_contents([("d/foo", "bar")])
-        tree.add(["foo"])
-        tree.commit("msg")
+        branch = self.make_dummy_builder('d').get_branch()
 
-        dc = tree.bzrdir.sprout('dc')
+        dc = branch.bzrdir.sprout('dc', force_new_repo=True)
         self.build_tree_contents([("dc/foofile", "blaaaa")])
         dc_tree = dc.open_workingtree()
-        dc.add("foofile")
-        dc.commit('msg')
+        dc_tree.add("foofile")
+        newrevid = dc_tree.commit('msg')
 
         self.build_tree_contents([("dc/foofile", "blaaaal")])
         self.run_bzr("dpush -d dc d")
@@ -94,20 +91,18 @@ class TestDpush(ExternalBase):
         self.check_output('modified:\n  foofile\n', "status dc")
 
     def test_diverged(self):
-        tree = self.make_branch_and_tree("d", format=DummyForeignVcsDirFormat())
-        
-        self.build_tree(["d/foo"])
-        tree.add("foo")
-        tree.commit("msg")
+        builder = self.make_dummy_builder('d')
 
-        dc = tree.bzrdir.sprout('dc')
+        branch = builder.get_branch()
+
+        dc = branch.bzrdir.sprout('dc', force_new_repo=True)
         dc_tree = dc.open_workingtree()
 
         self.build_tree_contents([("dc/foo", "bar")])
-        dc.commit('msg1')
+        dc_tree.commit('msg1')
 
-        self.build_tree_contents([("d/foo", "blie")])
-        tree.commit('msg2')
+        builder.build_snapshot('revid2', None,
+          [('modify', ('fooid', 'blie'))])
 
         error = self.run_bzr("dpush -d dc d", retcode=3)[1]
         self.assertContainsRe(error, "have diverged")
