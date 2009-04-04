@@ -6,8 +6,15 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
-In Development
-##############
+bzr 1.14rc1
+###########
+:Codename: brisbane-core
+:1.14rc1: 2009-04-03
+
+New formats 1.14 and 1.14-rich-root supporting End-Of-Line (EOL) conversions,
+keyword templating (via the bzr-keywords plugin) and generic content filtering.
+End-of-line conversion is now supported for formats supporting content
+filtering.
 
 Compatibility Breaks
 ********************
