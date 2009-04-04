@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests that branch classes implement hook callouts correctly."""
 
@@ -20,6 +20,7 @@ from bzrlib.branch import Branch, ChangeBranchTipParams
 from bzrlib.errors import HookFailed, TipChangeRejected
 from bzrlib.remote import RemoteBranch
 from bzrlib.revision import NULL_REVISION
+from bzrlib.smart import server
 from bzrlib.tests import TestCaseWithMemoryTransport
 
 
@@ -75,7 +76,7 @@ class TestSetRevisionHistoryHook(ChangeBranchTipTestCase):
 
     def capture_set_rh_hook(self, branch, rev_history):
         """Capture post set-rh hook calls to self.hook_calls.
-        
+
         The call is logged, as is some state of the branch.
         """
         self.hook_calls.append(
@@ -147,12 +148,22 @@ class TestOpen(TestCaseWithMemoryTransport):
         b = self.make_branch('.')
         if isinstance(b, RemoteBranch):
             # RemoteBranch creation:
-            # - creates the branch via the VFS
-            # - does a branch open (by creating a RemoteBranch object)
-            # - this has the same behaviour as simple branch opening, with an
-            # additional VFS open at the front.
-            self.assertEqual(b._real_branch, self.hook_calls[0])
-            self.assertOpenedRemoteBranch(self.hook_calls[1:], b)
+            if (self.transport_readonly_server ==
+                server.ReadonlySmartTCPServer_for_testing_v2_only):
+                # Older servers:
+                self.assertEqual(3, len(self.hook_calls))
+                # creates the branch via the VFS (for older servers)
+                self.assertEqual(b._real_branch, self.hook_calls[0])
+                # creates a RemoteBranch object
+                self.assertEqual(b, self.hook_calls[1])
+                # get_stacked_on_url RPC
+                self.assertRealBranch(self.hook_calls[2])
+            else:
+                self.assertEqual(2, len(self.hook_calls))
+                # create_branch RPC
+                self.assertRealBranch(self.hook_calls[0])
+                # create RemoteBranch locally
+                self.assertEqual(b, self.hook_calls[1])
         else:
             self.assertEqual([b], self.hook_calls)
 
@@ -161,26 +172,26 @@ class TestOpen(TestCaseWithMemoryTransport):
         self.install_hook()
         b = Branch.open(branch_url)
         if isinstance(b, RemoteBranch):
-            self.assertOpenedRemoteBranch(self.hook_calls, b)
+            self.assertEqual(3, len(self.hook_calls))
+            # open_branchV2 RPC
+            self.assertRealBranch(self.hook_calls[0])
+            # create RemoteBranch locally
+            self.assertEqual(b, self.hook_calls[1])
+            # get_stacked_on_url RPC
+            self.assertRealBranch(self.hook_calls[2])
         else:
             self.assertEqual([b], self.hook_calls)
 
-    def assertOpenedRemoteBranch(self, hook_calls, b):
-        """Assert that the expected calls were recorded for opening 'b'."""
-        # RemoteBranch open always opens the backing branch to get stacking
-        # details. As that is done remotely we can't see the branch object
-        # nor even compare base url's etc. So we just assert that the first
-        # branch returned is the RemoteBranch, and that the second is a
-        # Branch but not a RemoteBranch.
-        self.assertEqual(2, len(hook_calls))
-        self.assertEqual(b, hook_calls[0])
-        self.assertIsInstance(hook_calls[1], Branch)
-        self.assertFalse(isinstance(hook_calls[1], RemoteBranch))
+    def assertRealBranch(self, b):
+        # Branches opened on the server don't have comparable URLs, so we just
+        # assert that it is not a RemoteBranch.
+        self.assertIsInstance(b, Branch)
+        self.assertFalse(isinstance(b, RemoteBranch))
 
 
 class TestPreChangeBranchTip(ChangeBranchTipTestCase):
     """Tests for pre_change_branch_tip hook.
-    
+
     Most of these tests are very similar to the tests in
     TestPostChangeBranchTip.
     """
@@ -198,7 +209,7 @@ class TestPreChangeBranchTip(ChangeBranchTipTestCase):
 
     def test_hook_failure_prevents_change(self):
         """If a hook raises an exception, the change does not take effect.
-        
+
         Also, a HookFailed exception will be raised.
         """
         branch = self.make_branch_with_revision_ids(
@@ -214,7 +225,7 @@ class TestPreChangeBranchTip(ChangeBranchTipTestCase):
         self.assertIsInstance(hook_failed_exc.exc_value, PearShapedError)
         # The revision info is unchanged.
         self.assertEqual((2, 'two-\xc2\xb5'), branch.last_revision_info())
-        
+
     def test_empty_history(self):
         branch = self.make_branch('source')
         hook_calls = self.install_logging_hook('pre')
@@ -262,7 +273,7 @@ class TestPreChangeBranchTip(ChangeBranchTipTestCase):
 
     def test_explicit_reject_by_hook(self):
         """If a hook raises TipChangeRejected, the change does not take effect.
-        
+
         TipChangeRejected exceptions are propagated, not wrapped in HookFailed.
         """
         branch = self.make_branch_with_revision_ids(
@@ -275,7 +286,7 @@ class TestPreChangeBranchTip(ChangeBranchTipTestCase):
             TipChangeRejected, branch.set_last_revision_info, 0, NULL_REVISION)
         # The revision info is unchanged.
         self.assertEqual((2, 'two-\xc2\xb5'), branch.last_revision_info())
-        
+
 
 class TestPostChangeBranchTip(ChangeBranchTipTestCase):
     """Tests for post_change_branch_tip hook.
@@ -350,7 +361,7 @@ class TestAllMethodsThatChangeTipWillRunHooks(ChangeBranchTipTestCase):
     def setUp(self):
         ChangeBranchTipTestCase.setUp(self)
         self.installPreAndPostHooks()
-        
+
     def installPreAndPostHooks(self):
         self.pre_hook_calls = self.install_logging_hook('pre')
         self.post_hook_calls = self.install_logging_hook('post')

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for bzr performance over SFTP"""
 
@@ -39,7 +39,7 @@ class SFTPBenchmark(Benchmark):
         if not paramiko_loaded:
             raise TestSkipped('you must have paramiko to run this test')
         test_sftp_transport.set_test_transport_to_sftp(self)
-         
+
     def test_branch(self):
         os.mkdir("a")
         tree, files = self.create_with_commits(100, 100, "a")
@@ -56,7 +56,7 @@ class SFTPBenchmark(Benchmark):
 
     def test_pull_1(self):
         self.create_commit_and_pull(1)
-        
+
     def test_pull_10(self):
         self.create_commit_and_pull(10)
 

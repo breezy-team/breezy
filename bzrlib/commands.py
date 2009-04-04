@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 # TODO: probably should say which arguments are candidates for glob
@@ -50,7 +50,7 @@ from bzrlib import (
 
 from bzrlib import registry
 # Compatibility
-from bzrlib.hooks import Hooks
+from bzrlib.hooks import HookPoint, Hooks
 from bzrlib.option import Option
 
 
@@ -139,12 +139,12 @@ def _builtin_commands():
             real_name = _unsquish_command_name(name)
             r[real_name] = builtins[name]
     return r
-            
+
 
 def builtin_command_names():
     """Return list of builtin command names."""
     return _builtin_commands().keys()
-    
+
 
 def plugin_command_names():
     return plugin_cmds.keys()
@@ -157,7 +157,7 @@ def _get_cmd_dict(plugins_override=True):
         d.update(plugin_cmds.iteritems())
     return d
 
-    
+
 def get_all_cmds(plugins_override=True):
     """Return canonical name and class for all registered commands."""
     for k, v in _get_cmd_dict(plugins_override=plugins_override).iteritems():
@@ -291,7 +291,7 @@ class Command(object):
     encoding_type = 'strict'
 
     hidden = False
-    
+
     def __init__(self):
         """Construct an instance of this command."""
         if self.__doc__ == Command.__doc__:
@@ -301,7 +301,7 @@ class Command(object):
 
     def _maybe_expand_globs(self, file_list):
         """Glob expand file_list if the platform does not do that itself.
-        
+
         :return: A possibly empty list of unicode paths.
 
         Introduced in bzrlib 0.18.
@@ -331,15 +331,19 @@ class Command(object):
         return s
 
     def get_help_text(self, additional_see_also=None, plain=True,
-                      see_also_as_links=False):
+                      see_also_as_links=False, verbose=True):
         """Return a text string with help for this command.
-        
+
         :param additional_see_also: Additional help topics to be
             cross-referenced.
         :param plain: if False, raw help (reStructuredText) is
             returned instead of plain text.
         :param see_also_as_links: if True, convert items in 'See also'
             list to internal links (used by bzr_man rstx generator)
+        :param verbose: if True, display the full help, otherwise
+            leave out the descriptive sections and just display
+            usage help (e.g. Purpose, Usage, Options) with a
+            message explaining how to obtain full help.
         """
         doc = self.help()
         if doc is None:
@@ -374,19 +378,24 @@ class Command(object):
             result += options
         result += '\n'
 
-        # Add the description, indenting it 2 spaces
-        # to match the indentation of the options
-        if sections.has_key(None):
-            text = sections.pop(None)
-            text = '\n  '.join(text.splitlines())
-            result += ':%s:\n  %s\n\n' % ('Description',text)
+        if verbose:
+            # Add the description, indenting it 2 spaces
+            # to match the indentation of the options
+            if sections.has_key(None):
+                text = sections.pop(None)
+                text = '\n  '.join(text.splitlines())
+                result += ':%s:\n  %s\n\n' % ('Description',text)
 
-        # Add the custom sections (e.g. Examples). Note that there's no need
-        # to indent these as they must be indented already in the source.
-        if sections:
-            for label in order:
-                if sections.has_key(label):
-                    result += ':%s:\n%s\n\n' % (label,sections[label])
+            # Add the custom sections (e.g. Examples). Note that there's no need
+            # to indent these as they must be indented already in the source.
+            if sections:
+                for label in order:
+                    if sections.has_key(label):
+                        result += ':%s:\n%s\n' % (label,sections[label])
+                result += '\n'
+        else:
+            result += ("See bzr help %s for more details and examples.\n\n"
+                % self.name())
 
         # Add the aliases, source (plug-in) and see also links, if any
         if self.aliases:
@@ -463,7 +472,7 @@ class Command(object):
 
     def get_see_also(self, additional_terms=None):
         """Return a list of help topics that are related to this command.
-        
+
         The list is derived from the content of the _see_also attribute. Any
         duplicates are removed and the result is in lexical order.
         :param additional_terms: Additional help topics to cross-reference.
@@ -522,6 +531,9 @@ class Command(object):
         # Process the standard options
         if 'help' in opts:  # e.g. bzr add --help
             sys.stdout.write(self.get_help_text())
+            return 0
+        if 'usage' in opts:  # e.g. bzr add --usage
+            sys.stdout.write(self.get_help_text(verbose=False))
             return 0
         trace.set_verbosity_level(option._verbosity_level)
         if 'verbose' in self.supported_std_options:
@@ -591,18 +603,17 @@ class CommandHooks(Hooks):
         notified.
         """
         Hooks.__init__(self)
-        # Introduced in 1.13:
-        # invoked after creating a command object to allow modifications such
-        # as adding or removing options, docs etc. Invoked with the command
-        # object.
-        self['extend_command'] = []
+        self.create_hook(HookPoint('extend_command',
+            "Called after creating a command object to allow modifications "
+            "such as adding or removing options, docs etc. Called with the "
+            "new bzrlib.commands.Command object.", (1, 13), None))
 
 Command.hooks = CommandHooks()
 
 
 def parse_args(command, argv, alias_argv=None):
     """Parse command line.
-    
+
     Arguments and options are parsed at this level before being passed
     down to specific command handlers.  This routine knows, from a
     lookup table, something about the available options, what optargs
@@ -657,7 +668,7 @@ def _match_argform(cmd, takes_args, args):
                                % (cmd, argname.upper()))
             else:
                 argdict[argname] = args.pop(0)
-            
+
     if args:
         raise errors.BzrCommandError("extra argument to command %s: %s"
                                      % (cmd, args[0]))
@@ -672,12 +683,13 @@ def apply_coveraged(dirname, the_callable, *args, **kwargs):
     tracer = trace.Trace(count=1, trace=0)
     sys.settrace(tracer.globaltrace)
 
-    ret = the_callable(*args, **kwargs)
-
-    sys.settrace(None)
-    results = tracer.results()
-    results.write_results(show_missing=1, summary=False,
-                          coverdir=dirname)
+    try:
+        return exception_to_return_code(the_callable, *args, **kwargs)
+    finally:
+        sys.settrace(None)
+        results = tracer.results()
+        results.write_results(show_missing=1, summary=False,
+                              coverdir=dirname)
 
 
 def apply_profiled(the_callable, *args, **kwargs):
@@ -688,7 +700,8 @@ def apply_profiled(the_callable, *args, **kwargs):
     try:
         prof = hotshot.Profile(pfname)
         try:
-            ret = prof.runcall(the_callable, *args, **kwargs) or 0
+            ret = prof.runcall(exception_to_return_code, the_callable, *args,
+                **kwargs) or 0
         finally:
             prof.close()
         stats = hotshot.stats.load(pfname)
@@ -703,9 +716,50 @@ def apply_profiled(the_callable, *args, **kwargs):
         os.remove(pfname)
 
 
+def exception_to_return_code(the_callable, *args, **kwargs):
+    """UI level helper for profiling and coverage.
+
+    This transforms exceptions into a return value of 3. As such its only
+    relevant to the UI layer, and should never be called where catching
+    exceptions may be desirable.
+    """
+    try:
+        return the_callable(*args, **kwargs)
+    except (KeyboardInterrupt, Exception), e:
+        # used to handle AssertionError and KeyboardInterrupt
+        # specially here, but hopefully they're handled ok by the logger now
+        exc_info = sys.exc_info()
+        exitcode = trace.report_exception(exc_info, sys.stderr)
+        if os.environ.get('BZR_PDB'):
+            print '**** entering debugger'
+            tb = exc_info[2]
+            import pdb
+            if sys.version_info[:2] < (2, 6):
+                # XXX: we want to do
+                #    pdb.post_mortem(tb)
+                # but because pdb.post_mortem gives bad results for tracebacks
+                # from inside generators, we do it manually.
+                # (http://bugs.python.org/issue4150, fixed in Python 2.6)
+
+                # Setup pdb on the traceback
+                p = pdb.Pdb()
+                p.reset()
+                p.setup(tb.tb_frame, tb)
+                # Point the debugger at the deepest frame of the stack
+                p.curindex = len(p.stack) - 1
+                p.curframe = p.stack[p.curindex][0]
+                # Start the pdb prompt.
+                p.print_stack_entry(p.stack[p.curindex])
+                p.execRcLines()
+                p.cmdloop()
+            else:
+                pdb.post_mortem(tb)
+        return exitcode
+
+
 def apply_lsprofiled(filename, the_callable, *args, **kwargs):
     from bzrlib.lsprof import profile
-    ret, stats = profile(the_callable, *args, **kwargs)
+    ret, stats = profile(exception_to_return_code, the_callable, *args, **kwargs)
     stats.sort()
     if filename is None:
         stats.pprint()
@@ -746,7 +800,7 @@ def run_bzr(argv):
        The command-line arguments, without the program name from argv[0]
        These should already be decoded. All library/test code calling
        run_bzr should be passing valid strings (don't need decoding).
-    
+
     Returns a command status or raises an exception.
 
     Special master options: these must come before the command because
@@ -808,6 +862,8 @@ def run_bzr(argv):
         else:
             argv_copy.append(a)
         i += 1
+
+    debug.set_debug_flags_from_config()
 
     argv = argv_copy
     if (not argv):
@@ -915,40 +971,12 @@ def main(argv):
 
 
 def run_bzr_catch_errors(argv):
-    # Note: The except clause logic below should be kept in sync with the
-    # profile() routine in lsprof.py.
-    try:
-        return run_bzr(argv)
-    except (KeyboardInterrupt, Exception), e:
-        # used to handle AssertionError and KeyboardInterrupt
-        # specially here, but hopefully they're handled ok by the logger now
-        exc_info = sys.exc_info()
-        exitcode = trace.report_exception(exc_info, sys.stderr)
-        if os.environ.get('BZR_PDB'):
-            print '**** entering debugger'
-            tb = exc_info[2]
-            import pdb
-            if sys.version_info[:2] < (2, 6):
-                # XXX: we want to do
-                #    pdb.post_mortem(tb)
-                # but because pdb.post_mortem gives bad results for tracebacks
-                # from inside generators, we do it manually.
-                # (http://bugs.python.org/issue4150, fixed in Python 2.6)
-                
-                # Setup pdb on the traceback
-                p = pdb.Pdb()
-                p.reset()
-                p.setup(tb.tb_frame, tb)
-                # Point the debugger at the deepest frame of the stack
-                p.curindex = len(p.stack) - 1
-                p.curframe = p.stack[p.curindex]
-                # Start the pdb prompt.
-                p.print_stack_entry(p.stack[p.curindex])
-                p.execRcLines()
-                p.cmdloop()
-            else:
-                pdb.post_mortem(tb)
-        return exitcode
+    """Run a bzr command with parameters as described by argv.
+
+    This function assumed that that UI layer is setup, that symbol deprecations
+    are already applied, and that unicode decoding has already been performed on argv.
+    """
+    return exception_to_return_code(run_bzr, argv)
 
 
 def run_bzr_catch_user_errors(argv):
@@ -996,8 +1024,8 @@ class Provider(object):
 
     def plugin_for_command(self, cmd_name):
         '''Takes a command and returns the information for that plugin
-        
-        :return: A dictionary with all the available information 
+
+        :return: A dictionary with all the available information
         for the requested plugin
         '''
         raise NotImplementedError

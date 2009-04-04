@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 import os
@@ -42,7 +42,7 @@ class TestCommitMerge(TestCaseWithTransport):
         bx = wtx.branch
         wty = wtx.bzrdir.sprout('y').open_workingtree()
         by = wty.branch
-        
+
         wtx.commit('commit one', rev_id='x@u-0-1', allow_pointless=True)
         wty.commit('commit two', rev_id='y@u-0-1', allow_pointless=True)
 
@@ -89,7 +89,7 @@ class TestCommitMerge(TestCaseWithTransport):
                           wty.commit,
                           'partial commit', allow_pointless=False,
                           specific_files=['ecks'])
-        
+
         wty.commit('merge from x', rev_id='y@u-0-2', allow_pointless=False)
         tree = by.repository.revision_tree('y@u-0-2')
         inv = tree.inventory

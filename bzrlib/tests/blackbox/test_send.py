@@ -13,7 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 import os
@@ -94,7 +94,7 @@ class TestSend(tests.TestCaseWithTransport):
         br = read_bundle(StringIO(self.run_bzr('send -o-')[0]))
         self.assertRevisions(br, ['revision3'])
         err = self.run_bzr('send --remember -o-', retcode=3)[1]
-        self.assertContainsRe(err, 
+        self.assertContainsRe(err,
                               '--remember requires a branch to be specified.')
 
     def test_revision_branch_interaction(self):
@@ -118,7 +118,7 @@ class TestSend(tests.TestCaseWithTransport):
         # check output for consistency
         # win32 stdout converts LF to CRLF,
         # which would break patch-based bundles
-        self.make_trees()        
+        self.make_trees()
         os.chdir('branch')
         stdout = self.run_bzr_subprocess('send -o-')[0]
         br = read_bundle(StringIO(stdout))
@@ -216,7 +216,7 @@ class TestSend(tests.TestCaseWithTransport):
         branch = _mod_branch.Branch.open('branch')
         branch.get_config().set_user_option('mail_client', 'bogus')
         parent = _mod_branch.Branch.open('parent')
-        parent.get_config().set_user_option('child_submit_to', 
+        parent.get_config().set_user_option('child_submit_to',
                            'somebody@example.org')
         self.run_bzr_error(('Unknown mail client: bogus',),
                            'send -f branch')

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
 import errno
@@ -36,6 +36,7 @@ from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ReusingTransform, NotVersionedError, CantMoveRoot,
                            ExistingLimbo, ImmortalLimbo, NoFinalPath,
                            UnableCreateSymlink)
+from bzrlib.filters import filtered_output_bytes, ContentFilterContext
 from bzrlib.inventory import InventoryEntry
 from bzrlib.osutils import (
     delete_any,
@@ -233,10 +234,10 @@ class TreeTransformBase(object):
 
     def adjust_root_path(self, name, parent):
         """Emulate moving the root by moving all children, instead.
-        
+
         We do this by undoing the association of root's transaction id with the
         current tree.  This allows us to create a new directory with that
-        transaction id.  We unversion the root directory and version the 
+        transaction id.  We unversion the root directory and version the
         physically new directory, and hope someone versions the tree root
         later.
         """
@@ -245,13 +246,13 @@ class TreeTransformBase(object):
         # force moving all children of root
         for child_id in self.iter_tree_children(old_root):
             if child_id != parent:
-                self.adjust_path(self.final_name(child_id), 
+                self.adjust_path(self.final_name(child_id),
                                  self.final_parent(child_id), child_id)
             file_id = self.final_file_id(child_id)
             if file_id is not None:
                 self.unversion_file(child_id)
             self.version_file(file_id, child_id)
-        
+
         # the physical root needs a new transaction id
         self._tree_path_ids.pop("")
         self._tree_id_paths.pop(old_root)
@@ -265,7 +266,7 @@ class TreeTransformBase(object):
 
     def trans_id_tree_file_id(self, inventory_id):
         """Determine the transaction id of a working tree file.
-        
+
         This reflects only files that already exist, not ones that will be
         added by transactions.
         """
@@ -335,7 +336,7 @@ class TreeTransformBase(object):
         """Schedule creation of a new file.
 
         See also new_file.
-        
+
         Contents is an iterator of strings, all of which will be written
         to the target destination.
 
@@ -404,7 +405,7 @@ class TreeTransformBase(object):
 
     def create_directory(self, trans_id):
         """Schedule creation of a new directory.
-        
+
         See also new_directory.
         """
         os.mkdir(self._limbo_name(trans_id))
@@ -535,7 +536,7 @@ class TreeTransformBase(object):
 
     def final_kind(self, trans_id):
         """Determine the final file kind, after any changes applied.
-        
+
         Raises NoSuchFile if the file does not exist/has no contents.
         (It is conceivable that a path would be created without the
         corresponding contents insertion command)
@@ -561,7 +562,7 @@ class TreeTransformBase(object):
 
     def final_file_id(self, trans_id):
         """Determine the file id after any changes are applied, or None.
-        
+
         None indicates that the file will not be versioned after changes are
         applied.
         """
@@ -606,12 +607,12 @@ class TreeTransformBase(object):
 
     def by_parent(self):
         """Return a map of parent: children for known parents.
-        
+
         Only new paths and parents of tree files with assigned ids are used.
         """
         by_parent = {}
         items = list(self._new_parent.iteritems())
-        items.extend((t, self.final_parent(t)) for t in 
+        items.extend((t, self.final_parent(t)) for t in
                       self._tree_id_paths.keys())
         for trans_id, parent_id in items:
             if parent_id not in by_parent:
@@ -652,7 +653,7 @@ class TreeTransformBase(object):
         removed.  This is a necessary first step in detecting conflicts.
         """
         parents = self.by_parent().keys()
-        parents.extend([t for t in self._removed_contents if 
+        parents.extend([t for t in self._removed_contents if
                         self.tree_kind(t) == 'directory'])
         for trans_id in self._removed_id:
             file_id = self.tree_file_id(trans_id)
@@ -745,7 +746,7 @@ class TreeTransformBase(object):
 
     def _improper_versioning(self):
         """Cannot version a file with no contents, or a bad type.
-        
+
         However, existing entries with no contents are okay.
         """
         conflicts = []
@@ -761,7 +762,7 @@ class TreeTransformBase(object):
 
     def _executability_conflicts(self):
         """Check for bad executability changes.
-        
+
         Only versioned files may have their executability set, because
         1. only versioned entries can have executability under windows
         2. only files can be executable.  (The execute bit on a directory
@@ -936,10 +937,10 @@ class TreeTransformBase(object):
             self.version_file(file_id, trans_id)
         return trans_id
 
-    def new_file(self, name, parent_id, contents, file_id=None, 
+    def new_file(self, name, parent_id, contents, file_id=None,
                  executable=None):
         """Convenience method to create files.
-        
+
         name is the name of the file to create.
         parent_id is the transaction id of the parent directory of the file.
         contents is an iterator of bytestrings, which will be used to produce
@@ -965,11 +966,11 @@ class TreeTransformBase(object):
         """
         trans_id = self._new_entry(name, parent_id, file_id)
         self.create_directory(trans_id)
-        return trans_id 
+        return trans_id
 
     def new_symlink(self, name, parent_id, target, file_id=None):
         """Convenience method to create symbolic link.
-        
+
         name is the name of the symlink to create.
         parent_id is the transaction id of the parent directory of the symlink.
         target is a bytestring of the target of the symlink.
@@ -1845,7 +1846,7 @@ class _PreviewTree(tree.Tree):
                 size = None
                 executable = None
             if kind == 'symlink':
-                link_or_sha1 = os.readlink(limbo_name)
+                link_or_sha1 = os.readlink(limbo_name).decode(osutils._fs_enc)
         if supports_executable():
             executable = tt._new_executability.get(trans_id, executable)
         return kind, size, executable, link_or_sha1
@@ -2000,12 +2001,12 @@ def topology_sorted_ids(tree):
 def build_tree(tree, wt, accelerator_tree=None, hardlink=False,
                delta_from_tree=False):
     """Create working tree for a branch, using a TreeTransform.
-    
+
     This function should be used on empty trees, having a tree root at most.
     (see merge and revert functionality for working with existing trees)
 
     Existing files are handled like so:
-    
+
     - Existing bzrdirs take precedence over creating new items.  They are
       created as '%s.diverted' % name.
     - Otherwise, if the content on disk matches the content we are building,
@@ -2113,7 +2114,8 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
                     executable = tree.is_executable(file_id, tree_path)
                     if executable:
                         tt.set_executability(executable, trans_id)
-                    deferred_contents.append((file_id, trans_id))
+                    trans_data = (trans_id, tree_path)
+                    deferred_contents.append((file_id, trans_data))
                 else:
                     file_trans_id[file_id] = new_by_entry(tt, entry, parent_id,
                                                           tree)
@@ -2150,6 +2152,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
 def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
                   hardlink):
     total = len(desired_files) + offset
+    wt = tt._tree
     if accelerator_tree is None:
         new_desired_files = desired_files
     else:
@@ -2158,10 +2161,10 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
                          in iter if not (c or e[0] != e[1]))
         new_desired_files = []
         count = 0
-        for file_id, trans_id in desired_files:
+        for file_id, (trans_id, tree_path) in desired_files:
             accelerator_path = unchanged.get(file_id)
             if accelerator_path is None:
-                new_desired_files.append((file_id, trans_id))
+                new_desired_files.append((file_id, (trans_id, tree_path)))
                 continue
             pb.update('Adding file contents', count + offset, total)
             if hardlink:
@@ -2169,14 +2172,26 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
                                    trans_id)
             else:
                 contents = accelerator_tree.get_file(file_id, accelerator_path)
+                if wt.supports_content_filtering():
+                    filters = wt._content_filter_stack(tree_path)
+                    contents = filtered_output_bytes(contents, filters,
+                        ContentFilterContext(tree_path, tree))
                 try:
                     tt.create_file(contents, trans_id)
                 finally:
-                    contents.close()
+                    try:
+                        contents.close()
+                    except AttributeError:
+                        # after filtering, contents may no longer be file-like
+                        pass
             count += 1
         offset += count
-    for count, (trans_id, contents) in enumerate(tree.iter_files_bytes(
-                                                 new_desired_files)):
+    for count, ((trans_id, tree_path), contents) in enumerate(
+            tree.iter_files_bytes(new_desired_files)):
+        if wt.supports_content_filtering():
+            filters = wt._content_filter_stack(tree_path)
+            contents = filtered_output_bytes(contents, filters,
+                ContentFilterContext(tree_path, tree))
         tt.create_file(contents, trans_id)
         pb.update('Adding file contents', count + offset, total)
 
@@ -2242,13 +2257,13 @@ def new_by_entry(tt, entry, parent_id, tree):
     if kind == 'file':
         contents = tree.get_file(entry.file_id).readlines()
         executable = tree.is_executable(entry.file_id)
-        return tt.new_file(name, parent_id, contents, entry.file_id, 
+        return tt.new_file(name, parent_id, contents, entry.file_id,
                            executable)
     elif kind in ('directory', 'tree-reference'):
         trans_id = tt.new_directory(name, parent_id, entry.file_id)
         if kind == 'tree-reference':
             tt.set_tree_reference(entry.reference_revision, trans_id)
-        return trans_id 
+        return trans_id
     elif kind == 'symlink':
         target = tree.get_symlink_target(entry.file_id)
         return tt.new_symlink(name, parent_id, target, entry.file_id)
@@ -2333,7 +2348,7 @@ def _entry_changes(file_id, entry, working_tree):
         if entry.kind != working_kind:
             contents_mod, meta_mod = True, False
         else:
-            cur_entry._read_tree_state(working_tree.id2path(file_id), 
+            cur_entry._read_tree_state(working_tree.id2path(file_id),
                                        working_tree)
             contents_mod, meta_mod = entry.detect_changes(cur_entry)
             cur_entry._forget_tree_state()
@@ -2528,7 +2543,7 @@ def conflict_pass(tt, conflicts, path_tree=None):
                 existing_file, new_file = conflict[1], conflict[2]
             new_name = tt.final_name(existing_file)+'.moved'
             tt.adjust_path(new_name, final_parent, existing_file)
-            new_conflicts.add((c_type, 'Moved existing file to', 
+            new_conflicts.add((c_type, 'Moved existing file to',
                                existing_file, new_file))
         elif c_type == 'parent loop':
             # break the loop by undoing one of the ops that caused the loop
@@ -2538,12 +2553,12 @@ def conflict_pass(tt, conflicts, path_tree=None):
             new_conflicts.add((c_type, 'Cancelled move', cur,
                                tt.final_parent(cur),))
             tt.adjust_path(tt.final_name(cur), tt.get_tree_parent(cur), cur)
-            
+
         elif c_type == 'missing parent':
             trans_id = conflict[1]
             try:
                 tt.cancel_deletion(trans_id)
-                new_conflicts.add(('deleting parent', 'Not deleting', 
+                new_conflicts.add(('deleting parent', 'Not deleting',
                                    trans_id))
             except KeyError:
                 create = True
@@ -2614,12 +2629,12 @@ def iter_cook_conflicts(raw_conflicts, tt):
         if len(conflict) == 3:
             yield Conflict.factory(c_type, action=action, path=modified_path,
                                      file_id=modified_id)
-             
+
         else:
             conflicting_path = fp.get_path(conflict[3])
             conflicting_id = tt.final_file_id(conflict[3])
             yield Conflict.factory(c_type, action=action, path=modified_path,
-                                   file_id=modified_id, 
+                                   file_id=modified_id,
                                    conflict_path=conflicting_path,
                                    conflict_file_id=conflicting_id)
 

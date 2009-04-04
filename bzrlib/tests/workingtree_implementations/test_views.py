@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Views stored within a working tree.
 
@@ -21,7 +21,7 @@ The views are actually in the WorkingTree.views namespace, but these are
 """
 
 
-from bzrlib import errors
+from bzrlib import views, errors
 from bzrlib.tests import TestSkipped
 from bzrlib.workingtree import WorkingTree
 
@@ -141,6 +141,22 @@ class TestTreeViews(TestCaseWithWorkingTree):
         self.assertRaises(errors.NoSuchView,
             wt.views.delete_view, view_name + '2')
 
+    def test_check_path_in_view(self):
+        wt = self.make_branch_and_tree('wt')
+        view_current = 'view-name'
+        view_dict = {
+            view_current: ['dir-1'],
+            'other-name': ['dir-2']}
+        wt.views.set_view_info(view_current, view_dict)
+        self.assertEqual(views.check_path_in_view(wt, 'dir-1'), None)
+        self.assertEqual(views.check_path_in_view(wt, 'dir-1/sub'), None)
+        self.assertRaises(errors.FileOutsideView,
+                          views.check_path_in_view, wt, 'dir-2')
+        self.assertRaises(errors.FileOutsideView,
+                          views.check_path_in_view, wt, 'dir-2/sub')
+        self.assertRaises(errors.FileOutsideView,
+                          views.check_path_in_view, wt, 'other')
+
 
 class TestUnsupportedViews(TestCaseWithWorkingTree):
     """Formats that don't support views should give reasonable errors."""
@@ -157,7 +173,7 @@ class TestUnsupportedViews(TestCaseWithWorkingTree):
                               % fmt)
             # it's covered by TestTreeViews
         TestCaseWithWorkingTree.setUp(self)
- 
+
     def test_view_methods_raise(self):
         wt = self.make_branch_and_tree('wt')
         self.assertRaises(errors.ViewsNotSupported,

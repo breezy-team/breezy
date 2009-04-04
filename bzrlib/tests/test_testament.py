@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Test testaments for gpg signing."""
 
@@ -141,19 +141,19 @@ class TestamentTests(TestamentSetup):
         inventory = self.b.repository.get_inventory('test@user-2')
         testament_1 = self.testament_class()(revision, inventory)
         text_1 = testament_1.as_short_text()
-        text_2 = self.from_revision(self.b.repository, 
+        text_2 = self.from_revision(self.b.repository,
                                     'test@user-2').as_short_text()
         self.assertEqual(text_1, text_2)
-                    
+
 
 class TestamentTestsStrict(TestamentTests):
-    
+
     def testament_class(self):
         return StrictTestament
 
 
 class TestamentTestsStrict2(TestamentTests):
-    
+
     def testament_class(self):
         return StrictTestament3
 

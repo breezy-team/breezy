@@ -14,7 +14,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the formatting and construction of errors."""
 
@@ -158,7 +158,7 @@ class TestErrors(TestCaseWithTransport):
         error = errors.MediumNotConnected("a medium")
         self.assertEqualDiff(
             "The medium 'a medium' is not connected.", str(error))
- 
+
     def test_no_public_branch(self):
         b = self.make_branch('.')
         error = errors.NoPublicBranch(b)
@@ -171,7 +171,7 @@ class TestErrors(TestCaseWithTransport):
         error = errors.NoRepositoryPresent(dir)
         self.assertNotEqual(-1, str(error).find((dir.transport.clone('..').base)))
         self.assertEqual(-1, str(error).find((dir.transport.base)))
-        
+
     def test_no_smart_medium(self):
         error = errors.NoSmartMedium("a transport")
         self.assertEqualDiff("The transport 'a transport' cannot tunnel the "
@@ -256,8 +256,8 @@ class TestErrors(TestCaseWithTransport):
 
     def test_up_to_date(self):
         error = errors.UpToDateFormat(bzrdir.BzrDirFormat4())
-        self.assertEqualDiff("The branch format Bazaar-NG branch, "
-                             "format 0.0.4 is already at the most "
+        self.assertEqualDiff("The branch format All-in-one "
+                             "format 4 is already at the most "
                              "recent format.",
                              str(error))
 
@@ -404,7 +404,8 @@ class TestErrors(TestCaseWithTransport):
         """Test the formatting of MalformedBugIdentifier."""
         error = errors.MalformedBugIdentifier('bogus', 'reason for bogosity')
         self.assertEqual(
-            "Did not understand bug identifier bogus: reason for bogosity",
+            'Did not understand bug identifier bogus: reason for bogosity. '
+            'See "bzr help bugs" for more information on this feature.',
             str(error))
 
     def test_unknown_bug_tracker_abbreviation(self):
@@ -461,7 +462,7 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqual(
             "Container has multiple records with the same name: n\xc3\xa5me",
             str(e))
-        
+
     def test_check_error(self):
         # This has a member called 'message', which is problematic in
         # python2.5 because that is a slot on the base Exception class
@@ -560,7 +561,7 @@ class TestErrors(TestCaseWithTransport):
         err = errors.UnknownErrorFromSmartServer(orig_err)
         self.assertEquals(
             "Server sent an unexpected error: ('error', 'tuple')", str(err))
-    
+
     def test_smart_message_handler_error(self):
         # Make an exc_info tuple.
         try:
@@ -616,7 +617,7 @@ class TestErrors(TestCaseWithTransport):
 
 
 class PassThroughError(errors.BzrError):
-    
+
     _fmt = """Pass through %(foo)s and %(bar)s"""
 
     def __init__(self, foo, bar):
@@ -633,7 +634,7 @@ class ErrorWithNoFormat(errors.BzrError):
 
 
 class TestErrorFormatting(TestCase):
-    
+
     def test_always_str(self):
         e = PassThroughError(u'\xb5', 'bar')
         self.assertIsInstance(e.__str__(), str)
@@ -650,7 +651,7 @@ class TestErrorFormatting(TestCase):
                 ['ErrorWithNoFormat uses its docstring as a format, it should use _fmt instead'],
                 lambda x: str(x), e)
         ## s = str(e)
-        self.assertEqual(s, 
+        self.assertEqual(s,
                 "This class has a docstring but no format string.")
 
     def test_mismatched_format_args(self):

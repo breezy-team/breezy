@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import cStringIO
 import re
@@ -24,7 +24,11 @@ from bzrlib import (
     revision as _mod_revision,
     trace,
     )
-from bzrlib.xml_serializer import SubElement, Element, Serializer
+from bzrlib.xml_serializer import (
+    Element,
+    SubElement,
+    XMLSerializer,
+    )
 from bzrlib.inventory import ROOT_ID, Inventory, InventoryEntry
 from bzrlib.revision import Revision
 from bzrlib.errors import BzrError
@@ -92,7 +96,7 @@ def _encode_and_escape(unicode_or_utf8_str, _map=_to_escaped_map):
     # to check if None, rather than try/KeyError
     text = _map.get(unicode_or_utf8_str)
     if text is None:
-        if unicode_or_utf8_str.__class__ == unicode:
+        if unicode_or_utf8_str.__class__ is unicode:
             # The alternative policy is to do a regular UTF8 encoding
             # and then escape only XML meta characters.
             # Performance is equivalent once you use cache_utf8. *However*
@@ -128,10 +132,10 @@ def _get_utf8_or_ascii(a_str,
     # This is fairly optimized because we know what cElementTree does, this is
     # not meant as a generic function for all cases. Because it is possible for
     # an 8-bit string to not be ascii or valid utf8.
-    if a_str.__class__ == unicode:
+    if a_str.__class__ is unicode:
         return _encode_utf8(a_str)
     else:
-        return _get_cached_ascii(a_str)
+        return intern(a_str)
 
 
 def _clear_cache():
@@ -139,7 +143,7 @@ def _clear_cache():
     _to_escaped_map.clear()
 
 
-class Serializer_v8(Serializer):
+class Serializer_v8(XMLSerializer):
     """This serialiser adds rich roots.
 
     Its revision format number matches its inventory number.
@@ -211,7 +215,7 @@ class Serializer_v8(Serializer):
 
     def write_inventory(self, inv, f, working=False):
         """Write inventory to a file.
-        
+
         :param inv: the inventory to write.
         :param f: the file to write. (May be None if the lines are the desired
             output).

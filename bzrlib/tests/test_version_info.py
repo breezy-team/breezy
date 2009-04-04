@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for version_info"""
 
@@ -52,6 +52,16 @@ class TestVersionInfo(TestCaseWithTransport):
         wt.commit(u'\xe52', rev_id='r3')
 
         return wt
+
+    def test_rio_null(self):
+        wt = self.make_branch_and_tree('branch')
+
+        sio = StringIO()
+        builder = RioVersionInfoBuilder(wt.branch, working_tree=wt)
+        builder.generate(sio)
+        val = sio.getvalue()
+        self.assertContainsRe(val, 'build-date:')
+        self.assertContainsRe(val, 'revno: 0')
 
     def test_rio_version_text(self):
         wt = self.create_branch()
@@ -139,9 +149,9 @@ class TestVersionInfo(TestCaseWithTransport):
         wt.rename_one('b', 'd')
         stanza = regen(check_for_clean=True, include_file_revisions=True)
         file_rev_stanza = get_one_stanza(stanza, 'file-revisions')
-        self.assertEqual(['', 'a', 'b', 'c', 'd'], 
+        self.assertEqual(['', 'a', 'b', 'c', 'd'],
                           file_rev_stanza.get_all('path'))
-        self.assertEqual(['r3', 'modified', 'renamed to d', 'new', 
+        self.assertEqual(['r3', 'modified', 'renamed to d', 'new',
                           'renamed from b'],
                          file_rev_stanza.get_all('revision'))
 
@@ -153,6 +163,16 @@ class TestVersionInfo(TestCaseWithTransport):
         self.assertEqual(['', 'a', 'c', 'd'], file_rev_stanza.get_all('path'))
         self.assertEqual(['r4', 'r4', 'unversioned', 'removed'],
                          file_rev_stanza.get_all('revision'))
+
+    def test_python_null(self):
+        wt = self.make_branch_and_tree('branch')
+
+        sio = StringIO()
+        builder = PythonVersionInfoBuilder(wt.branch, working_tree=wt)
+        builder.generate(sio)
+        val = sio.getvalue()
+        self.assertContainsRe(val, "'revision_id': None")
+        self.assertContainsRe(val, "'revno': 0")
 
     def test_python_version(self):
         wt = self.create_branch()
@@ -194,7 +214,7 @@ class TestVersionInfo(TestCaseWithTransport):
         self.build_tree(['branch/c'])
         tvi = regen(check_for_clean=True, include_file_revisions=True)
         self.assertEqual(False, tvi.version_info['clean'])
-        self.assertEqual(['', 'a', 'b', 'c'], 
+        self.assertEqual(['', 'a', 'b', 'c'],
                          sorted(tvi.file_revisions.keys()))
         self.assertEqual('r3', tvi.file_revisions['a'])
         self.assertEqual('r2', tvi.file_revisions['b'])
@@ -212,7 +232,7 @@ class TestVersionInfo(TestCaseWithTransport):
         wt.add('c')
         wt.rename_one('b', 'd')
         tvi = regen(check_for_clean=True, include_file_revisions=True)
-        self.assertEqual(['', 'a', 'b', 'c', 'd'], 
+        self.assertEqual(['', 'a', 'b', 'c', 'd'],
                           sorted(tvi.file_revisions.keys()))
         self.assertEqual('modified', tvi.file_revisions['a'])
         self.assertEqual('renamed to d', tvi.file_revisions['b'])
@@ -223,11 +243,25 @@ class TestVersionInfo(TestCaseWithTransport):
         wt.remove(['c', 'd'])
         os.remove('branch/d')
         tvi = regen(check_for_clean=True, include_file_revisions=True)
-        self.assertEqual(['', 'a', 'c', 'd'], 
+        self.assertEqual(['', 'a', 'c', 'd'],
                           sorted(tvi.file_revisions.keys()))
         self.assertEqual('r4', tvi.file_revisions['a'])
         self.assertEqual('unversioned', tvi.file_revisions['c'])
         self.assertEqual('removed', tvi.file_revisions['d'])
+
+    def test_custom_null(self):
+        sio = StringIO()
+        wt = self.make_branch_and_tree('branch')
+        builder = CustomVersionInfoBuilder(wt.branch, working_tree=wt,
+            template='revno: {revno}')
+        builder.generate(sio)
+        self.assertEquals("revno: 0", sio.getvalue())
+
+        builder = CustomVersionInfoBuilder(wt.branch, working_tree=wt, 
+            template='{revno} revid: {revision_id}')
+        # revision_id is not available yet
+        self.assertRaises(errors.MissingTemplateVariable, 
+            builder.generate, sio)
 
     def test_custom_version_text(self):
         wt = self.create_branch()

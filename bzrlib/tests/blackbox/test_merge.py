@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 # Author: Aaron Bentley <aaron.bentley@utoronto.ca>
 
@@ -108,7 +108,7 @@ class TestMerge(ExternalBase):
         self.assertTrue("Not a branch" in err)
         self.run_bzr('merge -r revno:%d:./..revno:%d:../b'
                     %(ancestor,b.revno()))
-        self.assertEquals(a.get_parent_ids(), 
+        self.assertEquals(a.get_parent_ids(),
                           [a.branch.last_revision(), b.last_revision()])
         self.check_file_contents('goodbye', 'quux')
         a_tree.revert(backups=False)
@@ -236,23 +236,28 @@ class TestMerge(ExternalBase):
         out = self.run_bzr('merge', retcode=3)
         self.assertEquals(out,
                 ('','bzr: ERROR: No location specified or remembered\n'))
-        # test implicit --remember when no parent set, this merge conflicts
+
+        # test uncommitted changes
         self.build_tree(['d'])
         tree_b.add('d')
         self.run_bzr_error(['Working tree ".*" has uncommitted changes'],
-                           'merge ../branch_a')
-        self.assertEquals(abspath(branch_b.get_submit_branch()),
-                          abspath(parent))
-        # test implicit --remember after resolving conflict
+                           'merge')
+
+        # merge should now pass and implicitly remember merge location
         tree_b.commit('commit d')
-        out, err = self.run_bzr('merge')
-        
+        out, err = self.run_bzr('merge ../branch_a')
+
         base = urlutils.local_path_from_url(branch_a.base)
-        self.assertStartsWith(err,
-                          'Merging from remembered submit location %s\n' % (base,))
         self.assertEndsWith(err, '+N  b\nAll changes applied successfully.\n')
         self.assertEquals(abspath(branch_b.get_submit_branch()),
                           abspath(parent))
+        # test implicit --remember when committing new file
+        self.build_tree(['e'])
+        tree_b.add('e')
+        tree_b.commit('commit e')
+        out, err = self.run_bzr('merge')
+        self.assertStartsWith(err,
+                          'Merging from remembered submit location %s\n' % (base,))
         # re-open tree as external run_bzr modified it
         tree_b = branch_b.bzrdir.open_workingtree()
         tree_b.commit('merge branch_a')
@@ -438,7 +443,7 @@ class TestMerge(ExternalBase):
 
     def assertDirectoryContent(self, directory, entries, message=''):
         """Assert whether entries (file or directories) exist in a directory.
-        
+
         It also checks that there are no extra entries.
         """
         ondisk = os.listdir(directory)
@@ -485,6 +490,18 @@ class TestMerge(ExternalBase):
         graph = tree_a.branch.repository.get_graph(tree_b.branch.repository)
         out, err = self.run_bzr(['merge', '-d', 'a', 'b'])
         self.assertContainsRe(err, 'Warning: criss-cross merge encountered.')
+
+    def test_merge_force(self):
+        tree_a = self.make_branch_and_tree('a')
+        self.build_tree(['a/foo'])
+        tree_a.add(['foo'])
+        tree_a.commit('add file')
+        tree_b = tree_a.bzrdir.sprout('b').open_workingtree()
+        self.build_tree_contents([('a/foo', 'change 1')])
+        tree_a.commit('change file')
+        tree_b.merge_from_branch(tree_a.branch)
+        tree_a.commit('empty change to allow merge to run')
+        self.run_bzr(['merge', '../a', '--force'], working_dir='b')
 
     def test_merge_from_submit(self):
         tree_a = self.make_branch_and_tree('a')

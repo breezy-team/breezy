@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """WorkingTree4 format and implementation.
 
@@ -69,6 +69,7 @@ import bzrlib.ui
 
 from bzrlib import symbol_versioning
 from bzrlib.decorators import needs_read_lock, needs_write_lock
+from bzrlib.filters import filtered_input_file, internal_size_sha_file_byname
 from bzrlib.inventory import InventoryEntry, Inventory, ROOT_ID, entry_factory
 import bzrlib.mutabletree
 from bzrlib.mutabletree import needs_tree_write_lock
@@ -166,9 +167,9 @@ class DirStateWorkingTree(WorkingTree3):
     @needs_tree_write_lock
     def add_reference(self, sub_tree):
         # use standard implementation, which calls back to self._add
-        # 
+        #
         # So we don't store the reference_revision in the working dirstate,
-        # it's just recorded at the moment of commit. 
+        # it's just recorded at the moment of commit.
         self._add_reference(sub_tree)
 
     def break_lock(self):
@@ -213,9 +214,8 @@ class DirStateWorkingTree(WorkingTree3):
             WorkingTree3._comparison_data(self, entry, path)
         # it looks like a plain directory, but it's really a reference -- see
         # also kind()
-        if (self._repo_supports_tree_reference and
-            kind == 'directory' and
-            self._directory_is_tree_reference(path)):
+        if (self._repo_supports_tree_reference and kind == 'directory'
+            and entry is not None and entry.kind == 'tree-reference'):
             kind = 'tree-reference'
         return kind, executable, stat_value
 
@@ -247,8 +247,21 @@ class DirStateWorkingTree(WorkingTree3):
             return self._dirstate
         local_path = self.bzrdir.get_workingtree_transport(None
             ).local_abspath('dirstate')
-        self._dirstate = dirstate.DirState.on_file(local_path)
+        self._dirstate = dirstate.DirState.on_file(local_path,
+            self._sha1_provider())
         return self._dirstate
+
+    def _sha1_provider(self):
+        """A function that returns a SHA1Provider suitable for this tree.
+
+        :return: None if content filtering is not supported by this tree.
+          Otherwise, a SHA1Provider is returned that sha's the canonical
+          form of files, i.e. after read filters are applied.
+        """
+        if self.supports_content_filtering():
+            return ContentFilterAwareSHA1Provider(self)
+        else:
+            return None
 
     def filter_unversioned_files(self, paths):
         """Filter out paths that are versioned.
@@ -287,7 +300,7 @@ class DirStateWorkingTree(WorkingTree3):
 
     def _generate_inventory(self):
         """Create and set self.inventory from the dirstate object.
-        
+
         This is relatively expensive: we have to walk the entire dirstate.
         Ideally we would not, and can deprecate this function.
         """
@@ -338,11 +351,9 @@ class DirStateWorkingTree(WorkingTree3):
                     parent_ies[(dirname + '/' + name).strip('/')] = inv_entry
                 elif kind == 'tree-reference':
                     if not self._repo_supports_tree_reference:
-                        raise AssertionError(
-                            "repository of %r "
-                            "doesn't support tree references "
-                            "required by entry %r"
-                            % (self, name))
+                        raise errors.UnsupportedOperation(
+                            self._generate_inventory,
+                            self.branch.repository)
                     inv_entry.reference_revision = link_or_sha1 or None
                 elif kind != 'symlink':
                     raise AssertionError("unknown kind %r" % kind)
@@ -363,7 +374,7 @@ class DirStateWorkingTree(WorkingTree3):
         If either file_id or path is supplied, it is used as the key to lookup.
         If both are supplied, the fastest lookup is used, and an error is
         raised if they do not both point at the same row.
-        
+
         :param file_id: An optional unicode file_id to be looked up.
         :param path: An optional unicode path to be looked up.
         :return: The dirstate row tuple for path/file_id, or (None, None)
@@ -425,7 +436,7 @@ class DirStateWorkingTree(WorkingTree3):
     @needs_read_lock
     def get_parent_ids(self):
         """See Tree.get_parent_ids.
-        
+
         This implementation requests the ids list from the dirstate file.
         """
         return self.current_dirstate().get_parent_ids()
@@ -564,10 +575,11 @@ class DirStateWorkingTree(WorkingTree3):
     def _kind(self, relpath):
         abspath = self.abspath(relpath)
         kind = file_kind(abspath)
-        if (self._repo_supports_tree_reference and
-            kind == 'directory' and
-            self._directory_is_tree_reference(relpath)):
-            kind = 'tree-reference'
+        if (self._repo_supports_tree_reference and kind == 'directory'):
+            entry = self._get_entry(path=relpath)
+            if entry[1] is not None:
+                if entry[1][0][0] == 't':
+                    kind = 'tree-reference'
         return kind
 
     @needs_read_lock
@@ -953,7 +965,7 @@ class DirStateWorkingTree(WorkingTree3):
                 raise errors.PathsNotVersionedError(paths)
         # -- remove redundancy in supplied paths to prevent over-scanning --
         search_paths = osutils.minimum_path_selection(paths)
-        # sketch: 
+        # sketch:
         # for all search_indexs in each path at or under each element of
         # search_paths, if the detail is relocated: add the id, and add the
         # relocated path as one to search if its not searched already. If the
@@ -1015,7 +1027,7 @@ class DirStateWorkingTree(WorkingTree3):
 
     def read_working_inventory(self):
         """Read the working inventory.
-        
+
         This is a meaningless operation for dirstate, but we obey it anyhow.
         """
         return self.inventory
@@ -1052,7 +1064,7 @@ class DirStateWorkingTree(WorkingTree3):
     @needs_tree_write_lock
     def set_parent_ids(self, revision_ids, allow_leftmost_as_ghost=False):
         """Set the parent ids to revision_ids.
-        
+
         See also set_parent_trees. This api will try to retrieve the tree data
         for each element of revision_ids from the trees repository. If you have
         tree data already available, it is more efficient to use
@@ -1283,13 +1295,37 @@ class DirStateWorkingTree(WorkingTree3):
         self.flush()
 
 
+class ContentFilterAwareSHA1Provider(dirstate.SHA1Provider):
+
+    def __init__(self, tree):
+        self.tree = tree
+
+    def sha1(self, abspath):
+        """Return the sha1 of a file given its absolute path."""
+        filters = self.tree._content_filter_stack(self.tree.relpath(abspath))
+        return internal_size_sha_file_byname(abspath, filters)[1]
+
+    def stat_and_sha1(self, abspath):
+        """Return the stat and sha1 of a file given its absolute path."""
+        filters = self.tree._content_filter_stack(self.tree.relpath(abspath))
+        file_obj = file(abspath, 'rb', 65000)
+        try:
+            statvalue = os.fstat(file_obj.fileno())
+            if filters:
+                file_obj = filtered_input_file(file_obj, filters)
+            sha1 = osutils.size_sha_file(file_obj)[1]
+        finally:
+            file_obj.close()
+        return statvalue, sha1
+
+
 class WorkingTree4(DirStateWorkingTree):
     """This is the Format 4 working tree.
 
     This differs from WorkingTree3 by:
      - Having a consolidated internal dirstate, stored in a
        randomly-accessible sorted file on disk.
-     - Not having a regular inventory attribute.  One can be synthesized 
+     - Not having a regular inventory attribute.  One can be synthesized
        on demand but this is expensive and should be avoided.
 
     This is new in bzr 0.15.
@@ -1301,10 +1337,19 @@ class WorkingTree5(DirStateWorkingTree):
 
     This differs from WorkingTree4 by:
      - Supporting content filtering.
+
+    This is new in bzr 1.11.
+    """
+
+
+class WorkingTree6(DirStateWorkingTree):
+    """This is the Format 6 working tree.
+
+    This differs from WorkingTree5 by:
      - Supporting a current view that may mask the set of files in a tree
        impacted by most user operations.
 
-    This is new in bzr 1.11.
+    This is new in bzr 1.14.
     """
 
     def _make_views(self):
@@ -1401,10 +1446,10 @@ class DirStateWorkingTreeFormat(WorkingTreeFormat3):
 
     def _init_custom_control_files(self, wt):
         """Subclasses with custom control files should override this method.
-        
+
         The working tree and control files are locked for writing when this
         method is called.
-        
+
         :param wt: the WorkingTree object
         """
 
@@ -1421,6 +1466,10 @@ class DirStateWorkingTreeFormat(WorkingTreeFormat3):
                            _control_files=control_files)
 
     def __get_matchingbzrdir(self):
+        return self._get_matchingbzrdir()
+
+    def _get_matchingbzrdir(self):
+        """Overrideable method to get a bzrdir for testing."""
         # please test against something that will let us do tree references
         return bzrdir.format_registry.make_bzrdir(
             'dirstate-with-subtree')
@@ -1454,7 +1503,7 @@ class WorkingTreeFormat4(DirStateWorkingTreeFormat):
 
 
 class WorkingTreeFormat5(DirStateWorkingTreeFormat):
-    """WorkingTree format supporting views.
+    """WorkingTree format supporting content filtering.
     """
 
     upgrade_recommended = False
@@ -1468,6 +1517,26 @@ class WorkingTreeFormat5(DirStateWorkingTreeFormat):
     def get_format_description(self):
         """See WorkingTreeFormat.get_format_description()."""
         return "Working tree format 5"
+
+    def supports_content_filtering(self):
+        return True
+
+
+class WorkingTreeFormat6(DirStateWorkingTreeFormat):
+    """WorkingTree format supporting views.
+    """
+
+    upgrade_recommended = False
+
+    _tree_class = WorkingTree6
+
+    def get_format_string(self):
+        """See WorkingTreeFormat.get_format_string()."""
+        return "Bazaar Working Tree Format 6 (bzr 1.14)\n"
+
+    def get_format_description(self):
+        """See WorkingTreeFormat.get_format_description()."""
+        return "Working tree format 6"
 
     def _init_custom_control_files(self, wt):
         """Subclasses with custom control files should override this method."""
@@ -1556,7 +1625,7 @@ class DirStateRevisionTree(Tree):
         If either file_id or path is supplied, it is used as the key to lookup.
         If both are supplied, the fastest lookup is used, and an error is
         raised if they do not both point at the same row.
-        
+
         :param file_id: An optional unicode file_id to be looked up.
         :param path: An optional unicode path to be looked up.
         :return: The dirstate row tuple for path/file_id, or (None, None)
@@ -1677,7 +1746,8 @@ class DirStateRevisionTree(Tree):
         return self.inventory[file_id].text_size
 
     def get_file_text(self, file_id, path=None):
-        return list(self.iter_files_bytes([(file_id, None)]))[0][1]
+        _, content = list(self.iter_files_bytes([(file_id, None)]))[0]
+        return ''.join(content)
 
     def get_reference_revision(self, file_id, path=None):
         return self.inventory[file_id].reference_revision
@@ -1702,10 +1772,9 @@ class DirStateRevisionTree(Tree):
         if entry[1][parent_index][0] != 'l':
             return None
         else:
-            # At present, none of the tree implementations supports non-ascii
-            # symlink targets. So we will just assume that the dirstate path is
-            # correct.
-            return entry[1][parent_index][1]
+            target = entry[1][parent_index][1]
+            target = target.decode('utf8')
+            return target
 
     def get_revision_id(self):
         """Return the revision id for this tree."""
@@ -1808,7 +1877,7 @@ class DirStateRevisionTree(Tree):
 
     def walkdirs(self, prefix=""):
         # TODO: jam 20070215 This is the lazy way by using the RevisionTree
-        # implementation based on an inventory.  
+        # implementation based on an inventory.
         # This should be cleaned up to use the much faster Dirstate code
         # So for now, we just build up the parent inventory, and extract
         # it the same way RevisionTree does.
@@ -1843,9 +1912,9 @@ class DirStateRevisionTree(Tree):
 
 class InterDirStateTree(InterTree):
     """Fast path optimiser for changes_from with dirstate trees.
-    
-    This is used only when both trees are in the dirstate working file, and 
-    the source is any parent within the dirstate, and the destination is 
+
+    This is used only when both trees are in the dirstate working file, and
+    the source is any parent within the dirstate, and the destination is
     the current working tree of the same dirstate.
     """
     # this could be generalized to allow comparisons between any trees in the
@@ -2004,7 +2073,7 @@ class InterDirStateTree(InterTree):
         # the source revid must be in the target dirstate
         if not (source._revision_id == NULL_REVISION or
             source._revision_id in target.get_parent_ids()):
-            # TODO: what about ghosts? it may well need to 
+            # TODO: what about ghosts? it may well need to
             # check for them explicitly.
             return False
         return True
@@ -2020,7 +2089,7 @@ class Converter3to4(object):
 
     def convert(self, tree):
         # lock the control files not the tree, so that we dont get tree
-        # on-unlock behaviours, and so that noone else diddles with the 
+        # on-unlock behaviours, and so that noone else diddles with the
         # tree during upgrade.
         tree._control_files.lock_write()
         try:
@@ -2065,7 +2134,30 @@ class Converter4to5(object):
 
     def convert(self, tree):
         # lock the control files not the tree, so that we don't get tree
-        # on-unlock behaviours, and so that no-one else diddles with the 
+        # on-unlock behaviours, and so that no-one else diddles with the
+        # tree during upgrade.
+        tree._control_files.lock_write()
+        try:
+            self.update_format(tree)
+        finally:
+            tree._control_files.unlock()
+
+    def update_format(self, tree):
+        """Change the format marker."""
+        tree._transport.put_bytes('format',
+            self.target_format.get_format_string(),
+            mode=tree.bzrdir._get_file_mode())
+
+
+class Converter4or5to6(object):
+    """Perform an in-place upgrade of format 4 or 5 to format 6 trees."""
+
+    def __init__(self):
+        self.target_format = WorkingTreeFormat6()
+
+    def convert(self, tree):
+        # lock the control files not the tree, so that we don't get tree
+        # on-unlock behaviours, and so that no-one else diddles with the
         # tree during upgrade.
         tree._control_files.lock_write()
         try:

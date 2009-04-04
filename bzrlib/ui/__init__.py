@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """UI abstraction.
 
@@ -87,7 +87,7 @@ class UIFactory(object):
             warnings.warn("%r finished but nothing is active"
                 % (task,))
         elif task != self._task_stack[-1]:
-            warnings.warn("%r is not the active task %r" 
+            warnings.warn("%r is not the active task %r"
                 % (task, self._task_stack[-1]))
         else:
             del self._task_stack[-1]
@@ -100,7 +100,7 @@ class UIFactory(object):
 
     def _progress_updated(self, task):
         """Called by the ProgressTask when it changes.
-        
+
         Should be specialized to draw the progress.
         """
         pass
@@ -114,7 +114,7 @@ class UIFactory(object):
         pass
 
     def get_boolean(self, prompt):
-        """Get a boolean question answered from the user. 
+        """Get a boolean question answered from the user.
 
         :param prompt: a message to prompt the user with. Should be a single
         line without terminating \n.
@@ -137,7 +137,7 @@ class UIFactory(object):
 
     def report_transport_activity(self, transport, byte_count, direction):
         """Called by transports as they do IO.
-        
+
         This may update a progress bar, spinner, or similar display.
         By default it does nothing.
         """
@@ -147,7 +147,7 @@ class UIFactory(object):
 
 class CLIUIFactory(UIFactory):
     """Common behaviour for command line UI factories.
-    
+
     This is suitable for dumb terminals that can't repaint existing text."""
 
     def __init__(self, stdin=None, stdout=None, stderr=None):
@@ -157,7 +157,6 @@ class CLIUIFactory(UIFactory):
         self.stderr = stderr or sys.stderr
 
     def get_boolean(self, prompt):
-        self.clear_term()
         # FIXME: make a regexp and handle case variations as well.
         while True:
             self.prompt(prompt + "? [y/n]: ")
@@ -167,11 +166,20 @@ class CLIUIFactory(UIFactory):
             if line in ('n\n', 'no\n'):
                 return False
 
-    def get_non_echoed_password(self, prompt):
-        if not sys.stdin.isatty():
-            raise errors.NotATerminal()
-        encoding = osutils.get_terminal_encoding()
-        return getpass.getpass(prompt.encode(encoding, 'replace'))
+    def get_non_echoed_password(self):
+        isatty = getattr(self.stdin, 'isatty', None)
+        if isatty is not None and isatty():
+            # getpass() ensure the password is not echoed and other
+            # cross-platform niceties
+            password = getpass.getpass('')
+        else:
+            # echo doesn't make sense without a terminal
+            password = self.stdin.readline()
+            if not password:
+                password = None
+            elif password[-1] == '\n':
+                password = password[:-1]
+        return password
 
     def get_password(self, prompt='', **kwargs):
         """Prompt the user for a password.
@@ -180,17 +188,20 @@ class CLIUIFactory(UIFactory):
         :param kwargs: Arguments which will be expanded into the prompt.
                        This lets front ends display different things if
                        they so choose.
-        :return: The password string, return None if the user 
+        :return: The password string, return None if the user
                  canceled the request.
         """
         prompt += ': '
-        prompt = (prompt % kwargs)
+        self.prompt(prompt, **kwargs)
         # There's currently no way to say 'i decline to enter a password'
         # as opposed to 'my password is empty' -- does it matter?
-        return self.get_non_echoed_password(prompt)
+        return self.get_non_echoed_password()
 
-    def prompt(self, prompt):
+    def prompt(self, prompt, **kwargs):
         """Emit prompt on the CLI."""
+        prompt = prompt % kwargs
+        prompt = prompt.encode(osutils.get_terminal_encoding(), 'replace')
+        self.clear_term()
         self.stdout.write(prompt)
 
     def note(self, msg):
@@ -210,7 +221,7 @@ class SilentUIFactory(CLIUIFactory):
     def get_password(self, prompt='', **kwargs):
         return None
 
-    def prompt(self, prompt):
+    def prompt(self, prompt, **kwargs):
         pass
 
     def note(self, msg):
@@ -224,14 +235,14 @@ def clear_decorator(func, *args, **kwargs):
 
 
 ui_factory = SilentUIFactory()
-"""IMPORTANT: never import this symbol directly. ONLY ever access it as 
+"""IMPORTANT: never import this symbol directly. ONLY ever access it as
 ui.ui_factory."""
 
 
 def make_ui_for_terminal(stdin, stdout, stderr):
     """Construct and return a suitable UIFactory for a text mode program.
 
-    If stdout is a smart terminal, this gets a smart UIFactory with 
+    If stdout is a smart terminal, this gets a smart UIFactory with
     progress indicators, etc.  If it's a dumb terminal, just plain text output.
     """
     cls = None
@@ -240,7 +251,7 @@ def make_ui_for_terminal(stdin, stdout, stderr):
         cls = CLIUIFactory
     elif not isatty():
         cls = CLIUIFactory
-    elif os.environ.get('TERM') in (None, 'dumb', ''):
+    elif os.environ.get('TERM') in ('dumb', ''):
         # e.g. emacs compile window
         cls = CLIUIFactory
     # User may know better, otherwise default to TextUIFactory

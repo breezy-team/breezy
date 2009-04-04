@@ -209,7 +209,7 @@ class build_ext_if_possible(build_ext):
             build_ext.build_extension(self, ext)
         except CCompilerError:
             if not self.allow_python_fallback:
-                log.warn('\n  Cannot build extensions.\n'
+                log.warn('\n  Cannot build extension "%s".\n'
                          '  Use "build_ext --allow-python-fallback" to use'
                          ' slower python implementations instead.\n'
                          % (ext.name,))
@@ -616,7 +616,7 @@ elif 'py2exe' in sys.argv:
 
     # MSWSOCK.dll is a system-specific library, which py2exe accidentally pulls
     # in on Vista.
-    dll_excludes.append("MSWSOCK.dll")
+    dll_excludes.extend(["MSWSOCK.dll", "MSVCP60.dll", "powrprof.dll"])
     options_list = {"py2exe": {"packages": packages + list(additional_packages),
                                "includes": includes,
                                "excludes": excludes,

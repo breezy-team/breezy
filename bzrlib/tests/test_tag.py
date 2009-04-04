@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 from bzrlib import (
@@ -37,7 +37,7 @@ class TestTagSerialization(TestCase):
 
     def test_tag_serialization(self):
         """Test the precise representation of tag dicts."""
-        # Don't change this after we commit to this format, as it checks 
+        # Don't change this after we commit to this format, as it checks
         # that the format is stable and compatible across releases.
         #
         # This release stores them in bencode as a dictionary from name to
@@ -117,7 +117,7 @@ class TestTagsInCheckouts(TestCaseWithTransport):
         child.tags.delete_tag('foo')
         self.assertRaises(errors.NoSuchTag,
             master.tags.lookup_tag, 'foo')
-    
+
     def test_tag_copied_by_initial_checkout(self):
         # https://bugs.launchpad.net/bzr/+bug/93860
         master = self.make_branch('master')
@@ -160,9 +160,6 @@ class DisabledTagsTests(TestCaseWithTransport):
         super(DisabledTagsTests, self).setUp()
         branch = self.make_branch('.')
         self.tags = DisabledTags(branch)
-
-    def test_supports_tags(self):
-        self.assertEqual(self.tags.supports_tags(), False)
 
     def test_set_tag(self):
         self.assertRaises(errors.TagsNotSupported, self.tags.set_tag)

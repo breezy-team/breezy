@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Tests of the bzr serve command."""
@@ -48,7 +48,7 @@ class TestBzrServe(TestCaseWithTransport):
         result = self.finish_bzr_subprocess(process)
         self.assertEqual('', result[0])
         self.assertEqual('', result[1])
-    
+
     def assertServerFinishesCleanly(self, process):
         """Shutdown the bzr serve instance process looking for errors."""
         # Shutdown the server
@@ -148,7 +148,7 @@ class TestBzrServe(TestCaseWithTransport):
         except ParamikoNotPresent:
             raise TestSkipped('Paramiko not installed')
         from bzrlib.tests.stub_sftp import StubServer
-        
+
         # Make a branch
         self.make_branch('a_branch')
 
@@ -167,7 +167,7 @@ class TestBzrServe(TestCaseWithTransport):
                 proc = subprocess.Popen(
                     command, shell=True, stdin=subprocess.PIPE,
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                
+
                 # XXX: horribly inefficient, not to mention ugly.
                 # Start a thread for each of stdin/out/err, and relay bytes from
                 # the subprocess to channel and vice versa.
@@ -200,7 +200,7 @@ class TestBzrServe(TestCaseWithTransport):
         # Access the branch via a bzr+ssh URL.  The BZR_REMOTE_PATH environment
         # variable is used to tell bzr what command to run on the remote end.
         path_to_branch = osutils.abspath('a_branch')
-        
+
         orig_bzr_remote_path = os.environ.get('BZR_REMOTE_PATH')
         bzr_remote_path = self.get_bzr_path()
         if sys.platform == 'win32':
@@ -226,4 +226,4 @@ class TestBzrServe(TestCaseWithTransport):
             ['%s serve --inet --directory=/ --allow-writes'
              % bzr_remote_path],
             self.command_executed)
-        
+

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 """Implementation of Transport over ftp.
 
 Written by Daniel Silverstone <dsilvers@digital-scurf.org> with serious
@@ -31,10 +31,10 @@ import getpass
 import os
 import os.path
 import urlparse
+import random
 import socket
 import stat
 import time
-import random
 from warnings import warn
 
 from bzrlib import (
@@ -63,14 +63,15 @@ class FtpPathError(errors.PathError):
 
 
 class FtpStatResult(object):
-    def __init__(self, f, relpath):
+
+    def __init__(self, f, abspath):
         try:
-            self.st_size = f.size(relpath)
+            self.st_size = f.size(abspath)
             self.st_mode = stat.S_IFREG
         except ftplib.error_perm:
             pwd = f.pwd()
             try:
-                f.cwd(relpath)
+                f.cwd(abspath)
                 self.st_mode = stat.S_IFDIR
             finally:
                 f.cwd(pwd)
@@ -145,6 +146,8 @@ class FtpTransport(ConnectedTransport):
                                              port=self._port)
             connection.login(user=user, passwd=password)
             connection.set_pasv(not self.is_active)
+            # binary mode is the default
+            connection.voidcmd('TYPE I')
         except socket.error, e:
             raise errors.SocketConnectionError(self._host, self._port,
                                                msg='Unable to connect to',
@@ -195,7 +198,7 @@ class FtpTransport(ConnectedTransport):
 
         if unknown_exc:
             raise unknown_exc(path, extra=extra)
-        # TODO: jam 20060516 Consider re-raising the error wrapped in 
+        # TODO: jam 20060516 Consider re-raising the error wrapped in
         #       something like TransportError, but this loses the traceback
         #       Also, 'sftp' has a generic 'Failure' mode, which we use failure_exc
         #       to handle. Consider doing something like that here.
@@ -401,7 +404,7 @@ class FtpTransport(ConnectedTransport):
 
     def _try_append(self, relpath, text, mode=None, retries=0):
         """Try repeatedly to append the given text to the file at relpath.
-        
+
         This is a recursive function. On errors, it will be called until the
         number of retries is exceeded.
         """
@@ -409,7 +412,6 @@ class FtpTransport(ConnectedTransport):
             abspath = self._remote_path(relpath)
             mutter("FTP appe (try %d) to %s", retries, abspath)
             ftp = self._get_FTP()
-            ftp.voidcmd("TYPE I")
             cmd = "APPE %s" % abspath
             conn = ftp.transfercmd(cmd)
             conn.sendall(text)
@@ -437,7 +439,7 @@ class FtpTransport(ConnectedTransport):
         if mode:
             try:
                 mutter("FTP site chmod: setting permissions to %s on %s",
-                    str(mode), self._remote_path(relpath))
+                       oct(mode), self._remote_path(relpath))
                 ftp = self._get_FTP()
                 cmd = "SITE CHMOD %s %s" % (oct(mode),
                                             self._remote_path(relpath))
@@ -445,7 +447,7 @@ class FtpTransport(ConnectedTransport):
             except ftplib.error_perm, e:
                 # Command probably not available on this server
                 warning("FTP Could not set permissions to %s on %s. %s",
-                        str(mode), self._remote_path(relpath), str(e))
+                        oct(mode), self._remote_path(relpath), str(e))
 
     # TODO: jam 20060516 I believe ftp allows you to tell an ftp server
     #       to copy something to another machine. And you may be able
@@ -476,7 +478,7 @@ class FtpTransport(ConnectedTransport):
             self._rename_and_overwrite(abs_from, abs_to, f)
         except ftplib.error_perm, e:
             self._translate_perm_error(e, abs_from,
-                extra='unable to rename to %r' % (rel_to,), 
+                extra='unable to rename to %r' % (rel_to,),
                 unknown_exc=errors.PathError)
 
     def _rename_and_overwrite(self, abs_from, abs_to, f):
@@ -517,19 +519,26 @@ class FtpTransport(ConnectedTransport):
         mutter("FTP nlst: %s", basepath)
         f = self._get_FTP()
         try:
-            paths = f.nlst(basepath)
-        except ftplib.error_perm, e:
-            self._translate_perm_error(e, relpath, extra='error with list_dir')
-        except ftplib.error_temp, e:
-            # xs4all's ftp server raises a 450 temp error when listing an empty
-            # directory. Check for that and just return an empty list in that
-            # case. See bug #215522
-            if str(e).lower().startswith('450 no files found'):
-                mutter('FTP Server returned "%s" for nlst.'
-                       ' Assuming it means empty directory',
-                       str(e))
-                return []
-            raise
+            try:
+                paths = f.nlst(basepath)
+            except ftplib.error_perm, e:
+                self._translate_perm_error(e, relpath,
+                                           extra='error with list_dir')
+            except ftplib.error_temp, e:
+                # xs4all's ftp server raises a 450 temp error when listing an
+                # empty directory. Check for that and just return an empty list
+                # in that case. See bug #215522
+                if str(e).lower().startswith('450 no files found'):
+                    mutter('FTP Server returned "%s" for nlst.'
+                           ' Assuming it means empty directory',
+                           str(e))
+                    return []
+                raise
+        finally:
+            # Restore binary mode as nlst switch to ascii mode to retrieve file
+            # list
+            f.voidcmd('TYPE I')
+
         # If FTP.nlst returns paths prefixed by relpath, strip 'em
         if paths and paths[0].startswith(basepath):
             entries = [path[len(basepath)+1:] for path in paths]
@@ -588,27 +597,5 @@ class FtpTransport(ConnectedTransport):
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    from bzrlib import tests
-    if tests.FTPServerFeature.available():
-        from bzrlib.tests import ftp_server
-        return [(FtpTransport, ftp_server.FTPServer)]
-    else:
-        # Dummy server to have the test suite report the number of tests
-        # needing that feature. We raise UnavailableFeature from methods before
-        # the test server is being used. Doing so in the setUp method has bad
-        # side-effects (tearDown is never called).
-        class UnavailableFTPServer(object):
-
-            def setUp(self, vfs_server=None):
-                pass
-
-            def tearDown(self):
-                pass
-
-            def get_url(self):
-                raise tests.UnavailableFeature(tests.FTPServerFeature)
-
-            def get_bogus_url(self):
-                raise tests.UnavailableFeature(tests.FTPServerFeature)
-
-        return [(FtpTransport, UnavailableFTPServer)]
+    from bzrlib.tests import ftp_server
+    return [(FtpTransport, ftp_server.FTPTestServer)]

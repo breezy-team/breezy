@@ -12,12 +12,12 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests of status command.
 
 Most of these depend on the particular formatting used.
-As such they really are blackbox tests even though some of the 
+As such they really are blackbox tests even though some of the
 tests are not using self.capture. If we add tests for the programmatic
 interface later, they will be non blackbox tests.
 """
@@ -43,18 +43,18 @@ from bzrlib.workingtree import WorkingTree
 
 
 class BranchStatus(TestCaseWithTransport):
-    
+
     def assertStatus(self, expected_lines, working_tree,
         revision=None, short=False, pending=True, verbose=False):
         """Run status in working_tree and look for output.
-        
+
         :param expected_lines: The lines to look for.
         :param working_tree: The tree to run status in.
         """
         output_string = self.status_string(working_tree, revision, short,
                 pending, verbose)
         self.assertEqual(expected_lines, output_string.splitlines(True))
-    
+
     def status_string(self, wt, revision=None, short=False, pending=True,
         verbose=False):
         # use a real file rather than StringIO because it doesn't handle
@@ -147,7 +147,7 @@ class BranchStatus(TestCaseWithTransport):
         self.build_tree(['more.c'])
         wt.add('more.c')
         wt.commit('Another test message')
-        
+
         revs.append(RevisionSpec.from_string('1'))
         self.assertStatus([
                 'added:\n',
@@ -206,7 +206,7 @@ class BranchStatus(TestCaseWithTransport):
         wt.add('directory')
         wt.add('test.c')
         wt.commit('testing')
-        
+
         self.assertStatus([
                 'unknown:\n',
                 '  bye.c\n',
@@ -225,9 +225,9 @@ class BranchStatus(TestCaseWithTransport):
         tof = StringIO()
         self.assertRaises(errors.PathsDoNotExist,
                           show_tree_status,
-                          wt, specific_files=['bye.c','test.c','absent.c'], 
+                          wt, specific_files=['bye.c','test.c','absent.c'],
                           to_file=tof)
-        
+
         tof = StringIO()
         show_tree_status(wt, specific_files=['directory'], to_file=tof)
         tof.seek(0)
@@ -296,7 +296,7 @@ class BranchStatus(TestCaseWithTransport):
         wt.commit('Create five empty files.')
         open('FILE_B', 'w').write('Modification to file FILE_B.')
         open('FILE_C', 'w').write('Modification to file FILE_C.')
-        unlink('FILE_E')  # FILE_E will be versioned but missing 
+        unlink('FILE_E')  # FILE_E will be versioned but missing
         open('FILE_Q', 'w').write('FILE_Q is added but not committed.')
         wt.add('FILE_Q')  # FILE_Q will be added but not committed
         open('UNVERSIONED_BUT_EXISTING', 'w')
@@ -347,7 +347,7 @@ class BranchStatus(TestCaseWithTransport):
         self.assertContainsRe(err,
                               r'.*ERROR: Path\(s\) do not exist: '
                               'NONEXISTENT.*')
-        
+
     def test_status_nonexistent_file_with_others(self):
         # bzr st [--short] NONEXISTENT ...others..
         wt = self._prepare_nonexistent()
@@ -380,7 +380,7 @@ class BranchStatus(TestCaseWithTransport):
         self.assertContainsRe(err,
                               r'.*ERROR: Path\(s\) do not exist: '
                               'NONEXISTENT.*')
-        
+
     def test_status_multiple_nonexistent_files(self):
         # bzr st [--short] NONEXISTENT ... ANOTHER_NONEXISTENT ...
         wt = self._prepare_nonexistent()
@@ -415,7 +415,7 @@ class BranchStatus(TestCaseWithTransport):
         self.assertContainsRe(err,
                               r'.*ERROR: Path\(s\) do not exist: '
                               'ANOTHER_NONEXISTENT NONEXISTENT.*')
-        
+
     def test_status_nonexistent_file_with_unversioned(self):
         # bzr st [--short] NONEXISTENT A B UNVERSIONED_BUT_EXISTING C D E Q
         wt = self._prepare_nonexistent()
@@ -494,7 +494,7 @@ class CheckoutStatus(BranchStatus):
         super(CheckoutStatus, self).setUp()
         mkdir('codir')
         chdir('codir')
-        
+
     def make_branch_and_tree(self, relpath):
         source = self.make_branch(pathjoin('..', relpath))
         checkout = bzrdir.BzrDirMetaFormat1().initialize(relpath)
@@ -649,7 +649,7 @@ class TestStatus(TestCaseWithTransport):
 
 
 class TestStatusEncodings(TestCaseWithTransport):
-    
+
     def setUp(self):
         TestCaseWithTransport.setUp(self)
         self.user_encoding = osutils._cached_user_encoding

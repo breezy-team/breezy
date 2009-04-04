@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 # TODO: Some way to get a list of external commands (defined by shell
 # scripts) so that they can be included in the help listing as well.
@@ -48,7 +48,8 @@ def help(topic=None, outfile=None):
         for index, topic in topics[1:]:
             shadowed_terms.append('%s%s' % (index.prefix,
                 topic.get_help_topic()))
-        outfile.write(topics[0][1].get_help_text(shadowed_terms))
+        source = topics[0][1]
+        outfile.write(source.get_help_text(shadowed_terms))
     except errors.NoHelpTopic:
         if alias is None:
             raise
@@ -112,7 +113,7 @@ help_topics.topic_registry.register("hidden-commands",
 
 class HelpIndices(object):
     """Maintainer of help topics across multiple indices.
-    
+
     It is currently separate to the HelpTopicRegistry because of its ordered
     nature, but possibly we should instead structure it as a search within the
     registry and add ordering and searching facilities to the registry. The
@@ -143,7 +144,7 @@ class HelpIndices(object):
 
     def search(self, topic):
         """Search for topic across the help search path.
-        
+
         :param topic: A string naming the help topic to search for.
         :raises: NoHelpTopic if none of the indexs in search_path have topic.
         :return: A list of HelpTopics which matched 'topic'.

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
 from cStringIO import StringIO
@@ -116,7 +116,7 @@ class TestReportChanges(tests.TestCase):
             old_path=None, versioned_change='unversioned',
             renamed=False, modified='created', exe_change=False,
             kind=(None, 'file'))
-        # but we can choose to filter these. Probably that should be done 
+        # but we can choose to filter these. Probably that should be done
         # close to the tree, but this is a reasonable starting point.
         self.assertReport(None, file_id=None, path='subdir/foo~',
             old_path=None, versioned_change='unversioned',

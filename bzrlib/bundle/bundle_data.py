@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Read in a bundle stream, and process it into a BundleReader object."""
 
@@ -27,7 +27,7 @@ from bzrlib import (
     )
 import bzrlib.errors
 from bzrlib.bundle import apply_bundle
-from bzrlib.errors import (TestamentMismatch, BzrError, 
+from bzrlib.errors import (TestamentMismatch, BzrError,
                            MalformedHeader, MalformedPatches, NotABundle)
 from bzrlib.inventory import (Inventory, InventoryEntry,
                               InventoryDirectory, InventoryFile,
@@ -200,7 +200,7 @@ class BundleInfo(object):
             self._validate_references_from_repository(repository)
         revision_info = self.get_revision_info(revision_id)
         inventory_revision_id = revision_id
-        bundle_tree = BundleTree(repository.revision_tree(base), 
+        bundle_tree = BundleTree(repository.revision_tree(base),
                                   inventory_revision_id)
         self._update_tree(bundle_tree, revision_id)
 
@@ -239,7 +239,7 @@ class BundleInfo(object):
         for rev_info in self.revisions:
             checked[rev_info.revision_id] = True
             add_sha(rev_to_sha, rev_info.revision_id, rev_info.sha1)
-                
+
         for (rev, rev_info) in zip(self.real_revisions, self.revisions):
             add_sha(inv_to_sha, rev_info.revision_id, rev_info.inventory_sha1)
 
@@ -247,12 +247,12 @@ class BundleInfo(object):
         missing = {}
         for revision_id, sha1 in rev_to_sha.iteritems():
             if repository.has_revision(revision_id):
-                testament = StrictTestament.from_revision(repository, 
+                testament = StrictTestament.from_revision(repository,
                                                           revision_id)
                 local_sha1 = self._testament_sha1_from_revision(repository,
                                                                 revision_id)
                 if sha1 != local_sha1:
-                    raise BzrError('sha1 mismatch. For revision id {%s}' 
+                    raise BzrError('sha1 mismatch. For revision id {%s}'
                             'local: %s, bundle: %s' % (revision_id, local_sha1, sha1))
                 else:
                     count += 1
@@ -287,7 +287,7 @@ class BundleInfo(object):
 
         # This is a mapping from each revision id to it's sha hash
         rev_to_sha1 = {}
-        
+
         rev = self.get_revision(revision_id)
         rev_info = self.get_revision_info(revision_id)
         if not (rev.revision_id == rev_info.revision_id):
@@ -411,7 +411,7 @@ class BundleInfo(object):
             revision = get_rev_id(last_modified, path, kind)
             if lines:
                 do_patch(path, lines, encoding)
-            
+
         valid_actions = {
             'renamed':renamed,
             'removed':removed,
@@ -539,7 +539,7 @@ class BundleTree(Tree):
         #renamed_r
         if old_path in self._renamed_r:
             return None
-        return old_path 
+        return old_path
 
     def new_path(self, old_path):
         """Get the new_path (path in the target_tree) for the file at old_path
@@ -565,7 +565,7 @@ class BundleTree(Tree):
         #renamed_r
         if new_path in self._renamed:
             return None
-        return new_path 
+        return new_path
 
     def path2id(self, path):
         """Return the id of the file present at path in the target tree."""
@@ -605,7 +605,7 @@ class BundleTree(Tree):
                 return None
         new_path = self.id2path(file_id)
         return self.base_tree.path2id(new_path)
-        
+
     def get_file(self, file_id):
         """Return a file-like object containing the new contents of the
         file given by file_id.
@@ -622,7 +622,7 @@ class BundleTree(Tree):
             patch_original = None
         file_patch = self.patches.get(self.id2path(file_id))
         if file_patch is None:
-            if (patch_original is None and 
+            if (patch_original is None and
                 self.get_kind(file_id) == 'directory'):
                 return StringIO()
             if patch_original is None:

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from bzrlib import (
     branch,
@@ -23,7 +23,7 @@ from bzrlib.tests import TestCaseWithTransport
 
 
 class TestExtract(TestCaseWithTransport):
-    
+
     def test_extract(self):
         self.build_tree(['a/', 'a/b/', 'a/b/c', 'a/d'])
         wt = self.make_branch_and_tree('a', format='rich-root-pack')
@@ -36,7 +36,7 @@ class TestExtract(TestCaseWithTransport):
         self.assertRaises(errors.BzrError, wt.id2path, 'b-id')
         self.assertEqual(b_wt.basedir, wt.abspath('b'))
         self.assertEqual(wt.get_parent_ids(), b_wt.get_parent_ids())
-        self.assertEqual(wt.branch.last_revision(), 
+        self.assertEqual(wt.branch.last_revision(),
                          b_wt.branch.last_revision())
 
     def extract_in_checkout(self, a_branch):

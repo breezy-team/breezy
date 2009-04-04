@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 import os
@@ -45,9 +45,9 @@ from bzrlib.errors import NotConflicted
 # u'\xe5' == a with circle
 # '\xc3\xae' == u'\xee' == i with hat
 # So these are u'pathg' and 'idg' only with a circle and a hat. (shappo?)
-example_conflicts = ConflictList([ 
+example_conflicts = ConflictList([
     MissingParent('Not deleting', u'p\xe5thg', '\xc3\xaedg'),
-    ContentsConflict(u'p\xe5tha', None, '\xc3\xaeda'), 
+    ContentsConflict(u'p\xe5tha', None, '\xc3\xaeda'),
     TextConflict(u'p\xe5tha'),
     PathConflict(u'p\xe5thb', u'p\xe5thc', '\xc3\xaedb'),
     DuplicateID('Unversioned existing file', u'p\xe5thc', u'p\xe5thc2',

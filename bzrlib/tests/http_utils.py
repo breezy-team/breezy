@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from cStringIO import StringIO
 import errno
@@ -50,7 +50,7 @@ class HTTPServerWithSmarts(http_server.HttpServer):
 
 class SmartRequestHandler(http_server.TestingHTTPRequestHandler):
     """Extend TestingHTTPRequestHandler to support smart client POSTs.
-    
+
     XXX: This duplicates a fair bit of the logic in bzrlib.transport.http.wsgi.
     """
 

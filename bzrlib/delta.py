@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from bzrlib import (
     errors,
@@ -285,7 +285,7 @@ class _ChangeReporter(object):
             (i.e. when a tree has just been initted)
         :param output_file: If supplied, a file-like object to write to.
             Only one of output and output_file may be supplied.
-        :param unversioned_filter: A filter function to be called on 
+        :param unversioned_filter: A filter function to be called on
             unversioned files. This should return True to ignore a path.
             By default, no filtering takes place.
         :param view_info: A tuple of view_name,view_files if only

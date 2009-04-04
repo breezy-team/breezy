@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the generic Tree.walkdirs interface."""
 
@@ -81,7 +81,7 @@ class TestWalkdirs(TestCaseWithTree):
         for pos, item in enumerate(expected_dirblocks):
             self.assertEqual(item, result[pos])
         self.assertEqual(len(expected_dirblocks), len(result))
-            
+
     def test_walkdir_subtree(self):
         tree = self.get_tree_with_subdirs_and_all_supported_content_types(has_symlinks())
         # test that its iterable by iterating

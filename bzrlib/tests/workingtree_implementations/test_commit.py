@@ -13,7 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from cStringIO import StringIO
 import os
@@ -30,7 +30,7 @@ from bzrlib import (
     uncommit,
     workingtree,
     )
-from bzrlib.errors import (NotBranchError, NotVersionedError, 
+from bzrlib.errors import (NotBranchError, NotVersionedError,
                            UnsupportedOperation)
 from bzrlib.osutils import pathjoin, getcwd
 from bzrlib.tests import TestCase
@@ -63,7 +63,7 @@ class CapturingUIFactory(ui.UIFactory):
 
     def progress_bar(self):
         return self
-    
+
     def nested_progress_bar(self):
         self.depth += 1
         return self
@@ -255,7 +255,7 @@ class TestCommit(TestCaseWithWorkingTree):
         self.assertNotEqual(None, committed_id)
 
     def test_commit_local_unbound(self):
-        # using the library api to do a local commit on unbound branches is 
+        # using the library api to do a local commit on unbound branches is
         # also an error
         tree = self.make_branch_and_tree('tree')
         self.assertRaises(errors.LocalRequiresBoundBranch,
@@ -299,7 +299,7 @@ class TestCommit(TestCaseWithWorkingTree):
                           bzrdir.BzrDir.open,
                           'master')
         tree.commit('foo', rev_id='foo', local=True)
- 
+
     def test_local_commit_does_not_push_to_master(self):
         # a --local commit does not require access to the master branch
         # at all, or even for it to exist.
@@ -444,7 +444,7 @@ class TestCommit(TestCaseWithWorkingTree):
             basis.get_reference_revision(basis.path2id('subtree')))
         # the outer tree must have have changed too.
         self.assertNotEqual(None, rev_id)
-        
+
     def test_nested_commit_second_commit_detects_changes(self):
         """Commit with a nested tree picks up the correct child revid."""
         tree = self.make_branch_and_tree('.')
@@ -456,6 +456,7 @@ class TestCommit(TestCaseWithWorkingTree):
         self.build_tree(['subtree/file'])
         subtree.add(['file'], ['file-id'])
         rev_id = tree.commit('added reference', allow_pointless=False)
+        tree.get_reference_revision(tree.path2id('subtree'))
         child_revid = subtree.last_revision()
         # now change the child tree
         self.build_tree_contents([('subtree/file', 'new-content')])
@@ -494,17 +495,17 @@ class TestCommit(TestCaseWithWorkingTree):
 
 
 class TestCommitProgress(TestCaseWithWorkingTree):
-    
+
     def restoreDefaults(self):
         ui.ui_factory = self.old_ui_factory
 
     def test_commit_progress_steps(self):
-        # during commit we one progress update for every entry in the 
+        # during commit we one progress update for every entry in the
         # inventory, and then one for the inventory, and one for the
         # inventory, and one for the revision insertions.
-        # first we need a test commit to do. Lets setup a branch with 
+        # first we need a test commit to do. Lets setup a branch with
         # 3 files, and alter one in a selected-file commit. This exercises
-        # a number of cases quickly. We should also test things like 
+        # a number of cases quickly. We should also test things like
         # selective commits which excludes newly added files.
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b', 'c'])
@@ -513,7 +514,7 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         f = file('b', 'wt')
         f.write('new content')
         f.close()
-        # set a progress bar that captures the calls so we can see what is 
+        # set a progress bar that captures the calls so we can see what is
         # emitted
         self.old_ui_factory = ui.ui_factory
         self.addCleanup(self.restoreDefaults)
@@ -525,8 +526,8 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         tree.commit('second post', specific_files=['b'])
         # 5 steps, the first of which is reported 2 times, once per dir
         self.assertEqual(
-            [('update', 1, 5, 'Collecting changes [Directory 0] - Stage'),
-             ('update', 1, 5, 'Collecting changes [Directory 1] - Stage'),
+            [('update', 1, 5, 'Collecting changes [0] - Stage'),
+             ('update', 1, 5, 'Collecting changes [1] - Stage'),
              ('update', 2, 5, 'Saving data locally - Stage'),
              ('update', 3, 5, 'Running pre_commit hooks - Stage'),
              ('update', 4, 5, 'Updating the working tree - Stage'),
@@ -536,7 +537,7 @@ class TestCommitProgress(TestCaseWithWorkingTree):
 
     def test_commit_progress_shows_post_hook_names(self):
         tree = self.make_branch_and_tree('.')
-        # set a progress bar that captures the calls so we can see what is 
+        # set a progress bar that captures the calls so we can see what is
         # emitted
         self.old_ui_factory = ui.ui_factory
         self.addCleanup(self.restoreDefaults)
@@ -548,8 +549,8 @@ class TestCommitProgress(TestCaseWithWorkingTree):
                                                'hook name')
         tree.commit('first post')
         self.assertEqual(
-            [('update', 1, 5, 'Collecting changes [Directory 0] - Stage'),
-             ('update', 1, 5, 'Collecting changes [Directory 1] - Stage'),
+            [('update', 1, 5, 'Collecting changes [0] - Stage'),
+             ('update', 1, 5, 'Collecting changes [1] - Stage'),
              ('update', 2, 5, 'Saving data locally - Stage'),
              ('update', 3, 5, 'Running pre_commit hooks - Stage'),
              ('update', 4, 5, 'Updating the working tree - Stage'),
@@ -561,7 +562,7 @@ class TestCommitProgress(TestCaseWithWorkingTree):
 
     def test_commit_progress_shows_pre_hook_names(self):
         tree = self.make_branch_and_tree('.')
-        # set a progress bar that captures the calls so we can see what is 
+        # set a progress bar that captures the calls so we can see what is
         # emitted
         self.old_ui_factory = ui.ui_factory
         self.addCleanup(self.restoreDefaults)
@@ -573,8 +574,8 @@ class TestCommitProgress(TestCaseWithWorkingTree):
                                                'hook name')
         tree.commit('first post')
         self.assertEqual(
-            [('update', 1, 5, 'Collecting changes [Directory 0] - Stage'),
-             ('update', 1, 5, 'Collecting changes [Directory 1] - Stage'),
+            [('update', 1, 5, 'Collecting changes [0] - Stage'),
+             ('update', 1, 5, 'Collecting changes [1] - Stage'),
              ('update', 2, 5, 'Saving data locally - Stage'),
              ('update', 3, 5, 'Running pre_commit hooks - Stage'),
              ('update', 3, 5, 'Running pre_commit hooks [hook name] - Stage'),
@@ -585,7 +586,7 @@ class TestCommitProgress(TestCaseWithWorkingTree):
            )
 
     def test_start_commit_hook(self):
-        """Make sure a start commit hook can modify the tree that is 
+        """Make sure a start commit hook can modify the tree that is
         committed."""
         def start_commit_hook_adds_file(tree):
             open(tree.abspath("newfile"), 'w').write("data")

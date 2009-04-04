@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Lazily compiled regex objects.
 
@@ -91,7 +91,7 @@ def install_lazy_compile():
 
 def reset_compile():
     """Restore the original function to re.compile().
-    
+
     It is safe to call reset_compile() multiple times, it will always
     restore re.compile() to the value that existed at import time.
     Though the first call will reset back to the original (it doesn't

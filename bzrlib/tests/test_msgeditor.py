@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Test commit message editor.
 """
@@ -35,14 +35,14 @@ from bzrlib.msgeditor import (
     edit_commit_message_encoded
 )
 from bzrlib.tests import (
-    iter_suite_tests,
-    probe_bad_non_ascii,
-    split_suite_by_re,
     TestCaseWithTransport,
     TestNotApplicable,
     TestSkipped,
+    multiply_tests,
+    probe_bad_non_ascii,
+    split_suite_by_re,
     )
-from bzrlib.tests.EncodingAdapter import EncodingTestAdapter
+from bzrlib.tests.EncodingAdapter import encoding_scenarios
 from bzrlib.trace import mutter
 
 
@@ -50,9 +50,7 @@ def load_tests(standard_tests, module, loader):
     """Parameterize the test for tempfile creation with different encodings."""
     to_adapt, result = split_suite_by_re(standard_tests,
         "test__create_temp_file_with_commit_template_in_unicode_dir")
-    for test in iter_suite_tests(to_adapt):
-        result.addTests(EncodingTestAdapter().adapt(test))
-    return result
+    return multiply_tests(to_adapt, encoding_scenarios, result)
 
 
 class MsgEditorTest(TestCaseWithTransport):
@@ -69,7 +67,7 @@ class MsgEditorTest(TestCaseWithTransport):
                 "filesystem encoding %s" % sys.getfilesystemencoding())
         working_tree.add(filename)
         return working_tree
-    
+
     def test_commit_template(self):
         """Test building a commit message template"""
         working_tree = self.make_uncommitted_tree()
@@ -354,7 +352,7 @@ if len(sys.argv) == 2:
 
     def test_generate_commit_message_template_no_hooks(self):
         commit_obj = commit.Commit()
-        self.assertIs(None, 
+        self.assertIs(None,
             msgeditor.generate_commit_message_template(commit_obj))
 
     def test_generate_commit_message_template_hook(self):
@@ -364,5 +362,5 @@ if len(sys.argv) == 2:
         msgeditor.hooks.install_named_hook("commit_message_template",
                 lambda commit_obj, msg: "save me some typing\n", None)
         commit_obj = commit.Commit()
-        self.assertEquals("save me some typing\n", 
+        self.assertEquals("save me some typing\n",
             msgeditor.generate_commit_message_template(commit_obj))

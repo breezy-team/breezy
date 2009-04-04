@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """bzr library"""
 
@@ -50,15 +50,14 @@ __copyright__ = "Copyright 2005, 2006, 2007, 2008, 2009 Canonical Ltd."
 # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
 # releaselevel of 'dev' for unreleased under-development code.
 
-version_info = (1, 13, 0, 'dev', 0)
+version_info = (1, 14, 0, 'dev', 0)
 
-
-# API compatibility version: bzrlib is currently API compatible with 1.11.
-api_minimum_version = (1, 11, 0)
+# API compatibility version: bzrlib is currently API compatible with 1.13.
+api_minimum_version = (1, 13, 0)
 
 
 def _format_version_tuple(version_info):
-    """Turn a version number 3-tuple or 5-tuple into a short string.
+    """Turn a version number 2, 3 or 5-tuple into a short string.
 
     This format matches <http://docs.python.org/dist/meta-data.html>
     and the typical presentation used in Python output.
@@ -74,12 +73,14 @@ def _format_version_tuple(version_info):
     1.1.1rc2
     >>> print _format_version_tuple((1, 4, 0))
     1.4
+    >>> print _format_version_tuple((1, 4))
+    1.4
     >>> print _format_version_tuple((1, 4, 0, 'wibble', 0))
     Traceback (most recent call last):
     ...
     ValueError: version_info (1, 4, 0, 'wibble', 0) not valid
     """
-    if version_info[2] == 0:
+    if len(version_info) == 2 or version_info[2] == 0:
         main_version = '%d.%d' % version_info[:2]
     else:
         main_version = '%d.%d.%d' % version_info[:3]
@@ -101,8 +102,9 @@ def _format_version_tuple(version_info):
     else:
         raise ValueError("version_info %r not valid" % (version_info,))
 
-    version_string = '%d.%d.%d.%s.%d' % version_info
+    version_string = '%d.%d.%d.%s.%d' % tuple(version_info)
     return main_version + sub_string
+
 
 __version__ = _format_version_tuple(version_info)
 version_string = __version__

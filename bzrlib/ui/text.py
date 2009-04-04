@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 
@@ -48,7 +48,7 @@ class TextUIFactory(CLIUIFactory):
                  stderr=None):
         """Create a TextUIFactory.
 
-        :param bar_type: The type of progress bar to create. It defaults to 
+        :param bar_type: The type of progress bar to create. It defaults to
                          letting the bzrlib.progress.ProgressBar factory auto
                          select.   Deprecated.
         """
@@ -60,10 +60,6 @@ class TextUIFactory(CLIUIFactory):
         # paints progress, network activity, etc
         self._progress_view = TextProgressView(self.stderr)
 
-    def prompt(self, prompt):
-        """Emit prompt on the CLI."""
-        self.stdout.write(prompt)
-        
     def clear_term(self):
         """Prepare the terminal for output.
 
@@ -72,7 +68,7 @@ class TextUIFactory(CLIUIFactory):
         # XXX: If this is preparing to write to stdout, but that's for example
         # directed into a file rather than to the terminal, and the progress
         # bar _is_ going to the terminal, we shouldn't need
-        # to clear it.  We might need to separately check for the case of 
+        # to clear it.  We might need to separately check for the case of
         self._progress_view.clear()
 
     def note(self, msg):
@@ -82,16 +78,20 @@ class TextUIFactory(CLIUIFactory):
 
     def report_transport_activity(self, transport, byte_count, direction):
         """Called by transports as they do IO.
-        
+
         This may update a progress bar, spinner, or similar display.
         By default it does nothing.
         """
-        self._progress_view.show_transport_activity(byte_count)
+        self._progress_view._show_transport_activity(transport,
+            direction, byte_count)
 
     def _progress_updated(self, task):
         """A task has been updated and wants to be displayed.
         """
-        if task != self._task_stack[-1]:
+        if not self._task_stack:
+            warnings.warn("%r updated but no tasks are active" %
+                (task,))
+        elif task != self._task_stack[-1]:
             warnings.warn("%r is not the top progress task %r" %
                 (task, self._task_stack[-1]))
         self._progress_view.show_progress(task)
@@ -102,8 +102,8 @@ class TextUIFactory(CLIUIFactory):
 
 class TextProgressView(object):
     """Display of progress bar and other information on a tty.
-    
-    This shows one line of text, including possibly a network indicator, spinner, 
+
+    This shows one line of text, including possibly a network indicator, spinner,
     progress bar, message, etc.
 
     One instance of this is created and held by the UI, and fed updates when a
@@ -127,7 +127,6 @@ class TextProgressView(object):
         self._last_repaint = 0
         # time we last got information about transport activity
         self._transport_update_time = 0
-        self._task_fraction = None
         self._last_task = None
         self._total_byte_count = 0
         self._bytes_since_update = 0
@@ -143,16 +142,25 @@ class TextProgressView(object):
 
     def _render_bar(self):
         # return a string for the progress bar itself
-        if (self._last_task is not None) and self._last_task.show_bar:
+        if (self._last_task is None) or self._last_task.show_bar:
+            # If there's no task object, we show space for the bar anyhow.
+            # That's because most invocations of bzr will end showing progress
+            # at some point, though perhaps only after doing some initial IO.
+            # It looks better to draw the progress bar initially rather than
+            # to have what looks like an incomplete progress bar.
             spin_str =  r'/-\|'[self._spin_pos % 4]
             self._spin_pos += 1
-            f = self._task_fraction or 0
             cols = 20
-            # number of markers highlighted in bar
-            markers = int(round(float(cols) * f)) - 1
+            if self._last_task is None:
+                completion_fraction = 0
+            else:
+                completion_fraction = \
+                    self._last_task._overall_completion_fraction() or 0
+            markers = int(round(float(cols) * completion_fraction)) - 1
             bar_str = '[' + ('#' * markers + spin_str).ljust(cols) + '] '
             return bar_str
-        elif (self._last_task is None) or self._last_task.show_spinner:
+        elif self._last_task.show_spinner:
+            # The last task wanted just a spinner, no bar
             spin_str =  r'/-\|'[self._spin_pos % 4]
             self._spin_pos += 1
             return spin_str + ' '
@@ -168,7 +176,6 @@ class TextProgressView(object):
             s = ' %d' % (task.current_cnt)
         else:
             s = ''
-        self._task_fraction = task._overall_completion_fraction()
         # compose all the parent messages
         t = task
         m = task.msg
@@ -178,36 +185,42 @@ class TextProgressView(object):
                 m = t.msg + ':' + m
         return m + s
 
-    def _repaint(self):
+    def _render_line(self):
         bar_string = self._render_bar()
         if self._last_task:
             task_msg = self._format_task(self._last_task)
         else:
             task_msg = ''
         trans = self._last_transport_msg
-        if trans and task_msg:
+        if trans:
             trans += ' | '
-        s = (bar_string
-             + trans
-             + task_msg
-             )
+        return (bar_string + trans + task_msg)
+
+    def _repaint(self):
+        s = self._render_line()
         self._show_line(s)
         self._have_output = True
 
     def show_progress(self, task):
+        """Called by the task object when it has changed.
+        
+        :param task: The top task object; its parents are also included 
+            by following links.
+        """
+        must_update = task is not self._last_task
         self._last_task = task
         now = time.time()
-        if now < self._last_repaint + 0.1:
+        if (not must_update) and (now < self._last_repaint + 0.1):
             return
-        if now > self._transport_update_time + 5:
+        if now > self._transport_update_time + 10:
             # no recent activity; expire it
             self._last_transport_msg = ''
         self._last_repaint = now
         self._repaint()
 
-    def show_transport_activity(self, byte_count):
-        """Called by transports as they do IO.
-        
+    def _show_transport_activity(self, transport, direction, byte_count):
+        """Called by transports via the ui_factory, as they do IO.
+
         This may update a progress bar, spinner, or similar display.
         By default it does nothing.
         """
@@ -219,12 +232,19 @@ class TextProgressView(object):
         now = time.time()
         if self._transport_update_time is None:
             self._transport_update_time = now
-        elif now >= (self._transport_update_time + 0.2):
+        elif now >= (self._transport_update_time + 0.5):
             # guard against clock stepping backwards, and don't update too
             # often
             rate = self._bytes_since_update / (now - self._transport_update_time)
-            msg = ("%6dkB @ %4dkB/s" %
-                (self._total_byte_count>>10, int(rate)>>10,))
+            scheme = getattr(transport, '_scheme', None) or repr(transport)
+            if direction == 'read':
+                dir_char = '>'
+            elif direction == 'write':
+                dir_char = '<'
+            else:
+                dir_char = '?'
+            msg = ("%.7s %s %6dKB %5dKB/s" %
+                    (scheme, dir_char, self._total_byte_count>>10, int(rate)>>10,))
             self._transport_update_time = now
             self._last_repaint = now
             self._bytes_since_update = 0

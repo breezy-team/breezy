@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Display what revisions are missing in 'other' from 'this' and vice versa."""
 
@@ -90,7 +90,7 @@ def _enumerate_mainline(ancestry, graph, tip_revno, tip, backward=True):
     :param tip_revno: The revision number for the tip revision
     :param tip: The tip of mainline
     :param backward: Show oldest versions first when True, newest versions
-        first when False. 
+        first when False.
     :return: [(revno, revision_id)] for all revisions in ancestry that
         are left-hand parents from tip, or None if ancestry is None.
     """
@@ -129,7 +129,7 @@ def _enumerate_with_merges(branch, ancestry, graph, tip_revno, tip,
     :param tip_revno: The revision number for the tip revision
     :param tip: The tip of the ancsetry
     :param backward: Show oldest versions first when True, newest versions
-        first when False. 
+        first when False.
     :return: [(revno, revision_id)] for all revisions in ancestry that
         are parents from tip, or None if ancestry is None.
     """
@@ -152,7 +152,7 @@ def _enumerate_with_merges(branch, ancestry, graph, tip_revno, tip,
     parent_map = dict(((key, value) for key, value
                        in graph.iter_ancestry(mainline_revs[1:])
                        if value is not None))
-    # filter out ghosts; merge_sort errors on ghosts. 
+    # filter out ghosts; merge_sort errors on ghosts.
     # XXX: is this needed here ? -- vila080910
     rev_graph = _mod_repository._strip_NULL_ghosts(parent_map)
     # XXX: what if rev_graph is empty now ? -- vila080910

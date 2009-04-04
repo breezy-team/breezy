@@ -12,28 +12,18 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Black-box tests for bzr.
 
 These check that it behaves properly when it's invoked through the regular
-command-line interface. This doesn't actually run a new interpreter but 
+command-line interface. This doesn't actually run a new interpreter but
 rather starts again from the run_bzr function.
 """
 
-import sys
 
-from bzrlib.tests import (
-                          adapt_modules,
-                          TestCaseWithTransport,
-                          iter_suite_tests,
-                          )
-from bzrlib.tests.EncodingAdapter import EncodingTestAdapter
-from bzrlib.symbol_versioning import (
-    deprecated_method,
-    )
-import bzrlib.ui as ui
+from bzrlib.tests import TestCaseWithTransport
 
 
 def load_tests(basic_tests, module, loader):
@@ -57,6 +47,7 @@ def load_tests(basic_tests, module, loader):
                      'bzrlib.tests.blackbox.test_cat_revision',
                      'bzrlib.tests.blackbox.test_check',
                      'bzrlib.tests.blackbox.test_checkout',
+                     'bzrlib.tests.blackbox.test_clean_tree',
                      'bzrlib.tests.blackbox.test_command_encoding',
                      'bzrlib.tests.blackbox.test_commit',
                      'bzrlib.tests.blackbox.test_conflicts',
@@ -87,6 +78,7 @@ def load_tests(basic_tests, module, loader):
                      'bzrlib.tests.blackbox.test_modified',
                      'bzrlib.tests.blackbox.test_mv',
                      'bzrlib.tests.blackbox.test_nick',
+                     'bzrlib.tests.blackbox.test_non_ascii',
                      'bzrlib.tests.blackbox.test_outside_wt',
                      'bzrlib.tests.blackbox.test_pack',
                      'bzrlib.tests.blackbox.test_pull',
@@ -125,14 +117,6 @@ def load_tests(basic_tests, module, loader):
                      ]
     # add the tests for the sub modules
     suite.addTests(loader.loadTestsFromModuleNames(testmod_names))
-
-    test_encodings = [
-        'bzrlib.tests.blackbox.test_non_ascii',
-    ]
-
-    adapter = EncodingTestAdapter()
-    adapt_modules(test_encodings, adapter, loader, suite)
-
     return suite
 
 

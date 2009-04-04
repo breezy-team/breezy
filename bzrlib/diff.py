@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import difflib
 import os
@@ -41,9 +41,8 @@ from bzrlib import (
 """)
 
 from bzrlib.symbol_versioning import (
-        deprecated_function,
-        one_three
-        )
+    deprecated_function,
+    )
 from bzrlib.trace import mutter, note, warning
 
 
@@ -79,7 +78,7 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
     # both sequences are empty.
     if not oldlines and not newlines:
         return
-    
+
     if allow_binary is False:
         textfile.check_text_lines(oldlines)
         textfile.check_text_lines(newlines)
@@ -200,14 +199,14 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
             break
         else:
             diffcmd.append('-u')
-                  
+
         if diff_opts:
             diffcmd.extend(diff_opts)
 
         pipe = _spawn_external_diff(diffcmd, capture_errors=True)
         out,err = pipe.communicate()
         rc = pipe.returncode
-        
+
         # internal_diff() adds a trailing newline, add one here for consistency
         out += '\n'
         if rc == 2:
@@ -248,8 +247,8 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
                 msg = 'signal %d' % (-rc)
             else:
                 msg = 'exit code %d' % rc
-                
-            raise errors.BzrError('external diff failed with %s; command: %r' 
+
+            raise errors.BzrError('external diff failed with %s; command: %r'
                                   % (rc, diffcmd))
 
 
@@ -334,7 +333,7 @@ def _get_trees_to_diff(path_list, revision_specs, old_url, new_url,
         bzrdir.BzrDir.open_containing_tree_or_branch(old_url)
     if consider_relpath and relpath != '':
         if working_tree is not None and apply_view:
-            _check_path_in_view(working_tree, relpath)
+            views.check_path_in_view(working_tree, relpath)
         specific_files.append(relpath)
     old_tree = _get_tree_to_diff(old_revision_spec, working_tree, branch)
 
@@ -346,7 +345,7 @@ def _get_trees_to_diff(path_list, revision_specs, old_url, new_url,
             bzrdir.BzrDir.open_containing_tree_or_branch(new_url)
         if consider_relpath and relpath != '':
             if working_tree is not None and apply_view:
-                _check_path_in_view(working_tree, relpath)
+                views.check_path_in_view(working_tree, relpath)
             specific_files.append(relpath)
     new_tree = _get_tree_to_diff(new_revision_spec, working_tree, branch,
         basis_is_default=working_tree is None)
@@ -368,22 +367,13 @@ def _get_trees_to_diff(path_list, revision_specs, old_url, new_url,
             if view_files:
                 specific_files = view_files
                 view_str = views.view_display_str(view_files)
-                note("*** ignoring files outside view: %s" % view_str)
+                note("*** Ignoring files outside view. View is %s" % view_str)
 
     # Get extra trees that ought to be searched for file-ids
     extra_trees = None
     if working_tree is not None and working_tree not in (old_tree, new_tree):
         extra_trees = (working_tree,)
     return old_tree, new_tree, specific_files, extra_trees
-
-
-def _check_path_in_view(tree, relpath):
-    """If a working tree has a view enabled, check the path is within it."""
-    if tree.supports_views():
-        view_files = tree.views.lookup_view()
-        if  view_files and not osutils.is_inside_any(view_files, relpath):
-            raise errors.FileOutsideView(relpath, view_files)
-
 
 def _get_tree_to_diff(spec, tree=None, branch=None, basis_is_default=True):
     if branch is None and tree is not None:
@@ -449,13 +439,6 @@ def _patch_header_date(tree, file_id, path):
     mtime = tree.get_file_mtime(file_id, path)
     return timestamp.format_patch_date(mtime)
 
-
-@deprecated_function(one_three)
-def get_prop_change(meta_modified):
-    if meta_modified:
-        return " (properties changed)"
-    else:
-        return  ""
 
 def get_executable_change(old_is_x, new_is_x):
     descr = { True:"+x", False:"-x", None:"??" }

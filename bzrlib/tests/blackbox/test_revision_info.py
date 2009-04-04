@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
 
@@ -22,10 +22,10 @@ from bzrlib.workingtree import WorkingTree
 
 
 class TestRevisionInfo(ExternalBase):
-    
+
     def check_error(self, output, *args):
         """Verify that the expected error matches what bzr says.
-        
+
         The output is supplied first, so that you can supply a variable
         number of arguments to bzr.
         """

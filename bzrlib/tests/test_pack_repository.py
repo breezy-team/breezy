@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for pack repositories.
 
@@ -73,13 +73,13 @@ class TestPackRepository(TestCaseWithTransport):
         """Packs do not need ordered data retrieval."""
         format = self.get_format()
         repo = self.make_repository('.', format=format)
-        self.assertEqual('unordered', repo._fetch_order)
+        self.assertEqual('unordered', repo._format._fetch_order)
 
     def test_attribute__fetch_uses_deltas(self):
         """Packs reuse deltas."""
         format = self.get_format()
         repo = self.make_repository('.', format=format)
-        self.assertEqual(True, repo._fetch_uses_deltas)
+        self.assertEqual(True, repo._format._fetch_uses_deltas)
 
     def test_disk_layout(self):
         format = self.get_format()
@@ -262,7 +262,7 @@ class TestPackRepository(TestCaseWithTransport):
         self.addCleanup(tree.unlock)
         pack = tree.branch.repository._pack_collection.get_pack_by_name(
             tree.branch.repository._pack_collection.names()[0])
-        # revision access tends to be tip->ancestor, so ordering that way on 
+        # revision access tends to be tip->ancestor, so ordering that way on
         # disk is a good idea.
         for _1, key, val, refs in pack.revision_index.iter_all_entries():
             if key == ('1',):
@@ -601,7 +601,7 @@ class TestPackRepository(TestCaseWithTransport):
         self.assertContainsRe(log_file, r'INFO  bzr: ERROR \(ignored\):')
         if token is not None:
             repo.leave_lock_in_place()
-        
+
     def test_abort_write_group_does_raise_when_not_suppressed(self):
         self.vfs_transport_factory = memory.MemoryServer
         repo = self.make_repository('repo')
@@ -679,7 +679,7 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
 
     def setUp(self):
         if not self.format_supports_external_lookups:
-            raise TestNotApplicable("%r doesn't support stacking" 
+            raise TestNotApplicable("%r doesn't support stacking"
                 % (self.format_name,))
         super(TestPackRepositoryStacking, self).setUp()
 
@@ -816,7 +816,7 @@ class TestSmartServerAutopack(TestCaseWithTransport):
     def get_format(self):
         return bzrdir.format_registry.make_bzrdir(self.format_name)
 
-    def test_autopack_rpc_is_used_when_using_hpss(self):
+    def test_autopack_or_streaming_rpc_is_used_when_using_hpss(self):
         # Make local and remote repos
         tree = self.make_branch_and_tree('local', format=self.get_format())
         self.make_branch_and_tree('remote', format=self.get_format())
@@ -831,10 +831,24 @@ class TestSmartServerAutopack(TestCaseWithTransport):
         self.hpss_calls = []
         tree.commit('commit triggering pack')
         tree.branch.push(remote_branch)
-        self.assertTrue('PackRepository.autopack' in self.hpss_calls)
+        autopack_calls = len([call for call in self.hpss_calls if call ==
+            'PackRepository.autopack'])
+        streaming_calls = len([call for call in self.hpss_calls if call ==
+            'Repository.insert_stream'])
+        if autopack_calls:
+            # Non streaming server
+            self.assertEqual(1, autopack_calls)
+            self.assertEqual(0, streaming_calls)
+        else:
+            # Streaming was used, which autopacks on the remote end.
+            self.assertEqual(0, autopack_calls)
+            # NB: The 2 calls are because of the sanity check that the server
+            # supports the verb (see remote.py:RemoteSink.insert_stream for
+            # details).
+            self.assertEqual(2, streaming_calls)
 
 
-def load_tests(basic_tests, module, test_loader):
+def load_tests(basic_tests, module, loader):
     # these give the bzrdir canned format name, and the repository on-disk
     # format string
     scenarios_params = [
@@ -876,9 +890,6 @@ def load_tests(basic_tests, module, test_loader):
               format_supports_external_lookups=True,
               index_class=BTreeGraphIndex),
          ]
-    adapter = tests.TestScenarioApplier()
     # name of the scenario is the format name
-    adapter.scenarios = [(s['format_name'], s) for s in scenarios_params]
-    suite = tests.TestSuite()
-    tests.adapt_tests(basic_tests, adapter, suite)
-    return suite
+    scenarios = [(s['format_name'], s) for s in scenarios_params]
+    return tests.multiply_tests(basic_tests, scenarios, loader.suiteClass())

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Test for 'bzr mv'"""
 
@@ -77,7 +77,7 @@ class TestMove(TestCaseWithTransport):
 
     def test_mv_unqualified(self):
         self.run_bzr_error(['^bzr: ERROR: missing file argument$'], 'mv')
-        
+
     def test_mv_invalid(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['test.txt', 'sub1/'])
@@ -91,7 +91,7 @@ class TestMove(TestCaseWithTransport):
             ["^bzr: ERROR: Could not move test.txt => .*hello.txt: "
              "sub1 is not versioned\.$"],
             'mv test.txt sub1/hello.txt')
-        
+
     def test_mv_dirs(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['hello.txt', 'sub1/'])
@@ -430,3 +430,58 @@ class TestMove(TestCaseWithTransport):
         self.assertNotInWorkingTree('c')
         self.failUnlessExists('d')
         self.assertInWorkingTree('d')
+
+    def make_abcd_tree(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/a', 'tree/c'])
+        tree.add(['a', 'c'])
+        tree.commit('record old names')
+        osutils.rename('tree/a', 'tree/b')
+        osutils.rename('tree/c', 'tree/d')
+        return tree
+
+    def test_mv_auto(self):
+        self.make_abcd_tree()
+        out, err = self.run_bzr('mv --auto', working_dir='tree')
+        self.assertEqual(out, '')
+        self.assertEqual(err, 'a => b\nc => d\n')
+        tree = workingtree.WorkingTree.open('tree')
+        self.assertIsNot(None, tree.path2id('b'))
+        self.assertIsNot(None, tree.path2id('d'))
+
+    def test_mv_auto_one_path(self):
+        self.make_abcd_tree()
+        out, err = self.run_bzr('mv --auto tree')
+        self.assertEqual(out, '')
+        self.assertEqual(err, 'a => b\nc => d\n')
+        tree = workingtree.WorkingTree.open('tree')
+        self.assertIsNot(None, tree.path2id('b'))
+        self.assertIsNot(None, tree.path2id('d'))
+
+    def test_mv_auto_two_paths(self):
+        self.make_abcd_tree()
+        out, err = self.run_bzr('mv --auto tree tree2', retcode=3)
+        self.assertEqual('bzr: ERROR: Only one path may be specified to'
+                         ' --auto.\n', err)
+
+    def test_mv_auto_dry_run(self):
+        self.make_abcd_tree()
+        out, err = self.run_bzr('mv --auto --dry-run', working_dir='tree')
+        self.assertEqual(out, '')
+        self.assertEqual(err, 'a => b\nc => d\n')
+        tree = workingtree.WorkingTree.open('tree')
+        self.assertIsNot(None, tree.path2id('a'))
+        self.assertIsNot(None, tree.path2id('c'))
+
+    def test_mv_no_auto_dry_run(self):
+        self.make_abcd_tree()
+        out, err = self.run_bzr('mv c d --dry-run',
+                                working_dir='tree', retcode=3)
+        self.assertEqual('bzr: ERROR: --dry-run requires --auto.\n', err)
+
+    def test_mv_auto_after(self):
+        self.make_abcd_tree()
+        out, err = self.run_bzr('mv --auto --after', working_dir='tree',
+                                retcode=3)
+        self.assertEqual('bzr: ERROR: --after cannot be specified with'
+                         ' --auto.\n', err)

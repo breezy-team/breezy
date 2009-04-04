@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for HTTP implementations.
 
@@ -71,12 +71,10 @@ except errors.DependencyNotPresent:
 def load_tests(standard_tests, module, loader):
     """Multiply tests for http clients and protocol versions."""
     result = loader.suiteClass()
-    adapter = tests.TestScenarioApplier()
-    remaining_tests = standard_tests
 
-    # one for each transport
+    # one for each transport implementation
     t_tests, remaining_tests = tests.split_suite_by_condition(
-        remaining_tests, tests.condition_isinstance((
+        standard_tests, tests.condition_isinstance((
                 TestHttpTransportRegistration,
                 TestHttpTransportUrls,
                 Test_redirected_to,
@@ -91,10 +89,9 @@ def load_tests(standard_tests, module, loader):
             ('pycurl', dict(_transport=PyCurlTransport,
                             _server=http_server.HttpServer_PyCurl,
                             _qualified_prefix='http+pycurl',)))
-    adapter.scenarios = transport_scenarios
-    tests.adapt_tests(t_tests, adapter, result)
+    tests.multiply_tests(t_tests, transport_scenarios, result)
 
-    # multiplied by one for each protocol version
+    # each implementation tested with each HTTP version
     tp_tests, remaining_tests = tests.split_suite_by_condition(
         remaining_tests, tests.condition_isinstance((
                 SmartHTTPTunnellingTest,
@@ -112,12 +109,11 @@ def load_tests(standard_tests, module, loader):
             ('HTTP/1.0',  dict(_protocol_version='HTTP/1.0')),
             ('HTTP/1.1',  dict(_protocol_version='HTTP/1.1')),
             ]
-    tp_scenarios = tests.multiply_scenarios(adapter.scenarios,
+    tp_scenarios = tests.multiply_scenarios(transport_scenarios,
                                             protocol_scenarios)
-    adapter.scenarios = tp_scenarios
-    tests.adapt_tests(tp_tests, adapter, result)
+    tests.multiply_tests(tp_tests, tp_scenarios, result)
 
-    # multiplied by one for each authentication scheme
+    # auth: each auth scheme on all http versions on all implementations.
     tpa_tests, remaining_tests = tests.split_suite_by_condition(
         remaining_tests, tests.condition_isinstance((
                 TestAuth,
@@ -126,10 +122,11 @@ def load_tests(standard_tests, module, loader):
         ('basic', dict(_auth_scheme='basic')),
         ('digest', dict(_auth_scheme='digest')),
         ]
-    adapter.scenarios = tests.multiply_scenarios(adapter.scenarios,
-                                                 auth_scheme_scenarios)
-    tests.adapt_tests(tpa_tests, adapter, result)
+    tpa_scenarios = tests.multiply_scenarios(tp_scenarios,
+        auth_scheme_scenarios)
+    tests.multiply_tests(tpa_tests, tpa_scenarios, result)
 
+    # activity: activity on all http versions on all implementations
     tpact_tests, remaining_tests = tests.split_suite_by_condition(
         remaining_tests, tests.condition_isinstance((
                 TestActivity,
@@ -139,10 +136,10 @@ def load_tests(standard_tests, module, loader):
         ]
     if tests.HTTPSServerFeature.available():
         activity_scenarios.append(
-            ('https', dict(_activity_server=ActivityHTTPSServer,)))
-    adapter.scenarios = tests.multiply_scenarios(tp_scenarios,
-                                                 activity_scenarios)
-    tests.adapt_tests(tpact_tests, adapter, result)
+            ('https', dict(_activity_server=ActivityHTTPSServer)))
+    tpact_scenarios = tests.multiply_scenarios(tp_scenarios,
+        activity_scenarios)
+    tests.multiply_tests(tpact_tests, tpact_scenarios, result)
 
     # No parametrization for the remaining tests
     result.addTests(remaining_tests)
@@ -161,7 +158,7 @@ class FakeManager(object):
 
 class RecordingServer(object):
     """A fake HTTP server.
-    
+
     It records the bytes sent to it, and replies with a 200.
     """
 
@@ -214,6 +211,35 @@ class RecordingServer(object):
             pass
         self.host = None
         self.port = None
+
+
+class TestAuthHeader(tests.TestCase):
+
+    def parse_header(self, header):
+        ah =  _urllib2_wrappers.AbstractAuthHandler()
+        return ah._parse_auth_header(header)
+
+    def test_empty_header(self):
+        scheme, remainder = self.parse_header('')
+        self.assertEquals('', scheme)
+        self.assertIs(None, remainder)
+
+    def test_negotiate_header(self):
+        scheme, remainder = self.parse_header('Negotiate')
+        self.assertEquals('negotiate', scheme)
+        self.assertIs(None, remainder)
+
+    def test_basic_header(self):
+        scheme, remainder = self.parse_header(
+            'Basic realm="Thou should not pass"')
+        self.assertEquals('basic', scheme)
+        self.assertEquals('realm="Thou should not pass"', remainder)
+
+    def test_digest_header(self):
+        scheme, remainder = self.parse_header(
+            'Digest realm="Thou should not pass"')
+        self.assertEquals('digest', scheme)
+        self.assertEquals('realm="Thou should not pass"', remainder)
 
 
 class TestHTTPServer(tests.TestCase):
@@ -800,7 +826,7 @@ class TestRangeRequestServer(TestSpecificRequestHandler):
         # bytes on the socket
         ireadv = iter(t.readv('a', ((0, 1), (1, 1), (2, 4), (6, 4))))
         self.assertEqual((0, '0'), ireadv.next())
-        # The server should have issued one request so far 
+        # The server should have issued one request so far
         self.assertEqual(1, server.GET_request_nb)
         self.assertEqual('0123456789', t.get_bytes('a'))
         # get_bytes issued an additional request, the readv pending ones are
@@ -1281,7 +1307,7 @@ class RedirectedRequest(_urllib2_wrappers.Request):
         # Since the tests using this class will replace
         # _urllib2_wrappers.Request, we can't just call the base class __init__
         # or we'll loop.
-        RedirectedRequest.init_orig(self, method, url, args, kwargs)
+        RedirectedRequest.init_orig(self, method, url, *args, **kwargs)
         self.follow_redirections = True
 
 

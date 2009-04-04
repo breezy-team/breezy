@@ -13,7 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from cStringIO import StringIO
 import os
@@ -35,7 +35,7 @@ class TestPull(TestCaseWithWorkingTree):
         tree.commit('foo', rev_id='A')
         tree_b = self.make_branch_and_tree('to')
         return tree, tree_b
- 
+
     def test_pull(self):
         tree_a, tree_b = self.get_pullable_trees()
         tree_b.pull(tree_a.branch)

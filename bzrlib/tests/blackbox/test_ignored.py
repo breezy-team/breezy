@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
 """Tests of the 'bzr ignored' command."""
@@ -21,7 +21,7 @@ from bzrlib.tests.blackbox import ExternalBase
 
 
 class TestIgnored(ExternalBase):
-        
+
     def test_ignored_added_file(self):
         """'bzr ignored' should not list versioned files."""
         # this test can go in favour of a more general ui test at some point

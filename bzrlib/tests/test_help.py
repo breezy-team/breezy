@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Unit tests for the bzrlib.help module."""
 
@@ -96,14 +96,14 @@ class TestCommandHelp(tests.TestCase):
         """Help text should be plain text by default."""
         class cmd_Demo(commands.Command):
             """A sample command.
- 
+
             :Examples:
                 Example 1::
- 
+
                     cmd arg1
- 
+
                 Example 2::
- 
+
                     cmd arg2
             """
         cmd = cmd_Demo()
@@ -114,6 +114,7 @@ class TestCommandHelp(tests.TestCase):
             'Usage:   bzr Demo\n'
             '\n'
             'Options:\n'
+            '  --usage        Show usage message and options.\n'
             '  -v, --verbose  Display more information.\n'
             '  -q, --quiet    Only display errors and warnings.\n'
             '  -h, --help     Show help message.\n'
@@ -133,6 +134,7 @@ class TestCommandHelp(tests.TestCase):
             ':Usage:   bzr Demo\n'
             '\n'
             ':Options:\n'
+            '  --usage        Show usage message and options.\n'
             '  -v, --verbose  Display more information.\n'
             '  -q, --quiet    Only display errors and warnings.\n'
             '  -h, --help     Show help message.\n'
@@ -147,16 +149,109 @@ class TestCommandHelp(tests.TestCase):
             '        cmd arg2\n'
             '\n')
 
+    def test_concise_help_text(self):
+        """Concise help text excludes the descriptive sections."""
+        class cmd_Demo(commands.Command):
+            """A sample command.
+ 
+            Blah blah blah.
+
+            :Examples:
+                Example 1::
+ 
+                    cmd arg1
+            """
+        cmd = cmd_Demo()
+        helptext = cmd.get_help_text()
+        self.assertEqualDiff(
+            helptext,
+            'Purpose: A sample command.\n'
+            'Usage:   bzr Demo\n'
+            '\n'
+            'Options:\n'
+            '  --usage        Show usage message and options.\n'
+            '  -v, --verbose  Display more information.\n'
+            '  -q, --quiet    Only display errors and warnings.\n'
+            '  -h, --help     Show help message.\n'
+            '\n'
+            'Description:\n'
+            '  Blah blah blah.\n'
+            '\n'
+            'Examples:\n'
+            '    Example 1:\n'
+            '\n'
+            '        cmd arg1\n'
+            '\n')
+        helptext = cmd.get_help_text(verbose=False)
+        self.assertEquals(helptext,
+            'Purpose: A sample command.\n'
+            'Usage:   bzr Demo\n'
+            '\n'
+            'Options:\n'
+            '  --usage        Show usage message and options.\n'
+            '  -v, --verbose  Display more information.\n'
+            '  -q, --quiet    Only display errors and warnings.\n'
+            '  -h, --help     Show help message.\n'
+            '\n'
+            'See bzr help Demo for more details and examples.\n'
+            '\n')
+
+    def test_help_custom_section_ordering(self):
+        """Custom descriptive sections should remain in the order given."""
+        class cmd_Demo(commands.Command):
+            """A sample command.
+ 
+            Blah blah blah.
+
+            :Formats:
+              Interesting stuff about formats.
+
+            :Examples:
+              Example 1::
+ 
+                cmd arg1
+
+            :Tips:
+              Clever things to keep in mind.
+            """
+        cmd = cmd_Demo()
+        helptext = cmd.get_help_text()
+        self.assertEqualDiff(
+            helptext,
+            'Purpose: A sample command.\n'
+            'Usage:   bzr Demo\n'
+            '\n'
+            'Options:\n'
+            '  --usage        Show usage message and options.\n'
+            '  -v, --verbose  Display more information.\n'
+            '  -q, --quiet    Only display errors and warnings.\n'
+            '  -h, --help     Show help message.\n'
+            '\n'
+            'Description:\n'
+            '  Blah blah blah.\n'
+            '\n'
+            'Formats:\n'
+            '  Interesting stuff about formats.\n'
+            '\n'
+            'Examples:\n'
+            '  Example 1:\n'
+            '\n'
+            '    cmd arg1\n'
+            '\n'
+            'Tips:\n'
+            '  Clever things to keep in mind.\n'
+            '\n')
+
     def test_help_text_custom_usage(self):
         """Help text may contain a custom usage section."""
         class cmd_Demo(commands.Command):
             """A sample command.
- 
+
             :Usage:
                 cmd Demo [opts] args
- 
+
                 cmd Demo -h
- 
+
             Blah blah blah.
             """
         cmd = cmd_Demo()
@@ -170,6 +265,7 @@ class TestCommandHelp(tests.TestCase):
             '\n'
             '\n'
             'Options:\n'
+            '  --usage        Show usage message and options.\n'
             '  -v, --verbose  Display more information.\n'
             '  -q, --quiet    Only display errors and warnings.\n'
             '  -h, --help     Show help message.\n'
@@ -183,7 +279,7 @@ class TestRegisteredTopic(tests.TestCase):
 
     def test_contruct(self):
         """Construction takes the help topic name for the registered item."""
-        # validate our test 
+        # validate our test
         self.assertTrue('basic' in help_topics.topic_registry)
         topic = help_topics.RegisteredTopic('basic')
         self.assertEqual('basic', topic.topic)
@@ -203,10 +299,10 @@ class TestRegisteredTopic(tests.TestCase):
 
     def test_get_help_text_loaded_from_file(self):
         # Pick a known topic stored in an external file
-        topic = help_topics.RegisteredTopic('hooks')
+        topic = help_topics.RegisteredTopic('authentication')
         self.assertStartsWith(topic.get_help_text(),
-            'Hooks\n'
-            '=====\n'
+            'Authentication Settings\n'
+            '=======================\n'
             '\n')
 
     def test_get_help_topic(self):

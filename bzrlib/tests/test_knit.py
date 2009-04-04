@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for Knit data structure"""
 
@@ -299,7 +299,7 @@ class KnitRecordAccessTestsMixin(object):
         access = self.get_access()
         memos = access.add_raw_records([('key', 10)], '1234567890')
         self.assertEqual(['1234567890'], list(access.get_raw_records(memos)))
- 
+
     def test_add_several_raw_records(self):
         """add_raw_records with many records and read some back."""
         access = self.get_access()
@@ -368,25 +368,23 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         """
         tree = self.make_branch_and_memory_tree('tree')
         tree.lock_write()
-        try:
-            tree.add([''], ['root-id'])
-            tree.commit('one', rev_id='rev-1')
-            tree.commit('two', rev_id='rev-2')
-            tree.commit('three', rev_id='rev-3')
-            # Pack these two revisions into another pack file, but don't remove
-            # the originials
-            repo = tree.branch.repository
-            collection = repo._pack_collection
-            collection.ensure_loaded()
-            orig_packs = collection.packs
-            packer = pack_repo.Packer(collection, orig_packs, '.testpack')
-            new_pack = packer.pack()
-
-            vf = tree.branch.repository.revisions
-        finally:
-            tree.unlock()
-        tree.branch.repository.lock_read()
         self.addCleanup(tree.branch.repository.unlock)
+        tree.add([''], ['root-id'])
+        tree.commit('one', rev_id='rev-1')
+        tree.commit('two', rev_id='rev-2')
+        tree.commit('three', rev_id='rev-3')
+        # Pack these three revisions into another pack file, but don't remove
+        # the originals
+        repo = tree.branch.repository
+        collection = repo._pack_collection
+        collection.ensure_loaded()
+        orig_packs = collection.packs
+        packer = pack_repo.Packer(collection, orig_packs, '.testpack')
+        new_pack = packer.pack()
+        # forget about the new pack
+        collection.reset()
+        repo.refresh_data()
+        vf = tree.branch.repository.revisions
         del tree
         # Set up a reload() function that switches to using the new pack file
         new_index = new_pack.revision_index
@@ -1093,6 +1091,26 @@ class LowLevelKnitIndexTests(TestCase):
             call[1][1].getvalue())
         self.assertEqual({'create_parent_dir': True}, call[2])
 
+    def assertTotalBuildSize(self, size, keys, positions):
+        self.assertEqual(size,
+                         knit._get_total_build_size(None, keys, positions))
+
+    def test__get_total_build_size(self):
+        positions = {
+            ('a',): (('fulltext', False), (('a',), 0, 100), None),
+            ('b',): (('line-delta', False), (('b',), 100, 21), ('a',)),
+            ('c',): (('line-delta', False), (('c',), 121, 35), ('b',)),
+            ('d',): (('line-delta', False), (('d',), 156, 12), ('b',)),
+            }
+        self.assertTotalBuildSize(100, [('a',)], positions)
+        self.assertTotalBuildSize(121, [('b',)], positions)
+        # c needs both a & b
+        self.assertTotalBuildSize(156, [('c',)], positions)
+        # we shouldn't count 'b' twice
+        self.assertTotalBuildSize(156, [('b',), ('c',)], positions)
+        self.assertTotalBuildSize(133, [('d',)], positions)
+        self.assertTotalBuildSize(168, [('c',), ('d',)], positions)
+
     def test_get_position(self):
         transport = MockTransport([
             _KndxIndex.HEADER,
@@ -1536,7 +1554,7 @@ class TestGraphIndexKnit(KnitTests):
             [('parent',)])])
         # but neither should have added data:
         self.assertEqual([[], [], [], []], self.caught_entries)
-        
+
     def test_add_version_different_dup(self):
         index = self.two_graph_index(deltas=True, catch_adds=True)
         # change options
@@ -1548,7 +1566,7 @@ class TestGraphIndexKnit(KnitTests):
         self.assertRaises(errors.KnitCorrupt, index.add_records,
             [(('tip',), 'fulltext,no-eol', (None, 0, 100), [])])
         self.assertEqual([], self.caught_entries)
-        
+
     def test_add_versions_nodeltas(self):
         index = self.two_graph_index(catch_adds=True)
         index.add_records([
@@ -1596,7 +1614,7 @@ class TestGraphIndexKnit(KnitTests):
             [('parent',)])])
         # but neither should have added data.
         self.assertEqual([[], [], [], []], self.caught_entries)
-        
+
     def test_add_versions_different_dup(self):
         index = self.two_graph_index(deltas=True, catch_adds=True)
         # change options
@@ -1618,7 +1636,7 @@ class TestGraphIndexKnit(KnitTests):
             [(('tip', ), ' 100 78',
               ([('missing-parent', ), ('ghost', )], [('missing-parent', )]))])
         return graph_index
-    
+
     def make_g_index_no_external_refs(self):
         graph_index = self.make_g_index('no_external_refs', 2,
             [(('rev', ), ' 100 78',
@@ -1687,7 +1705,7 @@ class TestGraphIndexKnit(KnitTests):
         index.scan_unvalidated_index(graph_index_b)
         self.assertEqual(
             frozenset([]), index.get_missing_compression_parents())
-        
+
 
 class TestNoParentsGraphIndexKnit(KnitTests):
     """Tests for knits using _KnitGraphIndex with no parents."""
@@ -1795,7 +1813,7 @@ class TestNoParentsGraphIndexKnit(KnitTests):
         index.add_records([(('tip',), 'fulltext,no-eol', (None, 0, 1000), [])])
         # but neither should have added data.
         self.assertEqual([[], [], [], []], self.caught_entries)
-        
+
     def test_add_version_different_dup(self):
         index = self.two_graph_index(catch_adds=True)
         # change options
@@ -1809,7 +1827,7 @@ class TestNoParentsGraphIndexKnit(KnitTests):
         self.assertRaises(errors.KnitCorrupt, index.add_records,
             [(('tip',), 'fulltext,no-eol', (None, 0, 100), [('parent',)])])
         self.assertEqual([], self.caught_entries)
-        
+
     def test_add_versions(self):
         index = self.two_graph_index(catch_adds=True)
         index.add_records([
@@ -1847,7 +1865,7 @@ class TestNoParentsGraphIndexKnit(KnitTests):
         index.add_records([(('tip',), 'fulltext,no-eol', (None, 0, 1000), [])])
         # but neither should have added data.
         self.assertEqual([[], [], [], []], self.caught_entries)
-        
+
     def test_add_versions_different_dup(self):
         index = self.two_graph_index(catch_adds=True)
         # change options
@@ -1865,6 +1883,91 @@ class TestNoParentsGraphIndexKnit(KnitTests):
             [(('tip',), 'fulltext,no-eol', (None, 0, 100), []),
              (('tip',), 'no-eol,line-delta', (None, 0, 100), [])])
         self.assertEqual([], self.caught_entries)
+
+
+class TestKnitVersionedFiles(KnitTests):
+
+    def assertGroupKeysForIo(self, exp_groups, keys, non_local_keys,
+                             positions, _min_buffer_size=None):
+        kvf = self.make_test_knit()
+        if _min_buffer_size is None:
+            _min_buffer_size = knit._STREAM_MIN_BUFFER_SIZE
+        self.assertEqual(exp_groups, kvf._group_keys_for_io(keys,
+                                        non_local_keys, positions,
+                                        _min_buffer_size=_min_buffer_size))
+
+    def assertSplitByPrefix(self, expected_map, expected_prefix_order,
+                            keys):
+        split, prefix_order = KnitVersionedFiles._split_by_prefix(keys)
+        self.assertEqual(expected_map, split)
+        self.assertEqual(expected_prefix_order, prefix_order)
+
+    def test__group_keys_for_io(self):
+        ft_detail = ('fulltext', False)
+        ld_detail = ('line-delta', False)
+        f_a = ('f', 'a')
+        f_b = ('f', 'b')
+        f_c = ('f', 'c')
+        g_a = ('g', 'a')
+        g_b = ('g', 'b')
+        g_c = ('g', 'c')
+        positions = {
+            f_a: (ft_detail, (f_a, 0, 100), None),
+            f_b: (ld_detail, (f_b, 100, 21), f_a),
+            f_c: (ld_detail, (f_c, 180, 15), f_b),
+            g_a: (ft_detail, (g_a, 121, 35), None),
+            g_b: (ld_detail, (g_b, 156, 12), g_a),
+            g_c: (ld_detail, (g_c, 195, 13), g_a),
+            }
+        self.assertGroupKeysForIo([([f_a], set())],
+                                  [f_a], [], positions)
+        self.assertGroupKeysForIo([([f_a], set([f_a]))],
+                                  [f_a], [f_a], positions)
+        self.assertGroupKeysForIo([([f_a, f_b], set([]))],
+                                  [f_a, f_b], [], positions)
+        self.assertGroupKeysForIo([([f_a, f_b], set([f_b]))],
+                                  [f_a, f_b], [f_b], positions)
+        self.assertGroupKeysForIo([([f_a, f_b, g_a, g_b], set())],
+                                  [f_a, g_a, f_b, g_b], [], positions)
+        self.assertGroupKeysForIo([([f_a, f_b, g_a, g_b], set())],
+                                  [f_a, g_a, f_b, g_b], [], positions,
+                                  _min_buffer_size=150)
+        self.assertGroupKeysForIo([([f_a, f_b], set()), ([g_a, g_b], set())],
+                                  [f_a, g_a, f_b, g_b], [], positions,
+                                  _min_buffer_size=100)
+        self.assertGroupKeysForIo([([f_c], set()), ([g_b], set())],
+                                  [f_c, g_b], [], positions,
+                                  _min_buffer_size=125)
+        self.assertGroupKeysForIo([([g_b, f_c], set())],
+                                  [g_b, f_c], [], positions,
+                                  _min_buffer_size=125)
+
+    def test__split_by_prefix(self):
+        self.assertSplitByPrefix({'f': [('f', 'a'), ('f', 'b')],
+                                  'g': [('g', 'b'), ('g', 'a')],
+                                 }, ['f', 'g'],
+                                 [('f', 'a'), ('g', 'b'),
+                                  ('g', 'a'), ('f', 'b')])
+
+        self.assertSplitByPrefix({'f': [('f', 'a'), ('f', 'b')],
+                                  'g': [('g', 'b'), ('g', 'a')],
+                                 }, ['f', 'g'],
+                                 [('f', 'a'), ('f', 'b'),
+                                  ('g', 'b'), ('g', 'a')])
+
+        self.assertSplitByPrefix({'f': [('f', 'a'), ('f', 'b')],
+                                  'g': [('g', 'b'), ('g', 'a')],
+                                 }, ['f', 'g'],
+                                 [('f', 'a'), ('f', 'b'),
+                                  ('g', 'b'), ('g', 'a')])
+
+        self.assertSplitByPrefix({'f': [('f', 'a'), ('f', 'b')],
+                                  'g': [('g', 'b'), ('g', 'a')],
+                                  '': [('a',), ('b',)]
+                                 }, ['f', 'g', ''],
+                                 [('f', 'a'), ('g', 'b'),
+                                  ('a',), ('b',),
+                                  ('g', 'a'), ('f', 'b')])
 
 
 class TestStacking(KnitTests):
@@ -1933,7 +2036,7 @@ class TestStacking(KnitTests):
 
     def test_check(self):
         # At the moment checking a stacked knit does implicitly check the
-        # fallback files.  
+        # fallback files.
         basis, test = self.get_basis_and_test_knit()
         test.check()
 
@@ -2177,7 +2280,7 @@ class TestStacking(KnitTests):
 
     def test_iter_lines_added_or_present_in_keys(self):
         # Lines from the basis are returned, and lines for a given key are only
-        # returned once. 
+        # returned once.
         key1 = ('foo1',)
         key2 = ('foo2',)
         # all sources are asked for keys:

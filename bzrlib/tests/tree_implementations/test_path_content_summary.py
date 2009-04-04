@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Test that all Tree's implement path_content_summary."""
 
@@ -51,6 +51,19 @@ class TestPathContentSummary(TestCaseWithTree):
         tree.add([u'\u03b2-path'])
         summary = self._convert_tree(tree).path_content_summary(u'\u03b2-path')
         self.assertEqual(('symlink', None, None, 'target'), summary)
+
+    def test_unicode_symlink_target_summary(self):
+        self.requireFeature(SymlinkFeature)
+        tree = self.make_branch_and_tree('tree')
+        try:
+            os.symlink(u'tree/\u03b2-path'.encode(_fs_enc), 'tree/link')
+        except UnicodeError:
+            raise TestSkipped(
+                'This platform does not support unicode file paths.')
+
+        tree.add(['link'])
+        summary = self._convert_tree(tree).path_content_summary('link')
+        self.assertEqual(('symlink', None, None, u'tree/\u03b2-path'), summary)
 
     def test_missing_content_summary(self):
         tree = self.make_branch_and_tree('tree')

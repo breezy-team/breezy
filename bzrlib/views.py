@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """View management.
 
@@ -27,6 +27,7 @@ import re
 
 from bzrlib import (
     errors,
+    osutils,
     )
 
 
@@ -104,7 +105,7 @@ class PathBasedViews(_Views):
 
     def lookup_view(self, view_name=None):
         """Return the contents of a view.
- 
+
         :param view_Name: name of the view or None to lookup the current view
         :return: the list of files/directories in the requested view
         """
@@ -121,7 +122,7 @@ class PathBasedViews(_Views):
 
     def set_view(self, view_name, view_files, make_current=True):
         """Add or update a view definition.
- 
+
         :param view_name: the name of the view
         :param view_files: the list of files/directories in the view
         :param make_current: make this view the current one or not
@@ -273,3 +274,11 @@ def view_display_str(view_files, encoding=None):
         return ", ".join(view_files)
     else:
         return ", ".join([v.encode(encoding, 'replace') for v in view_files])
+
+
+def check_path_in_view(tree, relpath):
+    """If a working tree has a view enabled, check the path is within it."""
+    if tree.supports_views():
+        view_files = tree.views.lookup_view()
+        if  view_files and not osutils.is_inside_any(view_files, relpath):
+            raise errors.FileOutsideView(relpath, view_files)

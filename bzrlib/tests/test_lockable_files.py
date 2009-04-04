@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from StringIO import StringIO
 
@@ -145,7 +145,7 @@ class _TestLockableFiles_mixin(object):
 
     def test__escape(self):
         self.assertEqual('%25', self.lockable._escape('%'))
-        
+
     def test__escape_empty(self):
         self.assertEqual('', self.lockable._escape(''))
 
@@ -356,9 +356,9 @@ class _TestLockableFiles_mixin(object):
         third_lockable.unlock()
 
 
-# This method of adapting tests to parameters is different to 
-# the TestProviderAdapters used elsewhere, but seems simpler for this 
-# case.  
+# This method of adapting tests to parameters is different to
+# the TestProviderAdapters used elsewhere, but seems simpler for this
+# case.
 class TestLockableFiles_TransportLock(TestCaseInTempDir,
                                       _TestLockableFiles_mixin):
 
@@ -381,7 +381,7 @@ class TestLockableFiles_TransportLock(TestCaseInTempDir,
 
     def get_lockable(self):
         return LockableFiles(self.sub_transport, 'my-lock', TransportLock)
-        
+
 
 class TestLockableFiles_LockDir(TestCaseInTempDir,
                               _TestLockableFiles_mixin):
@@ -391,8 +391,8 @@ class TestLockableFiles_LockDir(TestCaseInTempDir,
         TestCaseInTempDir.setUp(self)
         self.transport = get_transport('.')
         self.lockable = self.get_lockable()
-        # the lock creation here sets mode - test_permissions on branch 
-        # tests that implicitly, but it might be a good idea to factor 
+        # the lock creation here sets mode - test_permissions on branch
+        # tests that implicitly, but it might be a good idea to factor
         # out the mode checking logic and have it applied to loackable files
         # directly. RBC 20060418
         self.lockable.create_lock()

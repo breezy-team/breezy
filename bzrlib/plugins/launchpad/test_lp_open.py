@@ -12,11 +12,9 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the launchpad-open command."""
-
-from bzrlib.osutils import abspath
 
 from bzrlib.tests import TestCaseWithTransport
 
@@ -29,16 +27,17 @@ class TestLaunchpadOpen(TestCaseWithTransport):
         return err.splitlines()
 
     def test_non_branch(self):
-        # Running lp-open on a non-branch prints a simple error.
+        # If given a branch with no public or push locations, lp-open will try
+        # to guess the Launchpad page for the given URL / path. If it cannot
+        # find one, it will raise an error.
         self.assertEqual(
-            ['bzr: ERROR: Not a branch: "%s/".' % abspath('.')],
+            ['bzr: ERROR: . is not registered on Launchpad.'],
             self.run_open('.', retcode=3))
 
-    def test_no_public_location(self):
+    def test_no_public_location_no_push_location(self):
         self.make_branch('not-public')
         self.assertEqual(
-            ['bzr: ERROR: There is no public branch set for "%s/".'
-             % abspath('not-public')],
+            ['bzr: ERROR: not-public is not registered on Launchpad.'],
             self.run_open('not-public', retcode=3))
 
     def test_non_launchpad_branch(self):
@@ -46,10 +45,10 @@ class TestLaunchpadOpen(TestCaseWithTransport):
         url = 'http://example.com/non-lp'
         branch.set_public_branch(url)
         self.assertEqual(
-            ['bzr: ERROR: %s is not hosted on Launchpad.' % url],
+            ['bzr: ERROR: %s is not registered on Launchpad.' % url],
             self.run_open('non-lp', retcode=3))
 
-    def test_launchpad_branch(self):
+    def test_launchpad_branch_with_public_location(self):
         branch = self.make_branch('lp')
         branch.set_public_branch(
             'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
@@ -57,3 +56,34 @@ class TestLaunchpadOpen(TestCaseWithTransport):
             ['Opening https://code.edge.launchpad.net/~foo/bar/baz in web '
              'browser'],
             self.run_open('lp'))
+
+    def test_launchpad_branch_with_public_and_push_location(self):
+        branch = self.make_branch('lp')
+        branch.set_public_branch(
+            'bzr+ssh://bazaar.launchpad.net/~foo/bar/public')
+        branch.set_push_location(
+            'bzr+ssh://bazaar.launchpad.net/~foo/bar/push')
+        self.assertEqual(
+            ['Opening https://code.edge.launchpad.net/~foo/bar/public in web '
+             'browser'],
+            self.run_open('lp'))
+
+    def test_launchpad_branch_with_no_public_but_with_push(self):
+        # lp-open falls back to the push location if it cannot find a public
+        # location.
+        branch = self.make_branch('lp')
+        branch.set_push_location(
+            'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
+        self.assertEqual(
+            ['Opening https://code.edge.launchpad.net/~foo/bar/baz in web '
+             'browser'],
+            self.run_open('lp'))
+
+    def test_launchpad_branch_with_no_public_no_push(self):
+        # If lp-open is given a branch URL and that branch has no public
+        # location and no push location, then just try to look up the
+        # Launchpad page for that URL.
+        self.assertEqual(
+            ['Opening https://code.edge.launchpad.net/~foo/bar/baz in web '
+             'browser'],
+            self.run_open('bzr+ssh://bazaar.launchpad.net/~foo/bar/baz'))

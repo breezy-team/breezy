@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2008 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Black-box tests for bzr branch."""
@@ -256,6 +256,56 @@ class TestBranchStacked(ExternalBase):
             'Created new stacked branch referring to %s.\n' % (trunk.base,),
             err)
 
+
+class TestSmartServerBranching(ExternalBase):
+
+    def test_branch_from_trivial_branch_to_same_server_branch_acceptance(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('from')
+        for count in range(9):
+            t.commit(message='commit %d' % count)
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['branch', self.get_url('from'),
+            self.get_url('target')])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(53, self.hpss_calls)
+
+    def test_branch_from_trivial_branch_streaming_acceptance(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('from')
+        for count in range(9):
+            t.commit(message='commit %d' % count)
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['branch', self.get_url('from'),
+            'local-target'])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(10, self.hpss_calls)
+
+    def test_branch_from_trivial_stacked_branch_streaming_acceptance(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('trunk')
+        for count in range(8):
+            t.commit(message='commit %d' % count)
+        tree2 = t.branch.bzrdir.sprout('feature', stacked=True
+            ).open_workingtree()
+        tree2.commit('feature change')
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['branch', self.get_url('feature'),
+            'local-target'])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(15, self.hpss_calls)
 
 
 class TestRemoteBranch(TestCaseWithSFTPServer):

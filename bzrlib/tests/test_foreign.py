@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Tests for foreign VCS utility code."""
@@ -47,13 +47,13 @@ class DummyForeignVcsMappingRegistry(foreign.VcsMappingRegistry):
 
 class DummyForeignVcs(foreign.ForeignVcs):
     """A dummy Foreign VCS, for use with testing.
-    
+
     It has revision ids that are a tuple with three strings.
     """
 
     def __init__(self):
         self.mapping_registry = DummyForeignVcsMappingRegistry()
-        self.mapping_registry.register("v1", DummyForeignVcsMapping(self), 
+        self.mapping_registry.register("v1", DummyForeignVcsMapping(self),
                                        "Version 1")
 
     def show_foreign_revid(self, foreign_revid):
@@ -63,14 +63,14 @@ class DummyForeignVcs(foreign.ForeignVcs):
 
 class ForeignVcsRegistryTests(TestCase):
 
-    def test_parse_revision_id_no_dash(self):       
+    def test_parse_revision_id_no_dash(self):
         reg = foreign.ForeignVcsRegistry()
-        self.assertRaises(errors.InvalidRevisionId, 
+        self.assertRaises(errors.InvalidRevisionId,
                           reg.parse_revision_id, "invalid")
-        
-    def test_parse_revision_id_unknown_mapping(self):       
+
+    def test_parse_revision_id_unknown_mapping(self):
         reg = foreign.ForeignVcsRegistry()
-        self.assertRaises(errors.InvalidRevisionId, 
+        self.assertRaises(errors.InvalidRevisionId,
                           reg.parse_revision_id, "unknown-foreignrevid")
 
     def test_parse_revision_id(self):
@@ -86,7 +86,7 @@ class ForeignRevisionTests(TestCase):
 
     def test_create(self):
         mapp = DummyForeignVcsMapping(DummyForeignVcs())
-        rev = foreign.ForeignRevision(("a", "foreign", "revid"), 
+        rev = foreign.ForeignRevision(("a", "foreign", "revid"),
                                       mapp, "roundtripped-revid")
         self.assertEquals("", rev.inventory_sha1)
         self.assertEquals(("a", "foreign", "revid"), rev.foreign_revid)
@@ -99,7 +99,7 @@ class ShowForeignPropertiesTests(TestCase):
     def setUp(self):
         super(ShowForeignPropertiesTests, self).setUp()
         self.vcs = DummyForeignVcs()
-        foreign.foreign_vcs_registry.register("dummy", 
+        foreign.foreign_vcs_registry.register("dummy",
             self.vcs, "Dummy VCS")
 
     def tearDown(self):
@@ -116,8 +116,8 @@ class ShowForeignPropertiesTests(TestCase):
                           foreign.show_foreign_properties(rev))
 
     def test_show_direct(self):
-        rev = foreign.ForeignRevision(("some", "foreign", "revid"), 
-                                      DummyForeignVcsMapping(self.vcs), 
+        rev = foreign.ForeignRevision(("some", "foreign", "revid"),
+                                      DummyForeignVcsMapping(self.vcs),
                                       "roundtrip-revid")
         self.assertEquals({ "dummy ding": "some/foreign\\revid" },
                           foreign.show_foreign_properties(rev))

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Black-box tests for bzr push."""
@@ -98,18 +98,18 @@ class TestPush(ExternalBase):
         out, err = self.run_bzr('push')
         path = branch_a.get_push_location()
         self.assertEquals(out,
-                          'Using saved push location: %s\n' 
-                          'Pushed up to revision 2.\n'
+                          'Using saved push location: %s\n'
                           % local_path_from_url(path))
         self.assertEqual(err,
-                         'All changes applied successfully.\n')
+                         'All changes applied successfully.\n'
+                         'Pushed up to revision 2.\n')
         self.assertEqual(path,
                          branch_b.bzrdir.root_transport.base)
         # test explicit --remember
         self.run_bzr('push ../branch_c --remember')
         self.assertEquals(branch_a.get_push_location(),
                           branch_c.bzrdir.root_transport.base)
-    
+
     def test_push_without_tree(self):
         # bzr push from a branch that does not have a checkout should work.
         b = self.make_branch('.')
@@ -120,8 +120,8 @@ class TestPush(ExternalBase):
         self.assertEndsWith(b2.base, 'pushed-location/')
 
     def test_push_new_branch_revision_count(self):
-        # bzr push of a branch with revisions to a new location 
-        # should print the number of revisions equal to the length of the 
+        # bzr push of a branch with revisions to a new location
+        # should print the number of revisions equal to the length of the
         # local branch.
         t = self.make_branch_and_tree('tree')
         self.build_tree(['tree/file'])
@@ -186,7 +186,7 @@ class TestPush(ExternalBase):
                 message='first commit')
         self.run_bzr('push -d from to-one')
         self.failUnlessExists('to-one')
-        self.run_bzr('push -d %s %s' 
+        self.run_bzr('push -d %s %s'
             % tuple(map(urlutils.local_path_to_url, ['from', 'to-two'])))
         self.failUnlessExists('to-two')
 
@@ -196,13 +196,12 @@ class TestPush(ExternalBase):
         t.commit(allow_pointless=True, message='first commit')
         self.reset_smart_call_log()
         self.run_bzr(['push', self.get_url('to-one')], working_dir='from')
-        rpc_count = len(self.hpss_calls)
         # This figure represent the amount of work to perform this use case. It
         # is entirely ok to reduce this number if a test fails due to rpc_count
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertEqual(61, rpc_count)
+        self.assertLength(20, self.hpss_calls)
 
     def test_push_smart_stacked_streaming_acceptance(self):
         self.setup_smart_server_with_call_log()
@@ -213,13 +212,12 @@ class TestPush(ExternalBase):
         self.reset_smart_call_log()
         self.run_bzr(['push', '--stacked', '--stacked-on', '../parent',
             self.get_url('public')], working_dir='local')
-        rpc_count = len(self.hpss_calls)
         # This figure represent the amount of work to perform this use case. It
         # is entirely ok to reduce this number if a test fails due to rpc_count
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertEqual(101, rpc_count)
+        self.assertLength(42, self.hpss_calls)
         remote = Branch.open('public')
         self.assertEndsWith(remote.get_stacked_on_url(), '/parent')
 
@@ -393,6 +391,23 @@ class TestPush(ExternalBase):
         out, err = self.run_bzr('push -d from to')
         self.assertContainsRe(err,
                               'Using default stacking branch stack_on at .*')
+
+    def test_push_stacks_with_default_stacking_if_target_is_stackable(self):
+        self.make_branch('stack_on', format='1.6')
+        self.make_bzrdir('.').get_config().set_default_stack_on('stack_on')
+        self.make_branch('from', format='pack-0.92')
+        out, err = self.run_bzr('push -d from to')
+        branch = Branch.open('to')
+        self.assertEqual('../stack_on', branch.get_stacked_on_url())
+
+    def test_push_does_not_change_format_with_default_if_target_cannot(self):
+        self.make_branch('stack_on', format='pack-0.92')
+        self.make_bzrdir('.').get_config().set_default_stack_on('stack_on')
+        self.make_branch('from', format='pack-0.92')
+        out, err = self.run_bzr('push -d from to')
+        branch = Branch.open('to')
+        self.assertRaises(errors.UnstackableBranchFormat,
+            branch.get_stacked_on_url)
 
     def test_push_doesnt_create_broken_branch(self):
         """Pushing a new standalone branch works even when there's a default

@@ -13,7 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Tests for the switch command of bzr."""
@@ -117,7 +117,7 @@ class TestSwitch(ExternalBase):
     def test_switch_finds_relative_bound_branch(self):
         """Using switch on a heavy checkout should find master sibling
 
-        The behaviour of lighweight and heavy checkouts should be 
+        The behaviour of lighweight and heavy checkouts should be
         consistentwhen using the convenient "switch to sibling" feature
         Both should switch to a sibling of the branch
         they are bound to, and not a sibling of themself"""

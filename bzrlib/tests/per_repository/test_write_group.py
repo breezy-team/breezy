@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for repository write groups."""
 
@@ -50,7 +50,7 @@ class TestWriteGroup(TestCaseWithRepository):
         repo.lock_write()
         repo.start_write_group()
         try:
-            # don't need a specific exception for now - this is 
+            # don't need a specific exception for now - this is
             # really to be sure it's used right, not for signalling
             # semantic information.
             self.assertRaises(errors.BzrError, repo.start_write_group)
@@ -69,7 +69,7 @@ class TestWriteGroup(TestCaseWithRepository):
         repo = self.make_repository('.')
         repo.lock_write()
         repo.start_write_group()
-        # don't need a specific exception for now - this is 
+        # don't need a specific exception for now - this is
         # really to be sure it's used right, not for signalling
         # semantic information.
         self.assertRaises(errors.BzrError, repo.unlock)
@@ -350,8 +350,8 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         # Make a source repository with a delta record in it.
         source_repo = self.make_write_locked_repo('source')
         source_repo.start_write_group()
-        key_base = ('file-id', 'base') 
-        key_delta = ('file-id', 'delta') 
+        key_base = ('file-id', 'base')
+        key_delta = ('file-id', 'delta')
         source_repo.texts.add_lines(key_base, (), ['lines\n'])
         source_repo.texts.add_lines(
             key_delta, (key_base,), ['more\n', 'lines\n'])
@@ -362,8 +362,8 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         self.require_suspendable_write_groups(
             'Cannot test resume on repo that does not support suspending')
         source_repo = self.make_source_with_delta_record()
-        key_base = ('file-id', 'base') 
-        key_delta = ('file-id', 'delta') 
+        key_base = ('file-id', 'base')
+        key_delta = ('file-id', 'delta')
         # Start a write group, insert just a delta.
         repo = self.make_write_locked_repo()
         repo.start_write_group()
@@ -385,8 +385,8 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         self.require_suspendable_write_groups(
             'Cannot test resume on repo that does not support suspending')
         source_repo = self.make_source_with_delta_record()
-        key_base = ('file-id', 'base') 
-        key_delta = ('file-id', 'delta') 
+        key_base = ('file-id', 'base')
+        key_delta = ('file-id', 'delta')
         # Start a write group.
         repo = self.make_write_locked_repo()
         repo.start_write_group()
@@ -412,8 +412,8 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         self.require_suspendable_write_groups(
             'Cannot test resume on repo that does not support suspending')
         source_repo = self.make_source_with_delta_record()
-        key_base = ('file-id', 'base') 
-        key_delta = ('file-id', 'delta') 
+        key_base = ('file-id', 'base')
+        key_delta = ('file-id', 'delta')
         # Start a write group, insert just a delta.
         repo = self.make_write_locked_repo()
         repo.start_write_group()
@@ -448,5 +448,5 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         repo = self.make_write_locked_repo()
         repo.resume_write_group([])
         repo.abort_write_group()
-        
+
 

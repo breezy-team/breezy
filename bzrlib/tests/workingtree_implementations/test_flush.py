@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for WorkingTree.flush."""
 
@@ -36,7 +36,7 @@ class TestFlush(TestCaseWithWorkingTree):
         # _set_inventory for now until add etc have lazy writes of
         # the inventory on unlock).
         tree = self.make_branch_and_tree('tree')
-        # prepare for a series of changes that will modify the 
+        # prepare for a series of changes that will modify the
         # inventory
         tree.lock_write()
         try:
@@ -53,7 +53,7 @@ class TestFlush(TestCaseWithWorkingTree):
             self.assertEqual('new-root', reference_tree.get_root_id())
         finally:
             tree.unlock()
-            
+
     def test_flush_with_read_lock_fails(self):
         """Flush cannot be used during a read lock."""
         tree = self.make_branch_and_tree('t1')
@@ -62,7 +62,7 @@ class TestFlush(TestCaseWithWorkingTree):
             self.assertRaises(errors.NotWriteLocked, tree.flush)
         finally:
             tree.unlock()
-            
+
     def test_flush_with_no_lock_fails(self):
         tree = self.make_branch_and_tree('t1')
         self.assertRaises(errors.NotWriteLocked, tree.flush)

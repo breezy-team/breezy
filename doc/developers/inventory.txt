@@ -451,3 +451,50 @@ Insertion
 
 Multiple versions of nodes for the same PREFIX and internal prefix width should
 compress well for the same tree.
+
+
+Inventory deltas
+================
+
+An inventory is a serialization of the in-memory inventory delta.  To serialize
+an inventory delta, one takes an existing inventory delta and the revision_id
+of the revision it was created it against and the revision id of the inventory
+which should result by applying the delta to the parent.  We then serialize
+every item in the delta in a simple format:
+
+'format: bzr inventory delta v1 (1.14)' NL
+'parent:' SP BASIS_INVENTORY NL
+'version:' SP NULL_OR_REVISION NL
+'versioned_root:' SP BOOL NL
+'tree_references:' SP BOOL NL
+DELTA_LINES
+
+DELTA_LINES ::= (DELTA_LINE NL)*
+DELTA_LINE ::= OLDPATH NULL NEWPATH NULL file-id NULL PARENT_ID NULL LAST_MODIFIED NULL CONTENT
+SP ::= ' '
+BOOL ::= 'true' | 'false'
+NULL ::= \x00
+OLDPATH ::= NONE | PATH
+NEWPATH ::= NONE | PATH
+NONE ::= 'None'
+PATH ::= path
+PARENT_ID ::= FILE_ID | ''
+CONTENT ::= DELETED_CONTENT | FILE_CONTENT | DIR_CONTENT | TREE_CONTENT | LINK_CONTENT
+DELETED_CONTENT ::= 'deleted'
+FILE_CONTENT ::= 'file' NULL text_size NULL EXEC NULL text_sha1
+DIR_CONTENT ::= 'dir'
+TREE_CONTENT ::= 'tree' NULL tree-revision
+LINK_CONTENT ::= 'link' NULL link-target
+BASIS_INVENTORY ::= NULL_OR_REVISION
+LAST_MODIFIED ::= NULL_OR_REVISION
+NULL_OR_REVISION ::= 'null:' | REVISION
+REVISION ::= revision-id-in-utf8-no-whitespace
+EXEC ::= '' | 'Y'
+
+DELTA_LINES is lexicographically sorted.
+
+Some explanation is in order. When NEWPATH is 'None' a delete has been
+recorded, and because this inventory delta is not attempting to be a reversible
+delta, the only other valid fields are OLDPATH and 'file-id'. PARENT_ID is ''
+when a delete has been recorded or when recording a new root entry.
+

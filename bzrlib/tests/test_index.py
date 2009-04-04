@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for indices."""
 
@@ -558,7 +558,7 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         # not create a new transport request, and should return False (cannot
         # be in the index) - even when the byte location we ask for is outside
         # the parsed region
-        # 
+        #
         result = index._lookup_keys_via_location([(4000, self.make_key(40))])
         self.assertEqual(
             [((4000, self.make_key(40)),
@@ -1078,7 +1078,7 @@ class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
         self.assertEqual(set([(index1, ('name', ), 'data', ((('ref', ), ), )),
             (index2, ('ref', ), 'refdata', ((), ))]),
             set(index.iter_entries([('name', ), ('ref', )])))
- 
+
     def test_iter_all_keys_dup_entry(self):
         index1 = self.make_index('1', 1, nodes=[
             (('name', ), 'data', ([('ref', )], )),
@@ -1089,7 +1089,7 @@ class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
         self.assertEqual(set([(index1, ('name', ), 'data', ((('ref',),),)),
             (index1, ('ref', ), 'refdata', ((), ))]),
             set(index.iter_entries([('name', ), ('ref', )])))
- 
+
     def test_iter_missing_entry_empty(self):
         index = CombinedGraphIndex([])
         self.assertEqual([], list(index.iter_entries([('a', )])))
@@ -1104,7 +1104,7 @@ class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
         index2 = self.make_index('2')
         index = CombinedGraphIndex([index1, index2])
         self.assertEqual([], list(index.iter_entries([('a', )])))
- 
+
     def test_iter_entry_present_one_index_only(self):
         index1 = self.make_index('1', nodes=[(('key', ), '', ())])
         index2 = self.make_index('2', nodes=[])

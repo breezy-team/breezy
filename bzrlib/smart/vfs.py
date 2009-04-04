@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """VFS operations for the smart server.
 
@@ -51,7 +51,7 @@ def vfs_enabled():
 
 class VfsRequest(request.SmartServerRequest):
     """Base class for VFS requests.
-    
+
     VFS requests are disabled if vfs_enabled() returns False.
     """
 
@@ -82,7 +82,7 @@ class AppendRequest(VfsRequest):
         relpath = self.translate_client_path(relpath)
         self._relpath = relpath
         self._mode = _deserialise_optional_mode(mode)
-    
+
     def do_body(self, body_bytes):
         old_length = self._backing_transport.append_bytes(
             self._relpath, body_bytes, self._mode)

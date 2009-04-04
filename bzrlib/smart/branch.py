@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Server-side branch related request implmentations."""
 
@@ -32,7 +32,7 @@ class SmartServerBranchRequest(SmartServerRequest):
 
     def do(self, path, *args):
         """Execute a request for a branch at path.
-    
+
         All Branch requests take a path to the branch as their first argument.
 
         If the branch is a branch reference, NotBranchError is raised.
@@ -45,7 +45,7 @@ class SmartServerBranchRequest(SmartServerRequest):
         bzrdir = BzrDir.open_from_transport(transport)
         if bzrdir.get_branch_reference() is not None:
             raise errors.NotBranchError(transport.base)
-        branch = bzrdir.open_branch()
+        branch = bzrdir.open_branch(ignore_fallbacks=True)
         return self.do_with_branch(branch, *args)
 
 
@@ -74,22 +74,33 @@ class SmartServerLockedBranchRequest(SmartServerBranchRequest):
 
 
 class SmartServerBranchGetConfigFile(SmartServerBranchRequest):
-    
+
     def do_with_branch(self, branch):
         """Return the content of branch.conf
-        
+
         The body is not utf8 decoded - its the literal bytestream from disk.
         """
-        # This was at one time called by RemoteBranchLockableFiles
-        # intercepting access to this file; as of 1.5 it is not called by the
-        # client but retained for compatibility.  It may be called again to
-        # allow the client to get the configuration without needing vfs
-        # access.
         try:
             content = branch._transport.get_bytes('branch.conf')
         except errors.NoSuchFile:
             content = ''
         return SuccessfulSmartServerResponse( ('ok', ), content)
+
+
+class SmartServerBranchGetParent(SmartServerBranchRequest):
+
+    def do_with_branch(self, branch):
+        """Return the parent of branch."""
+        parent = branch._get_parent_location() or ''
+        return SuccessfulSmartServerResponse((parent,))
+
+
+class SmartServerBranchGetTagsBytes(SmartServerBranchRequest):
+
+    def do_with_branch(self, branch):
+        """Return the _get_tags_bytes for a branch."""
+        bytes = branch._get_tags_bytes()
+        return SuccessfulSmartServerResponse((bytes,))
 
 
 class SmartServerBranchRequestGetStackedOnURL(SmartServerBranchRequest):
@@ -112,10 +123,10 @@ class SmartServerRequestRevisionHistory(SmartServerBranchRequest):
 
 
 class SmartServerBranchRequestLastRevisionInfo(SmartServerBranchRequest):
-    
+
     def do_with_branch(self, branch):
         """Return branch.last_revision_info().
-        
+
         The revno is encoded in decimal, the revision_id is encoded as utf8.
         """
         revno, last_revision = branch.last_revision_info()
@@ -137,8 +148,18 @@ class SmartServerSetTipRequest(SmartServerLockedBranchRequest):
             return FailedSmartServerResponse(('TipChangeRejected', msg))
 
 
+class SmartServerBranchRequestSetConfigOption(SmartServerLockedBranchRequest):
+    """Set an option in the branch configuration."""
+
+    def do_with_locked_branch(self, branch, value, name, section):
+        if not section:
+            section = None
+        branch._get_config().set_option(value.decode('utf8'), name, section)
+        return SuccessfulSmartServerResponse(())
+
+
 class SmartServerBranchRequestSetLastRevision(SmartServerSetTipRequest):
-    
+
     def do_tip_change_with_locked_branch(self, branch, new_last_revision_id):
         if new_last_revision_id == 'null:':
             branch.set_revision_history([])
@@ -152,13 +173,13 @@ class SmartServerBranchRequestSetLastRevision(SmartServerSetTipRequest):
 
 
 class SmartServerBranchRequestSetLastRevisionEx(SmartServerSetTipRequest):
-    
+
     def do_tip_change_with_locked_branch(self, branch, new_last_revision_id,
             allow_divergence, allow_overwrite_descendant):
         """Set the last revision of the branch.
 
         New in 1.6.
-        
+
         :param new_last_revision_id: the revision ID to set as the last
             revision of the branch.
         :param allow_divergence: A flag.  If non-zero, change the revision ID
@@ -205,7 +226,7 @@ class SmartServerBranchRequestSetLastRevisionInfo(SmartServerSetTipRequest):
 
     New in bzrlib 1.4.
     """
-    
+
     def do_tip_change_with_locked_branch(self, branch, new_revno,
             new_last_revision_id):
         try:
@@ -217,7 +238,7 @@ class SmartServerBranchRequestSetLastRevisionInfo(SmartServerSetTipRequest):
 
 
 class SmartServerBranchRequestLockWrite(SmartServerBranchRequest):
-    
+
     def do_with_branch(self, branch, branch_token='', repo_token=''):
         if branch_token == '':
             branch_token = None
@@ -263,4 +284,4 @@ class SmartServerBranchRequestUnlock(SmartServerBranchRequest):
         branch.dont_leave_lock_in_place()
         branch.unlock()
         return SuccessfulSmartServerResponse(('ok',))
-        
+

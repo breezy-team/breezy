@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for WSGI application"""
 
@@ -33,7 +33,7 @@ class TestWSGI(tests.TestCase):
 
     def build_environ(self, updates=None):
         """Builds an environ dict with all fields required by PEP 333.
-        
+
         :param updates: a dict to that will be incorporated into the returned
             dict using dict.update(updates).
         """
@@ -58,7 +58,7 @@ class TestWSGI(tests.TestCase):
         if updates is not None:
             environ.update(updates)
         return environ
-        
+
     def read_response(self, iterable):
         response = ''
         for string in iterable:
@@ -82,13 +82,13 @@ class TestWSGI(tests.TestCase):
         self.read_response(iterable)
         self.assertEqual('405 Method not allowed', self.status)
         self.assertTrue(('Allow', 'POST') in self.headers)
-        
+
     def _fake_make_request(self, transport, write_func, bytes, rcp):
         request = FakeRequest(transport, write_func)
         request.accept_bytes(bytes)
         self.request = request
         return request
-    
+
     def test_smart_wsgi_app_uses_given_relpath(self):
         # The SmartWSGIApp should use the "bzrlib.relpath" field from the
         # WSGI environ to clone from its backing transport to get a specific
@@ -138,7 +138,7 @@ class TestWSGI(tests.TestCase):
             fake_app, prefix='/abc/', path_var='FOO')
         wrapped_app({'FOO': '/abc/xyz/.bzr/smart'}, None)
         self.assertEqual(['xyz'], calls)
-       
+
     def test_relpath_setter_bad_path_prefix(self):
         # wsgi.RelpathSetter will reject paths with that don't match the prefix
         # with a 404.  This is probably a sign of misconfiguration; a server
@@ -151,7 +151,7 @@ class TestWSGI(tests.TestCase):
             {'FOO': 'AAA/abc/xyz/.bzr/smart'}, self.start_response)
         self.read_response(iterable)
         self.assertTrue(self.status.startswith('404'))
-        
+
     def test_relpath_setter_bad_path_suffix(self):
         # Similar to test_relpath_setter_bad_path_prefix: wsgi.RelpathSetter
         # will reject paths with that don't match the suffix '.bzr/smart' with a
@@ -165,7 +165,7 @@ class TestWSGI(tests.TestCase):
             {'FOO': '/abc/xyz/.bzr/AAA'}, self.start_response)
         self.read_response(iterable)
         self.assertTrue(self.status.startswith('404'))
-        
+
     def test_make_app(self):
         # The make_app helper constructs a SmartWSGIApp wrapped in a
         # RelpathSetter.
@@ -243,7 +243,7 @@ class TestWSGI(tests.TestCase):
 
 
 class FakeRequest(object):
-    
+
     def __init__(self, transport, write_func):
         self.transport = transport
         self.write_func = write_func

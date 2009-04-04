@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """MutableTree object.
 
@@ -28,6 +28,7 @@ from bzrlib import (
     add,
     bzrdir,
     hooks,
+    symbol_versioning,
     )
 from bzrlib.osutils import dirname
 from bzrlib.revisiontree import RevisionTree
@@ -41,7 +42,6 @@ from bzrlib import (
     )
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.osutils import splitpath
-from bzrlib.symbol_versioning import DEPRECATED_PARAMETER
 
 
 def needs_tree_write_lock(unbound):
@@ -69,7 +69,7 @@ class MutableTree(tree.Tree):
     entirely in memory.
 
     For now, we are not treating MutableTree as an interface to provide
-    conformance tests for - rather we are testing MemoryTree specifically, and 
+    conformance tests for - rather we are testing MemoryTree specifically, and
     interface testing implementations of WorkingTree.
 
     A mutable tree always has an associated Branch and BzrDir object - the
@@ -130,7 +130,7 @@ class MutableTree(tree.Tree):
             if self.is_control_filename(f):
                 raise errors.ForbiddenControlFileError(filename=f)
             fp = splitpath(f)
-        # fill out file kinds for all files [not needed when we stop 
+        # fill out file kinds for all files [not needed when we stop
         # caring about the instantaneous file kind within a uncommmitted tree
         #
         self._gather_kinds(files, kinds)
@@ -192,12 +192,32 @@ class MutableTree(tree.Tree):
             revprops['branch-nick'] = self.branch._get_nick(
                 kwargs.get('local', False),
                 possible_master_transports)
+        authors = kwargs.pop('authors', None)
         author = kwargs.pop('author', None)
-        if author is not None:
-            if 'author' in revprops:
+        if authors is not None:
+            if author is not None:
+                raise AssertionError('Specifying both author and authors '
+                        'is not allowed. Specify just authors instead')
+            if 'author' in revprops or 'authors' in revprops:
                 # XXX: maybe we should just accept one of them?
                 raise AssertionError('author property given twice')
-            revprops['author'] = author
+            if authors:
+                for individual in authors:
+                    if '\n' in individual:
+                        raise AssertionError('\\n is not a valid character '
+                                'in an author identity')
+                revprops['authors'] = '\n'.join(authors)
+        if author is not None:
+            symbol_versioning.warn('The parameter author was deprecated'
+                   ' in version 1.13. Use authors instead',
+                   DeprecationWarning)
+            if 'author' in revprops or 'authors' in revprops:
+                # XXX: maybe we should just accept one of them?
+                raise AssertionError('author property given twice')
+            if '\n' in author:
+                raise AssertionError('\\n is not a valid character '
+                        'in an author identity')
+            revprops['authors'] = author
         # args for wt.commit start at message from the Commit.commit method,
         args = (message, ) + args
         for hook in MutableTree.hooks['start_commit']:
@@ -233,7 +253,7 @@ class MutableTree(tree.Tree):
         In early tree formats the result of last_revision is the same as the
         branch last_revision, but that is no longer the case for modern tree
         formats.
-        
+
         last_revision returns the left most parent id, or None if there are no
         parents.
 
@@ -256,7 +276,7 @@ class MutableTree(tree.Tree):
     def lock_write(self):
         """Lock the tree and its branch. This allows mutating calls to be made.
 
-        Some mutating methods will take out implicit write locks, but in 
+        Some mutating methods will take out implicit write locks, but in
         general you should always obtain a write lock before calling mutating
         methods on a tree.
         """
@@ -278,7 +298,7 @@ class MutableTree(tree.Tree):
         The intent of this function is to allow trees that have a hashcache to
         update the hashcache during commit. If the observed file is too new
         (based on the stat_value) to be safely hash-cached the tree will ignore
-        it. 
+        it.
 
         The default implementation does nothing.
 
@@ -298,7 +318,7 @@ class MutableTree(tree.Tree):
     @needs_write_lock
     def put_file_bytes_non_atomic(self, file_id, bytes):
         """Update the content of a file in the tree.
-        
+
         Note that the file is written in-place rather than being
         written to a temporary location and renamed. As a consequence,
         readers can potentially see the file half-written.
@@ -318,7 +338,7 @@ class MutableTree(tree.Tree):
     def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
         """Set the parents of the working tree.
 
-        :param parents_list: A list of (revision_id, tree) tuples. 
+        :param parents_list: A list of (revision_id, tree) tuples.
             If tree is None, then that element is treated as an unreachable
             parent tree - i.e. a ghost.
         """
@@ -332,7 +352,7 @@ class MutableTree(tree.Tree):
         For the specific behaviour see the help for cmd_add().
 
         :param action: A reporter to be called with the inventory, parent_ie,
-            path and kind of the path being added. It may return a file_id if 
+            path and kind of the path being added. It may return a file_id if
             a specific one should be used.
         :param save: Save the inventory after completing the adds. If False
             this provides dry-run functionality by doing the add and not saving
@@ -346,7 +366,7 @@ class MutableTree(tree.Tree):
         from bzrlib.inventory import InventoryEntry
         if action is None:
             action = add.AddAction()
-        
+
         if not file_list:
             # no paths supplied: add the entire tree.
             file_list = [u'.']
@@ -357,17 +377,17 @@ class MutableTree(tree.Tree):
         dirs_to_add = []
         user_dirs = set()
 
-        # validate user file paths and convert all paths to tree 
+        # validate user file paths and convert all paths to tree
         # relative : it's cheaper to make a tree relative path an abspath
         # than to convert an abspath to tree relative, and it's cheaper to
         # perform the canonicalization in bulk.
         for filepath in osutils.canonical_relpaths(self.basedir, file_list):
             rf = _FastPath(filepath)
             # validate user parameters. Our recursive code avoids adding new files
-            # that need such validation 
+            # that need such validation
             if self.is_control_filename(rf.raw_path):
                 raise errors.ForbiddenControlFileError(filename=rf.raw_path)
-            
+
             abspath = self.abspath(rf.raw_path)
             kind = osutils.file_kind(abspath)
             if kind == 'directory':
@@ -378,7 +398,7 @@ class MutableTree(tree.Tree):
                     raise errors.BadFileKindError(filename=abspath, kind=kind)
             # ensure the named path is added, so that ignore rules in the later directory
             # walk dont skip it.
-            # we dont have a parent ie known yet.: use the relatively slower inventory 
+            # we dont have a parent ie known yet.: use the relatively slower inventory
             # probing method
             versioned = inv.has_filename(rf.raw_path)
             if versioned:
@@ -421,7 +441,7 @@ class MutableTree(tree.Tree):
             if parent_ie is not None:
                 versioned = directory.base_path in parent_ie.children
             else:
-                # without the parent ie, use the relatively slower inventory 
+                # without the parent ie, use the relatively slower inventory
                 # probing method
                 versioned = inv.has_filename(
                         self._fix_case_of_inventory_path(directory.raw_path))
@@ -445,7 +465,7 @@ class MutableTree(tree.Tree):
                 # mutter("%r is already versioned", abspath)
             elif sub_tree:
                 # XXX: This is wrong; people *might* reasonably be trying to add
-                # subtrees as subtrees.  This should probably only be done in formats 
+                # subtrees as subtrees.  This should probably only be done in formats
                 # which can represent subtrees, and even then perhaps only when
                 # the user asked to add subtrees.  At the moment you can add them
                 # specially through 'join --reference', which is perhaps
@@ -461,7 +481,7 @@ class MutableTree(tree.Tree):
                     # must be present:
                     this_ie = parent_ie.children[directory.base_path]
                 else:
-                    # without the parent ie, use the relatively slower inventory 
+                    # without the parent ie, use the relatively slower inventory
                     # probing method
                     this_id = inv.path2id(
                             self._fix_case_of_inventory_path(directory.raw_path))
@@ -471,12 +491,12 @@ class MutableTree(tree.Tree):
                         this_ie = inv[this_id]
 
                 for subf in sorted(os.listdir(abspath)):
-                    # here we could use TreeDirectory rather than 
+                    # here we could use TreeDirectory rather than
                     # string concatenation.
                     subp = osutils.pathjoin(directory.raw_path, subf)
-                    # TODO: is_control_filename is very slow. Make it faster. 
-                    # TreeDirectory.is_control_filename could also make this 
-                    # faster - its impossible for a non root dir to have a 
+                    # TODO: is_control_filename is very slow. Make it faster.
+                    # TreeDirectory.is_control_filename could also make this
+                    # faster - its impossible for a non root dir to have a
                     # control file.
                     if self.is_control_filename(subp):
                         mutter("skip control directory %r", subp)
@@ -532,7 +552,10 @@ class MutableTree(tree.Tree):
         # WorkingTree classes for optimised versions for specific format trees.
         basis = self.basis_tree()
         basis.lock_read()
-        inventory = basis.inventory
+        # TODO: Consider re-evaluating the need for this with CHKInventory
+        # we don't strictly need to mutate an inventory for this
+        # it only makes sense when apply_delta is cheaper than get_inventory()
+        inventory = basis.inventory._get_mutable_inventory()
         basis.unlock()
         inventory.apply_delta(delta)
         rev_tree = RevisionTree(self.branch.repository, inventory, new_revid)
@@ -540,7 +563,7 @@ class MutableTree(tree.Tree):
 
 
 class MutableTreeHooks(hooks.Hooks):
-    """A dictionary mapping a hook name to a list of callables for mutabletree 
+    """A dictionary mapping a hook name to a list of callables for mutabletree
     hooks.
     """
 
@@ -549,8 +572,11 @@ class MutableTreeHooks(hooks.Hooks):
 
         """
         hooks.Hooks.__init__(self)
-        # Invoked before a commit is done in a tree. New in 1.4
-        self['start_commit'] = []
+        self.create_hook(hooks.HookPoint('start_commit',
+            "Called before a commit is performed on a tree. The start commit "
+            "hook is able to change the tree before the commit takes place. "
+            "start_commit is called with the bzrlib.tree.MutableTree that the "
+            "commit is being performed on.", (1, 4), None))
 
 
 # install the default hooks into the MutableTree class.

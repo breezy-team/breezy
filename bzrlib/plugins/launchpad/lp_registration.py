@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 from getpass import getpass
@@ -47,7 +47,7 @@ class InvalidLaunchpadInstance(errors.BzrError):
 
 class NotLaunchpadBranch(errors.BzrError):
 
-    _fmt = "%(url)s is not hosted on Launchpad."
+    _fmt = "%(url)s is not registered on Launchpad."
 
     def __init__(self, url):
         errors.BzrError.__init__(self, url=url)
@@ -237,7 +237,7 @@ class BaseRequest(object):
 
 class DryRunLaunchpadService(LaunchpadService):
     """Service that just absorbs requests without sending to server.
-    
+
     The dummy service does not need authentication.
     """
 

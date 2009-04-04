@@ -14,13 +14,13 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Branch implementation tests for bzr.
 
 These test the conformance of all the branch variations to the expected API.
-Specific tests for individual formats are in the tests/test_branch file 
+Specific tests for individual formats are in the tests/test_branch file
 rather than in tests/branch_implementations/*.py.
 """
 
@@ -42,46 +42,31 @@ from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.transport.memory import MemoryServer
 
 
-class BranchTestProviderAdapter(tests.TestScenarioApplier):
-    """A tool to generate a suite testing multiple branch formats at once.
+def make_scenarios(transport_server, transport_readonly_server,
+    formats, vfs_transport_factory=None, name_suffix=''):
+    """Transform the input formats to a list of scenarios.
 
-    This is done by copying the test once for each transport and injecting
-    the transport_server, transport_readonly_server, and branch_format
-    classes into each copy. Each copy is also given a new id() to make it
-    easy to identify.
+    :param formats: A list of (branch_format, bzrdir_format).
     """
-
-    def __init__(self, transport_server, transport_readonly_server, formats,
-        vfs_transport_factory=None, name_suffix=''):
-        self._transport_server = transport_server
-        self._transport_readonly_server = transport_readonly_server
-        self._name_suffix = name_suffix
-        self.scenarios = self.formats_to_scenarios(formats)
-    
-    def formats_to_scenarios(self, formats):
-        """Transform the input formats to a list of scenarios.
-
-        :param formats: A list of (branch_format, bzrdir_format).
-        """
-        result = []
-        for branch_format, bzrdir_format in formats:
-            # some branches don't have separate format objects.
-            # so we have a conditional here to handle them.
-            scenario_name = getattr(branch_format, '__name__',
-                branch_format.__class__.__name__)
-            scenario_name += self._name_suffix
-            scenario = (scenario_name, {
-                "transport_server":self._transport_server,
-                "transport_readonly_server":self._transport_readonly_server,
-                "bzrdir_format":bzrdir_format,
-                "branch_format":branch_format,
-                    })
-            result.append(scenario)
-        return result
+    result = []
+    for branch_format, bzrdir_format in formats:
+        # some branches don't have separate format objects.
+        # so we have a conditional here to handle them.
+        scenario_name = getattr(branch_format, '__name__',
+            branch_format.__class__.__name__)
+        scenario_name += name_suffix
+        scenario = (scenario_name, {
+            "transport_server":transport_server,
+            "transport_readonly_server":transport_readonly_server,
+            "bzrdir_format":bzrdir_format,
+            "branch_format":branch_format,
+                })
+        result.append(scenario)
+    return result
 
 
 class TestCaseWithBranch(TestCaseWithBzrDir):
-    """This helper will be adapted for each branch_implementation test."""
+    """This helper will be parameterised in each branch_implementation test."""
 
     def setUp(self):
         super(TestCaseWithBranch, self).setUp()
@@ -145,17 +130,46 @@ class TestCaseWithBranch(TestCaseWithBzrDir):
         return tree
 
 
-def load_tests(basic_tests, module, loader):
-    result = loader.suiteClass()
-    # add the tests for this module
-    result.addTests(basic_tests)
+def branch_scenarios():
+    """ """
+    # Generate a list of branch formats and their associated bzrdir formats to
+    # use.
+    combinations = [(format, format._matchingbzrdir) for format in
+         BranchFormat._formats.values() + _legacy_formats]
+    scenarios = make_scenarios(
+        # None here will cause the default vfs transport server to be used.
+        None,
+        # None here will cause a readonly decorator to be created
+        # by the TestCaseWithTransport.get_readonly_transport method.
+        None,
+        combinations)
+    # Add RemoteBranch tests, which need a special server.
+    remote_branch_format = RemoteBranchFormat()
+    scenarios.extend(make_scenarios(
+        SmartTCPServer_for_testing,
+        ReadonlySmartTCPServer_for_testing,
+        [(remote_branch_format, remote_branch_format._matchingbzrdir)],
+        MemoryServer,
+        name_suffix='-default'))
+    # Also add tests for RemoteBranch with HPSS protocol v2 (i.e. bzr <1.6)
+    # server.
+    scenarios.extend(make_scenarios(
+        SmartTCPServer_for_testing_v2_only,
+        ReadonlySmartTCPServer_for_testing_v2_only,
+        [(remote_branch_format, remote_branch_format._matchingbzrdir)],
+        MemoryServer,
+        name_suffix='-v2'))
+    return scenarios
 
+
+def load_tests(standard_tests, module, loader):
     test_branch_implementations = [
         'bzrlib.tests.branch_implementations.test_bound_sftp',
         'bzrlib.tests.branch_implementations.test_branch',
         'bzrlib.tests.branch_implementations.test_break_lock',
         'bzrlib.tests.branch_implementations.test_check',
         'bzrlib.tests.branch_implementations.test_create_checkout',
+        'bzrlib.tests.branch_implementations.test_create_clone',
         'bzrlib.tests.branch_implementations.test_commit',
         'bzrlib.tests.branch_implementations.test_dotted_revno_to_revision_id',
         'bzrlib.tests.branch_implementations.test_get_revision_id_to_revno_map',
@@ -178,44 +192,5 @@ def load_tests(basic_tests, module, loader):
         'bzrlib.tests.branch_implementations.test_uncommit',
         'bzrlib.tests.branch_implementations.test_update',
         ]
-    # Generate a list of branch formats and their associated bzrdir formats to
-    # use.
-    combinations = [(format, format._matchingbzrdir) for format in 
-         BranchFormat._formats.values() + _legacy_formats]
-    adapter = BranchTestProviderAdapter(
-        # None here will cause the default vfs transport server to be used.
-        None,
-        # None here will cause a readonly decorator to be created
-        # by the TestCaseWithTransport.get_readonly_transport method.
-        None,
-        combinations)
-    # add the tests for the sub modules
-    tests.adapt_modules(test_branch_implementations, adapter, loader, result)
-
-    # Add RemoteBranch tests, which need a special server.
-    remote_branch_format = RemoteBranchFormat()
-    adapt_to_smart_server = BranchTestProviderAdapter(
-        SmartTCPServer_for_testing,
-        ReadonlySmartTCPServer_for_testing,
-        [(remote_branch_format, remote_branch_format._matchingbzrdir)],
-        MemoryServer,
-        name_suffix='-default')
-    tests.adapt_modules(test_branch_implementations,
-                        adapt_to_smart_server,
-                        loader,
-                        result)
-
-    # Also add tests for RemoteBranch with HPSS protocol v2 (i.e. bzr <1.6)
-    # server.
-    adapt_to_smart_server = BranchTestProviderAdapter(
-        SmartTCPServer_for_testing_v2_only,
-        ReadonlySmartTCPServer_for_testing_v2_only,
-        [(remote_branch_format, remote_branch_format._matchingbzrdir)],
-        MemoryServer,
-        name_suffix='-v2')
-    tests.adapt_modules(test_branch_implementations,
-                        adapt_to_smart_server,
-                        loader,
-                        result)
-
-    return result
+    sub_tests = loader.loadTestsFromModuleNames(test_branch_implementations)
+    return tests.multiply_tests(sub_tests, branch_scenarios(), standard_tests)

@@ -12,25 +12,30 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from bzrlib.xml_serializer import ElementTree, SubElement, Element, Serializer
+from bzrlib.xml_serializer import (
+    Element,
+    ElementTree,
+    SubElement,
+    XMLSerializer,
+    )
 from bzrlib.inventory import ROOT_ID, Inventory, InventoryEntry
 import bzrlib.inventory as inventory
 from bzrlib.revision import Revision
 from bzrlib.errors import BzrError
 
 
-class _Serializer_v4(Serializer):
+class _Serializer_v4(XMLSerializer):
     """Version 0.0.4 serializer
 
     You should use the serializer_v4 singleton.
-    
+
     v4 serialisation is no longer supported, only deserialisation.
     """
-    
+
     __slots__ = []
-    
+
     def _pack_entry(self, ie):
         """Convert InventoryEntry to XML element"""
         e = Element('entry')
@@ -134,10 +139,10 @@ class _Serializer_v4(Serializer):
                     p.set('revision_sha1', rev.parent_sha1s[i])
         return root
 
-    
+
     def _unpack_revision(self, elt):
         """XML Element -> Revision object"""
-        
+
         # <changeset> is deprecated...
         if elt.tag not in ('revision', 'changeset'):
             raise BzrError("unexpected tag in revision file: %r" % elt)

@@ -13,7 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
 import socket
@@ -258,7 +258,7 @@ class SSHVendorConnection(TestCaseWithSFTPServer):
       None:       If 'ssh' exists on the machine, then it will be spawned as a
                   child process.
     """
-    
+
     def setUp(self):
         super(SSHVendorConnection, self).setUp()
         from bzrlib.transport.sftp import SFTPFullAbsoluteServer
@@ -368,7 +368,7 @@ class SFTPLatencyKnob(TestCaseWithSFTPServer):
     """Test that the testing SFTPServer's latency knob works."""
 
     def test_latency_knob_slows_transport(self):
-        # change the latency knob to 500ms. We take about 40ms for a 
+        # change the latency knob to 500ms. We take about 40ms for a
         # loopback connection ordinarily.
         start_time = time.time()
         self.get_server().add_latency = 0.5

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for LockDir"""
 
@@ -126,7 +126,7 @@ class TestLockDir(TestCaseWithTransport):
         lf1.attempt_lock()
         lf2 = LockDir(t, 'test_lock')
         try:
-            # locking is between LockDir instances; aliases within 
+            # locking is between LockDir instances; aliases within
             # a single process are not detected
             lf2.attempt_lock()
             self.fail('Failed to detect lock collision')
@@ -167,7 +167,7 @@ class TestLockDir(TestCaseWithTransport):
 
     def test_30_lock_wait_fail(self):
         """Wait on a lock, then fail
-        
+
         We ask to wait up to 400ms; this should fail within at most one
         second.  (Longer times are more realistic but we don't want the test
         suite to take too long, and this should do for now.)
@@ -185,7 +185,7 @@ class TestLockDir(TestCaseWithTransport):
             after = time.time()
             # it should only take about 0.4 seconds, but we allow more time in
             # case the machine is heavily loaded
-            self.assertTrue(after - before <= 8.0, 
+            self.assertTrue(after - before <= 8.0,
                     "took %f seconds to detect lock contention" % (after - before))
         finally:
             lf1.unlock()
@@ -226,7 +226,7 @@ class TestLockDir(TestCaseWithTransport):
     def test_32_lock_wait_succeed(self):
         """Succeed when trying to acquire a lock that gets released
 
-        One thread holds on a lock and then releases it; another 
+        One thread holds on a lock and then releases it; another
         tries to lock it.
         """
         # This test sometimes fails like this:
@@ -277,7 +277,7 @@ class TestLockDir(TestCaseWithTransport):
         self.assertContainsRe(args[4], r'\d\d:\d\d:\d\d')
 
     def test_34_lock_write_waits(self):
-        """LockDir.lock_write() will wait for the lock.""" 
+        """LockDir.lock_write() will wait for the lock."""
         # the test suite sets the default to 0 to make deadlocks fail fast.
         # change it for this test, as we want to try a manual deadlock.
         raise tests.TestSkipped('Timing-sensitive test')
@@ -320,19 +320,19 @@ class TestLockDir(TestCaseWithTransport):
 
     def test_35_wait_lock_changing(self):
         """LockDir.wait_lock() will report if the lock changes underneath.
-        
+
         This is the stages we want to happen:
 
         0) Synchronization locks are created and locked.
         1) Lock1 obtains the lockdir, and releases the 'check' lock.
         2) Lock2 grabs the 'check' lock, and checks the lockdir.
-           It sees the lockdir is already acquired, reports the fact, 
+           It sees the lockdir is already acquired, reports the fact,
            and unsets the 'checked' lock.
         3) Thread1 blocks on acquiring the 'checked' lock, and then tells
            Lock1 to release and acquire the lockdir. This resets the 'check'
            lock.
         4) Lock2 acquires the 'check' lock, and checks again. It notices
-           that the holder of the lock has changed, and so reports a new 
+           that the holder of the lock has changed, and so reports a new
            lock holder.
         5) Thread1 blocks on the 'checked' lock, this time, it completely
            unlocks the lockdir, allowing Lock2 to acquire the lock.
@@ -532,7 +532,7 @@ class TestLockDir(TestCaseWithTransport):
         """Check the on-disk representation of LockDirs is as expected.
 
         There should always be a top-level directory named by the lock.
-        When the lock is held, there should be a lockname/held directory 
+        When the lock is held, there should be a lockname/held directory
         containing an info file.
         """
         t = self.get_transport()
