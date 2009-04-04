@@ -47,14 +47,14 @@ class TestDpush(ExternalBase):
 
     def test_dpush(self):
         tree = self.make_branch_and_tree("d", format=DummyForeignVcsDirFormat())
-
         self.build_tree(("d/foo", "bar"))
         tree.add("foo")
         tree.commit("msg")
 
-        self.run_bzr("branch d dc")
+        dc = tree.bzrdir.sprout('dc') 
         self.build_tree(("dc/foo", "blaaaa"))
-        self.run_bzr("commit -m msg dc")
+        dc.open_workingtree().commit('msg')
+
         self.run_bzr("dpush -d dc d")
         self.check_output("", "status dc")
 
@@ -65,10 +65,12 @@ class TestDpush(ExternalBase):
         tree.add("foo")
         tree.commit("msg") # rev 1
 
-        self.run_bzr("branch d dc")
+        dc = tree.bzrdir.sprout('dc')
         self.build_tree(("dc/foofile", "blaaaa"))
-        self.run_bzr("add dc/foofile")
-        self.run_bzr("commit -m msg dc") # rev 2
+        dc_tree = dc.open_workingtree()
+        dc.add("foofile")
+        dc.commit("msg")
+
         self.run_bzr("dpush -d dc d")
         self.check_output("2\n", "revno dc")
         self.check_output("", "status dc")
@@ -77,13 +79,15 @@ class TestDpush(ExternalBase):
         tree = self.make_branch_and_tree("d", format=DummyForeignVcsDirFormat())
         
         self.build_tree_contents([("d/foo", "bar")])
-        tree.add("foo")
+        tree.add(["foo"])
         tree.commit("msg")
 
-        self.run_bzr("branch d dc")
+        dc = tree.bzrdir.sprout('dc')
         self.build_tree_contents([("dc/foofile", "blaaaa")])
-        self.run_bzr("add dc/foofile")
-        self.run_bzr("commit -m msg dc")
+        dc_tree = dc.open_workingtree()
+        dc.add("foofile")
+        dc.commit('msg')
+
         self.build_tree_contents([("dc/foofile", "blaaaal")])
         self.run_bzr("dpush -d dc d")
         self.assertFileEqual("blaaaal", "dc/foofile")
@@ -96,15 +100,14 @@ class TestDpush(ExternalBase):
         tree.add("foo")
         tree.commit("msg")
 
-        self.run_bzr("branch d dc")
+        dc = tree.bzrdir.sprout('dc')
+        dc_tree = dc.open_workingtree()
 
         self.build_tree_contents([("dc/foo", "bar")])
-        self.run_bzr("commit -m msg1 dc")
+        dc.commit('msg1')
 
         self.build_tree_contents([("d/foo", "blie")])
-        self.run_bzr("commit -m msg2 d")
+        tree.commit('msg2')
 
         error = self.run_bzr("dpush -d dc d", retcode=3)[1]
         self.assertContainsRe(error, "have diverged")
-
-
