@@ -394,7 +394,9 @@ class ImportParser(LineBasedParser):
     def _get_from(self, required_for=None):
         """Parse a from section."""
         line = self.next_line()
-        if line.startswith('from '):
+        if line is None:
+            return None
+        elif line.startswith('from '):
             return line[len('from '):]
         elif required_for:
             self.abort(errors.MissingSection, required_for, 'from')
@@ -405,7 +407,9 @@ class ImportParser(LineBasedParser):
     def _get_merge(self):
         """Parse a merge section."""
         line = self.next_line()
-        if line.startswith('merge '):
+        if line is None:
+            return None
+        elif line.startswith('merge '):
             return line[len('merge '):]
         else:
             self.push_line(line)

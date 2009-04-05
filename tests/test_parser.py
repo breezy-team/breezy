@@ -94,6 +94,13 @@ Welcome from bugs, etc.
 # Miscellaneous
 checkpoint
 progress completed
+# Test a commit without sub-commands (bug #351717)
+commit refs/heads/master
+mark :3
+author <bugs@bunny.org> now
+committer <bugs@bunny.org> now
+data 20
+first commit, empty
 """
 
 
@@ -108,23 +115,23 @@ class TestImportParser(tests.TestCase):
             if cmd.name == 'commit':
                 for fc in cmd.file_iter():
                     result.append(fc)
-        self.assertEqual(len(result), 9)
-        cmd1 = result[0]
+        self.assertEqual(len(result), 10)
+        cmd1 = result.pop(0)
         self.assertEqual('progress', cmd1.name)
         self.assertEqual('completed', cmd1.message)
-        cmd2 = result[1]
+        cmd2 = result.pop(0)
         self.assertEqual('blob', cmd2.name)
         self.assertEqual('1', cmd2.mark)
         self.assertEqual(':1', cmd2.id)
         self.assertEqual('aaaa', cmd2.data)
         self.assertEqual(4, cmd2.lineno)
-        cmd3 = result[2]
+        cmd3 = result.pop(0)
         self.assertEqual('blob', cmd3.name)
         self.assertEqual('@7', cmd3.id)
         self.assertEqual(None, cmd3.mark)
         self.assertEqual('bbbbb', cmd3.data)
         self.assertEqual(7, cmd3.lineno)
-        cmd4 = result[3]
+        cmd4 = result.pop(0)
         self.assertEqual('commit', cmd4.name)
         self.assertEqual('2', cmd4.mark)
         self.assertEqual(':2', cmd4.id)
@@ -137,13 +144,13 @@ class TestImportParser(tests.TestCase):
         self.assertEqual('refs/heads/master', cmd4.ref)
         self.assertEqual(None, cmd4.from_)
         self.assertEqual([], cmd4.merges)
-        file_cmd1 = result[4]
+        file_cmd1 = result.pop(0)
         self.assertEqual('filemodify', file_cmd1.name)
         self.assertEqual('README', file_cmd1.path)
         self.assertEqual('file', file_cmd1.kind)
         self.assertEqual(False, file_cmd1.is_executable)
         self.assertEqual('Welcome from bugs\n', file_cmd1.data)
-        cmd5 = result[5]
+        cmd5 = result.pop(0)
         self.assertEqual('commit', cmd5.name)
         self.assertEqual(None, cmd5.mark)
         self.assertEqual('@19', cmd5.id)
@@ -156,17 +163,21 @@ class TestImportParser(tests.TestCase):
         self.assertEqual('refs/heads/master', cmd5.ref)
         self.assertEqual(':2', cmd5.from_)
         self.assertEqual([], cmd5.merges)
-        file_cmd2 = result[6]
+        file_cmd2 = result.pop(0)
         self.assertEqual('filemodify', file_cmd2.name)
         self.assertEqual('README', file_cmd2.path)
         self.assertEqual('file', file_cmd2.kind)
         self.assertEqual(False, file_cmd2.is_executable)
         self.assertEqual('Welcome from bugs, etc.', file_cmd2.data)
-        cmd6 = result[7]
+        cmd6 = result.pop(0)
         self.assertEqual(cmd6.name, 'checkpoint')
-        cmd7 = result[8]
+        cmd7 = result.pop(0)
         self.assertEqual('progress', cmd7.name)
         self.assertEqual('completed', cmd7.message)
+        cmd = result.pop(0)
+        self.assertEqual('commit', cmd.name)
+        self.assertEqual('3', cmd.mark)
+        self.assertEqual(None, cmd.from_)
 
 
 class TestStringParsing(tests.TestCase):
