@@ -49,7 +49,7 @@ The logic here is a bit tricky: first, we know that the line is present
 in some, but not all, LCAs.  We can assume that all LCAs were produced
 by merges of the same sets of revisions.  That means that in those LCAs,
 there were different merge resolutions.  Since THIS and OTHER disagree
-about whether the line is present, those differences have propogated
+about whether the line is present, those differences have propagated
 into THIS and OTHER.  Therefore, we should declare that the lines are in
 conflict, and let the user handle the issue.
 

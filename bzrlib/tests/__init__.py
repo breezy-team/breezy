@@ -997,7 +997,7 @@ class TestCase(unittest.TestCase):
                 raise AssertionError("%r is %r." % (left, right))
 
     def assertTransportMode(self, transport, path, mode):
-        """Fail if a path does not have mode mode.
+        """Fail if a path does not have mode "mode".
 
         If modes are not supported on this transport, the assertion is ignored.
         """

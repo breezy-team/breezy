@@ -173,7 +173,7 @@ def _annotations(repo, file_id, rev_id):
 
 
 def _expand_annotations(annotations, branch, current_rev=None):
-    """Expand a a files annotations into command line UI ready tuples.
+    """Expand a file's annotations into command line UI ready tuples.
 
     Each tuple includes detailed information, such as the author name, and date
     string for the commit, rather than just the revision id.
@@ -252,7 +252,7 @@ def reannotate(parents_lines, new_lines, new_revision_id,
         between the text and its left-hand-parent.  The format is
         the SequenceMatcher.get_matching_blocks format
         (start_left, start_right, length_of_match).
-    :param heads_provider: An object which provids a .heads() call to resolve
+    :param heads_provider: An object which provides a .heads() call to resolve
         if any revision ids are children of others.
         If None, then any ancestry disputes will be resolved with
         new_revision_id
