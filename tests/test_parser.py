@@ -186,3 +186,15 @@ class TestStringParsing(tests.TestCase):
         s = r'hello \"sweet\" wo\\r\tld'
         self.assertEquals(r'hello "sweet" wo\r' + "\tld",
             parser._unquote_c_string(s))
+
+
+class TestPathPairParsing(tests.TestCase):
+
+    def test_path_pair_simple(self):
+        p = parser.ImportParser("")
+        self.assertEqual(['foo', 'bar'], p._path_pair("foo bar"))
+
+    def test_path_pair_spaces_in_first(self):
+        p = parser.ImportParser("")
+        self.assertEqual(['foo bar', 'baz'],
+            p._path_pair('"foo bar" baz'))

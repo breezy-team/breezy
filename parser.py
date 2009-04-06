@@ -489,7 +489,7 @@ class ImportParser(LineBasedParser):
         """Parse a path."""
         if s.startswith('"'):
             if s[-1] != '"':
-                self.abort(errors.BadFormat, cmd, section, s)
+                self.abort(errors.BadFormat, '?', '?', s)
             else:
                 return _unquote_c_string(s[1:-1])
         try:
@@ -501,8 +501,14 @@ class ImportParser(LineBasedParser):
     def _path_pair(self, s):
         """Parse two paths separated by a space."""
         # TODO: handle a space in the first path
-        parts = s.split(' ', 1)
-        return map(_unquote_c_string, parts)
+        if s.startswith('"'):
+            parts = s[1:].split('" ', 1)
+        else:
+            parts = s.split(' ', 1)
+        if len(parts) == 2:
+            return map(_unquote_c_string, parts)
+        else:
+            self.abort(errors.BadFormat, '?', '?', s)
 
     def _mode(self, s):
         """Parse a file mode into executable and symlink flags.
