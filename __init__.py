@@ -388,13 +388,13 @@ class cmd_fast_export(Command):
     hidden = False
     _see_also = ['fast-import', 'fast-import-filter']
     takes_args = ['source']
-    takes_options = ['verbose',
+    takes_options = ['verbose', 'revision',
                     Option('git-branch', short_name='b', type=str,
                         argname='FILE',
                         help='Name of the git branch to create (default=master).'
                         ),
                     Option('checkpoint', type=int, argname='N',
-                        help="Checkpoint every N revisions (default=1000)."
+                        help="Checkpoint every N revisions (default=10000)."
                         ),
                     Option('marks', type=str, argname='FILE',
                         help="Import marks from and export marks to file."
@@ -408,15 +408,16 @@ class cmd_fast_export(Command):
                      ]
     aliases = []
     encoding_type = 'exact'
-    def run(self, source, verbose=False, git_branch="master", checkpoint=1000,
-        marks=None, import_marks=None, export_marks=None):
+    def run(self, source, verbose=False, git_branch="master", checkpoint=10000,
+        marks=None, import_marks=None, export_marks=None, revision=None):
         from bzrlib.plugins.fastimport import bzr_exporter
 
         if marks:                                              
             import_marks = export_marks = marks
         exporter = bzr_exporter.BzrFastExporter(source,
             git_branch=git_branch, checkpoint=checkpoint,
-            import_marks_file=import_marks, export_marks_file=export_marks)
+            import_marks_file=import_marks, export_marks_file=export_marks,
+            revision=revision)
         return exporter.run()
 
 

@@ -27,27 +27,69 @@
 # is not updated (because the parent of commit is already merged, so we don't
 # set new_git_branch to the previously used name)
 
-import sys
 from email.Utils import parseaddr
+import sys, time
 
 import bzrlib.branch
 import bzrlib.revision
 from bzrlib import errors as bazErrors
+from bzrlib.builtins import _get_revision_range
 from bzrlib.trace import note, warning
 
 from bzrlib.plugins.fastimport import commands, helpers, marks_file
 
 
+try:
+    from bzrlib.log import _linear_view_revisions
+except ImportError:
+    # This is taken from log.py. As this function only landed in bzr 1.12, it's
+    # copied here so fast-export can work on earlier versions.
+    def _linear_view_revisions(branch, start_rev_id, end_rev_id):
+        """Calculate a sequence of revisions to view, newest to oldest.
+
+        :param start_rev_id: the lower revision-id
+        :param end_rev_id: the upper revision-id
+        :return: An iterator of (revision_id, dotted_revno, merge_depth) tuples.
+        :raises _StartNotLinearAncestor: if a start_rev_id is specified but
+          is not found walking the left-hand history
+        """
+        br_revno, br_rev_id = branch.last_revision_info()
+        repo = branch.repository
+        if start_rev_id is None and end_rev_id is None:
+            cur_revno = br_revno
+            for revision_id in repo.iter_reverse_revision_history(br_rev_id):
+                yield revision_id, str(cur_revno), 0
+                cur_revno -= 1
+        else:
+            if end_rev_id is None:
+                end_rev_id = br_rev_id
+            found_start = start_rev_id is None
+            for revision_id in repo.iter_reverse_revision_history(end_rev_id):
+                revno = branch.revision_id_to_dotted_revno(revision_id)
+                revno_str = '.'.join(str(n) for n in revno)
+                if not found_start and revision_id == start_rev_id:
+                    yield revision_id, revno_str, 0
+                    found_start = True
+                    break
+                else:
+                    yield revision_id, revno_str, 0
+            else:
+                if not found_start:
+                    raise _StartNotLinearAncestor()
+
+
 class BzrFastExporter(object):
 
     def __init__(self, source, git_branch=None, checkpoint=-1,
-        import_marks_file=None, export_marks_file=None):
+        import_marks_file=None, export_marks_file=None, revision=None):
         self.source = source
         self.outf = helpers.binary_stream(sys.stdout)
         self.git_branch = git_branch
         self.checkpoint = checkpoint
         self.import_marks_file = import_marks_file
         self.export_marks_file = export_marks_file
+        self.revision = revision
+        self.excluded_revisions = set()
 
         self.revid_to_mark = {}
         self.branch_names = {}
@@ -57,7 +99,28 @@ class BzrFastExporter(object):
                 self.revid_to_mark = dict((r, m) for m, r in
                     marks_info[0].items())
                 self.branch_names = marks_info[1]
-        
+ 
+    def interesting_history(self):
+        if self.revision:
+            rev1, rev2 = _get_revision_range(self.revision, self.branch,
+                "fast-export")
+            start_rev_id = rev1.rev_id
+            end_rev_id = rev2.rev_id
+        else:
+            start_rev_id = None
+            end_rev_id = None
+        view_revisions = reversed(list(_linear_view_revisions(self.branch,
+            start_rev_id, end_rev_id)))
+        # If a starting point was given, we need to later check that we don't
+        # start emitting revisions from before that point. Collect the
+        # revisions to exclude now ...
+        if start_rev_id is not None:
+            # The result is inclusive so skip the first (the oldest) one
+            uninteresting = [revid for revid, _, _ in _linear_view_revisions(
+                self.branch, None, start_rev_id)][1:]
+            self.excluded_revisions = set(uninteresting)
+        return [revid for revid, _, _ in view_revisions]
+
     def run(self):
         # Open the source
         self.branch = bzrlib.branch.Branch.open_containing(self.source)[0]
@@ -65,7 +128,7 @@ class BzrFastExporter(object):
         # Export the data
         self.branch.repository.lock_read()
         try:
-            for revid in self.branch.revision_history():
+            for revid in self.interesting_history():
                 self.emit_commit(revid, self.git_branch)
             if self.branch.supports_tags():
                 self.emit_tags()
@@ -108,7 +171,7 @@ class BzrFastExporter(object):
             return False
 
     def emit_commit(self, revid, git_branch):
-        if revid in self.revid_to_mark:
+        if revid in self.revid_to_mark or revid in self.excluded_revisions:
             return
 
         # Get the Revision object
@@ -168,6 +231,8 @@ class BzrFastExporter(object):
         # Get the parents in terms of marks
         non_ghost_parents = []
         for p in revobj.parent_ids:
+            if p in self.excluded_revisions:
+                continue
             parent_mark = self.revid_to_mark[p]
             if parent_mark != -1:
                 non_ghost_parents.append(":%s" % parent_mark)
