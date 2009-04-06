@@ -67,7 +67,10 @@ class TestExport(ExternalBase):
 
     def test_tar_export_unicode(self):
         tree = self.make_branch_and_tree('tar')
-        fname = u'\xe5.txt'
+        # FIXME: using fname = u'\xe5.txt' below triggers a bug revealed since
+        # bzr.dev revno 4216 but more related to OSX/working trees/unicode than
+        # export itself.
+        fname = u'\N{Euro Sign}.txt'
         try:
             self.build_tree(['tar/' + fname])
         except UnicodeError:
@@ -108,7 +111,7 @@ class TestExport(ExternalBase):
 
     def test_zip_export_unicode(self):
         tree = self.make_branch_and_tree('zip')
-        fname = u'\xe5.txt'
+        fname = u'\N{Euro Sign}.txt'
         try:
             self.build_tree(['zip/' + fname])
         except UnicodeError:

@@ -1030,9 +1030,10 @@ def _cicp_canonical_relpath(base, path):
     return current[len(abs_base)+1:]
 
 # XXX - TODO - we need better detection/integration of case-insensitive
-# file-systems; Linux often sees FAT32 devices, for example, so could
-# probably benefit from the same basic support there.  For now though, only
-# Windows gets that support, and it gets it for *all* file-systems!
+# file-systems; Linux often sees FAT32 devices (or NFS-mounted OSX
+# filesystems), for example, so could probably benefit from the same basic
+# support there.  For now though, only Windows and OSX get that support, and
+# they get it for *all* file-systems!
 if sys.platform in ('win32', 'darwin'):
     canonical_relpath = _cicp_canonical_relpath
 else:
