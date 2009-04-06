@@ -25,10 +25,11 @@ import sys
 import tarfile
 import zipfile
 
-from bzrlib.export import (
-    zip_exporter,
+
+from bzrlib import (
+    export,
+    tests,
     )
-from bzrlib.tests import TestSkipped
 from bzrlib.tests.blackbox import ExternalBase
 
 
@@ -70,7 +71,7 @@ class TestExport(ExternalBase):
         try:
             self.build_tree(['tar/' + fname])
         except UnicodeError:
-            raise TestSkipped('Unable to represent path %r' % (fname,))
+            raise tests.TestSkipped('Unable to represent path %r' % (fname,))
         tree.add([fname])
         tree.commit('first')
 
@@ -111,7 +112,7 @@ class TestExport(ExternalBase):
         try:
             self.build_tree(['zip/' + fname])
         except UnicodeError:
-            raise TestSkipped('Unable to represent path %r' % (fname,))
+            raise tests.TestSkipped('Unable to represent path %r' % (fname,))
         tree.add([fname])
         tree.commit('first')
 
@@ -138,7 +139,7 @@ class TestExport(ExternalBase):
         self.assertEqual(['test/a', 'test/b/', 'test/b/c', 'test/d/'], names)
 
         file_attr = stat.S_IFREG
-        dir_attr = stat.S_IFDIR | zip_exporter.ZIP_DIRECTORY_BIT
+        dir_attr = stat.S_IFDIR | export.zip_exporter.ZIP_DIRECTORY_BIT
 
         a_info = zfile.getinfo(names[0])
         self.assertEqual(file_attr, a_info.external_attr)
