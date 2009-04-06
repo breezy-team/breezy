@@ -80,7 +80,11 @@ from bzrlib import (
 import bzrlib.branch
 from bzrlib.transport import get_transport
 import bzrlib.ui
-from bzrlib.workingtree_4 import WorkingTreeFormat4, WorkingTreeFormat5
+from bzrlib.workingtree_4 import (
+    WorkingTreeFormat4,
+    WorkingTreeFormat5,
+    WorkingTreeFormat6,
+    )
 """)
 
 from bzrlib import symbol_versioning
@@ -969,7 +973,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         return file_id
 
     def get_symlink_target(self, file_id):
-        return os.readlink(self.id2abspath(file_id).encode(osutils._fs_enc))
+        return os.readlink(self.id2abspath(file_id).encode(osutils._fs_enc)
+            ).decode(osutils._fs_enc)
 
     @needs_write_lock
     def subsume(self, other_tree):
@@ -2981,6 +2986,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
 
 __default_format = WorkingTreeFormat4()
 WorkingTreeFormat.register_format(__default_format)
+WorkingTreeFormat.register_format(WorkingTreeFormat6())
 WorkingTreeFormat.register_format(WorkingTreeFormat5())
 WorkingTreeFormat.register_format(WorkingTreeFormat3())
 WorkingTreeFormat.set_default_format(__default_format)

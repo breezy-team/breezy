@@ -80,11 +80,6 @@ class SmartServerBranchGetConfigFile(SmartServerBranchRequest):
 
         The body is not utf8 decoded - its the literal bytestream from disk.
         """
-        # This was at one time called by RemoteBranchLockableFiles
-        # intercepting access to this file; as of 1.5 it is not called by the
-        # client but retained for compatibility.  It may be called again to
-        # allow the client to get the configuration without needing vfs
-        # access.
         try:
             content = branch._transport.get_bytes('branch.conf')
         except errors.NoSuchFile:
@@ -151,6 +146,16 @@ class SmartServerSetTipRequest(SmartServerLockedBranchRequest):
             if isinstance(msg, unicode):
                 msg = msg.encode('utf-8')
             return FailedSmartServerResponse(('TipChangeRejected', msg))
+
+
+class SmartServerBranchRequestSetConfigOption(SmartServerLockedBranchRequest):
+    """Set an option in the branch configuration."""
+
+    def do_with_locked_branch(self, branch, value, name, section):
+        if not section:
+            section = None
+        branch._get_config().set_option(value.decode('utf8'), name, section)
+        return SuccessfulSmartServerResponse(())
 
 
 class SmartServerBranchRequestSetLastRevision(SmartServerSetTipRequest):

@@ -57,6 +57,9 @@ from bzrlib import (
 from bzrlib.osutils import (
     sha_string,
     )
+from bzrlib.push import (
+    PushResult,
+    )
 from bzrlib.smart.client import _SmartClient
 from bzrlib.store.versioned import WeaveStore
 from bzrlib.transactions import WriteTransaction
@@ -1195,6 +1198,66 @@ class BzrDir(object):
                 if basis is not None:
                     basis.unlock()
         return result
+
+    def push_branch(self, source, revision_id=None, overwrite=False, 
+        remember=False):
+        """Push the source branch into this BzrDir."""
+        br_to = None
+        # If we can open a branch, use its direct repository, otherwise see
+        # if there is a repository without a branch.
+        try:
+            br_to = self.open_branch()
+        except errors.NotBranchError:
+            # Didn't find a branch, can we find a repository?
+            repository_to = self.find_repository()
+        else:
+            # Found a branch, so we must have found a repository
+            repository_to = br_to.repository
+
+        push_result = PushResult()
+        push_result.source_branch = source
+        if br_to is None:
+            # We have a repository but no branch, copy the revisions, and then
+            # create a branch.
+            repository_to.fetch(source.repository, revision_id=revision_id)
+            br_to = source.clone(self, revision_id=revision_id)
+            if source.get_push_location() is None or remember:
+                source.set_push_location(br_to.base)
+            push_result.stacked_on = None
+            push_result.branch_push_result = None
+            push_result.old_revno = None
+            push_result.old_revid = _mod_revision.NULL_REVISION
+            push_result.target_branch = br_to
+            push_result.master_branch = None
+            push_result.workingtree_updated = False
+        else:
+            # We have successfully opened the branch, remember if necessary:
+            if source.get_push_location() is None or remember:
+                source.set_push_location(br_to.base)
+            try:
+                tree_to = self.open_workingtree()
+            except errors.NotLocalUrl:
+                push_result.branch_push_result = source.push(br_to, 
+                    overwrite, stop_revision=revision_id)
+                push_result.workingtree_updated = False
+            except errors.NoWorkingTree:
+                push_result.branch_push_result = source.push(br_to,
+                    overwrite, stop_revision=revision_id)
+                push_result.workingtree_updated = None # Not applicable
+            else:
+                tree_to.lock_write()
+                try:
+                    push_result.branch_push_result = source.push(
+                        tree_to.branch, overwrite, stop_revision=revision_id)
+                    tree_to.update()
+                finally:
+                    tree_to.unlock()
+                push_result.workingtree_updated = True
+            push_result.old_revno = push_result.branch_push_result.old_revno
+            push_result.old_revid = push_result.branch_push_result.old_revid
+            push_result.target_branch = \
+                push_result.branch_push_result.target_branch
+        return push_result
 
 
 class BzrDirHooks(hooks.Hooks):
@@ -2751,6 +2814,11 @@ class ConvertMetaToMeta(Converter):
                 isinstance(self.target_format.workingtree_format,
                     workingtree_4.WorkingTreeFormat5)):
                 workingtree_4.Converter4to5().convert(tree)
+            if (isinstance(tree, workingtree_4.DirStateWorkingTree) and
+                not isinstance(tree, workingtree_4.WorkingTree6) and
+                isinstance(self.target_format.workingtree_format,
+                    workingtree_4.WorkingTreeFormat6)):
+                workingtree_4.Converter4or5to6().convert(tree)
         return to_convert
 
 
@@ -3342,20 +3410,18 @@ format_registry.register_metadir('1.9-rich-root',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     )
-format_registry.register_metadir('development-wt5',
+format_registry.register_metadir('1.14',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6',
-    help='A working-tree format that supports views and content filtering.',
+    help='A working-tree format that supports content filtering.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat5',
-    experimental=True,
     )
-format_registry.register_metadir('development-wt5-rich-root',
+format_registry.register_metadir('1.14-rich-root',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6RichRoot',
-    help='A variant of development-wt5 that supports rich-root data '
+    help='A variant of 1.14 that supports rich-root data '
          '(needed for bzr-svn and bzr-git).',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat5',
-    experimental=True,
     )
 # The following two formats should always just be aliases.
 format_registry.register_metadir('development',
@@ -3404,6 +3470,28 @@ format_registry.register_metadir('development2-subtree',
         'before use.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    hidden=True,
+    experimental=True,
+    )
+# These next two formats should be removed when the gc formats are
+# updated to use WorkingTreeFormat6 and are merged into bzr.dev
+format_registry.register_metadir('development-wt6',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6',
+    help='1.14 with filtered views. '
+        'Please read '
+        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+        'before use.',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat6',
+    hidden=True,
+    experimental=True,
+    )
+format_registry.register_metadir('development-wt6-rich-root',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6RichRoot',
+    help='A variant of development-wt6 that supports rich-root data '
+         '(needed for bzr-svn and bzr-git).',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat6',
     hidden=True,
     experimental=True,
     )

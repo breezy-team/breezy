@@ -22,6 +22,7 @@ import bz2
 from bzrlib import (
     branch,
     bzrdir,
+    config,
     debug,
     errors,
     graph,
@@ -844,6 +845,8 @@ class RemoteRepository(_RpcHelper):
                 self._real_repository.lock_read()
         else:
             self._lock_count += 1
+        for repo in self._fallback_repositories:
+            repo.lock_read()
 
     def _remote_lock_write(self, token):
         path = self.bzrdir._path_for_remote_call(self._client)
@@ -884,6 +887,9 @@ class RemoteRepository(_RpcHelper):
             raise errors.ReadOnlyError(self)
         else:
             self._lock_count += 1
+        for repo in self._fallback_repositories:
+            # Writes don't affect fallback repos
+            repo.lock_read()
         return self._lock_token or None
 
     def leave_lock_in_place(self):
@@ -911,12 +917,26 @@ class RemoteRepository(_RpcHelper):
         if isinstance(repository, RemoteRepository):
             raise AssertionError()
         self._real_repository = repository
-        # If the _real_repository has _fallback_repositories, clear them out,
-        # because we want it to have the same set as this repository.  This is
-        # reasonable to do because the fallbacks we clear here are from a
-        # "real" branch, and we're about to replace them with the equivalents
-        # from a RemoteBranch.
-        self._real_repository._fallback_repositories = []
+        # three code paths happen here:
+        # 1) old servers, RemoteBranch.open() calls _ensure_real before setting
+        # up stacking. In this case self._fallback_repositories is [], and the
+        # real repo is already setup. Preserve the real repo and
+        # RemoteRepository.add_fallback_repository will avoid adding
+        # duplicates.
+        # 2) new servers, RemoteBranch.open() sets up stacking, and when
+        # ensure_real is triggered from a branch, the real repository to
+        # set already has a matching list with separate instances, but
+        # as they are also RemoteRepositories we don't worry about making the
+        # lists be identical.
+        # 3) new servers, RemoteRepository.ensure_real is triggered before
+        # RemoteBranch.ensure real, in this case we get a repo with no fallbacks
+        # and need to populate it.
+        if (self._fallback_repositories and
+            len(self._real_repository._fallback_repositories) !=
+            len(self._fallback_repositories)):
+            if len(self._real_repository._fallback_repositories):
+                raise AssertionError(
+                    "cannot cleanly remove existing _fallback_repositories")
         for fb in self._fallback_repositories:
             self._real_repository.add_fallback_repository(fb)
         if self._lock_mode == 'w':
@@ -1051,12 +1071,10 @@ class RemoteRepository(_RpcHelper):
         # _real_branch had its get_stacked_on_url method called), then the
         # repository to be added may already be in the _real_repositories list.
         if self._real_repository is not None:
-            if repository not in self._real_repository._fallback_repositories:
+            fallback_locations = [repo.bzrdir.root_transport.base for repo in
+                self._real_repository._fallback_repositories]
+            if repository.bzrdir.root_transport.base not in fallback_locations:
                 self._real_repository.add_fallback_repository(repository)
-        else:
-            # They are also seen by the fallback repository.  If it doesn't
-            # exist yet they'll be added then.  This implicitly copies them.
-            self._ensure_real()
 
     def add_inventory(self, revid, inv, parents):
         self._ensure_real()
@@ -1261,9 +1279,17 @@ class RemoteRepository(_RpcHelper):
         # We don't need to send ghosts back to the server as a position to
         # stop either.
         stop_keys.difference_update(self._unstacked_provider.missing_keys)
+        key_count = len(parents_map)
+        if (NULL_REVISION in result_parents
+            and NULL_REVISION in self._unstacked_provider.missing_keys):
+            # If we pruned NULL_REVISION from the stop_keys because it's also
+            # in our cache of "missing" keys we need to increment our key count
+            # by 1, because the reconsitituted SearchResult on the server will
+            # still consider NULL_REVISION to be an included key.
+            key_count += 1
         included_keys = start_set.intersection(result_parents)
         start_set.difference_update(included_keys)
-        recipe = ('manual', start_set, stop_keys, len(parents_map))
+        recipe = ('manual', start_set, stop_keys, key_count)
         body = self._serialise_search_recipe(recipe)
         path = self.bzrdir._path_for_remote_call(self._client)
         for key in keys:
@@ -1926,12 +1952,10 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         except (errors.NotStacked, errors.UnstackableBranchFormat,
             errors.UnstackableRepositoryFormat), e:
             return
-        # it's relative to this branch...
-        fallback_url = urlutils.join(self.base, fallback_url)
-        transports = [self.bzrdir.root_transport]
-        stacked_on = branch.Branch.open(fallback_url,
-                                        possible_transports=transports)
-        self.repository.add_fallback_repository(stacked_on.repository)
+        self._activate_fallback_location(fallback_url)
+
+    def _get_config(self):
+        return RemoteBranchConfig(self)
 
     def _get_real_transport(self):
         # if we try vfs access, return the real branch's vfs transport
@@ -2279,17 +2303,6 @@ class RemoteBranch(branch.Branch, _RpcHelper):
             self._ensure_real()
             return self._real_branch._set_parent_location(url)
 
-    def set_stacked_on_url(self, stacked_location):
-        """Set the URL this branch is stacked against.
-
-        :raises UnstackableBranchFormat: If the branch does not support
-            stacking.
-        :raises UnstackableRepositoryFormat: If the repository does not support
-            stacking.
-        """
-        self._ensure_real()
-        return self._real_branch.set_stacked_on_url(stacked_location)
-
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
              **kwargs):
@@ -2360,6 +2373,71 @@ class RemoteBranch(branch.Branch, _RpcHelper):
     def set_push_location(self, location):
         self._ensure_real()
         return self._real_branch.set_push_location(location)
+
+
+class RemoteBranchConfig(object):
+    """A Config that reads from a smart branch and writes via smart methods.
+
+    It is a low-level object that considers config data to be name/value pairs
+    that may be associated with a section. Assigning meaning to the these
+    values is done at higher levels like bzrlib.config.TreeConfig.
+    """
+
+    def __init__(self, branch):
+        self._branch = branch
+
+    def get_option(self, name, section=None, default=None):
+        """Return the value associated with a named option.
+
+        :param name: The name of the value
+        :param section: The section the option is in (if any)
+        :param default: The value to return if the value is not set
+        :return: The value or default value
+        """
+        configobj = self._get_configobj()
+        if section is None:
+            section_obj = configobj
+        else:
+            try:
+                section_obj = configobj[section]
+            except KeyError:
+                return default
+        return section_obj.get(name, default)
+
+    def _get_configobj(self):
+        path = self._branch._remote_path()
+        response = self._branch._client.call_expecting_body(
+            'Branch.get_config_file', path)
+        if response[0][0] != 'ok':
+            raise UnexpectedSmartServerResponse(response)
+        lines = response[1].read_body_bytes().splitlines()
+        return config.ConfigObj(lines, encoding='utf-8')
+
+    def set_option(self, value, name, section=None):
+        """Set the value associated with a named option.
+
+        :param value: The value to set
+        :param name: The name of the value to set
+        :param section: The section the option is in (if any)
+        """
+        medium = self._branch._client._medium
+        if medium._is_remote_before((1, 14)):
+            return self._vfs_set_option(value, name, section)
+        try:
+            path = self._branch._remote_path()
+            response = self._branch._client.call('Branch.set_config_option',
+                path, self._branch._lock_token, self._branch._repo_lock_token,
+                value.encode('utf8'), name, section or '')
+        except errors.UnknownSmartMethod:
+            medium._remember_remote_is_before((1, 14))
+            return self._vfs_set_option(value, name, section)
+        if response != ():
+            raise errors.UnexpectedSmartServerResponse(response)
+
+    def _vfs_set_option(self, value, name, section=None):
+        self._branch._ensure_real()
+        return self._branch._real_branch._get_config().set_option(
+            value, name, section)
 
 
 def _extract_tar(tar, to_dir):

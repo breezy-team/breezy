@@ -17,6 +17,9 @@
 """A generator which creates a rio stanza of the current tree info"""
 
 from bzrlib import hooks
+from bzrlib.revision import (
+    NULL_REVISION,
+    )
 from bzrlib.rio import RioWriter, Stanza
 
 from bzrlib.version_info_formats import (
@@ -31,7 +34,7 @@ class RioVersionInfoBuilder(VersionInfoBuilder):
     def generate(self, to_file):
         info = Stanza()
         revision_id = self._get_revision_id()
-        if revision_id is not None:
+        if revision_id != NULL_REVISION:
             info.add('revision-id', revision_id)
             rev = self._branch.repository.get_revision(revision_id)
             info.add('date', create_date_str(rev.timestamp, rev.timezone))

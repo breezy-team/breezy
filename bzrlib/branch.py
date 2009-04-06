@@ -36,7 +36,7 @@ from bzrlib import (
         ui,
         urlutils,
         )
-from bzrlib.config import BranchConfig
+from bzrlib.config import BranchConfig, TransportConfig
 from bzrlib.repofmt.pack_repo import RepositoryFormatKnitPack5RichRoot
 from bzrlib.tag import (
     BasicTags,
@@ -99,6 +99,11 @@ class Branch(object):
     def _open_hook(self):
         """Called by init to allow simpler extension of the base class."""
 
+    def _activate_fallback_location(self, url):
+        """Activate the branch/repository from url as a fallback repository."""
+        self.repository.add_fallback_repository(
+            self._get_fallback_repository(url))
+
     def break_lock(self):
         """Break a lock if one is present from another instance.
 
@@ -112,6 +117,11 @@ class Branch(object):
         master = self.get_master_branch()
         if master is not None:
             master.break_lock()
+
+    def _check_stackable_repo(self):
+        if not self.repository._format.supports_external_lookups:
+            raise errors.UnstackableRepositoryFormat(self.repository._format,
+                self.repository.base)
 
     @staticmethod
     def open(base, _unsupported=False, possible_transports=None):
@@ -156,6 +166,25 @@ class Branch(object):
 
     def get_config(self):
         return BranchConfig(self)
+
+    def _get_config(self):
+        """Get the concrete config for just the config in this branch.
+
+        This is not intended for client use; see Branch.get_config for the
+        public API.
+
+        Added in 1.14.
+
+        :return: An object supporting get_option and set_option.
+        """
+        raise NotImplementedError(self._get_config)
+
+    def _get_fallback_repository(self, url):
+        """Get the repository we fallback to at url."""
+        url = urlutils.join(self.base, url)
+        a_bzrdir = bzrdir.BzrDir.open(url,
+            possible_transports=[self.bzrdir.root_transport])
+        return a_bzrdir.open_branch().repository
 
     def _get_tags_bytes(self):
         """Get the bytes of a serialised tags dict.
@@ -569,7 +598,33 @@ class Branch(object):
         :raises UnstackableRepositoryFormat: If the repository does not support
             stacking.
         """
-        raise NotImplementedError(self.set_stacked_on_url)
+        if not self._format.supports_stacking():
+            raise errors.UnstackableBranchFormat(self._format, self.base)
+        self._check_stackable_repo()
+        if not url:
+            try:
+                old_url = self.get_stacked_on_url()
+            except (errors.NotStacked, errors.UnstackableBranchFormat,
+                errors.UnstackableRepositoryFormat):
+                return
+            url = ''
+            # repositories don't offer an interface to remove fallback
+            # repositories today; take the conceptually simpler option and just
+            # reopen it.
+            self.repository = self.bzrdir.find_repository()
+            # for every revision reference the branch has, ensure it is pulled
+            # in.
+            source_repository = self._get_fallback_repository(old_url)
+            for revision_id in chain([self.last_revision()],
+                self.tags.get_reverse_tag_dict()):
+                self.repository.fetch(source_repository, revision_id,
+                    find_ghosts=True)
+        else:
+            self._activate_fallback_location(url)
+        # write this out after the repository is stacked to avoid setting a
+        # stacked config that doesn't work.
+        self._set_config_location('stacked_on_location', url)
+
 
     def _set_tags_bytes(self, bytes):
         """Mirror method for _get_tags_bytes.
@@ -1837,6 +1892,9 @@ class BzrBranch(Branch):
 
     base = property(_get_base, doc="The URL for the root of this branch.")
 
+    def _get_config(self):
+        return TransportConfig(self._transport, 'branch.conf')
+
     def is_locked(self):
         return self.control_files.is_locked()
 
@@ -2161,9 +2219,6 @@ class BzrBranch(Branch):
             self._transport.put_bytes('parent', url + '\n',
                 mode=self.bzrdir._get_file_mode())
 
-    def set_stacked_on_url(self, url):
-        raise errors.UnstackableBranchFormat(self._format, self.base)
-
 
 class BzrBranch5(BzrBranch):
     """A format 5 branch. This supports new features over plain branches.
@@ -2295,18 +2350,6 @@ class BzrBranch5(BzrBranch):
 class BzrBranch7(BzrBranch5):
     """A branch with support for a fallback repository."""
 
-    def _get_fallback_repository(self, url):
-        """Get the repository we fallback to at url."""
-        url = urlutils.join(self.base, url)
-        a_bzrdir = bzrdir.BzrDir.open(url,
-                                      possible_transports=[self._transport])
-        return a_bzrdir.open_branch().repository
-
-    def _activate_fallback_location(self, url):
-        """Activate the branch/repository from url as a fallback repository."""
-        self.repository.add_fallback_repository(
-            self._get_fallback_repository(url))
-
     def _open_hook(self):
         if self._ignore_fallbacks:
             return
@@ -2324,11 +2367,6 @@ class BzrBranch7(BzrBranch5):
                         "'transform_fallback_location' hook %s returned "
                         "None, not a URL." % hook_name)
             self._activate_fallback_location(url)
-
-    def _check_stackable_repo(self):
-        if not self.repository._format.supports_external_lookups:
-            raise errors.UnstackableRepositoryFormat(self.repository._format,
-                self.repository.base)
 
     def __init__(self, *args, **kwargs):
         self._ignore_fallbacks = kwargs.get('ignore_fallbacks', False)
@@ -2510,32 +2548,6 @@ class BzrBranch7(BzrBranch5):
         self.get_config().set_user_option('append_revisions_only', value,
             warn_masked=True)
 
-    def set_stacked_on_url(self, url):
-        self._check_stackable_repo()
-        if not url:
-            try:
-                old_url = self.get_stacked_on_url()
-            except (errors.NotStacked, errors.UnstackableBranchFormat,
-                errors.UnstackableRepositoryFormat):
-                return
-            url = ''
-            # repositories don't offer an interface to remove fallback
-            # repositories today; take the conceptually simpler option and just
-            # reopen it.
-            self.repository = self.bzrdir.find_repository()
-            # for every revision reference the branch has, ensure it is pulled
-            # in.
-            source_repository = self._get_fallback_repository(old_url)
-            for revision_id in chain([self.last_revision()],
-                self.tags.get_reverse_tag_dict()):
-                self.repository.fetch(source_repository, revision_id,
-                    find_ghosts=True)
-        else:
-            self._activate_fallback_location(url)
-        # write this out after the repository is stacked to avoid setting a
-        # stacked config that doesn't work.
-        self._set_config_location('stacked_on_location', url)
-
     def _get_append_revisions_only(self):
         value = self.get_config().get_user_option('append_revisions_only')
         return value == 'True'
@@ -2592,9 +2604,6 @@ class BzrBranch6(BzrBranch7):
     """
 
     def get_stacked_on_url(self):
-        raise errors.UnstackableBranchFormat(self._format, self.base)
-
-    def set_stacked_on_url(self, url):
         raise errors.UnstackableBranchFormat(self._format, self.base)
 
 

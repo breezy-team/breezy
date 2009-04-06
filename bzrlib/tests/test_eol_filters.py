@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,11 +14,26 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Tests for eol conversion."""
 
-from bzrlib import tests
+
+from bzrlib.filters.eol import (
+    _to_crlf_converter,
+    _to_lf_converter,
+    )
+from bzrlib.tests import TestCase
 
 
-class TestGuessRenames(tests.TestCaseWithTransport):
+# Sample files
+_sample_file1 = """hello\nworld\r\n"""
 
-    def test_guess_renames(self):
-        self.run_bzr('guess-renames')
+
+class TestEolFilters(TestCase):
+
+    def test_to_lf(self):
+        result = _to_lf_converter([_sample_file1])
+        self.assertEqual(["hello\nworld\n"], result)
+
+    def test_to_crlf(self):
+        result = _to_crlf_converter([_sample_file1])
+        self.assertEqual(["hello\r\nworld\r\n"], result)
