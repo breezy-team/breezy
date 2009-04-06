@@ -69,7 +69,7 @@ class TestExport(ExternalBase):
         tree = self.make_branch_and_tree('tar')
         # FIXME: using fname = u'\xe5.txt' below triggers a bug revealed since
         # bzr.dev revno 4216 but more related to OSX/working trees/unicode than
-        # export itself.
+        # export itself --vila 20090406
         fname = u'\N{Euro Sign}.txt'
         try:
             self.build_tree(['tar/' + fname])
