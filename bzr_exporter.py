@@ -284,12 +284,7 @@ class BzrFastExporter(object):
                 self.note("Skipping empty dir %s in rev %s" % (oldpath,
                     revision_id))
                 continue
-            for old, new in renamed:
-                # If a previous rename is found in this rename, we should
-                # adjust the path
-                if old in oldpath:
-                    oldpath = oldpath.replace(old + "/", new + "/") 
-                    self.note("Fixing recursive rename for %s" % oldpath)
+            oldpath = self._adjust_path_for_renames(oldpath, renamed)
             renamed.append([oldpath, newpath])
             file_cmds.append(commands.FileRenameCommand(oldpath, newpath))
             if text_modified or meta_modified:
@@ -297,15 +292,16 @@ class BzrFastExporter(object):
 
         # Record deletes
         for path, id_, kind in changes.removed:
-            for old, new in renamed:
-                path = path.replace(old + "/", new + "/")
+            path = self._adjust_path_for_renames(path, renamed)
             file_cmds.append(commands.FileDeleteCommand(path))
 
         # Map kind changes to a delete followed by an add
         for path, id_, kind1, kind2 in changes.kind_changed:
-            for old, new in renamed:
-                path = path.replace(old + "/", new + "/")
-            file_cmds.append(commands.FileDeleteCommand(path))
+            path = self._adjust_path_for_renames(path, renamed)
+            # IGC: I don't understand why a delete is needed here.
+            # In fact, it seems harmful? If you uncomment this line,
+            # please file a bug explaining why you needed to.
+            #file_cmds.append(commands.FileDeleteCommand(path))
             my_modified.append((path, id_, kind2))
 
         # Record modifications
@@ -322,6 +318,18 @@ class BzrFastExporter(object):
                 # can handle directory and tree-reference changes?
                 continue
         return file_cmds
+
+    def _adjust_path_for_renames(self, path, renamed):
+        # If a previous rename is found, we should adjust the path
+        for old, new in renamed:
+            if path == old:
+                self.note("Changing path %s given rename to %s" % (path, new))
+                path = new
+            elif path.startswith(old + '/'):
+                self.note("Adjusting path %s given rename of %s to %s" %
+                    (path, old, new))
+                path = path.replace(old + "/", new + "/")
+        return path
 
     def emit_tags(self):
         for tag, revid in self.branch.tags.get_tag_dict().items():
