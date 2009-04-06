@@ -299,14 +299,18 @@ def _xml_escape_kw_expander(chunks, context=None):
 
 
 # Define and register the filter stack map
-_filter_stack_map = {
-    'off': [],
-    'on':
-        [filters.ContentFilter(_kw_compressor, _normal_kw_expander)],
-    'xml_escape':
-        [filters.ContentFilter(_kw_compressor, _xml_escape_kw_expander)],
-    }
-filters.register_filter_stack_map('keywords', _filter_stack_map)
+def _keywords_filter_stack_lookup(k):
+    filter_stack_map = {
+        'off': [],
+        'on':
+            [filters.ContentFilter(_kw_compressor, _normal_kw_expander)],
+        'xml_escape':
+            [filters.ContentFilter(_kw_compressor, _xml_escape_kw_expander)],
+        }
+    return filter_stack_map.get(k)
+
+
+filters.register_filter_stack_map('keywords', _keywords_filter_stack_lookup)
 
 
 class cmd_cat(builtins.cmd_cat):

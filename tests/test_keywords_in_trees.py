@@ -73,7 +73,7 @@ class TestKeywordsInTrees(TestCaseWithTransport):
         self.real_rules_searcher = WorkingTree._get_rules_searcher
         self.addCleanup(restore_real_rules_searcher)
         self.patch_rules_searcher(keywords)
-        t = self.make_branch_and_tree('tree1', format="development-wt5")
+        t = self.make_branch_and_tree('tree1', format="1.14")
         # Patch is a custom username
         #def custom_global_config():
         #    config_file = StringIO(
