@@ -82,7 +82,8 @@ class RioVersionInfoBuilderHooks(hooks.Hooks):
 
     def __init__(self):
         self.create_hook(hooks.HookPoint('revision',
-            "Invoked when adding information about a revision", (1, 14),
-            None))
+            "Invoked when adding information about a revision to the"
+            " RIO stanza that is printed. revision is called with a"
+            " revision object and a RIO stanza.", (1, 14), None))
 
 RioVersionInfoBuilder.hooks = RioVersionInfoBuilderHooks()
