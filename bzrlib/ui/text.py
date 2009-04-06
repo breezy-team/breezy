@@ -238,12 +238,12 @@ class TextProgressView(object):
             rate = self._bytes_since_update / (now - self._transport_update_time)
             scheme = getattr(transport, '_scheme', None) or repr(transport)
             if direction == 'read':
-                dir_char = '>'
+                dir_char = '> '
             elif direction == 'write':
-                dir_char = '<'
+                dir_char = '< '
             else:
-                dir_char = '?'
-            msg = ("%.7s %s %6dKB %5dKB/s" %
+                dir_char = ''
+            msg = ("%.7s %s%6dKB %5dKB/s" %
                     (scheme, dir_char, self._total_byte_count>>10, int(rate)>>10,))
             self._transport_update_time = now
             self._last_repaint = now
