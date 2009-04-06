@@ -32,9 +32,9 @@ from bzrlib.help_topics import help_as_plain_text
 
 known_hooks = registry.Registry()
 # known_hooks registry contains
-# tuple of module, hook location within that module
+# tuple of (module, member name) which is the hook point
 # module where the specific hooks are defined
-# class for the specific hooks
+# callable to get the empty specific Hooks for that attribute
 known_hooks.register_lazy(('bzrlib.branch', 'Branch.hooks'), 'bzrlib.branch',
     'BranchHooks')
 known_hooks.register_lazy(('bzrlib.bzrdir', 'BzrDir.hooks'), 'bzrlib.bzrdir',
