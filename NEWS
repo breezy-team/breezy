@@ -6,19 +6,10 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
-bzr 1.14? rc2?
-##############
-
-Bug Fixes
-*********
-
-* The full test suite is passing again on OSX. Several minor issues (mostly
-  test related) have been fixed. (Vincent Ladeuil, #355273).
-
 bzr 1.14rc1
 ###########
 :Codename: brisbane-core
-:1.14rc1: 2009-04-03
+:1.14rc1: 2009-04-06
 
 New formats 1.14 and 1.14-rich-root supporting End-Of-Line (EOL) conversions,
 keyword templating (via the bzr-keywords plugin) and generic content filtering.
@@ -135,6 +126,9 @@ Improvements
 
 Bug Fixes
 *********
+
+* The full test suite is passing again on OSX. Several minor issues (mostly
+  test related) have been fixed. (Vincent Ladeuil, #355273).
 
 * Authentication plugins now receive all the parameters from the request
   itself (aka host, port, realm, path, etc). Previously, only the 
