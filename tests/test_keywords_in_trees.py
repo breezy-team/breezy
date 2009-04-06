@@ -30,22 +30,26 @@ from bzrlib.workingtree import WorkingTree
 # Sample files. We exclude keywords that change from one run to another,
 # TODO: Test Date, Path, Now, User, User-Email
 _sample_text_raw = """
-Author:       $Author$
-Author-Email: $Author-Email$
-Revision-Id:  $Revision-Id$
-Filename:     $Filename$
-Directory:    $Directory$
-File-Id:      $File-Id$
+Committer:      $Committer$
+Committer-Name: $Committer-Name$
+Authors:        $Authors$
+Author1-Email:  $Author1-Email$
+Revision-Id:    $Revision-Id$
+Filename:       $Filename$
+Directory:      $Directory$
+File-Id:        $File-Id$
 """
 #User:         $User$
 #User-Email:   $User-Email$
 _sample_text_cooked = """
-Author:       $Author: Sue Smith <sue@example.com> $
-Author-Email: $Author-Email: sue@example.com $
-Revision-Id:  $Revision-Id: rev1-id $
-Filename:     $Filename: file1 $
-Directory:    $Directory:  $
-File-Id:      $File-Id: file1-id $
+Committer:      $Committer: Jane Smith <jane@example.com> $
+Committer-Name: $Committer-Name: Jane Smith $
+Authors:        $Authors: Sue Smith <sue@example.com> $
+Author1-Email:  $Author1-Email: sue@example.com $
+Revision-Id:    $Revision-Id: rev1-id $
+Filename:       $Filename: file1 $
+Directory:      $Directory:  $
+File-Id:        $File-Id: file1-id $
 """
 #User:         $User: Dave Smith <dave@example.com>$
 #User-Email:   $User-Email: dave@example.com $
@@ -85,6 +89,7 @@ class TestKeywordsInTrees(TestCaseWithTransport):
         self.build_tree_contents([('tree1/file1', content)])
         t.add('file1', 'file1-id')
         t.commit("add file1", rev_id="rev1-id",
+            committer="Jane Smith <jane@example.com>",
             author="Sue Smith <sue@example.com>")
         basis = t.basis_tree()
         basis.lock_read()

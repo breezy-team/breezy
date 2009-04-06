@@ -59,8 +59,8 @@ The currently supported keywords are given below.
  Keyword        Description
  =============  =========================================================
  Date           the date and time the file was last modified
- Author         the author (name and email) of the last change
- Author-Email   just the email address of the author
+ Committer      the committer (name and email) of the last change
+ Authors        the authors (names and emails) of the last change
  Revision-Id    the unique id of the revision that last changed the file
  Path           the relative path of the file in the tree
  Filename       just the name part of the relative path
@@ -68,8 +68,29 @@ The currently supported keywords are given below.
  File-Id        the unique id assigned to this file
  Now            the current date and time
  User           the current user (name and email)
- User-Email     just the email address of the current user
  =============  =========================================================
+
+If you want finer control over the formatting of names and email
+addresses, you can use the following keywords.
+
+ =============    =======================================================
+ Keyword          Description
+ =============    =======================================================
+ Committer-Name   just the name of the current committer
+ Committer-Email  just the email address of the current committer
+ Author1-Name     just the name of the first author
+ Author1-Email    just the email address of the first author
+ Author2-Name     just the name of the second author
+ Author2-Email    just the email address of the second author
+ Author3-Name     just the name of the third author
+ Author3-Email    just the email address of the third author
+ User-Name        just the name of the current user
+ User-Email       just the email address of the current user
+ =============    =======================================================
+
+Note: If you have more than 3 authors for a given revision, please
+ask on the Bazaar mailing list for an enhancement to support the
+number you need.
 
 By default, dates/times are output using this format::
 
@@ -140,10 +161,10 @@ keyword_registry = registry.Registry()
 keyword_registry.register('Date',
     lambda c: format_date(c.revision().timestamp, c.revision().timezone,
     c.config(), 'Date'))
-keyword_registry.register('Author',
-    lambda c: c.revision().get_apparent_authors()[0])
-keyword_registry.register('Author-Email',
-    lambda c: extract_email(c.revision().get_apparent_authors()[0]))
+keyword_registry.register('Committer',
+    lambda c: c.revision().committer)
+keyword_registry.register('Authors',
+    lambda c: ", ".join(c.revision().get_apparent_authors()))
 keyword_registry.register('Revision-Id',
     lambda c: c.revision_id())
 keyword_registry.register('Path',
@@ -160,6 +181,26 @@ keyword_registry.register('Now',
     lambda c: format_date(time.time(), time.timezone, c.config(), 'Now'))
 keyword_registry.register('User',
     lambda c: c.config().username())
+
+# Keywords for finer control over name & address formatting
+keyword_registry.register('Committer-Name',
+    lambda c: extract_name(c.revision().committer))
+keyword_registry.register('Committer-Email',
+    lambda c: extract_email(c.revision().committer))
+keyword_registry.register('Author1-Name',
+    lambda c: extract_name_item(c.revision().get_apparent_authors(), 0))
+keyword_registry.register('Author1-Email',
+    lambda c: extract_email_item(c.revision().get_apparent_authors(), 0))
+keyword_registry.register('Author2-Name',
+    lambda c: extract_name_item(c.revision().get_apparent_authors(), 1))
+keyword_registry.register('Author2-Email',
+    lambda c: extract_email_item(c.revision().get_apparent_authors(), 1))
+keyword_registry.register('Author3-Name',
+    lambda c: extract_name_item(c.revision().get_apparent_authors(), 2))
+keyword_registry.register('Author3-Email',
+    lambda c: extract_email_item(c.revision().get_apparent_authors(), 2))
+keyword_registry.register('User-Name',
+    lambda c: extract_name(c.config().username()))
 keyword_registry.register('User-Email',
     lambda c: extract_email(c.config().username()))
 
@@ -178,6 +219,17 @@ def format_date(timestamp, offset=0, cfg=None, name=None):
     return osutils.format_date(timestamp, offset, date_fmt=format)
 
 
+def extract_name(userid):
+    """Extract the name out of a user-id string.
+
+    user-id strings have the format 'name <email>'.
+    """
+    if userid and userid[-1] == '>':
+        return userid[:-1].rsplit('<', 1)[0].rstrip()
+    else:
+        return userid
+
+
 def extract_email(userid):
     """Extract the email address out of a user-id string.
 
@@ -187,6 +239,27 @@ def extract_email(userid):
         return userid[:-1].rsplit('<', 1)[1]
     else:
         return userid
+
+def extract_name_item(seq, n):
+    """Extract the name out of the nth item in a sequence of user-ids.
+
+    :return: the user-name or an empty string
+    """
+    try:
+        return extract_name(seq[n])
+    except IndexError:
+        return ""
+
+
+def extract_email_item(seq, n):
+    """Extract the email out of the nth item in a sequence of user-ids.
+
+    :return: the email address or an empty string
+    """
+    try:
+        return extract_email(seq[n])
+    except IndexError:
+        return ""
 
 
 def compress_keywords(s):
