@@ -96,6 +96,26 @@ class TestVersionInfo(TestCaseWithTransport):
         self.assertContainsRe(val, 'id: r3')
         self.assertContainsRe(val, 'message: \xc3\xa52') # utf8 encoding '\xe5'
 
+    def test_rio_version_hook(self):
+        def update_stanza(rev, stanza):
+            stanza.add('bla', 'bloe')
+        RioVersionInfoBuilder.hooks.install_named_hook(
+            'revision', update_stanza, None)
+        wt = self.create_branch()
+
+        def regen(**kwargs):
+            sio = StringIO()
+            builder = RioVersionInfoBuilder(wt.branch, working_tree=wt,
+                                            **kwargs)
+            builder.generate(sio)
+            sio.seek(0)
+            stanzas = list(read_stanzas(sio))
+            self.assertEqual(1, len(stanzas))
+            return stanzas[0]
+
+        stanza = regen()
+        self.assertEqual(['bloe'], stanza.get_all('bla'))
+
     def test_rio_version(self):
         wt = self.create_branch()
 
