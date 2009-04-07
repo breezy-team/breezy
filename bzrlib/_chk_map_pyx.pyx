@@ -15,6 +15,10 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
+#python2.4 support
+cdef extern from "python-compat.h":
+    pass
+
 cdef extern from *:
     ctypedef unsigned int size_t
     int memcmp(void *, void*, size_t)
