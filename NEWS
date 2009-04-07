@@ -121,6 +121,16 @@ Improvements
   the ``long`` and ``short`` log formatters now tell the user
   how to see the hidden merged revisions.  (Ian Clatworthy)
 
+* The ``brisbane-core`` project has delivered its beta format
+  ``development6-rich-root``. This format is suitable for judicious
+  testing by early adopters. In particular if you are benchmarking bzr
+  performance please be sure to test using this format. At this stage
+  more information is best obtained by contacting the Bazaar mailing list
+  or IRC channel if you are interested in using this format. We will make
+  end user documentation available closer to blessing the format as
+  production ready. (Robert Collins, John Arbash Meinel, Ian Clatworthy,
+  Vincent Ladeuil, Andrew Bennetts, Martin Pool)
+
 * Tildes are no longer escaped. No more %7Euser/project/branch!
   (Jonathan Lange)
 
@@ -251,6 +261,9 @@ Testing
 
 Internals
 *********
+
+* Added ``chk_map`` for fast, trie-based storage of tuple to string maps.
+  (Robert Collins, John Arbash Meinel, Vincent Ladeuil)
 
 * ``Branch._get_config`` has been added, which splits out access to the
   specific config file from the branch. This is used to let RemoteBranch

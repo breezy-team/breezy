@@ -334,7 +334,7 @@ class TestBranch7(TestBranch67, TestCaseWithTransport):
         return _mod_branch.BzrBranch7
 
     def get_format_name(self):
-        return "development"
+        return "1.9"
 
     def get_format_name_subtree(self):
         return "development-subtree"
