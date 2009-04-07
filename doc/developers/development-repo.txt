@@ -248,7 +248,7 @@ Not currently available, as our development formats are all rich root or
 subtrees now.
 
 development-rich-root
--------------------
+---------------------
 
 Currently an alias for Development6Subtree
 
@@ -258,7 +258,7 @@ development-subtree
 Currently an alias for Development6Subtree
 
 Development6RichRoot[Subtree]
----------------------
+-----------------------------
 
 These formats use the new groupcompress delta compress and a CHK(Content
 Hash Key) based inventory store which is much faster at incremental
