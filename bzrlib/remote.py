@@ -626,7 +626,7 @@ class RemoteRepository(_RpcHelper):
     def abort_write_group(self, suppress_errors=False):
         """Complete a write group on the decorated repository.
 
-        Smart methods peform operations in a single step so this api
+        Smart methods perform operations in a single step so this API
         is not really applicable except as a compatibility thunk
         for older plugins that don't use e.g. the CommitBuilder
         facility.
@@ -637,10 +637,20 @@ class RemoteRepository(_RpcHelper):
         return self._real_repository.abort_write_group(
             suppress_errors=suppress_errors)
 
+    @property
+    def chk_bytes(self):
+        """Decorate the real repository for now.
+
+        In the long term a full blown network facility is needed to avoid
+        creating a real repository object locally.
+        """
+        self._ensure_real()
+        return self._real_repository.chk_bytes
+
     def commit_write_group(self):
         """Complete a write group on the decorated repository.
 
-        Smart methods peform operations in a single step so this api
+        Smart methods perform operations in a single step so this API
         is not really applicable except as a compatibility thunk
         for older plugins that don't use e.g. the CommitBuilder
         facility.
@@ -917,12 +927,26 @@ class RemoteRepository(_RpcHelper):
         if isinstance(repository, RemoteRepository):
             raise AssertionError()
         self._real_repository = repository
-        # If the _real_repository has _fallback_repositories, clear them out,
-        # because we want it to have the same set as this repository.  This is
-        # reasonable to do because the fallbacks we clear here are from a
-        # "real" branch, and we're about to replace them with the equivalents
-        # from a RemoteBranch.
-        self._real_repository._fallback_repositories = []
+        # three code paths happen here:
+        # 1) old servers, RemoteBranch.open() calls _ensure_real before setting
+        # up stacking. In this case self._fallback_repositories is [], and the
+        # real repo is already setup. Preserve the real repo and
+        # RemoteRepository.add_fallback_repository will avoid adding
+        # duplicates.
+        # 2) new servers, RemoteBranch.open() sets up stacking, and when
+        # ensure_real is triggered from a branch, the real repository to
+        # set already has a matching list with separate instances, but
+        # as they are also RemoteRepositories we don't worry about making the
+        # lists be identical.
+        # 3) new servers, RemoteRepository.ensure_real is triggered before
+        # RemoteBranch.ensure real, in this case we get a repo with no fallbacks
+        # and need to populate it.
+        if (self._fallback_repositories and
+            len(self._real_repository._fallback_repositories) !=
+            len(self._fallback_repositories)):
+            if len(self._real_repository._fallback_repositories):
+                raise AssertionError(
+                    "cannot cleanly remove existing _fallback_repositories")
         for fb in self._fallback_repositories:
             self._real_repository.add_fallback_repository(fb)
         if self._lock_mode == 'w':
@@ -935,7 +959,7 @@ class RemoteRepository(_RpcHelper):
     def start_write_group(self):
         """Start a write group on the decorated repository.
 
-        Smart methods peform operations in a single step so this api
+        Smart methods perform operations in a single step so this API
         is not really applicable except as a compatibility thunk
         for older plugins that don't use e.g. the CommitBuilder
         facility.
@@ -978,7 +1002,7 @@ class RemoteRepository(_RpcHelper):
             # problem releasing the vfs-based lock.
             if old_mode == 'w':
                 # Only write-locked repositories need to make a remote method
-                # call to perfom the unlock.
+                # call to perform the unlock.
                 old_token = self._lock_token
                 self._lock_token = None
                 if not self._leave_lock:
@@ -1057,7 +1081,9 @@ class RemoteRepository(_RpcHelper):
         # _real_branch had its get_stacked_on_url method called), then the
         # repository to be added may already be in the _real_repositories list.
         if self._real_repository is not None:
-            if repository not in self._real_repository._fallback_repositories:
+            fallback_locations = [repo.bzrdir.root_transport.base for repo in
+                self._real_repository._fallback_repositories]
+            if repository.bzrdir.root_transport.base not in fallback_locations:
                 self._real_repository.add_fallback_repository(repository)
 
     def add_inventory(self, revid, inv, parents):
@@ -1207,7 +1233,7 @@ class RemoteRepository(_RpcHelper):
             # in one go, and the user probably will have seen a warning about
             # the server being old anyhow.
             rg = self._get_revision_graph(None)
-            # There is an api discrepency between get_parent_map and
+            # There is an API discrepancy between get_parent_map and
             # get_revision_graph. Specifically, a "key:()" pair in
             # get_revision_graph just means a node has no parents. For
             # "get_parent_map" it means the node is a ghost. So fix up the
@@ -1897,7 +1923,7 @@ class RemoteBranch(branch.Branch, _RpcHelper):
             self._real_branch.repository = self.repository
         else:
             self._real_branch = None
-        # Fill out expected attributes of branch for bzrlib api users.
+        # Fill out expected attributes of branch for bzrlib API users.
         self.base = self.bzrdir.root_transport.base
         self._control_files = None
         self._lock_mode = None
@@ -2148,7 +2174,7 @@ class RemoteBranch(branch.Branch, _RpcHelper):
                     self._real_branch.unlock()
                 if mode != 'w':
                     # Only write-locked branched need to make a remote method
-                    # call to perfom the unlock.
+                    # call to perform the unlock.
                     return
                 if not self._lock_token:
                     raise AssertionError('Locked, but no token!')
@@ -2389,14 +2415,13 @@ class RemoteBranchConfig(object):
         return section_obj.get(name, default)
 
     def _get_configobj(self):
-        path = self._branch.bzrdir._path_for_remote_call(
-            self._branch._client)
+        path = self._branch._remote_path()
         response = self._branch._client.call_expecting_body(
             'Branch.get_config_file', path)
         if response[0][0] != 'ok':
             raise UnexpectedSmartServerResponse(response)
-        bytes = response[1].read_body_bytes()
-        return config.ConfigObj([bytes], encoding='utf-8')
+        lines = response[1].read_body_bytes().splitlines()
+        return config.ConfigObj(lines, encoding='utf-8')
 
     def set_option(self, value, name, section=None):
         """Set the value associated with a named option.
@@ -2405,7 +2430,19 @@ class RemoteBranchConfig(object):
         :param name: The name of the value to set
         :param section: The section the option is in (if any)
         """
-        return self._vfs_set_option(value, name, section)
+        medium = self._branch._client._medium
+        if medium._is_remote_before((1, 14)):
+            return self._vfs_set_option(value, name, section)
+        try:
+            path = self._branch._remote_path()
+            response = self._branch._client.call('Branch.set_config_option',
+                path, self._branch._lock_token, self._branch._repo_lock_token,
+                value.encode('utf8'), name, section or '')
+        except errors.UnknownSmartMethod:
+            medium._remember_remote_is_before((1, 14))
+            return self._vfs_set_option(value, name, section)
+        if response != ():
+            raise errors.UnexpectedSmartServerResponse(response)
 
     def _vfs_set_option(self, value, name, section=None):
         self._branch._ensure_real()

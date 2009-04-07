@@ -134,6 +134,9 @@ Bug Fixes
 * bzr gives a better message if an invalid regexp is passed to ``bzr log
   -m``.  (Anne Mohsen, Martin Pool)
 
+* ``bzr version-info`` now works in empty branches. (Jelmer Vernooij, 
+  #313028)
+
 * Fix "is not a stackable format" error when pushing a
   stackable-format branch with an unstackable-format repository to a
   destination with a default stacking policy.  (Andrew Bennetts)
@@ -187,7 +190,7 @@ Documentation
 API Changes
 ***********
 
-* APIs deprecated in 1.6 and previous verisons of bzr are now removed.
+* APIs deprecated in 1.6 and previous versions of bzr are now removed.
   (Martin Pool)
 
 * ``CommitReporter`` is no longer called with ``unchanged`` status during
@@ -219,6 +222,9 @@ API Changes
 * The ``pb`` argument to ``fetch()`` is deprecated.
   (Martin Pool)
 
+* The ``Serializer`` class and the serializer ``format registry`` have moved
+  from ``bzrlib.xml_serializer`` to ``bzrlib.serializer``. (Jelmer Vernooij)
+
 * The smart server jail now hooks into BzrDir.open to prevent any BzrDir
   that is not inside the backing transport from being opened.  See the
   module documentation for ``bzrlib.smart.request`` for details.
@@ -248,6 +254,9 @@ Testing
 
 Internals
 *********
+
+* Added ``bzrlib.chk_map`` for fast, trie-based storage of tuple to string
+  maps.  (Robert Collins, John Arbash Meinel, Vincent Ladeuil)
 
 * Added ``bzrlib.inventory_delta`` module.  This will be used for
   serializing and deserializing inventory deltas for more efficient
@@ -290,6 +299,10 @@ Internals
   objects, allowing better enforcement of the smart server jail when
   dealing with stacked branches. (Robert Collins, Andrew Bennetts)
 
+* New hook ``RioVersionInfoBuilder.revision``, allowing extra entries 
+  to be added to the stanza that is printed for a particular revision.
+  (Jelmer Vernooij)
+
 * New repository method ``refresh_data`` to cause any repository to
   make visible data inserted into the repository by a smart server
   fetch operation. (Robert Collins, Andrew Bennetts)
@@ -299,6 +312,11 @@ Internals
   of filter stacks. This enhancement allows, for example,  bzr-svn to
   handle existing svn properties that define a list of keywords to be
   expanded.  (Ian Clatworthy)
+
+* ``RemoteBranchConfig`` will use a new verb ``Branch.set_config_option``
+  to write config settings to smart servers that support this, saving
+  5 round trips on the stacked streaming acceptance test.
+  (Robert Collins, Andrew Bennetts)
 
 * ``RemoteBranch`` now provides ``_get_config`` for access to just the
   branch specific configuration from a remote server, which uses the 
@@ -8206,7 +8224,7 @@ Internals
   about future directions. (Robert Collins/Martin Pool)
 
 * bzrlib.transport.http has been modified so that only 404 urllib errors
-  are returned as NoSuchFile. Other exceptions will propogate as normal.
+  are returned as NoSuchFile. Other exceptions will propagate as normal.
   This allows debuging of actual errors. (Robert Collins)
 
 * bzrlib.transport.Transport now accepts *ONLY* url escaped relative paths

@@ -284,8 +284,8 @@ class UITests(TestCase):
         pb = ui.nested_progress_bar()
         try:
             # there is no output from the base factory
-            username = ui.get_username(u'Hello\u1234 %(host)s',
-                host=u'some\u1234')
+            username = self.apply_redirected(ui.stdin, ui.stdout, ui.stdout,
+                ui.get_username, u'Hello\u1234 %(host)s', host=u'some\u1234')
             self.assertEquals(u"someuser\u1234", username.decode('utf8'))
             self.assertEquals(u"Hello\u1234 some\u1234: ", 
                 ui.stdout.getvalue().decode("utf8"))
