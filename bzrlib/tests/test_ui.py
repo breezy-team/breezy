@@ -287,8 +287,8 @@ class UITests(TestCase):
             username = ui.get_username(u'Hello\u1234 %(host)s',
                 host=u'some\u1234')
             self.assertEquals(u"someuser\u1234", username.decode('utf8'))
-            self.assertEquals(ui.stdout.getvalue().decode("utf8"),
-              u"Hello\u1234 some\u1234: ")
+            self.assertEquals(u"Hello\u1234 some\u1234: ", 
+                ui.stdout.getvalue().decode("utf8"))
         finally:
             pb.finished()
 
