@@ -171,11 +171,9 @@ class TestDescribeChanges(TestCase):
 class TestCHKInventory(TestCaseWithTransport):
 
     def get_chk_bytes(self):
-        # The easiest way to get a CHK store is a development5 repository and
+        # The easiest way to get a CHK store is a development6 repository and
         # then work with the chk_bytes attribute directly.
-        from bzrlib.tests import TestSkipped
-        raise TestSkipped("Cannot execut CHKInventory tests yet.")
-        repo = self.make_repository(".", format="development5")
+        repo = self.make_repository(".", format="development6-rich-root")
         repo.lock_write()
         self.addCleanup(repo.unlock)
         repo.start_write_group()

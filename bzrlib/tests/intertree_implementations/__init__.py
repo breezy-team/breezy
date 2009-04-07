@@ -138,7 +138,8 @@ def load_tests(standard_tests, module, loader):
             # -- vila 20090311
             chk_tree_format = WorkingTreeFormat4()
             chk_tree_format._get_matchingbzrdir = \
-                lambda:bzrlib.bzrdir.format_registry.make_bzrdir('development')
+                lambda:bzrlib.bzrdir.format_registry.make_bzrdir(
+                    'development6-rich-root')
             test_intertree_permutations.append(
                 (InterTree.__name__ + "(CHKInventory)",
                  InterTree,
