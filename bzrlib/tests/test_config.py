@@ -18,6 +18,7 @@
 """Tests for finding and reading the bzr config file[s]."""
 # import system imports here
 from cStringIO import StringIO
+import getpass
 import os
 import sys
 
@@ -1502,6 +1503,13 @@ class TestAuthenticationConfig(tests.TestCase):
             'FTP %(host)s:%(port)d username: ', 'ftp', port=10020)
         self._check_default_username_prompt(
             'SSH %(host)s:%(port)d username: ', 'ssh', port=12345)
+
+    def test_username_default_no_prompt(self):
+        conf = config.AuthenticationConfig()
+        self.assertEquals(getpass.getuser(), 
+            conf.get_user('ftp', 'example.com'))
+        self.assertEquals("explicitdefault", 
+            conf.get_user('ftp', 'example.com', default="explicitdefault"))
 
     def test_password_default_prompts(self):
         # HTTP prompts can't be tested here, see test_http.py
