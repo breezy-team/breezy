@@ -249,6 +249,9 @@ Testing
 Internals
 *********
 
+* Added ``chk_map`` for fast, trie-based storage of tuple to string maps.
+  (Robert Collins, John Arbash Meinel, Vincent Ladeuil)
+
 * ``Branch._get_config`` has been added, which splits out access to the
   specific config file from the branch. This is used to let RemoteBranch
   avoid constructing real branch objects to access configuration settings.
