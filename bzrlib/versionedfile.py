@@ -31,6 +31,7 @@ import urllib
 
 from bzrlib import (
     errors,
+    groupcompress,
     index,
     knit,
     osutils,
@@ -794,7 +795,8 @@ class VersionedFiles(object):
         check_content=True):
         """Add a text to the store.
 
-        :param key: The key tuple of the text to add.
+        :param key: The key tuple of the text to add. If the last element is
+            None, a CHK string will be generated during the addition.
         :param parents: The parents key tuples of the text to add.
         :param lines: A list of lines. Each line must be a bytestring. And all
             of them except the last must be terminated with \n and contain no
@@ -1517,6 +1519,7 @@ class NetworkRecordStream(object):
             'knit-annotated-delta-gz':knit.knit_network_to_record,
             'knit-delta-closure':knit.knit_delta_closure_to_records,
             'fulltext':fulltext_network_to_record,
+            'groupcompress-block':groupcompress.network_block_to_records,
             }
 
     def read(self):
