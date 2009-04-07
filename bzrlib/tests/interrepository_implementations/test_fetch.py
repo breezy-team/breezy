@@ -151,7 +151,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         self.assertFalse(unstacked_repo.has_revision('left'))
         self.assertFalse(unstacked_repo.has_revision('right'))
         self.assertEqual(
-            set([('left',), ('right',), ('merged')]),
+            set([('left',), ('right',), ('merge',)]),
             unstacked_repo.inventories.keys())
 
     def test_fetch_missing_basis_text(self):
