@@ -1127,7 +1127,7 @@ class AuthenticationConfig(object):
         self._save()
 
     def get_user(self, scheme, host, port=None, realm=None, path=None, 
-                 prompt=None, ask=False):
+                 prompt=None, ask=False, default=None):
         """Get a user from authentication file.
 
         :param scheme: protocol
@@ -1163,8 +1163,10 @@ class AuthenticationConfig(object):
                     prompt_host = host
                 user = ui.ui_factory.get_username(prompt, host=prompt_host)
             else:
-                import getpass
-                user = getpass.getuser()
+                if default is None:
+                    import getpass
+                    default = getpass.getuser()
+                user = default
         return user
 
     def get_password(self, scheme, host, user, port=None,
