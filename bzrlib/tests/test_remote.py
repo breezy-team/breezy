@@ -49,7 +49,7 @@ from bzrlib.remote import (
     RemoteRepository,
     RemoteRepositoryFormat,
     )
-from bzrlib.repofmt import pack_repo
+from bzrlib.repofmt import groupcompress_repo, pack_repo
 from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import server, medium
 from bzrlib.smart.client import _SmartClient
@@ -1475,7 +1475,7 @@ class TestRemoteRepository(TestRemote):
 class TestRepositoryFormat(TestRemoteRepository):
 
     def test_fast_delta(self):
-        true_name = pack_repo.RepositoryFormatPackDevelopment2().network_name()
+        true_name = groupcompress_repo.RepositoryFormatCHK1().network_name()
         true_format = RemoteRepositoryFormat()
         true_format._network_name = true_name
         self.assertEqual(True, true_format.fast_deltas)

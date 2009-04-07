@@ -3286,6 +3286,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.per_interbranch',
                    'bzrlib.tests.per_lock',
                    'bzrlib.tests.per_repository',
+                   'bzrlib.tests.per_repository_chk',
                    'bzrlib.tests.per_repository_reference',
                    'bzrlib.tests.test__chk_map',
                    'bzrlib.tests.test__dirstate_helpers',
@@ -3305,10 +3306,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_bzrdir',
                    'bzrlib.tests.test__chunks_to_lines',
                    'bzrlib.tests.test_cache_utf8',
-                   # These need to be excluded until the development5 format
-                   # lands. (That's waiting on the dependent inventory and
-                   # repository changes to land.)
-                   #'bzrlib.tests.test_chk_map',
+                   'bzrlib.tests.test_chk_map',
                    'bzrlib.tests.test_chunk_writer',
                    'bzrlib.tests.test_clean_tree',
                    'bzrlib.tests.test_commands',

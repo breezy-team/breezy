@@ -63,8 +63,4 @@ class CHKSerializer(xml5.Serializer_v5):
         self.search_key_name = search_key_name
 
 
-chk_serializer_subtree_parent_id = CHKSerializerSubtree(4096, 'plain')
-chk_serializer_parent_id = CHKSerializer(4096, 'plain')
-chk_serializer_16_parent_id = CHKSerializer(4096, 'hash-16-way')
-chk_serializer_255_parent_id = CHKSerializer(4096, 'hash-255-way')
 chk_serializer_255_bigpage = CHKSerializer(65536, 'hash-255-way')
