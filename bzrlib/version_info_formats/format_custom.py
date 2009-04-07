@@ -18,6 +18,9 @@
    tree info."""
 
 from bzrlib import errors
+from bzrlib.revision import (
+   NULL_REVISION,
+   )
 from bzrlib.lazy_regex import lazy_compile
 from bzrlib.version_info_formats import (
    create_date_str,
@@ -87,7 +90,7 @@ class CustomVersionInfoBuilder(VersionInfoBuilder):
         info.add('branch_nick', self._branch.nick)
 
         revision_id = self._get_revision_id()
-        if revision_id is None:
+        if revision_id == NULL_REVISION:
             info.add('revno', 0)
         else:
             info.add('revno', self._branch.revision_id_to_revno(revision_id))

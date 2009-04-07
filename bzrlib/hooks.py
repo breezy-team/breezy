@@ -45,6 +45,9 @@ known_hooks.register_lazy(('bzrlib.smart.client', '_SmartClient.hooks'),
     'bzrlib.smart.client', 'SmartClientHooks')
 known_hooks.register_lazy(('bzrlib.smart.server', 'SmartTCPServer.hooks'),
     'bzrlib.smart.server', 'SmartServerHooks')
+known_hooks.register_lazy(
+    ('bzrlib.version_info_formats.format_rio', 'RioVersionInfoBuilder.hooks'),
+    'bzrlib.version_info_formats.format_rio', 'RioVersionInfoBuilderHooks')
 
 
 def known_hooks_key_to_object((module_name, member_name)):

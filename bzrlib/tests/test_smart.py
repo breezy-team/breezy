@@ -502,7 +502,41 @@ class TestSmartServerBranchRequestGetConfigFile(tests.TestCaseWithMemoryTranspor
             request.execute(''))
 
 
-class SetLastRevisionTestBase(tests.TestCaseWithMemoryTransport):
+class TestLockedBranch(tests.TestCaseWithMemoryTransport):
+
+    def get_lock_tokens(self, branch):
+        branch_token = branch.lock_write()
+        repo_token = branch.repository.lock_write()
+        branch.repository.unlock()
+        return branch_token, repo_token
+
+
+class TestSmartServerBranchRequestSetConfigOption(TestLockedBranch):
+
+    def test_value_name(self):
+        branch = self.make_branch('.')
+        request = smart.branch.SmartServerBranchRequestSetConfigOption(
+            branch.bzrdir.root_transport)
+        branch_token, repo_token = self.get_lock_tokens(branch)
+        config = branch._get_config()
+        result = request.execute('', branch_token, repo_token, 'bar', 'foo',
+            '')
+        self.assertEqual(SuccessfulSmartServerResponse(()), result)
+        self.assertEqual('bar', config.get_option('foo'))
+
+    def test_value_name_section(self):
+        branch = self.make_branch('.')
+        request = smart.branch.SmartServerBranchRequestSetConfigOption(
+            branch.bzrdir.root_transport)
+        branch_token, repo_token = self.get_lock_tokens(branch)
+        config = branch._get_config()
+        result = request.execute('', branch_token, repo_token, 'bar', 'foo',
+            'gam')
+        self.assertEqual(SuccessfulSmartServerResponse(()), result)
+        self.assertEqual('bar', config.get_option('foo', 'gam'))
+
+
+class SetLastRevisionTestBase(TestLockedBranch):
     """Base test case for verbs that implement set_last_revision."""
 
     def setUp(self):
@@ -512,11 +546,7 @@ class SetLastRevisionTestBase(tests.TestCaseWithMemoryTransport):
         self.tree = self.make_branch_and_memory_tree('.')
 
     def lock_branch(self):
-        b = self.tree.branch
-        branch_token = b.lock_write()
-        repo_token = b.repository.lock_write()
-        b.repository.unlock()
-        return branch_token, repo_token
+        return self.get_lock_tokens(self.tree.branch)
 
     def unlock_branch(self):
         self.tree.branch.unlock()
@@ -1376,6 +1406,9 @@ class TestHandlers(tests.TestCase):
         self.assertEqual(
             smart.request.request_handlers.get('Branch.revision_history'),
             smart.branch.SmartServerRequestRevisionHistory)
+        self.assertEqual(
+            smart.request.request_handlers.get('Branch.set_config_option'),
+            smart.branch.SmartServerBranchRequestSetConfigOption)
         self.assertEqual(
             smart.request.request_handlers.get('Branch.set_last_revision'),
             smart.branch.SmartServerBranchRequestSetLastRevision)

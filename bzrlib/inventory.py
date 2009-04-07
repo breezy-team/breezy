@@ -27,13 +27,13 @@
 # created, but it's not for now.
 ROOT_ID = "TREE_ROOT"
 
-import os
-import re
-import sys
+from copy import deepcopy
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import collections
+import os
+import re
 import tarfile
 
 import bzrlib
@@ -876,6 +876,14 @@ class Inventory(object):
         for path, entry in entries:
             other.add(entry.copy())
         return other
+
+    def _get_mutable_inventory(self):
+        """Returns a mutable copy of the object.
+
+        Some inventories are immutable, yet working trees, for example, needs
+        to mutate exisiting inventories instead of creating a new one.
+        """
+        return deepcopy(self)
 
     def __iter__(self):
         return iter(self._byid)

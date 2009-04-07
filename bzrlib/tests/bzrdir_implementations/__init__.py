@@ -76,6 +76,7 @@ class TestCaseWithBzrDir(TestCaseWithTransport):
 def load_tests(standard_tests, module, loader):
     test_bzrdir_implementations = [
         'bzrlib.tests.bzrdir_implementations.test_bzrdir',
+        'bzrlib.tests.bzrdir_implementations.test_push',
         ]
     submod_tests = loader.loadTestsFromModuleNames(test_bzrdir_implementations)
     formats = BzrDirFormat.known_formats()
