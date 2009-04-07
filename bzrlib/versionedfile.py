@@ -31,6 +31,7 @@ import urllib
 
 from bzrlib import (
     errors,
+    groupcompress,
     index,
     knit,
     osutils,
@@ -1518,6 +1519,7 @@ class NetworkRecordStream(object):
             'knit-annotated-delta-gz':knit.knit_network_to_record,
             'knit-delta-closure':knit.knit_delta_closure_to_records,
             'fulltext':fulltext_network_to_record,
+            'groupcompress-block':groupcompress.network_block_to_records,
             }
 
     def read(self):
