@@ -24,6 +24,7 @@ cdef extern from *:
     void sprintf(char *, char *, ...)
 
 cdef extern from "Python.h":
+    ctypedef int Py_ssize_t # Required for older pyrex versions
     struct _PyObject:
         pass
     ctypedef _PyObject PyObject
