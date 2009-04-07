@@ -124,6 +124,36 @@ class TestInterRepository(TestCaseWithInterRepository):
             to_repo.texts.get_record_stream([('foo', revid)],
             'unordered', True).next().get_bytes_as('fulltext'))
 
+    def test_fetch_parent_inventories_at_stacking_boundary(self):
+        to_repo = self.make_to_repository('to')
+        if not to_repo._format.supports_external_lookups:
+            raise TestNotApplicable("Need stacking support in the target.")
+        builder = self.make_branch_builder('branch')
+        builder.start_series()
+        builder.build_snapshot('base', None, [
+            ('add', ('', 'root-id', 'directory', ''))])
+        builder.build_snapshot('left', ['base'], [])
+        builder.build_snapshot('right', ['base'], [])
+        builder.build_snapshot('merge', ['left', 'right'], [])
+        builder.finish_series()
+        branch = builder.get_branch()
+        repo = self.make_to_repository('trunk')
+        trunk = repo.bzrdir.create_branch()
+        trunk.repository.fetch(branch.repository, 'left')
+        trunk.repository.fetch(branch.repository, 'right')
+        repo = self.make_to_repository('stacked')
+        stacked_branch = repo.bzrdir.create_branch()
+        stacked_branch.set_stacked_on_url(trunk.base)
+        stacked_branch.repository.fetch(branch.repository, 'merge')
+        unstacked_repo = stacked_branch.bzrdir.open_repository()
+        unstacked_repo.lock_read()
+        self.addCleanup(unstacked_repo.unlock)
+        self.assertFalse(unstacked_repo.has_revision('left'))
+        self.assertFalse(unstacked_repo.has_revision('right'))
+        self.assertEqual(
+            set([('left',), ('right',), ('merged')]),
+            unstacked_repo.inventories.keys())
+
     def test_fetch_missing_basis_text(self):
         """If fetching a delta, we should die if a basis is not present."""
         tree = self.make_branch_and_tree('tree')

@@ -3304,7 +3304,7 @@ class InterPackRepo(InterSameDataRepository):
     @classmethod
     def _get_repo_format_to_test(self):
         from bzrlib.repofmt import pack_repo
-        return pack_repo.RepositoryFormatKnitPack1()
+        return pack_repo.RepositoryFormatKnitPack6RichRoot()
 
     @staticmethod
     def is_compatible(source, target):
