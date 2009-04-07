@@ -209,7 +209,12 @@ class CLIUIFactory(UIFactory):
         """
         prompt += ': '
         self.prompt(prompt, **kwargs)
-        return self.stdin.readline().rstrip("\n")
+        username = self.stdin.readline()
+        if not username:
+            username = None
+        elif username[-1] == '\n':
+            username = username[:-1]
+        return username
 
     def prompt(self, prompt, **kwargs):
         """Emit prompt on the CLI."""
