@@ -63,10 +63,12 @@ class TestCommands(tests.TestCase):
 
     @staticmethod
     def get_command(options):
-        c = commands.Command()
-        c.__doc__ = 'Bar'
-        c.takes_options = options
-        return c
+        class cmd_foo(commands.Command):
+            'Bar'
+
+            takes_options = options
+
+        return cmd_foo()
 
     def test_help_hidden(self):
         c = self.get_command([option.Option('foo', hidden=True)])
