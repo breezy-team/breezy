@@ -185,7 +185,6 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
             except:
                 builder.abort()
                 raise
-            builder.finish_inventory()
             self.assertEqual(revision_id, builder.commit('foo bar'))
         finally:
             tree.unlock()
@@ -830,12 +829,13 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
             self.assertEqual(expected_delta, delta)
             builder.finish_inventory()
             rev2 = builder.commit('')
-            tree.set_parent_ids([rev2])
         except:
             builder.abort()
             tree.unlock()
             raise
-        else:
+        try:
+            tree.set_parent_ids([rev2])
+        finally:
             tree.unlock()
         return rev2
 
