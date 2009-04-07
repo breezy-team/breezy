@@ -1182,14 +1182,6 @@ class Inventory(CommonInventory):
         return other
 
     def _get_mutable_inventory(self):
-        """Returns a mutable copy of the object.
-
-        Some inventories are immutable, yet working trees, for example, needs
-        to mutate exisiting inventories instead of creating a new one.
-        """
-        return deepcopy(self)
-
-    def _get_mutable_inventory(self):
         """See CommonInventory._get_mutable_inventory."""
         return deepcopy(self)
 

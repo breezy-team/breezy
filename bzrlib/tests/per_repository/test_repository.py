@@ -31,7 +31,7 @@ from bzrlib import (
     )
 from bzrlib.branch import BzrBranchFormat6
 from bzrlib.delta import TreeDelta
-from bzrlib.inventory import Inventory, InventoryDirectory
+from bzrlib.inventory import CommonInventory, Inventory, InventoryDirectory
 from bzrlib.repofmt.weaverepo import (
     RepositoryFormat5,
     RepositoryFormat6,
@@ -249,7 +249,7 @@ class TestRepository(TestCaseWithRepository):
         invs = tree.branch.repository.iter_inventories(revs)
         for rev_id, inv in zip(revs, invs):
             self.assertEqual(rev_id, inv.revision_id)
-            self.assertIsInstance(inv, Inventory)
+            self.assertIsInstance(inv, CommonInventory)
 
     def test_supports_rich_root(self):
         tree = self.make_branch_and_tree('a')
