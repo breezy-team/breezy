@@ -2202,8 +2202,9 @@ class cmd_log(Command):
             # evil when adding features", we continue to use the
             # original algorithm - per-file-graph - for the "single
             # file that isn't a directory without showing a delta" case.
+            partial_history = revision and b.repository._format.supports_chks
             match_using_deltas = (len(file_ids) != 1 or filter_by_dir
-                or delta_type)
+                or delta_type or partial_history)
 
             # Build the LogRequest and execute it
             if len(file_ids) == 0:
