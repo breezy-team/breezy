@@ -175,7 +175,7 @@ class SmartServerRequestCreateRepository(SmartServerRequestBzrDir):
 
         This operates precisely like 'bzrdir.create_repository'.
 
-        If a bzrdir is not present, an exception is propogated
+        If a bzrdir is not present, an exception is propagated
         rather than 'no branch' because these are different conditions (and
         this method should only be called after establishing that a bzr dir
         exists anyway).
@@ -232,7 +232,7 @@ class SmartServerRequestFindRepositoryV1(SmartServerRequestFindRepository):
 
         This operates precisely like 'bzrdir.find_repository'.
 
-        If a bzrdir is not present, an exception is propogated
+        If a bzrdir is not present, an exception is propagated
         rather than 'no branch' because these are different conditions.
 
         This is the initial version of this method introduced with the smart
@@ -255,7 +255,7 @@ class SmartServerRequestFindRepositoryV2(SmartServerRequestFindRepository):
 
         This operates precisely like 'bzrdir.find_repository'.
 
-        If a bzrdir is not present, an exception is propogated
+        If a bzrdir is not present, an exception is propagated
         rather than 'no branch' because these are different conditions.
 
         This is the second edition of this method introduced in bzr 1.3, which

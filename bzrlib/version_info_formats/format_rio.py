@@ -16,6 +16,7 @@
 
 """A generator which creates a rio stanza of the current tree info"""
 
+from bzrlib import hooks
 from bzrlib.revision import (
     NULL_REVISION,
     )
@@ -38,6 +39,8 @@ class RioVersionInfoBuilder(VersionInfoBuilder):
             rev = self._branch.repository.get_revision(revision_id)
             info.add('date', create_date_str(rev.timestamp, rev.timezone))
             revno = str(self._branch.revision_id_to_revno(revision_id))
+            for hook in RioVersionInfoBuilder.hooks['revision']:
+                hook(rev, info)
         else:
             revno = '0'
 
@@ -77,3 +80,13 @@ class RioVersionInfoBuilder(VersionInfoBuilder):
         writer.write_stanza(info)
 
 
+class RioVersionInfoBuilderHooks(hooks.Hooks):
+    """Hooks for rio-formatted version-info output."""
+
+    def __init__(self):
+        self.create_hook(hooks.HookPoint('revision',
+            "Invoked when adding information about a revision to the"
+            " RIO stanza that is printed. revision is called with a"
+            " revision object and a RIO stanza.", (1, 15), None))
+
+RioVersionInfoBuilder.hooks = RioVersionInfoBuilderHooks()

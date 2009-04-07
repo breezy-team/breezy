@@ -319,7 +319,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
             new_row = True
             for row in reversed(rows[:-1]):
                 # Mark the start of the next node in the node above. If it
-                # doesn't fit then propogate upwards until we find one that
+                # doesn't fit then propagate upwards until we find one that
                 # it does fit into.
                 if row.writer.write(key_line):
                     row.finish_node()
@@ -370,7 +370,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
         self.row_lengths = []
         # Loop over all nodes adding them to the bottom row
         # (rows[-1]). When we finish a chunk in a row,
-        # propogate the key that didn't fit (comes after the chunk) to the
+        # propagate the key that didn't fit (comes after the chunk) to the
         # row above, transitively.
         for node in node_iterator:
             if key_count == 0:

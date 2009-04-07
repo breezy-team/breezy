@@ -254,6 +254,44 @@ class UITests(TestCase):
         finally:
             pb.finished()
 
+    def test_silent_ui_getusername(self):
+        factory = SilentUIFactory()
+        factory.stdin = StringIO("someuser\n\n")
+        factory.stdout = StringIO()
+        self.assertEquals(None, 
+            factory.get_username(u'Hello\u1234 %(host)s', host=u'some\u1234'))
+        self.assertEquals("", factory.stdout.getvalue())
+        self.assertEquals("someuser\n\n", factory.stdin.getvalue())
+
+    def test_text_ui_getusername(self):
+        factory = TextUIFactory(None, None, None)
+        factory.stdin = StringIO("someuser\n\n")
+        factory.stdout = StringIO()
+        factory.stdout.encoding = "utf8"
+        # there is no output from the base factory
+        self.assertEqual("someuser", 
+            factory.get_username('Hello %(host)s', host='some'))
+        self.assertEquals("Hello some: ", factory.stdout.getvalue())
+        self.assertEqual("", factory.get_username("Gebruiker"))
+        # stdin should be empty
+        self.assertEqual('', factory.stdin.readline())
+
+    def test_text_ui_getusername_utf8(self):
+        ui = TestUIFactory(stdin=u'someuser\u1234'.encode('utf8'),
+                           stdout=StringIOWrapper())
+        ui.stdin.encoding = "utf8"
+        ui.stdout.encoding = ui.stdin.encoding
+        pb = ui.nested_progress_bar()
+        try:
+            # there is no output from the base factory
+            username = self.apply_redirected(ui.stdin, ui.stdout, ui.stdout,
+                ui.get_username, u'Hello\u1234 %(host)s', host=u'some\u1234')
+            self.assertEquals(u"someuser\u1234", username.decode('utf8'))
+            self.assertEquals(u"Hello\u1234 some\u1234: ", 
+                ui.stdout.getvalue().decode("utf8"))
+        finally:
+            pb.finished()
+
 
 class TestTextProgressView(TestCase):
     """Tests for text display of progress bars.
