@@ -197,6 +197,25 @@ class CLIUIFactory(UIFactory):
         # as opposed to 'my password is empty' -- does it matter?
         return self.get_non_echoed_password()
 
+    def get_username(self, prompt, **kwargs):
+        """Prompt the user for a username.
+
+        :param prompt: The prompt to present the user
+        :param kwargs: Arguments which will be expanded into the prompt.
+                       This lets front ends display different things if
+                       they so choose.
+        :return: The username string, return None if the user
+                 canceled the request.
+        """
+        prompt += ': '
+        self.prompt(prompt, **kwargs)
+        username = self.stdin.readline()
+        if not username:
+            username = None
+        elif username[-1] == '\n':
+            username = username[:-1]
+        return username
+
     def prompt(self, prompt, **kwargs):
         """Emit prompt on the CLI."""
         prompt = prompt % kwargs
@@ -219,6 +238,9 @@ class SilentUIFactory(CLIUIFactory):
         CLIUIFactory.__init__(self)
 
     def get_password(self, prompt='', **kwargs):
+        return None
+
+    def get_username(self, prompt='', **kwargs):
         return None
 
     def prompt(self, prompt, **kwargs):
