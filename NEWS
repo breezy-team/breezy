@@ -183,6 +183,9 @@ Bug Fixes
 * Shelve can now shelve changes to a symlink target.
   (James Westby, #341558)
 
+* Support cloning of branches with ghosts in the left hand side history.
+  (Jelmer Vernooij, #248540)
+
 * The help for the ``info`` command has been corrected.
   (Ian Clatworthy, #351931)
 

@@ -1025,11 +1025,25 @@ class Branch(object):
             # To figure out the revno for a random revision, we need to build
             # the revision history, and count its length.
             # We don't care about the order, just how long it is.
-            # Alternatively, we could start at the current location, and count
-            # backwards. But there is no guarantee that we will find it since
-            # it may be a merged revision.
-            revno = len(list(self.repository.iter_reverse_revision_history(
-                                                                revision_id)))
+            try:
+                revno = len(list(self.repository.iter_reverse_revision_history(
+                    revision_id)))
+            except errors.RevisionNotPresent:
+                # One of the left hand side ancestors is a ghost
+                # we could start at the current location, and count
+                # backwards. But there is no guarantee that we will find the 
+                # revno since we may be looking at a merged revision id
+                try:
+                    # Default to 1, if we can't find anything else
+                    revno = 1
+                    for distance, revid in enumerate(
+                        self.repository.iter_reverse_revision_history(
+                            source_revision_id)):
+                        if revid == revision_id:
+                            revno = source_revno - distance
+                            break
+                except KeyError:
+                    pass
         destination.set_last_revision_info(revno, revision_id)
 
     @needs_read_lock

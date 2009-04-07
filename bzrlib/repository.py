@@ -2192,7 +2192,10 @@ class Repository(object):
             # RevisionNotPresent here until we see a use for it, because of the
             # cost in an inner loop that is by its very nature O(history).
             # Robert Collins 20080326
-            parents = graph.get_parent_map([next_id])[next_id]
+            try:
+                parents = graph.get_parent_map([next_id])[next_id]
+            except KeyError:
+                raise errors.RevisionNotPresent(next_id, self)
             if len(parents) == 0:
                 return
             else:
