@@ -72,6 +72,9 @@ New Features
   content filtering. See ``bzr help eol`` for details.
   (Ian Clatworthy)
 
+* Newly-blessed `join` command allows combining two trees into one.
+  (Aaron Bentley)
+
 Improvements
 ************
 
@@ -141,7 +144,9 @@ Bug Fixes
 * bzr gives a better message if an invalid regexp is passed to ``bzr log
   -m``.  (Anne Mohsen, Martin Pool)
 
-* ``bzr version-info`` now works in empty branches. (Jelmer Vernooij, 
+* ``bzr split`` now says "See also: join" (Aaron Bentley, #335015)
+
+* ``bzr version-info`` now works in empty branches. (Jelmer Vernooij,
   #313028)
 
 * Fix "is not a stackable format" error when pushing a
