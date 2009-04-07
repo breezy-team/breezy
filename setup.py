@@ -2,10 +2,13 @@
 
 from distutils.core import setup
 
+version = (0, 2, 0)
+version_string = ".".join([str(x) for x in version])
+
 setup(name='bzr-git',
       description='Support for Git branches in Bazaar',
       keywords='plugin bzr git bazaar',
-      version='0.2.0',
+      version=version_string,
       url='http://bazaar-vcs.org/BzrForeignBranches/Git',
       license='GPL',
       author='Robert Collins',
