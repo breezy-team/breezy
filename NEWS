@@ -248,6 +248,9 @@ Testing
 Internals
 *********
 
+* Added ``bzrlib.chk_map`` for fast, trie-based storage of tuple to string
+  maps.  (Robert Collins, John Arbash Meinel, Vincent Ladeuil)
+
 * Added ``bzrlib.inventory_delta`` module.  This will be used for
   serializing and deserializing inventory deltas for more efficient
   streaming on the the network.  (Robert Collins, Andrew Bennetts)
