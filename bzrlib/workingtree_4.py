@@ -1302,12 +1302,14 @@ class ContentFilterAwareSHA1Provider(dirstate.SHA1Provider):
 
     def sha1(self, abspath):
         """Return the sha1 of a file given its absolute path."""
-        filters = self.tree._content_filter_stack(self.tree.relpath(abspath))
+        filters = self.tree._content_filter_stack(
+            self.tree.relpath(osutils.safe_unicode(abspath)))
         return internal_size_sha_file_byname(abspath, filters)[1]
 
     def stat_and_sha1(self, abspath):
         """Return the stat and sha1 of a file given its absolute path."""
-        filters = self.tree._content_filter_stack(self.tree.relpath(abspath))
+        filters = self.tree._content_filter_stack(
+            self.tree.relpath(osutils.safe_unicode(abspath)))
         file_obj = file(abspath, 'rb', 65000)
         try:
             statvalue = os.fstat(file_obj.fileno())
