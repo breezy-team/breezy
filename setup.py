@@ -260,6 +260,8 @@ def add_pyrex_extension(module_name, libraries=None, extra_source=[]):
 
 
 add_pyrex_extension('bzrlib._btree_serializer_c')
+add_pyrex_extension('bzrlib._groupcompress_pyx',
+                    extra_source=['bzrlib/diff-delta.c'])
 add_pyrex_extension('bzrlib._chunks_to_lines_pyx')
 add_pyrex_extension('bzrlib._knit_load_data_c')
 add_pyrex_extension('bzrlib._chk_map_pyx', libraries=['z'])

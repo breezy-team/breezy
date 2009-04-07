@@ -26,6 +26,7 @@ from StringIO import StringIO
 
 from bzrlib import (
     errors,
+    groupcompress,
     knit as _mod_knit,
     osutils,
     progress,
@@ -120,6 +121,13 @@ def load_tests(standard_tests, module, loader):
             'key_length':1,
             'support_partial_insertion': False,
             }),
+        ('groupcompress-nograph', {
+            'cleanup':groupcompress.cleanup_pack_group,
+            'factory':groupcompress.make_pack_factory(False, False, 1),
+            'graph': False,
+            'key_length':1,
+            'support_partial_insertion':False,
+            }),
         ]
     len_two_scenarios = [
         ('weave-prefix', {
@@ -143,6 +151,13 @@ def load_tests(standard_tests, module, loader):
             'graph':True,
             'key_length':2,
             'support_partial_insertion': True,
+            }),
+        ('groupcompress', {
+            'cleanup':groupcompress.cleanup_pack_group,
+            'factory':groupcompress.make_pack_factory(True, False, 1),
+            'graph': True,
+            'key_length':1,
+            'support_partial_insertion':False,
             }),
         ]
     scenarios = len_one_scenarios + len_two_scenarios
@@ -1647,7 +1662,8 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
              'knit-ft', 'knit-delta', 'chunked', 'fulltext',
              'knit-annotated-ft-gz', 'knit-annotated-delta-gz', 'knit-ft-gz',
              'knit-delta-gz',
-             'knit-delta-closure', 'knit-delta-closure-ref'])
+             'knit-delta-closure', 'knit-delta-closure-ref',
+             'groupcompress-block', 'groupcompress-block-ref'])
 
     def capture_stream(self, f, entries, on_seen, parents):
         """Capture a stream for testing."""
