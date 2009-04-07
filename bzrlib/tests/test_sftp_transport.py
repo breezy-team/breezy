@@ -15,6 +15,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import getpass
 import os
 import socket
 import sys
@@ -545,4 +546,4 @@ class TestUsesAuthConfig(TestCaseWithSFTPServer):
 
     def test_sftp_is_none_if_no_config(self):
         t = self.get_transport_for_connection(set_config=False)
-        self.assertIs(None, t._get_credentials()[0])
+        self.assertIs(getpass.getuser(), t._get_credentials()[0])
