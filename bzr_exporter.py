@@ -32,56 +32,52 @@ import sys, time
 
 import bzrlib.branch
 import bzrlib.revision
-from bzrlib import errors as bazErrors
-from bzrlib.builtins import _get_revision_range
-from bzrlib.trace import note, warning
+from bzrlib import (
+    builtins,
+    errors as bazErrors,
+    progress,
+    trace,
+    )
 
 from bzrlib.plugins.fastimport import commands, helpers, marks_file
 
 
-try:
-    from bzrlib.log import _linear_view_revisions
-except ImportError:
-    # This is taken from log.py. As this function only landed in bzr 1.12, it's
-    # copied here so fast-export can work on earlier versions.
-    def _linear_view_revisions(branch, start_rev_id, end_rev_id):
-        """Calculate a sequence of revisions to view, newest to oldest.
+# This is adapted from _linear_view_verisons in log.py in bzr 1.12.
+def _iter_linear_revisions(branch, start_rev_id, end_rev_id):
+    """Calculate a sequence of revisions, newest to oldest.
 
-        :param start_rev_id: the lower revision-id
-        :param end_rev_id: the upper revision-id
-        :return: An iterator of (revision_id, dotted_revno, merge_depth) tuples.
-        :raises _StartNotLinearAncestor: if a start_rev_id is specified but
-          is not found walking the left-hand history
-        """
-        br_revno, br_rev_id = branch.last_revision_info()
-        repo = branch.repository
-        if start_rev_id is None and end_rev_id is None:
-            cur_revno = br_revno
-            for revision_id in repo.iter_reverse_revision_history(br_rev_id):
-                yield revision_id, str(cur_revno), 0
-                cur_revno -= 1
-        else:
-            if end_rev_id is None:
-                end_rev_id = br_rev_id
-            found_start = start_rev_id is None
-            for revision_id in repo.iter_reverse_revision_history(end_rev_id):
-                revno = branch.revision_id_to_dotted_revno(revision_id)
-                revno_str = '.'.join(str(n) for n in revno)
-                if not found_start and revision_id == start_rev_id:
-                    yield revision_id, revno_str, 0
-                    found_start = True
-                    break
-                else:
-                    yield revision_id, revno_str, 0
+    :param start_rev_id: the lower revision-id
+    :param end_rev_id: the upper revision-id
+    :return: An iterator of revision_ids
+    :raises ValueError: if a start_rev_id is specified but
+      is not found walking the left-hand history
+    """
+    br_revno, br_rev_id = branch.last_revision_info()
+    repo = branch.repository
+    if start_rev_id is None and end_rev_id is None:
+        for revision_id in repo.iter_reverse_revision_history(br_rev_id):
+            yield revision_id
+    else:
+        if end_rev_id is None:
+            end_rev_id = br_rev_id
+        found_start = start_rev_id is None
+        for revision_id in repo.iter_reverse_revision_history(end_rev_id):
+            if not found_start and revision_id == start_rev_id:
+                yield revision_id
+                found_start = True
+                break
             else:
-                if not found_start:
-                    raise _StartNotLinearAncestor()
+                yield revision_id
+        else:
+            if not found_start:
+                raise ValueError()
 
 
 class BzrFastExporter(object):
 
     def __init__(self, source, git_branch=None, checkpoint=-1,
-        import_marks_file=None, export_marks_file=None, revision=None):
+        import_marks_file=None, export_marks_file=None, revision=None,
+        verbose=False):
         self.source = source
         self.outf = helpers.binary_stream(sys.stdout)
         self.git_branch = git_branch
@@ -90,7 +86,18 @@ class BzrFastExporter(object):
         self.export_marks_file = export_marks_file
         self.revision = revision
         self.excluded_revisions = set()
+        self._multi_author_api_available = hasattr(bzrlib.revision.Revision,
+            'get_apparent_authors')
 
+        # Progress reporting stuff
+        self.verbose = verbose
+        if verbose:
+            self.progress_every = 100
+        else:
+            self.progress_every = 1000
+        self._start_time = time.time()
+
+        # Load the marks and initialise things accordingly
         self.revid_to_mark = {}
         self.branch_names = {}
         if self.import_marks_file:
@@ -102,24 +109,26 @@ class BzrFastExporter(object):
  
     def interesting_history(self):
         if self.revision:
-            rev1, rev2 = _get_revision_range(self.revision, self.branch,
-                "fast-export")
+            rev1, rev2 = builtins._get_revision_range(self.revision,
+                self.branch, "fast-export")
             start_rev_id = rev1.rev_id
             end_rev_id = rev2.rev_id
         else:
             start_rev_id = None
             end_rev_id = None
-        view_revisions = reversed(list(_linear_view_revisions(self.branch,
+        self.note("Calculating the revisions to include ...")
+        view_revisions = reversed(list(_iter_linear_revisions(self.branch,
             start_rev_id, end_rev_id)))
         # If a starting point was given, we need to later check that we don't
         # start emitting revisions from before that point. Collect the
         # revisions to exclude now ...
         if start_rev_id is not None:
             # The result is inclusive so skip the first (the oldest) one
-            uninteresting = [revid for revid, _, _ in _linear_view_revisions(
-                self.branch, None, start_rev_id)][1:]
+            self.note("Calculating the revisions to exclude ...")
+            uninteresting = list(_iter_linear_revisions(self.branch, None,
+                start_rev_id))[1:]
             self.excluded_revisions = set(uninteresting)
-        return [revid for revid, _, _ in view_revisions]
+        return list(view_revisions)
 
     def run(self):
         # Open the source
@@ -137,12 +146,42 @@ class BzrFastExporter(object):
 
         # Save the marks if requested
         self._save_marks()
+        self.dump_stats()
 
-    def note(self, message):
-        note("bzr fast-export: %s" % message)
+    def note(self, msg, *args):
+        """Output a note but timestamp it."""
+        msg = "%s %s" % (self._time_of_day(), msg)
+        trace.note(msg, *args)
 
-    def warning(self, message):
-        warning("bzr fast-export: %s" % message)
+    def warning(self, msg, *args):
+        """Output a warning but timestamp it."""
+        msg = "%s WARNING: %s" % (self._time_of_day(), msg)
+        trace.warning(msg, *args)
+
+    def _time_of_day(self):
+        """Time of day as a string."""
+        # Note: this is a separate method so tests can patch in a fixed value
+        return time.strftime("%H:%M:%S")
+
+    def report_progress(self, commit_count, details=''):
+        # Note: we can't easily give a total count here because we
+        # don't know how many merged revisions will need to be output
+        if commit_count and commit_count % self.progress_every == 0:
+            counts = "%d" % (commit_count,)
+            minutes = (time.time() - self._start_time) / 60
+            rate = commit_count * 1.0 / minutes
+            if rate > 10:
+                rate_str = "at %.0f/minute " % rate
+            else:
+                rate_str = "at %.1f/minute " % rate
+            self.note("%s commits exported %s%s" % (counts, rate_str, details))
+
+    def dump_stats(self):
+        time_required = progress.str_tdelta(time.time() - self._start_time)
+        rc = len(self.revid_to_mark)
+        self.note("Exported %d %s in %s",
+            rc, helpers.single_plural(rc, "revision", "revisions"),
+            time_required)
 
     def print_cmd(self, cmd):
         self.outf.write("%r\n" % cmd)
@@ -156,7 +195,8 @@ class BzrFastExporter(object):
     def is_empty_dir(self, tree, path):
         path_id = tree.path2id(path)
         if path_id == None:
-            warning("Skipping empty_dir detection, could not find path_id...")
+            self.warning("Skipping empty_dir detection - no file_id for %s" %
+                (path,))
             return False
 
         # Continue if path is not a directory
@@ -182,22 +222,14 @@ class BzrFastExporter(object):
             self.revid_to_mark[revid] = -1
             return
  
-        # Checkpoint if it's time for that
-        ncommits = len(self.revid_to_mark)
-        if (self.checkpoint > 0 and ncommits
-            and ncommits % self.checkpoint == 0):
-            self.note("Exported %i commits - checkpointing" % ncommits)
-            self._save_marks()
-            self.print_cmd(commands.CheckpointCommand())
-
         # Emit parents
         nparents = len(revobj.parent_ids)
         if nparents:
             for parent in revobj.parent_ids:
                 self.emit_commit(parent, git_branch)
-            ncommits = len(self.revid_to_mark)
 
         # Get the primary parent
+        ncommits = len(self.revid_to_mark)
         if nparents == 0:
             if ncommits:
                 # This is a parentless commit but it's not the first one
@@ -216,12 +248,24 @@ class BzrFastExporter(object):
         self.print_cmd(self._get_commit_command(git_ref, mark, revobj,
             file_cmds))
 
+        # Report progress and checkpoint if it's time for that
+        self.report_progress(ncommits)
+        if (self.checkpoint > 0 and ncommits
+            and ncommits % self.checkpoint == 0):
+            self.note("Exported %i commits - adding checkpoint to output"
+                % ncommits)
+            self._save_marks()
+            self.print_cmd(commands.CheckpointCommand())
+
     def _get_commit_command(self, git_ref, mark, revobj, file_cmds):
         # Get the committer and author info
         committer = revobj.committer
         name, email = parseaddr(committer)
         committer_info = (name, email, revobj.timestamp, revobj.timezone)
-        author = revobj.get_apparent_author()
+        if self._multi_author_api_available:
+            author = revobj.get_apparent_authors()[0]
+        else:
+            author = revobj.get_apparent_author()
         if author != committer:
             name, email = parseaddr(author)
             author_info = (name, email, revobj.timestamp, revobj.timezone)
@@ -284,7 +328,8 @@ class BzrFastExporter(object):
                 self.note("Skipping empty dir %s in rev %s" % (oldpath,
                     revision_id))
                 continue
-            oldpath = self._adjust_path_for_renames(oldpath, renamed)
+            oldpath = self._adjust_path_for_renames(oldpath, renamed,
+                revision_id)
             renamed.append([oldpath, newpath])
             file_cmds.append(commands.FileRenameCommand(oldpath, newpath))
             if text_modified or meta_modified:
@@ -292,12 +337,12 @@ class BzrFastExporter(object):
 
         # Record deletes
         for path, id_, kind in changes.removed:
-            path = self._adjust_path_for_renames(path, renamed)
+            path = self._adjust_path_for_renames(path, renamed, revision_id)
             file_cmds.append(commands.FileDeleteCommand(path))
 
         # Map kind changes to a delete followed by an add
         for path, id_, kind1, kind2 in changes.kind_changed:
-            path = self._adjust_path_for_renames(path, renamed)
+            path = self._adjust_path_for_renames(path, renamed, revision_id)
             # IGC: I don't understand why a delete is needed here.
             # In fact, it seems harmful? If you uncomment this line,
             # please file a bug explaining why you needed to.
@@ -319,15 +364,17 @@ class BzrFastExporter(object):
                 continue
         return file_cmds
 
-    def _adjust_path_for_renames(self, path, renamed):
+    def _adjust_path_for_renames(self, path, renamed, revision_id):
         # If a previous rename is found, we should adjust the path
         for old, new in renamed:
             if path == old:
-                self.note("Changing path %s given rename to %s" % (path, new))
+                self.note("Changing path %s given rename to %s in revision %s"
+                    % (path, new, revision_id))
                 path = new
             elif path.startswith(old + '/'):
-                self.note("Adjusting path %s given rename of %s to %s" %
-                    (path, old, new))
+                self.note(
+                    "Adjusting path %s given rename of %s to %s in revision %s"
+                    % (path, old, new, revision_id))
                 path = path.replace(old + "/", new + "/")
         return path
 

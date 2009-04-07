@@ -417,7 +417,7 @@ class cmd_fast_export(Command):
         exporter = bzr_exporter.BzrFastExporter(source,
             git_branch=git_branch, checkpoint=checkpoint,
             import_marks_file=import_marks, export_marks_file=export_marks,
-            revision=revision)
+            revision=revision, verbose=verbose)
         return exporter.run()
 
 

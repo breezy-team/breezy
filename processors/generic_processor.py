@@ -322,7 +322,7 @@ class GenericProcessor(processor.ImportProcessor):
             else:
                 self.warning("No working trees available to update")
 
-        # Dum pthe cache stats now because we clear it before the final pack
+        # Dump the cache stats now because we clear it before the final pack
         if self.verbose:
             self.cache_mgr.dump_stats()
         if self._original_max_pack_count:
