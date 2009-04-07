@@ -127,9 +127,6 @@ Improvements
 Bug Fixes
 *********
 
-* The full test suite is passing again on OSX. Several minor issues (mostly
-  test related) have been fixed. (Vincent Ladeuil, #355273).
-
 * Authentication plugins now receive all the parameters from the request
   itself (aka host, port, realm, path, etc). Previously, only the 
   authentication section name, username and encoded password were 
@@ -144,6 +141,9 @@ Bug Fixes
 
 * Fixed incorrect "Source format does not support stacking" warning
   when pushing to a smart server.  (Andrew Bennetts, #334114)
+
+* Fix 'make check-dist-tarball' failure by converting paths to unicode when
+  needed. (Vincent Ladeuil, #355454)
 
 * Fixed "Specified file 'x/y/z' is outside current view: " occurring
   on ``bzr add x/y/z`` in formats supporting views when no view is
@@ -164,6 +164,9 @@ Bug Fixes
   a branch which is itself stackable, because we know the client can read
   both branches, we know that the trunk for the project can be read too,
   so the upgrade will not inconvenience users. (Robert Collins, #345169)
+
+* The full test suite is passing again on OSX. Several minor issues (mostly
+  test related) have been fixed. (Vincent Ladeuil, #355273).
 
 * The GNU Changelog formatter is slightly improved in the case where
   the delta is empty, and now correctly claims not to support tags.
@@ -295,6 +298,11 @@ Internals
   of filter stacks. This enhancement allows, for example,  bzr-svn to
   handle existing svn properties that define a list of keywords to be
   expanded.  (Ian Clatworthy)
+
+* ``RemoteBranchConfig`` will use a new verb ``Branch.set_config_option``
+  to write config settings to smart servers that support this, saving
+  5 round trips on the stacked streaming acceptance test.
+  (Robert Collins, Andrew Bennetts)
 
 * ``RemoteBranch`` now provides ``_get_config`` for access to just the
   branch specific configuration from a remote server, which uses the 
