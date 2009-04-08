@@ -40,6 +40,11 @@ New Features
   trees). See ``bzr help content-filters`` for further details.
   (Ian Clatworthy, Alexander Belchenko)
 
+* Plugins can now define their own annotation tie-breaker when two revisions
+  introduce the exact same line. See ``bzrlib.annotate._break_annotation_tie``
+  Be aware though that this is temporary, private (as indicated by the leading
+  '_') and a first step to address the problem. (Vincent Ladeuil, #348459)
+
 Improvements
 ************
 
