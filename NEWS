@@ -6,6 +6,39 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
+In Development
+##############
+
+Compatibility Breaks
+********************
+
+* ``bzr ls`` is no longer recursive by default. To recurse, use the
+  new ``-R`` option. The old ``--non-recursive`` option has been removed.
+  If you alias ``ls`` to ``ls -R``, you can disable recursion using
+  ``--no-recursive`` instead.  (Ian Clatworthy)
+
+New Features
+************
+
+Improvements
+************
+
+Bug Fixes
+*********
+
+Documentation
+*************
+
+API Changes
+***********
+
+Testing
+*******
+
+Internals
+*********
+
+
 bzr 1.14rc1
 ###########
 :Codename: brisbane-core
