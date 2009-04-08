@@ -3414,7 +3414,7 @@ class cmd_merge(Command):
 
             bzr merge -r 81..82 ../bzr.dev
 
-        To apply a merge directive contained in in /tmp/merge:
+        To apply a merge directive contained in /tmp/merge:
 
             bzr merge /tmp/merge
     """
@@ -4583,11 +4583,9 @@ class cmd_serve(Command):
 
 
 class cmd_join(Command):
-    """Combine a subtree into its containing tree.
+    """Combine a tree into its containing tree.
 
-    This command is for experimental use only.  It requires the target tree
-    to be in dirstate-with-subtree format, which cannot be converted into
-    earlier formats.
+    This command requires the target tree to be in a rich-root format.
 
     The TREE argument should be an independent tree, inside another tree, but
     not part of it.  (Such trees can be produced by "bzr split", but also by
@@ -4596,19 +4594,13 @@ class cmd_join(Command):
     The result is a combined tree, with the subtree no longer an independant
     part.  This is marked as a merge of the subtree into the containing tree,
     and all history is preserved.
-
-    If --reference is specified, the subtree retains its independence.  It can
-    be branched by itself, and can be part of multiple projects at the same
-    time.  But operations performed in the containing tree, such as commit
-    and merge, will recurse into the subtree.
     """
 
     _see_also = ['split']
     takes_args = ['tree']
     takes_options = [
-            Option('reference', help='Join by reference.'),
+            Option('reference', help='Join by reference.', hidden=True),
             ]
-    hidden = True
 
     def run(self, tree, reference=False):
         sub_tree = WorkingTree.open(tree)
@@ -4648,8 +4640,7 @@ class cmd_split(Command):
     branch.  Commits in the top-level tree will not apply to the new subtree.
     """
 
-    # join is not un-hidden yet
-    #_see_also = ['join']
+    _see_also = ['join']
     takes_args = ['tree']
 
     def run(self, tree):

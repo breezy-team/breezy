@@ -60,10 +60,6 @@ class TextUIFactory(CLIUIFactory):
         # paints progress, network activity, etc
         self._progress_view = TextProgressView(self.stderr)
 
-    def prompt(self, prompt):
-        """Emit prompt on the CLI."""
-        self.stdout.write(prompt)
-
     def clear_term(self):
         """Prepare the terminal for output.
 

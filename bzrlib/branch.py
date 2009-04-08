@@ -892,7 +892,7 @@ class Branch(object):
     def get_public_branch(self):
         """Return the public location of the branch.
 
-        This is is used by merge directives.
+        This is used by merge directives.
         """
         return self._get_config_location('public_branch')
 
@@ -1463,7 +1463,7 @@ class BranchHooks(Hooks):
             "post_uncommit is called with (local, master, old_revno, "
             "old_revid, new_revno, new_revid) where local is the local branch "
             "or None, master is the target branch, and an empty branch "
-            "recieves new_revno of 0, new_revid of None.", (0, 15), None))
+            "receives new_revno of 0, new_revid of None.", (0, 15), None))
         self.create_hook(HookPoint('pre_change_branch_tip',
             "Called in bzr client and server before a change to the tip of a "
             "branch is made. pre_change_branch_tip is called with a "

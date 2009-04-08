@@ -150,7 +150,8 @@ class Option(object):
     OPTIONS = {}
 
     def __init__(self, name, help='', type=None, argname=None,
-                 short_name=None, param_name=None, custom_callback=None):
+                 short_name=None, param_name=None, custom_callback=None,
+                 hidden=False):
         """Make a new command option.
 
         :param name: regular name of the command, used in the double-dash
@@ -173,6 +174,8 @@ class Option(object):
         :param custom_callback: a callback routine to be called after normal
             processing. The signature of the callback routine is
             (option, name, new_value, parser).
+        :param hidden: If True, the option should be hidden in help and
+            documentation.
         """
         self.name = name
         self.help = help
@@ -189,6 +192,7 @@ class Option(object):
         else:
             self._param_name = param_name
         self.custom_callback = custom_callback
+        self.hidden = hidden
 
     def short_name(self):
         if self._short_name:
@@ -208,12 +212,16 @@ class Option(object):
         option_strings = ['--%s' % self.name]
         if short_name is not None:
             option_strings.append('-%s' % short_name)
+        if self.hidden:
+            help = optparse.SUPPRESS_HELP
+        else:
+            help = self.help
         optargfn = self.type
         if optargfn is None:
             parser.add_option(action='callback',
                               callback=self._optparse_bool_callback,
                               callback_args=(True,),
-                              help=self.help,
+                              help=help,
                               *option_strings)
             negation_strings = ['--%s' % self.get_negation_name()]
             parser.add_option(action='callback',
@@ -224,7 +232,7 @@ class Option(object):
             parser.add_option(action='callback',
                               callback=self._optparse_callback,
                               type='string', metavar=self.argname.upper(),
-                              help=self.help,
+                              help=help,
                               default=OptionParser.DEFAULT_VALUE,
                               *option_strings)
 
@@ -250,7 +258,7 @@ class Option(object):
         yield self.name, self.short_name(), argname, self.help
 
     def is_hidden(self, name):
-        return False
+        return self.hidden
 
 
 class ListOption(Option):
