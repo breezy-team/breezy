@@ -2362,8 +2362,9 @@ class cmd_ls(Command):
         try:
             for fp, fc, fkind, fid, entry in tree.list_files(include_root=False):
                 if fp.startswith(relpath):
-                    fp = osutils.pathjoin(prefix, fp[len(relpath):])
-                    if not recursive and '/' in fp:
+                    rp = fp[len(relpath):]
+                    fp = osutils.pathjoin(prefix, rp)
+                    if not recursive and '/' in rp:
                         continue
                     if not all and not selection[fc]:
                         continue
