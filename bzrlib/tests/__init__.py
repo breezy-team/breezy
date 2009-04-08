@@ -177,6 +177,11 @@ class ExtendedTestResult(unittest._TextTestResult):
             self.stream.write('tests passed\n')
         else:
             self.stream.write('tests failed\n')
+        if TestCase._first_thread_leaker_id:
+            self.stream.write(
+                '%s is leaking threads among %d leaking tests.\n' % (
+                TestCase._first_thread_leaker_id,
+                TestCase._leaking_threads_tests))
 
     def _extractBenchmarkTime(self, testCase):
         """Add a benchmark time for the current test case."""
@@ -745,12 +750,6 @@ class TestUIFactory(ui.CLIUIFactory):
         return password
 
 
-def _report_leaked_threads():
-    bzrlib.trace.warning('%s is leaking threads among %d leaking tests',
-                         TestCase._first_thread_leaker_id,
-                         TestCase._leaking_threads_tests)
-
-
 class TestCase(unittest.TestCase):
     """Base class for bzr unit tests.
 
@@ -816,10 +815,6 @@ class TestCase(unittest.TestCase):
             TestCase._leaking_threads_tests += 1
             if TestCase._first_thread_leaker_id is None:
                 TestCase._first_thread_leaker_id = self.id()
-                # we're not specifically told when all tests are finished.
-                # This will do. We use a function to avoid keeping a reference
-                # to a TestCase object.
-                atexit.register(_report_leaked_threads)
 
     def _clear_debug_flags(self):
         """Prevent externally set debug flags affecting tests.
