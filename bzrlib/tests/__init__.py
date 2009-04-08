@@ -3020,12 +3020,11 @@ class BZRTransformingResult(unittest.TestResult):
             # stringify the exception gives access to the remote traceback
             # We search the last line for 'prefix'
             lines = str(exc).split('\n')
-            if len(lines) > 1:
-                last = lines[-2] # -1 is empty, final \n
-            else:
-                last = lines[-1]
-            if last.startswith(prefix):
-                value = last[len(prefix):]
+            while lines and not lines[-1]:
+                lines.pop(-1)
+            if lines:
+                if lines[-1].startswith(prefix):
+                    value = lines[-1][len(prefix):]
         return value
 
 
