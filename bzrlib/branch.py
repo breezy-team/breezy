@@ -1078,8 +1078,13 @@ class Branch(object):
         """
         mainline_parent_id = None
         last_revno, last_revision_id = self.last_revision_info()
-        real_rev_history = list(self.repository.iter_reverse_revision_history(
-                                last_revision_id))
+        try:
+            real_rev_history = list(
+                self.repository.iter_reverse_revision_history(last_revision_id))
+        except errors.RevisionNotPresent:
+            ret = BranchCheckResult(self)
+            ret.ghosts_in_mainline = True
+            return ret
         real_rev_history.reverse()
         if len(real_rev_history) != last_revno:
             raise errors.BzrCheckError('revno does not match len(mainline)'
@@ -2703,6 +2708,7 @@ class BranchCheckResult(object):
 
     def __init__(self, branch):
         self.branch = branch
+        self.ghosts_in_mainline = False
 
     def report_results(self, verbose):
         """Report the check results via trace.note.
@@ -2713,6 +2719,8 @@ class BranchCheckResult(object):
         note('checked branch %s format %s',
              self.branch.base,
              self.branch._format)
+        if self.ghosts_in_mainline:
+            note('branch contains ghosts in mainline')
 
 
 class Converter5to6(object):
