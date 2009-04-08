@@ -326,26 +326,10 @@ class BzrFastExporter(object):
         # Make "modified" have 3-tuples, as added does
         my_modified = [ x[0:3] for x in changes.modified ]
 
-        # We have to keep track of previous renames in this commit
-        file_cmds = []
-        renamed = []
-        for (oldpath, newpath, id_, kind,
-                text_modified, meta_modified) in changes.renamed:
-            if (self.is_empty_dir(tree_old, oldpath)):
-                self.note("Skipping empty dir %s in rev %s" % (oldpath,
-                    revision_id))
-                continue
-            oldpath = self._adjust_path_for_renames(oldpath, renamed,
-                revision_id)
-            renamed.append([oldpath, newpath])
-            file_cmds.append(commands.FileRenameCommand(oldpath, newpath))
-            if text_modified or meta_modified:
-                my_modified.append((newpath, id_, kind))
-
-        # Record deletes
-        for path, id_, kind in changes.removed:
-            path = self._adjust_path_for_renames(path, renamed, revision_id)
-            file_cmds.append(commands.FileDeleteCommand(path))
+        # The potential interaction between renames and deletes is messy.
+        # Handle it here ...
+        file_cmds, rd_modifies, renamed = self._process_renames_and_deletes(
+            changes.renamed, changes.removed, revision_id, tree_old)
 
         # Map kind changes to a delete followed by an add
         for path, id_, kind1, kind2 in changes.kind_changed:
@@ -357,7 +341,7 @@ class BzrFastExporter(object):
             my_modified.append((path, id_, kind2))
 
         # Record modifications
-        for path, id_, kind in changes.added + my_modified:
+        for path, id_, kind in changes.added + my_modified + rd_modifies:
             if kind == 'file':
                 text = tree_new.get_file_text(id_)
                 file_cmds.append(commands.FileModifyCommand(path, 'file',
@@ -370,6 +354,57 @@ class BzrFastExporter(object):
                 # can handle directory and tree-reference changes?
                 continue
         return file_cmds
+
+    def _process_renames_and_deletes(self, renames, deletes,
+        revision_id, tree_old):
+        file_cmds = []
+        modifies = []
+        renamed = []
+
+        # See https://bugs.edge.launchpad.net/bzr-fastimport/+bug/268933.
+        # In a nutshell, there are several nasty cases:
+        #
+        # 1) bzr rm a; bzr mv b a; bzr commit
+        # 2) bzr mv x/y z; bzr rm x; commmit
+        #
+        # The first must come out with the delete first like this:
+        #
+        # D a
+        # R b a
+        #
+        # The second case must come out with the rename first like this:
+        #
+        # R x/y z
+        # D x
+        #
+        # So outputting all deletes first or all renames first won't work.
+        # Instead, we need to make multiple passes over the various lists to
+        # get the ordering right.
+
+        deleted_paths = set([p for p, _, _ in deletes])
+        for (oldpath, newpath, id_, kind,
+                text_modified, meta_modified) in renames:
+            if newpath in deleted_paths:
+                file_cmds.append(commands.FileDeleteCommand(newpath))
+                deleted_paths.remove(newpath)
+            if (self.is_empty_dir(tree_old, oldpath)):
+                self.note("Skipping empty dir %s in rev %s" % (oldpath,
+                    revision_id))
+                continue
+            #oldpath = self._adjust_path_for_renames(oldpath, renamed,
+            #    revision_id)
+            renamed.append([oldpath, newpath])
+            file_cmds.append(commands.FileRenameCommand(oldpath, newpath))
+            if text_modified or meta_modified:
+                modifies.append((newpath, id_, kind))
+
+        # Record remaining deletes
+        for path, id_, kind in deletes:
+            if path not in deleted_paths:
+                continue
+            #path = self._adjust_path_for_renames(path, renamed, revision_id)
+            file_cmds.append(commands.FileDeleteCommand(path))
+        return file_cmds, modifies, renamed
 
     def _adjust_path_for_renames(self, path, renamed, revision_id):
         # If a previous rename is found, we should adjust the path
