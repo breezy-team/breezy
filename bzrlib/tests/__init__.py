@@ -133,6 +133,7 @@ class ExtendedTestResult(unittest._TextTestResult):
     def __init__(self, stream, descriptions, verbosity,
                  bench_history=None,
                  num_tests=None,
+                 strict=False,
                  ):
         """Construct new TestResult.
 
@@ -165,6 +166,17 @@ class ExtendedTestResult(unittest._TextTestResult):
         self.unsupported = {}
         self.count = 0
         self._overall_start_time = time.time()
+        self._strict = strict
+
+    def done(self):
+        if self._strict:
+            ok = self.wasStrictlySuccessful()
+        else:
+            ok = self.wasSuccessful()
+        if ok:
+            self.stream.write('tests passed\n')
+        else:
+            self.stream.write('tests failed\n')
 
     def _extractBenchmarkTime(self, testCase):
         """Add a benchmark time for the current test case."""
@@ -196,9 +208,22 @@ class ExtendedTestResult(unittest._TextTestResult):
 
     def startTest(self, test):
         unittest.TestResult.startTest(self, test)
+        if self.count == 0:
+            self.startTests()
         self.report_test_start(test)
         test.number = self.count
         self._recordTestStartTime()
+
+    def startTests(self):
+        self.stream.write(
+            'testing: %s\n' % (osutils.realpath(sys.argv[0]),))
+        self.stream.write(
+            '   %s (%s python%s)\n' % (
+                    bzrlib.__path__[0],
+                    bzrlib.version_string,
+                    bzrlib._format_version_tuple(sys.version_info),
+                    ))
+        self.stream.write('\n')
 
     def _recordTestStartTime(self):
         """Record that a test has started."""
@@ -349,9 +374,10 @@ class TextTestResult(ExtendedTestResult):
                  bench_history=None,
                  num_tests=None,
                  pb=None,
+                 strict=None,
                  ):
         ExtendedTestResult.__init__(self, stream, descriptions, verbosity,
-            bench_history, num_tests)
+            bench_history, num_tests, strict)
         if pb is None:
             self.pb = self.ui.nested_progress_bar()
             self._supplied_pb = False
@@ -512,13 +538,15 @@ class TextTestRunner(object):
                  descriptions=0,
                  verbosity=1,
                  bench_history=None,
-                 list_only=False
+                 list_only=False,
+                 strict=False,
                  ):
         self.stream = unittest._WritelnDecorator(stream)
         self.descriptions = descriptions
         self.verbosity = verbosity
         self._bench_history = bench_history
         self.list_only = list_only
+        self._strict = strict
 
     def run(self, test):
         "Run the given test case or test suite."
@@ -532,6 +560,7 @@ class TextTestRunner(object):
                               self.verbosity,
                               bench_history=self._bench_history,
                               num_tests=test.countTestCases(),
+                              strict=self._strict,
                               )
         result.stop_early = self.stop_on_failure
         result.report_starting()
@@ -2617,7 +2646,8 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
               exclude_pattern=None,
               strict=False,
               runner_class=None,
-              suite_decorators=None):
+              suite_decorators=None,
+              stream=None):
     """Run a test suite for bzr selftest.
 
     :param runner_class: The class of runner to use. Must support the
@@ -2632,11 +2662,14 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
         verbosity = 1
     if runner_class is None:
         runner_class = TextTestRunner
-    runner = runner_class(stream=sys.stdout,
+    if stream is None:
+        stream = sys.stdout
+    runner = runner_class(stream=stream,
                             descriptions=0,
                             verbosity=verbosity,
                             bench_history=bench_history,
                             list_only=list_only,
+                            strict=strict,
                             )
     runner.stop_on_failure=stop_on_failure
     # built in decorator factories:
@@ -2655,6 +2688,7 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
     result = runner.run(suite)
     if list_only:
         return True
+    result.done()
     if strict:
         return result.wasStrictlySuccessful()
     else:
@@ -3908,8 +3942,6 @@ try:
     from subunit import TestProtocolClient
     class SubUnitBzrRunner(TextTestRunner):
         def run(self, test):
-            # undo out claim for testing which looks like a test start to subunit
-            self.stream.write("success: %s\n" % (osutils.realpath(sys.argv[0]),))
             result = TestProtocolClient(self.stream)
             test.run(result)
             return result

@@ -3245,14 +3245,6 @@ class cmd_selftest(Command):
 
         if cache_dir is not None:
             tree_creator.TreeCreator.CACHE_ROOT = osutils.abspath(cache_dir)
-        if not list_only:
-            print 'testing: %s' % (osutils.realpath(sys.argv[0]),)
-            print '   %s (%s python%s)' % (
-                    bzrlib.__path__[0],
-                    bzrlib.version_string,
-                    bzrlib._format_version_tuple(sys.version_info),
-                    )
-            print
         if testspecs_list is not None:
             pattern = '|'.join(testspecs_list)
         else:
@@ -3298,11 +3290,6 @@ class cmd_selftest(Command):
         finally:
             if benchfile is not None:
                 benchfile.close()
-        if not list_only:
-            if result:
-                note('tests passed')
-            else:
-                note('tests failed')
         return int(not result)
 
 

@@ -836,7 +836,8 @@ class TestTestResult(TestCase):
     def test_known_failure(self):
         """A KnownFailure being raised should trigger several result actions."""
         class InstrumentedTestResult(ExtendedTestResult):
-
+            def done(self): pass
+            def startTests(self): pass
             def report_test_start(self, test): pass
             def report_known_failure(self, test, err):
                 self._call = test, err
@@ -884,7 +885,7 @@ class TestTestResult(TestCase):
         # text test output formatting
         pb = MockProgress()
         result = bzrlib.tests.TextTestResult(
-            None,
+            StringIO(),
             descriptions=0,
             verbosity=1,
             pb=pb,
@@ -924,6 +925,8 @@ class TestTestResult(TestCase):
     def test_add_not_supported(self):
         """Test the behaviour of invoking addNotSupported."""
         class InstrumentedTestResult(ExtendedTestResult):
+            def done(self): pass
+            def startTests(self): pass
             def report_test_start(self, test): pass
             def report_unsupported(self, test, feature):
                 self._call = test, feature
@@ -966,7 +969,7 @@ class TestTestResult(TestCase):
         # text test output formatting
         pb = MockProgress()
         result = bzrlib.tests.TextTestResult(
-            None,
+            StringIO(),
             descriptions=0,
             verbosity=1,
             pb=pb,
@@ -994,7 +997,8 @@ class TestTestResult(TestCase):
     def test_unavailable_exception(self):
         """An UnavailableFeature being raised should invoke addNotSupported."""
         class InstrumentedTestResult(ExtendedTestResult):
-
+            def done(self): pass
+            def startTests(self): pass
             def report_test_start(self, test): pass
             def addNotSupported(self, test, feature):
                 self._call = test, feature
@@ -1094,7 +1098,7 @@ class TestRunner(TestCase):
             '----------------------------------------------------------------------',
             '',
             'FAILED (failures=1, known_failure_count=1)'],
-            lines[0:5] + lines[6:10] + lines[11:])
+            lines[3:8] + lines[9:13] + lines[14:])
 
     def test_known_failure_ok_run(self):
         # run a test that generates a known failure which should be printed in the final output.
@@ -2348,5 +2352,5 @@ class TestRunSuite(TestCase):
                 calls.append(test)
                 return ExtendedTestResult(self.stream, self.descriptions,
                     self.verbosity)
-        run_suite(suite, runner_class=MyRunner)
+        run_suite(suite, runner_class=MyRunner, stream=StringIO())
         self.assertEqual(calls, [suite])
