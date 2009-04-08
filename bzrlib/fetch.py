@@ -145,6 +145,7 @@ class RepoFetcher(object):
                 parents = set()
                 map(parents.update, parent_maps.itervalues())
                 parents.difference_update(revision_ids)
+                parents.discard(NULL_REVISION)
                 missing_keys.update(
                     ('inventories', rev_id) for rev_id in parents)
             if missing_keys:
