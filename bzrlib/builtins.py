@@ -3414,7 +3414,7 @@ class cmd_merge(Command):
 
             bzr merge -r 81..82 ../bzr.dev
 
-        To apply a merge directive contained in in /tmp/merge:
+        To apply a merge directive contained in /tmp/merge:
 
             bzr merge /tmp/merge
     """

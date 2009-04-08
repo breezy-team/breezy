@@ -675,31 +675,17 @@ class TestUIFactory(ui.CLIUIFactory):
     Allows get_password to be tested without real tty attached.
     """
 
-    def __init__(self,
-                 stdout=None,
-                 stderr=None,
-                 stdin=None):
-        super(TestUIFactory, self).__init__()
+    def __init__(self, stdout=None, stderr=None, stdin=None):
         if stdin is not None:
             # We use a StringIOWrapper to be able to test various
             # encodings, but the user is still responsible to
             # encode the string and to set the encoding attribute
             # of StringIOWrapper.
-            self.stdin = StringIOWrapper(stdin)
-        if stdout is None:
-            self.stdout = sys.stdout
-        else:
-            self.stdout = stdout
-        if stderr is None:
-            self.stderr = sys.stderr
-        else:
-            self.stderr = stderr
+            stdin = StringIOWrapper(stdin)
+        super(TestUIFactory, self).__init__(stdin, stdout, stderr)
 
     def clear(self):
         """See progress.ProgressBar.clear()."""
-
-    def clear_term(self):
-        """See progress.ProgressBar.clear_term()."""
 
     def clear_term(self):
         """See progress.ProgressBar.clear_term()."""
@@ -720,10 +706,8 @@ class TestUIFactory(ui.CLIUIFactory):
     def update(self, message, count=None, total=None):
         """See progress.ProgressBar.update()."""
 
-    def get_non_echoed_password(self, prompt):
+    def get_non_echoed_password(self):
         """Get password from stdin without trying to handle the echo mode"""
-        if prompt:
-            self.stdout.write(prompt.encode(self.stdout.encoding, 'replace'))
         password = self.stdin.readline()
         if not password:
             raise EOFError
@@ -1013,7 +997,7 @@ class TestCase(unittest.TestCase):
                 raise AssertionError("%r is %r." % (left, right))
 
     def assertTransportMode(self, transport, path, mode):
-        """Fail if a path does not have mode mode.
+        """Fail if a path does not have mode "mode".
 
         If modes are not supported on this transport, the assertion is ignored.
         """
@@ -3286,8 +3270,11 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.per_interbranch',
                    'bzrlib.tests.per_lock',
                    'bzrlib.tests.per_repository',
+                   'bzrlib.tests.per_repository_chk',
                    'bzrlib.tests.per_repository_reference',
+                   'bzrlib.tests.test__chk_map',
                    'bzrlib.tests.test__dirstate_helpers',
+                   'bzrlib.tests.test__groupcompress',
                    'bzrlib.tests.test__walkdirs_win32',
                    'bzrlib.tests.test_ancestry',
                    'bzrlib.tests.test_annotate',
@@ -3301,10 +3288,11 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_bugtracker',
                    'bzrlib.tests.test_bundle',
                    'bzrlib.tests.test_bzrdir',
-                   'bzrlib.tests.test_cache_utf8',
-                   'bzrlib.tests.test_clean_tree',
-                   'bzrlib.tests.test_chunk_writer',
                    'bzrlib.tests.test__chunks_to_lines',
+                   'bzrlib.tests.test_cache_utf8',
+                   'bzrlib.tests.test_chk_map',
+                   'bzrlib.tests.test_chunk_writer',
+                   'bzrlib.tests.test_clean_tree',
                    'bzrlib.tests.test_commands',
                    'bzrlib.tests.test_commit',
                    'bzrlib.tests.test_commit_merge',
@@ -3333,6 +3321,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_globbing',
                    'bzrlib.tests.test_gpg',
                    'bzrlib.tests.test_graph',
+                   'bzrlib.tests.test_groupcompress',
                    'bzrlib.tests.test_hashcache',
                    'bzrlib.tests.test_help',
                    'bzrlib.tests.test_hooks',
@@ -3390,6 +3379,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_rules',
                    'bzrlib.tests.test_sampler',
                    'bzrlib.tests.test_selftest',
+                   'bzrlib.tests.test_serializer',
                    'bzrlib.tests.test_setup',
                    'bzrlib.tests.test_sftp_transport',
                    'bzrlib.tests.test_shelf',
@@ -3665,9 +3655,10 @@ def _rmtree_temp_dir(dirname):
         osutils.rmtree(dirname)
     except OSError, e:
         if sys.platform == 'win32' and e.errno == errno.EACCES:
-            sys.stderr.write(('Permission denied: '
-                                 'unable to remove testing dir '
-                                 '%s\n' % os.path.basename(dirname)))
+            sys.stderr.write('Permission denied: '
+                             'unable to remove testing dir '
+                             '%s\n%s'
+                             % (os.path.basename(dirname), e))
         else:
             raise
 

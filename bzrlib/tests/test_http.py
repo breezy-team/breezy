@@ -1905,7 +1905,7 @@ class TestActivity(tests.TestCase):
 
         # We override at class level because constructors may propagate the
         # bound method and render instance overriding ineffective (an
-        # alternative would be be to define a specific ui factory instead...)
+        # alternative would be to define a specific ui factory instead...)
         self.orig_report_activity = self._transport._report_activity
         self._transport._report_activity = report_activity
 

@@ -41,6 +41,9 @@ New Features
 * New ``mv --auto`` option recognizes renames after they occur.
   (Aaron Bentley)
 
+* ``bzr`` can now get passwords from stdin without requiring a controlling
+  terminal (i.e. by redirecting stdin). (Vincent Ladeuil)
+
 * ``bzr log`` now supports filtering of multiple files and directories
   and will show changes that touch any of them. Furthermore,
   directory filtering now shows the changes to any children of that
@@ -118,6 +121,16 @@ Improvements
   the ``long`` and ``short`` log formatters now tell the user
   how to see the hidden merged revisions.  (Ian Clatworthy)
 
+* The ``brisbane-core`` project has delivered its beta format
+  ``development6-rich-root``. This format is suitable for judicious
+  testing by early adopters. In particular if you are benchmarking bzr
+  performance please be sure to test using this format. At this stage
+  more information is best obtained by contacting the Bazaar mailing list
+  or IRC channel if you are interested in using this format. We will make
+  end user documentation available closer to blessing the format as
+  production ready. (Robert Collins, John Arbash Meinel, Ian Clatworthy,
+  Vincent Ladeuil, Andrew Bennetts, Martin Pool)
+
 * Tildes are no longer escaped. No more %7Euser/project/branch!
   (Jonathan Lange)
 
@@ -131,6 +144,9 @@ Bug Fixes
 
 * bzr gives a better message if an invalid regexp is passed to ``bzr log
   -m``.  (Anne Mohsen, Martin Pool)
+
+* ``bzr version-info`` now works in empty branches. (Jelmer Vernooij, 
+  #313028)
 
 * Fix "is not a stackable format" error when pushing a
   stackable-format branch with an unstackable-format repository to a
@@ -185,12 +201,16 @@ Documentation
 API Changes
 ***********
 
-* APIs deprecated in 1.6 and previous verisons of bzr are now removed.
+* APIs deprecated in 1.6 and previous versions of bzr are now removed.
   (Martin Pool)
 
 * ``CommitReporter`` is no longer called with ``unchanged`` status during
   commit - this was a full-tree overhead that bzr no longer performs.
   (Robert Collins)
+
+* New abstract ``UIFactory`` method ``get_username`` which will be called to 
+  obtain the username to use when connecting to remote machines. 
+  (Jelmer Vernooij)
 
 * New API ``Inventory.filter()`` added that filters an inventory by
   a set of file-ids so that only those fileids, their parents and
@@ -212,6 +232,9 @@ API Changes
 
 * The ``pb`` argument to ``fetch()`` is deprecated.
   (Martin Pool)
+
+* The ``Serializer`` class and the serializer ``format registry`` have moved
+  from ``bzrlib.xml_serializer`` to ``bzrlib.serializer``. (Jelmer Vernooij)
 
 * The smart server jail now hooks into BzrDir.open to prevent any BzrDir
   that is not inside the backing transport from being opened.  See the
@@ -242,6 +265,9 @@ Testing
 
 Internals
 *********
+
+* Added ``bzrlib.chk_map`` for fast, trie-based storage of tuple to string
+  maps.  (Robert Collins, John Arbash Meinel, Vincent Ladeuil)
 
 * Added ``bzrlib.inventory_delta`` module.  This will be used for
   serializing and deserializing inventory deltas for more efficient
@@ -284,6 +310,10 @@ Internals
   objects, allowing better enforcement of the smart server jail when
   dealing with stacked branches. (Robert Collins, Andrew Bennetts)
 
+* New hook ``RioVersionInfoBuilder.revision``, allowing extra entries 
+  to be added to the stanza that is printed for a particular revision.
+  (Jelmer Vernooij)
+
 * New repository method ``refresh_data`` to cause any repository to
   make visible data inserted into the repository by a smart server
   fetch operation. (Robert Collins, Andrew Bennetts)
@@ -293,6 +323,11 @@ Internals
   of filter stacks. This enhancement allows, for example,  bzr-svn to
   handle existing svn properties that define a list of keywords to be
   expanded.  (Ian Clatworthy)
+
+* ``RemoteBranchConfig`` will use a new verb ``Branch.set_config_option``
+  to write config settings to smart servers that support this, saving
+  5 round trips on the stacked streaming acceptance test.
+  (Robert Collins, Andrew Bennetts)
 
 * ``RemoteBranch`` now provides ``_get_config`` for access to just the
   branch specific configuration from a remote server, which uses the 
@@ -8200,7 +8235,7 @@ Internals
   about future directions. (Robert Collins/Martin Pool)
 
 * bzrlib.transport.http has been modified so that only 404 urllib errors
-  are returned as NoSuchFile. Other exceptions will propogate as normal.
+  are returned as NoSuchFile. Other exceptions will propagate as normal.
   This allows debuging of actual errors. (Robert Collins)
 
 * bzrlib.transport.Transport now accepts *ONLY* url escaped relative paths
