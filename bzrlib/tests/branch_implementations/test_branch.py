@@ -854,3 +854,13 @@ class TestReferenceLocation(TestCaseWithBranch):
                               'file-id', None, 'location')
         self.assertEqual('branch_location must be None when tree_path is'
                          ' None.', str(e))
+
+    def test_set_reference_info_reference_parent(self):
+        branch = self.make_branch('branch')
+        referenced_branch = self.make_branch('reference_branch')
+        try:
+            branch.set_reference_info('file-id', 'path/to/file',
+            referenced_branch.base)
+        except bzrlib.errors.UnsupportedOperation:
+            raise tests.TestNotApplicable('Branch cannot hold references.')
+        parent = branch.reference_parent('file-id', 'path/to/file')

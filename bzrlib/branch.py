@@ -2555,6 +2555,18 @@ class BzrBranch8(BzrBranch5):
         """Get the tree_path and branch_location for a tree reference."""
         return self._get_info_dict().get(file_id, (None, None))
 
+    def reference_parent(self, file_id, path):
+        """Return the parent branch for a tree-reference file_id.
+
+        :param file_id: The file_id of the tree reference
+        :param path: The path of the file_id in the tree
+        :return: A branch associated with the file_id
+        """
+        branch_location = self.get_reference_info(file_id)[1]
+        if branch_location is None:
+            branch_location = self.bzrdir.root_transport.clone(path).base
+        return Branch.open(branch_location)
+
     def set_push_location(self, location):
         """See Branch.set_push_location."""
         self._set_config_location('push_location', location)
@@ -2666,6 +2678,9 @@ class BzrBranch7(BzrBranch8):
 
     def get_reference_info(self, file_id):
         Branch.get_reference_info(self, file_id)
+
+    def reference_parent(self, file_id, path):
+        return Branch.reference_parent(self, file_id, path)
 
 
 class BzrBranch6(BzrBranch7):
