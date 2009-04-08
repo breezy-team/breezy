@@ -260,7 +260,14 @@ class BzrFastExporter(object):
     def _get_commit_command(self, git_ref, mark, revobj, file_cmds):
         # Get the committer and author info
         committer = revobj.committer
-        name, email = parseaddr(committer)
+        if committer.find('<') == -1:
+            # If the email isn't inside <>, we need to use it as the name
+            # in order for things to round-trip correctly.
+            # (note: parseaddr('a@b.com') => name:'', email: 'a@b.com')
+            name = committer
+            email = ''
+        else:
+            name, email = parseaddr(committer)
         committer_info = (name, email, revobj.timestamp, revobj.timezone)
         if self._multi_author_api_available:
             author = revobj.get_apparent_authors()[0]

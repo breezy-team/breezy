@@ -165,6 +165,13 @@ class GenericCommitHandler(processor.CommitHandler):
         """Get a Bazaar file identifier for a path."""
         return self.bzr_file_id_and_new(path)[0]
 
+    def _format_name_email(self, name, email):
+        """Format name & email as a string."""
+        if email:
+            return "%s <%s>" % (name, email)
+        else:
+            return name
+
     def gen_revision_id(self):
         """Generate a revision id.
 
@@ -173,17 +180,17 @@ class GenericCommitHandler(processor.CommitHandler):
         committer = self.command.committer
         # Perhaps 'who' being the person running the import is ok? If so,
         # it might be a bit quicker and give slightly better compression?
-        who = "%s <%s>" % (committer[0],committer[1])
+        who = self._format_name_email(committer[0], committer[1])
         timestamp = committer[2]
         return generate_ids.gen_revision_id(who, timestamp)
 
     def build_revision(self):
         rev_props = {}
         committer = self.command.committer
-        who = "%s <%s>" % (committer[0],committer[1])
+        who = self._format_name_email(committer[0], committer[1])
         author = self.command.author
         if author is not None:
-            author_id = "%s <%s>" % (author[0],author[1])
+            author_id = self._format_name_email(author[0], author[1])
             if author_id != who:
                 rev_props['author'] = author_id
         return revision.Revision(
