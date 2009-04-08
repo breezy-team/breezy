@@ -3252,7 +3252,7 @@ class cmd_selftest(Command):
                     bzrlib.version_string,
                     bzrlib._format_version_tuple(sys.version_info),
                     )
-        print
+            print
         if testspecs_list is not None:
             pattern = '|'.join(testspecs_list)
         else:
@@ -3298,10 +3298,11 @@ class cmd_selftest(Command):
         finally:
             if benchfile is not None:
                 benchfile.close()
-        if result:
-            note('tests passed')
-        else:
-            note('tests failed')
+        if not list_only:
+            if result:
+                note('tests passed')
+            else:
+                note('tests failed')
         return int(not result)
 
 

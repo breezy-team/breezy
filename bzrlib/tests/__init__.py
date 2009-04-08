@@ -542,7 +542,7 @@ class TextTestRunner(object):
             for t in iter_suite_tests(test):
                 self.stream.writeln("%s" % (t.id()))
                 run += 1
-            actionTaken = "Listed"
+            return None
         else:
             try:
                 import testtools
@@ -2653,6 +2653,8 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
     for decorator in decorators:
         suite = decorator(suite)
     result = runner.run(suite)
+    if list_only:
+        return True
     if strict:
         return result.wasStrictlySuccessful()
     else:
