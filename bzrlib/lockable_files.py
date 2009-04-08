@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2008 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from cStringIO import StringIO
 
@@ -22,6 +22,7 @@ import codecs
 import warnings
 
 from bzrlib import (
+    counted_lock,
     errors,
     osutils,
     transactions,
@@ -85,6 +86,10 @@ class LockableFiles(object):
     This class is now deprecated; code should move to using the Transport
     directly for file operations and using the lock or CountedLock for
     locking.
+    
+    :ivar _lock: The real underlying lock (e.g. a LockDir)
+    :ivar _counted_lock: A lock decorated with a semaphore, so that it 
+        can be re-entered.
     """
 
     # _lock_mode: None, or 'r' or 'w'
@@ -111,6 +116,7 @@ class LockableFiles(object):
         self._lock = lock_class(transport, esc_name,
                                 file_modebits=self._file_mode,
                                 dir_modebits=self._dir_mode)
+        self._counted_lock = counted_lock.CountedLock(self._lock)
 
     def create_lock(self):
         """Create the lock.
@@ -146,6 +152,9 @@ class LockableFiles(object):
 
         :deprecated: Replaced by BzrDir._find_modes.
         """
+        # XXX: The properties created by this can be removed or deprecated
+        # once all the _get_text_store methods etc no longer use them.
+        # -- mbp 20080512
         try:
             st = self._transport.stat('.')
         except errors.TransportNotPossible:
@@ -271,7 +280,7 @@ class LockableFiles(object):
             #traceback.print_stack()
             self._lock_mode = 'w'
             self._lock_warner.lock_count = 1
-            self._set_transaction(transactions.WriteTransaction())
+            self._set_write_transaction()
             self._token_from_lock = token_from_lock
             return token_from_lock
 
@@ -285,9 +294,17 @@ class LockableFiles(object):
             #traceback.print_stack()
             self._lock_mode = 'r'
             self._lock_warner.lock_count = 1
-            self._set_transaction(transactions.ReadOnlyTransaction())
-            # 5K may be excessive, but hey, its a knob.
-            self.get_transaction().set_cache_size(5000)
+            self._set_read_transaction()
+
+    def _set_read_transaction(self):
+        """Setup a read transaction."""
+        self._set_transaction(transactions.ReadOnlyTransaction())
+        # 5K may be excessive, but hey, its a knob.
+        self.get_transaction().set_cache_size(5000)
+
+    def _set_write_transaction(self):
+        """Setup a write transaction."""
+        self._set_transaction(transactions.WriteTransaction())
 
     def unlock(self):
         if not self._lock_mode:

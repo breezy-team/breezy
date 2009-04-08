@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 # TODO: For things like --diff-prefix, we want a way to customize the display
 # of the option argument.
@@ -502,6 +502,8 @@ _merge_type_registry.register_lazy('lca', 'bzrlib.merge', 'LCAMerger',
 # Declare the standard options
 _standard_option('help', short_name='h',
                  help='Show help message.')
+_standard_option('usage',
+                 help='Show usage message and options.')
 _standard_option('verbose', short_name='v',
                  help='Display more information.',
                  custom_callback=_verbosity_level_callback)

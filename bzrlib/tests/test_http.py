@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for HTTP implementations.
 
@@ -1307,7 +1307,7 @@ class RedirectedRequest(_urllib2_wrappers.Request):
         # Since the tests using this class will replace
         # _urllib2_wrappers.Request, we can't just call the base class __init__
         # or we'll loop.
-        RedirectedRequest.init_orig(self, method, url, args, kwargs)
+        RedirectedRequest.init_orig(self, method, url, *args, **kwargs)
         self.follow_redirections = True
 
 

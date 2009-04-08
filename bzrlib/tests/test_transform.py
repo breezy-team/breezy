@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
 import stat
@@ -1841,6 +1841,9 @@ class TestBuildTree(tests.TestCaseWithTransport):
         self.assertTrue(source.is_executable('file1-id'))
 
     def test_case_insensitive_build_tree_inventory(self):
+        if (not tests.CaseInsensitiveFilesystemFeature.available()
+            or not tests.CaseInsCasePresFilenameFeature.available()):
+            raise tests.UnavailableFeature('Fully case sensitive filesystem')
         source = self.make_branch_and_tree('source')
         self.build_tree(['source/file', 'source/FILE'])
         source.add(['file', 'FILE'], ['lower-id', 'upper-id'])

@@ -14,7 +14,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """A collection of function for handling URL operations."""
 
@@ -68,7 +68,7 @@ def escape(relpath):
         relpath = relpath.encode('utf-8')
     # After quoting and encoding, the path should be perfectly
     # safe as a plain ASCII string, str() just enforces this
-    return str(urllib.quote(relpath))
+    return str(urllib.quote(relpath, safe='/~'))
 
 
 def file_relpath(base, path):

@@ -12,13 +12,14 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the osutils wrapper."""
 
 from cStringIO import StringIO
 import errno
 import os
+import re
 import socket
 import stat
 import sys
@@ -32,11 +33,6 @@ from bzrlib import (
     )
 from bzrlib.errors import BzrBadParameterNotUnicode, InvalidURL
 from bzrlib.osutils import (
-        is_inside_any,
-        is_inside_or_parent_of_any,
-        pathjoin,
-        pumpfile,
-        pump_string_file,
         canonical_relpath,
         )
 from bzrlib.tests import (
@@ -150,15 +146,15 @@ class TestOSUtils(TestCaseInTempDir):
         self.assertTrue(is_inside('', 'foo.c'))
 
     def test_is_inside_any(self):
-        SRC_FOO_C = pathjoin('src', 'foo.c')
+        SRC_FOO_C = osutils.pathjoin('src', 'foo.c')
         for dirs, fn in [(['src', 'doc'], SRC_FOO_C),
                          (['src'], SRC_FOO_C),
                          (['src'], 'src'),
                          ]:
-            self.assert_(is_inside_any(dirs, fn))
+            self.assert_(osutils.is_inside_any(dirs, fn))
         for dirs, fn in [(['src'], 'srccontrol'),
                          (['src'], 'srccontrol/foo')]:
-            self.assertFalse(is_inside_any(dirs, fn))
+            self.assertFalse(osutils.is_inside_any(dirs, fn))
 
     def test_is_inside_or_parent_of_any(self):
         for dirs, fn in [(['src', 'doc'], 'src/foo.c'),
@@ -167,12 +163,12 @@ class TestOSUtils(TestCaseInTempDir):
                          (['src/bar.c', 'bla/foo.c'], 'src'),
                          (['src'], 'src'),
                          ]:
-            self.assert_(is_inside_or_parent_of_any(dirs, fn))
+            self.assert_(osutils.is_inside_or_parent_of_any(dirs, fn))
 
         for dirs, fn in [(['src'], 'srccontrol'),
                          (['srccontrol/foo.c'], 'src'),
                          (['src'], 'srccontrol/foo')]:
-            self.assertFalse(is_inside_or_parent_of_any(dirs, fn))
+            self.assertFalse(osutils.is_inside_or_parent_of_any(dirs, fn))
 
     def test_rmtree(self):
         # Check to remove tree with read-only files/dirs
@@ -362,20 +358,24 @@ class TestCanonicalRelPath(TestCaseInTempDir):
     def test_canonical_relpath_simple(self):
         f = file('MixedCaseName', 'w')
         f.close()
-        self.failUnlessEqual(
-            canonical_relpath(self.test_base_dir, 'mixedcasename'),
-            'work/MixedCaseName')
+        # Watch out for tricky test dir (on OSX /tmp -> /private/tmp)
+        real_base_dir = osutils.realpath(self.test_base_dir)
+        actual = osutils.canonical_relpath(real_base_dir, 'mixedcasename')
+        self.failUnlessEqual('work/MixedCaseName', actual)
 
     def test_canonical_relpath_missing_tail(self):
         os.mkdir('MixedCaseParent')
-        self.failUnlessEqual(
-            canonical_relpath(self.test_base_dir, 'mixedcaseparent/nochild'),
-            'work/MixedCaseParent/nochild')
+        # Watch out for tricky test dir (on OSX /tmp -> /private/tmp)
+        real_base_dir = osutils.realpath(self.test_base_dir)
+        actual = osutils.canonical_relpath(real_base_dir,
+                                           'mixedcaseparent/nochild')
+        self.failUnlessEqual('work/MixedCaseParent/nochild', actual)
 
 
 class TestPumpFile(TestCase):
     """Test pumpfile method."""
     def setUp(self):
+        TestCase.setUp(self)
         # create a test datablock
         self.block_size = 512
         pattern = '0123456789ABCDEF'
@@ -393,27 +393,27 @@ class TestPumpFile(TestCase):
 
         # read (max / 2) bytes and verify read size wasn't affected
         num_bytes_to_read = self.block_size / 2
-        pumpfile(from_file, to_file, num_bytes_to_read, self.block_size)
+        osutils.pumpfile(from_file, to_file, num_bytes_to_read, self.block_size)
         self.assertEqual(from_file.get_max_read_size(), num_bytes_to_read)
         self.assertEqual(from_file.get_read_count(), 1)
 
         # read (max) bytes and verify read size wasn't affected
         num_bytes_to_read = self.block_size
         from_file.reset_read_count()
-        pumpfile(from_file, to_file, num_bytes_to_read, self.block_size)
+        osutils.pumpfile(from_file, to_file, num_bytes_to_read, self.block_size)
         self.assertEqual(from_file.get_max_read_size(), num_bytes_to_read)
         self.assertEqual(from_file.get_read_count(), 1)
 
         # read (max + 1) bytes and verify read size was limited
         num_bytes_to_read = self.block_size + 1
         from_file.reset_read_count()
-        pumpfile(from_file, to_file, num_bytes_to_read, self.block_size)
+        osutils.pumpfile(from_file, to_file, num_bytes_to_read, self.block_size)
         self.assertEqual(from_file.get_max_read_size(), self.block_size)
         self.assertEqual(from_file.get_read_count(), 2)
 
         # finish reading the rest of the data
         num_bytes_to_read = self.test_data_len - to_file.tell()
-        pumpfile(from_file, to_file, num_bytes_to_read, self.block_size)
+        osutils.pumpfile(from_file, to_file, num_bytes_to_read, self.block_size)
 
         # report error if the data wasn't equal (we only report the size due
         # to the length of the data)
@@ -431,7 +431,8 @@ class TestPumpFile(TestCase):
         # retrieve data in blocks
         from_file = FakeReadFile(self.test_data)
         to_file = StringIO()
-        pumpfile(from_file, to_file, self.test_data_len, self.block_size)
+        osutils.pumpfile(from_file, to_file, self.test_data_len,
+                         self.block_size)
 
         # verify read size was equal to the maximum read size
         self.assertTrue(from_file.get_max_read_size() > 0)
@@ -454,7 +455,7 @@ class TestPumpFile(TestCase):
         # retrieve data to EOF
         from_file = FakeReadFile(self.test_data)
         to_file = StringIO()
-        pumpfile(from_file, to_file, -1, self.block_size)
+        osutils.pumpfile(from_file, to_file, -1, self.block_size)
 
         # verify read size was equal to the maximum read size
         self.assertEqual(from_file.get_max_read_size(), self.block_size)
@@ -474,7 +475,7 @@ class TestPumpFile(TestCase):
         # retrieve data using default (old) pumpfile method
         from_file = FakeReadFile(self.test_data)
         to_file = StringIO()
-        pumpfile(from_file, to_file)
+        osutils.pumpfile(from_file, to_file)
 
         # report error if the data wasn't equal (we only report the size due
         # to the length of the data)
@@ -489,16 +490,16 @@ class TestPumpFile(TestCase):
             activity.append((length, direction))
         from_file = StringIO(self.test_data)
         to_file = StringIO()
-        pumpfile(from_file, to_file, buff_size=500,
-                 report_activity=log_activity, direction='read')
+        osutils.pumpfile(from_file, to_file, buff_size=500,
+                         report_activity=log_activity, direction='read')
         self.assertEqual([(500, 'read'), (500, 'read'), (500, 'read'),
                           (36, 'read')], activity)
 
         from_file = StringIO(self.test_data)
         to_file = StringIO()
         del activity[:]
-        pumpfile(from_file, to_file, buff_size=500,
-                 report_activity=log_activity, direction='write')
+        osutils.pumpfile(from_file, to_file, buff_size=500,
+                         report_activity=log_activity, direction='write')
         self.assertEqual([(500, 'write'), (500, 'write'), (500, 'write'),
                           (36, 'write')], activity)
 
@@ -506,8 +507,8 @@ class TestPumpFile(TestCase):
         from_file = StringIO(self.test_data)
         to_file = StringIO()
         del activity[:]
-        pumpfile(from_file, to_file, buff_size=500, read_length=1028,
-                 report_activity=log_activity, direction='read')
+        osutils.pumpfile(from_file, to_file, buff_size=500, read_length=1028,
+                         report_activity=log_activity, direction='read')
         self.assertEqual([(500, 'read'), (500, 'read'), (28, 'read')], activity)
 
 
@@ -516,22 +517,22 @@ class TestPumpStringFile(TestCase):
 
     def test_empty(self):
         output = StringIO()
-        pump_string_file("", output)
+        osutils.pump_string_file("", output)
         self.assertEqual("", output.getvalue())
 
     def test_more_than_segment_size(self):
         output = StringIO()
-        pump_string_file("123456789", output, 2)
+        osutils.pump_string_file("123456789", output, 2)
         self.assertEqual("123456789", output.getvalue())
 
     def test_segment_size(self):
         output = StringIO()
-        pump_string_file("12", output, 2)
+        osutils.pump_string_file("12", output, 2)
         self.assertEqual("12", output.getvalue())
 
     def test_segment_size_multiple(self):
         output = StringIO()
-        pump_string_file("1234", output, 2)
+        osutils.pump_string_file("1234", output, 2)
         self.assertEqual("1234", output.getvalue())
 
 
@@ -893,11 +894,11 @@ class TestWalkDirs(TestCaseInTempDir):
         # The error is not raised until the generator is actually evaluated.
         # (It would be ok if it happened earlier but at the moment it
         # doesn't.)
-        e = self.assertRaises(OSError, list,
-            osutils._walkdirs_utf8("."))
-        self.assertEquals(e.filename, './test-unreadable')
-        self.assertEquals(str(e),
-            "[Errno 13] chdir: Permission denied: './test-unreadable'")
+        e = self.assertRaises(OSError, list, osutils._walkdirs_utf8("."))
+        self.assertEquals('./test-unreadable', e.filename)
+        self.assertEquals(errno.EACCES, e.errno)
+        # Ensure the message contains the file name
+        self.assertContainsRe(str(e), "\./test-unreadable")
 
     def test__walkdirs_utf8(self):
         tree = [
@@ -1474,6 +1475,28 @@ class TestLocalTimeOffset(TestCase):
         self.assertTrue(-eighteen_hours < offset < eighteen_hours)
 
 
+class TestSizeShaFile(TestCaseInTempDir):
+
+    def test_sha_empty(self):
+        self.build_tree_contents([('foo', '')])
+        expected_sha = osutils.sha_string('')
+        f = open('foo')
+        self.addCleanup(f.close)
+        size, sha = osutils.size_sha_file(f)
+        self.assertEqual(0, size)
+        self.assertEqual(expected_sha, sha)
+
+    def test_sha_mixed_endings(self):
+        text = 'test\r\nwith\nall\rpossible line endings\r\n'
+        self.build_tree_contents([('foo', text)])
+        expected_sha = osutils.sha_string(text)
+        f = open('foo')
+        self.addCleanup(f.close)
+        size, sha = osutils.size_sha_file(f)
+        self.assertEqual(38, size)
+        self.assertEqual(expected_sha, sha)
+
+
 class TestShaFileByName(TestCaseInTempDir):
 
     def test_sha_empty(self):
@@ -1502,3 +1525,21 @@ class TestResourceLoading(TestCaseInTempDir):
             'yyy.xx')
         # test unknown resource
         self.assertRaises(IOError, osutils.resource_string, 'bzrlib', 'yyy.xx')
+
+
+class TestReCompile(TestCase):
+
+    def test_re_compile_checked(self):
+        r = osutils.re_compile_checked(r'A*', re.IGNORECASE)
+        self.assertTrue(r.match('aaaa'))
+        self.assertTrue(r.match('aAaA'))
+
+    def test_re_compile_checked_error(self):
+        # like https://bugs.launchpad.net/bzr/+bug/251352
+        err = self.assertRaises(
+            errors.BzrCommandError,
+            osutils.re_compile_checked, '*', re.IGNORECASE, 'test case')
+        self.assertEqual(
+            "Invalid regular expression in test case: '*': "
+            "nothing to repeat",
+            str(err))

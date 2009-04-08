@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 from cStringIO import StringIO
@@ -25,10 +25,12 @@ from bzrlib import errors, shelf_ui, tests
 class ExpectShelver(shelf_ui.Shelver):
     """A variant of Shelver that intercepts console activity, for testing."""
 
-    def __init__(self, work_tree, target_tree, diff_writer=None, path=None,
-                 auto=False, auto_apply=False, file_list=None, message=None):
+    def __init__(self, work_tree, target_tree, diff_writer=None,
+                 auto=False, auto_apply=False, file_list=None, message=None,
+                 destroy=False):
         shelf_ui.Shelver.__init__(self, work_tree, target_tree, diff_writer,
-                                  auto, auto_apply, file_list, message)
+                                  auto, auto_apply, file_list, message,
+                                  destroy)
         self.expected = []
         self.diff_writer = StringIO()
 
@@ -162,6 +164,20 @@ class TestShelver(tests.TestCaseWithTransport):
                        'y')
         shelver.expect('Shelve 1 change(s)? [yNfq?]', 'y')
 
+    def test_shelve_modify_target(self):
+        tree = self.create_shelvable_tree()
+        os.symlink('bar', 'tree/baz')
+        tree.add('baz', 'baz-id')
+        tree.commit("Add symlink")
+        os.unlink('tree/baz')
+        os.symlink('vax', 'tree/baz')
+        shelver = ExpectShelver(tree, tree.basis_tree())
+        shelver.expect('Shelve changing target of "baz" from "bar" to '
+                '"vax"? [yNfq?]', 'y')
+        shelver.expect('Shelve 1 change(s)? [yNfq?]', 'y')
+        shelver.run()
+        self.assertEqual('bar', os.readlink('tree/baz'))
+
     def test_shelve_finish(self):
         tree = self.create_shelvable_tree()
         shelver = ExpectShelver(tree, tree.basis_tree())
@@ -198,6 +214,14 @@ class TestShelver(tests.TestCaseWithTransport):
         shelver.expect('Shelve? [(y)es, (N)o, (f)inish, or (q)uit]', 'f')
         shelver.expect('Shelve 2 change(s)? [yNfq?]', 'y')
         shelver.run()
+
+    def test_shelve_distroy(self):
+        tree = self.create_shelvable_tree()
+        shelver = shelf_ui.Shelver.from_args(sys.stdout, all=True,
+                                             directory='tree', destroy=True)
+        shelver.run()
+        self.assertIs(None, tree.get_shelf_manager().last_shelf())
+        self.assertFileEqual(LINES_AJ, 'tree/foo')
 
 
 class TestUnshelver(tests.TestCaseWithTransport):

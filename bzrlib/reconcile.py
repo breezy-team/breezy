@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Reconcilers are able to fix some potential data errors in a branch."""
 
@@ -213,7 +213,7 @@ class RepoReconciler(object):
         # local because needing to know about WeaveFile is a wart we want to hide
         from bzrlib.weave import WeaveFile, Weave
         transaction = self.repo.get_transaction()
-        self.pb.update('Reading inventory data.')
+        self.pb.update('Reading inventory data')
         self.inventory = self.repo.inventories
         self.revisions = self.repo.revisions
         # the total set of revisions to process
@@ -235,9 +235,9 @@ class RepoReconciler(object):
             (not self.garbage_inventories or not self.thorough)):
             self.pb.note('Inventory ok.')
             return
-        self.pb.update('Backing up inventory...', 0, 0)
+        self.pb.update('Backing up inventory', 0, 0)
         self.repo._backup_inventory()
-        self.pb.note('Backup Inventory created.')
+        self.pb.note('Backup inventory created.')
         new_inventories = self.repo._temp_inventories()
 
         # we have topological order of revisions and non ghost parents ready.
@@ -351,24 +351,24 @@ class KnitReconciler(RepoReconciler):
     def _load_indexes(self):
         """Load indexes for the reconciliation."""
         self.transaction = self.repo.get_transaction()
-        self.pb.update('Reading indexes.', 0, 2)
+        self.pb.update('Reading indexes', 0, 2)
         self.inventory = self.repo.inventories
-        self.pb.update('Reading indexes.', 1, 2)
+        self.pb.update('Reading indexes', 1, 2)
         self.repo._check_for_inconsistent_revision_parents()
         self.revisions = self.repo.revisions
-        self.pb.update('Reading indexes.', 2, 2)
+        self.pb.update('Reading indexes', 2, 2)
 
     def _gc_inventory(self):
         """Remove inventories that are not referenced from the revision store."""
-        self.pb.update('Checking unused inventories.', 0, 1)
+        self.pb.update('Checking unused inventories', 0, 1)
         self._check_garbage_inventories()
-        self.pb.update('Checking unused inventories.', 1, 3)
+        self.pb.update('Checking unused inventories', 1, 3)
         if not self.garbage_inventories:
             self.pb.note('Inventory ok.')
             return
-        self.pb.update('Backing up inventory...', 0, 0)
+        self.pb.update('Backing up inventory', 0, 0)
         self.repo._backup_inventory()
-        self.pb.note('Backup Inventory created.')
+        self.pb.note('Backup Inventory created')
         # asking for '' should never return a non-empty weave
         new_inventories = self.repo._temp_inventories()
         # we have topological order of revisions and non ghost parents ready.
@@ -505,9 +505,8 @@ class PackReconciler(RepoReconciler):
             total_inventories = len(list(
                 collection.inventory_index.combined_index.iter_all_entries()))
             if len(all_revisions):
-                self._packer = repofmt.pack_repo.ReconcilePacker(
-                    collection, packs, ".reconcile", all_revisions)
-                new_pack = self._packer.pack(pb=self.pb)
+                new_pack =  self.repo._reconcile_pack(collection, packs,
+                    ".reconcile", all_revisions, self.pb)
                 if new_pack is not None:
                     self._discard_and_save(packs)
             else:

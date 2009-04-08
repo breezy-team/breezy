@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """XML externalization support."""
 
@@ -185,3 +185,19 @@ format_registry.register_lazy('5', 'bzrlib.xml5', 'serializer_v5')
 format_registry.register_lazy('6', 'bzrlib.xml6', 'serializer_v6')
 format_registry.register_lazy('7', 'bzrlib.xml7', 'serializer_v7')
 format_registry.register_lazy('8', 'bzrlib.xml8', 'serializer_v8')
+
+
+def escape_invalid_chars(message):
+    """Escape the XML-invalid characters in a commit message.
+
+    :param message: Commit message to escape
+    :param count: Number of characters that were escaped
+    """
+    # Python strings can include characters that can't be
+    # represented in well-formed XML; escape characters that
+    # aren't listed in the XML specification
+    # (http://www.w3.org/TR/REC-xml/#NT-Char).
+    return re.subn(u'[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
+            lambda match: match.group(0).encode('unicode_escape'),
+            message)
+

@@ -14,7 +14,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 # Author: Martin Pool <mbp@canonical.com>
 
@@ -99,6 +99,7 @@ from bzrlib.versionedfile import (
     AbsentContentFactory,
     adapter_registry,
     ContentFactory,
+    sort_groupcompress,
     VersionedFile,
     )
 from bzrlib.weavefile import _read_weave_v5, write_weave_v5
@@ -321,6 +322,11 @@ class Weave(VersionedFile):
             new_versions = tsort.topo_sort(parents)
             new_versions.extend(set(versions).difference(set(parents)))
             versions = new_versions
+        elif ordering == 'groupcompress':
+            parents = self.get_parent_map(versions)
+            new_versions = sort_groupcompress(parents)
+            new_versions.extend(set(versions).difference(set(parents)))
+            versions = new_versions
         for version in versions:
             if version in self:
                 yield WeaveContentFactory(version, self)
@@ -404,6 +410,7 @@ class Weave(VersionedFile):
         version_id
             Symbolic name for this version.
             (Typically the revision-id of the revision that added it.)
+            If None, a name will be allocated based on the hash. (sha1:SHAHASH)
 
         parents
             List or set of direct parent version numbers.
@@ -419,6 +426,8 @@ class Weave(VersionedFile):
             sha1 = sha_strings(lines)
         if sha1 == nostore_sha:
             raise errors.ExistingContent
+        if version_id is None:
+            version_id = "sha1:" + sha1
         if version_id in self._name_map:
             return self._check_repeated_add(version_id, parents, lines, sha1)
 
@@ -964,13 +973,6 @@ class WeaveFile(Weave):
 
     def insert_record_stream(self, stream):
         super(WeaveFile, self).insert_record_stream(stream)
-        self._save()
-
-    @deprecated_method(one_five)
-    def join(self, other, pb=None, msg=None, version_ids=None,
-             ignore_missing=False):
-        """Join other into self and save."""
-        super(WeaveFile, self).join(other, pb, msg, version_ids, ignore_missing)
         self._save()
 
 

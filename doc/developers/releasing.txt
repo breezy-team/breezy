@@ -21,8 +21,7 @@ Preparing the tree for release
 
 #. Download the pqm plugin and install it into your ``~/.bazaar/plugins``::
 
-	bzr checkout --lighweight lp:bzr-pqm
-	mv bzr-pqm pqm
+     bzr branch lp:bzr-pqm ~/.bazaar/plugins/pqm
 
 #. Configure pqm-submit for this branch, with a section like this in
    ``~/.bazaar/locations.conf``::
@@ -34,12 +33,19 @@ Preparing the tree for release
 	submit_to = bazaar@lists.canonical.com
 	smtp_server = mail.your-domain.com:25
 
-    Please see <http://doc.bazaar-vcs.org/latest/developers/HACKING.html#an-overview-of-pqm> for more details on PQM
+    Please see <http://doc.bazaar-vcs.org/latest/developers/HACKING.html#an-overview-of-pqm>
+    for more details on PQM
 
-#. In the release branch, update  ``version_info`` in
-   ``./bzrlib/__init__.py``.  Check the output of ``bzr --version``.
+#. In the release branch, update  ``version_info`` in ``./bzrlib/__init__.py``.
+   Double check that ./bzr ``_script_version`` matches ``version_info``. Check
+   the output of ``bzr --version``. 
 
 #. Add the date and release number to ``./NEWS``
+
+#. To check that all bugs mentioned in ``./NEWS`` are actually marked as
+   closed in Launchpad, you can run ``tools/check-newsbugs.py``::
+
+     ./tools/check-newsbugs.py NEWS
 
 #. Summarize into one or two paragraphs what's new in this release.
 
@@ -87,10 +93,10 @@ Preparing the tree for release
 
      bzr tag bzr-1.14
 
-#. Push those changes to a bzr reposistory that is public and accessiable on
-the Internet. PQM will pull from this repository when it attempts to merge your
-changes. Then submit those changes to PQM for merge into the appropriate
-release branch::
+#. Push those changes to a bzr reposistory that is public and accessible on
+   the Internet. PQM will pull from this repository when it attempts to merge
+   your changes. Then submit those changes to PQM for merge into the
+   appropriate release branch::
  
      bzr push
      bzr pqm-submit -m "(mbp) prepare 1.14"
@@ -181,7 +187,7 @@ Now that the release is publicly available, tell people about it.
    you do not have a Freshmeat account yet, ask one of the existing
    admins.
 
-#. Update http://en.wikipedia.org/wiki/Bazaar_(software) -- this should be done
+#. Update `<http://en.wikipedia.org/wiki/Bazaar_(software)>`_ -- this should be done
 for final releases but not for Release Candidates.
 
 #. Update the python package index: <http://pypi.python.org/pypi/bzr> - best
@@ -204,16 +210,19 @@ were merged into the right sections.  If it's not already done, advance
 the version number in ``bzr`` and ``bzrlib/__init__.py``.  Submit this
 back into pqm for bzr.dev.
 
+You should also merge (not pull) the release branch into
+``lp:~bzr/bzr/current``, so that branch contains the current released code
+at any time.
+
 
 See also
 --------
 
- * `Packaging into the bzr PPA <ppa.html>`_ to make and publish Ubuntu
-   packages.
- * `Bazaar Developer Document Catalog <index.html>`_
- * `Development cycles <cycle.html>`_: things that happen during the cycle
-   before the actual release.
-
+* `Packaging into the bzr PPA <ppa.html>`_ to make and publish Ubuntu
+  packages.
+* `Bazaar Developer Document Catalog <index.html>`_
+* `Development cycles <cycle.html>`_: things that happen during the cycle
+  before the actual release.
 
 ..
    vim: filetype=rst textwidth=74 ai shiftwidth=4
