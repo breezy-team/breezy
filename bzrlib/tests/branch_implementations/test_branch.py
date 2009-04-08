@@ -769,8 +769,88 @@ class TestIgnoreFallbacksParameter(TestCaseWithBranch):
         self.get_transport('').rename('fallback', 'moved')
         reopened = stacked.bzrdir.open_branch(ignore_fallbacks=True)
         self.assertEqual([], reopened.repository._fallback_repositories)
-        
+
     def test_fallbacks_are_opened(self):
         stacked = self.make_branch_with_fallback()
         reopened = stacked.bzrdir.open_branch(ignore_fallbacks=False)
         self.assertLength(1, reopened.repository._fallback_repositories)
+
+
+class TestReferenceLocation(TestCaseWithBranch):
+
+    def test_reference_parent(self):
+        tree = self.make_branch_and_tree('tree')
+        subtree = self.make_branch_and_tree('tree/subtree')
+        subtree.set_root_id('subtree-id')
+        try:
+            tree.add_reference(subtree)
+        except bzrlib.errors.UnsupportedOperation:
+            raise tests.TestNotApplicable('Tree cannot hold references.')
+        reference_parent = tree.branch.reference_parent('subtree-id',
+                                                        'subtree')
+        self.assertEqual(subtree.branch.base, reference_parent.base)
+
+    def test_get_reference_info(self):
+        branch = self.make_branch('branch')
+        try:
+            path, loc = branch.get_reference_info('file-id')
+        except bzrlib.errors.UnsupportedOperation:
+            raise tests.TestNotApplicable('Branch cannot hold references.')
+        self.assertIs(None, path)
+        self.assertIs(None, loc)
+
+    def test_set_reference_info(self):
+        branch = self.make_branch('branch')
+        try:
+            branch.set_reference_info('file-id', 'path/to/location',
+                                      'path/to/file')
+        except bzrlib.errors.UnsupportedOperation:
+            raise tests.TestNotApplicable('Branch cannot hold references.')
+
+    def test_set_get_reference_info(self):
+        branch = self.make_branch('branch')
+        try:
+            branch.set_reference_info('file-id', 'path/to/file',
+                                      'path/to/location')
+        except bzrlib.errors.UnsupportedOperation:
+            raise tests.TestNotApplicable('Branch cannot hold references.')
+        # Create a new instance to ensure storage is permanent
+        branch = Branch.open('branch')
+        tree_path, branch_location = branch.get_reference_info('file-id')
+        self.assertEqual('path/to/location', branch_location)
+
+    def test_set_null_reference_info(self):
+        branch = self.make_branch('branch')
+        try:
+            branch.set_reference_info('file-id', 'path/to/file',
+                                      'path/to/location')
+        except bzrlib.errors.UnsupportedOperation:
+            raise tests.TestNotApplicable('Branch cannot hold references.')
+        branch.set_reference_info('file-id', None, None)
+        tree_path, branch_location = branch.get_reference_info('file-id')
+        self.assertIs(None, tree_path)
+        self.assertIs(None, branch_location)
+
+    def test_set_null_reference_info_when_null(self):
+        branch = self.make_branch('branch')
+        try:
+            tree_path, branch_location = branch.get_reference_info('file-id')
+        except bzrlib.errors.UnsupportedOperation:
+            raise tests.TestNotApplicable('Branch cannot hold references.')
+        self.assertIs(None, tree_path)
+        self.assertIs(None, branch_location)
+        branch.set_reference_info('file-id', None, None)
+
+    def test_set_null_requires_two_nones(self):
+        branch = self.make_branch('branch')
+        try:
+            e = self.assertRaises(ValueError, branch.set_reference_info,
+                                  'file-id', 'path', None)
+        except bzrlib.errors.UnsupportedOperation:
+            raise tests.TestNotApplicable('Branch cannot hold references.')
+        self.assertEqual('tree_path must be None when branch_location is'
+                         ' None.', str(e))
+        e = self.assertRaises(ValueError, branch.set_reference_info,
+                              'file-id', None, 'location')
+        self.assertEqual('branch_location must be None when tree_path is'
+                         ' None.', str(e))
