@@ -196,7 +196,7 @@ class TestBenchmarkTests(TestCaseWithTransport):
         finally:
             TestCaseWithMemoryTransport.TEST_ROOT = old_root
         self.assertContainsRe(out, 'Ran 0 tests.*\n\nOK')
-        self.assertEndsWith(out, 'tests passed\n')
+        self.assertContainsRe(out, 'tests passed\n')
         benchfile = open(".perf_history", "rt")
         try:
             lines = benchfile.readlines()

@@ -1041,6 +1041,18 @@ class TestTestResult(TestCase):
         self.assertTrue(result.wasStrictlySuccessful())
         self.assertEqual(None, result._extractBenchmarkTime(test))
 
+    def test_startTests(self):
+        """Starting the first test should trigger startTests."""
+        class InstrumentedTestResult(ExtendedTestResult):
+            calls = 0
+            def startTests(self): self.calls += 1
+        result = InstrumentedTestResult(None, None, None, None)
+        def test_function():
+            pass
+        test = unittest.FunctionTestCase(test_function)
+        test.run(result)
+        self.assertEquals(1, result.calls)
+
 
 class TestUnicodeFilenameFeature(TestCase):
 
@@ -2354,3 +2366,19 @@ class TestRunSuite(TestCase):
                     self.verbosity)
         run_suite(suite, runner_class=MyRunner, stream=StringIO())
         self.assertEqual(calls, [suite])
+
+    def test_done(self):
+        """run_suite should call result.done()"""
+        self.calls = 0
+        def one_more_call(): self.calls += 1
+        def test_function():
+            pass
+        test = unittest.FunctionTestCase(test_function)
+        class InstrumentedTestResult(ExtendedTestResult):
+            def done(self): one_more_call()
+        class MyRunner(TextTestRunner):
+            def run(self, test):
+                return InstrumentedTestResult(self.stream, self.descriptions,
+                                              self.verbosity)
+        run_suite(test, runner_class=MyRunner, stream=StringIO())
+        self.assertEquals(1, self.calls)
