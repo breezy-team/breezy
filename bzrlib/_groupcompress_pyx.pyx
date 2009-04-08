@@ -18,11 +18,10 @@
 
 #python2.4 support
 cdef extern from "python-compat.h":
-    pass
+    ctypedef int Py_ssize_t # Required for older pyrex versions
 
 
 cdef extern from "Python.h":
-    ctypedef int Py_ssize_t # Required for older pyrex versions
     int PyString_CheckExact(object)
     char * PyString_AS_STRING(object)
     Py_ssize_t PyString_GET_SIZE(object)
