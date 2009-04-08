@@ -6,8 +6,15 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
-In Development
-##############
+bzr 1.14rc1
+###########
+:Codename: brisbane-core
+:1.14rc1: 2009-04-06
+
+New formats 1.14 and 1.14-rich-root supporting End-Of-Line (EOL) conversions,
+keyword templating (via the bzr-keywords plugin) and generic content filtering.
+End-of-line conversion is now supported for formats supporting content
+filtering.
 
 Compatibility Breaks
 ********************
@@ -156,6 +163,9 @@ Bug Fixes
 * Fixed incorrect "Source format does not support stacking" warning
   when pushing to a smart server.  (Andrew Bennetts, #334114)
 
+* Fix 'make check-dist-tarball' failure by converting paths to unicode when
+  needed. (Vincent Ladeuil, #355454)
+
 * Fixed "Specified file 'x/y/z' is outside current view: " occurring
   on ``bzr add x/y/z`` in formats supporting views when no view is
   defined.  (Ian Clatworthy, #344708)
@@ -175,6 +185,9 @@ Bug Fixes
   a branch which is itself stackable, because we know the client can read
   both branches, we know that the trunk for the project can be read too,
   so the upgrade will not inconvenience users. (Robert Collins, #345169)
+
+* The full test suite is passing again on OSX. Several minor issues (mostly
+  test related) have been fixed. (Vincent Ladeuil, #355273).
 
 * The GNU Changelog formatter is slightly improved in the case where
   the delta is empty, and now correctly claims not to support tags.
@@ -266,6 +279,9 @@ Testing
 
 Internals
 *********
+
+* Added ``chk_map`` for fast, trie-based storage of tuple to string maps.
+  (Robert Collins, John Arbash Meinel, Vincent Ladeuil)
 
 * Added ``bzrlib.chk_map`` for fast, trie-based storage of tuple to string
   maps.  (Robert Collins, John Arbash Meinel, Vincent Ladeuil)

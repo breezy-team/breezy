@@ -1841,6 +1841,9 @@ class TestBuildTree(tests.TestCaseWithTransport):
         self.assertTrue(source.is_executable('file1-id'))
 
     def test_case_insensitive_build_tree_inventory(self):
+        if (not tests.CaseInsensitiveFilesystemFeature.available()
+            or not tests.CaseInsCasePresFilenameFeature.available()):
+            raise tests.UnavailableFeature('Fully case sensitive filesystem')
         source = self.make_branch_and_tree('source')
         self.build_tree(['source/file', 'source/FILE'])
         source.add(['file', 'FILE'], ['lower-id', 'upper-id'])
