@@ -736,31 +736,31 @@ class TestImportToRichRootFileKinds(TestImportToPackFileKinds):
     branch_format = "1.9-rich-root"
 
 try:
-    from bzrlib.repofmt.pack_repo import RepositoryFormatPackDevelopment5Hash255
+    from bzrlib.repofmt.groupcompress_repo import RepositoryFormatCHK1
 
     class TestImportToChkModify(TestImportToPackModify):
-        branch_format = "gc-chk255-big"
+        branch_format = "development6-rich-root"
 
     class TestImportToChkModifyTricky(TestImportToPackModifyTricky):
-        branch_format = "gc-chk255-big"
+        branch_format = "development6-rich-root"
 
     class TestImportToChkDelete(TestImportToPackDelete):
-        branch_format = "gc-chk255-big"
+        branch_format = "development6-rich-root"
 
     class TestImportToChkDeleteDirectory(TestImportToPackDeleteDirectory):
-        branch_format = "gc-chk255-big"
+        branch_format = "development6-rich-root"
 
     class TestImportToChkRename(TestImportToPackRename):
-        branch_format = "gc-chk255-big"
+        branch_format = "development6-rich-root"
 
     class TestImportToChkRenameTricky(TestImportToPackRenameTricky):
-        branch_format = "gc-chk255-big"
+        branch_format = "development6-rich-root"
 
     class TestImportToChkCopy(TestImportToPackCopy):
-        branch_format = "gc-chk255-big"
+        branch_format = "development6-rich-root"
 
     class TestImportToChkFileKinds(TestImportToPackFileKinds):
-        branch_format = "gc-chk255-big"
+        branch_format = "development6-rich-root"
 
 except ImportError:
     pass
