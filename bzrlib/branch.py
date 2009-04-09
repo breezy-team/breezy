@@ -1184,14 +1184,15 @@ class Branch(object):
         reconciler.reconcile()
         return reconciler
 
-    def reference_parent(self, file_id, path):
+    def reference_parent(self, file_id, path, possible_transports=None):
         """Return the parent branch for a tree-reference file_id
         :param file_id: The file_id of the tree reference
         :param path: The path of the file_id in the tree
         :return: A branch associated with the file_id
         """
         # FIXME should provide multiple branches, based on config
-        return Branch.open(self.bzrdir.root_transport.clone(path).base)
+        return Branch.open(self.bzrdir.root_transport.clone(path).base,
+                           possible_transports=possible_transports)
 
     def supports_tags(self):
         return self._format.supports_tags()
@@ -2555,7 +2556,7 @@ class BzrBranch8(BzrBranch5):
         """Get the tree_path and branch_location for a tree reference."""
         return self._get_info_dict().get(file_id, (None, None))
 
-    def reference_parent(self, file_id, path):
+    def reference_parent(self, file_id, path, possible_transports=None):
         """Return the parent branch for a tree-reference file_id.
 
         :param file_id: The file_id of the tree reference
@@ -2564,10 +2565,11 @@ class BzrBranch8(BzrBranch5):
         """
         branch_location = self.get_reference_info(file_id)[1]
         if branch_location is None:
-            branch_location = self.bzrdir.root_transport.clone(path).base
-        else:
-            branch_location = urlutils.join(self.base, branch_location)
-        return Branch.open(branch_location)
+            return Branch.reference_parent(self, file_id, path,
+                                           possible_transports)
+        branch_location = urlutils.join(self.base, branch_location)
+        return Branch.open(branch_location,
+                           possible_transports=possible_transports)
 
     def set_push_location(self, location):
         """See Branch.set_push_location."""
@@ -2681,8 +2683,9 @@ class BzrBranch7(BzrBranch8):
     def get_reference_info(self, file_id):
         Branch.get_reference_info(self, file_id)
 
-    def reference_parent(self, file_id, path):
-        return Branch.reference_parent(self, file_id, path)
+    def reference_parent(self, file_id, path, possible_transports=None):
+        return Branch.reference_parent(self, file_id, path,
+                                       possible_transports)
 
 
 class BzrBranch6(BzrBranch7):

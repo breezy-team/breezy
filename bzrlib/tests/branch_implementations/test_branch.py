@@ -790,6 +790,17 @@ class TestReferenceLocation(TestCaseWithBranch):
                                                         'subtree')
         self.assertEqual(subtree.branch.base, reference_parent.base)
 
+    def test_reference_parent_accepts_possible_transports(self):
+        tree = self.make_branch_and_tree('tree')
+        subtree = self.make_branch_and_tree('tree/subtree')
+        subtree.set_root_id('subtree-id')
+        try:
+            tree.add_reference(subtree)
+        except bzrlib.errors.UnsupportedOperation:
+            raise tests.TestNotApplicable('Tree cannot hold references.')
+        reference_parent = tree.branch.reference_parent('subtree-id',
+            'subtree', possible_transports=[subtree.bzrdir.root_transport])
+
     def test_get_reference_info(self):
         branch = self.make_branch('branch')
         try:
