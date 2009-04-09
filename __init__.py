@@ -19,35 +19,10 @@
 from bzrlib import (
     errors,
     )
-from bzrlib.branch import (
-    Branch,
-    )
 from bzrlib.commands import (
     Command,
     Option,
     )
-
-
-class ForeignBranch(Branch):
-    """Branch that exists in a foreign version control system."""
-
-    def __init__(self, mapping):
-        self.mapping = mapping
-        super(ForeignBranch, self).__init__()
-
-    def dpull(self, source, stop_revision=None):
-        """Pull deltas from another branch.
-
-        :note: This does not, like pull, retain the revision ids from 
-            the source branch and will, rather than adding bzr-specific 
-            metadata, push only those semantics of the revision that can be 
-            natively represented in this branch.
-
-        :param source: Source branch
-        :param stop_revision: Revision to pull, defaults to last revision.
-        :return: Revision id map and file id map
-        """
-        raise NotImplementedError(self.dpull)
 
 
 class FakeControlFiles(object):
