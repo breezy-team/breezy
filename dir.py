@@ -78,7 +78,7 @@ class GitDir(bzrdir.BzrDir):
         return True
 
     def cloning_metadir(self, stacked=False):
-        return get_rich_root_format()
+        return get_rich_root_format(stacked)
 
 
 class LocalGitDir(GitDir):

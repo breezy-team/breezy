@@ -59,7 +59,7 @@ else:
 __version__ = version_string
 
 MINIMUM_DULWICH_VERSION = (0, 1, 1)
-COMPATIBLE_BZR_VERSIONS = [(1, 13, 0)]
+COMPATIBLE_BZR_VERSIONS = [(1, 15, 0)]
 
 if getattr(sys, "frozen", None):
     # allow import additional libs from ./_lib for bzr.exe only
@@ -89,6 +89,7 @@ bzrdir.format_registry.register_lazy('git',
 from bzrlib.revisionspec import revspec_registry
 revspec_registry.register_lazy("git:", "bzrlib.plugins.git.revspec", 
     "RevisionSpec_git")
+
 
 class GitBzrDirFormat(bzrdir.BzrDirFormat):
     _lock_class = TransportLock
@@ -236,23 +237,20 @@ register_transport_proto('git+ssh://',
 
 register_lazy_transport("git://", 'bzrlib.plugins.git.remote',
                         'TCPGitSmartTransport')
-
 register_lazy_transport("git+ssh://", 'bzrlib.plugins.git.remote',
                         'SSHGitSmartTransport')
 
 foreign_vcs_registry.register_lazy("git", 
-                        "bzrlib.plugins.git.mapping", 
-                        "foreign_git",
-                        "Stupid content tracker")
+    "bzrlib.plugins.git.mapping", "foreign_git", "Stupid content tracker")
 
 plugin_cmds.register_lazy("cmd_git_serve", [], "bzrlib.plugins.git.commands")
 plugin_cmds.register_lazy("cmd_git_import", [], "bzrlib.plugins.git.commands")
 
-def get_rich_root_format():
-    try:
-        return bzrdir.format_registry.make_bzrdir("default-rich-root")
-    except KeyError:
+def get_rich_root_format(stacked=False):
+    if stacked:
         return bzrdir.format_registry.make_bzrdir("1.9-rich-root")
+    else:
+        return bzrdir.format_registry.make_bzrdir("default-rich-root")
 
 def test_suite():
     from bzrlib.plugins.git import tests
