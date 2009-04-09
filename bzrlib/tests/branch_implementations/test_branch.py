@@ -866,14 +866,19 @@ class TestReferenceLocation(TestCaseWithBranch):
         self.assertEqual('branch_location must be None when tree_path is'
                          ' None.', str(e))
 
-    def test_set_reference_info_reference_parent(self):
+    def make_branch_with_reference(self, location, reference_location):
         branch = self.make_branch('branch')
-        referenced_branch = self.make_branch('reference_branch')
         try:
             branch.set_reference_info('file-id', 'path/to/file',
-            referenced_branch.base)
+                                      reference_location)
         except bzrlib.errors.UnsupportedOperation:
             raise tests.TestNotApplicable('Branch cannot hold references.')
+        return branch
+
+    def test_reference_parent_from_reference_info_(self):
+        referenced_branch = self.make_branch('reference_branch')
+        branch = self.make_branch_with_reference('branch',
+                                                 referenced_branch.base)
         parent = branch.reference_parent('file-id', 'path/to/file')
         self.assertEqual(parent.base, referenced_branch.base)
 
@@ -887,3 +892,15 @@ class TestReferenceLocation(TestCaseWithBranch):
         referenced_branch = self.make_branch('reference_branch')
         parent = branch.reference_parent('file-id', 'path/to/file')
         self.assertEqual(parent.base, referenced_branch.base)
+
+    def test_sprout_copies_reference_location(self):
+        branch = self.make_branch_with_reference('branch', 'reference')
+        new_branch = branch.bzrdir.sprout('new-branch').open_branch()
+        self.assertEqual('reference',
+                         new_branch.get_reference_info('file-id')[1])
+
+    def test_clone_copies_reference_location(self):
+        branch = self.make_branch_with_reference('branch', 'reference')
+        new_branch = branch.bzrdir.clone('new-branch').open_branch()
+        self.assertEqual('reference',
+                         new_branch.get_reference_info('file-id')[1])

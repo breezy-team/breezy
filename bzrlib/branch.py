@@ -1059,6 +1059,9 @@ class Branch(object):
                 destination.set_parent(parent)
         if self._push_should_merge_tags():
             self.tags.merge_to(destination.tags)
+        if getattr(self._format, 'supports_reference_locations', False):
+            reference_dict = self._get_info_dict()
+            destination._save_reference_dict(reference_dict)
 
     @needs_read_lock
     def check(self):
@@ -1731,6 +1734,8 @@ class BzrBranchFormat8(BranchFormatMetadir):
     def supports_stacking(self):
         return True
 
+    supports_reference_locations = True
+
 
 class BzrBranchFormat7(BzrBranchFormat8):
     """Branch format with last-revision, tags, and a stacked location pointer.
@@ -1751,6 +1756,8 @@ class BzrBranchFormat7(BzrBranchFormat8):
     def get_format_description(self):
         """See BranchFormat.get_format_description()."""
         return "Branch format 7"
+
+    supports_reference_locations = False
 
 
 class BranchReferenceFormat(BranchFormat):
@@ -2544,6 +2551,9 @@ class BzrBranch8(BzrBranch5):
                 raise ValueError('branch_location must be None when tree_path'
                                  ' is None.')
             del info_dict[file_id]
+        self._save_reference_dict(info_dict)
+
+    def _save_reference_dict(self, info_dict):
         s = StringIO()
         writer = rio.RioWriter(s)
         for key, (tree_path, branch_location) in info_dict.iteritems():
