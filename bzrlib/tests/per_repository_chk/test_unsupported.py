@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,23 +14,17 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import os
+"""Tests for repositories that do not support CHK indices.
+
+CHK support is optional, and when it is not supported the methods and
+attributes CHK support added should fail in known ways.
+"""
+
+from bzrlib.tests.per_repository_chk import TestCaseWithRepositoryCHK
 
 
-from bzrlib import (
-    export,
-    tests,
-    )
+class TestNoCHKSupport(TestCaseWithRepositoryCHK):
 
-
-class TestExport(tests.TestCaseWithTransport):
-
-    def test_dir_export_missing_file(self):
-        self.build_tree(['a/', 'a/b', 'a/c'])
-        wt = self.make_branch_and_tree('.')
-        wt.add(['a', 'a/b', 'a/c'])
-        os.unlink('a/c')
-        export.export(wt, 'target', format="dir")
-        self.failUnlessExists('target/a/b')
-        self.failIfExists('target/a/c')
-
+    def test_chk_bytes_attribute_is_None(self):
+        repo = self.make_repository('.')
+        self.assertEqual(None, repo.chk_bytes)

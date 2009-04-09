@@ -64,4 +64,10 @@ _eol_filter_stack_map = {
     'crlf-with-crlf-in-repo':
         [filters.ContentFilter(_to_crlf_converter, _to_crlf_converter)],
     }
-filters.register_filter_stack_map('eol', _eol_filter_stack_map)
+
+
+def _eol_filter_stack_map_lookup(key):
+    return _eol_filter_stack_map.get(key)
+
+
+filters.register_filter_stack_map('eol', _eol_filter_stack_map_lookup)
