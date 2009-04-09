@@ -3824,13 +3824,18 @@ class StreamSink(object):
                 pass
             else:
                 new_pack.set_write_cache_size(1024*1024)
+        added_inventories = []
         for substream_type, substream in stream:
             if substream_type == 'texts':
                 self.target_repo.texts.insert_record_stream(substream)
             elif substream_type == 'inventories':
+                def key_observer(substream):
+                    for record in substream:
+                        added_inventories.append(record.key[-1])
+                        yield record
                 if src_serializer == to_serializer:
                     self.target_repo.inventories.insert_record_stream(
-                        substream)
+                        key_observer(substream))
                 else:
                     self._extract_and_insert_inventories(
                         substream, src_serializer)
@@ -3848,8 +3853,18 @@ class StreamSink(object):
                 self.target_repo.signatures.insert_record_stream(substream)
             else:
                 raise AssertionError('kaboom! %s' % (substream_type,))
+        # Find all the parent revisions referenced by the stream, but
+        # not present in the stream, and make sure we have their
+        # inventories.
+        parent_maps = self.target_repo.get_parent_map(added_inventories)
+        parents = set()
+        map(parents.update, parent_maps.itervalues())
+        parents.difference_update(added_inventories)
+        parents.discard(_mod_revision.NULL_REVISION)
+        missing_keys = set(
+            ('inventories', rev_id) for rev_id in parents)
+        missing_keys = set()
         try:
-            missing_keys = set()
             for prefix, versioned_file in (
                 ('texts', self.target_repo.texts),
                 ('inventories', self.target_repo.inventories),
