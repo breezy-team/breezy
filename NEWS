@@ -40,12 +40,12 @@ Documentation
 API Changes
 ***********
 
-Testing
-*******
-
 Internals
 *********
 
+* ``bzrlib.tests.ExtendedTestResult`` has new methods ``startTests``
+  called before the first test is started, ``done`` called after the last
+  test completes, and a new parameter ``strict``. (Robert Collins)
 
 bzr 1.14rc1
 ###########
