@@ -242,7 +242,7 @@ class TextProgressView(object):
             elif direction == 'write':
                 dir_char = '<'
             else:
-                dir_char = '?'
+                dir_char = ' '
             msg = ("%.7s %s %6dKB %5dKB/s" %
                     (scheme, dir_char, self._total_byte_count>>10, int(rate)>>10,))
             self._transport_update_time = now

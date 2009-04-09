@@ -279,3 +279,8 @@ def _reset_registry(value=None):
         _filter_stacks_registry = value
     _stack_cache.clear()
     return original
+
+
+# Register the standard filters
+from bzrlib.filters import eol
+eol.register_eol_content_filter()

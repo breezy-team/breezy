@@ -12,6 +12,61 @@ In Development
 Compatibility Breaks
 ********************
 
+* ``bzr ls`` is no longer recursive by default. To recurse, use the
+  new ``-R`` option. The old ``--non-recursive`` option has been removed.
+  If you alias ``ls`` to ``ls -R``, you can disable recursion using
+  ``--no-recursive`` instead.  (Ian Clatworthy)
+
+New Features
+************
+
+* Plugins can now define their own annotation tie-breaker when two revisions
+  introduce the exact same line. See ``bzrlib.annotate._break_annotation_tie``
+  Be aware though that this is temporary, private (as indicated by the leading
+  '_') and a first step to address the problem. (Vincent Ladeuil, #348459)
+
+* New command ``bzr dpush`` that can push changes to foreign 
+  branches (svn, git) without setting custom bzr-specific metadata.
+  (Jelmer Vernooij)
+
+Improvements
+************
+
+Bug Fixes
+*********
+
+* End-Of-Line content filters are now loaded correctly.
+  (Ian Clatworthy, Brian de Alwis, #355280)
+
+* Non-recursive ``bzr ls`` now works properly when a path is specified.
+  (Jelmer Vernooij, #357863)
+
+Documentation
+*************
+
+API Changes
+***********
+
+Internals
+*********
+
+* ``bzrlib.tests.ExtendedTestResult`` has new methods ``startTests``
+  called before the first test is started, ``done`` called after the last
+  test completes, and a new parameter ``strict``. (Robert Collins)
+
+bzr 1.14rc1
+###########
+:Codename: brisbane-core
+:1.14rc1: 2009-04-06
+
+New formats 1.14 and 1.14-rich-root supporting End-Of-Line (EOL) conversions,
+keyword templating (via the bzr-keywords plugin) and generic content filtering.
+End-of-line conversion is now supported for formats supporting content
+filtering.
+
+Compatibility Breaks
+********************
+
 * A previously disabled code path to accelerate getting configuration
   settings from a smart server has been reinstated. We think this *may*
   cause a incompatibility with servers older than bzr 0.15. We intend
@@ -72,9 +127,8 @@ New Features
   content filtering. See ``bzr help eol`` for details.
   (Ian Clatworthy)
 
-* New command ``bzr dpush`` that can push changes to foreign 
-  branches (svn, git) without setting custom bzr-specific metadata.
-  (Jelmer Vernooij)
+* Newly-blessed `join` command allows combining two trees into one.
+  (Aaron Bentley)
 
 Improvements
 ************
@@ -145,7 +199,9 @@ Bug Fixes
 * bzr gives a better message if an invalid regexp is passed to ``bzr log
   -m``.  (Anne Mohsen, Martin Pool)
 
-* ``bzr version-info`` now works in empty branches. (Jelmer Vernooij, 
+* ``bzr split`` now says "See also: join" (Aaron Bentley, #335015)
+
+* ``bzr version-info`` now works in empty branches. (Jelmer Vernooij,
   #313028)
 
 * Fix "is not a stackable format" error when pushing a
@@ -154,6 +210,9 @@ Bug Fixes
 
 * Fixed incorrect "Source format does not support stacking" warning
   when pushing to a smart server.  (Andrew Bennetts, #334114)
+
+* Fix 'make check-dist-tarball' failure by converting paths to unicode when
+  needed. (Vincent Ladeuil, #355454)
 
 * Fixed "Specified file 'x/y/z' is outside current view: " occurring
   on ``bzr add x/y/z`` in formats supporting views when no view is
@@ -174,6 +233,9 @@ Bug Fixes
   a branch which is itself stackable, because we know the client can read
   both branches, we know that the trunk for the project can be read too,
   so the upgrade will not inconvenience users. (Robert Collins, #345169)
+
+* The full test suite is passing again on OSX. Several minor issues (mostly
+  test related) have been fixed. (Vincent Ladeuil, #355273).
 
 * The GNU Changelog formatter is slightly improved in the case where
   the delta is empty, and now correctly claims not to support tags.
@@ -265,6 +327,9 @@ Testing
 
 Internals
 *********
+
+* Added ``chk_map`` for fast, trie-based storage of tuple to string maps.
+  (Robert Collins, John Arbash Meinel, Vincent Ladeuil)
 
 * Added ``bzrlib.chk_map`` for fast, trie-based storage of tuple to string
   maps.  (Robert Collins, John Arbash Meinel, Vincent Ladeuil)
