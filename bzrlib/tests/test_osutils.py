@@ -241,17 +241,15 @@ class TestUmask(tests.TestCaseInTempDir):
             return
 
         orig_umask = osutils.get_umask()
-        try:
-            os.umask(0222)
-            self.assertEqual(0222, osutils.get_umask())
-            os.umask(0022)
-            self.assertEqual(0022, osutils.get_umask())
-            os.umask(0002)
-            self.assertEqual(0002, osutils.get_umask())
-            os.umask(0027)
-            self.assertEqual(0027, osutils.get_umask())
-        finally:
-            os.umask(orig_umask)
+        self.addCleanup(os.umask, orig_umask)
+        os.umask(0222)
+        self.assertEqual(0222, osutils.get_umask())
+        os.umask(0022)
+        self.assertEqual(0022, osutils.get_umask())
+        os.umask(0002)
+        self.assertEqual(0002, osutils.get_umask())
+        os.umask(0027)
+        self.assertEqual(0027, osutils.get_umask())
 
 
 class TestDateTime(tests.TestCase):
@@ -726,15 +724,8 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
     """Test win32 functions that create files."""
 
     def test_getcwd(self):
-        if win32utils.winver == 'Windows 98':
-            raise tests.TestSkipped(
-                'Windows 98 cannot handle unicode filenames')
-        # Make sure getcwd can handle unicode filenames
-        try:
-            os.mkdir(u'mu-\xb5')
-        except UnicodeError:
-            raise tests.TestSkipped("Unable to create Unicode filename")
-
+        self.requireFeature(tests.UnicodeFilenameFeature)
+        os.mkdir(u'mu-\xb5')
         os.chdir(u'mu-\xb5')
         # TODO: jam 20060427 This will probably fail on Mac OSX because
         #       it will change the normalization of B\xe5gfors
@@ -996,7 +987,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
             osutils._selected_dir_reader = cur_dir_reader
         self.addCleanup(restore)
 
-    def assertReadFSDirIs(self, expected):
+    def assertDirReaderIs(self, expected):
         """Assert the right implementation for _walkdirs_utf8 is chosen."""
         # Force it to redetect
         osutils._selected_dir_reader = None
@@ -1009,27 +1000,27 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self._save_platform_info()
         win32utils.winver = None # Avoid the win32 detection code
         osutils._fs_enc = 'UTF-8'
-        self.assertReadFSDirIs(UTF8DirReaderFeature.reader)
+        self.assertDirReaderIs(UTF8DirReaderFeature.reader)
 
     def test_force_walkdirs_utf8_fs_ascii(self):
         self.requireFeature(UTF8DirReaderFeature)
         self._save_platform_info()
         win32utils.winver = None # Avoid the win32 detection code
         osutils._fs_enc = 'US-ASCII'
-        self.assertReadFSDirIs(UTF8DirReaderFeature.reader)
+        self.assertDirReaderIs(UTF8DirReaderFeature.reader)
 
     def test_force_walkdirs_utf8_fs_ANSI(self):
         self.requireFeature(UTF8DirReaderFeature)
         self._save_platform_info()
         win32utils.winver = None # Avoid the win32 detection code
         osutils._fs_enc = 'ANSI_X3.4-1968'
-        self.assertReadFSDirIs(UTF8DirReaderFeature.reader)
+        self.assertDirReaderIs(UTF8DirReaderFeature.reader)
 
     def test_force_walkdirs_utf8_fs_latin1(self):
         self._save_platform_info()
         win32utils.winver = None # Avoid the win32 detection code
         osutils._fs_enc = 'latin1'
-        self.assertReadFSDirIs(osutils.UnicodeDirReader)
+        self.assertDirReaderIs(osutils.UnicodeDirReader)
 
     def test_force_walkdirs_utf8_nt(self):
         # Disabled because the thunk of the whole walkdirs api is disabled.
@@ -1037,13 +1028,13 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self._save_platform_info()
         win32utils.winver = 'Windows NT'
         from bzrlib._walkdirs_win32 import Win32ReadDir
-        self.assertReadFSDirIs(Win32ReadDir)
+        self.assertDirReaderIs(Win32ReadDir)
 
     def test_force_walkdirs_utf8_98(self):
         self.requireFeature(test__walkdirs_win32.Win32ReadDirFeature)
         self._save_platform_info()
         win32utils.winver = 'Windows 98'
-        self.assertReadFSDirIs(osutils.UnicodeDirReader)
+        self.assertDirReaderIs(osutils.UnicodeDirReader)
 
     def test_unicode_walkdirs(self):
         """Walkdirs should always return unicode paths."""
