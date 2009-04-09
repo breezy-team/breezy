@@ -3626,9 +3626,26 @@ class InterDifferingSerializer(InterRepository):
         to_texts.insert_record_stream(from_texts.get_record_stream(
             text_keys, self.target._format._fetch_order,
             not self.target._format._fetch_uses_deltas))
-        # insert deltas
+        # insert inventory deltas
         for delta in pending_deltas:
             self.target.add_inventory_by_delta(*delta)
+        if self.target._fallback_repositories:
+            # make sure this stacked repository has all the parent inventories
+            # for the new revisions.
+            parent_ids = set()
+            revision_ids = set()
+            for revision in pending_revisions:
+                revision_ids.add(revision.revision_id)
+                parent_ids.update(revision.parent_ids)
+            parent_ids.difference_update(revision_ids)
+            parent_ids.discard(_mod_revision.NULL_REVISION)
+            parent_map = self.source.get_parent_map(parent_ids)
+            for parent_tree in self.source.revision_trees(parent_ids):
+                basis_id, delta = self._get_delta_for_revision(tree, parent_ids, basis_id, cache)
+                current_revision_id = parent_tree.get_revision_id()
+                parents_parents = parent_map[current_revision_id]
+                self.target.add_inventory_by_delta(
+                    basis_id, delta, current_revision_id, parents_parents)
         # insert signatures and revisions
         for revision in pending_revisions:
             try:
