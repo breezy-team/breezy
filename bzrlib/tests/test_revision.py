@@ -229,7 +229,6 @@ class TestRevisionMethods(TestCase):
 
     def test_get_apparent_author_none(self):
         r = revision.Revision('1')
-        r.committer = None
         author = self.applyDeprecated(
                 symbol_versioning.deprecated_in((1, 13, 0)),
                 r.get_apparent_author)
