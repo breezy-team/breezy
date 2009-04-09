@@ -379,9 +379,9 @@ class cmd_dpush(Command):
             if source_branch.get_push_location() is None or remember:
                 source_branch.set_push_location(target_branch.base)
             if not no_rebase:
-                _, old_last_revid = source_branch.last_revision_info()
-                new_last_revid = revid_map[old_last_revid]
+                old_last_revid = source_branch.last_revision()
                 source_branch.pull(target_branch, overwrite=True)
+                new_last_revid = source_branch.last_revision()
                 if source_wt is not None and old_last_revid != new_last_revid:
                     source_wt.lock_write()
                     try:

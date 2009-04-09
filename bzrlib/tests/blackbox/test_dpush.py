@@ -14,16 +14,31 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+
 """Black-box tests for bzr dpush."""
+
 
 import os
 
-from bzrlib.branch import Branch
-from bzrlib.bzrdir import BzrDirFormat
-from bzrlib.foreign import ForeignBranch, ForeignRepository
-from bzrlib.repository import Repository
-from bzrlib.tests.blackbox import ExternalBase
-from bzrlib.tests.test_foreign import DummyForeignVcsDirFormat
+from bzrlib.branch import (
+    Branch,
+    )
+from bzrlib.bzrdir import (
+    BzrDirFormat,
+    )
+from bzrlib.foreign import (
+    ForeignBranch,
+    ForeignRepository,
+    )
+from bzrlib.repository import (
+    Repository,
+    )
+from bzrlib.tests.blackbox import (
+    ExternalBase,
+    )
+from bzrlib.tests.test_foreign import (
+    DummyForeignVcsDirFormat,
+    )
 
 
 class TestDpush(ExternalBase):
@@ -50,7 +65,8 @@ class TestDpush(ExternalBase):
     def test_dpush_native(self):
         target_tree = self.make_branch_and_tree("dp")
         source_tree = self.make_branch_and_tree("dc")
-        error = self.run_bzr("dpush -d dc dp", retcode=3)[1]
+        output, error = self.run_bzr("dpush -d dc dp", retcode=3)
+        self.assertEquals("", output)
         self.assertContainsRe(error, 'not a foreign branch, use regular push')
 
     def test_dpush(self):
@@ -60,19 +76,19 @@ class TestDpush(ExternalBase):
         self.build_tree(("dc/foo", "blaaaa"))
         dc.open_workingtree().commit('msg')
 
-        self.run_bzr("dpush -d dc d")
+        self.check_output("", "dpush -d dc d")
         self.check_output("", "status dc")
 
     def test_dpush_new(self):
         branch = self.make_dummy_builder('d').get_branch()
 
         dc = branch.bzrdir.sprout('dc', force_new_repo=True)
-        self.build_tree(("dc/foofile", "blaaaa"))
+        self.build_tree_contents([("dc/foofile", "blaaaa")])
         dc_tree = dc.open_workingtree()
         dc_tree.add("foofile")
         dc_tree.commit("msg")
 
-        self.run_bzr("dpush -d dc d")
+        self.check_output("", "dpush -d dc d")
         self.check_output("2\n", "revno dc")
         self.check_output("", "status dc")
 
@@ -86,7 +102,7 @@ class TestDpush(ExternalBase):
         newrevid = dc_tree.commit('msg')
 
         self.build_tree_contents([("dc/foofile", "blaaaal")])
-        self.run_bzr("dpush -d dc d")
+        self.check_output("", "dpush -d dc d")
         self.assertFileEqual("blaaaal", "dc/foofile")
         self.check_output('modified:\n  foofile\n', "status dc")
 
@@ -104,5 +120,6 @@ class TestDpush(ExternalBase):
         builder.build_snapshot('revid2', None,
           [('modify', ('fooid', 'blie'))])
 
-        error = self.run_bzr("dpush -d dc d", retcode=3)[1]
+        output, error = self.run_bzr("dpush -d dc d", retcode=3)
+        self.assertEquals(output, "")
         self.assertContainsRe(error, "have diverged")

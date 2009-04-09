@@ -17,6 +17,7 @@
 
 """Tests for foreign VCS utility code."""
 
+
 from bzrlib import (
     branch,
     errors,
@@ -34,7 +35,10 @@ from bzrlib.bzrdir import (
     )
 from bzrlib.inventory import Inventory
 from bzrlib.revision import Revision
-from bzrlib.tests import TestCase, TestCaseWithTransport
+from bzrlib.tests import (
+    TestCase,
+    TestCaseWithTransport,
+    )
 
 # This is the dummy foreign revision control system, used 
 # mainly here in the testsuite to test the foreign VCS infrastructure.
@@ -92,31 +96,52 @@ class DummyForeignVcsBranch(branch.BzrBranch6,foreign.ForeignBranch):
         self._format = _format
         self._base = a_bzrdir.transport.base
         self._ignore_fallbacks = False
-        foreign.ForeignBranch.__init__(self, DummyForeignVcsMapping(DummyForeignVcs()))
-        branch.BzrBranch6.__init__(self, _format, _control_files, a_bzrdir, *args, **kwargs)
+        foreign.ForeignBranch.__init__(self, 
+            DummyForeignVcsMapping(DummyForeignVcs()))
+        branch.BzrBranch6.__init__(self, _format, _control_files, a_bzrdir, 
+            *args, **kwargs)
 
     def dpull(self, source, stop_revision=None):
-        # This just handles simple cases, but that's good enough for tests
-        my_history = self.revision_history()
-        their_history = source.revision_history()
-        if their_history[:min(len(my_history), len(their_history))] != my_history:
-            raise errors.DivergedBranches(self, source)
-        todo = their_history[len(my_history):]
-        revidmap = {}
-        for revid in todo:
-            rev = source.repository.get_revision(revid)
-            tree = source.repository.revision_tree(revid)
-            builder = self.get_commit_builder([self.last_revision()], 
-                    self.get_config(), rev.timestamp,
-                    rev.timezone, rev.committer, rev.properties)
-            for path, ie in tree.inventory.iter_entries():
-                builder.record_entry_contents(ie.copy(), 
-                    [self.repository.get_inventory(self.last_revision())],
-                    path, tree, None)
-            builder.finish_inventory()
-            revidmap[revid] = builder.commit(rev.message)
-            trace.mutter('lossily pushed revision %s -> %s', 
-                revid, revidmap[revid])
+        source.lock_read()
+        try:
+            # This just handles simple cases, but that's good enough for tests
+            my_history = self.revision_history()
+            their_history = source.revision_history()
+            if their_history[:min(len(my_history), len(their_history))] != my_history:
+                raise errors.DivergedBranches(self, source)
+            todo = their_history[len(my_history):]
+            revidmap = {}
+            for revid in todo:
+                rev = source.repository.get_revision(revid)
+                tree = source.repository.revision_tree(revid)
+                def get_file_with_stat(file_id, path=None):
+                    return (tree.get_file(file_id), None)
+                tree.get_file_with_stat = get_file_with_stat
+                new_revid = self.mapping.revision_id_foreign_to_bzr(
+                    (str(rev.timestamp), str(rev.timezone), str(self.revno())))
+                parent_revno, parent_revid= self.last_revision_info()
+                builder = self.get_commit_builder([parent_revid], 
+                        self.get_config(), rev.timestamp,
+                        rev.timezone, rev.committer, rev.properties,
+                        new_revid)
+                try:
+                    for path, ie in tree.inventory.iter_entries():
+                        new_ie = ie.copy()
+                        new_ie.revision = None
+                        builder.record_entry_contents(new_ie, 
+                            [self.repository.get_inventory(parent_revid)],
+                            path, tree, 
+                            (ie.kind, ie.text_size, ie.executable, ie.text_sha1))
+                    builder.finish_inventory()
+                except:
+                    builder.abort()
+                    raise
+                revidmap[revid] = builder.commit(rev.message)
+                self.set_last_revision_info(parent_revno+1, revidmap[revid])
+                trace.mutter('lossily pushed revision %s -> %s', 
+                    revid, revidmap[revid])
+        finally:
+            source.unlock()
         return revidmap
 
 
