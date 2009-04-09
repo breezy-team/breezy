@@ -141,8 +141,15 @@ foreign_git = ForeignGit()
 default_mapping = BzrGitMappingv1()
 
 
+def text_to_blob(text):
+    from dulwich.objects import Blob
+    blob = Blob()
+    blob._text = text
+    return blob
+
+
 def inventory_to_tree_and_blobs(repo, mapping, revision_id):
-    from dulwich.objects import Tree, Blob
+    from dulwich.objects import Tree
     from bzrlib.inventory import InventoryDirectory, InventoryFile
     import stat
     stack = []
@@ -170,8 +177,8 @@ def inventory_to_tree_and_blobs(repo, mapping, revision_id):
         if type(entry) == InventoryFile:
             #FIXME: We can make potentially make this Lazy to avoid shaing lots of stuff
             # and having all these objects in memory at once
-            blob = Blob()
-            blob._text = repo.texts.get_record_stream([(entry.file_id, entry.revision)], 'unordered', True).next().get_bytes_as('fulltext')
+            text = repo.texts.get_record_stream([(entry.file_id, entry.revision)], 'unordered', True).next().get_bytes_as('fulltext')
+            blob = text_to_blob(text)
             sha = blob.id
             yield sha, blob, path
 

@@ -27,6 +27,7 @@ from dulwich.objects import (
     )
 
 from bzrlib import (
+    debug,
     osutils,
     trace,
     ui,
@@ -57,6 +58,9 @@ from bzrlib.tsort import (
 
 from bzrlib.plugins.git.converter import (
     BazaarObjectStore,
+    )
+from bzrlib.plugins.git.mapping import (
+    text_to_blob,
     )
 from bzrlib.plugins.git.repository import (
     LocalGitRepository, 
@@ -166,6 +170,8 @@ def import_git_blob(texts, mapping, path, hexsha, base_inv, parent_id,
         assert ie.revision is not None
         texts.add_lines((file_id, ie.revision), parent_keys,
             osutils.split_lines(blob.data))
+        if "verify" in debug.debug_flags:
+            assert text_to_blob(blob.data).id == hexsha
         shagitmap.add_entry(hexsha, "blob", (ie.file_id, ie.revision))
     if file_id in base_inv:
         old_path = base_inv.id2path(file_id)
@@ -206,6 +212,9 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id,
                 return []
     # Remember for next time
     existing_children = set()
+    if "verify" in debug.debug_flags:
+        # FIXME:
+        assert False
     shagitmap.add_entry(hexsha, "tree", (file_id, revision_id))
     tree = lookup_object(hexsha)
     for mode, name, hexsha in tree.entries():

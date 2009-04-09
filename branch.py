@@ -107,9 +107,9 @@ class GitBranch(ForeignBranch):
     def __init__(self, bzrdir, repository, name, head, lockfiles):
         self.repository = repository
         self._format = GitBranchFormat()
-        super(GitBranch, self).__init__(repository.get_mapping())
         self.control_files = lockfiles
         self.bzrdir = bzrdir
+        super(GitBranch, self).__init__(repository.get_mapping())
         self.name = name
         self.head = head
         self.base = bzrdir.transport.base
