@@ -25,6 +25,10 @@ New Features
   Be aware though that this is temporary, private (as indicated by the leading
   '_') and a first step to address the problem. (Vincent Ladeuil, #348459)
 
+* New command ``bzr dpush`` that can push changes to foreign 
+  branches (svn, git) without setting custom bzr-specific metadata.
+  (Jelmer Vernooij)
+
 Improvements
 ************
 
