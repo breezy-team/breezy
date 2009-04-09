@@ -34,6 +34,7 @@ from bzrlib import (
     errors,
     tests,
     transport as _mod_transport,
+    ui,
     )
 from bzrlib.osutils import (
     pathjoin,
@@ -547,3 +548,12 @@ class TestUsesAuthConfig(TestCaseWithSFTPServer):
     def test_sftp_is_none_if_no_config(self):
         t = self.get_transport_for_connection(set_config=False)
         self.assertIs(getpass.getuser(), t._get_credentials()[0])
+
+    def test_sftp_doesnt_prompt_username(self):
+        stdout = tests.StringIOWrapper()
+        ui.ui_factory = tests.TestUIFactory(stdin='joe\nfoo\n', stdout=stdout)
+        t = self.get_transport_for_connection(set_config=False)
+        self.assertIs(getpass.getuser(), t._get_credentials()[0])
+        # No prompts should've been printed, stdin shouldn't have been read
+        self.assertEquals("", stdout.getvalue())
+        self.assertEquals(0, ui.ui_factory.stdin.tell())

@@ -84,6 +84,19 @@ class TestFTPTestServerUI(TestCaseWithFTPServer):
             scheme, self.user, self.password, host, port, path)
         return url
 
+    def test_no_prompt_for_username(self):
+        """ensure getpass.getuser() is used if there's no username in the 
+        configuration.""",
+        self.get_server().add_user(getpass.getuser(), self.password)
+        t = self.get_transport()
+        ui.ui_factory = tests.TestUIFactory(stdin=self.password + '\n',
+                                            stdout=tests.StringIOWrapper())
+        # Issue a request to the server to connect
+        t.put_bytes('foo', 'test bytes\n')
+        self.assertEqual('test bytes\n', t.get_bytes('foo'))
+        # Only the password should've been read
+        self.assertEqual('', ui.ui_factory.stdin.readline())
+
     def test_prompt_for_password(self):
         t = self.get_transport()
         ui.ui_factory = tests.TestUIFactory(stdin=self.password+'\n',
