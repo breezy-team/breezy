@@ -17,7 +17,7 @@
 
 #python2.4 support
 cdef extern from "python-compat.h":
-    ctypedef int Py_ssize_t # Required for older pyrex versions
+    pass
 
 cdef extern from *:
     ctypedef unsigned int size_t
@@ -28,6 +28,7 @@ cdef extern from *:
     void sprintf(char *, char *, ...)
 
 cdef extern from "Python.h":
+    ctypedef int Py_ssize_t # Required for older pyrex versions
     struct _PyObject:
         pass
     ctypedef _PyObject PyObject
