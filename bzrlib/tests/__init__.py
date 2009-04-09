@@ -2130,8 +2130,8 @@ class TestCaseWithMemoryTransport(TestCase):
         return memorytree.MemoryTree.create_on_branch(b)
 
     def make_branch_builder(self, relpath, format=None):
-        return branchbuilder.BranchBuilder(self.get_transport(relpath),
-            format=format)
+        branch = self.make_branch(relpath, format=format)
+        return branchbuilder.BranchBuilder(branch=branch)
 
     def overrideEnvironmentForTesting(self):
         os.environ['HOME'] = self.test_home_dir
