@@ -455,7 +455,11 @@ class GenericProcessor(processor.ImportProcessor):
         # 'Commit' the revision and report progress
         handler = self.commit_handler_factory(cmd, self.cache_mgr,
             self.rev_store, verbose=self.verbose)
-        handler.process()
+        try:
+            handler.process()
+        except:
+            print "ABORT: exception occurred processing commit %s" % (cmd.id)
+            raise
         self.cache_mgr.revision_ids[cmd.id] = handler.revision_id
         self._revision_count += 1
         self.report_progress("(%s)" % cmd.id)
