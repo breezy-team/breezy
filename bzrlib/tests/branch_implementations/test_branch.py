@@ -864,3 +864,15 @@ class TestReferenceLocation(TestCaseWithBranch):
         except bzrlib.errors.UnsupportedOperation:
             raise tests.TestNotApplicable('Branch cannot hold references.')
         parent = branch.reference_parent('file-id', 'path/to/file')
+        self.assertEqual(parent.base, referenced_branch.base)
+
+    def test_branch_relative_reference_location(self):
+        branch = self.make_branch('branch')
+        try:
+            branch.set_reference_info('file-id', 'path/to/file',
+            '../reference_branch')
+        except bzrlib.errors.UnsupportedOperation:
+            raise tests.TestNotApplicable('Branch cannot hold references.')
+        referenced_branch = self.make_branch('reference_branch')
+        parent = branch.reference_parent('file-id', 'path/to/file')
+        self.assertEqual(parent.base, referenced_branch.base)

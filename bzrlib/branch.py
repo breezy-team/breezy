@@ -2565,6 +2565,8 @@ class BzrBranch8(BzrBranch5):
         branch_location = self.get_reference_info(file_id)[1]
         if branch_location is None:
             branch_location = self.bzrdir.root_transport.clone(path).base
+        else:
+            branch_location = urlutils.join(self.base, branch_location)
         return Branch.open(branch_location)
 
     def set_push_location(self, location):
