@@ -1046,6 +1046,7 @@ class TestTestResult(TestCase):
         class InstrumentedTestResult(ExtendedTestResult):
             calls = 0
             def startTests(self): self.calls += 1
+            def report_test_start(self, test): pass
         result = InstrumentedTestResult(None, None, None, None)
         def test_function():
             pass

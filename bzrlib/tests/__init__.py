@@ -2683,10 +2683,7 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
     result = runner.run(suite)
     if list_only:
         return True
-    if getattr(result, 'done', None):
-        # FIXME: This shouldn't be needed once subunit TestProtocolClient
-        # implements done() ?
-        result.done()
+    result.done()
     if strict:
         return result.wasStrictlySuccessful()
     else:
