@@ -25,6 +25,7 @@ from dulwich.objects import (
 from bzrlib import (
     branch,
     config,
+    foreign,
     repository,
     revision,
     tag,
@@ -39,9 +40,6 @@ from bzrlib.trace import (
 
 from bzrlib.plugins.git.errors import (
     NoSuchRef,
-    )
-from bzrlib.plugins.git.foreign import (
-    ForeignBranch,
     )
 
 
@@ -101,7 +99,7 @@ class GitBranchFormat(branch.BranchFormat):
             return LocalGitTagDict(branch)
 
 
-class GitBranch(ForeignBranch):
+class GitBranch(foreign.ForeignBranch):
     """An adapter to git repositories for bzr Branch objects."""
 
     def __init__(self, bzrdir, repository, name, head, lockfiles):
