@@ -1685,17 +1685,37 @@ class TestDirReader(tests.TestCaseInTempDir):
             ]
         return tree, expected_dirblocks
 
-    def test_walk_unicode_tree(self):
-        tree, expected_dirblocks = self._get_unicode_tree()
-        self.build_tree(tree)
-        result = list(osutils._walkdirs_utf8('.'))
-        # Filter out stat and convert native abspaths to unicode
-        actual_dirblocks = []
-        for dirinfo, block in result:
+    def _filter_out(self, raw_dirblocks):
+        """Filter out a walkdirs_utf8 result.
+
+        stat field is removed, all native paths are converted to unicode
+        """
+        filtered_dirblocks = []
+        for dirinfo, block in raw_dirblocks:
             dirinfo = (dirinfo[0], self._native_to_unicode(dirinfo[1]))
             details = []
             for line in block:
                 details.append(line[0:3] + (self._native_to_unicode(line[4]), ))
-            actual_dirblocks.append((dirinfo, details))
-        self.assertEqual(expected_dirblocks, actual_dirblocks)
+            filtered_dirblocks.append((dirinfo, details))
+        return filtered_dirblocks
 
+    def test_walk_unicode_tree(self):
+        tree, expected_dirblocks = self._get_unicode_tree()
+        self.build_tree(tree)
+        result = list(osutils._walkdirs_utf8('.'))
+        self.assertEqual(expected_dirblocks, self._filter_out(result))
+
+    def test_symlink(self):
+        self.requireFeature(tests.SymlinkFeature)
+        target = u'target\n{Euro Sign}'
+        link_name = u'l\n{Euro Sign}nk'
+        os.symlink(target, link_name)
+        target_utf8 = target.encode('UTF-8')
+        link_name_utf8 = link_name.encode('UTF-8')
+        expected_dirblocks = [
+                (('', '.'),
+                 [(link_name_utf8, link_name_utf8,
+                   'symlink', './' + link_name),],
+                 )]
+        result = list(osutils._walkdirs_utf8('.'))
+        self.assertEqual(expected_dirblocks, self._filter_out(result))
