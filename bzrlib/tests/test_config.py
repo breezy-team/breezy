@@ -1543,6 +1543,20 @@ user=jim
             self._get_log(keep_log_file=True),
             'password ignored in section \[ssh with password\]')
 
+    def test_uses_fallback_stores(self):
+        self._old_credential_store_registry = config.credential_store_registry
+        def restore():
+            config.credential_store_registry = self._old_credential_store_registry
+        self.addCleanup(restore)
+        config.credential_store_registry = config.CredentialStoreRegistry()
+        store = StubCredentialStore()
+        store.add_credentials("http", "example.com", "joe", "secret")
+        config.credential_store_registry.register("stub", store, fallback=True)
+        conf = config.AuthenticationConfig(_file=StringIO())
+        creds = conf.get_credentials("http", "example.com")
+        self.assertEquals("joe", creds["user"])
+        self.assertEquals("secret", creds["password"])
+
 
 class StubCredentialStore(config.CredentialStore):
 
