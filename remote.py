@@ -134,22 +134,28 @@ class GitSmartTransport(Transport):
 
 class TCPGitSmartTransport(GitSmartTransport):
 
+    _scheme = 'git'
+
     def _get_client(self):
         if self._client is not None:
             ret = self._client
             self._client = None
             return ret
-        return git.client.TCPGitClient(self._host, self._port, thin_packs=False)
+        return git.client.TCPGitClient(self._host, self._port, thin_packs=False,
+            report_activity=self._report_activity)
 
 
 class SSHGitSmartTransport(GitSmartTransport):
 
+    _scheme = 'git+ssh'
+
     def _get_client(self):
         if self._client is not None:
             ret = self._client
             self._client = None
             return ret
-        return git.client.SSHGitClient(self._host, self._port, thin_packs=False)
+        return git.client.SSHGitClient(self._host, self._port, thin_packs=False,
+            report_activity=self._report_activity)
 
 
 class RemoteGitDir(GitDir):
