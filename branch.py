@@ -119,7 +119,10 @@ class GitBranch(foreign.ForeignBranch):
         """
         return self.name
 
-    nick = property(_get_nick)
+    def _set_nick(self, nick):
+        raise NotImplementedError
+
+    nick = property(_get_nick, _set_nick)
 
     def dpull(self, source, stop_revision=None):
         if stop_revision is None:
