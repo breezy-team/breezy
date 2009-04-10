@@ -147,10 +147,7 @@ class BodyExternalMailClient(MailClient):
             outfile.write(attachment)
         finally:
             outfile.close()
-        if body is not None:
-            kwargs = {'body': body}
-        else:
-            kwargs = {}
+        kwargs = {'body': body}
         self._compose(prompt, to, subject, attach_path, mime_subtype,
                       extension, **kwargs)
 
