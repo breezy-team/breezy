@@ -1392,21 +1392,21 @@ def _walkdirs_utf8(top, prefix=""):
             #       for win98 anyway.
             try:
                 from bzrlib._walkdirs_win32 import Win32ReadDir
-            except ImportError:
-                _selected_dir_reader = UnicodeDirReader()
-            else:
                 _selected_dir_reader = Win32ReadDir()
-        elif fs_encoding not in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968'):
+            except ImportError:
+                pass
+        elif fs_encoding in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968'):
             # ANSI_X3.4-1968 is a form of ASCII
-            _selected_dir_reader = UnicodeDirReader()
-        else:
             try:
                 from bzrlib._readdir_pyx import UTF8DirReader
-            except ImportError:
-                # No optimised code path
-                _selected_dir_reader = UnicodeDirReader()
-            else:
                 _selected_dir_reader = UTF8DirReader()
+            except ImportError:
+                pass
+
+    if _selected_dir_reader is None:
+        # Fallback to the python version
+        _selected_dir_reader = UnicodeDirReader()
+
     # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-toppath
     # But we don't actually uses 1-3 in pending, so set them to None
     pending = [[_selected_dir_reader.top_prefix_to_starting_dir(top, prefix)]]
