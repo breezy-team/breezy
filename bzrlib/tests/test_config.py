@@ -1544,6 +1544,36 @@ user=jim
             'password ignored in section \[ssh with password\]')
 
 
+class StubCredentialStore(config.CredentialStore):
+
+    def __init__(self):
+        self._username = {}
+        self._password = {}
+
+    def add_credentials(self, scheme, host, user, password=None):
+        self._username[(scheme, host)] = user
+        self._password[(scheme, host)] = password
+
+    def get_credentials(self, scheme, host, port=None, user=None,
+        path=None, realm=None):
+        key = (scheme, host) 
+        if not key in self._username:
+            return None
+        return { "scheme": scheme, "host": host, "port": port, 
+                "user": self._username[key], "password": self._password[key]}
+
+
+class CountingCredentialStore(config.CredentialStore):
+
+    def __init__(self):
+        self._calls = 0
+
+    def get_credentials(self, scheme, host, port=None, user=None,
+        path=None, realm=None):
+        self._calls += 1
+        return None
+
+
 class TestCredentialStoreRegistry(tests.TestCase):
 
     def _get_cs_registry(self):
@@ -1559,6 +1589,50 @@ class TestCredentialStoreRegistry(tests.TestCase):
         # It's hard to imagine someone creating a credential store named
         # 'unknown' so we use that as an never registered key.
         self.assertRaises(KeyError, r.get_credential_store, 'unknown')
+
+    def test_fallback_none_registered(self):
+        r = config.CredentialStoreRegistry()
+        self.assertEquals(None, r.get_fallback_credentials(
+            "http", "example.com"))
+
+    def test_register(self):
+        r = config.CredentialStoreRegistry()
+        r.register("stub", StubCredentialStore(), fallback=False)
+        r.register("another", StubCredentialStore(), fallback=True)
+        self.assertEquals(["another", "stub"], r.keys())
+
+    def test_register_lazy(self):
+        r = config.CredentialStoreRegistry()
+        r.register_lazy("stub", "bzrlib.tests.test_config", 
+            "StubCredentialStore", fallback=False)
+        self.assertEquals(["stub"], r.keys())
+        self.assertIsInstance(r.get_credential_store("stub"), 
+            StubCredentialStore)
+
+    def test_is_fallback(self):
+        r = config.CredentialStoreRegistry()
+        r.register("stub1", None, fallback=False)
+        r.register("stub2", None, fallback=True)
+        self.assertEquals(False, r.is_fallback("stub1"))
+        self.assertEquals(True, r.is_fallback("stub2"))
+
+    def test_no_fallback(self):
+        r = config.CredentialStoreRegistry()
+        store = CountingCredentialStore()
+        r.register("count", store, fallback=False)
+        self.assertEquals(None, 
+            r.get_fallback_credentials("http", "example.com"))
+        self.assertEquals(0, store._calls)
+
+    def test_fallback_credentials(self):
+        r = config.CredentialStoreRegistry()
+        store = StubCredentialStore()
+        store.add_credentials("http", "example.com", 
+            "somebody", "geheim")
+        r.register("stub", store, fallback=True)
+        creds = r.get_fallback_credentials("http", "example.com")
+        self.assertEquals("somebody", creds["user"])
+        self.assertEquals("geheim", creds["password"])
 
 
 class TestPlainTextCredentialStore(tests.TestCase):

@@ -54,6 +54,10 @@ Internals
   called before the first test is started, ``done`` called after the last
   test completes, and a new parameter ``strict``. (Robert Collins)
 
+* Fallback ``CredentialStore`` instances registered with ``fallback=True``
+  are now be able to provide credentials if obtaining credentials 
+  via ~/.bazaar/authentication.conf fails. (Jelmer Vernooij, #321918)
+
 bzr 1.14rc1
 ###########
 :Codename: brisbane-core

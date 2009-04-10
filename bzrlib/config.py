@@ -1226,19 +1226,25 @@ class CredentialStoreRegistry(registry.Registry):
             cs = cs()
         return cs
 
+    def is_fallback(self, name):
+        """Check if the named credentials store should be used as fallback.
+        """
+        return self.get_info(name)
+
     def get_fallback_credentials(self, scheme, host, port=None, user=None,
-        path=None, realm=None):
+                                 path=None, realm=None):
+        """Request credentials from all fallback credentials stores.
+        """
         # First credentials store that can provide credentials wins
         for name in self.keys():
-            fallback = self.get_info(name)
-            if not fallback:
+            if not self.is_fallback(name):
                 continue
             cs = self.get_credential_store(name)
             credentials = cs.get_credentials(scheme, host, port, user, 
                 path, realm)
             if credentials is not None:
                 return credentials
-        return credentials
+        return None
 
     def register(self, key, obj, help=None, override_existing=False,
         fallback=False):
