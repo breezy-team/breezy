@@ -187,7 +187,7 @@ that. Now, as the lifetime for all unchanged entries is the time to parse, stat
 the file on disk, and then immediately discard, the overhead of object creation
 becomes a significant cost.
 
-Figures: Creating a tuple from from 3 elements was profiled at 0.0625
+Figures: Creating a tuple from 3 elements was profiled at 0.0625
 microseconds, whereas creating a object which is subclassed from tuple was
 0.500 microseconds, and creating an object with 3 elements and slots was 3
 microseconds long. 0.1 milliseconds is 100 microseconds, and ideally we'll get
@@ -2035,7 +2035,7 @@ class DirState(object):
 
     @staticmethod
     def on_file(path, sha1_provider=None):
-        """Construct a DirState on the file at path path.
+        """Construct a DirState on the file at path "path".
 
         :param path: The path at which the dirstate file on disk should live.
         :param sha1_provider: an object meeting the SHA1Provider interface.

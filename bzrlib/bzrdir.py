@@ -57,6 +57,9 @@ from bzrlib import (
 from bzrlib.osutils import (
     sha_string,
     )
+from bzrlib.push import (
+    PushResult,
+    )
 from bzrlib.smart.client import _SmartClient
 from bzrlib.store.versioned import WeaveStore
 from bzrlib.transactions import WriteTransaction
@@ -1195,6 +1198,66 @@ class BzrDir(object):
                 if basis is not None:
                     basis.unlock()
         return result
+
+    def push_branch(self, source, revision_id=None, overwrite=False, 
+        remember=False):
+        """Push the source branch into this BzrDir."""
+        br_to = None
+        # If we can open a branch, use its direct repository, otherwise see
+        # if there is a repository without a branch.
+        try:
+            br_to = self.open_branch()
+        except errors.NotBranchError:
+            # Didn't find a branch, can we find a repository?
+            repository_to = self.find_repository()
+        else:
+            # Found a branch, so we must have found a repository
+            repository_to = br_to.repository
+
+        push_result = PushResult()
+        push_result.source_branch = source
+        if br_to is None:
+            # We have a repository but no branch, copy the revisions, and then
+            # create a branch.
+            repository_to.fetch(source.repository, revision_id=revision_id)
+            br_to = source.clone(self, revision_id=revision_id)
+            if source.get_push_location() is None or remember:
+                source.set_push_location(br_to.base)
+            push_result.stacked_on = None
+            push_result.branch_push_result = None
+            push_result.old_revno = None
+            push_result.old_revid = _mod_revision.NULL_REVISION
+            push_result.target_branch = br_to
+            push_result.master_branch = None
+            push_result.workingtree_updated = False
+        else:
+            # We have successfully opened the branch, remember if necessary:
+            if source.get_push_location() is None or remember:
+                source.set_push_location(br_to.base)
+            try:
+                tree_to = self.open_workingtree()
+            except errors.NotLocalUrl:
+                push_result.branch_push_result = source.push(br_to, 
+                    overwrite, stop_revision=revision_id)
+                push_result.workingtree_updated = False
+            except errors.NoWorkingTree:
+                push_result.branch_push_result = source.push(br_to,
+                    overwrite, stop_revision=revision_id)
+                push_result.workingtree_updated = None # Not applicable
+            else:
+                tree_to.lock_write()
+                try:
+                    push_result.branch_push_result = source.push(
+                        tree_to.branch, overwrite, stop_revision=revision_id)
+                    tree_to.update()
+                finally:
+                    tree_to.unlock()
+                push_result.workingtree_updated = True
+            push_result.old_revno = push_result.branch_push_result.old_revno
+            push_result.old_revid = push_result.branch_push_result.old_revid
+            push_result.target_branch = \
+                push_result.branch_push_result.target_branch
+        return push_result
 
 
 class BzrDirHooks(hooks.Hooks):
@@ -3360,9 +3423,9 @@ format_registry.register_metadir('1.14-rich-root',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat5',
     )
-# The following two formats should always just be aliases.
-format_registry.register_metadir('development',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment2',
+# The following un-numbered 'development' formats should always just be aliases.
+format_registry.register_metadir('development-rich-root',
+    'bzrlib.repofmt.groupcompress_repo.RepositoryFormatCHK1',
     help='Current development format. Can convert data to and from pack-0.92 '
         '(and anything compatible with pack-0.92) format repositories. '
         'Repositories and branches in this format can only be read by bzr.dev. '
@@ -3370,7 +3433,7 @@ format_registry.register_metadir('development',
         'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
         'before use.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat6',
     experimental=True,
     alias=True,
     )
@@ -3383,38 +3446,17 @@ format_registry.register_metadir('development-subtree',
         'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
         'before use.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat6',
     experimental=True,
-    alias=True,
+    alias=False, # Restore to being an alias when an actual development subtree format is added
+                 # This current non-alias status is simply because we did not introduce a
+                 # chk based subtree format.
     )
+
 # And the development formats above will have aliased one of the following:
-format_registry.register_metadir('development2',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment2',
-    help='1.6.1 with B+Tree based index. '
-        'Please read '
-        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
-        'before use.',
-    branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
-    hidden=True,
-    experimental=True,
-    )
-format_registry.register_metadir('development2-subtree',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment2Subtree',
-    help='1.6.1-subtree with B+Tree based index. '
-        'Please read '
-        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
-        'before use.',
-    branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
-    hidden=True,
-    experimental=True,
-    )
-# These next two formats should be removed when the gc formats are
-# updated to use WorkingTreeFormat6 and are merged into bzr.dev
-format_registry.register_metadir('development-wt6',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6',
-    help='1.14 with filtered views. '
+format_registry.register_metadir('development6-rich-root',
+    'bzrlib.repofmt.groupcompress_repo.RepositoryFormatCHK1',
+    help='pack-1.9 with 255-way hashed CHK inv, group compress, rich roots '
         'Please read '
         'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
         'before use.',
@@ -3423,15 +3465,7 @@ format_registry.register_metadir('development-wt6',
     hidden=True,
     experimental=True,
     )
-format_registry.register_metadir('development-wt6-rich-root',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6RichRoot',
-    help='A variant of development-wt6 that supports rich-root data '
-         '(needed for bzr-svn and bzr-git).',
-    branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat6',
-    hidden=True,
-    experimental=True,
-    )
+
 # The following format should be an alias for the rich root equivalent 
 # of the default format
 format_registry.register_metadir('default-rich-root',

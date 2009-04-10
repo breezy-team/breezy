@@ -448,10 +448,12 @@ request_handlers.register_lazy(
     'Branch.last_revision_info', 'bzrlib.smart.branch', 'SmartServerBranchRequestLastRevisionInfo')
 request_handlers.register_lazy(
     'Branch.lock_write', 'bzrlib.smart.branch', 'SmartServerBranchRequestLockWrite')
-request_handlers.register_lazy(
-    'Branch.revision_history', 'bzrlib.smart.branch', 'SmartServerRequestRevisionHistory')
-request_handlers.register_lazy(
-    'Branch.set_last_revision', 'bzrlib.smart.branch', 'SmartServerBranchRequestSetLastRevision')
+request_handlers.register_lazy( 'Branch.revision_history',
+    'bzrlib.smart.branch', 'SmartServerRequestRevisionHistory')
+request_handlers.register_lazy( 'Branch.set_config_option',
+    'bzrlib.smart.branch', 'SmartServerBranchRequestSetConfigOption')
+request_handlers.register_lazy( 'Branch.set_last_revision',
+    'bzrlib.smart.branch', 'SmartServerBranchRequestSetLastRevision')
 request_handlers.register_lazy(
     'Branch.set_last_revision_info', 'bzrlib.smart.branch',
     'SmartServerBranchRequestSetLastRevisionInfo')

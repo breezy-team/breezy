@@ -276,15 +276,21 @@ features to communicate with Launchpad:
       is then used by the 'lp:' transport to download your branches using
       bzr+ssh://.
 
+    * The 'lp:' transport uses Launchpad as a directory service: for example
+      'lp:bzr' and 'lp:python' refer to the main branches of the relevant
+      projects and may be branched, logged, etc. You can also use the 'lp:'
+      transport to refer to specific branches, e.g. lp:~bzr/bzr/trunk.
+
+    * The 'lp:' bug tracker alias can expand launchpad bug numbers to their
+      URLs for use with 'bzr commit --fixes', e.g. 'bzr commit --fixes lp:12345'
+      will record a revision property that marks that revision as fixing
+      Launchpad bug 12345. When you push that branch to Launchpad it will
+      automatically be linked to the bug report.
+
     * The register-branch command tells Launchpad about the url of a
       public branch.  Launchpad will then mirror the branch, display
       its contents and allow it to be attached to bugs and other
       objects.
-
-    * The 'lp:' transport uses Launchpad as a directory service: for example
-      'lp:bzr' and 'lp:python' refer to the main branches of the relevant
-      projects and may be branched, logged, etc. You can also use the 'lp:'
-      transport to refer to specific branches, e.g. lp:///~bzr/bzr/trunk.
 
 For more information see http://help.launchpad.net/
 """
