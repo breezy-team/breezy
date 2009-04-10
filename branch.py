@@ -145,7 +145,8 @@ class GitBranch(foreign.ForeignBranch):
             stop_revision = source.last_revision()
         # FIXME: Check for diverged branches
         revidmap = self.repository.dfetch(source.repository, stop_revision)
-        self.generate_revision_history(revidmap[stop_revision])
+        if revidmap != {}:
+            self.generate_revision_history(revidmap[stop_revision])
         return revidmap
 
     def generate_revision_history(self, revid, old_revid=None):
@@ -154,8 +155,8 @@ class GitBranch(foreign.ForeignBranch):
         self._set_head(newhead)
 
     def _set_head(self, head):
-        self.repository._git.set_ref(self.name, self.head)
         self.head = head
+        self.repository._git.set_ref(self.name, self.head)
 
     def lock_write(self):
         self.control_files.lock_write()
@@ -294,6 +295,52 @@ class InterGitGenericBranch(branch.InterBranch):
         else:
             prev_last_revid = self.target.last_revision()
         self.target.generate_revision_history(self._last_revid, prev_last_revid)
+
+    def pull(self, overwrite=False, stop_revision=None,
+             possible_transports=None, _hook_master=None, run_hooks=True,
+             _override_hook_target=None):
+        """See Branch.pull.
+
+        :param _hook_master: Private parameter - set the branch to
+            be supplied as the master to pull hooks.
+        :param run_hooks: Private parameter - if false, this branch
+            is being called because it's the master of the primary branch,
+            so it should not run its hooks.
+        :param _override_hook_target: Private parameter - set the branch to be
+            supplied as the target_branch to pull hooks.
+        """
+        result = branch.PullResult()
+        result.source_branch = self.source
+        if _override_hook_target is None:
+            result.target_branch = self.target
+        else:
+            result.target_branch = _override_hook_target
+        self.source.lock_read()
+        try:
+            # We assume that during 'pull' the target repository is closer than
+            # the source one.
+            graph = self.target.repository.get_graph(self.source.repository)
+            result.old_revno, result.old_revid = \
+                self.target.last_revision_info()
+            self.target.update_revisions(self.source, stop_revision,
+                overwrite=overwrite, graph=graph)
+            result.tag_conflicts = self.source.tags.merge_to(self.target.tags,
+                overwrite)
+            result.new_revno, result.new_revid = self.target.last_revision_info()
+            if _hook_master:
+                result.master_branch = _hook_master
+                result.local_branch = result.target_branch
+            else:
+                result.master_branch = result.target_branch
+                result.local_branch = None
+            if run_hooks:
+                for hook in branch.Branch.hooks['post_pull']:
+                    hook(result)
+        finally:
+            self.source.unlock()
+        return result
+
+
 
 
 branch.InterBranch.register_optimiser(InterGitGenericBranch)

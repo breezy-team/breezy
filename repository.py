@@ -214,7 +214,8 @@ class LocalGitRepository(GitRepository):
                     revidmap[revid] = git_revid
             finally:
                 pb.finished()
-            source.fetch(self, revision_id=revidmap[stop_revision])
+            if revidmap != {}:
+                source.fetch(self, revision_id=revidmap[stop_revision])
         finally:
             source.unlock()
         return revidmap
