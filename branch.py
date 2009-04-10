@@ -43,6 +43,22 @@ from bzrlib.plugins.git.errors import (
     )
 
 
+class GitPullResult(branch.PullResult):
+
+    def _lookup_revno(self, revid):
+        assert isinstance(revid, str), "was %r" % revid
+        # Try in source branch first, it'll be faster
+        return self.target_branch.revision_id_to_revno(revid)
+
+    @property
+    def old_revno(self):
+        return self._lookup_revno(self.old_revid)
+
+    @property
+    def new_revno(self):
+        return self._lookup_revno(self.new_revid)
+
+
 class LocalGitTagDict(tag.BasicTags):
     """Dictionary with tags in a local repository."""
 
@@ -129,10 +145,17 @@ class GitBranch(foreign.ForeignBranch):
             stop_revision = source.last_revision()
         # FIXME: Check for diverged branches
         revidmap = self.repository.dfetch(source.repository, stop_revision)
-        self.head, self.mapping = self.mapping.revision_id_bzr_to_foreign(
-            revidmap[stop_revision])
-        self.repository._git.set_ref(self.name, self.head)
+        self.generate_revision_history(revidmap[stop_revision])
         return revidmap
+
+    def generate_revision_history(self, revid, old_revid=None):
+        # FIXME: Check that old_revid is in the ancestry of revid
+        newhead, self.mapping = self.mapping.revision_id_bzr_to_foreign(revid)
+        self._set_head(newhead)
+
+    def _set_head(self, head):
+        self.repository._git.set_ref(self.name, self.head)
+        self.head = head
 
     def lock_write(self):
         self.control_files.lock_write()
@@ -242,7 +265,8 @@ class InterGitGenericBranch(branch.InterBranch):
 
     @classmethod
     def is_compatible(self, source, target):
-        return isinstance(source, GitBranch)
+        return (isinstance(source, GitBranch) and 
+                not isinstance(target, GitBranch))
 
     def update_revisions(self, stop_revision=None, overwrite=False,
         graph=None):
@@ -273,3 +297,31 @@ class InterGitGenericBranch(branch.InterBranch):
 
 
 branch.InterBranch.register_optimiser(InterGitGenericBranch)
+
+
+class InterGitRemoteLocalBranch(branch.InterBranch):
+    """InterBranch implementation that pulls between Git branches."""
+
+    @classmethod
+    def is_compatible(self, source, target):
+        from bzrlib.plugins.git.remote import RemoteGitBranch
+        return (isinstance(source, RemoteGitBranch) and 
+                isinstance(target, LocalGitBranch))
+
+    def pull(self, stop_revision=None, overwrite=False, 
+        possible_transports=None):
+        result = GitPullResult()
+        result.source_branch = self.source
+        result.target_branch = self.target
+        interrepo = repository.InterRepository.get(self.source.repository, 
+            self.target.repository)
+        result.old_revid = self.target.last_revision()
+        if stop_revision is None:
+            stop_revision = self.source.last_revision()
+        interrepo.fetch(revision_id=stop_revision)
+        self.target.generate_revision_history(stop_revision, result.old_revid)
+        result.new_revid = self.target.last_revision()
+        return result
+
+
+branch.InterBranch.register_optimiser(InterGitRemoteLocalBranch)

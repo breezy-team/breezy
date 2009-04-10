@@ -488,10 +488,9 @@ class InterGitRepository(InterRepository):
             determine_wants = lambda x: [y for y in args if not y in r.object_store]
 
         graphwalker = SimpleFetchGraphWalker(r.heads().values(), r.get_parents)
-        f, commit = r.object_store.add_pack()
+        f, commit = r.object_store.add_thin_pack()
         try:
-            self.source._git.fetch_pack(path, determine_wants, graphwalker, f.write, progress)
-            f.close()
+            self.source.fetch_pack(determine_wants, graphwalker, f.write, progress)
             commit()
         except:
             f.close()
