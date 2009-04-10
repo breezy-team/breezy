@@ -29,6 +29,9 @@ from bzrlib.errors import (
     NoSuchFile,
     NotLocalUrl,
     )
+from bzrlib.foreign import (
+    ForeignBranch,
+    )
 from bzrlib.lockable_files import (
     TransportLock,
     )
@@ -56,9 +59,6 @@ from bzrlib.plugins.git.errors import (
     )
 from bzrlib.plugins.git.dir import (
     GitDir,
-    )
-from bzrlib.plugins.git.foreign import (
-    ForeignBranch,
     )
 from bzrlib.plugins.git.repository import (
     GitRepositoryFormat,

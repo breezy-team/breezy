@@ -31,8 +31,8 @@ from bzrlib.foreign import (
     VcsMappingRegistry, 
     ForeignRevision,
     )
-from bzrlib.plugins.git.foreign import (
-    escape_commit_message,
+from bzrlib.xml_serializer import (
+    escape_invalid_chars,
     )
 
 
@@ -88,10 +88,10 @@ class BzrGitMapping(foreign.VcsMapping):
             raise AssertionError("Commit object can't be None")
         rev = ForeignRevision(commit.id, self, self.revision_id_foreign_to_bzr(commit.id))
         rev.parent_ids = tuple([self.revision_id_foreign_to_bzr(p) for p in commit.parents])
-        rev.message = escape_commit_message(commit.message.decode("utf-8", "replace"))
-        rev.committer = escape_commit_message(str(commit.committer).decode("utf-8", "replace"))
+        rev.message = escape_invalid_chars(commit.message.decode("utf-8", "replace"))[0]
+        rev.committer = escape_invalid_chars(str(commit.committer).decode("utf-8", "replace"))[0]
         if commit.committer != commit.author:
-            rev.properties['author'] = escape_commit_message(str(commit.author).decode("utf-8", "replace"))
+            rev.properties['author'] = escape_invalid_chars(str(commit.author).decode("utf-8", "replace"))[0]
         rev.timestamp = commit.commit_time
         rev.timezone = 0
         return rev
