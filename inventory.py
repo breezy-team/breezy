@@ -19,10 +19,108 @@
 
 
 from bzrlib import (
+    errors,
     inventory,
     osutils,
     urlutils,
     )
+
+
+class GitInventoryEntry(inventory.InventoryEntry):
+
+    def __init__(self, inv, parent_id, hexsha, path, name, executable):
+        self.name = name
+        self.parent_id = parent_id
+        self._inventory = inv
+        self._object = None
+        self.hexsha = hexsha
+        self.path = path
+        self.revision = self._inventory.revision_id
+        self.executable = executable
+        self.file_id = self._inventory.mapping.generate_file_id(path.encode('utf-8'))
+
+    @property
+    def object(self):
+        if self._object is None:
+            self._object = self._inventory.store[self.hexsha]
+        return self._object
+
+
+class GitInventoryFile(GitInventoryEntry):
+
+    def __init__(self, inv, parent_id, hexsha, path, basename, executable):
+        super(GitInventoryFile, self).__init__(inv, parent_id, hexsha, path, basename, executable)
+        self.kind = 'file'
+        self.symlink_target = None
+
+    @property
+    def text_sha1(self):
+        return osutils.sha_string(self.object.data)
+
+    @property
+    def text_size(self):
+        return len(self.object.data)
+
+    def kind_character(self):
+        """See InventoryEntry.kind_character."""
+        return ''
+
+
+class GitInventoryLink(GitInventoryEntry):
+
+    def __init__(self, inv, parent_id, hexsha, path, basename, executable):
+        super(GitInventoryLink, self).__init__(inv, parent_id, hexsha, path, basename, executable)
+        self.text_sha1 = None
+        self.text_size = None
+        self.kind = 'symlink'
+
+    @property
+    def symlink_target(self):
+        return self.object.data
+
+    def kind_character(self):
+        """See InventoryEntry.kind_character."""
+        return ''
+
+
+class GitInventoryDirectory(GitInventoryEntry):
+
+    def __init__(self, inv, parent_id, hexsha, path, basename, executable):
+        super(GitInventoryDirectory, self).__init__(inv, parent_id, hexsha, path, basename, executable)
+        self.text_sha1 = None
+        self.text_size = None
+        self.symlink_target = None
+        self.kind = 'directory'
+
+    def kind_character(self):
+        """See InventoryEntry.kind_character."""
+        return '/'
+
+    @property
+    def children(self):
+        ret = {}
+        for mode, name, hexsha in self.object.entries():
+            basename = name.decode("utf-8")
+            child_path = osutils.pathjoin(self.path, basename)
+            entry_kind = (mode & 0700000) / 0100000
+            fs_mode = mode & 0777
+            executable = bool(fs_mode & 0111)
+            if entry_kind == 0:
+                kind_class = GitInventoryDirectory
+            elif entry_kind == 1:
+                file_kind = (mode & 070000) / 010000
+                if file_kind == 0:
+                    kind_class = GitInventoryFile
+                elif file_kind == 2:
+                    kind_class = GitInventoryLink
+                else:
+                    raise AssertionError(
+                        "Unknown file kind, perms=%o." % (mode,))
+            else:
+                raise AssertionError(
+                    "Unknown blob kind, perms=%r." % (mode,))
+            ret[basename] = kind_class(self._inventory, self.file_id, hexsha, child_path, basename, executable)
+        return ret
 
 
 class GitInventory(inventory.Inventory):
@@ -31,45 +129,45 @@ class GitInventory(inventory.Inventory):
         super(GitInventory, self).__init__(revision_id)
         self.store = store
         self.mapping = mapping
-        self.root.revision = revision_id
-        self._build_inventory(tree_id, self.root, "")
+        self.root = GitInventoryDirectory(self, None, tree_id, "", "", False)
 
-    def _build_inventory(self, tree_id, ie, path):
-        assert isinstance(path, str)
-        tree = self.store[tree_id]
-        for mode, name, hexsha in tree.entries():
-            basename = name.decode("utf-8")
-            if path == "":
-                child_path = name
-            else:
-                child_path = urlutils.join(path, name)
-            file_id = self.mapping.generate_file_id(child_path)
-            entry_kind = (mode & 0700000) / 0100000
-            if entry_kind == 0:
-                child_ie = inventory.InventoryDirectory(file_id, basename, ie.file_id)
-            elif entry_kind == 1:
-                file_kind = (mode & 070000) / 010000
-                b = self.store[hexsha]
-                if file_kind == 0:
-                    child_ie = inventory.InventoryFile(file_id, basename, ie.file_id)
-                    child_ie.text_sha1 = osutils.sha_string(b.data)
-                elif file_kind == 2:
-                    child_ie = inventory.InventoryLink(file_id, basename, ie.file_id)
-                    child_ie.symlink_target = b.data
-                    child_ie.text_sha1 = osutils.sha_string("")
-                else:
-                    raise AssertionError(
-                        "Unknown file kind, perms=%o." % (mode,))
-                child_ie.text_id = b.id
-                child_ie.text_size = len(b.data)
-            else:
-                raise AssertionError(
-                    "Unknown blob kind, perms=%r." % (mode,))
-            fs_mode = mode & 0777
-            child_ie.executable = bool(fs_mode & 0111)
-            # TODO: This should be set to the revision id in which 
-            # child_ie was last changed instead.
-            child_ie.revision = self.root.revision
-            self.add(child_ie)
-            if entry_kind == 0:
-                self._build_inventory(hexsha, child_ie, child_path)
+    def _get_ie(self, path):
+        parts = path.split("/")
+        ie = self.root
+        for name in parts:
+            ie = ie.children[name] 
+        return ie
+
+    def has_filename(self, path):
+        try:
+            self._get_ie(path)
+            return True
+        except KeyError:
+            return False
+
+    def has_id(self, file_id):
+        try:
+            self.id2path(file_id)
+            return True
+        except errors.NoSuchId:
+            return False
+
+    def id2path(self, file_id):
+        path = self.mapping.parse_file_id(file_id)
+        try:
+            ie = self._get_ie(path)
+            assert ie.path == path
+        except KeyError:
+            raise errors.NoSuchId(None, file_id)
+
+    def path2id(self, path):
+        try:
+            return self._get_ie(path).file_id
+        except KeyError:
+            return None
+
+    def __getitem__(self, file_id):
+        if file_id == inventory.ROOT_ID:
+            return self.root
+        path = self.mapping.parse_file_id(file_id)
+        return self._get_ie(path)

@@ -306,7 +306,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
     def get_file_text(self, file_id):
         entry = self._inventory[file_id]
         if entry.kind == 'directory': return ""
-        return self._repository._git.get_blob(entry.text_id).data
+        return entry.object.data
 
 class GitRepositoryFormat(repository.RepositoryFormat):
 
