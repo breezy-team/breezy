@@ -1342,8 +1342,8 @@ class Inventory(CommonInventory):
             yield ie
             file_id = ie.parent_id
 
-    def has_filename(self, names):
-        return bool(self.path2id(names))
+    def has_filename(self, filename):
+        return bool(self.path2id(filename))
 
     def has_id(self, file_id):
         return (file_id in self._byid)
