@@ -43,7 +43,7 @@ from bzrlib.plugins.git.foreign import (
     versionedfiles,
     )
 from bzrlib.plugins.git.inventory import (
-    build_inventory,
+    GitInventory,
     )
 from bzrlib.plugins.git.mapping import (
     default_mapping,
@@ -298,9 +298,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
         except KeyError, r:
             raise errors.NoSuchRevision(repository, revision_id)
         self.tree = commit.tree
-        self._inventory = inventory.Inventory(revision_id=revision_id)
-        self._inventory.root.revision = revision_id
-        build_inventory(self._inventory, self.tree, self._inventory.root, "", self.mapping, repository._git.object_store)
+        self._inventory = GitInventory(self.tree, self.mapping, repository._git.object_store, revision_id)
 
     def get_revision_id(self):
         return self._revision_id
