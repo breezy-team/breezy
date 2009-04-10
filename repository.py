@@ -42,6 +42,9 @@ from bzrlib.transport import (
 from bzrlib.plugins.git.foreign import (
     versionedfiles,
     )
+from bzrlib.plugins.git.inventory import (
+    build_inventory,
+    )
 from bzrlib.plugins.git.mapping import (
     default_mapping,
     inventory_to_tree_and_blobs,
@@ -297,7 +300,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
         self.tree = commit.tree
         self._inventory = inventory.Inventory(revision_id=revision_id)
         self._inventory.root.revision = revision_id
-        self._build_inventory(self.tree, self._inventory.root, "")
+        build_inventory(self._inventory, self.tree, self._inventory.root, "", self.mapping, repository._git.object_store)
 
     def get_revision_id(self):
         return self._revision_id
@@ -306,47 +309,6 @@ class GitRevisionTree(revisiontree.RevisionTree):
         entry = self._inventory[file_id]
         if entry.kind == 'directory': return ""
         return self._repository._git.get_blob(entry.text_id).data
-
-    def _build_inventory(self, tree_id, ie, path):
-        assert isinstance(path, str)
-        tree = self._repository._git.tree(tree_id)
-        for mode, name, hexsha in tree.entries():
-            basename = name.decode("utf-8")
-            if path == "":
-                child_path = name
-            else:
-                child_path = urlutils.join(path, name)
-            file_id = self.mapping.generate_file_id(child_path)
-            entry_kind = (mode & 0700000) / 0100000
-            if entry_kind == 0:
-                child_ie = inventory.InventoryDirectory(file_id, basename, ie.file_id)
-            elif entry_kind == 1:
-                file_kind = (mode & 070000) / 010000
-                b = self._repository._git.get_blob(hexsha)
-                if file_kind == 0:
-                    child_ie = inventory.InventoryFile(file_id, basename, ie.file_id)
-                    child_ie.text_sha1 = osutils.sha_string(b.data)
-                elif file_kind == 2:
-                    child_ie = inventory.InventoryLink(file_id, basename, ie.file_id)
-                    child_ie.symlink_target = b.data
-                    child_ie.text_sha1 = osutils.sha_string("")
-                else:
-                    raise AssertionError(
-                        "Unknown file kind, perms=%o." % (mode,))
-                child_ie.text_id = b.id
-                child_ie.text_size = len(b.data)
-            else:
-                raise AssertionError(
-                    "Unknown blob kind, perms=%r." % (mode,))
-            fs_mode = mode & 0777
-            child_ie.executable = bool(fs_mode & 0111)
-            # TODO: This should be set to the revision id in which 
-            # child_ie was last changed instead.
-            child_ie.revision = self._revision_id
-            self._inventory.add(child_ie)
-            if entry_kind == 0:
-                self._build_inventory(hexsha, child_ie, child_path)
-
 
 class GitRepositoryFormat(repository.RepositoryFormat):
 
