@@ -1543,7 +1543,7 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         self.assertEquals(expected_prompt, stdout.read(len(expected_prompt)))
         self._check_password_prompt(t._unqualified_scheme, 'joe',
                                     stdout.readline())
- 
+
     def test_prompt_for_password(self):
         if self._testing_pycurl():
             raise tests.TestNotApplicable(
