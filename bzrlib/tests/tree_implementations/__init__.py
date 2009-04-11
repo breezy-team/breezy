@@ -32,13 +32,6 @@ from bzrlib import (
     tests,
     transform,
     )
-from bzrlib.transport import get_transport
-from bzrlib.tests import (
-                          multiply_tests,
-                          default_transport,
-                          TestCaseWithTransport,
-                          TestSkipped,
-                          )
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.tests.workingtree_implementations import (
     make_scenarios as wt_make_scenarios,
@@ -97,7 +90,7 @@ def preview_tree_post(testcase, tree):
     return preview_tree
 
 
-class TestTreeImplementationSupport(TestCaseWithTransport):
+class TestTreeImplementationSupport(tests.TestCaseWithTransport):
 
     def test_revision_tree_from_workingtree(self):
         tree = self.make_branch_and_tree('.')
@@ -239,6 +232,7 @@ class TestCaseWithTree(TestCaseWithBzrDir):
         note that the order of the paths and fileids is deliberately
         mismatched to ensure that the result order is path based.
         """
+        self.requireFeature(tests.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree('.')
         paths = ['0file',
             '1top-dir/',
@@ -253,11 +247,7 @@ class TestCaseWithTree(TestCaseWithBzrDir):
             '1file-in-1topdir',
             '0dir-in-1topdir'
             ]
-        try:
-            self.build_tree(paths)
-        except UnicodeError:
-            raise TestSkipped(
-                'This platform does not support unicode file paths.')
+        self.build_tree(paths)
         tree.add(paths, ids)
         tt = transform.TreeTransform(tree)
         if symlinks:
@@ -274,6 +264,7 @@ class TestCaseWithTree(TestCaseWithBzrDir):
 
     def _create_tree_with_utf8(self, tree):
         """Generate a tree with a utf8 revision and unicode paths."""
+        self.requireFeature(tests.UnicodeFilenameFeature)
         # We avoid combining characters in file names here, normalization
         # checks (as performed by some file systems (OSX) are outside the scope
         # of these tests).  We use the euro sign \N{Euro Sign} or \u20ac in
@@ -290,10 +281,7 @@ class TestCaseWithTree(TestCaseWithBzrDir):
                     'ba\xe2\x82\xacr-id',
                     'ba\xe2\x82\xacz-id',
                    ]
-        try:
-            self.build_tree(paths[1:])
-        except UnicodeError:
-            raise tests.TestSkipped('filesystem does not support unicode.')
+        self.build_tree(paths[1:])
         if tree.get_root_id() is None:
             # Some trees do not have a root yet.
             tree.add(paths, file_ids)
@@ -333,7 +321,7 @@ def make_scenarios(transport_server, transport_readonly_server, formats):
     for scenario in scenarios:
         # for working tree format tests, preserve the tree
         scenario[1]["_workingtree_to_test_tree"] = return_parameter
-        # add RevisionTree scenario
+    # add RevisionTree scenario
     workingtree_format = WorkingTreeFormat._default_format
     scenarios.append((RevisionTree.__name__,
         create_tree_scenario(transport_server, transport_readonly_server,
@@ -359,7 +347,6 @@ def create_tree_scenario(transport_server, transport_readonly_server,
     workingtree_format, converter):
     """Create a scenario for the specified converter
 
-    :param name: The name to append to tests using this converter
     :param converter: A function that converts a workingtree into the
         desired format.
     :param workingtree_format: The particular workingtree format to
@@ -367,8 +354,9 @@ def create_tree_scenario(transport_server, transport_readonly_server,
     :return: a (name, options) tuple, where options is a dict of values
         to be used as members of the TestCase.
     """
-    scenario_options = wt_make_scenario(transport_server, transport_readonly_server,
-        workingtree_format)
+    scenario_options = wt_make_scenario(transport_server,
+                                        transport_readonly_server,
+                                        workingtree_format)
     scenario_options["_workingtree_to_test_tree"] = converter
     return scenario_options
 
@@ -389,10 +377,10 @@ def load_tests(standard_tests, module, loader):
         'bzrlib.tests.tree_implementations.test_walkdirs',
         ])
     scenarios = make_scenarios(
-        default_transport,
+        tests.default_transport,
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
         WorkingTreeFormat._formats.values() + _legacy_formats)
     # add the tests for the sub modules
-    return multiply_tests(submod_tests, scenarios, standard_tests)
+    return tests.multiply_tests(submod_tests, scenarios, standard_tests)
