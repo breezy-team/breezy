@@ -1,3 +1,10 @@
+bzr (1.14~rc1-2) unstable; urgency=low
+
+  * Add missing dependency on zlib development library. (Closes:
+    #523595)
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Sat, 11 Apr 2009 14:25:12 +0200
+
 bzr (1.14~rc1-1) unstable; urgency=low
 
   * New upstream release.
