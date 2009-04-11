@@ -1218,6 +1218,9 @@ class CredentialStoreRegistry(registry.Registry):
     provided by plugins that will therefore use
     register_lazy(password_encoding, module_name, member_name, help=help,
     fallback=fallback) to install themselves.
+
+    A fallback credential store is one that is queried if no credentials can be
+    found via authentication.conf.
     """
 
     def get_credential_store(self, encoding=None):
@@ -1227,27 +1230,29 @@ class CredentialStoreRegistry(registry.Registry):
         return cs
 
     def is_fallback(self, name):
-        """Check if the named credentials store should be used as fallback.
-        """
+        """Check if the named credentials store should be used as fallback."""
         return self.get_info(name)
 
     def get_fallback_credentials(self, scheme, host, port=None, user=None,
                                  path=None, realm=None):
         """Request credentials from all fallback credentials stores.
+
+        The first credentials store that can provide credentials wins.
         """
-        # First credentials store that can provide credentials wins
+        credentials = None
         for name in self.keys():
             if not self.is_fallback(name):
                 continue
             cs = self.get_credential_store(name)
-            credentials = cs.get_credentials(scheme, host, port, user, 
-                path, realm)
+            credentials = cs.get_credentials(scheme, host, port, user,
+                                             path, realm)
             if credentials is not None:
-                return credentials
-        return None
+                # We found some credentials
+                break
+        return credentials
 
     def register(self, key, obj, help=None, override_existing=False,
-        fallback=False):
+                 fallback=False):
         """Register a new object to a name.
 
         :param key: This is the key to use to request the object later.
@@ -1262,11 +1267,12 @@ class CredentialStoreRegistry(registry.Registry):
         :param fallback: Whether this credential store should be 
                 used as fallback.
         """
-        return super(CredentialStoreRegistry, self).register(
-            key, obj, help, info=fallback, override_existing=override_existing)
+        return super(CredentialStoreRegistry,
+                     self).register(key, obj, help, info=fallback,
+                                    override_existing=override_existing)
 
     def register_lazy(self, key, module_name, member_name,
-                      help=None, override_existing=False, 
+                      help=None, override_existing=False,
                       fallback=False):
         """Register a new credential store to be loaded on request.
 
@@ -1293,10 +1299,10 @@ class CredentialStore(object):
     """An abstract class to implement storage for credentials"""
 
     def decode_password(self, credentials):
-        """Returns a password for the provided credentials in clear text."""
+        """Returns a clear text password for the provided credentials."""
         raise NotImplementedError(self.decode_password)
 
-    def get_credentials(self, scheme, host, port=None, user=None, path=None, 
+    def get_credentials(self, scheme, host, port=None, user=None, path=None,
                         realm=None):
         """Return the matching credentials from this credential store.
 

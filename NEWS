@@ -56,7 +56,8 @@ Internals
 
 * Fallback ``CredentialStore`` instances registered with ``fallback=True``
   are now be able to provide credentials if obtaining credentials 
-  via ~/.bazaar/authentication.conf fails. (Jelmer Vernooij, #321918)
+  via ~/.bazaar/authentication.conf fails. (Jelmer Vernooij, 
+  Vincent Ladeuil, #321918)
 
 bzr 1.14rc1
 ###########
