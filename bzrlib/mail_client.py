@@ -149,7 +149,7 @@ class BodyExternalMailClient(MailClient):
             outfile.close()
         kwargs = {'body': body}
         self._compose(prompt, to, subject, attach_path, mime_subtype,
-                      extension, **kwargs)
+                      extension, body=body)
 
     def _compose(self, prompt, to, subject, attach_path, mime_subtype,
                 extension, body=None):
