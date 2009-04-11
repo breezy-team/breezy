@@ -38,6 +38,9 @@ Bug Fixes
 * End-Of-Line content filters are now loaded correctly.
   (Ian Clatworthy, Brian de Alwis, #355280)
 
+* ``bzr send`` works to send emails again using MAPI.
+  (Neil Martinsen-Burrell, #346998)
+
 * Non-recursive ``bzr ls`` now works properly when a path is specified.
   (Jelmer Vernooij, #357863)
 
