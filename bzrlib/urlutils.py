@@ -721,7 +721,7 @@ def parse_url(url):
         except ValueError:
             raise errors.InvalidURL('invalid port number %s in url:\n%s' %
                                     (port, url))
-    if host[0] == '[' and host[-1] == ']': #IPv6
+    if host != "" and host[0] == '[' and host[-1] == ']': #IPv6
         host = host[1:-1]
 
     if host == '':
