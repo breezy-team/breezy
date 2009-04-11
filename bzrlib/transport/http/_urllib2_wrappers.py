@@ -1244,14 +1244,20 @@ class BasicAuthHandler(AbstractAuthHandler):
         auth_header = 'Basic ' + raw.encode('base64').strip()
         return auth_header
 
+    def extract_realm(self, header_value):
+        match = self.auth_regexp.search(header_value)
+        realm = None
+        if match:
+            realm = match.group(1)
+        return match, realm
+
     def auth_match(self, header, auth):
         scheme, raw_auth = self._parse_auth_header(header)
         if scheme != 'basic':
             return False
 
-        match = self.auth_regexp.search(raw_auth)
+        match, realm = self.extract_realm(raw_auth)
         if match:
-            realm = match.groups()
             if scheme != 'basic':
                 return False
 
