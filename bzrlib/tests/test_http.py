@@ -215,9 +215,11 @@ class RecordingServer(object):
 
 class TestAuthHeader(tests.TestCase):
 
-    def parse_header(self, header):
-        ah =  _urllib2_wrappers.AbstractAuthHandler()
-        return ah._parse_auth_header(header)
+    def parse_header(self, header, auth_handler_class=None):
+        if auth_handler_class is None:
+            auth_handler_class = _urllib2_wrappers.AbstractAuthHandler
+        self.auth_handler =  auth_handler_class()
+        return self.auth_handler._parse_auth_header(header)
 
     def test_empty_header(self):
         scheme, remainder = self.parse_header('')
@@ -234,6 +236,14 @@ class TestAuthHeader(tests.TestCase):
             'Basic realm="Thou should not pass"')
         self.assertEquals('basic', scheme)
         self.assertEquals('realm="Thou should not pass"', remainder)
+
+    def test_basic_extract_realm(self):
+        scheme, remainder = self.parse_header(
+            'Basic realm="Thou should not pass"',
+            _urllib2_wrappers.BasicAuthHandler)
+        match, realm = self.auth_handler.extract_realm(remainder)
+        self.assertTrue(match is not None)
+        self.assertEquals('Thou should not pass', realm)
 
     def test_digest_header(self):
         scheme, remainder = self.parse_header(
@@ -1533,7 +1543,7 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         self.assertEquals(expected_prompt, stdout.read(len(expected_prompt)))
         self._check_password_prompt(t._unqualified_scheme, 'joe',
                                     stdout.readline())
- 
+
     def test_prompt_for_password(self):
         if self._testing_pycurl():
             raise tests.TestNotApplicable(
