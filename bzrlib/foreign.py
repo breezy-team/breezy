@@ -28,6 +28,7 @@ from bzrlib import (
     errors,
     osutils,
     registry,
+    transform,
     )
 """)
 
@@ -291,6 +292,25 @@ def _determine_fileid_renames(old_inv, new_inv):
     return ret
 
 
+def update_workingtree_fileids(wt, target_tree):
+    tt = transform.TreeTransform(wt)
+    try:
+        for f, p, c, v, d, n, k, e in target_tree.iter_changes(wt):
+            if v == (True, False):
+                trans_id = tt.trans_id_tree_path(p[0])
+                tt.unversion_file(trans_id)
+            elif v == (False, True):
+                trans_id = tt.trans_id_tree_path(p[1])
+                tt.version_file(f, trans_id)
+        tt.apply()
+    finally:
+        tt.finalize()
+    if len(wt.get_parent_ids()) == 1:
+        wt.set_parent_trees([(target_tree.get_revision_id(), target_tree)])
+    else:
+        wt.set_last_revision(target_tree.get_revision_id())
+
+
 def update_workinginv_fileids(wt, old_inv, new_inv):
     """Update all file ids in wt according to old_tree/new_tree. 
 
@@ -385,14 +405,15 @@ class cmd_dpush(Command):
                 if source_wt is not None and old_last_revid != new_last_revid:
                     source_wt.lock_write()
                     try:
-                        update_workinginv_fileids(source_wt, 
-                            source_wt.branch.repository.get_inventory(
-                                old_last_revid),
-                            source_wt.branch.repository.get_inventory(
-                                new_last_revid))
+                        target = source_wt.branch.repository.revision_tree(
+                            new_last_revid)
+                        update_workingtree_fileids(source_wt, target)
+#                        update_workinginv_fileids(source_wt, 
+#                            source_wt.branch.repository.get_inventory(
+#                                old_last_revid),
+#                            source_wt.branch.repository.get_inventory(
+#                                new_last_revid))
                     finally:
                         source_wt.unlock()
         finally:
             target_branch.unlock()
-
-

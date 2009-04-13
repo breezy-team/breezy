@@ -355,6 +355,25 @@ class WorkingTreeFileUpdateTests(TestCaseWithTransport):
         finally:
             wt.unlock()
 
+    def test_update_workingtree(self):
+        wt = self.make_branch_and_tree('br1')
+        self.build_tree_contents([('br1/bla', 'original contents\n')])
+        wt.add('bla', 'bla-a')
+        wt.commit('bla-a')
+        target = wt.bzrdir.sprout('br2').open_workingtree()
+        target.unversion(['bla-a'])
+        target.add('bla', 'bla-b')
+        target.commit('bla-b')
+        target_basis = target.basis_tree()
+        target_basis.lock_read()
+        self.addCleanup(target_basis.unlock)
+        foreign.update_workingtree_fileids(wt, target_basis)
+        wt.lock_read()
+        try:
+            self.assertEquals(["TREE_ROOT", "bla-b"], list(wt.inventory))
+        finally:
+            wt.unlock()
+
 
 class DummyForeignVcsTests(TestCaseWithTransport):
     """Very basic test for DummyForeignVcs."""
