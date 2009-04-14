@@ -1425,12 +1425,14 @@ class TransportConfig(object):
             configobj.setdefault(section, {})[name] = value
         self._set_configobj(configobj)
 
-    def _get_configobj(self):
+    def _get_config_file(self):
         try:
-            return ConfigObj(self._transport.get(self._filename),
-                             encoding='utf-8')
+            return self._transport.get(self._filename)
         except errors.NoSuchFile:
-            return ConfigObj(encoding='utf-8')
+            return StringIO()
+
+    def _get_configobj(self):
+        return ConfigObj(self._get_config_file(), encoding='utf-8')
 
     def _set_configobj(self, configobj):
         out_file = StringIO()

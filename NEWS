@@ -52,7 +52,9 @@ Internals
 
 * ``bzrlib.bzrdir.BzrDir._get_config`` now returns a ``TransportConfig``
   or similar when the dir supports configuration settings. The base class
-  defaults to None. (Robert Collins)
+  defaults to None. There is a matching new server verb
+  ``BzrDir.get-config_file`` to reduce roundtrips for getting BzrDir
+  configuration. (Robert Collins)
 
 * ``bzrlib.tests.ExtendedTestResult`` has new methods ``startTests``
   called before the first test is started, ``done`` called after the last

@@ -481,8 +481,13 @@ request_handlers.register_lazy(
     'BzrDir.find_repositoryV3', 'bzrlib.smart.bzrdir',
     'SmartServerRequestFindRepositoryV3')
 request_handlers.register_lazy(
+    'BzrDir.get_config_file', 'bzrlib.smart.bzrdir',
+    'SmartServerBzrDirRequestConfigFile')
+request_handlers.register_lazy(
     'BzrDirFormat.initialize', 'bzrlib.smart.bzrdir',
     'SmartServerRequestInitializeBzrDir')
+request_handlers.register_lazy(
+    'BzrDir.open', 'bzrlib.smart.bzrdir', 'SmartServerRequestOpenBzrDir')
 request_handlers.register_lazy(
     'BzrDir.open_branch', 'bzrlib.smart.bzrdir',
     'SmartServerRequestOpenBranch')
@@ -553,5 +558,3 @@ request_handlers.register_lazy(
     'stat', 'bzrlib.smart.vfs', 'StatRequest')
 request_handlers.register_lazy(
     'Transport.is_readonly', 'bzrlib.smart.request', 'SmartServerIsReadonly')
-request_handlers.register_lazy(
-    'BzrDir.open', 'bzrlib.smart.bzrdir', 'SmartServerRequestOpenBzrDir')

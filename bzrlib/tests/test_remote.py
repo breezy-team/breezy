@@ -1442,8 +1442,6 @@ class TestBzrDirGetSetConfig(RemoteBzrDirTestCase):
     def test_set_option_uses_vfs(self):
         self.setup_smart_server_with_call_log()
         bzrdir = self.make_bzrdir('.')
-        verb = 'BzrDir.get_config_file'
-        # self.disable_verb(verb)
         self.reset_smart_call_log()
         config = bzrdir.get_config()
         config.set_default_stack_on('/')
@@ -1453,6 +1451,7 @@ class TestBzrDirGetSetConfig(RemoteBzrDirTestCase):
         self.setup_smart_server_with_call_log()
         bzrdir = self.make_bzrdir('.')
         verb = 'BzrDir.get_config_file'
+        self.disable_verb(verb)
         self.reset_smart_call_log()
         self.assertEqual(None,
             bzrdir._get_config().get_option('default_stack_on'))
@@ -2450,7 +2449,7 @@ class TestStacking(tests.TestCaseWithTransport):
         try:
             # it should have an appropriate fallback repository, which should also
             # be a RemoteRepository
-            self.assertEquals(len(remote_repo._fallback_repositories), 1)
+            self.assertLength(1, remote_repo._fallback_repositories)
             self.assertIsInstance(remote_repo._fallback_repositories[0],
                 RemoteRepository)
             # and it has the revision committed to the underlying repository;

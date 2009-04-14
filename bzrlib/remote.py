@@ -2414,7 +2414,7 @@ class RemoteConfig(object):
             return self._vfs_get_option(name, section, default)
 
     def _response_to_configobj(self, response):
-        if response[0][0] != 'ok':
+        if len(response[0]) and response[0][0] != 'ok':
             raise UnexpectedSmartServerResponse(response)
         lines = response[1].read_body_bytes().splitlines()
         return config.ConfigObj(lines, encoding='utf-8')
