@@ -16,17 +16,21 @@
 
 import os
 
-from bzrlib.export import export
-from bzrlib.tests import TestCaseWithTransport
+
+from bzrlib import (
+    export,
+    tests,
+    )
 
 
-class TestExport(TestCaseWithTransport):
+class TestExport(tests.TestCaseWithTransport):
 
     def test_dir_export_missing_file(self):
         self.build_tree(['a/', 'a/b', 'a/c'])
         wt = self.make_branch_and_tree('.')
         wt.add(['a', 'a/b', 'a/c'])
         os.unlink('a/c')
-        export(wt, 'target', format="dir")
+        export.export(wt, 'target', format="dir")
         self.failUnlessExists('target/a/b')
         self.failIfExists('target/a/c')
+

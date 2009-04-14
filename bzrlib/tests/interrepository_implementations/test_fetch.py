@@ -125,6 +125,14 @@ class TestInterRepository(TestCaseWithInterRepository):
             'unordered', True).next().get_bytes_as('fulltext'))
 
     def test_fetch_parent_inventories_at_stacking_boundary(self):
+        """Fetch to a stacked branch copies inventories for parents of
+        revisions at the stacking boundary.
+
+        This is necessary so that the server is able to determine the file-ids
+        altered by all revisions it contains, which means that it needs both
+        the inventory for any revision it has, and the inventories of all that
+        revision's parents.
+        """
         to_repo = self.make_to_repository('to')
         if not to_repo._format.supports_external_lookups:
             raise TestNotApplicable("Need stacking support in the target.")

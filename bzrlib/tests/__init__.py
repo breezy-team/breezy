@@ -542,7 +542,7 @@ class TextTestRunner(object):
             for t in iter_suite_tests(test):
                 self.stream.writeln("%s" % (t.id()))
                 run += 1
-            actionTaken = "Listed"
+            return None
         else:
             try:
                 import testtools
@@ -2130,8 +2130,8 @@ class TestCaseWithMemoryTransport(TestCase):
         return memorytree.MemoryTree.create_on_branch(b)
 
     def make_branch_builder(self, relpath, format=None):
-        return branchbuilder.BranchBuilder(self.get_transport(relpath),
-            format=format)
+        branch = self.make_branch(relpath, format=format)
+        return branchbuilder.BranchBuilder(branch=branch)
 
     def overrideEnvironmentForTesting(self):
         os.environ['HOME'] = self.test_home_dir
@@ -2653,6 +2653,8 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
     for decorator in decorators:
         suite = decorator(suite)
     result = runner.run(suite)
+    if list_only:
+        return True
     if strict:
         return result.wasStrictlySuccessful()
     else:
@@ -3020,12 +3022,11 @@ class BZRTransformingResult(unittest.TestResult):
             # stringify the exception gives access to the remote traceback
             # We search the last line for 'prefix'
             lines = str(exc).split('\n')
-            if len(lines) > 1:
-                last = lines[-2] # -1 is empty, final \n
-            else:
-                last = lines[-1]
-            if last.startswith(prefix):
-                value = last[len(prefix):]
+            while lines and not lines[-1]:
+                lines.pop(-1)
+            if lines:
+                if lines[-1].startswith(prefix):
+                    value = lines[-1][len(prefix):]
         return value
 
 
@@ -3270,8 +3271,11 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.per_interbranch',
                    'bzrlib.tests.per_lock',
                    'bzrlib.tests.per_repository',
+                   'bzrlib.tests.per_repository_chk',
                    'bzrlib.tests.per_repository_reference',
+                   'bzrlib.tests.test__chk_map',
                    'bzrlib.tests.test__dirstate_helpers',
+                   'bzrlib.tests.test__groupcompress',
                    'bzrlib.tests.test__walkdirs_win32',
                    'bzrlib.tests.test_ancestry',
                    'bzrlib.tests.test_annotate',
@@ -3285,10 +3289,11 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_bugtracker',
                    'bzrlib.tests.test_bundle',
                    'bzrlib.tests.test_bzrdir',
-                   'bzrlib.tests.test_cache_utf8',
-                   'bzrlib.tests.test_clean_tree',
-                   'bzrlib.tests.test_chunk_writer',
                    'bzrlib.tests.test__chunks_to_lines',
+                   'bzrlib.tests.test_cache_utf8',
+                   'bzrlib.tests.test_chk_map',
+                   'bzrlib.tests.test_chunk_writer',
+                   'bzrlib.tests.test_clean_tree',
                    'bzrlib.tests.test_commands',
                    'bzrlib.tests.test_commit',
                    'bzrlib.tests.test_commit_merge',
@@ -3317,6 +3322,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_globbing',
                    'bzrlib.tests.test_gpg',
                    'bzrlib.tests.test_graph',
+                   'bzrlib.tests.test_groupcompress',
                    'bzrlib.tests.test_hashcache',
                    'bzrlib.tests.test_help',
                    'bzrlib.tests.test_hooks',
@@ -3650,9 +3656,10 @@ def _rmtree_temp_dir(dirname):
         osutils.rmtree(dirname)
     except OSError, e:
         if sys.platform == 'win32' and e.errno == errno.EACCES:
-            sys.stderr.write(('Permission denied: '
-                                 'unable to remove testing dir '
-                                 '%s\n' % os.path.basename(dirname)))
+            sys.stderr.write('Permission denied: '
+                             'unable to remove testing dir '
+                             '%s\n%s'
+                             % (os.path.basename(dirname), e))
         else:
             raise
 

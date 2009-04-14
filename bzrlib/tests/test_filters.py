@@ -111,9 +111,10 @@ class TestFilteredSha(TestCaseInTempDir):
 
 class TestFilterStackMaps(TestCase):
 
-    def _register_map(self, pref, stk1, stk2, fallback=None):
-        register_filter_stack_map(pref, {'v1': stk1, 'v2': stk2},
-            fallback=fallback)
+    def _register_map(self, pref, stk1, stk2):
+        def stk_lookup(key):
+            return {'v1': stk1, 'v2': stk2}.get(key)
+        register_filter_stack_map(pref, stk_lookup)
 
     def test_filter_stack_maps(self):
         # Save the current registry
@@ -155,28 +156,6 @@ class TestFilterStackMaps(TestCase):
             # Test an unknown value
             prefs = (('foo','v3'),)
             self.assertEqual([], _get_filter_stack_for(prefs))
-        finally:
-            # Restore the real registry
-            filters._reset_registry(original_registry)
-
-    def test_filter_stack_map_with_callback(self):
-        a_stack = [ContentFilter('b', 'c')]
-        d_stack = [ContentFilter('d', 'D')]
-        z_stack = [ContentFilter('y', 'x'), ContentFilter('w', 'v')]
-        def my_fallback(value):
-            if value == 'v3':
-                return d_stack
-            else:
-                return None
-        # Save the current registry
-        original_registry = filters._reset_registry()
-        try:
-            # Test registration
-            self._register_map('foo', a_stack, z_stack, my_fallback)
-            self.assertEqual(['foo'], _get_registered_names())
-            # Test lookup of a value only handled by the fallback
-            prefs = (('foo','v3'),)
-            self.assertEqual(d_stack, _get_filter_stack_for(prefs))
         finally:
             # Restore the real registry
             filters._reset_registry(original_registry)
