@@ -46,6 +46,10 @@ from bzrlib.commands import (
 from bzrlib.trace import (
     warning,
     )
+from bzrlib.version_info_formats.format_rio import (
+    RioVersionInfoBuilder,
+    )
+
 
 # versions ending in 'exp' mean experimental mappings
 # versions ending in 'dev' mean development version
@@ -245,6 +249,15 @@ foreign_vcs_registry.register_lazy("git",
 
 plugin_cmds.register_lazy("cmd_git_serve", [], "bzrlib.plugins.git.commands")
 plugin_cmds.register_lazy("cmd_git_import", [], "bzrlib.plugins.git.commands")
+
+def update_stanza(rev, stanza):
+    mapping = getattr(rev, "mapping", None)
+    if mapping is not None and mapping.revid_prefix.startswith("git-"):
+        stanza.add("git-commit", rev.foreign_revid)
+
+
+RioVersionInfoBuilder.hooks.install_named_hook('revision',
+    update_stanza, None)
 
 def get_rich_root_format(stacked=False):
     if stacked:
