@@ -1064,19 +1064,19 @@ class Branch(object):
     def update_references(self, target):
         if not getattr(self._format, 'supports_reference_locations', False):
             return
-        reference_dict = self._get_info_dict()
+        reference_dict = self._get_all_reference_info()
         if len(reference_dict) == 0:
             return
         old_base = self.base
         new_base = target.base
-        target_reference_dict = target._get_info_dict()
+        target_reference_dict = target._get_all_reference_info()
         for file_id, (tree_path, branch_location) in (
             reference_dict.items()):
             branch_location = urlutils.rebase_url(branch_location,
                                                   old_base, new_base)
             target_reference_dict.setdefault(
                 file_id, (tree_path, branch_location))
-        target._save_reference_dict(target_reference_dict)
+        target._set_all_reference_info(target_reference_dict)
 
     @needs_read_lock
     def check(self):
@@ -2546,7 +2546,24 @@ class BzrBranch8(BzrBranch5):
         """Set the parent branch"""
         return self._get_config_location('parent_location')
 
-    def _get_info_dict(self):
+    def _set_all_reference_info(self, info_dict):
+        """Replace all reference info stored in a branch.
+
+        :param info_dict: A dict of {file_id: (tree_path, branch_location)}
+        """
+        s = StringIO()
+        writer = rio.RioWriter(s)
+        for key, (tree_path, branch_location) in info_dict.iteritems():
+            stanza = rio.Stanza(file_id=key, tree_path=tree_path,
+                                branch_location=branch_location)
+            writer.write_stanza(stanza)
+        self._transport.put_bytes('references', s.getvalue())
+
+    def _get_all_reference_info(self):
+        """Return all the reference info stored in a branch.
+
+        :return: A dict of {file_id: (tree_path, branch_location)}
+        """
         rio_file = self._transport.get('references')
         try:
             stanzas = rio.read_stanzas(rio_file)
@@ -2557,8 +2574,14 @@ class BzrBranch8(BzrBranch5):
         return info_dict
 
     def set_reference_info(self, file_id, tree_path, branch_location):
-        """Set the branch location to use for a tree reference."""
-        info_dict = self._get_info_dict()
+        """Set the branch location to use for a tree reference.
+
+        :param file_id: The file-id of the tree reference.
+        :param tree_path: The path of the tree reference in the tree.
+        :param branch_location: The location of the branch to retrieve tree
+            references from.
+        """
+        info_dict = self._get_all_reference_info()
         info_dict[file_id] = (tree_path, branch_location)
         if None in (tree_path, branch_location):
             if tree_path is not None:
@@ -2568,20 +2591,14 @@ class BzrBranch8(BzrBranch5):
                 raise ValueError('branch_location must be None when tree_path'
                                  ' is None.')
             del info_dict[file_id]
-        self._save_reference_dict(info_dict)
-
-    def _save_reference_dict(self, info_dict):
-        s = StringIO()
-        writer = rio.RioWriter(s)
-        for key, (tree_path, branch_location) in info_dict.iteritems():
-            stanza = rio.Stanza(file_id=key, tree_path=tree_path,
-                                branch_location=branch_location)
-            writer.write_stanza(stanza)
-        self._transport.put_bytes('references', s.getvalue())
+        self._set_all_reference_info(info_dict)
 
     def get_reference_info(self, file_id):
-        """Get the tree_path and branch_location for a tree reference."""
-        return self._get_info_dict().get(file_id, (None, None))
+        """Get the tree_path and branch_location for a tree reference.
+
+        :return: a tuple of (tree_path, branch_location)
+        """
+        return self._get_all_reference_info().get(file_id, (None, None))
 
     def reference_parent(self, file_id, path, possible_transports=None):
         """Return the parent branch for a tree-reference file_id.
