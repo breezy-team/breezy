@@ -50,6 +50,10 @@ API Changes
 Internals
 *********
 
+* ``bzrlib.branch.Branch.set_parent`` is now present on the base branch
+  class and will call ``_set_parent_location`` after doing unicode 
+  encoding. (Robert Collins)
+
 * ``bzrlib.bzrdir.BzrDir._get_config`` now returns a ``TransportConfig``
   or similar when the dir supports configuration settings. The base class
   defaults to None. There is a matching new server verb

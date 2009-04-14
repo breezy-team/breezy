@@ -2300,17 +2300,9 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         self._ensure_real()
         return self._real_branch._get_parent_location()
 
-    def set_parent(self, url):
-        self._ensure_real()
-        return self._real_branch.set_parent(url)
-
     def _set_parent_location(self, url):
-        # Used by tests, to poke bad urls into branch configurations
-        if url is None:
-            self.set_parent(url)
-        else:
-            self._ensure_real()
-            return self._real_branch._set_parent_location(url)
+        self._ensure_real()
+        return self._real_branch._set_parent_location(url)
 
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
@@ -2415,7 +2407,7 @@ class RemoteConfig(object):
 
     def _response_to_configobj(self, response):
         if len(response[0]) and response[0][0] != 'ok':
-            raise UnexpectedSmartServerResponse(response)
+            raise errors.UnexpectedSmartServerResponse(response)
         lines = response[1].read_body_bytes().splitlines()
         return config.ConfigObj(lines, encoding='utf-8')
 
@@ -2469,9 +2461,13 @@ class RemoteBzrDirConfig(RemoteConfig):
         self._bzrdir = bzrdir
 
     def _get_configobj(self):
+        medium = self._bzrdir._client._medium
+        verb = 'BzrDir.get_config_file'
+        if medium._is_remote_before((1, 15)):
+            raise errors.UnknownSmartMethod(verb)
         path = self._bzrdir._path_for_remote_call(self._bzrdir._client)
         response = self._bzrdir._call_expecting_body(
-            'BzrDir.get_config_file', path)
+            verb, path)
         return self._response_to_configobj(response)
 
     def _vfs_get_option(self, name, section, default):
