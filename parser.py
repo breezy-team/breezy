@@ -505,10 +505,13 @@ class ImportParser(LineBasedParser):
             parts = s[1:].split('" ', 1)
         else:
             parts = s.split(' ', 1)
-        if len(parts) == 2:
-            return map(_unquote_c_string, parts)
-        else:
+        if len(parts) != 2:
             self.abort(errors.BadFormat, '?', '?', s)
+        elif parts[1].startswith('"') and parts[1].endswith('"'):
+            parts[1] = parts[1][1:-1]
+        elif parts[1].startswith('"') or parts[1].endswith('"'):
+            self.abort(errors.BadFormat, '?', '?', s)
+        return map(_unquote_c_string, parts)
 
     def _mode(self, s):
         """Parse a file mode into executable and symlink flags.
