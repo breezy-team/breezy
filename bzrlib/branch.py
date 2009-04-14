@@ -1060,8 +1060,18 @@ class Branch(object):
         if self._push_should_merge_tags():
             self.tags.merge_to(destination.tags)
         if getattr(self._format, 'supports_reference_locations', False):
-            reference_dict = self._get_info_dict()
-            destination._save_reference_dict(reference_dict)
+            self.update_references(destination)
+
+    def update_references(self, target):
+        reference_dict = self._get_info_dict()
+        old_base = self.base
+        new_base = target.base
+        for file_id, (tree_path, branch_location) in (
+            reference_dict.items()):
+            branch_location = urlutils.rebase_url(branch_location,
+                                                  old_base, new_base)
+            reference_dict[file_id] = (tree_path, branch_location)
+        target._save_reference_dict(reference_dict)
 
     @needs_read_lock
     def check(self):

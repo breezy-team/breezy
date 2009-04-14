@@ -894,13 +894,19 @@ class TestReferenceLocation(TestCaseWithBranch):
         self.assertEqual(parent.base, referenced_branch.base)
 
     def test_sprout_copies_reference_location(self):
-        branch = self.make_branch_with_reference('branch', 'reference')
+        branch = self.make_branch_with_reference('branch', '../reference')
         new_branch = branch.bzrdir.sprout('new-branch').open_branch()
-        self.assertEqual('reference',
+        self.assertEqual('../reference',
                          new_branch.get_reference_info('file-id')[1])
 
     def test_clone_copies_reference_location(self):
-        branch = self.make_branch_with_reference('branch', 'reference')
+        branch = self.make_branch_with_reference('branch', '../reference')
         new_branch = branch.bzrdir.clone('new-branch').open_branch()
-        self.assertEqual('reference',
+        self.assertEqual('../reference',
+                         new_branch.get_reference_info('file-id')[1])
+
+    def test_copied_locations_are_rebased(self):
+        branch = self.make_branch_with_reference('branch', 'reference')
+        new_branch = branch.bzrdir.sprout('branch/new-branch').open_branch()
+        self.assertEqual('../reference',
                          new_branch.get_reference_info('file-id')[1])
