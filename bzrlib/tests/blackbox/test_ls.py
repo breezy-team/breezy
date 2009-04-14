@@ -236,3 +236,9 @@ class TestLS(TestCaseWithTransport):
         self.ls_equals('',
                        '--kind=symlink')
         self.run_bzr_error('invalid kind specified', 'ls --kind=pile')
+
+    def test_ls_path_nonrecursive(self):
+        self.ls_equals('%s/.bzrignore\n'
+                       '%s/a\n'
+                       % (self.test_dir, self.test_dir),
+                       self.test_dir, recursive=False)

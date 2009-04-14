@@ -590,6 +590,8 @@ class BTreeBuilder(index.GraphIndexBuilder):
 class _LeafNode(object):
     """A leaf node for a serialised B+Tree index."""
 
+    __slots__ = ('keys',)
+
     def __init__(self, bytes, key_length, ref_list_length):
         """Parse bytes to create a leaf node object."""
         # splitlines mangles the \r delimiters.. don't use it.
@@ -599,6 +601,8 @@ class _LeafNode(object):
 
 class _InternalNode(object):
     """An internal node for a serialised B+Tree index."""
+
+    __slots__ = ('keys', 'offset')
 
     def __init__(self, bytes):
         """Parse bytes to create an internal node object."""
@@ -611,7 +615,7 @@ class _InternalNode(object):
         for line in lines[2:]:
             if line == '':
                 break
-            nodes.append(tuple(line.split('\0')))
+            nodes.append(tuple(map(intern, line.split('\0'))))
         return nodes
 
 

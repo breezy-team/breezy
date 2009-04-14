@@ -245,3 +245,154 @@ class ForeignRepository(Repository):
             self.get_revision(revision_id))
 
 
+class ForeignBranch(Branch):
+    """Branch that exists in a foreign version control system."""
+
+    def __init__(self, mapping):
+        self.mapping = mapping
+        super(ForeignBranch, self).__init__()
+
+    def dpull(self, source, stop_revision=None):
+        """Pull deltas from another branch.
+
+        :note: This does not, like pull, retain the revision ids from 
+            the source branch and will, rather than adding bzr-specific 
+            metadata, push only those semantics of the revision that can be 
+            natively represented by this branch' VCS.
+
+        :param source: Source branch
+        :param stop_revision: Revision to pull, defaults to last revision.
+        :return: Dictionary mapping revision ids from the source branch 
+            to new revision ids in the target branch, for each 
+            revision that was pull.
+        """
+        raise NotImplementedError(self.dpull)
+
+
+def _determine_fileid_renames(old_inv, new_inv):
+    """Determine the file ids based on a old and a new inventory that 
+    are equal in content.
+
+    :param old_inv: Old inventory
+    :param new_inv: New inventory
+    :return: Dictionary a (old_id, new_id) tuple for each path in the 
+        inventories.
+    """
+    ret = {}
+    if len(old_inv) != len(new_inv):
+        raise AssertionError("Inventories are not of the same size")
+    for old_file_id in old_inv:
+        path = old_inv.id2path(old_file_id)
+        new_file_id = new_inv.path2id(path)
+        if new_file_id is None:
+            raise AssertionError(
+                "Unable to find %s in new inventory" % old_file_id)
+        ret[path] = (old_file_id, new_file_id)
+    return ret
+
+
+def update_workinginv_fileids(wt, old_inv, new_inv):
+    """Update all file ids in wt according to old_tree/new_tree. 
+
+    old_tree and new_tree should be two RevisionTree's that differ only
+    in file ids.
+    """
+    fileid_renames = _determine_fileid_renames(old_inv, new_inv)
+    old_fileids = []
+    new_fileids = []
+    new_root_id = None
+    # Adjust file ids in working tree
+    # Sorted, so we process parents before children
+    for path in sorted(fileid_renames.keys()):
+        (old_fileid, new_fileid) = fileid_renames[path]
+        if path != "":
+            new_fileids.append((path, new_fileid))
+            # unversion() works recursively so we only have to unversion the 
+            # top-level. Unfortunately unversioning / is not supported yet, 
+            # so unversion its children instead and use set_root_id() for /
+            if old_inv[old_fileid].parent_id == old_inv.root.file_id:
+                old_fileids.append(old_fileid)
+        else:
+            new_root_id = new_fileid
+    new_fileids.reverse()
+    wt.unversion(old_fileids)
+    if new_root_id is not None:
+        wt.set_root_id(new_root_id)
+    wt.add([x[0] for x in new_fileids], [x[1] for x in new_fileids])
+    wt.set_last_revision(new_inv.revision_id)
+
+
+class cmd_dpush(Command):
+    """Push diffs into a foreign version control system without any 
+    Bazaar-specific metadata.
+
+    This will afterwards rebase the local Bazaar branch on the remote
+    branch unless the --no-rebase option is used, in which case 
+    the two branches will be out of sync. 
+    """
+    hidden = True
+    takes_args = ['location?']
+    takes_options = ['remember', Option('directory',
+            help='Branch to push from, '
+                 'rather than the one containing the working directory.',
+            short_name='d',
+            type=unicode,
+            ),
+            Option('no-rebase', help="Do not rebase after push.")]
+
+    def run(self, location=None, remember=False, directory=None, 
+            no_rebase=False):
+        from bzrlib import urlutils
+        from bzrlib.bzrdir import BzrDir
+        from bzrlib.errors import BzrCommandError, NoWorkingTree
+        from bzrlib.trace import info
+        from bzrlib.workingtree import WorkingTree
+
+        if directory is None:
+            directory = "."
+        try:
+            source_wt = WorkingTree.open_containing(directory)[0]
+            source_branch = source_wt.branch
+        except NoWorkingTree:
+            source_branch = Branch.open(directory)
+            source_wt = None
+        stored_loc = source_branch.get_push_location()
+        if location is None:
+            if stored_loc is None:
+                raise BzrCommandError("No push location known or specified.")
+            else:
+                display_url = urlutils.unescape_for_display(stored_loc,
+                        self.outf.encoding)
+                self.outf.write("Using saved location: %s\n" % display_url)
+                location = stored_loc
+
+        bzrdir = BzrDir.open(location)
+        target_branch = bzrdir.open_branch()
+        dpull = getattr(target_branch, "dpull", None)
+        if dpull is None:
+            raise BzrCommandError("%r is not a foreign branch, use "
+                                  "regular push." % target_branch)
+        target_branch.lock_write()
+        try:
+            revid_map = dpull(source_branch)
+            # We successfully created the target, remember it
+            if source_branch.get_push_location() is None or remember:
+                source_branch.set_push_location(target_branch.base)
+            if not no_rebase:
+                old_last_revid = source_branch.last_revision()
+                source_branch.pull(target_branch, overwrite=True)
+                new_last_revid = source_branch.last_revision()
+                if source_wt is not None and old_last_revid != new_last_revid:
+                    source_wt.lock_write()
+                    try:
+                        update_workinginv_fileids(source_wt, 
+                            source_wt.branch.repository.get_inventory(
+                                old_last_revid),
+                            source_wt.branch.repository.get_inventory(
+                                new_last_revid))
+                    finally:
+                        source_wt.unlock()
+        finally:
+            target_branch.unlock()
+
+

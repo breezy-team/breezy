@@ -3426,10 +3426,10 @@ format_registry.register_metadir('1.14-rich-root',
 # The following un-numbered 'development' formats should always just be aliases.
 format_registry.register_metadir('development-rich-root',
     'bzrlib.repofmt.groupcompress_repo.RepositoryFormatCHK1',
-    help='Current development format. Can convert data to and from pack-0.92 '
-        '(and anything compatible with pack-0.92) format repositories. '
-        'Repositories and branches in this format can only be read by bzr.dev. '
-        'Please read '
+    help='Current development format. Supports rich roots. Can convert data '
+        'to and from rich-root-pack (and anything compatible with '
+        'rich-root-pack) format repositories. Repositories and branches in '
+        'this format can only be read by bzr.dev. Please read '
         'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
         'before use.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
