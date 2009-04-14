@@ -97,7 +97,7 @@ class GitSmartTransport(Transport):
         Transport.__init__(self, url)
         (scheme, _, loc, _, _) = urlparse.urlsplit(url)
         hostport, self._path = urllib.splithost(loc)
-        (self._host, self._port) = urllib.splitnport(hostport, git.protocol.TCP_GIT_PORT)
+        (self._host, self._port) = urllib.splitnport(hostport, None)
         self._client = _client
 
     def has(self, relpath):
