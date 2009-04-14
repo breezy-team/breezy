@@ -1049,6 +1049,7 @@ class Branch(object):
         revision_id: if not None, the revision history in the new branch will
                      be truncated to end with revision_id.
         """
+        self.update_references(destination)
         self._synchronize_history(destination, revision_id)
         try:
             parent = self.get_parent()
@@ -1059,10 +1060,10 @@ class Branch(object):
                 destination.set_parent(parent)
         if self._push_should_merge_tags():
             self.tags.merge_to(destination.tags)
-        if getattr(self._format, 'supports_reference_locations', False):
-            self.update_references(destination)
 
     def update_references(self, target):
+        if not getattr(self._format, 'supports_reference_locations', False):
+            return
         reference_dict = self._get_info_dict()
         old_base = self.base
         new_base = target.base
@@ -1073,7 +1074,10 @@ class Branch(object):
                                                   old_base, new_base)
             target_reference_dict.setdefault(
                 file_id, (tree_path, branch_location))
-        target._save_reference_dict(target_reference_dict)
+        try:
+            target._save_reference_dict(target_reference_dict)
+        except UnsupportedOperation:
+            pass
 
     @needs_read_lock
     def check(self):
@@ -2120,6 +2124,7 @@ class BzrBranch(Branch):
         try:
             # We assume that during 'pull' the local repository is closer than
             # the remote one.
+            source.update_references(self)
             graph = self.repository.get_graph(source.repository)
             result.old_revno, result.old_revid = self.last_revision_info()
             self.update_revisions(source, stop_revision, overwrite=overwrite,
@@ -2222,6 +2227,7 @@ class BzrBranch(Branch):
         result.source_branch = self
         result.target_branch = target
         result.old_revno, result.old_revid = target.last_revision_info()
+        self.update_references(target)
         if result.old_revid != self.last_revision():
             # We assume that during 'push' this repository is closer than
             # the target.

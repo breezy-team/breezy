@@ -462,6 +462,7 @@ class Merger(object):
                                **kwargs)
 
     def _do_merge_to(self, merge):
+        self.other_branch.update_references(self.this_branch)
         merge.do_merge()
         if self.recurse == 'down':
             for relpath, file_id in self.this_tree.iter_references():

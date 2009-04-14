@@ -24,6 +24,7 @@ from bzrlib import (
     bzrdir,
     errors,
     gpg,
+    merge,
     urlutils,
     transactions,
     remote,
@@ -935,3 +936,36 @@ class TestReferenceLocation(TestCaseWithBranch):
         new_branch.update_references(branch)
         self.assertEqual('../reference',
                          branch.get_reference_info('file-id')[1])
+
+    def test_pull_updates_references(self):
+        branch = self.make_branch_with_reference('branch', 'reference')
+        new_branch = branch.bzrdir.sprout('branch/new-branch').open_branch()
+        new_branch.set_reference_info('file-id2', '../foo', '../foo')
+        branch.pull(new_branch)
+        self.assertEqual('foo',
+                         branch.get_reference_info('file-id2')[1])
+
+    def test_push_updates_references(self):
+        branch = self.make_branch_with_reference('branch', 'reference')
+        new_branch = branch.bzrdir.sprout('branch/new-branch').open_branch()
+        new_branch.set_reference_info('file-id2', '../foo', '../foo')
+        new_branch.push(branch)
+        self.assertEqual('foo',
+                         branch.get_reference_info('file-id2')[1])
+
+    def test_merge_updates_references(self):
+        branch = self.make_branch_with_reference('branch', 'reference')
+        tree = self.make_branch_and_tree('tree')
+        tree.commit('foo')
+        branch.pull(tree.branch)
+        checkout = branch.create_checkout('checkout', lightweight=True)
+        checkout.commit('bar')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        merger = merge.Merger.from_revision_ids(None, tree,
+                                                branch.last_revision(),
+                                                other_branch=branch)
+        merger.merge_type = merge.Merge3Merger
+        merger.do_merge()
+        self.assertEqual('../branch/reference',
+                         tree.branch.get_reference_info('file-id')[1])
