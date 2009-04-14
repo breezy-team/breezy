@@ -242,6 +242,14 @@ Bug Fixes
   both branches, we know that the trunk for the project can be read too,
   so the upgrade will not inconvenience users. (Robert Collins, #345169)
 
+* Pushing a new stacked branch will also push the parent inventories for
+  revisions at the stacking boundary.  This makes sure that the stacked
+  branch has enough data to calculate inventory deltas for all of its
+  revisions (without requiring the fallback branch).  This avoids
+  "'AbsentContentFactory' object has no attribute 'get_bytes_as'" errors
+  when fetching the stacked branch from a 1.13 (or later) smart server.
+  This partially fixes #354036.  (Andrew Bennetts, Robert Collins)
+
 * The full test suite is passing again on OSX. Several minor issues (mostly
   test related) have been fixed. (Vincent Ladeuil, #355273).
 
