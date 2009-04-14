@@ -1346,8 +1346,9 @@ credential_store_registry.default_key = 'plain'
 
 class BzrDirConfig(object):
 
-    def __init__(self, transport):
-        self._config = TransportConfig(transport, 'control.conf')
+    def __init__(self, bzrdir):
+        self._bzrdir = bzrdir
+        self._config = bzrdir._get_config()
 
     def set_default_stack_on(self, value):
         """Set the default stacking location.
@@ -1357,6 +1358,8 @@ class BzrDirConfig(object):
         This policy affects all branches contained by this bzrdir, except for
         those under repositories.
         """
+        if self._config is None:
+            raise errors.BzrError("Cannot set configuration in %s" % self._bzrdir)
         if value is None:
             self._config.set_option('', 'default_stack_on')
         else:
@@ -1370,6 +1373,8 @@ class BzrDirConfig(object):
         This policy affects all branches contained by this bzrdir, except for
         those under repositories.
         """
+        if self._config is None:
+            return None
         value = self._config.get_option('default_stack_on')
         if value == '':
             value = None

@@ -50,6 +50,10 @@ API Changes
 Internals
 *********
 
+* ``bzrlib.bzrdir.BzrDir._get_config`` now returns a ``TransportConfig``
+  or similar when the dir supports configuration settings. The base class
+  defaults to None. (Robert Collins)
+
 * ``bzrlib.tests.ExtendedTestResult`` has new methods ``startTests``
   called before the first test is started, ``done`` called after the last
   test completes, and a new parameter ``strict``. (Robert Collins)
