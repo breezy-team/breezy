@@ -228,6 +228,7 @@ class TestBranch67(object):
         branch = self.make_branch('a', format=self.get_format_name())
         self.failUnlessExists('a/.bzr/branch/last-revision')
         self.failIfExists('a/.bzr/branch/revision-history')
+        self.failIfExists('a/.bzr/branch/references')
 
     def test_config(self):
         """Ensure that all configuration data is stored in the branch"""

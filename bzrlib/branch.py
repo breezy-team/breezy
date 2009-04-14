@@ -1761,6 +1761,14 @@ class BzrBranchFormat7(BzrBranchFormat8):
     This format was introduced in bzr 1.6.
     """
 
+    def initialize(self, a_bzrdir):
+        """Create a branch of this format in a_bzrdir."""
+        utf8_files = [('last-revision', '0 null:\n'),
+                      ('branch.conf', ''),
+                      ('tags', ''),
+                      ]
+        return self._initialize_helper(a_bzrdir, utf8_files)
+
     def _branch_class(self):
         return BzrBranch7
 
