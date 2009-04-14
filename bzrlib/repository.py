@@ -3630,8 +3630,10 @@ class InterDifferingSerializer(InterRepository):
         for delta in pending_deltas:
             self.target.add_inventory_by_delta(*delta)
         if self.target._fallback_repositories:
-            # make sure this stacked repository has all the parent inventories
-            # for the new revisions.
+            # Make sure this stacked repository has all the parent inventories
+            # for the new revisions that we are about to insert.  We do this
+            # before adding the revisions so that no revision is added until
+            # all the inventories it may depend on are added.
             parent_ids = set()
             revision_ids = set()
             for revision in pending_revisions:
