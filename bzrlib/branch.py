@@ -1066,12 +1066,14 @@ class Branch(object):
         reference_dict = self._get_info_dict()
         old_base = self.base
         new_base = target.base
+        target_reference_dict = target._get_info_dict()
         for file_id, (tree_path, branch_location) in (
             reference_dict.items()):
             branch_location = urlutils.rebase_url(branch_location,
                                                   old_base, new_base)
-            reference_dict[file_id] = (tree_path, branch_location)
-        target._save_reference_dict(reference_dict)
+            target_reference_dict.setdefault(
+                file_id, (tree_path, branch_location))
+        target._save_reference_dict(target_reference_dict)
 
     @needs_read_lock
     def check(self):

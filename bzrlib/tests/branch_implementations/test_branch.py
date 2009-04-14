@@ -866,10 +866,11 @@ class TestReferenceLocation(TestCaseWithBranch):
         self.assertEqual('branch_location must be None when tree_path is'
                          ' None.', str(e))
 
-    def make_branch_with_reference(self, location, reference_location):
-        branch = self.make_branch('branch')
+    def make_branch_with_reference(self, location, reference_location,
+                                   file_id='file-id'):
+        branch = self.make_branch(location)
         try:
-            branch.set_reference_info('file-id', 'path/to/file',
+            branch.set_reference_info(file_id, 'path/to/file',
                                       reference_location)
         except bzrlib.errors.UnsupportedOperation:
             raise tests.TestNotApplicable('Branch cannot hold references.')
@@ -910,3 +911,27 @@ class TestReferenceLocation(TestCaseWithBranch):
         new_branch = branch.bzrdir.sprout('branch/new-branch').open_branch()
         self.assertEqual('../reference',
                          new_branch.get_reference_info('file-id')[1])
+
+    def test_update_references_retains_old_references(self):
+        branch = self.make_branch_with_reference('branch', 'reference')
+        new_branch = self.make_branch_with_reference(
+            'new_branch', 'reference', 'file-id2')
+        new_branch.update_references(branch)
+        self.assertEqual('reference',
+                         branch.get_reference_info('file-id')[1])
+
+    def test_update_references_retains_known_references(self):
+        branch = self.make_branch_with_reference('branch', 'reference')
+        new_branch = self.make_branch_with_reference(
+            'new_branch', 'reference2')
+        new_branch.update_references(branch)
+        self.assertEqual('reference',
+                         branch.get_reference_info('file-id')[1])
+
+    def update_references_skips_known_references(self):
+        branch = self.make_branch_with_reference('branch', 'reference')
+        new_branch = branch.bzrdir.sprout('branch/new-branch').open_branch()
+        new_branch.set_reference_info('file-id', '../foo', '../foo')
+        new_branch.update_references(branch)
+        self.assertEqual('../reference',
+                         branch.get_reference_info('file-id')[1])
