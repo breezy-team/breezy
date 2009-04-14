@@ -1065,6 +1065,8 @@ class Branch(object):
         if not getattr(self._format, 'supports_reference_locations', False):
             return
         reference_dict = self._get_info_dict()
+        if len(reference_dict) == 0:
+            return
         old_base = self.base
         new_base = target.base
         target_reference_dict = target._get_info_dict()
@@ -1074,10 +1076,7 @@ class Branch(object):
                                                   old_base, new_base)
             target_reference_dict.setdefault(
                 file_id, (tree_path, branch_location))
-        try:
-            target._save_reference_dict(target_reference_dict)
-        except UnsupportedOperation:
-            pass
+        target._save_reference_dict(target_reference_dict)
 
     @needs_read_lock
     def check(self):
