@@ -368,7 +368,7 @@ class InterGitNonGitRepository(InterRepository):
             if interesting_heads is None:
                 ret = [sha for (ref, sha) in refs.iteritems() if not ref.endswith("^{}")]
             else:
-                ret = [mapping.revision_id_bzr_to_foreign(revid)[0] for revid in interesting_heads]
+                ret = [mapping.revision_id_bzr_to_foreign(revid)[0] for revid in interesting_heads if revid != NULL_REVISION]
             return [rev for rev in ret if not self.target.has_revision(mapping.revision_id_foreign_to_bzr(rev))]
         self.fetch_objects(determine_wants, mapping, pb)
         return self._refs
