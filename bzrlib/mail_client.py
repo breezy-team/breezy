@@ -267,7 +267,7 @@ class Mutt(ExternalMailClient):
             message_options.extend(['-a',
                 self._encode_path(attach_path, 'attachment')])
         if to is not None:
-            message_options.append(self._encode_safe(to))
+            message_options.extend(['--', self._encode_safe(to)])
         return message_options
 mail_client_registry.register('mutt', Mutt,
                               help=Mutt.__doc__)
