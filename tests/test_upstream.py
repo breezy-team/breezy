@@ -275,7 +275,7 @@ class UpstreamProviderTests(TestCaseWithTransport):
                         "%s wasn't expected to be called" % provider_name)
 
     def call_provider(self):
-        self.assertEqual(self.provider.get_specific_version(self.target_dir),
+        self.assertEqual(self.provider.provide(self.target_dir),
                 self.target_filename)
 
     def test_already_in_target(self):

@@ -289,8 +289,7 @@ class StackedUpstreamSource(UpstreamSource):
 
     def get_specific_version(self, package, version, target_dir):
         for source in self._sources:
-            if source.get_specific_version(self.package, 
-                self.version.upstream_version, self.store_dir):
+            if source.get_specific_version(package, version, target_dir):
                 return True
         return False
 
@@ -369,7 +368,7 @@ class UpstreamProvider(object):
         if not self.already_exists_in_store():
             if not os.path.exists(self.store_dir):
                 os.makedirs(self.store_dir)
-            self.get_specific_version(self.package, 
+            self.source.get_specific_version(self.package, 
                 self.version.upstream_version,
                 target_dir)
         else:
