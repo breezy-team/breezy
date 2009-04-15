@@ -1931,7 +1931,7 @@ class BzrBranch(Branch):
 
     def lock_write(self, token=None):
         repo_control = getattr(self.repository, 'control_files', None)
-        if self.control_files is repo_control or not self.is_locked():
+        if self.control_files == repo_control or not self.is_locked():
             self.repository.lock_write()
             took_lock = True
         else:
@@ -1945,7 +1945,7 @@ class BzrBranch(Branch):
 
     def lock_read(self):
         repo_control = getattr(self.repository, 'control_files', None)
-        if self.control_files is repo_control or not self.is_locked():
+        if self.control_files == repo_control or not self.is_locked():
             self.repository.lock_read()
             took_lock = True
         else:
@@ -1958,14 +1958,16 @@ class BzrBranch(Branch):
             raise
 
     def unlock(self):
-        self.control_files.unlock()
-        repo_control = getattr(self.repository, 'control_files', None)
-        if (self.control_files is repo_control or
-            not self.control_files.is_locked()):
-            self.repository.unlock()
-        if not self.control_files.is_locked():
-            # we just released the lock
-            self._clear_cached_state()
+        try:
+            self.control_files.unlock()
+        finally:
+            repo_control = getattr(self.repository, 'control_files', None)
+            if (self.control_files == repo_control or
+                not self.control_files.is_locked()):
+                self.repository.unlock()
+            if not self.control_files.is_locked():
+                # we just released the lock
+                self._clear_cached_state()
 
     def peek_lock_mode(self):
         if self.control_files._lock_count == 0:
