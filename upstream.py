@@ -31,7 +31,10 @@ from bzrlib.trace import info
 from bzrlib.plugins.builddeb.errors import MissingUpstreamTarball
 from bzrlib.plugins.builddeb.import_dsc import DistributionBranch
 from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
-from bzrlib.plugins.builddeb.util import tarball_name
+from bzrlib.plugins.builddeb.util import (
+    get_snapshot_revision,
+    tarball_name,
+    )
 
 
 class UpstreamSource(object):
@@ -123,20 +126,33 @@ class AptSource(UpstreamSource):
 class UpstreamBranchSource(UpstreamSource):
     """Upstream source that uses the upstream branch."""
 
-    def __init__(self, upstream_branch, upstream_revision):
+    def __init__(self, upstream_branch, upstream_revision=None, 
+                 fallback_revspec=None):
         self.upstream_branch = upstream_branch
         self.upstream_revision = upstream_revision
+        self.fallback_revspec = fallback_revspec
         self._upstream_branch_provider = provide_from_other_branch
+
+    def _get_revision_id(self, version):
+        if self.upstream_revision is not None:
+            # Explicit revision id to use set
+            return self.upstream_revision
+        revspec = get_snapshot_revision(version)
+        if revspec is None:
+            revspec = self.fallback_revspec
+        if revspec is not None:
+            return RevisionSpec.from_string(
+                revspec).as_revision_id(self.upstream_branch)
+        return self.upstream_branch.last_revision()
 
     def get_specific_version(self, package, version, target_dir):
         self.branch.lock_read()
         try:
-            assert self.upstream_revision is not None
+            revid = self._get_revision_id(version)
             info("Exporting the upstream branch to create the tarball")
             target_filename = self._tarball_path(package, version, target_dir)
             tarball_base = "%s-%s" % (package, version)
-            rev_tree = self.upstream_branch.repository.revision_tree(
-                self.upstream_revision)
+            rev_tree = self.upstream_branch.repository.revision_tree(revid)
             export(rev_tree, target_filename, 'tgz', tarball_base)
             return True
         finally:
