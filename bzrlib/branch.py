@@ -997,10 +997,14 @@ class Branch(object):
                      be truncated to end with revision_id.
         """
         result = to_bzrdir.create_branch()
-        if repository_policy is not None:
-            repository_policy.configure_branch(result)
-        self.copy_content_into(result, revision_id=revision_id)
-        return  result
+        result.lock_write()
+        try:
+            if repository_policy is not None:
+                repository_policy.configure_branch(result)
+            self.copy_content_into(result, revision_id=revision_id)
+        finally:
+            result.unlock()
+        return result
 
     @needs_read_lock
     def sprout(self, to_bzrdir, revision_id=None, repository_policy=None):
@@ -1012,10 +1016,13 @@ class Branch(object):
                      be truncated to end with revision_id.
         """
         result = to_bzrdir.create_branch()
-        if repository_policy is not None:
-            repository_policy.configure_branch(result)
-        self.copy_content_into(result, revision_id=revision_id)
-        result.set_parent(self.bzrdir.root_transport.base)
+        try:
+            if repository_policy is not None:
+                repository_policy.configure_branch(result)
+            self.copy_content_into(result, revision_id=revision_id)
+            result.set_parent(self.bzrdir.root_transport.base)
+        finally:
+            result.unlock()
         return result
 
     def _synchronize_history(self, destination, revision_id):
