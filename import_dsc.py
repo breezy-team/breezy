@@ -548,7 +548,7 @@ class DistributionBranch(object):
             return True
         return False
 
-    def has_upstream_version(self, version, md5=None):
+    def has_upstream_version(self, version, package=None, md5=None):
         """Whether this branch contains the upstream version specified.
 
         The version must be judged present by having the appropriate tag
@@ -563,18 +563,26 @@ class DistributionBranch(object):
         :return: True if the upstream branch contains the specified upstream
             version of the package. False otherwise.
         """
-        for tag_name in self.possible_upstream_tag_names(version):
+        for tag_name in self.possible_upstream_tag_names(version, package):
             if self._has_version(self.upstream_branch, tag_name, md5=md5):
                 return True
         return False
 
-    def possible_upstream_tag_names(self, version):
-        return [self.upstream_tag_name(version),
+    def possible_upstream_tag_names(self, version, package=None):
+        tags = [self.upstream_tag_name(version),
                 self.upstream_tag_name(version, distro="debian"),
                 self.upstream_tag_name(version, distro="ubuntu")]
+        if package is not None:
+            tags.extend(["%s-%s" % (package, version),
+                         "%s-%s" % (package, version)])
+        tags.extend(["v%s" % version,
+                     "release-%s" % version, 
+                     version])
+        return tags
 
-    def has_upstream_version_in_packaging_branch(self, version, md5=None):
-        for tag_name in self.possible_upstream_tag_names(version):
+    def has_upstream_version_in_packaging_branch(self, version, package=None, 
+                                                 md5=None):
+        for tag_name in self.possible_upstream_tag_names(version, package):
             if self._has_version(self.branch, tag_name, md5=md5):
                 return True
         return False
@@ -666,7 +674,7 @@ class DistributionBranch(object):
             return self.branch.tags.lookup_tag(ubuntu_tag_name)
         return self.branch.tags.lookup_tag(tag_name)
 
-    def revid_of_upstream_version(self, version):
+    def revid_of_upstream_version(self, version, package=None):
         """Returns the revision id corresponding to the upstream version.
 
         :param version: the Version object to extract the upstream version
@@ -675,7 +683,7 @@ class DistributionBranch(object):
         :return: the revision id corresponding to the upstream portion
             of the version
         """
-        for tag_name in self.possible_upstream_tag_names(version):
+        for tag_name in self.possible_upstream_tag_names(version, package):
             if self._has_version(self.upstream_branch, tag_name):
                 return self.upstream_branch.tags.lookup_tag(tag_name)
         tag_name = self.upstream_tag_name(version)
@@ -1502,8 +1510,8 @@ class DistributionBranch(object):
             shutil.rmtree(tempdir)
             raise
 
-    def _revid_of_upstream_version_from_branch(self, version):
-        for tag_name in self.possible_upstream_tag_names(version):
+    def _revid_of_upstream_version_from_branch(self, version, package=None):
+        for tag_name in self.possible_upstream_tag_names(version, package):
             if self._has_version(self.branch, tag_name):
                 return self.branch.tags.lookup_tag(tag_name)
         tag_name = self.upstream_tag_name(version)
