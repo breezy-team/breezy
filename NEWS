@@ -54,6 +54,10 @@ Internals
   class and will call ``_set_parent_location`` after doing unicode 
   encoding. (Robert Collins)
 
+* ``bzrlib.remote.RemoteBranch._set_parent_location`` will use a new verb
+  ``Branch.set_parent_location`` removing further VFS operations.
+  (Robert Collins)
+
 * ``bzrlib.bzrdir.BzrDir._get_config`` now returns a ``TransportConfig``
   or similar when the dir supports configuration settings. The base class
   defaults to None. There is a matching new server verb

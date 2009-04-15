@@ -792,6 +792,41 @@ class TestSmartServerBranchRequestGetParent(tests.TestCaseWithMemoryTransport):
             response)
 
 
+class TestSmartServerBranchRequestSetParent(tests.TestCaseWithMemoryTransport):
+
+    def test_set_parent_none(self):
+        branch = self.make_branch('base', format="1.9")
+        branch.lock_write()
+        branch._set_parent_location('foo')
+        branch.unlock()
+        request = smart.branch.SmartServerBranchRequestSetParentLocation(
+            self.get_transport())
+        branch_token = branch.lock_write()
+        repo_token = branch.repository.lock_write()
+        try:
+            response = request.execute('base', branch_token, repo_token, '')
+        finally:
+            branch.repository.unlock()
+            branch.unlock()
+        self.assertEqual(SuccessfulSmartServerResponse(()), response)
+        self.assertEqual(None, branch.get_parent())
+
+    def test_set_parent_something(self):
+        branch = self.make_branch('base', format="1.9")
+        request = smart.branch.SmartServerBranchRequestSetParentLocation(
+            self.get_transport())
+        branch_token = branch.lock_write()
+        repo_token = branch.repository.lock_write()
+        try:
+            response = request.execute('base', branch_token, repo_token,
+            'http://bar/')
+        finally:
+            branch.repository.unlock()
+            branch.unlock()
+        self.assertEqual(SuccessfulSmartServerResponse(()), response)
+        self.assertEqual('http://bar/', branch.get_parent())
+
+
 class TestSmartServerBranchRequestGetTagsBytes(tests.TestCaseWithMemoryTransport):
 # Only called when the branch format and tags match [yay factory
 # methods] so only need to test straight forward cases.
@@ -1432,6 +1467,10 @@ class TestHandlers(tests.TestCase):
             smart.branch.SmartServerBranchRequestSetLastRevision)
         self.assertHandlerEqual('Branch.set_last_revision_info',
             smart.branch.SmartServerBranchRequestSetLastRevisionInfo)
+        self.assertHandlerEqual('Branch.set_last_revision_ex',
+            smart.branch.SmartServerBranchRequestSetLastRevisionEx)
+        self.assertHandlerEqual('Branch.set_parent_location',
+            smart.branch.SmartServerBranchRequestSetParentLocation)
         self.assertHandlerEqual('Branch.unlock',
             smart.branch.SmartServerBranchRequestUnlock)
         self.assertHandlerEqual('BzrDir.find_repository',

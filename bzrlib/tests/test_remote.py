@@ -844,6 +844,54 @@ class TestBranchGetParent(RemoteBranchTestCase):
         branch = self.make_remote_branch(transport, client)
         result = branch.get_parent()
         self.assertEqual('http://foo/', result)
+        client.finished_test()
+
+
+class TestBranchSetParentLocation(RemoteBranchTestCase):
+
+    def test_no_parent(self):
+        # We call the verb when setting parent to None
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('quack/',),
+            'error', ('NotStacked',))
+        client.add_expected_call(
+            'Branch.set_parent_location', ('quack/', 'b', 'r', ''),
+            'success', ())
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        branch = self.make_remote_branch(transport, client)
+        branch._lock_token = 'b'
+        branch._repo_lock_token = 'r'
+        branch._set_parent_location(None)
+        client.finished_test()
+
+    def test_parent(self):
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('kwaak/',),
+            'error', ('NotStacked',))
+        client.add_expected_call(
+            'Branch.set_parent_location', ('kwaak/', 'b', 'r', 'foo'),
+            'success', ())
+        transport.mkdir('kwaak')
+        transport = transport.clone('kwaak')
+        branch = self.make_remote_branch(transport, client)
+        branch._lock_token = 'b'
+        branch._repo_lock_token = 'r'
+        branch._set_parent_location('foo')
+        client.finished_test()
+
+    def test_backwards_compat(self):
+        self.setup_smart_server_with_call_log()
+        branch = self.make_branch('.')
+        self.reset_smart_call_log()
+        verb = 'Branch.set_parent_location'
+        self.disable_verb(verb)
+        branch.set_parent('http://foo/')
+        self.assertLength(12, self.hpss_calls)
 
 
 class TestBranchGetTagsBytes(RemoteBranchTestCase):
