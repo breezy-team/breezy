@@ -60,7 +60,7 @@ class TestCaseWithDirState(tests.TestCaseWithTransport):
     # Set by load_tests
     _dir_reader_class = None
     _native_to_unicode = None # Not used yet
-    _fs_enc = osutils._fs_enc # Not used yet
+    _fs_enc = osutils._fs_enc # Not parametrized yet
 
     def setUp(self):
         tests.TestCaseWithTransport.setUp(self)
@@ -1147,15 +1147,15 @@ class TestDirStateManipulations(TestCaseWithDirState):
             (('', '', 'TREE_ROOT'), [
              ('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree
              ]),
-            (('', link_name.encode(self._fs_enc), 'a link id'), [
-             ('l', target.encode(self._fs_enc), stat[6],
+            (('', link_name.encode('UTF-8'), 'a link id'), [
+             ('l', target.encode('UTF-8'), stat[6],
               False, dirstate.pack_stat(stat)), # current tree
              ]),
             ]
         state = dirstate.DirState.initialize('dirstate')
         try:
             state.add(link_name, 'a link id', 'symlink', stat,
-                      target.encode(self._fs_enc))
+                      target.encode('UTF-8'))
             # having added it, it should be in the output of iter_entries.
             self.assertEqual(expected_entries, list(state._iter_entries()))
             # saving and reloading should not affect this.
