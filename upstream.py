@@ -278,6 +278,23 @@ class SelfSplitSource(UpstreamSource):
                 version, self._tarball_path(package, version, target_dir))
 
 
+class StackedUpstreamSource(UpstreamSource):
+    """An upstream source that checks a list of other upstream sources.
+    
+    The first source that can provide a tarball, wins. 
+    """
+
+    def __init__(self, sources):
+        self._sources = sources
+
+    def get_specific_version(self, package, version, target_dir):
+        for source in self._sources:
+            if source.get_specific_version(self.package, 
+                self.version.upstream_version, self.store_dir):
+                return True
+        return False
+
+
 class UpstreamProvider(object):
     """An upstream provider can provide the upstream source for a package.
 
@@ -306,19 +323,20 @@ class UpstreamProvider(object):
         self.package = package
         self.version = Version(version)
         self.store_dir = store_dir
-        self._sources = [
+        sources = [
             PristineTarSource(tree, branch), 
             AptSource(),
             ]
         if upstream_branch is not None:
-            self._sources.append(
+            sources.append(
                 UpstreamBranchSource(upstream_branch, upstream_revision))
-        self._sources.extend([
+        sources.extend([
             GetOrigSourceSource(tree, larstiq), 
             UScanSource(tree, larstiq),
             ])
         if allow_split:
-            self._sources.append(SelfSplitSource(tree))
+            sources.append(SelfSplitSource(tree))
+        self.source = StackedUpstreamSource(sources)
 
     def provide(self, target_dir):
         """Provide the upstream tarball any way possible.
@@ -351,10 +369,9 @@ class UpstreamProvider(object):
         if not self.already_exists_in_store():
             if not os.path.exists(self.store_dir):
                 os.makedirs(self.store_dir)
-            for source in self._sources:
-                if source.get_specific_version(self.package, 
-                    self.version.upstream_version, self.store_dir):
-                    break
+            self.get_specific_version(self.package, 
+                self.version.upstream_version,
+                target_dir)
         else:
              info("Using the upstream tarball that is present in "
                      "%s" % self.store_dir)
