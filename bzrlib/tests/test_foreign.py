@@ -309,51 +309,7 @@ class ShowForeignPropertiesTests(TestCase):
 
 
 class WorkingTreeFileUpdateTests(TestCaseWithTransport):
-    """Tests for _determine_fileid_renames()."""
-
-    def test_det_renames_same(self):
-        a = Inventory()
-        a.add_path("bla", "directory", "bla-a")
-        b = Inventory()
-        b.add_path("bla", "directory", "bla-a")
-        self.assertEquals({
-            '': ('TREE_ROOT', 'TREE_ROOT'), 
-            'bla': ('bla-a', 'bla-a')},
-            foreign._determine_fileid_renames(a, b))
-
-    def test_det_renames_simple(self):
-        a = Inventory()
-        a.add_path("bla", "directory", "bla-a")
-        b = Inventory()
-        b.add_path("bla", "directory", "bla-b")
-        self.assertEquals({
-            '': ('TREE_ROOT', 'TREE_ROOT'), 
-            'bla': ('bla-a', 'bla-b'),
-            }, foreign._determine_fileid_renames(a, b))
-
-    def test_det_renames_root(self):
-        a = Inventory()
-        a.add_path("", "directory", "bla-a")
-        b = Inventory()
-        b.add_path("", "directory", "bla-b")
-        self.assertEquals(
-                {"": ("bla-a", "bla-b")},
-                foreign._determine_fileid_renames(a, b))
-
-    def test_update_workinginv(self):
-        a = Inventory()
-        a.add_path("bla", "directory", "bla-a")
-        b = Inventory()
-        b.add_path("bla", "directory", "bla-b")
-        wt = self.make_branch_and_tree('br1')
-        self.build_tree_contents([('br1/bla', 'original contents\n')])
-        wt.add('bla', 'bla-a')
-        foreign.update_workinginv_fileids(wt, a, b)
-        wt.lock_read()
-        try:
-            self.assertEquals(["TREE_ROOT", "bla-b"], list(wt.inventory))
-        finally:
-            wt.unlock()
+    """Tests for update_workingtree_fileids()."""
 
     def test_update_workingtree(self):
         wt = self.make_branch_and_tree('br1')
