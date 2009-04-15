@@ -1930,6 +1930,7 @@ class BzrBranch(Branch):
         return self.control_files.is_locked()
 
     def lock_write(self, token=None):
+        # All-in-one needs to always unlock/lock.
         repo_control = getattr(self.repository, 'control_files', None)
         if self.control_files == repo_control or not self.is_locked():
             self.repository.lock_write()
@@ -1944,6 +1945,7 @@ class BzrBranch(Branch):
             raise
 
     def lock_read(self):
+        # All-in-one needs to always unlock/lock.
         repo_control = getattr(self.repository, 'control_files', None)
         if self.control_files == repo_control or not self.is_locked():
             self.repository.lock_read()
@@ -1961,6 +1963,7 @@ class BzrBranch(Branch):
         try:
             self.control_files.unlock()
         finally:
+            # All-in-one needs to always unlock/lock.
             repo_control = getattr(self.repository, 'control_files', None)
             if (self.control_files == repo_control or
                 not self.control_files.is_locked()):

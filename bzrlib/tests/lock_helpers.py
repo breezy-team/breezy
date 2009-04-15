@@ -46,7 +46,7 @@ class LockWrapper(object):
 
     def __eq__(self, other):
         # Branch objects look for controlfiles == repo.controlfiles.
-        if type(other) == LockWrapper:
+        if type(other) is LockWrapper:
             return self._other == other._other
         return False
 
