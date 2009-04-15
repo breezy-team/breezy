@@ -30,8 +30,7 @@ from bzrlib.plugins.builddeb.errors import (
         )
 from bzrlib.plugins.builddeb.upstream import (
         UpstreamProvider,
-        get_apt_command_for_source,
-        provide_with_apt,
+        AptSource,
         )
 from bzrlib.plugins.builddeb.util import (
         get_parent_dir,
@@ -441,14 +440,14 @@ class UpstreamProviderTests(TestCaseWithTransport):
     def test_get_apt_command_for_source(self):
         self.assertEqual("apt-get source -y --only-source --tar-only "
                 "apackage=someversion",
-                get_apt_command_for_source("apackage", "someversion"))
+                AptSource()._get_command("apackage", "someversion"))
 
     def test_apt_provider_no_package(self):
         caller = MockAptCaller()
         sources = MockSources([])
         apt_pkg = MockAptPkg(sources)
-        self.assertEqual(False, provide_with_apt("apackage", "0.2",
-                    "target", _apt_pkg=apt_pkg, _apt_caller=caller))
+        self.assertEqual(False, AptSource().get_specific_version(
+            "apackage", "0.2", "target", _apt_pkg=apt_pkg, _apt_caller=caller))
         self.assertEqual(1, apt_pkg.init_called_times)
         self.assertEqual(1, apt_pkg.get_pkg_source_records_called_times)
         self.assertEqual(1, sources.restart_called_times)
@@ -460,8 +459,8 @@ class UpstreamProviderTests(TestCaseWithTransport):
         caller = MockAptCaller()
         sources = MockSources(["0.1-1"])
         apt_pkg = MockAptPkg(sources)
-        self.assertEqual(False, provide_with_apt("apackage", "0.2",
-                    "target", _apt_pkg=apt_pkg, _apt_caller=caller))
+        self.assertEqual(False, AptSource().get_specific_version(
+            "apackage", "0.2", "target", _apt_pkg=apt_pkg, _apt_caller=caller))
         self.assertEqual(1, apt_pkg.init_called_times)
         self.assertEqual(1, apt_pkg.get_pkg_source_records_called_times)
         self.assertEqual(1, sources.restart_called_times)
@@ -473,8 +472,9 @@ class UpstreamProviderTests(TestCaseWithTransport):
         caller = MockAptCaller(work=True)
         sources = MockSources(["0.1-1", "0.2-1"])
         apt_pkg = MockAptPkg(sources)
-        self.assertEqual(True, provide_with_apt("apackage", "0.2",
-                    "target", _apt_pkg=apt_pkg, _apt_caller=caller.call))
+        self.assertEqual(True, AptSource().get_specific_version(
+            "apackage", "0.2", "target", 
+            _apt_pkg=apt_pkg, _apt_caller=caller.call))
         self.assertEqual(1, apt_pkg.init_called_times)
         self.assertEqual(1, apt_pkg.get_pkg_source_records_called_times)
         self.assertEqual(1, sources.restart_called_times)
@@ -490,8 +490,9 @@ class UpstreamProviderTests(TestCaseWithTransport):
         caller = MockAptCaller()
         sources = MockSources(["0.1-1", "0.2-1"])
         apt_pkg = MockAptPkg(sources)
-        self.assertEqual(False, provide_with_apt("apackage", "0.2",
-                    "target", _apt_pkg=apt_pkg, _apt_caller=caller.call))
+        self.assertEqual(False, AptSource().get_specific_version(
+            "apackage", "0.2", "target", 
+            _apt_pkg=apt_pkg, _apt_caller=caller.call))
         self.assertEqual(1, apt_pkg.init_called_times)
         self.assertEqual(1, apt_pkg.get_pkg_source_records_called_times)
         self.assertEqual(1, sources.restart_called_times)

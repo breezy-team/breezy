@@ -64,24 +64,54 @@ class UpstreamSource(object):
 class PristineTarSource(UpstreamSource):
     """Source that uses the pristine-tar revisions in the packaging branch."""
 
-    def __init__(self, branch, tree):
+    def __init__(self, tree, branch):
         self.branch = branch
         self.tree = tree
         self._pristine_provider = provide_with_pristine_tar
 
-    def get_specific_version(self, package, version, target_dir):
+    def get_specific_version(self, package, upstream_version, target_dir):
         return self._pristine_provider(self.tree, self.branch, package,
-                version, self._tarball_path(package, version, target_dir))
+                # FIXME: Make provide_with_pristine_tar take a upstream 
+                # version string; it doesn't need the debian-specific data
+                Version("%s-1" % upstream_version), 
+                self._tarball_path(package, upstream_version, target_dir))
 
 
 class AptSource(UpstreamSource):
     """Upstream source that uses apt-source."""
 
-    def __init__(self):
-        self._apt_provider = provide_with_apt
+    def get_specific_version(self, package, upstream_version, target_dir, 
+            _apt_pkg=None, _apt_caller=None):
+        if _apt_pkg is None:
+            import apt_pkg
+        else:
+            apt_pkg = _apt_pkg
+        if _apt_caller is None:
+            _apt_caller = call_apt_for_source
+        apt_pkg.init()
+        sources = apt_pkg.GetPkgSrcRecords()
+        sources.Restart()
+        info("Using apt to look for the upstream tarball.")
+        while sources.Lookup(package):
+            if upstream_version \
+                == Version(sources.Version).upstream_version:
+                if _apt_caller(package, sources.Version, target_dir):
+                    return True
+                break
+        info("apt could not find the needed tarball.")
+        return False
 
-    def get_specific_version(self, package, version, target_dir):
-        return self._apt_provider(package, version, target_dir)
+    def _get_command(self, package, version_str):
+        return 'apt-get source -y --only-source --tar-only %s=%s' % \
+            (package, version_str)
+
+    def _run_apt_source(self, package, version_str, target_dir):
+        command = self._get_command(package, version_str)
+        proc = subprocess.Popen(command, shell=True, cwd=target_dir)
+        proc.wait()
+        if proc.returncode != 0:
+            return False
+        return True
 
 
 class UpstreamBranchSource(UpstreamSource):
@@ -176,42 +206,6 @@ class SelfSplitSource(UpstreamSource):
                 "to create the tarball")
         return self._split_provider(self.tree, package,
                 version, self._tarball_path(package, version, target_dir))
-
-
-def get_apt_command_for_source(package, version_str):
-    return 'apt-get source -y --only-source --tar-only %s=%s' % \
-        (package, version_str)
-
-
-def call_apt_for_source(package, version_str, target_dir):
-    command = get_apt_command_for_source(package, version_str)
-    proc = subprocess.Popen(command, shell=True, cwd=target_dir)
-    proc.wait()
-    if proc.returncode != 0:
-        return False
-    return True
-
-
-def provide_with_apt(package, upstream_version, target_dir, _apt_pkg=None,
-        _apt_caller=None):
-    if _apt_pkg is None:
-        import apt_pkg
-    else:
-        apt_pkg = _apt_pkg
-    if _apt_caller is None:
-        _apt_caller = call_apt_for_source
-    apt_pkg.init()
-    sources = apt_pkg.GetPkgSrcRecords()
-    sources.Restart()
-    info("Using apt to look for the upstream tarball.")
-    while sources.Lookup(package):
-        if upstream_version \
-            == Version(sources.Version).upstream_version:
-            if _apt_caller(package, sources.Version, target_dir):
-                return True
-            break
-    info("apt could not find the needed tarball.")
-    return False
 
 
 def provide_with_uscan(package, upstream_version, watch_file, target_dir):
