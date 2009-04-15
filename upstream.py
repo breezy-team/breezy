@@ -182,6 +182,13 @@ class UpstreamProvider(object):
         self._orig_source_provider = provide_with_get_orig_source
         self._upstream_branch_provider = provide_from_other_branch
         self._split_provider = provide_by_split
+        self._sources = [self.provide_with_pristine_tar, 
+                         self.provide_with_apt, 
+                         self.provide_from_upstream_branch,
+                         self.provide_with_get_orig_source,
+                         self.provide_with_uscan, 
+                         self.provide_from_self_by_split,
+                         ]
 
     def provide(self, target_dir):
         """Provide the upstream tarball any way possible.
@@ -214,18 +221,9 @@ class UpstreamProvider(object):
         if not self.already_exists_in_store():
             if not os.path.exists(self.store_dir):
                 os.makedirs(self.store_dir)
-            if self.provide_with_pristine_tar(self.store_dir):
-                pass
-            elif self.provide_with_apt(self.store_dir):
-                pass
-            elif self.provide_from_upstream_branch(self.store_dir):
-                pass
-            elif self.provide_with_get_orig_source(self.store_dir):
-                pass
-            elif self.provide_with_uscan(self.store_dir):
-                pass
-            elif self.provide_from_self_by_split(self.store_dir):
-                pass
+            for source in self._sources:
+                if source(self.store_dir):
+                    break
         else:
              info("Using the upstream tarball that is present in "
                      "%s" % self.store_dir)
