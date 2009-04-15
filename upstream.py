@@ -26,6 +26,7 @@ import tempfile
 from debian_bundle.changelog import Version
 
 from bzrlib.export import export
+from bzrlib.revisionspec import RevisionSpec
 from bzrlib.trace import info
 
 from bzrlib.plugins.builddeb.errors import MissingUpstreamTarball
@@ -131,7 +132,6 @@ class UpstreamBranchSource(UpstreamSource):
         self.upstream_branch = upstream_branch
         self.upstream_revision = upstream_revision
         self.fallback_revspec = fallback_revspec
-        self._upstream_branch_provider = provide_from_other_branch
 
     def _get_revision_id(self, version):
         if self.upstream_revision is not None:
@@ -146,17 +146,18 @@ class UpstreamBranchSource(UpstreamSource):
         return self.upstream_branch.last_revision()
 
     def get_specific_version(self, package, version, target_dir):
-        self.branch.lock_read()
+        self.upstream_branch.lock_read()
         try:
             revid = self._get_revision_id(version)
-            info("Exporting the upstream branch to create the tarball")
+            info("Exporting upstream branch revision %s to create the tarball",
+                 revid)
             target_filename = self._tarball_path(package, version, target_dir)
             tarball_base = "%s-%s" % (package, version)
             rev_tree = self.upstream_branch.repository.revision_tree(revid)
             export(rev_tree, target_filename, 'tgz', tarball_base)
             return True
         finally:
-            branch.unlock()
+            self.upstream_branch.unlock()
 
 
 class GetOrigSourceSource(UpstreamSource):

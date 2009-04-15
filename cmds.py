@@ -546,6 +546,8 @@ class cmd_merge_upstream(Command):
                         raise BzrCommandError("merge-upstream takes only a single --revision")
                     upstream_revspec = revision[0]
                     upstream_revision = upstream_revspec.as_revision_id(upstream_branch)
+                else:
+                    upstream_revision = upstream_branch.last_revision()
 
             if no_tarball and revision is not None:
                 raise BzrCommandError("--revision is not allowed when merging a tarball")
