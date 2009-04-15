@@ -73,7 +73,7 @@ from bzrlib.plugins.builddeb.source_distiller import (
         MergeModeDistiller,
         NativeSourceDistiller,
         )
-from bzrlib.plugins.builddeb.upstream import UpstreamProvider
+from bzrlib.plugins.builddeb.upstream import UpstreamProvider, UpstreamBranchSource
 from bzrlib.plugins.builddeb.util import (find_changelog,
         lookup_distribution,
         suite_to_distribution,
@@ -546,8 +546,6 @@ class cmd_merge_upstream(Command):
                         raise BzrCommandError("merge-upstream takes only a single --revision")
                     upstream_revspec = revision[0]
                     upstream_revision = upstream_revspec.as_revision_id(upstream_branch)
-                else:
-                    upstream_revision = upstream_branch.last_revision()
 
             if no_tarball and revision is not None:
                 raise BzrCommandError("--revision is not allowed when merging a tarball")
@@ -569,11 +567,10 @@ class cmd_merge_upstream(Command):
             tarball_filename = os.path.join(orig_dir, dest_name)
 
             if upstream_branch and no_tarball:
-                info("Exporting the upstream branch to create the tarball")
-                rev_tree = upstream_branch.repository.revision_tree(
+                upstream = UpstreamBranchSource(upstream_branch, 
                         upstream_revision)
-                export(rev_tree, tarball_filename, format='tgz',
-                        root="%s-%s" % (package, version.upstream_version))
+                upstream.get_specific_version(package, version.upstream_version,
+                        orig_dir)
             else:
                 try:
                     repack_tarball(location, dest_name, target_dir=orig_dir)
