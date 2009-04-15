@@ -2301,6 +2301,23 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         return self._real_branch._get_parent_location()
 
     def _set_parent_location(self, url):
+        medium = self._client._medium
+        if medium._is_remote_before((1, 15)):
+            return self._vfs_set_parent_location(url)
+        try:
+            call_url = url or ''
+            if type(call_url) is not str:
+                raise AssertionError('url must be a str or None (%s)' % url)
+            response = self._call('Branch.set_parent_location',
+                self._remote_path(), self._lock_token, self._repo_lock_token,
+                call_url)
+        except errors.UnknownSmartMethod:
+            medium._remember_remote_is_before((1, 15))
+            return self._vfs_set_parent_location(url)
+        if response != ():
+            raise errors.UnexpectedSmartServerResponse(response)
+
+    def _vfs_set_parent_location(self, url):
         self._ensure_real()
         return self._real_branch._set_parent_location(url)
 

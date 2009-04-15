@@ -461,6 +461,9 @@ request_handlers.register_lazy(
     'Branch.set_last_revision_ex', 'bzrlib.smart.branch',
     'SmartServerBranchRequestSetLastRevisionEx')
 request_handlers.register_lazy(
+    'Branch.set_parent_location', 'bzrlib.smart.branch',
+    'SmartServerBranchRequestSetParentLocation')
+request_handlers.register_lazy(
     'Branch.unlock', 'bzrlib.smart.branch', 'SmartServerBranchRequestUnlock')
 request_handlers.register_lazy(
     'BzrDir.cloning_metadir', 'bzrlib.smart.bzrdir',
