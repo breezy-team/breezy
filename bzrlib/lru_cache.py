@@ -233,19 +233,25 @@ class LRUCache(object):
         node.prev_key = None
 
     def _remove_node(self, node):
-        if node is None:
-            import pdb; pdb.set_trace()
+        if node.prev_key is None:
+            node_prev = None
+        else:
+            node_prev = self._cache[node.prev_key]
         if node is self._last_recently_used:
-            if node.prev_key is None:
-                node_prev = None
-            else:
-                node_prev = self._cache[node.prev_key]
             self._last_recently_used = node_prev
         self._cache.pop(node.key)
         # If we have removed all entries, remove the head pointer as well
         if self._last_recently_used is None:
             self._most_recently_used = None
         node.run_cleanup()
+        # Now remove this node from the linked list
+        if node_prev is not None:
+            node_prev.next = node.next
+        if node.next is not None:
+            node.next.prev_key = node.prev_key
+        # And remove this node's pointers
+        node.prev_key = None
+        node.next = None
 
     def _remove_lru(self):
         """Remove one entry from the lru, and handle consequences.
