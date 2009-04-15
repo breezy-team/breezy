@@ -50,6 +50,16 @@ API Changes
 Internals
 *********
 
+* ``bzrlib.branch.Branch.set_parent`` is now present on the base branch
+  class and will call ``_set_parent_location`` after doing unicode 
+  encoding. (Robert Collins)
+
+* ``bzrlib.bzrdir.BzrDir._get_config`` now returns a ``TransportConfig``
+  or similar when the dir supports configuration settings. The base class
+  defaults to None. There is a matching new server verb
+  ``BzrDir.get-config_file`` to reduce roundtrips for getting BzrDir
+  configuration. (Robert Collins)
+
 * ``bzrlib.tests.ExtendedTestResult`` has new methods ``startTests``
   called before the first test is started, ``done`` called after the last
   test completes, and a new parameter ``strict``. (Robert Collins)

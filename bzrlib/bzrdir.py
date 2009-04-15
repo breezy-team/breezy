@@ -408,11 +408,10 @@ class BzrDir(object):
             stack_on_pwd = None
             config = found_bzrdir.get_config()
             stop = False
-            if config is not None:
-                stack_on = config.get_default_stack_on()
-                if stack_on is not None:
-                    stack_on_pwd = found_bzrdir.root_transport.base
-                    stop = True
+            stack_on = config.get_default_stack_on()
+            if stack_on is not None:
+                stack_on_pwd = found_bzrdir.root_transport.base
+                stop = True
             # does it have a repository ?
             try:
                 repository = found_bzrdir.open_repository()
@@ -744,9 +743,12 @@ class BzrDir(object):
         raise NotImplementedError(self.get_workingtree_transport)
 
     def get_config(self):
-        if getattr(self, '_get_config', None) is None:
-            return None
-        return self._get_config()
+        """Get configuration for this BzrDir."""
+        return config.BzrDirConfig(self)
+
+    def _get_config(self):
+        """By default, no configuration is available."""
+        return None
 
     def __init__(self, _transport, _format):
         """Initialize a Bzr control dir object.
@@ -1696,8 +1698,7 @@ class BzrDirMeta1(BzrDir):
         return format.open(self, _found=True)
 
     def _get_config(self):
-        return config.BzrDirConfig(self.transport)
-
+        return config.TransportConfig(self.transport, 'control.conf')
 
 class BzrDirFormat(object):
     """An encapsulation of the initialization and open routines for a format.

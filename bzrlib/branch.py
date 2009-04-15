@@ -590,6 +590,24 @@ class Branch(object):
     def set_revision_history(self, rev_history):
         raise NotImplementedError(self.set_revision_history)
 
+    @needs_write_lock
+    def set_parent(self, url):
+        """See Branch.set_parent."""
+        # TODO: Maybe delete old location files?
+        # URLs should never be unicode, even on the local fs,
+        # FIXUP this and get_parent in a future branch format bump:
+        # read and rewrite the file. RBC 20060125
+        if url is not None:
+            if isinstance(url, unicode):
+                try:
+                    url = url.encode('ascii')
+                except UnicodeEncodeError:
+                    raise errors.InvalidURL(url,
+                        "Urls must be 7-bit ascii, "
+                        "use bzrlib.urlutils.escape")
+            url = urlutils.relative_url(self.base, url)
+        self._set_parent_location(url)
+
     def set_stacked_on_url(self, url):
         """Set the URL this branch is stacked against.
 
@@ -943,9 +961,6 @@ class Branch(object):
                 hook_name = Branch.hooks.get_hook_name(hook)
                 raise errors.HookFailed(
                     'pre_change_branch_tip', hook_name, exc_info)
-
-    def set_parent(self, url):
-        raise NotImplementedError(self.set_parent)
 
     @needs_write_lock
     def update(self):
@@ -2193,24 +2208,6 @@ class BzrBranch(Branch):
         self.get_config().set_user_option(
             'push_location', location,
             store=_mod_config.STORE_LOCATION_NORECURSE)
-
-    @needs_write_lock
-    def set_parent(self, url):
-        """See Branch.set_parent."""
-        # TODO: Maybe delete old location files?
-        # URLs should never be unicode, even on the local fs,
-        # FIXUP this and get_parent in a future branch format bump:
-        # read and rewrite the file. RBC 20060125
-        if url is not None:
-            if isinstance(url, unicode):
-                try:
-                    url = url.encode('ascii')
-                except UnicodeEncodeError:
-                    raise errors.InvalidURL(url,
-                        "Urls must be 7-bit ascii, "
-                        "use bzrlib.urlutils.escape")
-            url = urlutils.relative_url(self.base, url)
-        self._set_parent_location(url)
 
     def _set_parent_location(self, url):
         if url is None:

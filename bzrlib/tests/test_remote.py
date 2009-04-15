@@ -770,7 +770,15 @@ class OldServerTransport(object):
         return OldSmartClient()
 
 
-class RemoteBranchTestCase(TestRemote):
+class RemoteBzrDirTestCase(TestRemote):
+
+    def make_remote_bzrdir(self, transport, client):
+        """Make a RemotebzrDir using 'client' as the _client."""
+        return RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
+            _client=client)
+
+
+class RemoteBranchTestCase(RemoteBzrDirTestCase):
 
     def make_remote_branch(self, transport, client):
         """Make a RemoteBranch using 'client' as its _SmartClient.
@@ -781,8 +789,7 @@ class RemoteBranchTestCase(TestRemote):
         # we do not want bzrdir to make any remote calls, so use False as its
         # _client.  If it tries to make a remote call, this will fail
         # immediately.
-        bzrdir = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
-            _client=False)
+        bzrdir = self.make_remote_bzrdir(transport, False)
         repo = RemoteRepository(bzrdir, None, _client=client)
         branch_format = self.get_branch_format()
         format = RemoteBranchFormat(network_name=branch_format.network_name())
@@ -1417,6 +1424,38 @@ class TestBranchLockWrite(RemoteBranchTestCase):
         branch = self.make_remote_branch(transport, client)
         self.assertRaises(errors.UnlockableTransport, branch.lock_write)
         client.finished_test()
+
+
+class TestBzrDirGetSetConfig(RemoteBzrDirTestCase):
+
+    def test__get_config(self):
+        client = FakeClient()
+        client.add_success_response_with_body('default_stack_on = /\n', 'ok')
+        transport = MemoryTransport()
+        bzrdir = self.make_remote_bzrdir(transport, client)
+        config = bzrdir.get_config()
+        self.assertEqual('/', config.get_default_stack_on())
+        self.assertEqual(
+            [('call_expecting_body', 'BzrDir.get_config_file', ('memory:///',))],
+            client._calls)
+
+    def test_set_option_uses_vfs(self):
+        self.setup_smart_server_with_call_log()
+        bzrdir = self.make_bzrdir('.')
+        self.reset_smart_call_log()
+        config = bzrdir.get_config()
+        config.set_default_stack_on('/')
+        self.assertLength(3, self.hpss_calls)
+
+    def test_backwards_compat_get_option(self):
+        self.setup_smart_server_with_call_log()
+        bzrdir = self.make_bzrdir('.')
+        verb = 'BzrDir.get_config_file'
+        self.disable_verb(verb)
+        self.reset_smart_call_log()
+        self.assertEqual(None,
+            bzrdir._get_config().get_option('default_stack_on'))
+        self.assertLength(3, self.hpss_calls)
 
 
 class TestTransportIsReadonly(tests.TestCase):
@@ -2410,7 +2449,7 @@ class TestStacking(tests.TestCaseWithTransport):
         try:
             # it should have an appropriate fallback repository, which should also
             # be a RemoteRepository
-            self.assertEquals(len(remote_repo._fallback_repositories), 1)
+            self.assertLength(1, remote_repo._fallback_repositories)
             self.assertIsInstance(remote_repo._fallback_repositories[0],
                 RemoteRepository)
             # and it has the revision committed to the underlying repository;

@@ -1712,13 +1712,17 @@ class TestTransportConfig(TestCaseWithBzrDir):
     def test_get_config(self):
         my_dir = self.make_bzrdir('.')
         config = my_dir.get_config()
-        if config is None:
-            self.assertFalse(
-                isinstance(my_dir, (bzrdir.BzrDirMeta1, RemoteBzrDir)),
-                "%r should support configs" % my_dir)
-            raise TestNotApplicable(
-                'This BzrDir format does not support configs.')
-        config.set_default_stack_on('http://example.com')
+        try:
+            config.set_default_stack_on('http://example.com')
+        except errors.BzrError, e:
+            if 'Cannot set config' in str(e):
+                self.assertFalse(
+                    isinstance(my_dir, (bzrdir.BzrDirMeta1, RemoteBzrDir)),
+                    "%r should support configs" % my_dir)
+                raise TestNotApplicable(
+                    'This BzrDir format does not support configs.')
+            else:
+                raise
         self.assertEqual('http://example.com', config.get_default_stack_on())
         my_dir2 = bzrdir.BzrDir.open(self.get_url('.'))
         config2 = my_dir2.get_config()
