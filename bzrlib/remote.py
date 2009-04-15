@@ -1961,7 +1961,7 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         except (errors.NotStacked, errors.UnstackableBranchFormat,
             errors.UnstackableRepositoryFormat), e:
             return
-        self._activate_fallback_location(fallback_url)
+        self._activate_fallback_location(fallback_url, None)
 
     def _get_config(self):
         return RemoteBranchConfig(self)

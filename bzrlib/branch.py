@@ -99,10 +99,14 @@ class Branch(object):
     def _open_hook(self):
         """Called by init to allow simpler extension of the base class."""
 
-    def _activate_fallback_location(self, url):
+    def _activate_fallback_location(self, url, lock_style):
         """Activate the branch/repository from url as a fallback repository."""
-        self.repository.add_fallback_repository(
-            self._get_fallback_repository(url))
+        repo = self._get_fallback_repository(url)
+        if lock_style == 'write':
+            repo.lock_write()
+        elif lock_style == 'read':
+            repo.lock_read()
+        self.repository.add_fallback_repository(repo)
 
     def break_lock(self):
         """Break a lock if one is present from another instance.
@@ -608,6 +612,7 @@ class Branch(object):
             url = urlutils.relative_url(self.base, url)
         self._set_parent_location(url)
 
+    @needs_write_lock
     def set_stacked_on_url(self, url):
         """Set the URL this branch is stacked against.
 
@@ -626,10 +631,13 @@ class Branch(object):
                 errors.UnstackableRepositoryFormat):
                 return
             url = ''
+            # XXX: Lock correctness - should unlock our old repo if we were
+            # locked.
             # repositories don't offer an interface to remove fallback
             # repositories today; take the conceptually simpler option and just
             # reopen it.
             self.repository = self.bzrdir.find_repository()
+            self.repository.lock_write()
             # for every revision reference the branch has, ensure it is pulled
             # in.
             source_repository = self._get_fallback_repository(old_url)
@@ -638,7 +646,7 @@ class Branch(object):
                 self.repository.fetch(source_repository, revision_id,
                     find_ghosts=True)
         else:
-            self._activate_fallback_location(url)
+            self._activate_fallback_location(url, 'write')
         # write this out after the repository is stacked to avoid setting a
         # stacked config that doesn't work.
         self._set_config_location('stacked_on_location', url)
@@ -1016,6 +1024,7 @@ class Branch(object):
                      be truncated to end with revision_id.
         """
         result = to_bzrdir.create_branch()
+        result.lock_write()
         try:
             if repository_policy is not None:
                 repository_policy.configure_branch(result)
@@ -1921,27 +1930,38 @@ class BzrBranch(Branch):
         return self.control_files.is_locked()
 
     def lock_write(self, token=None):
-        repo_token = self.repository.lock_write()
+        repo_control = getattr(self.repository, 'control_files', None)
+        if self.control_files is repo_control or not self.is_locked():
+            self.repository.lock_write()
+            took_lock = True
+        else:
+            took_lock = False
         try:
-            token = self.control_files.lock_write(token=token)
+            return self.control_files.lock_write(token=token)
         except:
-            self.repository.unlock()
+            if took_lock:
+                self.repository.unlock()
             raise
-        return token
 
     def lock_read(self):
-        self.repository.lock_read()
+        repo_control = getattr(self.repository, 'control_files', None)
+        if self.control_files is repo_control or not self.is_locked():
+            self.repository.lock_read()
+            took_lock = True
+        else:
+            took_lock = False
         try:
             self.control_files.lock_read()
         except:
-            self.repository.unlock()
+            if took_lock:
+                self.repository.unlock()
             raise
 
     def unlock(self):
-        # TODO: test for failed two phase locks. This is known broken.
-        try:
-            self.control_files.unlock()
-        finally:
+        self.control_files.unlock()
+        repo_control = getattr(self.repository, 'control_files', None)
+        if (self.control_files is repo_control or
+            not self.control_files.is_locked()):
             self.repository.unlock()
         if not self.control_files.is_locked():
             # we just released the lock
@@ -2370,7 +2390,7 @@ class BzrBranch7(BzrBranch5):
                     raise AssertionError(
                         "'transform_fallback_location' hook %s returned "
                         "None, not a URL." % hook_name)
-            self._activate_fallback_location(url)
+            self._activate_fallback_location(url, None)
 
     def __init__(self, *args, **kwargs):
         self._ignore_fallbacks = kwargs.get('ignore_fallbacks', False)
