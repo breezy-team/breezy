@@ -35,6 +35,7 @@ from bzrlib.decorators import (
     needs_read_lock,
     )
 from bzrlib.trace import (
+    is_quiet,
     mutter,
     )
 
@@ -261,6 +262,18 @@ class LocalGitBranch(GitBranch):
         return True
 
 
+class GitBranchPullResult(branch.PullResult):
+
+    def report(self, to_file):
+        if not is_quiet():
+            if self.old_revid == self.new_revid:
+                to_file.write('No revisions to pull.\n')
+            else:
+                to_file.write('Now on revision %d (git sha: %s).\n' % 
+                        (self.new_revno, self.new_git_head))
+        self._show_tag_conficts(to_file)
+
+
 class InterGitGenericBranch(branch.InterBranch):
     """InterBranch implementation that pulls from Git into bzr."""
 
@@ -274,21 +287,22 @@ class InterGitGenericBranch(branch.InterBranch):
         """See InterBranch.update_revisions()."""
         interrepo = repository.InterRepository.get(self.source.repository, 
             self.target.repository)
+        self._head = None
         self._last_revid = None
         def determine_wants(heads):
             if not self.source.name in heads:
                 raise NoSuchRef(self.source.name, heads.keys())
             if stop_revision is not None:
                 self._last_revid = stop_revision
-                head, mapping = self.source.repository.lookup_git_revid(
+                self._head, mapping = self.source.repository.lookup_git_revid(
                     stop_revision)
             else:
-                head = heads[self.source.name]
+                self._head = heads[self.source.name]
                 self._last_revid = \
-                    self.source.mapping.revision_id_foreign_to_bzr(head)
+                    self.source.mapping.revision_id_foreign_to_bzr(self._head)
             if self.target.repository.has_revision(self._last_revid):
                 return []
-            return [head]
+            return [self._head]
         interrepo.fetch_objects(determine_wants, self.source.mapping)
         if overwrite:
             prev_last_revid = None
@@ -309,7 +323,7 @@ class InterGitGenericBranch(branch.InterBranch):
         :param _override_hook_target: Private parameter - set the branch to be
             supplied as the target_branch to pull hooks.
         """
-        result = branch.PullResult()
+        result = GitBranchPullResult()
         result.source_branch = self.source
         if _override_hook_target is None:
             result.target_branch = self.target
@@ -322,8 +336,9 @@ class InterGitGenericBranch(branch.InterBranch):
             graph = self.target.repository.get_graph(self.source.repository)
             result.old_revno, result.old_revid = \
                 self.target.last_revision_info()
-            self.target.update_revisions(self.source, stop_revision,
-                overwrite=overwrite, graph=graph)
+            self.update_revisions(stop_revision, overwrite=overwrite, 
+                graph=graph)
+            result.new_git_head = self._head
             result.tag_conflicts = self.source.tags.merge_to(self.target.tags,
                 overwrite)
             result.new_revno, result.new_revid = self.target.last_revision_info()
