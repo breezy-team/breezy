@@ -796,7 +796,9 @@ class TestSmartServerBranchRequestSetParent(tests.TestCaseWithMemoryTransport):
 
     def test_set_parent_none(self):
         branch = self.make_branch('base', format="1.9")
+        branch.lock_write()
         branch._set_parent_location('foo')
+        branch.unlock()
         request = smart.branch.SmartServerBranchRequestSetParentLocation(
             self.get_transport())
         branch_token = branch.lock_write()
