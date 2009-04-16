@@ -65,8 +65,6 @@ from bzrlib.plugins.git.converter import (
     )
 from bzrlib.plugins.git.mapping import (
     DEFAULT_FILE_MODE,
-    DEFAULT_TREE_MODE,
-    DEFAULT_SYMLINK_MODE,
     inventory_to_tree_and_blobs,
     text_to_blob,
     )
@@ -177,8 +175,6 @@ def import_git_blob(texts, mapping, path, hexsha, base_inv, parent_id,
         assert ie.revision is not None
         texts.add_lines((file_id, ie.revision), parent_keys,
             osutils.split_lines(blob.data))
-        if "verify" in debug.debug_flags:
-            assert text_to_blob(blob.data).id == hexsha
         shagitmap.add_entry(hexsha, "blob", (ie.file_id, ie.revision))
     if file_id in base_inv:
         old_path = base_inv.id2path(file_id)
@@ -239,8 +235,8 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id,
                     base_inv, file_id, revision_id, parent_invs, shagitmap, 
                     lookup_object, bool(fs_mode & 0111), symlink)
             invdelta.extend(subinvdelta)
-        if mode not in (DEFAULT_TREE_MODE, DEFAULT_FILE_MODE,
-                        DEFAULT_SYMLINK_MODE, DEFAULT_FILE_MODE|0111):
+        if mode not in (stat.S_IFDIR, DEFAULT_FILE_MODE,
+                        stat.S_IFLNK, DEFAULT_FILE_MODE|0111):
             child_modes[child_path] = mode
     # Remove any children that have disappeared
     if file_id in base_inv:

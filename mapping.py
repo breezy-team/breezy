@@ -18,6 +18,8 @@
 
 """Converters, etc for going between Bazaar and Git ids."""
 
+import stat
+
 from bzrlib import (
     errors,
     foreign,
@@ -36,9 +38,7 @@ from bzrlib.xml_serializer import (
     escape_invalid_chars,
     )
 
-DEFAULT_TREE_MODE = 0040000
-DEFAULT_FILE_MODE = 0100644
-DEFAULT_SYMLINK_MODE = 0120000
+DEFAULT_FILE_MODE = stat.S_IFREG | 0644
 
 
 def escape_file_id(file_id):
@@ -100,8 +100,10 @@ class BzrGitMapping(foreign.VcsMapping):
 
         if commit.commit_time != commit.author_time:
             rev.properties['author-timestamp'] = str(commit.author_time)
+        if commit.commit_timezone != commit.author_timezone:
+            rev.properties['author-timezone'] = str(commit.author_timezone)
         rev.timestamp = commit.commit_time
-        rev.timezone = 0
+        rev.timezone = commit.commit_timezone
         return rev
 
 
@@ -149,8 +151,9 @@ foreign_git = ForeignGit()
 default_mapping = BzrGitMappingv1()
 
 
-def text_to_blob(text):
+def text_to_blob(texts, entry):
     from dulwich.objects import Blob
+    text = texts.get_record_stream([(entry.file_id, entry.revision)], 'unordered', True).next().get_bytes_as('fulltext')
     blob = Blob()
     blob._text = text
     return blob
@@ -163,13 +166,36 @@ def symlink_to_blob(entry):
     return blob
 
 
+def entry_mode(entry):
+    if entry.kind == 'directory':
+        return stat.S_IFDIR
+    elif entry.kind == 'symlink':
+        return stat.S_IFLNK
+    elif entry.kind == 'file':
+        mode = stat.S_IFREG | 0644
+        if entry.executable:
+            mode |= 0111
+        return mode
+    else:
+        raise AssertionError
+
+
+def directory_to_tree(entry, lookup_ie_sha1):
+    from dulwich.objects import Tree
+    tree = Tree()
+    for name in sorted(entry.children.keys()):
+        ie = entry.children[name]
+        tree.add(entry_mode(ie), name.encode("utf-8"), lookup_ie_sha1(ie))
+    tree.serialize()
+    return tree
+
+
 def inventory_to_tree_and_blobs(inventory, texts, mapping, cur=None):
     """Convert a Bazaar tree to a Git tree.
 
     :return: Yields tuples with object sha1, object and path
     """
     from dulwich.objects import Tree
-    from bzrlib.inventory import InventoryDirectory, InventoryFile
     import stat
     stack = []
     if cur is None:
@@ -192,27 +218,17 @@ def inventory_to_tree_and_blobs(inventory, texts, mapping, cur=None):
             stack.append((cur, tree))
             cur = path
             tree = Tree()
-        elif entry.kind == "file":
-            #FIXME: We can make potentially make this Lazy to avoid shaing lots of stuff
-            # and having all these objects in memory at once
-            text = texts.get_record_stream([(entry.file_id, entry.revision)], 'unordered', True).next().get_bytes_as('fulltext')
-            blob = text_to_blob(text)
-            sha = blob.id
-            yield sha, blob, path
-
-            name = urlutils.basename(path).encode("utf-8")
-            mode = stat.S_IFREG | 0644
-            if entry.executable:
-                mode |= 0111
-            tree.add(mode, name, sha)
-        elif entry.kind == "symlink":
-            blob = symlink_to_blob(entry)
-            sha = blob.id
-            yield sha, blob, path
-            name = urlutils.basename(path).encode("utf-8")
-            tree.add(stat.S_IFLNK, name, sha)
         else:
-            raise AssertionError("Unknown kind %s" % entry.kind)
+            if entry.kind == "file":
+                blob = text_to_blob(texts, entry)
+            elif entry.kind == "symlink":
+                blob = symlink_to_blob(entry)
+            else:
+                raise AssertionError("Unknown kind %s" % entry.kind)
+            sha = blob.id
+            yield sha, blob, path
+            name = urlutils.basename(path).encode("utf-8")
+            tree.add(entry_mode(entry), name, sha)
 
     while len(stack) > 1:
         tree.serialize()
@@ -249,5 +265,10 @@ def revision_to_commit(rev, tree_sha, parent_lookup):
         commit._author_time = long(rev.properties['author-timestamp'])
     else:
         commit._author_time = commit._commit_time
+    commit._commit_timezone = rev.timezone
+    if 'author-timezone' in rev.properties:
+        commit._author_timezone = int(rev.properties['author-timezone'])
+    else:
+        commit._author_timezone = commit._commit_timezone
     commit.serialize()
     return commit

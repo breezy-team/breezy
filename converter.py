@@ -28,7 +28,7 @@ from bzrlib import (
     )
 
 from bzrlib.plugins.git.mapping import (
-    inventory_to_tree_and_blobs,
+    directory_to_tree,
     mapping_registry,
     revision_to_commit,
     )
@@ -64,19 +64,7 @@ class BazaarObjectStore(object):
 
     def _update_sha_map_revision(self, revid):
         inv = self.repository.get_inventory(revid)
-        objects = inventory_to_tree_and_blobs(inv, self.repository.texts, 
-                                              self.mapping)
-        for sha, o, path in objects:
-            if path == "":
-                tree_sha = sha
-            ie = inv[inv.path2id(path)]
-            if ie.kind in ("file", "symlink"):
-                git_kind = "blob"
-            elif ie.kind == "directory":
-                git_kind = "tree"
-            else:
-                raise AssertionError()
-            self._idmap.add_entry(sha, git_kind, (ie.file_id, ie.revision))
+        tree_sha = self._get_ie_sha1(inv.root, inv)
         rev = self.repository.get_revision(revid)
         commit_obj = revision_to_commit(rev, tree_sha,
             self._idmap._parent_lookup)
@@ -94,6 +82,21 @@ class BazaarObjectStore(object):
             return
         if expected_sha != object.id:
             raise AssertionError("Invalid sha for %r: %s" % (object, expected_sha))
+
+    def _get_ie_sha1(self, entry, inv):
+        if entry.kind == "directory":
+            try:
+                return self._idmap.lookup_tree(entry.file_id, inv.revision_id)
+            except KeyError:
+                return self._get_tree(entry.file_id, inv.revision_id, 
+                    inv=inv).id
+        else:
+            try:
+                return self._idmap.lookup_blob(entry.file_id, entry.revision)
+            except KeyError:
+                ret = self._get_blob(entry.file_id, entry.revision).id
+                self._idmap.add_entry(ret, "blob", (entry.file_id, entry.revision))
+                return ret
 
     def _get_blob(self, fileid, revision, expected_sha=None):
         """Return a Git Blob object from a fileid and revision stored in bzr.
@@ -116,22 +119,7 @@ class BazaarObjectStore(object):
         """
         if inv is None:
             inv = self.repository.get_inventory(revid)
-        tree = Tree()
-        children = inv[fileid].children
-        for name in sorted(children):
-            ie = children[name]
-            if ie.kind == "directory":
-                subtree = self._get_tree(ie.file_id, revid, inv)
-                tree.add(stat.S_IFDIR, name.encode('UTF-8'), subtree.id)
-            elif ie.kind == "file":
-                blob = self._get_blob(ie.file_id, ie.revision)
-                mode = stat.S_IFREG | 0644
-                if ie.executable:
-                    mode |= 0111
-                tree.add(mode, name.encode('UTF-8'), blob.id)
-            elif ie.kind == "symlink":
-                raise AssertionError("Symlinks not yet supported")
-        tree.serialize()
+        tree = directory_to_tree(inv[fileid], lambda ie: self._get_ie_sha1(ie, inv))
         self._check_expected_sha(expected_sha, tree)
         return tree
 
