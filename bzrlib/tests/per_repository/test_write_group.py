@@ -18,9 +18,11 @@
 
 import sys
 
-from bzrlib import errors
+from bzrlib import bzrdir, errors, graph, memorytree, remote
+from bzrlib.branch import BzrBranchFormat7
+from bzrlib.inventory import InventoryDirectory
 from bzrlib.transport import local, memory
-from bzrlib.tests import TestNotApplicable
+from bzrlib.tests import KnownFailure, TestNotApplicable
 from bzrlib.tests.per_repository import TestCaseWithRepository
 
 
@@ -128,6 +130,64 @@ class TestWriteGroup(TestCaseWithRepository):
         finally:
             repo.commit_write_group()
             repo.unlock()
+
+    def test_get_missing_parent_inventories(self):
+        # Make a trunk with one commit.
+        if isinstance(self.repository_format, remote.RemoteRepositoryFormat):
+            # RemoteRepository by default builds a default format real
+            # repository, but the default format is unstackble.  So explicitly
+            # make a stackable real repository and use that.
+            repo = self.make_repository('trunk', format='1.9')
+            repo = bzrdir.BzrDir.open(self.get_url('trunk')).open_repository()
+        else:
+            repo = self.make_repository('trunk')
+        if not repo._format.supports_external_lookups:
+            raise TestNotApplicable('format not stackable')
+        repo.bzrdir._format.set_branch_format(BzrBranchFormat7())
+        trunk = repo.bzrdir.create_branch()
+        trunk_repo = repo
+        tree = memorytree.MemoryTree.create_on_branch(trunk)
+        tree.lock_write()
+        if repo._format.rich_root_data:
+            # The tree needs a root
+            tree._inventory.add(InventoryDirectory('the-root-id', '', None)
+        tree.commit('Trunk commit', rev_id='rev-1')
+        tree.unlock()
+        # Branch the trunk, add a new commit.
+        tree = self.make_branch_and_tree('branch')
+        trunk_repo.lock_read()
+        self.addCleanup(trunk_repo.unlock)
+        tree.branch.repository.fetch(trunk_repo, revision_id='rev-1')
+        tree.set_parent_ids(['rev-1'])
+        tree.commit('Branch commit', rev_id='rev-2')
+        branch_repo = tree.branch.repository
+        # Make a new repo stacked on trunk, and copy the new commit's revision
+        # and inventory records to it.
+        if isinstance(self.repository_format, remote.RemoteRepositoryFormat):
+            # RemoteRepository by default builds a default format real
+            # repository, but the default format is unstackble.  So explicitly
+            # make a stackable real repository and use that.
+            repo = self.make_repository('stacked', format='1.9')
+            repo = bzrdir.BzrDir.open(self.get_url('stacked')).open_repository()
+        else:
+            repo = self.make_repository('stacked')
+        branch_repo.lock_read()
+        repo.add_fallback_repository(trunk.repository)
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        self.addCleanup(repo.abort_write_group)
+        trunk_repo.lock_read()
+        repo.inventories.insert_record_stream(
+            branch_repo.inventories.get_record_stream(
+                [('rev-2',)], 'unordered', False))
+        repo.revisions.insert_record_stream(
+            branch_repo.revisions.get_record_stream(
+                [('rev-2',)], 'unordered', False))
+        branch_repo.unlock()
+        self.assertEqual(
+            set([('inventories', 'rev-1')]),
+            repo.get_missing_parent_inventories())
 
 
 class TestResumeableWriteGroup(TestCaseWithRepository):
