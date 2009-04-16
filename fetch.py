@@ -218,13 +218,13 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id,
     child_modes = {}
     shamap = []
     tree = lookup_object(hexsha)
-    for mode, name, hexsha in tree.entries():
+    for mode, name, child_hexsha in tree.entries():
         basename = name.decode("utf-8")
         existing_children.add(basename)
         child_path = osutils.pathjoin(path, name)
         if stat.S_ISDIR(mode):
             subinvdelta, grandchildmodes, subshamap = import_git_tree(texts, 
-                    mapping, child_path, hexsha, base_inv, file_id, 
+                    mapping, child_path, child_hexsha, base_inv, file_id, 
                     revision_id, parent_invs, shagitmap, lookup_object)
             invdelta.extend(subinvdelta)
             child_modes.update(grandchildmodes)
@@ -233,7 +233,7 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id,
             fs_mode = stat.S_IMODE(mode)
             symlink = stat.S_ISLNK(mode)
             subinvdelta, subshamap = import_git_blob(texts, mapping, 
-                    child_path, hexsha, base_inv, file_id, revision_id, 
+                    child_path, child_hexsha, base_inv, file_id, revision_id, 
                     parent_invs, shagitmap, lookup_object, 
                     bool(fs_mode & 0111), symlink)
             invdelta.extend(subinvdelta)

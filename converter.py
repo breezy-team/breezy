@@ -86,10 +86,9 @@ class BazaarObjectStore(object):
     def _get_ie_sha1(self, entry, inv):
         if entry.kind == "directory":
             try:
-                ret = self._idmap.lookup_tree(entry.file_id, inv.revision_id)
+                return self._idmap.lookup_tree(entry.file_id, inv.revision_id)
             except KeyError:
-                ret = self._get_tree(entry.file_id, inv.revision_id, 
-                    inv=inv).id
+                ret = self._get_tree(entry.file_id, inv.revision_id, inv=inv).id
                 self._idmap.add_entry(ret, "tree", (entry.file_id, inv.revision_id))
                 return ret
         else:
