@@ -39,6 +39,7 @@ from bzrlib import (
     )
 from bzrlib.errors import (
     InvalidRevisionId,
+    NoSuchId,
     NoSuchRevision,
     )
 from bzrlib.inventory import (
@@ -136,8 +137,10 @@ def import_git_blob(texts, mapping, path, hexsha, base_inv, parent_id,
     ie.executable = executable
     # See if this has changed at all
     try:
-        base_sha = shagitmap.lookup_blob(file_id, base_inv.revision_id)
+        base_sha = shagitmap.lookup_blob(file_id, base_inv[file_id].revision)
     except KeyError:
+        base_sha = None
+    except NoSuchId:
         base_sha = None
     else:
         if (base_sha == hexsha and base_inv[file_id].executable == ie.executable
@@ -201,7 +204,7 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id,
     if not file_id in base_inv:
         # Newly appeared here
         ie.revision = revision_id
-        texts.add_lines((file_id, ie.revision), [], [])
+        texts.add_lines((file_id, ie.revision), (), [])
         invdelta.append((None, path, file_id, ie))
     else:
         # See if this has changed at all
@@ -285,8 +288,8 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
             root_trees[rev.revision_id] = o.tree
             revisions[rev.revision_id] = rev
             graph.append((rev.revision_id, rev.parent_ids))
-            target_git_object_retriever._idmap.add_entry(o.sha().hexdigest(),
-                "commit", (rev.revision_id, o.tree))
+            target_git_object_retriever._idmap.add_entry(o.id, "commit", 
+                    (rev.revision_id, o.tree))
             heads.extend([p for p in o.parents if p not in checked])
         elif isinstance(o, Tag):
             heads.append(o.object[1])
