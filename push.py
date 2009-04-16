@@ -68,7 +68,7 @@ class InterToGitRepository(InterRepository):
         self.target._git.object_store.add_objects(objects)
         return commit.sha().hexdigest()
 
-    def missing_revisions(self, stop_revision=None, ghosts=False):
+    def missing_revisions(self, stop_revision=None):
         if stop_revision is not None:
             ancestry = [x for x in self.source.get_ancestry(stop_revision) if x is not None]
         else:
@@ -78,11 +78,9 @@ class InterToGitRepository(InterRepository):
         for revid in graph.iter_topo_order(ancestry):
             if not self.target.has_revision(revid):
                 missing.append(revid)
-            elif not ghosts:
-                break
         return missing
 
-    def dfetch(self, stop_revision=None, fetch_ghosts=False):
+    def dfetch(self, stop_revision=None):
         """Import the gist of the ancestry of a particular revision."""
         revidmap = {}
         gitidmap = {}
