@@ -173,7 +173,7 @@ def import_git_blob(texts, mapping, path, hexsha, base_inv, parent_id,
         ie.revision = revision_id
         assert file_id is not None
         assert ie.revision is not None
-        texts.add_lines((file_id, ie.revision), parent_keys,
+        texts.add_lines((file_id, ie.revision), tuple(parent_keys),
             osutils.split_lines(blob.data))
     if file_id in base_inv:
         old_path = base_inv.id2path(file_id)
