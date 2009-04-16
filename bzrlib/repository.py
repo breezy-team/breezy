@@ -1425,9 +1425,24 @@ class Repository(object):
         raise errors.UnsuspendableWriteGroup(self)
 
     def get_missing_parent_inventories(self):
+        """Return the keys of missing inventory parents for revisions added in
+        this write group.
+
+        A revision is not complete if the inventory delta for that revision
+        cannot be calculated.  Therefore if the parent inventories of a
+        revision are not present, the revision is incomplete, and e.g. cannot
+        be streamed by a smart server.  This method finds missing inventory
+        parents for revisions added in this write group.
+        """
+        if not self._format.supports_external_lookups:
+            # This is only an issue for stacked repositories
+            return set()
         revision_ids = self.new_revisions()
         parent_inventories = _parent_inventories(self, revision_ids)
-        unstacked_inventories = self.inventories._index
+        if self._format.supports_external_lookups:
+            unstacked_inventories = self.inventories._index
+        else:
+            unstacked_inventories = self.inventories
         present_inventories = unstacked_inventories.get_parent_map(
             key[-1:] for key in parent_inventories)
         present_inventories = [
