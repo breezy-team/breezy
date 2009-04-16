@@ -35,6 +35,10 @@ from bzrlib.xml_serializer import (
     escape_invalid_chars,
     )
 
+DEFAULT_TREE_MODE = 0040000
+DEFAULT_FILE_MODE = 0100644
+DEFAULT_SYMLINK_MODE = 0120000
+
 
 def escape_file_id(file_id):
     return file_id.replace('_', '__').replace(' ', '_s')

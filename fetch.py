@@ -60,6 +60,9 @@ from bzrlib.plugins.git.converter import (
     BazaarObjectStore,
     )
 from bzrlib.plugins.git.mapping import (
+    DEFAULT_FILE_MODE,
+    DEFAULT_TREE_MODE,
+    DEFAULT_SYMLINK_MODE,
     text_to_blob,
     )
 from bzrlib.plugins.git.repository import (
@@ -206,16 +209,17 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id,
             base_sha = shagitmap.lookup_tree(file_id, base_inv.revision_id)
         except KeyError:
             pass
-        else:
+        else:11):
             if base_sha == hexsha:
                 # If nothing has changed since the base revision, we're done
-                return []
+                return [], {}
     # Remember for next time
     existing_children = set()
     if "verify" in debug.debug_flags:
         # FIXME:
         assert False
     shagitmap.add_entry(hexsha, "tree", (file_id, revision_id))
+    child_modes = {}
     tree = lookup_object(hexsha)
     for mode, name, hexsha in tree.entries():
         entry_kind = (mode & 0700000) / 0100000
@@ -223,17 +227,24 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id,
         existing_children.add(basename)
         child_path = osutils.pathjoin(path, name)
         if entry_kind == 0:
-            subinvdelta = import_git_tree(texts, mapping, child_path, hexsha, 
+            if mode != DEFAULT_TREE_MODE:
+                child_modes[child_path] = mode
+            subinvdelta, grandchildmodes = import_git_tree(texts, mapping, child_path, hexsha, 
                 base_inv, file_id, revision_id, parent_invs, shagitmap, 
                 lookup_object)
             invdelta.extend(subinvdelta)
+            child_modes.update(grandchildmodes)
         elif entry_kind == 1:
             fs_mode = mode & 0777
             file_kind = (mode & 070000) / 010000
             if file_kind == 0: # regular file
                 symlink = False
+                if mode != DEFAULT_FILE_MODE:
+                    child_modes[child_path] = mode
             elif file_kind == 2:
                 symlink = True
+                if mode not in (DEFAULT_SYMLINK_MODE, DEFAULT_TREE_MODE | 0111):
+                    child_modes[child_path] = mode
             else:
                 raise AssertionError("Unknown file kind, mode=%r" % (mode,))
             subinvdelta = import_git_blob(texts, mapping, child_path, hexsha,
@@ -250,7 +261,7 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id,
             invdelta.append((base_inv.id2path(ie.file_id), None, ie.file_id, None))
             if ie.kind == "directory":
                 deletable.extend(ie.children.values())
-    return invdelta
+    return invdelta, child_modes
 
 
 def import_git_objects(repo, mapping, object_iter, target_git_object_retriever, 
