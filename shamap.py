@@ -151,13 +151,13 @@ class SqliteGitShaMap(GitShaMap):
         row = self.db.execute("select sha1 from trees where fileid = ? and revid = ?", (fileid,revid)).fetchone()
         if row is None:
             raise KeyError((fileid, revid))
-        return row[0]
+        return row[0].encode("utf-8")
 
     def lookup_blob(self, fileid, revid):
         row = self.db.execute("select sha1 from blobs where fileid = ? and revid = ?", (fileid, revid)).fetchone()
         if row is None:
             raise KeyError((fileid, revid))
-        return row[0]
+        return row[0].encode("utf-8")
 
     def lookup_git_sha(self, sha):
         """Lookup a Git sha in the database.
