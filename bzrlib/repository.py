@@ -3979,18 +3979,13 @@ class StreamSink(object):
                 pass
             else:
                 new_pack.set_write_cache_size(1024*1024)
-        added_inventories = []
         for substream_type, substream in stream:
             if substream_type == 'texts':
                 self.target_repo.texts.insert_record_stream(substream)
             elif substream_type == 'inventories':
-                def key_observer(substream):
-                    for record in substream:
-                        added_inventories.append(record.key[-1])
-                        yield record
                 if src_serializer == to_serializer:
                     self.target_repo.inventories.insert_record_stream(
-                        key_observer(substream))
+                        substream)
                 else:
                     self._extract_and_insert_inventories(
                         substream, src_serializer)
@@ -4012,9 +4007,6 @@ class StreamSink(object):
                 self.target_repo.signatures.insert_record_stream(substream)
             else:
                 raise AssertionError('kaboom! %s' % (substream_type,))
-        # Find all the parent revisions referenced by the stream, but
-        # not present in the stream, and make sure we have their
-        # inventories.
         # Find all the new revisions (including ones from resume_tokens)
         new_revisions = self.target_repo.new_revisions()
         missing_keys = _parent_inventories(self.target_repo, new_revisions)
