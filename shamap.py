@@ -160,6 +160,22 @@ class SqliteGitShaMap(GitShaMap):
     def commit(self):
         self.db.commit()
 
+    def add_entries(self, entries):
+        trees = []
+        blobs = []
+        for sha, type, type_data in entries:
+            if type == "tree":
+                trees.append((sha, type_data[0], type_data[1]))
+            elif type == "blob":
+                blobs.append((sha, type_data[0], type_data[1]))
+            else:
+                raise AssertionError
+        if trees:
+            self.db.executemany("replace into trees (sha1, fileid, revid) values (?, ?, ?)", trees)
+        if blobs:
+            self.db.executemany("replace into blobs (sha1, fileid, revid) values (?, ?, ?)", blobs)
+
+
     def add_entry(self, sha, type, type_data):
         """Add a new entry to the database.
         """
