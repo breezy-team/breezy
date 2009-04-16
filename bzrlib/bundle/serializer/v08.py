@@ -91,6 +91,7 @@ class Action(object):
 
 
 class BundleSerializerV08(BundleSerializer):
+
     def read(self, f):
         """Read the rest of the bundles from the supplied file.
 

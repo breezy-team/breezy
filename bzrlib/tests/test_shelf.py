@@ -16,7 +16,15 @@
 
 import os
 
-from bzrlib import errors, pack, shelf, tests, transform, workingtree
+from bzrlib import (
+    errors,
+    osutils,
+    pack,
+    shelf,
+    tests,
+    transform,
+    workingtree,
+    )
 
 
 EMPTY_SHELF = ("Bazaar pack format 1 (introduced in 0.18)\n"
@@ -140,26 +148,46 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         limbo_name = creator.shelf_transform._limbo_name(s_trans_id)
         self.assertEqual('bar', os.readlink(limbo_name))
 
-    def test_shelve_symlink_target_change(self):
+    def _test_shelve_symlink_target_change(self, link_name,
+                                           old_target, new_target):
         self.requireFeature(tests.SymlinkFeature)
         tree = self.make_branch_and_tree('.')
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        os.symlink('bar', 'foo')
-        tree.add('foo', 'foo-id')
+        os.symlink(old_target, link_name)
+        tree.add(link_name, 'foo-id')
         tree.commit("commit symlink")
-        os.unlink("foo")
-        os.symlink('baz', 'foo')
+        os.unlink(link_name)
+        os.symlink(new_target, link_name)
         creator = shelf.ShelfCreator(tree, tree.basis_tree())
         self.addCleanup(creator.finalize)
-        self.assertEqual([('modify target', 'foo-id', 'foo', 'bar', 'baz')],
+        self.assertEqual([('modify target', 'foo-id', link_name,
+                           old_target, new_target)],
                          list(creator.iter_shelvable()))
         creator.shelve_modify_target('foo-id')
         creator.transform()
-        self.assertEqual('bar', os.readlink('foo'))
+
+        def read_link(link):
+            # Only reliable way to get the link target for python2.[456] other
+            # laternative implementations either fails to reliably reutrn a
+            # unicode string or fails to encode the received unicode string
+            link = link.encode(osutils._fs_enc)
+            target = os.readlink(link)
+            target = target.decode(osutils._fs_enc)
+            return target
+
+        self.assertEqual(old_target, read_link(link_name))
         s_trans_id = creator.shelf_transform.trans_id_file_id('foo-id')
         limbo_name = creator.shelf_transform._limbo_name(s_trans_id)
-        self.assertEqual('baz', os.readlink(limbo_name))
+        self.assertEqual(new_target, read_link(limbo_name))
+
+    def test_shelve_symlink_target_change(self):
+        self._test_shelve_symlink_target_change('foo', 'bar', 'baz')
+
+    def test_shelve_unicode_symlink_target_change(self):
+        self.requireFeature(tests.UnicodeFilenameFeature)
+        self._test_shelve_symlink_target_change(
+            u'fo\N{Euro Sign}o', u'b\N{Euro Sign}ar', u'b\N{Euro Sign}az')
 
     def test_shelve_creation_no_contents(self):
         tree = self.make_branch_and_tree('.')

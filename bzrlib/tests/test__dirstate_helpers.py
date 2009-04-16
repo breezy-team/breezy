@@ -27,9 +27,21 @@ from bzrlib import (
     tests,
     )
 from bzrlib.tests import (
-        SymlinkFeature,
-        )
-from bzrlib.tests import test_dirstate
+    test_dirstate,
+    test_osutils,
+    )
+
+
+def load_tests(basic_tests, module, loader):
+    # FIXME: we should also parametrize agsinst C/Python
+    suite = loader.suiteClass()
+    dir_reader_tests, remaining_tests = tests.split_suite_by_condition(
+        basic_tests, tests.condition_isinstance(
+            test_dirstate.TestCaseWithDirState))
+    tests.multiply_tests(dir_reader_tests,
+                         test_osutils.dir_reader_scenarios(), suite)
+    suite.addTest(remaining_tests)
+    return suite
 
 
 class _CompiledDirstateHelpersFeature(tests.Feature):
@@ -921,7 +933,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
 
     def test_update_entry_symlink(self):
         """Update entry should read symlinks."""
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(tests.SymlinkFeature)
         state, entry = self.get_state_with_a()
         state.save()
         self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
@@ -1098,7 +1110,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
 
     def test_update_file_to_symlink(self):
         """File becomes a symlink"""
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(tests.SymlinkFeature)
         state, entry = self.get_state_with_a()
         # The file sha1 won't be cached unless the file is old
         state.adjust_time(+10)
@@ -1117,7 +1129,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
 
     def test_update_dir_to_symlink(self):
         """Directory becomes a symlink"""
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(tests.SymlinkFeature)
         state, entry = self.get_state_with_a()
         # The symlink target won't be cached if it isn't old
         state.adjust_time(+10)
@@ -1127,7 +1139,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
 
     def test_update_symlink_to_file(self):
         """Symlink becomes a file"""
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(tests.SymlinkFeature)
         state, entry = self.get_state_with_a()
         # The symlink and file info won't be cached unless old
         state.adjust_time(+10)
@@ -1137,7 +1149,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
 
     def test_update_symlink_to_dir(self):
         """Symlink becomes a directory"""
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(tests.SymlinkFeature)
         state, entry = self.get_state_with_a()
         # The symlink target won't be cached if it isn't old
         state.adjust_time(+10)

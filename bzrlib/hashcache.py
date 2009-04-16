@@ -176,9 +176,13 @@ class HashCache(object):
                 filters = self._filter_provider(path=path, file_id=None)
             digest = self._really_sha1_file(abspath, filters)
         elif stat.S_ISLNK(mode):
-            digest = sha_string(os.readlink(abspath))
+            target = os.readlink(abspath)
+            import pronto
+            pronto.bzr_test('HashCache.get_sha1(%r) -> %r' % (abspath, target))
+            digest = sha_string(target)
         else:
-            raise BzrError("file %r: unknown file stat mode: %o"%(abspath,mode))
+            raise BzrError("file %r: unknown file stat mode: %o"
+                           % (abspath, mode))
 
         # window of 3 seconds to allow for 2s resolution on windows,
         # unsynchronized file servers, etc.

@@ -1637,6 +1637,7 @@ class DirState(object):
         #       higher level, because there either won't be anything on disk,
         #       or the thing on disk will be a file.
         fs_encoding = osutils._fs_enc
+        import pronto; pronto.bzr_test('dirstate._read_link(%r)' % abspath)
         if isinstance(abspath, unicode):
             # abspath is defined as the path to pass to lstat. readlink is
             # buggy in python < 2.6 (it doesn't encode unicode path into FS
@@ -1647,6 +1648,7 @@ class DirState(object):
         if fs_encoding not in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968'):
             # Change encoding if needed
             target = target.decode(fs_encoding).encode('UTF-8')
+        pronto.bzr_test('dirstate._read_link() -> %r' % target)
         return target
 
     def get_ghosts(self):

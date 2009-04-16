@@ -525,9 +525,10 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         resolve_conflicts(replace)
         replace.apply()
 
+    # unicode symlinks ?
     def test_symlinks(self):
         self.requireFeature(SymlinkFeature)
-        transform,root = self.get_transform()
+        transform, root = self.get_transform()
         oz_id = transform.new_directory('oz', root, 'oz-id')
         wizard = transform.new_symlink('wizard', oz_id, 'wizard-target',
                                        'wizard-id')
@@ -1841,8 +1842,8 @@ class TestBuildTree(tests.TestCaseWithTransport):
         self.assertTrue(source.is_executable('file1-id'))
 
     def test_case_insensitive_build_tree_inventory(self):
-        if (not tests.CaseInsensitiveFilesystemFeature.available()
-            or not tests.CaseInsCasePresFilenameFeature.available()):
+        if (tests.CaseInsensitiveFilesystemFeature.available()
+            or tests.CaseInsCasePresFilenameFeature.available()):
             raise tests.UnavailableFeature('Fully case sensitive filesystem')
         source = self.make_branch_and_tree('source')
         self.build_tree(['source/file', 'source/FILE'])
@@ -2688,10 +2689,12 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         self.assertSerializesTo(self.symlink_creation_records(), tt)
 
     def test_deserialize_symlink_creation(self):
+        self.requireFeature(tests.SymlinkFeature)
         tt = self.get_preview()
         tt.deserialize(iter(self.symlink_creation_records()))
-        # XXX readlink should be returning unicode, not utf-8
-        foo_content = os.readlink(tt._limbo_name('new-1')).decode('utf-8')
+        abspath = tt._limbo_name('new-1')
+        # FIXME: should use a safe readlink impl.
+        foo_content = os.readlink(abspath).decode(osutils._fs_enc)
         self.assertEqual(u'bar\u1234', foo_content)
 
     def make_destruction_preview(self):

@@ -661,36 +661,60 @@ class BundleTester(object):
                           verbose=False)
         bundle = self.get_valid_bundle('a@cset-0-6', 'a@cset-0-7')
 
-    def test_symlink_bundle(self):
+    def _test_symlink_bundle(self, link_name, link_target, new_link_target):
+        link_id = 'link-1'
+
         self.requireFeature(SymlinkFeature)
         self.tree1 = self.make_branch_and_tree('b1')
         self.b1 = self.tree1.branch
+
         tt = TreeTransform(self.tree1)
-        tt.new_symlink('link', tt.root, 'bar/foo', 'link-1')
+        tt.new_symlink(link_name, tt.root, link_target, link_id)
         tt.apply()
         self.tree1.commit('add symlink', rev_id='l@cset-0-1')
-        self.get_valid_bundle('null:', 'l@cset-0-1')
+        bundle = self.get_valid_bundle('null:', 'l@cset-0-1')
+        if getattr(bundle ,'revision_tree', None) is not None:
+            # Not all bundle formats supports revision_tree
+            bund_tree = bundle.revision_tree(self.b1.repository, 'l@cset-0-1')
+            self.assertEqual(link_target, bund_tree.get_symlink_target(link_id))
+
         tt = TreeTransform(self.tree1)
-        trans_id = tt.trans_id_tree_file_id('link-1')
+        trans_id = tt.trans_id_tree_file_id(link_id)
         tt.adjust_path('link2', tt.root, trans_id)
         tt.delete_contents(trans_id)
-        tt.create_symlink('mars', trans_id)
+        tt.create_symlink(new_link_target, trans_id)
         tt.apply()
         self.tree1.commit('rename and change symlink', rev_id='l@cset-0-2')
-        self.get_valid_bundle('l@cset-0-1', 'l@cset-0-2')
+        bundle = self.get_valid_bundle('l@cset-0-1', 'l@cset-0-2')
+        if getattr(bundle ,'revision_tree', None) is not None:
+            # Not all bundle formats supports revision_tree
+            bund_tree = bundle.revision_tree(self.b1.repository, 'l@cset-0-2')
+            self.assertEqual(new_link_target,
+                             bund_tree.get_symlink_target(link_id))
+
         tt = TreeTransform(self.tree1)
-        trans_id = tt.trans_id_tree_file_id('link-1')
+        trans_id = tt.trans_id_tree_file_id(link_id)
         tt.delete_contents(trans_id)
         tt.create_symlink('jupiter', trans_id)
         tt.apply()
         self.tree1.commit('just change symlink target', rev_id='l@cset-0-3')
-        self.get_valid_bundle('l@cset-0-2', 'l@cset-0-3')
+        bundle = self.get_valid_bundle('l@cset-0-2', 'l@cset-0-3')
+
         tt = TreeTransform(self.tree1)
-        trans_id = tt.trans_id_tree_file_id('link-1')
+        trans_id = tt.trans_id_tree_file_id(link_id)
         tt.delete_contents(trans_id)
         tt.apply()
         self.tree1.commit('Delete symlink', rev_id='l@cset-0-4')
-        self.get_valid_bundle('l@cset-0-3', 'l@cset-0-4')
+        bundle = self.get_valid_bundle('l@cset-0-3', 'l@cset-0-4')
+
+    def test_symlink_bundle(self):
+        self._test_symlink_bundle('link', 'bar/foo', 'mars')
+
+    def test_unicode_symlink_bundle(self):
+        self.requireFeature(tests.UnicodeFilenameFeature)
+        self._test_symlink_bundle(u'\N{Euro Sign}link',
+                                  u'bar/\N{Euro Sign}foo',
+                                  u'mars\N{Euro Sign}')
 
     def test_binary_bundle(self):
         self.tree1 = self.make_branch_and_tree('b1')
