@@ -29,6 +29,7 @@ import bzrlib.api
 from bzrlib import (
     bzrdir,
     errors as bzr_errors,
+    osutils,
     )
 from bzrlib.foreign import (
     foreign_vcs_registry,
@@ -120,7 +121,7 @@ class LocalGitBzrDirFormat(GitBzrDirFormat):
             url = url[len('readonly+'):]
 
         try:
-            gitrepo = git.repo.Repo(transport.local_abspath("."))
+            gitrepo = git.repo.Repo(transport.local_abspath(".").encode(osutils._fs_enc))
         except bzr_errors.NotLocalUrl:
             raise bzr_errors.NotBranchError(path=transport.base)
         from bzrlib.plugins.git.dir import LocalGitDir, GitLockableFiles, GitLock
@@ -164,7 +165,7 @@ class LocalGitBzrDirFormat(GitBzrDirFormat):
                 "non-local transports")
 
         from dulwich.repo import Repo
-        Repo.create(transport.local_abspath(".")) 
+        Repo.create(transport.local_abspath(".").encode(osutils._fs_enc)) 
         return self.open(transport)
 
     def is_supported(self):
