@@ -76,7 +76,8 @@ class LRUCache(object):
         return key in self._cache
 
     def __getitem__(self, key):
-        node = self._cache[key]
+        cache = self._cache
+        node = cache[key]
         # Inlined from _record_access to decrease the overhead of __getitem__
         # We also have more knowledge about structure if __getitem__ is
         # succeeding, then we know that self._most_recently_used must not be
@@ -94,7 +95,7 @@ class LRUCache(object):
         if next_key is None:
             node_next = None
         else:
-            node_next = self._cache[next_key]
+            node_next = cache[next_key]
             node_next.prev = node_prev
         # Insert this node at the front of the list
         node.next_key = mru.key
