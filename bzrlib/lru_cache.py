@@ -25,10 +25,10 @@ from bzrlib import (
 class _LRUNode(object):
     """This maintains the linked-list which is the lru internals."""
 
-    __slots__ = ('prev_key', 'next_key', 'key', 'value', 'cleanup', 'size')
+    __slots__ = ('prev', 'next_key', 'key', 'value', 'cleanup', 'size')
 
     def __init__(self, key, value, cleanup=None):
-        self.prev_key = None
+        self.prev = None
         self.next_key = None
         self.key = key
         self.value = value
@@ -39,12 +39,12 @@ class _LRUNode(object):
         self.size = None
 
     def __repr__(self):
-        if self.next_key is None:
-            next_key = None
+        if self.prev is None:
+            prev_key = None
         else:
-            next_key = self.next_key
+            prev_key = self.prev_key
         return '%s(%r n:%r p:%r)' % (self.__class__.__name__, self.key,
-                                     next_key, self.prev_key)
+                                     self.next_key, prev_key)
 
     def run_cleanup(self):
         if self.cleanup is not None:
@@ -86,10 +86,7 @@ class LRUCache(object):
             # Nothing to do, this node is already at the head of the queue
             return node.value
         # Remove this node from the old location
-        prev_key = node.prev_key
-        if prev_key is None:
-            assert False, 'prev_key is None, but node isn\'t mru'
-        node_prev = self._cache[prev_key]
+        node_prev = node.prev
         if node is self._last_recently_used:
             self._last_recently_used = node_prev
         next_key = node.next_key
@@ -98,12 +95,12 @@ class LRUCache(object):
             node_next = None
         else:
             node_next = self._cache[next_key]
-            node_next.prev_key = prev_key
+            node_next.prev = node_prev
         # Insert this node at the front of the list
         node.next_key = mru.key
-        mru.prev_key = node.key
+        mru.prev = node
         self._most_recently_used = node
-        node.prev_key = None
+        node.prev = None
         return node.value
 
     def __len__(self):
@@ -113,7 +110,7 @@ class LRUCache(object):
         """Walk the LRU list, only meant to be used in tests."""
         node = self._most_recently_used
         if node is not None:
-            if node.prev_key is not None:
+            if node.prev is not None:
                 raise AssertionError('the _most_recently_used entry is not'
                                      ' supposed to have a previous entry'
                                      ' %s' % (node,))
@@ -125,17 +122,16 @@ class LRUCache(object):
                 node_next = None
             else:
                 node_next = self._cache[node.next_key]
-                if node_next.prev_key != node.key:
+                if node_next.prev is not node:
                     raise AssertionError('inconsistency found, node.next.prev'
                                          ' != node: %s' % (node,))
-            if node.prev_key is None:
+            if node.prev is None:
                 if node is not self._most_recently_used:
                     raise AssertionError('only the _most_recently_used should'
                                          ' not have a previous node: %s'
                                          % (node,))
             else:
-                prev_node = self._cache[node.prev_key]
-                if prev_node.next_key != node.key:
+                if node.prev.next_key != node.key:
                     raise AssertionError('inconsistency found, node.prev.next'
                                          ' != node: %s' % (node,))
             yield node
@@ -219,45 +215,35 @@ class LRUCache(object):
         # We've taken care of the tail pointer, remove the node, and insert it
         # at the front
         # REMOVE
-        if node.prev_key is None:
-            node_prev = None
-        else:
-            node_prev = self._cache[node.prev_key]
         if node is self._last_recently_used:
-            self._last_recently_used = node_prev
-        if self._last_recently_used is None:
-            import pdb; pdb.set_trace()
-        if node_prev is not None:
-            node_prev.next_key = node.next_key
+            self._last_recently_used = node.prev
+        if node.prev is not None:
+            node.prev.next_key = node.next_key
         if node.next_key is not None:
             node_next = self._cache[node.next_key]
-            node_next.prev_key = node.prev_key
+            node_next.prev = node.prev
         # INSERT
         node.next_key = self._most_recently_used.key
-        self._most_recently_used.prev_key = node.key
+        self._most_recently_used.prev = node
         self._most_recently_used = node
-        node.prev_key = None
+        node.prev = None
 
     def _remove_node(self, node):
-        if node.prev_key is None:
-            node_prev = None
-        else:
-            node_prev = self._cache[node.prev_key]
         if node is self._last_recently_used:
-            self._last_recently_used = node_prev
+            self._last_recently_used = node.prev
         self._cache.pop(node.key)
         # If we have removed all entries, remove the head pointer as well
         if self._last_recently_used is None:
             self._most_recently_used = None
         node.run_cleanup()
         # Now remove this node from the linked list
-        if node_prev is not None:
-            node_prev.next_key = node.next_key
+        if node.prev is not None:
+            node.prev.next_key = node.next_key
         if node.next_key is not None:
             node_next = self._cache[node.next_key]
-            node_next.prev_key = node.prev_key
+            node_next.prev = node.prev
         # And remove this node's pointers
-        node.prev_key = None
+        node.prev = None
         node.next_key = None
 
     def _remove_lru(self):
