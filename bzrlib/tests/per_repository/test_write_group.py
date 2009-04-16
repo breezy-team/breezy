@@ -150,7 +150,7 @@ class TestWriteGroup(TestCaseWithRepository):
         tree.lock_write()
         if repo._format.rich_root_data:
             # The tree needs a root
-            tree._inventory.add(InventoryDirectory('the-root-id', '', None)
+            tree._inventory.add(InventoryDirectory('the-root-id', '', None))
         tree.commit('Trunk commit', rev_id='rev-1')
         tree.unlock()
         # Branch the trunk, add a new commit.
@@ -172,11 +172,11 @@ class TestWriteGroup(TestCaseWithRepository):
         else:
             repo = self.make_repository('stacked')
         branch_repo.lock_read()
+        self.addCleanup(branch_repo.unlock)
         repo.add_fallback_repository(trunk.repository)
         repo.lock_write()
         self.addCleanup(repo.unlock)
         repo.start_write_group()
-        self.addCleanup(repo.abort_write_group)
         trunk_repo.lock_read()
         repo.inventories.insert_record_stream(
             branch_repo.inventories.get_record_stream(
@@ -184,10 +184,22 @@ class TestWriteGroup(TestCaseWithRepository):
         repo.revisions.insert_record_stream(
             branch_repo.revisions.get_record_stream(
                 [('rev-2',)], 'unordered', False))
-        branch_repo.unlock()
         self.assertEqual(
             set([('inventories', 'rev-1')]),
             repo.get_missing_parent_inventories())
+        # Revisions from resumed write groups can also cause missing parent
+        # inventories.
+        resume_tokens = repo.suspend_write_group()
+        repo.resume_write_group(resume_tokens)
+        self.assertEqual(
+            set([('inventories', 'rev-1')]),
+            repo.get_missing_parent_inventories())
+        repo.inventories.insert_record_stream(
+            branch_repo.inventories.get_record_stream(
+                [('rev-1',)], 'unordered', False))
+        self.assertEqual(
+            set(), repo.get_missing_parent_inventories())
+        repo.abort_write_group()
 
 
 class TestResumeableWriteGroup(TestCaseWithRepository):
