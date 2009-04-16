@@ -89,7 +89,13 @@ class BazaarObjectStore(object):
                 raise AssertionError("recreated git commit had different sha1: expected %s, got %s" % (foreign_revid, commit_obj.id))
         self._idmap.add_entry(commit_obj.id, "commit", (revid, tree_sha))
 
-    def _get_blob(self, fileid, revision):
+    def _check_expected_sha(self, expected_sha, object):
+        if expected_sha is None:
+            return
+        if expected_sha != object.id:
+            raise AssertionError("Invalid sha for %r: %s" % (object, expected_sha))
+
+    def _get_blob(self, fileid, revision, expected_sha=None):
         """Return a Git Blob object from a fileid and revision stored in bzr.
         
         :param fileid: File id of the text
@@ -99,9 +105,10 @@ class BazaarObjectStore(object):
             "unordered", True).next().get_bytes_as("fulltext")
         blob = Blob()
         blob._text = text
+        self._check_expected_sha(expected_sha, blob)
         return blob
 
-    def _get_tree(self, fileid, revid, inv=None):
+    def _get_tree(self, fileid, revid, inv=None, expected_sha=None):
         """Return a Git Tree object from a file id and a revision stored in bzr.
 
         :param fileid: fileid in the tree.
@@ -110,7 +117,9 @@ class BazaarObjectStore(object):
         if inv is None:
             inv = self.repository.get_inventory(revid)
         tree = Tree()
-        for name, ie in inv[fileid].children.iteritems():
+        children = inv[fileid].children
+        for name in sorted(children):
+            ie = children[name]
             if ie.kind == "directory":
                 subtree = self._get_tree(ie.file_id, revid, inv)
                 tree.add(stat.S_IFDIR, name.encode('UTF-8'), subtree.id)
@@ -123,16 +132,17 @@ class BazaarObjectStore(object):
             elif ie.kind == "symlink":
                 raise AssertionError("Symlinks not yet supported")
         tree.serialize()
+        self._check_expected_sha(expected_sha, tree)
         return tree
 
-    def _get_commit(self, revid, tree_sha):
+    def _get_commit(self, revid, tree_sha, expected_sha=None):
         rev = self.repository.get_revision(revid)
-        return revision_to_commit(rev, tree_sha, self._idmap._parent_lookup)
+        commit = revision_to_commit(rev, tree_sha, self._idmap._parent_lookup)
+        self._check_expected_sha(expected_sha, commit)
+        return commit
 
     def get_raw(self, sha):
-        obj = self[sha]
-        assert obj.id == sha
-        return obj._text
+        return self[sha]._text
 
     def __getitem__(self, sha):
         # See if sha is in map
@@ -145,10 +155,11 @@ class BazaarObjectStore(object):
             (type, type_data) = self._idmap.lookup_git_sha(sha)
         # convert object to git object
         if type == "commit":
-            return self._get_commit(*type_data)
+            return self._get_commit(type_data[0], type_data[1], 
+                                    expected_sha=sha)
         elif type == "blob":
-            return self._get_blob(*type_data)
+            return self._get_blob(type_data[0], type_data[1], expected_sha=sha)
         elif type == "tree":
-            return self._get_tree(*type_data)
+            return self._get_tree(type_data[0], type_data[1], expected_sha=sha)
         else:
             raise AssertionError("Unknown object type '%s'" % type)

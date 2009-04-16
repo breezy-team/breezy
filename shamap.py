@@ -166,15 +166,17 @@ class SqliteGitShaMap(GitShaMap):
         :return: (type, type_data) with type_data:
             revision: revid, tree sha
         """
+        def format(type, row):
+            return (type, (row[0].encode("utf-8"), row[1].encode("utf-8")))
         row = self.db.execute("select revid, tree_sha from commits where sha1 = ?", (sha,)).fetchone()
         if row is not None:
-            return ("commit", row)
+            return format("commit", row)
         row = self.db.execute("select fileid, revid from blobs where sha1 = ?", (sha,)).fetchone()
         if row is not None:
-            return ("blob", row)
+            return format("blob", row)
         row = self.db.execute("select fileid, revid from trees where sha1 = ?", (sha,)).fetchone()
         if row is not None:
-            return ("tree", row)
+            return format("tree", row)
         raise KeyError(sha)
 
     def revids(self):
