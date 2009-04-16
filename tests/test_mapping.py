@@ -70,18 +70,18 @@ class TestImportCommit(tests.TestCase):
         c._committer = "Committer"
         c._commit_time = 4
         c._author_time = 5
-        c._commit_timezone = 4
-        c._author_timezone = 5
+        c._commit_timezone = 500
+        c._author_timezone = 600
         c._author = "Author"
         c.serialize()
         rev = BzrGitMappingv1().import_commit(c)
         self.assertEquals("Some message", rev.message)
         self.assertEquals("Committer", rev.committer)
         self.assertEquals("Author", rev.properties['author'])
-        self.assertEquals(4, rev.timezone)
+        self.assertEquals(300, rev.timezone)
         self.assertEquals((), rev.parent_ids)
         self.assertEquals("5", rev.properties['author-timestamp'])
-        self.assertEquals("5", rev.properties['author-timezone'])
+        self.assertEquals("360.000000", rev.properties['author-timezone'])
         self.assertEquals("git-v1:" + c.id, rev.revision_id)
 
 
@@ -116,9 +116,9 @@ class RoundtripRevisionsFromGit(tests.TestCase):
         c._message = "Some message"
         c._committer = "Committer"
         c._commit_time = 4
-        c._commit_timezone = -3
+        c._commit_timezone = -0500
         c._author_time = 5
-        c._author_timezone = 1
+        c._author_timezone = 0600
         c._author = "Author"
         self.assertRoundtripCommit(c)
 

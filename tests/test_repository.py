@@ -37,6 +37,9 @@ from bzrlib.plugins.git import (
 from bzrlib.plugins.git.mapping import (
     default_mapping,
     )
+from bzrlib.plugins.git.push import (
+    MissingObjectsIterator,
+    )
 
 class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
     """Feature tests for GitRepository."""
@@ -202,8 +205,12 @@ class RevisionGistImportTests(tests.TestCaseWithTransport):
         return InterRepository.get(self.bzr_tree.branch.repository, 
                                    self.git_repo)
 
+    def object_iter(self):
+        return MissingObjectsIterator(self.bzr_tree.branch.repository, 
+                                      default_mapping)
+
     def import_rev(self, revid, parent_lookup=None):
-        return self.get_inter().import_revision_gist(revid, parent_lookup)
+        return self.object_iter().import_revision(revid)
 
     def test_pointless(self):
         revid = self.bzr_tree.commit("pointless", timestamp=1205433193,

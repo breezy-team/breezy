@@ -101,9 +101,11 @@ class BzrGitMapping(foreign.VcsMapping):
         if commit.commit_time != commit.author_time:
             rev.properties['author-timestamp'] = str(commit.author_time)
         if commit.commit_timezone != commit.author_timezone:
-            rev.properties['author-timezone'] = str(commit.author_timezone)
+            rev.properties['author-timezone'] = "%f" % (commit.author_timezone * .6)
         rev.timestamp = commit.commit_time
-        rev.timezone = commit.commit_timezone
+        rev.timezone = int(commit.commit_timezone * .6)
+        if rev.timezone / .6 != commit.commit_timezone:
+            rev.properties['commit-timezone'] = "%f" % (commit.commit_timezone * .6)
         return rev
 
 
@@ -265,10 +267,13 @@ def revision_to_commit(rev, tree_sha, parent_lookup):
         commit._author_time = long(rev.properties['author-timestamp'])
     else:
         commit._author_time = commit._commit_time
-    commit._commit_timezone = rev.timezone
-    if 'author-timezone' in rev.properties:
-        commit._author_timezone = int(rev.properties['author-timezone'])
+    if 'committer-timezone' in rev.properties:
+        commit._commit_timezone = int(float(rev.properties['commit-timezone']) / .6)
     else:
-        commit._author_timezone = commit._commit_timezone
+        commit._commit_timezone = int(rev.timezone / .6) 
+    if 'author-timezone' in rev.properties:
+        commit._author_timezone = int(float(rev.properties['author-timezone']) / .6)
+    else:
+        commit._author_timezone = commit._commit_timezone 
     commit.serialize()
     return commit
