@@ -190,6 +190,9 @@ class RecordingSource(object):
         if not self._succeed:
             raise PackageVersionNotPresent(package, version, self)
 
+    def __repr__(self):
+        return "%s()" % self.__class__.__name__
+
 
 class StackedUpstreamSourceTests(TestCase):
 
@@ -202,6 +205,12 @@ class StackedUpstreamSourceTests(TestCase):
         self.assertEquals([("mypkg", "1.0", "bla")], b._specific_versions)
         self.assertEquals([("mypkg", "1.0", "bla")], a._specific_versions)
         self.assertEquals([], c._specific_versions)
+
+    def test_repr(self):
+        self.assertEquals("StackedUpstreamSource([])", 
+                repr(StackedUpstreamSource([])))
+        self.assertEquals("StackedUpstreamSource([RecordingSource()])", 
+                repr(StackedUpstreamSource([RecordingSource(False)])))
 
     def test_none(self):
         a = RecordingSource(False)

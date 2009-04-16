@@ -34,6 +34,7 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.branch import Branch
+from bzrlib.bzrdir import BzrDir
 from bzrlib.commands import Command
 from bzrlib.errors import (BzrCommandError,
                            NoWorkingTree,
@@ -212,12 +213,7 @@ class cmd_builddeb(Command):
         is_local = urlparse.urlsplit(location)[0] in ('', 'file')
         if is_local:
             os.chdir(location)
-        try:
-            tree, _ = WorkingTree.open_containing(location)
-            branch = tree.branch
-        except NoWorkingTree:
-            tree = None
-            branch, _ = Branch.open_containing(location)
+        tree, branch, relpath = BzrDir.open_containing_tree_or_branch(location)
         return tree, branch, is_local
 
     def _get_build_tree(self, revision, tree, branch):
@@ -388,8 +384,8 @@ class cmd_builddeb(Command):
                     is_working_tree=working_tree)
 
             build_source_dir = os.path.join(build_dir,
-                    changelog.package + "-"
-                    + changelog.version.upstream_version)
+                    "%s-%s" % (changelog.package,
+                               changelog.version.upstream_version))
 
             builder = DebBuild(distiller, build_source_dir, build_cmd,
                     use_existing=use_existing)
