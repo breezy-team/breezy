@@ -209,7 +209,7 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id,
             base_sha = shagitmap.lookup_tree(file_id, base_inv.revision_id)
         except KeyError:
             pass
-        else:11):
+        else:
             if base_sha == hexsha:
                 # If nothing has changed since the base revision, we're done
                 return [], {}
@@ -239,17 +239,17 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id,
             file_kind = (mode & 070000) / 010000
             if file_kind == 0: # regular file
                 symlink = False
-                if mode != DEFAULT_FILE_MODE:
+                if mode not in (DEFAULT_FILE_MODE, DEFAULT_FILE_MODE|0111):
                     child_modes[child_path] = mode
             elif file_kind == 2:
                 symlink = True
-                if mode not in (DEFAULT_SYMLINK_MODE, DEFAULT_TREE_MODE | 0111):
+                if mode != DEFAULT_SYMLINK_MODE:
                     child_modes[child_path] = mode
             else:
                 raise AssertionError("Unknown file kind, mode=%r" % (mode,))
             subinvdelta = import_git_blob(texts, mapping, child_path, hexsha,
                     base_inv, file_id, revision_id, parent_invs, shagitmap, 
-                    lookup_object, bool(fs_mode & 0111), symlink))
+                    lookup_object, bool(fs_mode & 0111), symlink)
             invdelta.extend(subinvdelta)
         else:
             raise AssertionError("Unknown object kind, perms=%r." % (mode,))
@@ -330,9 +330,14 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
             base_inv = Inventory(root_id=None)
         else:
             base_inv = parent_invs[0]
-        inv_delta = import_git_tree(repo.texts, mapping, "", 
+        inv_delta, unusual_modes = import_git_tree(repo.texts, mapping, "", 
             root_trees[revid], base_inv, None, revid, parent_invs, 
             target_git_object_retriever._idmap, lookup_object)
+        if unusual_modes != {}:
+            ret = "unusual modes: \n"
+            for item in unusual_modes.iteritems():
+                ret += "\t%s: %o\n" % item
+            raise AssertionError(ret)
         try:
             basis_id = rev.parent_ids[0]
         except IndexError:
