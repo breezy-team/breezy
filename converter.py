@@ -64,8 +64,7 @@ class BazaarObjectStore(object):
 
     def _update_sha_map_revision(self, revid):
         inv = self.repository.get_inventory(revid)
-        objects = inventory_to_tree_and_blobs(self.repository, self.mapping,
-            revid)
+        objects = inventory_to_tree_and_blobs(inv, self.repository.texts, self.mapping)
         for sha, o, path in objects:
             if path == "":
                 tree_sha = sha

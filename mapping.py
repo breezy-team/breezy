@@ -152,7 +152,7 @@ def text_to_blob(text):
     return blob
 
 
-def inventory_to_tree_and_blobs(repo, mapping, revision_id):
+def inventory_to_tree_and_blobs(inventory, texts, mapping):
     from dulwich.objects import Tree
     from bzrlib.inventory import InventoryDirectory, InventoryFile
     import stat
@@ -160,11 +160,9 @@ def inventory_to_tree_and_blobs(repo, mapping, revision_id):
     cur = ""
     tree = Tree()
 
-    inv = repo.get_inventory(revision_id)
-
     # stack contains the set of trees that we haven't 
     # finished constructing
-    for path, entry in inv.iter_entries():
+    for path, entry in inventory.iter_entries():
         while stack and not path.startswith(cur):
             tree.serialize()
             sha = tree.id
@@ -181,7 +179,7 @@ def inventory_to_tree_and_blobs(repo, mapping, revision_id):
         if type(entry) == InventoryFile:
             #FIXME: We can make potentially make this Lazy to avoid shaing lots of stuff
             # and having all these objects in memory at once
-            text = repo.texts.get_record_stream([(entry.file_id, entry.revision)], 'unordered', True).next().get_bytes_as('fulltext')
+            text = texts.get_record_stream([(entry.file_id, entry.revision)], 'unordered', True).next().get_bytes_as('fulltext')
             blob = text_to_blob(text)
             sha = blob.id
             yield sha, blob, path

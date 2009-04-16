@@ -161,7 +161,7 @@ class BzrBackend(Backend):
 
                 commits_to_send.update([p for p in rev.parent_ids if not p in rev_done])
 
-                for sha, obj, path in inventory_to_tree_and_blobs(repo, self.mapping, commit):
+                for sha, obj, path in inventory_to_tree_and_blobs(repo.get_inventory(commit), repo.texts, self.mapping):
                     if sha not in obj_sent:
                         obj_sent.add(sha)
                         objects.add((obj, path))

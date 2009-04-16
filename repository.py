@@ -174,7 +174,7 @@ class LocalGitRepository(GitRepository):
         """
         objects = []
         rev = source.get_revision(revid)
-        for sha, object, path in inventory_to_tree_and_blobs(source, None, revid):
+        for sha, object, path in inventory_to_tree_and_blobs(source.get_inventory(revid), source.texts, None):
             if path == "":
                 tree_sha = sha
             objects.append((object, path))
