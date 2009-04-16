@@ -1424,6 +1424,15 @@ class Repository(object):
     def suspend_write_group(self):
         raise errors.UnsuspendableWriteGroup(self)
 
+    def new_revisions(self):
+        """Return the revision IDs of revisions added in this write group."""
+        if not self.is_in_write_group():
+            raise AssertionError('not in a write group')
+        return self._new_revisions()
+
+    def _new_revisions(self):
+        raise NotImplementedError(self._new_revisions)
+
     def refresh_data(self):
         """Re-read any data needed to to synchronise with disk.
 
@@ -4006,14 +4015,9 @@ class StreamSink(object):
         # Find all the parent revisions referenced by the stream, but
         # not present in the stream, and make sure we have their
         # inventories.
-        parent_maps = self.target_repo.get_parent_map(added_inventories)
-        parents = set()
-        map(parents.update, parent_maps.itervalues())
-        parents.difference_update(added_inventories)
-        parents.discard(_mod_revision.NULL_REVISION)
-        missing_keys = set(
-            ('inventories', rev_id) for rev_id in parents)
-        missing_keys = set()
+        # Find all the new revisions (including ones from resume_tokens)
+        new_revisions = self.target_repo.new_revisions()
+        missing_keys = _parent_inventories(self.target_repo, new_revisions)
         try:
             for prefix, versioned_file in (
                 ('texts', self.target_repo.texts),
@@ -4324,4 +4328,20 @@ class StreamSource(object):
             parent_keys = parent_map.get(key, ())
             yield versionedfile.FulltextContentFactory(
                 key, parent_keys, None, as_bytes)
+
+
+def _parent_inventories(repo, revision_ids, check_present=True):
+    parent_maps = repo.get_parent_map(revision_ids)
+    parents = set()
+    map(parents.update, parent_maps.itervalues())
+    parents.difference_update(revision_ids)
+    parents.discard(_mod_revision.NULL_REVISION)
+    if check_present:
+        unstacked_inventories = repo.inventories._index
+        present_inventories = unstacked_inventories.get_parent_map(
+            (parent,) for parent in parents)
+        present_inventories = [key[-1] for key in present_inventories]
+        parents.difference_update(present_inventories)
+    missing_keys = set(('inventories', rev_id) for rev_id in parents)
+    return missing_keys
 

@@ -32,6 +32,7 @@ from bzrlib import (
     )
 from bzrlib.errors import InstallFailed
 from bzrlib.progress import ProgressPhase
+from bzrlib.repository import _parent_inventories
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tsort import topo_sort
 from bzrlib.trace import mutter
@@ -140,14 +141,8 @@ class RepoFetcher(object):
                 # Find all the parent revisions referenced by the stream, but
                 # not present in the stream, and make sure we have their
                 # inventories.
-                revision_ids = search.get_keys()
-                parent_maps = self.to_repository.get_parent_map(revision_ids)
-                parents = set()
-                map(parents.update, parent_maps.itervalues())
-                parents.difference_update(revision_ids)
-                parents.discard(NULL_REVISION)
-                missing_keys.update(
-                    ('inventories', rev_id) for rev_id in parents)
+                missing_keys.update(_parent_inventories(
+                    self.to_repository, search.get_keys(), check_present=False))
             if missing_keys:
                 pb.update("Missing keys")
                 stream = source.get_stream_for_missing_keys(missing_keys)

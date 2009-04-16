@@ -2269,6 +2269,17 @@ class KnitPackRepository(KnitRepository):
         self._write_group = None
         return tokens
 
+    def _new_revisions(self):
+        pack_collection = self._pack_collection
+        revision_ids = set()
+        packs = list(pack_collection._resumed_packs)
+        if pack_collection._new_pack is not None:
+            packs.append(pack_collection._new_pack)
+        for pack in packs:
+            entries = pack.revision_index.iter_all_entries()
+            revision_ids.update(entry[1][-1] for entry in entries)
+        return revision_ids
+
     def _resume_write_group(self, tokens):
         self._start_write_group()
         self._pack_collection._resume_write_group(tokens)
