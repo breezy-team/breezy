@@ -1211,7 +1211,7 @@ class TestTransportConfig(tests.TestCaseWithTransport):
 
     def test_set_unset_default_stack_on(self):
         my_dir = self.make_bzrdir('.')
-        bzrdir_config = config.BzrDirConfig(my_dir.transport)
+        bzrdir_config = config.BzrDirConfig(my_dir)
         self.assertIs(None, bzrdir_config.get_default_stack_on())
         bzrdir_config.set_default_stack_on('Foo')
         self.assertEqual('Foo', bzrdir_config._config.get_option(
