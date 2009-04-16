@@ -83,21 +83,30 @@ class BazaarObjectStore(object):
         if expected_sha != object.id:
             raise AssertionError("Invalid sha for %r: %s" % (object, expected_sha))
 
-    def _get_ie_sha1(self, entry, inv):
+    def _get_ie_object(self, entry, inv):  
+        if entry.kind == "directory":
+            return self._get_tree(entry.file_id, inv.revision_id, inv=inv)
+        else:
+            return self._get_blob(entry.file_id, entry.revision)
+
+    def _get_ie_object_or_sha1(self, entry, inv):
         if entry.kind == "directory":
             try:
-                return self._idmap.lookup_tree(entry.file_id, inv.revision_id)
+                return self._idmap.lookup_tree(entry.file_id, inv.revision_id), None
             except KeyError:
-                ret = self._get_tree(entry.file_id, inv.revision_id, inv=inv).id
-                self._idmap.add_entry(ret, "tree", (entry.file_id, inv.revision_id))
-                return ret
+                ret = self._get_ie_object(entry, inv)
+                self._idmap.add_entry(ret.id, "tree", (entry.file_id, inv.revision_id))
+                return ret.id, ret
         else:
             try:
-                return self._idmap.lookup_blob(entry.file_id, entry.revision)
+                return self._idmap.lookup_blob(entry.file_id, entry.revision), None
             except KeyError:
-                ret = self._get_blob(entry.file_id, entry.revision).id
-                self._idmap.add_entry(ret, "blob", (entry.file_id, entry.revision))
-                return ret
+                ret = self._get_ie_object(entry, inv)
+                self._idmap.add_entry(ret.id, "blob", (entry.file_id, entry.revision))
+                return ret.id, ret
+
+    def _get_ie_sha1(self, entry, inv):
+        return self._get_ie_object_or_sha1(entry, inv)[0]
 
     def _get_blob(self, fileid, revision, expected_sha=None):
         """Return a Git Blob object from a fileid and revision stored in bzr.
@@ -126,9 +135,19 @@ class BazaarObjectStore(object):
 
     def _get_commit(self, revid, tree_sha, expected_sha=None):
         rev = self.repository.get_revision(revid)
-        commit = revision_to_commit(rev, tree_sha, self._idmap._parent_lookup)
+        commit = revision_to_commit(rev, tree_sha, self._lookup_revision_sha1)
         self._check_expected_sha(expected_sha, commit)
         return commit
+
+    def _lookup_revision_sha1(self, revid):
+        try:
+            return self._idmap._parent_lookup(revid)
+        except KeyError:
+            inv = self.repository.get_inventory(revid)
+            tree_sha = self._get_ie_sha1(inv.root, inv)
+            ret = self._get_commit(revid, tree_sha).id
+            self._idmap.add_entry(ret, "commit", (revid, tree_sha))
+            return ret
 
     def get_raw(self, sha):
         return self[sha]._text

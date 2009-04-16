@@ -23,6 +23,9 @@ from bzrlib.repository import (
     InterRepository,
     )
 
+from bzrlib.plugins.git.converter import (
+    BazaarObjectStore,
+    )
 from bzrlib.plugins.git.errors import (
     NoPushSupport,
     )
@@ -34,6 +37,83 @@ from bzrlib.plugins.git.repository import (
     GitRepository,
     GitRepositoryFormat,
     )
+
+
+class MissingObjectsIterator(object):
+    """Iterate over git objects that are missing from a target repository.
+
+    """
+
+    def __init__(self, source, mapping):
+        """Create a new missing objects iterator.
+
+        """
+        self.source = source
+        self._object_store = BazaarObjectStore(self.source, mapping)
+        self._revids = set()
+        self._sent_shas = set()
+        self._pending = []
+
+    def import_revisions(self, revids):
+        self._revids.update(revids)
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            for i, revid in enumerate(revids):
+                pb.update("pushing revisions", i, len(revids))
+                git_commit = self.import_revision(revid)
+                yield (revid, git_commit)
+        finally:
+            pb.finished()
+
+    def need_sha(self, sha):
+        if sha in self._sent_shas:
+            return False
+        (type, (fileid, revid)) = self._object_store._idmap.lookup_git_sha(sha)
+        assert type in ("blob", "tree")
+        if revid in self._revids:
+            # Not sent yet, and part of the set of revisions to send
+            return True
+        # Not changed in the revisions to send, so either not necessary
+        # or already present remotely (as git doesn't do ghosts)
+        return False
+
+    def queue(self, sha, obj, path, ie=None, inv=None):
+        if obj is None:
+            obj = (ie, inv)
+        self._pending.append((obj, path))
+        self._sent_shas.add(sha)
+
+    def import_revision(self, revid):
+        """Import the gist of a revision into this Git repository.
+
+        """
+        inv = self.source.get_inventory(revid)
+        todo = [inv.root]
+        tree_sha = None
+        while todo:
+            ie = todo.pop()
+            (sha, object) = self._object_store._get_ie_object_or_sha1(ie, inv)
+            if ie.parent_id is None:
+                tree_sha = sha
+            if not self.need_sha(sha):
+                continue
+            self.queue(sha, object, inv.id2path(ie.file_id), ie, inv)
+            if ie.kind == "directory":
+                todo.extend(ie.children.values())
+        assert tree_sha is not None
+        commit = self._object_store._get_commit(revid, tree_sha)
+        self.queue(commit.id, commit, None)
+        return commit.id
+
+    def __len__(self):
+        return len(self._pending)
+
+    def __iter__(self):
+        for (object, path) in self._pending:
+            if isinstance(object, tuple):
+                object = self._object_store._get_ie_object(*object)
+            yield (object, path)   
+
 
 class InterToGitRepository(InterRepository):
     """InterRepository that copies into a Git repository."""
@@ -52,22 +132,6 @@ class InterToGitRepository(InterRepository):
             fetch_spec=None):
         raise NoPushSupport()
 
-    def import_revision_gist(self, revid, parent_lookup):
-        """Import the gist of a revision into this Git repository.
-
-        """
-        objects = []
-        rev = self.source.get_revision(revid)
-        for sha, object, path in inventory_to_tree_and_blobs(
-                self.source.get_inventory(revid), self.source.texts, None):
-            if path == "":
-                tree_sha = sha
-            objects.append((object, path))
-        commit = revision_to_commit(rev, tree_sha, parent_lookup)
-        objects.append((commit, None))
-        self.target._git.object_store.add_objects(objects)
-        return commit.sha().hexdigest()
-
     def missing_revisions(self, stop_revision=None):
         if stop_revision is not None:
             ancestry = [x for x in self.source.get_ancestry(stop_revision) if x is not None]
@@ -83,26 +147,16 @@ class InterToGitRepository(InterRepository):
     def dfetch(self, stop_revision=None):
         """Import the gist of the ancestry of a particular revision."""
         revidmap = {}
-        gitidmap = {}
-        def parent_lookup(revid):
-            try:
-                return gitidmap[revid]
-            except KeyError:
-                return self.target.lookup_git_revid(revid)[0]
         mapping = self.target.get_mapping()
         self.source.lock_write()
         try:
-            todo = self.missing_revisions(stop_revision, ghosts=fetch_ghosts)
-            pb = ui.ui_factory.nested_progress_bar()
-            try:
-                for i, revid in enumerate(todo):
-                    pb.update("pushing revisions", i, len(todo))
-                    git_commit = self.import_revision_gist(revid, parent_lookup)
-                    gitidmap[revid] = git_commit
-                    git_revid = mapping.revision_id_foreign_to_bzr(git_commit)
-                    revidmap[revid] = git_revid
-            finally:
-                pb.finished()
+            todo = self.missing_revisions(stop_revision)
+            object_generator = MissingObjectsIterator(self.source, mapping)
+            for old_bzr_revid, git_commit in object_generator.import_revisions(
+                todo):
+                new_bzr_revid = mapping.revision_id_foreign_to_bzr(git_commit)
+                revidmap[old_bzr_revid] = new_bzr_revid
+            self.target._git.object_store.add_objects(object_generator) 
             if revidmap != {}:
                 self.source.fetch(self.target, 
                         revision_id=revidmap[stop_revision])

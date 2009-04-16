@@ -136,7 +136,10 @@ class SqliteGitShaMap(GitShaMap):
 """)
 
     def _parent_lookup(self, revid):
-        return self.db.execute("select sha1 from commits where revid = ?", (revid,)).fetchone()[0].encode("utf-8")
+        row = self.db.execute("select sha1 from commits where revid = ?", (revid,)).fetchone()
+        if row is not None:
+            return row[0].encode("utf-8")
+        raise KeyError
 
     def commit(self):
         self.db.commit()
