@@ -52,12 +52,11 @@ class BazaarObjectStore(object):
         all_revids = self.repository.all_revision_ids()
         graph = self.repository.get_graph()
         present_revids = set(self._idmap.revids())
+        missing_revids = [revid for revid in graph.iter_topo_order(all_revids) if revid not in present_revids]
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            for i, revid in enumerate(graph.iter_topo_order(all_revids)):
-                if revid in present_revids:
-                    continue
-                pb.update("updating git map", i, len(all_revids))
+            for i, revid in enumerate(missing_revids):
+                pb.update("updating git map", i, len(missing_revids))
                 self._update_sha_map_revision(revid)
         finally:
             self._idmap.commit()

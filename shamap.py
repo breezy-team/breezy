@@ -180,4 +180,4 @@ class SqliteGitShaMap(GitShaMap):
     def revids(self):
         """List the revision ids known."""
         for row in self.db.execute("select revid from commits").fetchall():
-            yield row[0]
+            yield row[0].encode("utf-8")
