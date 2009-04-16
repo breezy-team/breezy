@@ -46,7 +46,7 @@ class BazaarObjectStore(object):
             self.mapping = self.repository.get_mapping()
         else:
             self.mapping = mapping
-        self._idmap = SqliteGitShaMap(self.repository._transport)
+        self._idmap = SqliteGitShaMap.from_repository(repository)
 
     def _update_sha_map(self):
         all_revids = self.repository.all_revision_ids()

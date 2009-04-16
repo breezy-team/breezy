@@ -17,6 +17,7 @@
 """Map from Git sha's to Bazaar objects."""
 
 import os
+import threading
 
 import bzrlib
 from bzrlib.errors import (
@@ -45,6 +46,16 @@ except:
     warning('Needs at least Python2.5 or Python2.4 with the pysqlite2 '
             'module')
     raise bzrlib.errors.BzrError("missing sqlite library")
+
+
+_mapdbs = threading.local()
+def mapdbs():
+    """Get a cache for this thread's db connections."""
+    try:
+        return _mapdbs.cache
+    except AttributeError:
+        _mapdbs.cache = {}
+        return _mapdbs.cache
 
 
 class GitShaMap(object):
@@ -116,13 +127,14 @@ class DictGitShaMap(GitShaMap):
 
 class SqliteGitShaMap(GitShaMap):
 
-    def __init__(self, transport=None):
-        self.transport = transport
-        if transport is None:
+    def __init__(self, path=None):
+        self.path = path
+        if path is None:
             self.db = sqlite3.connect(":memory:")
         else:
-            self.db = sqlite3.connect(
-                os.path.join(self.transport.local_abspath("."), "git.db"))
+            if not mapdbs().has_key(path):
+                mapdbs()[path] = sqlite3.connect(path)
+            self.db = mapdbs()[path]    
         self.db.executescript("""
         create table if not exists commits(sha1 text, revid text, tree_sha text);
         create index if not exists commit_sha1 on commits(sha1);
@@ -134,6 +146,10 @@ class SqliteGitShaMap(GitShaMap):
         create index if not exists trees_sha1 on trees(sha1);
         create unique index if not exists trees_fileid_revid on trees(fileid, revid);
 """)
+
+    @classmethod
+    def from_repository(cls, repository):
+        return cls(os.path.join(repository._transport.local_abspath("."), "git.db"))
 
     def _parent_lookup(self, revid):
         row = self.db.execute("select sha1 from commits where revid = ?", (revid,)).fetchone()
