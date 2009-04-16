@@ -21,6 +21,7 @@
 from bzrlib import (
     errors,
     foreign,
+    osutils,
     urlutils,
     )
 from bzrlib.inventory import (
@@ -178,7 +179,8 @@ def inventory_to_tree_and_blobs(inventory, texts, mapping, cur=None):
     # stack contains the set of trees that we haven't 
     # finished constructing
     for path, entry in inventory.iter_entries():
-        while stack and not path.startswith(cur):
+        while stack and not path.startswith(osutils.pathjoin(cur, "")):
+            # We've hit a file that's not a child of the previous path
             tree.serialize()
             sha = tree.id
             yield sha, tree, cur
