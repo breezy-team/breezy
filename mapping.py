@@ -209,7 +209,7 @@ def inventory_to_tree_and_blobs(inventory, texts, mapping, cur=None):
             # We've hit a file that's not a child of the previous path
             tree.serialize()
             sha = tree.id
-            yield sha, tree, cur
+            yield sha, tree, cur.encode("utf-8")
             t = (stat.S_IFDIR, urlutils.basename(cur).encode('UTF-8'), sha)
             cur, tree = stack.pop()
             tree.add(*t)
@@ -226,20 +226,20 @@ def inventory_to_tree_and_blobs(inventory, texts, mapping, cur=None):
             else:
                 raise AssertionError("Unknown kind %s" % entry.kind)
             sha = blob.id
-            yield sha, blob, path
+            yield sha, blob, path.encode("utf-8")
             name = urlutils.basename(path).encode("utf-8")
             tree.add(entry_mode(entry), name, sha)
 
     while len(stack) > 1:
         tree.serialize()
         sha = tree.id
-        yield sha, tree, cur
+        yield sha, tree, cur.encode("utf-8")
         t = (stat.S_IFDIR, urlutils.basename(cur).encode('UTF-8'), sha)
         cur, tree = stack.pop()
         tree.add(*t)
 
     tree.serialize()
-    yield tree.id, tree, cur
+    yield tree.id, tree, cur.encode("utf-8")
 
 
 def revision_to_commit(rev, tree_sha, parent_lookup):

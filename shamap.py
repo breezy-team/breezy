@@ -55,6 +55,12 @@ class GitShaMap(object):
         """
         raise NotImplementedError(self.add_entry)
 
+    def add_entries(self, entries):
+        """Add multiple new entries to the database.
+        """
+        for e in entries:
+            self.add_entry(*e)
+
     def lookup_tree(self, fileid, revid):
         """Lookup the SHA of a git tree."""
         raise NotImplementedError(self.lookup_tree)

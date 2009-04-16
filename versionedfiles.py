@@ -55,7 +55,8 @@ class GitTexts(VersionedFiles):
             root_tree = self.object_store[foreign_revid].tree
             path = mapping.parse_file_id(fileid)
             try:
-                obj = tree_lookup_path(self.object_store, root_tree, path)
+                obj = tree_lookup_path(self.object_store.__getitem__, 
+                                       root_tree, path)
             except KeyError:
                 yield AbsentContentFactory(key)
             else:

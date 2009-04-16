@@ -143,7 +143,7 @@ def import_git_blob(texts, mapping, path, hexsha, base_inv, parent_id,
         if (base_sha == hexsha and base_inv[file_id].executable == ie.executable
             and base_inv[file_id].kind == ie.kind):
             # If nothing has changed since the base revision, we're done
-            return []
+            return [], []
     if base_sha == hexsha:
         ie.text_size = base_inv[file_id].text_size
         ie.text_sha1 = base_inv[file_id].text_sha1
@@ -175,12 +175,12 @@ def import_git_blob(texts, mapping, path, hexsha, base_inv, parent_id,
         assert ie.revision is not None
         texts.add_lines((file_id, ie.revision), parent_keys,
             osutils.split_lines(blob.data))
-        shagitmap.add_entry(hexsha, "blob", (ie.file_id, ie.revision))
     if file_id in base_inv:
         old_path = base_inv.id2path(file_id)
     else:
         old_path = None
-    return [(old_path, path, file_id, ie)]
+    return ([(old_path, path, file_id, ie)],
+            [(hexsha, "blob", (ie.file_id, ie.revision))])
 
 
 def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id, 
@@ -212,29 +212,32 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id,
         else:
             if base_sha == hexsha:
                 # If nothing has changed since the base revision, we're done
-                return [], {}
+                return [], {}, []
     # Remember for next time
     existing_children = set()
-    shagitmap.add_entry(hexsha, "tree", (file_id, revision_id))
     child_modes = {}
+    shamap = []
     tree = lookup_object(hexsha)
     for mode, name, hexsha in tree.entries():
         basename = name.decode("utf-8")
         existing_children.add(basename)
         child_path = osutils.pathjoin(path, name)
         if stat.S_ISDIR(mode):
-            subinvdelta, grandchildmodes = import_git_tree(texts, mapping,
-                child_path, hexsha, base_inv, file_id, revision_id, 
-                parent_invs, shagitmap, lookup_object)
+            subinvdelta, grandchildmodes, subshamap = import_git_tree(texts, 
+                    mapping, child_path, hexsha, base_inv, file_id, 
+                    revision_id, parent_invs, shagitmap, lookup_object)
             invdelta.extend(subinvdelta)
             child_modes.update(grandchildmodes)
+            shamap.extend(subshamap)
         else:
             fs_mode = stat.S_IMODE(mode)
             symlink = stat.S_ISLNK(mode)
-            subinvdelta = import_git_blob(texts, mapping, child_path, hexsha,
-                    base_inv, file_id, revision_id, parent_invs, shagitmap, 
-                    lookup_object, bool(fs_mode & 0111), symlink)
+            subinvdelta, subshamap = import_git_blob(texts, mapping, 
+                    child_path, hexsha, base_inv, file_id, revision_id, 
+                    parent_invs, shagitmap, lookup_object, 
+                    bool(fs_mode & 0111), symlink)
             invdelta.extend(subinvdelta)
+            shamap.extend(subshamap)
         if mode not in (stat.S_IFDIR, DEFAULT_FILE_MODE,
                         stat.S_IFLNK, DEFAULT_FILE_MODE|0111):
             child_modes[child_path] = mode
@@ -246,7 +249,8 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id,
             invdelta.append((base_inv.id2path(ie.file_id), None, ie.file_id, None))
             if ie.kind == "directory":
                 deletable.extend(ie.children.values())
-    return invdelta, child_modes
+    shamap.append((hexsha, "tree", (file_id, revision_id)))
+    return invdelta, child_modes, shamap
 
 
 def import_git_objects(repo, mapping, object_iter, target_git_object_retriever, 
@@ -315,9 +319,10 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
             base_inv = Inventory(root_id=None)
         else:
             base_inv = parent_invs[0]
-        inv_delta, unusual_modes = import_git_tree(repo.texts, mapping, "", 
-            root_trees[revid], base_inv, None, revid, parent_invs, 
-            target_git_object_retriever._idmap, lookup_object)
+        inv_delta, unusual_modes, shamap = import_git_tree(repo.texts, 
+                mapping, "", root_trees[revid], base_inv, None, revid, 
+                parent_invs, target_git_object_retriever._idmap, lookup_object)
+        target_git_object_retriever._idmap.add_entries(shamap)
         if unusual_modes != {}:
             ret = "unusual modes: \n"
             for item in unusual_modes.iteritems():
@@ -335,7 +340,7 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
             objs = inventory_to_tree_and_blobs(inv, repo.texts, mapping)
             for sha1, newobj, path in objs:
                 assert path is not None
-                oldobj = tree_lookup_path(object_iter, root_trees[revid], path)
+                oldobj = tree_lookup_path(lookup_object, root_trees[revid], path)
                 assert oldobj == newobj, "%r != %r in %s" % (oldobj, newobj, path)
 
     target_git_object_retriever._idmap.commit()
