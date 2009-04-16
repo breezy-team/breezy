@@ -143,10 +143,10 @@ def import_git_blob(texts, mapping, path, hexsha, base_inv, parent_id,
         base_ie = None
         base_sha = None
     else:
-        if base_ie.text_id == hexsha:
-            return [], []
+        base_sha = base_ie.text_id
         try:
-            base_sha = shagitmap.lookup_blob(file_id, base_ie.revision)
+            if base_sha is None:
+                base_sha = shagitmap.lookup_blob(file_id, base_ie.revision)
         except KeyError:
             base_sha = None
         else:
@@ -192,12 +192,14 @@ def import_git_blob(texts, mapping, path, hexsha, base_inv, parent_id,
         assert ie.revision is not None
         texts.add_lines((file_id, ie.revision), tuple(parent_keys),
             osutils.split_lines(blob.data))
+        shamap = [(hexsha, "blob", (ie.file_id, ie.revision))]
+    else:
+        shamap = []
     if file_id in base_inv:
         old_path = base_inv.id2path(file_id)
     else:
         old_path = None
-    return ([(old_path, path, file_id, ie)],
-            [(hexsha, "blob", (ie.file_id, ie.revision))])
+    return ([(old_path, path, file_id, ie)], shamap)
 
 
 def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id, 
@@ -225,11 +227,11 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id,
         texts.add_lines((file_id, ie.revision), (), [])
         invdelta.append((None, path, file_id, ie))
     else:
-        if base_ie.text_id == hexsha:
-            return [], {}, []
+        base_sha = base_ie.text_id
         # See if this has changed at all
         try:
-            base_sha = shagitmap.lookup_tree(file_id, base_inv.revision_id)
+            if base_sha is None:
+                base_sha = shagitmap.lookup_tree(file_id, base_inv.revision_id)
         except KeyError:
             pass
         else:
