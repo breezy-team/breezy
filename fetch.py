@@ -190,7 +190,7 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id,
     :param base_inv: Base inventory against which to return inventory delta
     :return: Inventory delta for this subtree
     """
-    ret = []
+    invdelta = []
     file_id = mapping.generate_file_id(path)
     # We just have to hope this is indeed utf-8:
     ie = InventoryDirectory(file_id, urlutils.basename(path.decode("utf-8")), 
@@ -199,7 +199,7 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id,
         # Newly appeared here
         ie.revision = revision_id
         texts.add_lines((file_id, ie.revision), [], [])
-        ret.append((None, path, file_id, ie))
+        invdelta.append((None, path, file_id, ie))
     else:
         # See if this has changed at all
         try:
@@ -221,13 +221,12 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id,
         entry_kind = (mode & 0700000) / 0100000
         basename = name.decode("utf-8")
         existing_children.add(basename)
-        if path == "":
-            child_path = name
-        else:
-            child_path = urlutils.join(path, name)
+        child_path = osutils.pathjoin(path, name)
         if entry_kind == 0:
-            ret.extend(import_git_tree(texts, mapping, child_path, hexsha, base_inv, 
-                file_id, revision_id, parent_invs, shagitmap, lookup_object))
+            subinvdelta = import_git_tree(texts, mapping, child_path, hexsha, 
+                base_inv, file_id, revision_id, parent_invs, shagitmap, 
+                lookup_object)
+            invdelta.extend(subinvdelta)
         elif entry_kind == 1:
             fs_mode = mode & 0777
             file_kind = (mode & 070000) / 010000
@@ -237,9 +236,10 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id,
                 symlink = True
             else:
                 raise AssertionError("Unknown file kind, mode=%r" % (mode,))
-            ret.extend(import_git_blob(texts, mapping, child_path, hexsha, base_inv, 
-                file_id, revision_id, parent_invs, shagitmap, lookup_object,
-                bool(fs_mode & 0111), symlink))
+            subinvdelta = import_git_blob(texts, mapping, child_path, hexsha,
+                    base_inv, file_id, revision_id, parent_invs, shagitmap, 
+                    lookup_object, bool(fs_mode & 0111), symlink))
+            invdelta.extend(subinvdelta)
         else:
             raise AssertionError("Unknown object kind, perms=%r." % (mode,))
     # Remove any children that have disappeared
@@ -247,10 +247,10 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id,
         deletable = [v for k,v in base_inv[file_id].children.iteritems() if k not in existing_children]
         while deletable:
             ie = deletable.pop()
-            ret.append((base_inv.id2path(ie.file_id), None, ie.file_id, None))
+            invdelta.append((base_inv.id2path(ie.file_id), None, ie.file_id, None))
             if ie.kind == "directory":
                 deletable.extend(ie.children.values())
-    return ret
+    return invdelta
 
 
 def import_git_objects(repo, mapping, object_iter, target_git_object_retriever, 
