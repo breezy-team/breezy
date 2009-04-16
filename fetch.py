@@ -137,21 +137,25 @@ def import_git_blob(texts, mapping, path, hexsha, base_inv, parent_id,
     ie.executable = executable
     # See if this has changed at all
     try:
-        base_sha = shagitmap.lookup_blob(file_id, base_inv[file_id].revision)
-    except KeyError:
-        base_sha = None
+        base_ie = base_inv[file_id]
     except NoSuchId:
+        base_ie = None
         base_sha = None
     else:
-        if (base_sha == hexsha and base_inv[file_id].executable == ie.executable
-            and base_inv[file_id].kind == ie.kind):
-            # If nothing has changed since the base revision, we're done
-            return [], []
+        try:
+            base_sha = shagitmap.lookup_blob(file_id, base_ie.revision)
+        except KeyError:
+            base_sha = None
+        else:
+            if (base_sha == hexsha and base_ie.executable == ie.executable
+                and base_ie.kind == ie.kind):
+                # If nothing has changed since the base revision, we're done
+                return [], []
     if base_sha == hexsha:
-        ie.text_size = base_inv[file_id].text_size
-        ie.text_sha1 = base_inv[file_id].text_sha1
-        ie.symlink_target = base_inv[file_id].symlink_target
-        ie.revision = base_inv[file_id].revision
+        ie.text_size = base_ie.text_size
+        ie.text_sha1 = base_ie.text_sha1
+        ie.symlink_target = base_ie.symlink_target
+        ie.revision = base_ie.revision
     else:
         blob = lookup_object(hexsha)
         if ie.kind == "symlink":
@@ -164,13 +168,18 @@ def import_git_blob(texts, mapping, path, hexsha, base_inv, parent_id,
     # Check what revision we should store
     parent_keys = []
     for pinv in parent_invs:
-        if not file_id in pinv:
+        if pinv.revision_id == base_inv.revision_id:
+            # Already checked
             continue
-        if pinv[file_id].text_sha1 == ie.text_sha1:
+        try:
+            pie = pinv[file_id]
+        except NoSuchId:
+            continue
+        if pie.text_sha1 == ie.text_sha1:
             # found a revision in one of the parents to use
-            ie.revision = pinv[file_id].revision
+            ie.revision = pie.revision
             break
-        parent_keys.append((file_id, pinv[file_id].revision))
+        parent_keys.append((file_id, pie.revision))
     if ie.revision is None:
         # Need to store a new revision
         ie.revision = revision_id
