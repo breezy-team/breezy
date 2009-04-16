@@ -22,6 +22,9 @@ from bzrlib import (
 from bzrlib.repository import (
     InterRepository,
     )
+from bzrlib.revision import (
+    NULL_REVISION,
+    )
 
 from bzrlib.plugins.git.converter import (
     BazaarObjectStore,
@@ -132,17 +135,20 @@ class InterToGitRepository(InterRepository):
             fetch_spec=None):
         raise NoPushSupport()
 
-    def missing_revisions(self, stop_revision=None):
-        if stop_revision is not None:
-            ancestry = [x for x in self.source.get_ancestry(stop_revision) if x is not None]
-        else:
-            ancestry = self.source.all_revision_ids()
+    def missing_revisions(self, stop_revision):
+        if stop_revision is None:
+            raise NotImplementedError
         missing = []
-        graph = self.source.get_graph()
-        for revid in graph.iter_topo_order(ancestry):
-            if not self.target.has_revision(revid):
-                missing.append(revid)
-        return missing
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            graph = self.source.get_graph()
+            for revid, _ in graph.iter_ancestry([stop_revision]):
+                pb.update("determining revisions to fetch", len(missing))
+                if not self.target.has_revision(revid):
+                    missing.append(revid)
+            return graph.iter_topo_order(missing)
+        finally:
+            pb.finished()
 
     def dfetch(self, stop_revision=None):
         """Import the gist of the ancestry of a particular revision."""
@@ -150,7 +156,7 @@ class InterToGitRepository(InterRepository):
         mapping = self.target.get_mapping()
         self.source.lock_read()
         try:
-            todo = self.missing_revisions(stop_revision)
+            todo = [revid for revid in self.missing_revisions(stop_revision) if revid != NULL_REVISION]
             pb = ui.ui_factory.nested_progress_bar()
             try:
                 object_generator = MissingObjectsIterator(self.source, mapping, pb)
