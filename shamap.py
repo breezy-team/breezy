@@ -55,7 +55,7 @@ class GitShaMap(object):
         """
         raise NotImplementedError(self.add_entry)
 
-    def lookup_tree(self, path, revid):
+    def lookup_tree(self, fileid, revid):
         """Lookup the SHA of a git tree."""
         raise NotImplementedError(self.lookup_tree)
 
@@ -90,11 +90,11 @@ class DictGitShaMap(GitShaMap):
     def lookup_git_sha(self, sha):
         return self.dict[sha]
 
-    def lookup_tree(self, path, revid):
+    def lookup_tree(self, fileid, revid):
         for k, v in self.dict.iteritems():
-            if v == ("tree", (path, revid)):
+            if v == ("tree", (fileid, revid)):
                 return k
-        raise KeyError((path, revid))
+        raise KeyError((fileid, revid))
 
     def lookup_blob(self, fileid, revid):
         for k, v in self.dict.iteritems():
@@ -124,9 +124,9 @@ class SqliteGitShaMap(GitShaMap):
         create table if not exists blobs(sha1 text, fileid text, revid text);
         create index if not exists blobs_sha1 on blobs(sha1);
         create unique index if not exists blobs_fileid_revid on blobs(fileid, revid);
-        create table if not exists trees(sha1 text, path text, revid text);
+        create table if not exists trees(sha1 text, fileid text, revid text);
         create index if not exists trees_sha1 on trees(sha1);
-        create unique index if not exists trees_path_revid on trees(path, revid);
+        create unique index if not exists trees_fileid_revid on trees(fileid, revid);
 """)
 
     def _parent_lookup(self, revid):
@@ -142,17 +142,15 @@ class SqliteGitShaMap(GitShaMap):
         assert isinstance(sha, str), "type was %r" % sha
         if type == "commit":
             self.db.execute("replace into commits (sha1, revid, tree_sha) values (?, ?, ?)", (sha, type_data[0], type_data[1]))
-        elif type == "blob":
-            self.db.execute("replace into blobs (sha1, fileid, revid) values (?, ?, ?)", (sha, type_data[0], type_data[1]))
-        elif type == "tree":
-            self.db.execute("replace into trees (sha1, path, revid) values (?, ?, ?)", (sha, type_data[0], type_data[1]))
+        elif type in ("blob", "tree"):
+            self.db.execute("replace into %ss (sha1, fileid, revid) values (?, ?, ?)" % type, (sha, type_data[0], type_data[1]))
         else:
             raise AssertionError("Unknown type %s" % type)
 
-    def lookup_tree(self, path, revid):
-        row = self.db.execute("select sha1 from trees where path = ? and revid = ?", (path,revid)).fetchone()
+    def lookup_tree(self, fileid, revid):
+        row = self.db.execute("select sha1 from trees where fileid = ? and revid = ?", (fileid,revid)).fetchone()
         if row is None:
-            raise KeyError((path, revid))
+            raise KeyError((fileid, revid))
         return row[0]
 
     def lookup_blob(self, fileid, revid):
@@ -174,7 +172,7 @@ class SqliteGitShaMap(GitShaMap):
         row = self.db.execute("select fileid, revid from blobs where sha1 = ?", (sha,)).fetchone()
         if row is not None:
             return ("blob", row)
-        row = self.db.execute("select path, revid from trees where sha1 = ?", (sha,)).fetchone()
+        row = self.db.execute("select fileid, revid from trees where sha1 = ?", (sha,)).fetchone()
         if row is not None:
             return ("tree", row)
         raise KeyError(sha)

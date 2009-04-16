@@ -203,7 +203,7 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id,
     else:
         # See if this has changed at all
         try:
-            base_sha = shagitmap.lookup_tree(path, base_inv.revision_id)
+            base_sha = shagitmap.lookup_tree(file_id, base_inv.revision_id)
         except KeyError:
             pass
         else:

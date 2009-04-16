@@ -72,11 +72,12 @@ class BazaarObjectStore(object):
                 tree_sha = sha
             ie = inv[inv.path2id(path)]
             if ie.kind in ("file", "symlink"):
-                self._idmap.add_entry(sha, "blob", (ie.file_id, ie.revision))
+                git_kind = "blob"
             elif ie.kind == "directory":
-                self._idmap.add_entry(sha, "tree", (path, ie.revision))
+                git_kind = "tree"
             else:
                 raise AssertionError()
+            self._idmap.add_entry(sha, git_kind, (ie.file_id, ie.revision))
         rev = self.repository.get_revision(revid)
         commit_obj = revision_to_commit(rev, tree_sha,
             self._idmap._parent_lookup)
@@ -101,19 +102,18 @@ class BazaarObjectStore(object):
         blob._text = text
         return blob
 
-    def _get_tree(self, path, revid, inv=None):
-        """Return a Git Tree object from a path and a revision stored in bzr.
+    def _get_tree(self, fileid, revid, inv=None):
+        """Return a Git Tree object from a file id and a revision stored in bzr.
 
-        :param path: path in the tree.
+        :param fileid: fileid in the tree.
         :param revision: Revision of the tree.
         """
         if inv is None:
             inv = self.repository.get_inventory(revid)
         tree = Tree()
-        fileid = inv.path2id(path)
         for name, ie in inv[fileid].children.iteritems():
             if ie.kind == "directory":
-                subtree = self._get_tree(inv.id2path(ie.file_id), revid, inv)
+                subtree = self._get_tree(ie.file_id, revid, inv)
                 tree.add(stat.S_IFDIR, name.encode('UTF-8'), subtree.id)
             elif ie.kind == "file":
                 blob = self._get_blob(ie.file_id, ie.revision)
