@@ -142,7 +142,7 @@ class RepoFetcher(object):
                 # not present in the stream, and make sure we have their
                 # inventories.
                 missing_keys.update(_parent_inventories(
-                    self.to_repository, search.get_keys(), check_present=False))
+                    self.to_repository, search.get_keys()))
             if missing_keys:
                 pb.update("Missing keys")
                 stream = source.get_stream_for_missing_keys(missing_keys)

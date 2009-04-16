@@ -1424,6 +1424,17 @@ class Repository(object):
     def suspend_write_group(self):
         raise errors.UnsuspendableWriteGroup(self)
 
+    def get_missing_parent_inventories(self):
+        revision_ids = self.new_revisions()
+        parent_inventories = _parent_inventories(self, revision_ids)
+        unstacked_inventories = self.inventories._index
+        present_inventories = unstacked_inventories.get_parent_map(
+            key[-1:] for key in parent_inventories)
+        present_inventories = [
+            ('inventories', key[-1]) for key in present_inventories]
+        parent_inventories.difference_update(present_inventories)
+        return parent_inventories
+
     def new_revisions(self):
         """Return the revision IDs of revisions added in this write group."""
         if not self.is_in_write_group():
@@ -4008,8 +4019,7 @@ class StreamSink(object):
             else:
                 raise AssertionError('kaboom! %s' % (substream_type,))
         # Find all the new revisions (including ones from resume_tokens)
-        new_revisions = self.target_repo.new_revisions()
-        missing_keys = _parent_inventories(self.target_repo, new_revisions)
+        missing_keys = self.target_repo.get_missing_parent_inventories()
         try:
             for prefix, versioned_file in (
                 ('texts', self.target_repo.texts),
@@ -4322,18 +4332,12 @@ class StreamSource(object):
                 key, parent_keys, None, as_bytes)
 
 
-def _parent_inventories(repo, revision_ids, check_present=True):
+def _parent_inventories(repo, revision_ids):
     parent_maps = repo.get_parent_map(revision_ids)
     parents = set()
     map(parents.update, parent_maps.itervalues())
     parents.difference_update(revision_ids)
     parents.discard(_mod_revision.NULL_REVISION)
-    if check_present:
-        unstacked_inventories = repo.inventories._index
-        present_inventories = unstacked_inventories.get_parent_map(
-            (parent,) for parent in parents)
-        present_inventories = [key[-1] for key in present_inventories]
-        parents.difference_update(present_inventories)
     missing_keys = set(('inventories', rev_id) for rev_id in parents)
     return missing_keys
 
