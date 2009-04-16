@@ -224,8 +224,8 @@ def revision_to_commit(rev, tree_sha, parent_lookup):
     commit._committer = rev.committer.encode("utf-8")
     commit._author = rev.get_apparent_authors()[0].encode("utf-8")
     commit._commit_time = long(rev.timestamp)
-    if 'author-time' in rev.properties:
-        commit._author_time = long(rev.properties['author-time'])
+    if 'author-timestamp' in rev.properties:
+        commit._author_time = long(rev.properties['author-timestamp'])
     else:
         commit._author_time = commit._commit_time
     commit.serialize()

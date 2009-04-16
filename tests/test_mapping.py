@@ -22,6 +22,7 @@ from bzrlib.plugins.git import tests
 from bzrlib.plugins.git.mapping import (
     BzrGitMappingv1,
     escape_file_id,
+    revision_to_commit,
     unescape_file_id,
     )
 
@@ -68,6 +69,7 @@ class TestImportCommit(tests.TestCase):
         c._message = "Some message"
         c._committer = "Committer"
         c._commit_time = 4
+        c._author_time = 5
         c._author = "Author"
         c.serialize()
         rev = BzrGitMappingv1().import_commit(c)
@@ -76,4 +78,40 @@ class TestImportCommit(tests.TestCase):
         self.assertEquals("Author", rev.properties['author'])
         self.assertEquals(0, rev.timezone)
         self.assertEquals((), rev.parent_ids)
+        self.assertEquals("5", rev.properties['author-timestamp'])
         self.assertEquals("git-v1:" + c.id, rev.revision_id)
+
+
+
+class RoundtripRevisionsFromGit(tests.TestCase):
+
+    def setUp(self):
+        super(RoundtripRevisionsFromGit, self).setUp()
+        self.mapping = BzrGitMappingv1()
+
+    def assertRoundtripTree(self, tree):
+        raise NotImplementedError(self.assertRoundtripTree)
+
+    def assertRoundtripBlob(self, blob):
+        raise NotImplementedError(self.assertRoundtripBlob)
+
+    def assertRoundtripCommit(self, commit1):
+        commit1.serialize()
+        rev = self.mapping.import_commit(commit1)
+        commit2 = revision_to_commit(rev, "12341212121212", None)
+        self.assertEquals(commit1.committer, commit2.committer)
+        self.assertEquals(commit1.commit_time, commit2.commit_time)
+        self.assertEquals(commit1.author, commit2.author)
+        self.assertEquals(commit1.author_time, commit2.author_time)
+        self.assertEquals(commit1.message, commit2.message)
+
+    def test_commit(self):
+        c = Commit()
+        c._tree = "cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
+        c._message = "Some message"
+        c._committer = "Committer"
+        c._commit_time = 4
+        c._author_time = 5
+        c._author = "Author"
+        self.assertRoundtripCommit(c)
+
