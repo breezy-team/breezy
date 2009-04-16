@@ -148,7 +148,7 @@ class InterToGitRepository(InterRepository):
         """Import the gist of the ancestry of a particular revision."""
         revidmap = {}
         mapping = self.target.get_mapping()
-        self.source.lock_write()
+        self.source.lock_read()
         try:
             todo = self.missing_revisions(stop_revision)
             object_generator = MissingObjectsIterator(self.source, mapping)
@@ -157,9 +157,6 @@ class InterToGitRepository(InterRepository):
                 new_bzr_revid = mapping.revision_id_foreign_to_bzr(git_commit)
                 revidmap[old_bzr_revid] = new_bzr_revid
             self.target._git.object_store.add_objects(object_generator) 
-            if revidmap != {}:
-                self.source.fetch(self.target, 
-                        revision_id=revidmap[stop_revision])
         finally:
             self.source.unlock()
         return revidmap
