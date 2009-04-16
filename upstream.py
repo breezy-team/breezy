@@ -93,13 +93,11 @@ class AptSource(UpstreamSource):
     """Upstream source that uses apt-source."""
 
     def get_specific_version(self, package, upstream_version, target_dir, 
-            _apt_pkg=None, _apt_caller=None):
+            _apt_pkg=None):
         if _apt_pkg is None:
             import apt_pkg
         else:
             apt_pkg = _apt_pkg
-        if _apt_caller is None:
-            _apt_caller = self._run_apt_source
         apt_pkg.init()
         sources = apt_pkg.GetPkgSrcRecords()
         sources.Restart()
@@ -107,7 +105,7 @@ class AptSource(UpstreamSource):
         while sources.Lookup(package):
             if upstream_version \
                 == Version(sources.Version).upstream_version:
-                if _apt_caller(package, sources.Version, target_dir):
+                if self._run_apt_source(package, sources.Version, target_dir):
                     return
                 break
         info("apt could not find the needed tarball.")
@@ -207,8 +205,7 @@ class GetOrigSourceSource(UpstreamSource):
                 return
             finally:
                 shutil.rmtree(tmpdir)
-        info("No debian/rules file to try and use for a get-orig-source "
-             "rule")
+        info("No debian/rules file to try and use for a get-orig-source rule")
         raise PackageVersionNotPresent(package, version, self)
 
 

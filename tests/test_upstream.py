@@ -113,8 +113,10 @@ class AptSourceTests(TestCase):
         caller = MockAptCaller()
         sources = MockSources([])
         apt_pkg = MockAptPkg(sources)
-        self.assertEqual(False, AptSource().get_specific_version(
-            "apackage", "0.2", "target", _apt_pkg=apt_pkg, _apt_caller=caller))
+        src = AptSource()
+        src._run_apt_source = caller.call
+        self.assertRaises(PackageVersionNotPresent, src.get_specific_version,
+            "apackage", "0.2", "target", _apt_pkg=apt_pkg)
         self.assertEqual(1, apt_pkg.init_called_times)
         self.assertEqual(1, apt_pkg.get_pkg_source_records_called_times)
         self.assertEqual(1, sources.restart_called_times)
@@ -126,8 +128,10 @@ class AptSourceTests(TestCase):
         caller = MockAptCaller()
         sources = MockSources(["0.1-1"])
         apt_pkg = MockAptPkg(sources)
-        self.assertEqual(False, AptSource().get_specific_version(
-            "apackage", "0.2", "target", _apt_pkg=apt_pkg, _apt_caller=caller))
+        src = AptSource()
+        src._run_apt_source = caller.call
+        self.assertRaises(PackageVersionNotPresent, src.get_specific_version,
+            "apackage", "0.2", "target", _apt_pkg=apt_pkg)
         self.assertEqual(1, apt_pkg.init_called_times)
         self.assertEqual(1, apt_pkg.get_pkg_source_records_called_times)
         self.assertEqual(1, sources.restart_called_times)
@@ -139,9 +143,10 @@ class AptSourceTests(TestCase):
         caller = MockAptCaller(work=True)
         sources = MockSources(["0.1-1", "0.2-1"])
         apt_pkg = MockAptPkg(sources)
-        self.assertEqual(True, AptSource().get_specific_version(
-            "apackage", "0.2", "target", 
-            _apt_pkg=apt_pkg, _apt_caller=caller.call))
+        src = AptSource()
+        src._run_apt_source = caller.call
+        src.get_specific_version("apackage", "0.2", "target", 
+            _apt_pkg=apt_pkg)
         self.assertEqual(1, apt_pkg.init_called_times)
         self.assertEqual(1, apt_pkg.get_pkg_source_records_called_times)
         self.assertEqual(1, sources.restart_called_times)
@@ -157,9 +162,11 @@ class AptSourceTests(TestCase):
         caller = MockAptCaller()
         sources = MockSources(["0.1-1", "0.2-1"])
         apt_pkg = MockAptPkg(sources)
-        self.assertEqual(False, AptSource().get_specific_version(
+        src = AptSource()
+        src._run_apt_source = caller.call
+        self.assertRaises(PackageVersionNotPresent, src.get_specific_version,
             "apackage", "0.2", "target", 
-            _apt_pkg=apt_pkg, _apt_caller=caller.call))
+            _apt_pkg=apt_pkg)
         self.assertEqual(1, apt_pkg.init_called_times)
         self.assertEqual(1, apt_pkg.get_pkg_source_records_called_times)
         self.assertEqual(1, sources.restart_called_times)
