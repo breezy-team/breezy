@@ -3,17 +3,6 @@
 # 
 #
 
-- test and code osutils.readlink around:
-
-        def read_link(link):
-            # The only reliable way to get the link target for python2.[456]
-            # other aternative implementations either fails to reliably return
-            # a unicode string or fails to encode the received unicode string
-            link = link.encode(osutils._fs_enc)
-            target = os.readlink(link)
-            target = target.decode(osutils._fs_enc)
-            return target
-
 - use osutils.readlink in: 
 
   - HashCache.get_sha1 (one test failing)

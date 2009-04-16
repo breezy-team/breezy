@@ -1707,8 +1707,8 @@ class TestDirReader(tests.TestCaseInTempDir):
 
     def test_symlink(self):
         self.requireFeature(tests.SymlinkFeature)
-        target = u'target\n{Euro Sign}'
-        link_name = u'l\n{Euro Sign}nk'
+        target = u'target\N{Euro Sign}'
+        link_name = u'l\N{Euro Sign}nk'
         os.symlink(target, link_name)
         target_utf8 = target.encode('UTF-8')
         link_name_utf8 = link_name.encode('UTF-8')
@@ -1719,3 +1719,30 @@ class TestDirReader(tests.TestCaseInTempDir):
                  )]
         result = list(osutils._walkdirs_utf8('.'))
         self.assertEqual(expected_dirblocks, self._filter_out(result))
+
+
+class TestReadLink(tests.TestCaseInTempDir):
+    """Exposes os.readlink() problems and the osutils solution.
+
+    The only guarantee offered by os.readlink(), starting with 2.6, is that a
+    unicode string will be returned if a unicode string is passed.
+
+    But prior python versions failed to properly encode a the passed unicode
+    string.
+    """
+
+    def setUp(self):
+        super(tests.TestCaseInTempDir, self).setUp()
+        self.link = u'l\N{Euro Sign}ink'
+        self.target = u'targe\N{Euro Sign}t'
+        os.symlink(self.target, self.link)
+
+    def test_os_readlink_link_encoding(self):
+        if sys.version_info < (2, 6):
+            self.assertRaises(UnicodeEncodeError, os.readlink, self.link)
+        else:
+            self.assertEquals(self.target,  os.readlink(self.link))
+
+    def test_os_readlink_link_decoding(self):
+        self.assertEquals(self.target.encode(osutils._fs_enc),
+                          os.readlink(self.link.encode(osutils._fs_enc)))

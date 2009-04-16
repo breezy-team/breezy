@@ -925,6 +925,20 @@ def host_os_dereferences_symlinks():
             and sys.platform not in ('cygwin', 'win32'))
 
 
+def readlink(abspath):
+    """Return a string representing the path to which the symbolic link points.
+
+    :param abspath: The link absolute unicode path.
+
+    This his guaranteed to return the symbolic link in unicode in all python
+    versions.
+    """
+    link = abspath.encode(_fs_enc)
+    target = os.readlink(link)
+    target = target.decode(_fs_enc)
+    return target
+
+
 def contains_whitespace(s):
     """True if there are any whitespace characters in s."""
     # string.whitespace can include '\xa0' in certain locales, because it is
