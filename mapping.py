@@ -155,12 +155,20 @@ def text_to_blob(text):
     return blob
 
 
-def inventory_to_tree_and_blobs(inventory, texts, mapping):
+def symlink_to_blob(entry):
+    from dulwich.objects import Blob
+    blob = Blob()
+    blob._text = entry.symlink_target
+    return blob
+
+
+def inventory_to_tree_and_blobs(inventory, texts, mapping, cur=None):
     from dulwich.objects import Tree
     from bzrlib.inventory import InventoryDirectory, InventoryFile
     import stat
     stack = []
-    cur = ""
+    if cur is None:
+        cur = ""
     tree = Tree()
 
     # stack contains the set of trees that we haven't 
@@ -174,12 +182,11 @@ def inventory_to_tree_and_blobs(inventory, texts, mapping):
             cur, tree = stack.pop()
             tree.add(*t)
 
-        if type(entry) == InventoryDirectory:
+        if entry.kind == "directory":
             stack.append((cur, tree))
             cur = path
             tree = Tree()
-
-        if type(entry) == InventoryFile:
+        elif entry.kind == "file":
             #FIXME: We can make potentially make this Lazy to avoid shaing lots of stuff
             # and having all these objects in memory at once
             text = texts.get_record_stream([(entry.file_id, entry.revision)], 'unordered', True).next().get_bytes_as('fulltext')
@@ -192,6 +199,14 @@ def inventory_to_tree_and_blobs(inventory, texts, mapping):
             if entry.executable:
                 mode |= 0111
             tree.add(mode, name, sha)
+        elif entry.kind == "symlink":
+            blob = symlink_to_blob(entry)
+            sha = blob.id
+            yield sha, blob, path
+            name = urlutils.basename(path).encode("utf-8")
+            tree.add(stat.S_IFLNK, name, sha)
+        else:
+            raise AssertionError("Unknown kind %s" % entry.kind)
 
     while len(stack) > 1:
         tree.serialize()

@@ -130,8 +130,7 @@ def import_git_blob(texts, mapping, path, hexsha, base_inv, parent_id,
     else:
         cls = InventoryFile
     # We just have to hope this is indeed utf-8:
-    ie = cls(file_id, urlutils.basename(path).decode("utf-8"), 
-                parent_id)
+    ie = cls(file_id, urlutils.basename(path).decode("utf-8"), parent_id)
     ie.executable = executable
     # See if this has changed at all
     try:
