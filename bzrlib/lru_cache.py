@@ -149,6 +149,9 @@ class LRUCache(object):
         :param cleanup: None or a function taking (key, value) to indicate
                         'value' should be cleaned up.
         """
+        if key is None:
+            # We use None to indicate non-entries in our key following code.
+            raise ValueError('LRUCache cannot map None as a key')
         if key in self._cache:
             node = self._cache[key]
             node.run_cleanup()
