@@ -96,6 +96,9 @@ class BzrGitMapping(foreign.VcsMapping):
         rev.committer = escape_invalid_chars(str(commit.committer).decode("utf-8", "replace"))[0]
         if commit.committer != commit.author:
             rev.properties['author'] = escape_invalid_chars(str(commit.author).decode("utf-8", "replace"))[0]
+
+        if commit.commit_time != commit.author_time:
+            rev.properties['author-timestamp'] = str(commit.author_time)
         rev.timestamp = commit.commit_time
         rev.timezone = 0
         return rev
@@ -221,5 +224,9 @@ def revision_to_commit(rev, tree_sha, parent_lookup):
     commit._committer = rev.committer.encode("utf-8")
     commit._author = rev.get_apparent_authors()[0].encode("utf-8")
     commit._commit_time = long(rev.timestamp)
+    if 'author-time' in rev.properties:
+        commit._author_time = long(rev.properties['author-time'])
+    else:
+        commit._author_time = commit._commit_time
     commit.serialize()
     return commit
