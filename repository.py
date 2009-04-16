@@ -47,9 +47,7 @@ from bzrlib.plugins.git.inventory import (
     )
 from bzrlib.plugins.git.mapping import (
     default_mapping,
-    inventory_to_tree_and_blobs,
     mapping_registry,
-    revision_to_commit,
     )
 from bzrlib.plugins.git.versionedfiles import (
     GitTexts,
@@ -168,57 +166,9 @@ class LocalGitRepository(GitRepository):
         ancestry.reverse()
         return [None] + ancestry
 
-    def import_revision_gist(self, source, revid, parent_lookup):
-        """Import the gist of a revision into this Git repository.
-
-        """
-        objects = []
-        rev = source.get_revision(revid)
-        for sha, object, path in inventory_to_tree_and_blobs(source.get_inventory(revid), source.texts, None):
-            if path == "":
-                tree_sha = sha
-            objects.append((object, path))
-        commit = revision_to_commit(rev, tree_sha, parent_lookup)
-        objects.append((commit, None))
-        self._git.object_store.add_objects(objects)
-        return commit.sha().hexdigest()
-
     def dfetch(self, source, stop_revision):
-        """Import the gist of the ancestry of a particular revision."""
-        if stop_revision is None:
-            raise NotImplementedError
-        revidmap = {}
-        gitidmap = {}
-        def parent_lookup(revid):
-            try:
-                return gitidmap[revid]
-            except KeyError:
-                return self.lookup_git_revid(revid)[0]
-        todo = []
-        source.lock_write()
-        try:
-            graph = source.get_graph()
-            ancestry = [x for x in source.get_ancestry(stop_revision) if x is not None]
-            for revid in graph.iter_topo_order(ancestry):
-                if not self.has_revision(revid):
-                    todo.append(revid)
-            pb = ui.ui_factory.nested_progress_bar()
-            try:
-                for i, revid in enumerate(todo):
-                    pb.update("pushing revisions", i, len(todo))
-                    git_commit = self.import_revision_gist(source, revid,
-                        parent_lookup)
-                    gitidmap[revid] = git_commit
-                    git_revid = self.get_mapping().revision_id_foreign_to_bzr(
-                        git_commit)
-                    revidmap[revid] = git_revid
-            finally:
-                pb.finished()
-            if revidmap != {}:
-                source.fetch(self, revision_id=revidmap[stop_revision])
-        finally:
-            source.unlock()
-        return revidmap
+        interrepo = repository.InterRepository.get(source, self)
+        return interrepo.dfetch(stop_revision)
 
     def get_signature_text(self, revision_id):
         raise errors.NoSuchRevision(self, revision_id)

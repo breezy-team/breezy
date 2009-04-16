@@ -25,6 +25,7 @@ from bzrlib import (
     revision,
     )
 from bzrlib.repository import (
+    InterRepository,
     Repository,
     )
 
@@ -197,9 +198,12 @@ class RevisionGistImportTests(tests.TestCaseWithTransport):
         self.git_repo = Repository.open(self.git_path)
         self.bzr_tree = self.make_branch_and_tree("bzr")
 
+    def get_inter(self):
+        return InterRepository.get(self.bzr_tree.branch.repository, 
+                                   self.git_repo)
+
     def import_rev(self, revid, parent_lookup=None):
-        return self.git_repo.import_revision_gist(
-            self.bzr_tree.branch.repository, revid, parent_lookup)
+        return self.get_inter().import_revision_gist(revid, parent_lookup)
 
     def test_pointless(self):
         revid = self.bzr_tree.commit("pointless", timestamp=1205433193,
