@@ -44,7 +44,7 @@ class MissingObjectsIterator(object):
 
     """
 
-    def __init__(self, source, mapping):
+    def __init__(self, source, mapping, pb=None):
         """Create a new missing objects iterator.
 
         """
@@ -53,17 +53,15 @@ class MissingObjectsIterator(object):
         self._revids = set()
         self._sent_shas = set()
         self._pending = []
+        self.pb = pb
 
     def import_revisions(self, revids):
         self._revids.update(revids)
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
-            for i, revid in enumerate(revids):
-                pb.update("pushing revisions", i, len(revids))
-                git_commit = self.import_revision(revid)
-                yield (revid, git_commit)
-        finally:
-            pb.finished()
+        for i, revid in enumerate(revids):
+            if self.pb:
+                self.pb.update("pushing revisions", i, len(revids))
+            git_commit = self.import_revision(revid)
+            yield (revid, git_commit)
 
     def need_sha(self, sha):
         if sha in self._sent_shas:
@@ -109,7 +107,9 @@ class MissingObjectsIterator(object):
         return len(self._pending)
 
     def __iter__(self):
-        for (object, path) in self._pending:
+        for i, (object, path) in enumerate(self._pending):
+            if self.pb:
+                self.pb.update("writing pack objects", i, len(self))
             if isinstance(object, tuple):
                 object = self._object_store._get_ie_object(*object)
             yield (object, path)   
@@ -151,12 +151,16 @@ class InterToGitRepository(InterRepository):
         self.source.lock_read()
         try:
             todo = self.missing_revisions(stop_revision)
-            object_generator = MissingObjectsIterator(self.source, mapping)
-            for old_bzr_revid, git_commit in object_generator.import_revisions(
-                todo):
-                new_bzr_revid = mapping.revision_id_foreign_to_bzr(git_commit)
-                revidmap[old_bzr_revid] = new_bzr_revid
-            self.target._git.object_store.add_objects(object_generator) 
+            pb = ui.ui_factory.nested_progress_bar()
+            try:
+                object_generator = MissingObjectsIterator(self.source, mapping, pb)
+                for old_bzr_revid, git_commit in object_generator.import_revisions(
+                    todo):
+                    new_bzr_revid = mapping.revision_id_foreign_to_bzr(git_commit)
+                    revidmap[old_bzr_revid] = new_bzr_revid
+                self.target._git.object_store.add_objects(object_generator) 
+            finally:
+                pb.finished()
         finally:
             self.source.unlock()
         return revidmap
