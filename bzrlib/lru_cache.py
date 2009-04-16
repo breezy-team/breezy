@@ -88,15 +88,15 @@ class LRUCache(object):
             return node.value
         # Remove this node from the old location
         node_prev = node.prev
-        if node is self._last_recently_used:
-            self._last_recently_used = node_prev
         next_key = node.next_key
-        node_prev.next_key = next_key
         if next_key is None:
-            node_next = None
+            # 'node' is the _last_recently_used, because it doesn't have a
+            # 'next' item. So move the current lru to the previous node.
+            self._last_recently_used = node_prev
         else:
             node_next = cache[next_key]
             node_next.prev = node_prev
+        node_prev.next_key = next_key
         # Insert this node at the front of the list
         node.next_key = mru.key
         mru.prev = node
