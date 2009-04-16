@@ -46,6 +46,27 @@ class TestLRUCache(tests.TestCase):
         self.failUnless('foo' in cache)
         self.failIf('bar' in cache)
 
+    def test_map_None(self):
+        # Make sure that we can properly map None as a key.
+        cache = lru_cache.LRUCache(max_cache=10)
+        self.failIf(None in cache)
+        cache[None] = 1
+        self.assertEqual(1, cache[None])
+        cache[None] = 2
+        self.assertEqual(2, cache[None])
+        # Test the various code paths of __getitem__, to make sure that we can
+        # handle when None is the key for the LRU and the MRU
+        cache[1] = 3
+        cache[None] = 1
+        cache[None]
+        cache[1]
+        cache[None]
+        self.assertEqual([None, 1], [n.key for n in cache._walk_lru()])
+
+    def test_add__null_key(self):
+        cache = lru_cache.LRUCache(max_cache=10)
+        self.assertRaises(ValueError, cache.add, lru_cache._null_key, 1)
+
     def test_overflow(self):
         """Adding extra entries will pop out old ones."""
         cache = lru_cache.LRUCache(max_cache=1, after_cleanup_count=1)
@@ -278,6 +299,10 @@ class TestLRUSizeCache(tests.TestCase):
         self.assertEqual(2048, cache._max_cache)
         self.assertEqual(int(cache._max_size*0.8), cache._after_cleanup_size)
         self.assertEqual(0, cache._value_size)
+
+    def test_add__null_key(self):
+        cache = lru_cache.LRUSizeCache()
+        self.assertRaises(ValueError, cache.add, lru_cache._null_key, 1)
 
     def test_add_tracks_size(self):
         cache = lru_cache.LRUSizeCache()

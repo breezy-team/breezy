@@ -21,6 +21,7 @@ from bzrlib import (
     trace,
     )
 
+_null_key = object()
 
 class _LRUNode(object):
     """This maintains the linked-list which is the lru internals."""
@@ -29,7 +30,7 @@ class _LRUNode(object):
 
     def __init__(self, key, value, cleanup=None):
         self.prev = None
-        self.next_key = None
+        self.next_key = _null_key
         self.key = key
         self.value = value
         self.cleanup = cleanup
@@ -89,7 +90,9 @@ class LRUCache(object):
         # Remove this node from the old location
         node_prev = node.prev
         next_key = node.next_key
-        if next_key is None:
+        # benchmarking shows that the lookup of _null_key in globals is faster
+        # than the attribute lookup for (node is self._last_recently_used)
+        if next_key is _null_key:
             # 'node' is the _last_recently_used, because it doesn't have a
             # 'next' item. So move the current lru to the previous node.
             self._last_recently_used = node_prev
@@ -116,7 +119,7 @@ class LRUCache(object):
                                      ' supposed to have a previous entry'
                                      ' %s' % (node,))
         while node is not None:
-            if node.next_key is None:
+            if node.next_key is _null_key:
                 if node is not self._last_recently_used:
                     raise AssertionError('only the last node should have'
                                          ' no next value: %s' % (node,))
@@ -149,9 +152,8 @@ class LRUCache(object):
         :param cleanup: None or a function taking (key, value) to indicate
                         'value' should be cleaned up.
         """
-        if key is None:
-            # We use None to indicate non-entries in our key following code.
-            raise ValueError('LRUCache cannot map None as a key')
+        if key is _null_key:
+            raise ValueError('cannot use _null_key as a key')
         if key in self._cache:
             node = self._cache[key]
             node.run_cleanup()
@@ -223,7 +225,7 @@ class LRUCache(object):
             self._last_recently_used = node.prev
         if node.prev is not None:
             node.prev.next_key = node.next_key
-        if node.next_key is not None:
+        if node.next_key is not _null_key:
             node_next = self._cache[node.next_key]
             node_next.prev = node.prev
         # INSERT
@@ -243,12 +245,12 @@ class LRUCache(object):
         # Now remove this node from the linked list
         if node.prev is not None:
             node.prev.next_key = node.next_key
-        if node.next_key is not None:
+        if node.next_key is not _null_key:
             node_next = self._cache[node.next_key]
             node_next.prev = node.prev
         # And remove this node's pointers
         node.prev = None
-        node.next_key = None
+        node.next_key = _null_key
 
     def _remove_lru(self):
         """Remove one entry from the lru, and handle consequences.
@@ -322,6 +324,8 @@ class LRUSizeCache(LRUCache):
         :param cleanup: None or a function taking (key, value) to indicate
                         'value' should be cleaned up.
         """
+        if key is _null_key:
+            raise ValueError('cannot use _null_key as a key')
         node = self._cache.get(key, None)
         value_len = self._compute_size(value)
         if value_len >= self._after_cleanup_size:
