@@ -49,6 +49,12 @@ def unescape_file_id(file_id):
     return file_id.replace("_s", " ").replace("__", "_")
 
 
+def fix_person_identifier(text):
+    if "<" in text and ">" in text:
+        return text
+    return "%s <%s>" % (text, text)
+
+
 class BzrGitMapping(foreign.VcsMapping):
     """Class that maps between Git and Bazaar semantics."""
     experimental = False
@@ -260,8 +266,8 @@ def revision_to_commit(rev, tree_sha, parent_lookup):
             assert len(git_p) == 40, "unexpected length for %r" % git_p
             commit._parents.append(git_p)
     commit._message = rev.message.encode("utf-8")
-    commit._committer = rev.committer.encode("utf-8")
-    commit._author = rev.get_apparent_authors()[0].encode("utf-8")
+    commit._committer = fix_person_identifier(rev.committer.encode("utf-8"))
+    commit._author = fix_person_identifier(rev.get_apparent_authors()[0].encode("utf-8"))
     commit._commit_time = long(rev.timestamp)
     if 'author-timestamp' in rev.properties:
         commit._author_time = long(rev.properties['author-timestamp'])
