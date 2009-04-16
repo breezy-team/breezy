@@ -169,12 +169,14 @@ def import_git_blob(texts, mapping, path, hexsha, base_inv, parent_id,
     parent_keys = []
     for pinv in parent_invs:
         if pinv.revision_id == base_inv.revision_id:
-            # Already checked
-            continue
-        try:
-            pie = pinv[file_id]
-        except NoSuchId:
-            continue
+            pie = base_ie
+            if pie is None:
+                continue
+        else:
+            try:
+                pie = pinv[file_id]
+            except NoSuchId:
+                continue
         if pie.text_sha1 == ie.text_sha1:
             # found a revision in one of the parents to use
             ie.revision = pie.revision
@@ -210,8 +212,11 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id,
     # We just have to hope this is indeed utf-8:
     ie = InventoryDirectory(file_id, urlutils.basename(path.decode("utf-8")), 
         parent_id)
-    if not file_id in base_inv:
+    try:
+        base_ie = base_inv[file_id]
+    except NoSuchId:
         # Newly appeared here
+        base_ie = None
         ie.revision = revision_id
         texts.add_lines((file_id, ie.revision), (), [])
         invdelta.append((None, path, file_id, ie))
@@ -254,8 +259,8 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id,
                         stat.S_IFLNK, DEFAULT_FILE_MODE|0111):
             child_modes[child_path] = mode
     # Remove any children that have disappeared
-    if file_id in base_inv:
-        deletable = [v for k,v in base_inv[file_id].children.iteritems() if k not in existing_children]
+    if base_ie is not None:
+        deletable = [v for k,v in base_ie.children.iteritems() if k not in existing_children]
         while deletable:
             ie = deletable.pop()
             invdelta.append((base_inv.id2path(ie.file_id), None, ie.file_id, None))
