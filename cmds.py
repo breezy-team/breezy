@@ -73,7 +73,11 @@ from bzrlib.plugins.builddeb.source_distiller import (
         MergeModeDistiller,
         NativeSourceDistiller,
         )
-from bzrlib.plugins.builddeb.upstream import UpstreamProvider, UpstreamBranchSource
+from bzrlib.plugins.builddeb.upstream import (
+        UpstreamProvider,
+        UpstreamBranchSource,
+        get_upstream_sources,
+        )
 from bzrlib.plugins.builddeb.util import (find_changelog,
         lookup_distribution,
         suite_to_distribution,
@@ -366,10 +370,11 @@ class cmd_builddeb(Command):
                     self._get_upstream_branch(merge, export_upstream,
                             export_upstream_revision, config)
 
-            upstream_provider = UpstreamProvider(tree, branch,
+            upstream_provider = UpstreamProvider(
                     changelog.package, changelog.version.upstream_version,
-                    orig_dir, larstiq=larstiq, upstream_branch=upstream_branch,
-                    upstream_revision=upstream_revision, allow_split=split)
+                    orig_dir, get_upstream_sources(tree, branch, 
+                    larstiq=larstiq, upstream_branch=upstream_branch,
+                    upstream_revision=upstream_revision, allow_split=split))
 
             if merge:
                 distiller_cls = MergeModeDistiller
@@ -767,9 +772,9 @@ class cmd_bd_do(Command):
         orig_dir = config.orig_dir
         if orig_dir is None:
             orig_dir = default_orig_dir
-        upstream_provider = UpstreamProvider(t, t.branch,
-                changelog.package, changelog.version.upstream_version,
-                orig_dir, larstiq=larstiq)
+        upstream_provider = UpstreamProvider(changelog.package, 
+                changelog.version.upstream_version, orig_dir, 
+                get_upstream_sources(t, t.branch, larstiq=larstiq))
 
         distiller = MergeModeDistiller(t, upstream_provider,
                 larstiq=larstiq)

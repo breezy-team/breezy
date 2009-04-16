@@ -153,6 +153,14 @@ class VersionNotSpecified(BzrError):
     _fmt = "You did not specify a package version."
 
 
+class PackageVersionNotPresent(BzrError):
+    _fmt = "%(package)s %(version)s was not found in %(upstream)s."
+
+    def __init__(self, package, version, upstream):
+        BzrError.__init__(self, package=package, version=version, 
+                          upstream=upstream)
+
+
 class UnsupportedRepackFormat(BzrError):
     _fmt = ('Either the file extension of "%(location)s" indicates that '
             'it is a format unsupported for repacking or it is a '

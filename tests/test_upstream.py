@@ -30,6 +30,7 @@ from bzrlib.tests import (
         )
 from bzrlib.plugins.builddeb.errors import (
         MissingUpstreamTarball,
+        PackageVersionNotPresent,
         )
 from bzrlib.plugins.builddeb.upstream import (
         StackedUpstreamSource,
@@ -178,7 +179,8 @@ class RecordingSource(object):
 
     def get_specific_version(self, package, version, target_dir):
         self._specific_versions.append((package, version, target_dir))
-        return self._succeed
+        if not self._succeed:
+            raise PackageVersionNotPresent(package, version, self)
 
 
 class StackedUpstreamSourceTests(TestCase):
@@ -188,8 +190,7 @@ class StackedUpstreamSourceTests(TestCase):
         b = RecordingSource(True)
         c = RecordingSource(False)
         stack = StackedUpstreamSource([a, b, c])
-        self.assertEquals(True, 
-                stack.get_specific_version("mypkg", "1.0", "bla"))
+        stack.get_specific_version("mypkg", "1.0", "bla")
         self.assertEquals([("mypkg", "1.0", "bla")], b._specific_versions)
         self.assertEquals([("mypkg", "1.0", "bla")], a._specific_versions)
         self.assertEquals([], c._specific_versions)
@@ -198,8 +199,8 @@ class StackedUpstreamSourceTests(TestCase):
         a = RecordingSource(False)
         b = RecordingSource(False)
         stack = StackedUpstreamSource([a, b])
-        self.assertEquals(False, 
-            stack.get_specific_version("pkg", "1.0", "bla"))
+        self.assertRaises(PackageVersionNotPresent, 
+                stack.get_specific_version, "pkg", "1.0", "bla")
         self.assertEquals([("pkg", "1.0", "bla")], b._specific_versions)
         self.assertEquals([("pkg", "1.0", "bla")], a._specific_versions)
 
