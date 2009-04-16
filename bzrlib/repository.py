@@ -1439,10 +1439,7 @@ class Repository(object):
             return set()
         revision_ids = self.new_revisions()
         parent_inventories = _parent_inventories(self, revision_ids)
-        if self._format.supports_external_lookups:
-            unstacked_inventories = self.inventories._index
-        else:
-            unstacked_inventories = self.inventories
+        unstacked_inventories = self.inventories._index
         present_inventories = unstacked_inventories.get_parent_map(
             key[-1:] for key in parent_inventories)
         present_inventories = [
