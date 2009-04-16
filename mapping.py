@@ -163,6 +163,10 @@ def symlink_to_blob(entry):
 
 
 def inventory_to_tree_and_blobs(inventory, texts, mapping, cur=None):
+    """Convert a Bazaar tree to a Git tree.
+
+    :return: Yields tuples with object sha1, object and path
+    """
     from dulwich.objects import Tree
     from bzrlib.inventory import InventoryDirectory, InventoryFile
     import stat

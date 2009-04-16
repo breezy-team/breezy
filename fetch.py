@@ -25,6 +25,9 @@ from dulwich.objects import (
     Commit,
     Tag,
     )
+from dulwich.object_store import (
+    tree_lookup_path,
+    )
 import stat
 
 from bzrlib import (
@@ -64,6 +67,7 @@ from bzrlib.plugins.git.mapping import (
     DEFAULT_FILE_MODE,
     DEFAULT_TREE_MODE,
     DEFAULT_SYMLINK_MODE,
+    inventory_to_tree_and_blobs,
     text_to_blob,
     )
 from bzrlib.plugins.git.repository import (
@@ -215,9 +219,6 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id,
                 return [], {}
     # Remember for next time
     existing_children = set()
-    if "verify" in debug.debug_flags:
-        # FIXME:
-        assert False
     shagitmap.add_entry(hexsha, "tree", (file_id, revision_id))
     child_modes = {}
     tree = lookup_object(hexsha)
@@ -226,9 +227,9 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id,
         existing_children.add(basename)
         child_path = osutils.pathjoin(path, name)
         if stat.S_ISDIR(mode):
-            subinvdelta, grandchildmodes = import_git_tree(texts, mapping, child_path, hexsha, 
-                base_inv, file_id, revision_id, parent_invs, shagitmap, 
-                lookup_object)
+            subinvdelta, grandchildmodes = import_git_tree(texts, mapping,
+                child_path, hexsha, base_inv, file_id, revision_id, 
+                parent_invs, shagitmap, lookup_object)
             invdelta.extend(subinvdelta)
             child_modes.update(grandchildmodes)
         else:
@@ -238,7 +239,8 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id,
                     base_inv, file_id, revision_id, parent_invs, shagitmap, 
                     lookup_object, bool(fs_mode & 0111), symlink)
             invdelta.extend(subinvdelta)
-        if mode not in (DEFAULT_TREE_MODE, DEFAULT_FILE_MODE, DEFAULT_SYMLINK_MODE, DEFAULT_FILE_MODE|0111):
+        if mode not in (DEFAULT_TREE_MODE, DEFAULT_FILE_MODE,
+                        DEFAULT_SYMLINK_MODE, DEFAULT_FILE_MODE|0111):
             child_modes[child_path] = mode
     # Remove any children that have disappeared
     if file_id in base_inv:
@@ -284,7 +286,7 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
             revisions[rev.revision_id] = rev
             graph.append((rev.revision_id, rev.parent_ids))
             target_git_object_retriever._idmap.add_entry(o.sha().hexdigest(),
-                "commit", (rev.revision_id, o._tree))
+                "commit", (rev.revision_id, o.tree))
             heads.extend([p for p in o.parents if p not in checked])
         elif isinstance(o, Tag):
             heads.append(o.object[1])
@@ -333,6 +335,13 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
                   inv_delta, rev.revision_id, rev.parent_ids)
         parent_invs_cache[rev.revision_id] = inv
         repo.add_revision(rev.revision_id, rev)
+        if "verify" in debug.debug_flags:
+            objs = inventory_to_tree_and_blobs(inv, repo.texts, mapping)
+            for sha1, newobj, path in objs:
+                assert path is not None
+                oldobj = tree_lookup_path(object_iter, root_trees[revid], path)
+                assert oldobj == newobj, "%r != %r in %s" % (oldobj, newobj, path)
+
     target_git_object_retriever._idmap.commit()
 
 
