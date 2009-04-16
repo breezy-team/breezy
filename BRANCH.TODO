@@ -5,7 +5,6 @@
 
 - use osutils.readlink in: 
 
-  - HashCache.get_sha1 (one test failing)
   - bzrlib/tests/test_transform.py
   - bzrlib/transform.py _PreviewTree.get_symlink_target
   - bzrlib/workingtree.py WorkingTree.path_content_summary and

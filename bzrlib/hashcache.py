@@ -29,13 +29,17 @@
 
 CACHE_HEADER = "### bzr hashcache v5\n"
 
-import os, stat, time
+import os
+import stat
+import time
 
-from bzrlib.filters import internal_size_sha_file_byname
-from bzrlib.osutils import sha_file, sha_string, pathjoin, safe_unicode
-from bzrlib.trace import mutter, warning
-from bzrlib.atomicfile import AtomicFile
-from bzrlib.errors import BzrError
+from bzrlib import (
+    atomicfile,
+    errors,
+    filters as _mod_filters,
+    osutils,
+    trace,
+    )
 
 
 FP_MTIME_COLUMN = 1
@@ -89,7 +93,7 @@ class HashCache(object):
             parameters and returns a stack of ContentFilters.
             If None, no content filtering is performed.
         """
-        self.root = safe_unicode(root)
+        self.root = osutils.safe_unicode(root)
         self.root_utf8 = self.root.encode('utf8') # where is the filesystem encoding ?
         self.hit_count = 0
         self.miss_count = 0
@@ -99,7 +103,7 @@ class HashCache(object):
         self.update_count = 0
         self._cache = {}
         self._mode = mode
-        self._cache_file_name = safe_unicode(cache_file_name)
+        self._cache_file_name = osutils.safe_unicode(cache_file_name)
         self._filter_provider = content_filter_stack_provider
 
     def cache_file_name(self):
@@ -125,7 +129,7 @@ class HashCache(object):
         prep.sort()
 
         for inum, path, cache_entry in prep:
-            abspath = pathjoin(self.root, path)
+            abspath = osutils.pathjoin(self.root, path)
             fp = self._fingerprint(abspath)
             self.stat_count += 1
 
@@ -141,9 +145,9 @@ class HashCache(object):
         """Return the sha1 of a file.
         """
         if path.__class__ is str:
-            abspath = pathjoin(self.root_utf8, path)
+            abspath = osutils.pathjoin(self.root_utf8, path)
         else:
-            abspath = pathjoin(self.root, path)
+            abspath = osutils.pathjoin(self.root, path)
         self.stat_count += 1
         file_fp = self._fingerprint(abspath, stat_value)
 
@@ -176,13 +180,13 @@ class HashCache(object):
                 filters = self._filter_provider(path=path, file_id=None)
             digest = self._really_sha1_file(abspath, filters)
         elif stat.S_ISLNK(mode):
-            target = os.readlink(abspath)
+            target = osutils.readlink(osutils.safe_unicode(abspath))
             import pronto
             pronto.bzr_test('HashCache.get_sha1(%r) -> %r' % (abspath, target))
-            digest = sha_string(target)
+            digest = osutils.sha_string(target.encode('UTF-8'))
         else:
-            raise BzrError("file %r: unknown file stat mode: %o"
-                           % (abspath, mode))
+            raise errors.BzrError("file %r: unknown file stat mode: %o"
+                                  % (abspath, mode))
 
         # window of 3 seconds to allow for 2s resolution on windows,
         # unsynchronized file servers, etc.
@@ -217,11 +221,12 @@ class HashCache(object):
 
     def _really_sha1_file(self, abspath, filters):
         """Calculate the SHA1 of a file by reading the full text"""
-        return internal_size_sha_file_byname(abspath, filters)[1]
+        return _mod_filters.internal_size_sha_file_byname(abspath, filters)[1]
 
     def write(self):
         """Write contents of cache to file."""
-        outf = AtomicFile(self.cache_file_name(), 'wb', new_mode=self._mode)
+        outf = atomicfile.AtomicFile(self.cache_file_name(), 'wb',
+                                     new_mode=self._mode)
         try:
             outf.write(CACHE_HEADER)
 
@@ -252,15 +257,15 @@ class HashCache(object):
         try:
             inf = file(fn, 'rb', buffering=65000)
         except IOError, e:
-            mutter("failed to open %s: %s", fn, e)
+            trace.mutter("failed to open %s: %s", fn, e)
             # better write it now so it is valid
             self.needs_write = True
             return
 
         hdr = inf.readline()
         if hdr != CACHE_HEADER:
-            mutter('cache header marker not found at top of %s;'
-                   ' discarding cache', fn)
+            trace.mutter('cache header marker not found at top of %s;'
+                         ' discarding cache', fn)
             self.needs_write = True
             return
 
@@ -268,18 +273,18 @@ class HashCache(object):
             pos = l.index('// ')
             path = l[:pos].decode('utf-8')
             if path in self._cache:
-                warning('duplicated path %r in cache' % path)
+                trace.warning('duplicated path %r in cache' % path)
                 continue
 
             pos += 3
             fields = l[pos:].split(' ')
             if len(fields) != 7:
-                warning("bad line in hashcache: %r" % l)
+                trace.warning("bad line in hashcache: %r" % l)
                 continue
 
             sha1 = fields[0]
             if len(sha1) != 40:
-                warning("bad sha1 in hashcache: %r" % sha1)
+                trace.warning("bad sha1 in hashcache: %r" % sha1)
                 continue
 
             fp = tuple(map(long, fields[1:]))
