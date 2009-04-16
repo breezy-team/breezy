@@ -25,6 +25,7 @@ from dulwich.objects import (
     Commit,
     Tag,
     )
+import stat
 
 from bzrlib import (
     debug,
@@ -222,37 +223,24 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id,
     child_modes = {}
     tree = lookup_object(hexsha)
     for mode, name, hexsha in tree.entries():
-        entry_kind = (mode & 0700000) / 0100000
         basename = name.decode("utf-8")
         existing_children.add(basename)
         child_path = osutils.pathjoin(path, name)
-        if entry_kind == 0:
-            if mode != DEFAULT_TREE_MODE:
-                child_modes[child_path] = mode
+        if stat.S_ISDIR(mode):
             subinvdelta, grandchildmodes = import_git_tree(texts, mapping, child_path, hexsha, 
                 base_inv, file_id, revision_id, parent_invs, shagitmap, 
                 lookup_object)
             invdelta.extend(subinvdelta)
             child_modes.update(grandchildmodes)
-        elif entry_kind == 1:
-            fs_mode = mode & 0777
-            file_kind = (mode & 070000) / 010000
-            if file_kind == 0: # regular file
-                symlink = False
-                if mode not in (DEFAULT_FILE_MODE, DEFAULT_FILE_MODE|0111):
-                    child_modes[child_path] = mode
-            elif file_kind == 2:
-                symlink = True
-                if mode != DEFAULT_SYMLINK_MODE:
-                    child_modes[child_path] = mode
-            else:
-                raise AssertionError("Unknown file kind, mode=%r" % (mode,))
+        else:
+            fs_mode = stat.S_IMODE(mode)
+            symlink = stat.S_ISLNK(mode)
             subinvdelta = import_git_blob(texts, mapping, child_path, hexsha,
                     base_inv, file_id, revision_id, parent_invs, shagitmap, 
                     lookup_object, bool(fs_mode & 0111), symlink)
             invdelta.extend(subinvdelta)
-        else:
-            raise AssertionError("Unknown object kind, perms=%r." % (mode,))
+        if mode not in (DEFAULT_TREE_MODE, DEFAULT_FILE_MODE, DEFAULT_SYMLINK_MODE, DEFAULT_FILE_MODE|0111):
+            child_modes[child_path] = mode
     # Remove any children that have disappeared
     if file_id in base_inv:
         deletable = [v for k,v in base_inv[file_id].children.iteritems() if k not in existing_children]
