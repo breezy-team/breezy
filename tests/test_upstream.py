@@ -33,11 +33,12 @@ from bzrlib.plugins.builddeb.errors import (
         PackageVersionNotPresent,
         )
 from bzrlib.plugins.builddeb.upstream import (
+        AptSource,
+        PristineTarSource,
         StackedUpstreamSource,
         UpstreamProvider,
         UpstreamSource,
-        AptSource,
-        PristineTarSource,
+        UScanSource,
         )
 from bzrlib.plugins.builddeb.util import (
         get_parent_dir,
@@ -204,3 +205,27 @@ class StackedUpstreamSourceTests(TestCase):
         self.assertEquals([("pkg", "1.0", "bla")], b._specific_versions)
         self.assertEquals([("pkg", "1.0", "bla")], a._specific_versions)
 
+
+class UScanSourceTests(TestCaseWithTransport):
+
+    def setUp(self):
+        super(UScanSourceTests, self).setUp()
+        self.tree = self.make_branch_and_tree('.')
+
+    def test_export_watchfile_none(self):
+        src = UScanSource(self.tree, False)
+        self.assertEquals(None, src._export_watchfile())
+
+    def test_export_watchfile_larstiq(self):
+        src = UScanSource(self.tree, True)
+        self.build_tree(['watch'])
+        self.assertEquals(None, src._export_watchfile())
+        self.tree.add(['watch'])
+        self.assertTrue(src._export_watchfile() is not None)
+
+    def test_export_watchfile(self):
+        src = UScanSource(self.tree, False)
+        self.build_tree(['debian/', 'debian/watch'])
+        self.assertEquals(None, src._export_watchfile())
+        self.tree.smart_add(['debian/watch'])
+        self.assertTrue(src._export_watchfile() is not None)

@@ -1,5 +1,6 @@
 #    upstream.py -- Providers of upstream source
 #    Copyright (C) 2009 Canonical Ltd.
+#    Copyright (C) 2009 Jelmer Vernooij <jelmer@debian.org>
 #
 #    This file is part of bzr-builddeb.
 #
@@ -229,7 +230,7 @@ class UScanSource(UpstreamSource):
             return False
         return True
 
-    def get_specific_version(self, package, version, target_dir):
+    def _export_watchfile(self):
         if self.larstiq:
             watchfile = 'watch'
         else:
@@ -237,7 +238,7 @@ class UScanSource(UpstreamSource):
         watch_id = self.tree.path2id(watchfile)
         if watch_id is None:
             info("No watch file to use to retrieve upstream tarball.")
-            raise PackageVersionNotPresent(package, version, self)
+            return None
         (tmp, tempfilename) = tempfile.mkstemp()
         try:
             tmp = os.fdopen(tmp, 'wb')
@@ -245,6 +246,12 @@ class UScanSource(UpstreamSource):
             tmp.write(watch)
         finally:
             tmp.close()
+        return tempfilename
+
+    def get_specific_version(self, package, version, target_dir):
+        tempfilename = self._export_watchfile()
+        if tempfilename is None:
+            raise PackageVersionNotPresent(package, version, self)
         try:
             if not self._uscan(package, version, tempfilename, 
                     target_dir):
