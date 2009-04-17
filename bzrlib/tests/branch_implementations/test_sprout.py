@@ -147,17 +147,7 @@ class TestSprout(TestCaseWithBranch):
 
         revision = tree.commit('added a link to a Unicode target')
         tree.bzrdir.sprout('dest')
-
-        def read_link(link):
-            # The only reliable way to get the link target for python2.[456]
-            # other aternative implementations either fails to reliably return
-            # a unicode string or fails to encode the received unicode string
-            link = link.encode(osutils._fs_enc)
-            target = os.readlink(link)
-            target = target.decode(osutils._fs_enc)
-            return target
-
-        self.assertEqual(target, read_link('dest/' + link_name))
+        self.assertEqual(target, osutils.readlink('dest/' + link_name))
         tree.lock_read()
         self.addCleanup(tree.unlock)
         # Check that the symlink target is safely round-tripped in the trees.

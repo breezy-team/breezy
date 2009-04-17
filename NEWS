@@ -44,6 +44,9 @@ Bug Fixes
 * Non-recursive ``bzr ls`` now works properly when a path is specified.
   (Jelmer Vernooij, #357863)
 
+* Several bugs related to unicode symlinks have been fixed and the test suite
+  enhanced to better catch regressions for them. (Vincent Ladeuil)
+
 Documentation
 *************
 

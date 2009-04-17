@@ -3,7 +3,3 @@
 # 
 #
 
-- finish parametrizing bzrlib/tests/test__dirstate_helpers.py
-
-- clean up spurious changes
-

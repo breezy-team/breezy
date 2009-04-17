@@ -48,7 +48,7 @@ CompiledDirstateHelpersFeature = _CompiledDirstateHelpersFeature()
 
 
 def load_tests(basic_tests, module, loader):
-    # FIXME: we should also parametrize agsinst Sha1Providers !
+    # FIXME: we should also parametrize against SHA1Provider !
     suite = loader.suiteClass()
     remaining_tests = basic_tests
 
