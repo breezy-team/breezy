@@ -127,3 +127,30 @@ class TestReconfigure(tests.TestCaseWithTransport):
             working_dir='repo/branch')
         self.failUnlessExists('repo/branch/foo')
         tree = workingtree.WorkingTree.open('repo/branch')
+
+    def test_shared_format_to_standalone(self, format=None):
+        repo = self.make_repository('repo', shared=True, format=format)
+        branch = bzrdir.BzrDir.create_branch_convenience('repo/tree')
+        self.assertNotEqual(branch.bzrdir.root_transport.base,
+            branch.repository.bzrdir.root_transport.base)
+        tree = workingtree.WorkingTree.open('repo/tree')
+        self.build_tree_contents([('repo/tree/file', 'foo\n')]);
+        tree.add(['file'])
+        tree.commit('added file')
+        self.run_bzr('reconfigure --standalone', working_dir='repo/tree')
+        tree = workingtree.WorkingTree.open('repo/tree')
+        self.build_tree_contents([('repo/tree/file', 'bar\n')]);
+        self.check_file_contents('repo/tree/file', 'bar\n')
+        self.run_bzr('revert', working_dir='repo/tree')
+        self.check_file_contents('repo/tree/file', 'foo\n')
+        self.assertEqual(tree.bzrdir.root_transport.base,
+            tree.branch.repository.bzrdir.root_transport.base)
+
+    def test_shared_knit_to_standalone(self):
+        self.test_shared_format_to_standalone('knit')
+
+    def test_shared_pack092_to_standalone(self):
+        self.test_shared_format_to_standalone('pack-0.92')
+
+    def test_shared_rich_root_pack_to_standalone(self):
+        self.test_shared_format_to_standalone('rich-root-pack')
