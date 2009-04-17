@@ -181,8 +181,6 @@ class HashCache(object):
             digest = self._really_sha1_file(abspath, filters)
         elif stat.S_ISLNK(mode):
             target = osutils.readlink(osutils.safe_unicode(abspath))
-            import pronto
-            pronto.bzr_test('HashCache.get_sha1(%r) -> %r' % (abspath, target))
             digest = osutils.sha_string(target.encode('UTF-8'))
         else:
             raise errors.BzrError("file %r: unknown file stat mode: %o"

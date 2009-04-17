@@ -1395,7 +1395,6 @@ def _walkdirs_utf8(top, prefix=""):
         path-from-top might be unicode or utf8, but it is the correct path to
         pass to os functions to affect the file in question. (such as os.lstat)
     """
-    import pronto; pronto.bzr_test('osutils._walkdirs_utf8')
     global _selected_dir_reader
     if _selected_dir_reader is None:
         fs_encoding = _fs_enc.upper()
@@ -1464,7 +1463,6 @@ class UnicodeDirReader(DirReader):
 
         See DirReader.read_dir for details.
         """
-        import pronto; pronto.bzr_test('UnicodeDirReader._read_dir')
         _utf8_encode = self._utf8_encode
         _lstat = os.lstat
         _listdir = os.listdir

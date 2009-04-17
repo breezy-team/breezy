@@ -750,7 +750,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             return kind, None, None, None
         elif kind == 'symlink':
             target = osutils.readlink(abspath)
-#            import pronto; pronto.bzr_test('WorkingTree.path_content_summary')
             return ('symlink', None, None, target)
         else:
             return (kind, None, None, None)
