@@ -2178,7 +2178,8 @@ class cmd_log(Command):
             lf = log_format(show_ids=show_ids, to_file=self.outf,
                             show_timezone=timezone,
                             delta_format=get_verbosity_level(),
-                            levels=levels)
+                            levels=levels,
+                            show_advice=levels is None)
 
             # Choose the algorithm for doing the logging. It's annoying
             # having multiple code paths like this but necessary until
