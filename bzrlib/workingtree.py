@@ -749,9 +749,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 kind = 'tree-reference'
             return kind, None, None, None
         elif kind == 'symlink':
+            target = osutils.readlink(abspath)
 #            import pronto; pronto.bzr_test('WorkingTree.path_content_summary')
-            target = os.readlink(abspath.encode(osutils._fs_enc))
-            target = target.decode(osutils._fs_enc)
             return ('symlink', None, None, target)
         else:
             return (kind, None, None, None)
@@ -975,8 +974,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     def get_symlink_target(self, file_id):
         abspath = self.id2abspath(file_id)
-        target = os.readlink(abspath.encode(osutils._fs_enc))
-        target = target.decode(osutils._fs_enc)
+        target = osutils.readlink(abspath)
         return target
 
     @needs_write_lock

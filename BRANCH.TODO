@@ -3,11 +3,6 @@
 # 
 #
 
-- use osutils.readlink in: 
-
-  - bzrlib/workingtree.py WorkingTree.path_content_summary and
-    get_symlink_target
- 
 - finish parametrizing bzrlib/tests/test__dirstate_helpers.py
 
 - clean up spurious changes
