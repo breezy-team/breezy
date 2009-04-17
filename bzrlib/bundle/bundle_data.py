@@ -458,7 +458,6 @@ class BundleInfo(object):
 
 
 class BundleTree(Tree):
-
     def __init__(self, base_tree, revision_id):
         self.base_tree = base_tree
         self._renamed = {} # Mapping from old_path => new_path

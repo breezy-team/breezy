@@ -176,20 +176,10 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
                          list(creator.iter_shelvable()))
         creator.shelve_modify_target('foo-id')
         creator.transform()
-
-        def read_link(link):
-            # Only reliable way to get the link target for python2.[456] other
-            # laternative implementations either fails to reliably reutrn a
-            # unicode string or fails to encode the received unicode string
-            link = link.encode(osutils._fs_enc)
-            target = os.readlink(link)
-            target = target.decode(osutils._fs_enc)
-            return target
-
-        self.assertEqual(old_target, read_link(link_name))
+        self.assertEqual(old_target, osutils.readlink(link_name))
         s_trans_id = creator.shelf_transform.trans_id_file_id('foo-id')
         limbo_name = creator.shelf_transform._limbo_name(s_trans_id)
-        self.assertEqual(new_target, read_link(limbo_name))
+        self.assertEqual(new_target, osutils.readlink(limbo_name))
         ptree = creator.shelf_transform.get_preview_tree()
         self.assertEqual(new_target, ptree.get_symlink_target('foo-id'))
 
