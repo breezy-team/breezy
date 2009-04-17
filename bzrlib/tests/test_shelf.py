@@ -16,7 +16,15 @@
 
 import os
 
-from bzrlib import errors, pack, shelf, tests, transform, workingtree
+from bzrlib import (
+    errors,
+    osutils,
+    pack,
+    shelf,
+    tests,
+    transform,
+    workingtree,
+    )
 
 
 EMPTY_SHELF = ("Bazaar pack format 1 (introduced in 0.18)\n"
