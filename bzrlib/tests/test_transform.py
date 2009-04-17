@@ -525,27 +525,42 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         resolve_conflicts(replace)
         replace.apply()
 
-    # unicode symlinks ?
-    def test_symlinks(self):
+    def _test_symlinks(self, link_name1,link_target1,
+                       link_name2, link_target2):
+
+        def ozpath(p): return 'oz/' + p
+
         self.requireFeature(SymlinkFeature)
         transform, root = self.get_transform()
         oz_id = transform.new_directory('oz', root, 'oz-id')
-        wizard = transform.new_symlink('wizard', oz_id, 'wizard-target',
+        wizard = transform.new_symlink(link_name1, oz_id, link_target1,
                                        'wizard-id')
-        wiz_id = transform.create_path('wizard2', oz_id)
-        transform.create_symlink('behind_curtain', wiz_id)
+        wiz_id = transform.create_path(link_name2, oz_id)
+        transform.create_symlink(link_target2, wiz_id)
         transform.version_file('wiz-id2', wiz_id)
         transform.set_executability(True, wiz_id)
         self.assertEqual(transform.find_conflicts(),
                          [('non-file executability', wiz_id)])
         transform.set_executability(None, wiz_id)
         transform.apply()
-        self.assertEqual(self.wt.path2id('oz/wizard'), 'wizard-id')
-        self.assertEqual(file_kind(self.wt.abspath('oz/wizard')), 'symlink')
-        self.assertEqual(os.readlink(self.wt.abspath('oz/wizard2')),
-                         'behind_curtain')
-        self.assertEqual(os.readlink(self.wt.abspath('oz/wizard')),
-                         'wizard-target')
+        self.assertEqual(self.wt.path2id(ozpath(link_name1)), 'wizard-id')
+        self.assertEqual('symlink',
+                         file_kind(self.wt.abspath(ozpath(link_name1))))
+        self.assertEqual(link_target2,
+                         osutils.readlink(self.wt.abspath(ozpath(link_name2))))
+        self.assertEqual(link_target1,
+                         osutils.readlink(self.wt.abspath(ozpath(link_name1))))
+
+    def test_symlinks(self):
+        self._test_symlinks('wizard', 'wizard-target',
+                            'wizard2', 'behind_curtain')
+
+    def test_symlinks_unicode(self):
+        self.requireFeature(tests.UnicodeFilenameFeature)
+        self._test_symlinks(u'\N{Euro Sign}wizard',
+                            u'wizard-targ\N{Euro Sign}t',
+                            u'\N{Euro Sign}wizard2',
+                            u'b\N{Euro Sign}hind_curtain')
 
     def test_unable_create_symlink(self):
         def tt_helper():
@@ -2693,8 +2708,7 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         tt = self.get_preview()
         tt.deserialize(iter(self.symlink_creation_records()))
         abspath = tt._limbo_name('new-1')
-        # FIXME: should use a safe readlink impl.
-        foo_content = os.readlink(abspath).decode(osutils._fs_enc)
+        foo_content = osutils.readlink(abspath)
         self.assertEqual(u'bar\u1234', foo_content)
 
     def make_destruction_preview(self):

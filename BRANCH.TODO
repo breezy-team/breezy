@@ -5,16 +5,10 @@
 
 - use osutils.readlink in: 
 
-  - bzrlib/tests/test_transform.py
-  - bzrlib/transform.py _PreviewTree.get_symlink_target
   - bzrlib/workingtree.py WorkingTree.path_content_summary and
     get_symlink_target
  
 - finish parametrizing bzrlib/tests/test__dirstate_helpers.py
-
-- add unicode symlink tests in :
-
-  - bzrlib/tests/test_transform.py
 
 - clean up spurious changes
 
