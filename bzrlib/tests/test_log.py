@@ -301,7 +301,23 @@ class TestShortLogFormatter(tests.TestCaseWithTransport):
     1 Joe Foo\t2005-11-22
       rev-1
 
-Use --levels 0 (or -n0) to see merged revisions.
+""",
+                             logfile.getvalue())
+
+    def test_short_log_with_merges_and_advice(self):
+        wt = self._prepare_tree_with_merges()
+        logfile = self.make_utf8_encoded_stringio()
+        formatter = log.ShortLogFormatter(to_file=logfile,
+            show_advice=True)
+        log.show_log(wt.branch, formatter)
+        self.assertEqualDiff("""\
+    2 Joe Foo\t2005-11-22 [merge]
+      rev-2
+
+    1 Joe Foo\t2005-11-22
+      rev-1
+
+Use --include-merges or -n0 to see merged revisions.
 """,
                              logfile.getvalue())
 
@@ -340,7 +356,6 @@ Use --levels 0 (or -n0) to see merged revisions.
     2 Joe Foo\t2005-11-22 [merge]
       rev-2b
 
-Use --levels 0 (or -n0) to see merged revisions.
 """,
                              logfile.getvalue())
 
@@ -359,7 +374,6 @@ Use --levels 0 (or -n0) to see merged revisions.
     1 Joe Foo\t2005-11-22
       rev-1
 
-Use --levels 0 (or -n0) to see merged revisions.
 """,
                              logfile.getvalue())
 
@@ -886,8 +900,6 @@ message:
 added:
   f1
   f2
-------------------------------------------------------------
-Use --levels 0 (or -n0) to see merged revisions.
 """,
                              the_log)
 
