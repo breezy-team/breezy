@@ -2110,8 +2110,12 @@ class cmd_log(Command):
             _get_info_for_log_files,
             )
         direction = (forward and 'forward') or 'reverse'
-        if include_merges and levels is None:
-            levels = 0
+        if include_merges:
+            if levels is None:
+                levels = 0
+            else:
+                raise errors.BzrCommandError(
+                    '--levels and --include-merges are mutually exclusive')
 
         if change is not None:
             if len(change) > 1:
