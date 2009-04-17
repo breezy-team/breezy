@@ -1910,8 +1910,7 @@ class _PreviewTree(tree.Tree):
             return self._transform._tree.get_symlink_target(file_id)
         trans_id = self._transform.trans_id_file_id(file_id)
         name = self._transform._limbo_name(trans_id)
-        # XXX: Looks like we can return arbitrary encoded path below
-        return os.readlink(name)
+        return osutils.readlink(name)
 
     def walkdirs(self, prefix=''):
         pending = [self._transform.root]
