@@ -31,31 +31,62 @@ from bzrlib.tests import (
     test_osutils,
     )
 
-
-def load_tests(basic_tests, module, loader):
-    # FIXME: we should also parametrize agsinst C/Python
-    suite = loader.suiteClass()
-    dir_reader_tests, remaining_tests = tests.split_suite_by_condition(
-        basic_tests, tests.condition_isinstance(
-            test_dirstate.TestCaseWithDirState))
-    tests.multiply_tests(dir_reader_tests,
-                         test_osutils.dir_reader_scenarios(), suite)
-    suite.addTest(remaining_tests)
-    return suite
+try:
+    from bzrlib import _dirstate_helpers_c
+    has_dirstate_helpers_c = True
+except ImportError:
+    has_dirstate_helpers_c = False
 
 
 class _CompiledDirstateHelpersFeature(tests.Feature):
     def _probe(self):
-        try:
-            import bzrlib._dirstate_helpers_c
-        except ImportError:
-            return False
-        return True
+        return has_dirstate_helpers_c
 
     def feature_name(self):
         return 'bzrlib._dirstate_helpers_c'
-
 CompiledDirstateHelpersFeature = _CompiledDirstateHelpersFeature()
+
+
+def load_tests(basic_tests, module, loader):
+    # FIXME: we should also parametrize agsinst Sha1Providers !
+    suite = loader.suiteClass()
+    remaining_tests = basic_tests
+
+    dir_reader_scenarios = test_osutils.dir_reader_scenarios()
+
+    ue_scenarios = [('dirstate_Python',
+                     {'update_entry': dirstate.py_update_entry})]
+    if has_dirstate_helpers_c:
+        c_scenario = ('dirstate_C',
+                     {'update_entry': _dirstate_helpers_c.update_entry})
+        ue_scenarios.append(c_scenario)
+    process_entry_tests, remaining_tests = tests.split_suite_by_condition(
+        remaining_tests, tests.condition_isinstance(TestUpdateEntry))
+    tests.multiply_tests(process_entry_tests,
+                         tests.multiply_scenarios(dir_reader_scenarios,
+                                                  ue_scenarios),
+                         suite)
+
+    pe_scenarios = [('dirstate_Python',
+                     {'_process_entry': dirstate.ProcessEntryPython})]
+    if has_dirstate_helpers_c:
+        c_scenario = ('dirstate_C',
+                     {'_process_entry': _dirstate_helpers_c.ProcessEntryC})
+        pe_scenarios.append(c_scenario)
+    process_entry_tests, remaining_tests = tests.split_suite_by_condition(
+        remaining_tests, tests.condition_isinstance(TestProcessEntry))
+    tests.multiply_tests(process_entry_tests,
+                         tests.multiply_scenarios(dir_reader_scenarios,
+                                                  pe_scenarios),
+                         suite)
+
+    dir_reader_tests, remaining_tests = tests.split_suite_by_condition(
+        remaining_tests, tests.condition_isinstance(
+            test_dirstate.TestCaseWithDirState))
+    tests.multiply_tests(dir_reader_tests, dir_reader_scenarios, suite)
+    suite.addTest(remaining_tests)
+
+    return suite
 
 
 class TestBisectPathMixin(object):
@@ -802,17 +833,24 @@ class TestUsingCompiledIfAvailable(tests.TestCase):
 class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
     """Test the DirState.update_entry functions"""
 
+    # Set by load_tests
+    update_entry = None
+
+    def setUp(self):
+        super(TestUpdateEntry, self).setUp()
+        orig = dirstate.update_entry
+        def cleanup():
+            dirstate.update_entry = orig
+        self.addCleanup(cleanup)
+        dirstate.update_entry = self.update_entry
+
     def get_state_with_a(self):
         """Create a DirState tracking a single object named 'a'"""
         state = test_dirstate.InstrumentedDirState.initialize('dirstate')
         self.addCleanup(state.unlock)
         state.add('a', 'a-id', 'file', None, '')
         entry = state._get_entry(0, path_utf8='a')
-        self.set_update_entry()
         return state, entry
-
-    def set_update_entry(self):
-        self.update_entry = dirstate.py_update_entry
 
     def test_observed_sha1_cachable(self):
         state, entry = self.get_state_with_a()
@@ -1034,7 +1072,6 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
                          state._dirblock_state)
 
     def test_update_entry_tree_reference(self):
-        self.set_update_entry()
         state = test_dirstate.InstrumentedDirState.initialize('dirstate')
         self.addCleanup(state.unlock)
         state.add('r', 'r-id', 'tree-reference', None, '')
@@ -1076,6 +1113,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
 
         return packed_stat
 
+    # FIXME: Add unicode version
     def create_and_test_symlink(self, state, entry):
         """Create a symlink at 'a' and verify the state finds it.
 
@@ -1178,8 +1216,8 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         self.assertEqual([('f', '', 14, True, dirstate.DirState.NULLSTAT)],
                          entry[1])
 
-        # Make the disk object look old enough to cache (but it won't cache the sha
-        # as it is a new file).
+        # Make the disk object look old enough to cache (but it won't cache the
+        # sha as it is a new file).
         state.adjust_time(+20)
         digest = 'b50e5406bb5e153ebbeb20268fcf37c87e1ecfb6'
         self.update_entry(state, entry, abspath='a', stat_value=stat_value)
@@ -1206,8 +1244,8 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         entry = state._get_entry(0, path_utf8='a file')
         state._sha_cutoff_time()
         state._cutoff_time += 10
-        sha1 = dirstate.update_entry(state, entry, 'tree/a file',
-            os.lstat('tree/a file'))
+        sha1 = self.update_entry(state, entry, 'tree/a file',
+                                 os.lstat('tree/a file'))
         self.assertEqual(expected_sha, sha1)
 
     def test_sha1provider_stat_and_sha1_used(self):
@@ -1218,8 +1256,8 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         state._sha1_provider = UppercaseSHA1Provider()
         # If we used the standard provider, it would look like nothing has
         # changed
-        file_ids_changed = [change[0] for change 
-                in tree.iter_changes(tree.basis_tree())]
+        file_ids_changed = [change[0] for change
+                            in tree.iter_changes(tree.basis_tree())]
         self.assertEqual(['a-file-id'], file_ids_changed)
 
 
@@ -1240,29 +1278,18 @@ class UppercaseSHA1Provider(dirstate.SHA1Provider):
         return statvalue, sha1
 
 
-class TestCompiledUpdateEntry(TestUpdateEntry):
-    """Test the pyrex implementation of _read_dirblocks"""
+class TestProcessEntry(test_dirstate.TestCaseWithDirState):
 
-    _test_needs_features = [CompiledDirstateHelpersFeature]
-
-    def set_update_entry(self):
-        from bzrlib._dirstate_helpers_c import update_entry
-        self.update_entry = update_entry
-
-
-class TestProcessEntryPython(test_dirstate.TestCaseWithDirState):
+    # Set by load_tests
+    _process_entry = None
 
     def setUp(self):
-        super(TestProcessEntryPython, self).setUp()
-        self.setup_process_entry()
-
-    def setup_process_entry(self):
-        from bzrlib import dirstate
+        super(TestProcessEntry, self).setUp()
         orig = dirstate._process_entry
         def cleanup():
             dirstate._process_entry = orig
         self.addCleanup(cleanup)
-        dirstate._process_entry = dirstate.ProcessEntryPython
+        dirstate._process_entry = self._process_entry
 
     def assertChangedFileIds(self, expected, tree):
         tree.lock_read()
@@ -1291,16 +1318,4 @@ class TestProcessEntryPython(test_dirstate.TestCaseWithDirState):
         state = tree._current_dirstate()
         state._sha1_provider = UppercaseSHA1Provider()
         self.assertChangedFileIds(['file-id'], tree)
-
-
-class TestProcessEntryC(TestProcessEntryPython):
-    _test_needs_features = [CompiledDirstateHelpersFeature]
-
-    def setup_process_entry(self):
-        from bzrlib import _dirstate_helpers_c
-        orig = dirstate._process_entry
-        def cleanup():
-            dirstate._process_entry = orig
-        self.addCleanup(cleanup)
-        dirstate._process_entry = _dirstate_helpers_c.ProcessEntryC
 
