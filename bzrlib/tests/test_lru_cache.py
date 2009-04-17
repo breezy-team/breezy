@@ -138,6 +138,8 @@ class TestLRUCache(tests.TestCase):
 
         # We hit the max
         self.assertEqual(10, len(cache))
+        self.assertEqual([11, 10, 9, 1, 8, 7, 6, 5, 4, 3],
+                         [n.key for n in cache._walk_lru()])
 
     def test_cleanup_shrinks_to_after_clean_count(self):
         cache = lru_cache.LRUCache(max_cache=5, after_cleanup_count=3)
