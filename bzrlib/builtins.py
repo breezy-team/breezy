@@ -2105,6 +2105,8 @@ class cmd_log(Command):
             Option('show-diff',
                    short_name='p',
                    help='Show changes made in each revision as a patch.'),
+            Option('include-merges',
+                   help='Show merged revisions like --levels 0 does.'),
             ]
     encoding_type = 'replace'
 
@@ -2119,13 +2121,20 @@ class cmd_log(Command):
             levels=None,
             message=None,
             limit=None,
-            show_diff=False):
+            show_diff=False,
+            include_merges=False):
         from bzrlib.log import (
             Logger,
             make_log_request_dict,
             _get_info_for_log_files,
             )
         direction = (forward and 'forward') or 'reverse'
+        if include_merges:
+            if levels is None:
+                levels = 0
+            else:
+                raise errors.BzrCommandError(
+                    '--levels and --include-merges are mutually exclusive')
 
         if change is not None:
             if len(change) > 1:
@@ -2188,7 +2197,8 @@ class cmd_log(Command):
             lf = log_format(show_ids=show_ids, to_file=self.outf,
                             show_timezone=timezone,
                             delta_format=get_verbosity_level(),
-                            levels=levels)
+                            levels=levels,
+                            show_advice=levels is None)
 
             # Choose the algorithm for doing the logging. It's annoying
             # having multiple code paths like this but necessary until
