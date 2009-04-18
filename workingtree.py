@@ -24,6 +24,7 @@ from dulwich.index import (
 import os
 
 from bzrlib import (
+    errors,
     inventory,
     lockable_files,
     lockdir,
@@ -40,7 +41,13 @@ from bzrlib.decorators import (
 
 def inventory_from_index(basis_inventory, index):
     inventory = basis_inventory.copy()
+    # FIXME:
     return inventory
+
+
+def inventory_to_index(inventory):
+    # FIXME
+    return None
 
 
 class GitWorkingTree(workingtree.WorkingTree):
@@ -66,8 +73,9 @@ class GitWorkingTree(workingtree.WorkingTree):
 
         self._format = GitWorkingTreeFormat()
 
-        self.index = Index(os.path.join(self.repository._git.controldir(), 
-            "index"))
+        self.index_path = os.path.join(self.repository._git.controldir(), 
+                                       "index")
+        self.index = Index(self.index_path)
         self.views = self._make_views()
         self._detect_case_handling()
 
@@ -83,6 +91,14 @@ class GitWorkingTree(workingtree.WorkingTree):
 
     def is_control_filename(self, path):
         return os.path.basename(path) == ".git"
+
+    def flush(self):
+        # TODO: Maybe this should only write on dirty ?
+        if self._control_files._lock_mode != 'w':
+            raise errors.NotWriteLocked(self)
+        self.index = Index(self.index_path)
+        self.index.update(inventory_to_index(self._inventory))
+        self._inventory_is_modified = False
 
     def _reset_data(self):
         self._inventory_is_modified = False
