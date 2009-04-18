@@ -118,7 +118,6 @@ class LocalGitDir(GitDir):
 
     def open_workingtree(self, recommend_upgrade=True):
         loc = urlutils.unescape_for_display(self.root_transport.base, 'ascii')
-        raise errors.bzr_errors.NoWorkingTree(loc)
         if (not self._git.bare and 
             os.path.exists(os.path.join(self._git.controldir(), "index"))):
             return workingtree.GitWorkingTree(self, self.open_repository(), 

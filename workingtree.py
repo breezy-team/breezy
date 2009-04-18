@@ -34,7 +34,7 @@ class GitWorkingTree(workingtree.WorkingTree):
     """A Git working tree."""
 
     def __init__(self, bzrdir, repo, branch):
-        self.basedir = bzrdir.transport.base
+        self.basedir = bzrdir.root_transport.local_abspath('.')
         self.bzrdir = bzrdir
         self.repository = repo
         self._branch = branch
@@ -72,6 +72,9 @@ class GitWorkingTree(workingtree.WorkingTree):
 
     def _get_inventory(self):
         return inventory.Inventory()
+
+    def _reset_data(self):
+        pass
 
     inventory = property(_get_inventory,
                          doc="Inventory of this Tree")
