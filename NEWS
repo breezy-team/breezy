@@ -151,6 +151,9 @@ Improvements
 Bug Fixes
 *********
 
+* End-Of-Line content filters are now loaded correctly.
+  (Ian Clatworthy, Brian de Alwis, #355280)
+
 * Authentication plugins now receive all the parameters from the request
   itself (aka host, port, realm, path, etc). Previously, only the 
   authentication section name, username and encoded password were 
