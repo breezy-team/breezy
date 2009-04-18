@@ -150,7 +150,7 @@ class GitInventoryDirectory(GitInventoryEntry):
 class GitInventory(inventory.Inventory):
 
     def __init__(self, tree_id, mapping, store, revision_id):
-        super(GitInventory, self).__init__(revision_id)
+        super(GitInventory, self).__init__(revision_id=revision_id)
         self.store = store
         self.mapping = mapping
         self.root = GitInventoryDirectory(self, None, tree_id, "", "", False)
@@ -194,4 +194,7 @@ class GitInventory(inventory.Inventory):
         if file_id == inventory.ROOT_ID:
             return self.root
         path = self.mapping.parse_file_id(file_id)
-        return self._get_ie(path)
+        try:
+            return self._get_ie(path)
+        except KeyError:
+            raise errors.NoSuchId(None, file_id)

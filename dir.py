@@ -95,6 +95,10 @@ class LocalGitDir(GitDir):
         else:
             self.transport = transport.clone('.git')
         self._lockfiles = lockfiles
+        self._mode_check_done = None
+
+    def is_control_filename(self, filename):
+        return filename == '.git' or filename.startswith('.git/')
 
     def get_branch_transport(self, branch_format):
         if branch_format is None:

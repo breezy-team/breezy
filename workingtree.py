@@ -14,7 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+
 """An adapter between a Git index and a Bazaar Working Tree"""
+
 
 from dulwich.index import (
     Index,
@@ -25,10 +27,21 @@ from bzrlib import (
     inventory,
     lockable_files,
     lockdir,
+    osutils,
     transport,
     urlutils,
     workingtree,
     )
+from bzrlib.decorators import (
+    needs_read_lock,
+    needs_write_lock,
+    )
+
+
+def inventory_from_index(basis_inventory, index):
+    inventory = basis_inventory.copy()
+    return inventory
+
 
 class GitWorkingTree(workingtree.WorkingTree):
     """A Git working tree."""
@@ -40,7 +53,7 @@ class GitWorkingTree(workingtree.WorkingTree):
         self._branch = branch
         self._transport = bzrdir.transport
 
-        self.controldir = urlutils.join(self.repository._git.path, 'bzr')
+        self.controldir = urlutils.join(self.repository._git._controldir, 'bzr')
 
         try:
             os.makedirs(self.controldir)
@@ -56,6 +69,7 @@ class GitWorkingTree(workingtree.WorkingTree):
         self.index = Index(os.path.join(self.repository._git.controldir(), 
             "index"))
         self.views = self._make_views()
+        self._detect_case_handling()
 
     def unlock(self):
         # non-implementation specific cleanup
@@ -70,14 +84,17 @@ class GitWorkingTree(workingtree.WorkingTree):
     def is_control_filename(self, path):
         return os.path.basename(path) == ".git"
 
-    def _get_inventory(self):
-        return inventory.Inventory()
-
     def _reset_data(self):
-        pass
+        self._inventory_is_modified = False
+        basis_inv = self.repository.get_inventory(self.repository.get_mapping().revision_id_foreign_to_bzr(self.repository._git.head()))
+        result = inventory_from_index(basis_inv, self.index)
+        self._set_inventory(result, dirty=False)
 
-    inventory = property(_get_inventory,
-                         doc="Inventory of this Tree")
+    @needs_read_lock
+    def get_file_sha1(self, file_id, path=None, stat_value=None):
+        if not path:
+            path = self._inventory.id2path(file_id)
+        return osutils.fingerprint_file(open(self.abspath(path).encode(osutils._fs_enc)))['sha1']
 
 
 class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):

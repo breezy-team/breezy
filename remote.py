@@ -21,23 +21,10 @@ from bzrlib import (
     ui,
     urlutils,
     )
-from bzrlib.bzrdir import (
-    BzrDir,
-    BzrDirFormat,
-    )
 from bzrlib.errors import (
     BzrError,
     NoSuchFile,
     NotLocalUrl,
-    )
-from bzrlib.foreign import (
-    ForeignBranch,
-    )
-from bzrlib.lockable_files import (
-    TransportLock,
-    )
-from bzrlib.repository import (
-    Repository,
     )
 from bzrlib.trace import (
     info,
@@ -166,6 +153,7 @@ class RemoteGitDir(GitDir):
         self.root_transport = transport
         self.transport = transport
         self._lockfiles = lockfiles
+        self._mode_check_done = None
 
     def open_repository(self):
         return RemoteGitRepository(self, self._lockfiles)
