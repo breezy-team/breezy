@@ -280,7 +280,7 @@ def deprecated_list(deprecation_version, variable_name,
             return self._warn_deprecated(list.remove, value)
 
         def pop(self, index=None):
-            """pop'ing from from %s is deprecated""" % (variable_name,)
+            """pop'ing from %s is deprecated""" % (variable_name,)
             if index:
                 return self._warn_deprecated(list.pop, index)
             else:

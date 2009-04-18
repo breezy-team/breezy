@@ -542,7 +542,7 @@ class TextTestRunner(object):
             for t in iter_suite_tests(test):
                 self.stream.writeln("%s" % (t.id()))
                 run += 1
-            actionTaken = "Listed"
+            return None
         else:
             try:
                 import testtools
@@ -675,31 +675,17 @@ class TestUIFactory(ui.CLIUIFactory):
     Allows get_password to be tested without real tty attached.
     """
 
-    def __init__(self,
-                 stdout=None,
-                 stderr=None,
-                 stdin=None):
-        super(TestUIFactory, self).__init__()
+    def __init__(self, stdout=None, stderr=None, stdin=None):
         if stdin is not None:
             # We use a StringIOWrapper to be able to test various
             # encodings, but the user is still responsible to
             # encode the string and to set the encoding attribute
             # of StringIOWrapper.
-            self.stdin = StringIOWrapper(stdin)
-        if stdout is None:
-            self.stdout = sys.stdout
-        else:
-            self.stdout = stdout
-        if stderr is None:
-            self.stderr = sys.stderr
-        else:
-            self.stderr = stderr
+            stdin = StringIOWrapper(stdin)
+        super(TestUIFactory, self).__init__(stdin, stdout, stderr)
 
     def clear(self):
         """See progress.ProgressBar.clear()."""
-
-    def clear_term(self):
-        """See progress.ProgressBar.clear_term()."""
 
     def clear_term(self):
         """See progress.ProgressBar.clear_term()."""
@@ -720,10 +706,8 @@ class TestUIFactory(ui.CLIUIFactory):
     def update(self, message, count=None, total=None):
         """See progress.ProgressBar.update()."""
 
-    def get_non_echoed_password(self, prompt):
+    def get_non_echoed_password(self):
         """Get password from stdin without trying to handle the echo mode"""
-        if prompt:
-            self.stdout.write(prompt.encode(self.stdout.encoding, 'replace'))
         password = self.stdin.readline()
         if not password:
             raise EOFError
@@ -1013,7 +997,7 @@ class TestCase(unittest.TestCase):
                 raise AssertionError("%r is %r." % (left, right))
 
     def assertTransportMode(self, transport, path, mode):
-        """Fail if a path does not have mode mode.
+        """Fail if a path does not have mode "mode".
 
         If modes are not supported on this transport, the assertion is ignored.
         """
@@ -2669,6 +2653,8 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
     for decorator in decorators:
         suite = decorator(suite)
     result = runner.run(suite)
+    if list_only:
+        return True
     if strict:
         return result.wasStrictlySuccessful()
     else:
@@ -3036,12 +3022,11 @@ class BZRTransformingResult(unittest.TestResult):
             # stringify the exception gives access to the remote traceback
             # We search the last line for 'prefix'
             lines = str(exc).split('\n')
-            if len(lines) > 1:
-                last = lines[-2] # -1 is empty, final \n
-            else:
-                last = lines[-1]
-            if last.startswith(prefix):
-                value = last[len(prefix):]
+            while lines and not lines[-1]:
+                lines.pop(-1)
+            if lines:
+                if lines[-1].startswith(prefix):
+                    value = lines[-1][len(prefix):]
         return value
 
 
@@ -3350,6 +3335,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_index',
                    'bzrlib.tests.test_info',
                    'bzrlib.tests.test_inv',
+                   'bzrlib.tests.test_inventory_delta',
                    'bzrlib.tests.test_knit',
                    'bzrlib.tests.test_lazy_import',
                    'bzrlib.tests.test_lazy_regex',
@@ -3394,6 +3380,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_rules',
                    'bzrlib.tests.test_sampler',
                    'bzrlib.tests.test_selftest',
+                   'bzrlib.tests.test_serializer',
                    'bzrlib.tests.test_setup',
                    'bzrlib.tests.test_sftp_transport',
                    'bzrlib.tests.test_shelf',

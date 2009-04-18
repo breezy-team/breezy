@@ -6,6 +6,47 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
+In Development
+##############
+
+Compatibility Breaks
+********************
+
+* ``bzr ls`` is no longer recursive by default. To recurse, use the
+  new ``-R`` option. The old ``--non-recursive`` option has been removed.
+  If you alias ``ls`` to ``ls -R``, you can disable recursion using
+  ``--no-recursive`` instead.  (Ian Clatworthy)
+
+New Features
+************
+
+* Plugins can now define their own annotation tie-breaker when two revisions
+  introduce the exact same line. See ``bzrlib.annotate._break_annotation_tie``
+  Be aware though that this is temporary, private (as indicated by the leading
+  '_') and a first step to address the problem. (Vincent Ladeuil, #348459)
+
+Improvements
+************
+
+Bug Fixes
+*********
+
+* Non-recursive ``bzr ls`` now works properly when a path is specified.
+  (Jelmer Vernooij, #357863)
+
+Documentation
+*************
+
+API Changes
+***********
+
+Testing
+*******
+
+Internals
+*********
+
+
 bzr 1.14rc1
 ###########
 :Codename: brisbane-core
@@ -59,6 +100,9 @@ New Features
 * New ``mv --auto`` option recognizes renames after they occur.
   (Aaron Bentley)
 
+* ``bzr`` can now get passwords from stdin without requiring a controlling
+  terminal (i.e. by redirecting stdin). (Vincent Ladeuil)
+
 * ``bzr log`` now supports filtering of multiple files and directories
   and will show changes that touch any of them. Furthermore,
   directory filtering now shows the changes to any children of that
@@ -86,6 +130,9 @@ New Features
 * End-of-line conversion is now supported for formats supporting
   content filtering. See ``bzr help eol`` for details.
   (Ian Clatworthy)
+
+* Newly-blessed `join` command allows combining two trees into one.
+  (Aaron Bentley)
 
 Improvements
 ************
@@ -162,6 +209,11 @@ Bug Fixes
 * bzr gives a better message if an invalid regexp is passed to ``bzr log
   -m``.  (Anne Mohsen, Martin Pool)
 
+* ``bzr split`` now says "See also: join" (Aaron Bentley, #335015)
+
+* ``bzr version-info`` now works in empty branches. (Jelmer Vernooij,
+  #313028)
+
 * Fix "is not a stackable format" error when pushing a
   stackable-format branch with an unstackable-format repository to a
   destination with a default stacking policy.  (Andrew Bennetts)
@@ -192,6 +244,14 @@ Bug Fixes
   both branches, we know that the trunk for the project can be read too,
   so the upgrade will not inconvenience users. (Robert Collins, #345169)
 
+* Pushing a new stacked branch will also push the parent inventories for
+  revisions at the stacking boundary.  This makes sure that the stacked
+  branch has enough data to calculate inventory deltas for all of its
+  revisions (without requiring the fallback branch).  This avoids
+  "'AbsentContentFactory' object has no attribute 'get_bytes_as'" errors
+  when fetching the stacked branch from a 1.13 (or later) smart server.
+  This partially fixes #354036.  (Andrew Bennetts, Robert Collins)
+
 * The full test suite is passing again on OSX. Several minor issues (mostly
   test related) have been fixed. (Vincent Ladeuil, #355273).
 
@@ -221,12 +281,16 @@ Documentation
 API Changes
 ***********
 
-* APIs deprecated in 1.6 and previous verisons of bzr are now removed.
+* APIs deprecated in 1.6 and previous versions of bzr are now removed.
   (Martin Pool)
 
 * ``CommitReporter`` is no longer called with ``unchanged`` status during
   commit - this was a full-tree overhead that bzr no longer performs.
   (Robert Collins)
+
+* New abstract ``UIFactory`` method ``get_username`` which will be called to 
+  obtain the username to use when connecting to remote machines. 
+  (Jelmer Vernooij)
 
 * New API ``Inventory.filter()`` added that filters an inventory by
   a set of file-ids so that only those fileids, their parents and
@@ -248,6 +312,9 @@ API Changes
 
 * The ``pb`` argument to ``fetch()`` is deprecated.
   (Martin Pool)
+
+* The ``Serializer`` class and the serializer ``format registry`` have moved
+  from ``bzrlib.xml_serializer`` to ``bzrlib.serializer``. (Jelmer Vernooij)
 
 * The smart server jail now hooks into BzrDir.open to prevent any BzrDir
   that is not inside the backing transport from being opened.  See the
@@ -281,6 +348,13 @@ Internals
 
 * Added ``chk_map`` for fast, trie-based storage of tuple to string maps.
   (Robert Collins, John Arbash Meinel, Vincent Ladeuil)
+
+* Added ``bzrlib.chk_map`` for fast, trie-based storage of tuple to string
+  maps.  (Robert Collins, John Arbash Meinel, Vincent Ladeuil)
+
+* Added ``bzrlib.inventory_delta`` module.  This will be used for
+  serializing and deserializing inventory deltas for more efficient
+  streaming on the the network.  (Robert Collins, Andrew Bennetts)
 
 * ``Branch._get_config`` has been added, which splits out access to the
   specific config file from the branch. This is used to let RemoteBranch
@@ -318,6 +392,10 @@ Internals
 * New hook ``BzrDir.pre_open`` which runs before opening ``BzrDir``
   objects, allowing better enforcement of the smart server jail when
   dealing with stacked branches. (Robert Collins, Andrew Bennetts)
+
+* New hook ``RioVersionInfoBuilder.revision``, allowing extra entries 
+  to be added to the stanza that is printed for a particular revision.
+  (Jelmer Vernooij)
 
 * New repository method ``refresh_data`` to cause any repository to
   make visible data inserted into the repository by a smart server
@@ -8240,7 +8318,7 @@ Internals
   about future directions. (Robert Collins/Martin Pool)
 
 * bzrlib.transport.http has been modified so that only 404 urllib errors
-  are returned as NoSuchFile. Other exceptions will propogate as normal.
+  are returned as NoSuchFile. Other exceptions will propagate as normal.
   This allows debuging of actual errors. (Robert Collins)
 
 * bzrlib.transport.Transport now accepts *ONLY* url escaped relative paths
