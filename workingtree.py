@@ -21,6 +21,9 @@
 from dulwich.index import (
     Index,
     )
+from dulwich.objects import (
+    Blob,
+    )
 import os
 
 from bzrlib import (
@@ -43,11 +46,6 @@ def inventory_from_index(basis_inventory, index):
     inventory = basis_inventory.copy()
     # FIXME:
     return inventory
-
-
-def inventory_to_index(inventory):
-    # FIXME
-    return None
 
 
 class GitWorkingTree(workingtree.WorkingTree):
@@ -92,12 +90,33 @@ class GitWorkingTree(workingtree.WorkingTree):
     def is_control_filename(self, path):
         return os.path.basename(path) == ".git"
 
+    def _rewrite_index(self):
+        self.index.clear()
+        for path, entry in self._inventory.iter_entries():
+            if entry.kind == "directory":
+                # Git indexes don't contain directories
+                continue
+            if entry.kind == "file":
+                blob = Blob()
+                file, stat_val = self.get_file_with_stat(entry.file_id, path)
+                blob._text = file.read()
+            elif entry.kind == "symlink":
+                blob = Blob()
+                stat_val = os.stat(self.abspath(path))
+                blob._text = entry.symlink_target
+            # Add object to the repository if it didn't exist yet
+            if not blob.id in self.repository._git.object_store:
+                self.repository._git.object_store.add_object(blob)
+            # Add an entry to the index or update the existing entry
+            (mode, ino, dev, links, uid, gid, size, atime, mtime, ctime) = stat_val
+            flags = 0
+            self.index[path] = (ctime, mtime, ino, dev, mode, uid, gid, size, blob.id, flags)
+
     def flush(self):
         # TODO: Maybe this should only write on dirty ?
         if self._control_files._lock_mode != 'w':
             raise errors.NotWriteLocked(self)
-        self.index = Index(self.index_path)
-        self.index.update(inventory_to_index(self._inventory))
+        self._rewrite_index()           
         self._inventory_is_modified = False
 
     def _reset_data(self):
@@ -110,7 +129,7 @@ class GitWorkingTree(workingtree.WorkingTree):
     def get_file_sha1(self, file_id, path=None, stat_value=None):
         if not path:
             path = self._inventory.id2path(file_id)
-        return osutils.fingerprint_file(open(self.abspath(path).encode(osutils._fs_enc)))['sha1']
+        return osutils.sha_file_by_name(self.abspath(path).encode(osutils._fs_enc))
 
 
 class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
