@@ -51,6 +51,7 @@ class GitInventoryFile(GitInventoryEntry):
     def __init__(self, inv, parent_id, hexsha, path, basename, executable):
         super(GitInventoryFile, self).__init__(inv, parent_id, hexsha, path, basename, executable)
         self.kind = 'file'
+        self.text_id = None
         self.symlink_target = None
 
     @property
@@ -64,6 +65,15 @@ class GitInventoryFile(GitInventoryEntry):
     def kind_character(self):
         """See InventoryEntry.kind_character."""
         return ''
+
+    def copy(self):
+        other = inventory.InventoryFile(self.file_id, self.name, self.parent_id)
+        other.executable = self.executable
+        other.text_id = self.text_id
+        other.text_sha1 = self.text_sha1
+        other.text_size = self.text_size
+        other.revision = self.revision
+        return other
 
 
 class GitInventoryLink(GitInventoryEntry):
@@ -81,6 +91,12 @@ class GitInventoryLink(GitInventoryEntry):
     def kind_character(self):
         """See InventoryEntry.kind_character."""
         return ''
+
+    def copy(self):
+        other = inventory.InventoryLink(self.file_id, self.name, self.parent_id)
+        other.symlink_target = self.symlink_target
+        other.revision = self.revision
+        return other
 
 
 class GitInventoryDirectory(GitInventoryEntry):
@@ -121,6 +137,14 @@ class GitInventoryDirectory(GitInventoryEntry):
                     "Unknown blob kind, perms=%r." % (mode,))
             ret[basename] = kind_class(self._inventory, self.file_id, hexsha, child_path, basename, executable)
         return ret
+
+    def copy(self):
+        other = inventory.InventoryDirectory(self.file_id, self.name, 
+                                             self.parent_id)
+        other.revision = self.revision
+        # note that children are *not* copied; they're pulled across when
+        # others are added
+        return other
 
 
 class GitInventory(inventory.Inventory):
