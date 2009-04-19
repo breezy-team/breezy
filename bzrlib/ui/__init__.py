@@ -157,7 +157,6 @@ class CLIUIFactory(UIFactory):
         self.stderr = stderr or sys.stderr
 
     def get_boolean(self, prompt):
-        self.clear_term()
         # FIXME: make a regexp and handle case variations as well.
         while True:
             self.prompt(prompt + "? [y/n]: ")
@@ -167,11 +166,20 @@ class CLIUIFactory(UIFactory):
             if line in ('n\n', 'no\n'):
                 return False
 
-    def get_non_echoed_password(self, prompt):
-        if not sys.stdin.isatty():
-            raise errors.NotATerminal()
-        encoding = osutils.get_terminal_encoding()
-        return getpass.getpass(prompt.encode(encoding, 'replace'))
+    def get_non_echoed_password(self):
+        isatty = getattr(self.stdin, 'isatty', None)
+        if isatty is not None and isatty():
+            # getpass() ensure the password is not echoed and other
+            # cross-platform niceties
+            password = getpass.getpass('')
+        else:
+            # echo doesn't make sense without a terminal
+            password = self.stdin.readline()
+            if not password:
+                password = None
+            elif password[-1] == '\n':
+                password = password[:-1]
+        return password
 
     def get_password(self, prompt='', **kwargs):
         """Prompt the user for a password.
@@ -184,13 +192,35 @@ class CLIUIFactory(UIFactory):
                  canceled the request.
         """
         prompt += ': '
-        prompt = (prompt % kwargs)
+        self.prompt(prompt, **kwargs)
         # There's currently no way to say 'i decline to enter a password'
         # as opposed to 'my password is empty' -- does it matter?
-        return self.get_non_echoed_password(prompt)
+        return self.get_non_echoed_password()
 
-    def prompt(self, prompt):
+    def get_username(self, prompt, **kwargs):
+        """Prompt the user for a username.
+
+        :param prompt: The prompt to present the user
+        :param kwargs: Arguments which will be expanded into the prompt.
+                       This lets front ends display different things if
+                       they so choose.
+        :return: The username string, return None if the user
+                 canceled the request.
+        """
+        prompt += ': '
+        self.prompt(prompt, **kwargs)
+        username = self.stdin.readline()
+        if not username:
+            username = None
+        elif username[-1] == '\n':
+            username = username[:-1]
+        return username
+
+    def prompt(self, prompt, **kwargs):
         """Emit prompt on the CLI."""
+        prompt = prompt % kwargs
+        prompt = prompt.encode(osutils.get_terminal_encoding(), 'replace')
+        self.clear_term()
         self.stdout.write(prompt)
 
     def note(self, msg):
@@ -210,7 +240,10 @@ class SilentUIFactory(CLIUIFactory):
     def get_password(self, prompt='', **kwargs):
         return None
 
-    def prompt(self, prompt):
+    def get_username(self, prompt='', **kwargs):
+        return None
+
+    def prompt(self, prompt, **kwargs):
         pass
 
     def note(self, msg):

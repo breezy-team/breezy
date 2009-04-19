@@ -24,7 +24,11 @@ from bzrlib import (
     revision as _mod_revision,
     trace,
     )
-from bzrlib.xml_serializer import SubElement, Element, Serializer
+from bzrlib.xml_serializer import (
+    Element,
+    SubElement,
+    XMLSerializer,
+    )
 from bzrlib.inventory import ROOT_ID, Inventory, InventoryEntry
 from bzrlib.revision import Revision
 from bzrlib.errors import BzrError
@@ -139,7 +143,7 @@ def _clear_cache():
     _to_escaped_map.clear()
 
 
-class Serializer_v8(Serializer):
+class Serializer_v8(XMLSerializer):
     """This serialiser adds rich roots.
 
     Its revision format number matches its inventory number.
@@ -160,7 +164,7 @@ class Serializer_v8(Serializer):
         """Extension point for subclasses to check during serialisation.
 
         :param inv: An inventory about to be serialised, to be checked.
-        :raises: AssertionError if an error has occured.
+        :raises: AssertionError if an error has occurred.
         """
         if inv.revision_id is None:
             raise AssertionError()
@@ -422,7 +426,7 @@ class Serializer_v8(Serializer):
         if entry_cache is not None and revision is not None:
             key = (file_id, revision)
             try:
-                # We copy it, because some operatations may mutate it
+                # We copy it, because some operations may mutate it
                 cached_ie = entry_cache[key]
             except KeyError:
                 pass

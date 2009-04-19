@@ -2693,7 +2693,7 @@ class RepositoryFormat(object):
 
     Once a format is deprecated, just deprecate the initialize and open
     methods on the format class. Do not deprecate the object, as the
-    object may be created even when a repository instnace hasn't been
+    object may be created even when a repository instance hasn't been
     created.
 
     Common instance attributes:
@@ -2900,7 +2900,7 @@ class MetaDirRepositoryFormat(RepositoryFormat):
 # Pre-0.8 formats that don't have a disk format string (because they are
 # versioned by the matching control directory). We use the control directories
 # disk format string as a key for the network_name because they meet the
-# constraints (simple string, unique, immmutable).
+# constraints (simple string, unique, immutable).
 network_format_registry.register_lazy(
     "Bazaar-NG branch, format 5\n",
     'bzrlib.repofmt.weaverepo',
@@ -3263,7 +3263,7 @@ class InterWeaveRepo(InterSameDataRepository):
         # so the first thing is to get a subset of the revisions to
         # satisfy revision_id in source, and then eliminate those that
         # we do already have.
-        # this is slow on high latency connection to self, but as as this
+        # this is slow on high latency connection to self, but as this
         # disk format scales terribly for push anyway due to rewriting
         # inventory.weave, this is considered acceptable.
         # - RBC 20060209
@@ -3362,7 +3362,7 @@ class InterPackRepo(InterSameDataRepository):
     @classmethod
     def _get_repo_format_to_test(self):
         from bzrlib.repofmt import pack_repo
-        return pack_repo.RepositoryFormatKnitPack1()
+        return pack_repo.RepositoryFormatKnitPack6RichRoot()
 
     @staticmethod
     def is_compatible(source, target):
@@ -3626,9 +3626,28 @@ class InterDifferingSerializer(InterRepository):
         to_texts.insert_record_stream(from_texts.get_record_stream(
             text_keys, self.target._format._fetch_order,
             not self.target._format._fetch_uses_deltas))
-        # insert deltas
+        # insert inventory deltas
         for delta in pending_deltas:
             self.target.add_inventory_by_delta(*delta)
+        if self.target._fallback_repositories:
+            # Make sure this stacked repository has all the parent inventories
+            # for the new revisions that we are about to insert.  We do this
+            # before adding the revisions so that no revision is added until
+            # all the inventories it may depend on are added.
+            parent_ids = set()
+            revision_ids = set()
+            for revision in pending_revisions:
+                revision_ids.add(revision.revision_id)
+                parent_ids.update(revision.parent_ids)
+            parent_ids.difference_update(revision_ids)
+            parent_ids.discard(_mod_revision.NULL_REVISION)
+            parent_map = self.source.get_parent_map(parent_ids)
+            for parent_tree in self.source.revision_trees(parent_ids):
+                basis_id, delta = self._get_delta_for_revision(tree, parent_ids, basis_id, cache)
+                current_revision_id = parent_tree.get_revision_id()
+                parents_parents = parent_map[current_revision_id]
+                self.target.add_inventory_by_delta(
+                    basis_id, delta, current_revision_id, parents_parents)
         # insert signatures and revisions
         for revision in pending_revisions:
             try:

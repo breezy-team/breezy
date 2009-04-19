@@ -381,7 +381,7 @@ class SmartClientMediumRequest(object):
     def accept_bytes(self, bytes):
         """Accept bytes for inclusion in this request.
 
-        This method may not be be called after finished_writing() has been
+        This method may not be called after finished_writing() has been
         called.  It depends upon the Medium whether or not the bytes will be
         immediately transmitted. Message based Mediums will tend to buffer the
         bytes until finished_writing() is called.
