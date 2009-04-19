@@ -18,6 +18,9 @@
 """An adapter between a Git index and a Bazaar Working Tree"""
 
 
+from cStringIO import (
+    StringIO,
+    )
 from dulwich.index import (
     Index,
     )
@@ -130,7 +133,12 @@ class GitWorkingTree(workingtree.WorkingTree):
                 continue
             if entry.kind == "file":
                 blob = Blob()
-                file, stat_val = self.get_file_with_stat(entry.file_id, path)
+                try:
+                    file, stat_val = self.get_file_with_stat(entry.file_id, path)
+                except (errors.NoSuchFile, IOError):
+                    # TODO: Rather than come up with something here, use the old index
+                    file = StringIO()
+                    stat_val = (0, 0, 0, 0, stat.S_IFREG | 0644, 0, 0, 0, 0, 0)
                 blob._text = file.read()
             elif entry.kind == "symlink":
                 blob = Blob()
@@ -142,13 +150,14 @@ class GitWorkingTree(workingtree.WorkingTree):
             # Add an entry to the index or update the existing entry
             (mode, ino, dev, links, uid, gid, size, atime, mtime, ctime) = stat_val
             flags = 0
-            self.index[path] = (ctime, mtime, ino, dev, mode, uid, gid, size, blob.id, flags)
+            self.index[path.encode("utf-8")] = (ctime, mtime, ino, dev, mode, uid, gid, size, blob.id, flags)
 
     def flush(self):
         # TODO: Maybe this should only write on dirty ?
         if self._control_files._lock_mode != 'w':
             raise errors.NotWriteLocked(self)
         self._rewrite_index()           
+        self.index.write()
         self._inventory_is_modified = False
 
     def _reset_data(self):
