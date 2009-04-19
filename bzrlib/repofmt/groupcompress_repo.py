@@ -972,7 +972,7 @@ class RepositoryFormatCHK1(RepositoryFormatPack):
     # multiple in-a-row (and sharing strings). Topological is better
     # for remote, because we access less data.
     _fetch_order = 'unordered'
-    _fetch_uses_deltas = True # essentially ignored by the groupcompress code.
+    _fetch_uses_deltas = False # essentially ignored by the groupcompress code.
     fast_deltas = True
 
     def _get_matching_bzrdir(self):
