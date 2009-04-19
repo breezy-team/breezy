@@ -39,6 +39,9 @@ from bzrlib.trace import (
     mutter,
     )
 
+from bzrlib.plugins.git.config import (
+    GitBranchConfig,
+    )
 from bzrlib.plugins.git.errors import (
     NoSuchRef,
     )
@@ -83,21 +86,6 @@ class LocalGitTagDict(tag.BasicTags):
 
     def set_tag(self, name, revid):
         self.repository._git.tags[name] = revid
-
-
-class GitBranchConfig(config.BranchConfig):
-    """BranchConfig that uses locations.conf in place of branch.conf"""
-
-    def __init__(self, branch):
-        config.BranchConfig.__init__(self, branch)
-        # do not provide a BranchDataConfig
-        self.option_sources = self.option_sources[0], self.option_sources[2]
-
-    def set_user_option(self, name, value, store=config.STORE_BRANCH,
-            warn_masked=False):
-        """Force local to True"""
-        config.BranchConfig.set_user_option(self, name, value,
-            store=config.STORE_LOCATION, warn_masked=warn_masked)
 
 
 class GitBranchFormat(branch.BranchFormat):
