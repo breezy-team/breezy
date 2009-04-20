@@ -1079,6 +1079,12 @@ class AuthenticationConfig(object):
                 trace.mutter("Using authentication section: %r", auth_def_name)
             break
 
+        if credentials is None:
+            # No credentials were found in authentication.conf, try the fallback
+            # credentials stores.
+            credentials = credential_store_registry.get_fallback_credentials(
+                scheme, host, port, user, path, realm)
+
         return credentials
 
     def set_credentials(self, name, host, user, scheme=None, password=None,
@@ -1126,8 +1132,8 @@ class AuthenticationConfig(object):
         config.update({name: values})
         self._save()
 
-    def get_user(self, scheme, host, port=None,
-                 realm=None, path=None, prompt=None):
+    def get_user(self, scheme, host, port=None, realm=None, path=None, 
+                 prompt=None, ask=False, default=None):
         """Get a user from authentication file.
 
         :param scheme: protocol
@@ -1140,6 +1146,9 @@ class AuthenticationConfig(object):
 
         :param path: the absolute path on the server (optional)
 
+        :param ask: Ask the user if there is no explicitly configured username 
+                    (optional)
+
         :return: The found user.
         """
         credentials = self.get_credentials(scheme, host, port, user=None,
@@ -1148,6 +1157,22 @@ class AuthenticationConfig(object):
             user = credentials['user']
         else:
             user = None
+        if user is None:
+            if ask:
+                if prompt is None:
+                    # Create a default prompt suitable for most cases
+                    prompt = scheme.upper() + ' %(host)s username'
+                # Special handling for optional fields in the prompt
+                if port is not None:
+                    prompt_host = '%s:%d' % (host, port)
+                else:
+                    prompt_host = host
+                user = ui.ui_factory.get_username(prompt, host=prompt_host)
+            else:
+                if default is None:
+                    import getpass
+                    default = getpass.getuser()
+                user = default
         return user
 
     def get_password(self, scheme, host, user, port=None,
@@ -1208,10 +1233,13 @@ class CredentialStoreRegistry(registry.Registry):
     A credential store provides access to credentials via the password_encoding
     field in authentication.conf sections.
 
-    Except for stores provided by bzr itself,most stores are expected to be
+    Except for stores provided by bzr itself, most stores are expected to be
     provided by plugins that will therefore use
     register_lazy(password_encoding, module_name, member_name, help=help,
-    info=info) to install themselves.
+    fallback=fallback) to install themselves.
+
+    A fallback credential store is one that is queried if no credentials can be
+    found via authentication.conf.
     """
 
     def get_credential_store(self, encoding=None):
@@ -1219,6 +1247,68 @@ class CredentialStoreRegistry(registry.Registry):
         if callable(cs):
             cs = cs()
         return cs
+
+    def is_fallback(self, name):
+        """Check if the named credentials store should be used as fallback."""
+        return self.get_info(name)
+
+    def get_fallback_credentials(self, scheme, host, port=None, user=None,
+                                 path=None, realm=None):
+        """Request credentials from all fallback credentials stores.
+
+        The first credentials store that can provide credentials wins.
+        """
+        credentials = None
+        for name in self.keys():
+            if not self.is_fallback(name):
+                continue
+            cs = self.get_credential_store(name)
+            credentials = cs.get_credentials(scheme, host, port, user,
+                                             path, realm)
+            if credentials is not None:
+                # We found some credentials
+                break
+        return credentials
+
+    def register(self, key, obj, help=None, override_existing=False,
+                 fallback=False):
+        """Register a new object to a name.
+
+        :param key: This is the key to use to request the object later.
+        :param obj: The object to register.
+        :param help: Help text for this entry. This may be a string or
+                a callable. If it is a callable, it should take two
+                parameters (registry, key): this registry and the key that
+                the help was registered under.
+        :param override_existing: Raise KeyErorr if False and something has
+                already been registered for that key. If True, ignore if there
+                is an existing key (always register the new value).
+        :param fallback: Whether this credential store should be 
+                used as fallback.
+        """
+        return super(CredentialStoreRegistry,
+                     self).register(key, obj, help, info=fallback,
+                                    override_existing=override_existing)
+
+    def register_lazy(self, key, module_name, member_name,
+                      help=None, override_existing=False,
+                      fallback=False):
+        """Register a new credential store to be loaded on request.
+
+        :param module_name: The python path to the module. Such as 'os.path'.
+        :param member_name: The member of the module to return.  If empty or
+                None, get() will return the module itself.
+        :param help: Help text for this entry. This may be a string or
+                a callable.
+        :param override_existing: If True, replace the existing object
+                with the new one. If False, if there is already something
+                registered with the same key, raise a KeyError
+        :param fallback: Whether this credential store should be 
+                used as fallback.
+        """
+        return super(CredentialStoreRegistry, self).register_lazy(
+            key, module_name, member_name, help,
+            info=fallback, override_existing=override_existing)
 
 
 credential_store_registry = CredentialStoreRegistry()
@@ -1228,8 +1318,17 @@ class CredentialStore(object):
     """An abstract class to implement storage for credentials"""
 
     def decode_password(self, credentials):
-        """Returns a password for the provided credentials in clear text."""
+        """Returns a clear text password for the provided credentials."""
         raise NotImplementedError(self.decode_password)
+
+    def get_credentials(self, scheme, host, port=None, user=None, path=None,
+                        realm=None):
+        """Return the matching credentials from this credential store.
+
+        This method is only called on fallback credential stores.
+        """
+        raise NotImplementedError(self.get_credentials)
+
 
 
 class PlainTextCredentialStore(CredentialStore):
@@ -1247,8 +1346,9 @@ credential_store_registry.default_key = 'plain'
 
 class BzrDirConfig(object):
 
-    def __init__(self, transport):
-        self._config = TransportConfig(transport, 'control.conf')
+    def __init__(self, bzrdir):
+        self._bzrdir = bzrdir
+        self._config = bzrdir._get_config()
 
     def set_default_stack_on(self, value):
         """Set the default stacking location.
@@ -1258,6 +1358,8 @@ class BzrDirConfig(object):
         This policy affects all branches contained by this bzrdir, except for
         those under repositories.
         """
+        if self._config is None:
+            raise errors.BzrError("Cannot set configuration in %s" % self._bzrdir)
         if value is None:
             self._config.set_option('', 'default_stack_on')
         else:
@@ -1271,6 +1373,8 @@ class BzrDirConfig(object):
         This policy affects all branches contained by this bzrdir, except for
         those under repositories.
         """
+        if self._config is None:
+            return None
         value = self._config.get_option('default_stack_on')
         if value == '':
             value = None
@@ -1321,12 +1425,14 @@ class TransportConfig(object):
             configobj.setdefault(section, {})[name] = value
         self._set_configobj(configobj)
 
-    def _get_configobj(self):
+    def _get_config_file(self):
         try:
-            return ConfigObj(self._transport.get(self._filename),
-                             encoding='utf-8')
+            return self._transport.get(self._filename)
         except errors.NoSuchFile:
-            return ConfigObj(encoding='utf-8')
+            return StringIO()
+
+    def _get_configobj(self):
+        return ConfigObj(self._get_config_file(), encoding='utf-8')
 
     def _set_configobj(self, configobj):
         out_file = StringIO()

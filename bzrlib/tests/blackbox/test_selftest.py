@@ -102,9 +102,7 @@ class TestOptions(TestCase):
         test = ProtocolTestCase(stream)
         result = unittest.TestResult()
         test.run(result)
-        # 1 to deal with the 'test:' noise at the start, and 1 for the one we
-        # ran.
-        self.assertEqual(2, result.testsRun)
+        self.assertEqual(1, result.testsRun)
 
 
 class TestRunBzr(ExternalBase):
@@ -198,9 +196,7 @@ class TestBenchmarkTests(TestCaseWithTransport):
         finally:
             TestCaseWithMemoryTransport.TEST_ROOT = old_root
         self.assertContainsRe(out, 'Ran 0 tests.*\n\nOK')
-        self.assertEqual(
-            'tests passed\n',
-            err)
+        self.assertContainsRe(out, 'tests passed\n')
         benchfile = open(".perf_history", "rt")
         try:
             lines = benchfile.readlines()

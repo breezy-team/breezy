@@ -18,6 +18,7 @@
 """Tests for finding and reading the bzr config file[s]."""
 # import system imports here
 from cStringIO import StringIO
+import getpass
 import os
 import sys
 
@@ -1210,7 +1211,7 @@ class TestTransportConfig(tests.TestCaseWithTransport):
 
     def test_set_unset_default_stack_on(self):
         my_dir = self.make_bzrdir('.')
-        bzrdir_config = config.BzrDirConfig(my_dir.transport)
+        bzrdir_config = config.BzrDirConfig(my_dir)
         self.assertIs(None, bzrdir_config.get_default_stack_on())
         bzrdir_config.set_default_stack_on('Foo')
         self.assertEqual('Foo', bzrdir_config._config.get_option(
@@ -1459,7 +1460,7 @@ class TestAuthenticationStorage(tests.TestCaseInTempDir):
 class TestAuthenticationConfig(tests.TestCase):
     """Test AuthenticationConfig behaviour"""
 
-    def _check_default_prompt(self, expected_prompt_format, scheme,
+    def _check_default_password_prompt(self, expected_prompt_format, scheme,
                               host=None, port=None, realm=None, path=None):
         if host is None:
             host = 'bar.org'
@@ -1478,23 +1479,55 @@ class TestAuthenticationConfig(tests.TestCase):
                                             realm=realm, path=path))
         self.assertEquals(stdout.getvalue(), expected_prompt)
 
-    def test_default_prompts(self):
-        # HTTP prompts can't be tested here, see test_http.py
-        self._check_default_prompt('FTP %(user)s@%(host)s password: ', 'ftp')
-        self._check_default_prompt('FTP %(user)s@%(host)s:%(port)d password: ',
-                                   'ftp', port=10020)
+    def _check_default_username_prompt(self, expected_prompt_format, scheme,
+                              host=None, port=None, realm=None, path=None):
+        if host is None:
+            host = 'bar.org'
+        username = 'jim'
+        expected_prompt = expected_prompt_format % {
+            'scheme': scheme, 'host': host, 'port': port,
+            'realm': realm}
+        stdout = tests.StringIOWrapper()
+        ui.ui_factory = tests.TestUIFactory(stdin=username+ '\n',
+                                            stdout=stdout)
+        # We use an empty conf so that the user is always prompted
+        conf = config.AuthenticationConfig()
+        self.assertEquals(username, conf.get_user(scheme, host, port=port,
+                          realm=realm, path=path, ask=True))
+        self.assertEquals(stdout.getvalue(), expected_prompt)
 
-        self._check_default_prompt('SSH %(user)s@%(host)s:%(port)d password: ',
-                                   'ssh', port=12345)
+    def test_username_defaults_prompts(self):
+        # HTTP prompts can't be tested here, see test_http.py
+        self._check_default_username_prompt('FTP %(host)s username: ', 'ftp')
+        self._check_default_username_prompt(
+            'FTP %(host)s:%(port)d username: ', 'ftp', port=10020)
+        self._check_default_username_prompt(
+            'SSH %(host)s:%(port)d username: ', 'ssh', port=12345)
+
+    def test_username_default_no_prompt(self):
+        conf = config.AuthenticationConfig()
+        self.assertEquals(getpass.getuser(), 
+            conf.get_user('ftp', 'example.com'))
+        self.assertEquals("explicitdefault", 
+            conf.get_user('ftp', 'example.com', default="explicitdefault"))
+
+    def test_password_default_prompts(self):
+        # HTTP prompts can't be tested here, see test_http.py
+        self._check_default_password_prompt(
+            'FTP %(user)s@%(host)s password: ', 'ftp')
+        self._check_default_password_prompt(
+            'FTP %(user)s@%(host)s:%(port)d password: ', 'ftp', port=10020)
+        self._check_default_password_prompt(
+            'SSH %(user)s@%(host)s:%(port)d password: ', 'ssh', port=12345)
         # SMTP port handling is a bit special (it's handled if embedded in the
         # host too)
         # FIXME: should we: forbid that, extend it to other schemes, leave
         # things as they are that's fine thank you ?
-        self._check_default_prompt('SMTP %(user)s@%(host)s password: ',
+        self._check_default_password_prompt('SMTP %(user)s@%(host)s password: ',
                                    'smtp')
-        self._check_default_prompt('SMTP %(user)s@%(host)s password: ',
+        self._check_default_password_prompt('SMTP %(user)s@%(host)s password: ',
                                    'smtp', host='bar.org:10025')
-        self._check_default_prompt(
+        self._check_default_password_prompt(
             'SMTP %(user)s@%(host)s:%(port)d password: ',
             'smtp', port=10025)
 
@@ -1543,6 +1576,50 @@ user=jim
             self._get_log(keep_log_file=True),
             'password ignored in section \[ssh with password\]')
 
+    def test_uses_fallback_stores(self):
+        self._old_cs_registry = config.credential_store_registry
+        def restore():
+            config.credential_store_registry = self._old_cs_registry
+        self.addCleanup(restore)
+        config.credential_store_registry = config.CredentialStoreRegistry()
+        store = StubCredentialStore()
+        store.add_credentials("http", "example.com", "joe", "secret")
+        config.credential_store_registry.register("stub", store, fallback=True)
+        conf = config.AuthenticationConfig(_file=StringIO())
+        creds = conf.get_credentials("http", "example.com")
+        self.assertEquals("joe", creds["user"])
+        self.assertEquals("secret", creds["password"])
+
+
+class StubCredentialStore(config.CredentialStore):
+
+    def __init__(self):
+        self._username = {}
+        self._password = {}
+
+    def add_credentials(self, scheme, host, user, password=None):
+        self._username[(scheme, host)] = user
+        self._password[(scheme, host)] = password
+
+    def get_credentials(self, scheme, host, port=None, user=None,
+        path=None, realm=None):
+        key = (scheme, host)
+        if not key in self._username:
+            return None
+        return { "scheme": scheme, "host": host, "port": port,
+                "user": self._username[key], "password": self._password[key]}
+
+
+class CountingCredentialStore(config.CredentialStore):
+
+    def __init__(self):
+        self._calls = 0
+
+    def get_credentials(self, scheme, host, port=None, user=None,
+        path=None, realm=None):
+        self._calls += 1
+        return None
+
 
 class TestCredentialStoreRegistry(tests.TestCase):
 
@@ -1559,6 +1636,64 @@ class TestCredentialStoreRegistry(tests.TestCase):
         # It's hard to imagine someone creating a credential store named
         # 'unknown' so we use that as an never registered key.
         self.assertRaises(KeyError, r.get_credential_store, 'unknown')
+
+    def test_fallback_none_registered(self):
+        r = config.CredentialStoreRegistry()
+        self.assertEquals(None,
+                          r.get_fallback_credentials("http", "example.com"))
+
+    def test_register(self):
+        r = config.CredentialStoreRegistry()
+        r.register("stub", StubCredentialStore(), fallback=False)
+        r.register("another", StubCredentialStore(), fallback=True)
+        self.assertEquals(["another", "stub"], r.keys())
+
+    def test_register_lazy(self):
+        r = config.CredentialStoreRegistry()
+        r.register_lazy("stub", "bzrlib.tests.test_config",
+                        "StubCredentialStore", fallback=False)
+        self.assertEquals(["stub"], r.keys())
+        self.assertIsInstance(r.get_credential_store("stub"),
+                              StubCredentialStore)
+
+    def test_is_fallback(self):
+        r = config.CredentialStoreRegistry()
+        r.register("stub1", None, fallback=False)
+        r.register("stub2", None, fallback=True)
+        self.assertEquals(False, r.is_fallback("stub1"))
+        self.assertEquals(True, r.is_fallback("stub2"))
+
+    def test_no_fallback(self):
+        r = config.CredentialStoreRegistry()
+        store = CountingCredentialStore()
+        r.register("count", store, fallback=False)
+        self.assertEquals(None,
+                          r.get_fallback_credentials("http", "example.com"))
+        self.assertEquals(0, store._calls)
+
+    def test_fallback_credentials(self):
+        r = config.CredentialStoreRegistry()
+        store = StubCredentialStore()
+        store.add_credentials("http", "example.com",
+                              "somebody", "geheim")
+        r.register("stub", store, fallback=True)
+        creds = r.get_fallback_credentials("http", "example.com")
+        self.assertEquals("somebody", creds["user"])
+        self.assertEquals("geheim", creds["password"])
+
+    def test_fallback_first_wins(self):
+        r = config.CredentialStoreRegistry()
+        stub1 = StubCredentialStore()
+        stub1.add_credentials("http", "example.com",
+                              "somebody", "stub1")
+        r.register("stub1", stub1, fallback=True)
+        stub2 = StubCredentialStore()
+        stub2.add_credentials("http", "example.com",
+                              "somebody", "stub2")
+        r.register("stub2", stub1, fallback=True)
+        creds = r.get_fallback_credentials("http", "example.com")
+        self.assertEquals("somebody", creds["user"])
+        self.assertEquals("stub1", creds["password"])
 
 
 class TestPlainTextCredentialStore(tests.TestCase):

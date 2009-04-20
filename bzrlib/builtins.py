@@ -3256,14 +3256,6 @@ class cmd_selftest(Command):
 
         if cache_dir is not None:
             tree_creator.TreeCreator.CACHE_ROOT = osutils.abspath(cache_dir)
-        if not list_only:
-            print 'testing: %s' % (osutils.realpath(sys.argv[0]),)
-            print '   %s (%s python%s)' % (
-                    bzrlib.__path__[0],
-                    bzrlib.version_string,
-                    bzrlib._format_version_tuple(sys.version_info),
-                    )
-            print
         if testspecs_list is not None:
             pattern = '|'.join(testspecs_list)
         else:
@@ -3309,11 +3301,6 @@ class cmd_selftest(Command):
         finally:
             if benchfile is not None:
                 benchfile.close()
-        if not list_only:
-            if result:
-                note('tests passed')
-            else:
-                note('tests failed')
         return int(not result)
 
 
@@ -5628,6 +5615,7 @@ from bzrlib.conflicts import cmd_resolve, cmd_conflicts, restore
 from bzrlib.bundle.commands import (
     cmd_bundle_info,
     )
+from bzrlib.foreign import cmd_dpush
 from bzrlib.sign_my_commits import cmd_sign_my_commits
 from bzrlib.weave_commands import cmd_versionedfile_list, \
         cmd_weave_plan_merge, cmd_weave_merge_text

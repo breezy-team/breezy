@@ -64,6 +64,9 @@ class SMTPConnection(object):
             return
 
         self._create_connection()
+        # FIXME: _authenticate() should only be called when the server has
+        # refused unauthenticated access, so it can safely try to authenticate 
+        # with the default username. JRV20090407
         self._authenticate()
 
     def _create_connection(self):
@@ -103,8 +106,12 @@ class SMTPConnection(object):
         """If necessary authenticate yourself to the server."""
         auth = config.AuthenticationConfig()
         if self._smtp_username is None:
-            self._smtp_username = auth.get_user('smtp', self._smtp_server)
-            if self._smtp_username is None:
+            # FIXME: Since _authenticate gets called even when no authentication
+            # is necessary, it's not possible to use the default username 
+            # here yet.
+            self._smtp_username = auth.get_user('smtp', self._smtp_server, 
+                default="")
+            if self._smtp_username == "":
                 return
 
         if self._smtp_password is None:
