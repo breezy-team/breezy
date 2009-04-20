@@ -2886,6 +2886,15 @@ class Converter6to7(object):
         branch._transport.put_bytes('format', format.get_format_string())
 
 
+class Converter7to8(object):
+    """Perform an in-place upgrade of format 6 to format 7"""
+
+    def convert(self, branch):
+        format = BzrBranchFormat8()
+        branch._transport.put_bytes('references', '')
+        # update target format
+        branch._transport.put_bytes('format', format.get_format_string())
+
 
 def _run_with_write_locked_target(target, callable, *args, **kwargs):
     """Run ``callable(*args, **kwargs)``, write-locking target for the

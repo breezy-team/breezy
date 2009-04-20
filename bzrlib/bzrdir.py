@@ -2787,11 +2787,16 @@ class ConvertMetaToMeta(Converter):
             while old != new:
                 if (old == _mod_branch.BzrBranchFormat5 and
                     new in (_mod_branch.BzrBranchFormat6,
-                        _mod_branch.BzrBranchFormat7)):
+                        _mod_branch.BzrBranchFormat7,
+                        _mod_branch.BzrBranchFormat8)):
                     branch_converter = _mod_branch.Converter5to6()
                 elif (old == _mod_branch.BzrBranchFormat6 and
-                    new == _mod_branch.BzrBranchFormat7):
+                    new in (_mod_branch.BzrBranchFormat7,
+                            _mod_branch.BzrBranchFormat8)):
                     branch_converter = _mod_branch.Converter6to7()
+                elif (old == _mod_branch.BzrBranchFormat7 and
+                      new is _mod_branch.BzrBranchFormat8):
+                    branch_converter = _mod_branch.Converter7to8()
                 else:
                     raise errors.BadConversionTarget("No converter", new)
                 branch_converter.convert(branch)
