@@ -743,6 +743,7 @@ class PythonGroupCompressor(_CommonGroupCompressor):
         # Before insertion
         start = self.endpoint
         chunk_start = len(self.chunks)
+        self._last = (chunk_start, self.endpoint)
         self._delta_index.extend_lines(out_lines, index_lines)
         self.endpoint = self._delta_index.endpoint
         self.input_bytes += input_len

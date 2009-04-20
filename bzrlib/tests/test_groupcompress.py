@@ -119,6 +119,16 @@ class TestAllGroupCompressors(TestGroupCompressor):
                           'different\n', sha1_2),
                          compressor.extract(('newlabel',)))
 
+    def test_pop_last(self):
+        compressor = self.compressor()
+        _, _, _, _ = compressor.compress(('key1',),
+            'some text\nfor the first entry\n', None)
+        expected_lines = list(compressor.chunks)
+        _, _, _, _ = compressor.compress(('key2',),
+            'some text\nfor the second entry\n', None)
+        compressor.pop_last()
+        self.assertEqual(expected_lines, compressor.chunks)
+
 
 class TestPyrexGroupCompressor(TestGroupCompressor):
 
