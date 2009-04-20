@@ -1134,16 +1134,57 @@ class Branch(object):
         return format
 
     def create_clone_on_transport(self, to_transport, revision_id=None,
-        stacked_on=None):
+        stacked_on=None, create_prefix=False, use_existing_dir=False):
         """Create a clone of this branch and its bzrdir.
 
         :param to_transport: The transport to clone onto.
         :param revision_id: The revision id to use as tip in the new branch.
             If None the tip is obtained from this branch.
         :param stacked_on: An optional URL to stack the clone on.
+        :param create_prefix: Create any missing directories leading up to
+            to_transport.
+        :param use_existing_dir: Use an existing directory if one exists.
         """
+        # The destination doesn't exist; create it.
+        # XXX: Refactor the create_prefix/no_create_prefix code into a
+        #      common helper function
+
+        def make_directory(transport):
+            transport.mkdir('.')
+            return transport
+
+        def redirected(transport, e, redirection_notice):
+            note(redirection_notice)
+            return transport._redirected_to(e.source, e.target)
+
+        try:
+            to_transport = transport.do_catching_redirections(
+                make_directory, to_transport, redirected)
+        except errors.FileExists:
+            if not use_existing_dir:
+                raise errors.BzrCommandError("Target directory %s"
+                     " already exists, but does not have a valid .bzr"
+                     " directory. Supply --use-existing-dir to push"
+                     " there anyway." % to_transport.base)
+        except errors.NoSuchFile:
+            if not create_prefix:
+                raise errors.BzrCommandError("Parent directory of %s"
+                    " does not exist."
+                    "\nYou may supply --create-prefix to create all"
+                    " leading parent directories."
+                    % to_transport.base)
+            to_transport.create_prefix()
+        except errors.TooManyRedirections:
+            raise errors.BzrCommandError("Too many redirections trying "
+                                         "to make %s." % to_transport.base)
+
+        # Now the target directory exists, but doesn't have a .bzr
+        # directory. So we need to create it, along with any work to create
+        # all of the dependent branches, etc.
         # XXX: Fix the bzrdir API to allow getting the branch back from the
         # clone call. Or something. 20090224 RBC/spiv.
+        if revision_id is None:
+            revision_id = self.last_revision()
         dir_to = self.bzrdir.clone_on_transport(to_transport,
             revision_id=revision_id, stacked_on=stacked_on)
         return dir_to.open_branch()

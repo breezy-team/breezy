@@ -79,52 +79,17 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
         directory exists without a current .bzr directory in it
     """
     to_transport = transport.get_transport(location)
-    br_to = repository_to = dir_to = None
     try:
         dir_to = bzrdir.BzrDir.open_from_transport(to_transport)
     except errors.NotBranchError:
-        pass # Didn't find anything
+        # Didn't find anything
+        dir_to = None
 
-    push_result = PushResult()
     if dir_to is None:
-        # The destination doesn't exist; create it.
-        # XXX: Refactor the create_prefix/no_create_prefix code into a
-        #      common helper function
-
-        def make_directory(transport):
-            transport.mkdir('.')
-            return transport
-
-        def redirected(transport, e, redirection_notice):
-            note(redirection_notice)
-            return transport._redirected_to(e.source, e.target)
-
-        try:
-            to_transport = transport.do_catching_redirections(
-                make_directory, to_transport, redirected)
-        except errors.FileExists:
-            if not use_existing_dir:
-                raise errors.BzrCommandError("Target directory %s"
-                     " already exists, but does not have a valid .bzr"
-                     " directory. Supply --use-existing-dir to push"
-                     " there anyway." % location)
-        except errors.NoSuchFile:
-            if not create_prefix:
-                raise errors.BzrCommandError("Parent directory of %s"
-                    " does not exist."
-                    "\nYou may supply --create-prefix to create all"
-                    " leading parent directories."
-                    % location)
-            builtins._create_prefix(to_transport)
-        except errors.TooManyRedirections:
-            raise errors.BzrCommandError("Too many redirections trying "
-                                         "to make %s." % location)
-
-        # Now the target directory exists, but doesn't have a .bzr
-        # directory. So we need to create it, along with any work to create
-        # all of the dependent branches, etc.
         br_to = br_from.create_clone_on_transport(to_transport,
-            revision_id=revision_id, stacked_on=stacked_on)
+            revision_id=revision_id, stacked_on=stacked_on,
+            create_prefix=create_prefix, use_existing_dir=use_existing_dir)
+        push_result = PushResult()
         # TODO: Some more useful message about what was copied
         try:
             push_result.stacked_on = br_to.get_stacked_on_url()
