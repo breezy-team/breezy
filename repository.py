@@ -39,6 +39,9 @@ from bzrlib.transport import (
     get_transport,
     )
 
+from bzrlib.plugins.git.commit import (
+    GitCommitBuilder,
+    )
 from bzrlib.plugins.git.foreign import (
     versionedfiles,
     )
@@ -71,6 +74,7 @@ class GitRepository(ForeignRepository):
     """An adapter to git repositories for bzr."""
 
     _serializer = None
+    _commit_builder_class = GitCommitBuilder
 
     def __init__(self, gitdir, lockfiles):
         ForeignRepository.__init__(self, GitRepositoryFormat(), gitdir, 
