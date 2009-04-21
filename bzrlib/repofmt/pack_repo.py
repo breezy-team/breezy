@@ -2150,7 +2150,8 @@ class KnitPackRepository(KnitRepository):
         self.revisions = KnitVersionedFiles(
             _KnitGraphIndex(self._pack_collection.revision_index.combined_index,
                 add_callback=self._pack_collection.revision_index.add_callback,
-                deltas=False, parents=True, is_locked=self.is_locked),
+                deltas=False, parents=True, is_locked=self.is_locked,
+                track_parent_refs=True),
             data_access=self._pack_collection.revision_index.data_access,
             max_delta_chain=0)
         self.signatures = KnitVersionedFiles(
@@ -2269,20 +2270,11 @@ class KnitPackRepository(KnitRepository):
         self._write_group = None
         return tokens
 
-    def _new_revisions(self):
-        pack_collection = self._pack_collection
-        revision_ids = set()
-        packs = list(pack_collection._resumed_packs)
-        if pack_collection._new_pack is not None:
-            packs.append(pack_collection._new_pack)
-        for pack in packs:
-            entries = pack.revision_index.iter_all_entries()
-            revision_ids.update(entry[1][-1] for entry in entries)
-        return revision_ids
-
     def _resume_write_group(self, tokens):
         self._start_write_group()
         self._pack_collection._resume_write_group(tokens)
+        for pack in self._pack_collection._resumed_packs:
+            self.revisions._index.scan_unvalidated_index(pack.revision_index)
 
     def get_transaction(self):
         if self._write_lock_count:

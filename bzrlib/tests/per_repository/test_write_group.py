@@ -190,16 +190,19 @@ class TestWriteGroup(TestCaseWithRepository):
         # Revisions from resumed write groups can also cause missing parent
         # inventories.
         resume_tokens = repo.suspend_write_group()
-        repo.resume_write_group(resume_tokens)
+        reopened_repo = repo.bzrdir.open_repository()
+        reopened_repo.lock_write()
+        self.addCleanup(reopened_repo.unlock)
+        reopened_repo.resume_write_group(resume_tokens)
         self.assertEqual(
             set([('inventories', 'rev-1')]),
-            repo.get_missing_parent_inventories())
-        repo.inventories.insert_record_stream(
+            reopened_repo.get_missing_parent_inventories())
+        reopened_repo.inventories.insert_record_stream(
             branch_repo.inventories.get_record_stream(
                 [('rev-1',)], 'unordered', False))
         self.assertEqual(
-            set(), repo.get_missing_parent_inventories())
-        repo.abort_write_group()
+            set(), reopened_repo.get_missing_parent_inventories())
+        reopened_repo.abort_write_group()
 
 
 class TestResumeableWriteGroup(TestCaseWithRepository):

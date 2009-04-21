@@ -1437,24 +1437,18 @@ class Repository(object):
         if not self._format.supports_external_lookups:
             # This is only an issue for stacked repositories
             return set()
-        revision_ids = self.new_revisions()
-        parent_inventories = _parent_inventories(self, revision_ids)
-        unstacked_inventories = self.inventories._index
-        present_inventories = unstacked_inventories.get_parent_map(
-            key[-1:] for key in parent_inventories)
-        present_inventories = [
-            ('inventories', key[-1]) for key in present_inventories]
-        parent_inventories.difference_update(present_inventories)
-        return parent_inventories
-
-    def new_revisions(self):
-        """Return the revision IDs of revisions added in this write group."""
         if not self.is_in_write_group():
             raise AssertionError('not in a write group')
-        return self._new_revisions()
-
-    def _new_revisions(self):
-        raise NotImplementedError(self._new_revisions)
+                
+        parents = set(self.revisions._index._parent_refs)
+        parents.discard(_mod_revision.NULL_REVISION)
+        parents.difference_update(self.get_parent_map(parents))
+        unstacked_inventories = self.inventories._index
+        present_inventories = unstacked_inventories.get_parent_map(
+            key[-1:] for key in parents)
+        parents.difference_update(present_inventories)
+        missing_keys = set(('inventories', rev_id) for (rev_id,) in parents)
+        return missing_keys
 
     def refresh_data(self):
         """Re-read any data needed to to synchronise with disk.
