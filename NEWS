@@ -696,7 +696,8 @@ Bug Fixes
   reoccuring. (Robert Collins, Andrew Bennetts)
 
 * Restore the progress bar on Windows. We were disabling it when TERM
-  wasn't set, but Windows doesn't set TERM. (Alexander Belchenko)
+  wasn't set, but Windows doesn't set TERM. (Alexander Belchenko,
+  #334808)
 
 * ``setup.py build_ext`` now gives a proper error when an extension
   fails to build. (John Arbash Meinel)
