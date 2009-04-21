@@ -2151,7 +2151,7 @@ class KnitPackRepository(KnitRepository):
             _KnitGraphIndex(self._pack_collection.revision_index.combined_index,
                 add_callback=self._pack_collection.revision_index.add_callback,
                 deltas=False, parents=True, is_locked=self.is_locked,
-                track_parent_refs=True),
+                track_external_parent_refs=True),
             data_access=self._pack_collection.revision_index.data_access,
             max_delta_chain=0)
         self.signatures = KnitVersionedFiles(

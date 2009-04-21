@@ -1440,9 +1440,11 @@ class Repository(object):
         if not self.is_in_write_group():
             raise AssertionError('not in a write group')
                 
-        parents = set(self.revisions._index._parent_refs)
+        # XXX: We assume that every added revision already has its
+        # corresponding inventory, so we only check for parent inventories that
+        # might be missing, rather than all inventories.
+        parents = set(self.revisions._index.get_missing_parents())
         parents.discard(_mod_revision.NULL_REVISION)
-        parents.difference_update(self.get_parent_map(parents))
         unstacked_inventories = self.inventories._index
         present_inventories = unstacked_inventories.get_parent_map(
             key[-1:] for key in parents)

@@ -2692,7 +2692,7 @@ class _KnitGraphIndex(object):
     """A KnitVersionedFiles index layered on GraphIndex."""
 
     def __init__(self, graph_index, is_locked, deltas=False, parents=True,
-        add_callback=None, track_parent_refs=False):
+        add_callback=None, track_external_parent_refs=False):
         """Construct a KnitGraphIndex on a graph_index.
 
         :param graph_index: An implementation of bzrlib.index.GraphIndex.
@@ -2706,8 +2706,9 @@ class _KnitGraphIndex(object):
             [(node, value, node_refs), ...]
         :param is_locked: A callback, returns True if the index is locked and
             thus usable.
-        :param track_parent_refs: If True, record all referenced parents from
-            added records in self._parent_refs.
+        :param track_external_parent_refs: If True, record all external parent
+            references parents from added records.  These can be retrieved
+            later by calling get_missing_parents().
         """
         self._add_callback = add_callback
         self._graph_index = graph_index
@@ -2721,10 +2722,10 @@ class _KnitGraphIndex(object):
         self.has_graph = parents
         self._is_locked = is_locked
         self._missing_compression_parents = set()
-        if track_parent_refs:
-            self._parent_refs = set()
+        if track_external_parent_refs:
+            self._external_parent_refs = set()
         else:
-            self._parent_refs = None
+            self._external_parent_refs = None
 
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self._graph_index)
@@ -2754,14 +2755,12 @@ class _KnitGraphIndex(object):
 
         keys = {}
         compression_parents = set()
-        parent_refs = self._parent_refs
+        parent_refs = self._external_parent_refs
         for (key, options, access_memo, parents) in records:
             if self._parents:
                 parents = tuple(parents)
                 if parent_refs is not None:
                     parent_refs.update(parents)
-                    # We assume that if a revision is present then the
-                    # corresponding inventory is too.
                     parent_refs.discard(key)
             index, pos, size = access_memo
             if 'no-eol' in options:
@@ -2830,10 +2829,10 @@ class _KnitGraphIndex(object):
             new_missing = graph_index.external_references(ref_list_num=1)
             new_missing.difference_update(self.get_parent_map(new_missing))
             self._missing_compression_parents.update(new_missing)
-        if self._parent_refs is not None:
+        if self._external_parent_refs is not None:
             for node in graph_index.iter_all_entries():
-                self._parent_refs.update(node[3][0])
-                self._parent_refs.discard(node[1])
+                self._external_parent_refs.update(node[3][0])
+                self._external_parent_refs.discard(node[1])
 
     def get_missing_compression_parents(self):
         """Return the keys of missing compression parents.
@@ -2842,6 +2841,13 @@ class _KnitGraphIndex(object):
         basis texts, or a index was scanned that had missing basis texts.
         """
         return frozenset(self._missing_compression_parents)
+
+    def get_missing_parents(self):
+        """Return the keys of missing parents."""
+        # We may have false positives, so filter those out.
+        self._external_parent_refs.discard(
+            self._get_entries(self._external_parent_refs))
+        return frozenset(self._external_parent_refs)
 
     def _check_read(self):
         """raise if reads are not permitted."""

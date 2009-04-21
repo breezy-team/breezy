@@ -175,7 +175,6 @@ class TestWriteGroup(TestCaseWithRepository):
         self.addCleanup(branch_repo.unlock)
         repo.add_fallback_repository(trunk.repository)
         repo.lock_write()
-        self.addCleanup(repo.unlock)
         repo.start_write_group()
         trunk_repo.lock_read()
         repo.inventories.insert_record_stream(
@@ -189,7 +188,15 @@ class TestWriteGroup(TestCaseWithRepository):
             repo.get_missing_parent_inventories())
         # Revisions from resumed write groups can also cause missing parent
         # inventories.
-        resume_tokens = repo.suspend_write_group()
+        try:
+            resume_tokens = repo.suspend_write_group()
+        except errors.UnsuspendableWriteGroup:
+            # If we got this far, and this repo does not support resuming write
+            # groups, then get_missing_parent_inventories works in all
+            # cases this repo supports.
+            repo.unlock()
+            return
+        repo.unlock()
         reopened_repo = repo.bzrdir.open_repository()
         reopened_repo.lock_write()
         self.addCleanup(reopened_repo.unlock)
