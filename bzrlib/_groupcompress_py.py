@@ -118,7 +118,11 @@ class LinesDeltaIndex(object):
         for idx, do_index in enumerate(index):
             if not do_index:
                 continue
-            matches.setdefault(new_lines[idx], []).append(start_idx + idx)
+            line = new_lines[idx]
+            try:
+                matches[line].add(start_idx + idx)
+            except KeyError:
+                matches[line] = set([start_idx + idx])
 
     def get_matches(self, line):
         """Return the lines which match the line in right."""
@@ -144,11 +148,12 @@ class LinesDeltaIndex(object):
         range_len = 0
         copy_ends = None
         max_pos = len(lines)
+        matching = self._matching_lines
         while pos < max_pos:
             if locations is None:
                 # TODO: is try/except better than get(..., None)?
                 try:
-                    locations = self._matching_lines[lines[pos]]
+                    locations = matching[lines[pos]]
                 except KeyError:
                     locations = None
             if locations is None:
@@ -166,7 +171,7 @@ class LinesDeltaIndex(object):
                 else:
                     # We have a match started, compare to see if any of the
                     # current matches can be continued
-                    next_locations = set(copy_ends).intersection(locations)
+                    next_locations = locations.intersection(copy_ends)
                     if next_locations:
                         # At least one of the regions continues to match
                         copy_ends = [loc + 1 for loc in next_locations]
