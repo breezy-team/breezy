@@ -45,7 +45,7 @@ class _OutputHandler(object):
     def _flush_insert(self):
         if not self.cur_insert_lines:
             return
-        assert self.cur_insert_len < 127
+        assert self.cur_insert_len <= 127
         self.out_lines.append(chr(self.cur_insert_len))
         self.index_lines.append(False)
         self.out_lines.extend(self.cur_insert_lines)
