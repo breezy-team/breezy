@@ -195,38 +195,15 @@ class BzrDir(object):
             to_transport.
         :param use_existing_dir: Use an existing directory if one exists.
         """
-        # The destination doesn't exist; create it.
-        # XXX: Refactor the create_prefix/no_create_prefix code into a
-        #      common helper function
-
-        def make_directory(transport):
-            transport.mkdir('.')
-            return transport
-
-        def redirected(transport, e, redirection_notice):
-            note(redirection_notice)
-            return transport._redirected_to(e.source, e.target)
-
-        try:
-            transport = do_catching_redirections(make_directory, transport,
-                redirected)
-        except errors.FileExists:
-            if not use_existing_dir:
-                raise
-        except errors.NoSuchFile:
-            if not create_prefix:
-                raise
-            transport.create_prefix()
-
-        # Now the target directory exists, but doesn't have a .bzr
-        # directory. So we need to create it, along with any work to create
-        # all of the dependent branches, etc.
+        # Overview: put together a broad description of what we want to end up
+        # with; then make as few api calls as possible to do it.
+        
+        # We may want to create a repo/branch/tree, if we do so what format
+        # would we want for each:
         require_stacking = (stacked_on is not None)
         format = self.cloning_metadir(require_stacking)
-        # Bug: We create a metadir without knowing if it can support stacking,
-        # we should look up the policy needs first.
-        result = format.initialize_on_transport(transport)
-        repository_policy = None
+        
+        # Figure out what objects we want:
         try:
             local_repo = self.find_repository()
         except errors.NoRepositoryPresent:
@@ -246,19 +223,35 @@ class BzrDir(object):
                         errors.UnstackableRepositoryFormat,
                         errors.NotStacked):
                     pass
-
+        # Bug: We create a metadir without knowing if it can support stacking,
+        # we should look up the policy needs first, or just use it as a hint,
+        # or something.
         if local_repo:
-            # may need to copy content in
-            repository_policy = result.determine_repository_policy(
-                force_new_repo, stacked_on, self.root_transport.base,
-                require_stacking=require_stacking)
             make_working_trees = local_repo.make_working_trees()
-            result_repo, is_new_repo = repository_policy.acquire_repository(
-                make_working_trees, local_repo.is_shared())
-            if not require_stacking and repository_policy._require_stacking:
-                require_stacking = True
-                result._format.require_stacking()
-            if is_new_repo and not require_stacking and revision_id is not None:
+            want_shared = local_repo.is_shared()
+            repo_format_name = format.repository_format.network_name()
+        else:
+            make_working_trees = False
+            want_shared = False
+            repo_format_name = None
+
+        result_repo, result, require_stacking, repository_policy = \
+            format.initialize_on_transport_ex(transport,
+            use_existing_dir=use_existing_dir, create_prefix=create_prefix,
+            force_new_repo=force_new_repo, stacked_on=stacked_on,
+            stack_on_pwd=self.root_transport.base,
+            repo_format_name=repo_format_name,
+            make_working_trees=make_working_trees, shared_repo=want_shared)
+        if repo_format_name:
+            # If the result repository is in the same place as the resulting
+            # bzr dir, it will have no content, further if the result is not stacked
+            # then we know all content should be copied, and finally if we are
+            # copying up to a specific revision_id then we can use the
+            # pending-ancestry-result which does not require traversing all of
+            # history to describe it.
+            if (result_repo.bzrdir.root_transport.base ==
+                result.root_transport.base and not require_stacking and
+                revision_id is not None):
                 fetch_spec = graph.PendingAncestryResult(
                     [revision_id], local_repo)
                 result_repo.fetch(local_repo, fetch_spec=fetch_spec)
@@ -1095,8 +1088,12 @@ class BzrDir(object):
         """
         format, repository = self._cloning_metadir()
         if format._workingtree_format is None:
+            # No tree in self.
             if repository is None:
+                # No repository either
                 return format
+            # We have a repository, so set a working tree? (Why? This seems to
+            # contradict the stated return value in the docstring).
             tree_format = repository._format._matchingbzrdir.workingtree_format
             format.workingtree_format = tree_format.__class__()
         if require_stacking:
@@ -1728,6 +1725,7 @@ class BzrDirMeta1(BzrDir):
     def _get_config(self):
         return config.TransportConfig(self.transport, 'control.conf')
 
+
 class BzrDirFormat(object):
     """An encapsulation of the initialization and open routines for a format.
 
@@ -1849,6 +1847,74 @@ class BzrDirFormat(object):
             remote_format = RemoteBzrDirFormat()
             self._supply_sub_formats_to(remote_format)
             return remote_format.initialize_on_transport(transport)
+
+    def initialize_on_transport_ex(self, transport, use_existing_dir=False,
+        create_prefix=False, force_new_repo=False, stacked_on=None,
+        stack_on_pwd=None, repo_format_name=None, make_working_trees=False,
+        shared_repo=False):
+        """Create this format on transport.
+
+        :param force_new_repo: Do not use a shared repository for the target,
+                               even if one is available.
+        :param create_prefix: Create any missing directories leading up to
+            to_transport.
+        :param use_existing_dir: Use an existing directory if one exists.
+        :param stacked_on: A url to stack any created branch on, None to follow
+            any target stacking policy.
+        :param stack_on_pwd: If stack_on is relative, the location it is
+            relative to.
+        :param repo_format_name: If non-None, a repository will be
+            made-or-found. Should none be found, or if force_new_repo is True
+            the repo_format_name is used to select the format of repository to
+            create.
+        :param make_working_trees: Control the setting of make_working_trees
+            for a new shared repository when one is made.
+        :param shared_repo: Control whether made repositories are shared or
+            not.
+        :return: repo, bzrdir, require_stacking. repo is None if none was
+            created or found, bzrdir is always valid. require_stacking is the
+            result of examining the stacked_on parameter and any stacking
+            policy found for the target.
+        """
+        # XXX: Refactor the create_prefix/no_create_prefix code into a
+        #      common helper function
+        # The destination may not exist - if so make it according to policy.
+        def make_directory(transport):
+            transport.mkdir('.')
+            return transport
+        def redirected(transport, e, redirection_notice):
+            note(redirection_notice)
+            return transport._redirected_to(e.source, e.target)
+        try:
+            transport = do_catching_redirections(make_directory, transport,
+                redirected)
+        except errors.FileExists:
+            if not use_existing_dir:
+                raise
+        except errors.NoSuchFile:
+            if not create_prefix:
+                raise
+            transport.create_prefix()
+
+        require_stacking = (stacked_on is not None)
+        # Now the target directory exists, but doesn't have a .bzr
+        # directory. So we need to create it, along with any work to create
+        # all of the dependent branches, etc.
+        result = self.initialize_on_transport(transport)
+        if repo_format_name:
+            # A repository is desired, either in-place or shared.
+            repository_policy = result.determine_repository_policy(
+                force_new_repo, stacked_on, stack_on_pwd,
+                require_stacking=require_stacking)
+            result_repo, is_new_repo = repository_policy.acquire_repository(
+                make_working_trees, shared_repo)
+            if not require_stacking and repository_policy._require_stacking:
+                require_stacking = True
+                result._format.require_stacking()
+        else:
+            result_repo = None
+            repository_policy = None
+        return result_repo, result, require_stacking, repository_policy
 
     def _initialize_on_transport_vfs(self, transport):
         """Initialize a new bzrdir using VFS calls.
