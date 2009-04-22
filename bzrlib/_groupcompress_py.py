@@ -150,7 +150,6 @@ class LinesDeltaIndex(object):
         max_pos = len(lines)
         matching = self._matching_lines
         while pos < max_pos:
-            # TODO: is try/except better than get(..., None)?
             try:
                 locations = matching[lines[pos]]
             except KeyError:
@@ -380,7 +379,6 @@ def decode_copy_instruction(bytes, cmd, pos):
 
 def make_delta(source_bytes, target_bytes):
     """Create a delta from source to target."""
-    # TODO: The checks below may not be a the right place yet.
     if type(source_bytes) is not str:
         raise TypeError('source is not a str')
     if type(target_bytes) is not str:
