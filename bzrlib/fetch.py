@@ -32,7 +32,6 @@ from bzrlib import (
     )
 from bzrlib.errors import InstallFailed
 from bzrlib.progress import ProgressPhase
-from bzrlib.repository import _parent_inventories
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tsort import topo_sort
 from bzrlib.trace import mutter
@@ -138,11 +137,8 @@ class RepoFetcher(object):
             resume_tokens, missing_keys = self.sink.insert_stream(
                 stream, from_format, [])
             if self.to_repository._fallback_repositories:
-                # Find all the parent revisions referenced by the stream, but
-                # not present in the stream, and make sure we have their
-                # inventories.
-                missing_keys.update(_parent_inventories(
-                    self.to_repository, search.get_keys()))
+                missing_keys.update(
+                    self._parent_inventories(search.get_keys()))
             if missing_keys:
                 pb.update("Missing keys")
                 stream = source.get_stream_for_missing_keys(missing_keys)
@@ -183,6 +179,18 @@ class RepoFetcher(object):
                 find_ghosts=self.find_ghosts)
         except errors.NoSuchRevision, e:
             raise InstallFailed([self._last_revision])
+
+    def _parent_inventories(self, revision_ids):
+        # Find all the parent revisions referenced by the stream, but
+        # not present in the stream, and make sure we have their
+        # inventories.
+        parent_maps = self.to_repository.get_parent_map(revision_ids)
+        parents = set()
+        map(parents.update, parent_maps.itervalues())
+        parents.discard(NULL_REVISION)
+        parents.difference_update(revision_ids)
+        missing_keys = set(('inventories', rev_id) for rev_id in parents)
+        return missing_keys
 
 
 class Inter1and2Helper(object):

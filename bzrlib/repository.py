@@ -4340,12 +4340,3 @@ class StreamSource(object):
                 key, parent_keys, None, as_bytes)
 
 
-def _parent_inventories(repo, revision_ids):
-    parent_maps = repo.get_parent_map(revision_ids)
-    parents = set()
-    map(parents.update, parent_maps.itervalues())
-    parents.difference_update(revision_ids)
-    parents.discard(_mod_revision.NULL_REVISION)
-    missing_keys = set(('inventories', rev_id) for rev_id in parents)
-    return missing_keys
-
