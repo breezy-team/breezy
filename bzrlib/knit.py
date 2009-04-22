@@ -2845,8 +2845,8 @@ class _KnitGraphIndex(object):
     def get_missing_parents(self):
         """Return the keys of missing parents."""
         # We may have false positives, so filter those out.
-        self._external_parent_refs.discard(
-            self._get_entries(self._external_parent_refs))
+        self._external_parent_refs.difference_update(
+            self.get_parent_map(self._external_parent_refs))
         return frozenset(self._external_parent_refs)
 
     def _check_read(self):
