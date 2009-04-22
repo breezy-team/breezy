@@ -212,21 +212,11 @@ class BzrDir(object):
                 redirected)
         except errors.FileExists:
             if not use_existing_dir:
-                raise errors.BzrCommandError("Target directory %s"
-                     " already exists, but does not have a valid .bzr"
-                     " directory. Supply --use-existing-dir to push"
-                     " there anyway." % transport.base)
+                raise
         except errors.NoSuchFile:
             if not create_prefix:
-                raise errors.BzrCommandError("Parent directory of %s"
-                    " does not exist."
-                    "\nYou may supply --create-prefix to create all"
-                    " leading parent directories."
-                    % transport.base)
+                raise
             transport.create_prefix()
-        except errors.TooManyRedirections:
-            raise errors.BzrCommandError("Too many redirections trying "
-                                         "to make %s." % transport.base)
 
         # Now the target directory exists, but doesn't have a .bzr
         # directory. So we need to create it, along with any work to create
