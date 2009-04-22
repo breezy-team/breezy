@@ -1679,6 +1679,19 @@ class TestGraphIndexKnit(KnitTests):
         self.assertEqual(
             frozenset([('missing-parent',)]), index.get_missing_parents())
 
+    def test_track_external_parent_refs(self):
+        g_index = self.make_g_index('empty', 2, [])
+        combined = CombinedGraphIndex([g_index])
+        index = _KnitGraphIndex(combined, lambda: True, deltas=True,
+            add_callback=self.catch_add, track_external_parent_refs=True)
+        self.caught_entries = []
+        index.add_records([
+            (('new-key',), 'fulltext,no-eol', (None, 50, 60),
+             [('parent-1',), ('parent-2',)])])
+        self.assertEqual(
+            frozenset([('parent-1',), ('parent-2',)]),
+            index.get_missing_parents())
+
     def test_add_unvalidated_index_with_present_external_references(self):
         index = self.two_graph_index(deltas=True)
         # Ugly hack to get at one of the underlying GraphIndex objects that
