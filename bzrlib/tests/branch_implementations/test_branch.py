@@ -929,12 +929,12 @@ class TestReferenceLocation(TestCaseWithBranch):
         self.assertEqual('reference',
                          branch.get_reference_info('file-id')[1])
 
-    def update_references_skips_known_references(self):
+    def test_update_references_skips_known_references(self):
         branch = self.make_branch_with_reference('branch', 'reference')
         new_branch = branch.bzrdir.sprout('branch/new-branch').open_branch()
         new_branch.set_reference_info('file-id', '../foo', '../foo')
         new_branch.update_references(branch)
-        self.assertEqual('../reference',
+        self.assertEqual('reference',
                          branch.get_reference_info('file-id')[1])
 
     def test_pull_updates_references(self):
