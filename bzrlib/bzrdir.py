@@ -178,8 +178,8 @@ class BzrDir(object):
                                        preserve_stacking=preserve_stacking)
 
     def clone_on_transport(self, transport, revision_id=None,
-                           force_new_repo=False, preserve_stacking=False,
-                           stacked_on=None):
+        force_new_repo=False, preserve_stacking=False, stacked_on=None,
+        create_prefix=False, use_existing_dir=False):
         """Clone this bzrdir and its contents to transport verbatim.
 
         :param transport: The transport for the location to produce the clone
@@ -191,8 +191,46 @@ class BzrDir(object):
                                even if one is available.
         :param preserve_stacking: When cloning a stacked branch, stack the
             new branch on top of the other branch's stacked-on branch.
+        :param create_prefix: Create any missing directories leading up to
+            to_transport.
+        :param use_existing_dir: Use an existing directory if one exists.
         """
-        transport.ensure_base()
+        # The destination doesn't exist; create it.
+        # XXX: Refactor the create_prefix/no_create_prefix code into a
+        #      common helper function
+
+        def make_directory(transport):
+            transport.mkdir('.')
+            return transport
+
+        def redirected(transport, e, redirection_notice):
+            note(redirection_notice)
+            return transport._redirected_to(e.source, e.target)
+
+        try:
+            transport = do_catching_redirections(make_directory, transport,
+                redirected)
+        except errors.FileExists:
+            if not use_existing_dir:
+                raise errors.BzrCommandError("Target directory %s"
+                     " already exists, but does not have a valid .bzr"
+                     " directory. Supply --use-existing-dir to push"
+                     " there anyway." % transport.base)
+        except errors.NoSuchFile:
+            if not create_prefix:
+                raise errors.BzrCommandError("Parent directory of %s"
+                    " does not exist."
+                    "\nYou may supply --create-prefix to create all"
+                    " leading parent directories."
+                    % transport.base)
+            transport.create_prefix()
+        except errors.TooManyRedirections:
+            raise errors.BzrCommandError("Too many redirections trying "
+                                         "to make %s." % transport.base)
+
+        # Now the target directory exists, but doesn't have a .bzr
+        # directory. So we need to create it, along with any work to create
+        # all of the dependent branches, etc.
         require_stacking = (stacked_on is not None)
         format = self.cloning_metadir(require_stacking)
         # Bug: We create a metadir without knowing if it can support stacking,
