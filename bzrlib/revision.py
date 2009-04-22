@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 # TODO: Some kind of command-line display of revision properties:
 # perhaps show them in log -v and allow them as options to the commit command.
@@ -21,6 +21,7 @@
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import deprecated_graph
+from bzrlib import bugtracker
 """)
 from bzrlib import (
     errors,
@@ -140,6 +141,20 @@ class Revision(object):
         else:
             return authors.split("\n")
 
+    def iter_bugs(self):
+        """Iterate over the bugs associated with this revision."""
+        bug_property = self.properties.get('bugs', None)
+        if bug_property is None:
+            return
+        for line in bug_property.splitlines():
+            try:
+                url, status = line.split(None, 2)
+            except ValueError:
+                raise errors.InvalidLineInBugsProperty(line)
+            if status not in bugtracker.ALLOWED_BUG_STATUSES:
+                raise errors.InvalidBugStatus(status)
+            yield url, status
+
 
 def iter_ancestors(revision_id, revision_source, only_present=False):
     ancestors = (revision_id,)
@@ -191,7 +206,7 @@ def __get_closest(intersection):
 def is_reserved_id(revision_id):
     """Determine whether a revision id is reserved
 
-    :return: True if the revision is is reserved, False otherwise
+    :return: True if the revision is reserved, False otherwise
     """
     return isinstance(revision_id, basestring) and revision_id.endswith(':')
 

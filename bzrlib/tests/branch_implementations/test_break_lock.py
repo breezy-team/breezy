@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for branch break-lock behaviour."""
 
@@ -81,7 +81,7 @@ class TestBreakLock(TestCaseWithBranch):
         self.assertRaises(errors.LockBroken, self.branch.unlock)
 
     def test_unlocks_master_branch(self):
-        # break_lock when when the master branch is locked should offer to
+        # break_lock when the master branch is locked should offer to
         # unlock it.
         master = self.make_branch('master')
         try:

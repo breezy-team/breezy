@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the Branch facility that are not interface  tests.
 
@@ -151,7 +151,7 @@ class SampleBranchFormat(BranchFormat):
     def is_supported(self):
         return False
 
-    def open(self, transport, _found=False):
+    def open(self, transport, _found=False, ignore_fallbacks=False):
         return "opened branch."
 
 
@@ -334,7 +334,7 @@ class TestBranch7(TestBranch67, TestCaseWithTransport):
         return _mod_branch.BzrBranch7
 
     def get_format_name(self):
-        return "development"
+        return "1.9"
 
     def get_format_name_subtree(self):
         return "development-subtree"
@@ -424,7 +424,8 @@ class TestHooks(TestCase):
     def test_installed_hooks_are_BranchHooks(self):
         """The installed hooks object should be a BranchHooks."""
         # the installed hooks are saved in self._preserved_hooks.
-        self.assertIsInstance(self._preserved_hooks[_mod_branch.Branch], BranchHooks)
+        self.assertIsInstance(self._preserved_hooks[_mod_branch.Branch][1],
+            BranchHooks)
 
 
 class TestPullResult(TestCase):
@@ -470,6 +471,7 @@ class TestRunWithWriteLockedTarget(TestCase):
     """Tests for _run_with_write_locked_target."""
 
     def setUp(self):
+        TestCase.setUp(self)
         self._calls = []
 
     def func_that_returns_ok(self):

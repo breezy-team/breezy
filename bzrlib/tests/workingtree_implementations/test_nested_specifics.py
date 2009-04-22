@@ -13,20 +13,25 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
+from bzrlib.tests import TestNotApplicable
 from bzrlib.transform import TreeTransform
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 
 
 class TestNestedSupport(TestCaseWithWorkingTree):
 
+    def make_branch_and_tree(self, path):
+        tree = TestCaseWithWorkingTree.make_branch_and_tree(self, path)
+        if not tree.supports_tree_reference():
+            raise TestNotApplicable('Tree references not supported')
+        return tree
+
     def test_set_get_tree_reference(self):
         """This tests that setting a tree reference is persistent."""
         tree = self.make_branch_and_tree('.')
-        if not tree.supports_tree_reference():
-            return
         transform = TreeTransform(tree)
         trans_id = transform.new_directory('reference', transform.root,
             'subtree-id')
@@ -40,10 +45,26 @@ class TestNestedSupport(TestCaseWithWorkingTree):
 
     def test_extract_while_locked(self):
         tree = self.make_branch_and_tree('.')
-        if not tree.supports_tree_reference():
-            return
         tree.lock_write()
         self.addCleanup(tree.unlock)
         self.build_tree(['subtree/'])
         tree.add(['subtree'], ['subtree-id'])
         subtree = tree.extract('subtree-id')
+
+    def prepare_with_subtree(self):
+        tree = self.make_branch_and_tree('.')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        subtree = self.make_branch_and_tree('subtree')
+        tree.add(['subtree'], ['subtree-id'])
+        return tree
+
+    def test_kind_does_not_autodetect_subtree(self):
+        tree = self.prepare_with_subtree()
+        self.assertEqual('directory', tree.kind('subtree-id'))
+
+    def test_comparison_data_does_not_autodetect_subtree(self):
+        tree = self.prepare_with_subtree()
+        entry = tree.iter_entries_by_dir(['subtree-id']).next()[1]
+        self.assertEqual('directory',
+                         tree._comparison_data(entry, 'subtree')[0])

@@ -13,7 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for interface conformance of 'workingtree.put_mkdir'"""
 
@@ -24,11 +24,15 @@ class TestMkdir(TestCaseWithWorkingTree):
 
     def test_mkdir_no_id(self):
         t = self.make_branch_and_tree('t1')
+        t.lock_write()
+        self.addCleanup(t.unlock)
         file_id = t.mkdir('path')
         self.assertEqual('directory', t.kind(file_id))
 
     def test_mkdir_with_id(self):
         t = self.make_branch_and_tree('t1')
+        t.lock_write()
+        self.addCleanup(t.unlock)
         file_id = t.mkdir('path', 'my-id')
         self.assertEqual('my-id', file_id)
         self.assertEqual('directory', t.kind(file_id))

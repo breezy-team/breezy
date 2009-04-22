@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from cStringIO import StringIO
 import errno
@@ -23,6 +23,7 @@ from bzrlib import (
     commands,
     config,
     errors,
+    option,
     tests,
     )
 from bzrlib.commands import display_command
@@ -59,6 +60,23 @@ class TestCommands(tests.TestCase):
             raise TestSkipped("optparse 1.5.3 can't handle unicode options")
         self.assertRaises(errors.BzrCommandError,
                           commands.run_bzr, ['log', u'--option\xb5'])
+
+    @staticmethod
+    def get_command(options):
+        class cmd_foo(commands.Command):
+            'Bar'
+
+            takes_options = options
+
+        return cmd_foo()
+
+    def test_help_hidden(self):
+        c = self.get_command([option.Option('foo', hidden=True)])
+        self.assertNotContainsRe(c.get_help_text(), '--foo')
+
+    def test_help_not_hidden(self):
+        c = self.get_command([option.Option('foo', hidden=False)])
+        self.assertContainsRe(c.get_help_text(), '--foo')
 
 
 class TestGetAlias(tests.TestCase):
@@ -140,6 +158,7 @@ class TestSeeAlso(tests.TestCase):
 class TestRegisterLazy(tests.TestCase):
 
     def setUp(self):
+        tests.TestCase.setUp(self)
         import bzrlib.tests.fake_command
         del sys.modules['bzrlib.tests.fake_command']
         global lazy_command_imported

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Utility for create branches with particular contents."""
 
@@ -56,7 +56,7 @@ class BranchBuilder(object):
         a series in progress, it should be None.
     """
 
-    def __init__(self, transport, format=None):
+    def __init__(self, transport=None, format=None, branch=None):
         """Construct a BranchBuilder on transport.
 
         :param transport: The transport the branch should be created on.
@@ -64,15 +64,26 @@ class BranchBuilder(object):
             it will be created.
         :param format: Either a BzrDirFormat, or the name of a format in the
             bzrdir format registry for the branch to be built.
+        :param branch: An already constructed branch to use.  This param is
+            mutually exclusive with the transport and format params.
         """
-        if not transport.has('.'):
-            transport.mkdir('.')
-        if format is None:
-            format = 'default'
-        if isinstance(format, str):
-            format = bzrdir.format_registry.make_bzrdir(format)
-        self._branch = bzrdir.BzrDir.create_branch_convenience(transport.base,
-            format=format, force_new_tree=False)
+        if branch is not None:
+            if format is not None:
+                raise AssertionError(
+                    "branch and format kwargs are mutually exclusive")
+            if transport is not None:
+                raise AssertionError(
+                    "branch and transport kwargs are mutually exclusive")
+            self._branch = branch
+        else:
+            if not transport.has('.'):
+                transport.mkdir('.')
+            if format is None:
+                format = 'default'
+            if isinstance(format, str):
+                format = bzrdir.format_registry.make_bzrdir(format)
+            self._branch = bzrdir.BzrDir.create_branch_convenience(
+                transport.base, format=format, force_new_tree=False)
         self._tree = None
 
     def build_commit(self, **commit_kwargs):

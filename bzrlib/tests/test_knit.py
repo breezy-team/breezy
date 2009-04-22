@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for Knit data structure"""
 
@@ -368,25 +368,23 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         """
         tree = self.make_branch_and_memory_tree('tree')
         tree.lock_write()
-        try:
-            tree.add([''], ['root-id'])
-            tree.commit('one', rev_id='rev-1')
-            tree.commit('two', rev_id='rev-2')
-            tree.commit('three', rev_id='rev-3')
-            # Pack these two revisions into another pack file, but don't remove
-            # the originials
-            repo = tree.branch.repository
-            collection = repo._pack_collection
-            collection.ensure_loaded()
-            orig_packs = collection.packs
-            packer = pack_repo.Packer(collection, orig_packs, '.testpack')
-            new_pack = packer.pack()
-
-            vf = tree.branch.repository.revisions
-        finally:
-            tree.unlock()
-        tree.branch.repository.lock_read()
         self.addCleanup(tree.branch.repository.unlock)
+        tree.add([''], ['root-id'])
+        tree.commit('one', rev_id='rev-1')
+        tree.commit('two', rev_id='rev-2')
+        tree.commit('three', rev_id='rev-3')
+        # Pack these three revisions into another pack file, but don't remove
+        # the originals
+        repo = tree.branch.repository
+        collection = repo._pack_collection
+        collection.ensure_loaded()
+        orig_packs = collection.packs
+        packer = pack_repo.Packer(collection, orig_packs, '.testpack')
+        new_pack = packer.pack()
+        # forget about the new pack
+        collection.reset()
+        repo.refresh_data()
+        vf = tree.branch.repository.revisions
         del tree
         # Set up a reload() function that switches to using the new pack file
         new_index = new_pack.revision_index

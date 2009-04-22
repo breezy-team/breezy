@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the urlutils wrapper."""
 
@@ -496,6 +496,9 @@ class TestUrlToPath(TestCase):
         self.assertEqual('%25', urlutils.escape('%'))
         self.assertEqual('%C3%A5', urlutils.escape(u'\xe5'))
         self.assertFalse(isinstance(urlutils.escape(u'\xe5'), unicode))
+
+    def test_escape_tildes(self):
+        self.assertEqual('~foo', urlutils.escape('~foo'))
 
     def test_unescape(self):
         self.assertEqual('%', urlutils.unescape('%25'))

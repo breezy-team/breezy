@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the osutils wrapper."""
 
@@ -74,6 +74,7 @@ class TestTerminalEncoding(TestCase):
     """Test the auto-detection of proper terminal encoding."""
 
     def setUp(self):
+        TestCase.setUp(self)
         self._stdout = sys.stdout
         self._stderr = sys.stderr
         self._stdin = sys.stdin
@@ -156,6 +157,7 @@ class TestUserEncoding(TestCase):
     """Test detection of default user encoding."""
 
     def setUp(self):
+        TestCase.setUp(self)
         self._stderr = sys.stderr
         self._getpreferredencoding = locale.getpreferredencoding
         self.addCleanup(self._reset)

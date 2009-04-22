@@ -224,7 +224,7 @@ command_classes['build_ext'] = build_ext_if_possible
 unavailable_files = []
 
 
-def add_pyrex_extension(module_name, libraries=None):
+def add_pyrex_extension(module_name, libraries=None, extra_source=[]):
     """Add a pyrex module to build.
 
     This will use Pyrex to auto-generate the .c file if it is available.
@@ -247,19 +247,24 @@ def add_pyrex_extension(module_name, libraries=None):
         # right value.
         define_macros.append(('WIN32', None))
     if have_pyrex:
-        ext_modules.append(Extension(module_name, [pyrex_name],
-            define_macros=define_macros, libraries=libraries))
+        source = [pyrex_name]
     else:
         if not os.path.isfile(c_name):
             unavailable_files.append(c_name)
+            return
         else:
-            ext_modules.append(Extension(module_name, [c_name],
-                define_macros=define_macros, libraries=libraries))
+            source = [c_name]
+    source.extend(extra_source)
+    ext_modules.append(Extension(module_name, source,
+        define_macros=define_macros, libraries=libraries))
 
 
 add_pyrex_extension('bzrlib._btree_serializer_c')
+add_pyrex_extension('bzrlib._groupcompress_pyx',
+                    extra_source=['bzrlib/diff-delta.c'])
 add_pyrex_extension('bzrlib._chunks_to_lines_pyx')
 add_pyrex_extension('bzrlib._knit_load_data_c')
+add_pyrex_extension('bzrlib._chk_map_pyx', libraries=['z'])
 if sys.platform == 'win32':
     add_pyrex_extension('bzrlib._dirstate_helpers_c',
                         libraries=['Ws2_32'])

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the view command"""
 
@@ -26,7 +26,7 @@ class TestViewUI(TestCaseWithTransport):
     def make_branch_and_tree(self):
         # we need to use a specific format because the default format
         # doesn't support views yet
-        format = bzrdir.format_registry.make_bzrdir('development-wt5')
+        format = bzrdir.format_registry.make_bzrdir('development6-rich-root')
         return TestCaseWithTransport.make_branch_and_tree(self, '.',
             format=format)
 

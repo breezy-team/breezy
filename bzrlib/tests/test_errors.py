@@ -14,7 +14,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the formatting and construction of errors."""
 
@@ -404,7 +404,8 @@ class TestErrors(TestCaseWithTransport):
         """Test the formatting of MalformedBugIdentifier."""
         error = errors.MalformedBugIdentifier('bogus', 'reason for bogosity')
         self.assertEqual(
-            "Did not understand bug identifier bogus: reason for bogosity",
+            'Did not understand bug identifier bogus: reason for bogosity. '
+            'See "bzr help bugs" for more information on this feature.',
             str(error))
 
     def test_unknown_bug_tracker_abbreviation(self):

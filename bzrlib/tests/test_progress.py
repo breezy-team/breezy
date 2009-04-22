@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
 from StringIO import StringIO
@@ -58,6 +58,7 @@ class _NonTTYStringIO(StringIO):
 class TestProgress(TestCase):
 
     def setUp(self):
+        TestCase.setUp(self)
         q = DummyProgress()
         self.top = ChildProgress(_stack=FakeStack(q))
 

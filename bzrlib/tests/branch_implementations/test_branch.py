@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for branch implementations - tests a branch format."""
 
@@ -752,3 +752,25 @@ class TestStrict(TestCaseWithBranch):
         tree3.merge_from_branch(tree2.branch)
         tree3.commit('empty commit 6')
         tree2.pull(tree3.branch)
+
+
+class TestIgnoreFallbacksParameter(TestCaseWithBranch):
+
+    def make_branch_with_fallback(self):
+        fallback = self.make_branch('fallback')
+        if not fallback._format.supports_stacking():
+            raise tests.TestNotApplicable("format does not support stacking")
+        stacked = self.make_branch('stacked')
+        stacked.set_stacked_on_url(fallback.base)
+        return stacked
+
+    def test_fallbacks_not_opened(self):
+        stacked = self.make_branch_with_fallback()
+        self.get_transport('').rename('fallback', 'moved')
+        reopened = stacked.bzrdir.open_branch(ignore_fallbacks=True)
+        self.assertEqual([], reopened.repository._fallback_repositories)
+        
+    def test_fallbacks_are_opened(self):
+        stacked = self.make_branch_with_fallback()
+        reopened = stacked.bzrdir.open_branch(ignore_fallbacks=False)
+        self.assertLength(1, reopened.repository._fallback_repositories)

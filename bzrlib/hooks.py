@@ -12,12 +12,13 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Support for plugin hooking logic."""
+from bzrlib import registry
 from bzrlib.lazy_import import lazy_import
-from bzrlib.symbol_versioning import deprecated_method, one_five
+from bzrlib.symbol_versioning import deprecated_method
 lazy_import(globals(), """
 import textwrap
 
@@ -25,7 +26,61 @@ from bzrlib import (
         _format_version_tuple,
         errors,
         )
+from bzrlib.help_topics import help_as_plain_text
 """)
+
+
+known_hooks = registry.Registry()
+# known_hooks registry contains
+# tuple of (module, member name) which is the hook point
+# module where the specific hooks are defined
+# callable to get the empty specific Hooks for that attribute
+known_hooks.register_lazy(('bzrlib.branch', 'Branch.hooks'), 'bzrlib.branch',
+    'BranchHooks')
+known_hooks.register_lazy(('bzrlib.bzrdir', 'BzrDir.hooks'), 'bzrlib.bzrdir',
+    'BzrDirHooks')
+known_hooks.register_lazy(('bzrlib.commands', 'Command.hooks'),
+    'bzrlib.commands', 'CommandHooks')
+known_hooks.register_lazy(('bzrlib.lock', 'Lock.hooks'), 'bzrlib.lock',
+    'LockHooks')
+known_hooks.register_lazy(('bzrlib.msgeditor', 'hooks'), 'bzrlib.msgeditor',
+    'MessageEditorHooks')
+known_hooks.register_lazy(('bzrlib.mutabletree', 'MutableTree.hooks'),
+    'bzrlib.mutabletree', 'MutableTreeHooks')
+known_hooks.register_lazy(('bzrlib.smart.client', '_SmartClient.hooks'),
+    'bzrlib.smart.client', 'SmartClientHooks')
+known_hooks.register_lazy(('bzrlib.smart.server', 'SmartTCPServer.hooks'),
+    'bzrlib.smart.server', 'SmartServerHooks')
+known_hooks.register_lazy(
+    ('bzrlib.version_info_formats.format_rio', 'RioVersionInfoBuilder.hooks'),
+    'bzrlib.version_info_formats.format_rio', 'RioVersionInfoBuilderHooks')
+
+
+def known_hooks_key_to_object((module_name, member_name)):
+    """Convert a known_hooks key to a object.
+
+    :param key: A tuple (module_name, member_name) as found in the keys of
+        the known_hooks registry.
+    :return: The object this specifies.
+    """
+    return registry._LazyObjectGetter(module_name, member_name).get_obj()
+
+
+def known_hooks_key_to_parent_and_attribute((module_name, member_name)):
+    """Convert a known_hooks key to a object.
+
+    :param key: A tuple (module_name, member_name) as found in the keys of
+        the known_hooks registry.
+    :return: The object this specifies.
+    """
+    member_list = member_name.rsplit('.', 1)
+    if len(member_list) == 2:
+        parent_name, attribute = member_list
+    else:
+        parent_name = None
+        attribute = member_name
+    parent = known_hooks_key_to_object((module_name, parent_name))
+    return parent, attribute
 
 
 class Hooks(dict):
@@ -57,6 +112,10 @@ class Hooks(dict):
         """
         hook_names = sorted(self.keys())
         hook_docs = []
+        name = self.__class__.__name__
+        hook_docs.append(name)
+        hook_docs.append("-"*len(name))
+        hook_docs.append("")
         for hook_name in hook_names:
             hook = self[hook_name]
             try:
@@ -65,10 +124,10 @@ class Hooks(dict):
                 # legacy hook
                 strings = []
                 strings.append(hook_name)
-                strings.append("-" * len(hook_name))
+                strings.append("~" * len(hook_name))
                 strings.append("")
                 strings.append("An old-style hook. For documentation see the __init__ "
-                    "method of '%s'\n" % (self.__class__.__name__,))
+                    "method of '%s'\n" % (name,))
                 hook_docs.extend(strings)
         return "\n".join(hook_docs)
 
@@ -81,18 +140,6 @@ class Hooks(dict):
         intended for debugging.
         """
         return self._callable_names.get(a_callable, "No hook name")
-
-    @deprecated_method(one_five)
-    def install_hook(self, hook_name, a_callable):
-        """Install a_callable in to the hook hook_name.
-
-        :param hook_name: A hook name. See the __init__ method of BranchHooks
-            for the complete list of hooks.
-        :param a_callable: The callable to be invoked when the hook triggers.
-            The exact signature will depend on the hook - see the __init__
-            method of BranchHooks for details on each hook.
-        """
-        self.install_named_hook(hook_name, a_callable, None)
 
     def install_named_hook(self, hook_name, a_callable, name):
         """Install a_callable in to the hook hook_name, and label it name.
@@ -158,7 +205,7 @@ class HookPoint(object):
         """
         strings = []
         strings.append(self.name)
-        strings.append('-'*len(self.name))
+        strings.append('~'*len(self.name))
         strings.append('')
         if self.introduced:
             introduced_string = _format_version_tuple(self.introduced)
@@ -175,6 +222,10 @@ class HookPoint(object):
         strings.append('')
         return '\n'.join(strings)
 
+    def __eq__(self, other):
+        return (type(other) == type(self) and 
+            other.__dict__ == self.__dict__)
+
     def hook(self, callback, callback_label):
         """Register a callback to be called when this HookPoint fires.
 
@@ -183,10 +234,14 @@ class HookPoint(object):
             processing.
         """
         self._callbacks.append(callback)
-        self._callback_names[callback] = callback_label
+        if callback_label is not None:
+            self._callback_names[callback] = callback_label
 
     def __iter__(self):
         return iter(self._callbacks)
+
+    def __len__(self):
+        return len(self._callbacks)
 
     def __repr__(self):
         strings = []
@@ -202,3 +257,46 @@ class HookPoint(object):
             strings[-1] = ")"
         strings.append("]>")
         return ''.join(strings)
+
+
+_help_prefix = \
+"""
+Hooks
+=====
+
+Introduction
+------------
+
+A hook of type *xxx* of class *yyy* needs to be registered using::
+
+  yyy.hooks.install_named_hook("xxx", ...)
+
+See `Using hooks`_ in the User Guide for examples.
+
+.. _Using hooks: ../user-guide/index.html#using-hooks
+
+The class that contains each hook is given before the hooks it supplies. For
+instance, BranchHooks as the class is the hooks class for
+`bzrlib.branch.Branch.hooks`.
+
+Each description also indicates whether the hook runs on the client (the
+machine where bzr was invoked) or the server (the machine addressed by
+the branch URL).  These may be, but are not necessarily, the same machine.
+
+Plugins (including hooks) are run on the server if all of these is true:
+
+  * The connection is via a smart server (accessed with a URL starting with
+    "bzr://", "bzr+ssh://" or "bzr+http://", or accessed via a "http://"
+    URL when a smart server is available via HTTP).
+
+  * The hook is either server specific or part of general infrastructure rather
+    than client specific code (such as commit).
+
+"""
+
+def hooks_help_text(topic):
+    segments = [_help_prefix]
+    for hook_key in sorted(known_hooks.keys()):
+        hooks = known_hooks_key_to_object(hook_key)
+        segments.append(hooks.docs())
+    return '\n'.join(segments)

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for commands related to hooks"""
 
@@ -25,7 +25,7 @@ class TestHooks(TestCaseWithTransport):
     def _check_hooks_output(self, command_output, hooks):
         for hook_type in Branch.hooks:
             s = "\n  ".join(hooks.get(hook_type, ["<no hooks installed>"]))
-            self.assert_("%s:\n  %s" % (hook_type, s) in command_output)
+            self.assert_("%s:\n    %s" % (hook_type, s) in command_output)
 
     def test_hooks_with_no_hooks(self):
         self.make_branch('.')
@@ -50,4 +50,4 @@ class TestHooks(TestCaseWithTransport):
         self._check_hooks_output(out, {'set_rh': [name]})
 
     def test_hooks_no_branch(self):
-        self.run_bzr('hooks', retcode=3)
+        self.run_bzr('hooks')

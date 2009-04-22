@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Transport is an abstraction layer to handle file access.
 
@@ -50,7 +50,6 @@ from bzrlib.symbol_versioning import (
         deprecated_method,
         deprecated_function,
         DEPRECATED_PARAMETER,
-        one_four,
         )
 from bzrlib.trace import (
     mutter,
@@ -587,30 +586,8 @@ class Transport(object):
         finally:
             f.close()
 
-    @deprecated_method(one_four)
-    def get_smart_client(self):
-        """Return a smart client for this transport if possible.
-
-        A smart client doesn't imply the presence of a smart server: it implies
-        that the smart protocol can be tunnelled via this transport.
-
-        :raises NoSmartServer: if no smart server client is available.
-        """
-        raise errors.NoSmartServer(self.base)
-
     def get_smart_medium(self):
         """Return a smart client medium for this transport if possible.
-
-        A smart medium doesn't imply the presence of a smart server: it implies
-        that the smart protocol can be tunnelled via this transport.
-
-        :raises NoSmartMedium: if no smart server medium is available.
-        """
-        raise errors.NoSmartMedium(self)
-
-    @deprecated_method(one_four)
-    def get_shared_medium(self):
-        """Return a smart client shared medium for this transport if possible.
 
         A smart medium doesn't imply the presence of a smart server: it implies
         that the smart protocol can be tunnelled via this transport.
@@ -1787,24 +1764,32 @@ register_lazy_transport('ftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 register_transport_proto('aftp://', help="Access using active FTP.")
 register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 
-# Default to trying GSSAPI authentication (if the kerberos module is available)
-register_transport_proto('ftp+gssapi://', register_netloc=True)
-register_lazy_transport('ftp+gssapi://', 'bzrlib.transport.ftp._gssapi',
-                        'GSSAPIFtpTransport')
-register_transport_proto('aftp+gssapi://', register_netloc=True)
-register_lazy_transport('aftp+gssapi://', 'bzrlib.transport.ftp._gssapi',
-                        'GSSAPIFtpTransport')
-register_transport_proto('ftp+nogssapi://', register_netloc=True)
-register_transport_proto('aftp+nogssapi://', register_netloc=True)
+try:
+    import kerberos
+    kerberos_available = True
+except ImportError:
+    kerberos_available = False
 
-register_lazy_transport('ftp://', 'bzrlib.transport.ftp._gssapi',
-                        'GSSAPIFtpTransport')
-register_lazy_transport('aftp://', 'bzrlib.transport.ftp._gssapi',
-                        'GSSAPIFtpTransport')
-register_lazy_transport('ftp+nogssapi://', 'bzrlib.transport.ftp',
-                        'FtpTransport')
-register_lazy_transport('aftp+nogssapi://', 'bzrlib.transport.ftp',
-                        'FtpTransport')
+if kerberos_available:
+    # Default to trying GSSAPI authentication (if the kerberos module is
+    # available)
+    register_transport_proto('ftp+gssapi://', register_netloc=True)
+    register_lazy_transport('ftp+gssapi://', 'bzrlib.transport.ftp._gssapi',
+                            'GSSAPIFtpTransport')
+    register_transport_proto('aftp+gssapi://', register_netloc=True)
+    register_lazy_transport('aftp+gssapi://', 'bzrlib.transport.ftp._gssapi',
+                            'GSSAPIFtpTransport')
+    register_transport_proto('ftp+nogssapi://', register_netloc=True)
+    register_transport_proto('aftp+nogssapi://', register_netloc=True)
+
+    register_lazy_transport('ftp://', 'bzrlib.transport.ftp._gssapi',
+                            'GSSAPIFtpTransport')
+    register_lazy_transport('aftp://', 'bzrlib.transport.ftp._gssapi',
+                            'GSSAPIFtpTransport')
+    register_lazy_transport('ftp+nogssapi://', 'bzrlib.transport.ftp',
+                            'FtpTransport')
+    register_lazy_transport('aftp+nogssapi://', 'bzrlib.transport.ftp',
+                            'FtpTransport')
 
 register_transport_proto('memory://')
 register_lazy_transport('memory://', 'bzrlib.transport.memory',
