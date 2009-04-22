@@ -182,7 +182,7 @@ class RepoFetcher(object):
 
     def _parent_inventories(self, revision_ids):
         # Find all the parent revisions referenced by the stream, but
-        # not present in the stream, and make sure we have their
+        # not present in the stream, and make sure we send their
         # inventories.
         parent_maps = self.to_repository.get_parent_map(revision_ids)
         parents = set()
