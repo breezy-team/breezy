@@ -58,6 +58,12 @@ keyword templating (via the bzr-keywords plugin) and generic content filtering.
 End-of-line conversion is now supported for formats supporting content
 filtering.
 
+Changes from RC2 to final
+*************************
+
+* Fix a bug in the pure-python ``GroupCompress`` code when handling copies
+  longer than 64KiB. (John Arbash Meinel, #364900)
+
 Changes from RC1 to RC2
 ***********************
 
