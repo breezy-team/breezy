@@ -205,7 +205,7 @@ class LinesDeltaIndex(object):
         # The data stream allows >64kB in a copy, but to match the compiled
         # code, we will also limit it to a 64kB copy
         for start_byte in xrange(first_byte, stop_byte, 64*1024):
-            num_bytes = min(64*1024, stop_byte - first_byte)
+            num_bytes = min(64*1024, stop_byte - start_byte)
             copy_bytes = encode_copy_instruction(start_byte, num_bytes)
             out_lines.append(copy_bytes)
             index_lines.append(False)
@@ -271,9 +271,7 @@ def encode_copy_instruction(offset, length):
             copy_bytes.append(chr(base_byte))
         offset >>= 8
     if length is None:
-        # None is used by the test suite
-        copy_bytes[0] = chr(copy_command)
-        return ''.join(copy_bytes)
+        raise ValueError("cannot supply a length of None")
     if length > 0x10000:
         raise ValueError("we don't emit copy records for lengths > 64KiB")
     if length == 0:
