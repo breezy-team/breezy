@@ -46,6 +46,14 @@ from bzrlib.plugins.git.errors import (
     NoSuchRef,
     )
 
+try:
+    from bzrlib.foreign import ForeignBranch
+except ImportError:
+    class ForeignBranch(branch.Branch):
+        def __init__(self, mapping):
+            self.mapping = mapping
+            super(ForeignBranch, self).__init__()
+
 
 class GitPullResult(branch.PullResult):
 
@@ -104,7 +112,7 @@ class GitBranchFormat(branch.BranchFormat):
             return LocalGitTagDict(branch)
 
 
-class GitBranch(foreign.ForeignBranch):
+class GitBranch(ForeignBranch):
     """An adapter to git repositories for bzr Branch objects."""
 
     def __init__(self, bzrdir, repository, name, head, lockfiles):

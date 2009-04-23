@@ -64,7 +64,7 @@ else:
 __version__ = version_string
 
 MINIMUM_DULWICH_VERSION = (0, 1, 1)
-COMPATIBLE_BZR_VERSIONS = [(1, 15, 0)]
+COMPATIBLE_BZR_VERSIONS = [(1, 14, 0), (1, 15, 0)]
 
 if getattr(sys, "frozen", None):
     # allow import additional libs from ./_lib for bzr.exe only
@@ -257,8 +257,9 @@ def update_stanza(rev, stanza):
         stanza.add("git-commit", rev.foreign_revid)
 
 
-RioVersionInfoBuilder.hooks.install_named_hook('revision',
-    update_stanza, None)
+rio_hooks = getattr(RioVersionInfoBuilder, "hooks", None)
+if rio_hooks is not None:
+    rio_hooks.install_named_hook('revision', update_stanza, None)
 
 def get_rich_root_format(stacked=False):
     if stacked:
