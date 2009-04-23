@@ -58,6 +58,11 @@ class TestReconfigure(tests.TestCaseWithTransport):
         checkout = branch.create_checkout('checkout', lightweight=True)
         self.run_bzr('reconfigure --checkout checkout')
 
+    def test_lightweight_checkout_to_tree(self):
+        branch = self.make_branch('branch')
+        checkout = branch.create_checkout('checkout', lightweight=True)
+        self.run_bzr('reconfigure --tree checkout')
+
     def test_no_args(self):
         branch = self.make_branch('branch')
         self.run_bzr_error(['No target configuration specified'],
@@ -154,3 +159,26 @@ class TestReconfigure(tests.TestCaseWithTransport):
 
     def test_shared_rich_root_pack_to_standalone(self):
         self.test_shared_format_to_standalone('rich-root-pack')
+
+    def test_lightweight_format_checkout_to_tree(self, format=None):
+        branch = self.make_branch('branch', format=format)
+        checkout = branch.create_checkout('checkout', lightweight=True)
+        tree = workingtree.WorkingTree.open('checkout')
+        self.build_tree_contents([('checkout/file', 'foo\n')]);
+        tree.add(['file'])
+        tree.commit('added file')
+        self.run_bzr('reconfigure --tree', working_dir='checkout')
+        tree = workingtree.WorkingTree.open('checkout')
+        self.build_tree_contents([('checkout/file', 'bar\n')]);
+        self.check_file_contents('checkout/file', 'bar\n')
+        self.run_bzr('revert', working_dir='checkout')
+        self.check_file_contents('checkout/file', 'foo\n')
+
+    def test_lightweight_knit_checkout_to_tree(self, format=None):
+        self.test_lightweight_format_checkout_to_tree('knit')
+
+    def test_lightweight_pack092_checkout_to_tree(self, format=None):
+        self.test_lightweight_format_checkout_to_tree('pack-0.92')
+
+    def test_lightweight_rich_root_pack_checkout_to_tree(self, format=None):
+        self.test_lightweight_format_checkout_to_tree('rich-root-pack')
