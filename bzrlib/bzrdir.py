@@ -44,6 +44,7 @@ from bzrlib import (
     lockdir,
     osutils,
     remote,
+    repository,
     revision as _mod_revision,
     ui,
     urlutils,
@@ -1824,6 +1825,10 @@ class BzrDirFormat(object):
     def initialize(self, url, possible_transports=None):
         """Create a bzr control dir at this url and return an opened copy.
 
+        While not deprecated, this method is very specific and its use will
+        lead to many round trips to setup a working environment. See
+        initialize_on_transport_ex for a [nearly] all-in-one method.
+
         Subclasses should typically override initialize_on_transport
         instead of this method.
         """
@@ -1850,7 +1855,7 @@ class BzrDirFormat(object):
 
     def initialize_on_transport_ex(self, transport, use_existing_dir=False,
         create_prefix=False, force_new_repo=False, stacked_on=None,
-        stack_on_pwd=None, repo_format_name=None, make_working_trees=False,
+        stack_on_pwd=None, repo_format_name=None, make_working_trees=None,
         shared_repo=False):
         """Create this format on transport.
 
@@ -1868,13 +1873,14 @@ class BzrDirFormat(object):
             the repo_format_name is used to select the format of repository to
             create.
         :param make_working_trees: Control the setting of make_working_trees
-            for a new shared repository when one is made.
+            for a new shared repository when one is made. None to use whatever
+            default the format has.
         :param shared_repo: Control whether made repositories are shared or
             not.
-        :return: repo, bzrdir, require_stacking. repo is None if none was
-            created or found, bzrdir is always valid. require_stacking is the
-            result of examining the stacked_on parameter and any stacking
-            policy found for the target.
+        :return: repo, bzrdir, require_stacking, repository_policy. repo is
+            None if none was created or found, bzrdir is always valid.
+            require_stacking is the result of examining the stacked_on
+            parameter and any stacking policy found for the target.
         """
         # XXX: Refactor the create_prefix/no_create_prefix code into a
         #      common helper function
@@ -1900,8 +1906,16 @@ class BzrDirFormat(object):
         # Now the target directory exists, but doesn't have a .bzr
         # directory. So we need to create it, along with any work to create
         # all of the dependent branches, etc.
+
         result = self.initialize_on_transport(transport)
         if repo_format_name:
+            try:
+                # use a custom format
+                result._format.repository_format = \
+                    repository.network_format_registry.get(repo_format_name)
+            except AttributeError:
+                # The format didn't permit it to be set.
+                pass
             # A repository is desired, either in-place or shared.
             repository_policy = result.determine_repository_policy(
                 force_new_repo, stacked_on, stack_on_pwd,
@@ -2133,7 +2147,32 @@ class BzrDirFormat4(BzrDirFormat):
     repository_format = property(__return_repository_format)
 
 
-class BzrDirFormat5(BzrDirFormat):
+class BzrDirFormatAllInOne(BzrDirFormat):
+    """Common class for formats before meta-dirs."""
+
+    def initialize_on_transport_ex(self, transport, use_existing_dir=False,
+        create_prefix=False, force_new_repo=False, stacked_on=None,
+        stack_on_pwd=None, repo_format_name=None, make_working_trees=None,
+        shared_repo=False):
+        """See BzrDirFormat.initialize_on_transport_ex."""
+        require_stacking = (stacked_on is not None)
+        # Format 5 cannot stack, but we've been asked do - actually init
+        # a Meta1Dir
+        if require_stacking:
+            format = BzrDirMetaFormat1()
+            return format.initialize_on_transport_ex(transport,
+                use_existing_dir=use_existing_dir, create_prefix=create_prefix,
+                force_new_repo=force_new_repo, stacked_on=stacked_on,
+                stack_on_pwd=stack_on_pwd, repo_format_name=repo_format_name,
+                make_working_trees=make_working_trees, shared_repo=shared_repo)
+        return BzrDirFormat.initialize_on_transport_ex(self, transport,
+            use_existing_dir=use_existing_dir, create_prefix=create_prefix,
+            force_new_repo=force_new_repo, stacked_on=stacked_on,
+            stack_on_pwd=stack_on_pwd, repo_format_name=repo_format_name,
+            make_working_trees=make_working_trees, shared_repo=shared_repo)
+
+
+class BzrDirFormat5(BzrDirFormatAllInOne):
     """Bzr control format 5.
 
     This format is a combined format for working tree, branch and repository.
@@ -2194,7 +2233,7 @@ class BzrDirFormat5(BzrDirFormat):
     repository_format = property(__return_repository_format)
 
 
-class BzrDirFormat6(BzrDirFormat):
+class BzrDirFormat6(BzrDirFormatAllInOne):
     """Bzr control format 6.
 
     This format is a combined format for working tree, branch and repository.
