@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Test directory service implementation"""
 
@@ -20,6 +20,7 @@ from bzrlib import errors
 from bzrlib.directory_service import DirectoryServiceRegistry, directories
 from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.transport import get_transport
+from bzrlib import urlutils
 
 
 class FooService(object):
@@ -82,6 +83,11 @@ class TestAliasDirectory(TestCaseWithTransport):
     def test_lookup_this(self):
         branch = self.make_branch('.')
         self.assertEqual(branch.base, directories.dereference(':this'))
+
+    def test_extra_path(self):
+        branch = self.make_branch('.')
+        self.assertEqual(urlutils.join(branch.base, 'arg'),
+                         directories.dereference(':this/arg'))
 
     def test_lookup_badname(self):
         branch = self.make_branch('.')

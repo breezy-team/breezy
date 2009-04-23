@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 from StringIO import StringIO
@@ -566,5 +566,8 @@ class MergeDirectiveFormatRegistry(registry.Registry):
 _format_registry = MergeDirectiveFormatRegistry()
 _format_registry.register(MergeDirective)
 _format_registry.register(MergeDirective2)
+# 0.19 never existed.  It got renamed to 0.90.  But by that point, there were
+# already merge directives in the wild that used 0.19. Registering with the old
+# format string to retain compatibility with those merge directives.
 _format_registry.register(MergeDirective2,
                           'Bazaar merge directive format 2 (Bazaar 0.19)')

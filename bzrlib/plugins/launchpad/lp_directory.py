@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Directory lookup that uses Launchpad."""
@@ -90,17 +90,14 @@ class LaunchpadDirectory(object):
                                               fragment):
                 # Only accept launchpad.net bzr+ssh URLs if we know
                 # the user's Launchpad login:
+                if _lp_login is not None:
+                    break
                 if _lp_login is None:
                     if not _warned_login:
-                        trace.warning('You have not informed bzr of your '
-                                'launchpad login. If you are attempting a\n'
-                                'write operation and it fails, run '
-                                '"bzr launchpad-login YOUR_ID" and try again.')
+                        trace.warning(
+'You have not informed bzr of your Launchpad ID, and you must do this to\n'
+'write to Launchpad or access private data.  See "bzr help launchpad-login".')
                         _warned_login = True
-                    continue
-                url = urlunsplit((scheme, '%s@%s' % (_lp_login, netloc),
-                                  path, query, fragment))
-                break
             else:
                 # Use the URL if we can create a transport for it.
                 try:

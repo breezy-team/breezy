@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import difflib
 import os
@@ -36,14 +36,14 @@ from bzrlib import (
     patiencediff,
     textfile,
     timestamp,
+    views,
     )
 """)
 
 from bzrlib.symbol_versioning import (
-        deprecated_function,
-        one_three
-        )
-from bzrlib.trace import mutter, warning
+    deprecated_function,
+    )
+from bzrlib.trace import mutter, note, warning
 
 
 # TODO: Rather than building a changeset object, we should probably
@@ -78,7 +78,7 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
     # both sequences are empty.
     if not oldlines and not newlines:
         return
-    
+
     if allow_binary is False:
         textfile.check_text_lines(oldlines)
         textfile.check_text_lines(newlines)
@@ -99,9 +99,6 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
         ud[2] = ud[2].replace('-1,0', '-0,0')
     elif not newlines:
         ud[2] = ud[2].replace('+1,0', '+0,0')
-    # work around for difflib emitting random spaces after the label
-    ud[0] = ud[0][:-2] + '\n'
-    ud[1] = ud[1][:-2] + '\n'
 
     for line in ud:
         to_file.write(line)
@@ -202,14 +199,14 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
             break
         else:
             diffcmd.append('-u')
-                  
+
         if diff_opts:
             diffcmd.extend(diff_opts)
 
         pipe = _spawn_external_diff(diffcmd, capture_errors=True)
         out,err = pipe.communicate()
         rc = pipe.returncode
-        
+
         # internal_diff() adds a trailing newline, add one here for consistency
         out += '\n'
         if rc == 2:
@@ -250,8 +247,8 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
                 msg = 'signal %d' % (-rc)
             else:
                 msg = 'exit code %d' % rc
-                
-            raise errors.BzrError('external diff failed with %s; command: %r' 
+
+            raise errors.BzrError('external diff failed with %s; command: %r'
                                   % (rc, diffcmd))
 
 
@@ -275,7 +272,8 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
                         new_abspath, e)
 
 
-def _get_trees_to_diff(path_list, revision_specs, old_url, new_url):
+def _get_trees_to_diff(path_list, revision_specs, old_url, new_url,
+    apply_view=True):
     """Get the trees and specific files to diff given a list of paths.
 
     This method works out the trees to be diff'ed and the files of
@@ -292,6 +290,9 @@ def _get_trees_to_diff(path_list, revision_specs, old_url, new_url):
     :param new_url:
         The url of the new branch or tree. If None, the tree to use is
         taken from the first path, if any, or the current working tree.
+    :param apply_view:
+        if True and a view is set, apply the view or check that the paths
+        are within it
     :returns:
         a tuple of (old_tree, new_tree, specific_files, extra_trees) where
         extra_trees is a sequence of additional trees to search in for
@@ -331,6 +332,8 @@ def _get_trees_to_diff(path_list, revision_specs, old_url, new_url):
     working_tree, branch, relpath = \
         bzrdir.BzrDir.open_containing_tree_or_branch(old_url)
     if consider_relpath and relpath != '':
+        if working_tree is not None and apply_view:
+            views.check_path_in_view(working_tree, relpath)
         specific_files.append(relpath)
     old_tree = _get_tree_to_diff(old_revision_spec, working_tree, branch)
 
@@ -341,23 +344,36 @@ def _get_trees_to_diff(path_list, revision_specs, old_url, new_url):
         working_tree, branch, relpath = \
             bzrdir.BzrDir.open_containing_tree_or_branch(new_url)
         if consider_relpath and relpath != '':
+            if working_tree is not None and apply_view:
+                views.check_path_in_view(working_tree, relpath)
             specific_files.append(relpath)
     new_tree = _get_tree_to_diff(new_revision_spec, working_tree, branch,
         basis_is_default=working_tree is None)
 
     # Get the specific files (all files is None, no files is [])
     if make_paths_wt_relative and working_tree is not None:
-        other_paths = _relative_paths_in_tree(working_tree, other_paths)
+        try:
+            from bzrlib.builtins import safe_relpath_files
+            other_paths = safe_relpath_files(working_tree, other_paths,
+            apply_view=apply_view)
+        except errors.FileInWrongBranch:
+            raise errors.BzrCommandError("Files are in different branches")
     specific_files.extend(other_paths)
     if len(specific_files) == 0:
         specific_files = None
+        if (working_tree is not None and working_tree.supports_views()
+            and apply_view):
+            view_files = working_tree.views.lookup_view()
+            if view_files:
+                specific_files = view_files
+                view_str = views.view_display_str(view_files)
+                note("*** Ignoring files outside view. View is %s" % view_str)
 
     # Get extra trees that ought to be searched for file-ids
     extra_trees = None
     if working_tree is not None and working_tree not in (old_tree, new_tree):
         extra_trees = (working_tree,)
     return old_tree, new_tree, specific_files, extra_trees
-
 
 def _get_tree_to_diff(spec, tree=None, branch=None, basis_is_default=True):
     if branch is None and tree is not None:
@@ -370,25 +386,7 @@ def _get_tree_to_diff(spec, tree=None, branch=None, basis_is_default=True):
                 return branch.basis_tree()
         else:
             return tree
-    if not spec.needs_branch():
-        branch = _mod_branch.Branch.open(spec.get_branch())
-    revision_id = spec.as_revision_id(branch)
-    return branch.repository.revision_tree(revision_id)
-
-
-def _relative_paths_in_tree(tree, paths):
-    """Get the relative paths within a working tree.
-
-    Each path may be either an absolute path or a path relative to the
-    current working directory.
-    """
-    result = []
-    for filename in paths:
-        try:
-            result.append(tree.relpath(osutils.dereference_path(filename)))
-        except errors.PathNotChild:
-            raise errors.BzrCommandError("Files are in different branches")
-    return result
+    return spec.as_tree(branch)
 
 
 def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
@@ -441,32 +439,6 @@ def _patch_header_date(tree, file_id, path):
     mtime = tree.get_file_mtime(file_id, path)
     return timestamp.format_patch_date(mtime)
 
-
-def _raise_if_nonexistent(paths, old_tree, new_tree):
-    """Complain if paths are not in either inventory or tree.
-
-    It's OK with the files exist in either tree's inventory, or 
-    if they exist in the tree but are not versioned.
-    
-    This can be used by operations such as bzr status that can accept
-    unknown or ignored files.
-    """
-    mutter("check paths: %r", paths)
-    if not paths:
-        return
-    s = old_tree.filter_unversioned_files(paths)
-    s = new_tree.filter_unversioned_files(s)
-    s = [path for path in s if not new_tree.has_filename(path)]
-    if s:
-        raise errors.PathsDoNotExist(sorted(s))
-
-
-@deprecated_function(one_three)
-def get_prop_change(meta_modified):
-    if meta_modified:
-        return " (properties changed)"
-    else:
-        return  ""
 
 def get_executable_change(old_is_x, new_is_x):
     descr = { True:"+x", False:"-x", None:"??" }
@@ -682,7 +654,7 @@ class DiffFromTool(DiffPath):
                  path_encoding='utf-8'):
         DiffPath.__init__(self, old_tree, new_tree, to_file, path_encoding)
         self.command_template = command_template
-        self._root = tempfile.mkdtemp(prefix='bzr-diff-')
+        self._root = osutils.mkdtemp(prefix='bzr-diff-')
 
     @classmethod
     def from_string(klass, command_string, old_tree, new_tree, to_file,

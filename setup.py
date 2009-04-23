@@ -144,6 +144,7 @@ class bzr_build(build):
     """Customized build distutils action.
     Generate bzr.1.
     """
+
     def run(self):
         build.run(self)
 
@@ -175,24 +176,47 @@ except ImportError:
     from distutils.command.build_ext import build_ext
 else:
     have_pyrex = True
+    from Pyrex.Compiler.Version import version as pyrex_version
 
 
 class build_ext_if_possible(build_ext):
+
+    user_options = build_ext.user_options + [
+        ('allow-python-fallback', None,
+         "When an extension cannot be built, allow falling"
+         " back to the pure-python implementation.")
+        ]
+
+    def initialize_options(self):
+        build_ext.initialize_options(self)
+        self.allow_python_fallback = False
 
     def run(self):
         try:
             build_ext.run(self)
         except DistutilsPlatformError, e:
+            if not self.allow_python_fallback:
+                log.warn('\n  Cannot build extensions.\n'
+                         '  Use "build_ext --allow-python-fallback" to use'
+                         ' slower python implementations instead.\n')
+                raise
             log.warn(str(e))
-            log.warn('Extensions cannot be built, '
-                     'will use the Python versions instead')
+            log.warn('\n  Extensions cannot be built.\n'
+                     '  Using the slower Python implementations instead.\n')
 
     def build_extension(self, ext):
         try:
             build_ext.build_extension(self, ext)
         except CCompilerError:
-            log.warn('Building of "%s" extension failed, '
-                     'will use the Python version instead' % (ext.name,))
+            if not self.allow_python_fallback:
+                log.warn('\n  Cannot build extension "%s".\n'
+                         '  Use "build_ext --allow-python-fallback" to use'
+                         ' slower python implementations instead.\n'
+                         % (ext.name,))
+                raise
+            log.warn('\n  Building of "%s" extension failed.\n'
+                     '  Using the slower Python implementation instead.'
+                     % (ext.name,))
 
 
 # Override the build_ext if we have Pyrex available
@@ -200,7 +224,7 @@ command_classes['build_ext'] = build_ext_if_possible
 unavailable_files = []
 
 
-def add_pyrex_extension(module_name, **kwargs):
+def add_pyrex_extension(module_name, libraries=None, extra_source=[]):
     """Add a pyrex module to build.
 
     This will use Pyrex to auto-generate the .c file if it is available.
@@ -216,23 +240,49 @@ def add_pyrex_extension(module_name, **kwargs):
     path = module_name.replace('.', '/')
     pyrex_name = path + '.pyx'
     c_name = path + '.c'
+    define_macros = []
+    if sys.platform == 'win32':
+        # pyrex uses the macro WIN32 to detect the platform, even though it should
+        # be using something like _WIN32 or MS_WINDOWS, oh well, we can give it the
+        # right value.
+        define_macros.append(('WIN32', None))
     if have_pyrex:
-        ext_modules.append(Extension(module_name, [pyrex_name], **kwargs))
+        source = [pyrex_name]
     else:
         if not os.path.isfile(c_name):
             unavailable_files.append(c_name)
+            return
         else:
-            ext_modules.append(Extension(module_name, [c_name], **kwargs))
+            source = [c_name]
+    source.extend(extra_source)
+    ext_modules.append(Extension(module_name, source,
+        define_macros=define_macros, libraries=libraries))
 
 
-add_pyrex_extension('bzrlib._dirstate_helpers_c')
+add_pyrex_extension('bzrlib._btree_serializer_c')
+add_pyrex_extension('bzrlib._groupcompress_pyx',
+                    extra_source=['bzrlib/diff-delta.c'])
+add_pyrex_extension('bzrlib._chunks_to_lines_pyx')
 add_pyrex_extension('bzrlib._knit_load_data_c')
+add_pyrex_extension('bzrlib._chk_map_pyx', libraries=['z'])
 if sys.platform == 'win32':
-    # pyrex uses the macro WIN32 to detect the platform, even though it should
-    # be using something like _WIN32 or MS_WINDOWS, oh well, we can give it the
-    # right value.
-    add_pyrex_extension('bzrlib._walkdirs_win32',
-                        define_macros=[('WIN32', None)])
+    add_pyrex_extension('bzrlib._dirstate_helpers_c',
+                        libraries=['Ws2_32'])
+    add_pyrex_extension('bzrlib._walkdirs_win32')
+else:
+    if have_pyrex and pyrex_version == '0.9.4.1':
+        # Pyrex 0.9.4.1 fails to compile this extension correctly
+        # The code it generates re-uses a "local" pointer and
+        # calls "PY_DECREF" after having set it to NULL. (It mixes PY_XDECREF
+        # which is NULL safe with PY_DECREF which is not.)
+        print 'Cannot build extension "bzrlib._dirstate_helpers_c" using'
+        print 'your version of pyrex "%s". Please upgrade your pyrex' % (
+            pyrex_version,)
+        print 'install. For now, the non-compiled (python) version will'
+        print 'be used instead.'
+    else:
+        add_pyrex_extension('bzrlib._dirstate_helpers_c')
+    add_pyrex_extension('bzrlib._readdir_pyx')
 ext_modules.append(Extension('bzrlib._patiencediff_c', ['bzrlib/_patiencediff_c.c']))
 
 
@@ -244,13 +294,14 @@ if unavailable_files:
 
 
 def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
-                         gui_targets):
+                         gui_targets, data_files):
     packages.append('tbzrcommands')
 
     # ModuleFinder can't handle runtime changes to __path__, but
     # win32com uses them.  Hook this in so win32com.shell is found.
     import modulefinder
     import win32com
+    import cPickle as pickle
     for p in win32com.__path__[1:]:
         modulefinder.AddPackagePath("win32com", p)
     for extra in ["win32com.shell"]:
@@ -269,20 +320,49 @@ def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
     sys.path.append(os.path.join(tbzr_root, "shellext", "python"))
 
     packages.append("tbzrlib")
+
+    # collect up our icons.
+    cwd = os.getcwd()
+    ico_root = os.path.join(tbzr_root, 'tbzrlib', 'resources')
+    icos = [] # list of (path_root, relative_ico_path)
+    # First always bzr's icon and its in the root of the bzr tree.
+    icos.append(('', 'bzr.ico'))
+    for root, dirs, files in os.walk(ico_root):
+        icos.extend([(ico_root, os.path.join(root, f)[len(ico_root)+1:])
+                     for f in files if f.endswith('.ico')])
+    # allocate an icon ID for each file and the full path to the ico
+    icon_resources = [(rid, os.path.join(ico_dir, ico_name))
+                      for rid, (ico_dir, ico_name) in enumerate(icos)]
+    # create a string resource with the mapping.  Might as well save the
+    # runtime some effort and write a pickle.
+    # Runtime expects unicode objects with forward-slash seps.
+    fse = sys.getfilesystemencoding()
+    map_items = [(f.replace('\\', '/').decode(fse), rid)
+                 for rid, (_, f) in enumerate(icos)]
+    ico_map = dict(map_items)
+    # Create a new resource type of 'ICON_MAP', and use ID=1
+    other_resources = [ ("ICON_MAP", 1, pickle.dumps(ico_map))]
+
     excludes.extend("""pywin pywin.dialogs pywin.dialogs.list
                        win32ui crawler.Crawler""".split())
 
+    # NOTE: We still create a DLL version of the Python implemented shell
+    # extension for testing purposes - but it is *not* registered by
+    # default - our C++ one is instead.  To discourage people thinking
+    # this DLL is still necessary, its called 'tbzr_old.dll'
     tbzr = dict(
         modules=["tbzr"],
         create_exe = False, # we only want a .dll
+        dest_base = 'tbzr_old',
     )
     com_targets.append(tbzr)
 
     # tbzrcache executables - a "console" version for debugging and a
     # GUI version that is generally used.
     tbzrcache = dict(
-        script = os.path.join(tbzr_root, "Scripts", "tbzrcache.py"),
-        icon_resources = [(0,'bzr.ico')],
+        script = os.path.join(tbzr_root, "scripts", "tbzrcache.py"),
+        icon_resources = icon_resources,
+        other_resources = other_resources,
     )
     console_targets.append(tbzrcache)
 
@@ -293,7 +373,7 @@ def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
 
     # ditto for the tbzrcommand tool
     tbzrcommand = dict(
-        script = os.path.join(tbzr_root, "Scripts", "tbzrcommand.py"),
+        script = os.path.join(tbzr_root, "scripts", "tbzrcommand.py"),
         icon_resources = [(0,'bzr.ico')],
     )
     console_targets.append(tbzrcommand)
@@ -301,21 +381,16 @@ def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
     tbzrcommandw["dest_base"]="tbzrcommandw"
     gui_targets.append(tbzrcommandw)
     
-    # tbzr tests
-    tbzrtest = dict(
-        script = os.path.join(tbzr_root, "Scripts", "tbzrtest.py"),
-    )
-    console_targets.append(tbzrtest)
-
-    # A utility to see python output from the shell extension - this will
-    # die when we get a c++ extension
-    # any .py file from pywin32's win32 lib will do (other than
-    # win32traceutil itself that is)
-    import winerror
-    win32_lib_dir = os.path.dirname(winerror.__file__)
-    tracer = dict(script = os.path.join(win32_lib_dir, "win32traceutil.py"),
-                  dest_base="tbzr_tracer")
+    # A utility to see python output from both C++ and Python based shell
+    # extensions
+    tracer = dict(script=os.path.join(tbzr_root, "scripts", "tbzrtrace.py"))
     console_targets.append(tracer)
+
+    # The C++ implemented shell extensions.
+    dist_dir = os.path.join(tbzr_root, "shellext", "cpp", "tbzrshellext",
+                            "build", "dist")
+    data_files.append(('', [os.path.join(dist_dir, 'tbzrshellext_x86.dll')]))
+    data_files.append(('', [os.path.join(dist_dir, 'tbzrshellext_x64.dll')]))
 
 
 def get_qbzr_py2exe_info(includes, excludes, packages):
@@ -324,6 +399,7 @@ def get_qbzr_py2exe_info(includes, excludes, packages):
     excludes.append('PyQt4.elementtree.ElementTree')
     includes.append('sip') # extension module required for Qt.
     packages.append('pygments') # colorizer for qbzr
+    packages.append('docutils') # html formatting
     # but we can avoid many Qt4 Dlls.
     dll_excludes.extend(
         """QtAssistantClient4.dll QtCLucene4.dll QtDesigner4.dll
@@ -335,6 +411,10 @@ def get_qbzr_py2exe_info(includes, excludes, packages):
     path = os.environ.get("PATH","")
     if qt_dir.lower() not in [p.lower() for p in path.split(os.pathsep)]:
         os.environ["PATH"] = path + os.pathsep + qt_dir
+
+
+def get_svn_py2exe_info(includes, excludes, packages):
+    packages.append('subvertpy')
 
 
 if 'bdist_wininst' in sys.argv:
@@ -480,9 +560,16 @@ elif 'py2exe' in sys.argv:
     for root, dirs, files in os.walk('bzrlib/plugins'):
         if root == 'bzrlib/plugins':
             plugins = set(dirs)
+            # We ship plugins as normal files on the file-system - however,
+            # the build process can cause *some* of these plugin files to end
+            # up in library.zip. Thus, we saw (eg) "plugins/svn/test" in
+            # library.zip, and then saw import errors related to that as the
+            # rest of the svn plugin wasn't. So we tell py2exe to leave the
+            # plugins out of the .zip file
+            excludes.extend(["bzrlib.plugins." + d for d in dirs])
         x = []
         for i in files:
-            if os.path.splitext(i)[1] not in [".py", ".pyd", ".dll"]:
+            if os.path.splitext(i)[1] not in [".py", ".pyd", ".dll", ".mo"]:
                 continue
             if i == '__init__.py' and root == 'bzrlib/plugins':
                 continue
@@ -503,22 +590,28 @@ elif 'py2exe' in sys.argv:
                        ]
     gui_targets = []
     com_targets = []
+    data_files = topics_files + plugins_files
 
     if 'qbzr' in plugins:
         get_qbzr_py2exe_info(includes, excludes, packages)
+
+    if 'svn' in plugins:
+        get_svn_py2exe_info(includes, excludes, packages)
 
     if "TBZR" in os.environ:
         # TORTOISE_OVERLAYS_MSI_WIN32 must be set to the location of the
         # TortoiseOverlays MSI installer file. It is in the TSVN svn repo and
         # can be downloaded from (username=guest, blank password):
         # http://tortoisesvn.tigris.org/svn/tortoisesvn/TortoiseOverlays/version-1.0.4/bin/TortoiseOverlays-1.0.4.11886-win32.msi
-        if not os.path.isfile(os.environ.get('TORTOISE_OVERLAYS_MSI_WIN32',
-                                             '<nofile>')):
-            raise RuntimeError("Please set TORTOISE_OVERLAYS_MSI_WIN32 to the"
-                               " location of the Win32 TortoiseOverlays .msi"
-                               " installer file")
+        # Ditto for TORTOISE_OVERLAYS_MSI_X64, pointing at *-x64.msi.
+        for needed in ('TORTOISE_OVERLAYS_MSI_WIN32',
+                       'TORTOISE_OVERLAYS_MSI_X64'):
+            if not os.path.isfile(os.environ.get(needed, '<nofile>')):
+                raise RuntimeError("Please set %s to the"
+                                   " location of the relevant TortoiseOverlays"
+                                   " .msi installer file" % needed)
         get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
-                             gui_targets)
+                             gui_targets, data_files)
     else:
         # print this warning to stderr as output is redirected, so it is seen
         # at build time.  Also to stdout so it appears in the log
@@ -528,7 +621,7 @@ elif 'py2exe' in sys.argv:
 
     # MSWSOCK.dll is a system-specific library, which py2exe accidentally pulls
     # in on Vista.
-    dll_excludes.append("MSWSOCK.dll")
+    dll_excludes.extend(["MSWSOCK.dll", "MSVCP60.dll", "powrprof.dll"])
     options_list = {"py2exe": {"packages": packages + list(additional_packages),
                                "includes": includes,
                                "excludes": excludes,
@@ -543,7 +636,7 @@ elif 'py2exe' in sys.argv:
           windows=gui_targets,
           com_server=com_targets,
           zipfile='lib/library.zip',
-          data_files=topics_files + plugins_files,
+          data_files=data_files,
           cmdclass={'install_data': install_data_with_bytecompile},
           )
 

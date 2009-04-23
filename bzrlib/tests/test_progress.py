@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
 from StringIO import StringIO
@@ -27,6 +27,9 @@ from bzrlib.progress import (
         InstrumentedProgress,
         )
 from bzrlib.tests import TestCase
+from bzrlib.symbol_versioning import (
+    deprecated_in,
+    )
 
 
 class FakeStack:
@@ -55,6 +58,7 @@ class _NonTTYStringIO(StringIO):
 class TestProgress(TestCase):
 
     def setUp(self):
+        TestCase.setUp(self)
         q = DummyProgress()
         self.top = ChildProgress(_stack=FakeStack(q))
 
@@ -88,7 +92,7 @@ class TestProgress(TestCase):
         self.assertEqual(self.top.child_fraction, 1)
 
     def test_implementations(self):
-        for implementation in (TTYProgressBar, DotsProgressBar, 
+        for implementation in (TTYProgressBar, DotsProgressBar,
                                DummyProgress):
             self.check_parent_handling(implementation)
 
@@ -106,7 +110,10 @@ class TestProgress(TestCase):
         self.check_stack(DummyProgress, DummyProgress)
 
     def check_stack(self, parent_class, child_class):
-        stack = ProgressBarStack(klass=parent_class, to_file=StringIO())
+        stack = self.applyDeprecated(
+            deprecated_in((1, 12, 0)),
+            ProgressBarStack,
+            klass=parent_class, to_file=StringIO())
         parent = stack.get_nested()
         try:
             self.assertIs(parent.__class__, parent_class)
@@ -212,7 +219,10 @@ class TestProgressTypes(TestCase):
 
         self.addCleanup(reset)
 
-        stack = ProgressBarStack(to_file=outf)
+        stack = self.applyDeprecated(
+            deprecated_in((1, 12, 0)),
+            ProgressBarStack,
+            to_file=outf)
         pb = stack.get_nested()
         pb.start_time -= 1 # Make sure it is ready to write
         pb.width = 20 # And it is of reasonable size

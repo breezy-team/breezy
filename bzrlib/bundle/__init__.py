@@ -12,10 +12,9 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from StringIO import StringIO
-
+from bzrlib.symbol_versioning import deprecated_function, deprecated_in
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
@@ -31,6 +30,7 @@ from bzrlib.transport import (
 from bzrlib.trace import note
 
 
+@deprecated_function(deprecated_in((1, 12, 0)))
 def read_bundle_from_url(url):
     return read_mergeable_from_url(url, _do_directive=False)
 
@@ -82,6 +82,8 @@ def read_mergeable_from_transport(transport, filename, _do_directive=True):
             return directive, transport
         else:
             return _serializer.read_bundle(f), transport
+    except errors.ConnectionReset:
+        raise
     except (errors.TransportError, errors.PathError), e:
         raise errors.NotABundle(str(e))
     except (IOError,), e:
@@ -90,7 +92,7 @@ def read_mergeable_from_transport(transport, filename, _do_directive=True):
         # doesn't always fail at get() time. Sometimes it fails
         # during read. And that raises a generic IOError with
         # just the string 'Failure'
-        # StubSFTPServer does fail during get() (because of prefetch) 
+        # StubSFTPServer does fail during get() (because of prefetch)
         # so it has an opportunity to translate the error.
         raise errors.NotABundle(str(e))
     except errors.NotAMergeDirective:

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Library API versioning support.
 
@@ -70,7 +70,7 @@ def require_api(object_with_api, wanted_api):
         version. See get_minimum_api_version and get_current_api_version for
         details.
     :param wanted_api: The API version for which support is required.
-    :return None:
+    :return: None
     :raises IncompatibleAPI: When the wanted_api is not supported by
         object_with_api.
 
@@ -80,3 +80,25 @@ def require_api(object_with_api, wanted_api):
     minimum = get_minimum_api_version(object_with_api)
     if wanted_api < minimum or wanted_api > current:
         raise IncompatibleAPI(object_with_api, wanted_api, minimum, current)
+
+
+def require_any_api(object_with_api, wanted_api_list):
+    """Check if object_with_api supports the api version wanted_api.
+
+    :param object_with_api: An object which exports an API minimum and current
+        version. See get_minimum_api_version and get_current_api_version for
+        details.
+    :param wanted_api: A list of API versions, any of which being available is
+        sufficent.
+    :return: None
+    :raises IncompatibleAPI: When the wanted_api is not supported by
+        object_with_api.
+
+    Added in bzrlib 1.9.
+    """
+    for api in wanted_api_list[:-1]:
+        try:
+            return require_api(object_with_api, api)
+        except IncompatibleAPI:
+            pass
+    require_api(object_with_api, wanted_api_list[-1])

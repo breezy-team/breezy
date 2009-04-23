@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the Branch facility that are not interface  tests.
 
@@ -41,8 +41,9 @@ from bzrlib.branch import (
     BzrBranchFormat5,
     BzrBranchFormat6,
     PullResult,
+    _run_with_write_locked_target,
     )
-from bzrlib.bzrdir import (BzrDirMetaFormat1, BzrDirMeta1, 
+from bzrlib.bzrdir import (BzrDirMetaFormat1, BzrDirMeta1,
                            BzrDir, BzrDirFormat)
 from bzrlib.errors import (NotBranchError,
                            UnknownFormatError,
@@ -63,7 +64,7 @@ class TestDefaultFormat(TestCase):
 
     def test_default_format_is_same_as_bzrdir_default(self):
         # XXX: it might be nice if there was only one place the default was
-        # set, but at the moment that's not true -- mbp 20070814 -- 
+        # set, but at the moment that's not true -- mbp 20070814 --
         # https://bugs.launchpad.net/bzr/+bug/132376
         self.assertEqual(BranchFormat.get_default_format(),
                 BzrDirFormat.get_default_format().get_branch_format())
@@ -133,7 +134,7 @@ class TestBranchFormat5(TestCaseWithTransport):
 class SampleBranchFormat(BranchFormat):
     """A sample format
 
-    this format is initializable, unsupported to aid in testing the 
+    this format is initializable, unsupported to aid in testing the
     open and open_downlevel routines.
     """
 
@@ -150,7 +151,7 @@ class SampleBranchFormat(BranchFormat):
     def is_supported(self):
         return False
 
-    def open(self, transport, _found=False):
+    def open(self, transport, _found=False, ignore_fallbacks=False):
         return "opened branch."
 
 
@@ -160,7 +161,7 @@ class TestBzrBranchFormat(TestCaseWithTransport):
     def test_find_format(self):
         # is the right format object found for a branch?
         # create a branch with a few known format objects.
-        # this is not quite the same as 
+        # this is not quite the same as
         self.build_tree(["foo/", "bar/"])
         def check_format(format, url):
             dir = format._matchingbzrdir.initialize(url)
@@ -169,7 +170,7 @@ class TestBzrBranchFormat(TestCaseWithTransport):
             found_format = BranchFormat.find_format(dir)
             self.failUnless(isinstance(found_format, format.__class__))
         check_format(BzrBranchFormat5(), "bar")
-        
+
     def test_find_format_not_branch(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         self.assertRaises(NotBranchError,
@@ -333,7 +334,7 @@ class TestBranch7(TestBranch67, TestCaseWithTransport):
         return _mod_branch.BzrBranch7
 
     def get_format_name(self):
-        return "development"
+        return "1.9"
 
     def get_format_name_subtree(self):
         return "development-subtree"
@@ -423,7 +424,8 @@ class TestHooks(TestCase):
     def test_installed_hooks_are_BranchHooks(self):
         """The installed hooks object should be a BranchHooks."""
         # the installed hooks are saved in self._preserved_hooks.
-        self.assertIsInstance(self._preserved_hooks[_mod_branch.Branch], BranchHooks)
+        self.assertIsInstance(self._preserved_hooks[_mod_branch.Branch][1],
+            BranchHooks)
 
 
 class TestPullResult(TestCase):
@@ -438,3 +440,71 @@ class TestPullResult(TestCase):
         # it's still supported
         a = "%d revisions pulled" % r
         self.assertEqual(a, "10 revisions pulled")
+
+
+
+class _StubLockable(object):
+    """Helper for TestRunWithWriteLockedTarget."""
+
+    def __init__(self, calls, unlock_exc=None):
+        self.calls = calls
+        self.unlock_exc = unlock_exc
+
+    def lock_write(self):
+        self.calls.append('lock_write')
+
+    def unlock(self):
+        self.calls.append('unlock')
+        if self.unlock_exc is not None:
+            raise self.unlock_exc
+
+
+class _ErrorFromCallable(Exception):
+    """Helper for TestRunWithWriteLockedTarget."""
+
+
+class _ErrorFromUnlock(Exception):
+    """Helper for TestRunWithWriteLockedTarget."""
+
+
+class TestRunWithWriteLockedTarget(TestCase):
+    """Tests for _run_with_write_locked_target."""
+
+    def setUp(self):
+        TestCase.setUp(self)
+        self._calls = []
+
+    def func_that_returns_ok(self):
+        self._calls.append('func called')
+        return 'ok'
+
+    def func_that_raises(self):
+        self._calls.append('func called')
+        raise _ErrorFromCallable()
+
+    def test_success_unlocks(self):
+        lockable = _StubLockable(self._calls)
+        result = _run_with_write_locked_target(
+            lockable, self.func_that_returns_ok)
+        self.assertEqual('ok', result)
+        self.assertEqual(['lock_write', 'func called', 'unlock'], self._calls)
+
+    def test_exception_unlocks_and_propagates(self):
+        lockable = _StubLockable(self._calls)
+        self.assertRaises(_ErrorFromCallable,
+            _run_with_write_locked_target, lockable, self.func_that_raises)
+        self.assertEqual(['lock_write', 'func called', 'unlock'], self._calls)
+
+    def test_callable_succeeds_but_error_during_unlock(self):
+        lockable = _StubLockable(self._calls, unlock_exc=_ErrorFromUnlock())
+        self.assertRaises(_ErrorFromUnlock,
+            _run_with_write_locked_target, lockable, self.func_that_returns_ok)
+        self.assertEqual(['lock_write', 'func called', 'unlock'], self._calls)
+
+    def test_error_during_unlock_does_not_mask_original_error(self):
+        lockable = _StubLockable(self._calls, unlock_exc=_ErrorFromUnlock())
+        self.assertRaises(_ErrorFromCallable,
+            _run_with_write_locked_target, lockable, self.func_that_raises)
+        self.assertEqual(['lock_write', 'func called', 'unlock'], self._calls)
+
+

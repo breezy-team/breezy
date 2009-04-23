@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Test that all Tree's implement get_symlink_target"""
 
@@ -23,10 +23,10 @@ from bzrlib import (
     osutils,
     tests,
     )
-from bzrlib.tests.tree_implementations import TestCaseWithTree
+from bzrlib.tests import tree_implementations
 
 
-class TestGetSymlinkTarget(TestCaseWithTree):
+class TestGetSymlinkTarget(tree_implementations.TestCaseWithTree):
 
     def get_tree_with_symlinks(self):
         self.requireFeature(tests.SymlinkFeature)
@@ -46,3 +46,16 @@ class TestGetSymlinkTarget(TestCaseWithTree):
         self.assertEqual('foo', tree.get_symlink_target('link-id'))
         self.assertEqual('../bar', tree.get_symlink_target('rel-link-id'))
         self.assertEqual('/baz/bing', tree.get_symlink_target('abs-link-id'))
+
+    def test_get_unicode_symlink_target(self):
+        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(tests.UnicodeFilenameFeature)
+        tree = self.make_branch_and_tree('tree')
+        target = u'targ\N{Euro Sign}t'
+        os.symlink(target,  u'tree/\u03b2_link'.encode(osutils._fs_enc))
+        tree.add([u'\u03b2_link'], ['unicode-link-id'])
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        actual = tree.get_symlink_target(u'unicode-link-id')
+        self.assertEqual(target, actual)
+

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 # mbp: "you know that thing where cvs gives you conflict markers?"
@@ -37,7 +37,7 @@ def intersect(ra, rb):
     (7, 9)
     """
     # preconditions: (ra[0] <= ra[1]) and (rb[0] <= rb[1])
-    
+
     sa = max(ra[0], rb[0])
     sb = min(ra[1], rb[1])
     if sa < sb:
@@ -56,7 +56,7 @@ def compare_range(a, astart, aend, b, bstart, bend):
             return False
     else:
         return True
-        
+
 
 
 
@@ -132,7 +132,7 @@ class Merge3(object):
     def merge_annotated(self):
         """Return merge with conflicts, showing origin of lines.
 
-        Most useful for debugging merge.        
+        Most useful for debugging merge.
         """
         for t in self.merge_regions():
             what = t[0]
@@ -219,7 +219,7 @@ class Merge3(object):
 
         # section a[0:ia] has been disposed of, etc
         iz = ia = ib = 0
-        
+
         for zmatch, zend, amatch, aend, bmatch, bend in self.find_sync_regions():
             matchlen = zend - zmatch
             # invariants:
@@ -275,7 +275,7 @@ class Merge3(object):
                 # assert ia == amatch
                 # assert ib == bmatch
                 # assert iz == zmatch
-                
+
                 yield 'unchanged', zmatch, zend
                 iz = zend
                 ia = aend
@@ -324,7 +324,7 @@ class Merge3(object):
     def reprocess_merge_regions(self, merge_regions):
         """Where there are conflict regions, remove the agreed lines.
 
-        Lines where both A and B have made the same changes are 
+        Lines where both A and B have made the same changes are
         eliminated.
         """
         for region in merge_regions:
@@ -410,7 +410,7 @@ class Merge3(object):
                 ia += 1
             else:
                 ib += 1
-            
+
         intbase = len(self.base)
         abase = len(self.a)
         bbase = len(self.b)
@@ -442,7 +442,7 @@ class Merge3(object):
                 del am[0]
             else:
                 del bm[0]
-                
+
         return unc
 
 

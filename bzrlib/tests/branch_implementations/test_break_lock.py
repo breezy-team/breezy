@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for branch break-lock behaviour."""
 
@@ -50,7 +50,12 @@ class TestBreakLock(TestCaseWithBranch):
     def test_unlocked_repo_locked(self):
         # break lock on the branch should try on the repository even
         # if the branch isn't locked
-        self.branch.repository.lock_write()
+        token = self.branch.repository.lock_write()
+        if token is None:
+            self.branch.repository.unlock()
+            raise TestNotApplicable('Repository does not use physical locks.')
+        self.branch.repository.leave_lock_in_place()
+        self.branch.repository.unlock()
         other_instance = self.branch.repository.bzrdir.open_repository()
         if not other_instance.get_physical_lock_status():
             raise TestNotApplicable("Repository does not lock persistently.")
@@ -76,7 +81,7 @@ class TestBreakLock(TestCaseWithBranch):
         self.assertRaises(errors.LockBroken, self.branch.unlock)
 
     def test_unlocks_master_branch(self):
-        # break_lock when when the master branch is locked should offer to
+        # break_lock when the master branch is locked should offer to
         # unlock it.
         master = self.make_branch('master')
         try:

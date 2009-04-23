@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 # "weren't nothing promised to you.  do i look like i got a promise face?"
 
@@ -70,8 +70,17 @@ class TestTrace(TestCase):
 
     def test_format_os_error(self):
         try:
+            os.rmdir('nosuchfile22222')
+        except OSError:
+            pass
+        msg = _format_exception()
+        self.assertContainsRe(msg,
+            r'^bzr: ERROR: \[Errno .*\] No such file.*nosuchfile22222')
+
+    def test_format_io_error(self):
+        try:
             file('nosuchfile22222')
-        except (OSError, IOError):
+        except IOError:
             pass
         msg = _format_exception()
         self.assertContainsRe(msg, r'^bzr: ERROR: \[Errno .*\] No such file.*nosuchfile')
@@ -120,7 +129,7 @@ class TestTrace(TestCase):
         self.log(u'the unicode character for benzene is \N{BENZENE RING}')
         self.assertContainsRe(self._get_log(keep_log_file=True),
                               "the unicode character for benzene is")
-    
+
     def test_trace_argument_unicode(self):
         """Write a Unicode argument to the trace log"""
         mutter(u'the unicode character for benzene is %s', u'\N{BENZENE RING}')
@@ -186,7 +195,7 @@ class TestTrace(TestCase):
     def test_push_log_file(self):
         """Can push and pop log file, and this catches mutter messages.
 
-        This is primarily for use in the test framework. 
+        This is primarily for use in the test framework.
         """
         tmp1 = tempfile.NamedTemporaryFile()
         tmp2 = tempfile.NamedTemporaryFile()

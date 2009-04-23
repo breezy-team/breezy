@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Tests of bound branches (binding, unbinding, commit, etc) command."""
@@ -33,7 +33,7 @@ from bzrlib.workingtree import WorkingTree
 
 
 class TestLegacyFormats(TestCaseWithTransport):
-    
+
     def setUp(self):
         super(TestLegacyFormats, self).setUp()
         self.build_tree(['master/', 'child/'])
@@ -41,7 +41,7 @@ class TestLegacyFormats(TestCaseWithTransport):
         self.make_branch_and_tree('child',
                         format=bzrdir.format_registry.make_bzrdir('weave'))
         os.chdir('child')
-    
+
     def test_bind_format_6_bzrdir(self):
         # bind on a format 6 bzrdir should error
         out,err = self.run_bzr('bind ../master', retcode=3)
@@ -51,7 +51,7 @@ class TestLegacyFormats(TestCaseWithTransport):
         cwd = urlutils.local_path_to_url(getcwd())
         self.assertEqual('bzr: ERROR: To use this feature you must '
                          'upgrade your branch at %s/.\n' % cwd, err)
-    
+
     def test_unbind_format_6_bzrdir(self):
         # bind on a format 6 bzrdir should error
         out,err = self.run_bzr('unbind', retcode=3)
@@ -284,7 +284,7 @@ class TestBoundBranches(TestCaseWithTransport):
         self.check_revno(1)
 
     def test_bind_child_ahead(self):
-        # test binding when the master branches history is a prefix of the 
+        # test binding when the master branches history is a prefix of the
         # childs - it should bind ok but the revision histories should not
         # be altered
         child_tree = self.create_branches()[1]
@@ -316,6 +316,33 @@ class TestBoundBranches(TestCaseWithTransport):
         self.run_bzr_error(['Not a branch.*no-such-branch/'], ['bind', '../no-such-branch'],
                             working_dir='tree_1')
         self.assertIs(None, tree.branch.get_bound_location())
+
+    def test_bind_nick(self):
+        """Bind should not update implicit nick."""
+        base = self.make_branch_and_tree('base')
+        child = self.make_branch_and_tree('child')
+        os.chdir('child')
+        self.assertEqual(child.branch.nick, 'child')
+        self.assertEqual(child.branch.get_config().has_explicit_nickname(),
+            False)
+        self.run_bzr('bind ../base')
+        self.assertEqual(child.branch.nick, base.branch.nick)
+        self.assertEqual(child.branch.get_config().has_explicit_nickname(),
+            False)
+
+    def test_bind_explicit_nick(self):
+        """Bind should update explicit nick."""
+        base = self.make_branch_and_tree('base')
+        child = self.make_branch_and_tree('child')
+        os.chdir('child')
+        child.branch.nick = "explicit_nick"
+        self.assertEqual(child.branch.nick, "explicit_nick")
+        self.assertEqual(child.branch.get_config()._get_explicit_nickname(),
+            "explicit_nick")
+        self.run_bzr('bind ../base')
+        self.assertEqual(child.branch.nick, base.branch.nick)
+        self.assertEqual(child.branch.get_config()._get_explicit_nickname(),
+            base.branch.nick)
 
     def test_commit_after_merge(self):
         base_tree, child_tree = self.create_branches()

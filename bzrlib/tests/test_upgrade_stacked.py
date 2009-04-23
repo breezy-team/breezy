@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Tests for upgrades of various stacking situations."""
@@ -32,9 +32,9 @@ class TestStackUpgrade(tests.TestCaseWithTransport):
 
     def test_stack_upgrade(self):
         """Correct checks when stacked-on repository is upgraded.
-        
-        We initially stack on a repo with the same rich root support, 
-        we then upgrade it and should fail, we then upgrade the overlaid 
+
+        We initially stack on a repo with the same rich root support,
+        we then upgrade it and should fail, we then upgrade the overlaid
         repository.
         """
         base = self.make_branch_and_tree('base',
@@ -65,7 +65,7 @@ class TestStackUpgrade(tests.TestCaseWithTransport):
         stacked.open_branch().check()
 
 
-def load_tests(basic_tests, module, test_loader):
+def load_tests(basic_tests, module, loader):
     """Generate dynamic scenario tests.
 
     Called by the bzrlib test framework.
@@ -74,7 +74,7 @@ def load_tests(basic_tests, module, test_loader):
 #        ('knit', 'rich-root', True),
         ('knit', '1.6', False),
 #        ('pack-0.92', '1.6', False),
-        ('1.6', '1.6-rich-root', True),
+        ('1.6', '1.6.1-rich-root', True),
         ]
     scenarios = []
     for (old_name, new_name, model_change) in scenario_pairs:
@@ -83,8 +83,5 @@ def load_tests(basic_tests, module, test_loader):
             dict(scenario_old_format=old_name,
                 scenario_new_format=new_name,
                 scenario_model_change=model_change)))
-    adapter = tests.TestScenarioApplier()
-    adapter.scenarios = scenarios
-    suite = tests.TestSuite()
-    tests.adapt_tests(basic_tests, adapter, suite)
-    return suite
+    suite = loader.suiteClass()
+    return tests.multiply_tests(basic_tests, scenarios, suite)

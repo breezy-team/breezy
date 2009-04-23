@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for pack repositories.
 
@@ -22,11 +22,13 @@ These tests are repeated for all pack-based repository formats.
 from cStringIO import StringIO
 from stat import S_ISDIR
 
-from bzrlib.index import GraphIndex, InMemoryGraphIndex
+from bzrlib.btree_index import BTreeGraphIndex
+from bzrlib.index import GraphIndex
 from bzrlib import (
     bzrdir,
     errors,
     inventory,
+    osutils,
     progress,
     repository,
     revision as _mod_revision,
@@ -36,6 +38,11 @@ from bzrlib import (
     upgrade,
     workingtree,
     )
+from bzrlib.repofmt.groupcompress_repo import RepositoryFormatCHK1
+from bzrlib.smart import (
+    client,
+    server,
+    )
 from bzrlib.tests import (
     TestCase,
     TestCaseWithTransport,
@@ -44,8 +51,10 @@ from bzrlib.tests import (
     )
 from bzrlib.transport import (
     fakenfs,
+    memory,
     get_transport,
     )
+from bzrlib.tests.per_repository import TestCaseWithRepository
 
 
 class TestPackRepository(TestCaseWithTransport):
@@ -65,13 +74,20 @@ class TestPackRepository(TestCaseWithTransport):
         """Packs do not need ordered data retrieval."""
         format = self.get_format()
         repo = self.make_repository('.', format=format)
-        self.assertEqual('unsorted', repo._fetch_order)
+        self.assertEqual('unordered', repo._format._fetch_order)
 
     def test_attribute__fetch_uses_deltas(self):
         """Packs reuse deltas."""
         format = self.get_format()
         repo = self.make_repository('.', format=format)
-        self.assertEqual(True, repo._fetch_uses_deltas)
+        if isinstance(format.repository_format, RepositoryFormatCHK1):
+            # TODO: This is currently a workaround. CHK format repositories
+            #       ignore the 'deltas' flag, but during conversions, we can't
+            #       do unordered delta fetches. Remove this clause once we
+            #       improve the inter-format fetching.
+            self.assertEqual(False, repo._format._fetch_uses_deltas)
+        else:
+            self.assertEqual(True, repo._format._fetch_uses_deltas)
 
     def test_disk_layout(self):
         format = self.get_format()
@@ -111,7 +127,7 @@ class TestPackRepository(TestCaseWithTransport):
         self.assertFalse(t.has('knits'))
         # revision-indexes file-container directory
         self.assertEqual([],
-            list(GraphIndex(t, 'pack-names', None).iter_all_entries()))
+            list(self.index_class(t, 'pack-names', None).iter_all_entries()))
         self.assertTrue(S_ISDIR(t.stat('packs').st_mode))
         self.assertTrue(S_ISDIR(t.stat('upload').st_mode))
         self.assertTrue(S_ISDIR(t.stat('indices').st_mode))
@@ -152,9 +168,9 @@ class TestPackRepository(TestCaseWithTransport):
         tree = self.make_branch_and_tree('.', format=format)
         trans = tree.branch.repository.bzrdir.get_repository_transport(None)
         self.assertEqual([],
-            list(GraphIndex(trans, 'pack-names', None).iter_all_entries()))
+            list(self.index_class(trans, 'pack-names', None).iter_all_entries()))
         tree.commit('foobarbaz')
-        index = GraphIndex(trans, 'pack-names', None)
+        index = self.index_class(trans, 'pack-names', None)
         index_nodes = list(index.iter_all_entries())
         self.assertEqual(1, len(index_nodes))
         node = index_nodes[0]
@@ -173,7 +189,7 @@ class TestPackRepository(TestCaseWithTransport):
         tree1.branch.repository.fetch(tree2.branch.repository)
         trans = tree1.branch.repository.bzrdir.get_repository_transport(None)
         self.assertEqual([],
-            list(GraphIndex(trans, 'pack-names', None).iter_all_entries()))
+            list(self.index_class(trans, 'pack-names', None).iter_all_entries()))
 
     def test_commit_across_pack_shape_boundary_autopacks(self):
         format = self.get_format()
@@ -187,30 +203,33 @@ class TestPackRepository(TestCaseWithTransport):
         for x in range(9):
             tree.commit('commit %s' % x)
         # there should be 9 packs:
-        index = GraphIndex(trans, 'pack-names', None)
+        index = self.index_class(trans, 'pack-names', None)
         self.assertEqual(9, len(list(index.iter_all_entries())))
         # insert some files in obsolete_packs which should be removed by pack.
         trans.put_bytes('obsolete_packs/foo', '123')
         trans.put_bytes('obsolete_packs/bar', '321')
         # committing one more should coalesce to 1 of 10.
         tree.commit('commit triggering pack')
-        index = GraphIndex(trans, 'pack-names', None)
+        index = self.index_class(trans, 'pack-names', None)
         self.assertEqual(1, len(list(index.iter_all_entries())))
         # packing should not damage data
         tree = tree.bzrdir.open_workingtree()
         check_result = tree.branch.repository.check(
             [tree.branch.last_revision()])
-        # We should have 50 (10x5) files in the obsolete_packs directory.
+        nb_files = 5 # .pack, .rix, .iix, .tix, .six
+        if tree.branch.repository._format.supports_chks:
+            nb_files += 1 # .cix
+        # We should have 10 x nb_files files in the obsolete_packs directory.
         obsolete_files = list(trans.list_dir('obsolete_packs'))
         self.assertFalse('foo' in obsolete_files)
         self.assertFalse('bar' in obsolete_files)
-        self.assertEqual(50, len(obsolete_files))
+        self.assertEqual(10 * nb_files, len(obsolete_files))
         # XXX: Todo check packs obsoleted correctly - old packs and indices
         # in the obsolete_packs directory.
         large_pack_name = list(index.iter_all_entries())[0][1][0]
         # finally, committing again should not touch the large pack.
         tree.commit('commit not triggering pack')
-        index = GraphIndex(trans, 'pack-names', None)
+        index = self.index_class(trans, 'pack-names', None)
         self.assertEqual(2, len(list(index.iter_all_entries())))
         pack_names = [node[1][0] for node in index.iter_all_entries()]
         self.assertTrue(large_pack_name in pack_names)
@@ -239,12 +258,16 @@ class TestPackRepository(TestCaseWithTransport):
         tree.commit('more work')
         tree.branch.repository.pack()
         # there should be 1 pack:
-        index = GraphIndex(trans, 'pack-names', None)
+        index = self.index_class(trans, 'pack-names', None)
         self.assertEqual(1, len(list(index.iter_all_entries())))
         self.assertEqual(2, len(tree.branch.repository.all_revision_ids()))
 
     def test_pack_layout(self):
+        # Test that the ordering of revisions in pack repositories is
+        # tip->ancestor
         format = self.get_format()
+        if type(format.repository_format) is RepositoryFormatCHK1:
+            raise TestSkipped("Not updated for GroupCompress internals")
         tree = self.make_branch_and_tree('.', format=format)
         trans = tree.branch.repository.bzrdir.get_repository_transport(None)
         tree.commit('start', rev_id='1')
@@ -254,7 +277,7 @@ class TestPackRepository(TestCaseWithTransport):
         self.addCleanup(tree.unlock)
         pack = tree.branch.repository._pack_collection.get_pack_by_name(
             tree.branch.repository._pack_collection.names()[0])
-        # revision access tends to be tip->ancestor, so ordering that way on 
+        # revision access tends to be tip->ancestor, so ordering that way on
         # disk is a good idea.
         for _1, key, val, refs in pack.revision_index.iter_all_entries():
             if key == ('1',):
@@ -275,7 +298,8 @@ class TestPackRepository(TestCaseWithTransport):
 
     def _add_text(self, repo, fileid):
         """Add a text to the repository within a write group."""
-        repo.texts.add_lines((fileid, 'samplerev+'+fileid), [], [])
+        repo.texts.add_lines((fileid, 'samplerev+'+fileid), [],
+            ['smaplerev+'+fileid])
 
     def test_concurrent_writers_merge_new_packs(self):
         format = self.get_format()
@@ -394,6 +418,54 @@ class TestPackRepository(TestCaseWithTransport):
         finally:
             r1.unlock()
 
+    def test_concurrent_pack_triggers_reload(self):
+        # create 2 packs, which we will then collapse
+        tree = self.make_branch_and_tree('tree')
+        tree.lock_write()
+        try:
+            rev1 = tree.commit('one')
+            rev2 = tree.commit('two')
+            r2 = repository.Repository.open('tree')
+            r2.lock_read()
+            try:
+                # Now r2 has read the pack-names file, but will need to reload
+                # it after r1 has repacked
+                tree.branch.repository.pack()
+                self.assertEqual({rev2:(rev1,)}, r2.get_parent_map([rev2]))
+            finally:
+                r2.unlock()
+        finally:
+            tree.unlock()
+
+    def test_concurrent_pack_during_get_record_reloads(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.lock_write()
+        try:
+            rev1 = tree.commit('one')
+            rev2 = tree.commit('two')
+            keys = [(rev1,), (rev2,)]
+            r2 = repository.Repository.open('tree')
+            r2.lock_read()
+            try:
+                # At this point, we will start grabbing a record stream, and
+                # trigger a repack mid-way
+                packed = False
+                result = {}
+                record_stream = r2.revisions.get_record_stream(keys,
+                                    'unordered', False)
+                for record in record_stream:
+                    result[record.key] = record
+                    if not packed:
+                        tree.branch.repository.pack()
+                        packed = True
+                # The first record will be found in the original location, but
+                # after the pack, we have to reload to find the next record
+                self.assertEqual(sorted(keys), sorted(result.keys()))
+            finally:
+                r2.unlock()
+        finally:
+            tree.unlock()
+
     def test_lock_write_does_not_physically_lock(self):
         repo = self.make_repository('.', format=self.get_format())
         repo.lock_write()
@@ -413,6 +485,8 @@ class TestPackRepository(TestCaseWithTransport):
     def test_break_lock_breaks_physical_lock(self):
         repo = self.make_repository('.', format=self.get_format())
         repo._pack_collection.lock_names()
+        repo.control_files.leave_in_place()
+        repo.unlock()
         repo2 = repository.Repository.open('.')
         self.assertTrue(repo.get_physical_lock_status())
         self.prepare_for_break_lock()
@@ -476,10 +550,155 @@ class TestPackRepository(TestCaseWithTransport):
         self.assertRaises(errors.NoSuchRevision,
             missing_ghost.get_inventory, 'ghost')
 
+    def make_write_ready_repo(self):
+        repo = self.make_repository('.', format=self.get_format())
+        repo.lock_write()
+        repo.start_write_group()
+        return repo
+
+    def test_missing_inventories_compression_parent_prevents_commit(self):
+        repo = self.make_write_ready_repo()
+        key = ('junk',)
+        if not getattr(repo.inventories._index, '_missing_compression_parents',
+            None):
+            raise TestSkipped("No missing compression parents")
+        repo.inventories._index._missing_compression_parents.add(key)
+        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        repo.abort_write_group()
+        repo.unlock()
+
+    def test_missing_revisions_compression_parent_prevents_commit(self):
+        repo = self.make_write_ready_repo()
+        key = ('junk',)
+        if not getattr(repo.inventories._index, '_missing_compression_parents',
+            None):
+            raise TestSkipped("No missing compression parents")
+        repo.revisions._index._missing_compression_parents.add(key)
+        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        repo.abort_write_group()
+        repo.unlock()
+
+    def test_missing_signatures_compression_parent_prevents_commit(self):
+        repo = self.make_write_ready_repo()
+        key = ('junk',)
+        if not getattr(repo.inventories._index, '_missing_compression_parents',
+            None):
+            raise TestSkipped("No missing compression parents")
+        repo.signatures._index._missing_compression_parents.add(key)
+        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        repo.abort_write_group()
+        repo.unlock()
+
+    def test_missing_text_compression_parent_prevents_commit(self):
+        repo = self.make_write_ready_repo()
+        key = ('some', 'junk')
+        if not getattr(repo.inventories._index, '_missing_compression_parents',
+            None):
+            raise TestSkipped("No missing compression parents")
+        repo.texts._index._missing_compression_parents.add(key)
+        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        e = self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        repo.abort_write_group()
+        repo.unlock()
+
     def test_supports_external_lookups(self):
         repo = self.make_repository('.', format=self.get_format())
         self.assertEqual(self.format_supports_external_lookups,
             repo._format.supports_external_lookups)
+
+    def test_abort_write_group_does_not_raise_when_suppressed(self):
+        """Similar to per_repository.test_write_group's test of the same name.
+
+        Also requires that the exception is logged.
+        """
+        self.vfs_transport_factory = memory.MemoryServer
+        repo = self.make_repository('repo')
+        token = repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        # Damage the repository on the filesystem
+        self.get_transport('').rename('repo', 'foo')
+        # abort_write_group will not raise an error
+        self.assertEqual(None, repo.abort_write_group(suppress_errors=True))
+        # But it does log an error
+        log_file = self._get_log(keep_log_file=True)
+        self.assertContainsRe(log_file, 'abort_write_group failed')
+        self.assertContainsRe(log_file, r'INFO  bzr: ERROR \(ignored\):')
+        if token is not None:
+            repo.leave_lock_in_place()
+
+    def test_abort_write_group_does_raise_when_not_suppressed(self):
+        self.vfs_transport_factory = memory.MemoryServer
+        repo = self.make_repository('repo')
+        token = repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        # Damage the repository on the filesystem
+        self.get_transport('').rename('repo', 'foo')
+        # abort_write_group will not raise an error
+        self.assertRaises(Exception, repo.abort_write_group)
+        if token is not None:
+            repo.leave_lock_in_place()
+
+    def test_suspend_write_group(self):
+        self.vfs_transport_factory = memory.MemoryServer
+        repo = self.make_repository('repo')
+        token = repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        repo.texts.add_lines(('file-id', 'revid'), (), ['lines'])
+        wg_tokens = repo.suspend_write_group()
+        expected_pack_name = wg_tokens[0] + '.pack'
+        upload_transport = repo._pack_collection._upload_transport
+        limbo_files = upload_transport.list_dir('')
+        self.assertTrue(expected_pack_name in limbo_files, limbo_files)
+        md5 = osutils.md5(upload_transport.get_bytes(expected_pack_name))
+        self.assertEqual(wg_tokens[0], md5.hexdigest())
+
+    def test_resume_write_group_then_abort(self):
+        # Create a repo, start a write group, insert some data, suspend.
+        self.vfs_transport_factory = memory.MemoryServer
+        repo = self.make_repository('repo')
+        token = repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        text_key = ('file-id', 'revid')
+        repo.texts.add_lines(text_key, (), ['lines'])
+        wg_tokens = repo.suspend_write_group()
+        # Get a fresh repository object for the repo on the filesystem.
+        same_repo = repo.bzrdir.open_repository()
+        # Resume
+        same_repo.lock_write()
+        self.addCleanup(same_repo.unlock)
+        same_repo.resume_write_group(wg_tokens)
+        same_repo.abort_write_group()
+        self.assertEqual(
+            [], same_repo._pack_collection._upload_transport.list_dir(''))
+        self.assertEqual(
+            [], same_repo._pack_collection._pack_transport.list_dir(''))
+
+    def test_resume_malformed_token(self):
+        self.vfs_transport_factory = memory.MemoryServer
+        # Make a repository with a suspended write group
+        repo = self.make_repository('repo')
+        token = repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        text_key = ('file-id', 'revid')
+        repo.texts.add_lines(text_key, (), ['lines'])
+        wg_tokens = repo.suspend_write_group()
+        # Make a new repository
+        new_repo = self.make_repository('new_repo')
+        token = new_repo.lock_write()
+        self.addCleanup(new_repo.unlock)
+        hacked_wg_token = (
+            '../../../../repo/.bzr/repository/upload/' + wg_tokens[0])
+        self.assertRaises(
+            errors.UnresumableWriteGroup,
+            new_repo.resume_write_group, [hacked_wg_token])
 
 
 class TestPackRepositoryStacking(TestCaseWithTransport):
@@ -488,14 +707,14 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
 
     def setUp(self):
         if not self.format_supports_external_lookups:
-            raise TestNotApplicable("%r doesn't support stacking" 
+            raise TestNotApplicable("%r doesn't support stacking"
                 % (self.format_name,))
         super(TestPackRepositoryStacking, self).setUp()
 
     def get_format(self):
         return bzrdir.format_registry.make_bzrdir(self.format_name)
 
-    def test_stack_checks_compatibility(self):
+    def test_stack_checks_rich_root_compatibility(self):
         # early versions of the packing code relied on pack internals to
         # stack, but the current version should be able to stack on any
         # format.
@@ -507,10 +726,20 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
         if repo.supports_rich_root():
             # can only stack on repositories that have compatible internal
             # metadata
-            matching_format_name = 'pack-0.92-subtree'
+            if getattr(repo._format, 'supports_tree_reference', False):
+                if repo._format.supports_chks:
+                    matching_format_name = 'development6-rich-root'
+                else:
+                    matching_format_name = 'pack-0.92-subtree'
+            else:
+                matching_format_name = 'rich-root-pack'
             mismatching_format_name = 'pack-0.92'
         else:
-            matching_format_name = 'pack-0.92'
+            # We don't have a non-rich-root CHK format.
+            if repo._format.supports_chks:
+                raise AssertionError("no non-rich-root CHK formats known")
+            else:
+                matching_format_name = 'pack-0.92'
             mismatching_format_name = 'pack-0.92-subtree'
         base = self.make_repository('base', format=matching_format_name)
         repo.add_fallback_repository(base)
@@ -521,8 +750,38 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
             repo.add_fallback_repository, bad_repo)
         self.assertContainsRe(str(e),
             r'(?m)KnitPackRepository.*/mismatch/.*\nis not compatible with\n'
-            r'KnitPackRepository.*/repo/.*\n'
+            r'.*Repository.*/repo/.*\n'
             r'different rich-root support')
+
+    def test_stack_checks_serializers_compatibility(self):
+        repo = self.make_repository('repo', format=self.get_format())
+        if getattr(repo._format, 'supports_tree_reference', False):
+            # can only stack on repositories that have compatible internal
+            # metadata
+            if repo._format.supports_chks:
+                # No CHK subtree formats in bzr.dev, so this doesn't execute.
+                matching_format_name = 'development6-subtree'
+            else:
+                matching_format_name = 'pack-0.92-subtree'
+            mismatching_format_name = 'rich-root-pack'
+        else:
+            if repo.supports_rich_root():
+                matching_format_name = 'rich-root-pack'
+                mismatching_format_name = 'pack-0.92-subtree'
+            else:
+                raise TestNotApplicable('No formats use non-v5 serializer'
+                    ' without having rich-root also set')
+        base = self.make_repository('base', format=matching_format_name)
+        repo.add_fallback_repository(base)
+        # you can't stack on something with incompatible data
+        bad_repo = self.make_repository('mismatch',
+            format=mismatching_format_name)
+        e = self.assertRaises(errors.IncompatibleRepositories,
+            repo.add_fallback_repository, bad_repo)
+        self.assertContainsRe(str(e),
+            r'(?m)KnitPackRepository.*/mismatch/.*\nis not compatible with\n'
+            r'.*Repository.*/repo/.*\n'
+            r'different serializers')
 
     def test_adding_pack_does_not_record_pack_names_from_other_repositories(self):
         base = self.make_branch_and_tree('base', format=self.get_format())
@@ -537,9 +796,10 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
         self.assertEqual(1, len(new_instance._pack_collection.all_packs()))
 
     def test_autopack_only_considers_main_repo_packs(self):
-        base = self.make_branch_and_tree('base', format=self.get_format())
+        format = self.get_format()
+        base = self.make_branch_and_tree('base', format=format)
         base.commit('foo')
-        tree = self.make_branch_and_tree('repo', format=self.get_format())
+        tree = self.make_branch_and_tree('repo', format=format)
         tree.branch.repository.add_fallback_repository(base.branch.repository)
         trans = tree.branch.repository.bzrdir.get_repository_transport(None)
         # This test could be a little cheaper by replacing the packs
@@ -550,70 +810,125 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
         for x in range(9):
             tree.commit('commit %s' % x)
         # there should be 9 packs:
-        index = GraphIndex(trans, 'pack-names', None)
+        index = self.index_class(trans, 'pack-names', None)
         self.assertEqual(9, len(list(index.iter_all_entries())))
         # committing one more should coalesce to 1 of 10.
         tree.commit('commit triggering pack')
-        index = GraphIndex(trans, 'pack-names', None)
+        index = self.index_class(trans, 'pack-names', None)
         self.assertEqual(1, len(list(index.iter_all_entries())))
         # packing should not damage data
         tree = tree.bzrdir.open_workingtree()
         check_result = tree.branch.repository.check(
             [tree.branch.last_revision()])
-        # We should have 50 (10x5) files in the obsolete_packs directory.
+        nb_files = 5 # .pack, .rix, .iix, .tix, .six
+        if tree.branch.repository._format.supports_chks:
+            nb_files += 1 # .cix
+        # We should have 10 x nb_files files in the obsolete_packs directory.
         obsolete_files = list(trans.list_dir('obsolete_packs'))
         self.assertFalse('foo' in obsolete_files)
         self.assertFalse('bar' in obsolete_files)
-        self.assertEqual(50, len(obsolete_files))
+        self.assertEqual(10 * nb_files, len(obsolete_files))
         # XXX: Todo check packs obsoleted correctly - old packs and indices
         # in the obsolete_packs directory.
         large_pack_name = list(index.iter_all_entries())[0][1][0]
         # finally, committing again should not touch the large pack.
         tree.commit('commit not triggering pack')
-        index = GraphIndex(trans, 'pack-names', None)
+        index = self.index_class(trans, 'pack-names', None)
         self.assertEqual(2, len(list(index.iter_all_entries())))
         pack_names = [node[1][0] for node in index.iter_all_entries()]
         self.assertTrue(large_pack_name in pack_names)
 
 
-def load_tests(basic_tests, module, test_loader):
+class TestSmartServerAutopack(TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestSmartServerAutopack, self).setUp()
+        # Create a smart server that publishes whatever the backing VFS server
+        # does.
+        self.smart_server = server.SmartTCPServer_for_testing()
+        self.smart_server.setUp(self.get_server())
+        self.addCleanup(self.smart_server.tearDown)
+        # Log all HPSS calls into self.hpss_calls.
+        client._SmartClient.hooks.install_named_hook(
+            'call', self.capture_hpss_call, None)
+        self.hpss_calls = []
+
+    def capture_hpss_call(self, params):
+        self.hpss_calls.append(params.method)
+
+    def get_format(self):
+        return bzrdir.format_registry.make_bzrdir(self.format_name)
+
+    def test_autopack_or_streaming_rpc_is_used_when_using_hpss(self):
+        # Make local and remote repos
+        format = self.get_format()
+        tree = self.make_branch_and_tree('local', format=format)
+        self.make_branch_and_tree('remote', format=format)
+        remote_branch_url = self.smart_server.get_url() + 'remote'
+        remote_branch = bzrdir.BzrDir.open(remote_branch_url).open_branch()
+        # Make 9 local revisions, and push them one at a time to the remote
+        # repo to produce 9 pack files.
+        for x in range(9):
+            tree.commit('commit %s' % x)
+            tree.branch.push(remote_branch)
+        # Make one more push to trigger an autopack
+        self.hpss_calls = []
+        tree.commit('commit triggering pack')
+        tree.branch.push(remote_branch)
+        autopack_calls = len([call for call in self.hpss_calls if call ==
+            'PackRepository.autopack'])
+        streaming_calls = len([call for call in self.hpss_calls if call ==
+            'Repository.insert_stream'])
+        if autopack_calls:
+            # Non streaming server
+            self.assertEqual(1, autopack_calls)
+            self.assertEqual(0, streaming_calls)
+        else:
+            # Streaming was used, which autopacks on the remote end.
+            self.assertEqual(0, autopack_calls)
+            # NB: The 2 calls are because of the sanity check that the server
+            # supports the verb (see remote.py:RemoteSink.insert_stream for
+            # details).
+            self.assertEqual(2, streaming_calls)
+
+
+def load_tests(basic_tests, module, loader):
     # these give the bzrdir canned format name, and the repository on-disk
     # format string
     scenarios_params = [
          dict(format_name='pack-0.92',
               format_string="Bazaar pack repository format 1 (needs bzr 0.92)\n",
-              format_supports_external_lookups=False),
+              format_supports_external_lookups=False,
+              index_class=GraphIndex),
          dict(format_name='pack-0.92-subtree',
               format_string="Bazaar pack repository format 1 "
               "with subtree support (needs bzr 0.92)\n",
-              format_supports_external_lookups=False),
+              format_supports_external_lookups=False,
+              index_class=GraphIndex),
          dict(format_name='1.6',
               format_string="Bazaar RepositoryFormatKnitPack5 (bzr 1.6)\n",
-              format_supports_external_lookups=True),
-         dict(format_name='1.6-rich-root',
+              format_supports_external_lookups=True,
+              index_class=GraphIndex),
+         dict(format_name='1.6.1-rich-root',
               format_string="Bazaar RepositoryFormatKnitPack5RichRoot "
-                  "(bzr 1.6)\n",
-              format_supports_external_lookups=True),
-         dict(format_name='development0',
-              format_string="Bazaar development format 0 "
-                  "(needs bzr.dev from before 1.3)\n",
-              format_supports_external_lookups=False),
-         dict(format_name='development0-subtree',
-              format_string="Bazaar development format 0 "
-                  "with subtree support (needs bzr.dev from before 1.3)\n",
-              format_supports_external_lookups=False),
-         dict(format_name='development',
-              format_string="Bazaar development format 1 "
-                  "(needs bzr.dev from before 1.6)\n",
-              format_supports_external_lookups=True),
-         dict(format_name='development-subtree',
-              format_string="Bazaar development format 1 "
-                  "with subtree support (needs bzr.dev from before 1.6)\n",
-              format_supports_external_lookups=True),
+                  "(bzr 1.6.1)\n",
+              format_supports_external_lookups=True,
+              index_class=GraphIndex),
+         dict(format_name='1.9',
+              format_string="Bazaar RepositoryFormatKnitPack6 (bzr 1.9)\n",
+              format_supports_external_lookups=True,
+              index_class=BTreeGraphIndex),
+         dict(format_name='1.9-rich-root',
+              format_string="Bazaar RepositoryFormatKnitPack6RichRoot "
+                  "(bzr 1.9)\n",
+              format_supports_external_lookups=True,
+              index_class=BTreeGraphIndex),
+         dict(format_name='development6-rich-root',
+              format_string='Bazaar development format - group compression '
+                  'and chk inventory (needs bzr.dev from 1.14)\n',
+              format_supports_external_lookups=False,
+              index_class=BTreeGraphIndex),
          ]
-    adapter = tests.TestScenarioApplier()
     # name of the scenario is the format name
-    adapter.scenarios = [(s['format_name'], s) for s in scenarios_params]
-    suite = tests.TestSuite()
-    tests.adapt_tests(basic_tests, adapter, suite)
-    return suite
+    scenarios = [(s['format_name'], s) for s in scenarios_params]
+    return tests.multiply_tests(basic_tests, scenarios, loader.suiteClass())

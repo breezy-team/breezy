@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Commands for generating snapshot information about a bzr tree."""
 
@@ -22,11 +22,9 @@ from bzrlib import (
     branch,
     errors,
     workingtree,
-    )
-""")
-from bzrlib import (
     version_info_formats,
     )
+""")
 from bzrlib.commands import Command
 from bzrlib.option import Option, RegistryOption
 
@@ -72,8 +70,9 @@ class cmd_version_info(Command):
 
     takes_options = [RegistryOption('format',
                             'Select the output format.',
-                            version_info_formats.format_registry,
-                            value_switches=True),
+                            value_switches=True,
+                            lazy_registry=('bzrlib.version_info_formats',
+                                           'format_registry')),
                      Option('all', help='Include all possible information.'),
                      Option('check-clean', help='Check if tree is clean.'),
                      Option('include-history',

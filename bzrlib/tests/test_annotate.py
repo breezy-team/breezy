@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Whitebox tests for annotate functionality."""
 
@@ -306,7 +306,7 @@ class TestAnnotate(tests.TestCaseWithTransport):
                                  ''.join('\t'.join(l) for l in actual))
 
     def test_annotate_duplicate_lines(self):
-        # XXX: Should this be a repository_implementations test?
+        # XXX: Should this be a per_repository test?
         tree1 = self.create_duplicate_lines_tree()
         repo = tree1.branch.repository
         repo.lock_read()
@@ -475,7 +475,7 @@ class TestAnnotate(tests.TestCaseWithTransport):
         tree1.add(['b'], ['b-id'])
         tree1.commit('b', rev_id='rev-2',
                      committer='Committer <committer@example.com>',
-                     author='Author <author@example.com>',
+                     authors=['Author <author@example.com>'],
                      timestamp=1166046000.00, timezone=0)
 
         tree1.lock_read()
@@ -502,7 +502,7 @@ class TestReannotate(tests.TestCase):
     def test_reannotate(self):
         self.annotateEqual(parent_1, [parent_1], new_1, 'blahblah')
         self.annotateEqual(expected_2_1, [parent_2], new_1, 'blahblah')
-        self.annotateEqual(expected_1_2_2, [parent_1, parent_2], new_2, 
+        self.annotateEqual(expected_1_2_2, [parent_1, parent_2], new_2,
                            'blahblah')
 
     def test_reannotate_no_parents(self):

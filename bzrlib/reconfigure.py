@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Reconfigure a bzrdir into a new tree/branch/repository layout"""
 
@@ -62,6 +62,7 @@ class Reconfigure(object):
         self._create_tree = False
         self._create_repository = False
         self._destroy_repository = False
+        self._repository_trees = None
 
     @staticmethod
     def to_branch(bzrdir):
@@ -138,6 +139,21 @@ class Reconfigure(object):
         reconfiguration._set_use_shared(use_shared=False)
         if not reconfiguration.changes_planned():
             raise errors.AlreadyStandalone(bzrdir)
+        return reconfiguration
+
+    @classmethod
+    def set_repository_trees(klass, bzrdir, with_trees):
+        """Adjust a repository's working tree presence default"""
+        reconfiguration = klass(bzrdir)
+        if not reconfiguration.repository.is_shared():
+            raise errors.ReconfigurationNotSupported(reconfiguration.bzrdir)
+        if with_trees and reconfiguration.repository.make_working_trees():
+            raise errors.AlreadyWithTrees(bzrdir)
+        elif (not with_trees
+              and not reconfiguration.repository.make_working_trees()):
+            raise errors.AlreadyWithNoTrees(bzrdir)
+        else:
+            reconfiguration._repository_trees = with_trees
         return reconfiguration
 
     def _plan_changes(self, want_tree, want_branch, want_bound,
@@ -302,3 +318,5 @@ class Reconfigure(object):
             local_branch.bind(branch.Branch.open(bind_location))
         if self._destroy_repository:
             self.bzrdir.destroy_repository()
+        if self._repository_trees is not None:
+            repo.set_make_working_trees(self._repository_trees)

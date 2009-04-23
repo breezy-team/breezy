@@ -12,72 +12,45 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """WorkingTree implementation tests for bzr.
 
 These test the conformance of all the workingtre variations to the expected API.
-Specific tests for individual formats are in the tests/test_workingtree file 
+Specific tests for individual formats are in the tests/test_workingtree file
 rather than in tests/workingtree_implementations/*.py.
 """
 
-import bzrlib.errors as errors
-from bzrlib.transport import get_transport
-from bzrlib.tests import (
-                          adapt_modules,
-                          default_transport,
-                          TestScenarioApplier,
-                          )
-from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
-from bzrlib.workingtree import (WorkingTreeFormat,
-                                _legacy_formats,
-                                )
+from bzrlib import (
+    errors,
+    tests,
+    workingtree,
+    )
+from bzrlib.tests import bzrdir_implementations
 
 
-class WorkingTreeTestProviderAdapter(TestScenarioApplier):
-    """A tool to generate a suite testing multiple workingtree formats at once.
-
-    This is done by copying the test once for each transport and injecting
-    the transport_server, transport_readonly_server, and workingtree_format
-    classes into each copy. Each copy is also given a new id() to make it
-    easy to identify.
-    """
-
-    def __init__(self, transport_server, transport_readonly_server, formats):
-        self._transport_server = transport_server
-        self._transport_readonly_server = transport_readonly_server
-        self.scenarios = self.formats_to_scenarios(formats)
-
-    def formats_to_scenarios(self, formats):
-        """Transform the input formats to a list of scenarios.
-
-        :param formats: A list [workingtree_format].
-        """
-
-        result = []
-        for workingtree_format in formats:
-            result.append(self.create_scenario(workingtree_format))
-        return result
-
-    def create_scenario(self, workingtree_format):
-        """Create a scenario for the specified converter
-
-        :param workingtree_format: The particular workingtree format to test.
-        :param bzrdir_format: The bzrdir format to test.
-        :return: a (name, options) tuple, where options is a dict of values
-            to be used as members of the TestCase.
-        """
-        scenario_options = {
-            "transport_server": self._transport_server,
-            "transport_readonly_server": self._transport_readonly_server,
-            "bzrdir_format": workingtree_format._matchingbzrdir,
-            "workingtree_format": workingtree_format,
-            }
-        return workingtree_format.__class__.__name__, scenario_options
+def make_scenarios(transport_server, transport_readonly_server, formats):
+    result = []
+    for workingtree_format in formats:
+        result.append((workingtree_format.__class__.__name__,
+                       make_scenario(transport_server,
+                                     transport_readonly_server,
+                                     workingtree_format)))
+    return result
 
 
-class TestCaseWithWorkingTree(TestCaseWithBzrDir):
+def make_scenario(transport_server, transport_readonly_server,
+                  workingtree_format):
+    return {
+        "transport_server": transport_server,
+        "transport_readonly_server": transport_readonly_server,
+        "bzrdir_format": workingtree_format._matchingbzrdir,
+        "workingtree_format": workingtree_format,
+        }
+
+
+class TestCaseWithWorkingTree(bzrdir_implementations.TestCaseWithBzrDir):
 
     def make_branch_and_tree(self, relpath, format=None):
         made_control = self.make_bzrdir(relpath, format=format)
@@ -86,11 +59,7 @@ class TestCaseWithWorkingTree(TestCaseWithBzrDir):
         return self.workingtree_format.initialize(made_control)
 
 
-def load_tests(basic_tests, module, loader):
-    result = loader.suiteClass()
-    # add the tests for this module
-    result.addTests(basic_tests)
-
+def load_tests(standard_tests, module, loader):
     test_workingtree_implementations = [
         'bzrlib.tests.workingtree_implementations.test_add_reference',
         'bzrlib.tests.workingtree_implementations.test_add',
@@ -98,9 +67,12 @@ def load_tests(basic_tests, module, loader):
         'bzrlib.tests.workingtree_implementations.test_basis_tree',
         'bzrlib.tests.workingtree_implementations.test_break_lock',
         'bzrlib.tests.workingtree_implementations.test_changes_from',
+        'bzrlib.tests.workingtree_implementations.test_content_filters',
         'bzrlib.tests.workingtree_implementations.test_commit',
+        'bzrlib.tests.workingtree_implementations.test_eol_conversion',
         'bzrlib.tests.workingtree_implementations.test_executable',
         'bzrlib.tests.workingtree_implementations.test_flush',
+        'bzrlib.tests.workingtree_implementations.test_get_file_with_stat',
         'bzrlib.tests.workingtree_implementations.test_get_file_mtime',
         'bzrlib.tests.workingtree_implementations.test_get_parent_ids',
         'bzrlib.tests.workingtree_implementations.test_inv',
@@ -124,17 +96,20 @@ def load_tests(basic_tests, module, loader):
         'bzrlib.tests.workingtree_implementations.test_smart_add',
         'bzrlib.tests.workingtree_implementations.test_uncommit',
         'bzrlib.tests.workingtree_implementations.test_unversion',
+        'bzrlib.tests.workingtree_implementations.test_views',
         'bzrlib.tests.workingtree_implementations.test_walkdirs',
         'bzrlib.tests.workingtree_implementations.test_workingtree',
         ]
 
-    adapter = WorkingTreeTestProviderAdapter(
-        default_transport,
+    scenarios = make_scenarios(
+        tests.default_transport,
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
-        WorkingTreeFormat._formats.values() + _legacy_formats)
+        workingtree.WorkingTreeFormat._formats.values()
+        + workingtree._legacy_formats)
 
     # add the tests for the sub modules
-    adapt_modules(test_workingtree_implementations, adapter, loader, result)
-    return result
+    return tests.multiply_tests(
+        loader.loadTestsFromModuleNames(test_workingtree_implementations),
+        scenarios, standard_tests)

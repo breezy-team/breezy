@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 # XXX: Some consideration of the problems that might occur if there are
 # files whose id differs only in case.  That should probably be forbidden.
@@ -21,7 +21,6 @@
 import errno
 import os
 from cStringIO import StringIO
-import urllib
 from warnings import warn
 
 from bzrlib import (
@@ -134,7 +133,7 @@ class VersionedFileStore(TransportStore):
     def _make_new_versionedfile(self, file_id, transaction,
         known_missing=False, _filename=None):
         """Make a new versioned file.
-        
+
         :param _filename: filename that would be returned from self.filename for
         file_id. This is used to reduce duplicate filename calculations when
         using 'get_weave_or_empty'. FOR INTERNAL USE ONLY.
@@ -163,7 +162,7 @@ class VersionedFileStore(TransportStore):
 
     def get_weave_or_empty(self, file_id, transaction):
         """Return a weave, or an empty one if it doesn't exist."""
-        # This is typically used from 'commit' and 'fetch/push/pull' where 
+        # This is typically used from 'commit' and 'fetch/push/pull' where
         # we scan across many versioned files once. As such the small overhead
         # of calculating the filename before doing a cache lookup is more than
         # compensated for by not calculating the filename when making new
@@ -209,7 +208,7 @@ class VersionedFileStore(TransportStore):
     def copy_multi(self, from_store, file_ids, pb=None, from_transaction=None,
                    to_transaction=None):
         """Copy all the versions for multiple file_ids from from_store.
-        
+
         :param from_transaction: required current transaction in from_store.
         """
         from bzrlib.transactions import PassThroughTransaction

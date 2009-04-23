@@ -12,73 +12,16 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests that branch classes implement hook callouts correctly."""
 
-from bzrlib.errors import HookFailed, TipChangeRejected
 from bzrlib.branch import Branch, ChangeBranchTipParams
+from bzrlib.errors import HookFailed, TipChangeRejected
+from bzrlib.remote import RemoteBranch
 from bzrlib.revision import NULL_REVISION
+from bzrlib.smart import server
 from bzrlib.tests import TestCaseWithMemoryTransport
-
-
-class TestSetRevisionHistoryHook(TestCaseWithMemoryTransport):
-
-    def setUp(self):
-        self.hook_calls = []
-        TestCaseWithMemoryTransport.setUp(self)
-
-    def capture_set_rh_hook(self, branch, rev_history):
-        """Capture post set-rh hook calls to self.hook_calls.
-        
-        The call is logged, as is some state of the branch.
-        """
-        self.hook_calls.append(
-            ('set_rh', branch, rev_history, branch.is_locked()))
-
-    def test_set_rh_empty_history(self):
-        branch = self.make_branch('source')
-        Branch.hooks.install_named_hook('set_rh', self.capture_set_rh_hook,
-                                        None)
-        branch.set_revision_history([])
-        self.assertEqual(self.hook_calls,
-            [('set_rh', branch, [], True)])
-
-    def test_set_rh_nonempty_history(self):
-        tree = self.make_branch_and_memory_tree('source')
-        tree.lock_write()
-        tree.add('')
-        tree.commit('another commit', rev_id='f\xc2\xb5')
-        tree.commit('empty commit', rev_id='foo')
-        tree.unlock()
-        branch = tree.branch
-        Branch.hooks.install_named_hook('set_rh', self.capture_set_rh_hook,
-                                        None)
-        # some branches require that their history be set to a revision in the
-        # repository
-        branch.set_revision_history(['f\xc2\xb5'])
-        self.assertEqual(self.hook_calls,
-            [('set_rh', branch, ['f\xc2\xb5'], True)])
-
-    def test_set_rh_branch_is_locked(self):
-        branch = self.make_branch('source')
-        Branch.hooks.install_named_hook('set_rh', self.capture_set_rh_hook,
-                                        None)
-        branch.set_revision_history([])
-        self.assertEqual(self.hook_calls,
-            [('set_rh', branch, [], True)])
-
-    def test_set_rh_calls_all_hooks_no_errors(self):
-        branch = self.make_branch('source')
-        Branch.hooks.install_named_hook('set_rh', self.capture_set_rh_hook,
-                                        None)
-        Branch.hooks.install_named_hook('set_rh', self.capture_set_rh_hook,
-                                        None)
-        branch.set_revision_history([])
-        self.assertEqual(self.hook_calls,
-            [('set_rh', branch, [], True),
-             ('set_rh', branch, [], True),
-            ])
 
 
 class ChangeBranchTipTestCase(TestCaseWithMemoryTransport):
@@ -86,7 +29,7 @@ class ChangeBranchTipTestCase(TestCaseWithMemoryTransport):
 
     def install_logging_hook(self, prefix):
         """Add a hook that logs calls made to it.
-        
+
         :returns: the list that the calls will be appended to.
         """
         hook_calls = []
@@ -106,10 +49,149 @@ class ChangeBranchTipTestCase(TestCaseWithMemoryTransport):
         branch = tree.branch
         return branch
 
+    def assertHookCalls(self, expected_params, branch, hook_calls=None,
+        pre=False):
+        if hook_calls is None:
+            hook_calls = self.hook_calls
+        if isinstance(branch, RemoteBranch):
+            # For a remote branch, both the server and the client will raise
+            # this hook, and we see both in the test environment. The remote
+            # instance comes in between the clients - the client doe pre, the
+            # server does pre, the server does post, the client does post.
+            if pre:
+                offset = 0
+            else:
+                offset = 1
+            self.assertEqual(expected_params, hook_calls[offset])
+            self.assertEqual(2, len(hook_calls))
+        else:
+            self.assertEqual([expected_params], hook_calls)
+
+
+class TestSetRevisionHistoryHook(ChangeBranchTipTestCase):
+
+    def setUp(self):
+        self.hook_calls = []
+        TestCaseWithMemoryTransport.setUp(self)
+
+    def capture_set_rh_hook(self, branch, rev_history):
+        """Capture post set-rh hook calls to self.hook_calls.
+
+        The call is logged, as is some state of the branch.
+        """
+        self.hook_calls.append(
+            ('set_rh', branch, rev_history, branch.is_locked()))
+
+    def test_set_rh_empty_history(self):
+        branch = self.make_branch('source')
+        Branch.hooks.install_named_hook('set_rh', self.capture_set_rh_hook,
+                                        None)
+        branch.set_revision_history([])
+        expected_params = ('set_rh', branch, [], True)
+        self.assertHookCalls(expected_params, branch)
+
+    def test_set_rh_nonempty_history(self):
+        tree = self.make_branch_and_memory_tree('source')
+        tree.lock_write()
+        tree.add('')
+        tree.commit('another commit', rev_id='f\xc2\xb5')
+        tree.commit('empty commit', rev_id='foo')
+        tree.unlock()
+        branch = tree.branch
+        Branch.hooks.install_named_hook('set_rh', self.capture_set_rh_hook,
+                                        None)
+        # some branches require that their history be set to a revision in the
+        # repository
+        branch.set_revision_history(['f\xc2\xb5'])
+        expected_params =('set_rh', branch, ['f\xc2\xb5'], True)
+        self.assertHookCalls(expected_params, branch)
+
+    def test_set_rh_branch_is_locked(self):
+        branch = self.make_branch('source')
+        Branch.hooks.install_named_hook('set_rh', self.capture_set_rh_hook,
+                                        None)
+        branch.set_revision_history([])
+        expected_params = ('set_rh', branch, [], True)
+        self.assertHookCalls(expected_params, branch)
+
+    def test_set_rh_calls_all_hooks_no_errors(self):
+        branch = self.make_branch('source')
+        Branch.hooks.install_named_hook('set_rh', self.capture_set_rh_hook,
+                                        None)
+        Branch.hooks.install_named_hook('set_rh', self.capture_set_rh_hook,
+                                        None)
+        branch.set_revision_history([])
+        expected_calls = [('set_rh', branch, [], True),
+            ('set_rh', branch, [], True),
+            ]
+        if isinstance(branch, RemoteBranch):
+            # For a remote branch, both the server and the client will raise
+            # set_rh, and the server will do so first because that is where
+            # the change takes place.
+            self.assertEqual(expected_calls, self.hook_calls[2:])
+            self.assertEqual(4, len(self.hook_calls))
+        else:
+            self.assertEqual(expected_calls, self.hook_calls)
+
+
+class TestOpen(TestCaseWithMemoryTransport):
+
+    def capture_hook(self, branch):
+        self.hook_calls.append(branch)
+
+    def install_hook(self):
+        self.hook_calls = []
+        Branch.hooks.install_named_hook('open', self.capture_hook, None)
+
+    def test_create(self):
+        self.install_hook()
+        b = self.make_branch('.')
+        if isinstance(b, RemoteBranch):
+            # RemoteBranch creation:
+            if (self.transport_readonly_server ==
+                server.ReadonlySmartTCPServer_for_testing_v2_only):
+                # Older servers:
+                self.assertEqual(3, len(self.hook_calls))
+                # creates the branch via the VFS (for older servers)
+                self.assertEqual(b._real_branch, self.hook_calls[0])
+                # creates a RemoteBranch object
+                self.assertEqual(b, self.hook_calls[1])
+                # get_stacked_on_url RPC
+                self.assertRealBranch(self.hook_calls[2])
+            else:
+                self.assertEqual(2, len(self.hook_calls))
+                # create_branch RPC
+                self.assertRealBranch(self.hook_calls[0])
+                # create RemoteBranch locally
+                self.assertEqual(b, self.hook_calls[1])
+        else:
+            self.assertEqual([b], self.hook_calls)
+
+    def test_open(self):
+        branch_url = self.make_branch('.').bzrdir.root_transport.base
+        self.install_hook()
+        b = Branch.open(branch_url)
+        if isinstance(b, RemoteBranch):
+            self.assertEqual(3, len(self.hook_calls))
+            # open_branchV2 RPC
+            self.assertRealBranch(self.hook_calls[0])
+            # create RemoteBranch locally
+            self.assertEqual(b, self.hook_calls[1])
+            # get_stacked_on_url RPC
+            self.assertRealBranch(self.hook_calls[2])
+        else:
+            self.assertEqual([b], self.hook_calls)
+
+    def assertRealBranch(self, b):
+        # Branches opened on the server don't have comparable URLs, so we just
+        # assert that it is not a RemoteBranch.
+        self.assertIsInstance(b, Branch)
+        self.assertFalse(isinstance(b, RemoteBranch))
+
 
 class TestPreChangeBranchTip(ChangeBranchTipTestCase):
     """Tests for pre_change_branch_tip hook.
-    
+
     Most of these tests are very similar to the tests in
     TestPostChangeBranchTip.
     """
@@ -127,7 +209,7 @@ class TestPreChangeBranchTip(ChangeBranchTipTestCase):
 
     def test_hook_failure_prevents_change(self):
         """If a hook raises an exception, the change does not take effect.
-        
+
         Also, a HookFailed exception will be raised.
         """
         branch = self.make_branch_with_revision_ids(
@@ -143,14 +225,14 @@ class TestPreChangeBranchTip(ChangeBranchTipTestCase):
         self.assertIsInstance(hook_failed_exc.exc_value, PearShapedError)
         # The revision info is unchanged.
         self.assertEqual((2, 'two-\xc2\xb5'), branch.last_revision_info())
-        
+
     def test_empty_history(self):
         branch = self.make_branch('source')
         hook_calls = self.install_logging_hook('pre')
         branch.set_last_revision_info(0, NULL_REVISION)
         expected_params = ChangeBranchTipParams(
             branch, 0, 0, NULL_REVISION, NULL_REVISION)
-        self.assertEqual([expected_params], hook_calls)
+        self.assertHookCalls(expected_params, branch, hook_calls, pre=True)
 
     def test_nonempty_history(self):
         # some branches require that their history be set to a revision in the
@@ -162,7 +244,7 @@ class TestPreChangeBranchTip(ChangeBranchTipTestCase):
         branch.set_last_revision_info(1, 'one-\xc2\xb5')
         expected_params = ChangeBranchTipParams(
             branch, 2, 1, 'two-\xc2\xb5', 'one-\xc2\xb5')
-        self.assertEqual([expected_params], hook_calls)
+        self.assertHookCalls(expected_params, branch, hook_calls, pre=True)
 
     def test_branch_is_locked(self):
         branch = self.make_branch('source')
@@ -182,12 +264,16 @@ class TestPreChangeBranchTip(ChangeBranchTipTestCase):
         self.assertIsNot(hook_calls_1, hook_calls_2)
         branch.set_last_revision_info(0, NULL_REVISION)
         # Both hooks are called.
-        self.assertEqual(len(hook_calls_1), 1)
-        self.assertEqual(len(hook_calls_2), 1)
+        if isinstance(branch, RemoteBranch):
+            count = 2
+        else:
+            count = 1
+        self.assertEqual(len(hook_calls_1), count)
+        self.assertEqual(len(hook_calls_2), count)
 
     def test_explicit_reject_by_hook(self):
         """If a hook raises TipChangeRejected, the change does not take effect.
-        
+
         TipChangeRejected exceptions are propagated, not wrapped in HookFailed.
         """
         branch = self.make_branch_with_revision_ids(
@@ -200,7 +286,7 @@ class TestPreChangeBranchTip(ChangeBranchTipTestCase):
             TipChangeRejected, branch.set_last_revision_info, 0, NULL_REVISION)
         # The revision info is unchanged.
         self.assertEqual((2, 'two-\xc2\xb5'), branch.last_revision_info())
-        
+
 
 class TestPostChangeBranchTip(ChangeBranchTipTestCase):
     """Tests for post_change_branch_tip hook.
@@ -226,7 +312,7 @@ class TestPostChangeBranchTip(ChangeBranchTipTestCase):
         branch.set_last_revision_info(0, NULL_REVISION)
         expected_params = ChangeBranchTipParams(
             branch, 0, 0, NULL_REVISION, NULL_REVISION)
-        self.assertEqual([expected_params], hook_calls)
+        self.assertHookCalls(expected_params, branch, hook_calls)
 
     def test_nonempty_history(self):
         # some branches require that their history be set to a revision in the
@@ -238,7 +324,7 @@ class TestPostChangeBranchTip(ChangeBranchTipTestCase):
         branch.set_last_revision_info(1, 'one-\xc2\xb5')
         expected_params = ChangeBranchTipParams(
             branch, 2, 1, 'two-\xc2\xb5', 'one-\xc2\xb5')
-        self.assertEqual([expected_params], hook_calls)
+        self.assertHookCalls(expected_params, branch, hook_calls)
 
     def test_branch_is_locked(self):
         """The branch passed to the hook is locked."""
@@ -259,8 +345,12 @@ class TestPostChangeBranchTip(ChangeBranchTipTestCase):
         self.assertIsNot(hook_calls_1, hook_calls_2)
         branch.set_last_revision_info(0, NULL_REVISION)
         # Both hooks are called.
-        self.assertEqual(len(hook_calls_1), 1)
-        self.assertEqual(len(hook_calls_2), 1)
+        if isinstance(branch, RemoteBranch):
+            count = 2
+        else:
+            count = 1
+        self.assertEqual(len(hook_calls_1), count)
+        self.assertEqual(len(hook_calls_2), count)
 
 
 class TestAllMethodsThatChangeTipWillRunHooks(ChangeBranchTipTestCase):
@@ -271,7 +361,7 @@ class TestAllMethodsThatChangeTipWillRunHooks(ChangeBranchTipTestCase):
     def setUp(self):
         ChangeBranchTipTestCase.setUp(self)
         self.installPreAndPostHooks()
-        
+
     def installPreAndPostHooks(self):
         self.pre_hook_calls = self.install_logging_hook('pre')
         self.post_hook_calls = self.install_logging_hook('post')
@@ -279,39 +369,49 @@ class TestAllMethodsThatChangeTipWillRunHooks(ChangeBranchTipTestCase):
     def resetHookCalls(self):
         del self.pre_hook_calls[:], self.post_hook_calls[:]
 
-    def assertPreAndPostHooksWereInvoked(self):
-        # Check for len == 1, because the hooks should only be be invoked once
-        # by an operation.
-        self.assertEqual(1, len(self.pre_hook_calls))
-        self.assertEqual(1, len(self.post_hook_calls))
+    def assertPreAndPostHooksWereInvoked(self, branch, smart_enabled):
+        """assert that both pre and post hooks were called
+
+        :param smart_enabled: The method invoked is one that should be
+            smart server ready.
+        """
+        # Check for the number of invocations expected. One invocation is
+        # local, one is remote (if the branch is remote).
+        if smart_enabled and isinstance(branch, RemoteBranch):
+            length = 2
+        else:
+            length = 1
+        self.assertEqual(length, len(self.pre_hook_calls))
+        self.assertEqual(length, len(self.post_hook_calls))
 
     def test_set_revision_history(self):
         branch = self.make_branch('')
         branch.set_revision_history([])
-        self.assertPreAndPostHooksWereInvoked()
+        self.assertPreAndPostHooksWereInvoked(branch, True)
 
     def test_set_last_revision_info(self):
         branch = self.make_branch('')
         branch.set_last_revision_info(0, NULL_REVISION)
-        self.assertPreAndPostHooksWereInvoked()
+        self.assertPreAndPostHooksWereInvoked(branch, True)
 
     def test_generate_revision_history(self):
         branch = self.make_branch('')
         branch.generate_revision_history(NULL_REVISION)
-        self.assertPreAndPostHooksWereInvoked()
+        # NB: for HPSS protocols < v3, the server does not invoke branch tip
+        # change events on generate_revision_history, as the change is done
+        # directly by the client over the VFS.
+        self.assertPreAndPostHooksWereInvoked(branch, True)
 
     def test_pull(self):
         source_branch = self.make_branch_with_revision_ids('rev-1', 'rev-2')
         self.resetHookCalls()
         destination_branch = self.make_branch('destination')
         destination_branch.pull(source_branch)
-        self.assertPreAndPostHooksWereInvoked()
+        self.assertPreAndPostHooksWereInvoked(destination_branch, False)
 
     def test_push(self):
         source_branch = self.make_branch_with_revision_ids('rev-1', 'rev-2')
         self.resetHookCalls()
         destination_branch = self.make_branch('destination')
         source_branch.push(destination_branch)
-        self.assertPreAndPostHooksWereInvoked()
-
-        
+        self.assertPreAndPostHooksWereInvoked(destination_branch, True)

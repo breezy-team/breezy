@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Report on version of bzrlib"""
 
@@ -72,7 +72,7 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
     if show_config:
         config_dir = os.path.normpath(config.config_dir())  # use native slashes
         if not isinstance(config_dir, unicode):
-            config_dir = config_dir.decode(bzrlib.user_encoding)
+            config_dir = config_dir.decode(osutils.get_user_encoding())
         to_file.write("  Bazaar configuration: %s\n" % (config_dir,))
         to_file.write("  Bazaar log file: ")
         to_file.write(trace._bzr_log_filename + '\n')

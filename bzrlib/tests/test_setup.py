@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Test for setup.py build process"""
 
@@ -20,7 +20,6 @@ import os
 import sys
 import subprocess
 import shutil
-import tempfile
 from tempfile import TemporaryFile
 
 import bzrlib
@@ -56,7 +55,7 @@ class TestSetup(TestCase):
             raise TestSkipped('You must have distutils installed to run this test.'
                               ' Usually this can be found by installing "python-dev"')
         self.log('test_build running in %s' % os.getcwd())
-        install_dir = tempfile.mkdtemp()
+        install_dir = osutils.mkdtemp()
         # setup.py must be run from the root source directory, but the tests
         # are not necessarily invoked from there
         self.source_dir = os.path.dirname(os.path.dirname(bzrlib.__file__))

@@ -93,7 +93,7 @@ before
 **before**
     ''rev'' specifies the leftmost parent of ''rev'', that is the revision
     that appears before ''rev'' in the revision history, or the revision that
-    was current when ''rev'' what comitted.
+    was current when ''rev'' was committed.
 
 ''rev'' can be any revision specifier and may be chained.
 

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
 
@@ -79,7 +79,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         sub_tree = self.make_branch_and_tree('tree/sub-tree')
         sub_tree.set_root_id('root-id')
         try:
-            self.assertRaises(errors.BadReferenceTarget, tree.add_reference, 
+            self.assertRaises(errors.BadReferenceTarget, tree.add_reference,
                               sub_tree)
         except errors.UnsupportedOperation:
             self._references_unsupported(tree)
@@ -89,7 +89,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         tree, sub_tree = self.make_trees()
         sub_tree.set_root_id('file1-id')
         try:
-            self.assertRaises(errors.BadReferenceTarget, tree.add_reference, 
+            self.assertRaises(errors.BadReferenceTarget, tree.add_reference,
                               sub_tree)
         except errors.UnsupportedOperation:
             self._references_unsupported(tree)
@@ -99,7 +99,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         os.rename('tree/sub-tree', 'sibling')
         sibling = workingtree.WorkingTree.open('sibling')
         try:
-            self.assertRaises(errors.BadReferenceTarget, tree.add_reference, 
+            self.assertRaises(errors.BadReferenceTarget, tree.add_reference,
                               sibling)
         except errors.UnsupportedOperation:
             self._references_unsupported(tree)

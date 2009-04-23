@@ -12,11 +12,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for library API infrastructure
 
-This is specifically for things controlling the interface, such as versioning.  
+This is specifically for things controlling the interface, such as versioning.
 Tests for particular parts of the library interface should be in specific
 relevant test modules.
 """
@@ -70,6 +70,31 @@ class TestAPIVersioning(TestCase):
         an_object = TrivialObject()
         self.assertEqual(bzrlib.version_info[0:3],
             bzrlib.api.get_current_api_version(an_object))
+
+    def test_require_any_api_wanted_one(self):
+        an_object = TrivialObject()
+        an_object.api_minimum_version = (1, 2, 3)
+        an_object.api_current_version = (4, 5, 6)
+        bzrlib.api.require_any_api(an_object, [(1, 2, 3)])
+
+    def test_require_any_api_wanted_first_compatible(self):
+        an_object = TrivialObject()
+        an_object.api_minimum_version = (1, 2, 3)
+        an_object.api_current_version = (4, 5, 6)
+        bzrlib.api.require_any_api(an_object, [(1, 2, 3), (5, 6, 7)])
+
+    def test_require_any_api_wanted_second_compatible(self):
+        an_object = TrivialObject()
+        an_object.api_minimum_version = (1, 2, 3)
+        an_object.api_current_version = (4, 5, 6)
+        bzrlib.api.require_any_api(an_object, [(5, 6, 7), (1, 2, 3)])
+
+    def test_require_any_api_wanted_none_compatible(self):
+        an_object = TrivialObject()
+        an_object.api_minimum_version = (1, 2, 3)
+        an_object.api_current_version = (4, 5, 6)
+        self.assertRaises(IncompatibleAPI, bzrlib.api.require_any_api,
+            an_object, [(1, 2, 2), (5, 6, 7)])
 
     def test_require_api_wanted_is_minimum_is_ok(self):
         an_object = TrivialObject()

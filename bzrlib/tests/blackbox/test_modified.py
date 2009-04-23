@@ -13,7 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Black-box tests for 'bzr modified', which shows modified files."""
@@ -50,7 +50,7 @@ class TestModified(ExternalBase):
         # with unknown file, still nothing modified
         self.build_tree_contents([(name, 'contents of %s\n' % (name))])
         check_modified('')
-        
+
         # after add, not modified
         tree.add(name)
         check_modified('')
@@ -60,9 +60,9 @@ class TestModified(ExternalBase):
         check_modified('')
 
         # modify the file
-        self.build_tree_contents([(name, 'changed\n')]) 
+        self.build_tree_contents([(name, 'changed\n')])
         check_modified(output + '\n')
-        
+
         # check null seps - use the unquoted raw name here
         check_modified(name + '\0', null=True)
 

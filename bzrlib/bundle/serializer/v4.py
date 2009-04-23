@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from cStringIO import StringIO
 import bz2
@@ -27,9 +27,9 @@ from bzrlib import (
     pack,
     revision as _mod_revision,
     trace,
-    xml_serializer,
+    serializer,
     )
-from bzrlib.bundle import bundle_data, serializer
+from bzrlib.bundle import bundle_data, serializer as bundle_serializer
 from bzrlib.util import bencode
 
 
@@ -54,8 +54,8 @@ class BundleWriter(object):
 
     def begin(self):
         """Start writing the bundle"""
-        self._fileobj.write(serializer._get_bundle_header(
-            serializer.v4_string))
+        self._fileobj.write(bundle_serializer._get_bundle_header(
+            bundle_serializer.v4_string))
         self._fileobj.write('#\n')
         self._container.begin()
 
@@ -218,7 +218,7 @@ class BundleReader(object):
             yield (bytes, metadata) + self.decode_name(names[0][0])
 
 
-class BundleSerializerV4(serializer.BundleSerializer):
+class BundleSerializerV4(bundle_serializer.BundleSerializer):
     """Implement the high-level bundle interface"""
 
     def write(self, repository, revision_ids, forced_bases, fileobj):
@@ -250,7 +250,7 @@ class BundleSerializerV4(serializer.BundleSerializer):
     @staticmethod
     def get_source_serializer(info):
         """Retrieve the serializer for a given info object"""
-        return xml_serializer.format_registry.get(info['serializer'])
+        return serializer.format_registry.get(info['serializer'])
 
 
 class BundleWriteOperation(object):
@@ -270,18 +270,19 @@ class BundleWriteOperation(object):
         self.repository = repository
         bundle = BundleWriter(fileobj)
         self.bundle = bundle
-        self.base_ancestry = set(repository.get_ancestry(base,
-                                                         topo_sorted=False))
         if revision_ids is not None:
             self.revision_ids = revision_ids
         else:
-            revision_ids = set(repository.get_ancestry(target,
-                                                       topo_sorted=False))
-            self.revision_ids = revision_ids.difference(self.base_ancestry)
+            graph = repository.get_graph()
+            revision_ids = graph.find_unique_ancestors(target, [base])
+            # Strip ghosts
+            parents = graph.get_parent_map(revision_ids)
+            self.revision_ids = [r for r in revision_ids if r in parents]
         self.revision_keys = set([(revid,) for revid in self.revision_ids])
 
     def do_write(self):
         """Write all data to the bundle"""
+        trace.note('Bundling %d revision(s).', len(self.revision_ids))
         self.repository.lock_read()
         try:
             self.bundle.begin()
@@ -321,9 +322,12 @@ class BundleWriteOperation(object):
             revision_order.append(self.target)
         self._add_mp_records_keys('inventory', inv_vf, [(revid,) for revid in revision_order])
         parent_map = self.repository.get_parent_map(revision_order)
-        for revision_id in revision_order:
+        revision_to_str = self.repository._serializer.write_revision_to_string
+        revisions = self.repository.get_revisions(revision_order)
+        for revision in revisions:
+            revision_id = revision.revision_id
             parents = parent_map.get(revision_id, None)
-            revision_text = self.repository.get_revision_xml(revision_id)
+            revision_text = revision_to_str(revision)
             self.bundle.add_fulltext_record(revision_text, parents,
                                        'revision', revision_id)
             try:
@@ -454,7 +458,7 @@ class RevisionInstaller(object):
 
     def install(self):
         """Perform the installation.
-        
+
         Must be called with the Repository locked.
         """
         self._repository.start_write_group()

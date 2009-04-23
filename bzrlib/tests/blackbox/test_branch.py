@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2008 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Black-box tests for bzr branch."""
@@ -24,6 +24,7 @@ from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.tests import HardlinkFeature
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
+from bzrlib.urlutils import local_path_to_url, strip_trailing_slash
 from bzrlib.workingtree import WorkingTree
 
 
@@ -97,14 +98,30 @@ class TestBranch(ExternalBase):
         target_stat = os.stat('target/file1')
         self.assertEqual(source_stat, target_stat)
 
+    def test_branch_standalone(self):
+        shared_repo = self.make_repository('repo', shared=True)
+        self.example_branch('source')
+        self.run_bzr('branch --standalone source repo/target')
+        b = branch.Branch.open('repo/target')
+        expected_repo_path = os.path.abspath('repo/target/.bzr/repository')
+        self.assertEqual(strip_trailing_slash(b.repository.base),
+            strip_trailing_slash(local_path_to_url(expected_repo_path)))
+
+    def test_branch_no_tree(self):
+        self.example_branch('source')
+        self.run_bzr('branch --no-tree source target')
+        self.failIfExists('target/hello')
+        self.failIfExists('target/goodbye')
+
+
 class TestBranchStacked(ExternalBase):
     """Tests for branch --stacked"""
 
     def check_shallow_branch(self, branch_revid, stacked_on):
         """Assert that the branch 'newbranch' has been published correctly.
-        
+
         :param stacked_on: url of a branch this one is stacked upon.
-        :param branch_revid: a revision id that should be the only 
+        :param branch_revid: a revision id that should be the only
             revision present in the stacked branch, and it should not be in
             the reference branch.
         """
@@ -142,11 +159,11 @@ class TestBranchStacked(ExternalBase):
         """Branching a stacked branch is not stacked by default"""
         # We have a mainline
         trunk_tree = self.make_branch_and_tree('target',
-            format='development')
+            format='1.9')
         trunk_tree.commit('mainline')
         # and a branch from it which is stacked
         branch_tree = self.make_branch_and_tree('branch',
-            format='development')
+            format='1.9')
         branch_tree.branch.set_stacked_on_url(trunk_tree.branch.base)
         # with some work on it
         branch_tree.commit('moar work plz')
@@ -166,11 +183,11 @@ class TestBranchStacked(ExternalBase):
         """Asking to stack on a stacked branch does work"""
         # We have a mainline
         trunk_tree = self.make_branch_and_tree('target',
-            format='development')
+            format='1.9')
         trunk_revid = trunk_tree.commit('mainline')
         # and a branch from it which is stacked
         branch_tree = self.make_branch_and_tree('branch',
-            format='development')
+            format='1.9')
         branch_tree.branch.set_stacked_on_url(trunk_tree.branch.base)
         # with some work on it
         branch_revid = branch_tree.commit('moar work plz')
@@ -191,7 +208,7 @@ class TestBranchStacked(ExternalBase):
     def test_branch_stacked(self):
         # We have a mainline
         trunk_tree = self.make_branch_and_tree('mainline',
-            format='development')
+            format='1.9')
         original_revid = trunk_tree.commit('mainline')
         self.assertRevisionInRepository('mainline', original_revid)
         # and a branch from it which is stacked
@@ -209,7 +226,7 @@ class TestBranchStacked(ExternalBase):
         # We can branch stacking on a smart server
         from bzrlib.smart.server import SmartTCPServer_for_testing
         self.transport_server = SmartTCPServer_for_testing
-        trunk = self.make_branch('mainline', format='development')
+        trunk = self.make_branch('mainline', format='1.9')
         out, err = self.run_bzr(
             ['branch', '--stacked', self.get_url('mainline'), 'shallow'])
 
@@ -218,6 +235,77 @@ class TestBranchStacked(ExternalBase):
         trunk = self.make_branch('trunk', format='pack-0.92')
         out, err = self.run_bzr(
             ['branch', '--stacked', 'trunk', 'shallow'])
+        # We should notify the user that we upgraded their format
+        self.assertEqualDiff(
+            'Source format does not support stacking, using format: \'1.6\'\n'
+            '  Packs 5 (adds stacking support, requires bzr 1.6)\n'
+            '\n'
+            'Created new stacked branch referring to %s.\n' % (trunk.base,),
+            err)
+
+    def test_branch_stacked_from_rich_root_non_stackable(self):
+        trunk = self.make_branch('trunk', format='rich-root-pack')
+        out, err = self.run_bzr(
+            ['branch', '--stacked', 'trunk', 'shallow'])
+        # We should notify the user that we upgraded their format
+        self.assertEqualDiff(
+            'Source format does not support stacking, using format:'
+            ' \'1.6.1-rich-root\'\n'
+            '  Packs 5 rich-root (adds stacking support, requires bzr 1.6.1)\n'
+            '\n'
+            'Created new stacked branch referring to %s.\n' % (trunk.base,),
+            err)
+
+
+class TestSmartServerBranching(ExternalBase):
+
+    def test_branch_from_trivial_branch_to_same_server_branch_acceptance(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('from')
+        for count in range(9):
+            t.commit(message='commit %d' % count)
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['branch', self.get_url('from'),
+            self.get_url('target')])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(39, self.hpss_calls)
+
+    def test_branch_from_trivial_branch_streaming_acceptance(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('from')
+        for count in range(9):
+            t.commit(message='commit %d' % count)
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['branch', self.get_url('from'),
+            'local-target'])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(10, self.hpss_calls)
+
+    def test_branch_from_trivial_stacked_branch_streaming_acceptance(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('trunk')
+        for count in range(8):
+            t.commit(message='commit %d' % count)
+        tree2 = t.branch.bzrdir.sprout('feature', stacked=True
+            ).open_workingtree()
+        tree2.commit('feature change')
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['branch', self.get_url('feature'),
+            'local-target'])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(15, self.hpss_calls)
 
 
 class TestRemoteBranch(TestCaseWithSFTPServer):

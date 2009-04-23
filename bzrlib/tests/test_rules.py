@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for finding, parsing and searching rule-based preferences."""
 
@@ -61,6 +61,19 @@ class TestIniBasedRulesSearcher(tests.TestCase):
             rs.get_items('dir/a.txt'))
         self.assertEquals((('foo', 'bar'),),
             rs.get_selected_items('a.txt', ['foo']))
+
+    def test_get_items_from_multiple_glob_match(self):
+        rs = self.make_searcher(
+            "[name *.txt *.py 'x x' \"y y\"]\nfoo=bar\na=True\n")
+        self.assertEquals((), rs.get_items('NEWS'))
+        self.assertEquals((('foo', 'bar'), ('a', 'True')),
+            rs.get_items('a.py'))
+        self.assertEquals((('foo', 'bar'), ('a', 'True')),
+            rs.get_items('a.txt'))
+        self.assertEquals((('foo', 'bar'), ('a', 'True')),
+            rs.get_items('x x'))
+        self.assertEquals((('foo', 'bar'), ('a', 'True')),
+            rs.get_items('y y'))
 
     def test_get_items_pathname_match(self):
         rs = self.make_searcher("[name ./a.txt]\nfoo=baz\n")

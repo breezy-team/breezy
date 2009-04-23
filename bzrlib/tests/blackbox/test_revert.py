@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Black-box tests for bzr revert."""
 
@@ -46,7 +46,7 @@ class TestRevert(ExternalBase):
         self.assertEquals('modified:\n  dir/file\n', self.run_bzr('status')[0])
 
     def _prepare_rename_mod_tree(self):
-        self.build_tree(['a/', 'a/b', 'a/c', 'a/d/', 'a/d/e', 'f/', 'f/g', 
+        self.build_tree(['a/', 'a/b', 'a/c', 'a/d/', 'a/d/e', 'f/', 'f/g',
                          'f/h', 'f/i'])
         self.run_bzr('init')
         self.run_bzr('add')
@@ -154,7 +154,7 @@ class TestRevert(ExternalBase):
                              os.readlink('symlink'))
         else:
             self.log("skipping revert symlink tests")
-        
+
         file('hello', 'wt').write('xyz')
         self.run_bzr('commit -m xyz hello')
         self.run_bzr('revert -r 1 hello')

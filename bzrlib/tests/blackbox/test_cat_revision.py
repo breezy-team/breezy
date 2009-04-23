@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from bzrlib.tests import blackbox
 
@@ -53,3 +53,10 @@ class TestCatRevision(blackbox.ExternalBase):
         self.check_output(revs[1], 'cat-revision -r revid:a@r-0-1')
         self.check_output(revs[2], 'cat-revision -r revid:a@r-0-2')
         self.check_output(revs[3], 'cat-revision -r revid:a@r-0-3')
+
+    def test_cat_no_such_revid(self):
+        tree = self.make_branch_and_tree('.')
+        err = self.run_bzr('cat-revision abcd', retcode=3)[1]
+        self.assertContainsRe(err, 'The repository .* contains no revision abcd.')
+
+

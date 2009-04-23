@@ -13,7 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from cStringIO import StringIO
 import os
@@ -81,11 +81,30 @@ class TestDefaultFormat(TestCaseWithTransport):
             workingtree.WorkingTreeFormat.set_default_format(old_format)
         self.assertEqual(old_format, workingtree.WorkingTreeFormat.get_default_format())
 
+    def test_open(self):
+        tree = self.make_branch_and_tree('.')
+        open_direct = workingtree.WorkingTree.open('.')
+        self.assertEqual(tree.basedir, open_direct.basedir)
+        open_no_args = workingtree.WorkingTree.open()
+        self.assertEqual(tree.basedir, open_no_args.basedir)
+
+    def test_open_containing(self):
+        tree = self.make_branch_and_tree('.')
+        open_direct, relpath = workingtree.WorkingTree.open_containing('.')
+        self.assertEqual(tree.basedir, open_direct.basedir)
+        self.assertEqual('', relpath)
+        open_no_args, relpath = workingtree.WorkingTree.open_containing()
+        self.assertEqual(tree.basedir, open_no_args.basedir)
+        self.assertEqual('', relpath)
+        open_subdir, relpath = workingtree.WorkingTree.open_containing('subdir')
+        self.assertEqual(tree.basedir, open_subdir.basedir)
+        self.assertEqual('subdir', relpath)
+
 
 class SampleTreeFormat(workingtree.WorkingTreeFormat):
     """A sample format
 
-    this format is initializable, unsupported to aid in testing the 
+    this format is initializable, unsupported to aid in testing the
     open and open_downlevel routines.
     """
 
@@ -123,7 +142,7 @@ class TestWorkingTreeFormat(TestCaseWithTransport):
             found_format = workingtree.WorkingTreeFormat.find_format(dir)
             self.failUnless(isinstance(found_format, format.__class__))
         check_format(workingtree.WorkingTreeFormat3(), "bar")
-        
+
     def test_find_format_no_tree(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize('.')
         self.assertRaises(errors.NoWorkingTree,
@@ -174,7 +193,7 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         t = control.get_workingtree_transport(None)
         self.assertEqualDiff('Bazaar-NG Working Tree format 3',
                              t.get('format').read())
-        self.assertEqualDiff(t.get('inventory').read(), 
+        self.assertEqualDiff(t.get('inventory').read(),
                               '<inventory format="5">\n'
                               '</inventory>\n',
                              )
@@ -183,12 +202,12 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         self.assertFalse(t.has('inventory.basis'))
         # no last-revision file means 'None' or 'NULLREVISION'
         self.assertFalse(t.has('last-revision'))
-        # TODO RBC 20060210 do a commit, check the inventory.basis is created 
+        # TODO RBC 20060210 do a commit, check the inventory.basis is created
         # correctly and last-revision file becomes present.
 
     def test_uses_lockdir(self):
         """WorkingTreeFormat3 uses its own LockDir:
-            
+
             - lock is a directory
             - when the WorkingTree is locked, LockDir can see that
         """
@@ -267,7 +286,7 @@ class InstrumentedTree(object):
     @needs_tree_write_lock
     def method_that_raises(self):
         """This method causes an exception when called with parameters.
-        
+
         This allows the decorator code to be checked - it should still call
         unlock.
         """

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Black-box tests for bzr version."""
 
@@ -76,7 +76,7 @@ class TestVersionUnicodeOutput(TestCaseInTempDir):
         uni_val, str_val = probe_unicode_in_user_encoding()
         if uni_val is None:
             raise TestSkipped('Cannot find a unicode character that works in'
-                              ' encoding %s' % (bzrlib.user_encoding,))
+                              ' encoding %s' % (osutils.get_user_encoding(),))
 
         osutils.set_or_unset_env('BZR_HOME', str_val)
         out = self.run_bzr("version")[0]

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """XML externalization support."""
 
@@ -22,7 +22,7 @@
 # importing this module is fairly slow because it has to load several
 # ElementTree bits
 
-from bzrlib import registry
+from bzrlib.serializer import Serializer
 from bzrlib.trace import mutter, warning
 
 try:
@@ -49,17 +49,11 @@ except ImportError:
 from bzrlib import errors
 
 
-class Serializer(object):
-    """Abstract object serialize/deserialize"""
+class XMLSerializer(Serializer):
+    """Abstract XML object serialize/deserialize"""
 
-    def write_inventory(self, inv, f):
-        """Write inventory to a file"""
-        raise NotImplementedError(self.write_inventory)
-
-    def write_inventory_to_string(self, inv):
-        raise NotImplementedError(self.write_inventory_to_string)
-
-    def read_inventory_from_string(self, xml_string, revision_id=None):
+    def read_inventory_from_string(self, xml_string, revision_id=None,
+                                   entry_cache=None):
         """Read xml_string into an inventory object.
 
         :param xml_string: The xml to read.
@@ -70,9 +64,13 @@ class Serializer(object):
             serialised without a revision identifier can be given the right
             revision id (but not for working tree inventories where users can
             edit the data without triggering checksum errors or anything).
+        :param entry_cache: An optional cache of InventoryEntry objects. If
+            supplied we will look up entries via (file_id, revision_id) which
+            should map to a valid InventoryEntry (File/Directory/etc) object.
         """
         try:
-            return self._unpack_inventory(fromstring(xml_string), revision_id)
+            return self._unpack_inventory(fromstring(xml_string), revision_id,
+                                          entry_cache=entry_cache)
         except ParseError, e:
             raise errors.UnexpectedInventoryFormat(e)
 
@@ -117,7 +115,7 @@ escape_map = {
     }
 def _escape_replace(match, map=escape_map):
     return map[match.group()]
- 
+
 def _escape_attrib(text, encoding=None, replace=None):
     # escape attribute value
     try:
@@ -148,7 +146,7 @@ escape_cdata_map = {
     }
 def _escape_cdata_replace(match, map=escape_cdata_map):
     return map[match.group()]
- 
+
 def _escape_cdata(text, encoding=None, replace=None):
     # escape character data
     try:
@@ -170,13 +168,16 @@ def _escape_cdata(text, encoding=None, replace=None):
 elementtree.ElementTree._escape_cdata = _escape_cdata
 
 
-class SerializerRegistry(registry.Registry):
-    """Registry for serializer objects"""
+def escape_invalid_chars(message):
+    """Escape the XML-invalid characters in a commit message.
 
-
-format_registry = SerializerRegistry()
-format_registry.register_lazy('4', 'bzrlib.xml4', 'serializer_v4')
-format_registry.register_lazy('5', 'bzrlib.xml5', 'serializer_v5')
-format_registry.register_lazy('6', 'bzrlib.xml6', 'serializer_v6')
-format_registry.register_lazy('7', 'bzrlib.xml7', 'serializer_v7')
-format_registry.register_lazy('8', 'bzrlib.xml8', 'serializer_v8')
+    :param message: Commit message to escape
+    :param count: Number of characters that were escaped
+    """
+    # Python strings can include characters that can't be
+    # represented in well-formed XML; escape characters that
+    # aren't listed in the XML specification
+    # (http://www.w3.org/TR/REC-xml/#NT-Char).
+    return re.subn(u'[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
+            lambda match: match.group(0).encode('unicode_escape'),
+            message)

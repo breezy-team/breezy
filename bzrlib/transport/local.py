@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Transport for the local filesystem.
 
@@ -71,13 +71,13 @@ class LocalTransport(Transport):
             self._local_base = ''
             super(LocalTransport, self).__init__(base)
             return
-            
+
         super(LocalTransport, self).__init__(base)
         self._local_base = urlutils.local_path_from_url(base)
 
     def clone(self, offset=None):
         """Return a new LocalTransport with root at self.base + offset
-        Because the local filesystem does not require a connection, 
+        Because the local filesystem does not require a connection,
         we can just return a new object.
         """
         if offset is None:
@@ -109,6 +109,16 @@ class LocalTransport(Transport):
         #       proper handling of stuff like
         path = osutils.normpath(osutils.pathjoin(
                     self._local_base, urlutils.unescape(relpath)))
+        # on windows, our _local_base may or may not have a drive specified
+        # (ie, it may be "/" or "c:/foo").
+        # If 'relpath' is '/' we *always* get back an abspath without
+        # the drive letter - but if our transport already has a drive letter,
+        # we want our abspaths to have a drive letter too - so handle that
+        # here.
+        if (sys.platform == "win32" and self._local_base[1:2] == ":"
+            and path == '/'):
+            path = self._local_base[:3]
+
         return urlutils.local_path_to_url(path)
 
     def local_abspath(self, relpath):
@@ -161,7 +171,7 @@ class LocalTransport(Transport):
 
         :param relpath: Location to put the contents, relative to base.
         :param f:       File-like object.
-        :param mode: The mode for the newly created file, 
+        :param mode: The mode for the newly created file,
                      None means just use the default
         """
 
@@ -387,7 +397,7 @@ class LocalTransport(Transport):
     def rename(self, rel_from, rel_to):
         path_from = self._abspath(rel_from)
         try:
-            # *don't* call bzrlib.osutils.rename, because we want to 
+            # *don't* call bzrlib.osutils.rename, because we want to
             # detect errors on rename
             os.rename(path_from, self._abspath(rel_to))
         except (IOError, OSError),e:
@@ -526,7 +536,7 @@ class EmulatedWin32LocalTransport(LocalTransport):
 
     def clone(self, offset=None):
         """Return a new LocalTransport with root at self.base + offset
-        Because the local filesystem does not require a connection, 
+        Because the local filesystem does not require a connection,
         we can just return a new object.
         """
         if offset is None:
@@ -543,14 +553,14 @@ class EmulatedWin32LocalTransport(LocalTransport):
 
 class LocalURLServer(Server):
     """A pretend server for local transports, using file:// urls.
-    
+
     Of course no actual server is required to access the local filesystem, so
     this just exists to tell the test code how to get to it.
     """
 
     def setUp(self):
         """Setup the server to service requests.
-        
+
         :param decorated_transport: ignored by this implementation.
         """
 

@@ -14,7 +14,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from cStringIO import StringIO
 import errno
@@ -34,7 +34,7 @@ from bzrlib.errors import (NotBranchError, NotVersionedError,
                            UnsupportedOperation, PathsNotVersionedError)
 from bzrlib.inventory import Inventory
 from bzrlib.osutils import pathjoin, getcwd, has_symlinks
-from bzrlib.tests import TestSkipped
+from bzrlib.tests import TestSkipped, TestNotApplicable
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 from bzrlib.trace import mutter
 from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
@@ -151,7 +151,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual('w', tree.branch.peek_lock_mode())
         tree.unlock()
         self.assertEqual(None, tree.branch.peek_lock_mode())
- 
+
     def test_revert(self):
         """Test selected-file revert"""
         tree = self.make_branch_and_tree('.')
@@ -177,7 +177,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.revert(['hello.txt'])
         self.check_file_contents('hello.txt', 'initial hello')
         self.check_file_contents('hello.txt.~1~', 'new hello')
-        
+
         # backup files are numbered
         file('hello.txt', 'w').write('new hello2')
         tree.revert(['hello.txt'])
@@ -234,7 +234,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 
         revid = b.revision_history()[0]
         self.log('first revision_id is {%s}' % revid)
-        
+
         inv = b.repository.get_revision_inventory(revid)
         self.log('contents of inventory: %r' % inv.entries())
 
@@ -329,12 +329,12 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 
     def test_set_last_revision_different_to_branch(self):
         # working tree formats from the meta-dir format and newer support
-        # setting the last revision on a tree independently of that on the 
-        # branch. Its concievable that some future formats may want to 
+        # setting the last revision on a tree independently of that on the
+        # branch. Its concievable that some future formats may want to
         # couple them again (i.e. because its really a smart server and
         # the working tree will always match the branch). So we test
-        # that formats where initialising a branch does not initialise a 
-        # tree - and thus have separable entities - support skewing the 
+        # that formats where initialising a branch does not initialise a
+        # tree - and thus have separable entities - support skewing the
         # two things.
         branch = self.make_branch('tree')
         try:
@@ -378,7 +378,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual('added', cloned.path2id('added'))
         self.assertEqual(None, cloned.path2id('deleted'))
         self.assertEqual(None, cloned.path2id('notadded'))
-        
+
     def test_basis_tree_returns_last_revision(self):
         wt = self.make_branch_and_tree('.')
         self.build_tree(['foo'])
@@ -410,7 +410,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # not change between two revisions, and another that does -
         # if the changed one is not changed, fail,
         # if the one that did not change has lost a local change, fail.
-        # 
+        #
         raise TestSkipped('revision limiting is not implemented yet.')
 
     def test_initialize_with_revision_id(self):
@@ -427,12 +427,12 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 
     def test_update_sets_last_revision(self):
         # working tree formats from the meta-dir format and newer support
-        # setting the last revision on a tree independently of that on the 
-        # branch. Its concievable that some future formats may want to 
+        # setting the last revision on a tree independently of that on the
+        # branch. Its concievable that some future formats may want to
         # couple them again (i.e. because its really a smart server and
         # the working tree will always match the branch). So we test
-        # that formats where initialising a branch does not initialise a 
-        # tree - and thus have separable entities - support skewing the 
+        # that formats where initialising a branch does not initialise a
+        # tree - and thus have separable entities - support skewing the
         # two things.
         main_branch = self.make_branch('tree')
         try:
@@ -458,7 +458,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 
     def test_update_sets_root_id(self):
         """Ensure tree root is set properly by update.
-        
+
         Since empty trees don't have root_ids, but workingtrees do,
         an update of a checkout of revision 0 to a new revision,  should set
         the root id.
@@ -472,7 +472,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # now commit to 'tree'
         wt.add('file')
         wt.commit('A', rev_id='A')
-        # and update checkout 
+        # and update checkout
         self.assertEqual(0, checkout.update())
         self.failUnlessExists('checkout/file')
         self.assertEqual(wt.get_root_id(), checkout.get_root_id())
@@ -480,12 +480,12 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 
     def test_update_returns_conflict_count(self):
         # working tree formats from the meta-dir format and newer support
-        # setting the last revision on a tree independently of that on the 
-        # branch. Its concievable that some future formats may want to 
+        # setting the last revision on a tree independently of that on the
+        # branch. Its concievable that some future formats may want to
         # couple them again (i.e. because its really a smart server and
         # the working tree will always match the branch). So we test
-        # that formats where initialising a branch does not initialise a 
-        # tree - and thus have separable entities - support skewing the 
+        # that formats where initialising a branch does not initialise a
+        # tree - and thus have separable entities - support skewing the
         # two things.
         main_branch = self.make_branch('tree')
         try:
@@ -553,7 +553,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 
     def test_update_turns_local_commit_into_merge(self):
         # doing an update with a few local commits and no master commits
-        # makes pending-merges. 
+        # makes pending-merges.
         # this is done so that 'bzr update; bzr revert' will always produce
         # an exact copy of the 'logical branch' - the referenced branch for
         # a checkout, and the master for a bound branch.
@@ -612,7 +612,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             tree.set_conflicts(example_conflicts)
         except UnsupportedOperation:
             raise TestSkipped('set_conflicts not supported')
-            
+
         tree2 = WorkingTree.open('master')
         self.assertEqual(tree2.conflicts(), example_conflicts)
         tree2._transport.put_bytes('conflicts', '')
@@ -661,14 +661,14 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual(ConflictList([TextConflict('path_a')]),
                          tree.conflicts())
         tree.add_conflicts([TextConflict('path_a')])
-        self.assertEqual(ConflictList([TextConflict('path_a')]), 
+        self.assertEqual(ConflictList([TextConflict('path_a')]),
                          tree.conflicts())
         tree.add_conflicts([ContentsConflict('path_a')])
-        self.assertEqual(ConflictList([ContentsConflict('path_a'), 
+        self.assertEqual(ConflictList([ContentsConflict('path_a'),
                                        TextConflict('path_a')]),
                          tree.conflicts())
         tree.add_conflicts([TextConflict('path_b')])
-        self.assertEqual(ConflictList([ContentsConflict('path_a'), 
+        self.assertEqual(ConflictList([ContentsConflict('path_a'),
                                        TextConflict('path_a'),
                                        TextConflict('path_b')]),
                          tree.conflicts())
@@ -726,7 +726,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             tree.add([u'a\u030a'])
             tree.lock_read()
             self.assertEqual([('', 'directory'), (u'\xe5', 'file')],
-                    [(path, ie.kind) for path,ie in 
+                    [(path, ie.kind) for path,ie in
                                 tree.inventory.iter_entries()])
             tree.unlock()
         finally:
@@ -805,18 +805,14 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # they had when they were first added
         # create one file of every interesting type
         tree = self.make_branch_and_tree('.')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
         self.build_tree(['file', 'directory/'])
         names = ['file', 'directory']
         if has_symlinks():
             os.symlink('target', 'symlink')
             names.append('symlink')
         tree.add(names, [n + '-id' for n in names])
-        if tree.supports_tree_reference():
-            sub_tree = self.make_branch_and_tree('tree-reference')
-            sub_tree.set_root_id('tree-reference-id')
-            sub_tree.commit('message')
-            names.append('tree-reference')
-            tree.add_reference(sub_tree)
         # now when we first look, we should see everything with the same kind
         # with which they were initially added
         for n in names:
@@ -894,13 +890,15 @@ class TestWorkingTree(TestCaseWithWorkingTree):
                          tree.all_file_ids())
 
     def test_sprout_hardlink(self):
+        real_os_link = getattr(os, 'link', None)
+        if real_os_link is None:
+            raise TestNotApplicable("This platform doesn't provide os.link")
         source = self.make_branch_and_tree('source')
         self.build_tree(['source/file'])
         source.add('file')
         source.commit('added file')
         def fake_link(source, target):
             raise OSError(errno.EPERM, 'Operation not permitted')
-        real_os_link = os.link
         os.link = fake_link
         try:
             # Hard-link support is optional, so supplying hardlink=True may
@@ -918,6 +916,9 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 class TestIllegalPaths(TestCaseWithWorkingTree):
 
     def test_bad_fs_path(self):
+        if osutils.normalizes_filenames():
+            # You *can't* create an illegal filename on OSX.
+            raise tests.TestNotApplicable('OSX normalizes filenames')
         self.requireFeature(tests.UTF8Filesystem)
         # We require a UTF8 filesystem, because otherwise we would need to get
         # tricky to figure out how to create an illegal filename.

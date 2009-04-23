@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for interface conformance of inventories of trees."""
 
@@ -20,11 +20,12 @@
 from cStringIO import StringIO
 import os
 
-from bzrlib.diff import internal_diff
+from bzrlib import (
+    tests,
+    )
+from bzrlib.tests import tree_implementations
 from bzrlib.mutabletree import MutableTree
-from bzrlib.osutils import has_symlinks
 from bzrlib.tests import SymlinkFeature, TestSkipped
-from bzrlib.tests.tree_implementations import TestCaseWithTree
 from bzrlib.transform import _PreviewTree
 from bzrlib.uncommit import uncommit
 
@@ -33,7 +34,7 @@ def get_entry(tree, file_id):
     return tree.iter_entries_by_dir([file_id]).next()[1]
 
 
-class TestPreviousHeads(TestCaseWithTree):
+class TestPreviousHeads(tree_implementations.TestCaseWithTree):
 
     def setUp(self):
         # we want several inventories, that respectively
@@ -68,16 +69,17 @@ class TestPreviousHeads(TestCaseWithTree):
     # TODO: test two inventories with the same file revision
 
 
-class TestInventory(TestCaseWithTree):
+class TestInventoryWithSymlinks(tree_implementations.TestCaseWithTree):
 
-    def _set_up(self):
+    _test_needs_features = [tests.SymlinkFeature]
+
+    def setUp(self):
+        tree_implementations.TestCaseWithTree.setUp(self)
         self.tree = self.get_tree_with_subdirs_and_all_content_types()
         self.tree.lock_read()
         self.addCleanup(self.tree.unlock)
 
     def test_symlink_target(self):
-        self.requireFeature(SymlinkFeature)
-        self._set_up()
         if isinstance(self.tree, (MutableTree, _PreviewTree)):
             raise TestSkipped(
                 'symlinks not accurately represented in working trees and'
@@ -86,20 +88,78 @@ class TestInventory(TestCaseWithTree):
         self.assertEqual(entry.symlink_target, 'link-target')
 
     def test_symlink_target_tree(self):
-        self.requireFeature(SymlinkFeature)
-        self._set_up()
         self.assertEqual('link-target',
                          self.tree.get_symlink_target('symlink'))
 
     def test_kind_symlink(self):
-        self.requireFeature(SymlinkFeature)
-        self._set_up()
         self.assertEqual('symlink', self.tree.kind('symlink'))
         self.assertIs(None, self.tree.get_file_size('symlink'))
 
     def test_symlink(self):
-        self.requireFeature(SymlinkFeature)
-        self._set_up()
         entry = get_entry(self.tree, self.tree.path2id('symlink'))
         self.assertEqual(entry.kind, 'symlink')
         self.assertEqual(None, entry.text_size)
+
+
+class TestInventory(tree_implementations.TestCaseWithTree):
+
+    def test_paths2ids_recursive(self):
+        work_tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/dir/', 'tree/dir/file'])
+        work_tree.add(['dir', 'dir/file'], ['dir-id', 'file-id'])
+        tree = self._convert_tree(work_tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertEqual(set(['dir-id', 'file-id']), tree.paths2ids(['dir']))
+
+    def test_paths2ids_forget_old(self):
+        work_tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/file'])
+        work_tree.add('file', 'first-id')
+        work_tree.commit('commit old state')
+        work_tree.remove('file')
+        tree = self._convert_tree(work_tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertEqual(set([]), tree.paths2ids(['file'],
+                         require_versioned=False))
+
+    def _make_canonical_test_tree(self, commit=True):
+        # make a tree used by all the 'canonical' tests below.
+        work_tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/dir/', 'tree/dir/file'])
+        work_tree.add(['dir', 'dir/file'])
+        if commit:
+            work_tree.commit('commit 1')
+        return work_tree
+
+    def test_canonical_path(self):
+        work_tree = self._make_canonical_test_tree()
+        self.assertEqual('dir/file',
+                         work_tree.get_canonical_inventory_path('Dir/File'))
+
+    def test_canonical_path_before_commit(self):
+        work_tree = self._make_canonical_test_tree(False)
+        # note: not committed.
+        self.assertEqual('dir/file',
+                         work_tree.get_canonical_inventory_path('Dir/File'))
+
+    def test_canonical_path_dir(self):
+        # check it works when asked for just the directory portion.
+        work_tree = self._make_canonical_test_tree()
+        self.assertEqual('dir', work_tree.get_canonical_inventory_path('Dir'))
+
+    def test_canonical_path_root(self):
+        work_tree = self._make_canonical_test_tree()
+        self.assertEqual('', work_tree.get_canonical_inventory_path(''))
+        self.assertEqual('/', work_tree.get_canonical_inventory_path('/'))
+
+    def test_canonical_path_invalid_all(self):
+        work_tree = self._make_canonical_test_tree()
+        self.assertEqual('foo/bar',
+                         work_tree.get_canonical_inventory_path('foo/bar'))
+
+    def test_canonical_invalid_child(self):
+        work_tree = self._make_canonical_test_tree()
+        self.assertEqual('dir/None',
+                         work_tree.get_canonical_inventory_path('Dir/None'))

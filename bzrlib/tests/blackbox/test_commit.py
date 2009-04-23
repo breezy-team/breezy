@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Tests for the commit CLI of bzr."""
@@ -20,10 +20,10 @@
 import os
 import sys
 
-import bzrlib
 from bzrlib import (
     osutils,
     ignores,
+    msgeditor,
     osutils,
     )
 from bzrlib.bzrdir import BzrDir
@@ -124,10 +124,13 @@ class TestCommit(ExternalBase):
         wt.rename_one('hello.txt', 'subdir/hello.txt')
         out, err = self.run_bzr('commit -m renamed')
         self.assertEqual('', out)
-        self.assertContainsRe(err, '^Committing to: .*\n'
-                              'added subdir\n'
-                              'renamed hello\.txt => subdir/hello\.txt\n'
-                              'Committed revision 2\.\n$')
+        self.assertEqual(set([
+            'Committing to: %s/' % osutils.getcwd(),
+            'added subdir',
+            'renamed hello.txt => subdir/hello.txt',
+            'Committed revision 2.',
+            '',
+            ]), set(err.split('\n')))
 
     def test_verbose_commit_with_unknown(self):
         """Unknown files should not be listed by default in verbose output"""
@@ -220,20 +223,20 @@ class TestCommit(ExternalBase):
         os.chdir('this')
         out,err = self.run_bzr('commit -m added')
         self.assertEqual('', out)
-        expected = '%s/' % (osutils.getcwd(), )
-        self.assertEqualDiff(
-            'Committing to: %s\n'
-            'modified filetomodify\n'
-            'added newdir\n'
-            'added newfile\n'
-            'renamed dirtorename => renameddir\n'
-            'renamed filetorename => renamedfile\n'
-            'renamed dirtoreparent => renameddir/reparenteddir\n'
-            'renamed filetoreparent => renameddir/reparentedfile\n'
-            'deleted dirtoremove\n'
-            'deleted filetoremove\n'
-            'Committed revision 2.\n' % (expected, ),
-            err)
+        self.assertEqual(set([
+            'Committing to: %s/' % osutils.getcwd(),
+            'modified filetomodify',
+            'added newdir',
+            'added newfile',
+            'renamed dirtorename => renameddir',
+            'renamed filetorename => renamedfile',
+            'renamed dirtoreparent => renameddir/reparenteddir',
+            'renamed filetoreparent => renameddir/reparentedfile',
+            'deleted dirtoremove',
+            'deleted filetoremove',
+            'Committed revision 2.',
+            ''
+            ]), set(err.split('\n')))
 
     def test_empty_commit_message(self):
         tree = self.make_branch_and_tree('.')
@@ -248,10 +251,10 @@ class TestCommit(ExternalBase):
         # LANG env variable has no effect on Windows
         # but some characters anyway cannot be represented
         # in default user encoding
-        char = probe_bad_non_ascii(bzrlib.user_encoding)
+        char = probe_bad_non_ascii(osutils.get_user_encoding())
         if char is None:
             raise TestSkipped('Cannot find suitable non-ascii character'
-                'for user_encoding (%s)' % bzrlib.user_encoding)
+                'for user_encoding (%s)' % osutils.get_user_encoding())
         out,err = self.run_bzr_subprocess('commit -m "%s"' % char,
                                           retcode=1,
                                           env_changes={'LANG': 'C'})
@@ -302,7 +305,7 @@ class TestCommit(ExternalBase):
     def test_commit_a_text_merge_in_a_checkout(self):
         # checkouts perform multiple actions in a transaction across bond
         # branches and their master, and have been observed to fail in the
-        # past. This is a user story reported to fail in bug #43959 where 
+        # past. This is a user story reported to fail in bug #43959 where
         # a merge done in a checkout (using the update command) failed to
         # commit correctly.
         trunk = self.make_branch_and_tree('trunk')
@@ -517,7 +520,9 @@ class TestCommit(ExternalBase):
         self.build_tree(['tree/hello.txt'])
         tree.add('hello.txt')
         self.run_bzr_error(
-            ["Invalid bug identifier for %s. Commit refused." % 'lp:orange'],
+            ["Did not understand bug identifier orange: Must be an integer. "
+             "See \"bzr help bugs\" for more information on this feature.\n"
+             "Commit refused."],
             'commit -m add-b --fixes=lp:orange',
             working_dir='tree')
 
@@ -527,7 +532,8 @@ class TestCommit(ExternalBase):
         self.build_tree(['tree/hello.txt'])
         tree.add('hello.txt')
         self.run_bzr_error(
-            [r"Invalid bug orange. Must be in the form of 'tag:id'\. "
+            [r"Invalid bug orange. Must be in the form of 'tracker:id'\. "
+             r"See \"bzr help bugs\" for more information on this feature.\n"
              r"Commit refused\."],
             'commit -m add-b --fixes=orange',
             working_dir='tree')
@@ -554,7 +560,7 @@ class TestCommit(ExternalBase):
                      "tree/hello.txt"])
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         properties = last_rev.properties
-        self.assertEqual(u'John D\xf6 <jdoe@example.com>', properties['author'])
+        self.assertEqual(u'John D\xf6 <jdoe@example.com>', properties['authors'])
 
     def test_author_no_email(self):
         """Author's name without an email address is allowed, too."""
@@ -565,7 +571,18 @@ class TestCommit(ExternalBase):
                                 "tree/hello.txt")
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         properties = last_rev.properties
-        self.assertEqual('John Doe', properties['author'])
+        self.assertEqual('John Doe', properties['authors'])
+
+    def test_multiple_authors(self):
+        """Multiple authors can be specyfied, and all are stored."""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        out, err = self.run_bzr("commit -m hello --author='John Doe' "
+                                "--author='Jane Rey' tree/hello.txt")
+        last_rev = tree.branch.repository.get_revision(tree.last_revision())
+        properties = last_rev.properties
+        self.assertEqual('John Doe\nJane Rey', properties['authors'])
 
     def test_partial_commit_with_renames_in_tree(self):
         # this test illustrates bug #140419
@@ -596,3 +613,29 @@ class TestCommit(ExternalBase):
             retcode=3)
         self.assertContainsRe(err,
             r'^bzr: ERROR: Cannot lock.*readonly transport')
+
+    def test_commit_hook_template(self):
+        # Test that commit template hooks work
+        def restoreDefaults():
+            msgeditor.hooks['commit_message_template'] = []
+            osutils.set_or_unset_env('BZR_EDITOR', default_editor)
+        if sys.platform == "win32":
+            f = file('fed.bat', 'w')
+            f.write('@rem dummy fed')
+            f.close()
+            default_editor = osutils.set_or_unset_env('BZR_EDITOR', "fed.bat")
+        else:
+            f = file('fed.sh', 'wb')
+            f.write('#!/bin/sh\n')
+            f.close()
+            os.chmod('fed.sh', 0755)
+            default_editor = osutils.set_or_unset_env('BZR_EDITOR', "./fed.sh")
+        self.addCleanup(restoreDefaults)
+        msgeditor.hooks.install_named_hook("commit_message_template",
+                lambda commit_obj, msg: "save me some typing\n", None)
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        out, err = self.run_bzr("commit tree/hello.txt")
+        last_rev = tree.branch.repository.get_revision(tree.last_revision())
+        self.assertEqual('save me some typing\n', last_rev.message)

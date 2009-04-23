@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Directory service registration and usage.
 
@@ -21,7 +21,12 @@ to true URLs.  Examples include lp:urls and per-user location aliases.
 """
 
 from bzrlib import errors, registry
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
 from bzrlib.branch import Branch
+from bzrlib import urlutils
+""")
+
 
 class DirectoryServiceRegistry(registry.Registry):
     """This object maintains and uses a list of directory services.
@@ -72,14 +77,22 @@ class AliasDirectory(object):
             'push': branch.get_push_location,
             'this': lambda: branch.base
         }
+        parts = url.split('/', 1)
+        if len(parts) == 2:
+            name, extra = parts
+        else:
+            (name,) = parts
+            extra = None
         try:
-            method = lookups[url[1:]]
+            method = lookups[name[1:]]
         except KeyError:
             raise errors.InvalidLocationAlias(url)
         else:
             result = method()
         if result is None:
             raise errors.UnsetLocationAlias(url)
+        if extra is not None:
+            result = urlutils.join(result, extra)
         return result
 
 directories.register(':', AliasDirectory,

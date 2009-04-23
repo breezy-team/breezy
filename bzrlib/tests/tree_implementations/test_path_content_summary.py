@@ -12,32 +12,53 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Test that all Tree's implement path_content_summary."""
 
 import os
 
-from bzrlib.osutils import supports_executable
-from bzrlib.tests import SymlinkFeature, TestSkipped, TestNotApplicable
-from bzrlib.tests.tree_implementations import TestCaseWithTree
+from bzrlib import (
+    osutils,
+    tests,
+    )
+
+from bzrlib.tests import tree_implementations
 
 
-class TestPathContentSummary(TestCaseWithTree):
+class TestPathContentSummary(tree_implementations.TestCaseWithTree):
 
     def _convert_tree(self, tree):
-        result = TestCaseWithTree._convert_tree(self, tree)
+        result = tree_implementations.TestCaseWithTree._convert_tree(self, tree)
         result.lock_read()
         self.addCleanup(result.unlock)
         return result
 
     def test_symlink_content_summary(self):
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(tests.SymlinkFeature)
         tree = self.make_branch_and_tree('tree')
         os.symlink('target', 'tree/path')
         tree.add(['path'])
         summary = self._convert_tree(tree).path_content_summary('path')
         self.assertEqual(('symlink', None, None, 'target'), summary)
+
+    def test_unicode_symlink_content_summary(self):
+        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(tests.UnicodeFilenameFeature)
+        tree = self.make_branch_and_tree('tree')
+        os.symlink('target', u'tree/\u03b2-path'.encode(osutils._fs_enc))
+        tree.add([u'\u03b2-path'])
+        summary = self._convert_tree(tree).path_content_summary(u'\u03b2-path')
+        self.assertEqual(('symlink', None, None, 'target'), summary)
+
+    def test_unicode_symlink_target_summary(self):
+        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(tests.UnicodeFilenameFeature)
+        tree = self.make_branch_and_tree('tree')
+        os.symlink(u'tree/\u03b2-path'.encode(osutils._fs_enc), 'tree/link')
+        tree.add(['link'])
+        summary = self._convert_tree(tree).path_content_summary('link')
+        self.assertEqual(('symlink', None, None, u'tree/\u03b2-path'), summary)
 
     def test_missing_content_summary(self):
         tree = self.make_branch_and_tree('tree')
@@ -45,8 +66,8 @@ class TestPathContentSummary(TestCaseWithTree):
         self.assertEqual(('missing', None, None, None), summary)
 
     def test_file_content_summary_executable(self):
-        if not supports_executable():
-            raise TestNotApplicable()
+        if not osutils.supports_executable():
+            raise tests.TestNotApplicable()
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/path'])
         tree.add(['path'])
@@ -73,7 +94,7 @@ class TestPathContentSummary(TestCaseWithTree):
         # size must be known
         self.assertEqual(22, summary[1])
         # not executable
-        if supports_executable:
+        if osutils.supports_executable:
             self.assertEqual(False, summary[2])
         else:
             self.assertEqual(None, summary[2])
@@ -93,7 +114,7 @@ class TestPathContentSummary(TestCaseWithTree):
         subtree = self.make_branch_and_tree('tree/path')
         tree.add(['path'])
         if not tree.branch.repository._format.supports_tree_reference:
-            raise TestSkipped("Tree references not supported.")
+            raise tests.TestNotApplicable("Tree references not supported.")
         summary = self._convert_tree(tree).path_content_summary('path')
         self.assertEqual(4, len(summary))
         self.assertEqual('tree-reference', summary[0])

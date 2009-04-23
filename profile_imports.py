@@ -13,7 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """A custom importer and regex compiler which logs time spent."""
 
@@ -26,6 +26,9 @@ _parent_stack = []
 _total_stack = {}
 _info = {}
 _cur_id = 0
+_timer = time.time
+if sys.platform == 'win32':
+    _timer = time.clock
 
 
 def stack_add(name, frame_name, frame_lineno, scope_name=None):
@@ -131,12 +134,12 @@ def timed_import(name, globals, locals, fromlist):
 
     this = stack_add(extra + name, frame_name, frame_lineno, scope_name)
 
-    tstart = time.time()
+    tstart = _timer()
     try:
         # Do the import
         mod = _real_import(name, globals, locals, fromlist)
     finally:
-        tload = time.time()-tstart
+        tload = _timer()-tstart
         stack_finish(this, tload)
 
     return mod
@@ -160,12 +163,12 @@ def timed_compile(*args, **kwargs):
     frame_lineno = frame.f_lineno
     this = stack_add(extra+repr(args[0]), frame_name, frame_lineno)
 
-    tstart = time.time()
+    tstart = _timer()
     try:
         # Measure the compile time
         comp = _real_compile(*args, **kwargs)
     finally:
-        tcompile = time.time() - tstart
+        tcompile = _timer() - tstart
         stack_finish(this, tcompile)
 
     return comp

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for branch implementations - tests a branch format."""
 
@@ -49,6 +49,19 @@ from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryServer
 from bzrlib.upgrade import upgrade
 from bzrlib.workingtree import WorkingTree
+
+
+class TestTestCaseWithBranch(TestCaseWithBranch):
+
+    def test_branch_format_matches_bzrdir_branch_format(self):
+        bzrdir_branch_format = self.bzrdir_format.get_branch_format()
+        self.assertIs(self.branch_format.__class__,
+                      bzrdir_branch_format.__class__)
+
+    def test_make_branch_gets_expected_format(self):
+        branch = self.make_branch('.')
+        self.assertIs(self.branch_format.__class__,
+            branch._format.__class__)
 
 
 class TestBranch(TestCaseWithBranch):
@@ -96,7 +109,7 @@ class TestBranch(TestCaseWithBranch):
         wt.commit('lala!', rev_id='revision-1', allow_pointless=False)
 
         b2 = self.make_branch('b2')
-        self.assertEqual((1, []), b2.fetch(b1))
+        b2.fetch(b1)
 
         rev = b2.repository.get_revision('revision-1')
         tree = b2.repository.revision_tree('revision-1')
@@ -199,7 +212,7 @@ class TestBranch(TestCaseWithBranch):
         self.assertEqual(branch.get_submit_branch(), 'sftp://example.com')
         branch.set_submit_branch('sftp://example.net')
         self.assertEqual(branch.get_submit_branch(), 'sftp://example.net')
-        
+
     def test_public_branch(self):
         """public location can be queried and set"""
         branch = self.make_branch('branch')
@@ -245,10 +258,10 @@ class TestBranch(TestCaseWithBranch):
                           None)
 
 # TODO 20051003 RBC:
-# compare the gpg-to-sign info for a commit with a ghost and 
+# compare the gpg-to-sign info for a commit with a ghost and
 #     an identical tree without a ghost
 # fetch missing should rewrite the TOC of weaves to list newly available parents.
-        
+
     def test_sign_existing_revision(self):
         wt = self.make_branch_and_tree('.')
         branch = wt.branch
@@ -339,7 +352,7 @@ class TestBranch(TestCaseWithBranch):
 
     def test_nicks(self):
         """Test explicit and implicit branch nicknames.
-        
+
         Nicknames are implicitly the name of the branch's directory, unless an
         explicit nickname is set.  That is, an explicit nickname always
         overrides the implicit one.
@@ -480,6 +493,28 @@ class TestBranch(TestCaseWithBranch):
         self.assertEquals(br.revision_history(), [])
 
 
+class TestBranchFormat(TestCaseWithBranch):
+
+    def test_branch_format_network_name(self):
+        br = self.make_branch('.')
+        format = br._format
+        network_name = format.network_name()
+        self.assertIsInstance(network_name, str)
+        # We want to test that the network_name matches the actual format on
+        # disk. For local branches that means that using network_name as a key
+        # in the registry gives back the same format. For remote branches we
+        # check that the network_name of the RemoteBranchFormat we have locally
+        # matches the actual format present on disk.
+        if isinstance(format, remote.RemoteBranchFormat):
+            br._ensure_real()
+            real_branch = br._real_branch
+            self.assertEqual(real_branch._format.network_name(), network_name)
+        else:
+            registry = branch.network_format_registry
+            looked_up_format = registry.get(network_name)
+            self.assertEqual(format.__class__, looked_up_format.__class__)
+
+
 class ChrootedTests(TestCaseWithBranch):
     """A support class that provides readonly urls outside the local namespace.
 
@@ -503,7 +538,7 @@ class ChrootedTests(TestCaseWithBranch):
         self.assertEqual('', relpath)
         branch, relpath = Branch.open_containing(self.get_readonly_url('g/p/q'))
         self.assertEqual('g/p/q', relpath)
-        
+
 
 class InstrumentedTransaction(object):
 
@@ -717,3 +752,25 @@ class TestStrict(TestCaseWithBranch):
         tree3.merge_from_branch(tree2.branch)
         tree3.commit('empty commit 6')
         tree2.pull(tree3.branch)
+
+
+class TestIgnoreFallbacksParameter(TestCaseWithBranch):
+
+    def make_branch_with_fallback(self):
+        fallback = self.make_branch('fallback')
+        if not fallback._format.supports_stacking():
+            raise tests.TestNotApplicable("format does not support stacking")
+        stacked = self.make_branch('stacked')
+        stacked.set_stacked_on_url(fallback.base)
+        return stacked
+
+    def test_fallbacks_not_opened(self):
+        stacked = self.make_branch_with_fallback()
+        self.get_transport('').rename('fallback', 'moved')
+        reopened = stacked.bzrdir.open_branch(ignore_fallbacks=True)
+        self.assertEqual([], reopened.repository._fallback_repositories)
+        
+    def test_fallbacks_are_opened(self):
+        stacked = self.make_branch_with_fallback()
+        reopened = stacked.bzrdir.open_branch(ignore_fallbacks=False)
+        self.assertLength(1, reopened.repository._fallback_repositories)

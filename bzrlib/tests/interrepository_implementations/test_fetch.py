@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 import sys
@@ -20,8 +20,10 @@ import sys
 import bzrlib
 from bzrlib import (
     errors,
-    repository,
+    inventory,
     osutils,
+    repository,
+    versionedfile,
     )
 from bzrlib.errors import (
     NoSuchRevision,
@@ -51,10 +53,9 @@ class TestInterRepository(TestCaseWithInterRepository):
         def check_push_rev1(repo):
             # ensure the revision is missing.
             self.assertRaises(NoSuchRevision, repo.get_revision, 'rev1')
-            # fetch with a limit of NULL_REVISION and an explicit progress bar.
+            # fetch with a limit of NULL_REVISION
             repo.fetch(tree_a.branch.repository,
-                       revision_id=NULL_REVISION,
-                       pb=bzrlib.progress.DummyProgress())
+                       revision_id=NULL_REVISION)
             # nothing should have been pushed
             self.assertFalse(repo.has_revision('rev1'))
             # fetch with a default limit (grab everything)
@@ -69,9 +70,97 @@ class TestInterRepository(TestCaseWithInterRepository):
                 if tree.inventory[file_id].kind == "file":
                     tree.get_file(file_id).read()
 
-        # makes a target version repo 
+        # makes a target version repo
         repo_b = self.make_to_repository('b')
         check_push_rev1(repo_b)
+
+    def test_fetch_inconsistent_last_changed_entries(self):
+        """If an inventory has odd data we should still get what it references.
+
+        This test tests that we do fetch a file text created in a revision not
+        being fetched, but referenced from the revision we are fetching when the
+        adjacent revisions to the one being fetched do not reference that text.
+        """
+        tree = self.make_branch_and_tree('source')
+        revid = tree.commit('old')
+        to_repo = self.make_to_repository('to_repo')
+        to_repo.fetch(tree.branch.repository, revid)
+        # Make a broken revision and fetch it.
+        source = tree.branch.repository
+        source.lock_write()
+        self.addCleanup(source.unlock)
+        source.start_write_group()
+        try:
+            # We need two revisions: OLD and NEW. NEW will claim to need a file
+            # 'FOO' changed in 'OLD'. OLD will not have that file at all.
+            source.texts.insert_record_stream([
+                versionedfile.FulltextContentFactory(('foo', revid), (), None,
+                'contents')])
+            basis = source.revision_tree(revid)
+            parent_id = basis.path2id('')
+            entry = inventory.make_entry('file', 'foo-path', parent_id, 'foo')
+            entry.revision = revid
+            entry.text_size = len('contents')
+            entry.text_sha1 = osutils.sha_string('contents')
+            inv_sha1, _ = source.add_inventory_by_delta(revid, [
+                (None, 'foo-path', 'foo', entry)], 'new', [revid])
+            rev = Revision(timestamp=0,
+                           timezone=None,
+                           committer="Foo Bar <foo@example.com>",
+                           message="Message",
+                           inventory_sha1=inv_sha1,
+                           revision_id='new',
+                           parent_ids=[revid])
+            source.add_revision(rev.revision_id, rev)
+        except:
+            source.abort_write_group()
+            raise
+        else:
+            source.commit_write_group()
+        to_repo.fetch(source, 'new')
+        to_repo.lock_read()
+        self.addCleanup(to_repo.unlock)
+        self.assertEqual('contents',
+            to_repo.texts.get_record_stream([('foo', revid)],
+            'unordered', True).next().get_bytes_as('fulltext'))
+
+    def test_fetch_parent_inventories_at_stacking_boundary(self):
+        """Fetch to a stacked branch copies inventories for parents of
+        revisions at the stacking boundary.
+
+        This is necessary so that the server is able to determine the file-ids
+        altered by all revisions it contains, which means that it needs both
+        the inventory for any revision it has, and the inventories of all that
+        revision's parents.
+        """
+        to_repo = self.make_to_repository('to')
+        if not to_repo._format.supports_external_lookups:
+            raise TestNotApplicable("Need stacking support in the target.")
+        builder = self.make_branch_builder('branch')
+        builder.start_series()
+        builder.build_snapshot('base', None, [
+            ('add', ('', 'root-id', 'directory', ''))])
+        builder.build_snapshot('left', ['base'], [])
+        builder.build_snapshot('right', ['base'], [])
+        builder.build_snapshot('merge', ['left', 'right'], [])
+        builder.finish_series()
+        branch = builder.get_branch()
+        repo = self.make_to_repository('trunk')
+        trunk = repo.bzrdir.create_branch()
+        trunk.repository.fetch(branch.repository, 'left')
+        trunk.repository.fetch(branch.repository, 'right')
+        repo = self.make_to_repository('stacked')
+        stacked_branch = repo.bzrdir.create_branch()
+        stacked_branch.set_stacked_on_url(trunk.base)
+        stacked_branch.repository.fetch(branch.repository, 'merge')
+        unstacked_repo = stacked_branch.bzrdir.open_repository()
+        unstacked_repo.lock_read()
+        self.addCleanup(unstacked_repo.unlock)
+        self.assertFalse(unstacked_repo.has_revision('left'))
+        self.assertFalse(unstacked_repo.has_revision('right'))
+        self.assertEqual(
+            set([('left',), ('right',), ('merge',)]),
+            unstacked_repo.inventories.keys())
 
     def test_fetch_missing_basis_text(self):
         """If fetching a delta, we should die if a basis is not present."""
@@ -101,9 +190,12 @@ class TestInterRepository(TestCaseWithInterRepository):
         # generally do).
         try:
             to_repo.fetch(tree.branch.repository, 'rev-two')
-        except errors.RevisionNotPresent, e:
+        except (errors.BzrCheckError, errors.RevisionNotPresent), e:
             # If an exception is raised, the revision should not be in the
             # target.
+            #
+            # Can also just raise a generic check errors; stream insertion
+            # does this to include all the missing data
             self.assertRaises((errors.NoSuchRevision, errors.RevisionNotPresent),
                               to_repo.revision_tree, 'rev-two')
         else:
@@ -137,7 +229,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         source_tree = self.make_branch_and_tree('source')
         source = source_tree.branch.repository
         target = self.make_to_repository('target')
-    
+
         # start by adding a file so the data knit for the file exists in
         # repositories that have specific files for each fileid.
         self.build_tree(['source/id'])

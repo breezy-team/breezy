@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,9 +12,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from cStringIO import StringIO
 import os
 import re
 import stat
@@ -35,7 +34,6 @@ from ntpath import (abspath as _nt_abspath,
                     splitdrive as _nt_splitdrive,
                     )
 import posixpath
-import sha
 import shutil
 from shutil import (
     rmtree,
@@ -53,13 +51,22 @@ from bzrlib import (
     )
 """)
 
+# sha and md5 modules are deprecated in python2.6 but hashlib is available as
+# of 2.5
+if sys.version_info < (2, 5):
+    import md5 as _mod_md5
+    md5 = _mod_md5.new
+    import sha as _mod_sha
+    sha = _mod_sha.new
+else:
+    from hashlib import (
+        md5,
+        sha1 as sha,
+        )
+
 
 import bzrlib
 from bzrlib import symbol_versioning
-from bzrlib.symbol_versioning import (
-    deprecated_function,
-    )
-from bzrlib.trace import mutter
 
 
 # On win32, O_BINARY is used to indicate the file should
@@ -114,7 +121,7 @@ def quotefn(f):
     global _QUOTE_RE
     if _QUOTE_RE is None:
         _QUOTE_RE = re.compile(r'([^a-zA-Z0-9.,:/\\_~-])')
-        
+
     if _QUOTE_RE.search(f):
         return '"' + f + '"'
     else:
@@ -122,37 +129,6 @@ def quotefn(f):
 
 
 _directory_kind = 'directory'
-
-_formats = {
-    stat.S_IFDIR:_directory_kind,
-    stat.S_IFCHR:'chardev',
-    stat.S_IFBLK:'block',
-    stat.S_IFREG:'file',
-    stat.S_IFIFO:'fifo',
-    stat.S_IFLNK:'symlink',
-    stat.S_IFSOCK:'socket',
-}
-
-
-def file_kind_from_stat_mode(stat_mode, _formats=_formats, _unknown='unknown'):
-    """Generate a file kind from a stat mode. This is used in walkdirs.
-
-    Its performance is critical: Do not mutate without careful benchmarking.
-    """
-    try:
-        return _formats[stat_mode & 0170000]
-    except KeyError:
-        return _unknown
-
-
-def file_kind(f, _lstat=os.lstat, _mapper=file_kind_from_stat_mode):
-    try:
-        return _mapper(_lstat(f).st_mode)
-    except OSError, e:
-        if getattr(e, 'errno', None) in (errno.ENOENT, errno.ENOTDIR):
-            raise errors.NoSuchFile(f)
-        raise
-
 
 def get_umask():
     """Return the current umask"""
@@ -195,7 +171,7 @@ if lexists is None:
 
 def fancy_rename(old, new, rename_func, unlink_func):
     """A fancy rename, when you don't have atomic rename.
-    
+
     :param old: The old path, to rename from
     :param new: The new path, to rename to
     :param rename_func: The potentially non-atomic rename function
@@ -203,7 +179,6 @@ def fancy_rename(old, new, rename_func, unlink_func):
     """
 
     # sftp rename doesn't allow overwriting, so play tricks:
-    import random
     base = os.path.basename(new)
     dirname = os.path.dirname(new)
     tmp_name = u'tmp.%s.%.9f.%d.%s' % (base, time.time(), os.getpid(), rand_chars(10))
@@ -316,9 +291,6 @@ def _win98_abspath(path):
         path = cwd + '\\' + path
     return _win32_fixdrive(_nt_normpath(path).replace('\\', '/'))
 
-if win32utils.winver == 'Windows 98':
-    _win32_abspath = _win98_abspath
-
 
 def _win32_realpath(path):
     # Real _nt_realpath doesn't have a problem with a unicode cwd
@@ -345,14 +317,14 @@ def _win32_rename(old, new):
     """We expect to be able to atomically replace 'new' with old.
 
     On win32, if new exists, it must be moved out of the way first,
-    and then deleted. 
+    and then deleted.
     """
     try:
         fancy_rename(old, new, rename_func=os.rename, unlink_func=os.unlink)
     except OSError, e:
         if e.errno in (errno.EPERM, errno.EACCES, errno.EBUSY, errno.EINVAL):
-            # If we try to rename a non-existant file onto cwd, we get 
-            # EPERM or EACCES instead of ENOENT, this will raise ENOENT 
+            # If we try to rename a non-existant file onto cwd, we get
+            # EPERM or EACCES instead of ENOENT, this will raise ENOENT
             # if the old path doesn't exist, sometimes we get EACCES
             # On Linux, we seem to get EBUSY, on Mac we get EINVAL
             os.lstat(old)
@@ -383,7 +355,10 @@ MIN_ABS_PATHLENGTH = 1
 
 
 if sys.platform == 'win32':
-    abspath = _win32_abspath
+    if win32utils.winver == 'Windows 98':
+        abspath = _win98_abspath
+    else:
+        abspath = _win32_abspath
     realpath = _win32_realpath
     pathjoin = _win32_pathjoin
     normpath = _win32_normpath
@@ -418,7 +393,7 @@ def get_terminal_encoding():
 
     This attempts to check both sys.stdout and sys.stdin to see
     what encoding they are in, and if that fails it falls back to
-    bzrlib.user_encoding.
+    osutils.get_user_encoding().
     The problem is that on Windows, locale.getpreferredencoding()
     is not the same encoding as that used by the console:
     http://mail.python.org/pipermail/python-list/2003-May/162357.html
@@ -426,12 +401,14 @@ def get_terminal_encoding():
     On my standard US Windows XP, the preferred encoding is
     cp1252, but the console is cp437
     """
+    from bzrlib.trace import mutter
     output_encoding = getattr(sys.stdout, 'encoding', None)
     if not output_encoding:
         input_encoding = getattr(sys.stdin, 'encoding', None)
         if not input_encoding:
-            output_encoding = bzrlib.user_encoding
-            mutter('encoding stdout as bzrlib.user_encoding %r', output_encoding)
+            output_encoding = get_user_encoding()
+            mutter('encoding stdout as osutils.get_user_encoding() %r',
+                   output_encoding)
         else:
             output_encoding = input_encoding
             mutter('encoding stdout as sys.stdin encoding %r', output_encoding)
@@ -439,9 +416,10 @@ def get_terminal_encoding():
         mutter('encoding stdout as sys.stdout encoding %r', output_encoding)
     if output_encoding == 'cp0':
         # invalid encoding (cp0 means 'no codepage' on Windows)
-        output_encoding = bzrlib.user_encoding
+        output_encoding = get_user_encoding()
         mutter('cp0 is invalid encoding.'
-               ' encoding stdout as bzrlib.user_encoding %r', output_encoding)
+               ' encoding stdout as osutils.get_user_encoding() %r',
+               output_encoding)
     # check encoding
     try:
         codecs.lookup(output_encoding)
@@ -449,9 +427,9 @@ def get_terminal_encoding():
         sys.stderr.write('bzr: warning:'
                          ' unknown terminal encoding %s.\n'
                          '  Using encoding %s instead.\n'
-                         % (output_encoding, bzrlib.user_encoding)
+                         % (output_encoding, get_user_encoding())
                         )
-        output_encoding = bzrlib.user_encoding
+        output_encoding = get_user_encoding()
 
     return output_encoding
 
@@ -492,19 +470,19 @@ def islink(f):
 
 def is_inside(dir, fname):
     """True if fname is inside dir.
-    
+
     The parameters should typically be passed to osutils.normpath first, so
     that . and .. and repeated slashes are eliminated, and the separators
     are canonical for the platform.
-    
-    The empty string as a dir name is taken as top-of-tree and matches 
+
+    The empty string as a dir name is taken as top-of-tree and matches
     everything.
     """
-    # XXX: Most callers of this can actually do something smarter by 
+    # XXX: Most callers of this can actually do something smarter by
     # looking at the inventory
     if dir == fname:
         return True
-    
+
     if dir == '':
         return True
 
@@ -530,7 +508,8 @@ def is_inside_or_parent_of_any(dir_list, fname):
     return False
 
 
-def pumpfile(from_file, to_file, read_length=-1, buff_size=32768):
+def pumpfile(from_file, to_file, read_length=-1, buff_size=32768,
+             report_activity=None, direction='read'):
     """Copy contents of one file to another.
 
     The read_length can either be -1 to read to end-of-file (EOF) or
@@ -538,6 +517,10 @@ def pumpfile(from_file, to_file, read_length=-1, buff_size=32768):
 
     The buff_size represents the maximum size for each read operation
     performed on from_file.
+
+    :param report_activity: Call this as bytes are read, see
+        Transport._report_activity
+    :param direction: Will be passed to report_activity
 
     :return: The number of bytes copied.
     """
@@ -552,6 +535,8 @@ def pumpfile(from_file, to_file, read_length=-1, buff_size=32768):
             if not block:
                 # EOF reached
                 break
+            if report_activity is not None:
+                report_activity(len(block), direction)
             to_file.write(block)
 
             actual_bytes_read = len(block)
@@ -564,9 +549,29 @@ def pumpfile(from_file, to_file, read_length=-1, buff_size=32768):
             if not block:
                 # EOF reached
                 break
+            if report_activity is not None:
+                report_activity(len(block), direction)
             to_file.write(block)
             length += len(block)
     return length
+
+
+def pump_string_file(bytes, file_handle, segment_size=None):
+    """Write bytes to file_handle in many smaller writes.
+
+    :param bytes: The string to write.
+    :param file_handle: The file to write to.
+    """
+    # Write data in chunks rather than all at once, because very large
+    # writes fail on some platforms (e.g. Windows with SMB  mounted
+    # drives).
+    if not segment_size:
+        segment_size = 5242880 # 5MB
+    segments = range(len(bytes) / segment_size + 1)
+    write = file_handle.write
+    for segment_index in segments:
+        segment = buffer(bytes, segment_index * segment_size, segment_size)
+        write(segment)
 
 
 def file_iterator(input_file, readsize=32768):
@@ -582,7 +587,7 @@ def sha_file(f):
 
     The file cursor should be already at the start.
     """
-    s = sha.new()
+    s = sha()
     BUFSIZE = 128<<10
     while True:
         b = f.read(BUFSIZE)
@@ -592,9 +597,27 @@ def sha_file(f):
     return s.hexdigest()
 
 
+def size_sha_file(f):
+    """Calculate the size and hexdigest of an open file.
+
+    The file cursor should be already at the start and
+    the caller is responsible for closing the file afterwards.
+    """
+    size = 0
+    s = sha()
+    BUFSIZE = 128<<10
+    while True:
+        b = f.read(BUFSIZE)
+        if not b:
+            break
+        size += len(b)
+        s.update(b)
+    return size, s.hexdigest()
+
+
 def sha_file_by_name(fname):
     """Calculate the SHA1 of a file by reading the full text"""
-    s = sha.new()
+    s = sha()
     f = os.open(fname, os.O_RDONLY | O_BINARY)
     try:
         while True:
@@ -606,21 +629,21 @@ def sha_file_by_name(fname):
         os.close(f)
 
 
-def sha_strings(strings, _factory=sha.new):
+def sha_strings(strings, _factory=sha):
     """Return the sha-1 of concatenation of strings"""
     s = _factory()
     map(s.update, strings)
     return s.hexdigest()
 
 
-def sha_string(f, _factory=sha.new):
+def sha_string(f, _factory=sha):
     return _factory(f).hexdigest()
 
 
 def fingerprint_file(f):
     b = f.read()
     return {'size': len(b),
-            'sha1': sha.new(b).hexdigest()}
+            'sha1': sha(b).hexdigest()}
 
 
 def compare_files(a, b):
@@ -643,7 +666,7 @@ def local_time_offset(t=None):
     return offset.days * 86400 + offset.seconds
 
 weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-    
+
 def format_date(t, offset=0, timezone='original', date_fmt=None,
                 show_offset=True):
     """Return a formatted date string.
@@ -653,9 +676,35 @@ def format_date(t, offset=0, timezone='original', date_fmt=None,
     :param timezone: How to display the time: 'utc', 'original' for the
          timezone specified by offset, or 'local' for the process's current
          timezone.
-    :param show_offset: Whether to append the timezone.
     :param date_fmt: strftime format.
+    :param show_offset: Whether to append the timezone.
     """
+    (date_fmt, tt, offset_str) = \
+               _format_date(t, offset, timezone, date_fmt, show_offset)
+    date_fmt = date_fmt.replace('%a', weekdays[tt[6]])
+    date_str = time.strftime(date_fmt, tt)
+    return date_str + offset_str
+
+def format_local_date(t, offset=0, timezone='original', date_fmt=None,
+                      show_offset=True):
+    """Return an unicode date string formatted according to the current locale.
+
+    :param t: Seconds since the epoch.
+    :param offset: Timezone offset in seconds east of utc.
+    :param timezone: How to display the time: 'utc', 'original' for the
+         timezone specified by offset, or 'local' for the process's current
+         timezone.
+    :param date_fmt: strftime format.
+    :param show_offset: Whether to append the timezone.
+    """
+    (date_fmt, tt, offset_str) = \
+               _format_date(t, offset, timezone, date_fmt, show_offset)
+    date_str = time.strftime(date_fmt, tt)
+    if not isinstance(date_str, unicode):
+        date_str = date_str.decode(bzrlib.user_encoding, 'replace')
+    return date_str + offset_str
+
+def _format_date(t, offset, timezone, date_fmt, show_offset):
     if timezone == 'utc':
         tt = time.gmtime(t)
         offset = 0
@@ -674,14 +723,12 @@ def format_date(t, offset=0, timezone='original', date_fmt=None,
         offset_str = ' %+03d%02d' % (offset / 3600, (offset / 60) % 60)
     else:
         offset_str = ''
-    # day of week depends on locale, so we do this ourself
-    date_fmt = date_fmt.replace('%a', weekdays[tt[6]])
-    return (time.strftime(date_fmt, tt) +  offset_str)
+    return (date_fmt, tt, offset_str)
 
 
 def compact_date(when):
     return time.strftime('%Y%m%d%H%M%S', time.gmtime(when))
-    
+
 
 def format_delta(delta):
     """Get a nice looking string for a time delta.
@@ -763,8 +810,8 @@ except (NotImplementedError, AttributeError):
 ALNUM = '0123456789abcdefghijklmnopqrstuvwxyz'
 def rand_chars(num):
     """Return a random string of num alphanumeric characters
-    
-    The result only contains lowercase chars because it may be used on 
+
+    The result only contains lowercase chars because it may be used on
     case-insensitive filesystems.
     """
     s = ''
@@ -792,6 +839,7 @@ def splitpath(p):
             rps.append(f)
     return rps
 
+
 def joinpath(p):
     for f in p:
         if (f == '..') or (f is None) or (f == ''):
@@ -799,8 +847,28 @@ def joinpath(p):
     return pathjoin(*p)
 
 
+try:
+    from bzrlib._chunks_to_lines_pyx import chunks_to_lines
+except ImportError:
+    from bzrlib._chunks_to_lines_py import chunks_to_lines
+
+
 def split_lines(s):
     """Split s into lines, but without removing the newline characters."""
+    # Trivially convert a fulltext into a 'chunked' representation, and let
+    # chunks_to_lines do the heavy lifting.
+    if isinstance(s, str):
+        # chunks_to_lines only supports 8-bit strings
+        return chunks_to_lines([s])
+    else:
+        return _split_lines(s)
+
+
+def _split_lines(s):
+    """Split s into lines, but without removing the newline characters.
+
+    This supports Unicode or plain string objects.
+    """
     lines = s.split('\n')
     result = [line + '\n' for line in lines[:-1]]
     if lines[-1]:
@@ -921,13 +989,71 @@ def relpath(base, path):
         return ''
 
 
+def _cicp_canonical_relpath(base, path):
+    """Return the canonical path relative to base.
+
+    Like relpath, but on case-insensitive-case-preserving file-systems, this
+    will return the relpath as stored on the file-system rather than in the
+    case specified in the input string, for all existing portions of the path.
+
+    This will cause O(N) behaviour if called for every path in a tree; if you
+    have a number of paths to convert, you should use canonical_relpaths().
+    """
+    # TODO: it should be possible to optimize this for Windows by using the
+    # win32 API FindFiles function to look for the specified name - but using
+    # os.listdir() still gives us the correct, platform agnostic semantics in
+    # the short term.
+
+    rel = relpath(base, path)
+    # '.' will have been turned into ''
+    if not rel:
+        return rel
+
+    abs_base = abspath(base)
+    current = abs_base
+    _listdir = os.listdir
+
+    # use an explicit iterator so we can easily consume the rest on early exit.
+    bit_iter = iter(rel.split('/'))
+    for bit in bit_iter:
+        lbit = bit.lower()
+        for look in _listdir(current):
+            if lbit == look.lower():
+                current = pathjoin(current, look)
+                break
+        else:
+            # got to the end, nothing matched, so we just return the
+            # non-existing bits as they were specified (the filename may be
+            # the target of a move, for example).
+            current = pathjoin(current, bit, *list(bit_iter))
+            break
+    return current[len(abs_base)+1:]
+
+# XXX - TODO - we need better detection/integration of case-insensitive
+# file-systems; Linux often sees FAT32 devices (or NFS-mounted OSX
+# filesystems), for example, so could probably benefit from the same basic
+# support there.  For now though, only Windows and OSX get that support, and
+# they get it for *all* file-systems!
+if sys.platform in ('win32', 'darwin'):
+    canonical_relpath = _cicp_canonical_relpath
+else:
+    canonical_relpath = relpath
+
+def canonical_relpaths(base, paths):
+    """Create an iterable to canonicalize a sequence of relative paths.
+
+    The intent is for this implementation to use a cache, vastly speeding
+    up multiple transformations in the same directory.
+    """
+    # but for now, we haven't optimized...
+    return [canonical_relpath(base, p) for p in paths]
+
 def safe_unicode(unicode_or_utf8_string):
     """Coerce unicode_or_utf8_string into unicode.
 
     If it is unicode, it is returned.
-    Otherwise it is decoded from utf-8. If a decoding error
-    occurs, it is wrapped as a If the decoding fails, the exception is wrapped 
-    as a BzrBadParameter exception.
+    Otherwise it is decoded from utf-8. If decoding fails, the exception is
+    wrapped in a BzrBadParameterNotUnicode exception.
     """
     if isinstance(unicode_or_utf8_string, unicode):
         return unicode_or_utf8_string
@@ -1020,10 +1146,10 @@ def _accessible_normalized_filename(path):
 
     On platforms where the system normalizes filenames (Mac OSX),
     you can access a file by any path which will normalize correctly.
-    On platforms where the system does not normalize filenames 
+    On platforms where the system does not normalize filenames
     (Windows, Linux), you have to access a file by its exact path.
 
-    Internally, bzr only supports NFC normalization, since that is 
+    Internally, bzr only supports NFC normalization, since that is
     the standard for XML documents.
 
     So return the normalized path, and a flag indicating if the file
@@ -1100,7 +1226,7 @@ def set_or_unset_env(env_variable, value):
             del os.environ[env_variable]
     else:
         if isinstance(value, unicode):
-            value = value.encode(bzrlib.user_encoding)
+            value = value.encode(get_user_encoding())
         os.environ[env_variable] = value
     return orig_val
 
@@ -1109,7 +1235,7 @@ _validWin32PathRE = re.compile(r'^([A-Za-z]:[/\\])?[^:<>*"?\|]*$')
 
 
 def check_legal_path(path):
-    """Check whether the supplied path is legal.  
+    """Check whether the supplied path is legal.
     This is only required on Windows, so we don't test on other platforms
     right now.
     """
@@ -1149,17 +1275,17 @@ def _is_error_enotdir(e):
 
 def walkdirs(top, prefix=""):
     """Yield data about all the directories in a tree.
-    
+
     This yields all the data about the contents of a directory at a time.
     After each directory has been yielded, if the caller has mutated the list
     to exclude some directories, they are then not descended into.
-    
+
     The data yielded is of the form:
     ((directory-relpath, directory-path-from-top),
     [(relpath, basename, kind, lstat, path-from-top), ...]),
      - directory-relpath is the relative path of the directory being returned
        with respect to top. prefix is prepended to this.
-     - directory-path-from-root is the path including top for this directory. 
+     - directory-path-from-root is the path including top for this directory.
        It is suitable for use with os functions.
      - relpath is the relative path within the subtree being walked.
      - basename is the basename of the path
@@ -1167,23 +1293,23 @@ def walkdirs(top, prefix=""):
        present within the tree - but it may be recorded as versioned. See
        versioned_kind.
      - lstat is the stat data *if* the file was statted.
-     - planned, not implemented: 
+     - planned, not implemented:
        path_from_tree_root is the path from the root of the tree.
 
-    :param prefix: Prefix the relpaths that are yielded with 'prefix'. This 
+    :param prefix: Prefix the relpaths that are yielded with 'prefix'. This
         allows one to walk a subtree but get paths that are relative to a tree
         rooted higher up.
     :return: an iterator over the dirs.
     """
     #TODO there is a bit of a smell where the results of the directory-
-    # summary in this, and the path from the root, may not agree 
+    # summary in this, and the path from the root, may not agree
     # depending on top and prefix - i.e. ./foo and foo as a pair leads to
     # potentially confusing output. We should make this more robust - but
     # not at a speed cost. RBC 20060731
     _lstat = os.lstat
     _directory = _directory_kind
     _listdir = os.listdir
-    _kind_from_mode = _formats.get
+    _kind_from_mode = file_kind_from_stat_mode
     pending = [(safe_unicode(prefix), "", _directory, None, safe_unicode(top))]
     while pending:
         # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-toppath
@@ -1205,7 +1331,7 @@ def walkdirs(top, prefix=""):
             for name in names:
                 abspath = top_slash + name
                 statvalue = _lstat(abspath)
-                kind = _kind_from_mode(statvalue.st_mode & 0170000, 'unknown')
+                kind = _kind_from_mode(statvalue.st_mode)
                 append((relprefix + name, name, kind, statvalue, abspath))
         yield (relroot, top), dirblock
 
@@ -1213,7 +1339,33 @@ def walkdirs(top, prefix=""):
         pending.extend(d for d in reversed(dirblock) if d[2] == _directory)
 
 
-_real_walkdirs_utf8 = None
+class DirReader(object):
+    """An interface for reading directories."""
+
+    def top_prefix_to_starting_dir(self, top, prefix=""):
+        """Converts top and prefix to a starting dir entry
+
+        :param top: A utf8 path
+        :param prefix: An optional utf8 path to prefix output relative paths
+            with.
+        :return: A tuple starting with prefix, and ending with the native
+            encoding of top.
+        """
+        raise NotImplementedError(self.top_prefix_to_starting_dir)
+
+    def read_dir(self, prefix, top):
+        """Read a specific dir.
+
+        :param prefix: A utf8 prefix to be preprended to the path basenames.
+        :param top: A natively encoded path to read.
+        :return: A list of the directories contents. Each item contains:
+            (utf8_relpath, utf8_name, kind, lstatvalue, native_abspath)
+        """
+        raise NotImplementedError(self.read_dir)
+
+
+_selected_dir_reader = None
+
 
 def _walkdirs_utf8(top, prefix=""):
     """Yield data about all the directories in a tree.
@@ -1229,85 +1381,81 @@ def _walkdirs_utf8(top, prefix=""):
         path-from-top might be unicode or utf8, but it is the correct path to
         pass to os functions to affect the file in question. (such as os.lstat)
     """
-    global _real_walkdirs_utf8
-    if _real_walkdirs_utf8 is None:
+    global _selected_dir_reader
+    if _selected_dir_reader is None:
         fs_encoding = _fs_enc.upper()
-        if win32utils.winver == 'Windows NT':
+        if sys.platform == "win32" and win32utils.winver == 'Windows NT':
             # Win98 doesn't have unicode apis like FindFirstFileW
             # TODO: We possibly could support Win98 by falling back to the
             #       original FindFirstFile, and using TCHAR instead of WCHAR,
             #       but that gets a bit tricky, and requires custom compiling
             #       for win98 anyway.
             try:
-                from bzrlib._walkdirs_win32 import _walkdirs_utf8_win32_find_file
+                from bzrlib._walkdirs_win32 import Win32ReadDir
             except ImportError:
-                _real_walkdirs_utf8 = _walkdirs_unicode_to_utf8
+                _selected_dir_reader = UnicodeDirReader()
             else:
-                _real_walkdirs_utf8 = _walkdirs_utf8_win32_find_file
+                _selected_dir_reader = Win32ReadDir()
         elif fs_encoding not in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968'):
             # ANSI_X3.4-1968 is a form of ASCII
-            _real_walkdirs_utf8 = _walkdirs_unicode_to_utf8
+            _selected_dir_reader = UnicodeDirReader()
         else:
-            _real_walkdirs_utf8 = _walkdirs_fs_utf8
-    return _real_walkdirs_utf8(top, prefix=prefix)
-
-
-def _walkdirs_fs_utf8(top, prefix=""):
-    """See _walkdirs_utf8.
-
-    This sub-function is called when we know the filesystem is already in utf8
-    encoding. So we don't need to transcode filenames.
-    """
-    _lstat = os.lstat
-    _directory = _directory_kind
-    _listdir = os.listdir
-    _kind_from_mode = _formats.get
-
+            try:
+                from bzrlib._readdir_pyx import UTF8DirReader
+            except ImportError:
+                # No optimised code path
+                _selected_dir_reader = UnicodeDirReader()
+            else:
+                _selected_dir_reader = UTF8DirReader()
     # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-toppath
     # But we don't actually uses 1-3 in pending, so set them to None
-    pending = [(safe_utf8(prefix), None, None, None, safe_utf8(top))]
-    while pending:
-        relroot, _, _, _, top = pending.pop()
-        if relroot:
-            relprefix = relroot + '/'
-        else:
-            relprefix = ''
-        top_slash = top + '/'
-
-        dirblock = []
-        append = dirblock.append
-        for name in sorted(_listdir(top)):
-            abspath = top_slash + name
-            statvalue = _lstat(abspath)
-            kind = _kind_from_mode(statvalue.st_mode & 0170000, 'unknown')
-            append((relprefix + name, name, kind, statvalue, abspath))
-        yield (relroot, top), dirblock
-
-        # push the user specified dirs from dirblock
-        pending.extend(d for d in reversed(dirblock) if d[2] == _directory)
-
-
-def _walkdirs_unicode_to_utf8(top, prefix=""):
-    """See _walkdirs_utf8
-
-    Because Win32 has a Unicode api, all of the 'path-from-top' entries will be
-    Unicode paths.
-    This is currently the fallback code path when the filesystem encoding is
-    not UTF-8. It may be better to implement an alternative so that we can
-    safely handle paths that are not properly decodable in the current
-    encoding.
-    """
-    _utf8_encode = codecs.getencoder('utf8')
-    _lstat = os.lstat
+    pending = [[_selected_dir_reader.top_prefix_to_starting_dir(top, prefix)]]
+    read_dir = _selected_dir_reader.read_dir
     _directory = _directory_kind
-    _listdir = os.listdir
-    _kind_from_mode = _formats.get
-
-    pending = [(safe_utf8(prefix), None, None, None, safe_unicode(top))]
     while pending:
-        relroot, _, _, _, top = pending.pop()
-        if relroot:
-            relprefix = relroot + '/'
+        relroot, _, _, _, top = pending[-1].pop()
+        if not pending[-1]:
+            pending.pop()
+        dirblock = sorted(read_dir(relroot, top))
+        yield (relroot, top), dirblock
+        # push the user specified dirs from dirblock
+        next = [d for d in reversed(dirblock) if d[2] == _directory]
+        if next:
+            pending.append(next)
+
+
+class UnicodeDirReader(DirReader):
+    """A dir reader for non-utf8 file systems, which transcodes."""
+
+    __slots__ = ['_utf8_encode']
+
+    def __init__(self):
+        self._utf8_encode = codecs.getencoder('utf8')
+
+    def top_prefix_to_starting_dir(self, top, prefix=""):
+        """See DirReader.top_prefix_to_starting_dir."""
+        return (safe_utf8(prefix), None, None, None, safe_unicode(top))
+
+    def read_dir(self, prefix, top):
+        """Read a single directory from a non-utf8 file system.
+
+        top, and the abspath element in the output are unicode, all other paths
+        are utf8. Local disk IO is done via unicode calls to listdir etc.
+
+        This is currently the fallback code path when the filesystem encoding is
+        not UTF-8. It may be better to implement an alternative so that we can
+        safely handle paths that are not properly decodable in the current
+        encoding.
+
+        See DirReader.read_dir for details.
+        """
+        _utf8_encode = self._utf8_encode
+        _lstat = os.lstat
+        _listdir = os.listdir
+        _kind_from_mode = file_kind_from_stat_mode
+
+        if prefix:
+            relprefix = prefix + '/'
         else:
             relprefix = ''
         top_slash = top + u'/'
@@ -1315,21 +1463,22 @@ def _walkdirs_unicode_to_utf8(top, prefix=""):
         dirblock = []
         append = dirblock.append
         for name in sorted(_listdir(top)):
-            name_utf8 = _utf8_encode(name)[0]
+            try:
+                name_utf8 = _utf8_encode(name)[0]
+            except UnicodeDecodeError:
+                raise errors.BadFilenameEncoding(
+                    _utf8_encode(relprefix)[0] + name, _fs_enc)
             abspath = top_slash + name
             statvalue = _lstat(abspath)
-            kind = _kind_from_mode(statvalue.st_mode & 0170000, 'unknown')
+            kind = _kind_from_mode(statvalue.st_mode)
             append((relprefix + name_utf8, name_utf8, kind, statvalue, abspath))
-        yield (relroot, top), dirblock
-
-        # push the user specified dirs from dirblock
-        pending.extend(d for d in reversed(dirblock) if d[2] == _directory)
+        return dirblock
 
 
 def copy_tree(from_path, to_path, handlers={}):
     """Copy all of the entries in from_path into to_path.
 
-    :param from_path: The base directory to copy. 
+    :param from_path: The base directory to copy.
     :param to_path: The target directory. If it does not exist, it will
         be created.
     :param handlers: A dictionary of functions, which takes a source and
@@ -1404,9 +1553,19 @@ def get_user_encoding(use_cache=True):
         return _cached_user_encoding
 
     if sys.platform == 'darwin':
-        # work around egregious python 2.4 bug
+        # python locale.getpreferredencoding() always return
+        # 'mac-roman' on darwin. That's a lie.
         sys.platform = 'posix'
         try:
+            if os.environ.get('LANG', None) is None:
+                # If LANG is not set, we end up with 'ascii', which is bad
+                # ('mac-roman' is more than ascii), so we set a default which
+                # will give us UTF-8 (which appears to work in all cases on
+                # OSX). Users are still free to override LANG of course, as
+                # long as it give us something meaningful. This work-around
+                # *may* not be needed with python 3k and/or OSX 10.5, but will
+                # work with them too -- vila 20080908
+                os.environ['LANG'] = 'en_US.UTF-8'
             import locale
         finally:
             sys.platform = 'darwin'
@@ -1449,6 +1608,20 @@ def get_user_encoding(use_cache=True):
     return user_encoding
 
 
+def get_host_name():
+    """Return the current unicode host name.
+
+    This is meant to be used in place of socket.gethostname() because that
+    behaves inconsistently on different platforms.
+    """
+    if sys.platform == "win32":
+        import win32utils
+        return win32utils.get_host_name()
+    else:
+        import socket
+        return socket.gethostname().decode(get_user_encoding())
+
+
 def recv_all(socket, bytes):
     """Receive an exact number of bytes.
 
@@ -1461,22 +1634,28 @@ def recv_all(socket, bytes):
     """
     b = ''
     while len(b) < bytes:
-        new = socket.recv(bytes - len(b))
+        new = until_no_eintr(socket.recv, bytes - len(b))
         if new == '':
             break # eof
         b += new
     return b
 
 
-def send_all(socket, bytes):
+def send_all(socket, bytes, report_activity=None):
     """Send all bytes on a socket.
 
     Regular socket.sendall() can give socket error 10053 on Windows.  This
     implementation sends no more than 64k at a time, which avoids this problem.
+
+    :param report_activity: Call this as bytes are read, see
+        Transport._report_activity
     """
     chunk_size = 2**16
     for pos in xrange(0, len(bytes), chunk_size):
-        socket.sendall(bytes[pos:pos+chunk_size])
+        block = bytes[pos:pos+chunk_size]
+        if report_activity is not None:
+            report_activity(len(block), 'write')
+        until_no_eintr(socket.sendall, block)
 
 
 def dereference_path(path):
@@ -1525,3 +1704,78 @@ def resource_string(package, resource_name):
         base = abspath(pathjoin(base, '..', '..'))
     filename = pathjoin(base, resource_relpath)
     return open(filename, 'rU').read()
+
+
+def file_kind_from_stat_mode_thunk(mode):
+    global file_kind_from_stat_mode
+    if file_kind_from_stat_mode is file_kind_from_stat_mode_thunk:
+        try:
+            from bzrlib._readdir_pyx import UTF8DirReader
+            file_kind_from_stat_mode = UTF8DirReader().kind_from_mode
+        except ImportError:
+            from bzrlib._readdir_py import (
+                _kind_from_mode as file_kind_from_stat_mode
+                )
+    return file_kind_from_stat_mode(mode)
+file_kind_from_stat_mode = file_kind_from_stat_mode_thunk
+
+
+def file_kind(f, _lstat=os.lstat):
+    try:
+        return file_kind_from_stat_mode(_lstat(f).st_mode)
+    except OSError, e:
+        if getattr(e, 'errno', None) in (errno.ENOENT, errno.ENOTDIR):
+            raise errors.NoSuchFile(f)
+        raise
+
+
+def until_no_eintr(f, *a, **kw):
+    """Run f(*a, **kw), retrying if an EINTR error occurs."""
+    # Borrowed from Twisted's twisted.python.util.untilConcludes function.
+    while True:
+        try:
+            return f(*a, **kw)
+        except (IOError, OSError), e:
+            if e.errno == errno.EINTR:
+                continue
+            raise
+
+def re_compile_checked(re_string, flags=0, where=""):
+    """Return a compiled re, or raise a sensible error.
+    
+    This should only be used when compiling user-supplied REs.
+
+    :param re_string: Text form of regular expression.
+    :param flags: eg re.IGNORECASE
+    :param where: Message explaining to the user the context where 
+        it occurred, eg 'log search filter'.
+    """
+    # from https://bugs.launchpad.net/bzr/+bug/251352
+    try:
+        re_obj = re.compile(re_string, flags)
+        re_obj.search("")
+        return re_obj
+    except re.error, e:
+        if where:
+            where = ' in ' + where
+        # despite the name 'error' is a type
+        raise errors.BzrCommandError('Invalid regular expression%s: %r: %s'
+            % (where, re_string, e))
+
+
+if sys.platform == "win32":
+    import msvcrt
+    def getchar():
+        return msvcrt.getch()
+else:
+    import tty
+    import termios
+    def getchar():
+        fd = sys.stdin.fileno()
+        settings = termios.tcgetattr(fd)
+        try:
+            tty.setraw(fd)
+            ch = sys.stdin.read(1)
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, settings)
+        return ch

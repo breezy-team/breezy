@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Lists of ignore files, etc."""
 
@@ -213,7 +213,7 @@ def tree_ignores_add_patterns(tree, name_pattern_list):
     """Retrieve a list of ignores from the ignore file in a tree.
 
     :param tree: Tree to retrieve the ignore list from.
-    :return: 
+    :return:
     """
     ifn = tree.abspath(bzrlib.IGNORE_FILENAME)
     if tree.has_filename(ifn):

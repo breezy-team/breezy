@@ -12,21 +12,21 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from cStringIO import StringIO
 import errno
-import md5
 import re
-import sha
 import socket
 import threading
 import time
 import urllib2
 import urlparse
 
+
 from bzrlib import (
     errors,
+    osutils,
     tests,
     )
 from bzrlib.smart import medium, protocol
@@ -50,7 +50,7 @@ class HTTPServerWithSmarts(http_server.HttpServer):
 
 class SmartRequestHandler(http_server.TestingHTTPRequestHandler):
     """Extend TestingHTTPRequestHandler to support smart client POSTs.
-    
+
     XXX: This duplicates a fair bit of the logic in bzrlib.transport.http.wsgi.
     """
 
@@ -397,7 +397,7 @@ class DigestAuthServer(AuthServer):
         A1 = '%s:%s:%s' % (user, realm, password)
         A2 = '%s:%s' % (command, auth['uri'])
 
-        H = lambda x: md5.new(x).hexdigest()
+        H = lambda x: osutils.md5(x).hexdigest()
         KD = lambda secret, data: H("%s:%s" % (secret, data))
 
         nonce_count = int(auth['nc'], 16)

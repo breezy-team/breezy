@@ -10,13 +10,13 @@ recover from mistakes as explained below.
 Dropping the revision history for a project
 -------------------------------------------
 
-If you accidently put the wrong tree under version control, simply
+If you accidentally put the wrong tree under version control, simply
 delete the ``.bzr`` directory.
 
 Deregistering a file or directory
 ---------------------------------
 
-If you accidently register a file using ``add`` that you
+If you accidentally register a file using ``add`` that you
 don't want version controlled, you can use the ``remove``
 command to tell Bazaar to forget about it.
 
@@ -135,7 +135,7 @@ since then. If you have, the ``revert`` would wipe them out as well. In that
 case, you probably want to use `Reverse cherrypicking`_ instead to
 back out the bad fix.
 
-Note: As an alternative to using an absolute bug number (like 19), you can
+Note: As an alternative to using an absolute revision number (like 19), you can
 specify one relative to the tip (-1) using a negative number like this::
 
   bzr revert -r -2

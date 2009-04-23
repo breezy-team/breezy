@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 import os
@@ -81,7 +81,7 @@ class TestJoin(tests.TestCaseWithTransport):
     def test_references_check_repository_support(self):
         """Users are stopped from adding a reference that can't be committed."""
         # in 0.15 the default format has a dirstate workingtree, that can
-        # support tree references, but the default repository format 
+        # support tree references, but the default repository format
         # cannot.
         tree = self.make_branch_and_tree('tree', format='dirstate')
         tree2 = self.make_branch_and_tree('tree/subtree')

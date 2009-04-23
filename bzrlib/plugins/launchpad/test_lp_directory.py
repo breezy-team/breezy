@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for directory lookup through Launchpad.net"""
 
@@ -23,7 +23,10 @@ from bzrlib import (
     )
 from bzrlib.branch import Branch
 from bzrlib.directory_service import directories
-from bzrlib.tests import TestCase, TestCaseWithMemoryTransport
+from bzrlib.tests import (
+    TestCaseInTempDir,
+    TestCaseWithMemoryTransport
+)
 from bzrlib.transport import get_transport
 from bzrlib.plugins.launchpad import _register_directory
 from bzrlib.plugins.launchpad.lp_directory import (
@@ -46,7 +49,7 @@ class FakeResolveFactory(object):
         return self._result
 
 
-class DirectoryUrlTests(TestCase):
+class DirectoryUrlTests(TestCaseInTempDir):
     """Tests for branch urls through Launchpad.net directory"""
 
     def test_short_form(self):
@@ -146,11 +149,11 @@ class DirectoryUrlTests(TestCase):
                     'http://bazaar.launchpad.net/~apt/apt/devel']))
         directory = LaunchpadDirectory()
         self.assertEquals(
-            'bzr+ssh://username@bazaar.launchpad.net/~apt/apt/devel',
+            'bzr+ssh://bazaar.launchpad.net/~apt/apt/devel',
             directory._resolve('lp:///apt', factory, _lp_login='username'))
 
     def test_no_rewrite_of_other_bzr_ssh(self):
-        # Test that we don't rewrite bzr+ssh URLs for other 
+        # Test that we don't rewrite bzr+ssh URLs for other
         self.assertEqual(None, get_lp_login())
         factory = FakeResolveFactory(
             self, 'apt', dict(urls=[

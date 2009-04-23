@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,17 +12,16 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the Repository facility that are not interface tests.
 
-For interface tests see tests/repository_implementations/*.py.
+For interface tests see tests/per_repository/*.py.
 
 For concrete class tests see this file, and for storage formats tests
 also see this file.
 """
 
-import md5
 from stat import S_ISDIR
 from StringIO import StringIO
 
@@ -33,6 +32,8 @@ from bzrlib.errors import (NotBranchError,
                            UnsupportedFormatError,
                            )
 from bzrlib import graph
+from bzrlib.branchbuilder import BranchBuilder
+from bzrlib.btree_index import BTreeBuilder, BTreeGraphIndex
 from bzrlib.index import GraphIndex, InMemoryGraphIndex
 from bzrlib.repository import RepositoryFormat
 from bzrlib.smart import server
@@ -52,6 +53,7 @@ from bzrlib import (
     bzrdir,
     errors,
     inventory,
+    osutils,
     progress,
     repository,
     revision as _mod_revision,
@@ -59,7 +61,12 @@ from bzrlib import (
     upgrade,
     workingtree,
     )
-from bzrlib.repofmt import knitrepo, weaverepo, pack_repo
+from bzrlib.repofmt import (
+    groupcompress_repo,
+    knitrepo,
+    pack_repo,
+    weaverepo,
+    )
 
 
 class TestDefaultFormat(TestCase):
@@ -94,7 +101,7 @@ class TestDefaultFormat(TestCase):
 class SampleRepositoryFormat(repository.RepositoryFormat):
     """A sample format
 
-    this format is initializable, unsupported to aid in testing the 
+    this format is initializable, unsupported to aid in testing the
     open and open(unsupported=True) routines.
     """
 
@@ -121,7 +128,7 @@ class TestRepositoryFormat(TestCaseWithTransport):
     def test_find_format(self):
         # is the right format object found for a repository?
         # create a branch with a few known format objects.
-        # this is not quite the same as 
+        # this is not quite the same as
         self.build_tree(["foo/", "bar/"])
         def check_format(format, url):
             dir = format._matchingbzrdir.initialize(url)
@@ -130,7 +137,7 @@ class TestRepositoryFormat(TestCaseWithTransport):
             found_format = repository.RepositoryFormat.find_format(dir)
             self.failUnless(isinstance(found_format, format.__class__))
         check_format(weaverepo.RepositoryFormat7(), "bar")
-        
+
     def test_find_format_no_repository(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         self.assertRaises(errors.NoRepositoryPresent,
@@ -166,19 +173,19 @@ class TestFormat6(TestCaseWithTransport):
         """Weaves need topological data insertion."""
         control = bzrdir.BzrDirFormat6().initialize(self.get_url())
         repo = weaverepo.RepositoryFormat6().initialize(control)
-        self.assertEqual('topological', repo._fetch_order)
+        self.assertEqual('topological', repo._format._fetch_order)
 
     def test_attribute__fetch_uses_deltas(self):
         """Weaves do not reuse deltas."""
         control = bzrdir.BzrDirFormat6().initialize(self.get_url())
         repo = weaverepo.RepositoryFormat6().initialize(control)
-        self.assertEqual(False, repo._fetch_uses_deltas)
+        self.assertEqual(False, repo._format._fetch_uses_deltas)
 
     def test_attribute__fetch_reconcile(self):
         """Weave repositories need a reconcile after fetch."""
         control = bzrdir.BzrDirFormat6().initialize(self.get_url())
         repo = weaverepo.RepositoryFormat6().initialize(control)
-        self.assertEqual(True, repo._fetch_reconcile)
+        self.assertEqual(True, repo._format._fetch_reconcile)
 
     def test_no_ancestry_weave(self):
         control = bzrdir.BzrDirFormat6().initialize(self.get_url())
@@ -201,19 +208,19 @@ class TestFormat7(TestCaseWithTransport):
         """Weaves need topological data insertion."""
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         repo = weaverepo.RepositoryFormat7().initialize(control)
-        self.assertEqual('topological', repo._fetch_order)
+        self.assertEqual('topological', repo._format._fetch_order)
 
     def test_attribute__fetch_uses_deltas(self):
         """Weaves do not reuse deltas."""
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         repo = weaverepo.RepositoryFormat7().initialize(control)
-        self.assertEqual(False, repo._fetch_uses_deltas)
+        self.assertEqual(False, repo._format._fetch_uses_deltas)
 
     def test_attribute__fetch_reconcile(self):
         """Weave repositories need a reconcile after fetch."""
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         repo = weaverepo.RepositoryFormat7().initialize(control)
-        self.assertEqual(True, repo._fetch_reconcile)
+        self.assertEqual(True, repo._format._fetch_reconcile)
 
     def test_disk_layout(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
@@ -283,7 +290,7 @@ class TestFormat7(TestCaseWithTransport):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         repo = weaverepo.RepositoryFormat7().initialize(control, shared=True)
         t = control.get_repository_transport(None)
-        # TODO: Should check there is a 'lock' toplevel directory, 
+        # TODO: Should check there is a 'lock' toplevel directory,
         # regardless of contents
         self.assertFalse(t.has('lock/held/info'))
         repo.lock_write()
@@ -342,18 +349,18 @@ class TestFormat7(TestCaseWithTransport):
 
 
 class TestFormatKnit1(TestCaseWithTransport):
-    
+
     def test_attribute__fetch_order(self):
         """Knits need topological data insertion."""
         repo = self.make_repository('.',
                 format=bzrdir.format_registry.get('knit')())
-        self.assertEqual('topological', repo._fetch_order)
+        self.assertEqual('topological', repo._format._fetch_order)
 
     def test_attribute__fetch_uses_deltas(self):
         """Knits reuse deltas."""
         repo = self.make_repository('.',
                 format=bzrdir.format_registry.get('knit')())
-        self.assertEqual(True, repo._fetch_uses_deltas)
+        self.assertEqual(True, repo._format._fetch_uses_deltas)
 
     def test_disk_layout(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
@@ -472,10 +479,17 @@ class TestFormatKnit1(TestCaseWithTransport):
 class DummyRepository(object):
     """A dummy repository for testing."""
 
+    _format = None
     _serializer = None
 
     def supports_rich_root(self):
         return False
+
+    def get_graph(self):
+        raise NotImplementedError
+
+    def get_parent_map(self, revision_ids):
+        raise NotImplementedError
 
 
 class InterDummy(repository.InterRepository):
@@ -489,7 +503,7 @@ class InterDummy(repository.InterRepository):
     @staticmethod
     def is_compatible(repo_source, repo_target):
         """InterDummy is compatible with DummyRepository."""
-        return (isinstance(repo_source, DummyRepository) and 
+        return (isinstance(repo_source, DummyRepository) and
             isinstance(repo_target, DummyRepository))
 
 
@@ -508,7 +522,7 @@ class TestInterRepository(TestCaseWithTransport):
 
     def assertGetsDefaultInterRepository(self, repo_a, repo_b):
         """Asserts that InterRepository.get(repo_a, repo_b) -> the default.
-        
+
         The effective default is now InterSameDataRepository because there is
         no actual sane default in the presence of incompatible data models.
         """
@@ -598,10 +612,10 @@ class TestRepositoryConverter(TestCaseWithTransport):
 
 
 class TestMisc(TestCase):
-    
+
     def test_unescape_xml(self):
         """We get some kind of error when malformed entities are passed"""
-        self.assertRaises(KeyError, repository._unescape_xml, 'foo&bar;') 
+        self.assertRaises(KeyError, repository._unescape_xml, 'foo&bar;')
 
 
 class TestRepositoryFormatKnit3(TestCaseWithTransport):
@@ -611,14 +625,14 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
         format = bzrdir.BzrDirMetaFormat1()
         format.repository_format = knitrepo.RepositoryFormatKnit3()
         repo = self.make_repository('.', format=format)
-        self.assertEqual('topological', repo._fetch_order)
+        self.assertEqual('topological', repo._format._fetch_order)
 
     def test_attribute__fetch_uses_deltas(self):
         """Knits reuse deltas."""
         format = bzrdir.BzrDirMetaFormat1()
         format.repository_format = knitrepo.RepositoryFormatKnit3()
         repo = self.make_repository('.', format=format)
-        self.assertEqual(True, repo._fetch_uses_deltas)
+        self.assertEqual(True, repo._format._fetch_uses_deltas)
 
     def test_convert(self):
         """Ensure the upgrade adds weaves for roots"""
@@ -654,6 +668,81 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
         format.repository_format = knitrepo.RepositoryFormatKnit3()
         repo = self.make_repository('.', format=format)
         self.assertFalse(repo._format.supports_external_lookups)
+
+
+class TestDevelopment6(TestCaseWithTransport):
+
+    def test_inventories_use_chk_map_with_parent_base_dict(self):
+        tree = self.make_branch_and_tree('repo', format="development6-rich-root")
+        revid = tree.commit("foo")
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        inv = tree.branch.repository.get_inventory(revid)
+        self.assertNotEqual(None, inv.parent_id_basename_to_file_id)
+        inv.parent_id_basename_to_file_id._ensure_root()
+        inv.id_to_entry._ensure_root()
+        self.assertEqual(65536, inv.id_to_entry._root_node.maximum_size)
+        self.assertEqual(65536,
+            inv.parent_id_basename_to_file_id._root_node.maximum_size)
+
+
+class TestDevelopment6FindRevisionOutsideSet(TestCaseWithTransport):
+    """Tests for _find_revision_outside_set."""
+
+    def setUp(self):
+        super(TestDevelopment6FindRevisionOutsideSet, self).setUp()
+        self.builder = self.make_branch_builder('source',
+            format='development6-rich-root')
+        self.builder.start_series()
+        self.builder.build_snapshot('initial', None,
+            [('add', ('', 'tree-root', 'directory', None))])
+        self.repo = self.builder.get_branch().repository
+        self.addCleanup(self.builder.finish_series)
+
+    def assertRevisionOutsideSet(self, expected_result, rev_set):
+        self.assertEqual(
+            expected_result, self.repo._find_revision_outside_set(rev_set))
+
+    def test_simple(self):
+        self.builder.build_snapshot('revid1', None, [])
+        self.builder.build_snapshot('revid2', None, [])
+        rev_set = ['revid2']
+        self.assertRevisionOutsideSet('revid1', rev_set)
+
+    def test_not_first_parent(self):
+        self.builder.build_snapshot('revid1', None, [])
+        self.builder.build_snapshot('revid2', None, [])
+        self.builder.build_snapshot('revid3', None, [])
+        rev_set = ['revid3', 'revid2']
+        self.assertRevisionOutsideSet('revid1', rev_set)
+
+    def test_not_null(self):
+        rev_set = ['initial']
+        self.assertRevisionOutsideSet(_mod_revision.NULL_REVISION, rev_set)
+
+    def test_not_null_set(self):
+        self.builder.build_snapshot('revid1', None, [])
+        rev_set = [_mod_revision.NULL_REVISION]
+        self.assertRevisionOutsideSet(_mod_revision.NULL_REVISION, rev_set)
+
+    def test_ghost(self):
+        self.builder.build_snapshot('revid1', None, [])
+        rev_set = ['ghost', 'revid1']
+        self.assertRevisionOutsideSet('initial', rev_set)
+
+    def test_ghost_parent(self):
+        self.builder.build_snapshot('revid1', None, [])
+        self.builder.build_snapshot('revid2', ['revid1', 'ghost'], [])
+        rev_set = ['revid2', 'revid1']
+        self.assertRevisionOutsideSet('initial', rev_set)
+
+    def test_righthand_parent(self):
+        self.builder.build_snapshot('revid1', None, [])
+        self.builder.build_snapshot('revid2a', ['revid1'], [])
+        self.builder.build_snapshot('revid2b', ['revid1'], [])
+        self.builder.build_snapshot('revid3', ['revid2a', 'revid2b'], [])
+        rev_set = ['revid3', 'revid2a']
+        self.assertRevisionOutsideSet('revid2b', rev_set)
 
 
 class TestWithBrokenRepo(TestCaseWithTransport):
@@ -736,7 +825,8 @@ class TestWithBrokenRepo(TestCaseWithTransport):
         """
         broken_repo = self.make_broken_repository()
         empty_repo = self.make_repository('empty-repo')
-        self.assertRaises(errors.RevisionNotPresent, empty_repo.fetch, broken_repo)
+        self.assertRaises((errors.RevisionNotPresent, errors.BzrCheckError),
+                          empty_repo.fetch, broken_repo)
 
 
 class TestRepositoryPackCollection(TestCaseWithTransport):
@@ -744,13 +834,34 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
     def get_format(self):
         return bzrdir.format_registry.make_bzrdir('pack-0.92')
 
-    def test__max_pack_count(self):
-        """The maximum pack count is a function of the number of revisions."""
+    def get_packs(self):
         format = self.get_format()
         repo = self.make_repository('.', format=format)
-        packs = repo._pack_collection
+        return repo._pack_collection
+
+    def make_packs_and_alt_repo(self, write_lock=False):
+        """Create a pack repo with 3 packs, and access it via a second repo."""
+        tree = self.make_branch_and_tree('.')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        rev1 = tree.commit('one')
+        rev2 = tree.commit('two')
+        rev3 = tree.commit('three')
+        r = repository.Repository.open('.')
+        if write_lock:
+            r.lock_write()
+        else:
+            r.lock_read()
+        self.addCleanup(r.unlock)
+        packs = r._pack_collection
+        packs.ensure_loaded()
+        return tree, r, packs, [rev1, rev2, rev3]
+
+    def test__max_pack_count(self):
+        """The maximum pack count is a function of the number of revisions."""
         # no revisions - one pack, so that we can have a revision free repo
         # without it blowing up
+        packs = self.get_packs()
         self.assertEqual(1, packs._max_pack_count(0))
         # after that the sum of the digits, - check the first 1-9
         self.assertEqual(1, packs._max_pack_count(1))
@@ -772,21 +883,16 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         self.assertEqual(25, packs._max_pack_count(112894))
 
     def test_pack_distribution_zero(self):
-        format = self.get_format()
-        repo = self.make_repository('.', format=format)
-        packs = repo._pack_collection
+        packs = self.get_packs()
         self.assertEqual([0], packs.pack_distribution(0))
 
     def test_ensure_loaded_unlocked(self):
-        format = self.get_format()
-        repo = self.make_repository('.', format=format)
+        packs = self.get_packs()
         self.assertRaises(errors.ObjectNotLocked,
-                          repo._pack_collection.ensure_loaded)
+                          packs.ensure_loaded)
 
     def test_pack_distribution_one_to_nine(self):
-        format = self.get_format()
-        repo = self.make_repository('.', format=format)
-        packs = repo._pack_collection
+        packs = self.get_packs()
         self.assertEqual([1],
             packs.pack_distribution(1))
         self.assertEqual([1, 1],
@@ -808,9 +914,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
 
     def test_pack_distribution_stable_at_boundaries(self):
         """When there are multi-rev packs the counts are stable."""
-        format = self.get_format()
-        repo = self.make_repository('.', format=format)
-        packs = repo._pack_collection
+        packs = self.get_packs()
         # in 10s:
         self.assertEqual([10], packs.pack_distribution(10))
         self.assertEqual([10, 1], packs.pack_distribution(11))
@@ -825,9 +929,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         self.assertEqual([100, 100, 10, 1], packs.pack_distribution(211))
 
     def test_plan_pack_operations_2009_revisions_skip_all_packs(self):
-        format = self.get_format()
-        repo = self.make_repository('.', format=format)
-        packs = repo._pack_collection
+        packs = self.get_packs()
         existing_packs = [(2000, "big"), (9, "medium")]
         # rev count - 2009 -> 2x1000 + 9x1
         pack_operations = packs.plan_autopack_combinations(
@@ -835,9 +937,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         self.assertEqual([], pack_operations)
 
     def test_plan_pack_operations_2010_revisions_skip_all_packs(self):
-        format = self.get_format()
-        repo = self.make_repository('.', format=format)
-        packs = repo._pack_collection
+        packs = self.get_packs()
         existing_packs = [(2000, "big"), (9, "medium"), (1, "single")]
         # rev count - 2010 -> 2x1000 + 1x10
         pack_operations = packs.plan_autopack_combinations(
@@ -845,15 +945,28 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         self.assertEqual([], pack_operations)
 
     def test_plan_pack_operations_2010_combines_smallest_two(self):
-        format = self.get_format()
-        repo = self.make_repository('.', format=format)
-        packs = repo._pack_collection
+        packs = self.get_packs()
         existing_packs = [(1999, "big"), (9, "medium"), (1, "single2"),
             (1, "single1")]
         # rev count - 2010 -> 2x1000 + 1x10 (3)
         pack_operations = packs.plan_autopack_combinations(
             existing_packs, [1000, 1000, 10])
-        self.assertEqual([[2, ["single2", "single1"]], [0, []]], pack_operations)
+        self.assertEqual([[2, ["single2", "single1"]]], pack_operations)
+
+    def test_plan_pack_operations_creates_a_single_op(self):
+        packs = self.get_packs()
+        existing_packs = [(50, 'a'), (40, 'b'), (30, 'c'), (10, 'd'),
+                          (10, 'e'), (6, 'f'), (4, 'g')]
+        # rev count 150 -> 1x100 and 5x10
+        # The two size 10 packs do not need to be touched. The 50, 40, 30 would
+        # be combined into a single 120 size pack, and the 6 & 4 would
+        # becombined into a size 10 pack. However, if we have to rewrite them,
+        # we save a pack file with no increased I/O by putting them into the
+        # same file.
+        distribution = packs.pack_distribution(150)
+        pack_operations = packs.plan_autopack_combinations(existing_packs,
+                                                           distribution)
+        self.assertEqual([[130, ['a', 'b', 'c', 'f', 'g']]], pack_operations)
 
     def test_all_packs_none(self):
         format = self.get_format()
@@ -897,6 +1010,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         packs = tree.branch.repository._pack_collection
+        packs.reset()
         packs.ensure_loaded()
         name = packs.names()[0]
         pack_1 = packs.get_pack_by_name(name)
@@ -910,6 +1024,53 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
             name, rev_index, inv_index, txt_index, sig_index), pack_1)
         # and the same instance should be returned on successive calls.
         self.assertTrue(pack_1 is packs.get_pack_by_name(name))
+
+    def test_reload_pack_names_new_entry(self):
+        tree, r, packs, revs = self.make_packs_and_alt_repo()
+        names = packs.names()
+        # Add a new pack file into the repository
+        rev4 = tree.commit('four')
+        new_names = tree.branch.repository._pack_collection.names()
+        new_name = set(new_names).difference(names)
+        self.assertEqual(1, len(new_name))
+        new_name = new_name.pop()
+        # The old collection hasn't noticed yet
+        self.assertEqual(names, packs.names())
+        self.assertTrue(packs.reload_pack_names())
+        self.assertEqual(new_names, packs.names())
+        # And the repository can access the new revision
+        self.assertEqual({rev4:(revs[-1],)}, r.get_parent_map([rev4]))
+        self.assertFalse(packs.reload_pack_names())
+
+    def test_reload_pack_names_added_and_removed(self):
+        tree, r, packs, revs = self.make_packs_and_alt_repo()
+        names = packs.names()
+        # Now repack the whole thing
+        tree.branch.repository.pack()
+        new_names = tree.branch.repository._pack_collection.names()
+        # The other collection hasn't noticed yet
+        self.assertEqual(names, packs.names())
+        self.assertTrue(packs.reload_pack_names())
+        self.assertEqual(new_names, packs.names())
+        self.assertEqual({revs[-1]:(revs[-2],)}, r.get_parent_map([revs[-1]]))
+        self.assertFalse(packs.reload_pack_names())
+
+    def test_autopack_reloads_and_stops(self):
+        tree, r, packs, revs = self.make_packs_and_alt_repo(write_lock=True)
+        # After we have determined what needs to be autopacked, trigger a
+        # full-pack via the other repo which will cause us to re-evaluate and
+        # decide we don't need to do anything
+        orig_execute = packs._execute_pack_operations
+        def _munged_execute_pack_ops(*args, **kwargs):
+            tree.branch.repository.pack()
+            return orig_execute(*args, **kwargs)
+        packs._execute_pack_operations = _munged_execute_pack_ops
+        packs._max_pack_count = lambda x: 1
+        packs.pack_distribution = lambda x: [10]
+        self.assertFalse(packs.autopack())
+        self.assertEqual(1, len(packs.names()))
+        self.assertEqual(tree.branch.repository._pack_collection.names(),
+                         packs.names())
 
 
 class TestPack(TestCaseWithTransport):
@@ -970,11 +1131,19 @@ class TestNewPack(TestCaseWithTransport):
         pack_transport = self.get_transport('pack')
         index_transport = self.get_transport('index')
         upload_transport.mkdir('.')
-        pack = pack_repo.NewPack(upload_transport, index_transport,
-            pack_transport)
-        self.assertIsInstance(pack.revision_index, InMemoryGraphIndex)
-        self.assertIsInstance(pack.inventory_index, InMemoryGraphIndex)
-        self.assertIsInstance(pack._hash, type(md5.new()))
+        collection = pack_repo.RepositoryPackCollection(
+            repo=None,
+            transport=self.get_transport('.'),
+            index_transport=index_transport,
+            upload_transport=upload_transport,
+            pack_transport=pack_transport,
+            index_builder_class=BTreeBuilder,
+            index_class=BTreeGraphIndex,
+            use_chk_index=False)
+        pack = pack_repo.NewPack(collection)
+        self.assertIsInstance(pack.revision_index, BTreeBuilder)
+        self.assertIsInstance(pack.inventory_index, BTreeBuilder)
+        self.assertIsInstance(pack._hash, type(osutils.md5()))
         self.assertTrue(pack.upload_transport is upload_transport)
         self.assertTrue(pack.index_transport is index_transport)
         self.assertTrue(pack.pack_transport is pack_transport)
@@ -987,26 +1156,67 @@ class TestNewPack(TestCaseWithTransport):
 class TestPacker(TestCaseWithTransport):
     """Tests for the packs repository Packer class."""
 
-    # To date, this class has been factored out and nothing new added to it;
-    # thus there are not yet any tests.
+    def test_pack_optimizes_pack_order(self):
+        builder = self.make_branch_builder('.')
+        builder.start_series()
+        builder.build_snapshot('A', None, [
+            ('add', ('', 'root-id', 'directory', None)),
+            ('add', ('f', 'f-id', 'file', 'content\n'))])
+        builder.build_snapshot('B', ['A'],
+            [('modify', ('f-id', 'new-content\n'))])
+        builder.build_snapshot('C', ['B'],
+            [('modify', ('f-id', 'third-content\n'))])
+        builder.build_snapshot('D', ['C'],
+            [('modify', ('f-id', 'fourth-content\n'))])
+        b = builder.get_branch()
+        b.lock_read()
+        builder.finish_series()
+        self.addCleanup(b.unlock)
+        # At this point, we should have 4 pack files available
+        # Because of how they were built, they correspond to
+        # ['D', 'C', 'B', 'A']
+        packs = b.repository._pack_collection.packs
+        packer = pack_repo.Packer(b.repository._pack_collection,
+                                  packs, 'testing',
+                                  revision_ids=['B', 'C'])
+        # Now, when we are copying the B & C revisions, their pack files should
+        # be moved to the front of the stack
+        # The new ordering moves B & C to the front of the .packs attribute,
+        # and leaves the others in the original order.
+        new_packs = [packs[1], packs[2], packs[0], packs[3]]
+        new_pack = packer.pack()
+        self.assertEqual(new_packs, packer.packs)
 
 
-class TestInterDifferingSerializer(TestCaseWithTransport):
+class TestOptimisingPacker(TestCaseWithTransport):
+    """Tests for the OptimisingPacker class."""
 
-    def test_progress_bar(self):
-        tree = self.make_branch_and_tree('tree')
-        tree.commit('rev1', rev_id='rev-1')
-        tree.commit('rev2', rev_id='rev-2')
-        tree.commit('rev3', rev_id='rev-3')
-        repo = self.make_repository('repo')
-        inter_repo = repository.InterDifferingSerializer(
-            tree.branch.repository, repo)
-        pb = progress.InstrumentedProgress(to_file=StringIO())
-        pb.never_throttle = True
-        inter_repo.fetch('rev-1', pb)
-        self.assertEqual('Transferring revisions', pb.last_msg)
-        self.assertEqual(1, pb.last_cnt)
-        self.assertEqual(1, pb.last_total)
-        inter_repo.fetch('rev-3', pb)
-        self.assertEqual(2, pb.last_cnt)
-        self.assertEqual(2, pb.last_total)
+    def get_pack_collection(self):
+        repo = self.make_repository('.')
+        return repo._pack_collection
+
+    def test_open_pack_will_optimise(self):
+        packer = pack_repo.OptimisingPacker(self.get_pack_collection(),
+                                            [], '.test')
+        new_pack = packer.open_pack()
+        self.assertIsInstance(new_pack, pack_repo.NewPack)
+        self.assertTrue(new_pack.revision_index._optimize_for_size)
+        self.assertTrue(new_pack.inventory_index._optimize_for_size)
+        self.assertTrue(new_pack.text_index._optimize_for_size)
+        self.assertTrue(new_pack.signature_index._optimize_for_size)
+
+
+class TestGCCHKPackCollection(TestCaseWithTransport):
+
+    def test_stream_source_to_gc(self):
+        source = self.make_repository('source', format='development6-rich-root')
+        target = self.make_repository('target', format='development6-rich-root')
+        stream = source._get_source(target._format)
+        self.assertIsInstance(stream, groupcompress_repo.GroupCHKStreamSource)
+
+    def test_stream_source_to_non_gc(self):
+        source = self.make_repository('source', format='development6-rich-root')
+        target = self.make_repository('target', format='rich-root-pack')
+        stream = source._get_source(target._format)
+        # We don't want the child GroupCHKStreamSource
+        self.assertIs(type(stream), repository.StreamSource)

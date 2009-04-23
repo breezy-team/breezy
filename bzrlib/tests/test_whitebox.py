@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
 import unittest
@@ -30,21 +30,21 @@ class MoreTests(TestCaseWithTransport):
 
     def test_relpath(self):
         """test for branch path lookups
-    
+
         bzrlib.osutils._relpath do a simple but subtle
         job: given a path (either relative to cwd or absolute), work out
         if it is inside a branch and return the path relative to the base.
         """
         import tempfile
-        
+
         savedir = os.getcwdu()
-        dtmp = tempfile.mkdtemp()
+        dtmp = osutils.mkdtemp()
         # On Mac OSX, /tmp actually expands to /private/tmp
         dtmp = realpath(dtmp)
 
         def rp(p):
             return relpath(dtmp, p)
-        
+
         try:
             # check paths inside dtmp while standing outside it
             self.assertEqual(rp(pathjoin(dtmp, 'foo')), 'foo')

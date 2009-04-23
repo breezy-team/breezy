@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the BranchBuilder class."""
 
@@ -26,7 +26,7 @@ from bzrlib.branchbuilder import BranchBuilder
 
 
 class TestBranchBuilder(tests.TestCaseWithMemoryTransport):
-    
+
     def test_create(self):
         """Test the constructor api."""
         builder = BranchBuilder(self.get_transport().clone('foo'))
@@ -58,6 +58,20 @@ class TestBranchBuilder(tests.TestCaseWithMemoryTransport):
         self.assertEqual(
             'commit 1',
             branch.repository.get_revision(branch.last_revision()).message)
+
+    def test_build_commit_timestamp(self):
+        """You can set a date when committing."""
+        builder = self.make_branch_builder('foo')
+        rev_id = builder.build_commit(timestamp=1236043340)
+        branch = builder.get_branch()
+        self.assertEqual((1, rev_id), branch.last_revision_info())
+        rev = branch.repository.get_revision(branch.last_revision())
+        self.assertEqual(
+            'commit 1',
+            rev.message)
+        self.assertEqual(
+            1236043340,
+            int(rev.timestamp))
 
     def test_build_two_commits(self):
         """The second commit has the right parents and message."""
@@ -130,6 +144,16 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
                               (u'b', 'b-id', 'directory'),
                              ], rev_tree)
 
+    def test_commit_timestamp(self):
+        builder = self.make_branch_builder('foo')
+        rev_id = builder.build_snapshot(None, None,
+            [('add', (u'', None, 'directory', None))],
+            timestamp=1234567890)
+        rev = builder.get_branch().repository.get_revision(rev_id)
+        self.assertEqual(
+            1234567890,
+            int(rev.timestamp))
+
     def test_commit_message_default(self):
         builder = BranchBuilder(self.get_transport().clone('foo'))
         rev_id = builder.build_snapshot(None, None,
@@ -197,8 +221,23 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
             builder.build_snapshot, 'B-id', None, [('weirdo', ('foo',))])
         self.assertEqual('Unknown build action: "weirdo"', str(e))
 
-    # TODO: rename a file/directory, but rename isn't supported by the
-    #       MemoryTree api yet, so for now we wait until it is used
+    def test_rename(self):
+        builder = self.build_a_rev()
+        builder.build_snapshot('B-id', None,
+            [('rename', ('a', 'b'))])
+        rev_tree = builder.get_branch().repository.revision_tree('B-id')
+        self.assertTreeShape([(u'', 'a-root-id', 'directory'),
+                              (u'b', 'a-id', 'file')], rev_tree)
+
+    def test_rename_into_subdir(self):
+        builder = self.build_a_rev()
+        builder.build_snapshot('B-id', None,
+            [('add', ('dir', 'dir-id', 'directory', None)),
+             ('rename', ('a', 'dir/a'))])
+        rev_tree = builder.get_branch().repository.revision_tree('B-id')
+        self.assertTreeShape([(u'', 'a-root-id', 'directory'),
+                              (u'dir', 'dir-id', 'directory'),
+                              (u'dir/a', 'a-id', 'file')], rev_tree)
 
     def test_set_parent(self):
         builder = self.build_a_rev()
@@ -206,7 +245,7 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
         self.addCleanup(builder.finish_series)
         builder.build_snapshot('B-id', ['A-id'],
             [('modify', ('a-id', 'new\ncontent\n'))])
-        builder.build_snapshot('C-id', ['A-id'], 
+        builder.build_snapshot('C-id', ['A-id'],
             [('add', ('c', 'c-id', 'file', 'alt\ncontent\n'))])
         # We should now have a graph:
         #   A

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Test that various operations work in a non-ASCII environment."""
 
@@ -131,7 +131,7 @@ class NormalizedFilename(TestCaseWithTransport):
         self.assertEqual(expected, present)
 
     def test_access_normalized(self):
-        # We should always be able to access files created with 
+        # We should always be able to access files created with
         # normalized filenames
         # With FAT32 and certain encodings on win32
         # a_circle_c and a_dots_c actually map to the same file
@@ -160,7 +160,7 @@ class NormalizedFilename(TestCaseWithTransport):
                 actual = f.read()
             finally:
                 f.close()
-            self.assertEqual(shouldbe, actual, 
+            self.assertEqual(shouldbe, actual,
                              'contents of %r is incorrect: %r != %r'
                              % (path, shouldbe, actual))
 

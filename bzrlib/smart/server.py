@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Server for smart-server protocol."""
 
@@ -21,13 +21,16 @@ import socket
 import sys
 import threading
 
-from bzrlib.hooks import Hooks
+from bzrlib.hooks import HookPoint, Hooks
 from bzrlib import (
     errors,
     trace,
     transport,
 )
-from bzrlib.smart.medium import SmartServerSocketStreamMedium
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib.smart import medium
+""")
 
 
 class SmartTCPServer(object):
@@ -59,13 +62,18 @@ class SmartTCPServer(object):
         from socket import error as socket_error
         self._socket_error = socket_error
         self._socket_timeout = socket_timeout
-        self._server_socket = socket.socket()
+        addrs = socket.getaddrinfo(host, port, socket.AF_UNSPEC,
+            socket.SOCK_STREAM, 0, socket.AI_PASSIVE)[0]
+
+        (family, socktype, proto, canonname, sockaddr) = addrs
+
+        self._server_socket = socket.socket(family, socktype, proto)
         # SO_REUSERADDR has a different meaning on Windows
         if sys.platform != 'win32':
             self._server_socket.setsockopt(socket.SOL_SOCKET,
                 socket.SO_REUSEADDR, 1)
         try:
-            self._server_socket.bind((host, port))
+            self._server_socket.bind(sockaddr)
         except self._socket_error, message:
             raise errors.CannotBindAddress(host, port, message)
         self._sockname = self._server_socket.getsockname()
@@ -90,11 +98,11 @@ class SmartTCPServer(object):
         # We need all three because:
         #  * other machines see the first
         #  * local commits on this machine should be able to be mapped to
-        #    this server 
+        #    this server
         #  * commits the server does itself need to be mapped across to this
         #    server.
         # The latter two urls are different aliases to the servers url,
-        # so we group those in a list - as there might be more aliases 
+        # so we group those in a list - as there might be more aliases
         # in the future.
         backing_urls = [self.backing_transport.base]
         try:
@@ -144,10 +152,10 @@ class SmartTCPServer(object):
 
     def serve_conn(self, conn, thread_name_suffix):
         # For WIN32, where the timeout value from the listening socket
-        # propogates to the newly accepted socket.
+        # propagates to the newly accepted socket.
         conn.setblocking(True)
         conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-        handler = SmartServerSocketStreamMedium(
+        handler = medium.SmartServerSocketStreamMedium(
             conn, self.backing_transport, self.root_client_path)
         thread_name = 'smart-server-child' + thread_name_suffix
         connection_thread = threading.Thread(
@@ -170,7 +178,7 @@ class SmartTCPServer(object):
         self._should_terminate = True
         # close the socket - gives error to connections from here on in,
         # rather than a connection reset error to connections made during
-        # the period between setting _should_terminate = True and 
+        # the period between setting _should_terminate = True and
         # the current request completing/aborting. It may also break out the
         # main loop if it was currently in accept() (on some platforms).
         try:
@@ -200,21 +208,23 @@ class SmartServerHooks(Hooks):
         notified.
         """
         Hooks.__init__(self)
-        # Introduced in 0.16:
-        # invoked whenever the server starts serving a directory.
-        # The api signature is (backing urls, public url).
-        self['server_started'] = []
-        # Introduced in 0.16:
-        # invoked whenever the server stops serving a directory.
-        # The api signature is (backing urls, public url).
-        self['server_stopped'] = []
+        self.create_hook(HookPoint('server_started',
+            "Called by the bzr server when it starts serving a directory. "
+            "server_started is called with (backing urls, public url), "
+            "where backing_url is a list of URLs giving the "
+            "server-specific directory locations, and public_url is the "
+            "public URL for the directory being served.", (0, 16), None))
+        self.create_hook(HookPoint('server_stopped',
+            "Called by the bzr server when it stops serving a directory. "
+            "server_stopped is called with the same parameters as the "
+            "server_started hook: (backing_urls, public_url).", (0, 16), None))
 
 SmartTCPServer.hooks = SmartServerHooks()
 
 
 class SmartTCPServer_for_testing(SmartTCPServer):
     """Server suitable for use by transport tests.
-    
+
     This server is backed by the process's cwd.
     """
 
@@ -222,7 +232,7 @@ class SmartTCPServer_for_testing(SmartTCPServer):
         SmartTCPServer.__init__(self, None)
         self.client_path_extra = None
         self.thread_name_suffix = thread_name_suffix
-        
+
     def get_backing_transport(self, backing_transport_server):
         """Get a backing transport from a server we are decorating."""
         return transport.get_transport(backing_transport_server.get_url())
@@ -230,7 +240,7 @@ class SmartTCPServer_for_testing(SmartTCPServer):
     def setUp(self, backing_transport_server=None,
               client_path_extra='/extra/'):
         """Set up server for testing.
-        
+
         :param backing_transport_server: backing server to use.  If not
             specified, a LocalURLServer at the current working directory will
             be used.
