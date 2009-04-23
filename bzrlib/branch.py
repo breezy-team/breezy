@@ -2434,11 +2434,13 @@ class BzrBranch8(BzrBranch5):
         super(BzrBranch8, self).__init__(*args, **kwargs)
         self._last_revision_info_cache = None
         self._partial_revision_history_cache = []
+        self._reference_info = None
 
     def _clear_cached_state(self):
         super(BzrBranch8, self)._clear_cached_state()
         self._last_revision_info_cache = None
         self._partial_revision_history_cache = []
+        self._reference_info = None
 
     def _last_revision_info(self):
         revision_string = self._transport.get_bytes('last-revision')
@@ -2554,6 +2556,7 @@ class BzrBranch8(BzrBranch5):
         """Set the parent branch"""
         return self._get_config_location('parent_location')
 
+    @needs_write_lock
     def _set_all_reference_info(self, info_dict):
         """Replace all reference info stored in a branch.
 
@@ -2566,12 +2569,16 @@ class BzrBranch8(BzrBranch5):
                                 branch_location=branch_location)
             writer.write_stanza(stanza)
         self._transport.put_bytes('references', s.getvalue())
+        self._reference_info = info_dict
 
+    @needs_read_lock
     def _get_all_reference_info(self):
         """Return all the reference info stored in a branch.
 
         :return: A dict of {file_id: (tree_path, branch_location)}
         """
+        if self._reference_info is not None:
+            return self._reference_info
         rio_file = self._transport.get('references')
         try:
             stanzas = rio.read_stanzas(rio_file)
@@ -2579,6 +2586,7 @@ class BzrBranch8(BzrBranch5):
                              s['branch_location'])) for s in stanzas)
         finally:
             rio_file.close()
+        self._reference_info = info_dict
         return info_dict
 
     def set_reference_info(self, file_id, tree_path, branch_location):
