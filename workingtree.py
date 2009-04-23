@@ -71,7 +71,7 @@ def inventory_from_index(basis_inventory, mapping, index):
         else:
             file_id = old_file_id
         if stat.S_ISLNK(mode):
-            kind = 'link'
+            kind = 'symlink'
         else:
             assert stat.S_ISREG(mode)
             kind = 'file'
