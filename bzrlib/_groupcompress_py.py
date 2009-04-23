@@ -45,7 +45,9 @@ class _OutputHandler(object):
     def _flush_insert(self):
         if not self.cur_insert_lines:
             return
-        assert self.cur_insert_len <= 127
+        if self.cur_insert_len > 127:
+            raise AssertionError('We cannot insert more than 127 bytes'
+                                 ' at a time.')
         self.out_lines.append(chr(self.cur_insert_len))
         self.index_lines.append(False)
         self.out_lines.extend(self.cur_insert_lines)
@@ -70,8 +72,9 @@ class _OutputHandler(object):
             self.index_lines.append(False)
 
     def add_insert(self, lines):
-        assert self.cur_insert_lines == []
-        assert self.cur_insert_len == 0
+        if self.cur_insert_lines != []:
+            raise AssertionError('self.cur_insert_lines must be empty when'
+                                 ' adding a new insert')
         for line in lines:
             if len(line) > 127:
                 self._insert_long_line(line)
@@ -313,9 +316,7 @@ def encode_copy_instruction(offset, length):
             copy_bytes.append(chr(base_byte))
         offset >>= 8
     if length is None:
-        # None is used by the test suite
-        copy_bytes[0] = chr(copy_command)
-        return ''.join(copy_bytes)
+        raise ValueError("cannot supply a length of None")
     if length > 0x10000:
         raise ValueError("we don't emit copy records for lengths > 64KiB")
     if length == 0:
