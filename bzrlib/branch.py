@@ -15,6 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
+from cStringIO import StringIO
 import sys
 
 from bzrlib.lazy_import import lazy_import
@@ -30,6 +31,7 @@ from bzrlib import (
         lockable_files,
         repository,
         revision as _mod_revision,
+        rio,
         symbol_versioning,
         transport,
         tsort,
@@ -499,6 +501,14 @@ class Branch(object):
         :type other: Branch
         """
         raise errors.UpgradeRequired(self.base)
+
+    def set_reference_info(self, file_id, tree_path, branch_location):
+        """Set the branch location to use for a tree reference."""
+        raise errors.UnsupportedOperation(self.set_reference_info, self)
+
+    def get_reference_info(self, file_id):
+        """Get the tree_path and branch_location for a tree reference."""
+        raise errors.UnsupportedOperation(self.get_reference_info, self)
 
     @needs_write_lock
     def fetch(self, from_branch, last_revision=None, pb=None):
@@ -1070,6 +1080,7 @@ class Branch(object):
         revision_id: if not None, the revision history in the new branch will
                      be truncated to end with revision_id.
         """
+        self.update_references(destination)
         self._synchronize_history(destination, revision_id)
         try:
             parent = self.get_parent()
@@ -1080,6 +1091,23 @@ class Branch(object):
                 destination.set_parent(parent)
         if self._push_should_merge_tags():
             self.tags.merge_to(destination.tags)
+
+    def update_references(self, target):
+        if not getattr(self._format, 'supports_reference_locations', False):
+            return
+        reference_dict = self._get_all_reference_info()
+        if len(reference_dict) == 0:
+            return
+        old_base = self.base
+        new_base = target.base
+        target_reference_dict = target._get_all_reference_info()
+        for file_id, (tree_path, branch_location) in (
+            reference_dict.items()):
+            branch_location = urlutils.rebase_url(branch_location,
+                                                  old_base, new_base)
+            target_reference_dict.setdefault(
+                file_id, (tree_path, branch_location))
+        target._set_all_reference_info(target_reference_dict)
 
     @needs_read_lock
     def check(self):
@@ -1205,14 +1233,15 @@ class Branch(object):
         reconciler.reconcile()
         return reconciler
 
-    def reference_parent(self, file_id, path):
+    def reference_parent(self, file_id, path, possible_transports=None):
         """Return the parent branch for a tree-reference file_id
         :param file_id: The file_id of the tree reference
         :param path: The path of the file_id in the tree
         :return: A branch associated with the file_id
         """
         # FIXME should provide multiple branches, based on config
-        return Branch.open(self.bzrdir.root_transport.clone(path).base)
+        return Branch.open(self.bzrdir.root_transport.clone(path).base,
+                           possible_transports=possible_transports)
 
     def supports_tags(self):
         return self._format.supports_tags()
@@ -1716,7 +1745,45 @@ class BzrBranchFormat6(BranchFormatMetadir):
 
 
 
-class BzrBranchFormat7(BranchFormatMetadir):
+class BzrBranchFormat8(BranchFormatMetadir):
+    """Metadir format supporting storing locations of subtree branches."""
+
+    def _branch_class(self):
+        return BzrBranch8
+
+    def get_format_string(self):
+        """See BranchFormat.get_format_string()."""
+        return "Bazaar Branch Format 8 (needs bzr 1.15)\n"
+
+    def get_format_description(self):
+        """See BranchFormat.get_format_description()."""
+        return "Branch format 8"
+
+    def initialize(self, a_bzrdir):
+        """Create a branch of this format in a_bzrdir."""
+        utf8_files = [('last-revision', '0 null:\n'),
+                      ('branch.conf', ''),
+                      ('tags', ''),
+                      ('references', '')
+                      ]
+        return self._initialize_helper(a_bzrdir, utf8_files)
+
+    def __init__(self):
+        super(BzrBranchFormat8, self).__init__()
+        self._matchingbzrdir.repository_format = \
+            RepositoryFormatKnitPack5RichRoot()
+
+    def make_tags(self, branch):
+        """See bzrlib.branch.BranchFormat.make_tags()."""
+        return BasicTags(branch)
+
+    def supports_stacking(self):
+        return True
+
+    supports_reference_locations = True
+
+
+class BzrBranchFormat7(BzrBranchFormat8):
     """Branch format with last-revision, tags, and a stacked location pointer.
 
     The stacked location pointer is passed down to the repository and requires
@@ -1724,6 +1791,14 @@ class BzrBranchFormat7(BranchFormatMetadir):
 
     This format was introduced in bzr 1.6.
     """
+
+    def initialize(self, a_bzrdir):
+        """Create a branch of this format in a_bzrdir."""
+        utf8_files = [('last-revision', '0 null:\n'),
+                      ('branch.conf', ''),
+                      ('tags', ''),
+                      ]
+        return self._initialize_helper(a_bzrdir, utf8_files)
 
     def _branch_class(self):
         return BzrBranch7
@@ -1736,25 +1811,7 @@ class BzrBranchFormat7(BranchFormatMetadir):
         """See BranchFormat.get_format_description()."""
         return "Branch format 7"
 
-    def initialize(self, a_bzrdir):
-        """Create a branch of this format in a_bzrdir."""
-        utf8_files = [('last-revision', '0 null:\n'),
-                      ('branch.conf', ''),
-                      ('tags', ''),
-                      ]
-        return self._initialize_helper(a_bzrdir, utf8_files)
-
-    def __init__(self):
-        super(BzrBranchFormat7, self).__init__()
-        self._matchingbzrdir.repository_format = \
-            RepositoryFormatKnitPack5RichRoot()
-
-    def make_tags(self, branch):
-        """See bzrlib.branch.BranchFormat.make_tags()."""
-        return BasicTags(branch)
-
-    def supports_stacking(self):
-        return True
+    supports_reference_locations = False
 
 
 class BranchReferenceFormat(BranchFormat):
@@ -1867,10 +1924,12 @@ BranchFormat.network_name() for more detail.
 __format5 = BzrBranchFormat5()
 __format6 = BzrBranchFormat6()
 __format7 = BzrBranchFormat7()
+__format8 = BzrBranchFormat8()
 BranchFormat.register_format(__format5)
 BranchFormat.register_format(BranchReferenceFormat())
 BranchFormat.register_format(__format6)
 BranchFormat.register_format(__format7)
+BranchFormat.register_format(__format8)
 BranchFormat.set_default_format(__format6)
 _legacy_formats = [BzrBranchFormat4(),
     ]
@@ -2119,6 +2178,7 @@ class BzrBranch(Branch):
         try:
             # We assume that during 'pull' the local repository is closer than
             # the remote one.
+            source.update_references(self)
             graph = self.repository.get_graph(source.repository)
             result.old_revno, result.old_revid = self.last_revision_info()
             self.update_revisions(source, stop_revision, overwrite=overwrite,
@@ -2221,6 +2281,7 @@ class BzrBranch(Branch):
         result.source_branch = self
         result.target_branch = target
         result.old_revno, result.old_revid = target.last_revision_info()
+        self.update_references(target)
         if result.old_revid != self.last_revision():
             # We assume that during 'push' this repository is closer than
             # the target.
@@ -2376,8 +2437,8 @@ class BzrBranch5(BzrBranch):
         return None
 
 
-class BzrBranch7(BzrBranch5):
-    """A branch with support for a fallback repository."""
+class BzrBranch8(BzrBranch5):
+    """A branch that stores tree-reference locations."""
 
     def _open_hook(self):
         if self._ignore_fallbacks:
@@ -2399,14 +2460,16 @@ class BzrBranch7(BzrBranch5):
 
     def __init__(self, *args, **kwargs):
         self._ignore_fallbacks = kwargs.get('ignore_fallbacks', False)
-        super(BzrBranch7, self).__init__(*args, **kwargs)
+        super(BzrBranch8, self).__init__(*args, **kwargs)
         self._last_revision_info_cache = None
         self._partial_revision_history_cache = []
+        self._reference_info = None
 
     def _clear_cached_state(self):
-        super(BzrBranch7, self)._clear_cached_state()
+        super(BzrBranch8, self)._clear_cached_state()
         self._last_revision_info_cache = None
         self._partial_revision_history_cache = []
+        self._reference_info = None
 
     def _last_revision_info(self):
         revision_string = self._transport.get_bytes('last-revision')
@@ -2522,6 +2585,81 @@ class BzrBranch7(BzrBranch5):
         """Set the parent branch"""
         return self._get_config_location('parent_location')
 
+    @needs_write_lock
+    def _set_all_reference_info(self, info_dict):
+        """Replace all reference info stored in a branch.
+
+        :param info_dict: A dict of {file_id: (tree_path, branch_location)}
+        """
+        s = StringIO()
+        writer = rio.RioWriter(s)
+        for key, (tree_path, branch_location) in info_dict.iteritems():
+            stanza = rio.Stanza(file_id=key, tree_path=tree_path,
+                                branch_location=branch_location)
+            writer.write_stanza(stanza)
+        self._transport.put_bytes('references', s.getvalue())
+        self._reference_info = info_dict
+
+    @needs_read_lock
+    def _get_all_reference_info(self):
+        """Return all the reference info stored in a branch.
+
+        :return: A dict of {file_id: (tree_path, branch_location)}
+        """
+        if self._reference_info is not None:
+            return self._reference_info
+        rio_file = self._transport.get('references')
+        try:
+            stanzas = rio.read_stanzas(rio_file)
+            info_dict = dict((s['file_id'], (s['tree_path'],
+                             s['branch_location'])) for s in stanzas)
+        finally:
+            rio_file.close()
+        self._reference_info = info_dict
+        return info_dict
+
+    def set_reference_info(self, file_id, tree_path, branch_location):
+        """Set the branch location to use for a tree reference.
+
+        :param file_id: The file-id of the tree reference.
+        :param tree_path: The path of the tree reference in the tree.
+        :param branch_location: The location of the branch to retrieve tree
+            references from.
+        """
+        info_dict = self._get_all_reference_info()
+        info_dict[file_id] = (tree_path, branch_location)
+        if None in (tree_path, branch_location):
+            if tree_path is not None:
+                raise ValueError('tree_path must be None when branch_location'
+                                 ' is None.')
+            if branch_location is not None:
+                raise ValueError('branch_location must be None when tree_path'
+                                 ' is None.')
+            del info_dict[file_id]
+        self._set_all_reference_info(info_dict)
+
+    def get_reference_info(self, file_id):
+        """Get the tree_path and branch_location for a tree reference.
+
+        :return: a tuple of (tree_path, branch_location)
+        """
+        return self._get_all_reference_info().get(file_id, (None, None))
+
+    def reference_parent(self, file_id, path, possible_transports=None):
+        """Return the parent branch for a tree-reference file_id.
+
+        :param file_id: The file_id of the tree reference
+        :param path: The path of the file_id in the tree
+        :return: A branch associated with the file_id
+        """
+        branch_location = self.get_reference_info(file_id)[1]
+        if branch_location is None:
+            return Branch.reference_parent(self, file_id, path,
+                                           possible_transports)
+        branch_location = urlutils.join(self.base, branch_location)
+        return Branch.open(branch_location,
+                           possible_transports=possible_transports)
+
     def set_push_location(self, location):
         """See Branch.set_push_location."""
         self._set_config_location('push_location', location)
@@ -2623,6 +2761,20 @@ class BzrBranch7(BzrBranch5):
             if self._partial_revision_history_cache[index] != revision_id:
                 raise errors.NoSuchRevision(self, revision_id)
         return self.revno() - index
+
+
+class BzrBranch7(BzrBranch8):
+    """A branch with support for a fallback repository."""
+
+    def set_reference_info(self, file_id, tree_path, branch_location):
+        Branch.set_reference_info(self, file_id, tree_path, branch_location)
+
+    def get_reference_info(self, file_id):
+        Branch.get_reference_info(self, file_id)
+
+    def reference_parent(self, file_id, path, possible_transports=None):
+        return Branch.reference_parent(self, file_id, path,
+                                       possible_transports)
 
 
 class BzrBranch6(BzrBranch7):
@@ -2770,6 +2922,15 @@ class Converter6to7(object):
         # update target format
         branch._transport.put_bytes('format', format.get_format_string())
 
+
+class Converter7to8(object):
+    """Perform an in-place upgrade of format 6 to format 7"""
+
+    def convert(self, branch):
+        format = BzrBranchFormat8()
+        branch._transport.put_bytes('references', '')
+        # update target format
+        branch._transport.put_bytes('format', format.get_format_string())
 
 
 def _run_with_write_locked_target(target, callable, *args, **kwargs):
