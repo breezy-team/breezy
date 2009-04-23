@@ -78,17 +78,22 @@ def tree_files(file_list, default_branch=u'.', canonicalize=True,
                                      (e.path, file_list[0]))
 
 
-"""
-Add handles files a bit differently so it a custom implementation.
-In particular smart_add expects absolute paths, which it immediately converts
-to relative paths. Would be nice to just return the relative paths like internal_tree_files
-does but there are a large number of unit tests that assume the current interface to 
-mutabletree.smart_add
-"""
 def tree_files_for_add(file_list):
+    """
+    Return a tree and list of absolute paths from a file list.
+
+    Similar to tree_files, but add handles files a bit differently, so it a
+    custom implementation.  In particular, MutableTreeTree.smart_add expects
+    absolute paths, which it immediately converts to relative paths.
+    """
+    # FIXME Would be nice to just return the relative paths like
+    # internal_tree_files does, but there are a large number of unit tests
+    # that assume the current interface to mutabletree.smart_add
     if file_list:
         tree, relpath = WorkingTree.open_containing(file_list[0])
-        relfile_list = [relpath] + osutils.canonical_relpaths(tree.basedir, file_list[1:])
+        relfile_list = [relpath]
+        relfile_list.extend(
+            osutils.canonical_relpaths(tree.basedir, file_list[1:]))
         if tree.supports_views():
             view_files = tree.views.lookup_view()
             if view_files:
