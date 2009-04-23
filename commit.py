@@ -64,7 +64,7 @@ class GitCommitBuilder(CommitBuilder):
             self._change_blob(path, (mode, workingtree.index.get_sha1(path)))
             yield file_id, path, None
 
-    def commit(self, message)
+    def commit(self, message):
         # FIXME: Eliminate any empty trees recursively
         # Write any tree objects to disk
         for path in sorted(self._trees.keys(), reverse=True):
