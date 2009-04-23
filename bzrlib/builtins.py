@@ -78,16 +78,24 @@ def tree_files(file_list, default_branch=u'.', canonicalize=True,
                                      (e.path, file_list[0]))
 
 
+"""
+Add handles files a bit differently so it a custom implementation.
+In particular smart_add expects absolute paths, which it immediately converts
+to relative paths. Would be nice to just return the relative paths like internal_tree_files
+does but there are a large number of unit tests that assume the current interface to 
+mutabletree.smart_add
+"""
 def tree_files_for_add(file_list):
-    """Add handles files a bit differently so it a custom implementation."""
     if file_list:
-        tree = WorkingTree.open_containing(file_list[0])[0]
+        tree, relpath = WorkingTree.open_containing(file_list[0])
+        relfile_list = [relpath] + osutils.canonical_relpaths(tree.basedir, file_list[1:])
         if tree.supports_views():
             view_files = tree.views.lookup_view()
             if view_files:
                 for filename in file_list:
                     if not osutils.is_inside_any(view_files, filename):
                         raise errors.FileOutsideView(filename, view_files)
+        return tree, map(tree.abspath, relfile_list)
     else:
         tree = WorkingTree.open_containing(u'.')[0]
         if tree.supports_views():
@@ -96,7 +104,7 @@ def tree_files_for_add(file_list):
                 file_list = view_files
                 view_str = views.view_display_str(view_files)
                 note("Ignoring files outside view. View is %s" % view_str)
-    return tree, file_list
+        return tree, file_list
 
 
 def _get_one_revision(command_name, revisions):
