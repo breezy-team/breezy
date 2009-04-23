@@ -268,9 +268,16 @@ class Reconfigure(object):
         if not force:
             self._check()
         if self._create_repository:
-            repository_format = None
-            if self.repository is not None:
-                repository_format = self.repository._format
+            if self.local_branch and not self._destroy_branch:
+                old_repo = self.local_branch.repository
+            elif self._create_branch and self.referenced_branch is not None:
+                old_repo = self.referenced_branch.repository
+            else:
+                old_repo = None
+            if old_repo is not None:
+                repository_format = old_repo._format
+            else:
+                repository_format = None
             if repository_format is not None:
                 repo = repository_format.initialize(self.bzrdir)
             else:
