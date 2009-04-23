@@ -46,7 +46,21 @@ def escape_file_id(file_id):
 
 
 def unescape_file_id(file_id):
-    return file_id.replace("_s", " ").replace("__", "_")
+    ret = []
+    i = 0
+    while i < len(file_id):
+        if file_id[i] != '_':
+            ret.append(file_id[i])
+        else:
+            if file_id[i+1] == '_':
+                ret.append("_")
+            elif file_id[i+1] == 's':
+                ret.append(" ")
+            else:
+                raise AssertionError("unknown escape character %s" % file_id[i+1])
+            i += 1
+        i += 1
+    return "".join(ret)
 
 
 def fix_person_identifier(text):
