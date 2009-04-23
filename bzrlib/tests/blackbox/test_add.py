@@ -23,6 +23,7 @@ from bzrlib.tests import (
     condition_isinstance,
     split_suite_by_condition,
     multiply_tests,
+    SymlinkFeature
     )
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.tests.test_win32utils import NeedsGlobExpansionFeature
@@ -227,3 +228,18 @@ class TestAdd(ExternalBase):
         self.build_tree([u'\u1234A', u'\u1235A', u'\u1235AA', 'cc'])
         self.run_bzr(['add', u'\u1234?', u'\u1235*'])
         self.assertEquals(self.run_bzr('unknowns')[0], 'cc\n')
+
+    def test_add_via_symlink(self):
+        self.requireFeature(SymlinkFeature)
+        self.make_branch_and_tree('source')
+        self.build_tree(['source/top.txt'])
+        os.symlink('source', 'link')
+        out = self.run_bzr(['add', 'link/top.txt'])[0]
+        self.assertEquals(out, 'adding top.txt\n')
+
+    def test_add_symlink_to_abspath(self):
+        self.requireFeature(SymlinkFeature)
+        self.make_branch_and_tree('.')
+        os.symlink(os.path.expanduser("~"), 'link')
+        out = self.run_bzr(['add', 'link'])[0]
+        self.assertEquals(out, 'adding link\n')
