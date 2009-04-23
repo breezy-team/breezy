@@ -91,6 +91,7 @@ def tree_files_for_add(file_list):
     # that assume the current interface to mutabletree.smart_add
     if file_list:
         tree, relpath = WorkingTree.open_containing(file_list[0])
+        file_list = file_list[:]
         file_list[0] = tree.abspath(relpath)
         if tree.supports_views():
             view_files = tree.views.lookup_view()

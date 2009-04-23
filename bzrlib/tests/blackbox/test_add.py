@@ -19,6 +19,7 @@
 
 import os
 
+from bzrlib import osutils
 from bzrlib.tests import (
     condition_isinstance,
     split_suite_by_condition,
@@ -239,7 +240,7 @@ class TestAdd(ExternalBase):
 
     def test_add_symlink_to_abspath(self):
         self.requireFeature(SymlinkFeature)
-        self.make_branch_and_tree('.')
-        os.symlink(os.path.expanduser("~"), 'link')
-        out = self.run_bzr(['add', 'link'])[0]
+        self.make_branch_and_tree('tree')
+        os.symlink(osutils.abspath('target'), 'tree/link')
+        out = self.run_bzr(['add', 'tree/link'])[0]
         self.assertEquals(out, 'adding link\n')
