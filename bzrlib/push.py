@@ -86,9 +86,26 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
         dir_to = None
 
     if dir_to is None:
-        br_to = br_from.create_clone_on_transport(to_transport,
-            revision_id=revision_id, stacked_on=stacked_on,
-            create_prefix=create_prefix, use_existing_dir=use_existing_dir)
+        try:
+            br_to = br_from.create_clone_on_transport(to_transport,
+                revision_id=revision_id, stacked_on=stacked_on,
+                create_prefix=create_prefix, use_existing_dir=use_existing_dir)
+        except errors.FileExists:
+            if not use_existing_dir:
+                raise errors.BzrCommandError("Target directory %s"
+                     " already exists, but does not have a valid .bzr"
+                     " directory. Supply --use-existing-dir to push"
+                     " there anyway." % location)
+        except errors.NoSuchFile:
+            if not create_prefix:
+                raise errors.BzrCommandError("Parent directory of %s"
+                    " does not exist."
+                    "\nYou may supply --create-prefix to create all"
+                    " leading parent directories."
+                    % location)
+        except errors.TooManyRedirections:
+            raise errors.BzrCommandError("Too many redirections trying "
+                                         "to make %s." % location)
         push_result = PushResult()
         # TODO: Some more useful message about what was copied
         try:

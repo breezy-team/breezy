@@ -540,7 +540,6 @@ class Transport(object):
         """
         raise errors.NotLocalUrl(self.abspath(relpath))
 
-
     def has(self, relpath):
         """Does the file relpath exist?
 

@@ -1155,20 +1155,10 @@ class Branch(object):
                 create_prefix=create_prefix, use_existing_dir=use_existing_dir)
         except errors.FileExists:
             if not use_existing_dir:
-                raise errors.BzrCommandError("Target directory %s"
-                     " already exists, but does not have a valid .bzr"
-                     " directory. Supply --use-existing-dir to push"
-                     " there anyway." % to_transport.base)
+                raise
         except errors.NoSuchFile:
             if not create_prefix:
-                raise errors.BzrCommandError("Parent directory of %s"
-                    " does not exist."
-                    "\nYou may supply --create-prefix to create all"
-                    " leading parent directories."
-                    % to_transport.base)
-        except errors.TooManyRedirections:
-            raise errors.BzrCommandError("Too many redirections trying "
-                                         "to make %s." % to_transport.base)
+                raise
         return dir_to.open_branch()
 
     def create_checkout(self, to_location, revision_id=None,
