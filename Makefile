@@ -93,7 +93,9 @@ txt_files := $(wildcard doc/en/tutorials/*.txt) \
 	$(wildcard doc/es/guia-usario/*.txt) \
 	doc/es/mini-tutorial/index.txt \
 	doc/index.txt \
-	doc/index.es.txt
+	doc/index.es.txt \
+	doc/index.ru.txt \
+	doc/ru/mini-tutorial/index.txt
 non_txt_files := \
        doc/default.css \
        doc/en/quick-reference/quick-start-summary.svg \
@@ -135,6 +137,12 @@ doc/developers/%.html: doc/developers/%.txt
 	$(rst2html) --stylesheet=../default.css $< $@
 
 doc/index.html: doc/index.txt
+	$(rst2html) --stylesheet=default.css $< $@
+
+doc/index.es.html: doc/index.es.txt
+	$(rst2html) --stylesheet=default.css $< $@
+
+doc/index.ru.html: doc/index.ru.txt
 	$(rst2html) --stylesheet=default.css $< $@
 
 %.html: %.txt
