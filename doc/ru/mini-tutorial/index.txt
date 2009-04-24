@@ -218,7 +218,7 @@ bzr-gtk и создаст копию с именем bzr-gtk.vasya.
 до родительской::
 
     $ bzr merge
-    Using saved location: http://bazaar.launchpad.net/~bzr/bzr-gtk/trunk
+    Merging from saved parent location: http://bazaar.launchpad.net/~bzr/bzr-gtk/trunk
     All changes applied successfully.
 
 Проверьте что изменилось::
@@ -245,7 +245,7 @@ bzr-gtk и создаст копию с именем bzr-gtk.vasya.
 Замените ``mycode.patch``, указав свою инструкцию merge::
 
     $ bzr send -o mycode.patch
-    Using saved location: http://bazaar.launchpad.net/~bzr/bzr-gtk/trunk
+    Using saved parent location: http://bazaar.launchpad.net/~bzr/bzr-gtk/trunk
 
 Теперь вы можете отправить по электронной почте инструкцию merge 
 в проект bzr-gtk. И если они согласны, то смогут использовать её чтобы 
