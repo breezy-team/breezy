@@ -38,6 +38,9 @@ Bug Fixes
 * End-Of-Line content filters are now loaded correctly.
   (Ian Clatworthy, Brian de Alwis, #355280)
 
+* Fix TypeError in running ``bzr break-lock`` on some URLs.
+  (Alexander Belchenko, Martin Pool, #365891)
+
 * ``bzr send`` works to send emails again using MAPI.
   (Neil Martinsen-Burrell, #346998)
 

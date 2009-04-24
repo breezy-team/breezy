@@ -218,7 +218,11 @@ class CLIUIFactory(UIFactory):
 
     def prompt(self, prompt, **kwargs):
         """Emit prompt on the CLI."""
-        prompt = prompt % kwargs
+        if kwargs:
+            # XXX: expanding kwargs should probably be done at a higher level;
+            # it doesn't seem particularly helpful here and see
+            # https://launchpad.net/bugs/365891
+            prompt = prompt % kwargs
         prompt = prompt.encode(osutils.get_terminal_encoding(), 'replace')
         self.clear_term()
         self.stdout.write(prompt)
