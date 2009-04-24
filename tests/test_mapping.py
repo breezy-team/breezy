@@ -114,11 +114,11 @@ class RoundtripRevisionsFromGit(tests.TestCase):
         c = Commit()
         c._tree = "cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
         c._message = "Some message"
-        c._committer = "Committer"
+        c._committer = "Committer <Committer>"
         c._commit_time = 4
         c._commit_timezone = -0500
         c._author_time = 5
         c._author_timezone = 0600
-        c._author = "Author"
+        c._author = "Author <author>"
         self.assertRoundtripCommit(c)
 
