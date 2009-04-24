@@ -35,17 +35,20 @@ Improvements
 Bug Fixes
 *********
 
-* End-Of-Line content filters are now loaded correctly.
-  (Ian Clatworthy, Brian de Alwis, #355280)
+* ``Branch.set_append_revisions_only`` now works with branches on a smart
+  server. (Andrew Bennetts, #365865)
 
 * ``bzr send`` works to send emails again using MAPI.
   (Neil Martinsen-Burrell, #346998)
 
-* Non-recursive ``bzr ls`` now works properly when a path is specified.
-  (Jelmer Vernooij, #357863)
+* End-Of-Line content filters are now loaded correctly.
+  (Ian Clatworthy, Brian de Alwis, #355280)
 
 * Fix a bug in the pure-python ``GroupCompress`` code when handling copies
   longer than 64KiB. (John Arbash Meinel, #364900)
+
+* Non-recursive ``bzr ls`` now works properly when a path is specified.
+  (Jelmer Vernooij, #357863)
 
 Documentation
 *************

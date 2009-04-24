@@ -1599,7 +1599,7 @@ class cmd_init(Command):
                 branch.set_append_revisions_only(True)
             except errors.UpgradeRequired:
                 raise errors.BzrCommandError('This branch format cannot be set'
-                    ' to append-revisions-only.  Try --experimental-branch6')
+                    ' to append-revisions-only.  Try --default.')
         if not is_quiet():
             from bzrlib.info import describe_layout, describe_format
             try:

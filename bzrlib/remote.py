@@ -2266,6 +2266,14 @@ class RemoteBranch(branch.Branch, _RpcHelper):
             raise errors.UnexpectedSmartServerResponse(response)
         self._run_post_change_branch_tip_hooks(old_revno, old_revid)
 
+    def set_append_revisions_only(self, enabled):
+        if enabled:
+            value = 'True'
+        else:
+            value = 'False'
+        self.get_config().set_user_option('append_revisions_only', value,
+            warn_masked=True)
+
     @needs_write_lock
     def set_revision_history(self, rev_history):
         # Send just the tip revision of the history; the server will generate
