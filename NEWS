@@ -38,8 +38,14 @@ Bug Fixes
 * End-Of-Line content filters are now loaded correctly.
   (Ian Clatworthy, Brian de Alwis, #355280)
 
+* ``bzr send`` works to send emails again using MAPI.
+  (Neil Martinsen-Burrell, #346998)
+
 * Non-recursive ``bzr ls`` now works properly when a path is specified.
   (Jelmer Vernooij, #357863)
+
+* Fix a bug in the pure-python ``GroupCompress`` code when handling copies
+  longer than 64KiB. (John Arbash Meinel, #364900)
 
 Documentation
 *************
@@ -50,6 +56,20 @@ API Changes
 Internals
 *********
 
+* ``bzrlib.branch.Branch.set_parent`` is now present on the base branch
+  class and will call ``_set_parent_location`` after doing unicode 
+  encoding. (Robert Collins)
+
+* ``bzrlib.remote.RemoteBranch._set_parent_location`` will use a new verb
+  ``Branch.set_parent_location`` removing further VFS operations.
+  (Robert Collins)
+
+* ``bzrlib.bzrdir.BzrDir._get_config`` now returns a ``TransportConfig``
+  or similar when the dir supports configuration settings. The base class
+  defaults to None. There is a matching new server verb
+  ``BzrDir.get-config_file`` to reduce roundtrips for getting BzrDir
+  configuration. (Robert Collins)
+
 * ``bzrlib.tests.ExtendedTestResult`` has new methods ``startTests``
   called before the first test is started, ``done`` called after the last
   test completes, and a new parameter ``strict``. (Robert Collins)
@@ -59,15 +79,39 @@ Internals
   via ~/.bazaar/authentication.conf fails. (Jelmer Vernooij, 
   Vincent Ladeuil, #321918)
 
-bzr 1.14rc1
+bzr 1.14rc2
 ###########
 :Codename: brisbane-core
 :1.14rc1: 2009-04-06
+:1.14rc2: 2009-04-19
 
 New formats 1.14 and 1.14-rich-root supporting End-Of-Line (EOL) conversions,
 keyword templating (via the bzr-keywords plugin) and generic content filtering.
 End-of-line conversion is now supported for formats supporting content
 filtering.
+
+Changes from RC1 to RC2
+***********************
+
+* Fix for bug 358037 Revision not in
+  bzrlib.groupcompress.GroupCompressVersionedFiles (Brian de Alwis, 
+  John A Meinel)
+
+* Fix for bug 354036 ErrorFromSmartServer - AbsentContentFactory object has no
+  attribute 'get_bytes_as' exception while pulling from Launchpad 
+  (Jean-Francois Roy, Andrew Bennetts, Robert Collins)
+
+* Fix for bug 355280 eol content filters are never loaded and thus never
+  applied (Brian de Alwis, Ian Clatworthy)
+ 
+* bzr.dev -r4280  Change _fetch_uses_deltas = False for CHK repos until we can
+  write a better fix. (John Arbash Meinel, Robert Collins)
+
+* Fix for bug 361574 uncommit recommends undefined --levels and -n options
+  (Marius Kruger, Ian Clatworthy)
+
+* bzr.dev r4289 as cherrypicked at lp:~spiv/bzr/stacking-cherrypick-1.14 
+  (Andrew Bennetts, Robert Collins)
 
 Compatibility Breaks
 ********************
@@ -156,8 +200,14 @@ Improvements
   version controlled files match the ignore pattern. (Neil
   Martinsen-Burrell, #248895)
 
+* ``bzr log`` now has ``--include-merges`` as an alias for ``--levels 0``.
+  (Ian Clatworthy)
+
 * ``bzr send`` is faster on repositories with deep histories.
   (Ian Clatworthy)
+
+* IPv6 literals are accepted in URLs.
+  (stlman, Martin Pool, Jelmer Vernooij, #165014)
 
 * Progress bars now show the rate of network activity for
   ``bzr+ssh://`` and ``bzr://`` connections.  (Andrew Bennetts)
@@ -198,6 +248,17 @@ Improvements
 
 Bug Fixes
 *********
+
+* Pushing a new stacked branch will also push the parent inventories for
+  revisions at the stacking boundary.  This makes sure that the stacked
+  branch has enough data to calculate inventory deltas for all of its
+  revisions (without requiring the fallback branch).  This avoids
+  "'AbsentContentFactory' object has no attribute 'get_bytes_as'" errors
+  when fetching the stacked branch from a 1.13 (or later) smart server.
+  This partially fixes #354036.  (Andrew Bennetts, Robert Collins)
+
+* End-Of-Line content filters are now loaded correctly.
+  (Ian Clatworthy, Brian de Alwis, #355280)
 
 * Authentication plugins now receive all the parameters from the request
   itself (aka host, port, realm, path, etc). Previously, only the 

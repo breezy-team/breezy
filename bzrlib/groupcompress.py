@@ -299,6 +299,66 @@ class GroupCompressBlock(object):
                  ]
         return ''.join(chunks)
 
+    def _dump(self, include_text=False):
+        """Take this block, and spit out a human-readable structure.
+
+        :param include_text: Inserts also include text bits, chose whether you
+            want this displayed in the dump or not.
+        :return: A dump of the given block. The layout is something like:
+            [('f', length), ('d', delta_length, text_length, [delta_info])]
+            delta_info := [('i', num_bytes, text), ('c', offset, num_bytes),
+            ...]
+        """
+        self._ensure_content()
+        result = []
+        pos = 0
+        while pos < self._content_length:
+            kind = self._content[pos]
+            pos += 1
+            if kind not in ('f', 'd'):
+                raise ValueError('invalid kind character: %r' % (kind,))
+            content_len, len_len = decode_base128_int(
+                                self._content[pos:pos + 5])
+            pos += len_len
+            if content_len + pos > self._content_length:
+                raise ValueError('invalid content_len %d for record @ pos %d'
+                                 % (content_len, pos - len_len - 1))
+            if kind == 'f': # Fulltext
+                result.append(('f', content_len))
+            elif kind == 'd': # Delta
+                delta_content = self._content[pos:pos+content_len]
+                delta_info = []
+                # The first entry in a delta is the decompressed length
+                decomp_len, delta_pos = decode_base128_int(delta_content)
+                result.append(('d', content_len, decomp_len, delta_info))
+                measured_len = 0
+                while delta_pos < content_len:
+                    c = ord(delta_content[delta_pos])
+                    delta_pos += 1
+                    if c & 0x80: # Copy
+                        (offset, length,
+                         delta_pos) = decode_copy_instruction(delta_content, c,
+                                                              delta_pos)
+                        delta_info.append(('c', offset, length))
+                        measured_len += length
+                    else: # Insert
+                        if include_text:
+                            txt = delta_content[delta_pos:delta_pos+c]
+                        else:
+                            txt = ''
+                        delta_info.append(('i', c, txt))
+                        measured_len += c
+                        delta_pos += c
+                if delta_pos != content_len:
+                    raise ValueError('Delta consumed a bad number of bytes:'
+                                     ' %d != %d' % (delta_pos, content_len))
+                if measured_len != decomp_len:
+                    raise ValueError('Delta claimed fulltext was %d bytes, but'
+                                     ' extraction resulted in %d bytes'
+                                     % (decomp_len, measured_len))
+            pos += content_len
+        return result
+
 
 class _LazyGroupCompressFactory(object):
     """Yield content from a GroupCompressBlock on demand."""
@@ -743,6 +803,7 @@ class PythonGroupCompressor(_CommonGroupCompressor):
         # Before insertion
         start = self.endpoint
         chunk_start = len(self.chunks)
+        self._last = (chunk_start, self.endpoint)
         self._delta_index.extend_lines(out_lines, index_lines)
         self.endpoint = self._delta_index.endpoint
         self.input_bytes += input_len
@@ -1660,6 +1721,7 @@ from bzrlib._groupcompress_py import (
     apply_delta_to_source,
     encode_base128_int,
     decode_base128_int,
+    decode_copy_instruction,
     LinesDeltaIndex,
     )
 try:
