@@ -1859,6 +1859,8 @@ class BzrDirFormat(object):
         shared_repo=False):
         """Create this format on transport.
 
+        The directory to initialize will be created.
+
         :param force_new_repo: Do not use a shared repository for the target,
                                even if one is available.
         :param create_prefix: Create any missing directories leading up to
@@ -2956,8 +2958,8 @@ class ConvertMetaToMeta(Converter):
         return to_convert
 
 
-# This is not in remote.py because it's small, and needs to be registered.
-# Putting it in remote.py creates a circular import problem.
+# This is not in remote.py because it's relatively small, and needs to be
+# registered. Putting it in remote.py creates a circular import problem.
 # we can make it a lazy object if the control formats is turned into something
 # like a registry.
 class RemoteBzrDirFormat(BzrDirMetaFormat1):
@@ -3019,6 +3021,65 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
         format = RemoteBzrDirFormat()
         self._supply_sub_formats_to(format)
         return remote.RemoteBzrDir(transport, format)
+
+    def _serialize_NoneTrueFalse(self, arg):
+        if arg is False:
+            return 'False'
+        if arg:
+            return 'True'
+        return ''
+
+    def initialize_on_transport_ex(self, transport, use_existing_dir=False,
+        create_prefix=False, force_new_repo=False, stacked_on=None,
+        stack_on_pwd=None, repo_format_name=None, make_working_trees=None,
+        shared_repo=False):
+        try:
+            # hand off the request to the smart server
+            client_medium = transport.get_smart_medium()
+        except errors.NoSmartMedium:
+            # TODO: lookup the local format from a server hint.
+            local_dir_format = BzrDirMetaFormat1()
+            self._supply_sub_formats_to(local_dir_format)
+            return local_dir_format.initialize_on_transport_ex(transport,
+                use_existing_dir=use_existing_dir, create_prefix=create_prefix,
+                force_new_repo=force_new_repo, stacked_on=stacked_on,
+                stack_on_pwd=stack_on_pwd, repo_format_name=repo_format_name,
+                make_working_trees=make_working_trees, shared_repo=shared_repo)
+        client = _SmartClient(client_medium)
+        path = client.remote_path_from_transport(transport)
+        if client_medium._is_remote_before((1, 15)):
+            local_dir_format = BzrDirMetaFormat1()
+            self._supply_sub_formats_to(local_dir_format)
+            return local_dir_format.initialize_on_transport_ex(transport,
+                use_existing_dir=use_existing_dir, create_prefix=create_prefix,
+                force_new_repo=force_new_repo, stacked_on=stacked_on,
+                stack_on_pwd=stack_on_pwd, repo_format_name=repo_format_name,
+                make_working_trees=make_working_trees, shared_repo=shared_repo)
+        if not (create_prefix is False and force_new_repo is False and
+            stacked_on is None and stack_on_pwd is None and repo_format_name is
+            None and make_working_trees is None and shared_repo is False):
+            local_dir_format = BzrDirMetaFormat1()
+            self._supply_sub_formats_to(local_dir_format)
+            return local_dir_format.initialize_on_transport_ex(transport,
+                use_existing_dir=use_existing_dir, create_prefix=create_prefix,
+                force_new_repo=force_new_repo, stacked_on=stacked_on,
+                stack_on_pwd=stack_on_pwd, repo_format_name=repo_format_name,
+                make_working_trees=make_working_trees, shared_repo=shared_repo)
+        args = []
+        args.append(self._serialize_NoneTrueFalse(use_existing_dir))
+        try:
+            response = client.call('BzrDirFormat.initialize_ex', path, *args)
+        except errors.UnknownSmartMethod:
+            local_dir_format = BzrDirMetaFormat1()
+            self._supply_sub_formats_to(local_dir_format)
+            return local_dir_format.initialize_on_transport_ex(transport,
+                use_existing_dir=use_existing_dir, create_prefix=create_prefix,
+                force_new_repo=force_new_repo, stacked_on=stacked_on,
+                stack_on_pwd=stack_on_pwd, repo_format_name=repo_format_name,
+                make_working_trees=make_working_trees, shared_repo=shared_repo)
+        format = RemoteBzrDirFormat()
+        self._supply_sub_formats_to(format)
+        return None, remote.RemoteBzrDir(transport, format), None, None
 
     def _open(self, transport):
         return remote.RemoteBzrDir(transport, self)

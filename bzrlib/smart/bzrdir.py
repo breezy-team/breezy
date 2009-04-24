@@ -325,6 +325,29 @@ class SmartServerRequestInitializeBzrDir(SmartServerRequest):
         return SuccessfulSmartServerResponse(('ok', ))
 
 
+class SmartServerRequestBzrDirInitializeEx(SmartServerRequest):
+
+    def parse_NoneTrueFalse(self, arg):
+        if not arg:
+            return None
+        if arg == 'False':
+            return False
+        if arg == 'True':
+            return True
+        raise AssertionError("invalid arg %r" % arg)
+
+    def do(self, path, use_existing_dir):
+        """Initialize a bzrdir at path as per BzrDirFormat.initialize_ex
+
+        :return: SmartServerResponse()
+        """
+        use_existing_dir = self.parse_NoneTrueFalse(use_existing_dir)
+        target_transport = self.transport_from_client_path(path)
+        BzrDirFormat.get_default_format().initialize_on_transport_ex(target_transport,
+            use_existing_dir=use_existing_dir)
+        return SuccessfulSmartServerResponse(())
+
+
 class SmartServerRequestOpenBranch(SmartServerRequestBzrDir):
 
     def do_bzrdir_request(self):

@@ -492,6 +492,9 @@ request_handlers.register_lazy(
     'BzrDirFormat.initialize', 'bzrlib.smart.bzrdir',
     'SmartServerRequestInitializeBzrDir')
 request_handlers.register_lazy(
+    'BzrDirFormat.initialize_ex', 'bzrlib.smart.bzrdir',
+    'SmartServerRequestBzrDirInitializeEx')
+request_handlers.register_lazy(
     'BzrDir.open', 'bzrlib.smart.bzrdir', 'SmartServerRequestOpenBzrDir')
 request_handlers.register_lazy(
     'BzrDir.open_branch', 'bzrlib.smart.bzrdir',
