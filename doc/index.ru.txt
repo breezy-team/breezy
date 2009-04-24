@@ -6,20 +6,20 @@
 на сайте Базара, <http://doc.bazaar-vcs.org/>. Еще больше информации 
 можно получить по адресу <http://bazaar-vcs.org/Documentation>.
 
-Документация по ядру
-====================
+Основная документация
+=====================
 
-* `Руководство пользователя <ru/user-guide/index.html>`_
+* `Руководство пользователя <en/user-guide/index.html>`_ (англ.)
 
-* `Справочник пользователя <ru/user-reference/bzr_man.html>`_
+* `Справочник пользователя <en/user-reference/bzr_man.html>`_ (англ.)
 
 * `Карточка быстрого старта <ru/quick-reference/quick-start-summary.svg>`_
   (`PDF <ru/quick-reference/quick-start-summary.pdf>`_,
   `PNG <ru/quick-reference/quick-start-summary.png>`_)
 
-* `Список изменений <ru/release-notes/NEWS.html>`_
+* `Список изменений <en/release-notes/NEWS.html>`_ (англ.)
 
-* `Каталог информации для разработчиков <developers/index.html>`_ |--| 
+* `Каталог информации для разработчиков <developers/index.html>`_ (англ.) |--| 
   для разработчиков Базара и дополнений
 
 Учебники
@@ -27,11 +27,13 @@
 
 * `Базар за пять минут <ru/mini-tutorial/index.html>`_
 
-* `Большой учебник <ru/tutorials/tutorial.html>`_
+* `Большой учебник <en/tutorials/tutorial.html>`_ (англ.)
 
-* `Использование Базара с Launchpad <ru/tutorials/using_bazaar_with_launchpad.html>`_
+* `Использование Базара с Launchpad 
+  <en/tutorials/using_bazaar_with_launchpad.html>`_ (англ.)
 
-* `Централизированный порядок работ <ru/tutorials/centralized_workflow.html>`_
+* `Централизированный стиль работы 
+  <en/tutorials/centralized_workflow.html>`_ (англ.)
 
 Ссылки в сети
 =============
@@ -42,9 +44,12 @@
 * `Руководство по миграции <http://bazaar-vcs.org/BzrMigration>`_
   |--| для команд переносящих историю с других систем контроля версий
 
-* `Словарь терминов <http://bazaar-vcs.org/BzrGlossary>`_
+* `Словарь терминов <http://bazaar-vcs.org/BzrGlossary>`_ (англ.), 
+  см. также `русскую версию`__ 
+  
+__  http://groups.google.com/group/ru_bzr/web/%D0%B3%D0%BB%D0%BE%D1%81%D1%81%D0%B0%D1%80%D0%B8%D0%B9
 
-* `Часто задаваемые вопросы <http://bazaar-vcs.org/FAQ>`_
+* `Часто задаваемые вопросы <http://bazaar-vcs.org/FAQ>`_ (англ.)
 
 Другие языки
 ============
