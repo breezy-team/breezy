@@ -18,7 +18,12 @@
 
 
 from bzrlib import branch, errors, repository
-from bzrlib.bzrdir import BzrDir, BzrDirFormat, BzrDirMetaFormat1
+from bzrlib.bzrdir import (
+    BzrDir,
+    BzrDirFormat,
+    BzrDirMetaFormat1,
+    network_format_registry,
+    )
 from bzrlib.smart.request import (
     FailedSmartServerResponse,
     SmartServerRequest,
@@ -325,7 +330,7 @@ class SmartServerRequestInitializeBzrDir(SmartServerRequest):
         return SuccessfulSmartServerResponse(('ok', ))
 
 
-class SmartServerRequestBzrDirInitializeEx(SmartServerRequest):
+class SmartServerRequestBzrDirInitializeEx(SmartServerRequestBzrDir):
 
     def parse_NoneTrueFalse(self, arg):
         if not arg:
@@ -336,16 +341,65 @@ class SmartServerRequestBzrDirInitializeEx(SmartServerRequest):
             return True
         raise AssertionError("invalid arg %r" % arg)
 
-    def do(self, path, use_existing_dir):
+    def parse_NoneString(self, arg):
+        return arg or None
+
+    def _serialize_NoneTrueFalse(self, arg):
+        if arg is False:
+            return 'False'
+        if not arg:
+            return ''
+        return 'True'
+
+    def do(self, bzrdir_network_name, path, use_existing_dir, create_prefix,
+        force_new_repo, stacked_on, stack_on_pwd, repo_format_name,
+        make_working_trees, shared_repo):
         """Initialize a bzrdir at path as per BzrDirFormat.initialize_ex
 
         :return: SmartServerResponse()
         """
-        use_existing_dir = self.parse_NoneTrueFalse(use_existing_dir)
         target_transport = self.transport_from_client_path(path)
-        BzrDirFormat.get_default_format().initialize_on_transport_ex(target_transport,
-            use_existing_dir=use_existing_dir)
-        return SuccessfulSmartServerResponse(())
+        format = network_format_registry.get(bzrdir_network_name)
+        use_existing_dir = self.parse_NoneTrueFalse(use_existing_dir)
+        create_prefix = self.parse_NoneTrueFalse(create_prefix)
+        force_new_repo = self.parse_NoneTrueFalse(force_new_repo)
+        stacked_on = self.parse_NoneString(stacked_on)
+        stack_on_pwd = self.parse_NoneString(stack_on_pwd)
+        make_working_trees = self.parse_NoneTrueFalse(make_working_trees)
+        shared_repo = self.parse_NoneTrueFalse(shared_repo)
+        if stack_on_pwd == '.':
+            stack_on_pwd = target_transport.base
+        repo_format_name = self.parse_NoneString(repo_format_name)
+        repo, bzrdir, stacking, repository_policy = \
+            format.initialize_on_transport_ex(target_transport,
+            use_existing_dir=use_existing_dir, create_prefix=create_prefix,
+            force_new_repo=force_new_repo, stacked_on=stacked_on,
+            stack_on_pwd=stack_on_pwd, repo_format_name=repo_format_name,
+            make_working_trees=make_working_trees, shared_repo=shared_repo)
+        if repo is None:
+            repo_path = ''
+            repo_name = ''
+            rich_root = tree_ref = external_lookup = ''
+            repo_bzrdir_name = ''
+            final_stack = None
+            final_stack_pwd = None
+        else:
+            repo_path = self._repo_relpath(bzrdir.root_transport, repo)
+            if repo_path == '':
+                repo_path = '.'
+            rich_root, tree_ref, external_lookup = self._format_to_capabilities(
+                repo._format)
+            repo_name = repo._format.network_name()
+            repo_bzrdir_name = repo.bzrdir._format.network_name()
+            final_stack = repository_policy._stack_on
+            final_stack_pwd = repository_policy._stack_on_pwd
+        final_stack = final_stack or ''
+        final_stack_pwd = final_stack_pwd or ''
+        return SuccessfulSmartServerResponse((repo_path, rich_root, tree_ref,
+            external_lookup, repo_name, repo_bzrdir_name,
+            bzrdir._format.network_name(),
+            self._serialize_NoneTrueFalse(stacking), final_stack,
+            final_stack_pwd))
 
 
 class SmartServerRequestOpenBranch(SmartServerRequestBzrDir):

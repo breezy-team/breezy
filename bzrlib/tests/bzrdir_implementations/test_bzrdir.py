@@ -1224,7 +1224,9 @@ class TestBzrDir(TestCaseWithBzrDir):
                 made_repo.bzrdir.root_transport.base)
 
     def test_format_initialize_on_transport_ex_stacked_on(self):
-        # trunk is a stackable format
+        # trunk is a stackable format.  Note that its in the same server area
+        # which is what launchpad does, but not sufficient to exercise the
+        # general case.
         trunk = self.make_branch('trunk', format='1.9')
         t = self.get_transport('stacked')
         old_fmt = bzrdir.format_registry.make_bzrdir('pack-0.92')

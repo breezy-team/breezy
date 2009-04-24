@@ -69,7 +69,7 @@ def _pre_open_hook(transport):
             continue
         else:
             return
-    raise errors.BzrError('jail break: %r' % (abspath,))
+    raise errors.JailBreak(abspath)
 
 
 _install_hook()

@@ -359,8 +359,12 @@ class TestSmartServerRequestBzrDirInitializeEx(tests.TestCaseWithMemoryTransport
     def test_empty_dir(self):
         """Initializing an empty dir should succeed and do it."""
         backing = self.get_transport()
+        name = self.make_bzrdir('reference')._format.network_name()
         request = smart.bzrdir.SmartServerRequestBzrDirInitializeEx(backing)
-        self.assertEqual(SmartServerResponse(()), request.execute('', 'True'))
+        self.assertEqual(SmartServerResponse(('', '', '', '', '', '', name,
+            'False', '', '')),
+            request.execute(name, '', 'True', 'False', 'False', '', '', '', '',
+            'False'))
         made_dir = bzrdir.BzrDir.open_from_transport(backing)
         # no branch, tree or repository is expected with the current
         # default formart.
@@ -371,15 +375,19 @@ class TestSmartServerRequestBzrDirInitializeEx(tests.TestCaseWithMemoryTransport
     def test_missing_dir(self):
         """Initializing a missing directory should fail like the bzrdir api."""
         backing = self.get_transport()
+        name = self.make_bzrdir('reference')._format.network_name()
         request = smart.bzrdir.SmartServerRequestBzrDirInitializeEx(backing)
-        self.assertRaises(errors.NoSuchFile, request.execute, 'subdir/dir', 'False')
+        self.assertRaises(errors.NoSuchFile, request.execute, name,
+            'subdir/dir', 'False', 'False', 'False', '', '', '', '', 'False')
 
     def test_initialized_dir(self):
         """Initializing an extant dirctory should fail like the bzrdir api."""
         backing = self.get_transport()
+        name = self.make_bzrdir('reference')._format.network_name()
         request = smart.bzrdir.SmartServerRequestBzrDirInitializeEx(backing)
         self.make_bzrdir('subdir')
-        self.assertRaises(errors.FileExists, request.execute, 'subdir', 'False')
+        self.assertRaises(errors.FileExists, request.execute, name, 'subdir',
+            'False', 'False', 'False', '', '', '', '', 'False')
 
 
 class TestSmartServerRequestOpenBranch(TestCaseWithChrootedTransport):

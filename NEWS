@@ -73,6 +73,10 @@ Internals
   via ~/.bazaar/authentication.conf fails. (Jelmer Vernooij, 
   Vincent Ladeuil, #321918)
 
+* New smart server verb ``BzrDir.initialize_ex`` which implements a
+  refactoring to the core of clone allowing less round trips on new
+  branches. (Robert Collins)
+
 bzr 1.14rc1
 ###########
 :Codename: brisbane-core
