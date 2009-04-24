@@ -202,18 +202,18 @@
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
      inkscape:zoom="1"
-     inkscape:cx="463.22178"
-     inkscape:cy="518.58479"
+     inkscape:cx="537.37511"
+     inkscape:cy="344.65751"
      inkscape:document-units="px"
-     inkscape:current-layer="layer1"
+     inkscape:current-layer="g13619"
      width="1052.3622px"
      height="744.09449px"
      inkscape:showpageshadow="false"
      showgrid="false"
-     inkscape:window-width="1024"
-     inkscape:window-height="719"
+     inkscape:window-width="1279"
+     inkscape:window-height="974"
      inkscape:window-x="0"
-     inkscape:window-y="24"
+     inkscape:window-y="25"
      showguides="true"
      inkscape:guide-bbox="true">
     <sodipodi:guide
@@ -418,7 +418,7 @@
              sodipodi:role="line"
              id="tspan3410"
              x="58.209351"
-             y="297.63153">New checkout</tspan></text>
+             y="297.63153">Новая рабочая копия</tspan></text>
       </g>
       <g
          transform="translate(1e-4,2.1828937)"
@@ -448,14 +448,14 @@
              id="tspan3422"
              sodipodi:role="line"
              x="58.209351"
-             y="328.59634">New &quot;lightweight&quot; checkout</tspan></text>
+             y="328.59634">Новая копия без истории</tspan></text>
       </g>
     </g>
     <g
        id="g3798"
        transform="matrix(1.0549376,0,0,1,-28.74411,0)">
       <g
-         transform="translate(0,26)"
+         transform="matrix(1.0485958,0,0,1,-19.211276,26)"
          id="g10801">
         <rect
            style="fill:none;fill-opacity:0;fill-rule:nonzero;stroke:#cecece;stroke-width:0.97361356;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
@@ -467,39 +467,39 @@
            ry="9.6352606"
            rx="9.1334877" />
         <path
-           style="fill:url(#linearGradient13456);fill-opacity:1;fill-rule:nonzero;stroke:url(#linearGradient13458);stroke-width:0.97361356000000021;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           style="fill:url(#linearGradient13456);fill-opacity:1;fill-rule:nonzero;stroke:url(#linearGradient13458);stroke-width:0.97361356;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            d="M 328.72726,104.59448 C 322.6737,104.59448 317.77643,108.88155 317.77643,114.21948 L 317.77643,144.21948 C 317.77643,138.88155 322.6737,134.59448 328.72726,134.59448 L 520.38465,134.59448 C 526.43823,134.59448 531.30004,138.88155 531.30004,144.21948 L 531.30004,114.21948 C 531.30004,108.88155 526.43823,104.59448 520.38465,104.59448 L 328.72726,104.59448 z"
            id="rect3648" />
         <text
            xml:space="preserve"
            style="font-size:16px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
-           x="329.41876"
+           x="325.62708"
            y="124.94995"
            id="text3563"
            sodipodi:linespacing="100%"><tspan
              sodipodi:role="line"
              id="tspan3565"
-             x="329.41876"
-             y="124.94995">Файловые операции</tspan></text>
+             x="325.62708"
+             y="124.94995">Операции с файлами</tspan></text>
       </g>
       <g
-         transform="translate(1e-4,-1.9729054)"
+         transform="translate(-3.7915934,-1.9729054)"
          id="g3243">
         <text
            xml:space="preserve"
            style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
            x="332.47345"
-           y="191.36041"
+           y="203.36041"
            id="text3610"
            sodipodi:linespacing="110%"><tspan
              sodipodi:role="line"
              x="332.47345"
-             y="191.36041"
+             y="203.36041"
              id="tspan3612">bzr add foo.py</tspan><tspan
              id="tspan3618"
              sodipodi:role="line"
              x="332.47345"
-             y="202.43375">bzr add bar/</tspan></text>
+             y="214.43375">bzr add bar/</tspan></text>
         <text
            xml:space="preserve"
            style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
@@ -510,10 +510,14 @@
              sodipodi:role="line"
              id="tspan3616"
              x="326.88849"
-             y="179.59872">Сделать файл версионным</tspan></text>
+             y="179.59872">Добавить файл для</tspan><tspan
+             sodipodi:role="line"
+             x="326.88849"
+             y="192.79872"
+             id="tspan3047">контроля</tspan></text>
       </g>
       <g
-         transform="translate(1e-4,-0.9323495)"
+         transform="translate(-3.7915934,7.0676505)"
          id="g3250">
         <text
            xml:space="preserve"
@@ -536,21 +540,21 @@
              sodipodi:role="line"
              id="tspan3628"
              x="326.20236"
-             y="221.35472">Сделать файл обычным</tspan></text>
+             y="221.35472">Отменить контроль файла</tspan></text>
       </g>
       <g
-         transform="translate(1e-4,0.1322158)"
+         transform="translate(-3.7915934,4.1322158)"
          id="g3256">
         <text
            xml:space="preserve"
            style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
            x="331.81714"
-           y="264.08142"
+           y="266.08142"
            id="text3632"
            sodipodi:linespacing="110%"><tspan
              sodipodi:role="line"
              x="331.81714"
-             y="264.08142"
+             y="266.08142"
              id="tspan3634">bzr remove --force foo.py</tspan></text>
         <text
            xml:space="preserve"
@@ -560,9 +564,9 @@
            id="text3636"
            sodipodi:linespacing="100%"><tspan
              sodipodi:role="line"
-             id="tspan3638"
              x="326.23218"
-             y="253.26308">Сделать обычным и удалить</tspan></text>
+             y="253.26308"
+             id="tspan3049">Отменить контроль и удалить</tspan></text>
       </g>
     </g>
     <g
@@ -679,7 +683,7 @@
              sodipodi:role="line"
              id="tspan3266"
              x="57.114803"
-             y="504.05884">Изменения в рабочем дереве</tspan></text>
+             y="504.05884">Изменения рабочего дерева</tspan></text>
       </g>
       <g
          transform="translate(1e-4,5.8149666)"
@@ -705,7 +709,7 @@
              sodipodi:role="line"
              id="tspan3304"
              x="56.505421"
-             y="611.85535">Забытые ревизии</tspan></text>
+             y="611.85535">Отсутствующие ревизии</tspan></text>
       </g>
       <g
          transform="translate(1e-4,7.9315687)"
@@ -731,11 +735,11 @@
              sodipodi:role="line"
              x="56.517143"
              y="674.33521"
-             id="tspan2750">Содержимое файла foo.py</tspan><tspan
+             id="tspan2754">Содержимое foo.py в</tspan><tspan
              sodipodi:role="line"
              x="56.517143"
-             y="686.33521"
-             id="tspan2754">для ревизии 3</tspan></text>
+             y="674.33521"
+             id="tspan3043">ревизии 3</tspan></text>
       </g>
       <g
          transform="translate(1e-4,6.8799266)"
@@ -787,7 +791,7 @@
              sodipodi:role="line"
              id="tspan3336"
              x="56.640194"
-             y="535.50537">Изменения в foo.py</tspan></text>
+             y="535.50537">Изменения foo.py</tspan></text>
       </g>
       <g
          transform="translate(1e-4,4.7504623)"
@@ -807,22 +811,22 @@
            xml:space="preserve"
            style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
            x="55.761421"
-           y="568.89032"
+           y="566.89032"
            id="text3703"
            sodipodi:linespacing="100%"><tspan
              sodipodi:role="line"
              x="55.761421"
-             y="568.89032"
-             id="tspan2698">Изменения в файле foo.py</tspan><tspan
+             y="566.89032"
+             id="tspan2746">Изменения foo.py между</tspan><tspan
              sodipodi:role="line"
              x="55.761421"
-             y="580.89032"
-             id="tspan2746">между ревизиями 1 and 3</tspan></text>
+             y="578.89032"
+             id="tspan3039">ревизиями 1 and 3</tspan></text>
       </g>
     </g>
     <g
        id="g3821"
-       transform="translate(12.727923,0)">
+       transform="translate(16.727923,0)">
       <g
          transform="translate(0,26)"
          id="g10830">
@@ -879,36 +883,40 @@
              sodipodi:role="line"
              id="tspan4148"
              x="553.44666"
-             y="180.0704">Зафиксировать версию</tspan></text>
+             y="180.0704">Фиксировать изменения</tspan></text>
       </g>
       <g
-         transform="translate(1e-4,-2.6967609)"
+         transform="translate(1e-4,7.3032391)"
          id="g3269">
         <text
            xml:space="preserve"
            style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
            x="558.37482"
-           y="232.2924"
+           y="234.2924"
            id="text4152"
            sodipodi:linespacing="110%"><tspan
              sodipodi:role="line"
              x="558.37482"
-             y="232.2924"
+             y="234.2924"
              id="tspan4154">bzr uncommit</tspan></text>
         <text
            xml:space="preserve"
            style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
            x="552.78986"
-           y="221.47408"
+           y="209.47408"
            id="text4156"
            sodipodi:linespacing="100%"><tspan
              sodipodi:role="line"
              id="tspan4158"
              x="552.78986"
-             y="221.47408">Отменить фиксацию</tspan></text>
+             y="209.47408">Откатить последную</tspan><tspan
+             sodipodi:role="line"
+             x="552.78986"
+             y="221.47408"
+             id="tspan3045">фиксацию</tspan></text>
       </g>
       <g
-         transform="translate(1e-4,-1.6451646)"
+         transform="translate(1e-4,6.3548354)"
          id="g3275">
         <text
            xml:space="preserve"
@@ -1030,10 +1038,10 @@
              sodipodi:role="line"
              id="tspan4264"
              x="778.17255"
-             y="232.16106">Добавить изменения из </tspan><tspan
+             y="232.16106">Получить изменения из </tspan><tspan
              sodipodi:role="line"
              x="778.17255"
-             y="232.16106"
+             y="244.16106"
              id="tspan2726">myproject</tspan></text>
       </g>
       <g
@@ -1060,7 +1068,7 @@
              sodipodi:role="line"
              id="tspan4274"
              x="778.17255"
-             y="286.5459">Update a checkout</tspan></text>
+             y="286.5459">Обновить рабочую копию</tspan></text>
       </g>
       <g
          transform="translate(1e-4,2.3122978)"
@@ -1084,13 +1092,13 @@
            id="text4282"
            sodipodi:linespacing="100%"><tspan
              sodipodi:role="line"
-             id="tspan4284"
-             x="779.21552"
-             y="319.83685">Разрешить конфликты</tspan><tspan
-             sodipodi:role="line"
              x="779.21552"
              y="319.83685"
-             id="tspan2728">автоматически</tspan></text>
+             id="tspan2728">Определить разрешенные</tspan><tspan
+             sodipodi:role="line"
+             x="779.21552"
+             y="331.83685"
+             id="tspan3055">конфликты</tspan></text>
       </g>
       <g
          transform="translate(1e-4,3.3643062)"
@@ -1174,10 +1182,10 @@
              sodipodi:role="line"
              id="tspan4622"
              x="776.17249"
-             y="462.34244">Опубликовать ревизию </tspan><tspan
+             y="462.34244">Опубликовать ревизии </tspan><tspan
              sodipodi:role="line"
              x="776.17249"
-             y="462.34244"
+             y="474.34244"
              id="tspan2742">удаленно</tspan></text>
       </g>
       <g
@@ -1204,7 +1212,7 @@
              sodipodi:role="line"
              id="tspan4463"
              x="776.80023"
-             y="429.72739">Опубликовать ревизию</tspan></text>
+             y="429.72739">Опубликовать ревизии</tspan></text>
       </g>
       <g
          transform="translate(1e-4,0.3362061)"
@@ -1231,14 +1239,14 @@
            y="504.69229"
            id="text4475"
            sodipodi:linespacing="100%"><tspan
-             id="tspan4608"
              sodipodi:role="line"
              x="776.13232"
-             y="504.69229">Отправить почтой инструкции </tspan><tspan
+             y="504.69229"
+             id="tspan2740">Отправить почтой инструкцию</tspan><tspan
              sodipodi:role="line"
              x="776.13232"
-             y="516.69226"
-             id="tspan2740">для объединения</tspan></text>
+             y="504.69229"
+             id="tspan3063">объединения</tspan></text>
       </g>
       <g
          transform="translate(1e-4,31.004958)"
@@ -1268,7 +1276,7 @@
              sodipodi:role="line"
              x="776.80029"
              y="577.18048"
-             id="tspan2736">ревизию в каталог</tspan></text>
+             id="tspan2736">ревизию как директорию</tspan></text>
       </g>
       <g
          transform="translate(1e-4,33.600285)"
@@ -1321,17 +1329,17 @@
         <text
            xml:space="preserve"
            style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
-           x="776.13232"
-           y="512.69226"
+           x="778.13232"
+           y="508.69226"
            id="text2454"
            sodipodi:linespacing="100%"><tspan
              id="tspan2456"
              sodipodi:role="line"
-             x="776.13232"
-             y="512.69226">Создать инструкции для </tspan><tspan
+             x="778.13232"
+             y="508.69226">Создать инструкцию </tspan><tspan
              sodipodi:role="line"
-             x="776.13232"
-             y="524.69226"
+             x="778.13232"
+             y="520.69226"
              id="tspan2738">объединения</tspan></text>
       </g>
     </g>
@@ -1396,7 +1404,7 @@
            y="527.43823"
            x="297.99408"
            id="tspan8835"
-           sodipodi:role="line">Возможные приставки для URL</tspan></text>
+           sodipodi:role="line">Поддерживаемые префиксы URL</tspan></text>
       <g
          id="g12288"
          style="fill:#333333;fill-opacity:1">
@@ -1514,7 +1522,7 @@
            y="320.09448"
            x="316.78033"
            id="tspan4626"
-           sodipodi:role="line">Понятия</tspan></text>
+           sodipodi:role="line">Концепции</tspan></text>
       <text
          sodipodi:linespacing="150%"
          id="text12146"
@@ -1529,7 +1537,7 @@
            id="tspan12150"
            y="359.21167"
            x="467.92319"
-           sodipodi:role="line">каталог с историей изменений </tspan><tspan
+           sodipodi:role="line">директорий под контролем версий </tspan><tspan
            id="tspan12152"
            y="377.21167"
            x="467.92319"
