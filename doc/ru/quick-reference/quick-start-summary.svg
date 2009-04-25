@@ -203,15 +203,15 @@
      inkscape:pageshadow="2"
      inkscape:zoom="1"
      inkscape:cx="537.37511"
-     inkscape:cy="344.65751"
+     inkscape:cy="276.22511"
      inkscape:document-units="px"
-     inkscape:current-layer="g13619"
+     inkscape:current-layer="g12288"
      width="1052.3622px"
      height="744.09449px"
      inkscape:showpageshadow="false"
      showgrid="false"
-     inkscape:window-width="1279"
-     inkscape:window-height="974"
+     inkscape:window-width="1272"
+     inkscape:window-height="747"
      inkscape:window-x="0"
      inkscape:window-y="25"
      showguides="true"
@@ -683,7 +683,7 @@
              sodipodi:role="line"
              id="tspan3266"
              x="57.114803"
-             y="504.05884">Изменения рабочего дерева</tspan></text>
+             y="504.05884">Изменения в рабочем дереве</tspan></text>
       </g>
       <g
          transform="translate(1e-4,5.8149666)"
@@ -735,11 +735,11 @@
              sodipodi:role="line"
              x="56.517143"
              y="674.33521"
-             id="tspan2754">Содержимое foo.py в</tspan><tspan
+             id="tspan3043">Содержимое foo.py в</tspan><tspan
              sodipodi:role="line"
              x="56.517143"
-             y="674.33521"
-             id="tspan3043">ревизии 3</tspan></text>
+             y="686.33521"
+             id="tspan3046">ревизии 3</tspan></text>
       </g>
       <g
          transform="translate(1e-4,6.8799266)"
@@ -791,7 +791,7 @@
              sodipodi:role="line"
              id="tspan3336"
              x="56.640194"
-             y="535.50537">Изменения foo.py</tspan></text>
+             y="535.50537">Изменения в foo.py</tspan></text>
       </g>
       <g
          transform="translate(1e-4,4.7504623)"
@@ -817,7 +817,7 @@
              sodipodi:role="line"
              x="55.761421"
              y="566.89032"
-             id="tspan2746">Изменения foo.py между</tspan><tspan
+             id="tspan2746">Изменения в foo.py между</tspan><tspan
              sodipodi:role="line"
              x="55.761421"
              y="578.89032"
@@ -1242,11 +1242,11 @@
              sodipodi:role="line"
              x="776.13232"
              y="504.69229"
-             id="tspan2740">Отправить почтой инструкцию</tspan><tspan
+             id="tspan3063">Отправить почтой директиву</tspan><tspan
              sodipodi:role="line"
              x="776.13232"
-             y="504.69229"
-             id="tspan3063">объединения</tspan></text>
+             y="516.69226"
+             id="tspan3042">объединения</tspan></text>
       </g>
       <g
          transform="translate(1e-4,31.004958)"
@@ -1336,7 +1336,7 @@
              id="tspan2456"
              sodipodi:role="line"
              x="778.13232"
-             y="508.69226">Создать инструкцию </tspan><tspan
+             y="508.69226">Создать директиву</tspan><tspan
              sodipodi:role="line"
              x="778.13232"
              y="520.69226"
@@ -1428,9 +1428,9 @@
              y="583.94214"
              id="tspan10799">bzr+ssh://</tspan><tspan
              sodipodi:role="line"
-             id="tspan8847"
              x="299.33002"
-             y="601.94214">file:// </tspan><tspan
+             y="601.94214"
+             id="tspan3050">file://</tspan><tspan
              sodipodi:role="line"
              id="tspan8849"
              x="299.33002"
@@ -1465,47 +1465,43 @@
              sodipodi:role="line"
              id="tspan12262"
              x="379.22845"
-             y="547.94214">Доступ к активному FTP серверу.</tspan><tspan
+             y="547.94214">Доступ используя активный FTP</tspan><tspan
              sodipodi:role="line"
              x="379.22845"
              y="565.94214"
-             id="tspan12264">Быстрый доступ к смарт-серверу Bazaar.</tspan><tspan
+             id="tspan12264">Быстрый доступ используя сервер Bazaar</tspan><tspan
              sodipodi:role="line"
              x="379.22845"
              y="583.94214"
-             id="tspan12270">Быстрый доступ через SSH к смарт-серверу Bazaar.</tspan><tspan
+             id="tspan12270">Быстрый доступ через SSH используя сервер Bazaar</tspan><tspan
              sodipodi:role="line"
              x="379.22845"
              y="601.94214"
-             id="tspan12286">Доступ к обычной файловой системы (по-умолчанию).</tspan><tspan
+             id="tspan3048">Доступ используя файловую систему (по-умолчанию)</tspan><tspan
              sodipodi:role="line"
              x="379.22845"
              y="619.94214"
-             id="tspan12272">Доступ к пассивному FTP серверу.</tspan><tspan
+             id="tspan12272">Доступ используя пассивный FTP</tspan><tspan
              sodipodi:role="line"
              x="379.22845"
              y="637.94214"
-             id="tspan12274">Доступ для чтения веток размещенных в интернете.</tspan><tspan
+             id="tspan12274">Доступ для чтения веток размещенных в интернете</tspan><tspan
              sodipodi:role="line"
              x="379.22845"
              y="655.94214"
-             id="tspan12278">Доступ (с использованием SSL) для чтения веток </tspan><tspan
+             id="tspan3058">Доступ через SSL для чтения веток размещенных</tspan><tspan
              sodipodi:role="line"
              x="379.22845"
              y="673.94214"
-             id="tspan2704">размещенных в интернете.</tspan><tspan
+             id="tspan3068">в интернете</tspan><tspan
              sodipodi:role="line"
              x="379.22845"
              y="691.94214"
-             id="tspan12280">Доступ к SFTP (большинство SSH серверов </tspan><tspan
+             id="tspan12282">Доступ используя SFTP (большинство SSH серверов</tspan><tspan
              sodipodi:role="line"
              x="379.22845"
              y="709.94214"
-             id="tspan2706">предоставляют SFTP доступ).</tspan><tspan
-             sodipodi:role="line"
-             x="379.22845"
-             y="727.94214"
-             id="tspan12282" /></text>
+             id="tspan3072">предоставляют SFTP)</tspan></text>
       </g>
     </g>
     <g
@@ -1541,7 +1537,7 @@
            id="tspan12152"
            y="377.21167"
            x="467.92319"
-           sodipodi:role="line">хранилище Bazaar для изменений</tspan><tspan
+           sodipodi:role="line">хранилище ревизий Bazaar</tspan><tspan
            id="tspan12156"
            y="395.21167"
            x="467.92319"
@@ -1584,7 +1580,7 @@
            id="tspan12406"
            y="377.21167"
            x="317.27643"
-           sodipodi:role="line">Репозитарий:</tspan><tspan
+           sodipodi:role="line">Репозиторий:</tspan><tspan
            id="tspan12408"
            y="395.21167"
            x="317.27643"
@@ -1600,7 +1596,7 @@
            id="tspan12414"
            y="449.21167"
            x="317.27643"
-           sodipodi:role="line">Родственные ветки:</tspan><tspan
+           sodipodi:role="line">Связанные ветки:</tspan><tspan
            id="tspan12416"
            y="467.21167"
            x="317.27643"
@@ -1608,7 +1604,7 @@
            id="tspan12418"
            y="485.21167"
            x="317.27643"
-           sodipodi:role="line"> </tspan></text>
+           sodipodi:role="line" /></text>
     </g>
     <g
        id="g6327"
