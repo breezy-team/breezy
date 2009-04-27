@@ -50,6 +50,9 @@ Bug Fixes
 * Fix a bug in the pure-python ``GroupCompress`` code when handling copies
   longer than 64KiB. (John Arbash Meinel, #364900)
 
+* ssh usernames are honoured for bzr+ssh connections.
+  (Vincent Ladeuil, #367726)
+
 Documentation
 *************
 

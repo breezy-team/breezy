@@ -109,9 +109,8 @@ class SMTPConnection(object):
             # FIXME: Since _authenticate gets called even when no authentication
             # is necessary, it's not possible to use the default username 
             # here yet.
-            self._smtp_username = auth.get_user('smtp', self._smtp_server, 
-                default="")
-            if self._smtp_username == "":
+            self._smtp_username = auth.get_user('smtp', self._smtp_server)
+            if self._smtp_username is None:
                 return
 
         if self._smtp_password is None:
