@@ -3068,17 +3068,30 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
             # hand off the request to the smart server
             client_medium = transport.get_smart_medium()
         except errors.NoSmartMedium:
+            do_vfs = True
+        else:
+            # Decline to open it if the server doesn't support our required
+            # version (3) so that the VFS-based transport will do it.
+            if client_medium.should_probe():
+                try:
+                    server_version = client_medium.protocol_version()
+                    if server_version != '2':
+                        do_vfs = True
+                    else:
+                        do_vfs = False
+                except errors.SmartProtocolError:
+                    # Apparently there's no usable smart server there, even though
+                    # the medium supports the smart protocol.
+                    do_vfs = True
+            else:
+                do_vfs = False
+        if not do_vfs:
+            client = _SmartClient(client_medium)
+            path = client.remote_path_from_transport(transport)
+            if client_medium._is_remote_before((1, 15)):
+                do_vfs = True
+        if do_vfs:
             # TODO: lookup the local format from a server hint.
-            local_dir_format = BzrDirMetaFormat1()
-            self._supply_sub_formats_to(local_dir_format)
-            return local_dir_format.initialize_on_transport_ex(transport,
-                use_existing_dir=use_existing_dir, create_prefix=create_prefix,
-                force_new_repo=force_new_repo, stacked_on=stacked_on,
-                stack_on_pwd=stack_on_pwd, repo_format_name=repo_format_name,
-                make_working_trees=make_working_trees, shared_repo=shared_repo)
-        client = _SmartClient(client_medium)
-        path = client.remote_path_from_transport(transport)
-        if client_medium._is_remote_before((1, 15)):
             local_dir_format = BzrDirMetaFormat1()
             self._supply_sub_formats_to(local_dir_format)
             return local_dir_format.initialize_on_transport_ex(transport,

@@ -30,7 +30,7 @@ class TestCreateClone(TestCaseWithBranch):
         tree.commit('a commit')
         source = tree.branch
         target_transport = self.get_transport('subdir').clone('target')
-        self.assertRaises(errors.BzrCommandError,
+        self.assertRaises(errors.NoSuchFile,
             tree.branch.create_clone_on_transport, target_transport)
         self.assertFalse(self.get_transport('.').has('subdir'))
 
@@ -51,7 +51,7 @@ class TestCreateClone(TestCaseWithBranch):
         source = tree.branch
         target_transport = self.get_transport('target')
         target_transport.create_prefix()
-        self.assertRaises(errors.BzrCommandError,
+        self.assertRaises(errors.FileExists,
             tree.branch.create_clone_on_transport, target_transport)
         self.assertFalse(target_transport.has(".bzr"))
 
