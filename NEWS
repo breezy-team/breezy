@@ -41,6 +41,11 @@ Bug Fixes
 * ``bzr send`` works to send emails again using MAPI.
   (Neil Martinsen-Burrell, #346998)
 
+* Check for missing parent inventories in StreamSink.  This prevents
+  incomplete stacked branches being created by 1.13 bzr:// and
+  bzr+ssh:// clients (which have bug #354036).  Instead, the server now
+  causes those clients to send the missing records.  (Andrew Bennetts)
+
 * End-Of-Line content filters are now loaded correctly.
   (Ian Clatworthy, Brian de Alwis, #355280)
 
