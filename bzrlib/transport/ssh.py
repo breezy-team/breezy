@@ -18,7 +18,6 @@
 """Foundation SSH support for SFTP and smart server."""
 
 import errno
-import getpass
 import os
 import socket
 import subprocess
@@ -458,10 +457,11 @@ register_ssh_vendor('plink', PLinkSubprocessVendor())
 
 
 def _paramiko_auth(username, password, host, port, paramiko_transport):
+    auth = config.AuthenticationConfig()
     # paramiko requires a username, but it might be none if nothing was
     # supplied.  If so, use the local username.
     if username is None:
-        username = getpass.getuser()
+        username = auth.get_user('ssh', host, port=port)
 
     if _use_ssh_agent:
         agent = paramiko.Agent()
@@ -488,7 +488,6 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
             pass
 
     # give up and ask for a password
-    auth = config.AuthenticationConfig()
     password = auth.get_password('ssh', host, username, port=port)
     try:
         paramiko_transport.auth_password(username, password)

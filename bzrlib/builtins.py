@@ -79,15 +79,26 @@ def tree_files(file_list, default_branch=u'.', canonicalize=True,
 
 
 def tree_files_for_add(file_list):
-    """Add handles files a bit differently so it a custom implementation."""
+    """
+    Return a tree and list of absolute paths from a file list.
+
+    Similar to tree_files, but add handles files a bit differently, so it a
+    custom implementation.  In particular, MutableTreeTree.smart_add expects
+    absolute paths, which it immediately converts to relative paths.
+    """
+    # FIXME Would be nice to just return the relative paths like
+    # internal_tree_files does, but there are a large number of unit tests
+    # that assume the current interface to mutabletree.smart_add
     if file_list:
-        tree = WorkingTree.open_containing(file_list[0])[0]
+        tree, relpath = WorkingTree.open_containing(file_list[0])
         if tree.supports_views():
             view_files = tree.views.lookup_view()
             if view_files:
                 for filename in file_list:
                     if not osutils.is_inside_any(view_files, filename):
                         raise errors.FileOutsideView(filename, view_files)
+        file_list = file_list[:]
+        file_list[0] = tree.abspath(relpath)
     else:
         tree = WorkingTree.open_containing(u'.')[0]
         if tree.supports_views():
@@ -1017,7 +1028,7 @@ class cmd_push(Command):
         if revision is not None:
             revision_id = revision.in_history(br_from).rev_id
         else:
-            revision_id = br_from.last_revision()
+            revision_id = None
 
         # Get the stacked_on branch, if any
         if stacked_on is not None:
@@ -1575,7 +1586,7 @@ class cmd_init(Command):
                     "\nYou may supply --create-prefix to create all"
                     " leading parent directories."
                     % location)
-            _create_prefix(to_transport)
+            to_transport.create_prefix()
 
         try:
             a_bzrdir = bzrdir.BzrDir.open_from_transport(to_transport)
@@ -2105,6 +2116,8 @@ class cmd_log(Command):
             Option('show-diff',
                    short_name='p',
                    help='Show changes made in each revision as a patch.'),
+            Option('include-merges',
+                   help='Show merged revisions like --levels 0 does.'),
             ]
     encoding_type = 'replace'
 
@@ -2119,13 +2132,20 @@ class cmd_log(Command):
             levels=None,
             message=None,
             limit=None,
-            show_diff=False):
+            show_diff=False,
+            include_merges=False):
         from bzrlib.log import (
             Logger,
             make_log_request_dict,
             _get_info_for_log_files,
             )
         direction = (forward and 'forward') or 'reverse'
+        if include_merges:
+            if levels is None:
+                levels = 0
+            else:
+                raise errors.BzrCommandError(
+                    '--levels and --include-merges are mutually exclusive')
 
         if change is not None:
             if len(change) > 1:
@@ -2188,7 +2208,8 @@ class cmd_log(Command):
             lf = log_format(show_ids=show_ids, to_file=self.outf,
                             show_timezone=timezone,
                             delta_format=get_verbosity_level(),
-                            levels=levels)
+                            levels=levels,
+                            show_advice=levels is None)
 
             # Choose the algorithm for doing the logging. It's annoying
             # having multiple code paths like this but necessary until
@@ -3246,14 +3267,6 @@ class cmd_selftest(Command):
 
         if cache_dir is not None:
             tree_creator.TreeCreator.CACHE_ROOT = osutils.abspath(cache_dir)
-        if not list_only:
-            print 'testing: %s' % (osutils.realpath(sys.argv[0]),)
-            print '   %s (%s python%s)' % (
-                    bzrlib.__path__[0],
-                    bzrlib.version_string,
-                    bzrlib._format_version_tuple(sys.version_info),
-                    )
-            print
         if testspecs_list is not None:
             pattern = '|'.join(testspecs_list)
         else:
@@ -3299,11 +3312,6 @@ class cmd_selftest(Command):
         finally:
             if benchfile is not None:
                 benchfile.close()
-        if not list_only:
-            if result:
-                note('tests passed')
-            else:
-                note('tests failed')
         return int(not result)
 
 
@@ -5586,28 +5594,6 @@ class cmd_clean_tree(Command):
                    dry_run=dry_run, no_prompt=force)
 
 
-def _create_prefix(cur_transport):
-    needed = [cur_transport]
-    # Recurse upwards until we can create a directory successfully
-    while True:
-        new_transport = cur_transport.clone('..')
-        if new_transport.base == cur_transport.base:
-            raise errors.BzrCommandError(
-                "Failed to create path prefix for %s."
-                % cur_transport.base)
-        try:
-            new_transport.mkdir('.')
-        except errors.NoSuchFile:
-            needed.append(new_transport)
-            cur_transport = new_transport
-        else:
-            break
-    # Now we only need to create child directories
-    while needed:
-        cur_transport = needed.pop()
-        cur_transport.ensure_base()
-
-
 # these get imported and then picked up by the scan for cmd_*
 # TODO: Some more consistent way to split command definitions across files;
 # we do need to load at least some information about them to know of
@@ -5618,6 +5604,7 @@ from bzrlib.conflicts import cmd_resolve, cmd_conflicts, restore
 from bzrlib.bundle.commands import (
     cmd_bundle_info,
     )
+from bzrlib.foreign import cmd_dpush
 from bzrlib.sign_my_commits import cmd_sign_my_commits
 from bzrlib.weave_commands import cmd_versionedfile_list, \
         cmd_weave_plan_merge, cmd_weave_merge_text

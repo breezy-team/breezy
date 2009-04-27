@@ -674,6 +674,16 @@ class TransportTests(TestTransportImplementation):
             for f in files:
                 self.assertTransportMode(temp_transport, f, mode)
 
+    def test_create_prefix(self):
+        t = self.get_transport()
+        sub = t.clone('foo').clone('bar')
+        try:
+            sub.create_prefix()
+        except TransportNotPossible:
+            self.assertTrue(t.is_readonly())
+        else:
+            self.assertTrue(t.has('foo/bar'))
+
     def test_append_file(self):
         t = self.get_transport()
 
