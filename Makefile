@@ -95,7 +95,8 @@ txt_files := $(wildcard doc/en/tutorials/*.txt) \
 	doc/index.txt \
 	doc/index.es.txt \
 	doc/index.ru.txt \
-	doc/ru/mini-tutorial/index.txt
+	doc/ru/mini-tutorial/index.txt \
+	$(wildcard doc/ru/tutorials/*.txt)
 non_txt_files := \
        doc/default.css \
        doc/en/quick-reference/quick-start-summary.svg \
