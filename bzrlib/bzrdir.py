@@ -2396,7 +2396,12 @@ class BzrDirMetaFormat1(BzrDirFormat):
 
     def _open(self, transport):
         """See BzrDirFormat._open."""
-        return BzrDirMeta1(transport, self)
+        # Create a new format instance because otherwise initialisation of new
+        # metadirs share the global default format object leading to alias
+        # problems.
+        format = BzrDirMetaFormat1()
+        self._supply_sub_formats_to(format)
+        return BzrDirMeta1(transport, format)
 
     def __return_repository_format(self):
         """Circular import protection."""
