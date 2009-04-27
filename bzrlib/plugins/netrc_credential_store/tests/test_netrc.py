@@ -12,7 +12,9 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+from cStringIO import StringIO
 
 from bzrlib import (
     config,
@@ -69,3 +71,16 @@ default login anonymous password joe@home
         cs = self._get_netrc_cs()
         password = cs.decode_password(dict(host='other'))
         self.assertIs(None, password)
+
+    def test_get_netrc_credentials_via_auth_config(self):
+        # Create a test AuthenticationConfig object
+        ac_content = """
+[host1]
+host = host
+user = joe
+password_encoding = netrc
+"""
+        conf = config.AuthenticationConfig(_file=StringIO(ac_content))
+        credentials = conf.get_credentials('scheme', 'host', user='joe')
+        self.assertIsNot(None, credentials)
+        self.assertEquals('secret', credentials.get('password', None))

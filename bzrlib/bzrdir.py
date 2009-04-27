@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """BzrDir logic. The BzrDir is the basic control directory used by bzr.
 
@@ -57,6 +57,9 @@ from bzrlib import (
 from bzrlib.osutils import (
     sha_string,
     )
+from bzrlib.push import (
+    PushResult,
+    )
 from bzrlib.smart.client import _SmartClient
 from bzrlib.store.versioned import WeaveStore
 from bzrlib.transactions import WriteTransaction
@@ -75,6 +78,7 @@ from bzrlib.trace import (
     )
 
 from bzrlib import (
+    hooks,
     registry,
     symbol_versioning,
     )
@@ -93,6 +97,8 @@ class BzrDir(object):
         (i.e. the parent directory holding the .bzr directory).
 
     Everything in the bzrdir should have the same file permissions.
+
+    :cvar hooks: An instance of BzrDirHooks.
     """
 
     def break_lock(self):
@@ -189,6 +195,8 @@ class BzrDir(object):
         transport.ensure_base()
         require_stacking = (stacked_on is not None)
         format = self.cloning_metadir(require_stacking)
+        # Bug: We create a metadir without knowing if it can support stacking,
+        # we should look up the policy needs first.
         result = format.initialize_on_transport(transport)
         repository_policy = None
         try:
@@ -384,8 +392,8 @@ class BzrDir(object):
                                     stack_on_pwd=None, require_stacking=False):
         """Return an object representing a policy to use.
 
-        This controls whether a new repository is created, or a shared
-        repository used instead.
+        This controls whether a new repository is created, and the format of
+        that repository, or some existing shared repository used instead.
 
         If stack_on is supplied, will not seek a containing shared repo.
 
@@ -405,8 +413,6 @@ class BzrDir(object):
                 if stack_on is not None:
                     stack_on_pwd = found_bzrdir.root_transport.base
                     stop = True
-                    note('Using default stacking branch %s at %s', stack_on,
-                         stack_on_pwd)
             # does it have a repository ?
             try:
                 repository = found_bzrdir.open_repository()
@@ -415,7 +421,9 @@ class BzrDir(object):
             else:
                 if ((found_bzrdir.root_transport.base !=
                      self.root_transport.base) and not repository.is_shared()):
+                    # Don't look higher, can't use a higher shared repo.
                     repository = None
+                    stop = True
                 else:
                     stop = True
             if not stop:
@@ -806,6 +814,8 @@ class BzrDir(object):
         :param transport: Transport containing the bzrdir.
         :param _unsupported: private.
         """
+        for hook in BzrDir.hooks['pre_open']:
+            hook(transport)
         # Keep initial base since 'transport' may be modified while following
         # the redirections.
         base = transport.base
@@ -831,7 +841,7 @@ class BzrDir(object):
         BzrDir._check_supported(format, _unsupported)
         return format.open(transport, _found=True)
 
-    def open_branch(self, unsupported=False):
+    def open_branch(self, unsupported=False, ignore_fallbacks=False):
         """Open the branch object at this BzrDir if one is present.
 
         If unsupported is True, then no longer supported branch formats can
@@ -1012,7 +1022,7 @@ class BzrDir(object):
         result_format = self._format.__class__()
         try:
             try:
-                branch = self.open_branch()
+                branch = self.open_branch(ignore_fallbacks=True)
                 source_repository = branch.repository
                 result_format._branch_format = branch._format
             except errors.NotBranchError:
@@ -1189,6 +1199,80 @@ class BzrDir(object):
                     basis.unlock()
         return result
 
+    def push_branch(self, source, revision_id=None, overwrite=False, 
+        remember=False):
+        """Push the source branch into this BzrDir."""
+        br_to = None
+        # If we can open a branch, use its direct repository, otherwise see
+        # if there is a repository without a branch.
+        try:
+            br_to = self.open_branch()
+        except errors.NotBranchError:
+            # Didn't find a branch, can we find a repository?
+            repository_to = self.find_repository()
+        else:
+            # Found a branch, so we must have found a repository
+            repository_to = br_to.repository
+
+        push_result = PushResult()
+        push_result.source_branch = source
+        if br_to is None:
+            # We have a repository but no branch, copy the revisions, and then
+            # create a branch.
+            repository_to.fetch(source.repository, revision_id=revision_id)
+            br_to = source.clone(self, revision_id=revision_id)
+            if source.get_push_location() is None or remember:
+                source.set_push_location(br_to.base)
+            push_result.stacked_on = None
+            push_result.branch_push_result = None
+            push_result.old_revno = None
+            push_result.old_revid = _mod_revision.NULL_REVISION
+            push_result.target_branch = br_to
+            push_result.master_branch = None
+            push_result.workingtree_updated = False
+        else:
+            # We have successfully opened the branch, remember if necessary:
+            if source.get_push_location() is None or remember:
+                source.set_push_location(br_to.base)
+            try:
+                tree_to = self.open_workingtree()
+            except errors.NotLocalUrl:
+                push_result.branch_push_result = source.push(br_to, 
+                    overwrite, stop_revision=revision_id)
+                push_result.workingtree_updated = False
+            except errors.NoWorkingTree:
+                push_result.branch_push_result = source.push(br_to,
+                    overwrite, stop_revision=revision_id)
+                push_result.workingtree_updated = None # Not applicable
+            else:
+                tree_to.lock_write()
+                try:
+                    push_result.branch_push_result = source.push(
+                        tree_to.branch, overwrite, stop_revision=revision_id)
+                    tree_to.update()
+                finally:
+                    tree_to.unlock()
+                push_result.workingtree_updated = True
+            push_result.old_revno = push_result.branch_push_result.old_revno
+            push_result.old_revid = push_result.branch_push_result.old_revid
+            push_result.target_branch = \
+                push_result.branch_push_result.target_branch
+        return push_result
+
+
+class BzrDirHooks(hooks.Hooks):
+    """Hooks for BzrDir operations."""
+
+    def __init__(self):
+        """Create the default hooks."""
+        hooks.Hooks.__init__(self)
+        self.create_hook(hooks.HookPoint('pre_open',
+            "Invoked before attempting to open a BzrDir with the transport "
+            "that the open will use.", (1, 14), None))
+
+# install the default hooks
+BzrDir.hooks = BzrDirHooks()
+
 
 class BzrDirPreSplitOut(BzrDir):
     """A common class for the all-in-one formats."""
@@ -1337,7 +1421,7 @@ class BzrDirPreSplitOut(BzrDir):
             format = BzrDirFormat.get_default_format()
         return not isinstance(self._format, format.__class__)
 
-    def open_branch(self, unsupported=False):
+    def open_branch(self, unsupported=False, ignore_fallbacks=False):
         """See BzrDir.open_branch."""
         from bzrlib.branch import BzrBranchFormat4
         format = BzrBranchFormat4()
@@ -1588,11 +1672,11 @@ class BzrDirMeta1(BzrDir):
             pass
         return False
 
-    def open_branch(self, unsupported=False):
+    def open_branch(self, unsupported=False, ignore_fallbacks=False):
         """See BzrDir.open_branch."""
         format = self.find_branch_format()
         self._check_supported(format, unsupported)
-        return format.open(self, _found=True)
+        return format.open(self, _found=True, ignore_fallbacks=ignore_fallbacks)
 
     def open_repository(self, unsupported=False):
         """See BzrDir.open_repository."""
@@ -2449,11 +2533,6 @@ class ConvertBzrDir4To5(Converter):
         self.snapshot_ie(previous_entries, ie, w, rev_id)
         del ie.text_id
 
-    @symbol_versioning.deprecated_method(symbol_versioning.one_one)
-    def get_parents(self, revision_ids):
-        for revision_id in revision_ids:
-            yield self.revisions[revision_id].parent_ids
-
     def get_parent_map(self, revision_ids):
         """See graph._StackedParentsProvider.get_parent_map"""
         return dict((revision_id, self.revisions[revision_id])
@@ -2735,6 +2814,11 @@ class ConvertMetaToMeta(Converter):
                 isinstance(self.target_format.workingtree_format,
                     workingtree_4.WorkingTreeFormat5)):
                 workingtree_4.Converter4to5().convert(tree)
+            if (isinstance(tree, workingtree_4.DirStateWorkingTree) and
+                not isinstance(tree, workingtree_4.WorkingTree6) and
+                isinstance(self.target_format.workingtree_format,
+                    workingtree_4.WorkingTreeFormat6)):
+                workingtree_4.Converter4or5to6().convert(tree)
         return to_convert
 
 
@@ -2814,14 +2898,15 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
         # Always return a RemoteRepositoryFormat object, but if a specific bzr
         # repository format has been asked for, tell the RemoteRepositoryFormat
         # that it should use that for init() etc.
-        result =  remote.RemoteRepositoryFormat()
+        result = remote.RemoteRepositoryFormat()
         custom_format = getattr(self, '_repository_format', None)
         if custom_format:
-            # We will use the custom format to create repositories over the
-            # wire; expose its details like rich_root_data for code to query
             if isinstance(custom_format, remote.RemoteRepositoryFormat):
-                result._custom_format = custom_format._custom_format
+                return custom_format
             else:
+                # We will use the custom format to create repositories over the
+                # wire; expose its details like rich_root_data for code to
+                # query
                 result._custom_format = custom_format
         return result
 
@@ -3129,6 +3214,50 @@ class CreateRepository(RepositoryAcquisitionPolicy):
 
         Creates the desired repository in the bzrdir we already have.
         """
+        stack_on = self._get_full_stack_on()
+        if stack_on:
+            # Stacking is desired. requested by the target, but does the place it
+            # points at support stacking? If it doesn't then we should
+            # not implicitly upgrade. We check this here.
+            format = self._bzrdir._format
+            if not (format.repository_format.supports_external_lookups
+                and format.get_branch_format().supports_stacking()):
+                # May need to upgrade - but only do if the target also
+                # supports stacking. Note that this currently wastes
+                # network round trips to check - but we only do this
+                # when the source can't stack so it will fade away
+                # as people do upgrade.
+                try:
+                    target_dir = BzrDir.open(stack_on,
+                        possible_transports=[self._bzrdir.root_transport])
+                except errors.NotBranchError:
+                    # Nothing there, don't change formats
+                    pass
+                else:
+                    try:
+                        target_branch = target_dir.open_branch()
+                    except errors.NotBranchError:
+                        # No branch, don't change formats
+                        pass
+                    else:
+                        branch_format = target_branch._format
+                        repo_format = target_branch.repository._format
+                        if not (branch_format.supports_stacking()
+                            and repo_format.supports_external_lookups):
+                            # Doesn't stack itself, don't force an upgrade
+                            pass
+                        else:
+                            # Does support stacking, use its format.
+                            format.repository_format = repo_format
+                            format.set_branch_format(branch_format)
+                            note('Source format does not support stacking, '
+                                'using format: \'%s\'\n  %s\n',
+                                branch_format.get_format_description(),
+                                repo_format.get_format_description())
+            if not self._require_stacking:
+                # We have picked up automatic stacking somewhere.
+                note('Using default stacking branch %s at %s', self._stack_on,
+                    self._stack_on_pwd)
         repository = self._bzrdir.create_repository(shared=shared)
         self._add_fallback(repository,
                            possible_transports=[self._bzrdir.transport])
@@ -3247,7 +3376,7 @@ format_registry.register_metadir('pack-0.92-subtree',
 format_registry.register_metadir('rich-root-pack',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack4',
     help='New in 1.0: A variant of pack-0.92 that supports rich-root data '
-         '(needed for bzr-svn).',
+         '(needed for bzr-svn and bzr-git).',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     )
@@ -3262,7 +3391,7 @@ format_registry.register_metadir('1.6',
 format_registry.register_metadir('1.6.1-rich-root',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack5RichRoot',
     help='A variant of 1.6 that supports rich-root data '
-         '(needed for bzr-svn).',
+         '(needed for bzr-svn and bzr-git).',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     )
@@ -3277,28 +3406,26 @@ format_registry.register_metadir('1.9',
 format_registry.register_metadir('1.9-rich-root',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6RichRoot',
     help='A variant of 1.9 that supports rich-root data '
-         '(needed for bzr-svn).',
+         '(needed for bzr-svn and bzr-git).',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     )
-format_registry.register_metadir('development-wt5',
+format_registry.register_metadir('1.14',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6',
-    help='A working-tree format that supports views and content filtering.',
+    help='A working-tree format that supports content filtering.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat5',
-    experimental=True,
     )
-format_registry.register_metadir('development-wt5-rich-root',
+format_registry.register_metadir('1.14-rich-root',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6RichRoot',
-    help='A variant of development-wt5 that supports rich-root data '
-         '(needed for bzr-svn).',
+    help='A variant of 1.14 that supports rich-root data '
+         '(needed for bzr-svn and bzr-git).',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat5',
-    experimental=True,
     )
-# The following two formats should always just be aliases.
-format_registry.register_metadir('development',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment2',
+# The following un-numbered 'development' formats should always just be aliases.
+format_registry.register_metadir('development-rich-root',
+    'bzrlib.repofmt.groupcompress_repo.RepositoryFormatCHK1',
     help='Current development format. Can convert data to and from pack-0.92 '
         '(and anything compatible with pack-0.92) format repositories. '
         'Repositories and branches in this format can only be read by bzr.dev. '
@@ -3306,7 +3433,7 @@ format_registry.register_metadir('development',
         'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
         'before use.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat6',
     experimental=True,
     alias=True,
     )
@@ -3319,32 +3446,34 @@ format_registry.register_metadir('development-subtree',
         'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
         'before use.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat6',
     experimental=True,
-    alias=True,
+    alias=False, # Restore to being an alias when an actual development subtree format is added
+                 # This current non-alias status is simply because we did not introduce a
+                 # chk based subtree format.
     )
+
 # And the development formats above will have aliased one of the following:
-format_registry.register_metadir('development2',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment2',
-    help='1.6.1 with B+Tree based index. '
+format_registry.register_metadir('development6-rich-root',
+    'bzrlib.repofmt.groupcompress_repo.RepositoryFormatCHK1',
+    help='pack-1.9 with 255-way hashed CHK inv, group compress, rich roots '
         'Please read '
         'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
         'before use.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat6',
     hidden=True,
     experimental=True,
     )
-format_registry.register_metadir('development2-subtree',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment2Subtree',
-    help='1.6.1-subtree with B+Tree based index. '
-        'Please read '
-        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
-        'before use.',
-    branch_format='bzrlib.branch.BzrBranchFormat7',
+
+# The following format should be an alias for the rich root equivalent 
+# of the default format
+format_registry.register_metadir('default-rich-root',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack4',
+    help='Default format, rich root variant. (needed for bzr-svn and bzr-git).',
+    branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
-    hidden=True,
-    experimental=True,
+    alias=True,
     )
 # The current format that is made on 'bzr init'.
 format_registry.set_default('pack-0.92')

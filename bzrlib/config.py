@@ -14,7 +14,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Configuration that affects the behaviour of Bazaar.
 
@@ -709,7 +709,6 @@ class BranchConfig(Config):
                         trace.warning('Value "%s" is masked by "%s" from'
                                       ' branch.conf', value, mask_value)
 
-
     def _gpg_signing_command(self):
         """See Config.gpg_signing_command."""
         return self._get_safe_value('_gpg_signing_command')
@@ -917,10 +916,7 @@ class TreeConfig(IniBasedConfig):
     # XXX: Really needs a better name, as this is not part of the tree! -- mbp 20080507
 
     def __init__(self, branch):
-        # XXX: Really this should be asking the branch for its configuration
-        # data, rather than relying on a Transport, so that it can work
-        # more cleanly with a RemoteBranch that has no transport.
-        self._config = TransportConfig(branch._transport, 'branch.conf')
+        self._config = branch._get_config()
         self.branch = branch
 
     def _get_parser(self, file=None):
@@ -993,7 +989,8 @@ class AuthenticationConfig(object):
         section[option_name] = value
         self._save()
 
-    def get_credentials(self, scheme, host, port=None, user=None, path=None):
+    def get_credentials(self, scheme, host, port=None, user=None, path=None, 
+                        realm=None):
         """Returns the matching credentials from authentication.conf file.
 
         :param scheme: protocol
@@ -1005,12 +1002,19 @@ class AuthenticationConfig(object):
         :param user: login (optional)
 
         :param path: the absolute path on the server (optional)
+        
+        :param realm: the http authentication realm (optional)
 
         :return: A dict containing the matching credentials or None.
            This includes:
            - name: the section name of the credentials in the
              authentication.conf file,
-           - user: can't de different from the provided user if any,
+           - user: can't be different from the provided user if any,
+           - scheme: the server protocol,
+           - host: the server address,
+           - port: the server port (can be None),
+           - path: the absolute server path (can be None),
+           - realm: the http specific authentication realm (can be None),
            - password: the decoded password, could be None if the credential
              defines only the user
            - verify_certificates: https specific, True if the server
@@ -1057,10 +1061,18 @@ class AuthenticationConfig(object):
             if a_user is None:
                 # Can't find a user
                 continue
+            # Prepare a credentials dictionary with additional keys
+            # for the credential providers
             credentials = dict(name=auth_def_name,
                                user=a_user,
+                               scheme=a_scheme,
+                               host=host,
+                               port=port,
+                               path=path,
+                               realm=realm,
                                password=auth_def.get('password', None),
                                verify_certificates=a_verify_certificates)
+            # Decode the password in the credentials (or get one)
             self.decode_password(credentials,
                                  auth_def.get('password_encoding', None))
             if 'auth' in debug.debug_flags:
@@ -1070,7 +1082,8 @@ class AuthenticationConfig(object):
         return credentials
 
     def set_credentials(self, name, host, user, scheme=None, password=None,
-                        port=None, path=None, verify_certificates=None):
+                        port=None, path=None, verify_certificates=None,
+                        realm=None):
         """Set authentication credentials for a host.
 
         Any existing credentials with matching scheme, host, port and path
@@ -1087,6 +1100,7 @@ class AuthenticationConfig(object):
             apply to.
         :param verify_certificates: On https, verify server certificates if
             True.
+        :param realm: The http authentication realm (optional).
         """
         values = {'host': host, 'user': user}
         if password is not None:
@@ -1099,10 +1113,12 @@ class AuthenticationConfig(object):
             values['path'] = path
         if verify_certificates is not None:
             values['verify_certificates'] = str(verify_certificates)
+        if realm is not None:
+            values['realm'] = realm
         config = self._get_config()
         for_deletion = []
         for section, existing_values in config.items():
-            for key in ('scheme', 'host', 'port', 'path'):
+            for key in ('scheme', 'host', 'port', 'path', 'realm'):
                 if existing_values.get(key) != values.get(key):
                     break
             else:
@@ -1127,7 +1143,7 @@ class AuthenticationConfig(object):
         :return: The found user.
         """
         credentials = self.get_credentials(scheme, host, port, user=None,
-                                           path=path)
+                                           path=path, realm=realm)
         if credentials is not None:
             user = credentials['user']
         else:
@@ -1152,7 +1168,8 @@ class AuthenticationConfig(object):
 
         :return: The found password or the one entered by the user.
         """
-        credentials = self.get_credentials(scheme, host, port, user, path)
+        credentials = self.get_credentials(scheme, host, port, user, path,
+                                           realm)
         if credentials is not None:
             password = credentials['password']
             if password is not None and scheme is 'ssh':

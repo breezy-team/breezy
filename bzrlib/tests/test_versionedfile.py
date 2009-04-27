@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2009 Canonical Ltd
 #
 # Authors:
 #   Johan Rydberg <jrydberg@gnu.org>
@@ -15,7 +15,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 # TODO: might be nice to create a versionedfile with some type of corruption
@@ -24,9 +24,10 @@
 from itertools import chain, izip
 from StringIO import StringIO
 
-import bzrlib
 from bzrlib import (
     errors,
+    groupcompress,
+    knit as _mod_knit,
     osutils,
     progress,
     )
@@ -35,7 +36,6 @@ from bzrlib.errors import (
                            RevisionAlreadyPresent,
                            WeaveParentMismatch
                            )
-from bzrlib import knit as _mod_knit
 from bzrlib.knit import (
     cleanup_pack_knit,
     make_file_factory,
@@ -43,7 +43,6 @@ from bzrlib.knit import (
     KnitAnnotateFactory,
     KnitPlainFactory,
     )
-from bzrlib.symbol_versioning import one_four, one_five
 from bzrlib.tests import (
     TestCase,
     TestCaseWithMemoryTransport,
@@ -122,6 +121,13 @@ def load_tests(standard_tests, module, loader):
             'key_length':1,
             'support_partial_insertion': False,
             }),
+        ('groupcompress-nograph', {
+            'cleanup':groupcompress.cleanup_pack_group,
+            'factory':groupcompress.make_pack_factory(False, False, 1),
+            'graph': False,
+            'key_length':1,
+            'support_partial_insertion':False,
+            }),
         ]
     len_two_scenarios = [
         ('weave-prefix', {
@@ -145,6 +151,13 @@ def load_tests(standard_tests, module, loader):
             'graph':True,
             'key_length':2,
             'support_partial_insertion': True,
+            }),
+        ('groupcompress', {
+            'cleanup':groupcompress.cleanup_pack_group,
+            'factory':groupcompress.make_pack_factory(True, False, 1),
+            'graph': True,
+            'key_length':1,
+            'support_partial_insertion':False,
             }),
         ]
     scenarios = len_one_scenarios + len_two_scenarios
@@ -180,7 +193,7 @@ def get_diamond_vf(f, trailing_eol=True, left_only=False):
 
 
 def get_diamond_files(files, key_length, trailing_eol=True, left_only=False,
-    nograph=False):
+    nograph=False, nokeys=False):
     """Get a diamond graph to exercise deltas and merges.
 
     This creates a 5-node graph in files. If files supports 2-length keys two
@@ -193,8 +206,12 @@ def get_diamond_files(files, key_length, trailing_eol=True, left_only=False,
     :param nograph: If True, do not provide parents to the add_lines calls;
         this is useful for tests that need inserted data but have graphless
         stores.
+    :param nokeys: If True, pass None is as the key for all insertions.
+        Currently implies nograph.
     :return: The results of the add_lines calls.
     """
+    if nokeys:
+        nograph = True
     if key_length == 1:
         prefixes = [()]
     else:
@@ -211,25 +228,30 @@ def get_diamond_files(files, key_length, trailing_eol=True, left_only=False,
         else:
             result = [prefix + suffix for suffix in suffix_list]
             return result
+    def get_key(suffix):
+        if nokeys:
+            return (None, )
+        else:
+            return (suffix,)
     # we loop over each key because that spreads the inserts across prefixes,
     # which is how commit operates.
     for prefix in prefixes:
-        result.append(files.add_lines(prefix + ('origin',), (),
+        result.append(files.add_lines(prefix + get_key('origin'), (),
             ['origin' + last_char]))
     for prefix in prefixes:
-        result.append(files.add_lines(prefix + ('base',),
+        result.append(files.add_lines(prefix + get_key('base'),
             get_parents([('origin',)]), ['base' + last_char]))
     for prefix in prefixes:
-        result.append(files.add_lines(prefix + ('left',),
+        result.append(files.add_lines(prefix + get_key('left'),
             get_parents([('base',)]),
             ['base\n', 'left' + last_char]))
     if not left_only:
         for prefix in prefixes:
-            result.append(files.add_lines(prefix + ('right',),
+            result.append(files.add_lines(prefix + get_key('right'),
                 get_parents([('base',)]),
                 ['base\n', 'right' + last_char]))
         for prefix in prefixes:
-            result.append(files.add_lines(prefix + ('merged',),
+            result.append(files.add_lines(prefix + get_key('merged'),
                 get_parents([('left',), ('right',)]),
                 ['base\n', 'left\n', 'right\n', 'merged' + last_char]))
     return result
@@ -746,21 +768,21 @@ class VersionedFileTestMixIn(object):
                 self.assertEqual(expected, progress.updates)
             return lines
         lines = iter_with_versions(['child', 'otherchild'],
-                                   [('Walking content.', 0, 2),
-                                    ('Walking content.', 1, 2),
-                                    ('Walking content.', 2, 2)])
+                                   [('Walking content', 0, 2),
+                                    ('Walking content', 1, 2),
+                                    ('Walking content', 2, 2)])
         # we must see child and otherchild
         self.assertTrue(lines[('child\n', 'child')] > 0)
         self.assertTrue(lines[('otherchild\n', 'otherchild')] > 0)
         # we dont care if we got more than that.
 
         # test all lines
-        lines = iter_with_versions(None, [('Walking content.', 0, 5),
-                                          ('Walking content.', 1, 5),
-                                          ('Walking content.', 2, 5),
-                                          ('Walking content.', 3, 5),
-                                          ('Walking content.', 4, 5),
-                                          ('Walking content.', 5, 5)])
+        lines = iter_with_versions(None, [('Walking content', 0, 5),
+                                          ('Walking content', 1, 5),
+                                          ('Walking content', 2, 5),
+                                          ('Walking content', 3, 5),
+                                          ('Walking content', 4, 5),
+                                          ('Walking content', 5, 5)])
         # all lines must be seen at least once
         self.assertTrue(lines[('base\n', 'base')] > 0)
         self.assertTrue(lines[('lancestor\n', 'lancestor')] > 0)
@@ -1488,10 +1510,32 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         """Each parameterised test can be constructed on a transport."""
         files = self.get_versionedfiles()
 
-    def get_diamond_files(self, files, trailing_eol=True, left_only=False):
+    def get_diamond_files(self, files, trailing_eol=True, left_only=False,
+        nokeys=False):
         return get_diamond_files(files, self.key_length,
             trailing_eol=trailing_eol, nograph=not self.graph,
-            left_only=left_only)
+            left_only=left_only, nokeys=nokeys)
+
+    def test_add_lines_nostoresha(self):
+        """When nostore_sha is supplied using old content raises."""
+        vf = self.get_versionedfiles()
+        empty_text = ('a', [])
+        sample_text_nl = ('b', ["foo\n", "bar\n"])
+        sample_text_no_nl = ('c', ["foo\n", "bar"])
+        shas = []
+        for version, lines in (empty_text, sample_text_nl, sample_text_no_nl):
+            sha, _, _ = vf.add_lines(self.get_simple_key(version), [], lines)
+            shas.append(sha)
+        # we now have a copy of all the lines in the vf.
+        for sha, (version, lines) in zip(
+            shas, (empty_text, sample_text_nl, sample_text_no_nl)):
+            new_key = self.get_simple_key(version + "2")
+            self.assertRaises(errors.ExistingContent,
+                vf.add_lines, new_key, [], lines,
+                nostore_sha=sha)
+            # and no new version should have been added.
+            record = vf.get_record_stream([new_key], 'unordered', True).next()
+            self.assertEqual('absent', record.storage_kind)
 
     def test_add_lines_return(self):
         files = self.get_versionedfiles()
@@ -1523,6 +1567,60 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
                 ('ed8bce375198ea62444dc71952b22cfc2b09226d', 23),
                 ('ed8bce375198ea62444dc71952b22cfc2b09226d', 23)],
                 results)
+
+    def test_add_lines_no_key_generates_chk_key(self):
+        files = self.get_versionedfiles()
+        # save code by using the stock data insertion helper.
+        adds = self.get_diamond_files(files, nokeys=True)
+        results = []
+        # We can only validate the first 2 elements returned from add_lines.
+        for add in adds:
+            self.assertEqual(3, len(add))
+            results.append(add[:2])
+        if self.key_length == 1:
+            self.assertEqual([
+                ('00e364d235126be43292ab09cb4686cf703ddc17', 7),
+                ('51c64a6f4fc375daf0d24aafbabe4d91b6f4bb44', 5),
+                ('a8478686da38e370e32e42e8a0c220e33ee9132f', 10),
+                ('9ef09dfa9d86780bdec9219a22560c6ece8e0ef1', 11),
+                ('ed8bce375198ea62444dc71952b22cfc2b09226d', 23)],
+                results)
+            # Check the added items got CHK keys.
+            self.assertEqual(set([
+                ('sha1:00e364d235126be43292ab09cb4686cf703ddc17',),
+                ('sha1:51c64a6f4fc375daf0d24aafbabe4d91b6f4bb44',),
+                ('sha1:9ef09dfa9d86780bdec9219a22560c6ece8e0ef1',),
+                ('sha1:a8478686da38e370e32e42e8a0c220e33ee9132f',),
+                ('sha1:ed8bce375198ea62444dc71952b22cfc2b09226d',),
+                ]),
+                files.keys())
+        elif self.key_length == 2:
+            self.assertEqual([
+                ('00e364d235126be43292ab09cb4686cf703ddc17', 7),
+                ('00e364d235126be43292ab09cb4686cf703ddc17', 7),
+                ('51c64a6f4fc375daf0d24aafbabe4d91b6f4bb44', 5),
+                ('51c64a6f4fc375daf0d24aafbabe4d91b6f4bb44', 5),
+                ('a8478686da38e370e32e42e8a0c220e33ee9132f', 10),
+                ('a8478686da38e370e32e42e8a0c220e33ee9132f', 10),
+                ('9ef09dfa9d86780bdec9219a22560c6ece8e0ef1', 11),
+                ('9ef09dfa9d86780bdec9219a22560c6ece8e0ef1', 11),
+                ('ed8bce375198ea62444dc71952b22cfc2b09226d', 23),
+                ('ed8bce375198ea62444dc71952b22cfc2b09226d', 23)],
+                results)
+            # Check the added items got CHK keys.
+            self.assertEqual(set([
+                ('FileA', 'sha1:00e364d235126be43292ab09cb4686cf703ddc17'),
+                ('FileA', 'sha1:51c64a6f4fc375daf0d24aafbabe4d91b6f4bb44'),
+                ('FileA', 'sha1:9ef09dfa9d86780bdec9219a22560c6ece8e0ef1'),
+                ('FileA', 'sha1:a8478686da38e370e32e42e8a0c220e33ee9132f'),
+                ('FileA', 'sha1:ed8bce375198ea62444dc71952b22cfc2b09226d'),
+                ('FileB', 'sha1:00e364d235126be43292ab09cb4686cf703ddc17'),
+                ('FileB', 'sha1:51c64a6f4fc375daf0d24aafbabe4d91b6f4bb44'),
+                ('FileB', 'sha1:9ef09dfa9d86780bdec9219a22560c6ece8e0ef1'),
+                ('FileB', 'sha1:a8478686da38e370e32e42e8a0c220e33ee9132f'),
+                ('FileB', 'sha1:ed8bce375198ea62444dc71952b22cfc2b09226d'),
+                ]),
+                files.keys())
 
     def test_empty_lines(self):
         """Empty files can be stored."""
@@ -1564,15 +1662,17 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
              'knit-ft', 'knit-delta', 'chunked', 'fulltext',
              'knit-annotated-ft-gz', 'knit-annotated-delta-gz', 'knit-ft-gz',
              'knit-delta-gz',
-             'knit-delta-closure', 'knit-delta-closure-ref'])
+             'knit-delta-closure', 'knit-delta-closure-ref',
+             'groupcompress-block', 'groupcompress-block-ref'])
 
     def capture_stream(self, f, entries, on_seen, parents):
         """Capture a stream for testing."""
         for factory in entries:
             on_seen(factory.key)
             self.assertValidStorageKind(factory.storage_kind)
-            self.assertEqual(f.get_sha1s([factory.key])[factory.key],
-                factory.sha1)
+            if factory.sha1 is not None:
+                self.assertEqual(f.get_sha1s([factory.key])[factory.key],
+                    factory.sha1)
             self.assertEqual(parents[factory.key], factory.parents)
             self.assertIsInstance(factory.get_bytes_as(factory.storage_kind),
                 str)
@@ -1615,6 +1715,26 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
                 }
         return keys, sort_order
 
+    def get_keys_and_groupcompress_sort_order(self):
+        """Get diamond test keys list, and their groupcompress sort ordering."""
+        if self.key_length == 1:
+            keys = [('merged',), ('left',), ('right',), ('base',)]
+            sort_order = {('merged',):0, ('left',):1, ('right',):1, ('base',):2}
+        else:
+            keys = [
+                ('FileA', 'merged'), ('FileA', 'left'), ('FileA', 'right'),
+                ('FileA', 'base'),
+                ('FileB', 'merged'), ('FileB', 'left'), ('FileB', 'right'),
+                ('FileB', 'base'),
+                ]
+            sort_order = {
+                ('FileA', 'merged'):0, ('FileA', 'left'):1, ('FileA', 'right'):1,
+                ('FileA', 'base'):2,
+                ('FileB', 'merged'):3, ('FileB', 'left'):4, ('FileB', 'right'):4,
+                ('FileB', 'base'):5,
+                }
+        return keys, sort_order
+
     def test_get_record_stream_interface_ordered(self):
         """each item in a stream has to provide a regular interface."""
         files = self.get_versionedfiles()
@@ -1646,6 +1766,17 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             chunked_bytes = factory.get_bytes_as('chunked')
             self.assertEqualDiff(ft_bytes, ''.join(chunked_bytes))
 
+        self.assertStreamOrder(sort_order, seen, keys)
+
+    def test_get_record_stream_interface_groupcompress(self):
+        """each item in a stream has to provide a regular interface."""
+        files = self.get_versionedfiles()
+        self.get_diamond_files(files)
+        keys, sort_order = self.get_keys_and_groupcompress_sort_order()
+        parent_map = files.get_parent_map(keys)
+        entries = files.get_record_stream(keys, 'groupcompress', False)
+        seen = []
+        self.capture_stream(files, entries, seen.append, parent_map)
         self.assertStreamOrder(sort_order, seen, keys)
 
     def assertStreamOrder(self, sort_order, seen, keys):
@@ -1684,8 +1815,9 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         for factory in entries:
             seen.add(factory.key)
             self.assertValidStorageKind(factory.storage_kind)
-            self.assertEqual(files.get_sha1s([factory.key])[factory.key],
-                factory.sha1)
+            if factory.sha1 is not None:
+                self.assertEqual(files.get_sha1s([factory.key])[factory.key],
+                                 factory.sha1)
             self.assertEqual(parent_map[factory.key], factory.parents)
             # currently no stream emits mpdiff
             self.assertRaises(errors.UnavailableRepresentation,
@@ -1889,8 +2021,9 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
                 self.assertEqual(None, factory.parents)
             else:
                 self.assertValidStorageKind(factory.storage_kind)
-                self.assertEqual(files.get_sha1s([factory.key])[factory.key],
-                    factory.sha1)
+                if factory.sha1 is not None:
+                    sha1 = files.get_sha1s([factory.key])[factory.key]
+                    self.assertEqual(sha1, factory.sha1)
                 self.assertEqual(parents[factory.key], factory.parents)
                 self.assertIsInstance(factory.get_bytes_as(factory.storage_kind),
                     str)
@@ -2252,9 +2385,9 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             return lines
         lines = iter_with_keys(
             [self.get_simple_key('child'), self.get_simple_key('otherchild')],
-            [('Walking content.', 0, 2),
-             ('Walking content.', 1, 2),
-             ('Walking content.', 2, 2)])
+            [('Walking content', 0, 2),
+             ('Walking content', 1, 2),
+             ('Walking content', 2, 2)])
         # we must see child and otherchild
         self.assertTrue(lines[('child\n', self.get_simple_key('child'))] > 0)
         self.assertTrue(
@@ -2263,12 +2396,12 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
 
         # test all lines
         lines = iter_with_keys(files.keys(),
-            [('Walking content.', 0, 5),
-             ('Walking content.', 1, 5),
-             ('Walking content.', 2, 5),
-             ('Walking content.', 3, 5),
-             ('Walking content.', 4, 5),
-             ('Walking content.', 5, 5)])
+            [('Walking content', 0, 5),
+             ('Walking content', 1, 5),
+             ('Walking content', 2, 5),
+             ('Walking content', 3, 5),
+             ('Walking content', 4, 5),
+             ('Walking content', 5, 5)])
         # all lines must be seen at least once
         self.assertTrue(lines[('base\n', self.get_simple_key('base'))] > 0)
         self.assertTrue(

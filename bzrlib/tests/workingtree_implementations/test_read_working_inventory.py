@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for WorkingTree.read_working_inventory."""
 
@@ -37,7 +37,7 @@ class TestReadWorkingInventory(TestCaseWithWorkingTree):
             tree.set_root_id('new-root')
             # having dirtied the inventory, we can now expect an
             # InventoryModified exception when doing a read_working_inventory()
-            # OR, the call can be ignored and hte changes preserved
+            # OR, the call can be ignored and the changes preserved
             try:
                 tree.read_working_inventory()
             except errors.InventoryModified:

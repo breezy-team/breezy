@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests of the parent related functions of WorkingTrees."""
 
@@ -24,6 +24,7 @@ from bzrlib import (
     osutils,
     revision as _mod_revision,
     symbol_versioning,
+    tests,
     )
 from bzrlib.inventory import (
     Inventory,
@@ -32,12 +33,6 @@ from bzrlib.inventory import (
     InventoryLink,
     )
 from bzrlib.revision import Revision
-from bzrlib.tests import (
-    KnownFailure,
-    SymlinkFeature,
-    TestNotApplicable,
-    UnicodeFilenameFeature,
-    )
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 from bzrlib.uncommit import uncommit
 
@@ -234,8 +229,8 @@ class TestSetParents(TestParents):
 
     def test_unicode_symlink(self):
         # this tests bug #272444
-        self.requireFeature(SymlinkFeature)
-        self.requireFeature(UnicodeFilenameFeature)
+        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(tests.UnicodeFilenameFeature)
 
         tree = self.make_branch_and_tree('tree1')
 
@@ -245,11 +240,8 @@ class TestSetParents(TestParents):
         os.symlink(u'\u03a9','tree1/link_name')
         tree.add(['link_name'],['link-id'])
 
-        # the actual commit occurs without errors (strangely):
         revision1 = tree.commit('added a link to a Unicode target')
-        # python 2.4 failed with UnicodeDecodeError on this commit:
         revision2 = tree.commit('this revision will be discarded')
-        # python 2.5 failed with UnicodeEncodeError on set_parent_ids:
         tree.set_parent_ids([revision1])
 
 

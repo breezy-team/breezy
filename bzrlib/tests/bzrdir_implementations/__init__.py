@@ -14,7 +14,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """BzrDir implementation tests for bzr.
@@ -76,6 +76,7 @@ class TestCaseWithBzrDir(TestCaseWithTransport):
 def load_tests(standard_tests, module, loader):
     test_bzrdir_implementations = [
         'bzrlib.tests.bzrdir_implementations.test_bzrdir',
+        'bzrlib.tests.bzrdir_implementations.test_push',
         ]
     submod_tests = loader.loadTestsFromModuleNames(test_bzrdir_implementations)
     formats = BzrDirFormat.known_formats()

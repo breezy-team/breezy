@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """The 'medium' layer for the smart servers and clients.
 
@@ -381,7 +381,7 @@ class SmartClientMediumRequest(object):
     def accept_bytes(self, bytes):
         """Accept bytes for inclusion in this request.
 
-        This method may not be be called after finished_writing() has been
+        This method may not be called after finished_writing() has been
         called.  It depends upon the Medium whether or not the bytes will be
         immediately transmitted. Message based Mediums will tend to buffer the
         bytes until finished_writing() is called.
@@ -727,22 +727,31 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         :param vendor: An optional override for the ssh vendor to use. See
             bzrlib.transport.ssh for details on ssh vendors.
         """
-        SmartClientStreamMedium.__init__(self, base)
         self._connected = False
         self._host = host
         self._password = password
         self._port = port
         self._username = username
+        # SmartClientStreamMedium stores the repr of this object in its
+        # _DebugCounter so we have to store all the values used in our repr
+        # method before calling the super init.
+        SmartClientStreamMedium.__init__(self, base)
         self._read_from = None
         self._ssh_connection = None
         self._vendor = vendor
         self._write_to = None
         self._bzr_remote_path = bzr_remote_path
-        if self._bzr_remote_path is None:
-            symbol_versioning.warn(
-                'bzr_remote_path is required as of bzr 0.92',
-                DeprecationWarning, stacklevel=2)
-            self._bzr_remote_path = os.environ.get('BZR_REMOTE_PATH', 'bzr')
+        # for the benefit of progress making a short description of this
+        # transport
+        self._scheme = 'bzr+ssh'
+
+    def __repr__(self):
+        return "%s(connected=%r, username=%r, host=%r, port=%r)" % (
+            self.__class__.__name__,
+            self._connected,
+            self._username,
+            self._host,
+            self._port)
 
     def _accept_bytes(self, bytes):
         """See SmartClientStreamMedium.accept_bytes."""

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests from HTTP response parsing.
 
@@ -801,6 +801,7 @@ class TestRangeFileSizeReadLimited(tests.TestCase):
     """
 
     def setUp(self):
+        tests.TestCase.setUp(self)
         # create a test datablock larger than _max_read_size.
         chunk_size = response.RangeFile._max_read_size
         test_pattern = '0123456789ABCDEF'

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 # TODO: Up-front, stat all files in order and remove those which are deleted or
 # out-of-date.  Don't actually re-read them until they're needed.  That ought
@@ -31,6 +31,7 @@ CACHE_HEADER = "### bzr hashcache v5\n"
 
 import os, stat, time
 
+from bzrlib.filters import internal_size_sha_file_byname
 from bzrlib.osutils import sha_file, sha_string, pathjoin, safe_unicode
 from bzrlib.trace import mutter, warning
 from bzrlib.atomicfile import AtomicFile
@@ -79,8 +80,15 @@ class HashCache(object):
     """
     needs_write = False
 
-    def __init__(self, root, cache_file_name, mode=None):
-        """Create a hash cache in base dir, and set the file mode to mode."""
+    def __init__(self, root, cache_file_name, mode=None,
+            content_filter_stack_provider=None):
+        """Create a hash cache in base dir, and set the file mode to mode.
+
+        :param content_filter_stack_provider: a function that takes a
+            path (relative to the top of the tree) and a file-id as
+            parameters and returns a stack of ContentFilters.
+            If None, no content filtering is performed.
+        """
         self.root = safe_unicode(root)
         self.root_utf8 = self.root.encode('utf8') # where is the filesystem encoding ?
         self.hit_count = 0
@@ -92,6 +100,7 @@ class HashCache(object):
         self._cache = {}
         self._mode = mode
         self._cache_file_name = safe_unicode(cache_file_name)
+        self._filter_provider = content_filter_stack_provider
 
     def cache_file_name(self):
         return self._cache_file_name
@@ -161,7 +170,11 @@ class HashCache(object):
 
         mode = file_fp[FP_MODE_COLUMN]
         if stat.S_ISREG(mode):
-            digest = self._really_sha1_file(abspath)
+            if self._filter_provider is None:
+                filters = []
+            else:
+                filters = self._filter_provider(path=path, file_id=None)
+            digest = self._really_sha1_file(abspath, filters)
         elif stat.S_ISLNK(mode):
             digest = sha_string(os.readlink(abspath))
         else:
@@ -198,9 +211,9 @@ class HashCache(object):
             self._cache[path] = (digest, file_fp)
         return digest
 
-    def _really_sha1_file(self, abspath):
+    def _really_sha1_file(self, abspath, filters):
         """Calculate the SHA1 of a file by reading the full text"""
-        return sha_file(file(abspath, 'rb', buffering=65000))
+        return internal_size_sha_file_byname(abspath, filters)[1]
 
     def write(self):
         """Write contents of cache to file."""

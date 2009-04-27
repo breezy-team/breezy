@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 import errno
@@ -546,7 +546,7 @@ class Merge3Merger(object):
         :param working_tree: The working tree to apply the merge to
         :param this_tree: The local tree in the merge operation
         :param base_tree: The common tree in the merge operation
-        :param other_tree: The other other tree to merge changes from
+        :param other_tree: The other tree to merge changes from
         :param interesting_ids: The file_ids of files that should be
             participate in the merge.  May not be combined with
             interesting_files.

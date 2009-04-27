@@ -14,7 +14,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from cStringIO import StringIO
 import errno
@@ -805,18 +805,14 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # they had when they were first added
         # create one file of every interesting type
         tree = self.make_branch_and_tree('.')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
         self.build_tree(['file', 'directory/'])
         names = ['file', 'directory']
         if has_symlinks():
             os.symlink('target', 'symlink')
             names.append('symlink')
         tree.add(names, [n + '-id' for n in names])
-        if tree.supports_tree_reference():
-            sub_tree = self.make_branch_and_tree('tree-reference')
-            sub_tree.set_root_id('tree-reference-id')
-            sub_tree.commit('message')
-            names.append('tree-reference')
-            tree.add_reference(sub_tree)
         # now when we first look, we should see everything with the same kind
         # with which they were initially added
         for n in names:

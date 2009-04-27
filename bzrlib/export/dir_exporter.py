@@ -12,20 +12,25 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Export a Tree to a non-versioned directory.
 """
 
 
 import os
+import StringIO
 
 from bzrlib import errors, osutils
 from bzrlib.export import _export_iter_entries
+from bzrlib.filters import (
+    ContentFilterContext,
+    filtered_output_bytes,
+    )
 from bzrlib.trace import mutter
 
 
-def dir_exporter(tree, dest, root, subdir):
+def dir_exporter(tree, dest, root, subdir, filtered=False):
     """Export this tree to a new directory.
 
     `dest` should not exist, and will be created holding the
@@ -42,7 +47,15 @@ def dir_exporter(tree, dest, root, subdir):
     for dp, ie in _export_iter_entries(tree, subdir):
         fullpath = osutils.pathjoin(dest, dp)
         if ie.kind == "file":
-            fileobj = tree.get_file(ie.file_id)
+            if filtered:
+                chunks = tree.get_file_lines(ie.file_id)
+                filters = tree._content_filter_stack(dp)
+                context = ContentFilterContext(dp, tree, ie)
+                contents = filtered_output_bytes(chunks, filters, context)
+                content = ''.join(contents)
+                fileobj = StringIO.StringIO(content)
+            else:
+                fileobj = tree.get_file(ie.file_id)
             osutils.pumpfile(fileobj, file(fullpath, 'wb'))
             if tree.is_executable(ie.file_id):
                 os.chmod(fullpath, 0755)

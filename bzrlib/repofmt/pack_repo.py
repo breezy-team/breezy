@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import re
 import sys
@@ -23,6 +23,7 @@ from itertools import izip
 import time
 
 from bzrlib import (
+    chk_map,
     debug,
     graph,
     osutils,
@@ -53,6 +54,7 @@ from bzrlib import (
     errors,
     lockable_files,
     lockdir,
+    revision as _mod_revision,
     symbol_versioning,
     )
 
@@ -131,6 +133,7 @@ class Pack(object):
     # A map of index 'type' to the file extension and position in the
     # index_sizes array.
     index_definitions = {
+        'chk': ('.cix', 4),
         'revision': ('.rix', 0),
         'inventory': ('.iix', 1),
         'text': ('.tix', 2),
@@ -138,7 +141,7 @@ class Pack(object):
         }
 
     def __init__(self, revision_index, inventory_index, text_index,
-        signature_index):
+        signature_index, chk_index=None):
         """Create a pack instance.
 
         :param revision_index: A GraphIndex for determining what revisions are
@@ -151,11 +154,14 @@ class Pack(object):
             texts/deltas (via (fileid, revisionid) tuples).
         :param signature_index: A GraphIndex for determining what signatures are
             present in the Pack and accessing the locations of their texts.
+        :param chk_index: A GraphIndex for accessing content by CHK, if the
+            pack has one.
         """
         self.revision_index = revision_index
         self.inventory_index = inventory_index
         self.text_index = text_index
         self.signature_index = signature_index
+        self.chk_index = chk_index
 
     def access_tuple(self):
         """Return a tuple (transport, name) for the pack content."""
@@ -232,14 +238,14 @@ class ExistingPack(Pack):
     """An in memory proxy for an existing .pack and its disk indices."""
 
     def __init__(self, pack_transport, name, revision_index, inventory_index,
-        text_index, signature_index):
+        text_index, signature_index, chk_index=None):
         """Create an ExistingPack object.
 
         :param pack_transport: The transport where the pack file resides.
         :param name: The name of the pack on disk in the pack_transport.
         """
         Pack.__init__(self, revision_index, inventory_index, text_index,
-            signature_index)
+            signature_index, chk_index)
         self.name = name
         self.pack_transport = pack_transport
         if None in (revision_index, inventory_index, text_index,
@@ -327,6 +333,10 @@ class NewPack(Pack):
         # The relative locations of the packs are constrained, but all are
         # passed in because the caller has them, so as to avoid object churn.
         index_builder_class = pack_collection._index_builder_class
+        if pack_collection.chk_index is not None:
+            chk_index = index_builder_class(reference_lists=0)
+        else:
+            chk_index = None
         Pack.__init__(self,
             # Revisions: parents list, no text compression.
             index_builder_class(reference_lists=1),
@@ -341,6 +351,8 @@ class NewPack(Pack):
             # Signatures: Just blobs to store, no compression, no parents
             # listing.
             index_builder_class(reference_lists=0),
+            # CHK based storage - just blobs, no compression or parents.
+            chk_index=chk_index
             )
         self._pack_collection = pack_collection
         # When we make readonly indices, we need this.
@@ -355,8 +367,8 @@ class NewPack(Pack):
         self._file_mode = file_mode
         # tracks the content written to the .pack file.
         self._hash = osutils.md5()
-        # a four-tuple with the length in bytes of the indices, once the pack
-        # is finalised. (rev, inv, text, sigs)
+        # a tuple with the length in bytes of the indices, once the pack
+        # is finalised. (rev, inv, text, sigs, chk_if_in_use)
         self.index_sizes = None
         # How much data to cache when writing packs. Note that this is not
         # synchronised with reads, because it's not in the transport layer, so
@@ -423,7 +435,8 @@ class NewPack(Pack):
         return bool(self.get_revision_count() or
             self.inventory_index.key_count() or
             self.text_index.key_count() or
-            self.signature_index.key_count())
+            self.signature_index.key_count() or
+            (self.chk_index is not None and self.chk_index.key_count()))
 
     def finish(self, suspend=False):
         """Finish the new pack.
@@ -454,6 +467,10 @@ class NewPack(Pack):
         self._write_index('text', self.text_index, 'file texts', suspend)
         self._write_index('signature', self.signature_index,
             'revision signatures', suspend)
+        if self.chk_index is not None:
+            self.index_sizes.append(None)
+            self._write_index('chk', self.chk_index,
+                'content hash bytes', suspend)
         self.write_stream.close()
         # Note that this will clobber an existing pack with the same name,
         # without checking for hash collisions. While this is undesirable this
@@ -532,7 +549,7 @@ class AggregateIndex(object):
     # XXX: Probably 'can be written to' could/should be separated from 'acts
     # like a knit index' -- mbp 20071024
 
-    def __init__(self, reload_func=None):
+    def __init__(self, reload_func=None, flush_func=None):
         """Create an AggregateIndex.
 
         :param reload_func: A function to call if we find we are missing an
@@ -543,7 +560,8 @@ class AggregateIndex(object):
         self.index_to_pack = {}
         self.combined_index = CombinedGraphIndex([], reload_func=reload_func)
         self.data_access = _DirectPackAccess(self.index_to_pack,
-                                             reload_func=reload_func)
+                                             reload_func=reload_func,
+                                             flush_func=flush_func)
         self.add_callback = None
 
     def replace_indices(self, index_to_pack, indices):
@@ -725,8 +743,16 @@ class Packer(object):
 
     def open_pack(self):
         """Open a pack for the pack we are creating."""
-        return NewPack(self._pack_collection, upload_suffix=self.suffix,
+        new_pack = self._pack_collection.pack_factory(self._pack_collection,
+                upload_suffix=self.suffix,
                 file_mode=self._pack_collection.repo.bzrdir._get_file_mode())
+        # We know that we will process all nodes in order, and don't need to
+        # query, so don't combine any indices spilled to disk until we are done
+        new_pack.revision_index.set_optimize(combine_backing_indices=False)
+        new_pack.inventory_index.set_optimize(combine_backing_indices=False)
+        new_pack.text_index.set_optimize(combine_backing_indices=False)
+        new_pack.signature_index.set_optimize(combine_backing_indices=False)
+        return new_pack
 
     def _update_pack_order(self, entries, index_to_pack_map):
         """Determine how we want our packs to be ordered.
@@ -889,6 +915,17 @@ class Packer(object):
                 time.ctime(), self._pack_collection._upload_transport.base, new_pack.random_name,
                 new_pack.signature_index.key_count(),
                 time.time() - new_pack.start_time)
+        # copy chk contents
+        # NB XXX: how to check CHK references are present? perhaps by yielding
+        # the items? How should that interact with stacked repos?
+        if new_pack.chk_index is not None:
+            self._copy_chks()
+            if 'pack' in debug.debug_flags:
+                mutter('%s: create_pack: chk content copied: %s%s %d items t+%6.3fs',
+                    time.ctime(), self._pack_collection._upload_transport.base,
+                    new_pack.random_name,
+                    new_pack.chk_index.key_count(),
+                    time.time() - new_pack.start_time)
         new_pack._check_references()
         if not self._use_pack(new_pack):
             new_pack.abort()
@@ -898,16 +935,43 @@ class Packer(object):
         self._pack_collection.allocate(new_pack)
         return new_pack
 
-    def _copy_nodes(self, nodes, index_map, writer, write_index):
-        """Copy knit nodes between packs with no graph references."""
+    def _copy_chks(self, refs=None):
+        # XXX: Todo, recursive follow-pointers facility when fetching some
+        # revisions only.
+        chk_index_map, chk_indices = self._pack_map_and_index_list(
+            'chk_index')
+        chk_nodes = self._index_contents(chk_indices, refs)
+        new_refs = set()
+        # TODO: This isn't strictly tasteful as we are accessing some private
+        #       variables (_serializer). Perhaps a better way would be to have
+        #       Repository._deserialise_chk_node()
+        search_key_func = chk_map.search_key_registry.get(
+            self._pack_collection.repo._serializer.search_key_name)
+        def accumlate_refs(lines):
+            # XXX: move to a generic location
+            # Yay mismatch:
+            bytes = ''.join(lines)
+            node = chk_map._deserialise(bytes, ("unknown",), search_key_func)
+            new_refs.update(node.refs())
+        self._copy_nodes(chk_nodes, chk_index_map, self.new_pack._writer,
+            self.new_pack.chk_index, output_lines=accumlate_refs)
+        return new_refs
+
+    def _copy_nodes(self, nodes, index_map, writer, write_index,
+        output_lines=None):
+        """Copy knit nodes between packs with no graph references.
+
+        :param output_lines: Output full texts of copied items.
+        """
         pb = ui.ui_factory.nested_progress_bar()
         try:
             return self._do_copy_nodes(nodes, index_map, writer,
-                write_index, pb)
+                write_index, pb, output_lines=output_lines)
         finally:
             pb.finished()
 
-    def _do_copy_nodes(self, nodes, index_map, writer, write_index, pb):
+    def _do_copy_nodes(self, nodes, index_map, writer, write_index, pb,
+        output_lines=None):
         # for record verification
         knit = KnitVersionedFiles(None, None)
         # plan a readv on each source pack:
@@ -947,8 +1011,11 @@ class Packer(object):
                 izip(reader.iter_records(), pack_readv_requests):
                 raw_data = read_func(None)
                 # check the header only
-                df, _ = knit._parse_record_header(key, raw_data)
-                df.close()
+                if output_lines is not None:
+                    output_lines(knit._parse_record(key[-1], raw_data)[0])
+                else:
+                    df, _ = knit._parse_record_header(key, raw_data)
+                    df.close()
                 pos, size = writer.add_bytes_record(raw_data, names)
                 write_index.add_node(key, eol_flag + "%d %d" % (pos, size))
                 pb.update("Copied record", record_index)
@@ -1284,8 +1351,11 @@ class RepositoryPackCollection(object):
     :ivar _names: map of {pack_name: (index_size,)}
     """
 
+    pack_factory = NewPack
+
     def __init__(self, repo, transport, index_transport, upload_transport,
-                 pack_transport, index_builder_class, index_class):
+                 pack_transport, index_builder_class, index_class,
+                 use_chk_index):
         """Create a new RepositoryPackCollection.
 
         :param transport: Addresses the repository base directory
@@ -1296,7 +1366,9 @@ class RepositoryPackCollection(object):
         :param pack_transport: Addresses the directory of existing complete packs.
         :param index_builder_class: The index builder class to use.
         :param index_class: The index class to use.
+        :param use_chk_index: Whether to setup and manage a CHK index.
         """
+        # XXX: This should call self.reset()
         self.repo = repo
         self.transport = transport
         self._index_transport = index_transport
@@ -1304,19 +1376,27 @@ class RepositoryPackCollection(object):
         self._pack_transport = pack_transport
         self._index_builder_class = index_builder_class
         self._index_class = index_class
-        self._suffix_offsets = {'.rix': 0, '.iix': 1, '.tix': 2, '.six': 3}
+        self._suffix_offsets = {'.rix': 0, '.iix': 1, '.tix': 2, '.six': 3,
+            '.cix': 4}
         self.packs = []
         # name:Pack mapping
+        self._names = None
         self._packs_by_name = {}
         # the previous pack-names content
         self._packs_at_load = None
         # when a pack is being created by this object, the state of that pack.
         self._new_pack = None
         # aggregated revision index data
-        self.revision_index = AggregateIndex(self.reload_pack_names)
-        self.inventory_index = AggregateIndex(self.reload_pack_names)
-        self.text_index = AggregateIndex(self.reload_pack_names)
-        self.signature_index = AggregateIndex(self.reload_pack_names)
+        flush = self._flush_new_pack
+        self.revision_index = AggregateIndex(self.reload_pack_names, flush)
+        self.inventory_index = AggregateIndex(self.reload_pack_names, flush)
+        self.text_index = AggregateIndex(self.reload_pack_names, flush)
+        self.signature_index = AggregateIndex(self.reload_pack_names, flush)
+        if use_chk_index:
+            self.chk_index = AggregateIndex(self.reload_pack_names, flush)
+        else:
+            # used to determine if we're using a chk_index elsewhere.
+            self.chk_index = None
         # resumed packs
         self._resumed_packs = []
 
@@ -1334,6 +1414,8 @@ class RepositoryPackCollection(object):
         self.inventory_index.add_index(pack.inventory_index, pack)
         self.text_index.add_index(pack.text_index, pack)
         self.signature_index.add_index(pack.signature_index, pack)
+        if self.chk_index is not None:
+            self.chk_index.add_index(pack.chk_index, pack)
 
     def all_packs(self):
         """Return a list of all the Pack objects this repository has.
@@ -1377,8 +1459,6 @@ class RepositoryPackCollection(object):
         total_packs = len(self._names)
         if self._max_pack_count(total_revisions) >= total_packs:
             return False
-        # XXX: the following may want to be a class, to pack with a given
-        # policy.
         # determine which packs need changing
         pack_distribution = self.pack_distribution(total_revisions)
         existing_packs = []
@@ -1408,6 +1488,7 @@ class RepositoryPackCollection(object):
             num_new_packs, num_revs_affected)
         self._execute_pack_operations(pack_operations,
                                       reload_func=self._restart_autopack)
+        mutter('Auto-packing repository %s completed', self)
         return True
 
     def _execute_pack_operations(self, pack_operations, _packer_class=Packer,
@@ -1443,6 +1524,10 @@ class RepositoryPackCollection(object):
         for revision_count, packs in pack_operations:
             self._obsolete_packs(packs)
 
+    def _flush_new_pack(self):
+        if self._new_pack is not None:
+            self._new_pack.flush()
+
     def lock_names(self):
         """Acquire the mutex around the pack-names index.
 
@@ -1451,11 +1536,15 @@ class RepositoryPackCollection(object):
         """
         self.repo.control_files.lock_write()
 
+    def _already_packed(self):
+        """Is the collection already packed?"""
+        return len(self._names) < 2
+
     def pack(self):
         """Pack the pack collection totally."""
         self.ensure_loaded()
         total_packs = len(self._names)
-        if total_packs < 2:
+        if self._already_packed():
             # This is arguably wrong because we might not be optimal, but for
             # now lets leave it in. (e.g. reconcile -> one pack. But not
             # optimal.
@@ -1527,6 +1616,10 @@ class RepositoryPackCollection(object):
         return [[final_rev_count, final_pack_list]]
 
     def ensure_loaded(self):
+        """Ensure we have read names from disk.
+
+        :return: True if the disk names had not been previously read.
+        """
         # NB: if you see an assertion error here, its probably access against
         # an unlocked repo. Naughty.
         if not self.repo.is_locked():
@@ -1538,8 +1631,12 @@ class RepositoryPackCollection(object):
                 name = key[0]
                 self._names[name] = self._parse_index_sizes(value)
                 self._packs_at_load.add((key, value))
+            result = True
+        else:
+            result = False
         # populate all the metadata.
         self.all_packs()
+        return result
 
     def _parse_index_sizes(self, value):
         """Parse a string of index sizes."""
@@ -1558,8 +1655,12 @@ class RepositoryPackCollection(object):
             inv_index = self._make_index(name, '.iix')
             txt_index = self._make_index(name, '.tix')
             sig_index = self._make_index(name, '.six')
+            if self.chk_index is not None:
+                chk_index = self._make_index(name, '.cix')
+            else:
+                chk_index = None
             result = ExistingPack(self._pack_transport, name, rev_index,
-                inv_index, txt_index, sig_index)
+                inv_index, txt_index, sig_index, chk_index)
             self.add_pack_to_memory(result)
             return result
 
@@ -1659,7 +1760,10 @@ class RepositoryPackCollection(object):
             # TODO: Probably needs to know all possible indices for this pack
             # - or maybe list the directory and move all indices matching this
             # name whether we recognize it or not?
-            for suffix in ('.iix', '.six', '.tix', '.rix'):
+            suffixes = ['.iix', '.six', '.tix', '.rix']
+            if self.chk_index is not None:
+                suffixes.append('.cix')
+            for suffix in suffixes:
                 self._index_transport.rename(pack.name + suffix,
                     '../obsolete_packs/' + pack.name + suffix)
 
@@ -1699,6 +1803,8 @@ class RepositoryPackCollection(object):
         self.inventory_index.remove_index(pack.inventory_index, pack)
         self.text_index.remove_index(pack.text_index, pack)
         self.signature_index.remove_index(pack.signature_index, pack)
+        if self.chk_index is not None:
+            self.chk_index.remove_index(pack.chk_index, pack)
 
     def reset(self):
         """Clear all cached data."""
@@ -1713,6 +1819,9 @@ class RepositoryPackCollection(object):
         self.repo._text_knit = None
         # cached inventory data
         self.inventory_index.clear()
+        # cached chk data
+        if self.chk_index is not None:
+            self.chk_index.clear()
         # remove the open pack
         self._new_pack = None
         # information about packs.
@@ -1838,8 +1947,17 @@ class RepositoryPackCollection(object):
         This should be called when we find out that something we thought was
         present is now missing. This happens when another process re-packs the
         repository, etc.
+
+        :return: True if the in-memory list of packs has been altered at all.
         """
-        # This is functionally similar to _save_pack_names, but we don't write
+        # The ensure_loaded call is to handle the case where the first call
+        # made involving the collection was to reload_pack_names, where we 
+        # don't have a view of disk contents. Its a bit of a bandaid, and
+        # causes two reads of pack-names, but its a rare corner case not struck
+        # with regular push/pull etc.
+        first_read = self.ensure_loaded()
+        if first_read:
+            return True
         # out the new value.
         disk_nodes, _, _ = self._diff_pack_names()
         self._packs_at_load = disk_nodes
@@ -1871,7 +1989,7 @@ class RepositoryPackCollection(object):
         # Do not permit preparation for writing if we're not in a 'write lock'.
         if not self.repo.is_write_locked():
             raise errors.NotWriteLocked(self)
-        self._new_pack = NewPack(self, upload_suffix='.pack',
+        self._new_pack = self.pack_factory(self, upload_suffix='.pack',
             file_mode=self.repo.bzrdir._get_file_mode())
         # allow writing: queue writes to a new index
         self.revision_index.add_writable_index(self._new_pack.revision_index,
@@ -1880,8 +1998,14 @@ class RepositoryPackCollection(object):
             self._new_pack)
         self.text_index.add_writable_index(self._new_pack.text_index,
             self._new_pack)
+        self._new_pack.text_index.set_optimize(combine_backing_indices=False)
         self.signature_index.add_writable_index(self._new_pack.signature_index,
             self._new_pack)
+        if self.chk_index is not None:
+            self.chk_index.add_writable_index(self._new_pack.chk_index,
+                self._new_pack)
+            self.repo.chk_bytes._index._add_callback = self.chk_index.add_callback
+            self._new_pack.chk_index.set_optimize(combine_backing_indices=False)
 
         self.repo.inventories._index._add_callback = self.inventory_index.add_callback
         self.repo.revisions._index._add_callback = self.revision_index.add_callback
@@ -2014,7 +2138,9 @@ class KnitPackRepository(KnitRepository):
             self._transport.clone('upload'),
             self._transport.clone('packs'),
             _format.index_builder_class,
-            _format.index_class)
+            _format.index_class,
+            use_chk_index=self._format.supports_chks,
+            )
         self.inventories = KnitVersionedFiles(
             _KnitGraphIndex(self._pack_collection.inventory_index.combined_index,
                 add_callback=self._pack_collection.inventory_index.add_callback,
@@ -2039,6 +2165,18 @@ class KnitPackRepository(KnitRepository):
                 deltas=True, parents=True, is_locked=self.is_locked),
             data_access=self._pack_collection.text_index.data_access,
             max_delta_chain=200)
+        if _format.supports_chks:
+            # No graph, no compression:- references from chks are between
+            # different objects not temporal versions of the same; and without
+            # some sort of temporal structure knit compression will just fail.
+            self.chk_bytes = KnitVersionedFiles(
+                _KnitGraphIndex(self._pack_collection.chk_index.combined_index,
+                    add_callback=self._pack_collection.chk_index.add_callback,
+                    deltas=False, parents=False, is_locked=self.is_locked),
+                data_access=self._pack_collection.chk_index.data_access,
+                max_delta_chain=0)
+        else:
+            self.chk_bytes = None
         # True when the repository object is 'write locked' (as opposed to the
         # physical lock only taken out around changes to the pack-names list.)
         # Another way to represent this would be a decorator around the control
@@ -2079,50 +2217,45 @@ class KnitPackRepository(KnitRepository):
             revision_nodes = self._pack_collection.revision_index \
                 .combined_index.iter_all_entries()
             index_positions = []
-            # Get the cached index values for all revisions, and also the location
-            # in each index of the revision text so we can perform linear IO.
+            # Get the cached index values for all revisions, and also the
+            # location in each index of the revision text so we can perform
+            # linear IO.
             for index, key, value, refs in revision_nodes:
-                pos, length = value[1:].split(' ')
-                index_positions.append((index, int(pos), key[0],
-                    tuple(parent[0] for parent in refs[0])))
-                pb.update("Reading revision index.", 0, 0)
+                node = (index, key, value, refs)
+                index_memo = self.revisions._index._node_to_position(node)
+                if index_memo[0] != index:
+                    raise AssertionError('%r != %r' % (index_memo[0], index))
+                index_positions.append((index_memo, key[0],
+                                       tuple(parent[0] for parent in refs[0])))
+                pb.update("Reading revision index", 0, 0)
             index_positions.sort()
-            batch_count = len(index_positions) / 1000 + 1
-            pb.update("Checking cached revision graph.", 0, batch_count)
-            for offset in xrange(batch_count):
-                pb.update("Checking cached revision graph.", offset)
-                to_query = index_positions[offset * 1000:(offset + 1) * 1000]
+            batch_size = 1000
+            pb.update("Checking cached revision graph", 0,
+                      len(index_positions))
+            for offset in xrange(0, len(index_positions), 1000):
+                pb.update("Checking cached revision graph", offset)
+                to_query = index_positions[offset:offset + batch_size]
                 if not to_query:
                     break
-                rev_ids = [item[2] for item in to_query]
+                rev_ids = [item[1] for item in to_query]
                 revs = self.get_revisions(rev_ids)
                 for revision, item in zip(revs, to_query):
-                    index_parents = item[3]
+                    index_parents = item[2]
                     rev_parents = tuple(revision.parent_ids)
                     if index_parents != rev_parents:
-                        result.append((revision.revision_id, index_parents, rev_parents))
+                        result.append((revision.revision_id, index_parents,
+                                       rev_parents))
         finally:
             pb.finished()
         return result
-
-    @symbol_versioning.deprecated_method(symbol_versioning.one_one)
-    def get_parents(self, revision_ids):
-        """See graph._StackedParentsProvider.get_parents."""
-        parent_map = self.get_parent_map(revision_ids)
-        return [parent_map.get(r, None) for r in revision_ids]
 
     def _make_parents_provider(self):
         return graph.CachingParentsProvider(self)
 
     def _refresh_data(self):
-        if self._write_lock_count == 1 or (
-            self.control_files._lock_count == 1 and
-            self.control_files._lock_mode == 'r'):
-            # forget what names there are
-            self._pack_collection.reset()
-            # XXX: Better to do an in-memory merge when acquiring a new lock -
-            # factor out code from _save_pack_names.
-            self._pack_collection.ensure_loaded()
+        if not self.is_locked():
+            return
+        self._pack_collection.reload_pack_names()
 
     def _start_write_group(self):
         self._pack_collection._start_write_group()
@@ -2153,7 +2286,8 @@ class KnitPackRepository(KnitRepository):
         return self._write_lock_count
 
     def lock_write(self, token=None):
-        if not self._write_lock_count and self.is_locked():
+        locked = self.is_locked()
+        if not self._write_lock_count and locked:
             raise errors.ReadOnlyError(self)
         self._write_lock_count += 1
         if self._write_lock_count == 1:
@@ -2161,9 +2295,11 @@ class KnitPackRepository(KnitRepository):
             for repo in self._fallback_repositories:
                 # Writes don't affect fallback repos
                 repo.lock_read()
-        self._refresh_data()
+        if not locked:
+            self._refresh_data()
 
     def lock_read(self):
+        locked = self.is_locked()
         if self._write_lock_count:
             self._write_lock_count += 1
         else:
@@ -2171,7 +2307,8 @@ class KnitPackRepository(KnitRepository):
             for repo in self._fallback_repositories:
                 # Writes don't affect fallback repos
                 repo.lock_read()
-        self._refresh_data()
+        if not locked:
+            self._refresh_data()
 
     def leave_lock_in_place(self):
         # not supported - raise an error
@@ -2197,6 +2334,10 @@ class KnitPackRepository(KnitRepository):
         reconciler = PackReconciler(self, thorough=thorough)
         reconciler.reconcile()
         return reconciler
+
+    def _reconcile_pack(self, collection, packs, extension, revs, pb):
+        packer = ReconcilePacker(collection, packs, extension, revs)
+        return packer.pack(pb)
 
     def unlock(self):
         if self._write_lock_count == 1 and self._write_group is not None:
@@ -2245,12 +2386,17 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
     # Set this attribute in derived clases to control the _serializer that the
     # repository objects will have passed to their constructor.
     _serializer = None
+    # Packs are not confused by ghosts.
+    supports_ghosts = True
     # External references are not supported in pack repositories yet.
     supports_external_lookups = False
+    # Most pack formats do not use chk lookups.
+    supports_chks = False
     # What index classes to use
     index_builder_class = None
     index_class = None
     _fetch_uses_deltas = True
+    fast_deltas = False
 
     def initialize(self, a_bzrdir, shared=False):
         """Create a pack based repository.
@@ -2632,52 +2778,15 @@ class RepositoryFormatKnitPack6RichRoot(RepositoryFormatPack):
         return "Packs 6 rich-root (uses btree indexes, requires bzr 1.9)"
 
 
-class RepositoryFormatPackDevelopment2(RepositoryFormatPack):
-    """A no-subtrees development repository.
-
-    This format should be retained until the second release after bzr 1.7.
-
-    This is pack-1.6.1 with B+Tree indices.
-    """
-
-    repository_class = KnitPackRepository
-    _commit_builder_class = PackCommitBuilder
-    supports_external_lookups = True
-    # What index classes to use
-    index_builder_class = BTreeBuilder
-    index_class = BTreeGraphIndex
-
-    @property
-    def _serializer(self):
-        return xml5.serializer_v5
-
-    def _get_matching_bzrdir(self):
-        return bzrdir.format_registry.make_bzrdir('development2')
-
-    def _ignore_setting_bzrdir(self, format):
-        pass
-
-    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
-
-    def get_format_string(self):
-        """See RepositoryFormat.get_format_string()."""
-        return "Bazaar development format 2 (needs bzr.dev from before 1.8)\n"
-
-    def get_format_description(self):
-        """See RepositoryFormat.get_format_description()."""
-        return ("Development repository format, currently the same as "
-            "1.6.1 with B+Trees.\n")
-
-    def check_conversion_target(self, target_format):
-        pass
-
-
 class RepositoryFormatPackDevelopment2Subtree(RepositoryFormatPack):
     """A subtrees development repository.
 
     This format should be retained until the second release after bzr 1.7.
 
     1.6.1-subtree[as it might have been] with B+Tree indices.
+
+    This is [now] retained until we have a CHK based subtree format in
+    development.
     """
 
     repository_class = KnitPackRepository
@@ -2695,7 +2804,7 @@ class RepositoryFormatPackDevelopment2Subtree(RepositoryFormatPack):
 
     def _get_matching_bzrdir(self):
         return bzrdir.format_registry.make_bzrdir(
-            'development2-subtree')
+            'development-subtree')
 
     def _ignore_setting_bzrdir(self, format):
         pass
@@ -2719,3 +2828,4 @@ class RepositoryFormatPackDevelopment2Subtree(RepositoryFormatPack):
         """See RepositoryFormat.get_format_description()."""
         return ("Development repository format, currently the same as "
             "1.6.1-subtree with B+Tree indices.\n")
+

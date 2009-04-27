@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Test operations that check the repository for corruption"""
@@ -43,7 +43,7 @@ class TestNoSpuriousInconsistentAncestors(TestCaseWithRepository):
         # XXX: check requires a non-empty revision IDs list, but it ignores the
         # contents of it!
         check_object = tree.branch.repository.check(['ignored'])
-        check_object.report_results(verbose=False)
+        check_object.report_results(verbose=True)
         log = self._get_log(keep_log_file=True)
         self.assertContainsRe(
             log,

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for upgrade of old trees.
 
@@ -171,6 +171,11 @@ class TestUpgrade(TestCaseWithTransport):
         self.assertEquals(branch.revision_history(),
            ['mbp@sourcefrog.net-20051004035611-176b16534b086b3c',
             'mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd'])
+
+    def test_upgrade_rich_root(self):
+        tree = self.make_branch_and_tree('tree', format='rich-root')
+        rev_id = tree.commit('first post')
+        upgrade('tree')
 
     def test_convert_branch5_branch6(self):
         branch = self.make_branch('branch', format='knit')
