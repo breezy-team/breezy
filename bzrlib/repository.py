@@ -4339,4 +4339,3 @@ class StreamSource(object):
             yield versionedfile.FulltextContentFactory(
                 key, parent_keys, None, as_bytes)
 
-

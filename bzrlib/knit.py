@@ -2830,6 +2830,8 @@ class _KnitGraphIndex(object):
             new_missing.difference_update(self.get_parent_map(new_missing))
             self._missing_compression_parents.update(new_missing)
         if self._external_parent_refs is not None:
+            # Add parent refs from graph_index (and discard parent refs that
+            # the graph_index has).
             for node in graph_index.iter_all_entries():
                 self._external_parent_refs.update(node[3][0])
                 self._external_parent_refs.discard(node[1])
