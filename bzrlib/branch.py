@@ -1162,18 +1162,31 @@ class Branch(object):
         return format
 
     def create_clone_on_transport(self, to_transport, revision_id=None,
-        stacked_on=None):
+        stacked_on=None, create_prefix=False, use_existing_dir=False):
         """Create a clone of this branch and its bzrdir.
 
         :param to_transport: The transport to clone onto.
         :param revision_id: The revision id to use as tip in the new branch.
             If None the tip is obtained from this branch.
         :param stacked_on: An optional URL to stack the clone on.
+        :param create_prefix: Create any missing directories leading up to
+            to_transport.
+        :param use_existing_dir: Use an existing directory if one exists.
         """
         # XXX: Fix the bzrdir API to allow getting the branch back from the
         # clone call. Or something. 20090224 RBC/spiv.
-        dir_to = self.bzrdir.clone_on_transport(to_transport,
-            revision_id=revision_id, stacked_on=stacked_on)
+        if revision_id is None:
+            revision_id = self.last_revision()
+        try:
+            dir_to = self.bzrdir.clone_on_transport(to_transport,
+                revision_id=revision_id, stacked_on=stacked_on,
+                create_prefix=create_prefix, use_existing_dir=use_existing_dir)
+        except errors.FileExists:
+            if not use_existing_dir:
+                raise
+        except errors.NoSuchFile:
+            if not create_prefix:
+                raise
         return dir_to.open_branch()
 
     def create_checkout(self, to_location, revision_id=None,
