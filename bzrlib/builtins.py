@@ -91,14 +91,14 @@ def tree_files_for_add(file_list):
     # that assume the current interface to mutabletree.smart_add
     if file_list:
         tree, relpath = WorkingTree.open_containing(file_list[0])
-        file_list = file_list[:]
-        file_list[0] = tree.abspath(relpath)
         if tree.supports_views():
             view_files = tree.views.lookup_view()
             if view_files:
                 for filename in file_list:
                     if not osutils.is_inside_any(view_files, filename):
                         raise errors.FileOutsideView(filename, view_files)
+        file_list = file_list[:]
+        file_list[0] = tree.abspath(relpath)
     else:
         tree = WorkingTree.open_containing(u'.')[0]
         if tree.supports_views():
