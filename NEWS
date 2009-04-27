@@ -35,23 +35,23 @@ Improvements
 Bug Fixes
 *********
 
-* End-Of-Line content filters are now loaded correctly.
-  (Ian Clatworthy, Brian de Alwis, #355280)
-
-* Fix TypeError in running ``bzr break-lock`` on some URLs.
-  (Alexander Belchenko, Martin Pool, #365891)
+* Adding now works properly when path contains a symbolic link.
+  (Geoff Bache, #183831)
 
 * ``bzr send`` works to send emails again using MAPI.
   (Neil Martinsen-Burrell, #346998)
 
-* Non-recursive ``bzr ls`` now works properly when a path is specified.
-  (Jelmer Vernooij, #357863)
+* End-Of-Line content filters are now loaded correctly.
+  (Ian Clatworthy, Brian de Alwis, #355280)
 
 * Fix a bug in the pure-python ``GroupCompress`` code when handling copies
   longer than 64KiB. (John Arbash Meinel, #364900)
 
-* Adding now works properly when path contains a symbolic link.
-  (Geoff Bache, #183831)
+* Fix TypeError in running ``bzr break-lock`` on some URLs.
+  (Alexander Belchenko, Martin Pool, #365891)
+
+* Non-recursive ``bzr ls`` now works properly when a path is specified.
+  (Jelmer Vernooij, #357863)
 
 Documentation
 *************
