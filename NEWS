@@ -50,6 +50,9 @@ Bug Fixes
 * Fix a bug in the pure-python ``GroupCompress`` code when handling copies
   longer than 64KiB. (John Arbash Meinel, #364900)
 
+* Adding now works properly when path contains a symbolic link.
+  (Geoff Bache, #183831)
+
 Documentation
 *************
 
