@@ -1178,7 +1178,8 @@ class TestBzrDir(TestCaseWithBzrDir):
             return
         t = self.get_transport('dir')
         t.ensure_base()
-        self.assertRaises(errors.FileExists, self.assertInitializeEx, t,
+        self.assertRaises(errors.FileExists,
+            self.bzrdir_format.initialize_on_transport_ex, t,
             use_existing_dir=False)
 
     def test_format_initialize_on_transport_ex_create_prefix_True(self):
@@ -1246,7 +1247,7 @@ class TestBzrDir(TestCaseWithBzrDir):
 
     def test_format_initialize_on_transport_ex_repo_fmt_name_followed(self):
         t = self.get_transport('dir')
-        # 1.6 is likely to neve be default
+        # 1.6 is likely to never be default
         fmt = bzrdir.format_registry.make_bzrdir('1.6')
         repo_name = fmt.repository_format.network_name()
         repo, control = self.assertInitializeEx(t, repo_format_name=repo_name)
@@ -1262,6 +1263,9 @@ class TestBzrDir(TestCaseWithBzrDir):
     def assertInitializeEx(self, t, need_meta=False, **kwargs):
         """Execute initialize_on_transport_ex and check it succeeded correctly.
 
+        This involves checking that the disk objects were created, open with
+        the same format returned, and had the expected disk format.
+
         :param t: The transport to initialize on.
         :param **kwargs: Additional arguments to pass to
             initialize_on_transport_ex.
@@ -1276,6 +1280,8 @@ class TestBzrDir(TestCaseWithBzrDir):
         opened = bzrdir.BzrDir.open(t.base)
         expected_format = self.bzrdir_format
         if isinstance(expected_format, bzrdir.RemoteBzrDirFormat):
+            # Current RemoteBzrDirFormat's do not reliably get network_name
+            # set, so we skip a number of tests for RemoteBzrDirFormat's.
             self.assertIsInstance(control, RemoteBzrDir)
         else:
             if need_meta and isinstance(expected_format, (bzrdir.BzrDirFormat5,
@@ -1285,8 +1291,6 @@ class TestBzrDir(TestCaseWithBzrDir):
                 expected_format = bzrdir.BzrDirMetaFormat1()
             self.assertEqual(control._format.network_name(),
                 expected_format.network_name())
-            # Current RemoteBzrDirFormat's do not reliably get network_name
-            # set, so only check in the off-case.
             self.assertEqual(control._format.network_name(),
                 opened._format.network_name())
         self.assertEqual(control.__class__, opened.__class__)

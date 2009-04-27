@@ -329,7 +329,7 @@ class Transport(object):
         raise NotImplementedError(self.clone)
 
     def create_prefix(self):
-        """Create all the directorie sleading down to self.base."""
+        """Create all the directories leading down to self.base."""
         cur_transport = self
         needed = [cur_transport]
         # Recurse upwards until we can create a directory successfully

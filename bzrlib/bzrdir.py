@@ -2177,7 +2177,7 @@ class BzrDirFormatAllInOne(BzrDirFormat):
         shared_repo=False):
         """See BzrDirFormat.initialize_on_transport_ex."""
         require_stacking = (stacked_on is not None)
-        # Format 5 cannot stack, but we've been asked do - actually init
+        # Format 5 cannot stack, but we've been asked to - actually init
         # a Meta1Dir
         if require_stacking:
             format = BzrDirMetaFormat1()

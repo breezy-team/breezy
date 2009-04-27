@@ -353,7 +353,7 @@ class TestSmartServerRequestInitializeBzrDir(tests.TestCaseWithMemoryTransport):
 class TestSmartServerRequestBzrDirInitializeEx(tests.TestCaseWithMemoryTransport):
     """Basic tests for BzrDir.initialize_ex in the smart server.
 
-    The main unit tests in test_bzrdir exercise the API coprehensively.
+    The main unit tests in test_bzrdir exercise the API comprehensively.
     """
 
     def test_empty_dir(self):
@@ -367,7 +367,7 @@ class TestSmartServerRequestBzrDirInitializeEx(tests.TestCaseWithMemoryTransport
             'False'))
         made_dir = bzrdir.BzrDir.open_from_transport(backing)
         # no branch, tree or repository is expected with the current
-        # default formart.
+        # default format.
         self.assertRaises(errors.NoWorkingTree, made_dir.open_workingtree)
         self.assertRaises(errors.NotBranchError, made_dir.open_branch)
         self.assertRaises(errors.NoRepositoryPresent, made_dir.open_repository)
