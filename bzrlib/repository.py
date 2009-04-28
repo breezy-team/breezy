@@ -1424,6 +1424,34 @@ class Repository(object):
     def suspend_write_group(self):
         raise errors.UnsuspendableWriteGroup(self)
 
+    def get_missing_parent_inventories(self):
+        """Return the keys of missing inventory parents for revisions added in
+        this write group.
+
+        A revision is not complete if the inventory delta for that revision
+        cannot be calculated.  Therefore if the parent inventories of a
+        revision are not present, the revision is incomplete, and e.g. cannot
+        be streamed by a smart server.  This method finds missing inventory
+        parents for revisions added in this write group.
+        """
+        if not self._format.supports_external_lookups:
+            # This is only an issue for stacked repositories
+            return set()
+        if not self.is_in_write_group():
+            raise AssertionError('not in a write group')
+                
+        # XXX: We assume that every added revision already has its
+        # corresponding inventory, so we only check for parent inventories that
+        # might be missing, rather than all inventories.
+        parents = set(self.revisions._index.get_missing_parents())
+        parents.discard(_mod_revision.NULL_REVISION)
+        unstacked_inventories = self.inventories._index
+        present_inventories = unstacked_inventories.get_parent_map(
+            key[-1:] for key in parents)
+        parents.difference_update(present_inventories)
+        missing_keys = set(('inventories', rev_id) for (rev_id,) in parents)
+        return missing_keys
+
     def refresh_data(self):
         """Re-read any data needed to to synchronise with disk.
 
@@ -3998,8 +4026,9 @@ class StreamSink(object):
                 self.target_repo.signatures.insert_record_stream(substream)
             else:
                 raise AssertionError('kaboom! %s' % (substream_type,))
+        # Find all the new revisions (including ones from resume_tokens)
+        missing_keys = self.target_repo.get_missing_parent_inventories()
         try:
-            missing_keys = set()
             for prefix, versioned_file in (
                 ('texts', self.target_repo.texts),
                 ('inventories', self.target_repo.inventories),

@@ -667,6 +667,10 @@ class RemoteRepository(_RpcHelper):
         self._ensure_real()
         return self._real_repository.suspend_write_group()
 
+    def get_missing_parent_inventories(self):
+        self._ensure_real()
+        return self._real_repository.get_missing_parent_inventories()
+
     def _ensure_real(self):
         """Ensure that there is a _real_repository set.
 
