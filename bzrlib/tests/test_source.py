@@ -35,7 +35,6 @@ from bzrlib import (
     )
 import bzrlib.branch
 from bzrlib.tests import (
-    KnownFailure,
     TestCase,
     TestSkipped,
     )
@@ -284,13 +283,14 @@ class TestSource(TestSourceHelper):
     def test_coding_style(self):
         """Check if bazaar code conforms to some coding style conventions.
 
-        Currently we check for:
+        Currently we assert that the following is not present:
          * any tab characters
-         * trailing white space
          * non-unix newlines
          * no newline at end of files
+
+        Print how many files have
+         * trailing white space
          * lines longer than 79 chars
-           (only print how many files and lines are in violation)
         """
         tabs = {}
         trailing_ws = {}
@@ -321,9 +321,9 @@ class TestSource(TestSourceHelper):
                 'Tab characters were found in the following source files.'
                 '\nThey should either be replaced by "\\t" or by spaces:'))
         if trailing_ws:
-            problems.append(self._format_message(trailing_ws,
-                'Trailing white space was found in the following source files:'
-                ))
+            print ("There are %i lines with trailing white space in %i files."
+                % (sum([len(lines) for f, lines in trailing_ws.items()]),
+                    len(trailing_ws)))
         if illegal_newlines:
             problems.append(self._format_message(illegal_newlines,
                 'Non-unix newlines were found in the following source files:'))
@@ -338,7 +338,6 @@ class TestSource(TestSourceHelper):
                '\n\n    %s'
                % ('\n    '.join(no_newline_at_eof)))
         if problems:
-            raise KnownFailure("test_coding_style has failed")
             self.fail('\n\n'.join(problems))
 
     def test_no_asserts(self):
