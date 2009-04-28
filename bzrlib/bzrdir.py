@@ -3149,7 +3149,7 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
         format = RemoteBzrDirFormat()
         format._network_name = bzrdir_name
         self._supply_sub_formats_to(format)
-        bzrdir = remote.RemoteBzrDir(transport, format)
+        bzrdir = remote.RemoteBzrDir(transport, format, _client=client)
         if repo_path:
             repo_format = remote.response_tuple_to_repo_format(response[1:])
             if repo_path == '.':
