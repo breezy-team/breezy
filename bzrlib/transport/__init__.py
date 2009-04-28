@@ -328,6 +328,31 @@ class Transport(object):
         """
         raise NotImplementedError(self.clone)
 
+    def create_prefix(self):
+        """Create all the directories leading down to self.base."""
+        cur_transport = self
+        needed = [cur_transport]
+        # Recurse upwards until we can create a directory successfully
+        while True:
+            new_transport = cur_transport.clone('..')
+            if new_transport.base == cur_transport.base:
+                raise errors.BzrCommandError(
+                    "Failed to create path prefix for %s."
+                    % cur_transport.base)
+            try:
+                new_transport.mkdir('.')
+            except errors.NoSuchFile:
+                needed.append(new_transport)
+                cur_transport = new_transport
+            except errors.FileExists:
+                break
+            else:
+                break
+        # Now we only need to create child directories
+        while needed:
+            cur_transport = needed.pop()
+            cur_transport.ensure_base()
+
     def ensure_base(self):
         """Ensure that the directory this transport references exists.
 
@@ -514,7 +539,6 @@ class Transport(object):
         physical local filesystem representation.
         """
         raise errors.NotLocalUrl(self.abspath(relpath))
-
 
     def has(self, relpath):
         """Does the file relpath exist?

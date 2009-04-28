@@ -12,11 +12,12 @@ matching that pattern(s). For example::
     eol = dos
 
     [name *.html *.xml]
-    keywords = escape
+    keywords = xml_escape
 
 Preferences like these are useful for commands and plugins wishing to
-provide custom behaviour for selected files in selected branches.
-
+provide custom behaviour for selected files.  For more information on 
+end of line conversion see ``bzr help eol``.  Keyword support is provided
+by the bzr-keywords plugin (http://launchpad.net/bzr-keywords).
 
 Files
 -----

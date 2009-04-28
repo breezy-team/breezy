@@ -79,15 +79,26 @@ def tree_files(file_list, default_branch=u'.', canonicalize=True,
 
 
 def tree_files_for_add(file_list):
-    """Add handles files a bit differently so it a custom implementation."""
+    """
+    Return a tree and list of absolute paths from a file list.
+
+    Similar to tree_files, but add handles files a bit differently, so it a
+    custom implementation.  In particular, MutableTreeTree.smart_add expects
+    absolute paths, which it immediately converts to relative paths.
+    """
+    # FIXME Would be nice to just return the relative paths like
+    # internal_tree_files does, but there are a large number of unit tests
+    # that assume the current interface to mutabletree.smart_add
     if file_list:
-        tree = WorkingTree.open_containing(file_list[0])[0]
+        tree, relpath = WorkingTree.open_containing(file_list[0])
         if tree.supports_views():
             view_files = tree.views.lookup_view()
             if view_files:
                 for filename in file_list:
                     if not osutils.is_inside_any(view_files, filename):
                         raise errors.FileOutsideView(filename, view_files)
+        file_list = file_list[:]
+        file_list[0] = tree.abspath(relpath)
     else:
         tree = WorkingTree.open_containing(u'.')[0]
         if tree.supports_views():
@@ -1017,7 +1028,7 @@ class cmd_push(Command):
         if revision is not None:
             revision_id = revision.in_history(br_from).rev_id
         else:
-            revision_id = br_from.last_revision()
+            revision_id = None
 
         # Get the stacked_on branch, if any
         if stacked_on is not None:
@@ -1575,7 +1586,7 @@ class cmd_init(Command):
                     "\nYou may supply --create-prefix to create all"
                     " leading parent directories."
                     % location)
-            _create_prefix(to_transport)
+            to_transport.create_prefix()
 
         try:
             a_bzrdir = bzrdir.BzrDir.open_from_transport(to_transport)
@@ -5581,28 +5592,6 @@ class cmd_clean_tree(Command):
             force = True
         clean_tree('.', unknown=unknown, ignored=ignored, detritus=detritus,
                    dry_run=dry_run, no_prompt=force)
-
-
-def _create_prefix(cur_transport):
-    needed = [cur_transport]
-    # Recurse upwards until we can create a directory successfully
-    while True:
-        new_transport = cur_transport.clone('..')
-        if new_transport.base == cur_transport.base:
-            raise errors.BzrCommandError(
-                "Failed to create path prefix for %s."
-                % cur_transport.base)
-        try:
-            new_transport.mkdir('.')
-        except errors.NoSuchFile:
-            needed.append(new_transport)
-            cur_transport = new_transport
-        else:
-            break
-    # Now we only need to create child directories
-    while needed:
-        cur_transport = needed.pop()
-        cur_transport.ensure_base()
 
 
 # these get imported and then picked up by the scan for cmd_*

@@ -69,7 +69,7 @@ def _pre_open_hook(transport):
             continue
         else:
             return
-    raise errors.BzrError('jail break: %r' % (abspath,))
+    raise errors.JailBreak(abspath)
 
 
 _install_hook()
@@ -176,6 +176,8 @@ class SmartServerRequest(object):
             return client_path
         if not client_path.startswith('/'):
             client_path = '/' + client_path
+        if client_path + '/' == self._root_client_path:
+            return '.'
         if client_path.startswith(self._root_client_path):
             path = client_path[len(self._root_client_path):]
             relpath = urlutils.joinpath('/', path)
@@ -489,6 +491,9 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'BzrDirFormat.initialize', 'bzrlib.smart.bzrdir',
     'SmartServerRequestInitializeBzrDir')
+request_handlers.register_lazy(
+    'BzrDirFormat.initialize_ex', 'bzrlib.smart.bzrdir',
+    'SmartServerRequestBzrDirInitializeEx')
 request_handlers.register_lazy(
     'BzrDir.open', 'bzrlib.smart.bzrdir', 'SmartServerRequestOpenBzrDir')
 request_handlers.register_lazy(

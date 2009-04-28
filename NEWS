@@ -35,17 +35,28 @@ Improvements
 Bug Fixes
 *********
 
-* End-Of-Line content filters are now loaded correctly.
-  (Ian Clatworthy, Brian de Alwis, #355280)
+* Adding now works properly when path contains a symbolic link.
+  (Geoff Bache, #183831)
 
 * ``bzr send`` works to send emails again using MAPI.
   (Neil Martinsen-Burrell, #346998)
 
-* Non-recursive ``bzr ls`` now works properly when a path is specified.
-  (Jelmer Vernooij, #357863)
+* Check for missing parent inventories in StreamSink.  This prevents
+  incomplete stacked branches being created by 1.13 bzr:// and
+  bzr+ssh:// clients (which have bug #354036).  Instead, the server now
+  causes those clients to send the missing records.  (Andrew Bennetts)
+
+* End-Of-Line content filters are now loaded correctly.
+  (Ian Clatworthy, Brian de Alwis, #355280)
 
 * Fix a bug in the pure-python ``GroupCompress`` code when handling copies
   longer than 64KiB. (John Arbash Meinel, #364900)
+
+* Fix TypeError in running ``bzr break-lock`` on some URLs.
+  (Alexander Belchenko, Martin Pool, #365891)
+
+* Non-recursive ``bzr ls`` now works properly when a path is specified.
+  (Jelmer Vernooij, #357863)
 
 Documentation
 *************
@@ -78,6 +89,10 @@ Internals
   are now be able to provide credentials if obtaining credentials 
   via ~/.bazaar/authentication.conf fails. (Jelmer Vernooij, 
   Vincent Ladeuil, #321918)
+
+* New smart server verb ``BzrDir.initialize_ex`` which implements a
+  refactoring to the core of clone allowing less round trips on new
+  branches. (Robert Collins)
 
 bzr 1.14rc2
 ###########
