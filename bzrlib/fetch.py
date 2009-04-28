@@ -137,17 +137,8 @@ class RepoFetcher(object):
             resume_tokens, missing_keys = self.sink.insert_stream(
                 stream, from_format, [])
             if self.to_repository._fallback_repositories:
-                # Find all the parent revisions referenced by the stream, but
-                # not present in the stream, and make sure we have their
-                # inventories.
-                revision_ids = search.get_keys()
-                parent_maps = self.to_repository.get_parent_map(revision_ids)
-                parents = set()
-                map(parents.update, parent_maps.itervalues())
-                parents.difference_update(revision_ids)
-                parents.discard(NULL_REVISION)
                 missing_keys.update(
-                    ('inventories', rev_id) for rev_id in parents)
+                    self._parent_inventories(search.get_keys()))
             if missing_keys:
                 pb.update("Missing keys")
                 stream = source.get_stream_for_missing_keys(missing_keys)
@@ -188,6 +179,18 @@ class RepoFetcher(object):
                 find_ghosts=self.find_ghosts)
         except errors.NoSuchRevision, e:
             raise InstallFailed([self._last_revision])
+
+    def _parent_inventories(self, revision_ids):
+        # Find all the parent revisions referenced by the stream, but
+        # not present in the stream, and make sure we send their
+        # inventories.
+        parent_maps = self.to_repository.get_parent_map(revision_ids)
+        parents = set()
+        map(parents.update, parent_maps.itervalues())
+        parents.discard(NULL_REVISION)
+        parents.difference_update(revision_ids)
+        missing_keys = set(('inventories', rev_id) for rev_id in parents)
+        return missing_keys
 
 
 class Inter1and2Helper(object):

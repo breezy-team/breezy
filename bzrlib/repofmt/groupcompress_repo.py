@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Repostory formats using CHK inventories and groupcompress compression."""
+"""Repository formats using CHK inventories and groupcompress compression."""
 
 import time
 
@@ -972,7 +972,7 @@ class RepositoryFormatCHK1(RepositoryFormatPack):
     # multiple in-a-row (and sharing strings). Topological is better
     # for remote, because we access less data.
     _fetch_order = 'unordered'
-    _fetch_uses_deltas = True # essentially ignored by the groupcompress code.
+    _fetch_uses_deltas = False # essentially ignored by the groupcompress code.
     fast_deltas = True
 
     def _get_matching_bzrdir(self):

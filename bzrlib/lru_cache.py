@@ -235,6 +235,14 @@ class LRUCache(object):
         if self._last_recently_used is None:
             self._most_recently_used = None
         node.run_cleanup()
+        # Now remove this node from the linked list
+        if node.prev is not None:
+            node.prev.next = node.next
+        if node.next is not None:
+            node.next.prev = node.prev
+        # And remove this node's pointers
+        node.prev = None
+        node.next = None
 
     def _remove_lru(self):
         """Remove one entry from the lru, and handle consequences.

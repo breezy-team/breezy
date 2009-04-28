@@ -201,6 +201,16 @@ class TestUpgrade(TestCaseWithTransport):
         branch2 = _mod_branch.Branch.open(self.get_url('branch'))
         self.assertIs(branch2.__class__, _mod_branch.BzrBranch6)
 
+    def test_convert_branch7_branch8(self):
+        branch = self.make_branch('branch', format='1.9')
+        target = bzrdir.format_registry.make_bzrdir('1.9')
+        target.set_branch_format(_mod_branch.BzrBranchFormat8())
+        converter = branch.bzrdir._format.get_converter(target)
+        converter.convert(branch.bzrdir, progress.DummyProgress())
+        branch = _mod_branch.Branch.open(self.get_url('branch'))
+        self.assertIs(branch.__class__, _mod_branch.BzrBranch8)
+        self.assertEqual({}, branch._get_all_reference_info())
+
     def test_convert_knit_dirstate_empty(self):
         # test that asking for an upgrade from knit to dirstate works.
         tree = self.make_branch_and_tree('tree', format='knit')
