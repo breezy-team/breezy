@@ -50,6 +50,7 @@ from bzrlib.plugins.git.inventory import (
     )
 from bzrlib.plugins.git.mapping import (
     default_mapping,
+    foreign_git,
     mapping_registry,
     )
 from bzrlib.plugins.git.versionedfiles import (
@@ -75,6 +76,7 @@ class GitRepository(ForeignRepository):
 
     _serializer = None
     _commit_builder_class = GitCommitBuilder
+    vcs = foreign_git
 
     def __init__(self, gitdir, lockfiles):
         ForeignRepository.__init__(self, GitRepositoryFormat(), gitdir, 
