@@ -145,7 +145,6 @@ class LocalGitRepository(GitRepository):
 
     def get_parent_map(self, revids):
         parent_map = {}
-        mutter("get_parent_map(%r)", revids)
         for revision_id in revids:
             assert isinstance(revision_id, str)
             if revision_id == revision.NULL_REVISION:
