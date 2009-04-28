@@ -1207,6 +1207,9 @@ class TestBzrDir(TestCaseWithBzrDir):
             return
         self.assertNotEqual(repo.bzrdir.root_transport.base,
             made_repo.bzrdir.root_transport.base)
+        # New repositories are write locked.
+        self.assertTrue(made_repo.is_write_locked())
+        made_repo.unlock()
 
     def test_format_initialize_on_transport_ex_force_new_repo_False(self):
         t = self.get_transport('repo')
@@ -1239,6 +1242,9 @@ class TestBzrDir(TestCaseWithBzrDir):
             # uninitialisable format
             return
         self.assertLength(1, repo._fallback_repositories)
+        # New repositories are write locked.
+        self.assertTrue(repo.is_write_locked())
+        repo.unlock()
 
     def test_format_initialize_on_transport_ex_repo_fmt_name_None(self):
         t = self.get_transport('dir')
@@ -1259,6 +1265,9 @@ class TestBzrDir(TestCaseWithBzrDir):
             # must stay with the all-in-one-format.
             repo_name = self.bzrdir_format.network_name()
         self.assertEqual(repo_name, repo._format.network_name())
+        # New repositories are write locked.
+        self.assertTrue(repo.is_write_locked())
+        repo.unlock()
 
     def assertInitializeEx(self, t, need_meta=False, **kwargs):
         """Execute initialize_on_transport_ex and check it succeeded correctly.
