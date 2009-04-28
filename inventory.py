@@ -62,6 +62,16 @@ class GitInventoryFile(GitInventoryEntry):
     def text_size(self):
         return len(self.object.data)
 
+    def __repr__(self):
+        return ("%s(%r, %r, parent_id=%r, sha1=%r, len=%s, revision=%s)"
+                % (self.__class__.__name__,
+                   self.file_id,
+                   self.name,
+                   self.parent_id,
+                   self.text_sha1,
+                   self.text_size,
+                   self.revision))
+
     def kind_character(self):
         """See InventoryEntry.kind_character."""
         return ''
@@ -153,7 +163,7 @@ class GitInventory(inventory.Inventory):
         super(GitInventory, self).__init__(revision_id=revision_id)
         self.store = store
         self.mapping = mapping
-        self.root = GitInventoryDirectory(self, None, tree_id, "", "", False)
+        self.root = GitInventoryDirectory(self, None, tree_id, u"", u"", False)
 
     def _get_ie(self, path):
         parts = path.split("/")
