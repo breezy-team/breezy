@@ -133,6 +133,9 @@ class BzrGitMappingv1(BzrGitMapping):
     revid_prefix = 'git-v1'
     experimental = False
 
+    def __str__(self):
+        return self.revid_prefix
+
 
 class BzrGitMappingExperimental(BzrGitMappingv1):
     revid_prefix = 'git-experimental'
@@ -159,7 +162,7 @@ mapping_registry.register_lazy('git-experimental', "bzrlib.plugins.git.mapping",
 
 
 class ForeignGit(ForeignVcs):
-    """Foreign Git."""
+    """The Git Stupid Content Tracker"""
 
     def __init__(self):
         super(ForeignGit, self).__init__(mapping_registry)
