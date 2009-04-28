@@ -203,9 +203,9 @@
      inkscape:pageshadow="2"
      inkscape:zoom="1"
      inkscape:cx="537.37511"
-     inkscape:cy="264.99206"
+     inkscape:cy="384.99206"
      inkscape:document-units="px"
-     inkscape:current-layer="g13619"
+     inkscape:current-layer="g3366"
      width="1052.3622px"
      height="744.09449px"
      inkscape:showpageshadow="false"
@@ -1088,17 +1088,17 @@
            xml:space="preserve"
            style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
            x="779.21552"
-           y="319.83685"
+           y="317.83685"
            id="text4282"
            sodipodi:linespacing="100%"><tspan
              sodipodi:role="line"
              x="779.21552"
-             y="319.83685"
-             id="tspan2728">Определить разрешенные</tspan><tspan
+             y="317.83685"
+             id="tspan3055">Автоопределение решенных</tspan><tspan
              sodipodi:role="line"
              x="779.21552"
-             y="331.83685"
-             id="tspan3055">конфликты</tspan></text>
+             y="329.83685"
+             id="tspan2692">конфликтов</tspan></text>
       </g>
       <g
          transform="translate(1e-4,3.3643062)"
@@ -1124,7 +1124,7 @@
              id="tspan4294"
              sodipodi:role="line"
              x="778.41278"
-             y="360.91705">Разрешить конфликт</tspan></text>
+             y="360.91705">Снять пометку о конфликте</tspan></text>
       </g>
     </g>
     <g
@@ -1597,7 +1597,7 @@
            id="tspan12414"
            y="449.21167"
            x="317.27643"
-           sodipodi:role="line">Связанные ветки:</tspan><tspan
+           sodipodi:role="line">Родственные ветки:</tspan><tspan
            id="tspan12416"
            y="467.21167"
            x="317.27643"
