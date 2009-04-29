@@ -58,6 +58,9 @@ Bug Fixes
 * Non-recursive ``bzr ls`` now works properly when a path is specified.
   (Jelmer Vernooij, #357863)
 
+* ssh usernames (defined in ~/.ssh/config) are honoured for bzr+ssh connections.
+  (Vincent Ladeuil, #367726)
+
 Documentation
 *************
 
