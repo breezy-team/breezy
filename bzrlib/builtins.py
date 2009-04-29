@@ -5594,6 +5594,53 @@ class cmd_clean_tree(Command):
                    dry_run=dry_run, no_prompt=force)
 
 
+class cmd_reference(Command):
+    """list, view and set branch locations for nested trees.
+
+    If no arguments are provided, lists the branch locations for nested trees.
+    If one argument is provided, display the branch location for that tree.
+    If two arguments are provided, set the branch location for that tree.
+    """
+
+    hidden = True
+
+    takes_args = ['path?', 'location?']
+
+    def run(self, path=None, location=None):
+        branchdir = '.'
+        if path is not None:
+            branchdir = path
+        tree, branch, relpath =(
+            bzrdir.BzrDir.open_containing_tree_or_branch(branchdir))
+        if path is not None:
+            path = relpath
+        if tree is None:
+            tree = branch.basis_tree()
+        if path is None:
+            info = branch._get_all_reference_info().iteritems()
+            self._display_reference_info(tree, branch, info)
+        else:
+            file_id = tree.path2id(path)
+            if file_id is None:
+                raise errors.NotVersionedError(path)
+            if location is None:
+                info = [(file_id, branch.get_reference_info(file_id))]
+                self._display_reference_info(tree, branch, info)
+            else:
+                branch.set_reference_info(file_id, path, location)
+
+    def _display_reference_info(self, tree, branch, info):
+        ref_list = []
+        for file_id, (path, location) in info:
+            try:
+                path = tree.id2path(file_id)
+            except errors.NoSuchId:
+                pass
+            ref_list.append((path, location))
+        for path, location in sorted(ref_list):
+            self.outf.write('%s %s\n' % (path, location))
+
+
 # these get imported and then picked up by the scan for cmd_*
 # TODO: Some more consistent way to split command definitions across files;
 # we do need to load at least some information about them to know of
