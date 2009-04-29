@@ -22,8 +22,6 @@ See bzr help eol for details.
 
 import re, sys
 
-from bzrlib import filters
-
 
 # Real Linux/Unix/OSX newline - \n without \r before it
 _LINUX_NL_RE = re.compile(r'(?<!\r)\n')
@@ -47,27 +45,26 @@ def _to_crlf_converter(chunks, context=None):
         return [_LINUX_NL_RE.sub('\r\n', content)]
 
 
-# Define and register the EOL filter stacks
-if sys.platform == 'win32':
-    _native_output = _to_crlf_converter
-else:
-    _native_output = _to_lf_converter
-_eol_filter_stack_map = {
-    'exact': [],
-    'native': [filters.ContentFilter(_to_lf_converter, _native_output)],
-    'lf':     [filters.ContentFilter(_to_lf_converter, _to_lf_converter)],
-    'crlf':   [filters.ContentFilter(_to_lf_converter, _to_crlf_converter)],
-    'native-with-crlf-in-repo':
-        [filters.ContentFilter(_to_crlf_converter, _native_output)],
-    'lf-with-crlf-in-repo':
-        [filters.ContentFilter(_to_crlf_converter, _to_lf_converter)],
-    'crlf-with-crlf-in-repo':
-        [filters.ContentFilter(_to_crlf_converter, _to_crlf_converter)],
-    }
-
-
-def _eol_filter_stack_map_lookup(key):
-    return _eol_filter_stack_map.get(key)
-
-
-filters.register_filter_stack_map('eol', _eol_filter_stack_map_lookup)
+# Register the eol content filter.
+def register_eol_content_filter():
+    from bzrlib.filters import ContentFilter, register_filter_stack_map
+ 
+    if sys.platform == 'win32':
+        _native_output = _to_crlf_converter
+    else:
+        _native_output = _to_lf_converter
+    _eol_filter_stack_map = {
+        'exact': [],
+        'native': [ContentFilter(_to_lf_converter, _native_output)],
+        'lf':     [ContentFilter(_to_lf_converter, _to_lf_converter)],
+        'crlf':   [ContentFilter(_to_lf_converter, _to_crlf_converter)],
+        'native-with-crlf-in-repo':
+            [ContentFilter(_to_crlf_converter, _native_output)],
+        'lf-with-crlf-in-repo':
+            [ContentFilter(_to_crlf_converter, _to_lf_converter)],
+        'crlf-with-crlf-in-repo':
+            [ContentFilter(_to_crlf_converter, _to_crlf_converter)],
+        }
+    def eol_lookup(key):
+        return _eol_filter_stack_map.get(key)
+    register_filter_stack_map('eol', eol_lookup)

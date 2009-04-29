@@ -419,7 +419,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             return self.branch.repository.revision_tree(revision_id)
         except (errors.RevisionNotPresent, errors.NoSuchRevision):
             # the basis tree *may* be a ghost or a low level error may have
-            # occured. If the revision is present, its a problem, if its not
+            # occurred. If the revision is present, its a problem, if its not
             # its a ghost.
             if self.branch.repository.has_revision(revision_id):
                 raise
@@ -561,7 +561,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
         revision
             If not None, the cloned tree will have its last revision set to
-            revision, and and difference between the source trees last revision
+            revision, and difference between the source trees last revision
             and this one merged in.
         """
         # assumes the target bzr dir format is compatible.
@@ -1967,7 +1967,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                         tree_delta.unversioned.extend((unknown_file,))
                 raise errors.BzrRemoveChangedFilesError(tree_delta)
 
-        # Build inv_delta and delete files where applicaple,
+        # Build inv_delta and delete files where applicable,
         # do this before any modifications to inventory.
         for f in files:
             fid = self.path2id(f)
@@ -2224,7 +2224,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             parent_trees = [(self.branch.last_revision(), to_tree)]
             merges = self.get_parent_ids()[1:]
             # Ideally we ask the tree for the trees here, that way the working
-            # tree can decide whether to give us teh entire tree or give us a
+            # tree can decide whether to give us the entire tree or give us a
             # lazy initialised tree. dirstate for instance will have the trees
             # in ram already, whereas a last-revision + basis-inventory tree
             # will not, but also does not need them when setting parents.

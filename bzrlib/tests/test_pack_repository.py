@@ -80,7 +80,14 @@ class TestPackRepository(TestCaseWithTransport):
         """Packs reuse deltas."""
         format = self.get_format()
         repo = self.make_repository('.', format=format)
-        self.assertEqual(True, repo._format._fetch_uses_deltas)
+        if isinstance(format.repository_format, RepositoryFormatCHK1):
+            # TODO: This is currently a workaround. CHK format repositories
+            #       ignore the 'deltas' flag, but during conversions, we can't
+            #       do unordered delta fetches. Remove this clause once we
+            #       improve the inter-format fetching.
+            self.assertEqual(False, repo._format._fetch_uses_deltas)
+        else:
+            self.assertEqual(True, repo._format._fetch_uses_deltas)
 
     def test_disk_layout(self):
         format = self.get_format()
