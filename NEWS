@@ -97,16 +97,23 @@ Internals
   refactoring to the core of clone allowing less round trips on new
   branches. (Robert Collins)
 
-bzr 1.14rc2
+bzr 1.14
 ###########
 :Codename: brisbane-core
 :1.14rc1: 2009-04-06
 :1.14rc2: 2009-04-19
+:1.14: 2009-04-28
 
 New formats 1.14 and 1.14-rich-root supporting End-Of-Line (EOL) conversions,
 keyword templating (via the bzr-keywords plugin) and generic content filtering.
 End-of-line conversion is now supported for formats supporting content
 filtering.
+
+Changes from 1.14rc2 to 1.14final
+*********************************
+
+* Fix a bug in the pure-python ``GroupCompress`` code when handling copies
+  longer than 64KiB. (John Arbash Meinel, #364900)
 
 Changes from 1.14rc1 to 1.14rc2
 *******************************
