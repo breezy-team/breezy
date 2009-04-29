@@ -25,21 +25,6 @@ from bzrlib.commands import (
     )
 
 
-class FakeControlFiles(object):
-    """Dummy implementation of ControlFiles.
-    
-    This is required as some code relies on controlfiles being 
-    available."""
-    def get_utf8(self, name):
-        raise errors.NoSuchFile(name)
-
-    def get(self, name):
-        raise errors.NoSuchFile(name)
-
-    def break_lock(self):
-        pass
-
-
 class cmd_foreign_mapping_upgrade(Command):
     """Upgrade revisions mapped from a foreign version control system.
     
