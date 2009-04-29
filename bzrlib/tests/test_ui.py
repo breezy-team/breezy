@@ -221,6 +221,11 @@ class UITests(TestCase):
         factory = TextUIFactory(None, None, None)
         self.assert_get_bool_acceptance_of_user_input(factory)
 
+    def test_text_factory_prompt(self):
+        # see <https://launchpad.net/bugs/365891>
+        factory = TextUIFactory(None, StringIO(), StringIO())
+        factory.prompt('foo %2e')
+
     def test_text_factory_prompts_and_clears(self):
         # a get_boolean call should clear the pb before prompting
         out = _TTYStringIO()

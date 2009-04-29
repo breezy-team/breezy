@@ -1163,6 +1163,139 @@ class TestBzrDir(TestCaseWithBzrDir):
                          opened_dir._format)
         self.failUnless(isinstance(opened_dir, bzrdir.BzrDir))
 
+    def test_format_initialize_on_transport_ex(self):
+        t = self.get_transport('dir')
+        self.assertInitializeEx(t)
+
+    def test_format_initialize_on_transport_ex_use_existing_dir_True(self):
+        t = self.get_transport('dir')
+        t.ensure_base()
+        self.assertInitializeEx(t, use_existing_dir=True)
+
+    def test_format_initialize_on_transport_ex_use_existing_dir_False(self):
+        if not self.bzrdir_format.is_supported():
+            # Not initializable - not a failure either.
+            return
+        t = self.get_transport('dir')
+        t.ensure_base()
+        self.assertRaises(errors.FileExists,
+            self.bzrdir_format.initialize_on_transport_ex, t,
+            use_existing_dir=False)
+
+    def test_format_initialize_on_transport_ex_create_prefix_True(self):
+        t = self.get_transport('missing/dir')
+        self.assertInitializeEx(t, create_prefix=True)
+
+    def test_format_initialize_on_transport_ex_create_prefix_False(self):
+        if not self.bzrdir_format.is_supported():
+            # Not initializable - not a failure either.
+            return
+        t = self.get_transport('missing/dir')
+        self.assertRaises(errors.NoSuchFile, self.assertInitializeEx, t,
+            create_prefix=False)
+
+    def test_format_initialize_on_transport_ex_force_new_repo_True(self):
+        t = self.get_transport('repo')
+        repo_fmt = bzrdir.format_registry.make_bzrdir('1.9')
+        repo_name = repo_fmt.repository_format.network_name()
+        repo = repo_fmt.initialize_on_transport_ex(t,
+            repo_format_name=repo_name, shared_repo=True)[0]
+        made_repo, control = self.assertInitializeEx(t.clone('branch'),
+            force_new_repo=True, repo_format_name=repo_name)
+        if control is None:
+            # uninitialisable format
+            return
+        self.assertNotEqual(repo.bzrdir.root_transport.base,
+            made_repo.bzrdir.root_transport.base)
+
+    def test_format_initialize_on_transport_ex_force_new_repo_False(self):
+        t = self.get_transport('repo')
+        repo_fmt = bzrdir.format_registry.make_bzrdir('1.9')
+        repo_name = repo_fmt.repository_format.network_name()
+        repo = repo_fmt.initialize_on_transport_ex(t,
+            repo_format_name=repo_name, shared_repo=True)[0]
+        made_repo, control = self.assertInitializeEx(t.clone('branch'),
+            force_new_repo=False, repo_format_name=repo_name)
+        if control is None:
+            # uninitialisable format
+            return
+        if not isinstance(control._format, (bzrdir.BzrDirFormat5,
+            bzrdir.BzrDirFormat6,)):
+            self.assertEqual(repo.bzrdir.root_transport.base,
+                made_repo.bzrdir.root_transport.base)
+
+    def test_format_initialize_on_transport_ex_stacked_on(self):
+        # trunk is a stackable format.  Note that its in the same server area
+        # which is what launchpad does, but not sufficient to exercise the
+        # general case.
+        trunk = self.make_branch('trunk', format='1.9')
+        t = self.get_transport('stacked')
+        old_fmt = bzrdir.format_registry.make_bzrdir('pack-0.92')
+        repo_name = old_fmt.repository_format.network_name()
+        # Should end up with a 1.9 format (stackable)
+        repo, control = self.assertInitializeEx(t, need_meta=True,
+            repo_format_name=repo_name, stacked_on='../trunk', stack_on_pwd=t.base)
+        if control is None:
+            # uninitialisable format
+            return
+        self.assertLength(1, repo._fallback_repositories)
+
+    def test_format_initialize_on_transport_ex_repo_fmt_name_None(self):
+        t = self.get_transport('dir')
+        repo, control = self.assertInitializeEx(t)
+        self.assertEqual(None, repo)
+
+    def test_format_initialize_on_transport_ex_repo_fmt_name_followed(self):
+        t = self.get_transport('dir')
+        # 1.6 is likely to never be default
+        fmt = bzrdir.format_registry.make_bzrdir('1.6')
+        repo_name = fmt.repository_format.network_name()
+        repo, control = self.assertInitializeEx(t, repo_format_name=repo_name)
+        if control is None:
+            # uninitialisable format
+            return
+        if isinstance(self.bzrdir_format, (bzrdir.BzrDirFormat5,
+            bzrdir.BzrDirFormat6)):
+            # must stay with the all-in-one-format.
+            repo_name = self.bzrdir_format.network_name()
+        self.assertEqual(repo_name, repo._format.network_name())
+
+    def assertInitializeEx(self, t, need_meta=False, **kwargs):
+        """Execute initialize_on_transport_ex and check it succeeded correctly.
+
+        This involves checking that the disk objects were created, open with
+        the same format returned, and had the expected disk format.
+
+        :param t: The transport to initialize on.
+        :param **kwargs: Additional arguments to pass to
+            initialize_on_transport_ex.
+        :return: the resulting repo, control dir tuple.
+        """
+        if not self.bzrdir_format.is_supported():
+            # Not initializable - not a failure either.
+            return None, None
+        repo, control, require_stacking, repo_policy = \
+            self.bzrdir_format.initialize_on_transport_ex(t, **kwargs)
+        self.assertIsInstance(control, bzrdir.BzrDir)
+        opened = bzrdir.BzrDir.open(t.base)
+        expected_format = self.bzrdir_format
+        if isinstance(expected_format, bzrdir.RemoteBzrDirFormat):
+            # Current RemoteBzrDirFormat's do not reliably get network_name
+            # set, so we skip a number of tests for RemoteBzrDirFormat's.
+            self.assertIsInstance(control, RemoteBzrDir)
+        else:
+            if need_meta and isinstance(expected_format, (bzrdir.BzrDirFormat5,
+                bzrdir.BzrDirFormat6)):
+                # Pre-metadir formats change when we are making something that
+                # needs a metaformat, because clone is used for push.
+                expected_format = bzrdir.BzrDirMetaFormat1()
+            self.assertEqual(control._format.network_name(),
+                expected_format.network_name())
+            self.assertEqual(control._format.network_name(),
+                opened._format.network_name())
+        self.assertEqual(control.__class__, opened.__class__)
+        return repo, control
+
     def test_format_network_name(self):
         # All control formats must have a network name.
         dir = self.make_bzrdir('.')
@@ -1712,13 +1845,17 @@ class TestTransportConfig(TestCaseWithBzrDir):
     def test_get_config(self):
         my_dir = self.make_bzrdir('.')
         config = my_dir.get_config()
-        if config is None:
-            self.assertFalse(
-                isinstance(my_dir, (bzrdir.BzrDirMeta1, RemoteBzrDir)),
-                "%r should support configs" % my_dir)
-            raise TestNotApplicable(
-                'This BzrDir format does not support configs.')
-        config.set_default_stack_on('http://example.com')
+        try:
+            config.set_default_stack_on('http://example.com')
+        except errors.BzrError, e:
+            if 'Cannot set config' in str(e):
+                self.assertFalse(
+                    isinstance(my_dir, (bzrdir.BzrDirMeta1, RemoteBzrDir)),
+                    "%r should support configs" % my_dir)
+                raise TestNotApplicable(
+                    'This BzrDir format does not support configs.')
+            else:
+                raise
         self.assertEqual('http://example.com', config.get_default_stack_on())
         my_dir2 = bzrdir.BzrDir.open(self.get_url('.'))
         config2 = my_dir2.get_config()

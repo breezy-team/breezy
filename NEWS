@@ -25,14 +25,41 @@ New Features
   Be aware though that this is temporary, private (as indicated by the leading
   '_') and a first step to address the problem. (Vincent Ladeuil, #348459)
 
+* New command ``bzr dpush`` that can push changes to foreign 
+  branches (svn, git) without setting custom bzr-specific metadata.
+  (Jelmer Vernooij)
+
 Improvements
 ************
 
 Bug Fixes
 *********
 
+* Adding now works properly when path contains a symbolic link.
+  (Geoff Bache, #183831)
+
+* ``bzr send`` works to send emails again using MAPI.
+  (Neil Martinsen-Burrell, #346998)
+
+* Check for missing parent inventories in StreamSink.  This prevents
+  incomplete stacked branches being created by 1.13 bzr:// and
+  bzr+ssh:// clients (which have bug #354036).  Instead, the server now
+  causes those clients to send the missing records.  (Andrew Bennetts)
+
+* End-Of-Line content filters are now loaded correctly.
+  (Ian Clatworthy, Brian de Alwis, #355280)
+
+* Fix a bug in the pure-python ``GroupCompress`` code when handling copies
+  longer than 64KiB. (John Arbash Meinel, #364900)
+
+* Fix TypeError in running ``bzr break-lock`` on some URLs.
+  (Alexander Belchenko, Martin Pool, #365891)
+
 * Non-recursive ``bzr ls`` now works properly when a path is specified.
   (Jelmer Vernooij, #357863)
+
+* ssh usernames (defined in ~/.ssh/config) are honoured for bzr+ssh connections.
+  (Vincent Ladeuil, #367726)
 
 Documentation
 *************
@@ -40,12 +67,35 @@ Documentation
 API Changes
 ***********
 
-Testing
-*******
-
 Internals
 *********
 
+* ``bzrlib.branch.Branch.set_parent`` is now present on the base branch
+  class and will call ``_set_parent_location`` after doing unicode 
+  encoding. (Robert Collins)
+
+* ``bzrlib.remote.RemoteBranch._set_parent_location`` will use a new verb
+  ``Branch.set_parent_location`` removing further VFS operations.
+  (Robert Collins)
+
+* ``bzrlib.bzrdir.BzrDir._get_config`` now returns a ``TransportConfig``
+  or similar when the dir supports configuration settings. The base class
+  defaults to None. There is a matching new server verb
+  ``BzrDir.get-config_file`` to reduce roundtrips for getting BzrDir
+  configuration. (Robert Collins)
+
+* ``bzrlib.tests.ExtendedTestResult`` has new methods ``startTests``
+  called before the first test is started, ``done`` called after the last
+  test completes, and a new parameter ``strict``. (Robert Collins)
+
+* Fallback ``CredentialStore`` instances registered with ``fallback=True``
+  are now be able to provide credentials if obtaining credentials 
+  via ~/.bazaar/authentication.conf fails. (Jelmer Vernooij, 
+  Vincent Ladeuil, #321918)
+
+* New smart server verb ``BzrDir.initialize_ex`` which implements a
+  refactoring to the core of clone allowing less round trips on new
+  branches. (Robert Collins)
 
 bzr 1.14
 ###########
@@ -181,8 +231,14 @@ Improvements
 * ``bzr send`` is faster on repositories with deep histories.
   (Ian Clatworthy)
 
+* IPv6 literals are accepted in URLs.
+  (stlman, Martin Pool, Jelmer Vernooij, #165014)
+
 * Progress bars now show the rate of network activity for
   ``bzr+ssh://`` and ``bzr://`` connections.  (Andrew Bennetts)
+
+* Prompt for user names if they are not in the configuration. 
+  (Jelmer Vernooij, #256612)
 
 * Pushing to a stacked pack-format branch on a 1.12 or older smart server
   now takes many less round trips.  (Andrew Bennetts, Robert Collins,
@@ -490,13 +546,33 @@ bzr 1.13
 :1.13: 2009-03-14
 :1.13rc1: 2009-03-10
 :1.13.1: 2009-03-23
+:1.13.2: 2009-04-27
 
 GNU Changelog output can now be produced by ``bzr log --gnu-changelog``.  Debug
 flags can now be set in ``~/.bazaar/bazaar.conf``.  Lightweight checkouts and
 stacked branches should both be much faster over remote connections.  
 
-Changes From 1.13 to 1.13.1
-***************************
+Changes From 1.13.1 to 1.13.2
+*****************************
+
+A regression was found in the 1.13.1 release. When bzr 1.13.1 and earlier push
+a stacked branch they do not take care to push all the parent inventories for
+the transferred revisions. This means that a smart server serving that branch
+often cannot calculate inventory deltas for the branch (because smart server
+does not/cannot open fallback repositories). Prior to 1.13 the server did not
+have a verb to stream revisions out of a repository, so that's why this bug has
+appeared now.
+
+Bug Fixes
+*********
+
+* Fix for bug 354036 ErrorFromSmartServer - AbsentContentFactory object has no
+  attribute 'get_bytes_as' exception while pulling from Launchpad 
+  (Jean-Francois Roy, Andrew Bennetts, Robert Collins)
+
+Changes From 1.13final to 1.13.1
+********************************
+
 A couple regessions where found in the 1.13 release. The pyrex-generated C
 extensions are missing from the .tar.gz and .zip files.  Documentation on how
 to generate GNU ChangeLogs is wrong.
@@ -515,8 +591,8 @@ Bug Fixes
 
 * ``merge --force`` works again. (Robert Collins, #342105)
 
-Changes From RC1 to Final
-*************************
+Changes From 1.13rc1 to 1.13final
+*********************************
 
 * Fix "is not a stackable format" error when pushing a
   stackable-format branch with an unstackable-format repository to a
