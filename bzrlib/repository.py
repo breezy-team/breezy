@@ -1448,7 +1448,28 @@ class Repository(object):
         unstacked_inventories = self.inventories._index
         present_inventories = unstacked_inventories.get_parent_map(
             key[-1:] for key in parents)
-        parents.difference_update(present_inventories)
+        key_deps = self.revisions._index._key_dependencies
+        key_deps.add_keys(present_inventories)
+        parents = set(self.revisions._index.get_missing_parents())
+        # ok, now we have a list of missing inventories.  But these only matter
+        # if the inventories that reference them are missing some texts they
+        # appear to introduce.
+        mutter('parents: %r', parents)
+        referrers = key_deps.get_referrers()
+        mutter('referrers: %r', referrers)
+        file_ids = self.fileids_altered_by_revision_ids(r[0] for r in referrers)
+        mutter('file_ids altered by: %r', file_ids)
+        missing_texts = set()
+        for file_id, version_ids in file_ids.iteritems():
+            missing_texts.update(
+                (file_id, version_id) for version_id in version_ids)
+        present_texts = self.texts.get_parent_map(missing_texts)
+        missing_texts.difference_update(present_texts)
+        mutter('missing texts: %r', file_ids)
+        if not missing_texts:
+            # no texts are missing, so all revisions and their deltas are
+            # reconstructable.
+            return set()
         missing_keys = set(('inventories', rev_id) for (rev_id,) in parents)
         return missing_keys
 

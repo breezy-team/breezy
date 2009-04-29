@@ -2719,6 +2719,12 @@ class _KeyRefs(object):
         for key in keys:
             self.add_key(key)
 
+    def get_referrers(self):
+        result = set()
+        for referrers in self.refs.itervalues():
+            result.update(referrers)
+        return result
+
 
 class _KnitGraphIndex(object):
     """A KnitVersionedFiles index layered on GraphIndex."""
