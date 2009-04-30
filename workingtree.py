@@ -32,6 +32,7 @@ import stat
 
 from bzrlib import (
     errors,
+    ignores,
     inventory,
     lockable_files,
     lockdir,
@@ -49,6 +50,9 @@ from bzrlib.decorators import (
 from bzrlib.plugins.git.inventory import (
     GitIndexInventory,
     )
+
+
+IGNORE_FILENAME = ".gitignore"
 
 
 class GitWorkingTree(workingtree.WorkingTree):
@@ -128,6 +132,23 @@ class GitWorkingTree(workingtree.WorkingTree):
         self._rewrite_index()           
         self.index.write()
         self._inventory_is_modified = False
+
+    def get_ignore_list(self):
+        ignoreset = getattr(self, '_ignoreset', None)
+        if ignoreset is not None:
+            return ignoreset
+
+        ignore_globs = set()
+        ignore_globs.update(ignores.get_runtime_ignores())
+        ignore_globs.update(ignores.get_user_ignores())
+        if self.has_filename(IGNORE_FILENAME):
+            f = self.get_file_byname(IGNORE_FILENAME)
+            try:
+                ignore_globs.update(ignores.parse_ignore_file(f))
+            finally:
+                f.close()
+        self._ignoreset = ignore_globs
+        return ignore_globs
 
     def _reset_data(self):
         self._inventory_is_modified = False
