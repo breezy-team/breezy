@@ -53,11 +53,17 @@ bzr 1.14
 :1.14rc1: 2009-04-06
 :1.14rc2: 2009-04-19
 :1.14: 2009-04-28
+:1.14.1: 2009-05-01
 
 New formats 1.14 and 1.14-rich-root supporting End-Of-Line (EOL) conversions,
 keyword templating (via the bzr-keywords plugin) and generic content filtering.
 End-of-line conversion is now supported for formats supporting content
 filtering.
+
+Changes from 1.14final to 1.14.1
+********************************
+
+* Change api_minimum_version back to api_minimum_version = (1, 13, 0)
 
 Changes from 1.14rc2 to 1.14final
 *********************************
