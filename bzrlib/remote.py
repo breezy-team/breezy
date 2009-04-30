@@ -30,6 +30,7 @@ from bzrlib import (
     pack,
     repository,
     revision,
+    revision as _mod_revision,
     symbol_versioning,
     urlutils,
 )
@@ -392,9 +393,8 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         return self._real_bzrdir.clone(url, revision_id=revision_id,
             force_new_repo=force_new_repo, preserve_stacking=preserve_stacking)
 
-    def get_config(self):
-        self._ensure_real()
-        return self._real_bzrdir.get_config()
+    def _get_config(self):
+        return RemoteBzrDirConfig(self)
 
 
 class RemoteRepositoryFormat(repository.RepositoryFormat):
@@ -492,6 +492,8 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
         # 1) get the network name to use.
         if self._custom_format:
             network_name = self._custom_format.network_name()
+        elif self._network_name:
+            network_name = self._network_name
         else:
             # Select the current bzrlib default and ask for that.
             reference_bzrdir_format = bzrdir.format_registry.get('default')()
@@ -603,6 +605,8 @@ class RemoteRepository(_RpcHelper):
         self._lock_token = None
         self._lock_count = 0
         self._leave_lock = False
+        # Cache of revision parents; misses are cached during read locks, and
+        # write locks when no _real_repository has been set.
         self._unstacked_provider = graph.CachingParentsProvider(
             get_parent_map=self._get_parent_map_rpc)
         self._unstacked_provider.disable_cache()
@@ -666,6 +670,10 @@ class RemoteRepository(_RpcHelper):
         self._ensure_real()
         return self._real_repository.suspend_write_group()
 
+    def get_missing_parent_inventories(self):
+        self._ensure_real()
+        return self._real_repository.get_missing_parent_inventories()
+
     def _ensure_real(self):
         """Ensure that there is a _real_repository set.
 
@@ -680,6 +688,7 @@ class RemoteRepository(_RpcHelper):
         invocation. If in doubt chat to the bzr network team.
         """
         if self._real_repository is None:
+            self._unstacked_provider.missing_keys.clear()
             self.bzrdir._ensure_real()
             self._set_real_repository(
                 self.bzrdir._real_bzrdir.open_repository())
@@ -745,30 +754,24 @@ class RemoteRepository(_RpcHelper):
         """Return a source for streaming from this repository."""
         return RemoteStreamSource(self, to_format)
 
+    @needs_read_lock
     def has_revision(self, revision_id):
-        """See Repository.has_revision()."""
-        if revision_id == NULL_REVISION:
-            # The null revision is always present.
-            return True
-        path = self.bzrdir._path_for_remote_call(self._client)
-        response = self._call('Repository.has_revision', path, revision_id)
-        if response[0] not in ('yes', 'no'):
-            raise errors.UnexpectedSmartServerResponse(response)
-        if response[0] == 'yes':
-            return True
-        for fallback_repo in self._fallback_repositories:
-            if fallback_repo.has_revision(revision_id):
-                return True
-        return False
+        """True if this repository has a copy of the revision."""
+        # Copy of bzrlib.repository.Repository.has_revision
+        return revision_id in self.has_revisions((revision_id,))
 
+    @needs_read_lock
     def has_revisions(self, revision_ids):
-        """See Repository.has_revisions()."""
-        # FIXME: This does many roundtrips, particularly when there are
-        # fallback repositories.  -- mbp 20080905
-        result = set()
-        for revision_id in revision_ids:
-            if self.has_revision(revision_id):
-                result.add(revision_id)
+        """Probe to find out the presence of multiple revisions.
+
+        :param revision_ids: An iterable of revision_ids.
+        :return: A set of the revision_ids that were present.
+        """
+        # Copy of bzrlib.repository.Repository.has_revisions
+        parent_map = self.get_parent_map(revision_ids)
+        result = set(parent_map)
+        if _mod_revision.NULL_REVISION in revision_ids:
+            result.add(_mod_revision.NULL_REVISION)
         return result
 
     def has_same_location(self, other):
@@ -892,7 +895,8 @@ class RemoteRepository(_RpcHelper):
                 self._leave_lock = False
             self._lock_mode = 'w'
             self._lock_count = 1
-            self._unstacked_provider.enable_cache(cache_misses=False)
+            cache_misses = self._real_repository is None
+            self._unstacked_provider.enable_cache(cache_misses=cache_misses)
         elif self._lock_mode == 'r':
             raise errors.ReadOnlyError(self)
         else:
@@ -1605,6 +1609,7 @@ class RemoteStreamSink(repository.StreamSink):
 
     def insert_stream(self, stream, src_format, resume_tokens):
         target = self.target_repo
+        target._unstacked_provider.missing_keys.clear()
         if target._lock_token:
             verb = 'Repository.insert_stream_locked'
             extra_args = (target._lock_token or '',)
@@ -1962,7 +1967,7 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         except (errors.NotStacked, errors.UnstackableBranchFormat,
             errors.UnstackableRepositoryFormat), e:
             return
-        self._activate_fallback_location(fallback_url)
+        self._activate_fallback_location(fallback_url, None)
 
     def _get_config(self):
         return RemoteBranchConfig(self)
@@ -2301,17 +2306,26 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         self._ensure_real()
         return self._real_branch._get_parent_location()
 
-    def set_parent(self, url):
-        self._ensure_real()
-        return self._real_branch.set_parent(url)
-
     def _set_parent_location(self, url):
-        # Used by tests, to poke bad urls into branch configurations
-        if url is None:
-            self.set_parent(url)
-        else:
-            self._ensure_real()
-            return self._real_branch._set_parent_location(url)
+        medium = self._client._medium
+        if medium._is_remote_before((1, 15)):
+            return self._vfs_set_parent_location(url)
+        try:
+            call_url = url or ''
+            if type(call_url) is not str:
+                raise AssertionError('url must be a str or None (%s)' % url)
+            response = self._call('Branch.set_parent_location',
+                self._remote_path(), self._lock_token, self._repo_lock_token,
+                call_url)
+        except errors.UnknownSmartMethod:
+            medium._remember_remote_is_before((1, 15))
+            return self._vfs_set_parent_location(url)
+        if response != ():
+            raise errors.UnexpectedSmartServerResponse(response)
+
+    def _vfs_set_parent_location(self, url):
+        self._ensure_real()
+        return self._real_branch._set_parent_location(url)
 
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
@@ -2385,16 +2399,13 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         return self._real_branch.set_push_location(location)
 
 
-class RemoteBranchConfig(object):
-    """A Config that reads from a smart branch and writes via smart methods.
+class RemoteConfig(object):
+    """A Config that reads and writes from smart verbs.
 
     It is a low-level object that considers config data to be name/value pairs
     that may be associated with a section. Assigning meaning to the these
     values is done at higher levels like bzrlib.config.TreeConfig.
     """
-
-    def __init__(self, branch):
-        self._branch = branch
 
     def get_option(self, name, section=None, default=None):
         """Return the value associated with a named option.
@@ -2404,24 +2415,37 @@ class RemoteBranchConfig(object):
         :param default: The value to return if the value is not set
         :return: The value or default value
         """
-        configobj = self._get_configobj()
-        if section is None:
-            section_obj = configobj
-        else:
-            try:
-                section_obj = configobj[section]
-            except KeyError:
-                return default
-        return section_obj.get(name, default)
+        try:
+            configobj = self._get_configobj()
+            if section is None:
+                section_obj = configobj
+            else:
+                try:
+                    section_obj = configobj[section]
+                except KeyError:
+                    return default
+            return section_obj.get(name, default)
+        except errors.UnknownSmartMethod:
+            return self._vfs_get_option(name, section, default)
+
+    def _response_to_configobj(self, response):
+        if len(response[0]) and response[0][0] != 'ok':
+            raise errors.UnexpectedSmartServerResponse(response)
+        lines = response[1].read_body_bytes().splitlines()
+        return config.ConfigObj(lines, encoding='utf-8')
+
+
+class RemoteBranchConfig(RemoteConfig):
+    """A RemoteConfig for Branches."""
+
+    def __init__(self, branch):
+        self._branch = branch
 
     def _get_configobj(self):
         path = self._branch._remote_path()
         response = self._branch._client.call_expecting_body(
             'Branch.get_config_file', path)
-        if response[0][0] != 'ok':
-            raise UnexpectedSmartServerResponse(response)
-        lines = response[1].read_body_bytes().splitlines()
-        return config.ConfigObj(lines, encoding='utf-8')
+        return self._response_to_configobj(response)
 
     def set_option(self, value, name, section=None):
         """Set the value associated with a named option.
@@ -2444,10 +2468,49 @@ class RemoteBranchConfig(object):
         if response != ():
             raise errors.UnexpectedSmartServerResponse(response)
 
-    def _vfs_set_option(self, value, name, section=None):
+    def _real_object(self):
         self._branch._ensure_real()
-        return self._branch._real_branch._get_config().set_option(
+        return self._branch._real_branch
+
+    def _vfs_set_option(self, value, name, section=None):
+        return self._real_object()._get_config().set_option(
             value, name, section)
+
+
+class RemoteBzrDirConfig(RemoteConfig):
+    """A RemoteConfig for BzrDirs."""
+
+    def __init__(self, bzrdir):
+        self._bzrdir = bzrdir
+
+    def _get_configobj(self):
+        medium = self._bzrdir._client._medium
+        verb = 'BzrDir.get_config_file'
+        if medium._is_remote_before((1, 15)):
+            raise errors.UnknownSmartMethod(verb)
+        path = self._bzrdir._path_for_remote_call(self._bzrdir._client)
+        response = self._bzrdir._call_expecting_body(
+            verb, path)
+        return self._response_to_configobj(response)
+
+    def _vfs_get_option(self, name, section, default):
+        return self._real_object()._get_config().get_option(
+            name, section, default)
+
+    def set_option(self, value, name, section=None):
+        """Set the value associated with a named option.
+
+        :param value: The value to set
+        :param name: The name of the value to set
+        :param section: The section the option is in (if any)
+        """
+        return self._real_object()._get_config().set_option(
+            value, name, section)
+
+    def _real_object(self):
+        self._bzrdir._ensure_real()
+        return self._bzrdir._real_bzrdir
+
 
 
 def _extract_tar(tar, to_dir):

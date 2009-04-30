@@ -302,6 +302,7 @@ class Reconfigure(object):
                 local_branch.set_last_revision_info(*last_revision_info)
             if self._destroy_reference:
                 self.referenced_branch.tags.merge_to(local_branch.tags)
+                self.referenced_branch.update_references(local_branch)
         else:
             local_branch = self.local_branch
         if self._create_reference:
