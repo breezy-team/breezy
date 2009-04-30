@@ -271,6 +271,9 @@ class RemoteGitBranch(GitBranch):
         self._ref = heads[name]
         super(RemoteGitBranch, self).__init__(bzrdir, repository, name, self._ref, lockfiles)
 
+    def revision_history(self):
+        raise GitSmartRemoteNotSupported()
+
     def last_revision(self):
         return self.mapping.revision_id_foreign_to_bzr(self._ref)
 
