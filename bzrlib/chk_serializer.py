@@ -44,14 +44,11 @@ class RIORevisionSerializer1(object):
         decode_utf8 = cache_utf8.decode
         w = rio.RioWriter(f)
         s = rio.Stanza()
-        revision_id = rev.revision_id
-        if isinstance(revision_id, str):
-            revision_id = decode_utf8(revision_id)
+        revision_id = decode_utf8(rev.revision_id)
         s.add("revision-id", revision_id)
         s.add("timestamp", "%.3f" % rev.timestamp)
-        if rev.parent_ids:
-            s.add("parent-ids", 
-                " ".join([decode_utf8(p) for p in rev.parent_ids]))
+        for p in rev.parent_ids:
+            s.add("parent-id", decode_utf8(p))
         s.add("inventory-sha1", rev.inventory_sha1)
         s.add("committer", rev.committer)
         if rev.timezone is not None:
@@ -59,9 +56,7 @@ class RIORevisionSerializer1(object):
         if rev.properties:
             revprops_stanza = rio.Stanza()
             for k, v in rev.properties.iteritems():
-                if isinstance(v, str):
-                    v = decode_utf8(v)
-                revprops_stanza.add(decode_utf8(k), v)
+                revprops_stanza.add(decode_utf8(k), decode_utf8(v))
             s.add("properties", revprops_stanza.to_unicode())
         s.add("message", rev.message)
         w.write_stanza(s)
@@ -74,11 +69,12 @@ class RIORevisionSerializer1(object):
     def read_revision(self, f):
         s = rio.read_stanza(f)
         rev = _mod_revision.Revision(None)
+        rev.parent_ids = []
         for (field, value) in s.iter_pairs():
             if field == "revision-id":
                 rev.revision_id = cache_utf8.encode(value)
-            elif field == "parent-ids":
-                rev.parent_ids = [cache_utf8.encode(p) for p in value.split(" ")]
+            elif field == "parent-id":
+                rev.parent_ids.append(cache_utf8.encode(value))
             elif field == "committer":
                 rev.committer = value
             elif field == "inventory-sha1":
@@ -103,7 +99,7 @@ class RIORevisionSerializer1(object):
         return rev
 
 
-class CHKSerializerSubtree(RIORevisionSerializer1,xml6.Serializer_v6):
+class CHKSerializerSubtree(RIORevisionSerializer1, xml6.Serializer_v6):
     """A CHKInventory based serializer that supports tree references"""
 
     supported_kinds = set(['file', 'directory', 'symlink', 'tree-reference'])
@@ -131,7 +127,7 @@ class CHKSerializerSubtree(RIORevisionSerializer1,xml6.Serializer_v6):
         self.search_key_name = search_key_name
 
 
-class CHKSerializer(RIORevisionSerializer1,xml5.Serializer_v5):
+class CHKSerializer(RIORevisionSerializer1, xml5.Serializer_v5):
     """A CHKInventory based serializer with 'plain' behaviour."""
 
     format_num = '9'
