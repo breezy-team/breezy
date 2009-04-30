@@ -164,10 +164,14 @@ class SqliteGitShaMap(GitShaMap):
         trees = []
         blobs = []
         for sha, type, type_data in entries:
+            assert isinstance(type_data[0], str)
+            assert isinstance(type_data[1], str)
+            entry = (sha.decode("utf-8"), type_data[0].decode("utf-8"), 
+                     type_data[1].decode("utf-8"))
             if type == "tree":
-                trees.append((sha, type_data[0], type_data[1]))
+                trees.append(entry)
             elif type == "blob":
-                blobs.append((sha, type_data[0], type_data[1]))
+                blobs.append(entry)
             else:
                 raise AssertionError
         if trees:
