@@ -2,7 +2,7 @@
 
 from distutils.core import setup
 
-version = (0, 2, 0)
+version = (0, 2, 1)
 version_string = ".".join([str(x) for x in version])
 
 setup(name='bzr-git',
