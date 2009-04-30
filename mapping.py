@@ -94,7 +94,6 @@ class BzrGitMapping(foreign.VcsMapping):
     def generate_file_id(self, path):
         # Git paths are just bytestrings
         # We must just hope they are valid UTF-8..
-        assert isinstance(path, str)
         if path == "":
             return ROOT_ID
         return escape_file_id(path)
