@@ -25,6 +25,7 @@ from bzrlib import (
     errors,
     inventory,
     osutils,
+    ui,
     urlutils,
     )
 
@@ -213,41 +214,50 @@ class GitInventory(inventory.Inventory):
             raise errors.NoSuchId(None, file_id)
 
 
-def GitIndexInventory(basis_inventory, mapping, index):
-    inv = inventory.Inventory(root_id=None)
+class GitIndexInventory(inventory.Inventory):
 
-    def add_parents(path):
+    def __init__(self, basis_inventory, mapping, index):
+        super(GitIndexInventory, self).__init__(revision_id=None, root_id=None)
+        self.basis_inv = basis_inventory
+        self.mapping = mapping
+        self.index = index
+
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            for i, (path, value) in enumerate(self.index.iteritems()):
+                pb.update("creating working inventory from index", 
+                        i, len(self.index))
+                assert isinstance(path, str)
+                assert isinstance(value, tuple) and len(value) == 10
+                (ctime, mtime, ino, dev, mode, uid, gid, size, sha, flags) = value
+                old_file_id = self.basis_inv.path2id(path)
+                if old_file_id is None:
+                    file_id = self.mapping.generate_file_id(path)
+                else:
+                    file_id = old_file_id
+                if stat.S_ISLNK(mode):
+                    kind = 'symlink'
+                else:
+                    assert stat.S_ISREG(mode)
+                    kind = 'file'
+                ie = self.add_path(path, kind, file_id, self.add_parents(path))
+                if old_file_id is not None:
+                    ie.revision = self.basis_inv[old_file_id].revision
+        finally:
+            pb.finished()
+
+    def add_parents(self, path):
         dirname, _ = osutils.split(path)
-        file_id = inv.path2id(dirname)
+        file_id = self.path2id(dirname)
         if file_id is None:
             if dirname == "":
                 parent_fid = None
             else:
-                parent_fid = add_parents(dirname)
-            ie = inv.add_path(dirname, 'directory', mapping.generate_file_id(dirname), parent_fid)
-            if ie.file_id in basis_inventory:
-                ie.revision = basis_inventory[ie.file_id].revision
+                parent_fid = self.add_parents(dirname)
+            ie = self.add_path(dirname, 'directory', 
+                    self.mapping.generate_file_id(dirname), parent_fid)
+            if ie.file_id in self.basis_inv:
+                ie.revision = self.basis_inv[ie.file_id].revision
             file_id = ie.file_id
         return file_id
-    for path, value in index.iteritems():
-        assert isinstance(path, str)
-        assert isinstance(value, tuple) and len(value) == 10
-        (ctime, mtime, ino, dev, mode, uid, gid, size, sha, flags) = value
-        old_file_id = basis_inventory.path2id(path)
-        if old_file_id is None:
-            file_id = mapping.generate_file_id(path)
-        else:
-            file_id = old_file_id
-        if stat.S_ISLNK(mode):
-            kind = 'symlink'
-        else:
-            assert stat.S_ISREG(mode)
-            kind = 'file'
-        ie = inv.add_path(path, kind, file_id, add_parents(path))
-        if old_file_id is not None:
-            ie.revision = basis_inventory[old_file_id].revision
-
-    return inv
-
-
 
