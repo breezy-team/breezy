@@ -223,7 +223,7 @@ class GitIndexInventory(inventory.Inventory):
     """Inventory that retrieves its contents from an index file."""
 
     def __init__(self, basis_inventory, mapping, index):
-        super(GitIndexInventory, self).__init__(revision_id=None, root_id=None)
+        super(GitIndexInventory, self).__init__(revision_id=None, root_id=basis_inventory.root.file_id)
         self.basis_inv = basis_inventory
         self.mapping = mapping
         self.index = index
@@ -251,7 +251,8 @@ class GitIndexInventory(inventory.Inventory):
                     kind = 'file'
                 if old_ie is not None and old_ie.hexsha == sha:
                     # Hasn't changed since basis inv
-                    ie = old_ie
+                    self.add_parents(path)
+                    self.add(old_ie)
                 else:
                     ie = self.add_path(path, kind, file_id, self.add_parents(path))
                     ie.revision = None
