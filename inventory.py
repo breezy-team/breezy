@@ -18,6 +18,9 @@
 """Git inventory."""
 
 
+import stat
+
+
 from bzrlib import (
     errors,
     inventory,
@@ -208,3 +211,43 @@ class GitInventory(inventory.Inventory):
             return self._get_ie(path)
         except KeyError:
             raise errors.NoSuchId(None, file_id)
+
+
+def GitIndexInventory(basis_inventory, mapping, index):
+    inv = inventory.Inventory(root_id=None)
+
+    def add_parents(path):
+        dirname, _ = osutils.split(path)
+        file_id = inv.path2id(dirname)
+        if file_id is None:
+            if dirname == "":
+                parent_fid = None
+            else:
+                parent_fid = add_parents(dirname)
+            ie = inv.add_path(dirname, 'directory', mapping.generate_file_id(dirname), parent_fid)
+            if ie.file_id in basis_inventory:
+                ie.revision = basis_inventory[ie.file_id].revision
+            file_id = ie.file_id
+        return file_id
+    for path, value in index.iteritems():
+        assert isinstance(path, str)
+        assert isinstance(value, tuple) and len(value) == 10
+        (ctime, mtime, ino, dev, mode, uid, gid, size, sha, flags) = value
+        old_file_id = basis_inventory.path2id(path)
+        if old_file_id is None:
+            file_id = mapping.generate_file_id(path)
+        else:
+            file_id = old_file_id
+        if stat.S_ISLNK(mode):
+            kind = 'symlink'
+        else:
+            assert stat.S_ISREG(mode)
+            kind = 'file'
+        ie = inv.add_path(path, kind, file_id, add_parents(path))
+        if old_file_id is not None:
+            ie.revision = basis_inventory[old_file_id].revision
+
+    return inv
+
+
+

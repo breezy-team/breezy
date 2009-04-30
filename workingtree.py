@@ -46,40 +46,9 @@ from bzrlib.decorators import (
     )
 
 
-def inventory_from_index(basis_inventory, mapping, index):
-    inv = inventory.Inventory(root_id=None)
-    def add_parents(path):
-        dirname, _ = osutils.split(path)
-        file_id = inv.path2id(dirname)
-        if file_id is None:
-            if dirname == "":
-                parent_fid = None
-            else:
-                parent_fid = add_parents(dirname)
-            ie = inv.add_path(dirname, 'directory', mapping.generate_file_id(dirname), parent_fid)
-            if ie.file_id in basis_inventory:
-                ie.revision = basis_inventory[ie.file_id].revision
-            file_id = ie.file_id
-        return file_id
-    for path, value in index.iteritems():
-        assert isinstance(path, str)
-        assert isinstance(value, tuple) and len(value) == 10
-        (ctime, mtime, ino, dev, mode, uid, gid, size, sha, flags) = value
-        old_file_id = basis_inventory.path2id(path)
-        if old_file_id is None:
-            file_id = mapping.generate_file_id(path)
-        else:
-            file_id = old_file_id
-        if stat.S_ISLNK(mode):
-            kind = 'symlink'
-        else:
-            assert stat.S_ISREG(mode)
-            kind = 'file'
-        ie = inv.add_path(path, kind, file_id, add_parents(path))
-        if old_file_id is not None:
-            ie.revision = basis_inventory[old_file_id].revision
-
-    return inv
+from bzrlib.plugins.git.inventory import (
+    GitIndexInventory,
+    )
 
 
 class GitWorkingTree(workingtree.WorkingTree):
@@ -163,7 +132,7 @@ class GitWorkingTree(workingtree.WorkingTree):
     def _reset_data(self):
         self._inventory_is_modified = False
         basis_inv = self.repository.get_inventory(self.mapping.revision_id_foreign_to_bzr(self.repository._git.head()))
-        result = inventory_from_index(basis_inv, self.mapping, self.index)
+        result = GitIndexInventory(basis_inv, self.mapping, self.index)
         self._set_inventory(result, dirty=False)
 
     @needs_read_lock
