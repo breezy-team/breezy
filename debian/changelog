@@ -1,3 +1,9 @@
+bzr (1.14-2) unstable; urgency=low
+
+  * Fix API compatibility version. (Closes: #526233)
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Thu, 30 Apr 2009 20:40:24 +0200
+
 bzr (1.14-1) unstable; urgency=low
 
   * New upstream release.
