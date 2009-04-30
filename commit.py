@@ -14,6 +14,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+
+"""Support for committing in native Git working trees."""
+
+
+import stat
+
+from bzrlib import (
+    osutils,
+    )
 from bzrlib.repository import (
     CommitBuilder,
     )
@@ -30,15 +39,29 @@ class GitCommitBuilder(CommitBuilder):
         super(GitCommitBuilder, self).__init__(*args, **kwargs)
         self._trees = {}
 
+    def _new_tree(self, path):
+        newtree = Tree()
+        # FIXME: Inherit children from the base revision
+        self._trees[path] = newtree
+        return newtree
+
     def _add_tree(self, path):
+        if path in self._trees:
+            return self._trees[path]
+        if path == "":
+            return self._new_tree("")
         dirname, basename = osutils.split(path)
         t = self._add_tree(dirname)
+        assert isinstance(basename, str)
         if not basename in t:
-            t[basename] = Tree()
-            # FIXME: Inherit children from the base revision
-        return t[basename]
+            newtree = self._new_tree(path)
+            t[basename] = (stat.S_IFDIR, newtree.id)
+            return newtree
+        else:
+            return self.repository._git.object_store[t[basename][1]]
 
     def _change_blob(self, path, value):
+        assert isinstance(path, str)
         dirname, basename = osutils.split(path)
         t = self._add_tree(dirname)
         t[basename] = value
@@ -61,8 +84,8 @@ class GitCommitBuilder(CommitBuilder):
                 mode = stat.S_IFLNK
             if executable:
                 mode |= 0111
-            self._change_blob(path, (mode, workingtree.index.get_sha1(path)))
-            yield file_id, path, None
+            self._change_blob(path[1].encode("utf-8"), (mode, workingtree.index.get_sha1(path[1].encode("utf-8"))))
+            yield file_id, path, (None, None)
 
     def commit(self, message):
         # FIXME: Eliminate any empty trees recursively
