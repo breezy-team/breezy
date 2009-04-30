@@ -58,6 +58,9 @@ Bug Fixes
 * Non-recursive ``bzr ls`` now works properly when a path is specified.
   (Jelmer Vernooij, #357863)
 
+* ssh usernames (defined in ~/.ssh/config) are honoured for bzr+ssh connections.
+  (Vincent Ladeuil, #367726)
+
 Documentation
 *************
 
@@ -94,19 +97,29 @@ Internals
   refactoring to the core of clone allowing less round trips on new
   branches. (Robert Collins)
 
-bzr 1.14rc2
+* Updated the bundled ``ConfigObj`` library to 4.6.0 (Matt Nordhoff)
+
+
+bzr 1.14
 ###########
 :Codename: brisbane-core
 :1.14rc1: 2009-04-06
 :1.14rc2: 2009-04-19
+:1.14: 2009-04-28
 
 New formats 1.14 and 1.14-rich-root supporting End-Of-Line (EOL) conversions,
 keyword templating (via the bzr-keywords plugin) and generic content filtering.
 End-of-line conversion is now supported for formats supporting content
 filtering.
 
-Changes from RC1 to RC2
-***********************
+Changes from 1.14rc2 to 1.14final
+*********************************
+
+* Fix a bug in the pure-python ``GroupCompress`` code when handling copies
+  longer than 64KiB. (John Arbash Meinel, #364900)
+
+Changes from 1.14rc1 to 1.14rc2
+*******************************
 
 * Fix for bug 358037 Revision not in
   bzrlib.groupcompress.GroupCompressVersionedFiles (Brian de Alwis, 
@@ -536,13 +549,33 @@ bzr 1.13
 :1.13: 2009-03-14
 :1.13rc1: 2009-03-10
 :1.13.1: 2009-03-23
+:1.13.2: 2009-04-27
 
 GNU Changelog output can now be produced by ``bzr log --gnu-changelog``.  Debug
 flags can now be set in ``~/.bazaar/bazaar.conf``.  Lightweight checkouts and
 stacked branches should both be much faster over remote connections.  
 
-Changes From 1.13 to 1.13.1
-***************************
+Changes From 1.13.1 to 1.13.2
+*****************************
+
+A regression was found in the 1.13.1 release. When bzr 1.13.1 and earlier push
+a stacked branch they do not take care to push all the parent inventories for
+the transferred revisions. This means that a smart server serving that branch
+often cannot calculate inventory deltas for the branch (because smart server
+does not/cannot open fallback repositories). Prior to 1.13 the server did not
+have a verb to stream revisions out of a repository, so that's why this bug has
+appeared now.
+
+Bug Fixes
+*********
+
+* Fix for bug 354036 ErrorFromSmartServer - AbsentContentFactory object has no
+  attribute 'get_bytes_as' exception while pulling from Launchpad 
+  (Jean-Francois Roy, Andrew Bennetts, Robert Collins)
+
+Changes From 1.13final to 1.13.1
+********************************
+
 A couple regessions where found in the 1.13 release. The pyrex-generated C
 extensions are missing from the .tar.gz and .zip files.  Documentation on how
 to generate GNU ChangeLogs is wrong.
@@ -561,8 +594,8 @@ Bug Fixes
 
 * ``merge --force`` works again. (Robert Collins, #342105)
 
-Changes From RC1 to Final
-*************************
+Changes From 1.13rc1 to 1.13final
+*********************************
 
 * Fix "is not a stackable format" error when pushing a
   stackable-format branch with an unstackable-format repository to a
