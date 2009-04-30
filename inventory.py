@@ -121,6 +121,7 @@ class GitInventoryDirectory(GitInventoryEntry):
         self.text_size = None
         self.symlink_target = None
         self.kind = 'directory'
+        self._children = None
 
     def kind_character(self):
         """See InventoryEntry.kind_character."""
@@ -128,7 +129,12 @@ class GitInventoryDirectory(GitInventoryEntry):
 
     @property
     def children(self):
-        ret = {}
+        if self._children is None:
+            self._retrieve_children()
+        return self._children
+
+    def _retrieve_children(self):
+        self._children = {}
         for mode, name, hexsha in self.object.entries():
             basename = name.decode("utf-8")
             child_path = osutils.pathjoin(self.path, basename)
@@ -149,8 +155,7 @@ class GitInventoryDirectory(GitInventoryEntry):
             else:
                 raise AssertionError(
                     "Unknown blob kind, perms=%r." % (mode,))
-            ret[basename] = kind_class(self._inventory, self.file_id, hexsha, child_path, basename, executable)
-        return ret
+            self._children[basename] = kind_class(self._inventory, self.file_id, hexsha, child_path, basename, executable)
 
     def copy(self):
         other = inventory.InventoryDirectory(self.file_id, self.name, 
@@ -215,6 +220,7 @@ class GitInventory(inventory.Inventory):
 
 
 class GitIndexInventory(inventory.Inventory):
+    """Inventory that retrieves its contents from an index file."""
 
     def __init__(self, basis_inventory, mapping, index):
         super(GitIndexInventory, self).__init__(revision_id=None, root_id=None)
@@ -230,19 +236,25 @@ class GitIndexInventory(inventory.Inventory):
                 assert isinstance(path, str)
                 assert isinstance(value, tuple) and len(value) == 10
                 (ctime, mtime, ino, dev, mode, uid, gid, size, sha, flags) = value
-                old_file_id = self.basis_inv.path2id(path)
-                if old_file_id is None:
+                try:
+                    old_ie = self.basis_inv._get_ie(path)
+                except KeyError:
+                    old_ie = None
+                if old_ie is None:
                     file_id = self.mapping.generate_file_id(path)
                 else:
-                    file_id = old_file_id
+                    file_id = old_ie.file_id
                 if stat.S_ISLNK(mode):
                     kind = 'symlink'
                 else:
                     assert stat.S_ISREG(mode)
                     kind = 'file'
-                ie = self.add_path(path, kind, file_id, self.add_parents(path))
-                if old_file_id is not None:
-                    ie.revision = self.basis_inv[old_file_id].revision
+                if old_ie is not None and old_ie.hexsha == sha:
+                    # Hasn't changed since basis inv
+                    ie = old_ie
+                else:
+                    ie = self.add_path(path, kind, file_id, self.add_parents(path))
+                    ie.revision = None
         finally:
             pb.finished()
 
