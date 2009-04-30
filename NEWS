@@ -97,6 +97,9 @@ Internals
   refactoring to the core of clone allowing less round trips on new
   branches. (Robert Collins)
 
+* Updated the bundled ``ConfigObj`` library to 4.6.0 (Matt Nordhoff)
+
+
 bzr 1.14
 ###########
 :Codename: brisbane-core
