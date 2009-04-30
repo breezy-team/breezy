@@ -201,7 +201,7 @@ class TestPush(ExternalBase):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(19, self.hpss_calls)
+        self.assertLength(11, self.hpss_calls)
 
     def test_push_smart_stacked_streaming_acceptance(self):
         self.setup_smart_server_with_call_log()
@@ -217,7 +217,7 @@ class TestPush(ExternalBase):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(23, self.hpss_calls)
+        self.assertLength(18, self.hpss_calls)
         remote = Branch.open('public')
         self.assertEndsWith(remote.get_stacked_on_url(), '/parent')
 

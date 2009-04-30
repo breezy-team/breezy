@@ -21,6 +21,9 @@
 
 # see http://bazaar-vcs.org/Specs/BranchRegistrationTool
 
+# Since we are a built-in plugin we share the bzrlib version
+from bzrlib import version_info
+
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import webbrowser
