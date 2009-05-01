@@ -25,7 +25,6 @@ These tests correspond to tests.test_smart, which exercises the server side.
 
 import bz2
 from cStringIO import StringIO
-import getpass
 
 from bzrlib import (
     bzrdir,
@@ -1560,9 +1559,9 @@ class TestTransportMkdir(tests.TestCase):
 
 class TestRemoteSSHTransportAuthentication(tests.TestCaseInTempDir):
 
-    def test_defaults_to_getuser(self):
+    def test_defaults_to_none(self):
         t = RemoteSSHTransport('bzr+ssh://example.com')
-        self.assertIs(getpass.getuser(), t._get_credentials()[0])
+        self.assertIs(None, t._get_credentials()[0])
 
     def test_uses_authentication_config(self):
         conf = config.AuthenticationConfig()

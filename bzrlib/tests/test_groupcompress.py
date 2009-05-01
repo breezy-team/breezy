@@ -447,6 +447,18 @@ class TestGroupCompressBlock(tests.TestCase):
         # And the decompressor is finalized
         self.assertIs(None, block._z_content_decompressor)
 
+    def test__dump(self):
+        dup_content = 'some duplicate content\nwhich is sufficiently long\n'
+        key_to_text = {('1',): dup_content + '1 unique\n',
+                       ('2',): dup_content + '2 extra special\n'}
+        locs, block = self.make_block(key_to_text)
+        self.assertEqual([('f', len(key_to_text[('1',)])),
+                          ('d', 21, len(key_to_text[('2',)]),
+                           [('c', 2, len(dup_content)),
+                            ('i', len('2 extra special\n'), '')
+                           ]),
+                         ], block._dump())
+
 
 class TestCaseWithGroupCompressVersionedFiles(tests.TestCaseWithTransport):
 

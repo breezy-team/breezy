@@ -118,11 +118,8 @@ class GSSAPIFtpTransport(FtpTransport):
 
         auth = config.AuthenticationConfig()
         if user is None:
-            user = auth.get_user('ftp', self._host, port=self._port)
-            if user is None:
-                # Default to local user
-                user = getpass.getuser()
-
+            user = auth.get_user('ftp', self._host, port=self._port,
+                                 default=getpass.getuser())
         mutter("Constructing FTP instance against %r" %
                ((self._host, self._port, user, '********',
                 self.is_active),))
