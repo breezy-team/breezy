@@ -3173,8 +3173,10 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
                 # Updated server verb that locks remotely.
                 repo_lock_token = response[10] or None
                 remote_repo.lock_write(repo_lock_token, _skip_rpc=True)
+                if repo_lock_token:
+                    remote_repo.dont_leave_lock_in_place()
             else:
-                remore_repo.lock_write()
+                remote_repo.lock_write()
             policy = UseExistingRepository(remote_repo, final_stack,
                 final_stack_pwd, require_stacking)
             policy.acquire_repository()
