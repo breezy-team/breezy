@@ -799,6 +799,7 @@ class TestCase(unittest.TestCase):
         self._benchcalls = []
         self._benchtime = None
         self._clear_hooks()
+        # Track locks - needs to be called before _clear_debug_flags.
         self._track_locks()
         self._clear_debug_flags()
         TestCase._active_threads = threading.activeCount()
