@@ -43,7 +43,7 @@ class _LRUNode(object):
         if self.prev is None:
             prev_key = None
         else:
-            prev_key = self.prev_key
+            prev_key = self.prev.key
         return '%s(%r n:%r p:%r)' % (self.__class__.__name__, self.key,
                                      self.next_key, prev_key)
 
@@ -70,7 +70,7 @@ class LRUCache(object):
         # The "HEAD" of the lru linked list
         self._most_recently_used = None
         # The "TAIL" of the lru linked list
-        self._last_recently_used = None
+        self._least_recently_used = None
         self._update_max_cache(max_cache, after_cleanup_count)
 
     def __contains__(self, key):
@@ -91,11 +91,11 @@ class LRUCache(object):
         node_prev = node.prev
         next_key = node.next_key
         # benchmarking shows that the lookup of _null_key in globals is faster
-        # than the attribute lookup for (node is self._last_recently_used)
+        # than the attribute lookup for (node is self._least_recently_used)
         if next_key is _null_key:
-            # 'node' is the _last_recently_used, because it doesn't have a
+            # 'node' is the _least_recently_used, because it doesn't have a
             # 'next' item. So move the current lru to the previous node.
-            self._last_recently_used = node_prev
+            self._least_recently_used = node_prev
         else:
             node_next = cache[next_key]
             node_next.prev = node_prev
@@ -120,7 +120,7 @@ class LRUCache(object):
                                      ' %s' % (node,))
         while node is not None:
             if node.next_key is _null_key:
-                if node is not self._last_recently_used:
+                if node is not self._least_recently_used:
                     raise AssertionError('only the last node should have'
                                          ' no next value: %s' % (node,))
                 node_next = None
@@ -213,7 +213,7 @@ class LRUCache(object):
         # Move 'node' to the front of the queue
         if self._most_recently_used is None:
             self._most_recently_used = node
-            self._last_recently_used = node
+            self._least_recently_used = node
             return
         elif node is self._most_recently_used:
             # Nothing to do, this node is already at the head of the queue
@@ -221,8 +221,8 @@ class LRUCache(object):
         # We've taken care of the tail pointer, remove the node, and insert it
         # at the front
         # REMOVE
-        if node is self._last_recently_used:
-            self._last_recently_used = node.prev
+        if node is self._least_recently_used:
+            self._least_recently_used = node.prev
         if node.prev is not None:
             node.prev.next_key = node.next_key
         if node.next_key is not _null_key:
@@ -235,11 +235,11 @@ class LRUCache(object):
         node.prev = None
 
     def _remove_node(self, node):
-        if node is self._last_recently_used:
-            self._last_recently_used = node.prev
+        if node is self._least_recently_used:
+            self._least_recently_used = node.prev
         self._cache.pop(node.key)
         # If we have removed all entries, remove the head pointer as well
-        if self._last_recently_used is None:
+        if self._least_recently_used is None:
             self._most_recently_used = None
         node.run_cleanup()
         # Now remove this node from the linked list
@@ -258,7 +258,7 @@ class LRUCache(object):
         If there are no more references to the lru, then this entry should be
         removed from the cache.
         """
-        self._remove_node(self._last_recently_used)
+        self._remove_node(self._least_recently_used)
 
     def clear(self):
         """Clear out all of the cache."""
