@@ -55,6 +55,7 @@ from bzrlib import (
     debug,
     errors,
     hooks,
+    lock as _mod_lock,
     memorytree,
     osutils,
     progress,
@@ -798,6 +799,8 @@ class TestCase(unittest.TestCase):
         self._benchcalls = []
         self._benchtime = None
         self._clear_hooks()
+        # Track locks - needs to be called before _clear_debug_flags.
+        self._track_locks()
         self._clear_debug_flags()
         TestCase._active_threads = threading.activeCount()
         self.addCleanup(self._check_leaked_threads)
@@ -849,6 +852,44 @@ class TestCase(unittest.TestCase):
             ui.ui_factory = saved
         ui.ui_factory = ui.SilentUIFactory()
         self.addCleanup(_restore)
+
+    def _check_locks(self):
+        """Check that all lock take/release actions have been paired."""
+        # once we have fixed all the current lock problems, we can change the
+        # following code to always check for mismatched locks, but only do
+        # traceback showing with -Dlock (self._lock_check_thorough is True).
+        # For now, because the test suite will fail, we only assert that lock
+        # matching has occured with -Dlock.
+        # unhook:
+        acquired_locks = [lock for action, lock in self._lock_actions
+            if action == 'acquired']
+        released_locks = [lock for action, lock in self._lock_actions
+            if action == 'released']
+        # trivially, given the tests for lock acquistion and release, if we
+        # have as many in each list, it should be ok.
+        if len(acquired_locks) != len(released_locks):
+            message = \
+                ("Different number of acquired and released locks. (%s, %s)" %
+                (acquired_locks, released_locks))
+            if not self._lock_check_thorough:
+                # Rather than fail, just warn
+                print "Broken test %s: %s" % (self, message)
+                return
+            self.fail(message)
+
+    def _track_locks(self):
+        """Track lock activity during tests."""
+        self._lock_actions = []
+        self._lock_check_thorough = 'lock' in debug.debug_flags
+        self.addCleanup(self._check_locks)
+        _mod_lock.Lock.hooks.install_named_hook('lock_acquired', self._lock_acquired, None)
+        _mod_lock.Lock.hooks.install_named_hook('lock_released', self._lock_released, None)
+
+    def _lock_acquired(self, result):
+        self._lock_actions.append(('acquired', result))
+
+    def _lock_released(self, result):
+        self._lock_actions.append(('released', result))
 
     def _ndiff_strings(self, a, b):
         """Return ndiff between two strings containing lines.
@@ -1331,7 +1372,7 @@ class TestCase(unittest.TestCase):
                 else:
                     result.addSuccess(self)
                 result.stopTest(self)
-                return
+                return result
         try:
             try:
                 result.startTest(self)
@@ -1350,14 +1391,16 @@ class TestCase(unittest.TestCase):
                                 "test setUp did not invoke "
                                 "bzrlib.tests.TestCase's setUp")
                     except KeyboardInterrupt:
+                        self._runCleanups()
                         raise
                     except TestSkipped, e:
                         self._do_skip(result, e.args[0])
                         self.tearDown()
-                        return
+                        return result
                     except:
                         result.addError(self, sys.exc_info())
-                        return
+                        self._runCleanups()
+                        return result
 
                     ok = False
                     try:
@@ -1372,6 +1415,7 @@ class TestCase(unittest.TestCase):
                             reason = e.args[0]
                         self._do_skip(result, reason)
                     except KeyboardInterrupt:
+                        self._runCleanups()
                         raise
                     except:
                         result.addError(self, sys.exc_info())
@@ -1383,18 +1427,22 @@ class TestCase(unittest.TestCase):
                                 "test tearDown did not invoke "
                                 "bzrlib.tests.TestCase's tearDown")
                     except KeyboardInterrupt:
+                        self._runCleanups()
                         raise
                     except:
                         result.addError(self, sys.exc_info())
+                        self._runCleanups()
                         ok = False
                     if ok: result.addSuccess(self)
                 finally:
                     result.stopTest(self)
-                return
+                return result
             except TestNotApplicable:
                 # Not moved from the result [yet].
+                self._runCleanups()
                 raise
             except KeyboardInterrupt:
+                self._runCleanups()
                 raise
         finally:
             saved_attrs = {}
@@ -1406,9 +1454,9 @@ class TestCase(unittest.TestCase):
             self.__dict__ = saved_attrs
 
     def tearDown(self):
-        self._bzr_test_tearDown_run = True
         self._runCleanups()
         self._log_contents = ''
+        self._bzr_test_tearDown_run = True
         unittest.TestCase.tearDown(self)
 
     def time(self, callable, *args, **kwargs):
