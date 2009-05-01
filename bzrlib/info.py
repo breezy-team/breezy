@@ -301,7 +301,7 @@ def _show_repository_info(repository, outfile):
             'the repository.\n')
 
 
-def _show_repository_stats(stats, outfile):
+def _show_repository_stats(repository, stats, outfile):
     """Show statistics about a repository."""
     f = StringIO()
     if 'revisions' in stats:
@@ -310,7 +310,7 @@ def _show_repository_stats(stats, outfile):
     if 'size' in stats:
         f.write('  %8d KiB\n' % (stats['size']/1024))
     for hook in hooks['repository']:
-        hook(stats, f)
+        hook(repository, stats, f)
     if f.getvalue() != "":
         outfile.write('\n')
         outfile.write('Repository:\n')
@@ -388,7 +388,7 @@ def show_component_info(control, repository, branch=None, working=None,
         stats = repository.gather_stats()
     if branch is None and working is None:
         _show_repository_info(repository, outfile)
-    _show_repository_stats(stats, outfile)
+    _show_repository_stats(repository, stats, outfile)
 
 
 def describe_layout(repository=None, branch=None, tree=None):

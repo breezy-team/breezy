@@ -1056,7 +1056,7 @@ Repository:
 
     def test_info_repository_hook(self):
         format = bzrdir.format_registry.make_bzrdir('knit')
-        def repo_info(stats, outf):
+        def repo_info(repo, stats, outf):
             outf.write("more info\n")
         info.hooks.install_named_hook('repository', repo_info, None)
         # Create shared repository with working trees
