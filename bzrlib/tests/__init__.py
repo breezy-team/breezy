@@ -1391,6 +1391,7 @@ class TestCase(unittest.TestCase):
                                 "test setUp did not invoke "
                                 "bzrlib.tests.TestCase's setUp")
                     except KeyboardInterrupt:
+                        self._runCleanups()
                         raise
                     except TestSkipped, e:
                         self._do_skip(result, e.args[0])
@@ -1398,6 +1399,7 @@ class TestCase(unittest.TestCase):
                         return result
                     except:
                         result.addError(self, sys.exc_info())
+                        self._runCleanups()
                         return result
 
                     ok = False
@@ -1413,6 +1415,7 @@ class TestCase(unittest.TestCase):
                             reason = e.args[0]
                         self._do_skip(result, reason)
                     except KeyboardInterrupt:
+                        self._runCleanups()
                         raise
                     except:
                         result.addError(self, sys.exc_info())
@@ -1424,9 +1427,11 @@ class TestCase(unittest.TestCase):
                                 "test tearDown did not invoke "
                                 "bzrlib.tests.TestCase's tearDown")
                     except KeyboardInterrupt:
+                        self._runCleanups()
                         raise
                     except:
                         result.addError(self, sys.exc_info())
+                        self._runCleanups()
                         ok = False
                     if ok: result.addSuccess(self)
                 finally:
@@ -1434,8 +1439,10 @@ class TestCase(unittest.TestCase):
                 return result
             except TestNotApplicable:
                 # Not moved from the result [yet].
+                self._runCleanups()
                 raise
             except KeyboardInterrupt:
+                self._runCleanups()
                 raise
         finally:
             saved_attrs = {}
@@ -1447,9 +1454,9 @@ class TestCase(unittest.TestCase):
             self.__dict__ = saved_attrs
 
     def tearDown(self):
-        self._bzr_test_tearDown_run = True
         self._runCleanups()
         self._log_contents = ''
+        self._bzr_test_tearDown_run = True
         unittest.TestCase.tearDown(self)
 
     def time(self, callable, *args, **kwargs):
