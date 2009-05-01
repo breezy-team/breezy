@@ -67,6 +67,10 @@ Documentation
 API Changes
 ***********
 
+* ``InterPackRepo.fetch`` and ``RepoFetcher`` now raise ``NoSuchRevision``
+  instead of ``InstallFailed`` when they detect a missing revision.
+  ``InstallFailed`` itself has been deleted. (Jonathan Lange)
+
 Internals
 *********
 

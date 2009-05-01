@@ -30,8 +30,6 @@ from bzrlib import (
     errors,
     symbol_versioning,
     )
-from bzrlib.errors import InstallFailed
-from bzrlib.progress import ProgressPhase
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tsort import topo_sort
 from bzrlib.trace import mutter
@@ -170,12 +168,9 @@ class RepoFetcher(object):
         if self._last_revision is NULL_REVISION:
             # explicit limit of no revisions needed
             return None
-        try:
-            return self.to_repository.search_missing_revision_ids(
-                self.from_repository, self._last_revision,
-                find_ghosts=self.find_ghosts)
-        except errors.NoSuchRevision, e:
-            raise InstallFailed([self._last_revision])
+        return self.to_repository.search_missing_revision_ids(
+            self.from_repository, self._last_revision,
+            find_ghosts=self.find_ghosts)
 
     def _parent_inventories(self, revision_ids):
         # Find all the parent revisions referenced by the stream, but
