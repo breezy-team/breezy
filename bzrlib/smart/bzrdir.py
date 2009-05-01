@@ -356,7 +356,11 @@ class SmartServerRequestBzrDirInitializeEx(SmartServerRequestBzrDir):
         make_working_trees, shared_repo):
         """Initialize a bzrdir at path as per BzrDirFormat.initialize_ex
 
-        :return: SmartServerResponse()
+        :return: return SuccessfulSmartServerResponse((repo_path, rich_root,
+            tree_ref, external_lookup, repo_network_name,
+            repo_bzrdir_network_name, bzrdir_format_network_name,
+            NoneTrueFalse(stacking), final_stack, final_stack_pwd,
+            repo_lock_token))
         """
         target_transport = self.transport_from_client_path(path)
         format = network_format_registry.get(bzrdir_network_name)
@@ -383,6 +387,7 @@ class SmartServerRequestBzrDirInitializeEx(SmartServerRequestBzrDir):
             repo_bzrdir_name = ''
             final_stack = None
             final_stack_pwd = None
+            repo_lock_token = ''
         else:
             repo_path = self._repo_relpath(bzrdir.root_transport, repo)
             if repo_path == '':
@@ -393,13 +398,20 @@ class SmartServerRequestBzrDirInitializeEx(SmartServerRequestBzrDir):
             repo_bzrdir_name = repo.bzrdir._format.network_name()
             final_stack = repository_policy._stack_on
             final_stack_pwd = repository_policy._stack_on_pwd
+            # It is returned locked, but we need to do the lock to get the lock
+            # token.
+            repo.unlock()
+            repo_lock_token = repo.lock_write() or ''
+            if repo_lock_token:
+                repo.leave_lock_in_place()
+            repo.unlock()
         final_stack = final_stack or ''
         final_stack_pwd = final_stack_pwd or ''
         return SuccessfulSmartServerResponse((repo_path, rich_root, tree_ref,
             external_lookup, repo_name, repo_bzrdir_name,
             bzrdir._format.network_name(),
             self._serialize_NoneTrueFalse(stacking), final_stack,
-            final_stack_pwd))
+            final_stack_pwd, repo_lock_token))
 
 
 class SmartServerRequestOpenBranch(SmartServerRequestBzrDir):

@@ -246,22 +246,26 @@ class BzrDir(object):
             repo_format_name=repo_format_name,
             make_working_trees=make_working_trees, shared_repo=want_shared)
         if repo_format_name:
-            # If the result repository is in the same place as the resulting
-            # bzr dir, it will have no content, further if the result is not stacked
-            # then we know all content should be copied, and finally if we are
-            # copying up to a specific revision_id then we can use the
-            # pending-ancestry-result which does not require traversing all of
-            # history to describe it.
-            if (result_repo.bzrdir.root_transport.base ==
-                result.root_transport.base and not require_stacking and
-                revision_id is not None):
-                fetch_spec = graph.PendingAncestryResult(
-                    [revision_id], local_repo)
-                result_repo.fetch(local_repo, fetch_spec=fetch_spec)
-            else:
-                result_repo.fetch(local_repo, revision_id=revision_id)
+            try:
+                # If the result repository is in the same place as the
+                # resulting bzr dir, it will have no content, further if the
+                # result is not stacked then we know all content should be
+                # copied, and finally if we are copying up to a specific
+                # revision_id then we can use the pending-ancestry-result which
+                # does not require traversing all of history to describe it.
+                if (result_repo.bzrdir.root_transport.base ==
+                    result.root_transport.base and not require_stacking and
+                    revision_id is not None):
+                    fetch_spec = graph.PendingAncestryResult(
+                        [revision_id], local_repo)
+                    result_repo.fetch(local_repo, fetch_spec=fetch_spec)
+                else:
+                    result_repo.fetch(local_repo, revision_id=revision_id)
+            finally:
+                result_repo.unlock()
         else:
-            result_repo = None
+            if result_repo is not None:
+                raise AssertionError('result_repo not None(%r)' % result_repo)
         # 1 if there is a branch present
         #   make sure its content is available in the target repository
         #   clone it.
@@ -1946,6 +1950,7 @@ class BzrDirFormat(object):
             if not require_stacking and repository_policy._require_stacking:
                 require_stacking = True
                 result._format.require_stacking()
+            result_repo.lock_write()
         else:
             result_repo = None
             repository_policy = None
@@ -3149,7 +3154,7 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
         format = RemoteBzrDirFormat()
         format._network_name = bzrdir_name
         self._supply_sub_formats_to(format)
-        bzrdir = remote.RemoteBzrDir(transport, format)
+        bzrdir = remote.RemoteBzrDir(transport, format, _client=client)
         if repo_path:
             repo_format = remote.response_tuple_to_repo_format(response[1:])
             if repo_path == '.':
@@ -3164,6 +3169,14 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
             final_stack = response[8] or None
             final_stack_pwd = response[9] or None
             remote_repo = remote.RemoteRepository(repo_bzr, repo_format)
+            if len(response) > 10:
+                # Updated server verb that locks remotely.
+                repo_lock_token = response[10] or None
+                remote_repo.lock_write(repo_lock_token, _skip_rpc=True)
+                if repo_lock_token:
+                    remote_repo.dont_leave_lock_in_place()
+            else:
+                remote_repo.lock_write()
             policy = UseExistingRepository(remote_repo, final_stack,
                 final_stack_pwd, require_stacking)
             policy.acquire_repository()

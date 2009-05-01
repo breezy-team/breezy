@@ -170,9 +170,6 @@ class RepoFetcher(object):
         if self._last_revision is NULL_REVISION:
             # explicit limit of no revisions needed
             return None
-        if (self._last_revision is not None and
-            self.to_repository.has_revision(self._last_revision)):
-            return None
         try:
             return self.to_repository.search_missing_revision_ids(
                 self.from_repository, self._last_revision,

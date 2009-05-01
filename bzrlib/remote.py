@@ -30,6 +30,7 @@ from bzrlib import (
     pack,
     repository,
     revision,
+    revision as _mod_revision,
     symbol_versioning,
     urlutils,
 )
@@ -604,6 +605,8 @@ class RemoteRepository(_RpcHelper):
         self._lock_token = None
         self._lock_count = 0
         self._leave_lock = False
+        # Cache of revision parents; misses are cached during read locks, and
+        # write locks when no _real_repository has been set.
         self._unstacked_provider = graph.CachingParentsProvider(
             get_parent_map=self._get_parent_map_rpc)
         self._unstacked_provider.disable_cache()
@@ -685,6 +688,7 @@ class RemoteRepository(_RpcHelper):
         invocation. If in doubt chat to the bzr network team.
         """
         if self._real_repository is None:
+            self._unstacked_provider.missing_keys.clear()
             self.bzrdir._ensure_real()
             self._set_real_repository(
                 self.bzrdir._real_bzrdir.open_repository())
@@ -750,30 +754,24 @@ class RemoteRepository(_RpcHelper):
         """Return a source for streaming from this repository."""
         return RemoteStreamSource(self, to_format)
 
+    @needs_read_lock
     def has_revision(self, revision_id):
-        """See Repository.has_revision()."""
-        if revision_id == NULL_REVISION:
-            # The null revision is always present.
-            return True
-        path = self.bzrdir._path_for_remote_call(self._client)
-        response = self._call('Repository.has_revision', path, revision_id)
-        if response[0] not in ('yes', 'no'):
-            raise errors.UnexpectedSmartServerResponse(response)
-        if response[0] == 'yes':
-            return True
-        for fallback_repo in self._fallback_repositories:
-            if fallback_repo.has_revision(revision_id):
-                return True
-        return False
+        """True if this repository has a copy of the revision."""
+        # Copy of bzrlib.repository.Repository.has_revision
+        return revision_id in self.has_revisions((revision_id,))
 
+    @needs_read_lock
     def has_revisions(self, revision_ids):
-        """See Repository.has_revisions()."""
-        # FIXME: This does many roundtrips, particularly when there are
-        # fallback repositories.  -- mbp 20080905
-        result = set()
-        for revision_id in revision_ids:
-            if self.has_revision(revision_id):
-                result.add(revision_id)
+        """Probe to find out the presence of multiple revisions.
+
+        :param revision_ids: An iterable of revision_ids.
+        :return: A set of the revision_ids that were present.
+        """
+        # Copy of bzrlib.repository.Repository.has_revisions
+        parent_map = self.get_parent_map(revision_ids)
+        result = set(parent_map)
+        if _mod_revision.NULL_REVISION in revision_ids:
+            result.add(_mod_revision.NULL_REVISION)
         return result
 
     def has_same_location(self, other):
@@ -897,7 +895,8 @@ class RemoteRepository(_RpcHelper):
                 self._leave_lock = False
             self._lock_mode = 'w'
             self._lock_count = 1
-            self._unstacked_provider.enable_cache(cache_misses=False)
+            cache_misses = self._real_repository is None
+            self._unstacked_provider.enable_cache(cache_misses=cache_misses)
         elif self._lock_mode == 'r':
             raise errors.ReadOnlyError(self)
         else:
@@ -1610,6 +1609,7 @@ class RemoteStreamSink(repository.StreamSink):
 
     def insert_stream(self, stream, src_format, resume_tokens):
         target = self.target_repo
+        target._unstacked_provider.missing_keys.clear()
         if target._lock_token:
             verb = 'Repository.insert_stream_locked'
             extra_args = (target._lock_token or '',)
