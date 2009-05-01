@@ -3460,11 +3460,8 @@ class InterPackRepo(InterSameDataRepository):
             # nothing to do:
             return (0, [])
         else:
-            try:
-                revision_ids = self.search_missing_revision_ids(revision_id,
-                    find_ghosts=find_ghosts).get_keys()
-            except errors.NoSuchRevision:
-                raise errors.InstallFailed([revision_id])
+            revision_ids = self.search_missing_revision_ids(revision_id,
+                find_ghosts=find_ghosts).get_keys()
             if len(revision_ids) == 0:
                 return (0, [])
         return self._pack(self.source, self.target, revision_ids)
