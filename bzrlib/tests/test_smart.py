@@ -362,7 +362,7 @@ class TestSmartServerRequestBzrDirInitializeEx(tests.TestCaseWithMemoryTransport
         name = self.make_bzrdir('reference')._format.network_name()
         request = smart.bzrdir.SmartServerRequestBzrDirInitializeEx(backing)
         self.assertEqual(SmartServerResponse(('', '', '', '', '', '', name,
-            'False', '', '')),
+            'False', '', '', '')),
             request.execute(name, '', 'True', 'False', 'False', '', '', '', '',
             'False'))
         made_dir = bzrdir.BzrDir.open_from_transport(backing)

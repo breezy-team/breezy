@@ -92,6 +92,10 @@ Internals
   called before the first test is started, ``done`` called after the last
   test completes, and a new parameter ``strict``. (Robert Collins)
 
+* -Dlock when passed to the selftest (e.g. ``bzr -Dlock selftest``) will
+  cause mismatched physical locks to cause test errors rather than just
+  reporting to the screen. (Robert Collins)
+
 * Fallback ``CredentialStore`` instances registered with ``fallback=True``
   are now be able to provide credentials if obtaining credentials 
   via ~/.bazaar/authentication.conf fails. (Jelmer Vernooij, 
@@ -751,7 +755,8 @@ Bug Fixes
   reoccuring. (Robert Collins, Andrew Bennetts)
 
 * Restore the progress bar on Windows. We were disabling it when TERM
-  wasn't set, but Windows doesn't set TERM. (Alexander Belchenko)
+  wasn't set, but Windows doesn't set TERM. (Alexander Belchenko,
+  #334808)
 
 * ``setup.py build_ext`` now gives a proper error when an extension
   fails to build. (John Arbash Meinel)

@@ -1397,7 +1397,14 @@ class BranchFormat(object):
         control_files = lockable_files.LockableFiles(branch_transport,
             lock_name, lock_class)
         control_files.create_lock()
-        control_files.lock_write()
+        try:
+            control_files.lock_write()
+        except errors.LockContention:
+            if lock_type != 'branch4':
+                raise
+            lock_taken = False
+        else:
+            lock_taken = True
         if set_format:
             utf8_files += [('format', self.get_format_string())]
         try:
@@ -1406,7 +1413,8 @@ class BranchFormat(object):
                     filename, content,
                     mode=a_bzrdir._get_file_mode())
         finally:
-            control_files.unlock()
+            if lock_taken:
+                control_files.unlock()
         return self.open(a_bzrdir, _found=True)
 
     def initialize(self, a_bzrdir):

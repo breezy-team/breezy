@@ -64,7 +64,7 @@ If you do not have a compiler, or do not have the python development tools
 installed, bzr supplies a (slower) pure-python implementation of all
 extensions. You can install without compiling extensions with::
 
-  python setup.py install build_ext --allow-python-fallbacks
+  python setup.py install build_ext --allow-python-fallback
 
 
 

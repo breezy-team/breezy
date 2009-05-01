@@ -3092,13 +3092,6 @@ class InterRepository(InterObject):
         """
         target_graph = self.target.get_graph()
         revision_ids = frozenset(revision_ids)
-        # Fast path for the case where all the revisions are already in the
-        # target repo.
-        # (Although this does incur an extra round trip for the
-        # fairly common case where the target doesn't already have the revision
-        # we're pushing.)
-        if set(target_graph.get_parent_map(revision_ids)) == revision_ids:
-            return graph.SearchResult(revision_ids, set(), 0, set())
         missing_revs = set()
         source_graph = self.source.get_graph()
         # ensure we don't pay silly lookup costs.
