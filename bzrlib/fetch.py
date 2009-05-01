@@ -30,7 +30,6 @@ from bzrlib import (
     errors,
     symbol_versioning,
     )
-from bzrlib.progress import ProgressPhase
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tsort import topo_sort
 from bzrlib.trace import mutter
