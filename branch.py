@@ -137,6 +137,9 @@ class GitBranch(ForeignBranch):
 
     nick = property(_get_nick, _set_nick)
 
+    def __repr__(self):
+        return "%s(%r, %r)" % (self.__class__.__name__, self.repository.base, self.name)
+
     def dpull(self, source, stop_revision=None):
         if stop_revision is None:
             stop_revision = source.last_revision()

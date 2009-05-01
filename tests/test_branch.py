@@ -51,6 +51,11 @@ class TestGitBranch(tests.TestCaseInTempDir):
         thebranch = Branch.open('.')
         self.assertIsInstance(thebranch, branch.GitBranch)
 
+    def test_repr(self):
+        tests.run_git('init')
+        thebranch = Branch.open('.')
+        self.assertEquals("LocalGitBranch('file://%s/', 'HEAD')" % self.test_dir, repr(thebranch))
+
     def test_last_revision_is_null(self):
         tests.run_git('init')
 
