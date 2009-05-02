@@ -134,3 +134,44 @@ class cmd_git_import(Command):
         finally:
             pb.finished()
 
+
+class cmd_git_cat(Command):
+    """Cat an object in a repository by Git SHA1."""
+
+    hidden = True
+
+    takes_args = ["sha1"]
+    takes_options = [Option('directory', 
+        help='location of repository', type=unicode)]
+
+    def run(self, sha1, directory="."):
+        from bzrlib.errors import (
+            BzrCommandError,
+            )
+        from bzrlib.bzrdir import (
+            BzrDir,
+            )
+        from bzrlib.repository import (
+            Repository,
+            )
+        from bzrlib.plugins.git.converter import (
+            BazaarObjectStore,
+            )
+        from bzrlib.plugins.git.mapping import (
+            default_mapping,
+            )
+        from bzrlib.plugins.git.repository import (
+            GitRepository,
+            )
+        bzrdir, _ = BzrDir.open_containing(directory)
+        repo = bzrdir.find_repository()
+        repo.lock_read()
+        try:
+            if isinstance(repo, GitRepository):
+                object_store = repo._git.object_store
+            else:
+                object_store = BazaarObjectStore(repo, default_mapping)
+            obj = object_store[sha1]
+            self.outf.write(obj.as_raw_string())
+        finally:
+            repo.unlock()
