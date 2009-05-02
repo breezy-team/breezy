@@ -56,7 +56,9 @@ class RIORevisionSerializer1(object):
         if rev.properties:
             revprops_stanza = rio.Stanza()
             for k, v in rev.properties.iteritems():
-                revprops_stanza.add(decode_utf8(k), decode_utf8(v))
+                if isinstance(v, str):
+                    v = decode_utf8(v)
+                revprops_stanza.add(decode_utf8(k), v)
             s.add("properties", revprops_stanza.to_unicode())
         s.add("message", rev.message)
         w.write_stanza(s)
