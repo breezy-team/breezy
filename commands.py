@@ -171,7 +171,10 @@ class cmd_git_cat(Command):
                 object_store = repo._git.object_store
             else:
                 object_store = BazaarObjectStore(repo, default_mapping)
-            obj = object_store[sha1]
+            try:
+                obj = object_store[sha1]
+            except KeyError:
+                raise BzrCommandError("Object not found: %s" % sha1)
             self.outf.write(obj.as_raw_string())
         finally:
             repo.unlock()
