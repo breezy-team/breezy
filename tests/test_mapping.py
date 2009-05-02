@@ -65,14 +65,14 @@ class TestImportCommit(tests.TestCase):
 
     def test_commit(self):
         c = Commit()
-        c._tree = "cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
-        c._message = "Some message"
-        c._committer = "Committer"
-        c._commit_time = 4
-        c._author_time = 5
-        c._commit_timezone = 500
-        c._author_timezone = 600
-        c._author = "Author"
+        c.tree = "cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
+        c.message = "Some message"
+        c.committer = "Committer"
+        c.commit_time = 4
+        c.author_time = 5
+        c.commit_timezone = 500
+        c.author_timezone = 600
+        c.author = "Author"
         c.serialize()
         rev = BzrGitMappingv1().import_commit(c)
         self.assertEquals("Some message", rev.message)
@@ -112,13 +112,13 @@ class RoundtripRevisionsFromGit(tests.TestCase):
 
     def test_commit(self):
         c = Commit()
-        c._tree = "cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
-        c._message = "Some message"
-        c._committer = "Committer <Committer>"
-        c._commit_time = 4
-        c._commit_timezone = -0500
-        c._author_time = 5
-        c._author_timezone = 0600
-        c._author = "Author <author>"
+        c.tree = "cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
+        c.message = "Some message"
+        c.committer = "Committer <Committer>"
+        c.commit_time = 4
+        c.commit_timezone = -0500
+        c.author_time = 5
+        c.author_timezone = 0600
+        c.author = "Author <author>"
         self.assertRoundtripCommit(c)
 

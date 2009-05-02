@@ -94,12 +94,12 @@ class GitCommitBuilder(CommitBuilder):
             self.repository._git.object_store.add_object(self._trees[path])
         c = Commit()
         root_tree = self._add_tree("")
-        c._tree = root_tree.id 
-        c._committer = self._committer
-        c._author = self._revprops.get('author', self._committer)
-        c._commit_timestamp = self._timestamp
-        c._author_timestamp = self._timestamp
-        c._commit_timezone = self._timezone
-        c._author_timezone = self._timezone
-        c._message = message.encode("utf-8")
+        c.tree = root_tree.id 
+        c.committer = self._committer
+        c.author = self._revprops.get('author', self._committer)
+        c.commit_timestamp = self._timestamp
+        c.author_timestamp = self._timestamp
+        c.commit_timezone = self._timezone
+        c.author_timezone = self._timezone
+        c.message = message.encode("utf-8")
         self.repository._git.object_store.add_object(c)

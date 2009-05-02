@@ -275,27 +275,26 @@ def revision_to_commit(rev, tree_sha, parent_lookup):
     """
     from dulwich.objects import Commit
     commit = Commit()
-    commit._tree = tree_sha
+    commit.tree = tree_sha
     for p in rev.parent_ids:
         git_p = parent_lookup(p)
         if git_p is not None:
             assert len(git_p) == 40, "unexpected length for %r" % git_p
-            commit._parents.append(git_p)
-    commit._message = rev.message.encode("utf-8")
-    commit._committer = fix_person_identifier(rev.committer.encode("utf-8"))
-    commit._author = fix_person_identifier(rev.get_apparent_authors()[0].encode("utf-8"))
-    commit._commit_time = long(rev.timestamp)
+            commit.parents.append(git_p)
+    commit.message = rev.message.encode("utf-8")
+    commit.committer = fix_person_identifier(rev.committer.encode("utf-8"))
+    commit.author = fix_person_identifier(rev.get_apparent_authors()[0].encode("utf-8"))
+    commit.commit_time = long(rev.timestamp)
     if 'author-timestamp' in rev.properties:
-        commit._author_time = long(rev.properties['author-timestamp'])
+        commit.author_time = long(rev.properties['author-timestamp'])
     else:
-        commit._author_time = commit._commit_time
+        commit.author_time = commit.commit_time
     if 'committer-timezone' in rev.properties:
-        commit._commit_timezone = int(float(rev.properties['commit-timezone']) / .6)
+        commit.commit_timezone = int(float(rev.properties['commit-timezone']) / .6)
     else:
-        commit._commit_timezone = int(rev.timezone / .6) 
+        commit.commit_timezone = int(rev.timezone / .6) 
     if 'author-timezone' in rev.properties:
-        commit._author_timezone = int(float(rev.properties['author-timezone']) / .6)
+        commit.author_timezone = int(float(rev.properties['author-timezone']) / .6)
     else:
-        commit._author_timezone = commit._commit_timezone 
-    commit.serialize()
+        commit.author_timezone = commit.commit_timezone 
     return commit
