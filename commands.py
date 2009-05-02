@@ -22,6 +22,7 @@
 
 from bzrlib.commands import (
     Command,
+    display_command,
     )
 from bzrlib.option import (
     Option,
@@ -163,9 +164,12 @@ class cmd_git_object(Command):
     aliases = ["git-objects", "git-cat"]
     takes_args = ["sha1?"]
     takes_options = [Option('directory', 
-        help='location of repository', type=unicode)]
+        help='location of repository', type=unicode),
+        Option('pretty', help='pretty-print')]
+    encoding_type = 'exact'
 
-    def run(self, sha1=None, directory="."):
+    @display_command
+    def run(self, sha1=None, directory=".", pretty=False):
         from bzrlib.errors import (
             BzrCommandError,
             )
@@ -182,7 +186,11 @@ class cmd_git_object(Command):
                     obj = object_store[sha1]
                 except KeyError:
                     raise BzrCommandError("Object not found: %s" % sha1)
-                self.outf.write(obj.as_raw_string())
+                if pretty:
+                    text = obj.as_pretty_string()
+                else:
+                    text = obj.as_raw_string()
+                self.outf.write(text)
             else:
                 for sha1 in object_store:
                     self.outf.write("%s\n" % sha1)
