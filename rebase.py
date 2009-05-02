@@ -531,7 +531,7 @@ def complete_revert(wt, newparents):
     newtree = wt.branch.repository.revision_tree(newparents[0])
     delta = wt.changes_from(newtree)
     wt.branch.generate_revision_history(newparents[0])
-    wt.set_parent_ids(newparents[:1])
+    wt.set_parent_ids([r for r in newparents[:1] if r != NULL_REVISION])
     for (f, _, _) in delta.added:
         abs_path = wt.abspath(f)
         if osutils.lexists(abs_path):
@@ -541,7 +541,7 @@ def complete_revert(wt, newparents):
                 os.unlink(abs_path)
     wt.revert(None, old_tree=newtree, backups=False)
     assert not wt.changes_from(wt.basis_tree()).has_changed(), "Rev changed"
-    wt.set_parent_ids(newparents)
+    wt.set_parent_ids([r for r in newparents if r != NULL_REVISION])
 
 
 class ReplaySnapshotError(BzrError):
