@@ -21,6 +21,9 @@ from bzrlib.errors import (
     InvalidRevisionSpec,
     NoSuchRevision,
     )
+from bzrlib.revision import (
+    NULL_REVISION,
+    )
 from bzrlib.revisionspec import (
     RevisionInfo,
     RevisionSpec,
@@ -59,6 +62,14 @@ class RevisionSpec_git(RevisionSpec):
         history = list(branch.repository.iter_reverse_revision_history(revid))
         history.reverse()
         return history
+
+    def __nonzero__(self):
+        # The default implementation uses branch.repository.has_revision()
+        if self.rev_id is None:
+            return False
+        if self.rev_id == NULL_REVISION:
+            return False
+        return True
 
     def _find_short_git_sha1(self, branch, sha1):
         parse_revid = getattr(branch.repository, "lookup_git_revid",
