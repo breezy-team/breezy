@@ -92,6 +92,10 @@ class GitShaMap(object):
         """List the revision ids known."""
         raise NotImplementedError(self.revids)
 
+    def sha1s(Self):
+        """List the SHA1s."""
+        raise NotImplementedError(self.sha1s)
+
     def commit(self):
         """Commit any pending changes."""
 
@@ -123,6 +127,9 @@ class DictGitShaMap(GitShaMap):
         for key, (type, type_data) in self.dict.iteritems():
             if type == "commit":
                 yield type_data[0]
+
+    def sha1s(self):
+        return self.dict.iterkeys()
 
 
 class SqliteGitShaMap(GitShaMap):
@@ -228,3 +235,9 @@ class SqliteGitShaMap(GitShaMap):
         """List the revision ids known."""
         for row in self.db.execute("select revid from commits").fetchall():
             yield row[0].encode("utf-8")
+
+    def sha1s(self):
+        """List the SHA1s."""
+        for table in ("blobs", "commits", "trees"):
+            for row in self.db.execute("select sha1 from %s" % table).fetchall():
+                yield row[0].encode("utf-8")

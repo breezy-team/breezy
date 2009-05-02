@@ -62,6 +62,10 @@ class BazaarObjectStore(object):
             self._idmap.commit()
             pb.finished()
 
+    def __iter__(self):
+        self._update_sha_map()
+        return iter(self._idmap.sha1s())
+
     def _update_sha_map_revision(self, revid):
         inv = self.repository.get_inventory(revid)
         tree_sha = self._get_ie_sha1(inv.root, inv)
