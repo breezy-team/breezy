@@ -36,6 +36,9 @@ RULES_TREE_FILENAME = ".bzrrules"
 FILE_PREFS_PREFIX = 'name '
 FILE_PREFS_PREFIX_LEN = len(FILE_PREFS_PREFIX)
 
+# The object providing default rules
+_per_user_searcher = None
+
 
 class _RulesSearcher(object):
     """An object that provides rule-based preferences."""
@@ -146,5 +149,8 @@ def rules_filename():
     return osutils.pathjoin(config.config_dir(), 'rules')
 
 
-# The object providing default rules
-_per_user_searcher = _IniBasedRulesSearcher(rules_filename())
+def reset_rules():
+    global _per_user_searcher
+    _per_user_searcher = _IniBasedRulesSearcher(rules_filename())
+
+reset_rules()
