@@ -186,6 +186,19 @@ class TestMakeAndApplyDelta(tests.TestCase):
             'N\x90\x1d\x1ewhich is meant to differ from\n\x91:\x13',
             delta)
 
+    def test_make_delta_with_large_copies(self):
+        # We want to have a copy that is larger than 64kB, which forces us to
+        # issue multiple copy instructions.
+        big_text = _text3 * 1220
+        delta = self.make_delta(big_text, big_text)
+        self.assertDeltaIn(
+            '\xdc\x86\x0a'      # Encoding the length of the uncompressed text
+            '\x80'              # Copy 64kB, starting at byte 0
+            '\x84\x01'          # and another 64kB starting at 64kB
+            '\xb4\x02\x5c\x83', # And the bit of tail.
+            None,   # Both implementations should be identical
+            delta)
+
     def test_apply_delta_is_typesafe(self):
         self.apply_delta(_text1, 'M\x90M')
         self.assertRaises(TypeError, self.apply_delta, object(), 'M\x90M')
@@ -358,18 +371,18 @@ class TestCopyInstruction(tests.TestCase):
         self.assertEqual((exp_offset, exp_length, exp_newpos), out)
 
     def test_encode_no_length(self):
-        self.assertEncode('\x80', 0, None)
-        self.assertEncode('\x81\x01', 1, None)
-        self.assertEncode('\x81\x0a', 10, None)
-        self.assertEncode('\x81\xff', 255, None)
-        self.assertEncode('\x82\x01', 256, None)
-        self.assertEncode('\x83\x01\x01', 257, None)
-        self.assertEncode('\x8F\xff\xff\xff\xff', 0xFFFFFFFF, None)
-        self.assertEncode('\x8E\xff\xff\xff', 0xFFFFFF00, None)
-        self.assertEncode('\x8D\xff\xff\xff', 0xFFFF00FF, None)
-        self.assertEncode('\x8B\xff\xff\xff', 0xFF00FFFF, None)
-        self.assertEncode('\x87\xff\xff\xff', 0x00FFFFFF, None)
-        self.assertEncode('\x8F\x04\x03\x02\x01', 0x01020304, None)
+        self.assertEncode('\x80', 0, 64*1024)
+        self.assertEncode('\x81\x01', 1, 64*1024)
+        self.assertEncode('\x81\x0a', 10, 64*1024)
+        self.assertEncode('\x81\xff', 255, 64*1024)
+        self.assertEncode('\x82\x01', 256, 64*1024)
+        self.assertEncode('\x83\x01\x01', 257, 64*1024)
+        self.assertEncode('\x8F\xff\xff\xff\xff', 0xFFFFFFFF, 64*1024)
+        self.assertEncode('\x8E\xff\xff\xff', 0xFFFFFF00, 64*1024)
+        self.assertEncode('\x8D\xff\xff\xff', 0xFFFF00FF, 64*1024)
+        self.assertEncode('\x8B\xff\xff\xff', 0xFF00FFFF, 64*1024)
+        self.assertEncode('\x87\xff\xff\xff', 0x00FFFFFF, 64*1024)
+        self.assertEncode('\x8F\x04\x03\x02\x01', 0x01020304, 64*1024)
 
     def test_encode_no_offset(self):
         self.assertEncode('\x90\x01', 0, 1)

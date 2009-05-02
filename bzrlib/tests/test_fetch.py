@@ -95,9 +95,9 @@ def fetch_steps(self, br_a, br_b, writable_a):
     br_a3.fetch(br_a2, br_a.revision_history()[2])
     # pull the 3 revisions introduced by a@u-0-3
     br_a3.fetch(br_a2, br_a.revision_history()[3])
-    # InstallFailed should be raised if the branch is missing the revision
+    # NoSuchRevision should be raised if the branch is missing the revision
     # that was requested.
-    self.assertRaises(errors.InstallFailed, br_a3.fetch, br_a2, 'pizza')
+    self.assertRaises(errors.NoSuchRevision, br_a3.fetch, br_a2, 'pizza')
 
     # TODO: Test trying to fetch from a branch that points to a revision not
     # actually present in its repository.  Not every branch format allows you
@@ -321,11 +321,13 @@ class TestHttpFetch(TestCaseWithWebserver):
         self.assertEqual(1, self._count_log_matches('branch/format', http_logs))
         self.assertEqual(1, self._count_log_matches('repository/format',
             http_logs))
+        self.assertEqual(1, self._count_log_matches('revisions.kndx',
+            http_logs))
         self.assertTrue(1 >= self._count_log_matches('revision-history',
                                                      http_logs))
         self.assertTrue(1 >= self._count_log_matches('last-revision',
                                                      http_logs))
-        self.assertEqual(4, len(http_logs))
+        self.assertLength(5, http_logs)
 
 
 class TestKnitToPackFetch(TestCaseWithTransport):

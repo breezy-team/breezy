@@ -1403,9 +1403,13 @@ class PlanWeaveMerge(TextMerge):
             elif state == 'conflicted-b':
                 ch_b = ch_a = True
                 lines_b.append(line)
+            elif state == 'killed-both':
+                # This counts as a change, even though there is no associated
+                # line
+                ch_b = ch_a = True
             else:
                 if state not in ('irrelevant', 'ghost-a', 'ghost-b',
-                        'killed-base', 'killed-both'):
+                        'killed-base'):
                     raise AssertionError(state)
         for struct in outstanding_struct():
             yield struct

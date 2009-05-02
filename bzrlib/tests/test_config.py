@@ -1211,7 +1211,7 @@ class TestTransportConfig(tests.TestCaseWithTransport):
 
     def test_set_unset_default_stack_on(self):
         my_dir = self.make_bzrdir('.')
-        bzrdir_config = config.BzrDirConfig(my_dir.transport)
+        bzrdir_config = config.BzrDirConfig(my_dir)
         self.assertIs(None, bzrdir_config.get_default_stack_on())
         bzrdir_config.set_default_stack_on('Foo')
         self.assertEqual('Foo', bzrdir_config._config.get_option(
@@ -1506,9 +1506,9 @@ class TestAuthenticationConfig(tests.TestCase):
 
     def test_username_default_no_prompt(self):
         conf = config.AuthenticationConfig()
-        self.assertEquals(getpass.getuser(), 
+        self.assertEquals(None,
             conf.get_user('ftp', 'example.com'))
-        self.assertEquals("explicitdefault", 
+        self.assertEquals("explicitdefault",
             conf.get_user('ftp', 'example.com', default="explicitdefault"))
 
     def test_password_default_prompts(self):
@@ -1524,9 +1524,9 @@ class TestAuthenticationConfig(tests.TestCase):
         # FIXME: should we: forbid that, extend it to other schemes, leave
         # things as they are that's fine thank you ?
         self._check_default_password_prompt('SMTP %(user)s@%(host)s password: ',
-                                   'smtp')
+                                            'smtp')
         self._check_default_password_prompt('SMTP %(user)s@%(host)s password: ',
-                                   'smtp', host='bar.org:10025')
+                                            'smtp', host='bar.org:10025')
         self._check_default_password_prompt(
             'SMTP %(user)s@%(host)s:%(port)d password: ',
             'smtp', port=10025)

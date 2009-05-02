@@ -28,6 +28,7 @@ from bzrlib import (
     errors,
     osutils,
     registry,
+    transform,
     )
 """)
 
@@ -269,57 +270,28 @@ class ForeignBranch(Branch):
         raise NotImplementedError(self.dpull)
 
 
-def _determine_fileid_renames(old_inv, new_inv):
-    """Determine the file ids based on a old and a new inventory that 
-    are equal in content.
+def update_workingtree_fileids(wt, target_tree):
+    """Update the file ids in a working tree based on another tree.
 
-    :param old_inv: Old inventory
-    :param new_inv: New inventory
-    :return: Dictionary a (old_id, new_id) tuple for each path in the 
-        inventories.
+    :param wt: Working tree in which to update file ids
+    :param target_tree: Tree to retrieve new file ids from, based on path
     """
-    ret = {}
-    if len(old_inv) != len(new_inv):
-        raise AssertionError("Inventories are not of the same size")
-    for old_file_id in old_inv:
-        path = old_inv.id2path(old_file_id)
-        new_file_id = new_inv.path2id(path)
-        if new_file_id is None:
-            raise AssertionError(
-                "Unable to find %s in new inventory" % old_file_id)
-        ret[path] = (old_file_id, new_file_id)
-    return ret
-
-
-def update_workinginv_fileids(wt, old_inv, new_inv):
-    """Update all file ids in wt according to old_tree/new_tree. 
-
-    old_tree and new_tree should be two RevisionTree's that differ only
-    in file ids.
-    """
-    fileid_renames = _determine_fileid_renames(old_inv, new_inv)
-    old_fileids = []
-    new_fileids = []
-    new_root_id = None
-    # Adjust file ids in working tree
-    # Sorted, so we process parents before children
-    for path in sorted(fileid_renames.keys()):
-        (old_fileid, new_fileid) = fileid_renames[path]
-        if path != "":
-            new_fileids.append((path, new_fileid))
-            # unversion() works recursively so we only have to unversion the 
-            # top-level. Unfortunately unversioning / is not supported yet, 
-            # so unversion its children instead and use set_root_id() for /
-            if old_inv[old_fileid].parent_id == old_inv.root.file_id:
-                old_fileids.append(old_fileid)
-        else:
-            new_root_id = new_fileid
-    new_fileids.reverse()
-    wt.unversion(old_fileids)
-    if new_root_id is not None:
-        wt.set_root_id(new_root_id)
-    wt.add([x[0] for x in new_fileids], [x[1] for x in new_fileids])
-    wt.set_last_revision(new_inv.revision_id)
+    tt = transform.TreeTransform(wt)
+    try:
+        for f, p, c, v, d, n, k, e in target_tree.iter_changes(wt):
+            if v == (True, False):
+                trans_id = tt.trans_id_tree_path(p[0])
+                tt.unversion_file(trans_id)
+            elif v == (False, True):
+                trans_id = tt.trans_id_tree_path(p[1])
+                tt.version_file(f, trans_id)
+        tt.apply()
+    finally:
+        tt.finalize()
+    if len(wt.get_parent_ids()) == 1:
+        wt.set_parent_trees([(target_tree.get_revision_id(), target_tree)])
+    else:
+        wt.set_last_revision(target_tree.get_revision_id())
 
 
 class cmd_dpush(Command):
@@ -385,14 +357,10 @@ class cmd_dpush(Command):
                 if source_wt is not None and old_last_revid != new_last_revid:
                     source_wt.lock_write()
                     try:
-                        update_workinginv_fileids(source_wt, 
-                            source_wt.branch.repository.get_inventory(
-                                old_last_revid),
-                            source_wt.branch.repository.get_inventory(
-                                new_last_revid))
+                        target = source_wt.branch.repository.revision_tree(
+                            new_last_revid)
+                        update_workingtree_fileids(source_wt, target)
                     finally:
                         source_wt.unlock()
         finally:
             target_branch.unlock()
-
-

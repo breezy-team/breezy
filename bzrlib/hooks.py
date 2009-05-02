@@ -41,6 +41,8 @@ known_hooks.register_lazy(('bzrlib.bzrdir', 'BzrDir.hooks'), 'bzrlib.bzrdir',
     'BzrDirHooks')
 known_hooks.register_lazy(('bzrlib.commands', 'Command.hooks'),
     'bzrlib.commands', 'CommandHooks')
+known_hooks.register_lazy(('bzrlib.info', 'hooks'),
+    'bzrlib.info', 'InfoHooks')
 known_hooks.register_lazy(('bzrlib.lock', 'Lock.hooks'), 'bzrlib.lock',
     'LockHooks')
 known_hooks.register_lazy(('bzrlib.msgeditor', 'hooks'), 'bzrlib.msgeditor',

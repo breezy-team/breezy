@@ -917,6 +917,8 @@ class ProxyHandler(urllib2.ProxyHandler):
 
         (scheme, user, password,
          host, port, path) = transport.ConnectedTransport._split_url(proxy)
+        if not host:
+            raise errors.InvalidURL(proxy, 'No host component')
 
         if request.proxy_auth == {}:
             # No proxy auth parameter are available, we are handling the first
