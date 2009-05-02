@@ -31,6 +31,7 @@ class Reconfigure(object):
             self.repository = self.bzrdir.find_repository()
         except errors.NoRepositoryPresent:
             self.repository = None
+            self.local_repository = None
         else:
             if (self.repository.bzrdir.root_transport.base ==
                 self.bzrdir.root_transport.base):
