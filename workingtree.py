@@ -76,12 +76,8 @@ class GitWorkingTree(workingtree.WorkingTree):
 
         self._control_files = lockable_files.LockableFiles(
             transport.get_transport(self.controldir), 'lock', lockdir.LockDir)
-
         self._format = GitWorkingTreeFormat()
-
-        self.index_path = os.path.join(self.repository._git.controldir(), 
-                                       "index")
-        self.index = Index(self.index_path)
+        self.index = self.repository._git.open_index()
         self.views = self._make_views()
         self._detect_case_handling()
 
