@@ -29,6 +29,9 @@ from bzrlib.revisionspec import (
 from bzrlib.plugins.git import (
     lazy_check_versions,
     )
+from bzrlib.plugins.git.errors import (
+    GitSmartRemoteNotSupported,
+    )
 from bzrlib.plugins.git.mapping import (
     mapping_registry,
     )
@@ -40,12 +43,16 @@ class RevisionSpec_git(RevisionSpec):
     """
     
     prefix = 'git:'
+    wants_revision_history = False
 
     def _lookup_git_sha1(self, branch, sha1):
-        bzr_revid = branch.mapping.revision_id_foreign_to_bzr(git_sha1)
-        if branch.repository.has_revision(bzr_revid):
-            history = self._history(branch, bzr_revid)
-            return RevisionInfo.from_revision_id(branch, bzr_revid, history)
+        bzr_revid = branch.mapping.revision_id_foreign_to_bzr(sha1)
+        try:
+            if branch.repository.has_revision(bzr_revid):
+                history = self._history(branch, bzr_revid)
+                return RevisionInfo.from_revision_id(branch, bzr_revid, history)
+        except GitSmartRemoteNotSupported:
+            return RevisionInfo(branch, None, bzr_revid)
         raise InvalidRevisionSpec(self.user_spec, branch)
 
     def _history(self, branch, revid):

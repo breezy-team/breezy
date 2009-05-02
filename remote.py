@@ -23,7 +23,9 @@ from bzrlib import (
     )
 from bzrlib.errors import (
     BzrError,
+    InvalidRevisionId,
     NoSuchFile,
+    NoSuchRevision,
     NotLocalUrl,
     )
 from bzrlib.trace import (
@@ -47,6 +49,9 @@ from bzrlib.plugins.git.errors import (
     )
 from bzrlib.plugins.git.dir import (
     GitDir,
+    )
+from bzrlib.plugins.git.mapping import (
+    mapping_registry,
     )
 from bzrlib.plugins.git.repository import (
     GitRepositoryFormat,
@@ -240,6 +245,13 @@ class RemoteGitRepository(GitRepository):
         if os.path.getsize(path) == 0:
             return EmptyObjectStoreIterator()
         return TemporaryPackIterator(path[:-len(".pack")], resolve_ext_ref)
+
+    def lookup_git_revid(self, bzr_revid):
+        # This won't work for any round-tripped bzr revisions, but it's a start..
+        try:
+            return mapping_registry.revision_id_bzr_to_foreign(bzr_revid)
+        except InvalidRevisionId:
+            raise NoSuchRevision(self, bzr_revid)
 
 
 class RemoteGitTagDict(tag.BasicTags):
