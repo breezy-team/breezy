@@ -150,7 +150,7 @@ class BazaarObjectStore(object):
             return ret
 
     def get_raw(self, sha):
-        return self[sha]._text
+        return self[sha].as_raw_string()
 
     def __getitem__(self, sha):
         # See if sha is in map
