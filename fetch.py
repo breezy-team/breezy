@@ -60,6 +60,9 @@ from bzrlib.revision import (
 from bzrlib.tsort import (
     topo_sort,
     )
+from bzrlib.versionedfile import (
+    FulltextContentFactory,
+    )
 
 from bzrlib.plugins.git.converter import (
     BazaarObjectStore,
@@ -190,8 +193,7 @@ def import_git_blob(texts, mapping, path, hexsha, base_inv, parent_id,
         ie.revision = revision_id
         assert file_id is not None
         assert ie.revision is not None
-        texts.add_lines((file_id, ie.revision), tuple(parent_keys),
-            osutils.split_lines(blob.data))
+        texts.insert_record_stream([FulltextContentFactory((file_id, ie.revision), tuple(parent_keys), ie.text_sha1, blob.data)])
         shamap = [(hexsha, "blob", (ie.file_id, ie.revision))]
     else:
         shamap = []
