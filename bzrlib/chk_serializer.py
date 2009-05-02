@@ -31,13 +31,10 @@ from bzrlib import (
     )
 
 class RIORevisionSerializer1(object):
-    """Simple line-based revision serializer. 
+    """Simple revision serializer based around RIO. 
     
-    This writes simple key/value pairs for all elements on the revision, 
-    each on a separate line and using colons to separate key and value. Newlines
-    are backslash-escaped where necessary.
-
-    The commit message is always serialized last and can span multiple lines.
+    It tries to group entries together that are less likely
+    to change often, to make it easier to do compression.
     """
 
     def write_revision(self, rev, f):
