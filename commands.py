@@ -164,8 +164,8 @@ class cmd_git_object(Command):
     aliases = ["git-objects", "git-cat"]
     takes_args = ["sha1?"]
     takes_options = [Option('directory', 
-        help='location of repository', type=unicode),
-        Option('pretty', help='pretty-print')]
+        help='Location of repository.', type=unicode),
+        Option('pretty', help='Pretty-print objects.')]
     encoding_type = 'exact'
 
     @display_command
