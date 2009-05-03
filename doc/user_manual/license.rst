@@ -5,7 +5,7 @@ This user manual is::
 
      (C) 2007 James Westby <jw+debian@jameswestby.net> and
 
-is distributed under the followind terms::
+is distributed under the following terms::
 
    This file is part of bzr-builddeb.
 
