@@ -29,6 +29,9 @@ from bzrlib.errors import (
     InvalidRevisionId,
     NoSuchRevision,
     )
+from bzrlib.foreign import (
+    update_workingtree_fileids,
+    )
 
 from bzrlib.plugins.rebase.rebase import (
     generate_transpose_plan,
@@ -60,53 +63,6 @@ def create_upgraded_revid(revid, mapping_suffix, upgrade_suffix="-upgrade"):
         return revid + mapping_suffix + upgrade_suffix
 
 
-def determine_fileid_renames(old_inv, new_inv):
-    """Determine the file ids based on a old and a new inventory that 
-    are equal in content.
-
-    :param old_inv: Old inventory
-    :param new_inv: New inventory
-    :return: Dictionary a (old_id, new_id) tuple for each path in the 
-        inventories.
-    """
-    ret = {}
-    if len(old_inv) != len(new_inv):
-        raise AssertionError("Inventories are not of the same size")
-    for old_file_id in old_inv:
-        new_file_id = new_inv.path2id(old_inv.id2path(old_file_id))
-        if new_file_id is None:
-            raise AssertionError(
-                "Unable to find %s in new inventory" % old_file_id)
-        ret[new_inv.id2path(new_file_id)] = (old_file_id, new_file_id)
-    return ret
-
-
-def update_workinginv_fileids(wt, old_inv, new_inv):
-    """Update all file ids in wt according to old_tree/new_tree. 
-
-    old_tree and new_tree should be two RevisionTree's that differ only
-    in file ids.
-    """
-    fileid_renames = determine_fileid_renames(old_inv, new_inv)
-    old_fileids = []
-    new_fileids = []
-    new_root_id = None
-    # Adjust file ids in working tree
-    # Sorted, so we process parents before children
-    for path in sorted(fileid_renames.keys()):
-        if path != "":
-            old_fileids.append(fileid_renames[path][0])
-            new_fileids.append((path, fileid_renames[path][1]))
-        else:
-            new_root_id = fileid_renames[path][1]
-    new_fileids.reverse()
-    wt.unversion(old_fileids)
-    if new_root_id is not None:
-        wt.set_root_id(new_root_id)
-    wt.add([x[0] for x in new_fileids], [x[1] for x in new_fileids])
-    wt.set_last_revision(new_inv.revision_id)
-
-
 def upgrade_workingtree(wt, foreign_repository, new_mapping, 
                         allow_changes=False, verbose=False):
     """Upgrade a working tree.
@@ -121,9 +77,8 @@ def upgrade_workingtree(wt, foreign_repository, new_mapping,
         last_revid = wt.branch.last_revision()
         if old_revid == last_revid:
             return revid_renames
-        old_inv = wt.branch.repository.get_inventory(old_revid)
-        new_inv = wt.branch.repository.get_inventory(last_revid)
-        update_workinginv_fileids(wt, old_inv, new_inv)
+        new_tree = wt.branch.repository.revision_tree(last_revid)
+        update_workingtree_fileids(wt, new_tree)
     finally:
         wt.unlock()
 
