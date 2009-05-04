@@ -178,6 +178,9 @@ class GitBranch(ForeignBranch):
     def lock_read(self):
         self.control_files.lock_read()
 
+    def is_locked(self):
+        return self.control_files.is_locked()
+
     def unlock(self):
         self.control_files.unlock()
 
