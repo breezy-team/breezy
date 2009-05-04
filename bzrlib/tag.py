@@ -67,6 +67,10 @@ class DisabledTags(_Tags):
         # we never have anything to copy
         pass
 
+    def rename_revisions(self, rename_map):
+        # No tags, so nothing to rename
+        pass
+
     def get_reverse_tag_dict(self):
         # There aren't any tags, so the reverse mapping is empty.
         return {}
@@ -215,6 +219,17 @@ class BasicTags(_Tags):
         finally:
             to_tags.branch.unlock()
         return conflicts
+
+    def rename_revisions(self, rename_map):
+        """Rename revisions in this tags dictionary.
+        
+        :param rename_map: Dictionary mapping old revids to new revids
+        """
+        reverse_tags = self.get_reverse_tag_dict()
+        for revid, names in reverse_tags.iteritems():
+            if revid in rename_map:
+                for name in names:
+                    self.set_tag(name, rename_map[revid])
 
     def _reconcile_tags(self, source_dict, dest_dict, overwrite):
         """Do a two-way merge of two tag dictionaries.
