@@ -30,7 +30,7 @@
 * `Большой учебник <en/tutorials/tutorial.html>`_ (англ.)
 
 * `Использование Bazaar с Launchpad 
-  <en/tutorials/using_bazaar_with_launchpad.html>`_ (англ.)
+  <ru/tutorials/using_bazaar_with_launchpad.html>`_
 
 * `Централизированный стиль работы 
   <en/tutorials/centralized_workflow.html>`_ (англ.)
