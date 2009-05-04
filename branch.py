@@ -144,8 +144,11 @@ class GitBranch(ForeignBranch):
         if stop_revision is None:
             stop_revision = source.last_revision()
         # FIXME: Check for diverged branches
+        refs = { "refs/heads/master": stop_revision }
+        for name, revid in source.tags.get_tag_dict().iteritems():
+            refs["refs/tags/%s" % name] = revid
         revidmap, gitidmap = self.repository.dfetch_refs(source.repository, 
-                { "refs/heads/master": stop_revision })
+                refs)
         if revidmap != {}:
             self.generate_revision_history(revidmap[stop_revision])
         return revidmap, gitidmap
