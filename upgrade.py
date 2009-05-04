@@ -95,7 +95,7 @@ def upgrade_tags(tags, repository, foreign_repository, new_mapping,
     pb = ui.ui_factory.nested_progress_bar()
     try:
         tags_dict = tags.get_tag_dict()
-        for i, (name, revid) in enumerate(tags_dict.items()):
+        for i, (name, revid) in enumerate(tags_dict.iteritems()):
             pb.update("upgrading tags", i, len(tags_dict))
             if not revid in renames:
                 renames.update(upgrade_repository(repository, foreign_repository, 
