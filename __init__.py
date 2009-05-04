@@ -42,6 +42,9 @@ for cmd in ["replay", "rebase", "rebase_abort", "rebase_continue",
     plugin_cmds.register_lazy("cmd_%s" % cmd, [], 
         "bzrlib.plugins.rebase.commands")
 
+plugin_cmds.register_lazy('cmd_foreign_mapping_upgrade', ['svn-upgrade'], 
+                          'bzrlib.plugins.rebase.commands')
+
 
 def test_suite():
     """Determine the testsuite for bzr-rebase."""
