@@ -72,13 +72,13 @@ from bzrlib.plugins.git.mapping import (
     inventory_to_tree_and_blobs,
     text_to_blob,
     )
-from bzrlib.plugins.git.repository import (
-    LocalGitRepository, 
-    GitRepository, 
-    GitRepositoryFormat,
-    )
 from bzrlib.plugins.git.remote import (
     RemoteGitRepository,
+    )
+from bzrlib.plugins.git.repository import (
+    GitRepository, 
+    GitRepositoryFormat,
+    LocalGitRepository,
     )
 
 
