@@ -978,6 +978,9 @@ class AbstractAuthHandler(urllib2.BaseHandler):
       successful and the request authentication parameters have been updated.
     """
 
+    scheme = None
+    """The scheme as it appears in the server header (lower cased)"""
+
     _max_retry = 3
     """We don't want to retry authenticating endlessly"""
 
@@ -1044,7 +1047,8 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         auth = self.get_auth(request)
         auth['modified'] = False
         # FIXME: the auth handler should be selected at a single place instead
-        # of letting all handlers try to match all headers.
+        # of letting all handlers try to match all headers, but the current
+        # design doesn't allow a simple implementation.
         for server_header in server_headers:
             # Several schemes can be proposed by the server, try to match each
             # one in turn
@@ -1056,6 +1060,20 @@ class AbstractAuthHandler(urllib2.BaseHandler):
                     and not auth['modified']):
                     # We already tried that, give up
                     return None
+
+                # Only the most secure scheme proposed by the server should be
+                # used, since the handlers use 'handler_order' to describe that
+                # property, the first handler tried takes precedence, the
+                # others should not attempt to authenticate if the best one
+                # failed.
+                best_scheme = auth.get('best_scheme', None)
+                if best_scheme is None:
+                    # At that point, if current handler should doesn't succeed
+                    # the credentials are wrong (or incomplete), but we know
+                    # that the associated scheme should be used.
+                    best_scheme = auth['best_scheme'] = self.scheme
+                if  best_scheme != self.scheme:
+                    continue
 
                 if self.requires_username and auth.get('user', None) is None:
                     # Without a known user, we can't authenticate
@@ -1199,13 +1217,13 @@ class NegotiateAuthHandler(AbstractAuthHandler):
     NTLM support may also be added.
     """
 
+    scheme = 'negotiate'
     handler_order = 480
-
     requires_username = False
 
     def auth_match(self, header, auth):
         scheme, raw_auth = self._parse_auth_header(header)
-        if scheme != 'negotiate':
+        if scheme != self.scheme:
             return False
         self.update_auth(auth, 'scheme', scheme)
         resp = self._auth_match_kerberos(auth)
@@ -1244,8 +1262,8 @@ class NegotiateAuthHandler(AbstractAuthHandler):
 class BasicAuthHandler(AbstractAuthHandler):
     """A custom basic authentication handler."""
 
+    scheme = 'basic'
     handler_order = 500
-
     auth_regexp = re.compile('realm="([^"]*)"', re.I)
 
     def build_auth_header(self, auth, request):
@@ -1262,7 +1280,7 @@ class BasicAuthHandler(AbstractAuthHandler):
 
     def auth_match(self, header, auth):
         scheme, raw_auth = self._parse_auth_header(header)
-        if scheme != 'basic':
+        if scheme != self.scheme:
             return False
 
         match, realm = self.extract_realm(raw_auth)
@@ -1304,6 +1322,7 @@ def get_new_cnonce(nonce, nonce_count):
 class DigestAuthHandler(AbstractAuthHandler):
     """A custom digest authentication handler."""
 
+    scheme = 'digest'
     # Before basic as digest is a bit more secure and should be preferred
     handler_order = 490
 
@@ -1315,7 +1334,7 @@ class DigestAuthHandler(AbstractAuthHandler):
 
     def auth_match(self, header, auth):
         scheme, raw_auth = self._parse_auth_header(header)
-        if scheme != 'digest':
+        if scheme != self.scheme:
             return False
 
         # Put the requested authentication info into a dict

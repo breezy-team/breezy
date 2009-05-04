@@ -58,6 +58,9 @@ Bug Fixes
 * Non-recursive ``bzr ls`` now works properly when a path is specified.
   (Jelmer Vernooij, #357863)
 
+* Correctly handle http servers proposing multiple authentication schemes.
+  (Vincent Ladeuil, #366107)
+
 Documentation
 *************
 
