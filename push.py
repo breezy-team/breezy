@@ -38,7 +38,11 @@ from bzrlib.plugins.git.mapping import (
     )
 from bzrlib.plugins.git.repository import (
     GitRepository,
+    LocalGitRepository,
     GitRepositoryFormat,
+    )
+from bzrlib.plugins.git.remote import (
+    RemoteGitRepository,
     )
 
 
@@ -135,6 +139,9 @@ class InterToGitRepository(InterRepository):
             fetch_spec=None):
         raise NoPushSupport()
 
+
+class InterToLocalGitRepository(InterToGitRepository):
+
     def missing_revisions(self, stop_revision):
         if stop_revision is None:
             raise NotImplementedError
@@ -175,4 +182,34 @@ class InterToGitRepository(InterRepository):
     def is_compatible(source, target):
         """Be compatible with GitRepository."""
         return (not isinstance(source, GitRepository) and 
-                isinstance(target, GitRepository))
+                isinstance(target, LocalGitRepository))
+
+
+class InterToRemoteGitRepository(InterToGitRepository):
+
+    def dfetch(self, stop_revision=None):
+        """Import the gist of the ancestry of a particular revision."""
+        revidmap = {}
+        mapping = self.target.get_mapping()
+        self.source.lock_read()
+        try:
+            todo = [revid for revid in self.missing_revisions(stop_revision) if revid != NULL_REVISION]
+            pb = ui.ui_factory.nested_progress_bar()
+            try:
+                object_generator = MissingObjectsIterator(self.source, mapping, pb)
+                for old_bzr_revid, git_commit in object_generator.import_revisions(
+                    todo):
+                    new_bzr_revid = mapping.revision_id_foreign_to_bzr(git_commit)
+                    revidmap[old_bzr_revid] = new_bzr_revid
+                self.target._git.object_store.add_objects(object_generator) 
+            finally:
+                pb.finished()
+        finally:
+            self.source.unlock()
+        return revidmap
+
+    @staticmethod
+    def is_compatible(source, target):
+        """Be compatible with GitRepository."""
+        return (not isinstance(source, GitRepository) and 
+                isinstance(target, RemoteGitRepository))

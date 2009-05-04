@@ -85,7 +85,8 @@ class GitRepository(ForeignRepository):
         for optimiser in [fetch.InterRemoteGitNonGitRepository, 
                           fetch.InterLocalGitNonGitRepository,
                           fetch.InterGitRepository,
-                          push.InterToGitRepository]:
+                          push.InterToLocalGitRepository,
+                          push.InterToRemoteGitRepository]:
             repository.InterRepository.register_optimiser(optimiser)
 
     def is_shared(self):
@@ -103,6 +104,10 @@ class GitRepository(ForeignRepository):
 
     def make_working_trees(self):
         return True
+
+    def dfetch(self, source, stop_revision):
+        interrepo = repository.InterRepository.get(source, self)
+        return interrepo.dfetch(stop_revision)
 
 
 class LocalGitRepository(GitRepository):
@@ -170,10 +175,6 @@ class LocalGitRepository(GitRepository):
             ancestry.append(rev)
         ancestry.reverse()
         return [None] + ancestry
-
-    def dfetch(self, source, stop_revision):
-        interrepo = repository.InterRepository.get(source, self)
-        return interrepo.dfetch(stop_revision)
 
     def get_signature_text(self, revision_id):
         raise errors.NoSuchRevision(self, revision_id)
