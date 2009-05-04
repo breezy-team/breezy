@@ -113,17 +113,34 @@ def load_tests(standard_tests, module, loader):
                                             protocol_scenarios)
     tests.multiply_tests(tp_tests, tp_scenarios, result)
 
+    # proxy auth: each auth scheme on all http versions on all implementations.
+    tppa_tests, remaining_tests = tests.split_suite_by_condition(
+        remaining_tests, tests.condition_isinstance((
+                TestProxyAuth,
+                )))
+    proxy_auth_scheme_scenarios = [
+        ('basic', dict(_auth_server=http_utils.ProxyBasicAuthServer)),
+        ('digest', dict(_auth_server=http_utils.ProxyDigestAuthServer)),
+        ('basicdigest',
+         dict(_auth_server=http_utils.ProxyBasicAndDigestAuthServer)),
+        ]
+    tppa_scenarios = tests.multiply_scenarios(tp_scenarios,
+                                              proxy_auth_scheme_scenarios)
+    tests.multiply_tests(tppa_tests, tppa_scenarios, result)
+
     # auth: each auth scheme on all http versions on all implementations.
     tpa_tests, remaining_tests = tests.split_suite_by_condition(
         remaining_tests, tests.condition_isinstance((
                 TestAuth,
                 )))
     auth_scheme_scenarios = [
-        ('basic', dict(_auth_scheme='basic')),
-        ('digest', dict(_auth_scheme='digest')),
+        ('basic', dict(_auth_server=http_utils.HTTPBasicAuthServer)),
+        ('digest', dict(_auth_server=http_utils.HTTPDigestAuthServer)),
+        ('basicdigest',
+         dict(_auth_server=http_utils.HTTPBasicAndDigestAuthServer)),
         ]
     tpa_scenarios = tests.multiply_scenarios(tp_scenarios,
-        auth_scheme_scenarios)
+                                             auth_scheme_scenarios)
     tests.multiply_tests(tpa_tests, tpa_scenarios, result)
 
     # activity: activity on all http versions on all implementations
@@ -1451,6 +1468,8 @@ class TestAuth(http_utils.TestCaseWithWebserver):
     _auth_header = 'Authorization'
     _password_prompt_prefix = ''
     _username_prompt_prefix = ''
+    # Set by load_tests
+    _auth_server = None
 
     def setUp(self):
         super(TestAuth, self).setUp()
@@ -1459,16 +1478,7 @@ class TestAuth(http_utils.TestCaseWithWebserver):
                                   ('b', 'contents of b\n'),])
 
     def create_transport_readonly_server(self):
-        if self._auth_scheme == 'basic':
-            server = http_utils.HTTPBasicAuthServer(
-                protocol_version=self._protocol_version)
-        else:
-            if self._auth_scheme != 'digest':
-                raise AssertionError('Unknown auth scheme: %r'
-                                     % self._auth_scheme)
-            server = http_utils.HTTPDigestAuthServer(
-                protocol_version=self._protocol_version)
-        return server
+        return self._auth_server(protocol_version=self._protocol_version)
 
     def _testing_pycurl(self):
         return pycurl_present and self._transport == PyCurlTransport
@@ -1628,8 +1638,9 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         self.assertEqual(1, self.server.auth_required_errors)
 
     def test_changing_nonce(self):
-        if self._auth_scheme != 'digest':
-            raise tests.TestNotApplicable('HTTP auth digest only test')
+        if self._auth_server not in (http_utils.HTTPDigestAuthServer,
+                                     http_utils.ProxyDigestAuthServer):
+            raise tests.TestNotApplicable('HTTP/proxy auth digest only test')
         if self._testing_pycurl():
             raise tests.KnownFailure(
                 'pycurl does not handle a nonce change')
@@ -1666,18 +1677,6 @@ class TestProxyAuth(TestAuth):
                                   ('a-proxied', 'contents of a\n'),
                                   ('b-proxied', 'contents of b\n'),
                                   ])
-
-    def create_transport_readonly_server(self):
-        if self._auth_scheme == 'basic':
-            server = http_utils.ProxyBasicAuthServer(
-                protocol_version=self._protocol_version)
-        else:
-            if self._auth_scheme != 'digest':
-                raise AssertionError('Unknown auth scheme: %r'
-                                     % self._auth_scheme)
-            server = http_utils.ProxyDigestAuthServer(
-                protocol_version=self._protocol_version)
-        return server
 
     def get_user_transport(self, user, password):
         self._install_env({'all_proxy': self.get_user_url(user, password)})

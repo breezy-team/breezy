@@ -1035,32 +1035,39 @@ class AbstractAuthHandler(urllib2.BaseHandler):
                 # Let's be ready for next round
                 self._retry_count = None
                 return None
-        server_header = headers.get(self.auth_required_header, None)
-        if server_header is None:
+        server_headers = headers.getheaders(self.auth_required_header)
+        if not server_headers:
             # The http error MUST have the associated
             # header. This must never happen in production code.
             raise KeyError('%s not found' % self.auth_required_header)
 
         auth = self.get_auth(request)
         auth['modified'] = False
-        if self.auth_match(server_header, auth):
-            # auth_match may have modified auth (by adding the
-            # password or changing the realm, for example)
-            if (request.get_header(self.auth_header, None) is not None
-                and not auth['modified']):
-                # We already tried that, give up
-                return None
+        # FIXME: the auth handler should be selected at a single place instead
+        # of letting all handlers try to match all headers.
+        for server_header in server_headers:
+            # Several schemes can be proposed by the server, try to match each
+            # one in turn
+            matching_handler = self.auth_match(server_header, auth)
+            if matching_handler:
+                # auth_match may have modified auth (by adding the
+                # password or changing the realm, for example)
+                if (request.get_header(self.auth_header, None) is not None
+                    and not auth['modified']):
+                    # We already tried that, give up
+                    return None
 
-            if self.requires_username and auth.get('user', None) is None:
-                # Without a known user, we can't authenticate
-                return None
+                if self.requires_username and auth.get('user', None) is None:
+                    # Without a known user, we can't authenticate
+                    return None
 
-            # Housekeeping
-            request.connection.cleanup_pipe()
-            response = self.parent.open(request)
-            if response:
-                self.auth_successful(request, response)
-            return response
+                # Housekeeping
+                request.connection.cleanup_pipe()
+                # Retry the request with an authentication header added
+                response = self.parent.open(request)
+                if response:
+                    self.auth_successful(request, response)
+                return response
         # We are not qualified to handle the authentication.
         # Note: the authentication error handling will try all
         # available handlers. If one of them authenticates
@@ -1260,9 +1267,6 @@ class BasicAuthHandler(AbstractAuthHandler):
 
         match, realm = self.extract_realm(raw_auth)
         if match:
-            if scheme != 'basic':
-                return False
-
             # Put useful info into auth
             self.update_auth(auth, 'scheme', scheme)
             self.update_auth(auth, 'realm', realm)
