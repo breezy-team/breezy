@@ -16,12 +16,26 @@
 
 """Bazaar command-line subcommands."""
 
-from bzrlib.commands import Command, display_command
-from bzrlib.errors import (BzrCommandError, ConflictsInTree, NoSuchFile, 
-                           UnrelatedBranches, NoSuchRevision, 
-                           UncommittedChanges)
-from bzrlib.trace import info, warning
-from bzrlib.option import Option
+from bzrlib.commands import (
+    Command,
+    display_command,
+    )
+from bzrlib.errors import (
+    BzrCommandError,
+    ConflictsInTree,
+    NoSuchFile,
+    NoSuchRevision,
+    NoWorkingTree,
+    UncommittedChanges,
+    UnrelatedBranches,
+    )
+from bzrlib.option import (
+    Option,
+    )
+from bzrlib.trace import (
+    info,
+    warning,
+    )
 
 class cmd_rebase(Command):
     """Re-base a branch.
@@ -348,12 +362,16 @@ class cmd_foreign_mapping_upgrade(Command):
             Option("idmap-file", help="Write map with old and new revision ids.", type=str)]
 
     def run(self, from_repository=None, verbose=False, idmap_file=None):
-        from upgrade import upgrade_branch, upgrade_workingtree
+        from bzrlib import (
+            urlutils,
+            )
         from bzrlib.branch import Branch
-        from bzrlib.errors import NoWorkingTree, BzrCommandError
         from bzrlib.repository import Repository
-        from bzrlib.trace import info
         from bzrlib.workingtree import WorkingTree
+        from bzrlib.plugins.rebase.upgrade import (
+            upgrade_branch,
+            upgrade_workingtree,
+            )
         try:
             wt_to = WorkingTree.open(".")
             branch_to = wt_to.branch
@@ -367,7 +385,6 @@ class cmd_foreign_mapping_upgrade(Command):
                 raise BzrCommandError("No pull location known or"
                                              " specified.")
             else:
-                import bzrlib.urlutils as urlutils
                 display_url = urlutils.unescape_for_display(stored_loc,
                         self.outf.encoding)
                 self.outf.write("Using saved location: %s\n" % display_url)
