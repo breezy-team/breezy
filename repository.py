@@ -269,7 +269,9 @@ class GitRevisionTree(revisiontree.RevisionTree):
         if entry.kind == 'directory': return ""
         return entry.object.data
 
+
 class GitRepositoryFormat(repository.RepositoryFormat):
+    """Git repository format."""
 
     supports_tree_reference = False
     rich_root_data = True

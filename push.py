@@ -199,23 +199,21 @@ class InterToLocalGitRepository(InterToGitRepository):
 
 class InterToRemoteGitRepository(InterToGitRepository):
 
-    def dfetch(self, stop_revision=None):
+    def dfetch_refs(self, new_refs):
         """Import the gist of the ancestry of a particular revision."""
         revidmap = {}
+        def get_changed_refs(refs):
+            ret = {}
+            for name, revid in new_refs.iteritems():
+                ret[name] = (refs.get(name), object_generator._object_store._lookup_revision_sha1(revid))
+            return ret
+        def generate_blob_contents(have, want):
+            import pdb; pdb.set_trace()
         mapping = self.target.get_mapping()
         self.source.lock_read()
         try:
-            todo = [revid for revid in self.missing_revisions(stop_revision) if revid != NULL_REVISION]
-            pb = ui.ui_factory.nested_progress_bar()
-            try:
-                object_generator = MissingObjectsIterator(self.source, mapping, pb)
-                for old_bzr_revid, git_commit in object_generator.import_revisions(
-                    todo):
-                    new_bzr_revid = mapping.revision_id_foreign_to_bzr(git_commit)
-                    revidmap[old_bzr_revid] = new_bzr_revid
-                self.target._git.object_store.add_objects(object_generator) 
-            finally:
-                pb.finished()
+            object_generator = MissingObjectsIterator(self.source, mapping)
+            self.target.send_pack(get_changed_refs, generate_blob_contents)
         finally:
             self.source.unlock()
         return revidmap
