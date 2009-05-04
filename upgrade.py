@@ -13,44 +13,29 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+
 """Upgrading revisions made with older versions of the mapping."""
+
+
+import itertools
 
 from bzrlib import (
     trace,
     ui,
     )
 from bzrlib.errors import (
-    DependencyNotPresent,
     BzrError,
     InvalidRevisionId,
     NoSuchRevision,
     )
 
-import itertools
-
-class RebaseNotPresent(DependencyNotPresent):
-    _fmt = "Unable to import bzr-rebase (required for upgrade support): %(error)s"
-
-    def __init__(self, error):
-        DependencyNotPresent.__init__(self, 'bzr-rebase', error)
-
-
-def check_rebase_version(min_version):
-    """Check what version of bzr-rebase is installed.
-
-    Raises an exception when the version installed is older than 
-    min_version.
-
-    :raises RebaseNotPresent: Raised if bzr-rebase is not installed or too old.
-    """
-    try:
-        from bzrlib.plugins.rebase import version_info as rebase_version_info
-        if rebase_version_info[:len(min_version)] < min_version:
-            raise RebaseNotPresent("Version %r present, at least %r required" 
-                                   % (rebase_version_info, min_version))
-    except ImportError, e:
-        raise RebaseNotPresent(e)
-
+from bzrlib.plugins.rebase.rebase import (
+    generate_transpose_plan,
+    replay_snapshot,
+    rebase,
+    rebase_todo,
+    )
 
 
 class UpgradeChangesContent(BzrError):
@@ -59,7 +44,6 @@ class UpgradeChangesContent(BzrError):
 
     def __init__(self, revid):
         self.revid = revid
-
 
 
 def create_upgraded_revid(revid, mapping_suffix, upgrade_suffix="-upgrade"):
@@ -227,7 +211,6 @@ def generate_upgrade_map(revs, vcs, determine_upgraded_revid):
         rename_map[revid] = newrevid
     return rename_map
 
-MIN_REBASE_VERSION = (0, 4, 3)
 
 def create_upgrade_plan(repository, foreign_repository, new_mapping,
                         revision_id=None, allow_changes=False):
@@ -242,8 +225,6 @@ def create_upgrade_plan(repository, foreign_repository, new_mapping,
         of revisions.
     :return: Tuple with a rebase plan and map of renamed revisions.
     """
-    from bzrlib.plugins.rebase.rebase import generate_transpose_plan
-    check_rebase_version(MIN_REBASE_VERSION)
 
     graph = repository.get_graph()
     if revision_id is None:
@@ -312,9 +293,6 @@ def upgrade_repository(repository, foreign_repository, new_mapping,
     :param verbose: Whether to print list of rewrites
     :return: Dictionary of mapped revisions
     """
-    check_rebase_version(MIN_REBASE_VERSION)
-    from bzrlib.plugins.rebase.rebase import (
-        replay_snapshot, rebase, rebase_todo)
 
     # Find revisions that need to be upgraded, create
     # dictionary with revision ids in key, new parents in value
