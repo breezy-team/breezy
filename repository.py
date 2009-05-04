@@ -57,10 +57,6 @@ from bzrlib.plugins.git.versionedfiles import (
     GitTexts,
     )
 
-import dulwich as git
-import os
-import time
-
 
 class GitTags(object):
 
@@ -142,11 +138,6 @@ class LocalGitRepository(GitRepository):
         for rev, parents in graph.iter_ancestry(bzr_heads):
             ret.add(rev)
         return ret
-
-    #def get_revision_delta(self, revision_id):
-    #    parent_revid = self.get_revision(revision_id).parent_ids[0]
-    #    diff = self._git.diff(ids.convert_revision_id_bzr_to_git(parent_revid),
-    #                   ids.convert_revision_id_bzr_to_git(revision_id))
 
     def _make_parents_provider(self):
         """See Repository._make_parents_provider()."""
