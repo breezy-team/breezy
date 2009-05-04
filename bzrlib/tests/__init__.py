@@ -782,7 +782,7 @@ class TestCase(unittest.TestCase):
     _gather_lsprof_in_benchmarks = False
     attrs_to_keep = ('id', '_testMethodName', '_testMethodDoc',
                      '_log_contents', '_log_file_name', '_benchtime',
-                     '_TestCase__testMethodName')
+                     '_TestCase__testMethodName', '_TestCase__testMethodDoc',)
 
     def __init__(self, methodName='testMethod'):
         super(TestCase, self).__init__(methodName)
@@ -1446,11 +1446,9 @@ class TestCase(unittest.TestCase):
                 raise
         finally:
             saved_attrs = {}
-            absent_attr = object()
             for attr_name in self.attrs_to_keep:
-                attr = getattr(self, attr_name, absent_attr)
-                if attr is not absent_attr:
-                    saved_attrs[attr_name] = attr
+                if attr_name in self.__dict__:
+                    saved_attrs[attr_name] = self.__dict__[attr_name]
             self.__dict__ = saved_attrs
 
     def tearDown(self):
