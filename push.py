@@ -157,8 +157,19 @@ class InterToLocalGitRepository(InterToGitRepository):
         finally:
             pb.finished()
 
+    def dfetch_refs(self, refs):
+        revidmap = {}
+        gitidmap = {}
+        for name, revid in refs.iteritems():
+            newrevidmap, newgitidmap = self.dfetch(revid)
+            revidmap.update(newrevidmap)
+            gitidmap.update(newgitidmap)
+            self.target._git.set_ref(name, gitidmap[revid])
+        return revidmap, gitidmap
+
     def dfetch(self, stop_revision=None):
         """Import the gist of the ancestry of a particular revision."""
+        gitidmap = {}
         revidmap = {}
         mapping = self.target.get_mapping()
         self.source.lock_read()
@@ -171,12 +182,13 @@ class InterToLocalGitRepository(InterToGitRepository):
                     todo):
                     new_bzr_revid = mapping.revision_id_foreign_to_bzr(git_commit)
                     revidmap[old_bzr_revid] = new_bzr_revid
+                    gitidmap[old_bzr_revid] = git_commit
                 self.target._git.object_store.add_objects(object_generator) 
             finally:
                 pb.finished()
         finally:
             self.source.unlock()
-        return revidmap
+        return revidmap, gitidmap
 
     @staticmethod
     def is_compatible(source, target):
