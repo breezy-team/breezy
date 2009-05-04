@@ -127,6 +127,10 @@ class InterToGitRepository(InterRepository):
 
     _matching_repo_format = GitRepositoryFormat()
 
+    def __init__(self, source, target):
+        super(InterToGitRepository, self).__init__(source, target)
+        self.mapping = self.target.get_mapping()
+
     @staticmethod
     def _get_repo_format_to_test():
         return None
@@ -164,23 +168,26 @@ class InterToLocalGitRepository(InterToGitRepository):
             newrevidmap, newgitidmap = self.dfetch(revid)
             revidmap.update(newrevidmap)
             gitidmap.update(newgitidmap)
-            self.target._git.set_ref(name, gitidmap[revid])
+            if revid in gitidmap:
+                gitid = gitidmap[revid]
+            else:
+                gitid, _ = self.mapping.revision_id_bzr_to_foreign(revid)
+            self.target._git.set_ref(name, gitid)
         return revidmap, gitidmap
 
     def dfetch(self, stop_revision=None):
         """Import the gist of the ancestry of a particular revision."""
         gitidmap = {}
         revidmap = {}
-        mapping = self.target.get_mapping()
         self.source.lock_read()
         try:
             todo = [revid for revid in self.missing_revisions(stop_revision) if revid != NULL_REVISION]
             pb = ui.ui_factory.nested_progress_bar()
             try:
-                object_generator = MissingObjectsIterator(self.source, mapping, pb)
+                object_generator = MissingObjectsIterator(self.source, self.mapping, pb)
                 for old_bzr_revid, git_commit in object_generator.import_revisions(
                     todo):
-                    new_bzr_revid = mapping.revision_id_foreign_to_bzr(git_commit)
+                    new_bzr_revid = self.mapping.revision_id_foreign_to_bzr(git_commit)
                     revidmap[old_bzr_revid] = new_bzr_revid
                     gitidmap[old_bzr_revid] = git_commit
                 self.target._git.object_store.add_objects(object_generator) 
@@ -209,10 +216,9 @@ class InterToRemoteGitRepository(InterToGitRepository):
             return ret
         def generate_blob_contents(have, want):
             import pdb; pdb.set_trace()
-        mapping = self.target.get_mapping()
         self.source.lock_read()
         try:
-            object_generator = MissingObjectsIterator(self.source, mapping)
+            object_generator = MissingObjectsIterator(self.source, self.mapping)
             self.target.send_pack(get_changed_refs, generate_blob_contents)
         finally:
             self.source.unlock()
