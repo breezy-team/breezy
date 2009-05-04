@@ -35,6 +35,7 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import codecs
 import errno
+import threading
 from warnings import warn
 
 import bzrlib
@@ -682,6 +683,7 @@ def apply_coveraged(dirname, the_callable, *args, **kwargs):
 
     tracer = trace.Trace(count=1, trace=0)
     sys.settrace(tracer.globaltrace)
+    threading.settrace(tracer.globaltrace)
 
     try:
         return exception_to_return_code(the_callable, *args, **kwargs)
