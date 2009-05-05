@@ -99,14 +99,19 @@ def minimum_path_selection(paths):
     :return: A set of paths sufficient to include everything in paths via
         is_inside_any, drawn from the paths parameter.
     """
-    search_paths = set()
-    paths = set(paths)
-    for path in paths:
-        other_paths = paths.difference([path])
-        if not is_inside_any(other_paths, path):
-            # this is a top level path, we must check it.
-            search_paths.add(path)
-    return search_paths
+    search_paths = []
+    sorted_paths = list(paths)
+    sorted_paths.sort()
+    for path in sorted_paths:
+        if len(search_paths) == 0:
+            # Result is empty, add first path
+            search_paths.append(path)
+            continue
+        if not is_inside(search_paths[-1], path):
+            # This path is unique, add it
+            search_paths.append(path)
+            continue
+    return set(search_paths)
 
 
 _QUOTE_RE = None
@@ -1742,12 +1747,12 @@ def until_no_eintr(f, *a, **kw):
 
 def re_compile_checked(re_string, flags=0, where=""):
     """Return a compiled re, or raise a sensible error.
-    
+
     This should only be used when compiling user-supplied REs.
 
     :param re_string: Text form of regular expression.
     :param flags: eg re.IGNORECASE
-    :param where: Message explaining to the user the context where 
+    :param where: Message explaining to the user the context where
         it occurred, eg 'log search filter'.
     """
     # from https://bugs.launchpad.net/bzr/+bug/251352
