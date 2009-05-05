@@ -132,7 +132,7 @@ class BzrBackend(Backend):
         repo = Repository.open(self.directory)
 
         # If this is a Git repository, just use the existing fetch_objects implementation.
-        if getattr(repo, "fetch_objects", None) is None:
+        if getattr(repo, "fetch_objects", None) is not None:
             return repo.fetch_objects(determine_wants, graph_walker, None, progress)
 
         wants = determine_wants(self.get_refs())
