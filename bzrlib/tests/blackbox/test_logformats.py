@@ -21,17 +21,34 @@
 
 import os
 
+from bzrlib import (
+    config,
+    tests,
+    )
 
-from bzrlib.branch import Branch
-from bzrlib.tests import TestCaseInTempDir
-from bzrlib.config import (ensure_config_dir_exists, config_filename)
 
+class TestLogFormats(tests.TestCaseInTempDir):
 
-class TestLogFormats(TestCaseInTempDir):
+    def setUp(self):
+        super(TestLogFormats, self).setUp()
+
+        conf_path = config.config_filename()
+        if os.path.isfile(conf_path):
+                # Something is wrong in environment,
+                # we risk overwriting users config
+                self.fail("%s exists" % conf_path)
+
+        config.ensure_config_dir_exists()
+        conf = open(conf_path,'wb')
+        try:
+            conf.write("""[DEFAULT]
+email=Joe Foo <joe@foo.com>
+log_format=line
+""")
+        finally:
+            conf.close()
 
     def test_log_default_format(self):
-        self.setup_config()
-
         self.run_bzr('init')
         open('a', 'wb').write('foo\n')
         self.run_bzr('add a')
@@ -54,13 +71,10 @@ class TestLogFormats(TestCaseInTempDir):
 
         self.run_bzr('commit -m 2')
 
-        # only the lines formatter is this short
         self.assertEquals(7,
             len(self.run_bzr('log --log-format short')[0].split('\n')))
 
     def test_missing_default_format(self):
-        self.setup_config()
-
         os.mkdir('a')
         os.chdir('a')
         self.run_bzr('init')
@@ -87,8 +101,6 @@ class TestLogFormats(TestCaseInTempDir):
         os.chdir('..')
 
     def test_missing_format_arg(self):
-        self.setup_config()
-
         os.mkdir('a')
         os.chdir('a')
         self.run_bzr('init')
@@ -117,7 +129,6 @@ class TestLogFormats(TestCaseInTempDir):
 
     def test_logformat_gnu_changelog(self):
         # from http://launchpad.net/bugs/29582/
-        self.setup_config()
         repo_url = self.make_trivial_history()
 
         out, err = self.run_bzr(
@@ -143,15 +154,3 @@ class TestLogFormats(TestCaseInTempDir):
         bb.finish_series()
         return self.get_url('repo/a')
 
-    def setup_config(self):
-        if os.path.isfile(config_filename()):
-                # Something is wrong in environment,
-                # we risk overwriting users config
-                self.assert_(config_filename() + "exists, abort")
-
-        ensure_config_dir_exists()
-        CONFIG=("[DEFAULT]\n"
-                "email=Joe Foo <joe@foo.com>\n"
-                "log_format=line\n")
-
-        open(config_filename(),'wb').write(CONFIG)

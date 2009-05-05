@@ -45,14 +45,13 @@ class TestCaseWithoutPropsHandler(tests.TestCaseWithTransport):
 class LogCatcher(log.LogFormatter):
     """Pull log messages into list rather than displaying them.
 
-    For ease of testing we save log messages here rather than actually
-    formatting them, so that we can precisely check the result without
-    being too dependent on the exact formatting.
-
-    We should also test the LogFormatter.
+    For ease of testing we save logged revisions here rather than actually
+    formatting anything, so that we can precisely check the result without
+    being dependent on the exact formatting.
     """
 
     supports_delta = True
+#    supports_merge_revisions = True
 
     def __init__(self):
         super(LogCatcher, self).__init__(to_file=None)
