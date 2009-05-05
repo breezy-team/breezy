@@ -12,7 +12,7 @@ the Bazaar mailing list.  To propose a correction or addition to this
 document, send a merge request or new text to the mailing list.
 
 The current version of this document is available in the file 
-``doc/developers/HACKING.txt`` in the source tree, or at
+``doc/en/developer-guide/HACKING.txt`` in the source tree, or at
 http://doc.bazaar-vcs.org/bzr.dev/en/developer-guide/HACKING.html
 
 See also:
