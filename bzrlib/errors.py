@@ -1173,7 +1173,8 @@ class AppendRevisionsOnlyViolation(BzrError):
 class DivergedBranches(BzrError):
 
     _fmt = ("These branches have diverged."
-            " Use the merge command to reconcile them.")
+            " Use the missing command to see how.\n"
+            "Use the merge command to reconcile them.")
 
     def __init__(self, branch1, branch2):
         self.branch1 = branch1
