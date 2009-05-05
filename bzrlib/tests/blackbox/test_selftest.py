@@ -102,9 +102,7 @@ class TestOptions(TestCase):
         test = ProtocolTestCase(stream)
         result = unittest.TestResult()
         test.run(result)
-        # 1 to deal with the 'test:' noise at the start, and 1 for the one we
-        # ran.
-        self.assertEqual(2, result.testsRun)
+        self.assertEqual(1, result.testsRun)
 
 
 class TestRunBzr(ExternalBase):
@@ -198,9 +196,7 @@ class TestBenchmarkTests(TestCaseWithTransport):
         finally:
             TestCaseWithMemoryTransport.TEST_ROOT = old_root
         self.assertContainsRe(out, 'Ran 0 tests.*\n\nOK')
-        self.assertEqual(
-            'tests passed\n',
-            err)
+        self.assertContainsRe(out, 'tests passed\n')
         benchfile = open(".perf_history", "rt")
         try:
             lines = benchfile.readlines()
@@ -487,9 +483,9 @@ class TestRunBzrError(ExternalBase):
 class TestSelftestListOnly(TestCase):
 
     @staticmethod
-    def _parse_test_list(lines, newlines_in_header=1):
+    def _parse_test_list(lines, newlines_in_header=0):
         "Parse a list of lines into a tuple of 3 lists (header,body,footer)."
-        in_header = True
+        in_header = newlines_in_header != 0
         in_footer = False
         header = []
         body = []
@@ -518,10 +514,11 @@ class TestSelftestListOnly(TestCase):
     def test_list_only(self):
         # check that bzr selftest --list-only works correctly
         out,err = self.run_bzr('selftest selftest --list-only')
-        self.assertEndsWith(err, 'tests passed\n')
         (header,body,footer) = self._parse_test_list(out.splitlines())
         num_tests = len(body)
-        self.assertContainsRe(footer[0], 'Listed %s tests in' % num_tests)
+        self.assertLength(0, header)
+        self.assertLength(0, footer)
+        self.assertEqual('', err)
 
     def test_list_only_filtered(self):
         # check that a filtered --list-only works, both include and exclude
@@ -551,7 +548,7 @@ class TestSelftestListOnly(TestCase):
         out_rand,err_rand = self.run_bzr(['selftest', '--list-only',
                                           'selftest', '--randomize', 'now'])
         (header_rand,tests_rand,dummy) = self._parse_test_list(
-            out_rand.splitlines(), 2)
+            out_rand.splitlines(), 1)
         # XXX: The following line asserts that the randomized order is not the
         # same as the default order.  It is just possible that they'll get
         # randomized into the same order and this will falsely fail, but
@@ -566,7 +563,7 @@ class TestSelftestListOnly(TestCase):
         out_rand2,err_rand2 = self.run_bzr(['selftest', '--list-only',
                                             'selftest', '--randomize', seed])
         (header_rand2,tests_rand2,dummy) = self._parse_test_list(
-            out_rand2.splitlines(), 2)
+            out_rand2.splitlines(), 1)
         self.assertEqual(tests_rand, tests_rand2)
 
 
@@ -581,7 +578,8 @@ class TestSelftestWithIdList(TestCaseInTempDir):
         fl.close()
         out, err = self.run_bzr(
             ['selftest', '--load-list', test_list_fname, '--list'])
-        self.assertContainsRe(out, "Listed 1 test in")
+        self.assertContainsRe(out, "TestSelftestWithIdList")
+        self.assertLength(1, out.splitlines())
 
     def test_load_unknown(self):
         out, err = self.run_bzr('selftest --load-list I_do_not_exist ',
@@ -593,7 +591,6 @@ class TestSelftestStartingWith(TestCase):
     def test_starting_with_single_argument(self):
         out, err = self.run_bzr(
             ['selftest', '--starting-with', self.id(), '--list'])
-        self.assertContainsRe(out, "Listed 1 test in")
         self.assertContainsRe(out, self.id())
 
     def test_starting_with_multiple_argument(self):
@@ -602,6 +599,5 @@ class TestSelftestStartingWith(TestCase):
              '--starting-with', self.id(),
              '--starting-with', 'bzrlib.tests.test_sampler',
              '--list'])
-        self.assertContainsRe(out, "Listed 2 tests in")
         self.assertContainsRe(out, self.id())
         self.assertContainsRe(out, 'bzrlib.tests.test_sampler')

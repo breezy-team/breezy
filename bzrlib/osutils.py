@@ -1030,10 +1030,11 @@ def _cicp_canonical_relpath(base, path):
     return current[len(abs_base)+1:]
 
 # XXX - TODO - we need better detection/integration of case-insensitive
-# file-systems; Linux often sees FAT32 devices, for example, so could
-# probably benefit from the same basic support there.  For now though, only
-# Windows gets that support, and it gets it for *all* file-systems!
-if sys.platform == "win32":
+# file-systems; Linux often sees FAT32 devices (or NFS-mounted OSX
+# filesystems), for example, so could probably benefit from the same basic
+# support there.  For now though, only Windows and OSX get that support, and
+# they get it for *all* file-systems!
+if sys.platform in ('win32', 'darwin'):
     canonical_relpath = _cicp_canonical_relpath
 else:
     canonical_relpath = relpath
@@ -1051,9 +1052,8 @@ def safe_unicode(unicode_or_utf8_string):
     """Coerce unicode_or_utf8_string into unicode.
 
     If it is unicode, it is returned.
-    Otherwise it is decoded from utf-8. If a decoding error
-    occurs, it is wrapped as a If the decoding fails, the exception is wrapped
-    as a BzrBadParameter exception.
+    Otherwise it is decoded from utf-8. If decoding fails, the exception is
+    wrapped in a BzrBadParameterNotUnicode exception.
     """
     if isinstance(unicode_or_utf8_string, unicode):
         return unicode_or_utf8_string

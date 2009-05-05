@@ -53,6 +53,16 @@ class TestVersionInfo(TestCaseWithTransport):
 
         return wt
 
+    def test_rio_null(self):
+        wt = self.make_branch_and_tree('branch')
+
+        sio = StringIO()
+        builder = RioVersionInfoBuilder(wt.branch, working_tree=wt)
+        builder.generate(sio)
+        val = sio.getvalue()
+        self.assertContainsRe(val, 'build-date:')
+        self.assertContainsRe(val, 'revno: 0')
+
     def test_rio_version_text(self):
         wt = self.create_branch()
 
@@ -85,6 +95,26 @@ class TestVersionInfo(TestCaseWithTransport):
         self.assertContainsRe(val, 'message: b')
         self.assertContainsRe(val, 'id: r3')
         self.assertContainsRe(val, 'message: \xc3\xa52') # utf8 encoding '\xe5'
+
+    def test_rio_version_hook(self):
+        def update_stanza(rev, stanza):
+            stanza.add('bla', 'bloe')
+        RioVersionInfoBuilder.hooks.install_named_hook(
+            'revision', update_stanza, None)
+        wt = self.create_branch()
+
+        def regen(**kwargs):
+            sio = StringIO()
+            builder = RioVersionInfoBuilder(wt.branch, working_tree=wt,
+                                            **kwargs)
+            builder.generate(sio)
+            sio.seek(0)
+            stanzas = list(read_stanzas(sio))
+            self.assertEqual(1, len(stanzas))
+            return stanzas[0]
+
+        stanza = regen()
+        self.assertEqual(['bloe'], stanza.get_all('bla'))
 
     def test_rio_version(self):
         wt = self.create_branch()
@@ -153,6 +183,16 @@ class TestVersionInfo(TestCaseWithTransport):
         self.assertEqual(['', 'a', 'c', 'd'], file_rev_stanza.get_all('path'))
         self.assertEqual(['r4', 'r4', 'unversioned', 'removed'],
                          file_rev_stanza.get_all('revision'))
+
+    def test_python_null(self):
+        wt = self.make_branch_and_tree('branch')
+
+        sio = StringIO()
+        builder = PythonVersionInfoBuilder(wt.branch, working_tree=wt)
+        builder.generate(sio)
+        val = sio.getvalue()
+        self.assertContainsRe(val, "'revision_id': None")
+        self.assertContainsRe(val, "'revno': 0")
 
     def test_python_version(self):
         wt = self.create_branch()
@@ -228,6 +268,20 @@ class TestVersionInfo(TestCaseWithTransport):
         self.assertEqual('r4', tvi.file_revisions['a'])
         self.assertEqual('unversioned', tvi.file_revisions['c'])
         self.assertEqual('removed', tvi.file_revisions['d'])
+
+    def test_custom_null(self):
+        sio = StringIO()
+        wt = self.make_branch_and_tree('branch')
+        builder = CustomVersionInfoBuilder(wt.branch, working_tree=wt,
+            template='revno: {revno}')
+        builder.generate(sio)
+        self.assertEquals("revno: 0", sio.getvalue())
+
+        builder = CustomVersionInfoBuilder(wt.branch, working_tree=wt, 
+            template='{revno} revid: {revision_id}')
+        # revision_id is not available yet
+        self.assertRaises(errors.MissingTemplateVariable, 
+            builder.generate, sio)
 
     def test_custom_version_text(self):
         wt = self.create_branch()

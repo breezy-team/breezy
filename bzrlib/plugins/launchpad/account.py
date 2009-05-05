@@ -80,7 +80,8 @@ def set_lp_login(username, _config=None):
 def _get_auth_user(auth=None):
     if auth is None:
         auth = AuthenticationConfig()
-    return auth.get_user('ssh', '.launchpad.net')
+    username = auth.get_user('ssh', '.launchpad.net')
+    return username
 
 def _set_auth_user(username, auth=None):
     if auth is None:

@@ -1227,15 +1227,6 @@ class NotAncestor(BzrError):
             not_ancestor_id=not_ancestor_id)
 
 
-class InstallFailed(BzrError):
-
-    def __init__(self, revisions):
-        revision_str = ", ".join(str(r) for r in revisions)
-        msg = "Could not install revisions:\n%s" % revision_str
-        BzrError.__init__(self, msg)
-        self.revisions = revisions
-
-
 class AmbiguousBase(BzrError):
 
     def __init__(self, bases):
@@ -2850,11 +2841,6 @@ class NoPluginAvailable(BzrError):
     pass
 
 
-class NotATerminal(BzrError):
-
-    _fmt = 'Unable to ask for a password without real terminal.'
-
-
 class UnableEncodePath(BzrError):
 
     _fmt = ('Unable to encode %(kind)s path %(path)r in '
@@ -2963,6 +2949,14 @@ class InvalidShelfId(BzrError):
 
     def __init__(self, invalid_id):
         BzrError.__init__(self, invalid_id=invalid_id)
+
+
+class JailBreak(BzrError):
+
+    _fmt = "An attempt to access a url outside the server jail was made: '%(url)s'."
+
+    def __init__(self, url):
+        BzrError.__init__(self, url=url)
 
 
 class UserAbort(BzrError):

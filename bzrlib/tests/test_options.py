@@ -102,6 +102,10 @@ class OptionTests(TestCase):
         self.assertRaises(errors.BzrCommandError, self.parse, options,
                           ['--no-number'])
 
+    def test_is_hidden(self):
+        self.assertTrue(option.Option('foo', hidden=True).is_hidden('foo'))
+        self.assertFalse(option.Option('foo', hidden=False).is_hidden('foo'))
+
     def test_registry_conversion(self):
         registry = bzrdir.BzrDirFormatRegistry()
         registry.register_metadir('one', 'RepositoryFormat7', 'one help')

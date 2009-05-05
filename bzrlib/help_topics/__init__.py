@@ -651,10 +651,10 @@ as soon as a condition is true):
   by default).
 
 * If you are using bzr-svn to interoperate with a Subversion
-  repository, use 1.9-rich-root.
+  repository, use 1.14-rich-root.
 
 * If you are working on a project with big trees (5000+ paths)
-  or deep history (5000+ revisions), use 1.9.
+  or deep history (5000+ revisions), use 1.14.
 
 * Otherwise, use the default format - it is good enough for
   most projects.
@@ -662,8 +662,8 @@ as soon as a condition is true):
 If some of your developers are unable to use the most recent
 version of Bazaar (due to distro package availability say), be
 sure to adjust the guidelines above accordingly. For example,
-you may need to select 1.6 instead of 1.9 if your project has
-standardized on Bazaar 1.7.
+you may need to select 1.9 instead of 1.14 if your project has
+standardized on Bazaar 1.13.1 say.
 
 Note: Many of the currently supported formats have two variants:
 a plain one and a rich-root one. The latter include an additional
@@ -744,6 +744,9 @@ topic_registry.register('checkouts', _checkouts,
                         'Information on what a checkout is', SECT_CONCEPT)
 topic_registry.register('content-filters', _load_from_file,
                         'Conversion of content into/from working trees',
+                        SECT_CONCEPT)
+topic_registry.register('eol', _load_from_file,
+                        'Information on end-of-line handling',
                         SECT_CONCEPT)
 topic_registry.register('formats', _storage_formats,
                         'Information on choosing a storage format',

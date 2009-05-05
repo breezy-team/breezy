@@ -32,9 +32,10 @@ from bzrlib.errors import (
     )
 
 from bzrlib.repository import (
-                               InterKnitRepo,
-                               InterRepository,
-                               )
+    InterDifferingSerializer,
+    InterKnitRepo,
+    InterRepository,
+    )
 from bzrlib.tests import (
                           default_transport,
                           multiply_tests,
@@ -107,6 +108,9 @@ def default_test_list():
     result.append((InterKnitRepo,
                    pack_repo.RepositoryFormatKnitPack3(),
                    pack_repo.RepositoryFormatKnitPack4()))
+    result.append((InterDifferingSerializer,
+                   pack_repo.RepositoryFormatKnitPack1(),
+                   pack_repo.RepositoryFormatKnitPack6RichRoot()))
     return result
 
 

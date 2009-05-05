@@ -291,6 +291,8 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
     supports_ghosts = True
     # External lookups are not supported in this format.
     supports_external_lookups = False
+    # No CHK support.
+    supports_chks = False
     _fetch_order = 'topological'
     _fetch_uses_deltas = True
     fast_deltas = False
@@ -379,6 +381,7 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
         repo.signatures = self._get_signatures(repo_transport, repo)
         repo.inventories = self._get_inventories(repo_transport, repo)
         repo.texts = self._get_texts(repo_transport, repo)
+        repo.chk_bytes = None
         repo._transport = repo_transport
         return repo
 

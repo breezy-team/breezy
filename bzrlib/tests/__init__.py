@@ -55,6 +55,7 @@ from bzrlib import (
     debug,
     errors,
     hooks,
+    lock as _mod_lock,
     memorytree,
     osutils,
     progress,
@@ -133,6 +134,7 @@ class ExtendedTestResult(unittest._TextTestResult):
     def __init__(self, stream, descriptions, verbosity,
                  bench_history=None,
                  num_tests=None,
+                 strict=False,
                  ):
         """Construct new TestResult.
 
@@ -165,6 +167,22 @@ class ExtendedTestResult(unittest._TextTestResult):
         self.unsupported = {}
         self.count = 0
         self._overall_start_time = time.time()
+        self._strict = strict
+
+    def done(self):
+        if self._strict:
+            ok = self.wasStrictlySuccessful()
+        else:
+            ok = self.wasSuccessful()
+        if ok:
+            self.stream.write('tests passed\n')
+        else:
+            self.stream.write('tests failed\n')
+        if TestCase._first_thread_leaker_id:
+            self.stream.write(
+                '%s is leaking threads among %d leaking tests.\n' % (
+                TestCase._first_thread_leaker_id,
+                TestCase._leaking_threads_tests))
 
     def _extractBenchmarkTime(self, testCase):
         """Add a benchmark time for the current test case."""
@@ -196,9 +214,22 @@ class ExtendedTestResult(unittest._TextTestResult):
 
     def startTest(self, test):
         unittest.TestResult.startTest(self, test)
+        if self.count == 0:
+            self.startTests()
         self.report_test_start(test)
         test.number = self.count
         self._recordTestStartTime()
+
+    def startTests(self):
+        self.stream.write(
+            'testing: %s\n' % (osutils.realpath(sys.argv[0]),))
+        self.stream.write(
+            '   %s (%s python%s)\n' % (
+                    bzrlib.__path__[0],
+                    bzrlib.version_string,
+                    bzrlib._format_version_tuple(sys.version_info),
+                    ))
+        self.stream.write('\n')
 
     def _recordTestStartTime(self):
         """Record that a test has started."""
@@ -349,9 +380,10 @@ class TextTestResult(ExtendedTestResult):
                  bench_history=None,
                  num_tests=None,
                  pb=None,
+                 strict=None,
                  ):
         ExtendedTestResult.__init__(self, stream, descriptions, verbosity,
-            bench_history, num_tests)
+            bench_history, num_tests, strict)
         if pb is None:
             self.pb = self.ui.nested_progress_bar()
             self._supplied_pb = False
@@ -512,13 +544,15 @@ class TextTestRunner(object):
                  descriptions=0,
                  verbosity=1,
                  bench_history=None,
-                 list_only=False
+                 list_only=False,
+                 strict=False,
                  ):
         self.stream = unittest._WritelnDecorator(stream)
         self.descriptions = descriptions
         self.verbosity = verbosity
         self._bench_history = bench_history
         self.list_only = list_only
+        self._strict = strict
 
     def run(self, test):
         "Run the given test case or test suite."
@@ -532,6 +566,7 @@ class TextTestRunner(object):
                               self.verbosity,
                               bench_history=self._bench_history,
                               num_tests=test.countTestCases(),
+                              strict=self._strict,
                               )
         result.stop_early = self.stop_on_failure
         result.report_starting()
@@ -542,14 +577,15 @@ class TextTestRunner(object):
             for t in iter_suite_tests(test):
                 self.stream.writeln("%s" % (t.id()))
                 run += 1
-            actionTaken = "Listed"
+            return None
         else:
             try:
-                from testtools import ThreadsafeForwardingResult
+                import testtools
             except ImportError:
                 test.run(result)
             else:
-                if type(result) == ThreadsafeForwardingResult:
+                if isinstance(test, testtools.ConcurrentTestSuite):
+                    # We need to catch bzr specific behaviors
                     test.run(BZRTransformingResult(result))
                 else:
                     test.run(result)
@@ -674,31 +710,17 @@ class TestUIFactory(ui.CLIUIFactory):
     Allows get_password to be tested without real tty attached.
     """
 
-    def __init__(self,
-                 stdout=None,
-                 stderr=None,
-                 stdin=None):
-        super(TestUIFactory, self).__init__()
+    def __init__(self, stdout=None, stderr=None, stdin=None):
         if stdin is not None:
             # We use a StringIOWrapper to be able to test various
             # encodings, but the user is still responsible to
             # encode the string and to set the encoding attribute
             # of StringIOWrapper.
-            self.stdin = StringIOWrapper(stdin)
-        if stdout is None:
-            self.stdout = sys.stdout
-        else:
-            self.stdout = stdout
-        if stderr is None:
-            self.stderr = sys.stderr
-        else:
-            self.stderr = stderr
+            stdin = StringIOWrapper(stdin)
+        super(TestUIFactory, self).__init__(stdin, stdout, stderr)
 
     def clear(self):
         """See progress.ProgressBar.clear()."""
-
-    def clear_term(self):
-        """See progress.ProgressBar.clear_term()."""
 
     def clear_term(self):
         """See progress.ProgressBar.clear_term()."""
@@ -719,22 +741,14 @@ class TestUIFactory(ui.CLIUIFactory):
     def update(self, message, count=None, total=None):
         """See progress.ProgressBar.update()."""
 
-    def get_non_echoed_password(self, prompt):
+    def get_non_echoed_password(self):
         """Get password from stdin without trying to handle the echo mode"""
-        if prompt:
-            self.stdout.write(prompt.encode(self.stdout.encoding, 'replace'))
         password = self.stdin.readline()
         if not password:
             raise EOFError
         if password[-1] == '\n':
             password = password[:-1]
         return password
-
-
-def _report_leaked_threads():
-    bzrlib.trace.warning('%s is leaking threads among %d leaking tests',
-                         TestCase._first_thread_leaker_id,
-                         TestCase._leaking_threads_tests)
 
 
 class TestCase(unittest.TestCase):
@@ -785,6 +799,8 @@ class TestCase(unittest.TestCase):
         self._benchcalls = []
         self._benchtime = None
         self._clear_hooks()
+        # Track locks - needs to be called before _clear_debug_flags.
+        self._track_locks()
         self._clear_debug_flags()
         TestCase._active_threads = threading.activeCount()
         self.addCleanup(self._check_leaked_threads)
@@ -794,13 +810,6 @@ class TestCase(unittest.TestCase):
         import pdb
         pdb.Pdb().set_trace(sys._getframe().f_back)
 
-    def exc_info(self):
-        absent_attr = object()
-        exc_info = getattr(self, '_exc_info', absent_attr)
-        if exc_info is absent_attr:
-            exc_info = getattr(self, '_TestCase__exc_info')
-        return exc_info()
-
     def _check_leaked_threads(self):
         active = threading.activeCount()
         leaked_threads = active - TestCase._active_threads
@@ -809,10 +818,6 @@ class TestCase(unittest.TestCase):
             TestCase._leaking_threads_tests += 1
             if TestCase._first_thread_leaker_id is None:
                 TestCase._first_thread_leaker_id = self.id()
-                # we're not specifically told when all tests are finished.
-                # This will do. We use a function to avoid keeping a reference
-                # to a TestCase object.
-                atexit.register(_report_leaked_threads)
 
     def _clear_debug_flags(self):
         """Prevent externally set debug flags affecting tests.
@@ -847,6 +852,44 @@ class TestCase(unittest.TestCase):
             ui.ui_factory = saved
         ui.ui_factory = ui.SilentUIFactory()
         self.addCleanup(_restore)
+
+    def _check_locks(self):
+        """Check that all lock take/release actions have been paired."""
+        # once we have fixed all the current lock problems, we can change the
+        # following code to always check for mismatched locks, but only do
+        # traceback showing with -Dlock (self._lock_check_thorough is True).
+        # For now, because the test suite will fail, we only assert that lock
+        # matching has occured with -Dlock.
+        # unhook:
+        acquired_locks = [lock for action, lock in self._lock_actions
+            if action == 'acquired']
+        released_locks = [lock for action, lock in self._lock_actions
+            if action == 'released']
+        # trivially, given the tests for lock acquistion and release, if we
+        # have as many in each list, it should be ok.
+        if len(acquired_locks) != len(released_locks):
+            message = \
+                ("Different number of acquired and released locks. (%s, %s)" %
+                (acquired_locks, released_locks))
+            if not self._lock_check_thorough:
+                # Rather than fail, just warn
+                print "Broken test %s: %s" % (self, message)
+                return
+            self.fail(message)
+
+    def _track_locks(self):
+        """Track lock activity during tests."""
+        self._lock_actions = []
+        self._lock_check_thorough = 'lock' in debug.debug_flags
+        self.addCleanup(self._check_locks)
+        _mod_lock.Lock.hooks.install_named_hook('lock_acquired', self._lock_acquired, None)
+        _mod_lock.Lock.hooks.install_named_hook('lock_released', self._lock_released, None)
+
+    def _lock_acquired(self, result):
+        self._lock_actions.append(('acquired', result))
+
+    def _lock_released(self, result):
+        self._lock_actions.append(('released', result))
 
     def _ndiff_strings(self, a, b):
         """Return ndiff between two strings containing lines.
@@ -1019,7 +1062,7 @@ class TestCase(unittest.TestCase):
                 raise AssertionError("%r is %r." % (left, right))
 
     def assertTransportMode(self, transport, path, mode):
-        """Fail if a path does not have mode mode.
+        """Fail if a path does not have mode "mode".
 
         If modes are not supported on this transport, the assertion is ignored.
         """
@@ -1280,9 +1323,9 @@ class TestCase(unittest.TestCase):
             'NO_PROXY': None,
             'all_proxy': None,
             'ALL_PROXY': None,
-            # Nobody cares about these ones AFAIK. So far at
+            # Nobody cares about ftp_proxy, FTP_PROXY AFAIK. So far at
             # least. If you do (care), please update this comment
-            # -- vila 20061212
+            # -- vila 20080401
             'ftp_proxy': None,
             'FTP_PROXY': None,
             'BZR_REMOTE_PATH': None,
@@ -1315,7 +1358,7 @@ class TestCase(unittest.TestCase):
     def _do_skip(self, result, reason):
         addSkip = getattr(result, 'addSkip', None)
         if not callable(addSkip):
-            result.addError(self, self.exc_info())
+            result.addError(self, sys.exc_info())
         else:
             addSkip(self, reason)
 
@@ -1329,7 +1372,7 @@ class TestCase(unittest.TestCase):
                 else:
                     result.addSuccess(self)
                 result.stopTest(self)
-                return
+                return result
         try:
             try:
                 result.startTest(self)
@@ -1348,21 +1391,23 @@ class TestCase(unittest.TestCase):
                                 "test setUp did not invoke "
                                 "bzrlib.tests.TestCase's setUp")
                     except KeyboardInterrupt:
+                        self._runCleanups()
                         raise
                     except TestSkipped, e:
                         self._do_skip(result, e.args[0])
                         self.tearDown()
-                        return
+                        return result
                     except:
-                        result.addError(self, self.exc_info())
-                        return
+                        result.addError(self, sys.exc_info())
+                        self._runCleanups()
+                        return result
 
                     ok = False
                     try:
                         testMethod()
                         ok = True
                     except self.failureException:
-                        result.addFailure(self, self.exc_info())
+                        result.addFailure(self, sys.exc_info())
                     except TestSkipped, e:
                         if not e.args:
                             reason = "No reason given."
@@ -1370,9 +1415,10 @@ class TestCase(unittest.TestCase):
                             reason = e.args[0]
                         self._do_skip(result, reason)
                     except KeyboardInterrupt:
+                        self._runCleanups()
                         raise
                     except:
-                        result.addError(self, self.exc_info())
+                        result.addError(self, sys.exc_info())
 
                     try:
                         self.tearDown()
@@ -1381,18 +1427,22 @@ class TestCase(unittest.TestCase):
                                 "test tearDown did not invoke "
                                 "bzrlib.tests.TestCase's tearDown")
                     except KeyboardInterrupt:
+                        self._runCleanups()
                         raise
                     except:
-                        result.addError(self, self.exc_info())
+                        result.addError(self, sys.exc_info())
+                        self._runCleanups()
                         ok = False
                     if ok: result.addSuccess(self)
                 finally:
                     result.stopTest(self)
-                return
+                return result
             except TestNotApplicable:
                 # Not moved from the result [yet].
+                self._runCleanups()
                 raise
             except KeyboardInterrupt:
+                self._runCleanups()
                 raise
         finally:
             saved_attrs = {}
@@ -1404,9 +1454,9 @@ class TestCase(unittest.TestCase):
             self.__dict__ = saved_attrs
 
     def tearDown(self):
-        self._bzr_test_tearDown_run = True
         self._runCleanups()
         self._log_contents = ''
+        self._bzr_test_tearDown_run = True
         unittest.TestCase.tearDown(self)
 
     def time(self, callable, *args, **kwargs):
@@ -2152,8 +2202,8 @@ class TestCaseWithMemoryTransport(TestCase):
         return memorytree.MemoryTree.create_on_branch(b)
 
     def make_branch_builder(self, relpath, format=None):
-        return branchbuilder.BranchBuilder(self.get_transport(relpath),
-            format=format)
+        branch = self.make_branch(relpath, format=format)
+        return branchbuilder.BranchBuilder(branch=branch)
 
     def overrideEnvironmentForTesting(self):
         os.environ['HOME'] = self.test_home_dir
@@ -2639,7 +2689,8 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
               exclude_pattern=None,
               strict=False,
               runner_class=None,
-              suite_decorators=None):
+              suite_decorators=None,
+              stream=None):
     """Run a test suite for bzr selftest.
 
     :param runner_class: The class of runner to use. Must support the
@@ -2654,11 +2705,14 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
         verbosity = 1
     if runner_class is None:
         runner_class = TextTestRunner
-    runner = runner_class(stream=sys.stdout,
+    if stream is None:
+        stream = sys.stdout
+    runner = runner_class(stream=stream,
                             descriptions=0,
                             verbosity=verbosity,
                             bench_history=bench_history,
                             list_only=list_only,
+                            strict=strict,
                             )
     runner.stop_on_failure=stop_on_failure
     # built in decorator factories:
@@ -2675,6 +2729,9 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
     for decorator in decorators:
         suite = decorator(suite)
     result = runner.run(suite)
+    if list_only:
+        return True
+    result.done()
     if strict:
         return result.wasStrictlySuccessful()
     else:
@@ -2683,6 +2740,8 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
 
 # A registry where get() returns a suite decorator.
 parallel_registry = registry.Registry()
+
+
 def fork_decorator(suite):
     concurrency = local_concurrency()
     if concurrency == 1:
@@ -2690,6 +2749,8 @@ def fork_decorator(suite):
     from testtools import ConcurrentTestSuite
     return ConcurrentTestSuite(suite, fork_for_tests)
 parallel_registry.register('fork', fork_decorator)
+
+
 def subprocess_decorator(suite):
     concurrency = local_concurrency()
     if concurrency == 1:
@@ -2881,8 +2942,7 @@ def fork_for_tests(suite):
     """Take suite and start up one runner per CPU by forking()
 
     :return: An iterable of TestCase-like objects which can each have
-        run(result) called on them to feed tests to result, and
-        cleanup() called on them to stop them/kill children/end threads.
+        run(result) called on them to feed tests to result.
     """
     concurrency = local_concurrency()
     result = []
@@ -2898,7 +2958,6 @@ def fork_for_tests(suite):
                 ProtocolTestCase.run(self, result)
             finally:
                 os.waitpid(self.pid, os.WNOHANG)
-            # print "pid %d finished" % finished_process
 
     test_blocks = partition_tests(suite, concurrency)
     for process_tests in test_blocks:
@@ -2912,10 +2971,10 @@ def fork_for_tests(suite):
                 # Leave stderr and stdout open so we can see test noise
                 # Close stdin so that the child goes away if it decides to
                 # read from stdin (otherwise its a roulette to see what
-                # child actually gets keystrokes for pdb etc.
+                # child actually gets keystrokes for pdb etc).
                 sys.stdin.close()
                 sys.stdin = None
-                stream = os.fdopen(c2pwrite, 'wb', 0)
+                stream = os.fdopen(c2pwrite, 'wb', 1)
                 subunit_result = TestProtocolClient(stream)
                 process_suite.run(subunit_result)
             finally:
@@ -2932,8 +2991,7 @@ def reinvoke_for_tests(suite):
     """Take suite and start up one runner per CPU using subprocess().
 
     :return: An iterable of TestCase-like objects which can each have
-        run(result) called on them to feed tests to result, and
-        cleanup() called on them to stop them/kill children/end threads.
+        run(result) called on them to feed tests to result.
     """
     concurrency = local_concurrency()
     result = []
@@ -3041,12 +3099,11 @@ class BZRTransformingResult(unittest.TestResult):
             # stringify the exception gives access to the remote traceback
             # We search the last line for 'prefix'
             lines = str(exc).split('\n')
-            if len(lines) > 1:
-                last = lines[-2] # -1 is empty, final \n
-            else:
-                last = lines[-1]
-            if last.startswith(prefix):
-                value = last[len(prefix):]
+            while lines and not lines[-1]:
+                lines.pop(-1)
+            if lines:
+                if lines[-1].startswith(prefix):
+                    value = lines[-1][len(prefix):]
         return value
 
 
@@ -3291,8 +3348,11 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.per_interbranch',
                    'bzrlib.tests.per_lock',
                    'bzrlib.tests.per_repository',
+                   'bzrlib.tests.per_repository_chk',
                    'bzrlib.tests.per_repository_reference',
+                   'bzrlib.tests.test__chk_map',
                    'bzrlib.tests.test__dirstate_helpers',
+                   'bzrlib.tests.test__groupcompress',
                    'bzrlib.tests.test__walkdirs_win32',
                    'bzrlib.tests.test_ancestry',
                    'bzrlib.tests.test_annotate',
@@ -3306,10 +3366,11 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_bugtracker',
                    'bzrlib.tests.test_bundle',
                    'bzrlib.tests.test_bzrdir',
-                   'bzrlib.tests.test_cache_utf8',
-                   'bzrlib.tests.test_clean_tree',
-                   'bzrlib.tests.test_chunk_writer',
                    'bzrlib.tests.test__chunks_to_lines',
+                   'bzrlib.tests.test_cache_utf8',
+                   'bzrlib.tests.test_chk_map',
+                   'bzrlib.tests.test_chunk_writer',
+                   'bzrlib.tests.test_clean_tree',
                    'bzrlib.tests.test_commands',
                    'bzrlib.tests.test_commit',
                    'bzrlib.tests.test_commit_merge',
@@ -3324,6 +3385,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_directory_service',
                    'bzrlib.tests.test_dirstate',
                    'bzrlib.tests.test_email_message',
+                   'bzrlib.tests.test_eol_filters',
                    'bzrlib.tests.test_errors',
                    'bzrlib.tests.test_export',
                    'bzrlib.tests.test_extract',
@@ -3337,6 +3399,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_globbing',
                    'bzrlib.tests.test_gpg',
                    'bzrlib.tests.test_graph',
+                   'bzrlib.tests.test_groupcompress',
                    'bzrlib.tests.test_hashcache',
                    'bzrlib.tests.test_help',
                    'bzrlib.tests.test_hooks',
@@ -3349,6 +3412,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_index',
                    'bzrlib.tests.test_info',
                    'bzrlib.tests.test_inv',
+                   'bzrlib.tests.test_inventory_delta',
                    'bzrlib.tests.test_knit',
                    'bzrlib.tests.test_lazy_import',
                    'bzrlib.tests.test_lazy_regex',
@@ -3393,6 +3457,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_rules',
                    'bzrlib.tests.test_sampler',
                    'bzrlib.tests.test_selftest',
+                   'bzrlib.tests.test_serializer',
                    'bzrlib.tests.test_setup',
                    'bzrlib.tests.test_sftp_transport',
                    'bzrlib.tests.test_shelf',
@@ -3588,6 +3653,7 @@ def multiply_tests(tests, scenarios, result):
     the scenario name at the end of its id(), and updating the test object's
     __dict__ with the scenario_param_dict.
 
+    >>> import bzrlib.tests.test_sampler
     >>> r = multiply_tests(
     ...     bzrlib.tests.test_sampler.DemoTest('test_nothing'),
     ...     [('one', dict(param=1)),
@@ -3667,9 +3733,10 @@ def _rmtree_temp_dir(dirname):
         osutils.rmtree(dirname)
     except OSError, e:
         if sys.platform == 'win32' and e.errno == errno.EACCES:
-            sys.stderr.write(('Permission denied: '
-                                 'unable to remove testing dir '
-                                 '%s\n' % os.path.basename(dirname)))
+            sys.stderr.write('Permission denied: '
+                             'unable to remove testing dir '
+                             '%s\n%s'
+                             % (os.path.basename(dirname), e))
         else:
             raise
 
@@ -3918,8 +3985,6 @@ try:
     from subunit import TestProtocolClient
     class SubUnitBzrRunner(TextTestRunner):
         def run(self, test):
-            # undo out claim for testing which looks like a test start to subunit
-            self.stream.write("success: %s\n" % (osutils.realpath(sys.argv[0]),))
             result = TestProtocolClient(self.stream)
             test.run(result)
             return result

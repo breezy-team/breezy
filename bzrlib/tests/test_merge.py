@@ -1095,6 +1095,52 @@ class TestMergeImplementation(object):
             '>>>>>>> MERGE-SOURCE\n'
             'line 4\n', 'this/file1')
 
+    def test_modify_conflicts_with_delete(self):
+        # If one side deletes a line, and the other modifies that line, then
+        # the modification should be considered a conflict
+        builder = self.make_branch_builder('test')
+        builder.start_series()
+        builder.build_snapshot('BASE-id', None,
+            [('add', ('', None, 'directory', None)),
+             ('add', ('foo', 'foo-id', 'file', 'a\nb\nc\nd\ne\n')),
+            ])
+        # Delete 'b\n'
+        builder.build_snapshot('OTHER-id', ['BASE-id'],
+            [('modify', ('foo-id', 'a\nc\nd\ne\n'))])
+        # Modify 'b\n', add 'X\n'
+        builder.build_snapshot('THIS-id', ['BASE-id'],
+            [('modify', ('foo-id', 'a\nb2\nc\nd\nX\ne\n'))])
+        builder.finish_series()
+        branch = builder.get_branch()
+        this_tree = branch.bzrdir.create_workingtree()
+        this_tree.lock_write()
+        self.addCleanup(this_tree.unlock)
+        other_tree = this_tree.bzrdir.sprout('other', 'OTHER-id').open_workingtree()
+        self.do_merge(this_tree, other_tree)
+        if self.merge_type is _mod_merge.LCAMerger:
+            self.expectFailure("lca merge doesn't track deleted lines",
+                self.assertFileEqual,
+                    'a\n'
+                    '<<<<<<< TREE\n'
+                    'b2\n'
+                    '=======\n'
+                    '>>>>>>> MERGE-SOURCE\n'
+                    'c\n'
+                    'd\n'
+                    'X\n'
+                    'e\n', 'test/foo')
+        else:
+            self.assertFileEqual(
+                'a\n'
+                '<<<<<<< TREE\n'
+                'b2\n'
+                '=======\n'
+                '>>>>>>> MERGE-SOURCE\n'
+                'c\n'
+                'd\n'
+                'X\n'
+                'e\n', 'test/foo')
+
 
 class TestMerge3Merge(TestCaseWithTransport, TestMergeImplementation):
 

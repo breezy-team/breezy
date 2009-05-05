@@ -28,7 +28,9 @@ import bzrlib
 from bzrlib import (
     branchbuilder,
     bzrdir,
+    debug,
     errors,
+    lockdir,
     memorytree,
     osutils,
     remote,
@@ -619,6 +621,20 @@ class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):
         # But we have a safety net in place.
         self.assertRaises(AssertionError, self._check_safety_net)
 
+    def test_dangling_locks_cause_failures(self):
+        # This is currently only enabled during debug runs, so turn debugging
+        # on.
+        debug.debug_flags.add('lock')
+        class TestDanglingLock(TestCaseWithMemoryTransport):
+            def test_function(self):
+                t = self.get_transport('.')
+                l = lockdir.LockDir(t, 'lock')
+                l.create()
+                l.attempt_lock()
+        test = TestDanglingLock('test_function')
+        result = test.run()
+        self.assertEqual(1, len(result.errors))
+
 
 class TestTestCaseWithTransport(TestCaseWithTransport):
     """Tests for the convenience functions TestCaseWithTransport introduces."""
@@ -836,7 +852,8 @@ class TestTestResult(TestCase):
     def test_known_failure(self):
         """A KnownFailure being raised should trigger several result actions."""
         class InstrumentedTestResult(ExtendedTestResult):
-
+            def done(self): pass
+            def startTests(self): pass
             def report_test_start(self, test): pass
             def report_known_failure(self, test, err):
                 self._call = test, err
@@ -884,7 +901,7 @@ class TestTestResult(TestCase):
         # text test output formatting
         pb = MockProgress()
         result = bzrlib.tests.TextTestResult(
-            None,
+            StringIO(),
             descriptions=0,
             verbosity=1,
             pb=pb,
@@ -924,6 +941,8 @@ class TestTestResult(TestCase):
     def test_add_not_supported(self):
         """Test the behaviour of invoking addNotSupported."""
         class InstrumentedTestResult(ExtendedTestResult):
+            def done(self): pass
+            def startTests(self): pass
             def report_test_start(self, test): pass
             def report_unsupported(self, test, feature):
                 self._call = test, feature
@@ -966,7 +985,7 @@ class TestTestResult(TestCase):
         # text test output formatting
         pb = MockProgress()
         result = bzrlib.tests.TextTestResult(
-            None,
+            StringIO(),
             descriptions=0,
             verbosity=1,
             pb=pb,
@@ -994,7 +1013,8 @@ class TestTestResult(TestCase):
     def test_unavailable_exception(self):
         """An UnavailableFeature being raised should invoke addNotSupported."""
         class InstrumentedTestResult(ExtendedTestResult):
-
+            def done(self): pass
+            def startTests(self): pass
             def report_test_start(self, test): pass
             def addNotSupported(self, test, feature):
                 self._call = test, feature
@@ -1036,6 +1056,19 @@ class TestTestResult(TestCase):
         result.addSuccess(test)
         self.assertTrue(result.wasStrictlySuccessful())
         self.assertEqual(None, result._extractBenchmarkTime(test))
+
+    def test_startTests(self):
+        """Starting the first test should trigger startTests."""
+        class InstrumentedTestResult(ExtendedTestResult):
+            calls = 0
+            def startTests(self): self.calls += 1
+            def report_test_start(self, test): pass
+        result = InstrumentedTestResult(None, None, None, None)
+        def test_function():
+            pass
+        test = unittest.FunctionTestCase(test_function)
+        test.run(result)
+        self.assertEquals(1, result.calls)
 
 
 class TestUnicodeFilenameFeature(TestCase):
@@ -1094,7 +1127,7 @@ class TestRunner(TestCase):
             '----------------------------------------------------------------------',
             '',
             'FAILED (failures=1, known_failure_count=1)'],
-            lines[0:5] + lines[6:10] + lines[11:])
+            lines[3:8] + lines[9:13] + lines[14:])
 
     def test_known_failure_ok_run(self):
         # run a test that generates a known failure which should be printed in the final output.
@@ -2348,5 +2381,21 @@ class TestRunSuite(TestCase):
                 calls.append(test)
                 return ExtendedTestResult(self.stream, self.descriptions,
                     self.verbosity)
-        run_suite(suite, runner_class=MyRunner)
+        run_suite(suite, runner_class=MyRunner, stream=StringIO())
         self.assertEqual(calls, [suite])
+
+    def test_done(self):
+        """run_suite should call result.done()"""
+        self.calls = 0
+        def one_more_call(): self.calls += 1
+        def test_function():
+            pass
+        test = unittest.FunctionTestCase(test_function)
+        class InstrumentedTestResult(ExtendedTestResult):
+            def done(self): one_more_call()
+        class MyRunner(TextTestRunner):
+            def run(self, test):
+                return InstrumentedTestResult(self.stream, self.descriptions,
+                                              self.verbosity)
+        run_suite(test, runner_class=MyRunner, stream=StringIO())
+        self.assertEquals(1, self.calls)
