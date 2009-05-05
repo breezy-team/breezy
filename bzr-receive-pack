@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 import bzrlib
+from bzrlib.plugin import load_plugins
+load_plugins()
 from bzrlib.plugins.git.server import BzrBackend
 from dulwich.server import ReceivePackHandler
 import sys, os
