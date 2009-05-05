@@ -53,9 +53,9 @@ class TestGetSymlinkTarget(tree_implementations.TestCaseWithTree):
         tree = self.make_branch_and_tree('tree')
         target = u'targ\N{Euro Sign}t'
         os.symlink(target,  u'tree/\u03b2_link'.encode(osutils._fs_enc))
-        tree.add([u'\u03b2_link'], ['unicode-link-id'])
+        tree.add([u'\u03b2_link'], ['link-id'])
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        actual = tree.get_symlink_target(u'unicode-link-id')
+        actual = tree.get_symlink_target('link-id')
         self.assertEqual(target, actual)
 

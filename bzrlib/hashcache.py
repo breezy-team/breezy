@@ -180,7 +180,8 @@ class HashCache(object):
                 filters = self._filter_provider(path=path, file_id=None)
             digest = self._really_sha1_file(abspath, filters)
         elif stat.S_ISLNK(mode):
-            digest = osutils.sha_string(os.readlink(abspath))
+            target = osutils.readlink(osutils.safe_unicode(abspath))
+            digest = osutils.sha_string(target.encode('UTF-8'))
         else:
             raise errors.BzrError("file %r: unknown file stat mode: %o"
                                   % (abspath, mode))

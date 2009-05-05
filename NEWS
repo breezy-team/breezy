@@ -67,6 +67,9 @@ Bug Fixes
 * ssh usernames (defined in ~/.ssh/config) are honoured for bzr+ssh connections.
   (Vincent Ladeuil, #367726)
 
+* Several bugs related to unicode symlinks have been fixed and the test suite
+  enhanced to better catch regressions for them. (Vincent Ladeuil)
+
 Documentation
 *************
 
