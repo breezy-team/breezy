@@ -20,6 +20,9 @@ from dulwich.objects import (
     Blob,
     Tree,
     )
+from dulwich.object_store import (
+    ObjectStoreIterator,
+    )
 import stat
 
 from bzrlib import (
@@ -48,8 +51,16 @@ class BazaarObjectStore(object):
             self.mapping = mapping
         self._idmap = SqliteGitShaMap.from_repository(repository)
 
-    def _update_sha_map(self):
-        all_revids = self.repository.all_revision_ids()
+    def iter_shas(self, shas):
+        return ObjectStoreIterator(self, shas)
+
+    def _update_sha_map(self, stop_revision=None):
+        if stop_revision is None:
+            all_revids = self.repository.all_revision_ids()
+        else:
+            all_revids = self.repository.get_ancestry(stop_revision)
+            first = all_revids.pop(0) # Pop leading None
+            assert first is None
         graph = self.repository.get_graph()
         present_revids = set(self._idmap.revids())
         missing_revids = [revid for revid in graph.iter_topo_order(all_revids) if revid not in present_revids]
@@ -143,6 +154,9 @@ class BazaarObjectStore(object):
         self._check_expected_sha(expected_sha, commit)
         return commit
 
+    def get_parents(self, sha):
+        return self[sha].parents
+
     def _lookup_revision_sha1(self, revid):
         try:
             return self._idmap._parent_lookup(revid)
@@ -156,15 +170,27 @@ class BazaarObjectStore(object):
     def get_raw(self, sha):
         return self[sha].as_raw_string()
 
-    def __getitem__(self, sha):
+    def __contains__(self, sha):
         # See if sha is in map
         try:
-            (type, type_data) = self._idmap.lookup_git_sha(sha)
+            self._lookup_git_sha(sha)
+        except KeyError:
+            return False
+        else:
+            return True
+
+    def _lookup_git_sha(self, sha):
+        # See if sha is in map
+        try:
+            return self._idmap.lookup_git_sha(sha)
         except KeyError:
             # if not, see if there are any unconverted revisions and add them 
             # to the map, search for sha in map again
             self._update_sha_map()
-            (type, type_data) = self._idmap.lookup_git_sha(sha)
+            return self._idmap.lookup_git_sha(sha)
+
+    def __getitem__(self, sha):
+        (type, type_data) = self._lookup_git_sha(sha)
         # convert object to git object
         if type == "commit":
             return self._get_commit(type_data[0], type_data[1], 
