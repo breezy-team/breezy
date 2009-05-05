@@ -89,6 +89,7 @@ txt_files := $(wildcard doc/en/tutorials/*.txt) \
 	$(derived_txt_files) \
 	doc/en/user-guide/index.txt \
 	doc/en/mini-tutorial/index.txt \
+	doc/en/developer-guide/HACKING.txt \
 	$(wildcard doc/es/guia-usario/*.txt) \
 	doc/es/mini-tutorial/index.txt \
 	doc/index.txt \
