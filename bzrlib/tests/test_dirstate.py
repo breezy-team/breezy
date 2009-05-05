@@ -60,21 +60,17 @@ class TestCaseWithDirState(tests.TestCaseWithTransport):
     # Set by load_tests
     _dir_reader_class = None
     _native_to_unicode = None # Not used yet
-    _fs_enc = osutils._fs_enc # Not parametrized yet
 
     def setUp(self):
         tests.TestCaseWithTransport.setUp(self)
 
         # Save platform specific info and reset it
-        cur_fs_enc = osutils._fs_enc
         cur_dir_reader = osutils._selected_dir_reader
 
         def restore():
-            osutils._fs_enc = cur_fs_enc
             osutils._selected_dir_reader = cur_dir_reader
         self.addCleanup(restore)
 
-        osutils._fs_enc = self._fs_enc
         osutils._selected_dir_reader = self._dir_reader_class()
 
     def create_empty_dirstate(self):

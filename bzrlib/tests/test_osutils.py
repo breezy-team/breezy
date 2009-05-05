@@ -52,14 +52,18 @@ class _UTF8DirReaderFeature(tests.Feature):
 
 UTF8DirReaderFeature = _UTF8DirReaderFeature()
 
+
 def _already_unicode(s):
     return s
+
 
 def _fs_enc_to_unicode(s):
     return s.decode(osutils._fs_enc)
 
+
 def _utf8_to_unicode(s):
     return s.decode('UTF-8')
+
 
 def dir_reader_scenarios():
     # For each dir reader we define:
@@ -68,30 +72,28 @@ def dir_reader_scenarios():
     #   by DirReader.read_dir to its unicode representation
 
     # UnicodeDirReader is the fallback, it should be tested on all platforms.
-    dir_readers = [(osutils.UnicodeDirReader, _already_unicode)]
+    scenarios = [('unicode',
+                  dict(_dir_reader_class=osutils.UnicodeDirReader,
+                       _native_to_unicode=_already_unicode))]
     # Some DirReaders are platform specific and even there they may not be
     # available.
     if UTF8DirReaderFeature.available():
         from bzrlib import _readdir_pyx
-        dir_readers.append((_readdir_pyx.UTF8DirReader, _utf8_to_unicode))
+        scenarios.append(('utf8',
+                          dict(_dir_reader_class=_readdir_pyx.UTF8DirReader,
+                               _native_to_unicode=_utf8_to_unicode)))
 
     if test__walkdirs_win32.Win32ReadDirFeature.available():
         try:
             from bzrlib import _walkdirs_win32
             # TODO: check on windows, it may be that we need to use/add
             # safe_unicode instead of _fs_enc_to_unicode
-            readers.append((_walkdirs_win32.Win32ReadDir, _fs_enc_to_unicode))
+            scenarios.append(
+                ('win32',
+                 dict(_dir_reader_class=_walkdirs_win32.Win32ReadDir,
+                      _native_to_unicode=_fs_enc_to_unicode)))
         except ImportError:
             pass
-
-    scenarios = []
-    for info in dir_readers:
-        (dir_reader_class, native_to_unicode) = info
-        id = '%s' % dir_reader_class.__name__
-        d = dict(_dir_reader_class=dir_reader_class,
-                 _native_to_unicode=native_to_unicode,
-                 )
-        scenarios.append((id, d))
     return scenarios
 
 
@@ -1587,21 +1589,17 @@ class TestDirReader(tests.TestCaseInTempDir):
     # Set by load_tests
     _dir_reader_class = None
     _native_to_unicode = None
-    _fs_enc = osutils._fs_enc # Not used yet
 
     def setUp(self):
         tests.TestCaseInTempDir.setUp(self)
 
         # Save platform specific info and reset it
-        cur_fs_enc = osutils._fs_enc
         cur_dir_reader = osutils._selected_dir_reader
 
         def restore():
-            osutils._fs_enc = cur_fs_enc
             osutils._selected_dir_reader = cur_dir_reader
         self.addCleanup(restore)
 
-        osutils._fs_enc = self._fs_enc
         osutils._selected_dir_reader = self._dir_reader_class()
 
     def _get_ascii_tree(self):
