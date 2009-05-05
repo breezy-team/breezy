@@ -212,13 +212,13 @@ class InterToRemoteGitRepository(InterToGitRepository):
         def get_changed_refs(refs):
             ret = {}
             for name, revid in new_refs.iteritems():
-                ret[name] = (refs.get(name), object_generator._object_store._lookup_revision_sha1(revid))
+                ret[name] = object_generator._object_store._lookup_revision_sha1(revid)
             return ret
-        def generate_blob_contents(have, want):
-            import pdb; pdb.set_trace()
         self.source.lock_read()
         try:
             object_generator = MissingObjectsIterator(self.source, self.mapping)
+            def generate_blob_contents(have, want):
+                import pdb; pdb.set_trace()
             self.target.send_pack(get_changed_refs, generate_blob_contents)
         finally:
             self.source.unlock()
