@@ -108,6 +108,9 @@ Internals
   refactoring to the core of clone allowing less round trips on new
   branches. (Robert Collins)
 
+* New method ``Tags.rename_revisions`` that can rename revision ids tags
+  are pointing at. (Jelmer Vernooij)
+
 * Updated the bundled ``ConfigObj`` library to 4.6.0 (Matt Nordhoff)
 
 
