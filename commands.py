@@ -39,6 +39,7 @@ class cmd_git_serve(Command):
     """
     takes_options = [
         Option('directory',
+               short_name='d',
                help='serve contents of directory',
                type=unicode)
     ]
@@ -164,6 +165,7 @@ class cmd_git_object(Command):
     aliases = ["git-objects", "git-cat"]
     takes_args = ["sha1?"]
     takes_options = [Option('directory', 
+        short_name='d',
         help='Location of repository.', type=unicode),
         Option('pretty', help='Pretty-print objects.')]
     encoding_type = 'exact'

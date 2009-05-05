@@ -26,6 +26,7 @@ from dulwich.object_store import (
 import stat
 
 from bzrlib import (
+    debug,
     errors,
     ui,
     )
@@ -89,7 +90,8 @@ class BazaarObjectStore(object):
             pass
         else:
             if foreign_revid != commit_obj.id:
-                raise AssertionError("recreated git commit had different sha1: expected %s, got %s" % (foreign_revid, commit_obj.id))
+                if not "fix-shamap" in debug.debug_flags:
+                    raise AssertionError("recreated git commit had different sha1: expected %s, got %s" % (foreign_revid, commit_obj.id))
         self._idmap.add_entry(commit_obj.id, "commit", (revid, tree_sha))
 
     def _check_expected_sha(self, expected_sha, object):
