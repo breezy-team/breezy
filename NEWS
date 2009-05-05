@@ -32,6 +32,9 @@ New Features
 Improvements
 ************
 
+* -Dhpss output now includes the number of VFS calls made to the remote
+  server. (Jonathan Lange)
+
 Bug Fixes
 *********
 
