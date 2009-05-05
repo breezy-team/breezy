@@ -97,11 +97,14 @@ def minimum_path_selection(paths):
 
     :param paths: A container (and hence not None) of paths.
     :return: A set of paths sufficient to include everything in paths via
-        is_inside_any, drawn from the paths parameter.
+        is_inside, drawn from the paths parameter.
     """
     search_paths = []
-    sorted_paths = list(paths)
-    sorted_paths.sort()
+
+    def sort_key(path):
+        return path.split('/')
+    sorted_paths = sorted(list(paths), key=sort_key)
+
     for path in sorted_paths:
         if len(search_paths) == 0:
             # Result is empty, add first path
