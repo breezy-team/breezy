@@ -1030,20 +1030,12 @@ class Branch(object):
                     revision_id)))
             except errors.RevisionNotPresent:
                 # One of the left hand side ancestors is a ghost
-                # we could start at the current location, and count
-                # backwards. But there is no guarantee that we will find the 
-                # revno since we may be looking at a merged revision id
+                graph = self.repository.get_graph()
                 try:
+                    revno = graph.find_distance_to_null(revision_id, [])
+                except errors.GhostRevisionsHaveNoRevno:
                     # Default to 1, if we can't find anything else
                     revno = 1
-                    for distance, revid in enumerate(
-                        self.repository.iter_reverse_revision_history(
-                            source_revision_id)):
-                        if revid == revision_id:
-                            revno = source_revno - distance
-                            break
-                except KeyError:
-                    pass
         destination.set_last_revision_info(revno, revision_id)
 
     @needs_read_lock
