@@ -42,8 +42,10 @@ from bzrlib.errors import (
     NotBranchError,
     UninitializableFormat,
     )
-from bzrlib.tests import multiply_tests
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import (
+    TestCaseWithTransport,
+    multiply_tests,
+    )
 from bzrlib.transport import get_transport
 
 

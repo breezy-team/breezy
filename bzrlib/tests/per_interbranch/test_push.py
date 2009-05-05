@@ -42,6 +42,10 @@ from bzrlib.transport import get_transport
 from bzrlib.transport.local import LocalURLServer
 
 
+# These tests are based on similar tests in 
+# bzrlib.tests.branch_implementations.test_push.
+
+
 class TestPush(TestCaseWithInterBranch):
 
     def test_push_convergence_simple(self):
