@@ -64,6 +64,10 @@ Bug Fixes
 * ssh usernames (defined in ~/.ssh/config) are honoured for bzr+ssh connections.
   (Vincent Ladeuil, #367726)
 
+* Upgrading to, or fetching into a 'rich-root' format will now correctly
+  set the Aroot data the same way that reconcile does.
+  (Robert Collins, #368921)
+
 Documentation
 *************
 

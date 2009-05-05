@@ -326,3 +326,18 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
             builder.finish_series()
         self.assertIs(None, builder._tree)
         self.assertFalse(builder._branch.is_locked())
+
+    def test_ghost_mainline_history(self):
+        builder = BranchBuilder(self.get_transport().clone('foo'))
+        builder.start_series()
+        try:
+            builder.build_snapshot('tip', ['ghost'],
+                [('add', ('', 'ROOT_ID', 'directory', ''))],
+                allow_leftmost_as_ghost=True)
+        finally:
+            builder.finish_series()
+        b = builder.get_branch()
+        b.lock_read()
+        self.addCleanup(b.unlock)
+        self.assertEqual(('ghost',),
+            b.repository.get_graph().get_parent_map(['tip'])['tip'])
