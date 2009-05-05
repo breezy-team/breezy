@@ -32,6 +32,9 @@ New Features
 Improvements
 ************
 
+* ``--coverage`` works for code running in threads too.
+  (Andrew Bennets, Vincent Ladeuil)
+
 Bug Fixes
 *********
 
