@@ -16,6 +16,13 @@
 
 """Push implementation that simply prints message saying push is not supported."""
 
+from dulwich.client import (
+    SimpleFetchGraphWalker,
+    )
+from dulwich.repo import (
+    MissingObjectFinder,
+    )
+
 from bzrlib import (
     ui,
     )
@@ -31,10 +38,6 @@ from bzrlib.plugins.git.converter import (
     )
 from bzrlib.plugins.git.errors import (
     NoPushSupport,
-    )
-from bzrlib.plugins.git.mapping import (
-    inventory_to_tree_and_blobs,
-    revision_to_commit,
     )
 from bzrlib.plugins.git.repository import (
     GitRepository,
@@ -163,17 +166,17 @@ class InterToLocalGitRepository(InterToGitRepository):
 
     def dfetch_refs(self, refs):
         revidmap = {}
-        gitidmap = {}
+        new_refs = {}
         for name, revid in refs.iteritems():
             newrevidmap, newgitidmap = self.dfetch(revid)
             revidmap.update(newrevidmap)
-            gitidmap.update(newgitidmap)
-            if revid in gitidmap:
-                gitid = gitidmap[revid]
+            if revid in newgitidmap:
+                gitid = newgitidmap[revid]
             else:
                 gitid, _ = self.mapping.revision_id_bzr_to_foreign(revid)
             self.target._git.set_ref(name, gitid)
-        return revidmap, gitidmap
+            new_refs[name] = gitid
+        return revidmap, new_refs
 
     def dfetch(self, stop_revision=None):
         """Import the gist of the ancestry of a particular revision."""
@@ -212,17 +215,19 @@ class InterToRemoteGitRepository(InterToGitRepository):
         def get_changed_refs(refs):
             ret = {}
             for name, revid in new_refs.iteritems():
-                ret[name] = object_generator._object_store._lookup_revision_sha1(revid)
+                ret[name] = store._lookup_revision_sha1(revid)
             return ret
         self.source.lock_read()
         try:
-            object_generator = MissingObjectsIterator(self.source, self.mapping)
+            store = BazaarObjectStore(self.source, self.mapping)
             def generate_blob_contents(have, want):
-                import pdb; pdb.set_trace()
-            self.target.send_pack(get_changed_refs, generate_blob_contents)
+                graphwalker = SimpleFetchGraphWalker(have, store.get_parents)
+                objfinder = MissingObjectFinder(store, want, graphwalker)
+                return store.iter_shas(iter(objfinder.next, None))
+            new_refs = self.target.send_pack(get_changed_refs, generate_blob_contents)
         finally:
             self.source.unlock()
-        return revidmap
+        return revidmap, new_refs
 
     @staticmethod
     def is_compatible(source, target):

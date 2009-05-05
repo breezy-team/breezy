@@ -148,11 +148,11 @@ class GitBranch(ForeignBranch):
         for name, revid in source.tags.get_tag_dict().iteritems():
             if source.repository.has_revision(revid):
                 refs["refs/tags/%s" % name] = revid
-        revidmap, gitidmap = self.repository.dfetch_refs(source.repository, 
+        revidmap, new_refs = self.repository.dfetch_refs(source.repository, 
                 refs)
         if revidmap != {}:
             self.generate_revision_history(revidmap[stop_revision])
-        return revidmap, gitidmap
+        return revidmap
 
     def generate_revision_history(self, revid, old_revid=None):
         # FIXME: Check that old_revid is in the ancestry of revid
