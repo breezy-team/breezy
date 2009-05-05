@@ -24,14 +24,16 @@ import os
 from bzrlib import (
     config,
     tests,
+    workingtree,
     )
 
 
-class TestLogFormats(tests.TestCaseInTempDir):
+class TestLogFormats(tests.TestCaseWithTransport):
 
     def setUp(self):
         super(TestLogFormats, self).setUp()
 
+        # Create a config file with some useful variables
         conf_path = config.config_filename()
         if os.path.isfile(conf_path):
                 # Something is wrong in environment,
@@ -39,118 +41,69 @@ class TestLogFormats(tests.TestCaseInTempDir):
                 self.fail("%s exists" % conf_path)
 
         config.ensure_config_dir_exists()
-        conf = open(conf_path,'wb')
+        f = open(conf_path,'wb')
         try:
-            conf.write("""[DEFAULT]
+            f.write("""[DEFAULT]
 email=Joe Foo <joe@foo.com>
 log_format=line
 """)
         finally:
-            conf.close()
+            f.close()
+
+    def _make_simple_branch(self, relpath='.'):
+        wt = self.make_branch_and_tree(relpath)
+        wt.commit('first revision')
+        wt.commit('second revision')
+        return wt
 
     def test_log_default_format(self):
-        self.run_bzr('init')
-        open('a', 'wb').write('foo\n')
-        self.run_bzr('add a')
-
-        self.run_bzr('commit -m 1')
-        open('a', 'wb').write('baz\n')
-
-        self.run_bzr('commit -m 2')
-
-        # only the lines formatter is this short
-        self.assertEquals(3, len(self.run_bzr('log')[0].split('\n')))
+        self._make_simple_branch()
+        # only the lines formatter is this short, one line by revision
+        log = self.run_bzr('log')[0]
+        self.assertEquals(2, len(log.splitlines()))
 
     def test_log_format_arg(self):
-        self.run_bzr('init')
-        open('a', 'wb').write('foo\n')
-        self.run_bzr('add a')
-
-        self.run_bzr('commit -m 1')
-        open('a', 'wb').write('baz\n')
-
-        self.run_bzr('commit -m 2')
-
-        self.assertEquals(7,
-            len(self.run_bzr('log --log-format short')[0].split('\n')))
+        self._make_simple_branch()
+        log = self.run_bzr(['log', '--log-format', 'short'])[0]
 
     def test_missing_default_format(self):
-        os.mkdir('a')
-        os.chdir('a')
-        self.run_bzr('init')
+        wt = self._make_simple_branch('a')
+        self.run_bzr(['branch', 'a', 'b'])
+        wt.commit('third revision')
+        wt.commit('fourth revision')
 
-        open('a', 'wb').write('foo\n')
-        self.run_bzr('add a')
-        self.run_bzr('commit -m 1')
-
-        os.chdir('..')
-        self.run_bzr('branch a b')
-        os.chdir('a')
-
-        open('a', 'wb').write('bar\n')
-        self.run_bzr('commit -m 2')
-
-        open('a', 'wb').write('baz\n')
-        self.run_bzr('commit -m 3')
-
-        os.chdir('../b')
-
-        self.assertEquals(5,
-            len(self.run_bzr('missing', retcode=1)[0].split('\n')))
-
-        os.chdir('..')
+        missing = self.run_bzr('missing', retcode=1, working_dir='b')[0]
+        # one line for 'Using save location'
+        # one line for 'You are missing 2 revision(s)'
+        # one line by missing revision (the line log format is used as
+        # configured)
+        self.assertEquals(4, len(missing.splitlines()))
 
     def test_missing_format_arg(self):
-        os.mkdir('a')
-        os.chdir('a')
-        self.run_bzr('init')
+        wt = self._make_simple_branch('a')
+        self.run_bzr(['branch', 'a', 'b'])
+        wt.commit('third revision')
+        wt.commit('fourth revision')
 
-        open('a', 'wb').write('foo\n')
-        self.run_bzr('add a')
-        self.run_bzr('commit -m 1')
-
-        os.chdir('..')
-        self.run_bzr('branch a b')
-        os.chdir('a')
-
-        open('a', 'wb').write('bar\n')
-        self.run_bzr('commit -m 2')
-
-        open('a', 'wb').write('baz\n')
-        self.run_bzr('commit -m 3')
-
-        os.chdir('../b')
-
-        self.assertEquals(9,
-            len(self.run_bzr('missing --log-format short',
-                retcode=1)[0].split('\n')))
-
-        os.chdir('..')
+        missing = self.run_bzr(['missing', '--log-format', 'short'],
+                               retcode=1, working_dir='b')[0]
+        # one line for 'Using save location'
+        # one line for 'You are missing 2 revision(s)'
+        # three lines by missing revision
+        self.assertEquals(8, len(missing.splitlines()))
 
     def test_logformat_gnu_changelog(self):
         # from http://launchpad.net/bugs/29582/
-        repo_url = self.make_trivial_history()
+        wt = self.make_branch_and_tree('.')
+        wt.commit('first revision', timestamp=1236045060,
+                  timezone=0) # Aka UTC
 
-        out, err = self.run_bzr(
-            ['log', self.get_url('repo/a'),
-             '--log-format=gnu-changelog',
-             '--timezone=utc'])
-        self.assertEquals(err, '')
-        self.assertEqualDiff(out,
-"""2009-03-03  Joe Foo  <joe@foo.com>
+        log, err = self.run_bzr(['log', '--log-format', 'gnu-changelog',
+                                 '--timezone=utc'])
+        self.assertEquals('', err)
+        expected = """2009-03-03  Joe Foo  <joe@foo.com>
 
-\tcommit 1
+\tfirst revision
 
-""")
-
-    def make_trivial_history(self):
-        """Make a one-commit history and return the URL of the branch"""
-        repo = self.make_repository('repo', shared=True, format='1.6')
-        bb = self.make_branch_builder('repo/a')
-        bb.start_series()
-        bb.build_snapshot('rev-1', None,
-            [('add', ('', 'root-id', 'directory', ''))],
-            timestamp=1236045060)
-        bb.finish_series()
-        return self.get_url('repo/a')
-
+"""
+        self.assertEqualDiff(expected, log)
