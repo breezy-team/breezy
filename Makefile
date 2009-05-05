@@ -84,7 +84,6 @@ endif
 # translate txt docs to html
 derived_txt_files := \
 	doc/en/user-reference/bzr_man.txt \
-	doc/en/developer-guide/HACKING.txt \
 	doc/en/release-notes/NEWS.txt
 txt_files := $(wildcard doc/en/tutorials/*.txt) \
 	$(derived_txt_files) \
@@ -180,9 +179,6 @@ MAN_DEPENDENCIES = bzrlib/builtins.py \
 
 doc/en/user-reference/bzr_man.txt: $(MAN_DEPENDENCIES)
 	$(PYTHON) generate_docs.py -o $@ rstx
-
-doc/en/developer-guide/HACKING.txt: doc/developers/HACKING.txt
-	$(PYTHON) tools/win32/ostools.py copytodir doc/developers/HACKING.txt doc/en/developer-guide
 
 doc/en/release-notes/NEWS.txt: NEWS
 	$(PYTHON) -c "import shutil; shutil.copyfile('$<', '$@')"
