@@ -43,7 +43,7 @@ from bzrlib import (
     ui,
     urlutils,
     )
-from bzrlib.smart import client, protocol
+from bzrlib.smart import client, protocol, request, vfs
 from bzrlib.transport import ssh
 """)
 
@@ -509,7 +509,7 @@ class _DebugCounter(object):
         """
         medium_repr = repr(medium)
         # Add this medium to the WeakKeyDictionary
-        self.counts[medium] = [0, medium_repr]
+        self.counts[medium] = [0, 0, medium_repr]
         # Weakref callbacks are fired in reverse order of their association
         # with the referenced object.  So we add a weakref *after* adding to
         # the WeakKeyDict so that we can report the value from it before the
@@ -520,16 +520,20 @@ class _DebugCounter(object):
         # Increment the count in the WeakKeyDictionary
         value = self.counts[params.medium]
         value[0] += 1
+        request_method = request.request_handlers.get(params.method)
+        if issubclass(request_method, vfs.VfsRequest):
+            value[1] += 1
 
     def done(self, ref):
         value = self.counts[ref]
-        count, medium_repr = value
+        count, vfs_count, medium_repr = value
         # In case this callback is invoked for the same ref twice (by the
         # weakref callback and by the atexit function), set the call count back
         # to 0 so this item won't be reported twice.
         value[0] = 0
         if count != 0:
-            trace.note('HPSS calls: %d %s', count, medium_repr)
+            trace.note('HPSS calls: %d (%d vfs) %s',
+                       count, vfs_count, medium_repr)
 
     def flush_all(self):
         for ref in list(self.counts.keys()):
