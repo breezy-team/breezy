@@ -142,6 +142,7 @@ class TestLockDir(TestCaseWithTransport):
         lf1 = LockDir(t, 'test_lock')
         lf1.create()
         lf1.attempt_lock()
+        self.addCleanup(lf1.unlock)
         # lock is held, should get some info on it
         info1 = lf1.peek()
         self.assertEqual(set(info1.keys()),
@@ -161,6 +162,7 @@ class TestLockDir(TestCaseWithTransport):
         lf2 = LockDir(self.get_readonly_transport(), 'test_lock')
         self.assertEqual(lf2.peek(), None)
         lf1.attempt_lock()
+        self.addCleanup(lf1.unlock)
         info2 = lf2.peek()
         self.assertTrue(info2)
         self.assertEqual(info2['nonce'], lf1.nonce)
@@ -451,6 +453,7 @@ class TestLockDir(TestCaseWithTransport):
         lf1 = LockDir(t, 'test_lock')
         lf1.create()
         lf1.attempt_lock()
+        self.addCleanup(lf1.unlock)
         lf1.confirm()
 
     def test_41_confirm_not_held(self):
@@ -468,6 +471,9 @@ class TestLockDir(TestCaseWithTransport):
         lf1.attempt_lock()
         t.move('test_lock', 'lock_gone_now')
         self.assertRaises(LockBroken, lf1.confirm)
+        # Clean up
+        t.move('lock_gone_now', 'test_lock')
+        lf1.unlock()
 
     def test_43_break(self):
         """Break a lock whose caller has forgotten it"""
@@ -501,6 +507,7 @@ class TestLockDir(TestCaseWithTransport):
         lf2.force_break(holder_info)
         # now we should be able to take it
         lf2.attempt_lock()
+        self.addCleanup(lf2.unlock)
         lf2.confirm()
 
     def test_45_break_mismatch(self):
@@ -621,9 +628,11 @@ class TestLockDir(TestCaseWithTransport):
     def test_lock_by_token(self):
         ld1 = self.get_lock()
         token = ld1.lock_write()
+        self.addCleanup(ld1.unlock)
         self.assertNotEqual(None, token)
         ld2 = self.get_lock()
         t2 = ld2.lock_write(token)
+        self.addCleanup(ld2.unlock)
         self.assertEqual(token, t2)
 
     def test_lock_with_buggy_rename(self):
@@ -654,6 +663,7 @@ class TestLockDir(TestCaseWithTransport):
         check_dir([])
         # when held, that's all we see
         ld1.attempt_lock()
+        self.addCleanup(ld1.unlock)
         check_dir(['held'])
         # second guy should fail
         self.assertRaises(errors.LockContention, ld2.attempt_lock)
