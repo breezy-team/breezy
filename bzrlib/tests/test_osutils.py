@@ -1698,6 +1698,7 @@ class TestDirReader(tests.TestCaseInTempDir):
         return filtered_dirblocks
 
     def test_walk_unicode_tree(self):
+        self.requireFeature(tests.UnicodeFilenameFeature)
         tree, expected_dirblocks = self._get_unicode_tree()
         self.build_tree(tree)
         result = list(osutils._walkdirs_utf8('.'))
@@ -1705,6 +1706,7 @@ class TestDirReader(tests.TestCaseInTempDir):
 
     def test_symlink(self):
         self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(tests.UnicodeFilenameFeature)
         target = u'target\N{Euro Sign}'
         link_name = u'l\N{Euro Sign}nk'
         os.symlink(target, link_name)
@@ -1725,9 +1727,10 @@ class TestReadLink(tests.TestCaseInTempDir):
     The only guarantee offered by os.readlink(), starting with 2.6, is that a
     unicode string will be returned if a unicode string is passed.
 
-    But prior python versions failed to properly encode a the passed unicode
+    But prior python versions failed to properly encode the passed unicode
     string.
     """
+    _test_needs_features = [tests.SymlinkFeature, tests.UnicodeFilenameFeature]
 
     def setUp(self):
         super(tests.TestCaseInTempDir, self).setUp()
