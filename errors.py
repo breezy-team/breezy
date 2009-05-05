@@ -14,11 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+
 """A grouping of Exceptions for bzr-git"""
+
 
 from dulwich import errors as git_errors
 
 from bzrlib import errors as bzr_errors
+
 
 class BzrGitError(bzr_errors.BzrError):
     """The base-level exception for bzr-git errors."""
@@ -59,3 +62,7 @@ class NoPushSupport(bzr_errors.BzrError):
 
 class GitSmartRemoteNotSupported(bzr_errors.BzrError):
     _fmt = "This operation is not supported by the Git smart server protocol."
+
+
+class GhostRevision(bzr_errors.NoSuchRevision):
+    _fmt = "Revision %(revision)s is a ghost; unable to represent in Git."""
