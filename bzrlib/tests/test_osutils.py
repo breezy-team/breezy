@@ -1730,7 +1730,7 @@ class TestReadLink(tests.TestCaseInTempDir):
     But prior python versions failed to properly encode the passed unicode
     string.
     """
-#    _test_needs_features = [tests.SymlinkFeature, tests.UnicodeFilenameFeature]
+    _test_needs_features = [tests.SymlinkFeature, tests.UnicodeFilenameFeature]
 
     def setUp(self):
         super(tests.TestCaseInTempDir, self).setUp()
