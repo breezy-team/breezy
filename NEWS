@@ -74,7 +74,16 @@ Bug Fixes
   content with a size mismatch in a reconstructed graph search: it assumes
   that the client will make sure it is happy with what it got, and this
   sort of mismatch is normal for stacked environments.
-  (Robert Collins, #360791)
+  bzr 1.13.0/1 will stream from unstacked branches only - in that case not
+  getting all the content expected would be a bug. However the graph
+  search is how we figured out what we wanted, so a mismatch is both odd
+  and unrecoverable without starting over, and starting over will end up
+  with the same data as if we just permitted the mismatch. If data is
+  gc'd, doing a new search will find only the truncated data, so sending
+  only the truncated data seems reasonable. bzr versions newer than this
+  will stream from stacked branches and check the stream to find missing
+  content in the stacked-on branch, and thus will handle the situation
+  implicitly.  (Robert Collins, #360791)
 
 Documentation
 *************
