@@ -41,6 +41,8 @@ Bug Fixes
 * Adding now works properly when path contains a symbolic link.
   (Geoff Bache, #183831)
 
+* An error is now raised for unknown eol values. (Brian de Alwis, #358199)
+
 * ``bzr merge --weave`` will now generate a conflict if one side deletes a
   line, and the other side modifies the line. (John Arbash Meinel, #328171)
 
