@@ -855,12 +855,14 @@ class Branch(object):
         """
         raise NotImplementedError(self.pull)
 
-    def push(self, target, overwrite=False, stop_revision=None):
+    def push(self, target, overwrite=False, stop_revision=None, *args,
+        **kwargs):
         """Mirror this branch into target.
 
         This branch is considered to be 'local', having low latency.
         """
-        raise NotImplementedError(self.push)
+        return InterBranch.get(self, target).push(overwrite, stop_revision,
+            *args, **kwargs)
 
     def basis_tree(self):
         """Return `Tree` object for last revision."""
@@ -2228,75 +2230,10 @@ class BzrBranch(Branch):
                 pass
         return None
 
-    @needs_read_lock
-    def push(self, target, overwrite=False, stop_revision=None,
-             _override_hook_source_branch=None):
-        """See Branch.push.
-
-        This is the basic concrete implementation of push()
-
-        :param _override_hook_source_branch: If specified, run
-        the hooks passing this Branch as the source, rather than self.
-        This is for use of RemoteBranch, where push is delegated to the
-        underlying vfs-based Branch.
-        """
-        # TODO: Public option to disable running hooks - should be trivial but
-        # needs tests.
-        return _run_with_write_locked_target(
-            target, self._push_with_bound_branches, target, overwrite,
-            stop_revision,
-            _override_hook_source_branch=_override_hook_source_branch)
-
-    def _push_with_bound_branches(self, target, overwrite,
-            stop_revision,
-            _override_hook_source_branch=None):
-        """Push from self into target, and into target's master if any.
-
-        This is on the base BzrBranch class even though it doesn't support
-        bound branches because the *target* might be bound.
-        """
-        def _run_hooks():
-            if _override_hook_source_branch:
-                result.source_branch = _override_hook_source_branch
-            for hook in Branch.hooks['post_push']:
-                hook(result)
-
-        bound_location = target.get_bound_location()
-        if bound_location and target.base != bound_location:
-            # there is a master branch.
-            #
-            # XXX: Why the second check?  Is it even supported for a branch to
-            # be bound to itself? -- mbp 20070507
-            master_branch = target.get_master_branch()
-            master_branch.lock_write()
-            try:
-                # push into the master from this branch.
-                self._basic_push(master_branch, overwrite, stop_revision)
-                # and push into the target branch from this. Note that we push from
-                # this branch again, because its considered the highest bandwidth
-                # repository.
-                result = self._basic_push(target, overwrite, stop_revision)
-                result.master_branch = master_branch
-                result.local_branch = target
-                _run_hooks()
-                return result
-            finally:
-                master_branch.unlock()
-        else:
-            # no master branch
-            result = self._basic_push(target, overwrite, stop_revision)
-            # TODO: Why set master_branch and local_branch if there's no
-            # binding?  Maybe cleaner to just leave them unset? -- mbp
-            # 20070504
-            result.master_branch = target
-            result.local_branch = None
-            _run_hooks()
-            return result
-
     def _basic_push(self, target, overwrite, stop_revision):
         """Basic implementation of push without bound branches or hooks.
 
-        Must be called with self read locked and target write locked.
+        Must be called with source read locked and target write locked.
         """
         result = BranchPushResult()
         result.source_branch = self
@@ -2307,10 +2244,11 @@ class BzrBranch(Branch):
             # We assume that during 'push' this repository is closer than
             # the target.
             graph = self.repository.get_graph(target.repository)
-            target.update_revisions(self, stop_revision, overwrite=overwrite,
-                                    graph=graph)
+            target.update_revisions(self, stop_revision,
+                overwrite=overwrite, graph=graph)
         if self._push_should_merge_tags():
-            result.tag_conflicts = self.tags.merge_to(target.tags, overwrite)
+            result.tag_conflicts = self.tags.merge_to(target.tags,
+                overwrite)
         result.new_revno, result.new_revid = target.last_revision_info()
         return result
 
@@ -3016,6 +2954,14 @@ class InterBranch(InterObject):
         """
         raise NotImplementedError(self.update_revisions)
 
+    def push(self, overwrite=False, stop_revision=None,
+             _override_hook_source_branch=None):
+        """Mirror the source branch into the target branch.
+
+        The source branch is considered to be 'local', having low latency.
+        """
+        raise NotImplementedError(self.push)
+
 
 class GenericInterBranch(InterBranch):
     """InterBranch implementation that uses public Branch functions.
@@ -3067,6 +3013,72 @@ class GenericInterBranch(InterBranch):
             self.target.set_last_revision_info(stop_revno, stop_revision)
         finally:
             self.source.unlock()
+
+    def push(self, overwrite=False, stop_revision=None,
+             _override_hook_source_branch=None):
+        """See InterBranch.push.
+
+        This is the basic concrete implementation of push()
+
+        :param _override_hook_source_branch: If specified, run
+        the hooks passing this Branch as the source, rather than self.
+        This is for use of RemoteBranch, where push is delegated to the
+        underlying vfs-based Branch.
+        """
+        # TODO: Public option to disable running hooks - should be trivial but
+        # needs tests.
+        self.source.lock_read()
+        try:
+            return _run_with_write_locked_target(
+                self.target, self._push_with_bound_branches, overwrite,
+                stop_revision,
+                _override_hook_source_branch=_override_hook_source_branch)
+        finally:
+            self.source.unlock()
+
+    def _push_with_bound_branches(self, overwrite, stop_revision,
+            _override_hook_source_branch=None):
+        """Push from source into target, and into target's master if any.
+        """
+        def _run_hooks():
+            if _override_hook_source_branch:
+                result.source_branch = _override_hook_source_branch
+            for hook in Branch.hooks['post_push']:
+                hook(result)
+
+        bound_location = self.target.get_bound_location()
+        if bound_location and self.target.base != bound_location:
+            # there is a master branch.
+            #
+            # XXX: Why the second check?  Is it even supported for a branch to
+            # be bound to itself? -- mbp 20070507
+            master_branch = self.target.get_master_branch()
+            master_branch.lock_write()
+            try:
+                # push into the master from the source branch.
+                self.source._basic_push(master_branch, overwrite, stop_revision)
+                # and push into the target branch from the source. Note that we
+                # push from the source branch again, because its considered the
+                # highest bandwidth repository.
+                result = self.source._basic_push(self.target, overwrite,
+                    stop_revision)
+                result.master_branch = master_branch
+                result.local_branch = self.target
+                _run_hooks()
+                return result
+            finally:
+                master_branch.unlock()
+        else:
+            # no master branch
+            result = self.source._basic_push(self.target, overwrite,
+                stop_revision)
+            # TODO: Why set master_branch and local_branch if there's no
+            # binding?  Maybe cleaner to just leave them unset? -- mbp
+            # 20070504
+            result.master_branch = self.target
+            result.local_branch = None
+            _run_hooks()
+            return result
 
     @classmethod
     def is_compatible(self, source, target):

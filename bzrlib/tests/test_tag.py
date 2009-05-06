@@ -50,6 +50,24 @@ class TestTagSerialization(TestCase):
         self.assertEqual(store._deserialize_tag_dict(packed), td)
 
 
+class TestTagRevisionRenames(TestCaseWithTransport):
+
+    def make_branch_supporting_tags(self, relpath):
+        return self.make_branch(relpath, format='dirstate-tags')
+
+    def test_simple(self):
+        store = self.make_branch_supporting_tags('a').tags
+        store.set_tag("foo", "myoldrevid")
+        store.rename_revisions({"myoldrevid": "mynewrevid"})
+        self.assertEquals({"foo": "mynewrevid"}, store.get_tag_dict())
+
+    def test_unknown_ignored(self):
+        store = self.make_branch_supporting_tags('a').tags
+        store.set_tag("foo", "myoldrevid")
+        store.rename_revisions({"anotherrevid": "mynewrevid"})
+        self.assertEquals({"foo": "myoldrevid"}, store.get_tag_dict())
+
+
 class TestTagMerging(TestCaseWithTransport):
 
     def make_knit_branch(self, relpath):
