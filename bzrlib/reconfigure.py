@@ -31,6 +31,7 @@ class Reconfigure(object):
             self.repository = self.bzrdir.find_repository()
         except errors.NoRepositoryPresent:
             self.repository = None
+            self.local_repository = None
         else:
             if (self.repository.bzrdir.root_transport.base ==
                 self.bzrdir.root_transport.base):
@@ -268,7 +269,20 @@ class Reconfigure(object):
         if not force:
             self._check()
         if self._create_repository:
-            repo = self.bzrdir.create_repository()
+            if self.local_branch and not self._destroy_branch:
+                old_repo = self.local_branch.repository
+            elif self._create_branch and self.referenced_branch is not None:
+                old_repo = self.referenced_branch.repository
+            else:
+                old_repo = None
+            if old_repo is not None:
+                repository_format = old_repo._format
+            else:
+                repository_format = None
+            if repository_format is not None:
+                repo = repository_format.initialize(self.bzrdir)
+            else:
+                repo = self.bzrdir.create_repository()
             if self.local_branch and not self._destroy_branch:
                 repo.fetch(self.local_branch.repository,
                            self.local_branch.last_revision())

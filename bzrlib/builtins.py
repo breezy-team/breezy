@@ -882,13 +882,18 @@ class cmd_pull(Command):
             short_name='d',
             type=unicode,
             ),
+        Option('local',
+            help="Perform a local pull in a bound "
+                 "branch.  Local pulls are not applied to "
+                 "the master branch."
+            ),
         ]
     takes_args = ['location?']
     encoding_type = 'replace'
 
     def run(self, location=None, remember=False, overwrite=False,
             revision=None, verbose=False,
-            directory=None):
+            directory=None, local=False):
         # FIXME: too much stuff is in the command class
         revision_id = None
         mergeable = None
@@ -900,6 +905,9 @@ class cmd_pull(Command):
         except errors.NoWorkingTree:
             tree_to = None
             branch_to = Branch.open_containing(directory)[0]
+        
+        if local and not branch_to.get_bound_location():
+            raise errors.LocalRequiresBoundBranch()
 
         possible_transports = []
         if location is not None:
@@ -948,9 +956,11 @@ class cmd_pull(Command):
                     unversioned_filter=tree_to.is_ignored, view_info=view_info)
                 result = tree_to.pull(branch_from, overwrite, revision_id,
                                       change_reporter,
-                                      possible_transports=possible_transports)
+                                      possible_transports=possible_transports,
+                                      local=local)
             else:
-                result = branch_to.pull(branch_from, overwrite, revision_id)
+                result = branch_to.pull(branch_from, overwrite, revision_id,
+                                      local=local)
 
             result.report(self.outf)
             if verbose and result.old_revid != result.new_revid:

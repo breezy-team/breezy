@@ -239,7 +239,8 @@ class TestPull(ExternalBase):
         out = self.run_bzr('pull ../branch_a', retcode=3)
         self.assertEqual(out,
                 ('','bzr: ERROR: These branches have diverged.'
-                    ' Use the merge command to reconcile them.\n'))
+                    ' Use the missing command to see how.\n'
+                    'Use the merge command to reconcile them.\n'))
         self.assertEqual(branch_b.get_parent(), parent)
         # test implicit --remember after resolving previous failure
         uncommit(branch=branch_b, tree=tree_b)
