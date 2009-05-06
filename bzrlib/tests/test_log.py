@@ -33,21 +33,20 @@ class TestCaseWithoutPropsHandler(tests.TestCaseWithTransport):
         super(TestCaseWithoutPropsHandler, self).setUp()
         # keep a reference to the "current" custom prop. handler registry
         self.properties_handler_registry = log.properties_handler_registry
-        # clean up the registry in log
+        # Use a clean registry for log
         log.properties_handler_registry = registry.Registry()
 
-    def _cleanup(self):
-        super(TestCaseWithoutPropsHandler, self)._cleanup()
-        # restore the custom properties handler registry
-        log.properties_handler_registry = self.properties_handler_registry
+        def restore():
+            log.properties_handler_registry = self.properties_handler_registry
+        self.addCleanup(restore)
 
 
 class LogCatcher(log.LogFormatter):
-    """Pull log messages into list rather than displaying them.
+    """Pull log messages into a list rather than displaying them.
 
-    For ease of testing we save logged revisions here rather than actually
+    To simplify testing we save logged revisions here rather than actually
     formatting anything, so that we can precisely check the result without
-    being dependent on the exact formatting.
+    being dependent on the formatting.
     """
 
     supports_delta = True

@@ -17,23 +17,17 @@
 
 """Black-box tests for bzr log."""
 
-import os, re
+import os
+import re
 
-from bzrlib import osutils
-from bzrlib.tests.blackbox import ExternalBase
-from bzrlib.tests import KnownFailure, TestCaseInTempDir, TestCaseWithTransport
-from bzrlib.tests.test_log import (
-    normalize_log,
+from bzrlib import (
+    osutils,
+    tests,
     )
 from bzrlib.tests import test_log
 
 
-class TestCaseWithoutPropsHandler(ExternalBase,
-                                  test_log.TestCaseWithoutPropsHandler):
-    pass
-
-
-class TestLog(ExternalBase):
+class TestLog(tests.TestCaseWithTransport):
 
     def _prepare(self, path='.', format=None):
         tree = self.make_branch_and_tree(path, format=format)
@@ -256,7 +250,7 @@ class TestLog(ExternalBase):
         self.assertEqual('', out)
 
 
-class TestLogVerbose(TestCaseWithTransport):
+class TestLogVerbose(tests.TestCaseWithTransport):
 
     def setUp(self):
         super(TestLogVerbose, self).setUp()
@@ -294,7 +288,7 @@ class TestLogVerbose(TestCaseWithTransport):
         self.assertUseLongDeltaFormat(['log', '--long', '-vv'])
 
 
-class TestLogMerges(TestCaseWithoutPropsHandler):
+class TestLogMerges(test_log.TestCaseWithoutPropsHandler):
 
     def _prepare(self):
         parent_tree = self.make_branch_and_tree('parent')
@@ -338,7 +332,7 @@ class TestLogMerges(TestCaseWithoutPropsHandler):
         self._prepare()
         out,err = self.run_bzr('log -n0')
         self.assertEqual('', err)
-        log = normalize_log(out)
+        log = test_log.normalize_log(out)
         self.assertEqualDiff(log, """\
 ------------------------------------------------------------
 revno: 2 [merge]
@@ -381,7 +375,7 @@ message:
         self._prepare()
         out,err = self.run_bzr('log --long -n1')
         self.assertEqual('', err)
-        log = normalize_log(out)
+        log = test_log.normalize_log(out)
         self.assertEqualDiff(log, """\
 ------------------------------------------------------------
 revno: 2 [merge]
@@ -403,7 +397,7 @@ message:
         self._prepare_short()
         out,err = self.run_bzr('log --short -n0')
         self.assertEqual('', err)
-        log = normalize_log(out)
+        log = test_log.normalize_log(out)
         self.assertEqualDiff(log, """\
     2 Joe Foo\t2005-11-22 [merge]
       merge branch 1
@@ -434,7 +428,7 @@ message:
         self._prepare_short()
         out,err = self.run_bzr('log --short -n2')
         self.assertEqual('', err)
-        log = normalize_log(out)
+        log = test_log.normalize_log(out)
         self.assertEqualDiff(log, """\
     2 Joe Foo\t2005-11-22 [merge]
       merge branch 1
@@ -454,7 +448,7 @@ message:
         self._prepare()
         out,err = self.run_bzr('log -n0 -r1.1.2')
         self.assertEqual('', err)
-        log = normalize_log(out)
+        log = test_log.normalize_log(out)
         self.assertEqualDiff(log, """\
 ------------------------------------------------------------
 revno: 1.1.2 [merge]
@@ -476,7 +470,7 @@ message:
         self._prepare()
         out, err = self.run_bzr('log -n0 -r1.1.1..1.1.2')
         self.assertEqual('', err)
-        log = normalize_log(out)
+        log = test_log.normalize_log(out)
         self.assertEqualDiff(log, """\
 ------------------------------------------------------------
 revno: 1.1.2 [merge]
@@ -508,7 +502,7 @@ def subst_dates(string):
                   'YYYY-MM-DD HH:MM:SS +ZZZZ', string)
 
 
-class TestLogDiff(TestCaseWithoutPropsHandler):
+class TestLogDiff(test_log.TestCaseWithoutPropsHandler):
 
     def _prepare(self):
         parent_tree = self.make_branch_and_tree('parent')
@@ -533,7 +527,7 @@ class TestLogDiff(TestCaseWithoutPropsHandler):
         self._prepare()
         out,err = self.run_bzr('log -p -n0')
         self.assertEqual('', err)
-        log = normalize_log(out)
+        log = test_log.normalize_log(out)
         self.assertEqualDiff(subst_dates(log), """\
 ------------------------------------------------------------
 revno: 2 [merge]
@@ -588,7 +582,7 @@ diff:
         self._prepare()
         out,err = self.run_bzr('log -p --short')
         self.assertEqual('', err)
-        log = normalize_log(out)
+        log = test_log.normalize_log(out)
         self.assertEqualDiff(subst_dates(log), """\
     2 Lorem Ipsum\t2005-11-22 [merge]
       merge branch 1
@@ -620,7 +614,7 @@ Use --include-merges or -n0 to see merged revisions.
         self._prepare()
         out,err = self.run_bzr('log -p --line')
         self.assertEqual('', err)
-        log = normalize_log(out)
+        log = test_log.normalize_log(out)
         # Not supported by this formatter so expect plain output
         self.assertEqualDiff(subst_dates(log), """\
 2: Lorem Ipsum 2005-11-22 [merge] merge branch 1
@@ -632,7 +626,7 @@ Use --include-merges or -n0 to see merged revisions.
         self._prepare()
         out,err = self.run_bzr('log -p --short file2')
         self.assertEqual('', err)
-        log = normalize_log(out)
+        log = test_log.normalize_log(out)
         self.assertEqualDiff(subst_dates(log), """\
     2 Lorem Ipsum\t2005-11-22 [merge]
       merge branch 1
@@ -655,7 +649,7 @@ Use --include-merges or -n0 to see merged revisions.
 """)
         out,err = self.run_bzr('log -p --short file1')
         self.assertEqual('', err)
-        log = normalize_log(out)
+        log = test_log.normalize_log(out)
         self.assertEqualDiff(subst_dates(log), """\
     1 Lorem Ipsum\t2005-11-22
       first post
@@ -688,7 +682,7 @@ Use --include-merges or -n0 to see merged revisions.
         self.assertEqual('', err)
 
 
-class TestLogEncodings(TestCaseInTempDir):
+class TestLogEncodings(tests.TestCaseInTempDir):
 
     _mu = u'\xb5'
     _message = u'Message with \xb5'
@@ -710,12 +704,11 @@ class TestLogEncodings(TestCaseInTempDir):
     ]
 
     def setUp(self):
-        TestCaseInTempDir.setUp(self)
+        super(TestLogEncodings, self).setUp()
         self.user_encoding = osutils._cached_user_encoding
-
-    def tearDown(self):
-        osutils._cached_user_encoding = self.user_encoding
-        TestCaseInTempDir.tearDown(self)
+        def restore():
+            osutils._cached_user_encoding = self.user_encoding
+        self.addCleanup(restore)
 
     def create_branch(self):
         bzr = self.run_bzr
@@ -789,7 +782,7 @@ class TestLogEncodings(TestCaseInTempDir):
         self.assertEquals(-1, stdout.find(test_in_cp1251))
 
 
-class TestLogFile(TestCaseWithTransport):
+class TestLogFile(tests.TestCaseWithTransport):
 
     def test_log_local_branch_file(self):
         """We should be able to log files in local treeless branches"""
@@ -984,7 +977,7 @@ class TestLogFile(TestCaseWithTransport):
         self.assertNotContainsRe(log, '^4:', re.MULTILINE)
 
 
-class TestLogMultiple(TestCaseWithTransport):
+class TestLogMultiple(tests.TestCaseWithTransport):
 
     def prepare_tree(self):
         tree = self.make_branch_and_tree('parent')
