@@ -70,6 +70,10 @@ Bug Fixes
 * Several bugs related to unicode symlinks have been fixed and the test suite
   enhanced to better catch regressions for them. (Vincent Ladeuil)
 
+* Upgrading to, or fetching into a 'rich-root' format will now correctly
+  set the root data the same way that reconcile does.
+  (Robert Collins, #368921)
+
 Documentation
 *************
 
