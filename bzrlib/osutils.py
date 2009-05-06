@@ -933,6 +933,20 @@ def host_os_dereferences_symlinks():
             and sys.platform not in ('cygwin', 'win32'))
 
 
+def readlink(abspath):
+    """Return a string representing the path to which the symbolic link points.
+
+    :param abspath: The link absolute unicode path.
+
+    This his guaranteed to return the symbolic link in unicode in all python
+    versions.
+    """
+    link = abspath.encode(_fs_enc)
+    target = os.readlink(link)
+    target = target.decode(_fs_enc)
+    return target
+
+
 def contains_whitespace(s):
     """True if there are any whitespace characters in s."""
     # string.whitespace can include '\xa0' in certain locales, because it is
@@ -1400,21 +1414,21 @@ def _walkdirs_utf8(top, prefix=""):
             #       for win98 anyway.
             try:
                 from bzrlib._walkdirs_win32 import Win32ReadDir
-            except ImportError:
-                _selected_dir_reader = UnicodeDirReader()
-            else:
                 _selected_dir_reader = Win32ReadDir()
-        elif fs_encoding not in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968'):
+            except ImportError:
+                pass
+        elif fs_encoding in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968'):
             # ANSI_X3.4-1968 is a form of ASCII
-            _selected_dir_reader = UnicodeDirReader()
-        else:
             try:
                 from bzrlib._readdir_pyx import UTF8DirReader
-            except ImportError:
-                # No optimised code path
-                _selected_dir_reader = UnicodeDirReader()
-            else:
                 _selected_dir_reader = UTF8DirReader()
+            except ImportError:
+                pass
+
+    if _selected_dir_reader is None:
+        # Fallback to the python version
+        _selected_dir_reader = UnicodeDirReader()
+
     # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-toppath
     # But we don't actually uses 1-3 in pending, so set them to None
     pending = [[_selected_dir_reader.top_prefix_to_starting_dir(top, prefix)]]

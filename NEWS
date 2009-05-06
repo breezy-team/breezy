@@ -32,6 +32,9 @@ New Features
 Improvements
 ************
 
+* ``--coverage`` works for code running in threads too.
+  (Andrew Bennets, Vincent Ladeuil)
+
 Bug Fixes
 *********
 
@@ -63,6 +66,9 @@ Bug Fixes
 
 * ssh usernames (defined in ~/.ssh/config) are honoured for bzr+ssh connections.
   (Vincent Ladeuil, #367726)
+
+* Several bugs related to unicode symlinks have been fixed and the test suite
+  enhanced to better catch regressions for them. (Vincent Ladeuil)
 
 Documentation
 *************
@@ -107,6 +113,9 @@ Internals
 * New smart server verb ``BzrDir.initialize_ex`` which implements a
   refactoring to the core of clone allowing less round trips on new
   branches. (Robert Collins)
+
+* New method ``Tags.rename_revisions`` that can rename revision ids tags
+  are pointing at. (Jelmer Vernooij)
 
 * Updated the bundled ``ConfigObj`` library to 4.6.0 (Matt Nordhoff)
 
