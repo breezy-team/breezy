@@ -1002,3 +1002,23 @@ class RepositoryFormatCHK1(RepositoryFormatPack):
                 'Does not support nested trees', target_format)
 
 
+
+class RepositoryFormatCHK2(RepositoryFormatCHK1):
+    """A CHK repository that uses the RIO revision serializer."""
+
+    _serializer = chk_serializer.chk_rio_serializer
+
+    def _get_matching_bzrdir(self):
+        return bzrdir.format_registry.make_bzrdir('development7-rich-root')
+
+    def _ignore_setting_bzrdir(self, format):
+        pass
+
+    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+
+    def get_format_string(self):
+        """See RepositoryFormat.get_format_string()."""
+        return ('Bazaar development format - chk repository with rio revision '
+                'serialization (needs bzr.dev from 1.15)\n')
+
+

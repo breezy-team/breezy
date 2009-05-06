@@ -126,7 +126,7 @@ class CHKSerializerSubtree(RIORevisionSerializer1, xml6.Serializer_v6):
         self.search_key_name = search_key_name
 
 
-class CHKSerializer(RIORevisionSerializer1, xml5.Serializer_v5):
+class CHKSerializer(xml5.Serializer_v5):
     """A CHKInventory based serializer with 'plain' behaviour."""
 
     format_num = '9'
@@ -139,3 +139,12 @@ class CHKSerializer(RIORevisionSerializer1, xml5.Serializer_v5):
 
 
 chk_serializer_255_bigpage = CHKSerializer(65536, 'hash-255-way')
+
+
+class CHKRIOSerializer(RIORevisionSerializer1, CHKSerializer):
+    """A CHKInventory and RIO based serializer with 'plain' behaviour."""
+
+    format_num = '10'
+
+
+chk_rio_serializer = CHKRIOSerializer(65536, 'hash-255-way')

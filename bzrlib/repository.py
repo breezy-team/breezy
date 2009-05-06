@@ -3031,6 +3031,13 @@ format_registry.register_lazy(
     'RepositoryFormatCHK1',
     )
 
+format_registry.register_lazy(
+    'Bazaar development format - chk repository with rio revision '
+        'serialization (needs bzr.dev from 1.15)\n',
+    'bzrlib.repofmt.groupcompress_repo',
+    'RepositoryFormatCHK2',
+    )
+
 
 class InterRepository(InterObject):
     """This class represents operations taking place between two repositories.

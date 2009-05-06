@@ -3780,6 +3780,18 @@ format_registry.register_metadir('development6-rich-root',
     experimental=True,
     )
 
+format_registry.register_metadir('development7-rich-root',
+    'bzrlib.repofmt.groupcompress_repo.RepositoryFormatCHK2',
+    help='pack-1.9 with 255-way hashed CHK inv, rio revision, group compress, '
+        'rich roots. Please read '
+        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+        'before use.',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat6',
+    hidden=True,
+    experimental=True,
+    )
+
 # The following format should be an alias for the rich root equivalent 
 # of the default format
 format_registry.register_metadir('default-rich-root',
