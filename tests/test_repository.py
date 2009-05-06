@@ -216,7 +216,7 @@ class RevisionGistImportTests(tests.TestCaseWithTransport):
         revid = self.bzr_tree.commit("pointless", timestamp=1205433193,
                 timezone=0,
                   committer="Jelmer Vernooij <jelmer@samba.org>")
-        self.assertEquals("b147b30a88dc92ec242b5e2fa2b23c8564de9931", 
+        self.assertEquals("2caa8094a5b794961cd9bf582e3e2bb090db0b14", 
                 self.import_rev(revid))
-        self.assertEquals("b147b30a88dc92ec242b5e2fa2b23c8564de9931", 
+        self.assertEquals("2caa8094a5b794961cd9bf582e3e2bb090db0b14", 
                 self.import_rev(revid))
