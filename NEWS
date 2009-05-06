@@ -70,6 +70,8 @@ Bug Fixes
 * Several bugs related to unicode symlinks have been fixed and the test suite
   enhanced to better catch regressions for them. (Vincent Ladeuil)
 
+* "bzr rm *" is now as fast as "bzr rm * --keep". (Johan Walles, #180116)
+
 Documentation
 *************
 
