@@ -16,6 +16,10 @@
 
 """Black-box tests for bzr-git."""
 
+from dulwich.repo import (
+    Repo as GitRepo,
+    )
+
 import os
 
 from bzrlib.tests import KnownFailure
@@ -30,14 +34,14 @@ class TestGitBlackBox(ExternalBase):
 
     def simple_commit(self):
         # Create a git repository with a revision.
-        tests.run_git('init')
+        repo = GitRepo.init(self.test_dir)
         builder = tests.GitBranchBuilder()
         builder.set_file('a', 'text for a\n', False)
-        builder.commit('Joe Foo <joe@foo.com>', u'<The commit message>')
-        builder.finish()
+        r1 = builder.commit('Joe Foo <joe@foo.com>', u'<The commit message>')
+        return repo, builder.finish()[r1]
 
     def test_nick(self):
-        tests.run_git('init')
+        GitRepo.init(self.test_dir)
         output, error = self.run_bzr(['nick'])
         self.assertEquals("HEAD\n", output)
 
@@ -49,14 +53,14 @@ class TestGitBlackBox(ExternalBase):
 
     def test_branch(self):
         os.mkdir("gitbranch")
-        os.chdir("gitbranch")
-        tests.run_git('init')
+        GitRepo.init(os.path.join(self.test_dir, "gitbranch"))
+        os.chdir('gitbranch')
         builder = tests.GitBranchBuilder()
         builder.set_file('a', 'text for a\n', False)
         builder.commit('Joe Foo <joe@foo.com>', u'<The commit message>')
         builder.finish()
+        os.chdir('..')
 
-        os.chdir("..")
         output, error = self.run_bzr(['branch', 'gitbranch', 'bzrbranch'])
         self.assertEqual(error, 'Branched 1 revision(s).\n')
 
@@ -81,9 +85,7 @@ class TestGitBlackBox(ExternalBase):
 
     def test_push(self):
         os.mkdir("bla")
-        os.chdir("bla")
-        tests.run_git("init")
-        os.chdir("..")
+        GitRepo.init(os.path.join(self.test_dir, "bla"))
         self.run_bzr(['init', 'foo'])
         self.run_bzr(['commit', '--unchanged', '-m', 'bla', 'foo'])
         output, error = self.run_bzr(['push', '-d', 'foo', 'bla'], retcode=3)
@@ -109,9 +111,8 @@ class TestGitBlackBox(ExternalBase):
         output, error = self.run_bzr(['log', '-v'])
  
     def test_tags(self):
-        self.simple_commit()
-
-        tests.run_git("tag", "foo")
+        git_repo, commit_sha1 = self.simple_commit()
+        git_repo.set_ref("refs/tags/foo", commit_sha1)
 
         output, error = self.run_bzr(['tags'])
         self.assertEquals(error, '')
