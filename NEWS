@@ -35,6 +35,10 @@ Improvements
 * ``--coverage`` works for code running in threads too.
   (Andrew Bennets, Vincent Ladeuil)
 
+* ``bzr pull`` now has a ``--local`` option to only make changes to the
+  local branch, and not the bound master branch.
+  (Gary van der Merwe, #194716)
+
 Bug Fixes
 *********
 
