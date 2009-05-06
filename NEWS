@@ -70,6 +70,12 @@ Bug Fixes
 * Several bugs related to unicode symlinks have been fixed and the test suite
   enhanced to better catch regressions for them. (Vincent Ladeuil)
 
+* The smart server will no longer raise 'NoSuchRevision' when streaming
+  content with a size mismatch in a reconstructed graph search: it assumes
+  that the client will make sure it is happy with what it got, and this
+  sort of mismatch is normal for stacked environments.
+  (Robert Collins, #360791)
+
 Documentation
 *************
 
