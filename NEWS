@@ -35,11 +35,17 @@ Improvements
 * ``--coverage`` works for code running in threads too.
   (Andrew Bennets, Vincent Ladeuil)
 
+* ``bzr pull`` now has a ``--local`` option to only make changes to the
+  local branch, and not the bound master branch.
+  (Gary van der Merwe, #194716)
+
 Bug Fixes
 *********
 
 * Adding now works properly when path contains a symbolic link.
   (Geoff Bache, #183831)
+
+* An error is now raised for unknown eol values. (Brian de Alwis, #358199)
 
 * ``bzr merge --weave`` will now generate a conflict if one side deletes a
   line, and the other side modifies the line. (John Arbash Meinel, #328171)
@@ -84,6 +90,10 @@ Bug Fixes
   will stream from stacked branches and check the stream to find missing
   content in the stacked-on branch, and thus will handle the situation
   implicitly.  (Robert Collins, #360791)
+
+* Upgrading to, or fetching into a 'rich-root' format will now correctly
+  set the root data the same way that reconcile does.
+  (Robert Collins, #368921)
 
 Documentation
 *************
