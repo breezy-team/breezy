@@ -2981,6 +2981,7 @@ class GenericInterBranch(InterBranch):
         try:
             # We assume that during 'pull' the target repository is closer than
             # the source one.
+            self.source.update_references(self.target)
             graph = self.target.repository.get_graph(self.source.repository)
             result.old_revno, result.old_revid = \
                 self.target.last_revision_info()
