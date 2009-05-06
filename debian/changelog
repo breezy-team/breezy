@@ -1,3 +1,9 @@
+bzr-builddeb (2.1.2~ubuntu2) jaunty; urgency=low
+
+  * Don't remove the debian part of the version number twice. (LP: #372792)
+
+ -- James Westby <james.westby@ubuntu.com>  Wed, 06 May 2009 17:49:49 +0100
+
 bzr-builddeb (2.1.2~ubuntu1) jaunty; urgency=low
 
   * Add --download-version to the uscan command line.

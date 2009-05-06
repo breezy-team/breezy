@@ -370,7 +370,7 @@ class cmd_builddeb(Command):
                             changelog.version)
 
             upstream_provider = UpstreamProvider(tree, branch,
-                    changelog.package, changelog.version.upstream_version,
+                    changelog.package, changelog.version,
                     orig_dir, larstiq=larstiq, upstream_branch=upstream_branch,
                     upstream_revision=upstream_revision, allow_split=split)
 
