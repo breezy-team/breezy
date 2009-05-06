@@ -117,8 +117,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
         # consistency.
         # Cases:
         repo = self.make_repository('target')
-        if isinstance(repo, remote.RemoteRepository):
-            remote_format = True
+        remote_format = isinstance(repo, remote.RemoteRepository)
         if not repo._format.rich_root_data and not remote_format:
             return # not relevant
         builder = self.make_branch_builder('source', format='1.9')
