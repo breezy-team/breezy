@@ -657,7 +657,7 @@ class Tree(object):
             return None
 
     def iter_search_rules(self, path_names, pref_names=None,
-        _default_searcher=rules._per_user_searcher):
+        _default_searcher=None):
         """Find the preferences for filenames in a tree.
 
         :param path_names: an iterable of paths to find attributes for.
@@ -667,6 +667,8 @@ class Tree(object):
         :return: an iterator of tuple sequences, one per path-name.
           See _RulesSearcher.get_items for details on the tuple sequence.
         """
+        if _default_searcher is None:
+            _default_searcher = rules._per_user_searcher
         searcher = self._get_rules_searcher(_default_searcher)
         if searcher is not None:
             if pref_names is not None:
