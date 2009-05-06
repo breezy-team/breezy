@@ -77,8 +77,8 @@ Specifications
 * `Container format <container-format.html>`_ |--| Notes on a container format
   for streaming and storing Bazaar data.
 
-* `Repository stream <repository-stream.html>`_ |--| Notes on streaming data
-  for repositories (a layer above the container format).
+* `Groupcompress <groupcompress-design.html>`_ |--| Notes on the compression
+  technology used in CHK repositories.
 
 * `Indices <indices.html>`_ |--| The index facilities available within bzrlib.
 
@@ -91,6 +91,9 @@ Specifications
 * `Plugin APIs <plugin-api.html>`_ |--| APIs plugins should use.
 
 * `Repositories <repository.html>`_ |--| What repositories do and are used for.
+
+* `Repository stream <repository-stream.html>`_ |--| Notes on streaming data
+  for repositories (a layer above the container format).
 
 * `Integration Guide <integration.html>`_ |--| A guide to integrate bzrlib into
   any python application.

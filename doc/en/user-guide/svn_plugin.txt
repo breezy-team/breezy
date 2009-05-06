@@ -105,16 +105,11 @@ Limitations of bzr-svn
 
 Bazaar and Subversion are different tools with different capabilities
 so there will always be some limited interoperability issues.
-Here are some examples current as of bzr-svn 0.4.10:
+Here are some examples current as of bzr-svn 0.5.4:
 
  * Bazaar doesn't support versioned properties
 
  * Bazaar doesn't support tracking of file copies.
-
- * ``bzr push`` to an existing Subversion branch works but 
-   ``bzr push`` to a new Subversion branch doesn't. Until
-   the relevant bug is fixed (#121875), you need to use
-   ``bzr svn-push`` in the latter case.
 
 See the bzr-svn web page,
 http://bazaar-vcs.org/BzrForeignBranches/Subversion,

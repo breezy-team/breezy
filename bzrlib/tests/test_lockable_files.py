@@ -214,11 +214,11 @@ class _TestLockableFiles_mixin(object):
             # raise TokenMismatch.
             self.assertRaises(errors.TokenMismatch,
                               self.lockable.lock_write, token=different_token)
-            # A seperate instance for the same lockable will also raise
+            # A separate instance for the same lockable will also raise
             # TokenMismatch.
             # This detects the case where a caller claims to have a lock (via
             # the token) for an external resource, but doesn't (the token is
-            # different).  Clients need a seperate lock object to make sure the
+            # different).  Clients need a separate lock object to make sure the
             # external resource is probed, whereas the existing lock object
             # might cache.
             new_lockable = self.get_lockable()

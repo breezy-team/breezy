@@ -171,7 +171,9 @@ class TestBranchLocking(TestCaseWithBranch):
             b.repository._other.unlock()
 
     def test_04_lock_fail_unlock_control(self):
-        # Make sure repository.unlock() is called, if we fail to unlock self
+        # Make sure repository.unlock() is not called, if we fail to unlock
+        # self leaving ourselves still locked, so that attempts to recover
+        # don't encounter an unlocked repository.
         b = self.get_instrumented_branch()
         b.control_files.disable_unlock()
 
@@ -183,10 +185,7 @@ class TestBranchLocking(TestCaseWithBranch):
             self.assertTrue(b.repository.is_locked())
             self.assertRaises(TestPreventLocking, b.unlock)
             self.assertTrue(b.is_locked())
-            if self.combined_control:
-                self.assertTrue(b.repository.is_locked())
-            else:
-                self.assertFalse(b.repository.is_locked())
+            self.assertTrue(b.repository.is_locked())
 
             # We unlock the repository even if
             # we fail to unlock the control files
@@ -206,7 +205,6 @@ class TestBranchLocking(TestCaseWithBranch):
                                   ('bc', 'lw', True),
                                   ('b', 'ul', True),
                                   ('bc', 'ul', False),
-                                  ('r', 'ul', True),
                                  ], self.locks)
 
         finally:

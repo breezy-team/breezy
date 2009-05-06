@@ -16,6 +16,9 @@
 
 """Use ~/.netrc as a credential store for authentication.conf."""
 
+# Since we are a built-in plugin we share the bzrlib version
+from bzrlib import version_info
+
 from bzrlib import (
     config,
     lazy_import,

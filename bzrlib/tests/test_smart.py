@@ -296,6 +296,29 @@ class TestSmartServerRequestFindRepository(tests.TestCaseWithMemoryTransport):
         self.assertEqual(result, request.execute(''))
 
 
+class TestSmartServerBzrDirRequestGetConfigFile(
+    tests.TestCaseWithMemoryTransport):
+    """Tests for BzrDir.get_config_file."""
+
+    def test_present(self):
+        backing = self.get_transport()
+        dir = self.make_bzrdir('.')
+        dir.get_config().set_default_stack_on("/")
+        local_result = dir._get_config()._get_config_file().read()
+        request_class = smart_dir.SmartServerBzrDirRequestConfigFile
+        request = request_class(backing)
+        expected = SuccessfulSmartServerResponse((), local_result)
+        self.assertEqual(expected, request.execute(''))
+
+    def test_missing(self):
+        backing = self.get_transport()
+        dir = self.make_bzrdir('.')
+        request_class = smart_dir.SmartServerBzrDirRequestConfigFile
+        request = request_class(backing)
+        expected = SuccessfulSmartServerResponse((), '')
+        self.assertEqual(expected, request.execute(''))
+
+
 class TestSmartServerRequestInitializeBzrDir(tests.TestCaseWithMemoryTransport):
 
     def test_empty_dir(self):
@@ -325,6 +348,46 @@ class TestSmartServerRequestInitializeBzrDir(tests.TestCaseWithMemoryTransport):
         self.make_bzrdir('subdir')
         self.assertRaises(errors.FileExists,
             request.execute, 'subdir')
+
+
+class TestSmartServerRequestBzrDirInitializeEx(tests.TestCaseWithMemoryTransport):
+    """Basic tests for BzrDir.initialize_ex in the smart server.
+
+    The main unit tests in test_bzrdir exercise the API comprehensively.
+    """
+
+    def test_empty_dir(self):
+        """Initializing an empty dir should succeed and do it."""
+        backing = self.get_transport()
+        name = self.make_bzrdir('reference')._format.network_name()
+        request = smart.bzrdir.SmartServerRequestBzrDirInitializeEx(backing)
+        self.assertEqual(SmartServerResponse(('', '', '', '', '', '', name,
+            'False', '', '', '')),
+            request.execute(name, '', 'True', 'False', 'False', '', '', '', '',
+            'False'))
+        made_dir = bzrdir.BzrDir.open_from_transport(backing)
+        # no branch, tree or repository is expected with the current
+        # default format.
+        self.assertRaises(errors.NoWorkingTree, made_dir.open_workingtree)
+        self.assertRaises(errors.NotBranchError, made_dir.open_branch)
+        self.assertRaises(errors.NoRepositoryPresent, made_dir.open_repository)
+
+    def test_missing_dir(self):
+        """Initializing a missing directory should fail like the bzrdir api."""
+        backing = self.get_transport()
+        name = self.make_bzrdir('reference')._format.network_name()
+        request = smart.bzrdir.SmartServerRequestBzrDirInitializeEx(backing)
+        self.assertRaises(errors.NoSuchFile, request.execute, name,
+            'subdir/dir', 'False', 'False', 'False', '', '', '', '', 'False')
+
+    def test_initialized_dir(self):
+        """Initializing an extant dirctory should fail like the bzrdir api."""
+        backing = self.get_transport()
+        name = self.make_bzrdir('reference')._format.network_name()
+        request = smart.bzrdir.SmartServerRequestBzrDirInitializeEx(backing)
+        self.make_bzrdir('subdir')
+        self.assertRaises(errors.FileExists, request.execute, name, 'subdir',
+            'False', 'False', 'False', '', '', '', '', 'False')
 
 
 class TestSmartServerRequestOpenBranch(TestCaseWithChrootedTransport):
@@ -502,7 +565,41 @@ class TestSmartServerBranchRequestGetConfigFile(tests.TestCaseWithMemoryTranspor
             request.execute(''))
 
 
-class SetLastRevisionTestBase(tests.TestCaseWithMemoryTransport):
+class TestLockedBranch(tests.TestCaseWithMemoryTransport):
+
+    def get_lock_tokens(self, branch):
+        branch_token = branch.lock_write()
+        repo_token = branch.repository.lock_write()
+        branch.repository.unlock()
+        return branch_token, repo_token
+
+
+class TestSmartServerBranchRequestSetConfigOption(TestLockedBranch):
+
+    def test_value_name(self):
+        branch = self.make_branch('.')
+        request = smart.branch.SmartServerBranchRequestSetConfigOption(
+            branch.bzrdir.root_transport)
+        branch_token, repo_token = self.get_lock_tokens(branch)
+        config = branch._get_config()
+        result = request.execute('', branch_token, repo_token, 'bar', 'foo',
+            '')
+        self.assertEqual(SuccessfulSmartServerResponse(()), result)
+        self.assertEqual('bar', config.get_option('foo'))
+
+    def test_value_name_section(self):
+        branch = self.make_branch('.')
+        request = smart.branch.SmartServerBranchRequestSetConfigOption(
+            branch.bzrdir.root_transport)
+        branch_token, repo_token = self.get_lock_tokens(branch)
+        config = branch._get_config()
+        result = request.execute('', branch_token, repo_token, 'bar', 'foo',
+            'gam')
+        self.assertEqual(SuccessfulSmartServerResponse(()), result)
+        self.assertEqual('bar', config.get_option('foo', 'gam'))
+
+
+class SetLastRevisionTestBase(TestLockedBranch):
     """Base test case for verbs that implement set_last_revision."""
 
     def setUp(self):
@@ -512,11 +609,7 @@ class SetLastRevisionTestBase(tests.TestCaseWithMemoryTransport):
         self.tree = self.make_branch_and_memory_tree('.')
 
     def lock_branch(self):
-        b = self.tree.branch
-        branch_token = b.lock_write()
-        repo_token = b.repository.lock_write()
-        b.repository.unlock()
-        return branch_token, repo_token
+        return self.get_lock_tokens(self.tree.branch)
 
     def unlock_branch(self):
         self.tree.branch.unlock()
@@ -737,6 +830,41 @@ class TestSmartServerBranchRequestGetParent(tests.TestCaseWithMemoryTransport):
         self.assertEquals(
             SuccessfulSmartServerResponse(("../foo",)),
             response)
+
+
+class TestSmartServerBranchRequestSetParent(tests.TestCaseWithMemoryTransport):
+
+    def test_set_parent_none(self):
+        branch = self.make_branch('base', format="1.9")
+        branch.lock_write()
+        branch._set_parent_location('foo')
+        branch.unlock()
+        request = smart.branch.SmartServerBranchRequestSetParentLocation(
+            self.get_transport())
+        branch_token = branch.lock_write()
+        repo_token = branch.repository.lock_write()
+        try:
+            response = request.execute('base', branch_token, repo_token, '')
+        finally:
+            branch.repository.unlock()
+            branch.unlock()
+        self.assertEqual(SuccessfulSmartServerResponse(()), response)
+        self.assertEqual(None, branch.get_parent())
+
+    def test_set_parent_something(self):
+        branch = self.make_branch('base', format="1.9")
+        request = smart.branch.SmartServerBranchRequestSetParentLocation(
+            self.get_transport())
+        branch_token = branch.lock_write()
+        repo_token = branch.repository.lock_write()
+        try:
+            response = request.execute('base', branch_token, repo_token,
+            'http://bar/')
+        finally:
+            branch.repository.unlock()
+            branch.unlock()
+        self.assertEqual(SuccessfulSmartServerResponse(()), response)
+        self.assertEqual('http://bar/', branch.get_parent())
 
 
 class TestSmartServerBranchRequestGetTagsBytes(tests.TestCaseWithMemoryTransport):
@@ -1356,90 +1484,74 @@ class TestHandlers(tests.TestCase):
         for key, item in smart.request.request_handlers.iteritems():
             pass
 
+    def assertHandlerEqual(self, verb, handler):
+        self.assertEqual(smart.request.request_handlers.get(verb), handler)
+
     def test_registered_methods(self):
         """Test that known methods are registered to the correct object."""
-        self.assertEqual(
-            smart.request.request_handlers.get('Branch.get_config_file'),
+        self.assertHandlerEqual('Branch.get_config_file',
             smart.branch.SmartServerBranchGetConfigFile)
-        self.assertEqual(
-            smart.request.request_handlers.get('Branch.get_parent'),
+        self.assertHandlerEqual('Branch.get_parent',
             smart.branch.SmartServerBranchGetParent)
-        self.assertEqual(
-            smart.request.request_handlers.get('Branch.get_tags_bytes'),
+        self.assertHandlerEqual('Branch.get_tags_bytes',
             smart.branch.SmartServerBranchGetTagsBytes)
-        self.assertEqual(
-            smart.request.request_handlers.get('Branch.lock_write'),
+        self.assertHandlerEqual('Branch.lock_write',
             smart.branch.SmartServerBranchRequestLockWrite)
-        self.assertEqual(
-            smart.request.request_handlers.get('Branch.last_revision_info'),
+        self.assertHandlerEqual('Branch.last_revision_info',
             smart.branch.SmartServerBranchRequestLastRevisionInfo)
-        self.assertEqual(
-            smart.request.request_handlers.get('Branch.revision_history'),
+        self.assertHandlerEqual('Branch.revision_history',
             smart.branch.SmartServerRequestRevisionHistory)
-        self.assertEqual(
-            smart.request.request_handlers.get('Branch.set_last_revision'),
+        self.assertHandlerEqual('Branch.set_config_option',
+            smart.branch.SmartServerBranchRequestSetConfigOption)
+        self.assertHandlerEqual('Branch.set_last_revision',
             smart.branch.SmartServerBranchRequestSetLastRevision)
-        self.assertEqual(
-            smart.request.request_handlers.get('Branch.set_last_revision_info'),
+        self.assertHandlerEqual('Branch.set_last_revision_info',
             smart.branch.SmartServerBranchRequestSetLastRevisionInfo)
-        self.assertEqual(
-            smart.request.request_handlers.get('Branch.unlock'),
+        self.assertHandlerEqual('Branch.set_last_revision_ex',
+            smart.branch.SmartServerBranchRequestSetLastRevisionEx)
+        self.assertHandlerEqual('Branch.set_parent_location',
+            smart.branch.SmartServerBranchRequestSetParentLocation)
+        self.assertHandlerEqual('Branch.unlock',
             smart.branch.SmartServerBranchRequestUnlock)
-        self.assertEqual(
-            smart.request.request_handlers.get('BzrDir.find_repository'),
+        self.assertHandlerEqual('BzrDir.find_repository',
             smart.bzrdir.SmartServerRequestFindRepositoryV1)
-        self.assertEqual(
-            smart.request.request_handlers.get('BzrDir.find_repositoryV2'),
+        self.assertHandlerEqual('BzrDir.find_repositoryV2',
             smart.bzrdir.SmartServerRequestFindRepositoryV2)
-        self.assertEqual(
-            smart.request.request_handlers.get('BzrDirFormat.initialize'),
+        self.assertHandlerEqual('BzrDirFormat.initialize',
             smart.bzrdir.SmartServerRequestInitializeBzrDir)
-        self.assertEqual(
-            smart.request.request_handlers.get('BzrDir.cloning_metadir'),
+        self.assertHandlerEqual('BzrDirFormat.initialize_ex',
+            smart.bzrdir.SmartServerRequestBzrDirInitializeEx)
+        self.assertHandlerEqual('BzrDir.cloning_metadir',
             smart.bzrdir.SmartServerBzrDirRequestCloningMetaDir)
-        self.assertEqual(
-            smart.request.request_handlers.get('BzrDir.open_branch'),
+        self.assertHandlerEqual('BzrDir.get_config_file',
+            smart.bzrdir.SmartServerBzrDirRequestConfigFile)
+        self.assertHandlerEqual('BzrDir.open_branch',
             smart.bzrdir.SmartServerRequestOpenBranch)
-        self.assertEqual(
-            smart.request.request_handlers.get('BzrDir.open_branchV2'),
+        self.assertHandlerEqual('BzrDir.open_branchV2',
             smart.bzrdir.SmartServerRequestOpenBranchV2)
-        self.assertEqual(
-            smart.request.request_handlers.get('PackRepository.autopack'),
+        self.assertHandlerEqual('PackRepository.autopack',
             smart.packrepository.SmartServerPackRepositoryAutopack)
-        self.assertEqual(
-            smart.request.request_handlers.get('Repository.gather_stats'),
+        self.assertHandlerEqual('Repository.gather_stats',
             smart.repository.SmartServerRepositoryGatherStats)
-        self.assertEqual(
-            smart.request.request_handlers.get('Repository.get_parent_map'),
+        self.assertHandlerEqual('Repository.get_parent_map',
             smart.repository.SmartServerRepositoryGetParentMap)
-        self.assertEqual(
-            smart.request.request_handlers.get(
-                'Repository.get_revision_graph'),
+        self.assertHandlerEqual('Repository.get_revision_graph',
             smart.repository.SmartServerRepositoryGetRevisionGraph)
-        self.assertEqual(
-            smart.request.request_handlers.get('Repository.get_stream'),
+        self.assertHandlerEqual('Repository.get_stream',
             smart.repository.SmartServerRepositoryGetStream)
-        self.assertEqual(
-            smart.request.request_handlers.get('Repository.has_revision'),
+        self.assertHandlerEqual('Repository.has_revision',
             smart.repository.SmartServerRequestHasRevision)
-        self.assertEqual(
-            smart.request.request_handlers.get('Repository.insert_stream'),
+        self.assertHandlerEqual('Repository.insert_stream',
             smart.repository.SmartServerRepositoryInsertStream)
-        self.assertEqual(
-            smart.request.request_handlers.get('Repository.insert_stream_locked'),
+        self.assertHandlerEqual('Repository.insert_stream_locked',
             smart.repository.SmartServerRepositoryInsertStreamLocked)
-        self.assertEqual(
-            smart.request.request_handlers.get('Repository.is_shared'),
+        self.assertHandlerEqual('Repository.is_shared',
             smart.repository.SmartServerRepositoryIsShared)
-        self.assertEqual(
-            smart.request.request_handlers.get('Repository.lock_write'),
+        self.assertHandlerEqual('Repository.lock_write',
             smart.repository.SmartServerRepositoryLockWrite)
-        self.assertEqual(
-            smart.request.request_handlers.get('Repository.tarball'),
+        self.assertHandlerEqual('Repository.tarball',
             smart.repository.SmartServerRepositoryTarball)
-        self.assertEqual(
-            smart.request.request_handlers.get('Repository.unlock'),
+        self.assertHandlerEqual('Repository.unlock',
             smart.repository.SmartServerRepositoryUnlock)
-        self.assertEqual(
-            smart.request.request_handlers.get('Transport.is_readonly'),
+        self.assertHandlerEqual('Transport.is_readonly',
             smart.request.SmartServerIsReadonly)

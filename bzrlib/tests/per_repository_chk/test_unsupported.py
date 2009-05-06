@@ -14,11 +14,17 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Tests for repositories that do not support CHK indices.
 
-from bzrlib import tests
+CHK support is optional, and when it is not supported the methods and
+attributes CHK support added should fail in known ways.
+"""
+
+from bzrlib.tests.per_repository_chk import TestCaseWithRepositoryCHK
 
 
-class TestGuessRenames(tests.TestCaseWithTransport):
+class TestNoCHKSupport(TestCaseWithRepositoryCHK):
 
-    def test_guess_renames(self):
-        self.run_bzr('guess-renames')
+    def test_chk_bytes_attribute_is_None(self):
+        repo = self.make_repository('.')
+        self.assertEqual(None, repo.chk_bytes)

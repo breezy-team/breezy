@@ -657,7 +657,7 @@ class Tree(object):
             return None
 
     def iter_search_rules(self, path_names, pref_names=None,
-        _default_searcher=rules._per_user_searcher):
+        _default_searcher=None):
         """Find the preferences for filenames in a tree.
 
         :param path_names: an iterable of paths to find attributes for.
@@ -667,6 +667,8 @@ class Tree(object):
         :return: an iterator of tuple sequences, one per path-name.
           See _RulesSearcher.get_items for details on the tuple sequence.
         """
+        if _default_searcher is None:
+            _default_searcher = rules._per_user_searcher
         searcher = self._get_rules_searcher(_default_searcher)
         if searcher is not None:
             if pref_names is not None:
@@ -905,7 +907,6 @@ class InterTree(InterObject):
             output. An unversioned file is defined as one with (False, False)
             for the versioned pair.
         """
-        result = []
         lookup_trees = [self.source]
         if extra_trees:
              lookup_trees.extend(extra_trees)
@@ -977,6 +978,10 @@ class InterTree(InterObject):
                 if (self.source.get_symlink_target(file_id) !=
                     self.target.get_symlink_target(file_id)):
                     changed_content = True
+                # XXX: Yes, the indentation below is wrong. But fixing it broke
+                # test_merge.TestMergerEntriesLCAOnDisk.
+                # test_nested_tree_subtree_renamed_and_modified. We'll wait for
+                # the fix from bzr.dev -- vila 2009026
                 elif from_kind == 'tree-reference':
                     if (self.source.get_reference_revision(file_id, from_path)
                         != self.target.get_reference_revision(file_id, to_path)):

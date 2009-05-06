@@ -385,7 +385,8 @@ should be a self-contained one-sentence summary.
 We use 4 space indents for blocks, and never use tab characters.  (In vim,
 ``set expandtab``.)
 
-No trailing white space is allowed.
+Trailing white space should be avoided, but is allowed.
+You should however not make lots of unrelated white space changes.
 
 Unix style newlines (LF) are used.
 

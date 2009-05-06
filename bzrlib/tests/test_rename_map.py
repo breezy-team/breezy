@@ -17,6 +17,7 @@
 
 import os
 
+from bzrlib import trace
 from bzrlib.rename_map import RenameMap
 from bzrlib.tests import TestCaseWithTransport
 
@@ -158,3 +159,43 @@ class TestRenameMap(TestCaseWithTransport):
         os.rename('tree/foo', 'tree/baz')
         RenameMap.guess_renames(tree)
         self.assertEqual('baz/empty', tree.id2path('empty-id'))
+
+    def test_guess_renames_dry_run(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        self.build_tree(['tree/file'])
+        tree.add('file', 'file-id')
+        tree.commit('Added file')
+        os.rename('tree/file', 'tree/file2')
+        RenameMap.guess_renames(tree, dry_run=True)
+        self.assertEqual('file', tree.id2path('file-id'))
+
+    @staticmethod
+    def captureNotes(cmd, *args, **kwargs):
+        notes = []
+        def my_note(fmt, *args):
+            notes.append(fmt % args)
+        old_note = trace.note
+        trace.note = my_note
+        try:
+            result = cmd(*args, **kwargs)
+        finally:
+            trace.note = old_note
+        return notes, result
+
+    def test_guess_renames_output(self):
+        """guess_renames emits output whether dry_run is True or False."""
+        tree = self.make_branch_and_tree('tree')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        self.build_tree(['tree/file'])
+        tree.add('file', 'file-id')
+        tree.commit('Added file')
+        os.rename('tree/file', 'tree/file2')
+        notes = self.captureNotes(RenameMap.guess_renames, tree,
+                                  dry_run=True)[0]
+        self.assertEqual('file => file2', ''.join(notes))
+        notes = self.captureNotes(RenameMap.guess_renames, tree,
+                                  dry_run=False)[0]
+        self.assertEqual('file => file2', ''.join(notes))

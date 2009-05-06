@@ -566,5 +566,8 @@ class MergeDirectiveFormatRegistry(registry.Registry):
 _format_registry = MergeDirectiveFormatRegistry()
 _format_registry.register(MergeDirective)
 _format_registry.register(MergeDirective2)
+# 0.19 never existed.  It got renamed to 0.90.  But by that point, there were
+# already merge directives in the wild that used 0.19. Registering with the old
+# format string to retain compatibility with those merge directives.
 _format_registry.register(MergeDirective2,
                           'Bazaar merge directive format 2 (Bazaar 0.19)')

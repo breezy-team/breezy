@@ -18,6 +18,9 @@
 
 import pprint
 
+from bzrlib.revision import (
+    NULL_REVISION,
+    )
 from bzrlib.version_info_formats import (
     create_date_str,
     VersionInfoBuilder,
@@ -57,7 +60,7 @@ class PythonVersionInfoBuilder(VersionInfoBuilder):
         revisions = []
 
         revision_id = self._get_revision_id()
-        if revision_id is None:
+        if revision_id == NULL_REVISION:
             info['revno'] = 0
         else:
             info['revno'] = self._branch.revision_id_to_revno(revision_id)

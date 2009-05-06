@@ -43,7 +43,7 @@ class TestNoSpuriousInconsistentAncestors(TestCaseWithRepository):
         # XXX: check requires a non-empty revision IDs list, but it ignores the
         # contents of it!
         check_object = tree.branch.repository.check(['ignored'])
-        check_object.report_results(verbose=False)
+        check_object.report_results(verbose=True)
         log = self._get_log(keep_log_file=True)
         self.assertContainsRe(
             log,

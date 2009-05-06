@@ -23,11 +23,11 @@ from bzrlib import (
     osutils,
     revision,
     symbol_versioning,
+    tree,
     )
-from bzrlib.tree import Tree
 
 
-class RevisionTree(Tree):
+class RevisionTree(tree.Tree):
     """Tree viewing a previous revision.
 
     File text can be retrieved from the text store.
@@ -125,7 +125,8 @@ class RevisionTree(Tree):
 
     def get_symlink_target(self, file_id):
         ie = self._inventory[file_id]
-        return ie.symlink_target;
+        # Inventories store symlink targets in unicode
+        return ie.symlink_target
 
     def get_reference_revision(self, file_id, path=None):
         return self.inventory[file_id].reference_revision
@@ -208,3 +209,71 @@ class RevisionTree(Tree):
             self._rules_searcher = super(RevisionTree,
                 self)._get_rules_searcher(default_searcher)
         return self._rules_searcher
+
+
+class InterCHKRevisionTree(tree.InterTree):
+    """Fast path optimiser for RevisionTrees with CHK inventories."""
+
+    @staticmethod
+    def is_compatible(source, target):
+        if (isinstance(source, RevisionTree)
+            and isinstance(target, RevisionTree)):
+            try:
+                # Only CHK inventories have id_to_entry attribute
+                source.inventory.id_to_entry
+                target.inventory.id_to_entry
+                return True
+            except AttributeError:
+                pass
+        return False
+
+    def iter_changes(self, include_unchanged=False,
+                     specific_files=None, pb=None, extra_trees=[],
+                     require_versioned=True, want_unversioned=False):
+        lookup_trees = [self.source]
+        if extra_trees:
+             lookup_trees.extend(extra_trees)
+        if specific_files == []:
+            specific_file_ids = []
+        else:
+            specific_file_ids = self.target.paths2ids(specific_files,
+                lookup_trees, require_versioned=require_versioned)
+
+        # FIXME: It should be possible to delegate include_unchanged handling
+        # to CHKInventory.iter_changes and do a better job there -- vila
+        # 20090304
+        if include_unchanged:
+            changed_file_ids = []
+        for result in self.target.inventory.iter_changes(self.source.inventory):
+            if (specific_file_ids is not None
+                and not result[0] in specific_file_ids):
+                # CHKMap.iter_changes is clean and fast. Better filter out
+                # the specific files *after* it did its job.
+                continue
+            yield result
+            if include_unchanged:
+                # Keep track of yielded results (cheaper than building the
+                # whole inventory).
+                changed_file_ids.append(result[0])
+        if include_unchanged:
+            # CHKMap avoid being O(tree), so we go to O(tree) only if
+            # required to.
+            # Now walk the whole inventory, excluding the already yielded
+            # file ids
+            changed_file_ids = set(changed_file_ids)
+            for relpath, entry in self.target.inventory.iter_entries():
+                if (specific_file_ids is not None
+                    and not entry.file_id in specific_file_ids):
+                    continue
+                if not entry.file_id in changed_file_ids:
+                    yield (entry.file_id,
+                           (relpath, relpath), # Not renamed
+                           False, # Not modified
+                           (True, True), # Still  versioned
+                           (entry.parent_id, entry.parent_id),
+                           (entry.name, entry.name),
+                           (entry.kind, entry.kind),
+                           (entry.executable, entry.executable))
+
+
+tree.InterTree.register_optimiser(InterCHKRevisionTree)

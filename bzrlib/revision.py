@@ -56,6 +56,7 @@ class Revision(object):
         self.revision_id = revision_id
         self.properties = properties or {}
         self._check_properties()
+        self.committer = None
         self.parent_ids = []
         self.parent_sha1s = []
         """Not used anymore - legacy from for 4."""
@@ -122,7 +123,11 @@ class Revision(object):
         If the revision properties contain any author names,
         return the first. Otherwise return the committer name.
         """
-        return self.get_apparent_authors()[0]
+        authors = self.get_apparent_authors()
+        if authors:
+            return authors[0]
+        else:
+            return None
 
     def get_apparent_authors(self):
         """Return the apparent authors of this revision.
@@ -134,9 +139,9 @@ class Revision(object):
         """
         authors = self.properties.get('authors', None)
         if authors is None:
-            author = self.properties.get('author', None)
+            author = self.properties.get('author', self.committer)
             if author is None:
-                return [self.committer]
+                return []
             return [author]
         else:
             return authors.split("\n")
@@ -206,7 +211,7 @@ def __get_closest(intersection):
 def is_reserved_id(revision_id):
     """Determine whether a revision id is reserved
 
-    :return: True if the revision is is reserved, False otherwise
+    :return: True if the revision is reserved, False otherwise
     """
     return isinstance(revision_id, basestring) and revision_id.endswith(':')
 

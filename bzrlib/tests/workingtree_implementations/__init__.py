@@ -22,36 +22,26 @@ Specific tests for individual formats are in the tests/test_workingtree file
 rather than in tests/workingtree_implementations/*.py.
 """
 
-import bzrlib.errors as errors
-from bzrlib.transport import get_transport
-from bzrlib.tests import (
-                          default_transport,
-                          multiply_tests,
-                          )
-from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
-from bzrlib.workingtree import (WorkingTreeFormat,
-                                _legacy_formats,
-                                )
+from bzrlib import (
+    errors,
+    tests,
+    workingtree,
+    )
+from bzrlib.tests import bzrdir_implementations
 
 
 def make_scenarios(transport_server, transport_readonly_server, formats):
-    """Create a scenario for the specified converter
-
-    :param workingtree_format: The particular workingtree format to test.
-    :param bzrdir_format: The bzrdir format to test.
-    :return: a (name, options) tuple, where options is a dict of values
-        to be used as members of the TestCase.
-    """
     result = []
     for workingtree_format in formats:
         result.append((workingtree_format.__class__.__name__,
-            make_scenario(transport_server, transport_readonly_server,
-            workingtree_format)))
+                       make_scenario(transport_server,
+                                     transport_readonly_server,
+                                     workingtree_format)))
     return result
 
 
 def make_scenario(transport_server, transport_readonly_server,
-    workingtree_format):
+                  workingtree_format):
     return {
         "transport_server": transport_server,
         "transport_readonly_server": transport_readonly_server,
@@ -60,7 +50,7 @@ def make_scenario(transport_server, transport_readonly_server,
         }
 
 
-class TestCaseWithWorkingTree(TestCaseWithBzrDir):
+class TestCaseWithWorkingTree(bzrdir_implementations.TestCaseWithBzrDir):
 
     def make_branch_and_tree(self, relpath, format=None):
         made_control = self.make_bzrdir(relpath, format=format)
@@ -79,6 +69,7 @@ def load_tests(standard_tests, module, loader):
         'bzrlib.tests.workingtree_implementations.test_changes_from',
         'bzrlib.tests.workingtree_implementations.test_content_filters',
         'bzrlib.tests.workingtree_implementations.test_commit',
+        'bzrlib.tests.workingtree_implementations.test_eol_conversion',
         'bzrlib.tests.workingtree_implementations.test_executable',
         'bzrlib.tests.workingtree_implementations.test_flush',
         'bzrlib.tests.workingtree_implementations.test_get_file_with_stat',
@@ -111,13 +102,14 @@ def load_tests(standard_tests, module, loader):
         ]
 
     scenarios = make_scenarios(
-        default_transport,
+        tests.default_transport,
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
-        WorkingTreeFormat._formats.values() + _legacy_formats)
+        workingtree.WorkingTreeFormat._formats.values()
+        + workingtree._legacy_formats)
 
     # add the tests for the sub modules
-    return multiply_tests(
+    return tests.multiply_tests(
         loader.loadTestsFromModuleNames(test_workingtree_implementations),
         scenarios, standard_tests)

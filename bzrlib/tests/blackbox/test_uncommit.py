@@ -103,7 +103,7 @@ class TestUncommit(TestCaseWithTransport):
         uncommit.uncommit(b)
         self.assertEqual(len(b.revision_history()), 2)
         self.assertEqual(len(t_a.branch.revision_history()), 2)
-        # update A's tree to not have the uncomitted revision referenced.
+        # update A's tree to not have the uncommitted revision referenced.
         t_a.update()
         t_a.commit('commit 3b')
         self.assertRaises(BoundBranchOutOfDate, uncommit.uncommit, b)

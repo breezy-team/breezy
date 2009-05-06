@@ -286,7 +286,7 @@ def get_home_location():
     If location cannot be obtained return system drive root,
     i.e. C:\
 
-    Returned value can be unicode or plain sring.
+    Returned value can be unicode or plain string.
     To convert plain string to unicode use
     s.decode(osutils.get_user_encoding())
     """
@@ -309,7 +309,7 @@ def get_user_name():
     """Return user name as login name.
     If name cannot be obtained return None.
 
-    Returned value can be unicode or plain sring.
+    Returned value can be unicode or plain string.
     To convert plain string to unicode use
     s.decode(osutils.get_user_encoding())
     """
@@ -454,7 +454,7 @@ def glob_expand(file_list):
 
 def get_app_path(appname):
     """Look up in Windows registry for full path to application executable.
-    Typicaly, applications create subkey with their basename
+    Typically, applications create subkey with their basename
     in HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\
 
     :param  appname:    name of application (if no filename extension

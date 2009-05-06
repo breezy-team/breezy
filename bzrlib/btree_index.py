@@ -319,7 +319,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
             new_row = True
             for row in reversed(rows[:-1]):
                 # Mark the start of the next node in the node above. If it
-                # doesn't fit then propogate upwards until we find one that
+                # doesn't fit then propagate upwards until we find one that
                 # it does fit into.
                 if row.writer.write(key_line):
                     row.finish_node()
@@ -370,7 +370,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
         self.row_lengths = []
         # Loop over all nodes adding them to the bottom row
         # (rows[-1]). When we finish a chunk in a row,
-        # propogate the key that didn't fit (comes after the chunk) to the
+        # propagate the key that didn't fit (comes after the chunk) to the
         # row above, transitively.
         for node in node_iterator:
             if key_count == 0:
@@ -590,6 +590,8 @@ class BTreeBuilder(index.GraphIndexBuilder):
 class _LeafNode(object):
     """A leaf node for a serialised B+Tree index."""
 
+    __slots__ = ('keys',)
+
     def __init__(self, bytes, key_length, ref_list_length):
         """Parse bytes to create a leaf node object."""
         # splitlines mangles the \r delimiters.. don't use it.
@@ -599,6 +601,8 @@ class _LeafNode(object):
 
 class _InternalNode(object):
     """An internal node for a serialised B+Tree index."""
+
+    __slots__ = ('keys', 'offset')
 
     def __init__(self, bytes):
         """Parse bytes to create an internal node object."""
@@ -611,7 +615,7 @@ class _InternalNode(object):
         for line in lines[2:]:
             if line == '':
                 break
-            nodes.append(tuple(line.split('\0')))
+            nodes.append(tuple(map(intern, line.split('\0'))))
         return nodes
 
 

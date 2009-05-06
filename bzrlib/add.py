@@ -35,7 +35,7 @@ class AddAction(object):
 
         :param to_file: The stream to write into. This is expected to take
             Unicode paths. If not supplied, it will default to ``sys.stdout``.
-        :param should_print: If False, printing will be supressed.
+        :param should_print: If False, printing will be suppressed.
         """
         self._to_file = to_file
         if to_file is None:

@@ -162,7 +162,7 @@ class TestHookRegistry(TestCase):
     def test_items_are_reasonable_keys(self):
         # All the items in the known_hooks registry need to map from
         # (module_name, member_name) tuples to the callable used to get an
-        # empty Hooks of for that attribute. This is used to support the test
+        # empty Hooks for that attribute. This is used to support the test
         # suite which needs to generate empty hooks (and HookPoints) to ensure
         # isolation and prevent tests failing spuriously.
         for key, factory in known_hooks.items():

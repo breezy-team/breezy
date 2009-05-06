@@ -30,6 +30,8 @@ class TestAddSignatureText(TestCaseWithExternalReferenceRepository):
         tree = self.make_branch_and_tree('sample')
         revid = tree.commit('one')
         inv = tree.branch.repository.get_inventory(revid)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
         base = self.make_repository('base')
         repo = self.make_referring('referring', 'base')
         repo.lock_write()

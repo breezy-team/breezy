@@ -23,6 +23,7 @@ from bzrlib import (
     commands,
     config,
     errors,
+    option,
     tests,
     )
 from bzrlib.commands import display_command
@@ -59,6 +60,23 @@ class TestCommands(tests.TestCase):
             raise TestSkipped("optparse 1.5.3 can't handle unicode options")
         self.assertRaises(errors.BzrCommandError,
                           commands.run_bzr, ['log', u'--option\xb5'])
+
+    @staticmethod
+    def get_command(options):
+        class cmd_foo(commands.Command):
+            'Bar'
+
+            takes_options = options
+
+        return cmd_foo()
+
+    def test_help_hidden(self):
+        c = self.get_command([option.Option('foo', hidden=True)])
+        self.assertNotContainsRe(c.get_help_text(), '--foo')
+
+    def test_help_not_hidden(self):
+        c = self.get_command([option.Option('foo', hidden=False)])
+        self.assertContainsRe(c.get_help_text(), '--foo')
 
 
 class TestGetAlias(tests.TestCase):

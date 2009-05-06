@@ -185,7 +185,6 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
             except:
                 builder.abort()
                 raise
-            builder.finish_inventory()
             self.assertEqual(revision_id, builder.commit('foo bar'))
         finally:
             tree.unlock()
@@ -736,9 +735,12 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
             mini_commit=self.mini_commit_record_iter_changes)
 
     def _add_commit_change_check_changed(self, tree, name, changer,
-        expect_fs_hash=False, mini_commit=None):
-        tree.add([name], [name + 'id'])
-        self._commit_change_check_changed(tree, name, name + 'id',
+        expect_fs_hash=False, mini_commit=None, file_id=None):
+        if file_id is None:
+            file_id = name + 'id'
+        tree.add([name], [file_id])
+        self._commit_change_check_changed(
+            tree, name, file_id,
             changer, expect_fs_hash=expect_fs_hash, mini_commit=mini_commit)
 
     def _commit_change_check_changed(self, tree, name, file_id, changer,
@@ -830,12 +832,13 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
             self.assertEqual(expected_delta, delta)
             builder.finish_inventory()
             rev2 = builder.commit('')
-            tree.set_parent_ids([rev2])
         except:
             builder.abort()
             tree.unlock()
             raise
-        else:
+        try:
+            tree.set_parent_ids([rev2])
+        finally:
             tree.unlock()
         return rev2
 
@@ -947,16 +950,32 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
             os.symlink('newtarget', 'link')
         self._add_commit_change_check_changed(tree, 'link', change_link)
 
-    def test_last_modified_revision_after_content_link_changes_ric(self):
+    def _test_last_mod_rev_after_content_link_changes_ric(
+        self, link, target, newtarget, file_id=None):
+        if file_id is None:
+            file_id = link
         # changing a link changes the last modified.
         self.requireFeature(tests.SymlinkFeature)
         tree = self.make_branch_and_tree('.')
-        os.symlink('target', 'link')
+        os.symlink(target, link)
         def change_link():
-            os.unlink('link')
-            os.symlink('newtarget', 'link')
-        self._add_commit_change_check_changed(tree, 'link', change_link,
-            mini_commit=self.mini_commit_record_iter_changes)
+            os.unlink(link)
+            os.symlink(newtarget, link)
+        self._add_commit_change_check_changed(
+            tree, link, change_link,
+            mini_commit=self.mini_commit_record_iter_changes,
+            file_id=file_id)
+
+    def test_last_modified_rev_after_content_link_changes_ric(self):
+        self._test_last_mod_rev_after_content_link_changes_ric(
+            'link', 'target', 'newtarget')
+
+    def test_last_modified_rev_after_content_unicode_link_changes_ric(self):
+        self.requireFeature(tests.UnicodeFilenameFeature)
+        self._test_last_mod_rev_after_content_link_changes_ric(
+            u'li\u1234nk', u'targ\N{Euro Sign}t', u'n\N{Euro Sign}wtarget',
+
+            file_id=u'li\u1234nk'.encode('UTF-8'))
 
     def _commit_sprout(self, tree, name):
         tree.add([name], [name + 'id'])

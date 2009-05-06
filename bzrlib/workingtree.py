@@ -80,7 +80,11 @@ from bzrlib import (
 import bzrlib.branch
 from bzrlib.transport import get_transport
 import bzrlib.ui
-from bzrlib.workingtree_4 import WorkingTreeFormat4, WorkingTreeFormat5
+from bzrlib.workingtree_4 import (
+    WorkingTreeFormat4,
+    WorkingTreeFormat5,
+    WorkingTreeFormat6,
+    )
 """)
 
 from bzrlib import symbol_versioning
@@ -415,7 +419,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             return self.branch.repository.revision_tree(revision_id)
         except (errors.RevisionNotPresent, errors.NoSuchRevision):
             # the basis tree *may* be a ghost or a low level error may have
-            # occured. If the revision is present, its a problem, if its not
+            # occurred. If the revision is present, its a problem, if its not
             # its a ghost.
             if self.branch.repository.has_revision(revision_id):
                 raise
@@ -557,7 +561,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
         revision
             If not None, the cloned tree will have its last revision set to
-            revision, and and difference between the source trees last revision
+            revision, and difference between the source trees last revision
             and this one merged in.
         """
         # assumes the target bzr dir format is compatible.
@@ -745,9 +749,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 kind = 'tree-reference'
             return kind, None, None, None
         elif kind == 'symlink':
-            return ('symlink', None, None,
-                    os.readlink(abspath.encode(osutils._fs_enc)
-                                ).decode(osutils._fs_enc))
+            target = osutils.readlink(abspath)
+            return ('symlink', None, None, target)
         else:
             return (kind, None, None, None)
 
@@ -969,7 +972,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         return file_id
 
     def get_symlink_target(self, file_id):
-        return os.readlink(self.id2abspath(file_id).encode(osutils._fs_enc))
+        abspath = self.id2abspath(file_id)
+        target = osutils.readlink(abspath)
+        return target
 
     @needs_write_lock
     def subsume(self, other_tree):
@@ -1556,7 +1561,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
-             change_reporter=None, possible_transports=None):
+             change_reporter=None, possible_transports=None, local=False):
         top_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         source.lock_read()
         try:
@@ -1565,7 +1570,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             old_revision_info = self.branch.last_revision_info()
             basis_tree = self.basis_tree()
             count = self.branch.pull(source, overwrite, stop_revision,
-                                     possible_transports=possible_transports)
+                                     possible_transports=possible_transports,
+                                     local=local)
             new_revision_info = self.branch.last_revision_info()
             if new_revision_info != old_revision_info:
                 pp.next_phase()
@@ -1962,7 +1968,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                         tree_delta.unversioned.extend((unknown_file,))
                 raise errors.BzrRemoveChangedFilesError(tree_delta)
 
-        # Build inv_delta and delete files where applicaple,
+        # Build inv_delta and delete files where applicable,
         # do this before any modifications to inventory.
         for f in files:
             fid = self.path2id(f)
@@ -2219,7 +2225,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             parent_trees = [(self.branch.last_revision(), to_tree)]
             merges = self.get_parent_ids()[1:]
             # Ideally we ask the tree for the trees here, that way the working
-            # tree can decide whether to give us teh entire tree or give us a
+            # tree can decide whether to give us the entire tree or give us a
             # lazy initialised tree. dirstate for instance will have the trees
             # in ram already, whereas a last-revision + basis-inventory tree
             # will not, but also does not need them when setting parents.
@@ -2981,6 +2987,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
 
 __default_format = WorkingTreeFormat4()
 WorkingTreeFormat.register_format(__default_format)
+WorkingTreeFormat.register_format(WorkingTreeFormat6())
 WorkingTreeFormat.register_format(WorkingTreeFormat5())
 WorkingTreeFormat.register_format(WorkingTreeFormat3())
 WorkingTreeFormat.set_default_format(__default_format)

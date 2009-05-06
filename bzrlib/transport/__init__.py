@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -328,6 +328,31 @@ class Transport(object):
         """
         raise NotImplementedError(self.clone)
 
+    def create_prefix(self):
+        """Create all the directories leading down to self.base."""
+        cur_transport = self
+        needed = [cur_transport]
+        # Recurse upwards until we can create a directory successfully
+        while True:
+            new_transport = cur_transport.clone('..')
+            if new_transport.base == cur_transport.base:
+                raise errors.BzrCommandError(
+                    "Failed to create path prefix for %s."
+                    % cur_transport.base)
+            try:
+                new_transport.mkdir('.')
+            except errors.NoSuchFile:
+                needed.append(new_transport)
+                cur_transport = new_transport
+            except errors.FileExists:
+                break
+            else:
+                break
+        # Now we only need to create child directories
+        while needed:
+            cur_transport = needed.pop()
+            cur_transport.ensure_base()
+
     def ensure_base(self):
         """Ensure that the directory this transport references exists.
 
@@ -514,7 +539,6 @@ class Transport(object):
         physical local filesystem representation.
         """
         raise errors.NotLocalUrl(self.abspath(relpath))
-
 
     def has(self, relpath):
         """Does the file relpath exist?
@@ -1334,46 +1358,7 @@ class ConnectedTransport(Transport):
 
     @staticmethod
     def _split_url(url):
-        """
-        Extract the server address, the credentials and the path from the url.
-
-        user, password, host and path should be quoted if they contain reserved
-        chars.
-
-        :param url: an quoted url
-
-        :return: (scheme, user, password, host, port, path) tuple, all fields
-            are unquoted.
-        """
-        if isinstance(url, unicode):
-            raise errors.InvalidURL('should be ascii:\n%r' % url)
-        url = url.encode('utf-8')
-        (scheme, netloc, path, params,
-         query, fragment) = urlparse.urlparse(url, allow_fragments=False)
-        user = password = host = port = None
-        if '@' in netloc:
-            user, host = netloc.rsplit('@', 1)
-            if ':' in user:
-                user, password = user.split(':', 1)
-                password = urllib.unquote(password)
-            user = urllib.unquote(user)
-        else:
-            host = netloc
-
-        if ':' in host:
-            host, port = host.rsplit(':', 1)
-            try:
-                port = int(port)
-            except ValueError:
-                raise errors.InvalidURL('invalid port number %s in url:\n%s' %
-                                        (port, url))
-        if host == '':
-            raise errors.InvalidURL('Host empty in: %s' % url)
-
-        host = urllib.unquote(host)
-        path = urllib.unquote(path)
-
-        return (scheme, user, password, host, port, path)
+        return urlutils.parse_url(url)
 
     @staticmethod
     def _unsplit_url(scheme, user, password, host, port, path):

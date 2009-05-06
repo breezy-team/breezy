@@ -196,23 +196,19 @@ _filter_stacks_registry = registry.Registry()
 _stack_cache = {}
 
 
-def register_filter_stack_map(name, stack_map, fallback=None):
+def register_filter_stack_map(name, stack_map_lookup):
     """Register the filter stacks to use for various preference values.
 
     :param name: the preference/filter-stack name
-    :param stack_map: a dictionary where
-      the keys are preference values to match and
-      the values are the matching stack of filters for each
-    :param fallback: if non-None, a callable that will be
-      invoked if a preference value is found that doesn't
-      match a key in the stack_map. The callable is expected
-      to take the value as a parameter and either return
-      the matching stack of filters or None if none.
+    :param stack_map_lookup: a callable where
+      the parameter is the preference value to match and
+      the result is the matching stack of filters to use,
+      or None if none.
     """
     if name in _filter_stacks_registry:
         raise errors.BzrError(
             "filter stack for %s already installed" % name)
-    _filter_stacks_registry.register(name, (stack_map, fallback))
+    _filter_stacks_registry.register(name, stack_map_lookup)
 
 
 def lazy_register_filter_stack_map(name, module_name, member_name):
@@ -220,7 +216,7 @@ def lazy_register_filter_stack_map(name, module_name, member_name):
 
     :param name: the preference/filter-stack name
     :param module_name: The python path to the module of the filter stack map.
-    :param member_name: The name of the (filter stack map, fallback) tuple
+    :param member_name: The name of the stack_map_lookup callable
       in the module.
     """
     if name in _filter_stacks_registry:
@@ -252,13 +248,11 @@ def _get_filter_stack_for(preferences):
     stack = []
     for k, v in preferences:
         try:
-            stacks_by_values, fallback = _filter_stacks_registry.get(k)
+            stack_map_lookup = _filter_stacks_registry.get(k)
         except KeyError:
             # Some preferences may not have associated filters
             continue
-        items = stacks_by_values.get(v)
-        if items is None and fallback is not None:
-            items = fallback(v)
+        items = stack_map_lookup(v)
         if items:
             stack.extend(items)
     _stack_cache[preferences] = stack
@@ -285,3 +279,8 @@ def _reset_registry(value=None):
         _filter_stacks_registry = value
     _stack_cache.clear()
     return original
+
+
+# Register the standard filters
+from bzrlib.filters import eol
+eol.register_eol_content_filter()
