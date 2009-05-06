@@ -2983,10 +2983,16 @@ class GenericInterBranch(InterBranch):
             # the source one.
             self.source.update_references(self.target)
             graph = self.target.repository.get_graph(self.source.repository)
+            # TODO: Branch formats should have a flag that indicates 
+            # that revno's are expensive, and pull() should honor that flag.
+            # -- JRV20090506
             result.old_revno, result.old_revid = \
                 self.target.last_revision_info()
             self.target.update_revisions(self.source, stop_revision,
                 overwrite=overwrite, graph=graph)
+            # TODO: The old revid should be specified when merging tags, 
+            # so a tags implementation that versions tags can only 
+            # pull in the most recent changes. -- JRV20090506
             result.tag_conflicts = self.source.tags.merge_to(self.target.tags,
                 overwrite)
             result.new_revno, result.new_revid = self.target.last_revision_info()

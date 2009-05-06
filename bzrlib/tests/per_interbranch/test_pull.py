@@ -26,6 +26,10 @@ from bzrlib.revision import NULL_REVISION
 from bzrlib.tests.per_interbranch import TestCaseWithInterBranch
 
 
+# The tests here are based on the tests in 
+# bzrlib.tests.branch_implementations.test_pull
+
+
 class TestPull(TestCaseWithInterBranch):
 
     def test_pull_convergence_simple(self):
