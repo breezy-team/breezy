@@ -16,7 +16,7 @@
 
 """Tests for interfacing with a Git Repository"""
 
-import dulwich as git
+import dulwich
 import os
 
 from bzrlib import (
@@ -56,7 +56,7 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
         tests.run_git('init')
 
         repo = Repository.open('.')
-        self.assertIsInstance(repo._git, git.repo.Repo)
+        self.assertIsInstance(repo._git, dulwich.repo.Repo)
 
     def test_get_revision(self):
         # GitRepository.get_revision gives a Revision object.
@@ -139,7 +139,7 @@ class TestGitRepository(tests.TestCaseWithTransport):
 
     def setUp(self):
         tests.TestCaseWithTransport.setUp(self)
-        git.repo.Repo.create(self.test_dir)
+        dulwich.repo.Repo.create(self.test_dir)
         self.git_repo = Repository.open(self.test_dir)
 
     def test_supports_rich_root(self):
@@ -197,7 +197,7 @@ class RevisionGistImportTests(tests.TestCaseWithTransport):
         tests.TestCaseWithTransport.setUp(self)
         self.git_path = os.path.join(self.test_dir, "git")
         os.mkdir(self.git_path)
-        git.repo.Repo.create(self.git_path)
+        dulwich.repo.Repo.create(self.git_path)
         self.git_repo = Repository.open(self.git_path)
         self.bzr_tree = self.make_branch_and_tree("bzr")
 
