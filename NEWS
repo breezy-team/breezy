@@ -50,6 +50,9 @@ Bug Fixes
 * ``bzr merge --weave`` will now generate a conflict if one side deletes a
   line, and the other side modifies the line. (John Arbash Meinel, #328171)
 
+* ``bzr reconfigure --standalone`` no longer raises IncompatibleRepositories.
+  (Martin von Gagern, #248932)
+
 * ``bzr send`` works to send emails again using MAPI.
   (Neil Martinsen-Burrell, #346998)
 
