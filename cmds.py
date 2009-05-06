@@ -75,6 +75,7 @@ from bzrlib.plugins.builddeb.source_distiller import (
         )
 from bzrlib.plugins.builddeb.upstream import UpstreamProvider
 from bzrlib.plugins.builddeb.util import (find_changelog,
+        get_export_upstream_revision,
         lookup_distribution,
         suite_to_distribution,
         tarball_name,
@@ -310,7 +311,7 @@ class cmd_builddeb(Command):
         return branch, build_options, source
 
     def _get_upstream_branch(self, merge, export_upstream,
-            export_upstream_revision, config):
+            export_upstream_revision, config, version):
         upstream_branch = None
         upstream_revision = None
         if merge:
@@ -322,7 +323,8 @@ class cmd_builddeb(Command):
                 try:
                     if export_upstream_revision is None:
                         export_upstream_revision = \
-                                    config.export_upstream_revision
+                                    get_export_upstream_revision(config,
+                                            version=version)
                     if export_upstream_revision is None:
                         upstream_revision = \
                                 upstream_branch.last_revision()
@@ -365,10 +367,11 @@ class cmd_builddeb(Command):
 
             upstream_branch, upstream_revision = \
                     self._get_upstream_branch(merge, export_upstream,
-                            export_upstream_revision, config)
+                            export_upstream_revision, config,
+                            changelog.version)
 
             upstream_provider = UpstreamProvider(tree, branch,
-                    changelog.package, changelog.version.upstream_version,
+                    changelog.package, changelog.version,
                     orig_dir, larstiq=larstiq, upstream_branch=upstream_branch,
                     upstream_revision=upstream_revision, allow_split=split)
 

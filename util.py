@@ -183,6 +183,18 @@ def get_snapshot_revision(upstream_version):
     return None
 
 
+def get_export_upstream_revision(config, version=None):
+    rev = None
+    if version is not None:
+        rev = get_snapshot_revision(str(version.upstream_version))
+    if rev is None:
+        rev = config._get_best_opt('export-upstream-revision')
+        if rev is not None and version is not None:
+            rev = rev.replace('$UPSTREAM_VERSION',
+                              str(version.upstream_version))
+    return rev
+
+
 def suite_to_distribution(suite):
     """Infer the distribution from a suite.
 

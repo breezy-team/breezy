@@ -130,15 +130,13 @@ class MockOrigSourceProvider(MockProvider):
         self.find = find
         self.called_times = 0
         self.source_dir = None
-        self.fetch_dir = None
         self.desired_tarball_name = None
         self.target_dir = None
 
-    def provide(self, source_dir, fetch_dir, desired_tarball_name,
+    def provide(self, source_dir, desired_tarball_name,
             target_dir):
         self.called_times += 1
         self.source_dir = source_dir
-        self.fetch_dir = fetch_dir
         self.desired_tarball_name = desired_tarball_name
         self.target_dir = target_dir
         if self.find:

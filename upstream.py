@@ -73,8 +73,9 @@ def provide_with_uscan(package, upstream_version, watch_file, target_dir):
     info("Using uscan to look for the upstream tarball.")
     r = os.system("uscan --upstream-version %s --force-download --rename "
                   "--package %s --watchfile %s --check-dirname-level 0 " 
-                  "--download --repack --destdir %s" %
-                  (upstream_version, package, watch_file, target_dir))
+                  "--download --repack --destdir %s --download-version %s" %
+                  (upstream_version, package, watch_file, target_dir,
+                   upstream_version))
     if r != 0:
         info("uscan could not find the needed tarball.")
         return False
@@ -94,7 +95,7 @@ def provide_with_pristine_tar(tree, branch, package, version,
     return True
 
 
-def provide_with_get_orig_source(source_dir, fetch_dir, desired_tarball_name,
+def provide_with_get_orig_source(source_dir, desired_tarball_name,
         target_dir):
     info("Trying to use get-orig-source to retrieve needed tarball.")
     command = ["/usr/bin/make", "-f", "debian/rules", "get-orig-source"]
@@ -103,7 +104,7 @@ def provide_with_get_orig_source(source_dir, fetch_dir, desired_tarball_name,
     if ret != 0:
         info("Trying to run get-orig-source rule failed")
         return False
-    fetched_tarball = os.path.join(fetch_dir, desired_tarball_name)
+    fetched_tarball = os.path.join(source_dir, desired_tarball_name)
     if not os.path.exists(fetched_tarball):
         info("get-orig-source did not create %s"
                 % desired_tarball_name)
@@ -294,7 +295,7 @@ class UpstreamProvider(object):
                     os.mkdir(export_dir)
                     export_dir = os.path.join(export_dir, "debian")
                 export(self.tree, export_dir, format="dir")
-                return self._orig_source_provider(base_export_dir, tmpdir,
+                return self._orig_source_provider(base_export_dir,
                         desired_tarball_name, target_dir)
             finally:
                 shutil.rmtree(tmpdir)

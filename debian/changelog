@@ -1,6 +1,15 @@
-bzr-builddeb (2.1.2) UNRELEASED; urgency=low
+bzr-builddeb (2.1.2~ubuntu2) jaunty; urgency=low
 
-  * 
+  * Don't remove the debian part of the version number twice. (LP: #372792)
+
+ -- James Westby <james.westby@ubuntu.com>  Wed, 06 May 2009 17:49:49 +0100
+
+bzr-builddeb (2.1.2~ubuntu1) jaunty; urgency=low
+
+  * Add --download-version to the uscan command line.
+  * Make --export-upstream work again by not trying to use a removed attribute
+    in config.py. (LP: #345747)
+  * Look in the correct place for the tarball created by get-orig-source.
 
  -- James Westby <james.westby@ubuntu.com>  Mon, 09 Mar 2009 09:04:48 +1000
 

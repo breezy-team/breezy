@@ -1118,7 +1118,8 @@ class DistributionBranch(object):
                 '.bzr-builddeb')
         if current_config is not None:
             # Add that back to the current tree
-            os.mkdir(dirname)
+            if not os.path.exists(dirname):
+                os.mkdir(dirname)
             current_config.filename = os.path.join(dirname,
                     'default.conf')
             current_config.write()
