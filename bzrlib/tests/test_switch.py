@@ -70,9 +70,13 @@ class TestSwitch(tests.TestCaseWithTransport):
         os.rename('branch-1', 'branch-2')
         to_branch = branch.Branch.open('branch-2')
         # Check fails without --force
-        err = self.assertRaises((errors.NotBranchError,
-            errors.BoundBranchConnectionFailure),
+        err = self.assertRaises(
+            (errors.BzrCommandError, errors.NotBranchError),
             switch.switch, checkout.bzrdir, to_branch)
+        if isinstance(err, errors.BzrCommandError):
+            self.assertContainsRe(str(err),
+                'Unable to connect to current master branch .*'
+                'To switch anyway, use --force.')
         switch.switch(checkout.bzrdir, to_branch, force=True)
         self.failIfExists('checkout/file-1')
         self.failUnlessExists('checkout/file-2')
