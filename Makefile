@@ -179,7 +179,7 @@ MAN_DEPENDENCIES = bzrlib/builtins.py \
 		 $(wildcard $(addsuffix /*.txt, bzrlib/help_topics/en)) 
 
 doc/en/user-reference/bzr_man.txt: $(MAN_DEPENDENCIES)
-	$(PYTHON) tools/generate_docs.py -o $@ rstx
+	PYTHONPATH=.:$$PYTHONPATH $(PYTHON) tools/generate_docs.py -o $@ rstx
 
 doc/en/developer-guide/HACKING.txt: doc/developers/HACKING.txt
 	$(PYTHON) tools/win32/ostools.py copytodir doc/developers/HACKING.txt doc/en/developer-guide
@@ -189,7 +189,7 @@ doc/en/release-notes/NEWS.txt: NEWS
 
 MAN_PAGES = man1/bzr.1
 man1/bzr.1: $(MAN_DEPENDENCIES)
-	$(PYTHON) tools/generate_docs.py -o $@ man
+	PYTHONPATH=.:$$PYTHONPATH $(PYTHON) tools/generate_docs.py -o $@ man
 
 # build a png of our performance task list
 doc/developers/performance.png: doc/developers/performance.dot
