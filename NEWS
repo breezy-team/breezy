@@ -39,6 +39,8 @@ Improvements
   local branch, and not the bound master branch.
   (Gary van der Merwe, #194716)
 
+* ``bzr rm *`` is now as fast as ``bzr rm * --keep``. (Johan Walles, #180116)
+
 Bug Fixes
 *********
 
