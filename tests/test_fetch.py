@@ -19,6 +19,9 @@ from dulwich.objects import (
     Blob,
     Tree,
     )
+from dulwich.repo import (
+    Repo as GitRepo,
+    )
 import os
 
 from bzrlib import (
@@ -59,7 +62,6 @@ from bzrlib.plugins.git.shamap import (
     )
 from bzrlib.plugins.git.tests import (
     GitBranchBuilder,
-    run_git,
     )
 
 
@@ -79,9 +81,7 @@ class RepositoryFetchTests:
 
     def make_git_repo(self, path):
         os.mkdir(path)
-        os.chdir(path)
-        run_git("init")
-        os.chdir("..")
+        GitRepo.init(path)
 
     def clone_git_repo(self, from_url, to_url, revision_id=None):
         oldrepos = self.open_git_repo(from_url)

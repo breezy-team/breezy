@@ -19,6 +19,10 @@
 
 
 import dulwich
+from dulwich.repo import (
+    Repo as GitRepo,
+    )
+
 import os
 
 from bzrlib import (
@@ -46,18 +50,18 @@ class TestGitBranch(tests.TestCaseInTempDir):
     _test_needs_features = [tests.GitCommandFeature]
 
     def test_open_existing(self):
-        tests.run_git('init')
+        GitRepo.init('.')
 
         thebranch = Branch.open('.')
         self.assertIsInstance(thebranch, branch.GitBranch)
 
     def test_repr(self):
-        tests.run_git('init')
+        GitRepo.init('.')
         thebranch = Branch.open('.')
         self.assertEquals("LocalGitBranch('file://%s/', 'HEAD')" % self.test_dir, repr(thebranch))
 
     def test_last_revision_is_null(self):
-        tests.run_git('init')
+        GitRepo.init('.')
 
         thebranch = Branch.open('.')
         self.assertEqual(revision.NULL_REVISION, thebranch.last_revision())
@@ -65,7 +69,7 @@ class TestGitBranch(tests.TestCaseInTempDir):
                          thebranch.last_revision_info())
 
     def simple_commit_a(self):
-        tests.run_git('init')
+        GitRepo.init('.')
         self.build_tree(['a'])
         tests.run_git('add', 'a')
         tests.run_git('commit', '-m', 'a')
@@ -141,7 +145,7 @@ class BranchTests(tests.TestCaseInTempDir):
     def make_onerev_branch(self):
         os.mkdir("d")
         os.chdir("d")
-        tests.run_git("init")
+        GitRepo.init('.')
         bb = tests.GitBranchBuilder()
         bb.set_file("foobar", "foo\nbar\n", False)
         mark = bb.commit("Somebody <somebody@someorg.org>", "mymsg")

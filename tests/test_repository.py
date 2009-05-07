@@ -17,6 +17,9 @@
 """Tests for interfacing with a Git Repository"""
 
 import dulwich
+from dulwich.repo import (
+    Repo as GitRepo,
+    )
 import os
 
 from bzrlib import (
@@ -47,13 +50,13 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
     _test_needs_features = [tests.GitCommandFeature]
 
     def test_open_existing(self):
-        tests.run_git('init')
+        GitRepo.init(self.test_dir)
 
         repo = Repository.open('.')
         self.assertIsInstance(repo, repository.GitRepository)
 
     def test_has_git_repo(self):
-        tests.run_git('init')
+        GitRepo.init(self.test_dir)
 
         repo = Repository.open('.')
         self.assertIsInstance(repo._git, dulwich.repo.Repo)
@@ -62,7 +65,7 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
         # GitRepository.get_revision gives a Revision object.
 
         # Create a git repository with a revision.
-        tests.run_git('init')
+        GitRepo.init(self.test_dir)
         builder = tests.GitBranchBuilder()
         builder.set_file('a', 'text for a\n', False)
         commit_handle = builder.commit('Joe Foo <joe@foo.com>', u'message')
@@ -76,14 +79,14 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
         self.assertIsInstance(rev, revision.Revision)
 
     def test_get_revision_unknown(self):
-        tests.run_git('init')
+        GitRepo.init(self.test_dir)
 
         repo = Repository.open('.')
         self.assertRaises(errors.NoSuchRevision, repo.get_revision, "bla")
 
     def simple_commit(self):
         # Create a git repository with some interesting files in a revision.
-        tests.run_git('init')
+        GitRepo.init(self.test_dir)
         builder = tests.GitBranchBuilder()
         builder.set_file('data', 'text\n', False)
         builder.set_file('executable', 'content', True)
