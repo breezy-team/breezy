@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 
@@ -25,8 +25,6 @@ import warnings
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-import getpass
-
 from bzrlib import (
     progress,
     osutils,
@@ -59,10 +57,6 @@ class TextUIFactory(CLIUIFactory):
                 % "bar_type parameter")
         # paints progress, network activity, etc
         self._progress_view = TextProgressView(self.stderr)
-
-    def prompt(self, prompt):
-        """Emit prompt on the CLI."""
-        self.stdout.write(prompt)
 
     def clear_term(self):
         """Prepare the terminal for output.
@@ -246,8 +240,8 @@ class TextProgressView(object):
             elif direction == 'write':
                 dir_char = '<'
             else:
-                dir_char = '?'
-            msg = ("%.7s %s %6dkB %5dkB/s" %
+                dir_char = ' '
+            msg = ("%.7s %s %6dKB %5dKB/s" %
                     (scheme, dir_char, self._total_byte_count>>10, int(rate)>>10,))
             self._transport_update_time = now
             self._last_repaint = now

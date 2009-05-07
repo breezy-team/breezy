@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
 import stat
@@ -146,7 +146,7 @@ class FakeHashCache(HashCache):
                 10, 20,
                 stat.S_IFREG | 0600)
 
-    def _really_sha1_file(self, abspath):
+    def _really_sha1_file(self, abspath, filters):
         if abspath in self._files:
             return sha1(self._files[abspath][0])
         else:

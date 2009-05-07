@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for branch implementations - tests a branch format."""
 
@@ -24,6 +24,7 @@ from bzrlib import (
     bzrdir,
     errors,
     gpg,
+    merge,
     urlutils,
     transactions,
     remote,
@@ -752,3 +753,219 @@ class TestStrict(TestCaseWithBranch):
         tree3.merge_from_branch(tree2.branch)
         tree3.commit('empty commit 6')
         tree2.pull(tree3.branch)
+
+
+class TestIgnoreFallbacksParameter(TestCaseWithBranch):
+
+    def make_branch_with_fallback(self):
+        fallback = self.make_branch('fallback')
+        if not fallback._format.supports_stacking():
+            raise tests.TestNotApplicable("format does not support stacking")
+        stacked = self.make_branch('stacked')
+        stacked.set_stacked_on_url(fallback.base)
+        return stacked
+
+    def test_fallbacks_not_opened(self):
+        stacked = self.make_branch_with_fallback()
+        self.get_transport('').rename('fallback', 'moved')
+        reopened = stacked.bzrdir.open_branch(ignore_fallbacks=True)
+        self.assertEqual([], reopened.repository._fallback_repositories)
+
+    def test_fallbacks_are_opened(self):
+        stacked = self.make_branch_with_fallback()
+        reopened = stacked.bzrdir.open_branch(ignore_fallbacks=False)
+        self.assertLength(1, reopened.repository._fallback_repositories)
+
+
+class TestReferenceLocation(TestCaseWithBranch):
+
+    def test_reference_parent(self):
+        tree = self.make_branch_and_tree('tree')
+        subtree = self.make_branch_and_tree('tree/subtree')
+        subtree.set_root_id('subtree-id')
+        try:
+            tree.add_reference(subtree)
+        except bzrlib.errors.UnsupportedOperation:
+            raise tests.TestNotApplicable('Tree cannot hold references.')
+        reference_parent = tree.branch.reference_parent('subtree-id',
+                                                        'subtree')
+        self.assertEqual(subtree.branch.base, reference_parent.base)
+
+    def test_reference_parent_accepts_possible_transports(self):
+        tree = self.make_branch_and_tree('tree')
+        subtree = self.make_branch_and_tree('tree/subtree')
+        subtree.set_root_id('subtree-id')
+        try:
+            tree.add_reference(subtree)
+        except bzrlib.errors.UnsupportedOperation:
+            raise tests.TestNotApplicable('Tree cannot hold references.')
+        reference_parent = tree.branch.reference_parent('subtree-id',
+            'subtree', possible_transports=[subtree.bzrdir.root_transport])
+
+    def test_get_reference_info(self):
+        branch = self.make_branch('branch')
+        try:
+            path, loc = branch.get_reference_info('file-id')
+        except bzrlib.errors.UnsupportedOperation:
+            raise tests.TestNotApplicable('Branch cannot hold references.')
+        self.assertIs(None, path)
+        self.assertIs(None, loc)
+
+    def test_set_reference_info(self):
+        branch = self.make_branch('branch')
+        try:
+            branch.set_reference_info('file-id', 'path/to/location',
+                                      'path/to/file')
+        except bzrlib.errors.UnsupportedOperation:
+            raise tests.TestNotApplicable('Branch cannot hold references.')
+
+    def test_set_get_reference_info(self):
+        branch = self.make_branch('branch')
+        try:
+            branch.set_reference_info('file-id', 'path/to/file',
+                                      'path/to/location')
+        except bzrlib.errors.UnsupportedOperation:
+            raise tests.TestNotApplicable('Branch cannot hold references.')
+        # Create a new instance to ensure storage is permanent
+        branch = Branch.open('branch')
+        tree_path, branch_location = branch.get_reference_info('file-id')
+        self.assertEqual('path/to/location', branch_location)
+
+    def test_set_null_reference_info(self):
+        branch = self.make_branch('branch')
+        try:
+            branch.set_reference_info('file-id', 'path/to/file',
+                                      'path/to/location')
+        except bzrlib.errors.UnsupportedOperation:
+            raise tests.TestNotApplicable('Branch cannot hold references.')
+        branch.set_reference_info('file-id', None, None)
+        tree_path, branch_location = branch.get_reference_info('file-id')
+        self.assertIs(None, tree_path)
+        self.assertIs(None, branch_location)
+
+    def test_set_null_reference_info_when_null(self):
+        branch = self.make_branch('branch')
+        try:
+            tree_path, branch_location = branch.get_reference_info('file-id')
+        except bzrlib.errors.UnsupportedOperation:
+            raise tests.TestNotApplicable('Branch cannot hold references.')
+        self.assertIs(None, tree_path)
+        self.assertIs(None, branch_location)
+        branch.set_reference_info('file-id', None, None)
+
+    def test_set_null_requires_two_nones(self):
+        branch = self.make_branch('branch')
+        try:
+            e = self.assertRaises(ValueError, branch.set_reference_info,
+                                  'file-id', 'path', None)
+        except bzrlib.errors.UnsupportedOperation:
+            raise tests.TestNotApplicable('Branch cannot hold references.')
+        self.assertEqual('tree_path must be None when branch_location is'
+                         ' None.', str(e))
+        e = self.assertRaises(ValueError, branch.set_reference_info,
+                              'file-id', None, 'location')
+        self.assertEqual('branch_location must be None when tree_path is'
+                         ' None.', str(e))
+
+    def make_branch_with_reference(self, location, reference_location,
+                                   file_id='file-id'):
+        branch = self.make_branch(location)
+        try:
+            branch.set_reference_info(file_id, 'path/to/file',
+                                      reference_location)
+        except bzrlib.errors.UnsupportedOperation:
+            raise tests.TestNotApplicable('Branch cannot hold references.')
+        return branch
+
+    def test_reference_parent_from_reference_info_(self):
+        referenced_branch = self.make_branch('reference_branch')
+        branch = self.make_branch_with_reference('branch',
+                                                 referenced_branch.base)
+        parent = branch.reference_parent('file-id', 'path/to/file')
+        self.assertEqual(parent.base, referenced_branch.base)
+
+    def test_branch_relative_reference_location(self):
+        branch = self.make_branch('branch')
+        try:
+            branch.set_reference_info('file-id', 'path/to/file',
+            '../reference_branch')
+        except bzrlib.errors.UnsupportedOperation:
+            raise tests.TestNotApplicable('Branch cannot hold references.')
+        referenced_branch = self.make_branch('reference_branch')
+        parent = branch.reference_parent('file-id', 'path/to/file')
+        self.assertEqual(parent.base, referenced_branch.base)
+
+    def test_sprout_copies_reference_location(self):
+        branch = self.make_branch_with_reference('branch', '../reference')
+        new_branch = branch.bzrdir.sprout('new-branch').open_branch()
+        self.assertEqual('../reference',
+                         new_branch.get_reference_info('file-id')[1])
+
+    def test_clone_copies_reference_location(self):
+        branch = self.make_branch_with_reference('branch', '../reference')
+        new_branch = branch.bzrdir.clone('new-branch').open_branch()
+        self.assertEqual('../reference',
+                         new_branch.get_reference_info('file-id')[1])
+
+    def test_copied_locations_are_rebased(self):
+        branch = self.make_branch_with_reference('branch', 'reference')
+        new_branch = branch.bzrdir.sprout('branch/new-branch').open_branch()
+        self.assertEqual('../reference',
+                         new_branch.get_reference_info('file-id')[1])
+
+    def test_update_references_retains_old_references(self):
+        branch = self.make_branch_with_reference('branch', 'reference')
+        new_branch = self.make_branch_with_reference(
+            'new_branch', 'reference', 'file-id2')
+        new_branch.update_references(branch)
+        self.assertEqual('reference',
+                         branch.get_reference_info('file-id')[1])
+
+    def test_update_references_retains_known_references(self):
+        branch = self.make_branch_with_reference('branch', 'reference')
+        new_branch = self.make_branch_with_reference(
+            'new_branch', 'reference2')
+        new_branch.update_references(branch)
+        self.assertEqual('reference',
+                         branch.get_reference_info('file-id')[1])
+
+    def test_update_references_skips_known_references(self):
+        branch = self.make_branch_with_reference('branch', 'reference')
+        new_branch = branch.bzrdir.sprout('branch/new-branch').open_branch()
+        new_branch.set_reference_info('file-id', '../foo', '../foo')
+        new_branch.update_references(branch)
+        self.assertEqual('reference',
+                         branch.get_reference_info('file-id')[1])
+
+    def test_pull_updates_references(self):
+        branch = self.make_branch_with_reference('branch', 'reference')
+        new_branch = branch.bzrdir.sprout('branch/new-branch').open_branch()
+        new_branch.set_reference_info('file-id2', '../foo', '../foo')
+        branch.pull(new_branch)
+        self.assertEqual('foo',
+                         branch.get_reference_info('file-id2')[1])
+
+    def test_push_updates_references(self):
+        branch = self.make_branch_with_reference('branch', 'reference')
+        new_branch = branch.bzrdir.sprout('branch/new-branch').open_branch()
+        new_branch.set_reference_info('file-id2', '../foo', '../foo')
+        new_branch.push(branch)
+        self.assertEqual('foo',
+                         branch.get_reference_info('file-id2')[1])
+
+    def test_merge_updates_references(self):
+        branch = self.make_branch_with_reference('branch', 'reference')
+        tree = self.make_branch_and_tree('tree')
+        tree.commit('foo')
+        branch.pull(tree.branch)
+        checkout = branch.create_checkout('checkout', lightweight=True)
+        checkout.commit('bar')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        merger = merge.Merger.from_revision_ids(None, tree,
+                                                branch.last_revision(),
+                                                other_branch=branch)
+        merger.merge_type = merge.Merge3Merger
+        merger.do_merge()
+        self.assertEqual('../branch/reference',
+                         tree.branch.get_reference_info('file-id')[1])

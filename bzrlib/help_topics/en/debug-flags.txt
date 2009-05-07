@@ -10,6 +10,7 @@ prefix) put in the ``debug_flags`` variable in ``bazaar.conf``.
 -Devil            Capture call sites that do expensive or badly-scaling
                   operations.
 -Dfetch           Trace history copying between repositories.
+-Dfilters         Emit information for debugging content filtering.
 -Dgraph           Trace graph traversal.
 -Dhashcache       Log every time a working file is read to determine its hash.
 -Dhooks           Trace hook execution.

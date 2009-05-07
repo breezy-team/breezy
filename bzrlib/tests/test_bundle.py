@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from cStringIO import StringIO
 import os
@@ -22,11 +22,14 @@ import threading
 
 from bzrlib import (
     bzrdir,
+    diff,
     errors,
     inventory,
+    merge,
     osutils,
     repository,
     revision as _mod_revision,
+    tests,
     treebuilder,
     )
 from bzrlib.bundle import read_mergeable_from_url
@@ -39,16 +42,8 @@ from bzrlib.bundle.serializer.v08 import BundleSerializerV08
 from bzrlib.bundle.serializer.v09 import BundleSerializerV09
 from bzrlib.bundle.serializer.v4 import BundleSerializerV4
 from bzrlib.branch import Branch
-from bzrlib.diff import internal_diff
-from bzrlib.merge import Merge3Merger
 from bzrlib.repofmt import knitrepo
-from bzrlib.osutils import sha_file, sha_string
 from bzrlib.tests import (
-    SymlinkFeature,
-    TestCase,
-    TestCaseInTempDir,
-    TestCaseWithTransport,
-    TestSkipped,
     test_read_bundle,
     test_commit,
     )
@@ -137,11 +132,11 @@ class MockTree(object):
     def contents_stats(self, file_id):
         if file_id not in self.contents:
             return None, None
-        text_sha1 = sha_file(self.get_file(file_id))
+        text_sha1 = osutils.sha_file(self.get_file(file_id))
         return text_sha1, len(self.contents[file_id])
 
 
-class BTreeTester(TestCase):
+class BTreeTester(tests.TestCase):
     """A simple unittest tester for the BundleTree class."""
 
     def make_tree_1(self):
@@ -225,7 +220,7 @@ class BTreeTester(TestCase):
 
     def unified_diff(self, old, new):
         out = StringIO()
-        internal_diff("old", old, "new", new, out)
+        diff.internal_diff("old", old, "new", new, out)
         out.seek(0,0)
         return out.read()
 
@@ -319,7 +314,7 @@ class BTreeTester(TestCase):
             [inventory.ROOT_ID, 'a', 'b', 'd', 'e'])
 
 
-class BundleTester1(TestCaseWithTransport):
+class BundleTester1(tests.TestCaseWithTransport):
 
     def test_mismatched_bundle(self):
         format = bzrdir.BzrDirMetaFormat1()
@@ -366,12 +361,13 @@ class BundleTester(object):
     def make_branch_and_tree(self, path, format=None):
         if format is None:
             format = self.bzrdir_format()
-        return TestCaseWithTransport.make_branch_and_tree(self, path, format)
+        return tests.TestCaseWithTransport.make_branch_and_tree(
+            self, path, format)
 
     def make_branch(self, path, format=None):
         if format is None:
             format = self.bzrdir_format()
-        return TestCaseWithTransport.make_branch(self, path, format)
+        return tests.TestCaseWithTransport.make_branch(self, path, format)
 
     def create_bundle_text(self, base_rev_id, rev_id):
         bundle_txt = StringIO()
@@ -521,7 +517,7 @@ class BundleTester(object):
             self.assert_(not repository.has_revision(rev.revision_id),
                 'Revision {%s} present before applying bundle'
                 % rev.revision_id)
-        merge_bundle(info, to_tree, True, Merge3Merger, False, False)
+        merge_bundle(info, to_tree, True, merge.Merge3Merger, False, False)
 
         for rev in info.real_revisions:
             self.assert_(repository.has_revision(rev.revision_id),
@@ -661,36 +657,60 @@ class BundleTester(object):
                           verbose=False)
         bundle = self.get_valid_bundle('a@cset-0-6', 'a@cset-0-7')
 
-    def test_symlink_bundle(self):
-        self.requireFeature(SymlinkFeature)
+    def _test_symlink_bundle(self, link_name, link_target, new_link_target):
+        link_id = 'link-1'
+
+        self.requireFeature(tests.SymlinkFeature)
         self.tree1 = self.make_branch_and_tree('b1')
         self.b1 = self.tree1.branch
+
         tt = TreeTransform(self.tree1)
-        tt.new_symlink('link', tt.root, 'bar/foo', 'link-1')
+        tt.new_symlink(link_name, tt.root, link_target, link_id)
         tt.apply()
         self.tree1.commit('add symlink', rev_id='l@cset-0-1')
-        self.get_valid_bundle('null:', 'l@cset-0-1')
+        bundle = self.get_valid_bundle('null:', 'l@cset-0-1')
+        if getattr(bundle ,'revision_tree', None) is not None:
+            # Not all bundle formats supports revision_tree
+            bund_tree = bundle.revision_tree(self.b1.repository, 'l@cset-0-1')
+            self.assertEqual(link_target, bund_tree.get_symlink_target(link_id))
+
         tt = TreeTransform(self.tree1)
-        trans_id = tt.trans_id_tree_file_id('link-1')
+        trans_id = tt.trans_id_tree_file_id(link_id)
         tt.adjust_path('link2', tt.root, trans_id)
         tt.delete_contents(trans_id)
-        tt.create_symlink('mars', trans_id)
+        tt.create_symlink(new_link_target, trans_id)
         tt.apply()
         self.tree1.commit('rename and change symlink', rev_id='l@cset-0-2')
-        self.get_valid_bundle('l@cset-0-1', 'l@cset-0-2')
+        bundle = self.get_valid_bundle('l@cset-0-1', 'l@cset-0-2')
+        if getattr(bundle ,'revision_tree', None) is not None:
+            # Not all bundle formats supports revision_tree
+            bund_tree = bundle.revision_tree(self.b1.repository, 'l@cset-0-2')
+            self.assertEqual(new_link_target,
+                             bund_tree.get_symlink_target(link_id))
+
         tt = TreeTransform(self.tree1)
-        trans_id = tt.trans_id_tree_file_id('link-1')
+        trans_id = tt.trans_id_tree_file_id(link_id)
         tt.delete_contents(trans_id)
         tt.create_symlink('jupiter', trans_id)
         tt.apply()
         self.tree1.commit('just change symlink target', rev_id='l@cset-0-3')
-        self.get_valid_bundle('l@cset-0-2', 'l@cset-0-3')
+        bundle = self.get_valid_bundle('l@cset-0-2', 'l@cset-0-3')
+
         tt = TreeTransform(self.tree1)
-        trans_id = tt.trans_id_tree_file_id('link-1')
+        trans_id = tt.trans_id_tree_file_id(link_id)
         tt.delete_contents(trans_id)
         tt.apply()
         self.tree1.commit('Delete symlink', rev_id='l@cset-0-4')
-        self.get_valid_bundle('l@cset-0-3', 'l@cset-0-4')
+        bundle = self.get_valid_bundle('l@cset-0-3', 'l@cset-0-4')
+
+    def test_symlink_bundle(self):
+        self._test_symlink_bundle('link', 'bar/foo', 'mars')
+
+    def test_unicode_symlink_bundle(self):
+        self.requireFeature(tests.UnicodeFilenameFeature)
+        self._test_symlink_bundle(u'\N{Euro Sign}link',
+                                  u'bar/\N{Euro Sign}foo',
+                                  u'mars\N{Euro Sign}')
 
     def test_binary_bundle(self):
         self.tree1 = self.make_branch_and_tree('b1')
@@ -794,12 +814,10 @@ class BundleTester(object):
         return bundle_file.getvalue()
 
     def test_unicode_bundle(self):
+        self.requireFeature(tests.UnicodeFilenameFeature)
         # Handle international characters
         os.mkdir('b1')
-        try:
-            f = open(u'b1/with Dod\N{Euro Sign}', 'wb')
-        except UnicodeEncodeError:
-            raise TestSkipped("Filesystem doesn't support unicode")
+        f = open(u'b1/with Dod\N{Euro Sign}', 'wb')
 
         self.tree1 = self.make_branch_and_tree('b1')
         self.b1 = self.tree1.branch
@@ -843,8 +861,8 @@ class BundleTester(object):
 
     def test_whitespace_bundle(self):
         if sys.platform in ('win32', 'cygwin'):
-            raise TestSkipped('Windows doesn\'t support filenames'
-                              ' with tabs or trailing spaces')
+            raise tests.TestSkipped('Windows doesn\'t support filenames'
+                                    ' with tabs or trailing spaces')
         self.tree1 = self.make_branch_and_tree('b1')
         self.b1 = self.tree1.branch
 
@@ -1030,7 +1048,7 @@ class BundleTester(object):
         repo = self.make_repo_with_installed_revisions()
         recorded_inv_sha1 = repo.get_inventory_sha1('rev2')
         xml = repo.get_inventory_xml('rev2')
-        self.assertEqual(sha_string(xml), recorded_inv_sha1)
+        self.assertEqual(osutils.sha_string(xml), recorded_inv_sha1)
 
     def test_across_models_incompatible(self):
         tree = self.make_simple_tree('dirstate-with-subtree')
@@ -1039,7 +1057,7 @@ class BundleTester(object):
         try:
             bundle = read_bundle(self.create_bundle_text('null:', 'rev1')[0])
         except errors.IncompatibleBundleFormat:
-            raise TestSkipped("Format 0.8 doesn't work with knit3")
+            raise tests.TestSkipped("Format 0.8 doesn't work with knit3")
         repo = self.make_repository('repo', format='knit')
         bundle.install_revisions(repo)
 
@@ -1066,9 +1084,9 @@ class BundleTester(object):
         try:
             bundle = read_bundle(self.create_bundle_text('null:', 'rev1')[0])
         except errors.IncompatibleBundleFormat:
-            raise TestSkipped("Format 0.8 doesn't work with knit3")
+            raise tests.TestSkipped("Format 0.8 doesn't work with knit3")
         if isinstance(bundle, v09.BundleInfo09):
-            raise TestSkipped("Format 0.9 doesn't work with subtrees")
+            raise tests.TestSkipped("Format 0.9 doesn't work with subtrees")
         repo = self.make_repository('repo', format='knit')
         self.assertRaises(errors.IncompatibleRevision,
                           bundle.install_revisions, repo)
@@ -1081,8 +1099,8 @@ class BundleTester(object):
         try:
             self.tree1.commit('Revision/id/with/slashes', rev_id='rev/id')
         except ValueError:
-            raise TestSkipped("Repository doesn't support revision ids with"
-                              " slashes")
+            raise tests.TestSkipped(
+                "Repository doesn't support revision ids with slashes")
         bundle = self.get_valid_bundle('null:', 'rev/id')
 
     def test_skip_file(self):
@@ -1104,7 +1122,7 @@ class BundleTester(object):
         self.tree1.commit('rev3', rev_id='rev3')
         bundle = self.get_valid_bundle('reva', 'rev3')
         if getattr(bundle, 'get_bundle_reader', None) is None:
-            raise TestSkipped('Bundle format cannot provide reader')
+            raise tests.TestSkipped('Bundle format cannot provide reader')
         # be sure that file1 comes before file2
         for b, m, k, r, f in bundle.get_bundle_reader().iter_records():
             if f == 'file3-id':
@@ -1113,7 +1131,7 @@ class BundleTester(object):
         bundle.install_revisions(target.branch.repository)
 
 
-class V08BundleTester(BundleTester, TestCaseWithTransport):
+class V08BundleTester(BundleTester, tests.TestCaseWithTransport):
 
     format = '0.8'
 
@@ -1252,7 +1270,7 @@ class V09BundleKnit1Tester(V08BundleTester):
         return format
 
 
-class V4BundleTester(BundleTester, TestCaseWithTransport):
+class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
 
     format = '4'
 
@@ -1342,10 +1360,14 @@ class V4BundleTester(BundleTester, TestCaseWithTransport):
         install_bundle(target_repo, serializer.read(s))
         target_repo.lock_read()
         self.addCleanup(target_repo.unlock)
+        # Turn the 'iterators_of_bytes' back into simple strings for comparison
+        repo_texts = dict((i, ''.join(content)) for i, content
+                          in target_repo.iter_files_bytes(
+                                [('fileid-2', 'rev1', '1'),
+                                 ('fileid-2', 'rev2', '2')]))
         self.assertEqual({'1':'contents1\nstatic\n',
-            '2':'contents2\nstatic\n'},
-            dict(target_repo.iter_files_bytes(
-                [('fileid-2', 'rev1', '1'), ('fileid-2', 'rev2', '2')])))
+                          '2':'contents2\nstatic\n'},
+                         repo_texts)
         rtree = target_repo.revision_tree('rev2')
         inventory_vf = target_repo.inventories
         # If the inventory store has a graph, it must match the revision graph.
@@ -1459,7 +1481,7 @@ class MungedBundleTester(object):
         self.check_valid(bundle)
 
 
-class MungedBundleTesterV09(TestCaseWithTransport, MungedBundleTester):
+class MungedBundleTesterV09(tests.TestCaseWithTransport, MungedBundleTester):
 
     format = '0.9'
 
@@ -1497,12 +1519,12 @@ class MungedBundleTesterV09(TestCaseWithTransport, MungedBundleTester):
         self.check_valid(bundle)
 
 
-class MungedBundleTesterV4(TestCaseWithTransport, MungedBundleTester):
+class MungedBundleTesterV4(tests.TestCaseWithTransport, MungedBundleTester):
 
     format = '4'
 
 
-class TestBundleWriterReader(TestCase):
+class TestBundleWriterReader(tests.TestCase):
 
     def test_roundtrip_record(self):
         fileobj = StringIO()
@@ -1573,7 +1595,7 @@ class TestBundleWriterReader(TestCase):
         self.assertRaises(errors.BadBundle, record_iter.next)
 
 
-class TestReadMergeableFromUrl(TestCaseWithTransport):
+class TestReadMergeableFromUrl(tests.TestCaseWithTransport):
 
     def test_read_mergeable_skips_local(self):
         """A local bundle named like the URL should not be read.

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """WorkingTree object and friends.
 
@@ -80,7 +80,11 @@ from bzrlib import (
 import bzrlib.branch
 from bzrlib.transport import get_transport
 import bzrlib.ui
-from bzrlib.workingtree_4 import WorkingTreeFormat4, WorkingTreeFormat5
+from bzrlib.workingtree_4 import (
+    WorkingTreeFormat4,
+    WorkingTreeFormat5,
+    WorkingTreeFormat6,
+    )
 """)
 
 from bzrlib import symbol_versioning
@@ -103,6 +107,7 @@ from bzrlib.osutils import (
     splitpath,
     supports_executable,
     )
+from bzrlib.filters import filtered_input_file
 from bzrlib.trace import mutter, note
 from bzrlib.transport.local import LocalTransport
 from bzrlib.progress import DummyProgress, ProgressPhase
@@ -230,7 +235,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         wt_trans = self.bzrdir.get_workingtree_transport(None)
         cache_filename = wt_trans.local_abspath('stat-cache')
         self._hashcache = hashcache.HashCache(basedir, cache_filename,
-            self.bzrdir._get_file_mode())
+            self.bzrdir._get_file_mode(),
+            self._content_filter_stack_provider())
         hc = self._hashcache
         hc.read()
         # is this scan needed ? it makes things kinda slow.
@@ -413,7 +419,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             return self.branch.repository.revision_tree(revision_id)
         except (errors.RevisionNotPresent, errors.NoSuchRevision):
             # the basis tree *may* be a ghost or a low level error may have
-            # occured. If the revision is present, its a problem, if its not
+            # occurred. If the revision is present, its a problem, if its not
             # its a ghost.
             if self.branch.repository.has_revision(revision_id):
                 raise
@@ -435,22 +441,36 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def has_filename(self, filename):
         return osutils.lexists(self.abspath(filename))
 
-    def get_file(self, file_id, path=None):
-        return self.get_file_with_stat(file_id, path)[0]
+    def get_file(self, file_id, path=None, filtered=True):
+        return self.get_file_with_stat(file_id, path, filtered=filtered)[0]
 
-    def get_file_with_stat(self, file_id, path=None, _fstat=os.fstat):
+    def get_file_with_stat(self, file_id, path=None, filtered=True,
+        _fstat=os.fstat):
         """See MutableTree.get_file_with_stat."""
         if path is None:
             path = self.id2path(file_id)
-        file_obj = self.get_file_byname(path)
-        return (file_obj, _fstat(file_obj.fileno()))
+        file_obj = self.get_file_byname(path, filtered=False)
+        stat_value = _fstat(file_obj.fileno())
+        if self.supports_content_filtering() and filtered:
+            filters = self._content_filter_stack(path)
+            file_obj = filtered_input_file(file_obj, filters)
+        return (file_obj, stat_value)
 
-    def get_file_byname(self, filename):
-        return file(self.abspath(filename), 'rb')
+    def get_file_text(self, file_id, path=None, filtered=True):
+        return self.get_file(file_id, path=path, filtered=filtered).read()
 
-    def get_file_lines(self, file_id, path=None):
+    def get_file_byname(self, filename, filtered=True):
+        path = self.abspath(filename)
+        f = file(path, 'rb')
+        if self.supports_content_filtering() and filtered:
+            filters = self._content_filter_stack(filename)
+            return filtered_input_file(f, filters)
+        else:
+            return f
+
+    def get_file_lines(self, file_id, path=None, filtered=True):
         """See Tree.get_file_lines()"""
-        file = self.get_file(file_id, path)
+        file = self.get_file(file_id, path, filtered=filtered)
         try:
             return file.readlines()
         finally:
@@ -541,7 +561,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
         revision
             If not None, the cloned tree will have its last revision set to
-            revision, and and difference between the source trees last revision
+            revision, and difference between the source trees last revision
             and this one merged in.
         """
         # assumes the target bzr dir format is compatible.
@@ -729,9 +749,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 kind = 'tree-reference'
             return kind, None, None, None
         elif kind == 'symlink':
-            return ('symlink', None, None,
-                    os.readlink(abspath.encode(osutils._fs_enc)
-                                ).decode(osutils._fs_enc))
+            target = osutils.readlink(abspath)
+            return ('symlink', None, None, target)
         else:
             return (kind, None, None, None)
 
@@ -750,7 +769,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def _set_merges_from_parent_ids(self, parent_ids):
         merges = parent_ids[1:]
         self._transport.put_bytes('pending-merges', '\n'.join(merges),
-            mode=self._control_files._file_mode)
+            mode=self.bzrdir._get_file_mode())
 
     def _filter_parent_ids_by_ancestry(self, revision_ids):
         """Check that all merged revisions are proper 'heads'.
@@ -856,7 +875,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         self._must_be_locked()
         my_file = rio_file(stanzas, header)
         self._transport.put_file(filename, my_file,
-            mode=self._control_files._file_mode)
+            mode=self.bzrdir._get_file_mode())
 
     @needs_write_lock # because merge pulls data into the branch.
     def merge_from_branch(self, branch, to_revision=None, from_revision=None,
@@ -953,7 +972,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         return file_id
 
     def get_symlink_target(self, file_id):
-        return os.readlink(self.id2abspath(file_id).encode(osutils._fs_enc))
+        abspath = self.id2abspath(file_id)
+        target = osutils.readlink(abspath)
+        return target
 
     @needs_write_lock
     def subsume(self, other_tree):
@@ -1088,7 +1109,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         self._serialize(self._inventory, sio)
         sio.seek(0)
         self._transport.put_file('inventory', sio,
-            mode=self._control_files._file_mode)
+            mode=self.bzrdir._get_file_mode())
         self._inventory_is_modified = False
 
     def _kind(self, relpath):
@@ -1511,10 +1532,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         :raises: NoSuchId if any fileid is not currently versioned.
         """
         for file_id in file_ids:
+            if file_id not in self._inventory:
+                raise errors.NoSuchId(self, file_id)
+        for file_id in file_ids:
             if self._inventory.has_id(file_id):
                 self._inventory.remove_recursive_id(file_id)
-            else:
-                raise errors.NoSuchId(self, file_id)
         if len(file_ids):
             # in the future this should just set a dirty bit to wait for the
             # final unlock. However, until all methods of workingtree start
@@ -1539,7 +1561,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
-             change_reporter=None, possible_transports=None):
+             change_reporter=None, possible_transports=None, local=False):
         top_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         source.lock_read()
         try:
@@ -1548,7 +1570,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             old_revision_info = self.branch.last_revision_info()
             basis_tree = self.basis_tree()
             count = self.branch.pull(source, overwrite, stop_revision,
-                                     possible_transports=possible_transports)
+                                     possible_transports=possible_transports,
+                                     local=local)
             new_revision_info = self.branch.last_revision_info()
             if new_revision_info != old_revision_info:
                 pp.next_phase()
@@ -1811,7 +1834,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         path = self._basis_inventory_name()
         sio = StringIO(xml)
         self._transport.put_file(path, sio,
-            mode=self._control_files._file_mode)
+            mode=self.bzrdir._get_file_mode())
 
     def _create_basis_xml_from_inventory(self, revision_id, inventory):
         """Create the text that will be saved in basis-inventory"""
@@ -1945,7 +1968,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                         tree_delta.unversioned.extend((unknown_file,))
                 raise errors.BzrRemoveChangedFilesError(tree_delta)
 
-        # Build inv_delta and delete files where applicaple,
+        # Build inv_delta and delete files where applicable,
         # do this before any modifications to inventory.
         for f in files:
             fid = self.path2id(f)
@@ -2202,7 +2225,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             parent_trees = [(self.branch.last_revision(), to_tree)]
             merges = self.get_parent_ids()[1:]
             # Ideally we ask the tree for the trees here, that way the working
-            # tree can decide whether to give us teh entire tree or give us a
+            # tree can decide whether to give us the entire tree or give us a
             # lazy initialised tree. dirstate for instance will have the trees
             # in ram already, whereas a last-revision + basis-inventory tree
             # will not, but also does not need them when setting parents.
@@ -2607,7 +2630,7 @@ class WorkingTree3(WorkingTree):
             return False
         else:
             self._transport.put_bytes('last-revision', revision_id,
-                mode=self._control_files._file_mode)
+                mode=self.bzrdir._get_file_mode())
             return True
 
     @needs_tree_write_lock
@@ -2888,7 +2911,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         control_files.create_lock()
         control_files.lock_write()
         transport.put_bytes('format', self.get_format_string(),
-            mode=control_files._file_mode)
+            mode=a_bzrdir._get_file_mode())
         if from_branch is not None:
             branch = from_branch
         else:
@@ -2964,6 +2987,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
 
 __default_format = WorkingTreeFormat4()
 WorkingTreeFormat.register_format(__default_format)
+WorkingTreeFormat.register_format(WorkingTreeFormat6())
 WorkingTreeFormat.register_format(WorkingTreeFormat5())
 WorkingTreeFormat.register_format(WorkingTreeFormat3())
 WorkingTreeFormat.set_default_format(__default_format)

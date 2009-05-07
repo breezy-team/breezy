@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """The 'medium' layer for the smart servers and clients.
 
@@ -381,7 +381,7 @@ class SmartClientMediumRequest(object):
     def accept_bytes(self, bytes):
         """Accept bytes for inclusion in this request.
 
-        This method may not be be called after finished_writing() has been
+        This method may not be called after finished_writing() has been
         called.  It depends upon the Medium whether or not the bytes will be
         immediately transmitted. Message based Mediums will tend to buffer the
         bytes until finished_writing() is called.

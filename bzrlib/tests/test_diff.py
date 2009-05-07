@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
 import os.path
@@ -704,7 +704,7 @@ class TestDiffTree(TestCaseWithTransport):
             r'--- olddir/oldfile.*\n\+\+\+ newdir/newfile.*\n\@\@ -1,1 \+0,0'
              ' \@\@\n-old\n\n')
         self.assertContainsRe(self.differ.to_file.getvalue(),
-                              "=== target is 'new'\n")
+                              "=== target is u'new'\n")
 
     def test_diff_directory(self):
         self.build_tree(['new-tree/new-dir/'])

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Black-box tests for bzr push."""
@@ -201,7 +201,7 @@ class TestPush(ExternalBase):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(20, self.hpss_calls)
+        self.assertLength(9, self.hpss_calls)
 
     def test_push_smart_stacked_streaming_acceptance(self):
         self.setup_smart_server_with_call_log()
@@ -217,7 +217,7 @@ class TestPush(ExternalBase):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(56, self.hpss_calls)
+        self.assertLength(14, self.hpss_calls)
         remote = Branch.open('public')
         self.assertEndsWith(remote.get_stacked_on_url(), '/parent')
 
@@ -312,11 +312,11 @@ class TestPush(ExternalBase):
     def create_trunk_and_feature_branch(self):
         # We have a mainline
         trunk_tree = self.make_branch_and_tree('target',
-            format='development')
+            format='1.9')
         trunk_tree.commit('mainline')
         # and a branch from it
         branch_tree = self.make_branch_and_tree('branch',
-            format='development')
+            format='1.9')
         branch_tree.pull(trunk_tree.branch)
         branch_tree.branch.set_parent(trunk_tree.branch.base)
         # with some work on it
@@ -360,7 +360,7 @@ class TestPush(ExternalBase):
         trunk_tree, branch_tree = self.create_trunk_and_feature_branch()
         # the trunk is published on a web server
         self.transport_readonly_server = HttpServer
-        trunk_public = self.make_branch('public_trunk', format='development')
+        trunk_public = self.make_branch('public_trunk', format='1.9')
         trunk_public.pull(trunk_tree.branch)
         trunk_public_url = self.get_readonly_url('public_trunk')
         trunk_tree.branch.set_public_branch(trunk_public_url)
@@ -375,7 +375,7 @@ class TestPush(ExternalBase):
 
     def test_push_new_branch_stacked_no_parent(self):
         """Pushing with --stacked and no parent branch errors."""
-        branch = self.make_branch_and_tree('branch', format='development')
+        branch = self.make_branch_and_tree('branch', format='1.9')
         # now we do a stacked push, which should fail as the place to refer too
         # cannot be determined.
         out, err = self.run_bzr_error(
@@ -391,6 +391,23 @@ class TestPush(ExternalBase):
         out, err = self.run_bzr('push -d from to')
         self.assertContainsRe(err,
                               'Using default stacking branch stack_on at .*')
+
+    def test_push_stacks_with_default_stacking_if_target_is_stackable(self):
+        self.make_branch('stack_on', format='1.6')
+        self.make_bzrdir('.').get_config().set_default_stack_on('stack_on')
+        self.make_branch('from', format='pack-0.92')
+        out, err = self.run_bzr('push -d from to')
+        branch = Branch.open('to')
+        self.assertEqual('../stack_on', branch.get_stacked_on_url())
+
+    def test_push_does_not_change_format_with_default_if_target_cannot(self):
+        self.make_branch('stack_on', format='pack-0.92')
+        self.make_bzrdir('.').get_config().set_default_stack_on('stack_on')
+        self.make_branch('from', format='pack-0.92')
+        out, err = self.run_bzr('push -d from to')
+        branch = Branch.open('to')
+        self.assertRaises(errors.UnstackableBranchFormat,
+            branch.get_stacked_on_url)
 
     def test_push_doesnt_create_broken_branch(self):
         """Pushing a new standalone branch works even when there's a default

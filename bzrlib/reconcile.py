@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Reconcilers are able to fix some potential data errors in a branch."""
 
@@ -505,9 +505,8 @@ class PackReconciler(RepoReconciler):
             total_inventories = len(list(
                 collection.inventory_index.combined_index.iter_all_entries()))
             if len(all_revisions):
-                self._packer = repofmt.pack_repo.ReconcilePacker(
-                    collection, packs, ".reconcile", all_revisions)
-                new_pack = self._packer.pack(pb=self.pb)
+                new_pack =  self.repo._reconcile_pack(collection, packs,
+                    ".reconcile", all_revisions, self.pb)
                 if new_pack is not None:
                     self._discard_and_save(packs)
             else:

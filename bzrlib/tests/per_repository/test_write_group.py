@@ -12,15 +12,17 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for repository write groups."""
 
 import sys
 
-from bzrlib import errors
+from bzrlib import bzrdir, errors, graph, memorytree, remote
+from bzrlib.branch import BzrBranchFormat7
+from bzrlib.inventory import InventoryDirectory
 from bzrlib.transport import local, memory
-from bzrlib.tests import TestNotApplicable
+from bzrlib.tests import KnownFailure, TestNotApplicable
 from bzrlib.tests.per_repository import TestCaseWithRepository
 
 
@@ -117,6 +119,97 @@ class TestWriteGroup(TestCaseWithRepository):
         self.assertEqual(None, repo.abort_write_group(suppress_errors=True))
         if token is not None:
             repo.leave_lock_in_place()
+
+    def test_empty_get_missing_parent_inventories(self):
+        """A new write group has no missing parent inventories."""
+        repo = self.make_repository('.')
+        repo.lock_write()
+        repo.start_write_group()
+        try:
+            self.assertEqual(set(), set(repo.get_missing_parent_inventories()))
+        finally:
+            repo.commit_write_group()
+            repo.unlock()
+
+    def test_get_missing_parent_inventories(self):
+        # Make a trunk with one commit.
+        if isinstance(self.repository_format, remote.RemoteRepositoryFormat):
+            # RemoteRepository by default builds a default format real
+            # repository, but the default format is unstackble.  So explicitly
+            # make a stackable real repository and use that.
+            repo = self.make_repository('trunk', format='1.9')
+            repo = bzrdir.BzrDir.open(self.get_url('trunk')).open_repository()
+        else:
+            repo = self.make_repository('trunk')
+        if not repo._format.supports_external_lookups:
+            raise TestNotApplicable('format not stackable')
+        repo.bzrdir._format.set_branch_format(BzrBranchFormat7())
+        trunk = repo.bzrdir.create_branch()
+        trunk_repo = repo
+        tree = memorytree.MemoryTree.create_on_branch(trunk)
+        tree.lock_write()
+        if repo._format.rich_root_data:
+            # The tree needs a root
+            tree._inventory.add(InventoryDirectory('the-root-id', '', None))
+        tree.commit('Trunk commit', rev_id='rev-1')
+        tree.unlock()
+        # Branch the trunk, add a new commit.
+        tree = self.make_branch_and_tree('branch')
+        trunk_repo.lock_read()
+        self.addCleanup(trunk_repo.unlock)
+        tree.branch.repository.fetch(trunk_repo, revision_id='rev-1')
+        tree.set_parent_ids(['rev-1'])
+        tree.commit('Branch commit', rev_id='rev-2')
+        branch_repo = tree.branch.repository
+        # Make a new repo stacked on trunk, and copy the new commit's revision
+        # and inventory records to it.
+        if isinstance(self.repository_format, remote.RemoteRepositoryFormat):
+            # RemoteRepository by default builds a default format real
+            # repository, but the default format is unstackble.  So explicitly
+            # make a stackable real repository and use that.
+            repo = self.make_repository('stacked', format='1.9')
+            repo = bzrdir.BzrDir.open(self.get_url('stacked')).open_repository()
+        else:
+            repo = self.make_repository('stacked')
+        branch_repo.lock_read()
+        self.addCleanup(branch_repo.unlock)
+        repo.add_fallback_repository(trunk.repository)
+        repo.lock_write()
+        repo.start_write_group()
+        trunk_repo.lock_read()
+        repo.inventories.insert_record_stream(
+            branch_repo.inventories.get_record_stream(
+                [('rev-2',)], 'unordered', False))
+        repo.revisions.insert_record_stream(
+            branch_repo.revisions.get_record_stream(
+                [('rev-2',)], 'unordered', False))
+        self.assertEqual(
+            set([('inventories', 'rev-1')]),
+            repo.get_missing_parent_inventories())
+        # Revisions from resumed write groups can also cause missing parent
+        # inventories.
+        try:
+            resume_tokens = repo.suspend_write_group()
+        except errors.UnsuspendableWriteGroup:
+            # If we got this far, and this repo does not support resuming write
+            # groups, then get_missing_parent_inventories works in all
+            # cases this repo supports.
+            repo.unlock()
+            return
+        repo.unlock()
+        reopened_repo = repo.bzrdir.open_repository()
+        reopened_repo.lock_write()
+        self.addCleanup(reopened_repo.unlock)
+        reopened_repo.resume_write_group(resume_tokens)
+        self.assertEqual(
+            set([('inventories', 'rev-1')]),
+            reopened_repo.get_missing_parent_inventories())
+        reopened_repo.inventories.insert_record_stream(
+            branch_repo.inventories.get_record_stream(
+                [('rev-1',)], 'unordered', False))
+        self.assertEqual(
+            set(), reopened_repo.get_missing_parent_inventories())
+        reopened_repo.abort_write_group()
 
 
 class TestResumeableWriteGroup(TestCaseWithRepository):

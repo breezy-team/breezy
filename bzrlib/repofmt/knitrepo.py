@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -52,12 +52,6 @@ class _KnitParentsProvider(object):
 
     def __repr__(self):
         return 'KnitParentsProvider(%r)' % self._knit
-
-    @symbol_versioning.deprecated_method(symbol_versioning.one_one)
-    def get_parents(self, revision_ids):
-        """See graph._StackedParentsProvider.get_parents"""
-        parent_map = self.get_parent_map(revision_ids)
-        return [parent_map.get(r, None) for r in revision_ids]
 
     def get_parent_map(self, keys):
         """See graph._StackedParentsProvider.get_parent_map"""
@@ -297,8 +291,11 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
     supports_ghosts = True
     # External lookups are not supported in this format.
     supports_external_lookups = False
+    # No CHK support.
+    supports_chks = False
     _fetch_order = 'topological'
     _fetch_uses_deltas = True
+    fast_deltas = False
 
     def _get_inventories(self, repo_transport, repo, name='inventory'):
         mapper = versionedfile.ConstantMapper(name)
@@ -384,6 +381,7 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
         repo.signatures = self._get_signatures(repo_transport, repo)
         repo.inventories = self._get_inventories(repo_transport, repo)
         repo.texts = self._get_texts(repo_transport, repo)
+        repo.chk_bytes = None
         repo._transport = repo_transport
         return repo
 

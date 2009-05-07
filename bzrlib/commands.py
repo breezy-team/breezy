@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 # TODO: probably should say which arguments are candidates for glob
@@ -35,6 +35,7 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import codecs
 import errno
+import threading
 from warnings import warn
 
 import bzrlib
@@ -686,6 +687,7 @@ def apply_coveraged(dirname, the_callable, *args, **kwargs):
 
     tracer = trace.Trace(count=1, trace=0)
     sys.settrace(tracer.globaltrace)
+    threading.settrace(tracer.globaltrace)
 
     try:
         return exception_to_return_code(the_callable, *args, **kwargs)

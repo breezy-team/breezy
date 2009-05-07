@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the bzrlib ui
 """
@@ -221,6 +221,11 @@ class UITests(TestCase):
         factory = TextUIFactory(None, None, None)
         self.assert_get_bool_acceptance_of_user_input(factory)
 
+    def test_text_factory_prompt(self):
+        # see <https://launchpad.net/bugs/365891>
+        factory = TextUIFactory(None, StringIO(), StringIO())
+        factory.prompt('foo %2e')
+
     def test_text_factory_prompts_and_clears(self):
         # a get_boolean call should clear the pb before prompting
         out = _TTYStringIO()
@@ -251,6 +256,44 @@ class UITests(TestCase):
             # Reset the clock, so that it actually tries to repaint itself
             ui_factory._progress_view._last_repaint = time.time() - 1.0
             pb.tick()
+        finally:
+            pb.finished()
+
+    def test_silent_ui_getusername(self):
+        factory = SilentUIFactory()
+        factory.stdin = StringIO("someuser\n\n")
+        factory.stdout = StringIO()
+        self.assertEquals(None, 
+            factory.get_username(u'Hello\u1234 %(host)s', host=u'some\u1234'))
+        self.assertEquals("", factory.stdout.getvalue())
+        self.assertEquals("someuser\n\n", factory.stdin.getvalue())
+
+    def test_text_ui_getusername(self):
+        factory = TextUIFactory(None, None, None)
+        factory.stdin = StringIO("someuser\n\n")
+        factory.stdout = StringIO()
+        factory.stdout.encoding = "utf8"
+        # there is no output from the base factory
+        self.assertEqual("someuser", 
+            factory.get_username('Hello %(host)s', host='some'))
+        self.assertEquals("Hello some: ", factory.stdout.getvalue())
+        self.assertEqual("", factory.get_username("Gebruiker"))
+        # stdin should be empty
+        self.assertEqual('', factory.stdin.readline())
+
+    def test_text_ui_getusername_utf8(self):
+        ui = TestUIFactory(stdin=u'someuser\u1234'.encode('utf8'),
+                           stdout=StringIOWrapper())
+        ui.stdin.encoding = "utf8"
+        ui.stdout.encoding = ui.stdin.encoding
+        pb = ui.nested_progress_bar()
+        try:
+            # there is no output from the base factory
+            username = self.apply_redirected(ui.stdin, ui.stdout, ui.stdout,
+                ui.get_username, u'Hello\u1234 %(host)s', host=u'some\u1234')
+            self.assertEquals(u"someuser\u1234", username.decode('utf8'))
+            self.assertEquals(u"Hello\u1234 some\u1234: ", 
+                ui.stdout.getvalue().decode("utf8"))
         finally:
             pb.finished()
 

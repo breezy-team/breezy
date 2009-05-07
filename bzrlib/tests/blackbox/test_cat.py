@@ -13,7 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Black-box tests for bzr cat.
@@ -125,6 +125,50 @@ class TestCat(TestCaseWithTransport):
         url = self.get_readonly_url() + '/README'
         out, err = self.run_bzr_subprocess(['cat', url])
         self.assertEqual('contents of README\n', out)
+
+    def test_cat_filters(self):
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['README'])
+        wt.add('README')
+        wt.commit('Making sure there is a basis_tree available')
+        url = self.get_readonly_url() + '/README'
+
+        # Test unfiltered output
+        out, err = self.run_bzr_subprocess(['cat', url])
+        self.assertEqual('contents of README\n', out)
+
+        # Test --filters option is legal but has no impact if no filters
+        out, err = self.run_bzr_subprocess(['cat', '--filters', url])
+        self.assertEqual('contents of README\n', out)
+
+    def test_cat_filters_applied(self):
+        # Test filtering applied to output. This is tricky to do in a
+        # subprocess because we really need to patch in a plugin that
+        # registers the filters. Instead, we patch in a custom
+        # filter_stack and use run_bzr() ...
+        from cStringIO import StringIO
+        from bzrlib.commands import run_bzr
+        from bzrlib.tests.test_filters import _stack_2
+        from bzrlib.trace import mutter
+        from bzrlib.tree import Tree
+        wt = self.make_branch_and_tree('.')
+        self.build_tree_contents([
+            ('README', "junk\nline 1 of README\nline 2 of README\n"),
+            ])
+        wt.add('README')
+        wt.commit('Making sure there is a basis_tree available')
+        url = self.get_readonly_url() + '/README'
+        real_content_filter_stack = Tree._content_filter_stack
+        def _custom_content_filter_stack(tree, path=None, file_id=None):
+            return _stack_2
+        Tree._content_filter_stack = _custom_content_filter_stack
+        try:
+            out, err = self.run_bzr(['cat', url, '--filters'])
+            # The filter stack will remove the first line and swapcase the rest
+            self.assertEqual('LINE 1 OF readme\nLINE 2 OF readme\n', out)
+            self.assertEqual('', err)
+        finally:
+            Tree._content_filter_stack = real_content_filter_stack
 
     def test_cat_no_working_tree(self):
         wt = self.make_branch_and_tree('.')

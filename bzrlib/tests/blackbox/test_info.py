@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Tests for the info command of bzr."""
@@ -1051,6 +1051,32 @@ Repository:
          0 revisions
 """ % (format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
+       ), out)
+        self.assertEqual('', err)
+
+    def test_info_repository_hook(self):
+        format = bzrdir.format_registry.make_bzrdir('knit')
+        def repo_info(repo, stats, outf):
+            outf.write("more info\n")
+        info.hooks.install_named_hook('repository', repo_info, None)
+        # Create shared repository with working trees
+        repo = self.make_repository('repo', shared=True, format=format)
+        out, err = self.run_bzr('info -v repo')
+        self.assertEqualDiff(
+"""Shared repository with trees (format: dirstate or dirstate-tags or knit)
+Location:
+  shared repository: repo
+
+Format:
+       control: Meta directory format 1
+    repository: %s
+
+Create working tree for new branches inside the repository.
+
+Repository:
+         0 revisions
+more info
+""" % (format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)
 

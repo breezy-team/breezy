@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """DirState objects record the state of a directory and its bzr metadata.
 
@@ -187,7 +187,7 @@ that. Now, as the lifetime for all unchanged entries is the time to parse, stat
 the file on disk, and then immediately discard, the overhead of object creation
 becomes a significant cost.
 
-Figures: Creating a tuple from from 3 elements was profiled at 0.0625
+Figures: Creating a tuple from 3 elements was profiled at 0.0625
 microseconds, whereas creating a object which is subclassed from tuple was
 0.500 microseconds, and creating an object with 3 elements and slots was 3
 microseconds long. 0.1 milliseconds is 100 microseconds, and ideally we'll get
@@ -267,12 +267,19 @@ class SHA1Provider(object):
     """An interface for getting sha1s of a file."""
 
     def sha1(self, abspath):
-        """Return the sha1 of a file given its absolute path."""
+        """Return the sha1 of a file given its absolute path.
+
+        :param abspath:  May be a filesystem encoded absolute path
+             or a unicode path.
+        """
         raise NotImplementedError(self.sha1)
 
     def stat_and_sha1(self, abspath):
         """Return the stat and sha1 of a file given its absolute path.
         
+        :param abspath:  May be a filesystem encoded absolute path
+             or a unicode path.
+
         Note: the stat should be the stat of the physical file
         while the sha may be the sha of its canonical content.
         """
@@ -2028,7 +2035,7 @@ class DirState(object):
 
     @staticmethod
     def on_file(path, sha1_provider=None):
-        """Construct a DirState on the file at path path.
+        """Construct a DirState on the file at path "path".
 
         :param path: The path at which the dirstate file on disk should live.
         :param sha1_provider: an object meeting the SHA1Provider interface.

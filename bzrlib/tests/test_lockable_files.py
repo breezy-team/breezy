@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from StringIO import StringIO
 
@@ -214,11 +214,11 @@ class _TestLockableFiles_mixin(object):
             # raise TokenMismatch.
             self.assertRaises(errors.TokenMismatch,
                               self.lockable.lock_write, token=different_token)
-            # A seperate instance for the same lockable will also raise
+            # A separate instance for the same lockable will also raise
             # TokenMismatch.
             # This detects the case where a caller claims to have a lock (via
             # the token) for an external resource, but doesn't (the token is
-            # different).  Clients need a seperate lock object to make sure the
+            # different).  Clients need a separate lock object to make sure the
             # external resource is probed, whereas the existing lock object
             # might cache.
             new_lockable = self.get_lockable()

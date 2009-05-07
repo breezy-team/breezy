@@ -12,21 +12,27 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Basic server-side logic for dealing with requests.
+"""Infrastructure for server-side request handlers.
 
-**XXX**:
-
-The class names are a little confusing: the protocol will instantiate a
-SmartServerRequestHandler, whose dispatch_command method creates an instance of
-a SmartServerRequest subclass.
-
-The request_handlers registry tracks SmartServerRequest classes (rather than
-SmartServerRequestHandler).
+Interesting module attributes:
+    * The request_handlers registry maps verb names to SmartServerRequest
+      classes.
+    * The jail_info threading.local() object is used to prevent accidental
+      opening of BzrDirs outside of the backing transport, or any other
+      transports placed in jail_info.transports.  The jail_info is reset on
+      every call into a request handler (which can happen an arbitrary number
+      of times during a request).
 """
 
+# XXX: The class names are a little confusing: the protocol will instantiate a
+# SmartServerRequestHandler, whose dispatch_command method creates an instance
+# of a SmartServerRequest subclass.
+
+
 import tempfile
+import threading
 
 from bzrlib import (
     bzrdir,
@@ -40,6 +46,33 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib.bundle import serializer
 """)
+
+
+jail_info = threading.local()
+jail_info.transports = None
+
+
+def _install_hook():
+    bzrdir.BzrDir.hooks.install_named_hook(
+        'pre_open', _pre_open_hook, 'checking server jail')
+
+
+def _pre_open_hook(transport):
+    allowed_transports = getattr(jail_info, 'transports', None)
+    if allowed_transports is None:
+        return
+    abspath = transport.base
+    for allowed_transport in allowed_transports:
+        try:
+            allowed_transport.relpath(abspath)
+        except errors.PathNotChild:
+            continue
+        else:
+            return
+    raise errors.JailBreak(abspath)
+
+
+_install_hook()
 
 
 class SmartServerRequest(object):
@@ -121,6 +154,12 @@ class SmartServerRequest(object):
         self._body_chunks = None
         return self.do_body(body_bytes)
 
+    def setup_jail(self):
+        jail_info.transports = [self._backing_transport]
+
+    def teardown_jail(self):
+        jail_info.transports = None
+
     def translate_client_path(self, client_path):
         """Translate a path received from a network client into a local
         relpath.
@@ -137,6 +176,8 @@ class SmartServerRequest(object):
             return client_path
         if not client_path.startswith('/'):
             client_path = '/' + client_path
+        if client_path + '/' == self._root_client_path:
+            return '.'
         if client_path.startswith(self._root_client_path):
             path = client_path[len(self._root_client_path):]
             relpath = urlutils.joinpath('/', path)
@@ -277,7 +318,11 @@ class SmartServerRequestHandler(object):
         # XXX: most of this error conversion is VFS-related, and thus ought to
         # be in SmartServerVFSRequestHandler somewhere.
         try:
-            return callable(*args, **kwargs)
+            self._command.setup_jail()
+            try:
+                return callable(*args, **kwargs)
+            finally:
+                self._command.teardown_jail()
         except (KeyboardInterrupt, SystemExit):
             raise
         except Exception, err:
@@ -405,16 +450,21 @@ request_handlers.register_lazy(
     'Branch.last_revision_info', 'bzrlib.smart.branch', 'SmartServerBranchRequestLastRevisionInfo')
 request_handlers.register_lazy(
     'Branch.lock_write', 'bzrlib.smart.branch', 'SmartServerBranchRequestLockWrite')
-request_handlers.register_lazy(
-    'Branch.revision_history', 'bzrlib.smart.branch', 'SmartServerRequestRevisionHistory')
-request_handlers.register_lazy(
-    'Branch.set_last_revision', 'bzrlib.smart.branch', 'SmartServerBranchRequestSetLastRevision')
+request_handlers.register_lazy( 'Branch.revision_history',
+    'bzrlib.smart.branch', 'SmartServerRequestRevisionHistory')
+request_handlers.register_lazy( 'Branch.set_config_option',
+    'bzrlib.smart.branch', 'SmartServerBranchRequestSetConfigOption')
+request_handlers.register_lazy( 'Branch.set_last_revision',
+    'bzrlib.smart.branch', 'SmartServerBranchRequestSetLastRevision')
 request_handlers.register_lazy(
     'Branch.set_last_revision_info', 'bzrlib.smart.branch',
     'SmartServerBranchRequestSetLastRevisionInfo')
 request_handlers.register_lazy(
     'Branch.set_last_revision_ex', 'bzrlib.smart.branch',
     'SmartServerBranchRequestSetLastRevisionEx')
+request_handlers.register_lazy(
+    'Branch.set_parent_location', 'bzrlib.smart.branch',
+    'SmartServerBranchRequestSetParentLocation')
 request_handlers.register_lazy(
     'Branch.unlock', 'bzrlib.smart.branch', 'SmartServerBranchRequestUnlock')
 request_handlers.register_lazy(
@@ -436,8 +486,16 @@ request_handlers.register_lazy(
     'BzrDir.find_repositoryV3', 'bzrlib.smart.bzrdir',
     'SmartServerRequestFindRepositoryV3')
 request_handlers.register_lazy(
+    'BzrDir.get_config_file', 'bzrlib.smart.bzrdir',
+    'SmartServerBzrDirRequestConfigFile')
+request_handlers.register_lazy(
     'BzrDirFormat.initialize', 'bzrlib.smart.bzrdir',
     'SmartServerRequestInitializeBzrDir')
+request_handlers.register_lazy(
+    'BzrDirFormat.initialize_ex', 'bzrlib.smart.bzrdir',
+    'SmartServerRequestBzrDirInitializeEx')
+request_handlers.register_lazy(
+    'BzrDir.open', 'bzrlib.smart.bzrdir', 'SmartServerRequestOpenBzrDir')
 request_handlers.register_lazy(
     'BzrDir.open_branch', 'bzrlib.smart.bzrdir',
     'SmartServerRequestOpenBranch')
@@ -508,5 +566,3 @@ request_handlers.register_lazy(
     'stat', 'bzrlib.smart.vfs', 'StatRequest')
 request_handlers.register_lazy(
     'Transport.is_readonly', 'bzrlib.smart.request', 'SmartServerIsReadonly')
-request_handlers.register_lazy(
-    'BzrDir.open', 'bzrlib.smart.bzrdir', 'SmartServerRequestOpenBzrDir')
