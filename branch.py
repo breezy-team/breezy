@@ -25,6 +25,7 @@ from dulwich.objects import (
 from bzrlib import (
     branch,
     config,
+    errors,
     foreign,
     repository,
     revision,
@@ -319,7 +320,7 @@ class InterGitGenericBranch(branch.InterBranch):
 
     def pull(self, overwrite=False, stop_revision=None,
              possible_transports=None, _hook_master=None, run_hooks=True,
-             _override_hook_target=None):
+             _override_hook_target=None, local=False):
         """See Branch.pull.
 
         :param _hook_master: Private parameter - set the branch to
@@ -330,6 +331,9 @@ class InterGitGenericBranch(branch.InterBranch):
         :param _override_hook_target: Private parameter - set the branch to be
             supplied as the target_branch to pull hooks.
         """
+        # This type of branch can't be bound.
+        if local:
+            raise errors.LocalRequiresBoundBranch()
         result = GitBranchPullResult()
         result.source_branch = self.source
         if _override_hook_target is None:
@@ -378,7 +382,10 @@ class InterGitRemoteLocalBranch(branch.InterBranch):
                 isinstance(target, LocalGitBranch))
 
     def pull(self, stop_revision=None, overwrite=False, 
-        possible_transports=None):
+        possible_transports=None, local=False):
+        # This type of branch can't be bound.
+        if local:
+            raise errors.LocalRequiresBoundBranch()
         result = GitPullResult()
         result.source_branch = self.source
         result.target_branch = self.target
