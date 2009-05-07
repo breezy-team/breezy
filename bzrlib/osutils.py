@@ -99,21 +99,19 @@ def minimum_path_selection(paths):
     :return: A set of paths sufficient to include everything in paths via
         is_inside, drawn from the paths parameter.
     """
-    search_paths = []
+    if len(paths) < 2:
+        return set(paths)
 
     def sort_key(path):
         return path.split('/')
     sorted_paths = sorted(list(paths), key=sort_key)
 
-    for path in sorted_paths:
-        if len(search_paths) == 0:
-            # Result is empty, add first path
-            search_paths.append(path)
-            continue
+    search_paths = [sorted_paths[0]]
+    for path in sorted_paths[1:]:
         if not is_inside(search_paths[-1], path):
             # This path is unique, add it
             search_paths.append(path)
-            continue
+
     return set(search_paths)
 
 

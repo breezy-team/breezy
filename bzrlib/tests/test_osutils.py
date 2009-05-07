@@ -789,6 +789,8 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
     def test_minimum_path_selection(self):
         self.assertEqual(set(),
             osutils.minimum_path_selection([]))
+        self.assertEqual(set(['a']),
+            osutils.minimum_path_selection(['a']))
         self.assertEqual(set(['a', 'b']),
             osutils.minimum_path_selection(['a', 'b']))
         self.assertEqual(set(['a/', 'b']),
