@@ -41,6 +41,13 @@ from bzrlib.plugins.git.shamap import (
     )
 
 
+def get_object_store(repo, mapping=None):
+    git = getattr(repo, "_git", None)
+    if git is not None:
+        return git.object_store
+    return BazaarObjectStore(repo, mapping)
+
+
 class BazaarObjectStore(object):
     """A Git-style object store backed onto a Bazaar repository."""
 

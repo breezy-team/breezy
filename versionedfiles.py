@@ -31,9 +31,6 @@ from bzrlib.versionedfile import (
     VersionedFiles,
     )
 
-from bzrlib.plugins.git.converter import (
-    BazaarObjectStore,
-    )
 
 class GitTexts(VersionedFiles):
     """A texts VersionedFiles instance that is backed onto a Git object store."""

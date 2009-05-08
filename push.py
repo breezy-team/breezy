@@ -212,7 +212,7 @@ class InterToRemoteGitRepository(InterToGitRepository):
     def dfetch_refs(self, new_refs):
         """Import the gist of the ancestry of a particular revision."""
         revidmap = {}
-        def get_changed_refs(refs):
+        def determine_wants(refs):
             ret = {}
             for name, revid in new_refs.iteritems():
                 ret[name] = store._lookup_revision_sha1(revid)
@@ -224,7 +224,7 @@ class InterToRemoteGitRepository(InterToGitRepository):
                 graphwalker = SimpleFetchGraphWalker(have, store.get_parents)
                 objfinder = MissingObjectFinder(store, want, graphwalker)
                 return store.iter_shas(iter(objfinder.next, None))
-            new_refs = self.target.send_pack(get_changed_refs, generate_blob_contents)
+            new_refs = self.target.send_pack(determine_wants, generate_blob_contents)
         finally:
             self.source.unlock()
         return revidmap, new_refs

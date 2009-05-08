@@ -137,22 +137,6 @@ class cmd_git_import(Command):
             pb.finished()
 
 
-def repo_get_object_store(repo):
-    from bzrlib.plugins.git.converter import (
-        BazaarObjectStore,
-        )
-    from bzrlib.plugins.git.mapping import (
-        default_mapping,
-        )
-    from bzrlib.plugins.git.repository import (
-        GitRepository,
-        )
-    if isinstance(repo, GitRepository):
-        return repo._git.object_store
-    else:
-        return BazaarObjectStore(repo, default_mapping)
-
-
 class cmd_git_object(Command):
     """List or display Git objects by SHA.
     
@@ -180,7 +164,10 @@ class cmd_git_object(Command):
             )
         bzrdir, _ = BzrDir.open_containing(directory)
         repo = bzrdir.find_repository()
-        object_store = repo_get_object_store(repo)
+        from bzrlib.plugins.git.object_store import (
+            get_object_store,
+            )
+        object_store = get_object_store(repo)
         repo.lock_read()
         try:
             if sha1 is not None:
