@@ -145,7 +145,7 @@ class GitBranch(ForeignBranch):
         if stop_revision is None:
             stop_revision = source.last_revision()
         # FIXME: Check for diverged branches
-        refs = { "HEAD": stop_revision }
+        refs = { "refs/heads/master": stop_revision }
         for name, revid in source.tags.get_tag_dict().iteritems():
             if source.repository.has_revision(revid):
                 refs["refs/tags/%s" % name] = revid

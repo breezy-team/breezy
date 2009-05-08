@@ -64,6 +64,9 @@ class GitCommitBuilder(CommitBuilder):
                 if kind[0] in ("file", "symlink"):
                     self.record_delete(path[0], file_id)
                 continue
+            if path[1] is None:
+                self.record_delete(path[0], file_id)
+                continue
             if kind == "file":
                 mode = stat.S_IFREG
                 sha = text_sha1(path[1], file_id)
@@ -72,7 +75,7 @@ class GitCommitBuilder(CommitBuilder):
                 sha = link_sha1(path[1], file_id)
             if executable:
                 mode |= 0111
-            self._blobs[path[1].encode("utf-8")] = (mode, sha))
+            self._blobs[path[1].encode("utf-8")] = (mode, sha)
             yield file_id, path, (None, None)
         # FIXME: Import all blobs not set yet, and eliminate blobs set to None
 

@@ -224,8 +224,9 @@ class InterToRemoteGitRepository(InterToGitRepository):
                 graphwalker = SimpleFetchGraphWalker(want, store.get_parents)
                 for h in have:
                     graphwalker.ack(h)
-                return store.find_missing_objects(want, graphwalker)
-            new_refs = self.target.send_pack(determine_wants, generate_blob_contents)
+                return store.iter_shas(store.find_missing_objects(want, graphwalker))
+            new_refs = self.target.send_pack(determine_wants,
+                    generate_blob_contents)
         finally:
             self.source.unlock()
         return revidmap, new_refs

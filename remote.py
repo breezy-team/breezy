@@ -112,7 +112,7 @@ class GitSmartTransport(Transport):
     def send_pack(self, get_changed_refs, generate_pack_contents):
         client = self._get_client()
         try:
-            client.send_pack(self._path, get_changed_refs, 
+            return client.send_pack(self._path, get_changed_refs, 
                 generate_pack_contents)
         except GitProtocolError, e:
             raise BzrError(e)
@@ -244,7 +244,7 @@ class RemoteGitRepository(GitRepository):
                                           pack_data, progress)
 
     def send_pack(self, get_changed_refs, generate_pack_contents):
-        self._transport.send_pack(get_changed_refs, generate_pack_contents)
+        return self._transport.send_pack(get_changed_refs, generate_pack_contents)
 
     def fetch_objects(self, determine_wants, graph_walker, resolve_ext_ref, progress=None):
         fd, path = tempfile.mkstemp(suffix=".pack")
