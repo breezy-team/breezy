@@ -53,7 +53,11 @@ def test_suite():
 
     loader = TestUtil.TestLoader()
     suite = TestSuite()
-    testmod_names = ['test_blackbox', 'test_rebase', 'test_maptree']
+    testmod_names = [
+        'test_blackbox',
+        'test_maptree',
+        'test_rebase',
+        'test_upgrade']
     suite.addTest(loader.loadTestsFromModuleNames(
                               ["%s.%s" % (__name__, i) for i in testmod_names]))
 

@@ -35,6 +35,7 @@ from rebase import (marshall_rebase_plan, unmarshall_rebase_plan,
 
 
 class RebasePlanReadWriterTests(TestCase):
+
     def test_simple_marshall_rebase_plan(self):
         self.assertEqualDiff(
 """# Bazaar rebase plan 1
@@ -60,6 +61,7 @@ oldrev newrev newparent1 newparent2
 
 
 class ConversionTests(TestCaseWithTransport):
+
     def test_simple(self):
         wt = self.make_branch_and_tree('.')
         b = wt.branch
@@ -239,6 +241,7 @@ class PlanCreatorTests(TestCaseWithTransport):
  
 
 class PlanFileTests(TestCaseWithTransport):
+
    def test_rebase_plan_exists_false(self):
         wt = self.make_branch_and_tree('.')
         self.assertFalse(rebase_plan_exists(wt))
@@ -297,6 +300,7 @@ oldrev newrev newparent1 newparent2
 
 
 class CurrentRevidFileTests(TestCaseWithTransport):
+
     def test_read_nonexistant(self):
         wt = self.make_branch_and_tree('.')
         self.assertIs(None, read_active_rebase_revid(wt))
@@ -323,6 +327,7 @@ class CurrentRevidFileTests(TestCaseWithTransport):
 
 
 class RebaseTodoTests(TestCase):
+
     def test_done(self):
         class Repository:
             def has_revision(self, revid):
@@ -655,7 +660,9 @@ class TestReplayParentsInconsistent(TestCase):
 
 
 class ReplayDetermineBaseTests(TestCase):
+
     def setUp(self):
+        TestCase.setUp(self)
         self.graph = Graph(self)
 
     def get_parent_map(self, keys):
