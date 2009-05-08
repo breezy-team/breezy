@@ -18,16 +18,17 @@
 """Support for committing in native Git working trees."""
 
 
+from dulwich.index import (
+    commit_tree,
+    )
 import stat
 
-from bzrlib import (
-    osutils,
-    )
 from bzrlib.repository import (
     CommitBuilder,
     )
 
 from dulwich.objects import (
+    Blob,
     Commit,
     Tree,
     )
@@ -37,41 +38,26 @@ class GitCommitBuilder(CommitBuilder):
 
     def __init__(self, *args, **kwargs):
         super(GitCommitBuilder, self).__init__(*args, **kwargs)
-        self._trees = {}
-
-    def _new_tree(self, path):
-        newtree = Tree()
-        # FIXME: Inherit children from the base revision
-        self._trees[path] = newtree
-        return newtree
-
-    def _add_tree(self, path):
-        if path in self._trees:
-            return self._trees[path]
-        if path == "":
-            return self._new_tree("")
-        dirname, basename = osutils.split(path)
-        t = self._add_tree(dirname)
-        assert isinstance(basename, str)
-        if not basename in t:
-            newtree = self._new_tree(path)
-            t[basename] = (stat.S_IFDIR, newtree.id)
-            return newtree
-        else:
-            return self.repository._git.object_store[t[basename][1]]
-
-    def _change_blob(self, path, value):
-        assert isinstance(path, str)
-        dirname, basename = osutils.split(path)
-        t = self._add_tree(dirname)
-        t[basename] = value
+        self._blobs = {}
 
     def record_delete(self, path, file_id):
-        dirname, basename = osutils.split(path)
-        t = self._add_tree(dirname)
-        del t[basename]
+        self._blobs[path] = None
 
     def record_iter_changes(self, workingtree, basis_revid, iter_changes):
+        index = getattr(workingtree, "index", None)
+        if index is not None:
+            def index_sha1(path, file_id):
+                return index.get_sha1(path.encode("utf-8"))
+            text_sha1 = link_sha1 = index_sha1
+        else:
+            def link_sha1(path, file_id):
+                blob = Blob()
+                blob.data = workingtree.get_symlink_target(file_id)
+                return blob.id
+            def text_sha1(path, file_id):
+                blob = Blob()
+                blob.data = workingtree.get_file_text(file_id, path)
+                return blob.id
         for (file_id, path, changed_content, versioned, parent, name, kind, 
              executable) in iter_changes:
             if kind[1] in ("directory",):
@@ -80,21 +66,19 @@ class GitCommitBuilder(CommitBuilder):
                 continue
             if kind == "file":
                 mode = stat.S_IFREG
+                sha = text_sha1(path[1], file_id)
             else:
                 mode = stat.S_IFLNK
+                sha = link_sha1(path[1], file_id)
             if executable:
                 mode |= 0111
-            self._change_blob(path[1].encode("utf-8"), (mode, workingtree.index.get_sha1(path[1].encode("utf-8"))))
+            self._blobs[path[1].encode("utf-8")] = (mode, sha))
             yield file_id, path, (None, None)
+        # FIXME: Import all blobs not set yet, and eliminate blobs set to None
 
     def commit(self, message):
-        # FIXME: Eliminate any empty trees recursively
-        # Write any tree objects to disk
-        for path in sorted(self._trees.keys(), reverse=True):
-            self.repository._git.object_store.add_object(self._trees[path])
         c = Commit()
-        root_tree = self._add_tree("")
-        c.tree = root_tree.id 
+        c.tree = commit_tree(self.repository._git.object_store, self._blobs)
         c.committer = self._committer
         c.author = self._revprops.get('author', self._committer)
         c.commit_timestamp = self._timestamp
@@ -103,3 +87,4 @@ class GitCommitBuilder(CommitBuilder):
         c.author_timezone = self._timezone
         c.message = message.encode("utf-8")
         self.repository._git.object_store.add_object(c)
+        return self.repository.mapping.revision_id_foreign_to_bzr(c.id)
