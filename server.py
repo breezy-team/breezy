@@ -32,6 +32,9 @@ from bzrlib.repository import (
     Repository,
     )
 
+from bzrlib.plugins.git.converter import (
+    BazaarObjectStore,
+    )
 from bzrlib.plugins.git.fetch import (
     import_git_objects,
     )
@@ -76,17 +79,11 @@ class BzrBackend(Backend):
         for branch in repo.find_branches(using=True):
             #FIXME: Look for 'master' or 'trunk' in here, and set HEAD accordingly...
             #FIXME: Need to get branch path relative to its repository and use this instead of nick
-            rev = self.mapping.revision_id_bzr_to_foreign(branch.last_revision())
-            if type(rev) == tuple:
-                ret["refs/heads/"+branch.nick] = rev[0]
-            else:
-                ret["refs/heads/"+branch.nick] = rev
+            rev, mapping = self.mapping.revision_id_bzr_to_foreign(branch.last_revision())
+            ret["refs/heads/"+branch.nick] = rev
         if 'HEAD' not in ret and branch:
-            rev = self.mapping.revision_id_bzr_to_foreign(branch.last_revision())
-            if type(rev) == tuple:
-                ret['HEAD'] = rev[0]
-            else:
-                ret['HEAD'] = rev
+            rev, mapping = self.mapping.revision_id_bzr_to_foreign(branch.last_revision())
+            ret['HEAD'] = rev
         return ret
 
     def apply_pack(self, refs, read):
@@ -142,6 +139,7 @@ class BzrBackend(Backend):
         # If this is a Git repository, just use the existing fetch_objects implementation.
         if getattr(repo, "fetch_objects", None) is not None:
             return repo.fetch_objects(determine_wants, graph_walker, None, progress)
+        store = BazaarObjectStore(repo)
 
         wants = determine_wants(self.get_refs())
         commits_to_send = set([self.mapping.revision_id_foreign_to_bzr(w) for w in wants])
@@ -174,7 +172,7 @@ class BzrBackend(Backend):
                         obj_sent.add(sha)
                         objects.add((obj, path))
 
-                objects.add((revision_to_commit(rev, sha, self.mapping.revision_id_bzr_to_foreign), None))
+                objects.add((revision_to_commit(rev, sha, store._lookup_revision_sha1), None))
 
         finally:
             repo.unlock()

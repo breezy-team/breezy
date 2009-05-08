@@ -160,6 +160,7 @@ class BazaarObjectStore(object):
         return self[sha].parents
 
     def _lookup_revision_sha1(self, revid):
+        """Return the SHA1 matching a Bazaar revision."""
         try:
             return self._idmap._parent_lookup(revid)
         except KeyError:
