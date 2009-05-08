@@ -59,10 +59,6 @@ from dulwich.objects import (
     Tree,
     )
 
-S_IFGITLINK = 0160000
-
-#S_IFREG | 0664 # *Might* see this; would fail fsck --strict
-
 
 class BzrBackend(Backend):
 
@@ -145,7 +141,6 @@ class BzrBackend(Backend):
         commits_to_send = set([self.mapping.revision_id_foreign_to_bzr(w) for w in wants])
         rev_done = set()
         obj_sent = set()
-
         objects = set()
 
         repo.lock_read()
