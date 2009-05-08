@@ -670,23 +670,29 @@ class TestLockDir(TestCaseWithTransport):
         # no kibble
         check_dir(['held'])
 
+
+class TestLockDirHooks(TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestLockDirHooks, self).setUp()
+        self._calls = []
+        self._old_hooks = lock.Lock.hooks
+
+        def restore():
+            lock.Lock.hooks = self._old_hooks
+        self.addCleanup(restore)
+        lock.Lock.hooks = lock.LockHooks()
+
+    def get_lock(self):
+        return LockDir(self.get_transport(), 'test_lock')
+
     def record_hook(self, result):
         self._calls.append(result)
 
-    def reset_hooks(self):
-        self._old_hooks = lock.Lock.hooks
-        self.addCleanup(self.restore_hooks)
-        lock.Lock.hooks = lock.LockHooks()
-
-    def restore_hooks(self):
-        lock.Lock.hooks = self._old_hooks
-
     def test_LockDir_acquired_success(self):
         # the LockDir.lock_acquired hook fires when a lock is acquired.
-        self._calls = []
-        self.reset_hooks()
         LockDir.hooks.install_named_hook('lock_acquired',
-            self.record_hook, 'record_hook')
+                                         self.record_hook, 'record_hook')
         ld = self.get_lock()
         ld.create()
         self.assertEqual([], self._calls)
@@ -698,15 +704,13 @@ class TestLockDir(TestCaseWithTransport):
 
     def test_LockDir_acquired_fail(self):
         # the LockDir.lock_acquired hook does not fire on failure.
-        self._calls = []
-        self.reset_hooks()
         ld = self.get_lock()
         ld.create()
         ld2 = self.get_lock()
         ld2.attempt_lock()
         # install a lock hook now, when the disk lock is locked
         LockDir.hooks.install_named_hook('lock_acquired',
-            self.record_hook, 'record_hook')
+                                         self.record_hook, 'record_hook')
         self.assertRaises(errors.LockContention, ld.attempt_lock)
         self.assertEqual([], self._calls)
         ld2.unlock()
@@ -714,10 +718,8 @@ class TestLockDir(TestCaseWithTransport):
 
     def test_LockDir_released_success(self):
         # the LockDir.lock_released hook fires when a lock is acquired.
-        self._calls = []
-        self.reset_hooks()
         LockDir.hooks.install_named_hook('lock_released',
-            self.record_hook, 'record_hook')
+                                         self.record_hook, 'record_hook')
         ld = self.get_lock()
         ld.create()
         self.assertEqual([], self._calls)
@@ -729,14 +731,39 @@ class TestLockDir(TestCaseWithTransport):
 
     def test_LockDir_released_fail(self):
         # the LockDir.lock_released hook does not fire on failure.
-        self._calls = []
-        self.reset_hooks()
         ld = self.get_lock()
         ld.create()
         ld2 = self.get_lock()
         ld.attempt_lock()
         ld2.force_break(ld2.peek())
         LockDir.hooks.install_named_hook('lock_released',
-            self.record_hook, 'record_hook')
+                                         self.record_hook, 'record_hook')
         self.assertRaises(LockBroken, ld.unlock)
+        self.assertEqual([], self._calls)
+
+    def test_LockDir_broken_success(self):
+        # the LockDir.lock_broken hook fires when a lock is broken.
+        ld = self.get_lock()
+        ld.create()
+        ld2 = self.get_lock()
+        result = ld.attempt_lock()
+        LockDir.hooks.install_named_hook('lock_broken',
+                                         self.record_hook, 'record_hook')
+        ld2.force_break(ld2.peek())
+        lock_path = ld.transport.abspath(ld.path)
+        self.assertEqual([lock.LockResult(lock_path, result)], self._calls)
+
+    def test_LockDir_broken_failure(self):
+        # the LockDir.lock_broken hook does not fires when a lock is already
+        # released.
+        ld = self.get_lock()
+        ld.create()
+        ld2 = self.get_lock()
+        result = ld.attempt_lock()
+        holder_info = ld2.peek()
+        ld.unlock()
+        LockDir.hooks.install_named_hook('lock_broken',
+                                         self.record_hook, 'record_hook')
+        ld2.force_break(holder_info)
+        lock_path = ld.transport.abspath(ld.path)
         self.assertEqual([], self._calls)
