@@ -104,7 +104,7 @@ class GitSmartTransport(Transport):
                 info("git: %s" % text)
         client = self._get_client()
         try:
-            client.fetch_pack(self._path, determine_wants, 
+            return client.fetch_pack(self._path, determine_wants, 
                 graph_walker, pack_data, progress)
         except GitProtocolError, e:
             raise BzrError(e)
@@ -234,17 +234,14 @@ class RemoteGitRepository(GitRepository):
     def get_refs(self):
         if self._refs is not None:
             return self._refs
-        def determine_wants(heads):
-            self._refs = heads
-            return []
-        self.bzrdir.root_transport.fetch_pack(determine_wants, None, 
+        self._refs = self.bzrdir.root_transport.fetch_pack(lambda x: [], None, 
             lambda x: None, lambda x: mutter("git: %s" % x))
         return self._refs
 
     def fetch_pack(self, determine_wants, graph_walker, pack_data, 
                    progress=None):
-        self._transport.fetch_pack(determine_wants, graph_walker, pack_data, 
-            progress)
+        return self._transport.fetch_pack(determine_wants, graph_walker,
+                                          pack_data, progress)
 
     def send_pack(self, get_changed_refs, generate_pack_contents):
         self._transport.send_pack(get_changed_refs, generate_pack_contents)

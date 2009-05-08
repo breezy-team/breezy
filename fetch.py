@@ -64,13 +64,13 @@ from bzrlib.versionedfile import (
     FulltextContentFactory,
     )
 
-from bzrlib.plugins.git.converter import (
-    BazaarObjectStore,
-    )
 from bzrlib.plugins.git.mapping import (
     DEFAULT_FILE_MODE,
     inventory_to_tree_and_blobs,
     text_to_blob,
+    )
+from bzrlib.plugins.git.object_store import (
+    BazaarObjectStore,
     )
 from bzrlib.plugins.git.remote import (
     RemoteGitRepository,
@@ -373,9 +373,7 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
     target_git_object_retriever._idmap.commit()
 
 
-class InterGitNonGitRepository(InterRepository):
-    """Base InterRepository that copies revisions from a Git into a non-Git 
-    repository."""
+class InterGitRepository(InterRepository):
 
     _matching_repo_format = GitRepositoryFormat()
 
@@ -391,6 +389,11 @@ class InterGitNonGitRepository(InterRepository):
             fetch_spec=None):
         self.fetch_refs(revision_id=revision_id, pb=pb, find_ghosts=find_ghosts,
                 mapping=mapping, fetch_spec=fetch_spec)
+
+
+class InterGitNonGitRepository(InterGitRepository):
+    """Base InterRepository that copies revisions from a Git into a non-Git 
+    repository."""
 
     def fetch_refs(self, revision_id=None, pb=None, find_ghosts=False, 
               mapping=None, fetch_spec=None):
@@ -498,21 +501,11 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
                 not isinstance(target, GitRepository))
 
 
-class InterGitRepository(InterRepository):
+class InterGitGitRepository(InterGitRepository):
     """InterRepository that copies between Git repositories."""
 
-    _matching_repo_format = GitRepositoryFormat()
-
-    @staticmethod
-    def _get_repo_format_to_test():
-        return None
-
-    def copy_content(self, revision_id=None, pb=None):
-        """See InterRepository.copy_content."""
-        self.fetch(revision_id, pb, find_ghosts=False)
-
-    def fetch(self, revision_id=None, pb=None, find_ghosts=False, 
-              mapping=None, fetch_spec=None):
+    def fetch_refs(self, revision_id=None, pb=None, find_ghosts=False, 
+              mapping=None, fetch_spec=None, branches=None):
         if mapping is None:
             mapping = self.source.get_mapping()
         def progress(text):
@@ -522,7 +515,9 @@ class InterGitRepository(InterRepository):
             args = [mapping.revision_id_bzr_to_foreign(revision_id)[0]]
         elif fetch_spec is not None:
             args = [mapping.revision_id_bzr_to_foreign(revid)[0] for revid in fetch_spec.heads]
-        if fetch_spec is None and revision_id is None:
+        if branches is not None:
+            determine_wants = lambda x: [x[y] for y in branches if not x[y] in r.object_store]
+        elif fetch_spec is None and revision_id is None:
             determine_wants = r.object_store.determine_wants_all
         else:
             determine_wants = lambda x: [y for y in args if not y in r.object_store]
@@ -530,8 +525,10 @@ class InterGitRepository(InterRepository):
         graphwalker = SimpleFetchGraphWalker(r.heads().values(), r.get_parents)
         f, commit = r.object_store.add_thin_pack()
         try:
-            self.source.fetch_pack(determine_wants, graphwalker, f.write, progress)
+            refs = self.source.fetch_pack(determine_wants, graphwalker,
+                                          f.write, progress)
             commit()
+            return refs
         except:
             f.close()
             raise

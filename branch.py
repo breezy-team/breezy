@@ -145,7 +145,7 @@ class GitBranch(ForeignBranch):
         if stop_revision is None:
             stop_revision = source.last_revision()
         # FIXME: Check for diverged branches
-        refs = { "refs/heads/master": stop_revision }
+        refs = { "HEAD": stop_revision }
         for name, revid in source.tags.get_tag_dict().iteritems():
             if source.repository.has_revision(revid):
                 refs["refs/tags/%s" % name] = revid
@@ -163,6 +163,7 @@ class GitBranch(ForeignBranch):
     def _set_head(self, head):
         self.head = head
         self.repository._git.set_ref(self.name, self.head)
+        self._clear_cached_state()
 
     def lock_write(self):
         self.control_files.lock_write()
@@ -393,8 +394,10 @@ class InterGitRemoteLocalBranch(branch.InterBranch):
             self.target.repository)
         result.old_revid = self.target.last_revision()
         if stop_revision is None:
-            stop_revision = self.source.last_revision()
-        interrepo.fetch(revision_id=stop_revision)
+            refs = interrepo.fetch_refs(branches=["HEAD"])
+            stop_revision = self.target.mapping.revision_id_foreign_to_bzr(refs["HEAD"])
+        else:
+            refs = interrepo.fetch_refs(revision_id=stop_revision)
         self.target.generate_revision_history(stop_revision, result.old_revid)
         result.new_revid = self.target.last_revision()
         return result

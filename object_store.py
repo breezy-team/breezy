@@ -223,5 +223,5 @@ class BazaarObjectStore(object):
             raise AssertionError("Unknown object type '%s'" % type)
 
     def find_missing_objects(self, wants, graphwalker, progress=None):
-        objfinder = MissingObjectFinder(self, want, graphwalker)
+        objfinder = MissingObjectFinder(self, wants, graphwalker)
         return self.iter_shas(iter(objfinder.next, None))

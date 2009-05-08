@@ -33,11 +33,11 @@ from bzrlib.revision import (
     NULL_REVISION,
     )
 
-from bzrlib.plugins.git.converter import (
-    BazaarObjectStore,
-    )
 from bzrlib.plugins.git.errors import (
     NoPushSupport,
+    )
+from bzrlib.plugins.git.object_store import (
+    BazaarObjectStore,
     )
 from bzrlib.plugins.git.repository import (
     GitRepository,
@@ -221,7 +221,9 @@ class InterToRemoteGitRepository(InterToGitRepository):
         try:
             store = BazaarObjectStore(self.source, self.mapping)
             def generate_blob_contents(have, want):
-                graphwalker = SimpleFetchGraphWalker(have, store.get_parents)
+                graphwalker = SimpleFetchGraphWalker(want, store.get_parents)
+                for h in have:
+                    graphwalker.ack(h)
                 return store.find_missing_objects(want, graphwalker)
             new_refs = self.target.send_pack(determine_wants, generate_blob_contents)
         finally:

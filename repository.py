@@ -80,7 +80,7 @@ class GitRepository(ForeignRepository):
         from bzrlib.plugins.git import fetch, push
         for optimiser in [fetch.InterRemoteGitNonGitRepository, 
                           fetch.InterLocalGitNonGitRepository,
-                          fetch.InterGitRepository,
+                          fetch.InterGitGitRepository,
                           push.InterToLocalGitRepository,
                           push.InterToRemoteGitRepository]:
             repository.InterRepository.register_optimiser(optimiser)

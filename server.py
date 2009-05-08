@@ -32,9 +32,6 @@ from bzrlib.repository import (
     Repository,
     )
 
-from bzrlib.plugins.git.converter import (
-    BazaarObjectStore,
-    )
 from bzrlib.plugins.git.fetch import (
     import_git_objects,
     )
@@ -42,6 +39,9 @@ from bzrlib.plugins.git.mapping import (
     default_mapping,
     inventory_to_tree_and_blobs,
     revision_to_commit,
+    )
+from bzrlib.plugins.git.object_store import (
+    BazaarObjectStore,
     )
 
 from dulwich.server import (
