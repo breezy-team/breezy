@@ -163,7 +163,9 @@ class GCPack(NewPack):
         have deltas based on a fallback repository.
         (See <https://bugs.launchpad.net/bzr/+bug/288751>)
         """
-        # Groupcompress packs don't have any external references
+        # Groupcompress packs don't have any external references, arguably CHK
+        # pages have external references, but we cannot 'cheaply' determine
+        # them without actually walking all of the chk pages.
 
 
 class GCCHKPacker(Packer):
@@ -843,12 +845,6 @@ class CHKInventoryRepository(KnitPackRepository):
             return GroupCHKStreamSource(self, to_format)
         return super(CHKInventoryRepository, self)._get_source(to_format)
 
-    def suspend_write_group(self):
-        raise errors.UnsuspendableWriteGroup(self)
-
-    def _resume_write_group(self, tokens):
-        raise errors.UnsuspendableWriteGroup(self)
-
 
 class GroupCHKStreamSource(repository.StreamSource):
     """Used when both the source and target repo are GroupCHK repos."""
@@ -955,6 +951,7 @@ class RepositoryFormatCHK1(RepositoryFormatPack):
     """A hashed CHK+group compress pack repository."""
 
     repository_class = CHKInventoryRepository
+    supports_external_lookups = True
     supports_chks = True
     # For right now, setting this to True gives us InterModel1And2 rather
     # than InterDifferingSerializer

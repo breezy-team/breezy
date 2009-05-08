@@ -1439,7 +1439,7 @@ class Repository(object):
             return set()
         if not self.is_in_write_group():
             raise AssertionError('not in a write group')
-                
+
         # XXX: We assume that every added revision already has its
         # corresponding inventory, so we only check for parent inventories that
         # might be missing, rather than all inventories.

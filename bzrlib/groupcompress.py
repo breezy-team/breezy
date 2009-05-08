@@ -1664,6 +1664,35 @@ class _GCGraphIndex(object):
                 result[node[1]] = None
         return result
 
+    def get_missing_parents(self):
+        # This is called by
+        # repository.StreamSink.get_missing_parent_inventories
+    # This is the knit.py implementation, which seems to have a flag at
+    # *creation* to track things that are missing...
+    ## def get_missing_parents(self):
+    ##     """Return the keys of missing parents."""
+    ##     # We may have false positives, so filter those out.
+    ##     self._external_parent_refs.difference_update(
+    ##         self.get_parent_map(self._external_parent_refs))
+    ##     return frozenset(self._external_parent_refs)
+        missing_parents = set()
+        if not self._parents:
+            # No parents to be missing
+            return missing_parents
+        present_keys = set()
+        for _, key, _, ref_lists in self._graph_index.iter_all_entries():
+            missing_parents.update(ref_lists[0])
+            present_keys.add(key)
+        # XXX: This function is *not* exercised very thoroughly in the test
+        #      suite. At least not by per_repository_reference tests. (Which
+        #      are all the repos that support stacking...)
+        #      Tracing here, I have many tests that have 0 entries for both,
+        #      and I haven't found *any* that have parent_entries, much less a
+        #      genuine missing parent entry.
+        # if missing_parents or present_keys:
+        #     import pdb; pdb.set_trace()
+        return missing_parents.difference(present_keys)
+
     def get_build_details(self, keys):
         """Get the various build details for keys.
 
