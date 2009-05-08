@@ -368,7 +368,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         """
         tree = self.make_branch_and_memory_tree('tree')
         tree.lock_write()
-        self.addCleanup(tree.branch.repository.unlock)
+        self.addCleanup(tree.unlock)
         tree.add([''], ['root-id'])
         tree.commit('one', rev_id='rev-1')
         tree.commit('two', rev_id='rev-2')
@@ -385,7 +385,6 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         collection.reset()
         repo.refresh_data()
         vf = tree.branch.repository.revisions
-        del tree
         # Set up a reload() function that switches to using the new pack file
         new_index = new_pack.revision_index
         access_tuple = new_pack.access_tuple()
