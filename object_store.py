@@ -21,7 +21,7 @@ from dulwich.objects import (
     Tree,
     )
 from dulwich.object_store import (
-    MissingObjectFinder,
+    BaseObjectStore,
     ObjectStoreIterator,
     )
 import stat
@@ -49,7 +49,7 @@ def get_object_store(repo, mapping=None):
     return BazaarObjectStore(repo, mapping)
 
 
-class BazaarObjectStore(object):
+class BazaarObjectStore(BaseObjectStore):
     """A Git-style object store backed onto a Bazaar repository."""
 
     def __init__(self, repository, mapping=None):
@@ -59,9 +59,6 @@ class BazaarObjectStore(object):
         else:
             self.mapping = mapping
         self._idmap = SqliteGitShaMap.from_repository(repository)
-
-    def iter_shas(self, shas):
-        return ObjectStoreIterator(self, shas)
 
     def _update_sha_map(self, stop_revision=None):
         if stop_revision is None:
@@ -221,7 +218,3 @@ class BazaarObjectStore(object):
             return self._get_tree(type_data[0], type_data[1], expected_sha=sha)
         else:
             raise AssertionError("Unknown object type '%s'" % type)
-
-    def find_missing_objects(self, wants, graphwalker, progress=None):
-        objfinder = MissingObjectFinder(self, wants, graphwalker)
-        return self.iter_shas(iter(objfinder.next, None))
