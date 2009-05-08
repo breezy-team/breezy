@@ -1637,6 +1637,7 @@ class TestCase(unittest.TestCase):
             stdin=stdin,
             working_dir=working_dir,
             )
+        self.assertIsInstance(error_regexes, (list, tuple))
         for regex in error_regexes:
             self.assertContainsRe(err, regex)
         return out, err
