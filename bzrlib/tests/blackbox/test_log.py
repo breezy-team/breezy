@@ -32,7 +32,7 @@ class TestLog(tests.TestCaseWithTransport):
     def setUp(self):
         super(TestLog, self).setUp()
         self.timezone = 0 # UTC
-        self.timestamp =1132617600 # Mon 2005-11-22 00:00:00 +0000
+        self.timestamp = 1132617600 # Mon 2005-11-22 00:00:00 +0000
 
     def make_minimal_branch(self, path='.', format=None):
         tree = self.make_branch_and_tree(path, format=format)
@@ -72,7 +72,6 @@ class TestLog(tests.TestCaseWithTransport):
         self.assertEqualDiff(expected, test_log.normalize_log(out))
 
 
-
 class TestLogRevSpecs(TestLog):
 
     def test_log_null_end_revspec(self):
@@ -103,17 +102,17 @@ class TestLogRevSpecs(TestLog):
 
     def test_log_zero_revspec(self):
         self.make_minimal_branch()
-        self.run_bzr_error('bzr: ERROR: Logging revision 0 is invalid.',
+        self.run_bzr_error(['bzr: ERROR: Logging revision 0 is invalid.'],
                            ['log', '-r0'])
 
     def test_log_zero_begin_revspec(self):
         self.make_linear_branch()
-        self.run_bzr_error('bzr: ERROR: Logging revision 0 is invalid.',
+        self.run_bzr_error(['bzr: ERROR: Logging revision 0 is invalid.'],
                            ['log', '-r0..2'])
 
     def test_log_zero_end_revspec(self):
         self.make_linear_branch()
-        self.run_bzr_error('bzr: ERROR: Logging revision 0 is invalid.',
+        self.run_bzr_error(['bzr: ERROR: Logging revision 0 is invalid.'],
                            ['log', '-r-2..0'])
 
     def test_log_negative_begin_revspec_full_log(self):
@@ -171,15 +170,17 @@ class TestLogRevSpecs(TestLog):
 
     def test_log_nonexistent_revno(self):
         self.make_minimal_branch()
-        (out, err) = self.run_bzr_error(args="log -r 1234",
-            error_regexes=["bzr: ERROR: Requested revision: '1234' "
-                           "does not exist in branch:"])
+        (out, err) = self.run_bzr_error(
+            ["bzr: ERROR: Requested revision: '1234' "
+             "does not exist in branch:"],
+            ['log', '-r1234'])
 
     def test_log_nonexistent_dotted_revno(self):
         self.make_minimal_branch()
-        (out, err) = self.run_bzr_error(args="log -r 123.123",
-            error_regexes=["bzr: ERROR: Requested revision: '123.123' "
-                "does not exist in branch:"])
+        (out, err) = self.run_bzr_error(
+            ["bzr: ERROR: Requested revision: '123.123' "
+             "does not exist in branch:"],
+            ['log',  '-r123.123'])
 
     def test_log_change_revno(self):
         self.make_linear_branch()
@@ -189,25 +190,27 @@ class TestLogRevSpecs(TestLog):
 
     def test_log_change_nonexistent_revno(self):
         self.make_minimal_branch()
-        (out, err) = self.run_bzr_error(args="log -c 1234",
-            error_regexes=["bzr: ERROR: Requested revision: '1234' "
-                           "does not exist in branch:"])
+        (out, err) = self.run_bzr_error(
+            ["bzr: ERROR: Requested revision: '1234' "
+             "does not exist in branch:"],
+            ['log',  '-c1234'])
 
     def test_log_change_nonexistent_dotted_revno(self):
         self.make_minimal_branch()
-        (out, err) = self.run_bzr_error(args="log -c 123.123",
-            error_regexes=["bzr: ERROR: Requested revision: '123.123' "
-                           "does not exist in branch:"])
+        (out, err) = self.run_bzr_error(
+            ["bzr: ERROR: Requested revision: '123.123' "
+             "does not exist in branch:"],
+            ['log', '-c123.123'])
 
     def test_log_change_single_revno_only(self):
         self.make_minimal_branch()
-        self.run_bzr_error('bzr: ERROR: Option --change does not'
-                           ' accept revision ranges',
+        self.run_bzr_error(['bzr: ERROR: Option --change does not'
+                           ' accept revision ranges'],
                            ['log', '--change', '2..3'])
 
     def test_log_change_incompatible_with_revision(self):
-        self.run_bzr_error('bzr: ERROR: --revision and --change'
-                           ' are mutually exclusive',
+        self.run_bzr_error(['bzr: ERROR: --revision and --change'
+                           ' are mutually exclusive'],
                            ['log', '--change', '2', '--revision', '3'])
 
     def test_log_nonexistent_file(self):
@@ -291,8 +294,8 @@ class TestLogTimeZone(TestLog):
 
     def test_log_unsupported_timezone(self):
         self.make_linear_branch()
-        self.run_bzr_error('bzr: ERROR: Unsupported timezone format "foo", '
-                           'options are "utc", "original", "local".',
+        self.run_bzr_error(['bzr: ERROR: Unsupported timezone format "foo", '
+                            'options are "utc", "original", "local".'],
                            ['log', '--timezone', 'foo'])
 
 
@@ -537,8 +540,8 @@ message:
   merge branch level1
 diff:
 === modified file 'file2'
---- file2	2005-11-22 00:00:01 +0000
-+++ file2	2005-11-22 00:00:02 +0000
+--- file2\t2005-11-22 00:00:01 +0000
++++ file2\t2005-11-22 00:00:02 +0000
 @@ -1,1 +1,1 @@
 -contents of level0/file2
 +hello
@@ -551,8 +554,8 @@ diff:
       in branch level1
     diff:
     === modified file 'file2'
-    --- file2	2005-11-22 00:00:01 +0000
-    +++ file2	2005-11-22 00:00:02 +0000
+    --- file2\t2005-11-22 00:00:01 +0000
+    +++ file2\t2005-11-22 00:00:02 +0000
     @@ -1,1 +1,1 @@
     -contents of level0/file2
     +hello
@@ -565,14 +568,14 @@ message:
   in branch level0
 diff:
 === added file 'file1'
---- file1	1970-01-01 00:00:00 +0000
-+++ file1	2005-11-22 00:00:01 +0000
+--- file1\t1970-01-01 00:00:00 +0000
++++ file1\t2005-11-22 00:00:01 +0000
 @@ -0,0 +1,1 @@
 +contents of level0/file1
 
 === added file 'file2'
---- file2	1970-01-01 00:00:00 +0000
-+++ file2	2005-11-22 00:00:01 +0000
+--- file2\t1970-01-01 00:00:00 +0000
++++ file2\t2005-11-22 00:00:01 +0000
 @@ -0,0 +1,1 @@
 +contents of level0/file2
 """
@@ -583,8 +586,8 @@ diff:
     2 Lorem Ipsum\t2005-11-22 [merge]
       merge branch level1
       === modified file 'file2'
-      --- file2	2005-11-22 00:00:01 +0000
-      +++ file2	2005-11-22 00:00:02 +0000
+      --- file2\t2005-11-22 00:00:01 +0000
+      +++ file2\t2005-11-22 00:00:02 +0000
       @@ -1,1 +1,1 @@
       -contents of level0/file2
       +hello
@@ -592,14 +595,14 @@ diff:
     1 Lorem Ipsum\t2005-11-22
       in branch level0
       === added file 'file1'
-      --- file1	1970-01-01 00:00:00 +0000
-      +++ file1	2005-11-22 00:00:01 +0000
+      --- file1\t1970-01-01 00:00:00 +0000
+      +++ file1\t2005-11-22 00:00:01 +0000
       @@ -0,0 +1,1 @@
       +contents of level0/file1
 \x20\x20\x20\x20\x20\x20
       === added file 'file2'
-      --- file2	1970-01-01 00:00:00 +0000
-      +++ file2	2005-11-22 00:00:01 +0000
+      --- file2\t1970-01-01 00:00:00 +0000
+      +++ file2\t2005-11-22 00:00:01 +0000
       @@ -0,0 +1,1 @@
       +contents of level0/file2
 
@@ -621,8 +624,8 @@ Use --include-merges or -n0 to see merged revisions.
     1 Lorem Ipsum\t2005-11-22
       in branch level0
       === added file 'file1'
-      --- file1	1970-01-01 00:00:00 +0000
-      +++ file1	2005-11-22 00:00:01 +0000
+      --- file1\t1970-01-01 00:00:00 +0000
+      +++ file1\t2005-11-22 00:00:01 +0000
       @@ -0,0 +1,1 @@
       +contents of level0/file1
 
@@ -635,8 +638,8 @@ Use --include-merges or -n0 to see merged revisions.
     2 Lorem Ipsum\t2005-11-22 [merge]
       merge branch level1
       === modified file 'file2'
-      --- file2	2005-11-22 00:00:01 +0000
-      +++ file2	2005-11-22 00:00:02 +0000
+      --- file2\t2005-11-22 00:00:01 +0000
+      +++ file2\t2005-11-22 00:00:02 +0000
       @@ -1,1 +1,1 @@
       -contents of level0/file2
       +hello
@@ -644,8 +647,8 @@ Use --include-merges or -n0 to see merged revisions.
     1 Lorem Ipsum\t2005-11-22
       in branch level0
       === added file 'file2'
-      --- file2	1970-01-01 00:00:00 +0000
-      +++ file2	2005-11-22 00:00:01 +0000
+      --- file2\t1970-01-01 00:00:00 +0000
+      +++ file2\t2005-11-22 00:00:01 +0000
       @@ -0,0 +1,1 @@
       +contents of level0/file2
 

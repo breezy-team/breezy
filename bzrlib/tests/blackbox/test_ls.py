@@ -166,7 +166,7 @@ class TestLS(TestCaseWithTransport):
                        'V        ../subdir/\n'
                        'V        ../subdir/b\n' ,
                        '.. --verbose')
-        self.run_bzr_error('cannot specify both --from-root and PATH',
+        self.run_bzr_error(['cannot specify both --from-root and PATH'],
                            'ls --from-root ..')
 
     def test_ls_revision(self):
@@ -235,7 +235,7 @@ class TestLS(TestCaseWithTransport):
                        '--kind=directory')
         self.ls_equals('',
                        '--kind=symlink')
-        self.run_bzr_error('invalid kind specified', 'ls --kind=pile')
+        self.run_bzr_error(['invalid kind specified'], 'ls --kind=pile')
 
     def test_ls_path_nonrecursive(self):
         self.ls_equals('%s/.bzrignore\n'

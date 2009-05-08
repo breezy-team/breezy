@@ -50,7 +50,6 @@ class LogCatcher(log.LogFormatter):
     """
 
     supports_delta = True
-#    supports_merge_revisions = True
 
     def __init__(self):
         super(LogCatcher, self).__init__(to_file=None)
