@@ -290,6 +290,16 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         self._control_files.break_lock()
         self.branch.break_lock()
 
+    def _get_check_refs(self):
+        """Return the references needed to perform a check of this tree.
+        
+        The default implementation returns no refs, and is only suitable for
+        trees that have no local caching and can commit on ghosts at any time.
+
+        :seealso: bzrlib.check for details about check_refs.
+        """
+        return []
+
     def requires_rich_root(self):
         return self._format.requires_rich_root
 
@@ -2513,12 +2523,17 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         return un_resolved, resolved
 
     @needs_read_lock
-    def _check(self):
+    def _check(self, references):
+        """Check the tree for consistency.
+
+        :param references: A dict with keys matching the items returned by
+            self._get_check_refs(), and values from looking those keys up in
+            the repository.
+        """
         tree_basis = self.basis_tree()
         tree_basis.lock_read()
         try:
-            repo_basis = self.branch.repository.revision_tree(
-                self.last_revision())
+            repo_basis = references[('trees', self.last_revision())]
             if len(list(repo_basis.iter_changes(tree_basis))) > 0:
                 raise errors.BzrCheckError(
                     "Mismatched basis inventory content.")
@@ -2569,6 +2584,10 @@ class WorkingTree2(WorkingTree):
         # have a read lock.
         if self._inventory is None:
             self.read_working_inventory()
+
+    def _get_check_refs(self):
+        """Return the references needed to perform a check of this tree."""
+        return [('trees', self.last_revision())]
 
     def lock_tree_write(self):
         """See WorkingTree.lock_tree_write().
@@ -2631,6 +2650,10 @@ class WorkingTree3(WorkingTree):
             self._transport.put_bytes('last-revision', revision_id,
                 mode=self.bzrdir._get_file_mode())
             return True
+
+    def _get_check_refs(self):
+        """Return the references needed to perform a check of this tree."""
+        return [('trees', self.last_revision())]
 
     @needs_tree_write_lock
     def set_conflicts(self, conflicts):

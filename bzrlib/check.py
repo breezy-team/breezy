@@ -32,6 +32,16 @@
 # raising them.  If there's more than one exception it'd be good to see them
 # all.
 
+"""Checking of bzr objects.
+
+check_refs is a concept used for optimising check. Objects that depend on other
+objects (e.g. tree on repository) can list the objects they would be requesting
+so that when the dependent object is checked, matches can be pulled out and
+evaluated in-line rather than re-reading the same data many times.
+check_refs are tuples (kind, value). Currently defined kinds are:
+* 'trees', where value is a revid.
+"""
+
 from bzrlib import errors, osutils
 from bzrlib import repository as _mod_repository
 from bzrlib import revision
@@ -296,7 +306,20 @@ def check_dwim(path, verbose, do_branch=False, do_repo=False, do_tree=False):
         if tree is not None:
             note("Checking working tree at '%s'."
                  % (tree.bzrdir.root_transport.base,))
-            tree._check()
+            tree.lock_read()
+            try:
+                needed_refs = tree._get_check_refs()
+                refs = {}
+                for ref in needed_refs:
+                    kind, value = ref
+                    if kind == 'trees':
+                        refs[ref] = tree.branch.repository.revision_tree(value)
+                    else:
+                        raise AssertionError(
+                            'unknown ref kind for ref %s' % ref)
+                tree._check(refs)
+            finally:
+                tree.unlock()
         else:
             log_error("No working tree found at specified location.")
 

@@ -80,6 +80,9 @@ API Changes
   instead of ``InstallFailed`` when they detect a missing revision.
   ``InstallFailed`` itself has been deleted. (Jonathan Lange)
 
+* ``WorkingTree._check`` now requires a references dict with keys matching
+  those returned by ``WorkingTree._get_check_refs``. (Robert Collins)
+
 Internals
 *********
 
