@@ -268,10 +268,11 @@ class ResumedPack(ExistingPack):
 
     def __init__(self, name, revision_index, inventory_index, text_index,
         signature_index, upload_transport, pack_transport, index_transport,
-        pack_collection):
+        pack_collection, chk_index=None):
         """Create a ResumedPack object."""
         ExistingPack.__init__(self, pack_transport, name, revision_index,
-            inventory_index, text_index, signature_index)
+            inventory_index, text_index, signature_index,
+            chk_index=chk_index)
         self.upload_transport = upload_transport
         self.index_transport = index_transport
         self.index_sizes = [None, None, None, None]
@@ -281,6 +282,9 @@ class ResumedPack(ExistingPack):
             ('text', text_index),
             ('signature', signature_index),
             ]
+        if chk_index is not None:
+            indices.append(('chk', chk_index))
+            self.index_sizes.append(None)
         for index_type, index in indices:
             offset = self.index_offset(index_type)
             self.index_sizes[offset] = index._size
@@ -316,6 +320,11 @@ class ResumedPack(ExistingPack):
         self._state = 'finished'
 
     def _get_external_refs(self, index):
+        """Return compression parents for this index that are not present.
+
+        This returns any compression parents that are referenced by this index,
+        which are not contained *in* this index. They may be present elsewhere.
+        """
         return index.external_references(1)
 
 
@@ -1352,6 +1361,7 @@ class RepositoryPackCollection(object):
     """
 
     pack_factory = NewPack
+    resumed_pack_factory = ResumedPack
 
     def __init__(self, repo, transport, index_transport, upload_transport,
                  pack_transport, index_builder_class, index_class,
@@ -1680,9 +1690,14 @@ class RepositoryPackCollection(object):
             inv_index = self._make_index(name, '.iix', resume=True)
             txt_index = self._make_index(name, '.tix', resume=True)
             sig_index = self._make_index(name, '.six', resume=True)
-            result = ResumedPack(name, rev_index, inv_index, txt_index,
-                sig_index, self._upload_transport, self._pack_transport,
-                self._index_transport, self)
+            if self.chk_index is not None:
+                chk_index = self._make_index(name, '.cix', resume=True)
+            else:
+                chk_index = None
+            result = self.resumed_pack_factory(name, rev_index, inv_index,
+                txt_index, sig_index, self._upload_transport,
+                self._pack_transport, self._index_transport, self,
+                chk_index=chk_index)
         except errors.NoSuchFile, e:
             raise errors.UnresumableWriteGroup(self.repo, [name], str(e))
         self.add_pack_to_memory(result)
@@ -2393,6 +2408,7 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
     supports_ghosts = True
     # External references are not supported in pack repositories yet.
     supports_external_lookups = False
+    _deltas_across_repos = True
     # Most pack formats do not use chk lookups.
     supports_chks = False
     # What index classes to use

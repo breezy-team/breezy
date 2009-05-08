@@ -18,7 +18,14 @@
 
 import sys
 
-from bzrlib import bzrdir, errors, graph, memorytree, remote
+from bzrlib import (
+    bzrdir,
+    errors,
+    graph,
+    memorytree,
+    osutils,
+    remote,
+    )
 from bzrlib.branch import BzrBranchFormat7
 from bzrlib.inventory import InventoryDirectory
 from bzrlib.transport import local, memory
@@ -439,9 +446,34 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
             'more lines', same_repo.texts.get_record_stream([second_key],
                 'unordered', True).next().get_bytes_as('fulltext'))
 
+    def test_resume_chk_bytes(self):
+        self.require_suspendable_write_groups(
+            'Cannot test resume on repo that does not support suspending')
+        repo = self.make_write_locked_repo()
+        if repo.chk_bytes is None:
+            raise TestNotApplicable('no chk_bytes for this repository.')
+        repo.start_write_group()
+        # Add some content so this isn't an empty write group (which may return
+        # 0 tokens)
+        text = 'a bit of text\n'
+        key = ('sha1:' + osutils.sha_string(text),)
+        repo.chk_bytes.add_lines(key, (), [text])
+        wg_tokens = repo.suspend_write_group()
+        same_repo = self.reopen_repo(repo)
+        same_repo.resume_write_group(wg_tokens)
+        self.assertEqual([key], list(same_repo.chk_bytes.keys()))
+        self.assertEqual(
+            text, same_repo.chk_bytes.get_record_stream([key],
+                'unordered', True).next().get_bytes_as('fulltext'))
+        same_repo.abort_write_group()
+        self.assertEqual([], list(same_repo.chk_bytes.keys()))
+
     def make_source_with_delta_record(self):
         # Make a source repository with a delta record in it.
         source_repo = self.make_write_locked_repo('source')
+        if not source_repo._format._deltas_across_repos:
+            raise TestNotApplicable('%s cannot introduce deltas between repos.'
+                % (source_repo._format,))
         source_repo.start_write_group()
         key_base = ('file-id', 'base')
         key_delta = ('file-id', 'delta')

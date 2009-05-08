@@ -1744,6 +1744,23 @@ class _GCGraphIndex(object):
         delta_end = int(bits[3])
         return node[0], start, stop, basis_end, delta_end
 
+    def scan_unvalidated_index(self, graph_index):
+        """Inform this _GCGraphIndex that there is an unvalidated index.
+
+        This allows this _GCGraphIndex to keep track of any missing
+        compression parents we may want to have filled in to make those
+        indices valid.
+
+        :param graph_index: A GraphIndex
+        """
+        if False and self._external_parent_refs is not None:
+            # Add parent refs from graph_index (and discard parent refs that
+            # the graph_index has).
+            for node in graph_index.iter_all_entries():
+                self._external_parent_refs.update(node[3][0])
+                self._external_parent_refs.discard(node[1])
+
+
 
 from bzrlib._groupcompress_py import (
     apply_delta,

@@ -51,6 +51,7 @@ from bzrlib.repofmt.pack_repo import (
     PackRootCommitBuilder,
     RepositoryPackCollection,
     RepositoryFormatPack,
+    ResumedPack,
     Packer,
     )
 
@@ -166,6 +167,14 @@ class GCPack(NewPack):
         # Groupcompress packs don't have any external references, arguably CHK
         # pages have external references, but we cannot 'cheaply' determine
         # them without actually walking all of the chk pages.
+
+
+class ResumedGCPack(ResumedPack):
+
+    def _get_external_refs(self, index):
+        # GC repositories don't have compression parents external to a given
+        # pack file
+        return set()
 
 
 class GCCHKPacker(Packer):
@@ -542,6 +551,7 @@ class GCCHKReconcilePacker(GCCHKPacker):
 class GCRepositoryPackCollection(RepositoryPackCollection):
 
     pack_factory = GCPack
+    resumed_pack_factory = ResumedGCPack
 
     def _already_packed(self):
         """Is the collection already packed?"""
@@ -952,6 +962,7 @@ class RepositoryFormatCHK1(RepositoryFormatPack):
 
     repository_class = CHKInventoryRepository
     supports_external_lookups = True
+    _deltas_across_repos = False
     supports_chks = True
     # For right now, setting this to True gives us InterModel1And2 rather
     # than InterDifferingSerializer
