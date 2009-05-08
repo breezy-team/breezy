@@ -525,6 +525,12 @@ class TestGraph(TestCaseWithMemoryTransport):
         graph = self.make_graph(history_shortcut)
         self.assertEqual(set(['rev2b']), graph.find_lca('rev3a', 'rev3b'))
 
+    def test_lefthand_distance_smoke(self):
+        """A simple does it work test for graph.lefthand_distance(keys)."""
+        graph = self.make_graph(history_shortcut)
+        distance_graph = graph.find_lefthand_distances(['rev3b', 'rev2a'])
+        self.assertEqual({'rev2a': 2, 'rev3b': 3}, distance_graph)
+
     def test_recursive_unique_lca(self):
         """Test finding a unique least common ancestor.
 

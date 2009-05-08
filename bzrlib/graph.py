@@ -304,6 +304,21 @@ class Graph(object):
         # get there.
         return known_revnos[cur_tip] + num_steps
 
+    def find_lefthand_distances(self, keys):
+        """Find the distance to null for all the keys in keys.
+
+        :param keys: keys to lookup.
+        :return: A dict key->distance for all of keys.
+        """
+        # Optimisable by concurrent searching, but a random spread should get
+        # some sort of hit rate.
+        result = {}
+        known_revnos = []
+        for key in keys:
+            known_revnos.append(
+                (key, self.find_distance_to_null(key, known_revnos)))
+        return dict(known_revnos)
+
     def find_unique_ancestors(self, unique_revision, common_revisions):
         """Find the unique ancestors for a revision versus others.
 
