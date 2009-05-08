@@ -676,12 +676,6 @@ class TestLockDirHooks(TestCaseWithTransport):
     def setUp(self):
         super(TestLockDirHooks, self).setUp()
         self._calls = []
-        self._old_hooks = lock.Lock.hooks
-
-        def restore():
-            lock.Lock.hooks = self._old_hooks
-        self.addCleanup(restore)
-        lock.Lock.hooks = lock.LockHooks()
 
     def get_lock(self):
         return LockDir(self.get_transport(), 'test_lock')
