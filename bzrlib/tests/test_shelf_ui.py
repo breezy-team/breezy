@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 from cStringIO import StringIO
@@ -163,6 +163,20 @@ class TestShelver(tests.TestCaseWithTransport):
         shelver.expect('Shelve changing "foo" from file to directory? [yNfq?]',
                        'y')
         shelver.expect('Shelve 1 change(s)? [yNfq?]', 'y')
+
+    def test_shelve_modify_target(self):
+        tree = self.create_shelvable_tree()
+        os.symlink('bar', 'tree/baz')
+        tree.add('baz', 'baz-id')
+        tree.commit("Add symlink")
+        os.unlink('tree/baz')
+        os.symlink('vax', 'tree/baz')
+        shelver = ExpectShelver(tree, tree.basis_tree())
+        shelver.expect('Shelve changing target of "baz" from "bar" to '
+                '"vax"? [yNfq?]', 'y')
+        shelver.expect('Shelve 1 change(s)? [yNfq?]', 'y')
+        shelver.run()
+        self.assertEqual('bar', os.readlink('tree/baz'))
 
     def test_shelve_finish(self):
         tree = self.create_shelvable_tree()

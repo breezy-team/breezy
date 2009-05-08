@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import textwrap
 
@@ -282,3 +282,19 @@ class GenericBugTracker(URLParametrizedIntegerBugTracker):
 
 
 tracker_registry.register('generic', GenericBugTracker())
+
+
+FIXED = 'fixed'
+
+ALLOWED_BUG_STATUSES = set([FIXED])
+
+
+def encode_fixes_bug_urls(bug_urls):
+    """Get the revision property value for a commit that fixes bugs.
+
+    :param bug_urls: An iterable of escaped URLs to bugs. These normally
+        come from `get_bug_url`.
+    :return: A string that will be set as the 'bugs' property of a revision
+        as part of a commit.
+    """
+    return '\n'.join(('%s %s' % (url, FIXED)) for url in bug_urls)

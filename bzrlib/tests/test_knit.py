@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for Knit data structure"""
 
@@ -368,25 +368,23 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         """
         tree = self.make_branch_and_memory_tree('tree')
         tree.lock_write()
-        try:
-            tree.add([''], ['root-id'])
-            tree.commit('one', rev_id='rev-1')
-            tree.commit('two', rev_id='rev-2')
-            tree.commit('three', rev_id='rev-3')
-            # Pack these two revisions into another pack file, but don't remove
-            # the originials
-            repo = tree.branch.repository
-            collection = repo._pack_collection
-            collection.ensure_loaded()
-            orig_packs = collection.packs
-            packer = pack_repo.Packer(collection, orig_packs, '.testpack')
-            new_pack = packer.pack()
-
-            vf = tree.branch.repository.revisions
-        finally:
-            tree.unlock()
-        tree.branch.repository.lock_read()
         self.addCleanup(tree.branch.repository.unlock)
+        tree.add([''], ['root-id'])
+        tree.commit('one', rev_id='rev-1')
+        tree.commit('two', rev_id='rev-2')
+        tree.commit('three', rev_id='rev-3')
+        # Pack these three revisions into another pack file, but don't remove
+        # the originals
+        repo = tree.branch.repository
+        collection = repo._pack_collection
+        collection.ensure_loaded()
+        orig_packs = collection.packs
+        packer = pack_repo.Packer(collection, orig_packs, '.testpack')
+        new_pack = packer.pack()
+        # forget about the new pack
+        collection.reset()
+        repo.refresh_data()
+        vf = tree.branch.repository.revisions
         del tree
         # Set up a reload() function that switches to using the new pack file
         new_index = new_pack.revision_index
@@ -1639,6 +1637,14 @@ class TestGraphIndexKnit(KnitTests):
               ([('missing-parent', ), ('ghost', )], [('missing-parent', )]))])
         return graph_index
 
+    def make_g_index_missing_parent(self):
+        graph_index = self.make_g_index('missing_parent', 2,
+            [(('parent', ), ' 100 78', ([], [])),
+             (('tip', ), ' 100 78',
+              ([('parent', ), ('missing-parent', )], [('parent', )])),
+              ])
+        return graph_index
+
     def make_g_index_no_external_refs(self):
         graph_index = self.make_g_index('no_external_refs', 2,
             [(('rev', ), ' 100 78',
@@ -1652,7 +1658,7 @@ class TestGraphIndexKnit(KnitTests):
         index.scan_unvalidated_index(unvalidated)
         self.assertEqual(frozenset(), index.get_missing_compression_parents())
 
-    def test_add_incomplete_unvalidated_index(self):
+    def test_add_missing_compression_parent_unvalidated_index(self):
         unvalidated = self.make_g_index_missing_compression_parent()
         combined = CombinedGraphIndex([unvalidated])
         index = _KnitGraphIndex(combined, lambda: True, deltas=True)
@@ -1663,6 +1669,28 @@ class TestGraphIndexKnit(KnitTests):
         self.assertEqual(
             frozenset([('missing-parent',)]),
             index.get_missing_compression_parents())
+
+    def test_add_missing_noncompression_parent_unvalidated_index(self):
+        unvalidated = self.make_g_index_missing_parent()
+        combined = CombinedGraphIndex([unvalidated])
+        index = _KnitGraphIndex(combined, lambda: True, deltas=True,
+            track_external_parent_refs=True)
+        index.scan_unvalidated_index(unvalidated)
+        self.assertEqual(
+            frozenset([('missing-parent',)]), index.get_missing_parents())
+
+    def test_track_external_parent_refs(self):
+        g_index = self.make_g_index('empty', 2, [])
+        combined = CombinedGraphIndex([g_index])
+        index = _KnitGraphIndex(combined, lambda: True, deltas=True,
+            add_callback=self.catch_add, track_external_parent_refs=True)
+        self.caught_entries = []
+        index.add_records([
+            (('new-key',), 'fulltext,no-eol', (None, 50, 60),
+             [('parent-1',), ('parent-2',)])])
+        self.assertEqual(
+            frozenset([('parent-1',), ('parent-2',)]),
+            index.get_missing_parents())
 
     def test_add_unvalidated_index_with_present_external_references(self):
         index = self.two_graph_index(deltas=True)

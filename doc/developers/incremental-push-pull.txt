@@ -38,7 +38,7 @@ New data identification
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 We have a single top level data object: revisions. Everything else is
-subordinate to revisions, so determining the revisions to propogate should be
+subordinate to revisions, so determining the revisions to propagate should be
 all thats needed. This depends on revisions with partial data - such as those
 with no signature - being flagged in some efficient manner.
 

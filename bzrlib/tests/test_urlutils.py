@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the urlutils wrapper."""
 
@@ -672,3 +672,14 @@ class TestRebaseURL(TestCase):
                          '/bar', '/bar/baz'))
         self.assertEqual('.', urlutils.determine_relative_path(
                          '/bar', '/bar'))
+
+
+class TestParseURL(TestCase):
+
+    def test_parse_url(self):
+        self.assertEqual(urlutils.parse_url('http://example.com:80/one'),
+            ('http', None, None, 'example.com', 80, '/one'))
+        self.assertEqual(urlutils.parse_url('http://[1:2:3::40]/one'),
+                ('http', None, None, '1:2:3::40', None, '/one'))
+        self.assertEqual(urlutils.parse_url('http://[1:2:3::40]:80/one'),
+                ('http', None, None, '1:2:3::40', 80, '/one'))

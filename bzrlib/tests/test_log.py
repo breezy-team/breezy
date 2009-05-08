@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
 from cStringIO import StringIO
@@ -33,33 +33,30 @@ class TestCaseWithoutPropsHandler(tests.TestCaseWithTransport):
         super(TestCaseWithoutPropsHandler, self).setUp()
         # keep a reference to the "current" custom prop. handler registry
         self.properties_handler_registry = log.properties_handler_registry
-        # clean up the registry in log
+        # Use a clean registry for log
         log.properties_handler_registry = registry.Registry()
 
-    def _cleanup(self):
-        super(TestCaseWithoutPropsHandler, self)._cleanup()
-        # restore the custom properties handler registry
-        log.properties_handler_registry = self.properties_handler_registry
+        def restore():
+            log.properties_handler_registry = self.properties_handler_registry
+        self.addCleanup(restore)
 
 
 class LogCatcher(log.LogFormatter):
-    """Pull log messages into list rather than displaying them.
+    """Pull log messages into a list rather than displaying them.
 
-    For ease of testing we save log messages here rather than actually
-    formatting them, so that we can precisely check the result without
-    being too dependent on the exact formatting.
-
-    We should also test the LogFormatter.
+    To simplify testing we save logged revisions here rather than actually
+    formatting anything, so that we can precisely check the result without
+    being dependent on the formatting.
     """
 
     supports_delta = True
 
     def __init__(self):
         super(LogCatcher, self).__init__(to_file=None)
-        self.logs = []
+        self.revisions = []
 
     def log_revision(self, revision):
-        self.logs.append(revision)
+        self.revisions.append(revision)
 
 
 class TestShowLog(tests.TestCaseWithTransport):
@@ -106,7 +103,7 @@ class TestShowLog(tests.TestCaseWithTransport):
         lf = LogCatcher()
         log.show_log(wt.branch, lf)
         # no entries yet
-        self.assertEqual([], lf.logs)
+        self.assertEqual([], lf.revisions)
 
     def test_empty_commit(self):
         wt = self.make_branch_and_tree('.')
@@ -114,10 +111,11 @@ class TestShowLog(tests.TestCaseWithTransport):
         wt.commit('empty commit')
         lf = LogCatcher()
         log.show_log(wt.branch, lf, verbose=True)
-        self.assertEqual(1, len(lf.logs))
-        self.assertEqual('1', lf.logs[0].revno)
-        self.assertEqual('empty commit', lf.logs[0].rev.message)
-        self.checkDelta(lf.logs[0].delta)
+        revs = lf.revisions
+        self.assertEqual(1, len(revs))
+        self.assertEqual('1', revs[0].revno)
+        self.assertEqual('empty commit', revs[0].rev.message)
+        self.checkDelta(revs[0].delta)
 
     def test_simple_commit(self):
         wt = self.make_branch_and_tree('.')
@@ -129,9 +127,9 @@ class TestShowLog(tests.TestCaseWithTransport):
                             u'<test@example.com>')
         lf = LogCatcher()
         log.show_log(wt.branch, lf, verbose=True)
-        self.assertEqual(2, len(lf.logs))
+        self.assertEqual(2, len(lf.revisions))
         # first one is most recent
-        log_entry = lf.logs[0]
+        log_entry = lf.revisions[0]
         self.assertEqual('2', log_entry.revno)
         self.assertEqual('add one file', log_entry.rev.message)
         self.checkDelta(log_entry.delta, added=['hello'])
@@ -143,7 +141,7 @@ class TestShowLog(tests.TestCaseWithTransport):
         wt.commit(msg)
         lf = LogCatcher()
         log.show_log(wt.branch, lf, verbose=True)
-        committed_msg = lf.logs[0].rev.message
+        committed_msg = lf.revisions[0].rev.message
         self.assertNotEqual(msg, committed_msg)
         self.assertTrue(len(committed_msg) > len(msg))
 
@@ -157,7 +155,7 @@ class TestShowLog(tests.TestCaseWithTransport):
         wt.commit(msg)
         lf = LogCatcher()
         log.show_log(wt.branch, lf, verbose=True)
-        committed_msg = lf.logs[0].rev.message
+        committed_msg = lf.revisions[0].rev.message
         self.assertEqual(msg, committed_msg)
 
     def test_deltas_in_merge_revisions(self):
@@ -181,49 +179,23 @@ class TestShowLog(tests.TestCaseWithTransport):
         lf.supports_merge_revisions = True
         log.show_log(b, lf, verbose=True)
 
-        self.assertEqual(3, len(lf.logs))
+        revs = lf.revisions
+        self.assertEqual(3, len(revs))
 
-        logentry = lf.logs[0]
+        logentry = revs[0]
         self.assertEqual('2', logentry.revno)
         self.assertEqual('merge child branch', logentry.rev.message)
         self.checkDelta(logentry.delta, removed=['file1'], modified=['file2'])
 
-        logentry = lf.logs[1]
+        logentry = revs[1]
         self.assertEqual('1.1.1', logentry.revno)
         self.assertEqual('remove file1 and modify file2', logentry.rev.message)
         self.checkDelta(logentry.delta, removed=['file1'], modified=['file2'])
 
-        logentry = lf.logs[2]
+        logentry = revs[2]
         self.assertEqual('1', logentry.revno)
         self.assertEqual('add file1 and file2', logentry.rev.message)
         self.checkDelta(logentry.delta, added=['file1', 'file2'])
-
-    def test_merges_nonsupporting_formatter(self):
-        """Tests that show_log will raise if the formatter doesn't
-        support merge revisions."""
-        wt = self.make_branch_and_memory_tree('.')
-        wt.lock_write()
-        self.addCleanup(wt.unlock)
-        wt.add('')
-        wt.commit('rev-1', rev_id='rev-1',
-                  timestamp=1132586655, timezone=36000,
-                  committer='Joe Foo <joe@foo.com>')
-        wt.commit('rev-merged', rev_id='rev-2a',
-                  timestamp=1132586700, timezone=36000,
-                  committer='Joe Foo <joe@foo.com>')
-        wt.set_parent_ids(['rev-1', 'rev-2a'])
-        wt.branch.set_last_revision_info(1, 'rev-1')
-        wt.commit('rev-2', rev_id='rev-2b',
-                  timestamp=1132586800, timezone=36000,
-                  committer='Joe Foo <joe@foo.com>')
-        logfile = self.make_utf8_encoded_stringio()
-        formatter = log.ShortLogFormatter(to_file=logfile)
-        wtb = wt.branch
-        lf = LogCatcher()
-        revspec = revisionspec.RevisionSpec.from_string('1.1.1')
-        rev = revspec.in_history(wtb)
-        self.assertRaises(errors.BzrCommandError, log.show_log, wtb, lf,
-                          start_revision=rev, end_revision=rev)
 
 
 def make_commits_with_trailing_newlines(wt):
@@ -328,6 +300,23 @@ class TestShortLogFormatter(tests.TestCaseWithTransport):
     1 Joe Foo\t2005-11-22
       rev-1
 
+""",
+                             logfile.getvalue())
+
+    def test_short_log_with_merges_and_advice(self):
+        wt = self._prepare_tree_with_merges()
+        logfile = self.make_utf8_encoded_stringio()
+        formatter = log.ShortLogFormatter(to_file=logfile,
+            show_advice=True)
+        log.show_log(wt.branch, formatter)
+        self.assertEqualDiff("""\
+    2 Joe Foo\t2005-11-22 [merge]
+      rev-2
+
+    1 Joe Foo\t2005-11-22
+      rev-1
+
+Use --include-merges or -n0 to see merged revisions.
 """,
                              logfile.getvalue())
 
@@ -536,19 +525,19 @@ added:
         wt.commit('merge branch 1')
         b = wt.branch
         sio = self.make_utf8_encoded_stringio()
-        lf = log.LongLogFormatter(to_file=sio)
+        lf = log.LongLogFormatter(to_file=sio, levels=0)
         log.show_log(b, lf, verbose=True)
         the_log = normalize_log(sio.getvalue())
         self.assertEqualDiff("""\
 ------------------------------------------------------------
-revno: 2
+revno: 2 [merge]
 committer: Lorem Ipsum <test@example.com>
 branch nick: parent
 timestamp: Just now
 message:
   merge branch 1
     ------------------------------------------------------------
-    revno: 1.1.2
+    revno: 1.1.2 [merge]
     committer: Lorem Ipsum <test@example.com>
     branch nick: child
     timestamp: Just now
@@ -593,12 +582,12 @@ message:
         wt.commit('merge branch 1')
         b = wt.branch
         sio = self.make_utf8_encoded_stringio()
-        lf = log.LongLogFormatter(to_file=sio)
+        lf = log.LongLogFormatter(to_file=sio, levels=0)
         log.show_log(b, lf, verbose=True)
         the_log = normalize_log(sio.getvalue())
         self.assertEqualDiff("""\
 ------------------------------------------------------------
-revno: 2
+revno: 2 [merge]
 committer: Lorem Ipsum <test@example.com>
 branch nick: parent
 timestamp: Just now
@@ -890,7 +879,7 @@ added:
         the_log = normalize_log(sio.getvalue())
         self.assertEqualDiff("""\
 ------------------------------------------------------------
-revno: 2
+revno: 2 [merge]
 committer: Lorem Ipsum <test@example.com>
 branch nick: parent
 timestamp: Just now
@@ -1342,7 +1331,6 @@ class TestGetViewRevisions(tests.TestCaseWithTransport):
                 direction, # direction
                 file_id, # specific_fileid
                 True, # generate_merge_revisions
-                True, # allow_single_merge_revision
                 )
             return revs
 
@@ -1498,6 +1486,14 @@ class TestGetRevisionsTouchingFileID(tests.TestCaseWithTransport):
         tree.commit('commit with a ghost', rev_id='XX')
         self.assertAllRevisionsForFileID(tree, 'f1-id', ['XX', 'B', 'A'])
         self.assertAllRevisionsForFileID(tree, 'f2-id', ['D', 'C', 'A'])
+
+    def test_unknown_file_id(self):
+        tree = self.create_tree_with_single_merge()
+        self.assertAllRevisionsForFileID(tree, 'unknown', [])
+
+    def test_empty_branch_unknown_file_id(self):
+        tree = self.make_branch_and_tree('tree')
+        self.assertAllRevisionsForFileID(tree, 'unknown', [])
 
 
 class TestShowChangedRevisions(tests.TestCaseWithTransport):

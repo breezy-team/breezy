@@ -13,7 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for WorkingTreeFormat4"""
 
@@ -64,7 +64,8 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
             - when the WorkingTree is locked, LockDir can see that
         """
         # this test could be factored into a subclass of tests common to both
-        # format 3 and 4, but for now its not much of an issue as there is only one in common.
+        # format 3 and 4, but for now its not much of an issue as there is only
+        # one in common.
         t = self.get_transport()
         tree = self.make_workingtree()
         self.assertIsDirectory('.bzr', t)
@@ -660,7 +661,8 @@ class TestCorruptDirstate(TestCaseWithTransport):
         # Create a corrupted dirstate
         tree.lock_write()
         try:
-            tree.commit('init') # We need a parent, or we always compare with NULL
+            # We need a parent, or we always compare with NULL
+            tree.commit('init')
             state = tree.current_dirstate()
             state._read_dirblocks_if_needed()
             # Now add in an invalid entry, a rename with a dangling pointer

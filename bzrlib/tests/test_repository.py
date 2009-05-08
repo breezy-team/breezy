@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the Repository facility that are not interface tests.
 
@@ -32,6 +32,7 @@ from bzrlib.errors import (NotBranchError,
                            UnsupportedFormatError,
                            )
 from bzrlib import graph
+from bzrlib.branchbuilder import BranchBuilder
 from bzrlib.btree_index import BTreeBuilder, BTreeGraphIndex
 from bzrlib.index import GraphIndex, InMemoryGraphIndex
 from bzrlib.repository import RepositoryFormat
@@ -60,7 +61,12 @@ from bzrlib import (
     upgrade,
     workingtree,
     )
-from bzrlib.repofmt import knitrepo, weaverepo, pack_repo
+from bzrlib.repofmt import (
+    groupcompress_repo,
+    knitrepo,
+    pack_repo,
+    weaverepo,
+    )
 
 
 class TestDefaultFormat(TestCase):
@@ -664,6 +670,81 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
         self.assertFalse(repo._format.supports_external_lookups)
 
 
+class TestDevelopment6(TestCaseWithTransport):
+
+    def test_inventories_use_chk_map_with_parent_base_dict(self):
+        tree = self.make_branch_and_tree('repo', format="development6-rich-root")
+        revid = tree.commit("foo")
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        inv = tree.branch.repository.get_inventory(revid)
+        self.assertNotEqual(None, inv.parent_id_basename_to_file_id)
+        inv.parent_id_basename_to_file_id._ensure_root()
+        inv.id_to_entry._ensure_root()
+        self.assertEqual(65536, inv.id_to_entry._root_node.maximum_size)
+        self.assertEqual(65536,
+            inv.parent_id_basename_to_file_id._root_node.maximum_size)
+
+
+class TestDevelopment6FindRevisionOutsideSet(TestCaseWithTransport):
+    """Tests for _find_revision_outside_set."""
+
+    def setUp(self):
+        super(TestDevelopment6FindRevisionOutsideSet, self).setUp()
+        self.builder = self.make_branch_builder('source',
+            format='development6-rich-root')
+        self.builder.start_series()
+        self.builder.build_snapshot('initial', None,
+            [('add', ('', 'tree-root', 'directory', None))])
+        self.repo = self.builder.get_branch().repository
+        self.addCleanup(self.builder.finish_series)
+
+    def assertRevisionOutsideSet(self, expected_result, rev_set):
+        self.assertEqual(
+            expected_result, self.repo._find_revision_outside_set(rev_set))
+
+    def test_simple(self):
+        self.builder.build_snapshot('revid1', None, [])
+        self.builder.build_snapshot('revid2', None, [])
+        rev_set = ['revid2']
+        self.assertRevisionOutsideSet('revid1', rev_set)
+
+    def test_not_first_parent(self):
+        self.builder.build_snapshot('revid1', None, [])
+        self.builder.build_snapshot('revid2', None, [])
+        self.builder.build_snapshot('revid3', None, [])
+        rev_set = ['revid3', 'revid2']
+        self.assertRevisionOutsideSet('revid1', rev_set)
+
+    def test_not_null(self):
+        rev_set = ['initial']
+        self.assertRevisionOutsideSet(_mod_revision.NULL_REVISION, rev_set)
+
+    def test_not_null_set(self):
+        self.builder.build_snapshot('revid1', None, [])
+        rev_set = [_mod_revision.NULL_REVISION]
+        self.assertRevisionOutsideSet(_mod_revision.NULL_REVISION, rev_set)
+
+    def test_ghost(self):
+        self.builder.build_snapshot('revid1', None, [])
+        rev_set = ['ghost', 'revid1']
+        self.assertRevisionOutsideSet('initial', rev_set)
+
+    def test_ghost_parent(self):
+        self.builder.build_snapshot('revid1', None, [])
+        self.builder.build_snapshot('revid2', ['revid1', 'ghost'], [])
+        rev_set = ['revid2', 'revid1']
+        self.assertRevisionOutsideSet('initial', rev_set)
+
+    def test_righthand_parent(self):
+        self.builder.build_snapshot('revid1', None, [])
+        self.builder.build_snapshot('revid2a', ['revid1'], [])
+        self.builder.build_snapshot('revid2b', ['revid1'], [])
+        self.builder.build_snapshot('revid3', ['revid2a', 'revid2b'], [])
+        rev_set = ['revid3', 'revid2a']
+        self.assertRevisionOutsideSet('revid2b', rev_set)
+
+
 class TestWithBrokenRepo(TestCaseWithTransport):
     """These tests seem to be more appropriate as interface tests?"""
 
@@ -929,6 +1010,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         packs = tree.branch.repository._pack_collection
+        packs.reset()
         packs.ensure_loaded()
         name = packs.names()[0]
         pack_1 = packs.get_pack_by_name(name)
@@ -1049,13 +1131,15 @@ class TestNewPack(TestCaseWithTransport):
         pack_transport = self.get_transport('pack')
         index_transport = self.get_transport('index')
         upload_transport.mkdir('.')
-        collection = pack_repo.RepositoryPackCollection(repo=None,
+        collection = pack_repo.RepositoryPackCollection(
+            repo=None,
             transport=self.get_transport('.'),
             index_transport=index_transport,
             upload_transport=upload_transport,
             pack_transport=pack_transport,
             index_builder_class=BTreeBuilder,
-            index_class=BTreeGraphIndex)
+            index_class=BTreeGraphIndex,
+            use_chk_index=False)
         pack = pack_repo.NewPack(collection)
         self.assertIsInstance(pack.revision_index, BTreeBuilder)
         self.assertIsInstance(pack.inventory_index, BTreeBuilder)
@@ -1122,22 +1206,17 @@ class TestOptimisingPacker(TestCaseWithTransport):
         self.assertTrue(new_pack.signature_index._optimize_for_size)
 
 
-class TestInterDifferingSerializer(TestCaseWithTransport):
+class TestGCCHKPackCollection(TestCaseWithTransport):
 
-    def test_progress_bar(self):
-        tree = self.make_branch_and_tree('tree')
-        tree.commit('rev1', rev_id='rev-1')
-        tree.commit('rev2', rev_id='rev-2')
-        tree.commit('rev3', rev_id='rev-3')
-        repo = self.make_repository('repo')
-        inter_repo = repository.InterDifferingSerializer(
-            tree.branch.repository, repo)
-        pb = progress.InstrumentedProgress(to_file=StringIO())
-        pb.never_throttle = True
-        inter_repo.fetch('rev-1', pb)
-        self.assertEqual('Transferring revisions', pb.last_msg)
-        self.assertEqual(1, pb.last_cnt)
-        self.assertEqual(1, pb.last_total)
-        inter_repo.fetch('rev-3', pb)
-        self.assertEqual(2, pb.last_cnt)
-        self.assertEqual(2, pb.last_total)
+    def test_stream_source_to_gc(self):
+        source = self.make_repository('source', format='development6-rich-root')
+        target = self.make_repository('target', format='development6-rich-root')
+        stream = source._get_source(target._format)
+        self.assertIsInstance(stream, groupcompress_repo.GroupCHKStreamSource)
+
+    def test_stream_source_to_non_gc(self):
+        source = self.make_repository('source', format='development6-rich-root')
+        target = self.make_repository('target', format='rich-root-pack')
+        stream = source._get_source(target._format)
+        # We don't want the child GroupCHKStreamSource
+        self.assertIs(type(stream), repository.StreamSource)

@@ -14,7 +14,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Repository implementation tests for bzr.
@@ -869,6 +869,7 @@ def load_tests(standard_tests, module, loader):
         'test_iter_reverse_revision_history',
         'test_pack',
         'test_reconcile',
+        'test_refresh_data',
         'test_repository',
         'test_revision',
         'test_statistics',

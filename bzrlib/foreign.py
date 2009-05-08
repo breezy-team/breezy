@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Foreign branch utilities."""
@@ -28,6 +28,7 @@ from bzrlib import (
     errors,
     osutils,
     registry,
+    transform,
     )
 """)
 
@@ -245,3 +246,121 @@ class ForeignRepository(Repository):
             self.get_revision(revision_id))
 
 
+class ForeignBranch(Branch):
+    """Branch that exists in a foreign version control system."""
+
+    def __init__(self, mapping):
+        self.mapping = mapping
+        super(ForeignBranch, self).__init__()
+
+    def dpull(self, source, stop_revision=None):
+        """Pull deltas from another branch.
+
+        :note: This does not, like pull, retain the revision ids from 
+            the source branch and will, rather than adding bzr-specific 
+            metadata, push only those semantics of the revision that can be 
+            natively represented by this branch' VCS.
+
+        :param source: Source branch
+        :param stop_revision: Revision to pull, defaults to last revision.
+        :return: Dictionary mapping revision ids from the source branch 
+            to new revision ids in the target branch, for each 
+            revision that was pull.
+        """
+        raise NotImplementedError(self.dpull)
+
+
+def update_workingtree_fileids(wt, target_tree):
+    """Update the file ids in a working tree based on another tree.
+
+    :param wt: Working tree in which to update file ids
+    :param target_tree: Tree to retrieve new file ids from, based on path
+    """
+    tt = transform.TreeTransform(wt)
+    try:
+        for f, p, c, v, d, n, k, e in target_tree.iter_changes(wt):
+            if v == (True, False):
+                trans_id = tt.trans_id_tree_path(p[0])
+                tt.unversion_file(trans_id)
+            elif v == (False, True):
+                trans_id = tt.trans_id_tree_path(p[1])
+                tt.version_file(f, trans_id)
+        tt.apply()
+    finally:
+        tt.finalize()
+    if len(wt.get_parent_ids()) == 1:
+        wt.set_parent_trees([(target_tree.get_revision_id(), target_tree)])
+    else:
+        wt.set_last_revision(target_tree.get_revision_id())
+
+
+class cmd_dpush(Command):
+    """Push diffs into a foreign version control system without any 
+    Bazaar-specific metadata.
+
+    This will afterwards rebase the local Bazaar branch on the remote
+    branch unless the --no-rebase option is used, in which case 
+    the two branches will be out of sync. 
+    """
+    hidden = True
+    takes_args = ['location?']
+    takes_options = ['remember', Option('directory',
+            help='Branch to push from, '
+                 'rather than the one containing the working directory.',
+            short_name='d',
+            type=unicode,
+            ),
+            Option('no-rebase', help="Do not rebase after push.")]
+
+    def run(self, location=None, remember=False, directory=None, 
+            no_rebase=False):
+        from bzrlib import urlutils
+        from bzrlib.bzrdir import BzrDir
+        from bzrlib.errors import BzrCommandError, NoWorkingTree
+        from bzrlib.trace import info
+        from bzrlib.workingtree import WorkingTree
+
+        if directory is None:
+            directory = "."
+        try:
+            source_wt = WorkingTree.open_containing(directory)[0]
+            source_branch = source_wt.branch
+        except NoWorkingTree:
+            source_branch = Branch.open(directory)
+            source_wt = None
+        stored_loc = source_branch.get_push_location()
+        if location is None:
+            if stored_loc is None:
+                raise BzrCommandError("No push location known or specified.")
+            else:
+                display_url = urlutils.unescape_for_display(stored_loc,
+                        self.outf.encoding)
+                self.outf.write("Using saved location: %s\n" % display_url)
+                location = stored_loc
+
+        bzrdir = BzrDir.open(location)
+        target_branch = bzrdir.open_branch()
+        dpull = getattr(target_branch, "dpull", None)
+        if dpull is None:
+            raise BzrCommandError("%r is not a foreign branch, use "
+                                  "regular push." % target_branch)
+        target_branch.lock_write()
+        try:
+            revid_map = dpull(source_branch)
+            # We successfully created the target, remember it
+            if source_branch.get_push_location() is None or remember:
+                source_branch.set_push_location(target_branch.base)
+            if not no_rebase:
+                old_last_revid = source_branch.last_revision()
+                source_branch.pull(target_branch, overwrite=True)
+                new_last_revid = source_branch.last_revision()
+                if source_wt is not None and old_last_revid != new_last_revid:
+                    source_wt.lock_write()
+                    try:
+                        target = source_wt.branch.repository.revision_tree(
+                            new_last_revid)
+                        update_workingtree_fileids(source_wt, target)
+                    finally:
+                        source_wt.unlock()
+        finally:
+            target_branch.unlock()

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Transport is an abstraction layer to handle file access.
 
@@ -50,7 +50,6 @@ from bzrlib.symbol_versioning import (
         deprecated_method,
         deprecated_function,
         DEPRECATED_PARAMETER,
-        one_four,
         )
 from bzrlib.trace import (
     mutter,
@@ -329,6 +328,31 @@ class Transport(object):
         """
         raise NotImplementedError(self.clone)
 
+    def create_prefix(self):
+        """Create all the directories leading down to self.base."""
+        cur_transport = self
+        needed = [cur_transport]
+        # Recurse upwards until we can create a directory successfully
+        while True:
+            new_transport = cur_transport.clone('..')
+            if new_transport.base == cur_transport.base:
+                raise errors.BzrCommandError(
+                    "Failed to create path prefix for %s."
+                    % cur_transport.base)
+            try:
+                new_transport.mkdir('.')
+            except errors.NoSuchFile:
+                needed.append(new_transport)
+                cur_transport = new_transport
+            except errors.FileExists:
+                break
+            else:
+                break
+        # Now we only need to create child directories
+        while needed:
+            cur_transport = needed.pop()
+            cur_transport.ensure_base()
+
     def ensure_base(self):
         """Ensure that the directory this transport references exists.
 
@@ -516,7 +540,6 @@ class Transport(object):
         """
         raise errors.NotLocalUrl(self.abspath(relpath))
 
-
     def has(self, relpath):
         """Does the file relpath exist?
 
@@ -587,30 +610,8 @@ class Transport(object):
         finally:
             f.close()
 
-    @deprecated_method(one_four)
-    def get_smart_client(self):
-        """Return a smart client for this transport if possible.
-
-        A smart client doesn't imply the presence of a smart server: it implies
-        that the smart protocol can be tunnelled via this transport.
-
-        :raises NoSmartServer: if no smart server client is available.
-        """
-        raise errors.NoSmartServer(self.base)
-
     def get_smart_medium(self):
         """Return a smart client medium for this transport if possible.
-
-        A smart medium doesn't imply the presence of a smart server: it implies
-        that the smart protocol can be tunnelled via this transport.
-
-        :raises NoSmartMedium: if no smart server medium is available.
-        """
-        raise errors.NoSmartMedium(self)
-
-    @deprecated_method(one_four)
-    def get_shared_medium(self):
-        """Return a smart client shared medium for this transport if possible.
 
         A smart medium doesn't imply the presence of a smart server: it implies
         that the smart protocol can be tunnelled via this transport.
@@ -1357,46 +1358,7 @@ class ConnectedTransport(Transport):
 
     @staticmethod
     def _split_url(url):
-        """
-        Extract the server address, the credentials and the path from the url.
-
-        user, password, host and path should be quoted if they contain reserved
-        chars.
-
-        :param url: an quoted url
-
-        :return: (scheme, user, password, host, port, path) tuple, all fields
-            are unquoted.
-        """
-        if isinstance(url, unicode):
-            raise errors.InvalidURL('should be ascii:\n%r' % url)
-        url = url.encode('utf-8')
-        (scheme, netloc, path, params,
-         query, fragment) = urlparse.urlparse(url, allow_fragments=False)
-        user = password = host = port = None
-        if '@' in netloc:
-            user, host = netloc.rsplit('@', 1)
-            if ':' in user:
-                user, password = user.split(':', 1)
-                password = urllib.unquote(password)
-            user = urllib.unquote(user)
-        else:
-            host = netloc
-
-        if ':' in host:
-            host, port = host.rsplit(':', 1)
-            try:
-                port = int(port)
-            except ValueError:
-                raise errors.InvalidURL('invalid port number %s in url:\n%s' %
-                                        (port, url))
-        if host == '':
-            raise errors.InvalidURL('Host empty in: %s' % url)
-
-        host = urllib.unquote(host)
-        path = urllib.unquote(path)
-
-        return (scheme, user, password, host, port, path)
+        return urlutils.parse_url(url)
 
     @staticmethod
     def _unsplit_url(scheme, user, password, host, port, path):
@@ -1787,24 +1749,32 @@ register_lazy_transport('ftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 register_transport_proto('aftp://', help="Access using active FTP.")
 register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 
-# Default to trying GSSAPI authentication (if the kerberos module is available)
-register_transport_proto('ftp+gssapi://', register_netloc=True)
-register_lazy_transport('ftp+gssapi://', 'bzrlib.transport.ftp._gssapi',
-                        'GSSAPIFtpTransport')
-register_transport_proto('aftp+gssapi://', register_netloc=True)
-register_lazy_transport('aftp+gssapi://', 'bzrlib.transport.ftp._gssapi',
-                        'GSSAPIFtpTransport')
-register_transport_proto('ftp+nogssapi://', register_netloc=True)
-register_transport_proto('aftp+nogssapi://', register_netloc=True)
+try:
+    import kerberos
+    kerberos_available = True
+except ImportError:
+    kerberos_available = False
 
-register_lazy_transport('ftp://', 'bzrlib.transport.ftp._gssapi',
-                        'GSSAPIFtpTransport')
-register_lazy_transport('aftp://', 'bzrlib.transport.ftp._gssapi',
-                        'GSSAPIFtpTransport')
-register_lazy_transport('ftp+nogssapi://', 'bzrlib.transport.ftp',
-                        'FtpTransport')
-register_lazy_transport('aftp+nogssapi://', 'bzrlib.transport.ftp',
-                        'FtpTransport')
+if kerberos_available:
+    # Default to trying GSSAPI authentication (if the kerberos module is
+    # available)
+    register_transport_proto('ftp+gssapi://', register_netloc=True)
+    register_lazy_transport('ftp+gssapi://', 'bzrlib.transport.ftp._gssapi',
+                            'GSSAPIFtpTransport')
+    register_transport_proto('aftp+gssapi://', register_netloc=True)
+    register_lazy_transport('aftp+gssapi://', 'bzrlib.transport.ftp._gssapi',
+                            'GSSAPIFtpTransport')
+    register_transport_proto('ftp+nogssapi://', register_netloc=True)
+    register_transport_proto('aftp+nogssapi://', register_netloc=True)
+
+    register_lazy_transport('ftp://', 'bzrlib.transport.ftp._gssapi',
+                            'GSSAPIFtpTransport')
+    register_lazy_transport('aftp://', 'bzrlib.transport.ftp._gssapi',
+                            'GSSAPIFtpTransport')
+    register_lazy_transport('ftp+nogssapi://', 'bzrlib.transport.ftp',
+                            'FtpTransport')
+    register_lazy_transport('aftp+nogssapi://', 'bzrlib.transport.ftp',
+                            'FtpTransport')
 
 register_transport_proto('memory://')
 register_lazy_transport('memory://', 'bzrlib.transport.memory',

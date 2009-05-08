@@ -14,7 +14,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the formatting and construction of errors."""
 
@@ -114,14 +114,11 @@ class TestErrors(TestCaseWithTransport):
             "read without data loss.",
             str(error))
 
-    def test_install_failed(self):
-        error = errors.InstallFailed(['rev-one'])
-        self.assertEqual("Could not install revisions:\nrev-one", str(error))
-        error = errors.InstallFailed(['rev-one', 'rev-two'])
-        self.assertEqual("Could not install revisions:\nrev-one, rev-two",
-                         str(error))
-        error = errors.InstallFailed([None])
-        self.assertEqual("Could not install revisions:\nNone", str(error))
+    def test_jail_break(self):
+        error = errors.JailBreak("some url")
+        self.assertEqualDiff("An attempt to access a url outside the server"
+            " jail was made: 'some url'.",
+            str(error))
 
     def test_lock_active(self):
         error = errors.LockActive("lock description")

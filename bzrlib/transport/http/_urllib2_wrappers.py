@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Implementaion of urllib2 tailored to bzr needs
 
@@ -917,6 +917,8 @@ class ProxyHandler(urllib2.ProxyHandler):
 
         (scheme, user, password,
          host, port, path) = transport.ConnectedTransport._split_url(proxy)
+        if not host:
+            raise errors.InvalidURL(proxy, 'No host component')
 
         if request.proxy_auth == {}:
             # No proxy auth parameter are available, we are handling the first
@@ -1127,7 +1129,8 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         if user is None:
             user = auth_conf.get_user(auth['protocol'], auth['host'],
                                       port=auth['port'], path=auth['path'],
-                                      realm=realm)
+                                      realm=realm, ask=True,
+                                      prompt=self.build_username_prompt(auth))
         if user is not None and password is None:
             password = auth_conf.get_password(
                 auth['protocol'], auth['host'], user, port=auth['port'],
@@ -1152,6 +1155,24 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         if realm is not None:
             prompt += ", Realm: '%s'" % realm
         prompt += ' password'
+        return prompt
+
+    def _build_username_prompt(self, auth):
+        """Build a prompt taking the protocol used into account.
+
+        The AuthHandler is used by http and https, we want that information in
+        the prompt, so we build the prompt from the authentication dict which
+        contains all the needed parts.
+
+        Also, http and proxy AuthHandlers present different prompts to the
+        user. The daughter classes should implements a public
+        build_username_prompt using this method.
+        """
+        prompt = '%s' % auth['protocol'].upper() + ' %(host)s'
+        realm = auth['realm']
+        if realm is not None:
+            prompt += ", Realm: '%s'" % realm
+        prompt += ' username'
         return prompt
 
     def http_request(self, request):
@@ -1225,14 +1246,20 @@ class BasicAuthHandler(AbstractAuthHandler):
         auth_header = 'Basic ' + raw.encode('base64').strip()
         return auth_header
 
+    def extract_realm(self, header_value):
+        match = self.auth_regexp.search(header_value)
+        realm = None
+        if match:
+            realm = match.group(1)
+        return match, realm
+
     def auth_match(self, header, auth):
         scheme, raw_auth = self._parse_auth_header(header)
         if scheme != 'basic':
             return False
 
-        match = self.auth_regexp.search(raw_auth)
+        match, realm = self.extract_realm(raw_auth)
         if match:
-            realm = match.groups()
             if scheme != 'basic':
                 return False
 
@@ -1385,6 +1412,9 @@ class HTTPAuthHandler(AbstractAuthHandler):
     def build_password_prompt(self, auth):
         return self._build_password_prompt(auth)
 
+    def build_username_prompt(self, auth):
+        return self._build_username_prompt(auth)
+
     def http_error_401(self, req, fp, code, msg, headers):
         return self.auth_required(req, headers)
 
@@ -1413,6 +1443,11 @@ class ProxyAuthHandler(AbstractAuthHandler):
 
     def build_password_prompt(self, auth):
         prompt = self._build_password_prompt(auth)
+        prompt = 'Proxy ' + prompt
+        return prompt
+
+    def build_username_prompt(self, auth):
+        prompt = self._build_username_prompt(auth)
         prompt = 'Proxy ' + prompt
         return prompt
 

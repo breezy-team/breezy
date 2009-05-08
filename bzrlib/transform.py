@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
 import errno
@@ -36,6 +36,7 @@ from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ReusingTransform, NotVersionedError, CantMoveRoot,
                            ExistingLimbo, ImmortalLimbo, NoFinalPath,
                            UnableCreateSymlink)
+from bzrlib.filters import filtered_output_bytes, ContentFilterContext
 from bzrlib.inventory import InventoryEntry
 from bzrlib.osutils import (
     delete_any,
@@ -1909,7 +1910,7 @@ class _PreviewTree(tree.Tree):
             return self._transform._tree.get_symlink_target(file_id)
         trans_id = self._transform.trans_id_file_id(file_id)
         name = self._transform._limbo_name(trans_id)
-        return os.readlink(name)
+        return osutils.readlink(name)
 
     def walkdirs(self, prefix=''):
         pending = [self._transform.root]
@@ -2113,7 +2114,8 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
                     executable = tree.is_executable(file_id, tree_path)
                     if executable:
                         tt.set_executability(executable, trans_id)
-                    deferred_contents.append((file_id, trans_id))
+                    trans_data = (trans_id, tree_path)
+                    deferred_contents.append((file_id, trans_data))
                 else:
                     file_trans_id[file_id] = new_by_entry(tt, entry, parent_id,
                                                           tree)
@@ -2150,6 +2152,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
 def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
                   hardlink):
     total = len(desired_files) + offset
+    wt = tt._tree
     if accelerator_tree is None:
         new_desired_files = desired_files
     else:
@@ -2158,10 +2161,10 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
                          in iter if not (c or e[0] != e[1]))
         new_desired_files = []
         count = 0
-        for file_id, trans_id in desired_files:
+        for file_id, (trans_id, tree_path) in desired_files:
             accelerator_path = unchanged.get(file_id)
             if accelerator_path is None:
-                new_desired_files.append((file_id, trans_id))
+                new_desired_files.append((file_id, (trans_id, tree_path)))
                 continue
             pb.update('Adding file contents', count + offset, total)
             if hardlink:
@@ -2169,14 +2172,26 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
                                    trans_id)
             else:
                 contents = accelerator_tree.get_file(file_id, accelerator_path)
+                if wt.supports_content_filtering():
+                    filters = wt._content_filter_stack(tree_path)
+                    contents = filtered_output_bytes(contents, filters,
+                        ContentFilterContext(tree_path, tree))
                 try:
                     tt.create_file(contents, trans_id)
                 finally:
-                    contents.close()
+                    try:
+                        contents.close()
+                    except AttributeError:
+                        # after filtering, contents may no longer be file-like
+                        pass
             count += 1
         offset += count
-    for count, (trans_id, contents) in enumerate(tree.iter_files_bytes(
-                                                 new_desired_files)):
+    for count, ((trans_id, tree_path), contents) in enumerate(
+            tree.iter_files_bytes(new_desired_files)):
+        if wt.supports_content_filtering():
+            filters = wt._content_filter_stack(tree_path)
+            contents = filtered_output_bytes(contents, filters,
+                ContentFilterContext(tree_path, tree))
         tt.create_file(contents, trans_id)
         pb.update('Adding file contents', count + offset, total)
 

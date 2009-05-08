@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import errno
 import os
@@ -267,7 +267,7 @@ class Mutt(ExternalMailClient):
             message_options.extend(['-a',
                 self._encode_path(attach_path, 'attachment')])
         if to is not None:
-            message_options.append(self._encode_safe(to))
+            message_options.extend(['--', self._encode_safe(to)])
         return message_options
 mail_client_registry.register('mutt', Mutt,
                               help=Mutt.__doc__)
@@ -485,7 +485,7 @@ class MAPIClient(BodyExternalMailClient):
     """Default Windows mail client launched using MAPI."""
 
     def _compose(self, prompt, to, subject, attach_path, mime_subtype,
-                 extension, body):
+                 extension, body=None):
         """See ExternalMailClient._compose.
 
         This implementation uses MAPI via the simplemapi ctypes wrapper

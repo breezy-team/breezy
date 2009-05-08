@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """DirState objects record the state of a directory and its bzr metadata.
 
@@ -82,8 +82,9 @@ Kinds:
 'a' is an absent entry: In that tree the id is not present at this path.
 'd' is a directory entry: This path in this tree is a directory with the
     current file id. There is no fingerprint for directories.
-'f' is a file entry: As for directory, but its a file. The fingerprint is a
-    sha1 value.
+'f' is a file entry: As for directory, but it's a file. The fingerprint is the
+    sha1 value of the file's canonical form, i.e. after any read filters have
+    been applied to the convenience form stored in the working tree.
 'l' is a symlink entry: As for directory, but a symlink. The fingerprint is the
     link target.
 't' is a reference to a nested subtree; the fingerprint is the referenced
@@ -186,7 +187,7 @@ that. Now, as the lifetime for all unchanged entries is the time to parse, stat
 the file on disk, and then immediately discard, the overhead of object creation
 becomes a significant cost.
 
-Figures: Creating a tuple from from 3 elements was profiled at 0.0625
+Figures: Creating a tuple from 3 elements was profiled at 0.0625
 microseconds, whereas creating a object which is subclassed from tuple was
 0.500 microseconds, and creating an object with 3 elements and slots was 3
 microseconds long. 0.1 milliseconds is 100 microseconds, and ideally we'll get
@@ -262,6 +263,47 @@ else:
         # return '%X.%X' % (int(st.st_mtime), st.st_mode)
 
 
+class SHA1Provider(object):
+    """An interface for getting sha1s of a file."""
+
+    def sha1(self, abspath):
+        """Return the sha1 of a file given its absolute path.
+
+        :param abspath:  May be a filesystem encoded absolute path
+             or a unicode path.
+        """
+        raise NotImplementedError(self.sha1)
+
+    def stat_and_sha1(self, abspath):
+        """Return the stat and sha1 of a file given its absolute path.
+        
+        :param abspath:  May be a filesystem encoded absolute path
+             or a unicode path.
+
+        Note: the stat should be the stat of the physical file
+        while the sha may be the sha of its canonical content.
+        """
+        raise NotImplementedError(self.stat_and_sha1)
+
+
+class DefaultSHA1Provider(SHA1Provider):
+    """A SHA1Provider that reads directly from the filesystem."""
+
+    def sha1(self, abspath):
+        """Return the sha1 of a file given its absolute path."""
+        return osutils.sha_file_by_name(abspath)
+
+    def stat_and_sha1(self, abspath):
+        """Return the stat and sha1 of a file given its absolute path."""
+        file_obj = file(abspath, 'rb')
+        try:
+            statvalue = os.fstat(file_obj.fileno())
+            sha1 = osutils.sha_file(file_obj)
+        finally:
+            file_obj.close()
+        return statvalue, sha1
+
+
 class DirState(object):
     """Record directory and metadata state for fast access.
 
@@ -320,10 +362,11 @@ class DirState(object):
     HEADER_FORMAT_2 = '#bazaar dirstate flat format 2\n'
     HEADER_FORMAT_3 = '#bazaar dirstate flat format 3\n'
 
-    def __init__(self, path):
+    def __init__(self, path, sha1_provider):
         """Create a  DirState object.
 
         :param path: The path at which the dirstate file on disk should live.
+        :param sha1_provider: an object meeting the SHA1Provider interface.
         """
         # _header_state and _dirblock_state represent the current state
         # of the dirstate metadata and the per-row data respectiely.
@@ -355,10 +398,11 @@ class DirState(object):
         self._cutoff_time = None
         self._split_path_cache = {}
         self._bisect_page_size = DirState.BISECT_PAGE_SIZE
+        self._sha1_provider = sha1_provider
         if 'hashcache' in debug.debug_flags:
             self._sha1_file = self._sha1_file_and_mutter
         else:
-            self._sha1_file = osutils.sha_file_by_name
+            self._sha1_file = self._sha1_provider.sha1
         # These two attributes provide a simple cache for lookups into the
         # dirstate in-memory vectors. By probing respectively for the last
         # block, and for the next entry, we save nearly 2 bisections per path
@@ -380,7 +424,8 @@ class DirState(object):
         :param kind: The kind of the path, as a string like 'file',
             'directory', etc.
         :param stat: The output of os.lstat for the path.
-        :param fingerprint: The sha value of the file,
+        :param fingerprint: The sha value of the file's canonical form (i.e.
+            after any read filters have been applied),
             or the target of a symlink,
             or the referenced revision id for tree-references,
             or '' for directories.
@@ -1194,15 +1239,18 @@ class DirState(object):
         return entry_index, present
 
     @staticmethod
-    def from_tree(tree, dir_state_filename):
+    def from_tree(tree, dir_state_filename, sha1_provider=None):
         """Create a dirstate from a bzr Tree.
 
         :param tree: The tree which should provide parent information and
             inventory ids.
+        :param sha1_provider: an object meeting the SHA1Provider interface.
+            If None, a DefaultSHA1Provider is used.
         :return: a DirState object which is currently locked for writing.
             (it was locked by DirState.initialize)
         """
-        result = DirState.initialize(dir_state_filename)
+        result = DirState.initialize(dir_state_filename,
+            sha1_provider=sha1_provider)
         try:
             tree.lock_read()
             try:
@@ -1569,7 +1617,7 @@ class DirState(object):
         # when -Dhashcache is turned on, this is monkey-patched in to log
         # file reads
         trace.mutter("dirstate sha1 " + abspath)
-        return osutils.sha_file_by_name(abspath)
+        return self._sha1_provider.sha1(abspath)
 
     def _is_executable(self, mode, old_executable):
         """Is this file executable?"""
@@ -1829,13 +1877,15 @@ class DirState(object):
             return None, None
 
     @classmethod
-    def initialize(cls, path):
+    def initialize(cls, path, sha1_provider=None):
         """Create a new dirstate on path.
 
         The new dirstate will be an empty tree - that is it has no parents,
         and only a root node - which has id ROOT_ID.
 
         :param path: The name of the file for the dirstate.
+        :param sha1_provider: an object meeting the SHA1Provider interface.
+            If None, a DefaultSHA1Provider is used.
         :return: A write-locked DirState object.
         """
         # This constructs a new DirState object on a path, sets the _state_file
@@ -1843,7 +1893,9 @@ class DirState(object):
         # stock empty dirstate information - a root with ROOT_ID, no children,
         # and no parents. Finally it calls save() to ensure that this data will
         # persist.
-        result = cls(path)
+        if sha1_provider is None:
+            sha1_provider = DefaultSHA1Provider()
+        result = cls(path, sha1_provider)
         # root dir and root dir contents with no children.
         empty_tree_dirblocks = [('', []), ('', [])]
         # a new root directory, with a NULLSTAT.
@@ -1982,12 +2034,17 @@ class DirState(object):
         return len(self._parents) - len(self._ghosts)
 
     @staticmethod
-    def on_file(path):
-        """Construct a DirState on the file at path path.
+    def on_file(path, sha1_provider=None):
+        """Construct a DirState on the file at path "path".
 
+        :param path: The path at which the dirstate file on disk should live.
+        :param sha1_provider: an object meeting the SHA1Provider interface.
+            If None, a DefaultSHA1Provider is used.
         :return: An unlocked DirState object, associated with the given path.
         """
-        result = DirState(path)
+        if sha1_provider is None:
+            sha1_provider = DefaultSHA1Provider()
+        result = DirState(path, sha1_provider)
         return result
 
     def _read_dirblocks_if_needed(self):
@@ -2482,8 +2539,8 @@ class DirState(object):
         :param minikind: The type for the entry ('f' == 'file', 'd' ==
                 'directory'), etc.
         :param executable: Should the executable bit be set?
-        :param fingerprint: Simple fingerprint for new entry: sha1 for files,
-            referenced revision id for subtrees, etc.
+        :param fingerprint: Simple fingerprint for new entry: canonical-form
+            sha1 for files, referenced revision id for subtrees, etc.
         :param packed_stat: Packed stat value for new entry.
         :param size: Size information for new entry
         :param path_utf8: key[0] + '/' + key[1], just passed in to avoid doing
@@ -2845,9 +2902,12 @@ def py_update_entry(state, entry, abspath, stat_value,
             and stat_value.st_ctime < state._cutoff_time
             and len(entry[1]) > 1
             and entry[1][1][0] != 'a'):
-                # Could check for size changes for further optimised
-                # avoidance of sha1's. However the most prominent case of
-                # over-shaing is during initial add, which this catches.
+            # Could check for size changes for further optimised
+            # avoidance of sha1's. However the most prominent case of
+            # over-shaing is during initial add, which this catches.
+            # Besides, if content filtering happens, size and sha
+            # are calculated at the same time, so checking just the size
+            # gains nothing w.r.t. performance.
             link_or_sha1 = state._sha1_file(abspath)
             entry[1][0] = ('f', link_or_sha1, stat_value.st_size,
                            executable, packed_stat)
@@ -3006,12 +3066,9 @@ class ProcessEntryPython(object):
                         if target_details[2] == source_details[2]:
                             if link_or_sha1 is None:
                                 # Stat cache miss:
-                                file_obj = file(path_info[4], 'rb')
-                                try:
-                                    statvalue = os.fstat(file_obj.fileno())
-                                    link_or_sha1 = osutils.sha_file(file_obj)
-                                finally:
-                                    file_obj.close()
+                                statvalue, link_or_sha1 = \
+                                    self.state._sha1_provider.stat_and_sha1(
+                                    path_info[4])
                                 self.state._observed_sha1(entry, link_or_sha1,
                                     statvalue)
                             content_change = (link_or_sha1 != source_details[1])

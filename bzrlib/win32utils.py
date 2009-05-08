@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Win32-specific helper functions
 
@@ -144,13 +144,20 @@ def debug_memory_win32api(message='', short=True):
         trace.note('Cannot debug memory on win32 without ctypes'
                    ' or win32process')
         return
-    trace.note('WorkingSize       %8d kB', info['WorkingSetSize'] / 1024)
-    trace.note('PeakWorking       %8d kB', info['PeakWorkingSetSize'] / 1024)
     if short:
+        trace.note('WorkingSize %7dKB'
+                   '\tPeakWorking %7dKB\t%s',
+                   info['WorkingSetSize'] / 1024,
+                   info['PeakWorkingSetSize'] / 1024,
+                   message)
         return
-    trace.note('PagefileUsage     %8d kB', info.get('PagefileUsage', 0) / 1024)
-    trace.note('PeakPagefileUsage %8d kB', info.get('PeakPagefileUsage', 0) / 1024)
-    trace.note('PrivateUsage      %8d kB', info.get('PrivateUsage', 0) / 1024)
+    if message:
+        trace.note('%s', message)
+    trace.note('WorkingSize       %8d KB', info['WorkingSetSize'] / 1024)
+    trace.note('PeakWorking       %8d KB', info['PeakWorkingSetSize'] / 1024)
+    trace.note('PagefileUsage     %8d KB', info.get('PagefileUsage', 0) / 1024)
+    trace.note('PeakPagefileUsage %8d KB', info.get('PeakPagefileUsage', 0) / 1024)
+    trace.note('PrivateUsage      %8d KB', info.get('PrivateUsage', 0) / 1024)
     trace.note('PageFaultCount    %8d', info.get('PageFaultCount', 0))
 
 
@@ -279,7 +286,7 @@ def get_home_location():
     If location cannot be obtained return system drive root,
     i.e. C:\
 
-    Returned value can be unicode or plain sring.
+    Returned value can be unicode or plain string.
     To convert plain string to unicode use
     s.decode(osutils.get_user_encoding())
     """
@@ -302,7 +309,7 @@ def get_user_name():
     """Return user name as login name.
     If name cannot be obtained return None.
 
-    Returned value can be unicode or plain sring.
+    Returned value can be unicode or plain string.
     To convert plain string to unicode use
     s.decode(osutils.get_user_encoding())
     """
@@ -447,7 +454,7 @@ def glob_expand(file_list):
 
 def get_app_path(appname):
     """Look up in Windows registry for full path to application executable.
-    Typicaly, applications create subkey with their basename
+    Typically, applications create subkey with their basename
     in HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\
 
     :param  appname:    name of application (if no filename extension

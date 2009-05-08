@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the BzrDir facility and any format specific tests.
 
@@ -59,7 +59,7 @@ from bzrlib.transport.http._urllib import HttpTransport_urllib
 from bzrlib.transport.memory import MemoryServer
 from bzrlib.transport.nosmart import NoSmartTransportDecorator
 from bzrlib.transport.readonly import ReadonlyTransportDecorator
-from bzrlib.repofmt import knitrepo, weaverepo
+from bzrlib.repofmt import knitrepo, weaverepo, pack_repo
 
 
 class TestDefaultFormat(TestCase):
@@ -465,6 +465,18 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
         new_child = child_branch.bzrdir.clone_on_transport(new_child_transport)
         self.assertEqual(child_branch.base,
                          new_child.open_branch().get_stacked_on_url())
+
+    def test_default_stacking_with_stackable_branch_unstackable_repo(self):
+        # Make stackable source branch with an unstackable repo format.
+        source_bzrdir = self.make_bzrdir('source')
+        pack_repo.RepositoryFormatKnitPack1().initialize(source_bzrdir)
+        source_branch = bzrlib.branch.BzrBranchFormat7().initialize(source_bzrdir)
+        # Make a directory with a default stacking policy
+        parent_bzrdir = self.make_bzrdir('parent')
+        stacked_on = self.make_branch('parent/stacked-on', format='pack-0.92')
+        parent_bzrdir.get_config().set_default_stack_on(stacked_on.base)
+        # Clone source into directory
+        target = source_bzrdir.clone(self.get_url('parent/target'))
 
     def test_sprout_obeys_stacking_policy(self):
         child_branch, new_child_transport = self.prepare_default_stacking()
@@ -1294,3 +1306,26 @@ class TestBzrDirSprout(TestCaseWithMemoryTransport):
         parent = grandparent_tree.bzrdir.sprout('parent').open_branch()
         branch_tree = parent.bzrdir.sprout('branch').open_branch()
         self.assertContainsRe(branch_tree.get_parent(), '/parent/$')
+
+
+class TestBzrDirHooks(TestCaseWithMemoryTransport):
+
+    def test_pre_open_called(self):
+        calls = []
+        bzrdir.BzrDir.hooks.install_named_hook('pre_open', calls.append, None)
+        transport = self.get_transport('foo')
+        url = transport.base
+        self.assertRaises(errors.NotBranchError, bzrdir.BzrDir.open, url)
+        self.assertEqual([transport.base], [t.base for t in calls])
+
+    def test_pre_open_actual_exceptions_raised(self):
+        count = [0]
+        def fail_once(transport):
+            count[0] += 1
+            if count[0] == 1:
+                raise errors.BzrError("fail")
+        bzrdir.BzrDir.hooks.install_named_hook('pre_open', fail_once, None)
+        transport = self.get_transport('foo')
+        url = transport.base
+        err = self.assertRaises(errors.BzrError, bzrdir.BzrDir.open, url)
+        self.assertEqual('fail', err._preformatted_string)

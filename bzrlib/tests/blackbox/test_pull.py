@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Black-box tests for bzr pull."""
@@ -239,7 +239,8 @@ class TestPull(ExternalBase):
         out = self.run_bzr('pull ../branch_a', retcode=3)
         self.assertEqual(out,
                 ('','bzr: ERROR: These branches have diverged.'
-                    ' Use the merge command to reconcile them.\n'))
+                    ' Use the missing command to see how.\n'
+                    'Use the merge command to reconcile them.\n'))
         self.assertEqual(branch_b.get_parent(), parent)
         # test implicit --remember after resolving previous failure
         uncommit(branch=branch_b, tree=tree_b)

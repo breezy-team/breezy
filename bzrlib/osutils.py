@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
 import re
@@ -97,16 +97,22 @@ def minimum_path_selection(paths):
 
     :param paths: A container (and hence not None) of paths.
     :return: A set of paths sufficient to include everything in paths via
-        is_inside_any, drawn from the paths parameter.
+        is_inside, drawn from the paths parameter.
     """
-    search_paths = set()
-    paths = set(paths)
-    for path in paths:
-        other_paths = paths.difference([path])
-        if not is_inside_any(other_paths, path):
-            # this is a top level path, we must check it.
-            search_paths.add(path)
-    return search_paths
+    if len(paths) < 2:
+        return set(paths)
+
+    def sort_key(path):
+        return path.split('/')
+    sorted_paths = sorted(list(paths), key=sort_key)
+
+    search_paths = [sorted_paths[0]]
+    for path in sorted_paths[1:]:
+        if not is_inside(search_paths[-1], path):
+            # This path is unique, add it
+            search_paths.append(path)
+
+    return set(search_paths)
 
 
 _QUOTE_RE = None
@@ -597,6 +603,24 @@ def sha_file(f):
     return s.hexdigest()
 
 
+def size_sha_file(f):
+    """Calculate the size and hexdigest of an open file.
+
+    The file cursor should be already at the start and
+    the caller is responsible for closing the file afterwards.
+    """
+    size = 0
+    s = sha()
+    BUFSIZE = 128<<10
+    while True:
+        b = f.read(BUFSIZE)
+        if not b:
+            break
+        size += len(b)
+        s.update(b)
+    return size, s.hexdigest()
+
+
 def sha_file_by_name(fname):
     """Calculate the SHA1 of a file by reading the full text"""
     s = sha()
@@ -907,6 +931,20 @@ def host_os_dereferences_symlinks():
             and sys.platform not in ('cygwin', 'win32'))
 
 
+def readlink(abspath):
+    """Return a string representing the path to which the symbolic link points.
+
+    :param abspath: The link absolute unicode path.
+
+    This his guaranteed to return the symbolic link in unicode in all python
+    versions.
+    """
+    link = abspath.encode(_fs_enc)
+    target = os.readlink(link)
+    target = target.decode(_fs_enc)
+    return target
+
+
 def contains_whitespace(s):
     """True if there are any whitespace characters in s."""
     # string.whitespace can include '\xa0' in certain locales, because it is
@@ -1012,10 +1050,11 @@ def _cicp_canonical_relpath(base, path):
     return current[len(abs_base)+1:]
 
 # XXX - TODO - we need better detection/integration of case-insensitive
-# file-systems; Linux often sees FAT32 devices, for example, so could
-# probably benefit from the same basic support there.  For now though, only
-# Windows gets that support, and it gets it for *all* file-systems!
-if sys.platform == "win32":
+# file-systems; Linux often sees FAT32 devices (or NFS-mounted OSX
+# filesystems), for example, so could probably benefit from the same basic
+# support there.  For now though, only Windows and OSX get that support, and
+# they get it for *all* file-systems!
+if sys.platform in ('win32', 'darwin'):
     canonical_relpath = _cicp_canonical_relpath
 else:
     canonical_relpath = relpath
@@ -1033,9 +1072,8 @@ def safe_unicode(unicode_or_utf8_string):
     """Coerce unicode_or_utf8_string into unicode.
 
     If it is unicode, it is returned.
-    Otherwise it is decoded from utf-8. If a decoding error
-    occurs, it is wrapped as a If the decoding fails, the exception is wrapped
-    as a BzrBadParameter exception.
+    Otherwise it is decoded from utf-8. If decoding fails, the exception is
+    wrapped in a BzrBadParameterNotUnicode exception.
     """
     if isinstance(unicode_or_utf8_string, unicode):
         return unicode_or_utf8_string
@@ -1374,21 +1412,21 @@ def _walkdirs_utf8(top, prefix=""):
             #       for win98 anyway.
             try:
                 from bzrlib._walkdirs_win32 import Win32ReadDir
-            except ImportError:
-                _selected_dir_reader = UnicodeDirReader()
-            else:
                 _selected_dir_reader = Win32ReadDir()
-        elif fs_encoding not in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968'):
+            except ImportError:
+                pass
+        elif fs_encoding in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968'):
             # ANSI_X3.4-1968 is a form of ASCII
-            _selected_dir_reader = UnicodeDirReader()
-        else:
             try:
                 from bzrlib._readdir_pyx import UTF8DirReader
-            except ImportError:
-                # No optimised code path
-                _selected_dir_reader = UnicodeDirReader()
-            else:
                 _selected_dir_reader = UTF8DirReader()
+            except ImportError:
+                pass
+
+    if _selected_dir_reader is None:
+        # Fallback to the python version
+        _selected_dir_reader = UnicodeDirReader()
+
     # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-toppath
     # But we don't actually uses 1-3 in pending, so set them to None
     pending = [[_selected_dir_reader.top_prefix_to_starting_dir(top, prefix)]]
@@ -1721,6 +1759,28 @@ def until_no_eintr(f, *a, **kw):
             if e.errno == errno.EINTR:
                 continue
             raise
+
+def re_compile_checked(re_string, flags=0, where=""):
+    """Return a compiled re, or raise a sensible error.
+
+    This should only be used when compiling user-supplied REs.
+
+    :param re_string: Text form of regular expression.
+    :param flags: eg re.IGNORECASE
+    :param where: Message explaining to the user the context where
+        it occurred, eg 'log search filter'.
+    """
+    # from https://bugs.launchpad.net/bzr/+bug/251352
+    try:
+        re_obj = re.compile(re_string, flags)
+        re_obj.search("")
+        return re_obj
+    except re.error, e:
+        if where:
+            where = ' in ' + where
+        # despite the name 'error' is a type
+        raise errors.BzrCommandError('Invalid regular expression%s: %r: %s'
+            % (where, re_string, e))
 
 
 if sys.platform == "win32":

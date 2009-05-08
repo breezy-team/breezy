@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 import sys
@@ -53,10 +53,9 @@ class TestInterRepository(TestCaseWithInterRepository):
         def check_push_rev1(repo):
             # ensure the revision is missing.
             self.assertRaises(NoSuchRevision, repo.get_revision, 'rev1')
-            # fetch with a limit of NULL_REVISION and an explicit progress bar.
+            # fetch with a limit of NULL_REVISION
             repo.fetch(tree_a.branch.repository,
-                       revision_id=NULL_REVISION,
-                       pb=bzrlib.progress.DummyProgress())
+                       revision_id=NULL_REVISION)
             # nothing should have been pushed
             self.assertFalse(repo.has_revision('rev1'))
             # fetch with a default limit (grab everything)
@@ -77,7 +76,7 @@ class TestInterRepository(TestCaseWithInterRepository):
 
     def test_fetch_inconsistent_last_changed_entries(self):
         """If an inventory has odd data we should still get what it references.
-        
+
         This test tests that we do fetch a file text created in a revision not
         being fetched, but referenced from the revision we are fetching when the
         adjacent revisions to the one being fetched do not reference that text.
@@ -124,6 +123,44 @@ class TestInterRepository(TestCaseWithInterRepository):
         self.assertEqual('contents',
             to_repo.texts.get_record_stream([('foo', revid)],
             'unordered', True).next().get_bytes_as('fulltext'))
+
+    def test_fetch_parent_inventories_at_stacking_boundary(self):
+        """Fetch to a stacked branch copies inventories for parents of
+        revisions at the stacking boundary.
+
+        This is necessary so that the server is able to determine the file-ids
+        altered by all revisions it contains, which means that it needs both
+        the inventory for any revision it has, and the inventories of all that
+        revision's parents.
+        """
+        to_repo = self.make_to_repository('to')
+        if not to_repo._format.supports_external_lookups:
+            raise TestNotApplicable("Need stacking support in the target.")
+        builder = self.make_branch_builder('branch')
+        builder.start_series()
+        builder.build_snapshot('base', None, [
+            ('add', ('', 'root-id', 'directory', ''))])
+        builder.build_snapshot('left', ['base'], [])
+        builder.build_snapshot('right', ['base'], [])
+        builder.build_snapshot('merge', ['left', 'right'], [])
+        builder.finish_series()
+        branch = builder.get_branch()
+        repo = self.make_to_repository('trunk')
+        trunk = repo.bzrdir.create_branch()
+        trunk.repository.fetch(branch.repository, 'left')
+        trunk.repository.fetch(branch.repository, 'right')
+        repo = self.make_to_repository('stacked')
+        stacked_branch = repo.bzrdir.create_branch()
+        stacked_branch.set_stacked_on_url(trunk.base)
+        stacked_branch.repository.fetch(branch.repository, 'merge')
+        unstacked_repo = stacked_branch.bzrdir.open_repository()
+        unstacked_repo.lock_read()
+        self.addCleanup(unstacked_repo.unlock)
+        self.assertFalse(unstacked_repo.has_revision('left'))
+        self.assertFalse(unstacked_repo.has_revision('right'))
+        self.assertEqual(
+            set([('left',), ('right',), ('merge',)]),
+            unstacked_repo.inventories.keys())
 
     def test_fetch_missing_basis_text(self):
         """If fetching a delta, we should die if a basis is not present."""

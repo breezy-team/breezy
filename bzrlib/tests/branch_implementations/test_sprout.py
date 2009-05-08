@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for Branch.sprout()"""
 
@@ -20,11 +20,11 @@ import os
 from bzrlib import (
     branch as _mod_branch,
     errors,
+    osutils,
     remote,
     revision as _mod_revision,
     tests,
     )
-from bzrlib.tests import KnownFailure, SymlinkFeature, UnicodeFilenameFeature
 from bzrlib.tests.branch_implementations import TestCaseWithBranch
 
 
@@ -132,21 +132,28 @@ class TestSprout(TestCaseWithBranch):
         # Since the trigger function seems to be set_parent_trees, there exists
         # also a similar test, with name test_unicode_symlink, in class
         # TestSetParents at file workingtree_implementations/test_parents.py
-        self.requireFeature(SymlinkFeature)
-        self.requireFeature(UnicodeFilenameFeature)
+        self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(tests.UnicodeFilenameFeature)
 
         tree = self.make_branch_and_tree('tree1')
 
         # The link points to a file whose name is an omega
         # U+03A9 GREEK CAPITAL LETTER OMEGA
         # UTF-8: ce a9  UTF-16BE: 03a9  Decimal: &#937;
-        os.symlink(u'\u03a9','tree1/link_name')
-        tree.add(['link_name'],['link-id'])
+        target = u'\u03a9'
+        link_name = u'\N{Euro Sign}link'
+        os.symlink(target, 'tree1/' + link_name)
+        tree.add([link_name],['link-id'])
 
-        # python 2.7a0 failed on commit:
         revision = tree.commit('added a link to a Unicode target')
-        # python 2.5 failed on sprout:
-        tree.bzrdir.sprout('target')
+        tree.bzrdir.sprout('dest')
+        self.assertEqual(target, osutils.readlink('dest/' + link_name))
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        # Check that the symlink target is safely round-tripped in the trees.
+        self.assertEqual(target, tree.get_symlink_target('link-id'))
+        self.assertEqual(target,
+                         tree.basis_tree().get_symlink_target('link-id'))
 
     def assertBranchHookBranchIsStacked(self, pre_change_params):
         # Just calling will either succeed or fail.
@@ -168,7 +175,8 @@ class TestSprout(TestCaseWithBranch):
                 source_branch=source, stacked=True)
         except errors.UnstackableBranchFormat:
             if isinstance(self.branch_format, _mod_branch.BzrBranchFormat4):
-                raise KnownFailure("Format 4 doesn't auto stack successfully.")
+                raise tests.KnownFailure(
+                    "Format 4 doesn't auto stack successfully.")
             else:
                 raise
         result = dir.open_branch()

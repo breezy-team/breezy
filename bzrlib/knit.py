@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Knit versionedfile implementation.
 
@@ -299,7 +299,19 @@ class KnitContentFactory(ContentFactory):
             if self._network_bytes is None:
                 self._create_network_bytes()
             return self._network_bytes
+        if ('-ft-' in self.storage_kind and
+            storage_kind in ('chunked', 'fulltext')):
+            adapter_key = (self.storage_kind, 'fulltext')
+            adapter_factory = adapter_registry.get(adapter_key)
+            adapter = adapter_factory(None)
+            bytes = adapter.get_bytes(self)
+            if storage_kind == 'chunked':
+                return [bytes]
+            else:
+                return bytes
         if self._knit is not None:
+            # Not redundant with direct conversion above - that only handles
+            # fulltext cases.
             if storage_kind == 'chunked':
                 return self._knit.get_lines(self.key[0])
             elif storage_kind == 'fulltext':
@@ -943,8 +955,12 @@ class KnitVersionedFiles(VersionedFiles):
                 lines[-1] = lines[-1] + '\n'
                 line_bytes += '\n'
 
-        for element in key:
+        for element in key[:-1]:
             if type(element) != str:
+                raise TypeError("key contains non-strings: %r" % (key,))
+        if key[-1] is None:
+            key = key[:-1] + ('sha1:' + digest,)
+        elif type(key[-1]) != str:
                 raise TypeError("key contains non-strings: %r" % (key,))
         # Knit hunks are still last-element only
         version_id = key[-1]
@@ -1010,9 +1026,10 @@ class KnitVersionedFiles(VersionedFiles):
     def _check_add(self, key, lines, random_id, check_content):
         """check that version_id and lines are safe to add."""
         version_id = key[-1]
-        if contains_whitespace(version_id):
-            raise InvalidRevisionId(version_id, self)
-        self.check_not_reserved_id(version_id)
+        if version_id is not None:
+            if contains_whitespace(version_id):
+                raise InvalidRevisionId(version_id, self)
+            self.check_not_reserved_id(version_id)
         # TODO: If random_id==False and the key is already present, we should
         # probably check that the existing content is identical to what is
         # being inserted, and otherwise raise an exception.  This would make
@@ -1597,6 +1614,7 @@ class KnitVersionedFiles(VersionedFiles):
                 # KnitVersionedFiles doesn't permit deltas (_max_delta_chain ==
                 # 0) or because it depends on a base only present in the
                 # fallback kvfs.
+                self._access.flush()
                 try:
                     # Try getting a fulltext directly from the record.
                     bytes = record.get_bytes_as('fulltext')
@@ -1662,6 +1680,7 @@ class KnitVersionedFiles(VersionedFiles):
          * If a requested key did not change any lines (or didn't have any
            lines), it may not be mentioned at all in the result.
 
+        :param pb: Progress bar supplied by caller.
         :return: An iterator over (line, key).
         """
         if pb is None:
@@ -2673,7 +2692,7 @@ class _KnitGraphIndex(object):
     """A KnitVersionedFiles index layered on GraphIndex."""
 
     def __init__(self, graph_index, is_locked, deltas=False, parents=True,
-        add_callback=None):
+        add_callback=None, track_external_parent_refs=False):
         """Construct a KnitGraphIndex on a graph_index.
 
         :param graph_index: An implementation of bzrlib.index.GraphIndex.
@@ -2687,6 +2706,9 @@ class _KnitGraphIndex(object):
             [(node, value, node_refs), ...]
         :param is_locked: A callback, returns True if the index is locked and
             thus usable.
+        :param track_external_parent_refs: If True, record all external parent
+            references parents from added records.  These can be retrieved
+            later by calling get_missing_parents().
         """
         self._add_callback = add_callback
         self._graph_index = graph_index
@@ -2700,6 +2722,10 @@ class _KnitGraphIndex(object):
         self.has_graph = parents
         self._is_locked = is_locked
         self._missing_compression_parents = set()
+        if track_external_parent_refs:
+            self._external_parent_refs = set()
+        else:
+            self._external_parent_refs = None
 
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self._graph_index)
@@ -2729,9 +2755,13 @@ class _KnitGraphIndex(object):
 
         keys = {}
         compression_parents = set()
+        parent_refs = self._external_parent_refs
         for (key, options, access_memo, parents) in records:
             if self._parents:
                 parents = tuple(parents)
+                if parent_refs is not None:
+                    parent_refs.update(parents)
+                    parent_refs.discard(key)
             index, pos, size = access_memo
             if 'no-eol' in options:
                 value = 'N'
@@ -2799,6 +2829,12 @@ class _KnitGraphIndex(object):
             new_missing = graph_index.external_references(ref_list_num=1)
             new_missing.difference_update(self.get_parent_map(new_missing))
             self._missing_compression_parents.update(new_missing)
+        if self._external_parent_refs is not None:
+            # Add parent refs from graph_index (and discard parent refs that
+            # the graph_index has).
+            for node in graph_index.iter_all_entries():
+                self._external_parent_refs.update(node[3][0])
+                self._external_parent_refs.discard(node[1])
 
     def get_missing_compression_parents(self):
         """Return the keys of missing compression parents.
@@ -2807,6 +2843,13 @@ class _KnitGraphIndex(object):
         basis texts, or a index was scanned that had missing basis texts.
         """
         return frozenset(self._missing_compression_parents)
+
+    def get_missing_parents(self):
+        """Return the keys of missing parents."""
+        # We may have false positives, so filter those out.
+        self._external_parent_refs.difference_update(
+            self.get_parent_map(self._external_parent_refs))
+        return frozenset(self._external_parent_refs)
 
     def _check_read(self):
         """raise if reads are not permitted."""
@@ -3036,6 +3079,13 @@ class _KnitKeyAccess(object):
             result.append((key, base, size))
         return result
 
+    def flush(self):
+        """Flush pending writes on this access object.
+        
+        For .knit files this is a no-op.
+        """
+        pass
+
     def get_raw_records(self, memos_for_retrieval):
         """Get the raw bytes for a records.
 
@@ -3066,7 +3116,7 @@ class _KnitKeyAccess(object):
 class _DirectPackAccess(object):
     """Access to data in one or more packs with less translation."""
 
-    def __init__(self, index_to_packs, reload_func=None):
+    def __init__(self, index_to_packs, reload_func=None, flush_func=None):
         """Create a _DirectPackAccess object.
 
         :param index_to_packs: A dict mapping index objects to the transport
@@ -3079,6 +3129,7 @@ class _DirectPackAccess(object):
         self._write_index = None
         self._indices = index_to_packs
         self._reload_func = reload_func
+        self._flush_func = flush_func
 
     def add_raw_records(self, key_sizes, raw_data):
         """Add raw knit bytes to a storage area.
@@ -3106,6 +3157,14 @@ class _DirectPackAccess(object):
             result.append((self._write_index, p_offset, p_length))
         return result
 
+    def flush(self):
+        """Flush pending writes on this access object.
+
+        This will flush any buffered writes to a NewPack.
+        """
+        if self._flush_func is not None:
+            self._flush_func()
+            
     def get_raw_records(self, memos_for_retrieval):
         """Get the raw bytes for a records.
 

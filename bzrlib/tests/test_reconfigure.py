@@ -12,10 +12,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from bzrlib import (
     branch as _mod_branch,
+    bzrdir,
     errors,
     reconfigure,
     repository,
@@ -417,3 +418,15 @@ class TestReconfigure(tests.TestCaseWithTransport):
             reconfigure.Reconfigure.set_repository_trees, tree.bzrdir, None)
         self.assertContainsRe(str(e),
             r"Requested reconfiguration of '.*' is not supported.")
+
+    def test_lightweight_checkout_to_tree_preserves_reference_locations(self):
+        format = bzrdir.format_registry.make_bzrdir('1.9')
+        format.set_branch_format(_mod_branch.BzrBranchFormat8())
+        tree = self.make_branch_and_tree('tree', format=format)
+        tree.branch.set_reference_info('file_id', 'path', '../location')
+        checkout = tree.branch.create_checkout('checkout', lightweight=True)
+        reconfiguration = reconfigure.Reconfigure.to_tree(checkout.bzrdir)
+        reconfiguration.apply()
+        checkout_branch = checkout.bzrdir.open_branch()
+        self.assertEqual(('path', '../location'),
+                         checkout_branch.get_reference_info('file_id'))

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 from cStringIO import StringIO
@@ -120,6 +120,11 @@ class Shelver(object):
                     if self.prompt_bool('Shelve renaming "%s" => "%s"?' %
                                    change[2:]):
                         creator.shelve_rename(change[1])
+                        changes_shelved += 1
+                if change[0] == 'modify target':
+                    if self.prompt_bool('Shelve changing target of "%s" '
+                            'from "%s" to "%s"?' % change[2:]):
+                        creator.shelve_modify_target(change[1])
                         changes_shelved += 1
             if changes_shelved > 0:
                 trace.note("Selected changes:")

@@ -28,7 +28,7 @@ tune performance.
 To maintain the highest security possible, the current
 smart server provides read-only access by default.  To
 enable read-write access, run it with ``--allow-writes``. When using
-the SSH access method, bzr automatically runs with with the
+the SSH access method, bzr automatically runs with the
 ``--allow-writes`` option.
 
 The alternative ways of configuring a smart server are explained below.

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Black-box tests for repositories with shared branches"""
 
@@ -114,10 +114,9 @@ Location:
         # be fixed.
         self.setup_smart_server_with_call_log()
         self.run_bzr(['init-repo', self.get_url('repo')])
-        rpc_count = len(self.hpss_calls)
         # This figure represent the amount of work to perform this use case. It
         # is entirely ok to reduce this number if a test fails due to rpc_count
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertEqual(16, rpc_count)
+        self.assertLength(16, self.hpss_calls)

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import time
 
@@ -121,8 +121,8 @@ class CachingParentsProvider(object):
             self._get_parent_map = self._real_provider.get_parent_map
         else:
             self._get_parent_map = get_parent_map
-        self._cache = {}
-        self._cache_misses = True
+        self._cache = None
+        self.enable_cache(True)
 
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self._real_provider)
@@ -133,38 +133,47 @@ class CachingParentsProvider(object):
             raise AssertionError('Cache enabled when already enabled.')
         self._cache = {}
         self._cache_misses = cache_misses
+        self.missing_keys = set()
 
     def disable_cache(self):
         """Disable and clear the cache."""
         self._cache = None
+        self._cache_misses = None
+        self.missing_keys = set()
 
     def get_cached_map(self):
         """Return any cached get_parent_map values."""
         if self._cache is None:
             return None
-        return dict((k, v) for k, v in self._cache.items()
-                    if v is not None)
+        return dict(self._cache)
 
     def get_parent_map(self, keys):
         """See _StackedParentsProvider.get_parent_map."""
-        # Hack to build up the caching logic.
-        ancestry = self._cache
-        if ancestry is None:
-            # Caching is disabled.
-            missing_revisions = set(keys)
-            ancestry = {}
+        cache = self._cache
+        if cache is None:
+            cache = self._get_parent_map(keys)
         else:
-            missing_revisions = set(key for key in keys if key not in ancestry)
-        if missing_revisions:
-            parent_map = self._get_parent_map(missing_revisions)
-            ancestry.update(parent_map)
-            if self._cache_misses:
-                # None is never a valid parents list, so it can be used to
-                # record misses.
-                ancestry.update(dict((k, None) for k in missing_revisions
-                                     if k not in parent_map))
-        present_keys = [k for k in keys if ancestry.get(k) is not None]
-        return dict((k, ancestry[k]) for k in present_keys)
+            needed_revisions = set(key for key in keys if key not in cache)
+            # Do not ask for negatively cached keys
+            needed_revisions.difference_update(self.missing_keys)
+            if needed_revisions:
+                parent_map = self._get_parent_map(needed_revisions)
+                cache.update(parent_map)
+                if self._cache_misses:
+                    for key in needed_revisions:
+                        if key not in parent_map:
+                            self.note_missing_key(key)
+        result = {}
+        for key in keys:
+            value = cache.get(key)
+            if value is not None:
+                result[key] = value
+        return result
+
+    def note_missing_key(self, key):
+        """Note that key is a missing key."""
+        if self._cache_misses:
+            self.missing_keys.add(key)
 
 
 class Graph(object):
@@ -599,24 +608,6 @@ class Graph(object):
                                  len(next_unique_searchers),
                                  all_unique_searcher._iterations)
             unique_tip_searchers = next_unique_searchers
-
-    @symbol_versioning.deprecated_method(symbol_versioning.one_one)
-    def get_parents(self, revisions):
-        """Find revision ids of the parents of a list of revisions
-
-        A list is returned of the same length as the input.  Each entry
-        is a list of parent ids for the corresponding input revision.
-
-        [NULL_REVISION] is used as the parent of the first user-committed
-        revision.  Its parent list is empty.
-
-        If the revision is not present (i.e. a ghost), None is used in place
-        of the list of parents.
-
-        Deprecated in bzr 1.2 - please see get_parent_map.
-        """
-        parents = self.get_parent_map(revisions)
-        return [parents.get(r, None) for r in revisions]
 
     def get_parent_map(self, revisions):
         """Get a map of key:parent_list for revisions.
@@ -1461,7 +1452,7 @@ class SearchResult(object):
             a SearchResult from a smart server, in which case the keys list is
             not necessarily immediately available.
         """
-        self._recipe = (start_keys, exclude_keys, key_count)
+        self._recipe = ('search', start_keys, exclude_keys, key_count)
         self._keys = frozenset(keys)
 
     def get_recipe(self):
@@ -1469,18 +1460,18 @@ class SearchResult(object):
 
         The recipe allows reconstruction of the same results at a later date
         without knowing all the found keys. The essential elements are a list
-        of keys to start and and to stop at. In order to give reproducible
+        of keys to start and to stop at. In order to give reproducible
         results when ghosts are encountered by a search they are automatically
         added to the exclude list (or else ghost filling may alter the
         results).
 
-        :return: A tuple (start_keys_set, exclude_keys_set, revision_count). To
-            recreate the results of this search, create a breadth first
-            searcher on the same graph starting at start_keys. Then call next()
-            (or next_with_ghosts()) repeatedly, and on every result, call
-            stop_searching_any on any keys from the exclude_keys set. The
-            revision_count value acts as a trivial cross-check - the found
-            revisions of the new search should have as many elements as
+        :return: A tuple ('search', start_keys_set, exclude_keys_set,
+            revision_count). To recreate the results of this search, create a
+            breadth first searcher on the same graph starting at start_keys.
+            Then call next() (or next_with_ghosts()) repeatedly, and on every
+            result, call stop_searching_any on any keys from the exclude_keys
+            set. The revision_count value acts as a trivial cross-check - the
+            found revisions of the new search should have as many elements as
             revision_count. If it does not, then additional revisions have been
             ghosted since the search was executed the first time and the second
             time.
@@ -1493,6 +1484,35 @@ class SearchResult(object):
         :return: A set of keys.
         """
         return self._keys
+
+    def is_empty(self):
+        """Return false if the search lists 1 or more revisions."""
+        return self._recipe[3] == 0
+
+    def refine(self, seen, referenced):
+        """Create a new search by refining this search.
+
+        :param seen: Revisions that have been satisfied.
+        :param referenced: Revision references observed while satisfying some
+            of this search.
+        """
+        start = self._recipe[1]
+        exclude = self._recipe[2]
+        count = self._recipe[3]
+        keys = self.get_keys()
+        # New heads = referenced + old heads - seen things - exclude
+        pending_refs = set(referenced)
+        pending_refs.update(start)
+        pending_refs.difference_update(seen)
+        pending_refs.difference_update(exclude)
+        # New exclude = old exclude + satisfied heads
+        seen_heads = start.intersection(seen)
+        exclude.update(seen_heads)
+        # keys gets seen removed
+        keys = keys - seen
+        # length is reduced by len(seen)
+        count -= len(seen)
+        return SearchResult(pending_refs, exclude, count, keys)
 
 
 class PendingAncestryResult(object):
@@ -1509,11 +1529,21 @@ class PendingAncestryResult(object):
         :param repo: a repository to use to generate the ancestry for the given
             heads.
         """
-        self.heads = heads
+        self.heads = frozenset(heads)
         self.repo = repo
 
     def get_recipe(self):
-        raise NotImplementedError(self.get_recipe)
+        """Return a recipe that can be used to replay this search.
+
+        The recipe allows reconstruction of the same results at a later date.
+
+        :seealso SearchResult.get_recipe:
+
+        :return: A tuple ('proxy-search', start_keys_set, set(), -1)
+            To recreate this result, create a PendingAncestryResult with the
+            start_keys_set.
+        """
+        return ('proxy-search', self.heads, set(), -1)
 
     def get_keys(self):
         """See SearchResult.get_keys.
@@ -1528,6 +1558,23 @@ class PendingAncestryResult(object):
         keys = [key for (key, parents) in graph.iter_ancestry(self.heads)
                 if key != NULL_REVISION]
         return keys
+
+    def is_empty(self):
+        """Return false if the search lists 1 or more revisions."""
+        if revision.NULL_REVISION in self.heads:
+            return len(self.heads) == 1
+        else:
+            return len(self.heads) == 0
+
+    def refine(self, seen, referenced):
+        """Create a new search by refining this search.
+
+        :param seen: Revisions that have been satisfied.
+        :param referenced: Revision references observed while satisfying some
+            of this search.
+        """
+        referenced = self.heads.union(referenced)
+        return PendingAncestryResult(referenced - seen, self.repo)
 
 
 def collapse_linear_regions(parent_map):

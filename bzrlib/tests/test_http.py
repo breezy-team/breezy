@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for HTTP implementations.
 
@@ -215,9 +215,11 @@ class RecordingServer(object):
 
 class TestAuthHeader(tests.TestCase):
 
-    def parse_header(self, header):
-        ah =  _urllib2_wrappers.AbstractAuthHandler()
-        return ah._parse_auth_header(header)
+    def parse_header(self, header, auth_handler_class=None):
+        if auth_handler_class is None:
+            auth_handler_class = _urllib2_wrappers.AbstractAuthHandler
+        self.auth_handler =  auth_handler_class()
+        return self.auth_handler._parse_auth_header(header)
 
     def test_empty_header(self):
         scheme, remainder = self.parse_header('')
@@ -234,6 +236,14 @@ class TestAuthHeader(tests.TestCase):
             'Basic realm="Thou should not pass"')
         self.assertEquals('basic', scheme)
         self.assertEquals('realm="Thou should not pass"', remainder)
+
+    def test_basic_extract_realm(self):
+        scheme, remainder = self.parse_header(
+            'Basic realm="Thou should not pass"',
+            _urllib2_wrappers.BasicAuthHandler)
+        match, realm = self.auth_handler.extract_realm(remainder)
+        self.assertTrue(match is not None)
+        self.assertEquals('Thou should not pass', realm)
 
     def test_digest_header(self):
         scheme, remainder = self.parse_header(
@@ -1307,7 +1317,7 @@ class RedirectedRequest(_urllib2_wrappers.Request):
         # Since the tests using this class will replace
         # _urllib2_wrappers.Request, we can't just call the base class __init__
         # or we'll loop.
-        RedirectedRequest.init_orig(self, method, url, args, kwargs)
+        RedirectedRequest.init_orig(self, method, url, *args, **kwargs)
         self.follow_redirections = True
 
 
@@ -1440,6 +1450,7 @@ class TestAuth(http_utils.TestCaseWithWebserver):
 
     _auth_header = 'Authorization'
     _password_prompt_prefix = ''
+    _username_prompt_prefix = ''
 
     def setUp(self):
         super(TestAuth, self).setUp()
@@ -1514,6 +1525,25 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         # initial 'who are you' and 'this is not you, who are you')
         self.assertEqual(2, self.server.auth_required_errors)
 
+    def test_prompt_for_username(self):
+        if self._testing_pycurl():
+            raise tests.TestNotApplicable(
+                'pycurl cannot prompt, it handles auth by embedding'
+                ' user:pass in urls only')
+
+        self.server.add_user('joe', 'foo')
+        t = self.get_user_transport(None, None)
+        stdout = tests.StringIOWrapper()
+        ui.ui_factory = tests.TestUIFactory(stdin='joe\nfoo\n', stdout=stdout)
+        self.assertEqual('contents of a\n',t.get('a').read())
+        # stdin should be empty
+        self.assertEqual('', ui.ui_factory.stdin.readline())
+        stdout.seek(0)
+        expected_prompt = self._expected_username_prompt(t._unqualified_scheme)
+        self.assertEquals(expected_prompt, stdout.read(len(expected_prompt)))
+        self._check_password_prompt(t._unqualified_scheme, 'joe',
+                                    stdout.readline())
+
     def test_prompt_for_password(self):
         if self._testing_pycurl():
             raise tests.TestNotApplicable(
@@ -1545,6 +1575,12 @@ class TestAuth(http_utils.TestCaseWithWebserver):
                                  user, self.server.host, self.server.port,
                                  self.server.auth_realm)))
         self.assertEquals(expected_prompt, actual_prompt)
+
+    def _expected_username_prompt(self, scheme):
+        return (self._username_prompt_prefix
+                + "%s %s:%d, Realm: '%s' username: " % (scheme.upper(),
+                                 self.server.host, self.server.port,
+                                 self.server.auth_realm))
 
     def test_no_prompt_for_password_when_using_auth_config(self):
         if self._testing_pycurl():
@@ -1617,7 +1653,8 @@ class TestProxyAuth(TestAuth):
     """Test proxy authentication schemes."""
 
     _auth_header = 'Proxy-authorization'
-    _password_prompt_prefix='Proxy '
+    _password_prompt_prefix = 'Proxy '
+    _username_prompt_prefix = 'Proxy '
 
     def setUp(self):
         super(TestProxyAuth, self).setUp()
@@ -1905,7 +1942,7 @@ class TestActivity(tests.TestCase):
 
         # We override at class level because constructors may propagate the
         # bound method and render instance overriding ineffective (an
-        # alternative would be be to define a specific ui factory instead...)
+        # alternative would be to define a specific ui factory instead...)
         self.orig_report_activity = self._transport._report_activity
         self._transport._report_activity = report_activity
 

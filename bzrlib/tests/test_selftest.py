@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the test framework."""
 
@@ -28,7 +28,9 @@ import bzrlib
 from bzrlib import (
     branchbuilder,
     bzrdir,
+    debug,
     errors,
+    lockdir,
     memorytree,
     osutils,
     remote,
@@ -43,9 +45,9 @@ from bzrlib.repofmt import (
     weaverepo,
     )
 from bzrlib.symbol_versioning import (
-    one_zero,
-    zero_eleven,
-    zero_ten,
+    deprecated_function,
+    deprecated_in,
+    deprecated_method,
     )
 from bzrlib.tests import (
                           ChrootedTestCase,
@@ -619,6 +621,20 @@ class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):
         # But we have a safety net in place.
         self.assertRaises(AssertionError, self._check_safety_net)
 
+    def test_dangling_locks_cause_failures(self):
+        # This is currently only enabled during debug runs, so turn debugging
+        # on.
+        debug.debug_flags.add('lock')
+        class TestDanglingLock(TestCaseWithMemoryTransport):
+            def test_function(self):
+                t = self.get_transport('.')
+                l = lockdir.LockDir(t, 'lock')
+                l.create()
+                l.attempt_lock()
+        test = TestDanglingLock('test_function')
+        result = test.run()
+        self.assertEqual(1, len(result.errors))
+
 
 class TestTestCaseWithTransport(TestCaseWithTransport):
     """Tests for the convenience functions TestCaseWithTransport introduces."""
@@ -836,7 +852,8 @@ class TestTestResult(TestCase):
     def test_known_failure(self):
         """A KnownFailure being raised should trigger several result actions."""
         class InstrumentedTestResult(ExtendedTestResult):
-
+            def done(self): pass
+            def startTests(self): pass
             def report_test_start(self, test): pass
             def report_known_failure(self, test, err):
                 self._call = test, err
@@ -884,7 +901,7 @@ class TestTestResult(TestCase):
         # text test output formatting
         pb = MockProgress()
         result = bzrlib.tests.TextTestResult(
-            None,
+            StringIO(),
             descriptions=0,
             verbosity=1,
             pb=pb,
@@ -924,6 +941,8 @@ class TestTestResult(TestCase):
     def test_add_not_supported(self):
         """Test the behaviour of invoking addNotSupported."""
         class InstrumentedTestResult(ExtendedTestResult):
+            def done(self): pass
+            def startTests(self): pass
             def report_test_start(self, test): pass
             def report_unsupported(self, test, feature):
                 self._call = test, feature
@@ -966,7 +985,7 @@ class TestTestResult(TestCase):
         # text test output formatting
         pb = MockProgress()
         result = bzrlib.tests.TextTestResult(
-            None,
+            StringIO(),
             descriptions=0,
             verbosity=1,
             pb=pb,
@@ -994,7 +1013,8 @@ class TestTestResult(TestCase):
     def test_unavailable_exception(self):
         """An UnavailableFeature being raised should invoke addNotSupported."""
         class InstrumentedTestResult(ExtendedTestResult):
-
+            def done(self): pass
+            def startTests(self): pass
             def report_test_start(self, test): pass
             def addNotSupported(self, test, feature):
                 self._call = test, feature
@@ -1036,6 +1056,19 @@ class TestTestResult(TestCase):
         result.addSuccess(test)
         self.assertTrue(result.wasStrictlySuccessful())
         self.assertEqual(None, result._extractBenchmarkTime(test))
+
+    def test_startTests(self):
+        """Starting the first test should trigger startTests."""
+        class InstrumentedTestResult(ExtendedTestResult):
+            calls = 0
+            def startTests(self): self.calls += 1
+            def report_test_start(self, test): pass
+        result = InstrumentedTestResult(None, None, None, None)
+        def test_function():
+            pass
+        test = unittest.FunctionTestCase(test_function)
+        test.run(result)
+        self.assertEquals(1, result.calls)
 
 
 class TestUnicodeFilenameFeature(TestCase):
@@ -1094,7 +1127,7 @@ class TestRunner(TestCase):
             '----------------------------------------------------------------------',
             '',
             'FAILED (failures=1, known_failure_count=1)'],
-            lines[0:5] + lines[6:10] + lines[11:])
+            lines[3:8] + lines[9:13] + lines[14:])
 
     def test_known_failure_ok_run(self):
         # run a test that generates a known failure which should be printed in the final output.
@@ -1150,6 +1183,7 @@ class TestRunner(TestCase):
         class SkippedTest(TestCase):
 
             def setUp(self):
+                TestCase.setUp(self)
                 calls.append('setUp')
                 self.addCleanup(self.cleanup)
 
@@ -1351,6 +1385,49 @@ class _TestException(Exception):
 
 class TestTestCase(TestCase):
     """Tests that test the core bzrlib TestCase."""
+
+    def test_assertLength_matches_empty(self):
+        a_list = []
+        self.assertLength(0, a_list)
+
+    def test_assertLength_matches_nonempty(self):
+        a_list = [1, 2, 3]
+        self.assertLength(3, a_list)
+
+    def test_assertLength_fails_different(self):
+        a_list = []
+        self.assertRaises(AssertionError, self.assertLength, 1, a_list)
+
+    def test_assertLength_shows_sequence_in_failure(self):
+        a_list = [1, 2, 3]
+        exception = self.assertRaises(AssertionError, self.assertLength, 2,
+            a_list)
+        self.assertEqual('Incorrect length: wanted 2, got 3 for [1, 2, 3]',
+            exception.args[0])
+
+    def test_base_setUp_not_called_causes_failure(self):
+        class TestCaseWithBrokenSetUp(TestCase):
+            def setUp(self):
+                pass # does not call TestCase.setUp
+            def test_foo(self):
+                pass
+        test = TestCaseWithBrokenSetUp('test_foo')
+        result = unittest.TestResult()
+        test.run(result)
+        self.assertFalse(result.wasSuccessful())
+        self.assertEqual(1, result.testsRun)
+
+    def test_base_tearDown_not_called_causes_failure(self):
+        class TestCaseWithBrokenTearDown(TestCase):
+            def tearDown(self):
+                pass # does not call TestCase.tearDown
+            def test_foo(self):
+                pass
+        test = TestCaseWithBrokenTearDown('test_foo')
+        result = unittest.TestResult()
+        test.run(result)
+        self.assertFalse(result.wasSuccessful())
+        self.assertEqual(1, result.testsRun)
 
     def test_debug_flags_sanitised(self):
         """The bzrlib debug flags should be sanitised by setUp."""
@@ -1610,7 +1687,8 @@ class TestTestCase(TestCase):
             self.assertListRaises, _TestException, success_generator)
 
 
-@symbol_versioning.deprecated_function(zero_eleven)
+# NB: Don't delete this; it's not actually from 0.11!
+@deprecated_function(deprecated_in((0, 11, 0)))
 def sample_deprecated_function():
     """A deprecated function to test applyDeprecated with."""
     return 2
@@ -1623,7 +1701,7 @@ def sample_undeprecated_function(a_param):
 class ApplyDeprecatedHelper(object):
     """A helper class for ApplyDeprecated tests."""
 
-    @symbol_versioning.deprecated_method(zero_eleven)
+    @deprecated_method(deprecated_in((0, 11, 0)))
     def sample_deprecated_method(self, param_one):
         """A deprecated method for testing with."""
         return param_one
@@ -1631,7 +1709,7 @@ class ApplyDeprecatedHelper(object):
     def sample_normal_method(self):
         """A undeprecated method."""
 
-    @symbol_versioning.deprecated_method(zero_ten)
+    @deprecated_method(deprecated_in((0, 10, 0)))
     def sample_nested_deprecation(self):
         return sample_deprecated_function()
 
@@ -1652,30 +1730,35 @@ class TestExtraAssertions(TestCase):
     def test_applyDeprecated_not_deprecated(self):
         sample_object = ApplyDeprecatedHelper()
         # calling an undeprecated callable raises an assertion
-        self.assertRaises(AssertionError, self.applyDeprecated, zero_eleven,
+        self.assertRaises(AssertionError, self.applyDeprecated,
+            deprecated_in((0, 11, 0)),
             sample_object.sample_normal_method)
-        self.assertRaises(AssertionError, self.applyDeprecated, zero_eleven,
+        self.assertRaises(AssertionError, self.applyDeprecated,
+            deprecated_in((0, 11, 0)),
             sample_undeprecated_function, "a param value")
         # calling a deprecated callable (function or method) with the wrong
         # expected deprecation fails.
-        self.assertRaises(AssertionError, self.applyDeprecated, zero_ten,
+        self.assertRaises(AssertionError, self.applyDeprecated,
+            deprecated_in((0, 10, 0)),
             sample_object.sample_deprecated_method, "a param value")
-        self.assertRaises(AssertionError, self.applyDeprecated, zero_ten,
+        self.assertRaises(AssertionError, self.applyDeprecated,
+            deprecated_in((0, 10, 0)),
             sample_deprecated_function)
         # calling a deprecated callable (function or method) with the right
         # expected deprecation returns the functions result.
-        self.assertEqual("a param value", self.applyDeprecated(zero_eleven,
+        self.assertEqual("a param value",
+            self.applyDeprecated(deprecated_in((0, 11, 0)),
             sample_object.sample_deprecated_method, "a param value"))
-        self.assertEqual(2, self.applyDeprecated(zero_eleven,
+        self.assertEqual(2, self.applyDeprecated(deprecated_in((0, 11, 0)),
             sample_deprecated_function))
         # calling a nested deprecation with the wrong deprecation version
         # fails even if a deeper nested function was deprecated with the
         # supplied version.
         self.assertRaises(AssertionError, self.applyDeprecated,
-            zero_eleven, sample_object.sample_nested_deprecation)
+            deprecated_in((0, 11, 0)), sample_object.sample_nested_deprecation)
         # calling a nested deprecation with the right deprecation value
         # returns the calls result.
-        self.assertEqual(2, self.applyDeprecated(zero_ten,
+        self.assertEqual(2, self.applyDeprecated(deprecated_in((0, 10, 0)),
             sample_object.sample_nested_deprecation))
 
     def test_callDeprecated(self):
@@ -1823,6 +1906,7 @@ class TestUnavailableFeature(TestCase):
 class TestSelftestFiltering(TestCase):
 
     def setUp(self):
+        TestCase.setUp(self)
         self.suite = TestUtil.TestSuite()
         self.loader = TestUtil.TestLoader()
         self.suite.addTest(self.loader.loadTestsFromModuleNames([
@@ -2297,5 +2381,21 @@ class TestRunSuite(TestCase):
                 calls.append(test)
                 return ExtendedTestResult(self.stream, self.descriptions,
                     self.verbosity)
-        run_suite(suite, runner_class=MyRunner)
+        run_suite(suite, runner_class=MyRunner, stream=StringIO())
         self.assertEqual(calls, [suite])
+
+    def test_done(self):
+        """run_suite should call result.done()"""
+        self.calls = 0
+        def one_more_call(): self.calls += 1
+        def test_function():
+            pass
+        test = unittest.FunctionTestCase(test_function)
+        class InstrumentedTestResult(ExtendedTestResult):
+            def done(self): one_more_call()
+        class MyRunner(TextTestRunner):
+            def run(self, test):
+                return InstrumentedTestResult(self.stream, self.descriptions,
+                                              self.verbosity)
+        run_suite(test, runner_class=MyRunner, stream=StringIO())
+        self.assertEquals(1, self.calls)

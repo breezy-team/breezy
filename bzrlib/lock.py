@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Locking using OS file locks or file existence.
@@ -42,21 +42,19 @@ from bzrlib import (
     osutils,
     trace,
     )
-from bzrlib.hooks import Hooks
+from bzrlib.hooks import HookPoint, Hooks
 
 
 class LockHooks(Hooks):
 
     def __init__(self):
         Hooks.__init__(self)
-
-        # added in 1.8; called with a LockResult when a physical lock is
-        # acquired
-        self['lock_acquired'] = []
-
-        # added in 1.8; called with a LockResult when a physical lock is
-        # acquired
-        self['lock_released'] = []
+        self.create_hook(HookPoint('lock_acquired',
+            "Called with a bzrlib.lock.LockResult when a physical lock is "
+            "acquired.", (1, 8), None))
+        self.create_hook(HookPoint('lock_released',
+            "Called with a bzrlib.lock.LockResult when a physical lock is "
+            "released.", (1, 8), None))
 
 
 class Lock(object):

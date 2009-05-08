@@ -12,18 +12,40 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
 """Tests of the 'bzr add' command."""
 
 import os
 
+from bzrlib import osutils
+from bzrlib.tests import (
+    condition_isinstance,
+    split_suite_by_condition,
+    multiply_tests,
+    SymlinkFeature
+    )
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.tests.test_win32utils import NeedsGlobExpansionFeature
 
 
+def load_tests(standard_tests, module, loader):
+    """Parameterize tests for view-aware vs not."""
+    to_adapt, result = split_suite_by_condition(
+        standard_tests, condition_isinstance(TestAdd))
+    scenarios = [
+        ('pre-views', {'branch_tree_format': 'pack-0.92'}),
+        ('view-aware', {'branch_tree_format': 'development6-rich-root'}),
+        ]
+    return multiply_tests(to_adapt, scenarios, result)
+
+
 class TestAdd(ExternalBase):
+
+    def make_branch_and_tree(self, dir):
+        return ExternalBase.make_branch_and_tree(self, dir,
+            format=self.branch_tree_format)
 
     def test_add_reports(self):
         """add command prints the names of added files."""
@@ -207,3 +229,18 @@ class TestAdd(ExternalBase):
         self.build_tree([u'\u1234A', u'\u1235A', u'\u1235AA', 'cc'])
         self.run_bzr(['add', u'\u1234?', u'\u1235*'])
         self.assertEquals(self.run_bzr('unknowns')[0], 'cc\n')
+
+    def test_add_via_symlink(self):
+        self.requireFeature(SymlinkFeature)
+        self.make_branch_and_tree('source')
+        self.build_tree(['source/top.txt'])
+        os.symlink('source', 'link')
+        out = self.run_bzr(['add', 'link/top.txt'])[0]
+        self.assertEquals(out, 'adding top.txt\n')
+
+    def test_add_symlink_to_abspath(self):
+        self.requireFeature(SymlinkFeature)
+        self.make_branch_and_tree('tree')
+        os.symlink(osutils.abspath('target'), 'tree/link')
+        out = self.run_bzr(['add', 'tree/link'])[0]
+        self.assertEquals(out, 'adding link\n')

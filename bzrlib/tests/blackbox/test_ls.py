@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """External tests of 'bzr ls'"""
 
@@ -36,10 +36,12 @@ class TestLS(TestCaseWithTransport):
                                  ('a', 'hello\n'),
                                  ])
 
-    def ls_equals(self, value, args=None):
+    def ls_equals(self, value, args=None, recursive=True):
         command = 'ls'
         if args is not None:
             command += ' ' + args
+        if recursive:
+            command += ' -R'
         out, err = self.run_bzr(command)
         self.assertEqual('', err)
         self.assertEqualDiff(value, out)
@@ -108,19 +110,19 @@ class TestLS(TestCaseWithTransport):
                        'a\0a-id\0'
                        'subdir\0subdir-id\0', '--show-ids --null')
 
-    def test_ls_recursive(self):
+    def test_ls_no_recursive(self):
         self.build_tree(['subdir/', 'subdir/b'])
         self.wt.add(['a', 'subdir/', 'subdir/b', '.bzrignore'])
 
         self.ls_equals('.bzrignore\n'
                        'a\n'
                        'subdir/\n'
-                       , '--non-recursive')
+                       , recursive=False)
 
         self.ls_equals('V        .bzrignore\n'
                        'V        a\n'
                        'V        subdir/\n'
-                       , '--verbose --non-recursive')
+                       , '--verbose', recursive=False)
 
         # Check what happens in a sub-directory
         os.chdir('subdir')
@@ -140,7 +142,7 @@ class TestLS(TestCaseWithTransport):
         self.ls_equals('.bzrignore\n'
                        'a\n'
                        'subdir/\n'
-                       , '--from-root --non-recursive')
+                       , '--from-root', recursive=False)
 
     def test_ls_path(self):
         """If a path is specified, files are listed with that prefix"""
@@ -164,7 +166,7 @@ class TestLS(TestCaseWithTransport):
                        'V        ../subdir/\n'
                        'V        ../subdir/b\n' ,
                        '.. --verbose')
-        self.run_bzr_error('cannot specify both --from-root and PATH',
+        self.run_bzr_error(['cannot specify both --from-root and PATH'],
                            'ls --from-root ..')
 
     def test_ls_revision(self):
@@ -233,4 +235,10 @@ class TestLS(TestCaseWithTransport):
                        '--kind=directory')
         self.ls_equals('',
                        '--kind=symlink')
-        self.run_bzr_error('invalid kind specified', 'ls --kind=pile')
+        self.run_bzr_error(['invalid kind specified'], 'ls --kind=pile')
+
+    def test_ls_path_nonrecursive(self):
+        self.ls_equals('%s/.bzrignore\n'
+                       '%s/a\n'
+                       % (self.test_dir, self.test_dir),
+                       self.test_dir, recursive=False)

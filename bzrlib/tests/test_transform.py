@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
 import stat
@@ -525,26 +525,42 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         resolve_conflicts(replace)
         replace.apply()
 
-    def test_symlinks(self):
+    def _test_symlinks(self, link_name1,link_target1,
+                       link_name2, link_target2):
+
+        def ozpath(p): return 'oz/' + p
+
         self.requireFeature(SymlinkFeature)
-        transform,root = self.get_transform()
+        transform, root = self.get_transform()
         oz_id = transform.new_directory('oz', root, 'oz-id')
-        wizard = transform.new_symlink('wizard', oz_id, 'wizard-target',
+        wizard = transform.new_symlink(link_name1, oz_id, link_target1,
                                        'wizard-id')
-        wiz_id = transform.create_path('wizard2', oz_id)
-        transform.create_symlink('behind_curtain', wiz_id)
+        wiz_id = transform.create_path(link_name2, oz_id)
+        transform.create_symlink(link_target2, wiz_id)
         transform.version_file('wiz-id2', wiz_id)
         transform.set_executability(True, wiz_id)
         self.assertEqual(transform.find_conflicts(),
                          [('non-file executability', wiz_id)])
         transform.set_executability(None, wiz_id)
         transform.apply()
-        self.assertEqual(self.wt.path2id('oz/wizard'), 'wizard-id')
-        self.assertEqual(file_kind(self.wt.abspath('oz/wizard')), 'symlink')
-        self.assertEqual(os.readlink(self.wt.abspath('oz/wizard2')),
-                         'behind_curtain')
-        self.assertEqual(os.readlink(self.wt.abspath('oz/wizard')),
-                         'wizard-target')
+        self.assertEqual(self.wt.path2id(ozpath(link_name1)), 'wizard-id')
+        self.assertEqual('symlink',
+                         file_kind(self.wt.abspath(ozpath(link_name1))))
+        self.assertEqual(link_target2,
+                         osutils.readlink(self.wt.abspath(ozpath(link_name2))))
+        self.assertEqual(link_target1,
+                         osutils.readlink(self.wt.abspath(ozpath(link_name1))))
+
+    def test_symlinks(self):
+        self._test_symlinks('wizard', 'wizard-target',
+                            'wizard2', 'behind_curtain')
+
+    def test_symlinks_unicode(self):
+        self.requireFeature(tests.UnicodeFilenameFeature)
+        self._test_symlinks(u'\N{Euro Sign}wizard',
+                            u'wizard-targ\N{Euro Sign}t',
+                            u'\N{Euro Sign}wizard2',
+                            u'b\N{Euro Sign}hind_curtain')
 
     def test_unable_create_symlink(self):
         def tt_helper():
@@ -1841,6 +1857,9 @@ class TestBuildTree(tests.TestCaseWithTransport):
         self.assertTrue(source.is_executable('file1-id'))
 
     def test_case_insensitive_build_tree_inventory(self):
+        if (tests.CaseInsensitiveFilesystemFeature.available()
+            or tests.CaseInsCasePresFilenameFeature.available()):
+            raise tests.UnavailableFeature('Fully case sensitive filesystem')
         source = self.make_branch_and_tree('source')
         self.build_tree(['source/file', 'source/FILE'])
         source.add(['file', 'FILE'], ['lower-id', 'upper-id'])
@@ -2685,10 +2704,11 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         self.assertSerializesTo(self.symlink_creation_records(), tt)
 
     def test_deserialize_symlink_creation(self):
+        self.requireFeature(tests.SymlinkFeature)
         tt = self.get_preview()
         tt.deserialize(iter(self.symlink_creation_records()))
-        # XXX readlink should be returning unicode, not utf-8
-        foo_content = os.readlink(tt._limbo_name('new-1')).decode('utf-8')
+        abspath = tt._limbo_name('new-1')
+        foo_content = osutils.readlink(abspath)
         self.assertEqual(u'bar\u1234', foo_content)
 
     def make_destruction_preview(self):
