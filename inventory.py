@@ -21,6 +21,12 @@
 import stat
 
 
+from dulwich.objects import (
+    Blob,
+    Tree,
+    )
+
+
 from bzrlib import (
     errors,
     inventory,
@@ -31,6 +37,8 @@ from bzrlib import (
 
 
 class GitInventoryEntry(inventory.InventoryEntry):
+
+    _git_class = None
 
     def __init__(self, inv, parent_id, hexsha, path, name, executable):
         self.name = name
@@ -47,10 +55,15 @@ class GitInventoryEntry(inventory.InventoryEntry):
     def object(self):
         if self._object is None:
             self._object = self._inventory.store[self.hexsha]
+            assert isinstance(self._object, self._git_class), \
+                    "Expected instance of %r, got %r" % \
+                    (self._git_class, self._object)
         return self._object
 
 
 class GitInventoryFile(GitInventoryEntry):
+
+    _git_class = Blob
 
     def __init__(self, inv, parent_id, hexsha, path, basename, executable):
         super(GitInventoryFile, self).__init__(inv, parent_id, hexsha, path, basename, executable)
@@ -92,6 +105,8 @@ class GitInventoryFile(GitInventoryEntry):
 
 class GitInventoryLink(GitInventoryEntry):
 
+    _git_class = Blob
+
     def __init__(self, inv, parent_id, hexsha, path, basename, executable):
         super(GitInventoryLink, self).__init__(inv, parent_id, hexsha, path, basename, executable)
         self.text_sha1 = None
@@ -114,6 +129,8 @@ class GitInventoryLink(GitInventoryEntry):
 
 
 class GitInventoryDirectory(GitInventoryEntry):
+
+    _git_class = Tree
 
     def __init__(self, inv, parent_id, hexsha, path, basename, executable):
         super(GitInventoryDirectory, self).__init__(inv, parent_id, hexsha, path, basename, executable)
