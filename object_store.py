@@ -165,6 +165,11 @@ class BazaarObjectStore(object):
         return commit
 
     def get_parents(self, sha):
+        """Retrieve the parents of a Git commit by SHA1.
+
+        :param sha: SHA1 of the commit
+        :raises: KeyError, NotCommitError
+        """
         return self[sha].parents
 
     def _lookup_revision_sha1(self, revid):
@@ -179,6 +184,10 @@ class BazaarObjectStore(object):
             return ret
 
     def get_raw(self, sha):
+        """Get the raw representation of a Git object by SHA1.
+
+        :param sha: SHA1 of the git object
+        """
         return self[sha].as_raw_string()
 
     def __contains__(self, sha):

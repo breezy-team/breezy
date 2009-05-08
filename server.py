@@ -135,42 +135,13 @@ class BzrBackend(Backend):
         # If this is a Git repository, just use the existing fetch_objects implementation.
         if getattr(repo, "fetch_objects", None) is not None:
             return repo.fetch_objects(determine_wants, graph_walker, None, progress)
-        store = BazaarObjectStore(repo)
 
         wants = determine_wants(self.get_refs())
-        commits_to_send = set([self.mapping.revision_id_foreign_to_bzr(w) for w in wants])
-        rev_done = set()
-        obj_sent = set()
-        objects = set()
 
         repo.lock_read()
         try:
-            have = graph_walker.next()
-            while have:
-                rev_done.add(have)
-                if repo.has_revision(self.mapping.revision_id_foreign_to_bzr(sha)):
-                    graph_walker.ack(have)
-                have = graph_walker.next()
-
-            while commits_to_send:
-                commit = commits_to_send.pop()
-                if commit in rev_done:
-                    continue
-                rev_done.add(commit)
-
-                rev = repo.get_revision(commit)
-
-                commits_to_send.update([p for p in rev.parent_ids if not p in rev_done])
-
-                for sha, obj, path in inventory_to_tree_and_blobs(repo.get_inventory(commit), repo.texts, self.mapping):
-                    if sha not in obj_sent:
-                        obj_sent.add(sha)
-                        objects.add((obj, path))
-
-                objects.add((revision_to_commit(rev, sha, store._lookup_revision_sha1), None))
-
+            store = BazaarObjectStore(repo)
+            missing_sha1s = store.find_missing_objects(wants, graphwalker, progress)
+            return (len(missing_sha1s), iter(store.iter_shas(missing_sha1s)))
         finally:
             repo.unlock()
-
-        return (len(objects), iter(objects))
-
