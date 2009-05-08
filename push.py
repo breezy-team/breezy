@@ -19,7 +19,7 @@
 from dulwich.client import (
     SimpleFetchGraphWalker,
     )
-from dulwich.repo import (
+from dulwich.object_store import (
     MissingObjectFinder,
     )
 
@@ -222,8 +222,7 @@ class InterToRemoteGitRepository(InterToGitRepository):
             store = BazaarObjectStore(self.source, self.mapping)
             def generate_blob_contents(have, want):
                 graphwalker = SimpleFetchGraphWalker(have, store.get_parents)
-                objfinder = MissingObjectFinder(store, want, graphwalker)
-                return store.iter_shas(iter(objfinder.next, None))
+                return store.find_missing_objects(want, graphwalker)
             new_refs = self.target.send_pack(determine_wants, generate_blob_contents)
         finally:
             self.source.unlock()

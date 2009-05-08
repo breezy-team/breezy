@@ -21,6 +21,7 @@ from dulwich.objects import (
     Tree,
     )
 from dulwich.object_store import (
+    MissingObjectFinder,
     ObjectStoreIterator,
     )
 import stat
@@ -211,3 +212,7 @@ class BazaarObjectStore(object):
             return self._get_tree(type_data[0], type_data[1], expected_sha=sha)
         else:
             raise AssertionError("Unknown object type '%s'" % type)
+
+    def find_missing_objects(self, wants, graphwalker, progress=None):
+        objfinder = MissingObjectFinder(self, want, graphwalker)
+        return self.iter_shas(iter(objfinder.next, None))
