@@ -56,6 +56,9 @@ known_hooks.register_lazy(('bzrlib.smart.server', 'SmartTCPServer.hooks'),
 known_hooks.register_lazy(
     ('bzrlib.version_info_formats.format_rio', 'RioVersionInfoBuilder.hooks'),
     'bzrlib.version_info_formats.format_rio', 'RioVersionInfoBuilderHooks')
+known_hooks.register_lazy(
+    ('bzrlib.mail_client', 'MailClient.hooks'),
+    'bzrlib.mail_client', 'MailClientHooks')
 
 
 def known_hooks_key_to_object((module_name, member_name)):
@@ -178,8 +181,8 @@ class HookPoint(object):
     :ivar introduced: A version tuple specifying what version the hook was
         introduced in. None indicates an unknown version.
     :ivar deprecated: A version tuple specifying what version the hook was
-        deprecated or superceded in. None indicates that the hook is not
-        superceded or deprecated. If the hook is superceded then the doc
+        deprecated or superseded in. None indicates that the hook is not
+        superseded or deprecated. If the hook is superseded then the doc
         should describe the recommended replacement hook to register for.
     :ivar doc: The docs for using the hook.
     """

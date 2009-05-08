@@ -262,3 +262,61 @@ class TestDefaultMail(tests.TestCase):
         self.assertEqual(dummy_client.args, (to, subject, directive))
         self.assertEqual(dummy_client.kwargs,
                          {"basename": basename, 'body': None})
+
+
+class TestHook(object):
+    def __init__(self, result=None):
+        self.calls = []
+        self.result = result
+
+    def __call__(self, params):
+        self.calls.append(params)
+        return self.result
+
+
+class HookMailClient(mail_client.MailClient):
+
+    def __init__(self, config):
+        self.body = None
+        self.config = config
+
+    def compose(self, prompt, to, subject, attachment, mime_subtype,
+                extension, basename=None, body=None):
+        self.body = body
+
+
+class TestBodyHook(tests.TestCase):
+
+    def compose_with_hooks(self, test_hooks):
+        for test_hook in test_hooks:
+            mail_client.MailClient.hooks.install_named_hook(
+                'merge_request_body', test_hook, 'test')
+            client = HookMailClient({})
+            client.compose_merge_request('jrandom@example.com',
+                'This code rox', {}, 'basename')
+        return client
+
+    def test_body_hook(self):
+        test_hook = TestHook('foo')
+        client = self.compose_with_hooks([test_hook])
+        self.assertEqual(1, len(test_hook.calls))
+        self.assertEqual('foo', client.body)
+        params = test_hook.calls[0]
+        self.assertIsInstance(params,
+                              mail_client.MergeRequestBodyParams)
+        self.assertIs(None, params.body)
+        self.assertIs(None, params.orig_body)
+        self.assertEqual('jrandom@example.com', params.to)
+        self.assertEqual('This code rox', params.subject)
+        self.assertEqual({}, params.directive)
+        self.assertEqual('basename', params.basename)
+
+    def test_body_hook_chaining(self):
+        test_hook1 = TestHook('foo')
+        test_hook2 = TestHook('bar')
+        client = self.compose_with_hooks([test_hook1, test_hook2])
+        self.assertEqual(None, test_hook1.calls[0].body)
+        self.assertEqual(None, test_hook1.calls[0].orig_body)
+        self.assertEqual('foo', test_hook2.calls[0].body)
+        self.assertEqual(None, test_hook2.calls[0].orig_body)
+        self.assertEqual('bar', client.body)
