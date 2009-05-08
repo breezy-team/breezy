@@ -16,7 +16,9 @@
 
 """Tests for branch implementations - test check() functionality"""
 
-from bzrlib import errors
+from StringIO import StringIO
+
+from bzrlib import errors, tests, ui
 from bzrlib.tests.branch_implementations import TestCaseWithBranch
 
 
@@ -54,10 +56,11 @@ class TestBranchCheck(TestCaseWithBranch):
             # with set_last_revision_info
             tree.branch.set_last_revision_info(3, r5)
 
-        e = self.assertRaises(errors.BzrCheckError,
-                              tree.branch.check)
-        self.assertEqual('Internal check failed:'
-                         ' revno does not match len(mainline) 3 != 5', str(e))
+        result = tree.branch.check()
+        ui.ui_factory = tests.TestUIFactory(stdout=StringIO())
+        result.report_results(True)
+        self.assertContainsRe('revno does not match len',
+            ui.ui_factory.stdout.getvalue())
 
     def test_check_branch_report_results(self):
         """Checking a branch produces results which can be printed"""

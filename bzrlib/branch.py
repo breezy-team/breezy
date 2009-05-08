@@ -1123,22 +1123,25 @@ class Branch(object):
 
         :return: A BranchCheckResult.
         """
+        result = BranchCheckResult(self)
         mainline_parent_id = None
         last_revno, last_revision_id = self.last_revision_info()
         real_rev_history = list(self.repository.iter_reverse_revision_history(
                                 last_revision_id))
         real_rev_history.reverse()
         if len(real_rev_history) != last_revno:
-            raise errors.BzrCheckError('revno does not match len(mainline)'
-                ' %s != %s' % (last_revno, len(real_rev_history)))
+            result.errors.append(errors.BzrCheckError(
+                'revno does not match len(mainline) %s != %s' % (
+                last_revno, len(real_rev_history))))
         # TODO: We should probably also check that real_rev_history actually
         #       matches self.revision_history()
         for revision_id in real_rev_history:
             try:
                 revision = self.repository.get_revision(revision_id)
             except errors.NoSuchRevision, e:
-                raise errors.BzrCheckError("mainline revision {%s} not in repository"
-                            % revision_id)
+                result.errors.append(errors.BzrCheckError(
+                    "mainline revision {%s} not in repository" % revision_id))
+                break
             # In general the first entry on the revision history has no parents.
             # But it's not illegal for it to have parents listed; this can happen
             # in imports from Arch when the parents weren't reachable.
@@ -1148,7 +1151,7 @@ class Branch(object):
                                         "parents of {%s}"
                                         % (mainline_parent_id, revision_id))
             mainline_parent_id = revision_id
-        return BranchCheckResult(self)
+        return result
 
     def _get_checkout_format(self):
         """Return the most suitable metadir for a checkout of this branch.
@@ -2829,6 +2832,7 @@ class BranchCheckResult(object):
 
     def __init__(self, branch):
         self.branch = branch
+        self.errors = []
 
     def report_results(self, verbose):
         """Report the check results via trace.note.
@@ -2836,9 +2840,10 @@ class BranchCheckResult(object):
         :param verbose: Requests more detailed display of what was checked,
             if any.
         """
-        note('checked branch %s format %s',
-             self.branch.base,
-             self.branch._format)
+        note('checked branch %s format %s', self.branch.base,
+            self.branch._format)
+        for error in self.errors:
+            note('found error:%s', error)
 
 
 class Converter5to6(object):
