@@ -490,6 +490,7 @@ class TestLockDir(TestCaseWithTransport):
         lf2.force_break(holder_info)
         # now we should be able to take it
         lf2.attempt_lock()
+        self.addCleanup(lf2.unlock)
         lf2.confirm()
 
     def test_44_break_already_released(self):
