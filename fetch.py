@@ -383,14 +383,14 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
     def fetch_objects(self, determine_wants, mapping, pb=None):
         def progress(text):
             pb.update("git: %s" % text.rstrip("\r\n"), 0, 0)
-        target_git_object_retriever = BazaarObjectStore(self.target, mapping)
+        store = BazaarObjectStore(self.target, mapping)
         self.target.lock_read()
         try:
             heads = self.target.get_graph().heads(self.target.all_revision_ids())
         finally:
             self.target.unlock()
-        graph_walker = target_git_object_retriever.get_graph_walker(
-                [mapping.revision_id_bzr_to_foreign(head)[0] for head in heads])
+        graph_walker = store.get_graph_walker(
+                [store._lookup_revision_sha1(head) for head in heads])
         create_pb = None
         if pb is None:
             create_pb = pb = ui.ui_factory.nested_progress_bar()
@@ -409,10 +409,10 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
                     objects_iter = self.source.fetch_objects(
                                 record_determine_wants, 
                                 graph_walker, 
-                                target_git_object_retriever.get_raw, 
+                                store.get_raw, 
                                 progress)
                     import_git_objects(self.target, mapping, objects_iter, 
-                            target_git_object_retriever, recorded_wants, pb)
+                            store, recorded_wants, pb)
                 finally:
                     self.target.commit_write_group()
             finally:
