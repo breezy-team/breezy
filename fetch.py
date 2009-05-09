@@ -375,7 +375,6 @@ class InterGitNonGitRepository(InterGitRepository):
         return self._refs
 
 
-
 class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
     """InterRepository that copies revisions from a remote Git into a non-Git 
     repository."""

@@ -32,6 +32,10 @@ from bzrlib import (
     ui,
     )
 
+from bzrlib.plugins.git.errors import (
+    GhostRevision,
+    )
+
 from bzrlib.plugins.git.mapping import (
     default_mapping,
     directory_to_tree,
@@ -158,7 +162,10 @@ class BazaarObjectStore(BaseObjectStore):
 
     def _get_commit(self, revid, tree_sha, expected_sha=None):
         rev = self.repository.get_revision(revid)
-        commit = revision_to_commit(rev, tree_sha, self._lookup_revision_sha1)
+        try:
+            commit = revision_to_commit(rev, tree_sha, self._lookup_revision_sha1)
+        except errors.NoSuchRevision, e:
+            raise GhostRevision(e.branch, e.revision)
         self._check_expected_sha(expected_sha, commit)
         return commit
 
