@@ -211,16 +211,7 @@ class RemoteGitBzrDirFormat(GitBzrDirFormat):
         from bzrlib.plugins.git.remote import GitSmartTransport
         if not isinstance(transport, GitSmartTransport):
             raise bzr_errors.NotBranchError(transport.base)
-        # The only way to know a path exists and contains a valid repository 
-        # is to do a request against it:
-        try:
-            transport.fetch_pack(lambda x: [], None, lambda x: None, 
-                                 lambda x: mutter("git: %s" % x))
-        except errors.git_errors.GitProtocolError:
-            raise bzr_errors.NotBranchError(path=transport.base)
-        else:
-            return format
-        raise bzr_errors.NotBranchError(path=transport.base)
+        return format
 
     def get_format_description(self):
         return "Remote Git Repository"

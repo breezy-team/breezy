@@ -116,14 +116,14 @@ class GitBranchFormat(branch.BranchFormat):
 class GitBranch(ForeignBranch):
     """An adapter to git repositories for bzr Branch objects."""
 
-    def __init__(self, bzrdir, repository, name, head, lockfiles):
+    def __init__(self, bzrdir, repository, name, lockfiles):
         self.repository = repository
         self._format = GitBranchFormat()
         self.control_files = lockfiles
         self.bzrdir = bzrdir
         super(GitBranch, self).__init__(repository.get_mapping())
         self.name = name
-        self.head = head
+        self._head = None
         self.base = bzrdir.transport.base
 
     def _get_nick(self, local=False, possible_master_transports=None):
@@ -159,11 +159,6 @@ class GitBranch(ForeignBranch):
         # FIXME: Check that old_revid is in the ancestry of revid
         newhead, self.mapping = self.mapping.revision_id_bzr_to_foreign(revid)
         self._set_head(newhead)
-
-    def _set_head(self, head):
-        self.head = head
-        self.repository._git.set_ref(self.name, self.head)
-        self._clear_cached_state()
 
     def lock_write(self):
         self.control_files.lock_write()
@@ -253,6 +248,16 @@ class LocalGitBranch(GitBranch):
             self.last_revision()))
         ret.reverse()
         return ret
+
+    def _get_head(self):
+        return self.repository._git.ref(self.name)
+
+    def _set_head(self, value):
+        self._head = value
+        self.repository._git.set_ref(self.name, self._head)
+        self._clear_cached_state()
+
+    head = property(_get_head, _set_head)
 
     def get_config(self):
         return GitBranchConfig(self)

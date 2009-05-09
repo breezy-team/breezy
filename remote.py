@@ -285,17 +285,25 @@ class RemoteGitTagDict(tag.BasicTags):
 class RemoteGitBranch(GitBranch):
 
     def __init__(self, bzrdir, repository, name, lockfiles):
-        heads = repository.get_refs()
-        if not name in heads:
-            raise NoSuchRef(name)
-        self._ref = heads[name]
-        super(RemoteGitBranch, self).__init__(bzrdir, repository, name, self._ref, lockfiles)
+        self._ref = None
+        super(RemoteGitBranch, self).__init__(bzrdir, repository, name, 
+                lockfiles)
 
     def revision_history(self):
         raise GitSmartRemoteNotSupported()
 
     def last_revision(self):
-        return self.mapping.revision_id_foreign_to_bzr(self._ref)
+        return self.mapping.revision_id_foreign_to_bzr(self.head)
+
+    @property
+    def head(self):
+        if self._ref is None:
+            return self._ref
+        heads = repository.get_refs()
+        if not name in heads:
+            raise NoSuchRef(name)
+        self._ref = heads[name]
+        return self._ref
 
     def _synchronize_history(self, destination, revision_id):
         """See Branch._synchronize_history()."""

@@ -113,8 +113,7 @@ class LocalGitDir(GitDir):
     def open_branch(self, ignore_fallbacks=None):
         """'create' a branch for this dir."""
         repo = self.open_repository()
-        return branch.LocalGitBranch(self, repo, "HEAD", repo._git.head(),
-            self._lockfiles)
+        return branch.LocalGitBranch(self, repo, "HEAD", self._lockfiles)
 
     def open_repository(self, shared=False):
         """'open' a repository for this dir."""
