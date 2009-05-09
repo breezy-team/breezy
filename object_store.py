@@ -33,6 +33,7 @@ from bzrlib import (
     )
 
 from bzrlib.plugins.git.mapping import (
+    default_mapping,
     directory_to_tree,
     mapping_registry,
     revision_to_commit,
@@ -55,7 +56,7 @@ class BazaarObjectStore(BaseObjectStore):
     def __init__(self, repository, mapping=None):
         self.repository = repository
         if mapping is None:
-            self.mapping = self.repository.get_mapping()
+            self.mapping = default_mapping
         else:
             self.mapping = mapping
         self._idmap = SqliteGitShaMap.from_repository(repository)

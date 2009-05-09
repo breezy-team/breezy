@@ -18,9 +18,6 @@ from cStringIO import (
     StringIO,
     )
 import dulwich as git
-from dulwich.client import (
-    SimpleFetchGraphWalker,
-    )
 from dulwich.objects import (
     Commit,
     Tag,
@@ -522,7 +519,7 @@ class InterGitGitRepository(InterGitRepository):
         else:
             determine_wants = lambda x: [y for y in args if not y in r.object_store]
 
-        graphwalker = SimpleFetchGraphWalker(r.heads().values(), r.get_parents)
+        graphwalker = r.get_graph_walker()
         f, commit = r.object_store.add_thin_pack()
         try:
             refs = self.source.fetch_pack(determine_wants, graphwalker,

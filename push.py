@@ -16,13 +16,6 @@
 
 """Push implementation that simply prints message saying push is not supported."""
 
-from dulwich.client import (
-    SimpleFetchGraphWalker,
-    )
-from dulwich.object_store import (
-    MissingObjectFinder,
-    )
-
 from bzrlib import (
     ui,
     )
@@ -221,10 +214,7 @@ class InterToRemoteGitRepository(InterToGitRepository):
         try:
             store = BazaarObjectStore(self.source, self.mapping)
             def generate_blob_contents(have, want):
-                graphwalker = SimpleFetchGraphWalker(want, store.get_parents)
-                for h in have:
-                    graphwalker.ack(h)
-                return store.iter_shas(store.find_missing_objects(want, graphwalker))
+                return store.iter_shas(store.find_missing_objects(have, want))
             new_refs = self.target.send_pack(determine_wants,
                     generate_blob_contents)
         finally:
