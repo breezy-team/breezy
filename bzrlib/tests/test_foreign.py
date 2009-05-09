@@ -102,14 +102,14 @@ class DummyForeignVcsBranch(branch.BzrBranch6,foreign.ForeignBranch):
             *args, **kwargs)
 
 
-class InterToDummyVcsBranch(foreign.InterToForeignBranch,
-                            branch.GenericInterBranch):
+class InterToDummyVcsBranch(branch.GenericInterBranch,
+                            foreign.InterToForeignBranch):
 
-    @classmethod
-    def is_compatible(cls, source, target):
+    @staticmethod
+    def is_compatible(source, target):
         return isinstance(target, DummyForeignVcsBranch)
 
-    def dpush(self, stop_revision=None):
+    def lossy_push(self, stop_revision=None):
         self.source.lock_read()
         try:
             # This just handles simple cases, but that's good enough for tests
@@ -346,7 +346,7 @@ class DummyForeignVcsTests(TestCaseWithTransport):
 
     def setUp(self):
         BzrDirFormat.register_control_format(DummyForeignVcsDirFormat)
-        InterBranch.register_optimiser(InterToDummyVcsBranch)
+        branch.InterBranch.register_optimiser(InterToDummyVcsBranch)
         self.addCleanup(self.unregister)
         super(DummyForeignVcsTests, self).setUp()
 
@@ -355,6 +355,7 @@ class DummyForeignVcsTests(TestCaseWithTransport):
             BzrDirFormat.unregister_control_format(DummyForeignVcsDirFormat)
         except ValueError:
             pass
+        branch.InterBranch.unregister_optimiser(InterToDummyVcsBranch)
 
     def test_create(self):
         """Test we can create dummies."""

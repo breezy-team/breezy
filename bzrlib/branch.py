@@ -867,8 +867,8 @@ class Branch(object):
         return InterBranch.get(self, target).push(overwrite, stop_revision,
             *args, **kwargs)
 
-    def dpush(self, target, stop_revision=None):
-        """Push deltas from another branch.
+    def lossy_push(self, target, stop_revision=None):
+        """Push deltas into another branch.
 
         :note: This does not, like push, retain the revision ids from 
             the source branch and will, rather than adding bzr-specific 
@@ -882,10 +882,10 @@ class Branch(object):
             revision that was pushed.
         """
         inter = InterBranch.get(self, target)
-        dpush = getattr(inter, "dpush", None)
-        if dpush is None:
+        lossy_push = getattr(inter, "lossy_push", None)
+        if lossy_push is None:
             raise errors.DpushToNative(target)
-        return dpush(stop_revision)
+        return lossy_push(stop_revision)
 
     def basis_tree(self):
         """Return `Tree` object for last revision."""

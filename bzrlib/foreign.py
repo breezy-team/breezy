@@ -329,7 +329,7 @@ class cmd_dpush(Command):
         target_branch = bzrdir.open_branch()
         target_branch.lock_write()
         try:
-            revid_map = target_branch.dpush(source_branch)
+            revid_map = source_branch.lossy_push(target_branch)
             # We successfully created the target, remember it
             if source_branch.get_push_location() is None or remember:
                 source_branch.set_push_location(target_branch.base)
@@ -351,8 +351,8 @@ class cmd_dpush(Command):
 
 class InterToForeignBranch(InterBranch):
 
-    def dpush(self, stop_revision=None):
-        """Push deltas from another branch.
+    def lossy_push(self, stop_revision=None):
+        """Push deltas into another branch.
 
         :note: This does not, like push, retain the revision ids from 
             the source branch and will, rather than adding bzr-specific 
@@ -365,4 +365,4 @@ class InterToForeignBranch(InterBranch):
             to new revision ids in the target branch, for each 
             revision that was pushed.
         """
-        raise NotImplementedError(self.dpush)
+        raise NotImplementedError(self.lossy_push)

@@ -56,6 +56,7 @@ class TestDpush(ExternalBase):
             BzrDirFormat.unregister_control_format(DummyForeignVcsDirFormat)
         except ValueError:
             pass
+        InterBranch.unregister_optimiser(InterToDummyVcsBranch)
 
     def make_dummy_builder(self, relpath):
         builder = self.make_branch_builder(relpath, 
