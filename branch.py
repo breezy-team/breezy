@@ -198,16 +198,16 @@ class GitBranch(ForeignBranch):
     def get_physical_lock_status(self):
         return False
 
- 
-class LocalGitBranch(GitBranch):
-    """A local Git branch."""
-
     @needs_read_lock
     def last_revision(self):
         # perhaps should escape this ?
         if self.head is None:
             return revision.NULL_REVISION
         return self.mapping.revision_id_foreign_to_bzr(self.head)
+
+ 
+class LocalGitBranch(GitBranch):
+    """A local Git branch."""
 
     def _get_checkout_format(self):
         """Return the most suitable metadir for a checkout of this branch.

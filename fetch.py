@@ -79,45 +79,6 @@ from bzrlib.plugins.git.repository import (
     )
 
 
-class BzrFetchGraphWalker(object):
-    """GraphWalker implementation that uses a Bazaar repository."""
-
-    def __init__(self, repository, mapping):
-        self.repository = repository
-        self.mapping = mapping
-        self.done = set()
-        self.heads = set(repository.all_revision_ids())
-        self.parents = {}
-
-    def __iter__(self):
-        return iter(self.next, None)
-
-    def ack(self, sha):
-        revid = self.mapping.revision_id_foreign_to_bzr(sha)
-        self.remove(revid)
-
-    def remove(self, revid):
-        self.done.add(revid)
-        if revid in self.heads:
-            self.heads.remove(revid)
-        if revid in self.parents:
-            for p in self.parents[revid]:
-                self.remove(p)
-
-    def next(self):
-        while self.heads:
-            ret = self.heads.pop()
-            ps = self.repository.get_parent_map([ret])[ret]
-            self.parents[ret] = ps
-            self.heads.update([p for p in ps if not p in self.done])
-            try:
-                self.done.add(ret)
-                return self.mapping.revision_id_bzr_to_foreign(ret)[0]
-            except InvalidRevisionId:
-                pass
-        return None
-
-
 def import_git_blob(texts, mapping, path, hexsha, base_inv, parent_id, 
     revision_id, parent_invs, shagitmap, lookup_object, executable, symlink):
     """Import a git blob object into a bzr repository.
@@ -408,7 +369,7 @@ class InterGitNonGitRepository(InterGitRepository):
             if interesting_heads is None:
                 ret = [sha for (ref, sha) in refs.iteritems() if not ref.endswith("^{}")]
             else:
-                ret = [mapping.revision_id_bzr_to_foreign(revid)[0] for revid in interesting_heads if revid != NULL_REVISION]
+                ret = [mapping.revision_id_bzr_to_foreign(revid)[0] for revid in interesting_heads if revid not in (None, NULL_REVISION)]
             return [rev for rev in ret if not self.target.has_revision(mapping.revision_id_foreign_to_bzr(rev))]
         self.fetch_objects(determine_wants, mapping, pb)
         return self._refs
@@ -422,11 +383,17 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
     def fetch_objects(self, determine_wants, mapping, pb=None):
         def progress(text):
             pb.update("git: %s" % text.rstrip("\r\n"), 0, 0)
-        graph_walker = BzrFetchGraphWalker(self.target, mapping)
+        target_git_object_retriever = BazaarObjectStore(self.target, mapping)
+        self.target.lock_read()
+        try:
+            heads = self.target.get_graph().heads(self.target.all_revision_ids())
+        finally:
+            self.target.unlock()
+        graph_walker = target_git_object_retriever.get_graph_walker(
+                [mapping.revision_id_bzr_to_foreign(head)[0] for head in heads])
         create_pb = None
         if pb is None:
             create_pb = pb = ui.ui_factory.nested_progress_bar()
-        target_git_object_retriever = BazaarObjectStore(self.target, mapping)
         recorded_wants = []
 
         def record_determine_wants(heads):
