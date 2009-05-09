@@ -3025,3 +3025,11 @@ class UnsuspendableWriteGroup(BzrError):
 
     def __init__(self, repository):
         self.repository = repository
+
+
+class DpushToNative(BzrError):
+
+    _fmt = "%(branch)r is not a foreign branch, use regular push."
+
+    def __init__(self, branch):
+        self.branch = branch
