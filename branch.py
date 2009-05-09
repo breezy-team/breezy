@@ -56,6 +56,15 @@ except ImportError:
             super(ForeignBranch, self).__init__()
 
 
+def extract_tags(refs, mapping):
+    ret = {}
+    for k,v in refs.iteritems():
+        if k.startswith("refs/tags/") and not k.endswith("^{}"):
+            v = refs.get(k+"^{}", v)
+            ret[k[len("refs/tags/"):]] = mapping.revision_id_foreign_to_bzr(v)
+    return ret
+
+
 class GitPullResult(branch.PullResult):
 
     def _lookup_revno(self, revid):
@@ -94,7 +103,8 @@ class LocalGitTagDict(tag.BasicTags):
         return ret
 
     def set_tag(self, name, revid):
-        self.repository._git.tags[name] = revid
+        self.repository._git.tags[name], _ = \
+            self.branch.mapping.revision_id_bzr_to_foreign(revid)
 
 
 class GitBranchFormat(branch.BranchFormat):
@@ -404,6 +414,8 @@ class InterGitRemoteLocalBranch(branch.InterBranch):
         else:
             refs = interrepo.fetch_refs(revision_id=stop_revision)
         self.target.generate_revision_history(stop_revision, result.old_revid)
+        for name, revid in extract_tags(refs, self.target.mapping).iteritems():
+            self.target.tags.set_tag(name, revid)
         result.new_revid = self.target.last_revision()
         return result
 

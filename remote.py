@@ -42,6 +42,7 @@ lazy_check_versions()
 
 from bzrlib.plugins.git.branch import (
     GitBranch,
+    extract_tags,
     )
 from bzrlib.plugins.git.errors import (
     GitSmartRemoteNotSupported,
@@ -269,13 +270,7 @@ class RemoteGitTagDict(tag.BasicTags):
         self.repository = branch.repository
 
     def get_tag_dict(self):
-        ret = {}
-        refs = self.repository.get_refs()
-        for k,v in refs.iteritems():
-            if k.startswith("refs/tags/") and not k.endswith("^{}"):
-                v = refs.get(k+"^{}", v)
-                ret[k[len("refs/tags/"):]] = self.branch.mapping.revision_id_foreign_to_bzr(v)
-        return ret
+        return extract_tags(self.repository.get_refs(), self.branch.mapping)
 
     def set_tag(self, name, revid):
         # FIXME: Not supported yet, should do a push of a new ref
