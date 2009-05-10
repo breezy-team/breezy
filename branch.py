@@ -152,18 +152,7 @@ class GitBranch(ForeignBranch):
         return "%s(%r, %r)" % (self.__class__.__name__, self.repository.base, self.name)
 
     def dpull(self, source, stop_revision=None):
-        if stop_revision is None:
-            stop_revision = source.last_revision()
-        # FIXME: Check for diverged branches
-        refs = { "refs/heads/master": stop_revision }
-        for name, revid in source.tags.get_tag_dict().iteritems():
-            if source.repository.has_revision(revid):
-                refs["refs/tags/%s" % name] = revid
-        revidmap, new_refs = self.repository.dfetch_refs(source.repository, 
-                refs)
-        if revidmap != {}:
-            self.generate_revision_history(revidmap[stop_revision])
-        return revidmap
+        return branch.InterBranch.get(source, self).lossy_push()
 
     def generate_revision_history(self, revid, old_revid=None):
         # FIXME: Check that old_revid is in the ancestry of revid
@@ -298,7 +287,7 @@ class GitBranchPullResult(branch.PullResult):
         self._show_tag_conficts(to_file)
 
 
-class InterGitGenericBranch(branch.InterBranch):
+class InterFromGitBranch(branch.InterBranch):
     """InterBranch implementation that pulls from Git into bzr."""
 
     @classmethod
@@ -383,11 +372,6 @@ class InterGitGenericBranch(branch.InterBranch):
         return result
 
 
-
-
-branch.InterBranch.register_optimiser(InterGitGenericBranch)
-
-
 class InterGitRemoteLocalBranch(branch.InterBranch):
     """InterBranch implementation that pulls between Git branches."""
 
@@ -419,5 +403,30 @@ class InterGitRemoteLocalBranch(branch.InterBranch):
         result.new_revid = self.target.last_revision()
         return result
 
+    
+class InterToGitBranch(branch.InterBranch):
+    """InterBranch implementation that pulls from Git into bzr."""
+
+    @classmethod
+    def is_compatible(self, source, target):
+        return (not isinstance(source, GitBranch) and 
+                isinstance(target, GitBranch))
+
+    def lossy_push(self, stop_revision=None):
+        if stop_revision is None:
+            stop_revision = self.source.last_revision()
+        # FIXME: Check for diverged branches
+        refs = { "refs/heads/master": stop_revision }
+        for name, revid in self.source.tags.get_tag_dict().iteritems():
+            if self.source.repository.has_revision(revid):
+                refs["refs/tags/%s" % name] = revid
+        revidmap, new_refs = self.target.repository.dfetch_refs(
+            self.source.repository, refs)
+        if revidmap != {}:
+            self.target.generate_revision_history(revidmap[stop_revision])
+        return revidmap
+
 
 branch.InterBranch.register_optimiser(InterGitRemoteLocalBranch)
+branch.InterBranch.register_optimiser(InterFromGitBranch)
+branch.InterBranch.register_optimiser(InterToGitBranch)
