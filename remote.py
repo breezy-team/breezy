@@ -90,6 +90,7 @@ class GitSmartTransport(Transport):
         Transport.__init__(self, url)
         (scheme, _, loc, _, _) = urlparse.urlsplit(url)
         hostport, self._path = urllib.splithost(loc)
+        (self._username, hostport) = urllib.splituser(hostport)
         (self._host, self._port) = urllib.splitnport(hostport, None)
         self._client = _client
 
@@ -99,13 +100,16 @@ class GitSmartTransport(Transport):
     def _get_client(self):
         raise NotImplementedError(self._get_client)
 
+    def _get_path(self):
+        return self._path
+
     def fetch_pack(self, determine_wants, graph_walker, pack_data, progress=None):
         if progress is None:
             def progress(text):
                 info("git: %s" % text)
         client = self._get_client()
         try:
-            return client.fetch_pack(self._path, determine_wants, 
+            return client.fetch_pack(self._get_path(), determine_wants, 
                 graph_walker, pack_data, progress)
         except GitProtocolError, e:
             raise BzrError(e)
@@ -113,7 +117,7 @@ class GitSmartTransport(Transport):
     def send_pack(self, get_changed_refs, generate_pack_contents):
         client = self._get_client()
         try:
-            return client.send_pack(self._path, get_changed_refs, 
+            return client.send_pack(self._get_path(), get_changed_refs, 
                 generate_pack_contents)
         except GitProtocolError, e:
             raise BzrError(e)
@@ -151,13 +155,18 @@ class SSHGitSmartTransport(GitSmartTransport):
 
     _scheme = 'git+ssh'
 
+    def _get_path(self):
+        if self._path.startswith("/~/"):
+            return self._path[3:]
+        return self._path
+
     def _get_client(self):
         if self._client is not None:
             ret = self._client
             self._client = None
             return ret
-        return git.client.SSHGitClient(self._host, self._port, thin_packs=False,
-            report_activity=self._report_activity)
+        return git.client.SSHGitClient(self._host, self._port, self._username,
+            thin_packs=False, report_activity=self._report_activity)
 
 
 class RemoteGitDir(GitDir):
