@@ -44,6 +44,7 @@ from bzrlib.plugins.git.config import (
     GitBranchConfig,
     )
 from bzrlib.plugins.git.errors import (
+    NoPushSupport,
     NoSuchRef,
     )
 
@@ -411,6 +412,10 @@ class InterToGitBranch(branch.InterBranch):
     def is_compatible(self, source, target):
         return (not isinstance(source, GitBranch) and 
                 isinstance(target, GitBranch))
+
+    def push(self, overwrite=True, stop_revision=None, 
+             _override_hook_source_branch=None):
+        raise NoPushSupport()
 
     def lossy_push(self, stop_revision=None):
         if stop_revision is None:
