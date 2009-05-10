@@ -49,7 +49,6 @@ from bzrlib.plugins.git import (
     get_rich_root_format,
     )
 from bzrlib.plugins.git.fetch import (
-    BzrFetchGraphWalker,
     import_git_blob,
     import_git_tree,
     )
@@ -63,18 +62,6 @@ from bzrlib.plugins.git.shamap import (
 from bzrlib.plugins.git.tests import (
     GitBranchBuilder,
     )
-
-
-class FetchGraphWalkerTests(TestCaseWithTransport):
-
-    def setUp(self):
-        TestCaseWithTransport.setUp(self)
-        self.mapping = default_mapping
-
-    def test_empty(self):
-        tree = self.make_branch_and_tree("wt")
-        graphwalker = BzrFetchGraphWalker(tree.branch.repository, self.mapping)
-        self.assertEquals(None, graphwalker.next())
 
 
 class RepositoryFetchTests:
