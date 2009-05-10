@@ -329,7 +329,11 @@ class cmd_dpush(Command):
         target_branch = bzrdir.open_branch()
         target_branch.lock_write()
         try:
-            revid_map = source_branch.lossy_push(target_branch)
+            try:
+                revid_map = source_branch.lossy_push(target_branch)
+            except errors.LossyPushToSameVCS:
+                raise BzrCommandError("%r is not a foreign branch, use regular "
+                                      "push." % target_branch)
             # We successfully created the target, remember it
             if source_branch.get_push_location() is None or remember:
                 source_branch.set_push_location(target_branch.base)

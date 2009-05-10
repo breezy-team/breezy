@@ -884,7 +884,7 @@ class Branch(object):
         inter = InterBranch.get(self, target)
         lossy_push = getattr(inter, "lossy_push", None)
         if lossy_push is None:
-            raise errors.DpushToNative(target)
+            raise errors.LossyPushToSameVCS(self, target)
         return lossy_push(stop_revision)
 
     def basis_tree(self):
