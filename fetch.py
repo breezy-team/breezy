@@ -246,6 +246,11 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
     :param mapping: Mapping to use
     :param object_iter: Iterator over Git objects.
     """
+    def lookup_object(sha):
+        try:
+            return object_iter[sha]
+        except KeyError:
+            return target_git_object_retriever[sha]
     # TODO: a more (memory-)efficient implementation of this
     graph = []
     root_trees = {}
@@ -260,7 +265,7 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
         head = heads.pop()
         assert isinstance(head, str)
         try:
-            o = object_iter[head]
+            o = lookup_object(head)
         except KeyError:
             continue
         if isinstance(o, Commit):
@@ -287,11 +292,6 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
         # We have to do this here, since we have to walk the tree and 
         # we need to make sure to import the blobs / trees with the right 
         # path; this may involve adding them more than once.
-        def lookup_object(sha):
-            try:
-                return object_iter[sha]
-            except KeyError:
-                return target_git_object_retriever[sha]
         parent_invs = []
         for parent_id in rev.parent_ids:
             try:
@@ -406,10 +406,8 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
                 self.target.start_write_group()
                 try:
                     objects_iter = self.source.fetch_objects(
-                                record_determine_wants, 
-                                graph_walker, 
-                                store.get_raw, 
-                                progress)
+                                record_determine_wants, graph_walker, 
+                                store.get_raw, progress)
                     import_git_objects(self.target, mapping, objects_iter, 
                             store, recorded_wants, pb)
                 finally:
