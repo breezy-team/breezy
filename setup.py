@@ -2,7 +2,7 @@
 
 from distutils.core import setup
 
-version = (0, 2, 2)
+version = (0, 3, 0)
 version_string = ".".join([str(x) for x in version])
 
 setup(name='bzr-git',
@@ -11,8 +11,8 @@ setup(name='bzr-git',
       version=version_string,
       url='http://bazaar-vcs.org/BzrForeignBranches/Git',
       license='GPL',
-      author='Robert Collins',
-      author_email='robertc@robertcollins.net',
+      maintainer='Jelmer Vernooij',
+      maintainer_email='jelmer@samba.org',
       long_description="""
       This plugin adds limited support for checking out and viewing 
       Git branches in Bazaar.

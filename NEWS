@@ -1,5 +1,7 @@
-0.3.0	UNRELEASED
+0.3.0	2009-05-10
 
  FEATURES
 
   * Support parsing .gitignore
+
+  * Support dpushing to remote repositories.
