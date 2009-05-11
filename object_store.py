@@ -44,6 +44,7 @@ from bzrlib.plugins.git.mapping import (
     )
 from bzrlib.plugins.git.shamap import (
     SqliteGitShaMap,
+    TdbGitShaMap,
     )
 
 
@@ -63,7 +64,10 @@ class BazaarObjectStore(BaseObjectStore):
             self.mapping = default_mapping
         else:
             self.mapping = mapping
-        self._idmap = SqliteGitShaMap.from_repository(repository)
+        try:
+            self._idmap = TdbGitShaMap.from_repository(repository)
+        except ImportError:
+            self._idmap = SqliteGitShaMap.from_repository(repository)
 
     def _update_sha_map(self, stop_revision=None):
         if stop_revision is None:

@@ -248,9 +248,10 @@ class TdbGitShaMap(GitShaMap):
 
     Entries:
 
-    commit/sha1 -> revid tree-id
-    tree/sha1 -> revid file-id
-    blob/sha1 -> revid file-id
+    "git <sha1>" -> "<type> <type-data1> <type-data2>"
+    "commit revid" -> "<sha1> <tree-id>"
+    "tree revid fileid" -> "<sha1>"
+    "blob revid fileid" -> "<sha1>"
     """
 
     def __init__(self, path=None):
@@ -269,30 +270,37 @@ class TdbGitShaMap(GitShaMap):
         return cls(os.path.join(repository._transport.local_abspath("."), "git.tdb"))
 
     def _parent_lookup(self, revid):
-        row = self.db.execute("select sha1 from commits where revid = ?", (revid,)).fetchone()
-        if row is not None:
-            return row[0].encode("utf-8")
-        raise KeyError
+        return self.db["commit %s" % revid].split(" ")[0]
 
     def commit(self):
         pass
 
+    def add_entries(self, entries):
+        """Add multiple new entries to the database.
+        """
+        self.db.transaction_start()
+        try:
+            for e in entries:
+                self.add_entry(*e)
+        except:
+            self.db.transaction_cancel()
+            raise
+        self.db.transaction_commit()
+
     def add_entry(self, sha, type, type_data):
         """Add a new entry to the database.
         """
-        self.db["%s/%s" % (type, sha)] = "%s %s" % type_data
+        self.db["git %s" % sha] = "%s %s %s" % (type, type_data[0], type_data[1])
+        if type == "commit":
+            self.db["commit %s" % type_data[0]] = "%s %s" % (sha, type_data[1])
+        else:
+            self.db["%s %s %s" % (type, type_data[0], type_data[1])] = sha
 
     def lookup_tree(self, fileid, revid):
-        row = self.db.execute("select sha1 from trees where fileid = ? and revid = ?", (fileid,revid)).fetchone()
-        if row is None:
-            raise KeyError((fileid, revid))
-        return row[0].encode("utf-8")
+        return self.db["tree %s %s" % (revid, fileid)]
 
     def lookup_blob(self, fileid, revid):
-        row = self.db.execute("select sha1 from blobs where fileid = ? and revid = ?", (fileid, revid)).fetchone()
-        if row is None:
-            raise KeyError((fileid, revid))
-        return row[0].encode("utf-8")
+        return self.db["blob %s %s" % (revid, fileid)]
 
     def lookup_git_sha(self, sha):
         """Lookup a Git sha in the database.
@@ -301,22 +309,17 @@ class TdbGitShaMap(GitShaMap):
         :return: (type, type_data) with type_data:
             revision: revid, tree sha
         """
-        for type in ("commit", "blob", "tree"):
-            try:
-                return (type, tuple(self.db["%s/%s" % (type, sha)].split(" ")))
-            except KeyError:
-                pass
-        raise KeyError(sha)
+        data = self.db["git %s" % sha].split(" ")
+        return (data[0], (data[1], data[2]))
 
     def revids(self):
         """List the revision ids known."""
         for key in self.db.iterkeys():
-            if key.startswith("commit/"):
-                yield self.db[key].split(" ")[0]
+            if key.startswith("commit "):
+                yield key.split(" ")[1]
 
     def sha1s(self):
         """List the SHA1s."""
         for key in self.db.iterkeys():
-            if (key.startswith("tree/") or key.startswith("blob/") or 
-                key.startswith("commit/")):
-                yield key.split("/")[1]
+            if key.startswith("git "):
+                yield key.split(" ")[1]
