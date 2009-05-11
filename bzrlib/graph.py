@@ -314,9 +314,15 @@ class Graph(object):
         # some sort of hit rate.
         result = {}
         known_revnos = []
+        ghosts = []
         for key in keys:
-            known_revnos.append(
-                (key, self.find_distance_to_null(key, known_revnos)))
+            try:
+                known_revnos.append(
+                    (key, self.find_distance_to_null(key, known_revnos)))
+            except errors.GhostRevisionsHaveNoRevno:
+                ghosts.append(key)
+        for key in ghosts:
+            known_revnos.append((key, -1))
         return dict(known_revnos)
 
     def find_unique_ancestors(self, unique_revision, common_revisions):

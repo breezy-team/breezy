@@ -531,6 +531,13 @@ class TestGraph(TestCaseWithMemoryTransport):
         distance_graph = graph.find_lefthand_distances(['rev3b', 'rev2a'])
         self.assertEqual({'rev2a': 2, 'rev3b': 3}, distance_graph)
 
+    def test_lefthand_distance_ghosts(self):
+        """A simple does it work test for graph.lefthand_distance(keys)."""
+        nodes = {'nonghost':[NULL_REVISION], 'toghost':['ghost']}
+        graph = self.make_graph(nodes)
+        distance_graph = graph.find_lefthand_distances(['nonghost', 'toghost'])
+        self.assertEqual({'nonghost': 1, 'toghost': -1}, distance_graph)
+
     def test_recursive_unique_lca(self):
         """Test finding a unique least common ancestor.
 
