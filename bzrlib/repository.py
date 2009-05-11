@@ -4052,7 +4052,10 @@ class StreamSink(object):
                 ('inventories', self.target_repo.inventories),
                 ('revisions', self.target_repo.revisions),
                 ('signatures', self.target_repo.signatures),
+                ('chk_bytes', self.target_repo.chk_bytes),
                 ):
+                if versioned_file is None:
+                    continue
                 missing_keys.update((prefix,) + key for key in
                     versioned_file.get_missing_compression_parent_keys())
         except NotImplementedError:
