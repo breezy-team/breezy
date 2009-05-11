@@ -332,12 +332,14 @@ def check_dwim(path, verbose, do_branch=False, do_repo=False, do_tree=False):
     except errors.NotBranchError:
         tree = branch = repo = None
 
-    if do_tree:
-        if tree is not None:
-            note("Checking working tree at '%s'."
-                 % (tree.bzrdir.root_transport.base,))
-            tree.lock_read()
-            try:
+    to_unlock = []
+    try:
+        if do_tree:
+            if tree is not None:
+                note("Checking working tree at '%s'."
+                     % (tree.bzrdir.root_transport.base,))
+                tree.lock_read()
+                to_unlock.append(tree)
                 needed_refs = tree._get_check_refs()
                 refs = {}
                 for ref in needed_refs:
@@ -348,23 +350,19 @@ def check_dwim(path, verbose, do_branch=False, do_repo=False, do_tree=False):
                         raise AssertionError(
                             'unknown ref kind for ref %s' % ref)
                 tree._check(refs)
-            finally:
-                tree.unlock()
-        else:
-            log_error("No working tree found at specified location.")
+            else:
+                log_error("No working tree found at specified location.")
 
-    if branch is not None:
-        # We have a branch
-        if repo is None:
-            # The branch is in a shared repository
-            repo = branch.repository
-        branches = [branch]
-    elif repo is not None:
-        branches = repo.find_branches(using=True)
+        if branch is not None:
+            # We have a branch
+            if repo is None:
+                # The branch is in a shared repository
+                repo = branch.repository
 
-    if repo is not None:
-        repo.lock_read()
-        try:
+        if repo is not None:
+            repo.lock_read()
+            to_unlock.append(repo)
+            branches = repo.find_branches(using=True)
             if do_repo:
                 note("Checking repository at '%s'."
                      % (repo.bzrdir.root_transport.base,))
@@ -378,10 +376,11 @@ def check_dwim(path, verbose, do_branch=False, do_repo=False, do_tree=False):
                         note("Checking branch at '%s'."
                              % (branch.bzrdir.root_transport.base,))
                         check_branch(branch, verbose)
-        finally:
-            repo.unlock()
-    else:
-        if do_branch:
-            log_error("No branch found at specified location.")
-        if do_repo:
-            log_error("No repository found at specified location.")
+        else:
+            if do_branch:
+                log_error("No branch found at specified location.")
+            if do_repo:
+                log_error("No repository found at specified location.")
+    finally:
+        for thing in to_unlock:
+            thing.unlock()
