@@ -276,42 +276,29 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         # Make a trunk with one commit.
         trunk_repo = self.make_stackable_repo()
         self.make_first_commit(trunk_repo)
+        trunk_repo.lock_read()
+        self.addCleanup(trunk_repo.unlock)
         # Branch the trunk, add a new commit.
-        tree = self.branch_trunk_and_make_tree(trunk_repo, 'branch')
-        tree.commit('Branch commit', rev_id='rev-2')
-        branch_repo = tree.branch.repository
+        branch_repo = self.make_new_commit_in_new_repo(
+            trunk_repo, parents=['rev-1'])
         inv = branch_repo.get_inventory('rev-2')
-#        # Check our assumptions: rev-2's inventory should include file-id from
-#        # rev-1.
-#        self.assertEqual('rev-0', inv['file-id'].revision)
         # Make a new repo stacked on trunk, and copy the new commit's revision
         # and inventory records to it.
         repo = self.make_stackable_repo('stacked')
-        branch_repo.lock_read()
-        self.addCleanup(branch_repo.unlock)
         repo.lock_write()
         repo.start_write_group()
-        trunk_repo.lock_read()
-        # XXX: want to insert single fulltext inv, so we use add_inventory
-        # rather than get/insert_record_stream (which doesn't let us ask for a
-        # single fulltext with no parent records).
+        # Insert a single fulltext inv (using add_inventory because it's
+        # simpler than insert_record_stream)
         repo.add_inventory('rev-2', inv, ['rev-1'])
         repo.revisions.insert_record_stream(
             branch_repo.revisions.get_record_stream(
                 [('rev-2',)], 'unordered', False))
-        trunk_repo.unlock()
         # There should be no missing compression parents
         self.assertEqual(set(),
                 repo.inventories.get_missing_compression_parent_keys())
         self.assertEqual(
             set([('inventories', 'rev-1')]),
             repo.get_missing_parent_inventories())
-        # First, check our assumptions: fileids_altered_by_revision_ids should
-        # report that 'file-id' was changed by 'rev-0'
-        # XXX: explain why!
-        self.assertEqual(
-            set(['rev-0']),
-            repo.fileids_altered_by_revision_ids(['rev-2'])['file-id'])
         # Resuming the write group does not affect
         # get_missing_parent_inventories.
         reopened_repo = self.reopen_repo_and_resume_write_group(repo)
