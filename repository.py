@@ -58,15 +58,6 @@ from bzrlib.plugins.git.versionedfiles import (
     )
 
 
-class GitTags(object):
-
-    def __init__(self, tags):
-        self._tags = tags
-
-    def __iter__(self):
-        return iter(self._tags)
-
-
 class GitRepository(ForeignRepository):
     """An adapter to git repositories for bzr."""
 
@@ -125,11 +116,10 @@ class LocalGitRepository(GitRepository):
         self.revisions = versionedfiles.VirtualRevisionTexts(self)
         self.inventories = versionedfiles.VirtualInventoryTexts(self)
         self.texts = GitTexts(self)
-        self.tags = GitTags(self._git.get_tags())
 
     def all_revision_ids(self):
         ret = set([revision.NULL_REVISION])
-        heads = self._git.heads()
+        heads = self._git.refs.as_dict('refs/heads')
         if heads == {}:
             return ret
         bzr_heads = [self.get_mapping().revision_id_foreign_to_bzr(h) for h in heads.itervalues()]

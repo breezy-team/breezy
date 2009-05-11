@@ -112,7 +112,7 @@ class TestGitBlackBox(ExternalBase):
  
     def test_tags(self):
         git_repo, commit_sha1 = self.simple_commit()
-        git_repo.set_ref("refs/tags/foo", commit_sha1)
+        git_repo.refs["refs/tags/foo"] = commit_sha1
 
         output, error = self.run_bzr(['tags'])
         self.assertEquals(error, '')

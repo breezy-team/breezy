@@ -283,18 +283,6 @@ class TdbGitShaMap(GitShaMap):
     def commit(self):
         pass
 
-    def add_entries(self, entries):
-        """Add multiple new entries to the database.
-        """
-        self.db.transaction_start()
-        try:
-            for e in entries:
-                self.add_entry(*e)
-        except:
-            self.db.transaction_cancel()
-            raise
-        self.db.transaction_commit()
-
     def add_entry(self, sha, type, type_data):
         """Add a new entry to the database.
         """

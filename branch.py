@@ -91,7 +91,7 @@ class LocalGitTagDict(tag.BasicTags):
 
     def get_tag_dict(self):
         ret = {}
-        for k,v in self.repository._git.tags.iteritems():
+        for k,v in self.repository._git.refs.as_dict("refs/tags").iteritems():
             obj = self.repository._git.get_object(v)
             while isinstance(obj, Tag):
                 v = obj.object[1]
@@ -104,7 +104,7 @@ class LocalGitTagDict(tag.BasicTags):
         return ret
 
     def set_tag(self, name, revid):
-        self.repository._git.tags[name], _ = \
+        self.repository._git.refs["refs/tags/%s" % name], _ = \
             self.branch.mapping.revision_id_bzr_to_foreign(revid)
 
 
@@ -250,11 +250,14 @@ class LocalGitBranch(GitBranch):
         return ret
 
     def _get_head(self):
-        return self.repository._git.ref(self.name)
+        try:
+            return self.repository._git.ref(self.name)
+        except KeyError:
+            return None
 
     def _set_head(self, value):
         self._head = value
-        self.repository._git.set_ref(self.name, self._head)
+        self.repository._git.refs[self.name] = self._head
         self._clear_cached_state()
 
     head = property(_get_head, _set_head)

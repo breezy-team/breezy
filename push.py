@@ -167,7 +167,7 @@ class InterToLocalGitRepository(InterToGitRepository):
                 gitid = newgitidmap[revid]
             else:
                 gitid, _ = self.mapping.revision_id_bzr_to_foreign(revid)
-            self.target._git.set_ref(name, gitid)
+            self.target._git.refs[name] = gitid
             new_refs[name] = gitid
         return revidmap, new_refs
 
