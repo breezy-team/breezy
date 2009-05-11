@@ -432,6 +432,10 @@ class TestBranchLocking(TestCaseWithBranch):
             branch.unlock()
         # We should be unable to relock the repo.
         self.assertRaises(errors.LockContention, branch.lock_write)
+        # Cleanup
+        branch.lock_write(token)
+        branch.dont_leave_lock_in_place()
+        branch.unlock()
 
     def test_dont_leave_lock_in_place(self):
         branch = self.make_branch('b')
