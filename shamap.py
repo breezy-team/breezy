@@ -77,6 +77,7 @@ class GitShaMap(object):
         raise NotImplementedError(self.lookup_tree)
 
     def lookup_blob(self, fileid, revid):
+        """Lookup a blob by the fileid it has in a bzr revision."""
         raise NotImplementedError(self.lookup_blob)
 
     def lookup_git_sha(self, sha):
@@ -250,8 +251,8 @@ class TdbGitShaMap(GitShaMap):
 
     "git <sha1>" -> "<type> <type-data1> <type-data2>"
     "commit revid" -> "<sha1> <tree-id>"
-    "tree revid fileid" -> "<sha1>"
-    "blob revid fileid" -> "<sha1>"
+    "tree fileid revid" -> "<sha1>"
+    "blob fileid revid" -> "<sha1>"
     """
 
     def __init__(self, path=None):
@@ -297,10 +298,10 @@ class TdbGitShaMap(GitShaMap):
             self.db["%s %s %s" % (type, type_data[0], type_data[1])] = sha
 
     def lookup_tree(self, fileid, revid):
-        return self.db["tree %s %s" % (revid, fileid)]
+        return self.db["tree %s %s" % (fileid, revid)]
 
     def lookup_blob(self, fileid, revid):
-        return self.db["blob %s %s" % (revid, fileid)]
+        return self.db["blob %s %s" % (fileid, revid)]
 
     def lookup_git_sha(self, sha):
         """Lookup a Git sha in the database.

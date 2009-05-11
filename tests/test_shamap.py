@@ -44,18 +44,21 @@ class TestGitShaMap:
             self.map.lookup_git_sha, "5686645d49063c73d35436192dfc9a160c672301")
         
     def test_blob(self):
-        self.map.add_entry("5686645d49063c73d35436192dfc9a160c672301", 
-            "blob", ("myfileid", "myrevid"))
+        thesha = "5686645d49063c73d35436192dfc9a160c672301"
+        self.map.add_entry(thesha, "blob", ("myfileid", "myrevid"))
         self.assertEquals(
             ("blob", ("myfileid", "myrevid")),
-            self.map.lookup_git_sha("5686645d49063c73d35436192dfc9a160c672301"))
+            self.map.lookup_git_sha(thesha))
+        self.assertEquals(thesha, self.map.lookup_blob("myfileid", "myrevid"))
 
     def test_tree(self):
-        self.map.add_entry("5686645d49063c73d35436192dfc9a160c672301", 
+        thesha = "5686645d49063c73d35436192dfc9a160c672301"
+        self.map.add_entry(thesha, 
             "tree", ("somepath", "myrevid"))
         self.assertEquals(
             ("tree", ("somepath", "myrevid")),
-            self.map.lookup_git_sha("5686645d49063c73d35436192dfc9a160c672301"))
+            self.map.lookup_git_sha(thesha))
+        self.assertEquals(thesha, self.map.lookup_tree("somepath", "myrevid"))
 
     def test_revids(self):
         self.map.add_entry("5686645d49063c73d35436192dfc9a160c672301", 
