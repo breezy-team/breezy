@@ -1448,15 +1448,17 @@ class Repository(object):
         unstacked_inventories = self.inventories._index
         present_inventories = unstacked_inventories.get_parent_map(
             key[-1:] for key in parents)
-        key_deps = self.revisions._index._key_dependencies
-        key_deps.add_keys(present_inventories)
-        parents = set(self.revisions._index.get_missing_parents())
-        # ok, now we have a list of missing inventories.  But these only matter
+        if len(parents.difference(present_inventories)) == 0:
+            # No missing parent inventories.
+            return set()
+        # Ok, now we have a list of missing inventories.  But these only matter
         # if the inventories that reference them are missing some texts they
         # appear to introduce.
         # XXX: Texts referenced by all added inventories need to be present,
         # but at the moment we're only checking for texts referenced by
         # inventories at the graph's edge.
+        key_deps = self.revisions._index._key_dependencies
+        key_deps.add_keys(present_inventories)
         referrers = frozenset(r[0] for r in key_deps.get_referrers())
         file_ids = self.fileids_altered_by_revision_ids(referrers)
         missing_texts = set()
@@ -1466,7 +1468,7 @@ class Repository(object):
         present_texts = self.texts.get_parent_map(missing_texts)
         missing_texts.difference_update(present_texts)
         if not missing_texts:
-            # no texts are missing, so all revisions and their deltas are
+            # No texts are missing, so all revisions and their deltas are
             # reconstructable.
             return set()
         # Alternatively the text versions could be returned as the missing

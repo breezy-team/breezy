@@ -133,8 +133,6 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
             repo.commit_write_group()
             repo.unlock()
 
-    # Needed tests:
-    #  [done]
     # Also, perf tests:
     # - if all invs present, then no texts are checked
 
