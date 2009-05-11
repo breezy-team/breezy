@@ -112,13 +112,13 @@ class TestWriteGroup(TestCaseWithRepository):
         self.addCleanup(repo.unlock)
         repo.start_write_group()
         # Damage the repository on the filesystem
-        self.get_transport('').rename('repo', 'foo')
+        t = self.get_transport('')
+        t.rename('repo', 'foo')
+        self.addCleanup(t.rename, 'foo', 'repo')
         # abort_write_group will not raise an error, because either an
         # exception was not generated, or the exception was caught and
         # suppressed.  See also test_pack_repository's test of the same name.
         self.assertEqual(None, repo.abort_write_group(suppress_errors=True))
-        if token is not None:
-            repo.leave_lock_in_place()
 
     def test_empty_get_missing_parent_inventories(self):
         """A new write group has no missing parent inventories."""
