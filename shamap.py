@@ -275,7 +275,11 @@ class TdbGitShaMap(GitShaMap):
 
     @classmethod
     def from_repository(cls, repository):
-        return cls(os.path.join(repository._transport.local_abspath("."), "git.tdb"))
+        try:
+            return cls(os.path.join(repository._transport.local_abspath("."), "git.tdb"))
+        except bzrlib.errors.NotLocalUrl:
+            from bzrlib.config import config_dir
+            return cls(os.path.join(config_dir(), "remote-git.tdb"))
 
     def _parent_lookup(self, revid):
         return self.db["commit %s" % revid].split(" ")[0]
