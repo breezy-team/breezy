@@ -241,3 +241,82 @@ class SqliteGitShaMap(GitShaMap):
         for table in ("blobs", "commits", "trees"):
             for row in self.db.execute("select sha1 from %s" % table).fetchall():
                 yield row[0].encode("utf-8")
+
+
+class TdbGitShaMap(GitShaMap):
+    """SHA Map that uses a TDB database.
+
+    Entries:
+
+    commit/sha1 -> revid tree-id
+    tree/sha1 -> revid file-id
+    blob/sha1 -> revid file-id
+    """
+
+    def __init__(self, path=None):
+        import tdb
+        self.path = path
+        if path is None:
+            self.db = {}
+        else:
+            if not mapdbs().has_key(path):
+                mapdbs()[path] = tdb.open(path, 0, tdb.DEFAULT, 
+                                          os.O_RDWR|os.O_CREAT)
+            self.db = mapdbs()[path]    
+
+    @classmethod
+    def from_repository(cls, repository):
+        return cls(os.path.join(repository._transport.local_abspath("."), "git.tdb"))
+
+    def _parent_lookup(self, revid):
+        row = self.db.execute("select sha1 from commits where revid = ?", (revid,)).fetchone()
+        if row is not None:
+            return row[0].encode("utf-8")
+        raise KeyError
+
+    def commit(self):
+        pass
+
+    def add_entry(self, sha, type, type_data):
+        """Add a new entry to the database.
+        """
+        self.db["%s/%s" % (type, sha)] = "%s %s" % type_data
+
+    def lookup_tree(self, fileid, revid):
+        row = self.db.execute("select sha1 from trees where fileid = ? and revid = ?", (fileid,revid)).fetchone()
+        if row is None:
+            raise KeyError((fileid, revid))
+        return row[0].encode("utf-8")
+
+    def lookup_blob(self, fileid, revid):
+        row = self.db.execute("select sha1 from blobs where fileid = ? and revid = ?", (fileid, revid)).fetchone()
+        if row is None:
+            raise KeyError((fileid, revid))
+        return row[0].encode("utf-8")
+
+    def lookup_git_sha(self, sha):
+        """Lookup a Git sha in the database.
+
+        :param sha: Git object sha
+        :return: (type, type_data) with type_data:
+            revision: revid, tree sha
+        """
+        for type in ("commit", "blob", "tree"):
+            try:
+                return (type, tuple(self.db["%s/%s" % (type, sha)].split(" ")))
+            except KeyError:
+                pass
+        raise KeyError(sha)
+
+    def revids(self):
+        """List the revision ids known."""
+        for key in self.db.iterkeys():
+            if key.startswith("commit/"):
+                yield self.db[key].split(" ")[0]
+
+    def sha1s(self):
+        """List the SHA1s."""
+        for key in self.db.iterkeys():
+            if (key.startswith("tree/") or key.startswith("blob/") or 
+                key.startswith("commit/")):
+                yield key.split("/")[1]
