@@ -25,7 +25,6 @@ import bzrlib
 from bzrlib import (
     email_message,
     errors,
-    hooks,
     msgeditor,
     osutils,
     urlutils,
@@ -35,21 +34,8 @@ from bzrlib import (
 mail_client_registry = registry.Registry()
 
 
-class MailClientHooks(hooks.Hooks):
-
-    def __init__(self):
-        hooks.Hooks.__init__(self)
-        self.create_hook(hooks.HookPoint('merge_request_body',
-            "Called with a MergeRequestBodyParams when a body is needed for"
-            " a merge request.  Callbacks must return a body.  If more"
-            " than one callback is registered, the output of one callback is"
-            " provided to the next.", (1, 15, 0), False))
-
-
 class MailClient(object):
     """A mail client that can send messages with attachements."""
-
-    hooks = MailClientHooks()
 
     def __init__(self, config):
         self.config = config
@@ -86,13 +72,8 @@ class MailClient(object):
         :param basename: The name to use for the attachment, e.g.
             "send-nick-3252"
         """
-        orig_body = body
         prompt = self._get_merge_prompt("Please describe these changes:", to,
                                         subject, directive)
-        for hook in self.hooks['merge_request_body']:
-            params = MergeRequestBodyParams(body, orig_body, directive,
-                                            to, basename, subject)
-            body = hook(params)
         self.compose(prompt, to, subject, directive,
             'x-patch', '.patch', basename, body)
 
@@ -105,17 +86,6 @@ class MailClient(object):
         :param attachment: The attachment that will be used
         """
         return ''
-
-
-class MergeRequestBodyParams(object):
-
-    def __init__(self, body, orig_body, directive, to, basename, subject):
-        self.body = body
-        self.orig_body = orig_body
-        self.directive = directive
-        self.to = to
-        self.basename = basename
-        self.subject = subject
 
 
 class Editor(MailClient):

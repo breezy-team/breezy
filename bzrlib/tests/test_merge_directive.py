@@ -19,6 +19,7 @@ import re
 from bzrlib import (
     errors,
     gpg,
+    mail_client,
     merge_directive,
     tests,
     )
@@ -697,3 +698,71 @@ class TestParseOldMergeDirective2(tests.TestCase):
         self.assertEqual('booga', md.patch)
         self.assertEqual('diff', md.patch_type)
         self.assertEqual('Hi mom!', md.message)
+
+
+class TestHook(object):
+    """Hook callback for test purposes."""
+
+    def __init__(self, result=None):
+        self.calls = []
+        self.result = result
+
+    def __call__(self, params):
+        self.calls.append(params)
+        return self.result
+
+
+class HookMailClient(mail_client.MailClient):
+    """Mail client for testing hooks."""
+
+    def __init__(self, config):
+        self.body = None
+        self.config = config
+
+    def compose(self, prompt, to, subject, attachment, mime_subtype,
+                extension, basename=None, body=None):
+        self.body = body
+
+
+class TestBodyHook(tests.TestCaseWithTransport):
+
+    def compose_with_hooks(self, test_hooks):
+        client = HookMailClient({})
+        for test_hook in test_hooks:
+            merge_directive.MergeDirective.hooks.install_named_hook(
+                'merge_request_body', test_hook, 'test')
+        tree = self.make_branch_and_tree('foo')
+        tree.commit('foo')
+        directive = merge_directive.MergeDirective2(
+            tree.branch.last_revision(), 'sha', 0, 0, 'sha',
+            source_branch=tree.branch.base,
+            base_revision_id=tree.branch.last_revision(),
+            message='This code rox')
+        directive.compose_merge_request(client, 'jrandom@example.com',
+            None, tree.branch)
+        return client, directive
+
+    def test_body_hook(self):
+        test_hook = TestHook('foo')
+        client, directive = self.compose_with_hooks([test_hook])
+        self.assertEqual(1, len(test_hook.calls))
+        self.assertEqual('foo', client.body)
+        params = test_hook.calls[0]
+        self.assertIsInstance(params,
+                              merge_directive.MergeRequestBodyParams)
+        self.assertIs(None, params.body)
+        self.assertIs(None, params.orig_body)
+        self.assertEqual('jrandom@example.com', params.to)
+        self.assertEqual('[MERGE] This code rox', params.subject)
+        self.assertEqual(directive, params.directive)
+        self.assertEqual('foo-1', params.basename)
+
+    def test_body_hook_chaining(self):
+        test_hook1 = TestHook('foo')
+        test_hook2 = TestHook('bar')
+        client = self.compose_with_hooks([test_hook1, test_hook2])[0]
+        self.assertEqual(None, test_hook1.calls[0].body)
+        self.assertEqual(None, test_hook1.calls[0].orig_body)
+        self.assertEqual('foo', test_hook2.calls[0].body)
+        self.assertEqual(None, test_hook2.calls[0].orig_body)
+        self.assertEqual('bar', client.body)

@@ -57,8 +57,8 @@ known_hooks.register_lazy(
     ('bzrlib.version_info_formats.format_rio', 'RioVersionInfoBuilder.hooks'),
     'bzrlib.version_info_formats.format_rio', 'RioVersionInfoBuilderHooks')
 known_hooks.register_lazy(
-    ('bzrlib.mail_client', 'MailClient.hooks'),
-    'bzrlib.mail_client', 'MailClientHooks')
+    ('bzrlib.merge_directive', '_BaseMergeDirective.hooks'),
+    'bzrlib.merge_directive', 'MergeDirectiveHooks')
 
 
 def known_hooks_key_to_object((module_name, member_name)):
