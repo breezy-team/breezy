@@ -70,4 +70,9 @@ class TestBranchCheck(TestCaseWithBranch):
         result.report_results(verbose=True)
         result.report_results(verbose=False)
 
-
+    def test__get_check_refs(self):
+        tree = self.make_branch_and_tree('.')
+        revid = tree.commit('foo')
+        self.assertEqual(
+            set([('revision-existence', revid), ('lefthand-distance', revid)]),
+            set(tree.branch._get_check_refs()))

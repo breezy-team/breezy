@@ -129,6 +129,14 @@ class Branch(object):
             raise errors.UnstackableRepositoryFormat(self.repository._format,
                 self.repository.base)
 
+    def _get_check_refs(self):
+        """Get the references needed for check().
+
+        See bzrlib.check.
+        """
+        revid = self.last_revision()
+        return [('revision-existence', revid), ('lefthand-distance', revid)]
+
     @staticmethod
     def open(base, _unsupported=False, possible_transports=None):
         """Open the branch rooted at base.
