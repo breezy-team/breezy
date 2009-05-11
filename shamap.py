@@ -244,6 +244,9 @@ class SqliteGitShaMap(GitShaMap):
                 yield row[0].encode("utf-8")
 
 
+TDB_MAP_VERSION = 1
+
+
 class TdbGitShaMap(GitShaMap):
     """SHA Map that uses a TDB database.
 
@@ -265,6 +268,10 @@ class TdbGitShaMap(GitShaMap):
                 mapdbs()[path] = tdb.open(path, 0, tdb.DEFAULT, 
                                           os.O_RDWR|os.O_CREAT)
             self.db = mapdbs()[path]    
+        if not "version" in self.db:
+            self.db["version"] = str(TDB_MAP_VERSION)
+        else:
+            assert int(self.db["version"]) == TDB_MAP_VERSION
 
     @classmethod
     def from_repository(cls, repository):
