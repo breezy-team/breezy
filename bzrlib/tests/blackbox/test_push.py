@@ -306,7 +306,8 @@ class TestPush(ExternalBase):
         self.assertEqual(tree_to.branch.last_revision_info()[1], 'from-1')
 
         self.run_bzr_error(
-            "bzr: ERROR: bzr push --revision takes one value.\n",
+            ['bzr: ERROR: bzr push --revision '
+             'takes exactly one revision identifier\n'],
             'push -r0..2 ../to', working_dir='from')
 
     def create_trunk_and_feature_branch(self):

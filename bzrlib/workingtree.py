@@ -749,9 +749,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 kind = 'tree-reference'
             return kind, None, None, None
         elif kind == 'symlink':
-            return ('symlink', None, None,
-                    os.readlink(abspath.encode(osutils._fs_enc)
-                                ).decode(osutils._fs_enc))
+            target = osutils.readlink(abspath)
+            return ('symlink', None, None, target)
         else:
             return (kind, None, None, None)
 
@@ -973,8 +972,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         return file_id
 
     def get_symlink_target(self, file_id):
-        return os.readlink(self.id2abspath(file_id).encode(osutils._fs_enc)
-            ).decode(osutils._fs_enc)
+        abspath = self.id2abspath(file_id)
+        target = osutils.readlink(abspath)
+        return target
 
     @needs_write_lock
     def subsume(self, other_tree):
@@ -1561,7 +1561,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
-             change_reporter=None, possible_transports=None):
+             change_reporter=None, possible_transports=None, local=False):
         top_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         source.lock_read()
         try:
@@ -1570,7 +1570,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             old_revision_info = self.branch.last_revision_info()
             basis_tree = self.basis_tree()
             count = self.branch.pull(source, overwrite, stop_revision,
-                                     possible_transports=possible_transports)
+                                     possible_transports=possible_transports,
+                                     local=local)
             new_revision_info = self.branch.last_revision_info()
             if new_revision_info != old_revision_info:
                 pp.next_phase()

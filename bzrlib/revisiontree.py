@@ -125,7 +125,8 @@ class RevisionTree(tree.Tree):
 
     def get_symlink_target(self, file_id):
         ie = self._inventory[file_id]
-        return ie.symlink_target;
+        # Inventories store symlink targets in unicode
+        return ie.symlink_target
 
     def get_reference_revision(self, file_id, path=None):
         return self.inventory[file_id].reference_revision

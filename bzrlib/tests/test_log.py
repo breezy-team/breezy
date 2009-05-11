@@ -33,33 +33,30 @@ class TestCaseWithoutPropsHandler(tests.TestCaseWithTransport):
         super(TestCaseWithoutPropsHandler, self).setUp()
         # keep a reference to the "current" custom prop. handler registry
         self.properties_handler_registry = log.properties_handler_registry
-        # clean up the registry in log
+        # Use a clean registry for log
         log.properties_handler_registry = registry.Registry()
 
-    def _cleanup(self):
-        super(TestCaseWithoutPropsHandler, self)._cleanup()
-        # restore the custom properties handler registry
-        log.properties_handler_registry = self.properties_handler_registry
+        def restore():
+            log.properties_handler_registry = self.properties_handler_registry
+        self.addCleanup(restore)
 
 
 class LogCatcher(log.LogFormatter):
-    """Pull log messages into list rather than displaying them.
+    """Pull log messages into a list rather than displaying them.
 
-    For ease of testing we save log messages here rather than actually
-    formatting them, so that we can precisely check the result without
-    being too dependent on the exact formatting.
-
-    We should also test the LogFormatter.
+    To simplify testing we save logged revisions here rather than actually
+    formatting anything, so that we can precisely check the result without
+    being dependent on the formatting.
     """
 
     supports_delta = True
 
     def __init__(self):
         super(LogCatcher, self).__init__(to_file=None)
-        self.logs = []
+        self.revisions = []
 
     def log_revision(self, revision):
-        self.logs.append(revision)
+        self.revisions.append(revision)
 
 
 class TestShowLog(tests.TestCaseWithTransport):
@@ -106,7 +103,7 @@ class TestShowLog(tests.TestCaseWithTransport):
         lf = LogCatcher()
         log.show_log(wt.branch, lf)
         # no entries yet
-        self.assertEqual([], lf.logs)
+        self.assertEqual([], lf.revisions)
 
     def test_empty_commit(self):
         wt = self.make_branch_and_tree('.')
@@ -114,10 +111,11 @@ class TestShowLog(tests.TestCaseWithTransport):
         wt.commit('empty commit')
         lf = LogCatcher()
         log.show_log(wt.branch, lf, verbose=True)
-        self.assertEqual(1, len(lf.logs))
-        self.assertEqual('1', lf.logs[0].revno)
-        self.assertEqual('empty commit', lf.logs[0].rev.message)
-        self.checkDelta(lf.logs[0].delta)
+        revs = lf.revisions
+        self.assertEqual(1, len(revs))
+        self.assertEqual('1', revs[0].revno)
+        self.assertEqual('empty commit', revs[0].rev.message)
+        self.checkDelta(revs[0].delta)
 
     def test_simple_commit(self):
         wt = self.make_branch_and_tree('.')
@@ -129,9 +127,9 @@ class TestShowLog(tests.TestCaseWithTransport):
                             u'<test@example.com>')
         lf = LogCatcher()
         log.show_log(wt.branch, lf, verbose=True)
-        self.assertEqual(2, len(lf.logs))
+        self.assertEqual(2, len(lf.revisions))
         # first one is most recent
-        log_entry = lf.logs[0]
+        log_entry = lf.revisions[0]
         self.assertEqual('2', log_entry.revno)
         self.assertEqual('add one file', log_entry.rev.message)
         self.checkDelta(log_entry.delta, added=['hello'])
@@ -143,7 +141,7 @@ class TestShowLog(tests.TestCaseWithTransport):
         wt.commit(msg)
         lf = LogCatcher()
         log.show_log(wt.branch, lf, verbose=True)
-        committed_msg = lf.logs[0].rev.message
+        committed_msg = lf.revisions[0].rev.message
         self.assertNotEqual(msg, committed_msg)
         self.assertTrue(len(committed_msg) > len(msg))
 
@@ -157,7 +155,7 @@ class TestShowLog(tests.TestCaseWithTransport):
         wt.commit(msg)
         lf = LogCatcher()
         log.show_log(wt.branch, lf, verbose=True)
-        committed_msg = lf.logs[0].rev.message
+        committed_msg = lf.revisions[0].rev.message
         self.assertEqual(msg, committed_msg)
 
     def test_deltas_in_merge_revisions(self):
@@ -181,19 +179,20 @@ class TestShowLog(tests.TestCaseWithTransport):
         lf.supports_merge_revisions = True
         log.show_log(b, lf, verbose=True)
 
-        self.assertEqual(3, len(lf.logs))
+        revs = lf.revisions
+        self.assertEqual(3, len(revs))
 
-        logentry = lf.logs[0]
+        logentry = revs[0]
         self.assertEqual('2', logentry.revno)
         self.assertEqual('merge child branch', logentry.rev.message)
         self.checkDelta(logentry.delta, removed=['file1'], modified=['file2'])
 
-        logentry = lf.logs[1]
+        logentry = revs[1]
         self.assertEqual('1.1.1', logentry.revno)
         self.assertEqual('remove file1 and modify file2', logentry.rev.message)
         self.checkDelta(logentry.delta, removed=['file1'], modified=['file2'])
 
-        logentry = lf.logs[2]
+        logentry = revs[2]
         self.assertEqual('1', logentry.revno)
         self.assertEqual('add file1 and file2', logentry.rev.message)
         self.checkDelta(logentry.delta, added=['file1', 'file2'])

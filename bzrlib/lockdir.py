@@ -325,7 +325,7 @@ class LockDir(lock.Lock):
             self._trace("... unlock succeeded after %dms",
                     (time.time() - start_time) * 1000)
             result = lock.LockResult(self.transport.abspath(self.path),
-                old_nonce)
+                                     old_nonce)
             for hook in self.hooks['lock_released']:
                 hook(result)
 
@@ -379,6 +379,10 @@ class LockDir(lock.Lock):
             raise LockBreakMismatch(self, broken_info, dead_holder_info)
         self.transport.delete(broken_info_path)
         self.transport.rmdir(tmpname)
+        result = lock.LockResult(self.transport.abspath(self.path),
+                                 current_info.get('nonce'))
+        for hook in self.hooks['lock_broken']:
+            hook(result)
 
     def _check_not_locked(self):
         """If the lock is held by this instance, raise an error."""

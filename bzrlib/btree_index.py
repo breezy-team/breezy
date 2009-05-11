@@ -431,8 +431,8 @@ class BTreeBuilder(index.GraphIndexBuilder):
     def iter_all_entries(self):
         """Iterate over all keys within the index
 
-        :return: An iterable of (index, key, reference_lists, value). There is no
-            defined order for the result iteration - it will be in the most
+        :return: An iterable of (index, key, value, reference_lists). There is
+            no defined order for the result iteration - it will be in the most
             efficient order for the index (in this case dictionary hash order).
         """
         if 'evil' in debug.debug_flags:
