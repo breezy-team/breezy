@@ -2462,6 +2462,31 @@ class Repository(object):
         :param revision_ids: A non-empty list of revision_ids whose ancestry
              will be checked.  Typically the last revision_id of a branch.
         """
+        # TODO: Reinstate or confirm its obsolescence.
+        # from Branch.check - a cross check that the parents index
+        # (iter_reverse_revision_history uses that) and the revision objects
+        # match up.
+        #real_rev_history = list(self.repository.iter_reverse_revision_history(
+        #                        last_revision_id))
+        #real_rev_history.reverse()
+        #
+        #mainline_parent_id = None
+        #for revision_id in real_rev_history:
+        #    try:
+        #        revision = self.repository.get_revision(revision_id)
+        #    except errors.NoSuchRevision, e:
+        #        result.errors.append(errors.BzrCheckError(
+        #            "mainline revision {%s} not in repository" % revision_id))
+        #        break
+        #    # In general the first entry on the revision history has no parents.
+        #    # But it's not illegal for it to have parents listed; this can happen
+        #    # in imports from Arch when the parents weren't reachable.
+        #    if mainline_parent_id is not None:
+        #        if mainline_parent_id not in revision.parent_ids:
+        #            raise errors.BzrCheckError("previous revision {%s} not listed among "
+        #                                "parents of {%s}"
+        #                                % (mainline_parent_id, revision_id))
+        #            mainline_parent_id = revision_id
         return self._check(revision_ids)
 
     def _check(self, revision_ids):
