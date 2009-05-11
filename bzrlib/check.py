@@ -277,7 +277,7 @@ def check(branch, verbose):
 
     Results are reported through logging.
 
-    Deprecated in 1.6.  Please use check_branch instead.
+    Deprecated in 1.6.  Please use check_dwim instead.
 
     :raise BzrCheckError: if there's a consistency error.
     """
@@ -325,58 +325,133 @@ def check_branch(branch, verbose):
     branch_result.report_results(verbose)
 
 
+def scan_branch(branch, needed_refs, to_unlock):
+    """Scan a branch for refs.
+
+    :param branch:  The branch to schedule for checking.
+    :param needed_refs: Refs we are accumulating.
+    :param to_unlock: The unlock list accumulating.
+    """
+    branch.lock_read()
+    to_unlock.append(branch)
+    branch_refs = branch._get_check_refs()
+    for ref in branch_refs:
+        reflist = needed_refs.setdefault(ref, [])
+        reflist.append(branch)
+
+
+def scan_tree(base_tree, tree, needed_refs, to_unlock):
+    """Scan a tree for refs.
+
+    :param base_tree: The original tree check opened, used to detect duplicate
+        tree checks.
+    :param tree:  The tree to schedule for checking.
+    :param needed_refs: Refs we are accumulating.
+    :param to_unlock: The unlock list accumulating.
+    """
+    if base_tree is not None and tree.basedir == base_tree.basedir:
+        return
+    tree.lock_read()
+    to_unlock.append(tree)
+    tree_refs = tree._get_check_refs()
+    for ref in tree_refs:
+        reflist = needed_refs.setdefault(ref, [])
+        reflist.append(tree)
+
+
 def check_dwim(path, verbose, do_branch=False, do_repo=False, do_tree=False):
     try:
-        tree, branch, repo, relpath = \
+        base_tree, branch, repo, relpath = \
                         BzrDir.open_containing_tree_branch_or_repository(path)
     except errors.NotBranchError:
-        tree = branch = repo = None
+        base_tree = branch = repo = None
 
     to_unlock = []
+    needed_refs= {}
     try:
-        if do_tree:
-            if tree is not None:
-                note("Checking working tree at '%s'."
-                     % (tree.bzrdir.root_transport.base,))
-                tree.lock_read()
-                to_unlock.append(tree)
-                needed_refs = tree._get_check_refs()
-                refs = {}
-                for ref in needed_refs:
-                    kind, value = ref
-                    if kind == 'trees':
-                        refs[ref] = tree.branch.repository.revision_tree(value)
-                    else:
-                        raise AssertionError(
-                            'unknown ref kind for ref %s' % ref)
-                tree._check(refs)
-            else:
-                log_error("No working tree found at specified location.")
-
+        if base_tree is not None:
+            # If the tree is a lightweight checkout we won't see it in
+            # repo.find_branches - add now.
+            if do_tree:
+                scan_tree(None, base_tree, needed_refs, to_unlock)
+            branch = base_tree.branch
         if branch is not None:
             # We have a branch
             if repo is None:
                 # The branch is in a shared repository
                 repo = branch.repository
-
         if repo is not None:
             repo.lock_read()
             to_unlock.append(repo)
             branches = repo.find_branches(using=True)
+            saw_tree = False
+            if do_branch or do_tree:
+                for branch in branches:
+                    if do_tree:
+                        try:
+                            tree = branch.bzrdir.open_workingtree()
+                            saw_tree = True
+                        except (errors.NotLocalUrl, errors.NoWorkingTree):
+                            pass
+                        else:
+                            scan_tree(base_tree, tree, needed_refs, to_unlock)
+                    if do_branch:
+                        scan_branch(branch, needed_refs, to_unlock)
+            if do_branch and not branches:
+                log_error("No branch found at specified location.")
+            if do_tree and base_tree is None and not saw_tree:
+                log_error("No working tree found at specified location.")
             if do_repo:
                 note("Checking repository at '%s'."
                      % (repo.bzrdir.root_transport.base,))
                 result = repo.check()
                 result.report_results(verbose)
-            if do_branch:
-                if branches == []:
-                    log_error("No branch found at specified location.")
-                else:
-                    for branch in branches:
-                        note("Checking branch at '%s'."
-                             % (branch.bzrdir.root_transport.base,))
-                        check_branch(branch, verbose)
+            if needed_refs:
+                # calculate all refs, and callback the objects requesting them.
+                refs = {}
+                wanting_items = set()
+                # Current crude version calculates everything and calls
+                # everything at once. Doing a queue and popping as things are
+                # satisfied would be cheaper on memory [but few people have
+                # huge numbers of working trees today. TODO: fix before
+                # landing].
+                distances = set()
+                existences = set()
+                for ref, wantlist in needed_refs.iteritems():
+                    wanting_items.update(wantlist)
+                    kind, value = ref
+                    if kind == 'trees':
+                        refs[ref] = repo.revision_tree(value)
+                    elif kind == 'lefthand-distance':
+                        distances.add(value)
+                    elif kind == 'revision-existence':
+                        existences.add(value)
+                    else:
+                        raise AssertionError(
+                            'unknown ref kind for ref %s' % ref)
+                node_distances = repo.get_graph().find_lefthand_distances(distances)
+                for key, distance in node_distances.iteritems():
+                    refs[('lefthand-distance', key)] = distance
+                    if key in existences and distance > 0:
+                        refs[('revision-existence', key)] = True
+                        existences.remove(key)
+                parent_map = repo.get_graph().get_parent_map(existences)
+                for key in parent_map:
+                    refs[('revision-existence', key)] = True
+                    existences.remove(key)
+                for key in existences:
+                    refs[('revision-existence', key)] = False
+                for item in wanting_items:
+                    if isinstance(item, WorkingTree):
+                        note("Checking working tree at '%s'." % (item.basedir,))
+                        item._check(refs)
+                    if isinstance(item, Branch):
+                        note("Checking branch at '%s'." % (branch.base,))
+                        branch_result = item.check(refs)
+                        branch_result.report_results(verbose)
         else:
+            if do_tree:
+                log_error("No working tree found at specified location.")
             if do_branch:
                 log_error("No branch found at specified location.")
             if do_repo:
