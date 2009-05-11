@@ -615,7 +615,7 @@ class TestPackRepository(TestCaseWithTransport):
         Also requires that the exception is logged.
         """
         self.vfs_transport_factory = memory.MemoryServer
-        repo = self.make_repository('repo')
+        repo = self.make_repository('repo', format=self.get_format())
         token = repo.lock_write()
         self.addCleanup(repo.unlock)
         repo.start_write_group()
@@ -632,7 +632,7 @@ class TestPackRepository(TestCaseWithTransport):
 
     def test_abort_write_group_does_raise_when_not_suppressed(self):
         self.vfs_transport_factory = memory.MemoryServer
-        repo = self.make_repository('repo')
+        repo = self.make_repository('repo', format=self.get_format())
         token = repo.lock_write()
         self.addCleanup(repo.unlock)
         repo.start_write_group()
@@ -645,23 +645,28 @@ class TestPackRepository(TestCaseWithTransport):
 
     def test_suspend_write_group(self):
         self.vfs_transport_factory = memory.MemoryServer
-        repo = self.make_repository('repo')
+        repo = self.make_repository('repo', format=self.get_format())
         token = repo.lock_write()
         self.addCleanup(repo.unlock)
         repo.start_write_group()
         repo.texts.add_lines(('file-id', 'revid'), (), ['lines'])
         wg_tokens = repo.suspend_write_group()
         expected_pack_name = wg_tokens[0] + '.pack'
+        expected_names = [wg_tokens[0] + ext for ext in
+                            ('.rix', '.iix', '.tix', '.six')]
+        if repo.chk_bytes is not None:
+            expected_names.append(wg_tokens[0] + '.cix')
+        expected_names.append(expected_pack_name)
         upload_transport = repo._pack_collection._upload_transport
         limbo_files = upload_transport.list_dir('')
-        self.assertTrue(expected_pack_name in limbo_files, limbo_files)
+        self.assertEqual(sorted(expected_names), sorted(limbo_files))
         md5 = osutils.md5(upload_transport.get_bytes(expected_pack_name))
         self.assertEqual(wg_tokens[0], md5.hexdigest())
 
     def test_resume_write_group_then_abort(self):
         # Create a repo, start a write group, insert some data, suspend.
         self.vfs_transport_factory = memory.MemoryServer
-        repo = self.make_repository('repo')
+        repo = self.make_repository('repo', format=self.get_format())
         token = repo.lock_write()
         self.addCleanup(repo.unlock)
         repo.start_write_group()
@@ -680,10 +685,38 @@ class TestPackRepository(TestCaseWithTransport):
         self.assertEqual(
             [], same_repo._pack_collection._pack_transport.list_dir(''))
 
+    def test_commit_resumed_write_group(self):
+        self.vfs_transport_factory = memory.MemoryServer
+        repo = self.make_repository('repo', format=self.get_format())
+        token = repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        text_key = ('file-id', 'revid')
+        repo.texts.add_lines(text_key, (), ['lines'])
+        wg_tokens = repo.suspend_write_group()
+        # Get a fresh repository object for the repo on the filesystem.
+        same_repo = repo.bzrdir.open_repository()
+        # Resume
+        same_repo.lock_write()
+        self.addCleanup(same_repo.unlock)
+        same_repo.resume_write_group(wg_tokens)
+        same_repo.commit_write_group()
+        expected_pack_name = wg_tokens[0] + '.pack'
+        expected_names = [wg_tokens[0] + ext for ext in
+                            ('.rix', '.iix', '.tix', '.six')]
+        if repo.chk_bytes is not None:
+            expected_names.append(wg_tokens[0] + '.cix')
+        self.assertEqual(
+            [], same_repo._pack_collection._upload_transport.list_dir(''))
+        index_names = repo._pack_collection._index_transport.list_dir('')
+        self.assertEqual(sorted(expected_names), sorted(index_names))
+        pack_names = repo._pack_collection._pack_transport.list_dir('')
+        self.assertEqual([expected_pack_name], pack_names)
+
     def test_resume_malformed_token(self):
         self.vfs_transport_factory = memory.MemoryServer
         # Make a repository with a suspended write group
-        repo = self.make_repository('repo')
+        repo = self.make_repository('repo', format=self.get_format())
         token = repo.lock_write()
         self.addCleanup(repo.unlock)
         repo.start_write_group()
@@ -691,7 +724,7 @@ class TestPackRepository(TestCaseWithTransport):
         repo.texts.add_lines(text_key, (), ['lines'])
         wg_tokens = repo.suspend_write_group()
         # Make a new repository
-        new_repo = self.make_repository('new_repo')
+        new_repo = self.make_repository('new_repo', format=self.get_format())
         token = new_repo.lock_write()
         self.addCleanup(new_repo.unlock)
         hacked_wg_token = (

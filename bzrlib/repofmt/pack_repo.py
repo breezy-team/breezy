@@ -305,6 +305,8 @@ class ResumedPack(ExistingPack):
         self.upload_transport.delete(self.file_name())
         indices = [self.revision_index, self.inventory_index, self.text_index,
             self.signature_index]
+        if self.chk_index is not None:
+            indices.append(self.chk_index)
         for index in indices:
             index._transport.delete(index._name)
 
@@ -312,7 +314,10 @@ class ResumedPack(ExistingPack):
         self._check_references()
         new_name = '../packs/' + self.file_name()
         self.upload_transport.rename(self.file_name(), new_name)
-        for index_type in ['revision', 'inventory', 'text', 'signature']:
+        index_types = ['revision', 'inventory', 'text', 'signature']
+        if self.chk_index is not None:
+            index_types.append('chk')
+        for index_type in index_types:
             old_name = self.index_name(index_type, self.name)
             new_name = '../indices/' + old_name
             self.upload_transport.rename(old_name, new_name)
