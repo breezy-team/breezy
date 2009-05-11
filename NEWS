@@ -66,6 +66,9 @@ Bug Fixes
   bzr+ssh:// clients (which have bug #354036).  Instead, the server now
   causes those clients to send the missing records.  (Andrew Bennetts)
 
+* Correctly handle http servers proposing multiple authentication schemes.
+  (Vincent Ladeuil, #366107)
+
 * End-Of-Line content filters are now loaded correctly.
   (Ian Clatworthy, Brian de Alwis, #355280)
 

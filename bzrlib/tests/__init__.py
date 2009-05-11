@@ -3414,7 +3414,6 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_help',
                    'bzrlib.tests.test_hooks',
                    'bzrlib.tests.test_http',
-                   'bzrlib.tests.test_http_implementations',
                    'bzrlib.tests.test_http_response',
                    'bzrlib.tests.test_https_ca_bundle',
                    'bzrlib.tests.test_identitymap',
