@@ -56,7 +56,10 @@ class TestBranchCheck(TestCaseWithBranch):
             # with set_last_revision_info
             tree.branch.set_last_revision_info(3, r5)
 
-        result = tree.branch.check()
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        refs = self.make_refs(tree.branch)
+        result = tree.branch.check(refs)
         ui.ui_factory = tests.TestUIFactory(stdout=StringIO())
         result.report_results(True)
         self.assertContainsRe('revno does not match len',
@@ -65,7 +68,9 @@ class TestBranchCheck(TestCaseWithBranch):
     def test_check_branch_report_results(self):
         """Checking a branch produces results which can be printed"""
         branch = self.make_branch('.')
-        result = branch.check()
+        branch.lock_read()
+        self.addCleanup(branch.unlock)
+        result = branch.check(self.make_refs(branch))
         # reports results through logging
         result.report_results(verbose=True)
         result.report_results(verbose=False)
@@ -76,3 +81,32 @@ class TestBranchCheck(TestCaseWithBranch):
         self.assertEqual(
             set([('revision-existence', revid), ('lefthand-distance', revid)]),
             set(tree.branch._get_check_refs()))
+
+    def make_refs(self, branch):
+        needed_refs = branch._get_check_refs()
+        refs = {}
+        distances = set()
+        existences = set()
+        for ref in needed_refs:
+            kind, value = ref
+            if kind == 'lefthand-distance':
+                distances.add(value)
+            elif kind == 'revision-existence':
+                existences.add(value)
+            else:
+                raise AssertionError(
+                    'unknown ref kind for ref %s' % ref)
+        node_distances = branch.repository.get_graph().find_lefthand_distances(
+            distances)
+        for key, distance in node_distances.iteritems():
+            refs[('lefthand-distance', key)] = distance
+            if key in existences and distance > 0:
+                refs[('revision-existence', key)] = True
+                existences.remove(key)
+        parent_map = branch.repository.get_graph().get_parent_map(existences)
+        for key in parent_map:
+            refs[('revision-existence', key)] = True
+            existences.remove(key)
+        for key in existences:
+            refs[('revision-existence', key)] = False
+        return refs

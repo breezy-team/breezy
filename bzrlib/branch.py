@@ -1120,7 +1120,7 @@ class Branch(object):
         target._set_all_reference_info(target_reference_dict)
 
     @needs_read_lock
-    def check(self):
+    def check(self, refs):
         """Check consistency of the branch.
 
         In particular this checks that revisions given in the revision-history
@@ -1129,36 +1129,22 @@ class Branch(object):
 
         Callers will typically also want to check the repository.
 
+        :param refs: Calculated refs for this branch as specified by
+            branch._get_check_refs()
         :return: A BranchCheckResult.
         """
         result = BranchCheckResult(self)
-        mainline_parent_id = None
         last_revno, last_revision_id = self.last_revision_info()
-        real_rev_history = list(self.repository.iter_reverse_revision_history(
-                                last_revision_id))
-        real_rev_history.reverse()
-        if len(real_rev_history) != last_revno:
+        actual_revno = refs[('lefthand-distance', last_revision_id)]
+        if actual_revno != last_revno:
             result.errors.append(errors.BzrCheckError(
                 'revno does not match len(mainline) %s != %s' % (
-                last_revno, len(real_rev_history))))
-        # TODO: We should probably also check that real_rev_history actually
-        #       matches self.revision_history()
-        for revision_id in real_rev_history:
-            try:
-                revision = self.repository.get_revision(revision_id)
-            except errors.NoSuchRevision, e:
-                result.errors.append(errors.BzrCheckError(
-                    "mainline revision {%s} not in repository" % revision_id))
-                break
-            # In general the first entry on the revision history has no parents.
-            # But it's not illegal for it to have parents listed; this can happen
-            # in imports from Arch when the parents weren't reachable.
-            if mainline_parent_id is not None:
-                if mainline_parent_id not in revision.parent_ids:
-                    raise errors.BzrCheckError("previous revision {%s} not listed among "
-                                        "parents of {%s}"
-                                        % (mainline_parent_id, revision_id))
-            mainline_parent_id = revision_id
+                last_revno, actual_revno)))
+        # TODO: We should probably also check that self.revision_history
+        # matches the repository for older branch formats.
+        # If looking for the code that cross-checks repository parents against
+        # the iter_reverse_revision_history output, that is now a repository
+        # specific check.
         return result
 
     def _get_checkout_format(self):
