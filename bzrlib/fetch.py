@@ -181,13 +181,6 @@ class RepoFetcher(object):
         map(parents.update, parent_maps.itervalues())
         parents.discard(NULL_REVISION)
         parents.difference_update(revision_ids)
-        # Now we have the set of parents that are just at the edge for all
-        # of these entries. Cull out parents that are already present in the
-        # target
-        # TODO: This should be done on the inventory index, and should be done
-        #       only on the target *without* backing VFS.
-        # present_parents = self.to_repository.get_parent_map(parents)
-        # parents.difference_update(present_parents)
         missing_keys = set(('inventories', rev_id) for rev_id in parents)
         return missing_keys
 

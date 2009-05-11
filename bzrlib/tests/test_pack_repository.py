@@ -663,6 +663,30 @@ class TestPackRepository(TestCaseWithTransport):
         md5 = osutils.md5(upload_transport.get_bytes(expected_pack_name))
         self.assertEqual(wg_tokens[0], md5.hexdigest())
 
+    def test_resume_chk_bytes(self):
+        self.vfs_transport_factory = memory.MemoryServer
+        repo = self.make_repository('repo', format=self.get_format())
+        if repo.chk_bytes is None:
+            raise TestNotApplicable('no chk_bytes for this repository')
+            expected_names.append(wg_tokens[0] + '.cix')
+        token = repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        text = 'a bit of text\n'
+        key = ('sha1:' + osutils.sha_string(text),)
+        repo.chk_bytes.add_lines(key, (), [text])
+        wg_tokens = repo.suspend_write_group()
+        same_repo = repo.bzrdir.open_repository()
+        same_repo.lock_write()
+        self.addCleanup(same_repo.unlock)
+        same_repo.resume_write_group(wg_tokens)
+        self.assertEqual([key], list(same_repo.chk_bytes.keys()))
+        self.assertEqual(
+            text, same_repo.chk_bytes.get_record_stream([key],
+                'unordered', True).next().get_bytes_as('fulltext'))
+        same_repo.abort_write_group()
+        self.assertEqual([], list(same_repo.chk_bytes.keys()))
+
     def test_resume_write_group_then_abort(self):
         # Create a repo, start a write group, insert some data, suspend.
         self.vfs_transport_factory = memory.MemoryServer
@@ -959,7 +983,7 @@ def load_tests(basic_tests, module, loader):
          dict(format_name='development6-rich-root',
               format_string='Bazaar development format - group compression '
                   'and chk inventory (needs bzr.dev from 1.14)\n',
-              format_supports_external_lookups=False,
+              format_supports_external_lookups=True,
               index_class=BTreeGraphIndex),
          ]
     # name of the scenario is the format name
