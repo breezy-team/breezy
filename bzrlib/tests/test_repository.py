@@ -1262,6 +1262,7 @@ class TestGCCHKPackCollection(TestCaseWithTransport):
             else:
                 for _ in substream:
                     continue
+        # 3 pages, the root (InternalNode), + 2 pages which actually changed
         self.assertEqual([('sha1:91481f539e802c76542ea5e4c83ad416bf219f73',),
                           ('sha1:4ff91971043668583985aec83f4f0ab10a907d3f',),
                           ('sha1:81e7324507c5ca132eedaf2d8414ee4bb2226187',),
