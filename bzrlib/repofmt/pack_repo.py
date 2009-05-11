@@ -2408,7 +2408,6 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
     supports_ghosts = True
     # External references are not supported in pack repositories yet.
     supports_external_lookups = False
-    _deltas_across_repos = True
     # Most pack formats do not use chk lookups.
     supports_chks = False
     # What index classes to use

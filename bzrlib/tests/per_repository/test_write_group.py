@@ -25,6 +25,7 @@ from bzrlib import (
     memorytree,
     osutils,
     remote,
+    versionedfile,
     )
 from bzrlib.branch import BzrBranchFormat7
 from bzrlib.inventory import InventoryDirectory
@@ -471,15 +472,15 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
     def make_source_with_delta_record(self):
         # Make a source repository with a delta record in it.
         source_repo = self.make_write_locked_repo('source')
-        if not source_repo._format._deltas_across_repos:
-            raise TestNotApplicable('%s cannot introduce deltas between repos.'
-                % (source_repo._format,))
         source_repo.start_write_group()
         key_base = ('file-id', 'base')
         key_delta = ('file-id', 'delta')
-        source_repo.texts.add_lines(key_base, (), ['lines\n'])
-        source_repo.texts.add_lines(
-            key_delta, (key_base,), ['more\n', 'lines\n'])
+        def text_stream():
+            yield versionedfile.FulltextContentFactory(
+                key_base, (), None, 'lines\n')
+            yield versionedfile.FulltextContentFactory(
+                key_delta, (key_base,), None, 'more\nlines\n')
+        source_repo.texts.insert_record_stream(text_stream())
         source_repo.commit_write_group()
         return source_repo
 
@@ -495,9 +496,20 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         stream = source_repo.texts.get_record_stream(
             [key_delta], 'unordered', False)
         repo.texts.insert_record_stream(stream)
-        # It's not commitable due to the missing compression parent.
-        self.assertRaises(
-            errors.BzrCheckError, repo.commit_write_group)
+        # It's either not commitable due to the missing compression parent, or
+        # the stacked location has already filled in the fulltext.
+        try:
+            repo.commit_write_group()
+        except errors.BzrCheckError:
+            # It refused to commit because we have a missing parent
+            pass
+        else:
+            same_repo = self.reopen_repo(repo)
+            same_repo.lock_read()
+            record = same_repo.texts.get_record_stream([key_delta],
+                                                       'unordered', True).next()
+            self.assertEqual('more\nlines\n', record.get_bytes_as('fulltext'))
+            return
         # Merely suspending and resuming doesn't make it commitable either.
         wg_tokens = repo.suspend_write_group()
         same_repo = self.reopen_repo(repo)
@@ -529,8 +541,19 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         same_repo.texts.insert_record_stream(stream)
         # Just like if we'd added that record without a suspend/resume cycle,
         # commit_write_group fails.
-        self.assertRaises(
-            errors.BzrCheckError, same_repo.commit_write_group)
+        try:
+            same_repo.commit_write_group()
+        except errors.BzrCheckError:
+            pass
+        else:
+            # If the commit_write_group didn't fail, that is because the
+            # insert_record_stream already gave it a fulltext.
+            same_repo = self.reopen_repo(repo)
+            same_repo.lock_read()
+            record = same_repo.texts.get_record_stream([key_delta],
+                                                       'unordered', True).next()
+            self.assertEqual('more\nlines\n', record.get_bytes_as('fulltext'))
+            return
         same_repo.abort_write_group()
 
     def test_add_missing_parent_after_resume(self):

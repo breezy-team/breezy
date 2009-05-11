@@ -993,7 +993,6 @@ class RepositoryFormatCHK1(RepositoryFormatPack):
 
     repository_class = CHKInventoryRepository
     supports_external_lookups = True
-    _deltas_across_repos = False
     supports_chks = True
     # For right now, setting this to True gives us InterModel1And2 rather
     # than InterDifferingSerializer

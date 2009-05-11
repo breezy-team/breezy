@@ -2737,11 +2737,6 @@ class RepositoryFormat(object):
     # Can this repository be given external locations to lookup additional
     # data. Set to True or False in derived classes.
     supports_external_lookups = None
-    # If this format supports_external_lookups, is it possible for an
-    # delta to span repositories before the remaining info is filled in. This
-    # is only used by the test suite, and only valid if
-    # supports_external_lookups is True
-    _deltas_across_repos = None
     # Does this format support CHK bytestring lookups. Set to True or False in
     # derived classes.
     supports_chks = None
