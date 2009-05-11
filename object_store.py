@@ -29,6 +29,7 @@ import stat
 from bzrlib import (
     debug,
     errors,
+    trace,
     ui,
     )
 
@@ -222,8 +223,12 @@ class BazaarObjectStore(BaseObjectStore):
         (type, type_data) = self._lookup_git_sha(sha)
         # convert object to git object
         if type == "commit":
-            return self._get_commit(type_data[0], type_data[1], 
-                                    expected_sha=sha)
+            try:
+                return self._get_commit(type_data[0], type_data[1], 
+                                        expected_sha=sha)
+            except errors.NoSuchRevision:
+                trace.mutter('entry for %s %s in shamap: %r, but not found in repository', type, sha, type_data)
+                raise KeyError(sha)
         elif type == "blob":
             return self._get_blob(type_data[0], type_data[1], expected_sha=sha)
         elif type == "tree":
