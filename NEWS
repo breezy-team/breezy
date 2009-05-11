@@ -140,6 +140,9 @@ Internals
   via ~/.bazaar/authentication.conf fails. (Jelmer Vernooij, 
   Vincent Ladeuil, #321918)
 
+* New MergeDirective hook 'merge_request_body' allows hooks to supply or
+  alter a body for the message produced by ``bzr send``.
+
 * New smart server verb ``BzrDir.initialize_ex`` which implements a
   refactoring to the core of clone allowing less round trips on new
   branches. (Robert Collins)

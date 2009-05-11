@@ -37,6 +37,7 @@ from bzrlib.email_message import EmailMessage
 
 
 class MergeRequestBodyParams(object):
+    """Parameter object for the merge_request_body hook."""
 
     def __init__(self, body, orig_body, directive, to, basename, subject,
                  branch, tree=None):
@@ -51,6 +52,7 @@ class MergeRequestBodyParams(object):
 
 
 class MergeDirectiveHooks(hooks.Hooks):
+    """Hooks for MergeDirective classes."""
 
     def __init__(self):
         hooks.Hooks.__init__(self)
@@ -269,6 +271,14 @@ class _BaseMergeDirective(object):
         return self.revision_id
 
     def compose_merge_request(self, mail_client, to, body, branch, tree=None):
+        """Compose a request to merge this directive.
+
+        :param mail_client: The mail client to use for composing this request.
+        :param to: The address to compose the request to.
+        :param branch: The Branch that was used to produce this directive.
+        :param tree: The Tree (if any) for the Branch used to produce this
+            directive.
+        """
         basename = self.get_disk_name(branch)
         subject = '[MERGE] '
         if self.message is not None:
