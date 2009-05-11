@@ -1220,3 +1220,67 @@ class TestGCCHKPackCollection(TestCaseWithTransport):
         stream = source._get_source(target._format)
         # We don't want the child GroupCHKStreamSource
         self.assertIs(type(stream), repository.StreamSource)
+
+    def test_get_stream_for_missing_keys_includes_all_chk_refs(self):
+        source_builder = self.make_branch_builder('source',
+                            format='development6-rich-root')
+        # We have to build a fairly large tree, so that we are sure the chk
+        # pages will have split into multiple pages.
+        entries = [('add', ('', 'a-root-id', 'directory', None))]
+        for i in 'abcdefghijklmnopqrstuvwxzy123456789':
+            for j in 'abcdefghijklmnopqrstuvwxzy123456789':
+                fname = i + j
+                fid = fname + '-id'
+                content = 'content for %s\n' % (fname,)
+                entries.append(('add', (fname, fid, 'file', content)))
+        source_builder.start_series()
+        source_builder.build_snapshot('rev-1', None, entries)
+        # Now change a few of them, so we get a few new pages for the second
+        # revision
+        source_builder.build_snapshot('rev-2', ['rev-1'], [
+            ('modify', ('aa-id', 'new content for aa-id\n')),
+            ('modify', ('cc-id', 'new content for cc-id\n')),
+            ('modify', ('zz-id', 'new content for zz-id\n')),
+            ])
+        source_builder.finish_series()
+        source_branch = source_builder.get_branch()
+        source_branch.lock_read()
+        self.addCleanup(source_branch.unlock)
+        target = self.make_repository('target', format='development6-rich-root')
+        source = source_branch.repository._get_source(target._format)
+        self.assertIsInstance(source, groupcompress_repo.GroupCHKStreamSource)
+
+        # On a regular pass, getting the inventories and chk pages for rev-2
+        # would only get the newly created chk pages
+        search = graph.SearchResult(set(['rev-2']), set(['rev-1']), 1,
+                                    set(['rev-2']))
+        simple_chk_records = []
+        for vf_name, substream in source.get_stream(search):
+            if vf_name == 'chk_bytes':
+                for record in substream:
+                    simple_chk_records.append(record.key)
+            else:
+                for _ in substream:
+                    continue
+        self.assertEqual([('sha1:91481f539e802c76542ea5e4c83ad416bf219f73',),
+                          ('sha1:4ff91971043668583985aec83f4f0ab10a907d3f',),
+                          ('sha1:81e7324507c5ca132eedaf2d8414ee4bb2226187',),
+                          ('sha1:b101b7da280596c71a4540e9a1eeba8045985ee0',)],
+                         simple_chk_records)
+        # Now, when we do a similar call using 'get_stream_for_missing_keys'
+        # we should get a much larger set of pages.
+        missing = [('inventories', 'rev-2')]
+        full_chk_records = []
+        for vf_name, substream in source.get_stream_for_missing_keys(missing):
+            if vf_name == 'inventories':
+                for record in substream:
+                    self.assertEqual(('rev-2',), record.key)
+            elif vf_name == 'chk_bytes':
+                for record in substream:
+                    full_chk_records.append(record.key)
+            else:
+                self.fail('Should not be getting a stream of %s' % (vf_name,))
+        # We have 257 records now. This is because we have 1 root page, and 256
+        # leaf pages in a complete listing.
+        self.assertEqual(257, len(full_chk_records))
+        self.assertSubset(simple_chk_records, full_chk_records)

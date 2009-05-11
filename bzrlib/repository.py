@@ -4208,6 +4208,7 @@ class StreamSource(object):
         keys['texts'] = set()
         keys['revisions'] = set()
         keys['inventories'] = set()
+        keys['chk_bytes'] = set()
         keys['signatures'] = set()
         for key in missing_keys:
             keys[key[0]].add(key[1:])

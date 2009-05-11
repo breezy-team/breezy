@@ -867,7 +867,7 @@ class GroupCHKStreamSource(repository.StreamSource):
         self._chk_id_roots = None
         self._chk_p_id_roots = None
 
-    def _get_filtered_inv_stream(self):
+    def _get_inventory_stream(self, inventory_keys):
         """Get a stream of inventory texts.
 
         When this function returns, self._chk_id_roots and self._chk_p_id_roots
@@ -879,7 +879,7 @@ class GroupCHKStreamSource(repository.StreamSource):
             id_roots_set = set()
             p_id_roots_set = set()
             source_vf = self.from_repository.inventories
-            stream = source_vf.get_record_stream(self._revision_keys,
+            stream = source_vf.get_record_stream(inventory_keys,
                                                  'groupcompress', True)
             for record in stream:
                 bytes = record.get_bytes_as('fulltext')
@@ -949,12 +949,43 @@ class GroupCHKStreamSource(repository.StreamSource):
         for stream_info in self._fetch_revision_texts(revision_ids):
             yield stream_info
         self._revision_keys = [(rev_id,) for rev_id in revision_ids]
-        yield self._get_filtered_inv_stream()
+        yield self._get_inventory_stream(self._revision_keys)
         # The keys to exclude are part of the search recipe
         _, _, exclude_keys, _ = search.get_recipe()
         for stream_info in self._get_filtered_chk_streams(exclude_keys):
             yield stream_info
         yield self._get_text_stream()
+
+    def get_stream_for_missing_keys(self, missing_keys):
+        # missing keys can only occur when we are byte copying and not
+        # translating (because translation means we don't send
+        # unreconstructable deltas ever).
+        keys = {}
+        keys['texts'] = set()
+        keys['revisions'] = set()
+        keys['inventories'] = set()
+        keys['chk_bytes'] = set()
+        keys['signatures'] = set()
+        for key in missing_keys:
+            keys[key[0]].add(key[1:])
+        if len(keys['revisions']):
+            # If we allowed copying revisions at this point, we could end up
+            # copying a revision without copying its required texts: a
+            # violation of the requirements for repository integrity.
+            raise AssertionError(
+                'cannot copy revisions to fill in missing deltas %s' % (
+                    keys['revisions'],))
+        for substream_kind in ['texts', 'chk_bytes', 'signatures']:
+            if len(keys[substream_kind]) > 0:
+                raise AssertionError('The only missing keys we should'
+                    ' be filling in are inventory keys, not %s'
+                    % (substream_kind,))
+        # Yield the inventory stream, so we can find the chk stream
+        yield self._get_inventory_stream(keys['inventories'])
+        # We use the empty set for excluded_keys, to make it clear that we want
+        # to transmit all referenced chk pages.
+        for stream_info in self._get_filtered_chk_streams(set()):
+            yield stream_info
 
 
 class RepositoryFormatCHK1(RepositoryFormatPack):
