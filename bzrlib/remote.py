@@ -1400,9 +1400,10 @@ class RemoteRepository(_RpcHelper):
         return self._real_repository.get_revision_reconcile(revision_id)
 
     @needs_read_lock
-    def check(self, revision_ids=None):
+    def check(self, revision_ids=None, callback_refs=None):
         self._ensure_real()
-        return self._real_repository.check(revision_ids=revision_ids)
+        return self._real_repository.check(revision_ids=revision_ids,
+            callback_refs=callback_refs)
 
     def copy_content_into(self, destination, revision_id=None):
         self._ensure_real()

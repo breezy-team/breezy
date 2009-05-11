@@ -2454,13 +2454,18 @@ class Repository(object):
         return record.get_bytes_as('fulltext')
 
     @needs_read_lock
-    def check(self, revision_ids=None):
+    def check(self, revision_ids=None, callback_refs=None, check_repo=True):
         """Check consistency of all history of given revision_ids.
 
         Different repository implementations should override _check().
 
         :param revision_ids: A non-empty list of revision_ids whose ancestry
              will be checked.  Typically the last revision_id of a branch.
+        :param callback_refs: A dict of check-refs to resolve and callback
+            the check/_check method on the items listed as wanting the ref.
+            see bzrlib.check.
+        :param check_repo: If False do not check the repository contents, just 
+            calculate the data callback_refs requires and call them back.
         """
         # TODO: Reinstate or confirm its obsolescence.
         # from Branch.check - a cross check that the parents index
@@ -2487,11 +2492,12 @@ class Repository(object):
         #                                "parents of {%s}"
         #                                % (mainline_parent_id, revision_id))
         #            mainline_parent_id = revision_id
-        return self._check(revision_ids)
+        return self._check(revision_ids, callback_refs=callback_refs,
+            check_repo=check_repo)
 
-    def _check(self, revision_ids):
-        result = check.Check(self)
-        result.check()
+    def _check(self, revision_ids, callback_refs, check_repo):
+        result = check.Check(self, check_repo=check_repo)
+        result.check(callback_refs)
         return result
 
     def _warn_if_deprecated(self):

@@ -35,15 +35,15 @@ class TestCheck(ExternalBase):
         tree.commit('hallelujah')
         out, err = self.run_bzr('check')
         self.assertContainsRe(err, r"Checking working tree at '.*'\.\n")
-        self.assertContainsRe(err, r"Checking repository at '.*'\.\n"
-                                   r"checked repository.*\n"
+        self.assertContainsRe(err, r"Checking repository at '.*'\.\n")
+        self.assertContainsRe(err, r"checked repository.*\n"
                                    r"     1 revisions\n"
                                    r"     0 file-ids\n"
                                    r"     0 unique file texts\n"
                                    r"     0 repeated file texts\n"
                                    r"     0 unreferenced text versions\n")
-        self.assertContainsRe(err, r"Checking branch at '.*'\.\n"
-                                   r"checked branch.*")
+        self.assertContainsRe(err, r"Checking branch at '.*'\.\n")
+        self.assertContainsRe(err, r"checked branch.*")
 
     def test_check_branch(self):
         tree = self.make_branch_and_tree('.')
@@ -87,8 +87,8 @@ class TestCheck(ExternalBase):
         branch = self.make_branch('.')
         out, err = self.run_bzr('check --tree --branch')
         self.assertContainsRe(err,
-            r"^No working tree found at specified location\.\n"
             r"Checking branch at '.*'\.\n"
+            r"No working tree found at specified location\.\n"
             r"checked branch.*")
 
     def test_check_missing_branch_in_shared_repo(self):

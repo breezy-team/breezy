@@ -63,7 +63,7 @@ class Check(object):
 
     # The Check object interacts with InventoryEntry.check, etc.
 
-    def __init__(self, repository):
+    def __init__(self, repository, check_repo=True):
         self.repository = repository
         self.checked_text_cnt = 0
         self.checked_rev_cnt = 0
@@ -79,28 +79,74 @@ class Check(object):
         self.inconsistent_parents = []
         self.rich_roots = repository.supports_rich_root()
         self.text_key_references = {}
+        self.check_repo = check_repo
+        self.other_results = []
 
-    def check(self):
+    def check(self, callback_refs=None, check_repo=True):
+        if callback_refs is None:
+            callback_refs = {}
         self.repository.lock_read()
         self.progress = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
-            self.progress.update('retrieving inventory', 0, 2)
-            # do not put in init, as it should be done with progess,
-            # and inside the lock.
-            self.inventory_weave = self.repository.inventories
-            self.progress.update('checking revision graph', 1)
-            self.check_revision_graph()
-            self.plan_revisions()
-            revno = 0
-            while revno < len(self.planned_revisions):
-                rev_id = self.planned_revisions[revno]
-                self.progress.update('checking revision', revno,
-                                     len(self.planned_revisions))
-                revno += 1
-                self.check_one_rev(rev_id)
-            # check_weaves is done after the revision scan so that
-            # revision index is known to be valid.
-            self.check_weaves()
+            if self.check_repo:
+                self.progress.update('retrieving inventory', 0, 2)
+                # do not put in init, as it should be done with progess,
+                # and inside the lock.
+                self.inventory_weave = self.repository.inventories
+                self.progress.update('checking revision graph', 1)
+                self.check_revision_graph()
+                self.plan_revisions()
+                revno = 0
+                while revno < len(self.planned_revisions):
+                    rev_id = self.planned_revisions[revno]
+                    self.progress.update('checking revision', revno,
+                                         len(self.planned_revisions))
+                    revno += 1
+                    self.check_one_rev(rev_id)
+                # check_weaves is done after the revision scan so that
+                # revision index is known to be valid.
+                self.check_weaves()
+            if callback_refs:
+                repo = self.repository
+                # calculate all refs, and callback the objects requesting them.
+                refs = {}
+                wanting_items = set()
+                # Current crude version calculates everything and calls
+                # everything at once. Doing a queue and popping as things are
+                # satisfied would be cheaper on memory [but few people have
+                # huge numbers of working trees today. TODO: fix before
+                # landing].
+                distances = set()
+                existences = set()
+                for ref, wantlist in callback_refs.iteritems():
+                    wanting_items.update(wantlist)
+                    kind, value = ref
+                    if kind == 'trees':
+                        refs[ref] = repo.revision_tree(value)
+                    elif kind == 'lefthand-distance':
+                        distances.add(value)
+                    elif kind == 'revision-existence':
+                        existences.add(value)
+                    else:
+                        raise AssertionError(
+                            'unknown ref kind for ref %s' % ref)
+                node_distances = repo.get_graph().find_lefthand_distances(distances)
+                for key, distance in node_distances.iteritems():
+                    refs[('lefthand-distance', key)] = distance
+                    if key in existences and distance > 0:
+                        refs[('revision-existence', key)] = True
+                        existences.remove(key)
+                parent_map = repo.get_graph().get_parent_map(existences)
+                for key in parent_map:
+                    refs[('revision-existence', key)] = True
+                    existences.remove(key)
+                for key in existences:
+                    refs[('revision-existence', key)] = False
+                for item in wanting_items:
+                    if isinstance(item, WorkingTree):
+                        item._check(refs)
+                    if isinstance(item, Branch):
+                        self.other_results.append(item.check(refs))
         finally:
             self.progress.finished()
             self.repository.unlock()
@@ -124,6 +170,12 @@ class Check(object):
                 '{%s}' % ','.join([f for f in awol]))
 
     def report_results(self, verbose):
+        if self.check_repo:
+            self._report_repo_results(verbose)
+        for result in self.other_results:
+            result.report_results(verbose)
+
+    def _report_repo_results(self, verbose):
         note('checked repository %s format %s',
              self.repository.bzrdir.root_transport,
              self.repository._format)
@@ -284,6 +336,7 @@ def check(branch, verbose):
     check_branch(branch, verbose)
 
 
+@deprecated_function(deprecated_in((1,16,0)))
 def check_branch(branch, verbose):
     """Run consistency checks on a branch.
 
@@ -293,33 +346,11 @@ def check_branch(branch, verbose):
     """
     branch.lock_read()
     try:
-        needed_refs = branch._get_check_refs()
-        refs = {}
-        distances = set()
-        existences = set()
-        for ref in needed_refs:
-            kind, value = ref
-            if kind == 'lefthand-distance':
-                distances.add(value)
-            elif kind == 'revision-existence':
-                existences.add(value)
-            else:
-                raise AssertionError(
-                    'unknown ref kind for ref %s' % ref)
-        node_distances = branch.repository.get_graph().find_lefthand_distances(
-            distances)
-        for key, distance in node_distances.iteritems():
-            refs[('lefthand-distance', key)] = distance
-            if key in existences and distance > 0:
-                refs[('revision-existence', key)] = True
-                existences.remove(key)
-        parent_map = branch.repository.get_graph().get_parent_map(existences)
-        for key in parent_map:
-            refs[('revision-existence', key)] = True
-            existences.remove(key)
-        for key in existences:
-            refs[('revision-existence', key)] = False
-        branch_result = branch.check(refs)
+        needed_refs = {}
+        for ref in branch._get_check_refs():
+            needed_refs.setdefault(ref, []).append(branch)
+        result = branch.repository.check([branch.last_revision()], needed_refs)
+        branch_result = result.other_results[0]
     finally:
         branch.unlock()
     branch_result.report_results(verbose)
@@ -332,6 +363,7 @@ def scan_branch(branch, needed_refs, to_unlock):
     :param needed_refs: Refs we are accumulating.
     :param to_unlock: The unlock list accumulating.
     """
+    note("Checking branch at '%s'." % (branch.base,))
     branch.lock_read()
     to_unlock.append(branch)
     branch_refs = branch._get_check_refs()
@@ -351,6 +383,7 @@ def scan_tree(base_tree, tree, needed_refs, to_unlock):
     """
     if base_tree is not None and tree.basedir == base_tree.basedir:
         return
+    note("Checking working tree at '%s'." % (tree.basedir,))
     tree.lock_read()
     to_unlock.append(tree)
     tree_refs = tree._get_check_refs()
@@ -401,54 +434,13 @@ def check_dwim(path, verbose, do_branch=False, do_repo=False, do_tree=False):
                 log_error("No branch found at specified location.")
             if do_tree and base_tree is None and not saw_tree:
                 log_error("No working tree found at specified location.")
-            if do_repo:
-                note("Checking repository at '%s'."
-                     % (repo.bzrdir.root_transport.base,))
-                result = repo.check()
+            if do_repo or do_branch or do_tree:
+                if do_repo:
+                    note("Checking repository at '%s'."
+                         % (repo.bzrdir.root_transport.base,))
+                result = repo.check(None, callback_refs=needed_refs,
+                    check_repo=do_repo)
                 result.report_results(verbose)
-            if needed_refs:
-                # calculate all refs, and callback the objects requesting them.
-                refs = {}
-                wanting_items = set()
-                # Current crude version calculates everything and calls
-                # everything at once. Doing a queue and popping as things are
-                # satisfied would be cheaper on memory [but few people have
-                # huge numbers of working trees today. TODO: fix before
-                # landing].
-                distances = set()
-                existences = set()
-                for ref, wantlist in needed_refs.iteritems():
-                    wanting_items.update(wantlist)
-                    kind, value = ref
-                    if kind == 'trees':
-                        refs[ref] = repo.revision_tree(value)
-                    elif kind == 'lefthand-distance':
-                        distances.add(value)
-                    elif kind == 'revision-existence':
-                        existences.add(value)
-                    else:
-                        raise AssertionError(
-                            'unknown ref kind for ref %s' % ref)
-                node_distances = repo.get_graph().find_lefthand_distances(distances)
-                for key, distance in node_distances.iteritems():
-                    refs[('lefthand-distance', key)] = distance
-                    if key in existences and distance > 0:
-                        refs[('revision-existence', key)] = True
-                        existences.remove(key)
-                parent_map = repo.get_graph().get_parent_map(existences)
-                for key in parent_map:
-                    refs[('revision-existence', key)] = True
-                    existences.remove(key)
-                for key in existences:
-                    refs[('revision-existence', key)] = False
-                for item in wanting_items:
-                    if isinstance(item, WorkingTree):
-                        note("Checking working tree at '%s'." % (item.basedir,))
-                        item._check(refs)
-                    if isinstance(item, Branch):
-                        note("Checking branch at '%s'." % (branch.base,))
-                        branch_result = item.check(refs)
-                        branch_result.report_results(verbose)
         else:
             if do_tree:
                 log_error("No working tree found at specified location.")

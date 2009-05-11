@@ -36,13 +36,11 @@ class TestNoSpuriousInconsistentAncestors(TestCaseWithRepository):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['foo'])
         tree.smart_add(['.'])
-        tree.commit('1')
+        revid1 = tree.commit('1')
         self.build_tree(['bar'])
         tree.smart_add(['.'])
-        tree.commit('2')
-        # XXX: check requires a non-empty revision IDs list, but it ignores the
-        # contents of it!
-        check_object = tree.branch.repository.check(['ignored'])
+        revid2 = tree.commit('2')
+        check_object = tree.branch.repository.check([revid1, revid2])
         check_object.report_results(verbose=True)
         log = self._get_log(keep_log_file=True)
         self.assertContainsRe(
@@ -100,3 +98,32 @@ class TestFindInconsistentRevisionParents(TestCaseWithBrokenRevisionIndex):
             "revision-id has wrong parents in index: "
             r"\('incorrect-parent',\) should be \(\)")
 
+
+class TestCallbacks(TestCaseWithRepository):
+
+    def test_callback_tree_and_branch(self):
+        # use a real tree to get actual refs that will work
+        tree = self.make_branch_and_tree('foo')
+        revid = tree.commit('foo')
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        needed_refs = {}
+        for ref in tree._get_check_refs():
+            needed_refs.setdefault(ref, []).append(tree)
+        for ref in tree.branch._get_check_refs():
+            needed_refs.setdefault(ref, []).append(tree.branch)
+        self.tree_check = tree._check
+        self.branch_check = tree.branch.check
+        tree._check = self.tree_callback
+        tree.branch.check = self.branch_callback
+        self.callbacks = []
+        tree.branch.repository.check([revid], callback_refs=needed_refs)
+        self.assertNotEqual([], self.callbacks)
+
+    def tree_callback(self, refs):
+        self.callbacks.append(('tree', refs))
+        return self.tree_check(refs)
+
+    def branch_callback(self, refs):
+        self.callbacks.append(('branch', refs))
+        return self.branch_check(refs)
