@@ -29,6 +29,7 @@ from bzrlib import (
     rio,
     testament,
     timestamp,
+    trace,
     )
 from bzrlib.bundle import (
     serializer as bundle_serializer,
@@ -286,12 +287,17 @@ class _BaseMergeDirective(object):
         else:
             revision = branch.repository.get_revision(self.revision_id)
             subject += revision.get_summary()
-        orig_body = body
-        for hook in self.hooks['merge_request_body']:
-            params = MergeRequestBodyParams(body, orig_body, self,
-                                            to, basename, subject, branch,
-                                            tree)
-            body = hook(params)
+        if getattr(mail_client, 'supports_body', False):
+            orig_body = body
+            for hook in self.hooks['merge_request_body']:
+                params = MergeRequestBodyParams(body, orig_body, self,
+                                                to, basename, subject, branch,
+                                                tree)
+                body = hook(params)
+        elif len(self.hooks['merge_request_body']) > 0:
+            trace.warning('Cannot run merge_request_body hooks because mail'
+                          ' client %s does not support message bodies.',
+                        mail_client.__class__.__name__)
         mail_client.compose_merge_request(to, subject,
                                           ''.join(self.to_lines()),
                                           basename, body)
