@@ -4216,6 +4216,13 @@ class StreamSource(object):
                     keys['revisions'],))
         for substream_kind, keys in keys.iteritems():
             vf = getattr(self.from_repository, substream_kind)
+            if vf is None and keys:
+                    raise AssertionError(
+                        "cannot fill in keys for a versioned file we don't"
+                        " have: %s needs %s" % (substream_kind, keys))
+            if not keys:
+                # No need to stream something we don't have
+                continue
             # Ask for full texts always so that we don't need more round trips
             # after this stream.
             stream = vf.get_record_stream(keys,
