@@ -63,7 +63,7 @@ else:
     version_string = '%d.%d.%d%s%d' % version_info
 __version__ = version_string
 
-MINIMUM_DULWICH_VERSION = (0, 3, 0)
+MINIMUM_DULWICH_VERSION = (0, 3, 1)
 COMPATIBLE_BZR_VERSIONS = [(1, 14, 0), (1, 15, 0)]
 
 if getattr(sys, "frozen", None):
