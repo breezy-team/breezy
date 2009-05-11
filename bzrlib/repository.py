@@ -4004,6 +4004,7 @@ class StreamSink(object):
     def _locked_insert_stream(self, stream, src_format):
         to_serializer = self.target_repo._format._serializer
         src_serializer = src_format._serializer
+        new_pack = None
         if to_serializer == src_serializer:
             # If serializers match and the target is a pack repository, set the
             # write cache size on the new pack.  This avoids poor performance
@@ -4050,6 +4051,11 @@ class StreamSink(object):
                 self.target_repo.signatures.insert_record_stream(substream)
             else:
                 raise AssertionError('kaboom! %s' % (substream_type,))
+        # Done inserting data, and the missing_keys calculations will try to
+        # read back from the inserted data, so flush the writes to the new pack
+        # (if this is pack format).
+        if new_pack is not None:
+            new_pack._write_data('', flush=True)
         # Find all the new revisions (including ones from resume_tokens)
         missing_keys = self.target_repo.get_missing_parent_inventories()
         try:
