@@ -178,7 +178,6 @@ class ResumedGCPack(ResumedPack):
     def _get_external_refs(self, index):
         # GC repositories don't have compression parents external to a given
         # pack file
-        bork
         return set()
 
 
