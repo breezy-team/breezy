@@ -133,29 +133,39 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
             repo.commit_write_group()
             repo.unlock()
 
-
     # Needed tests:
-    # - ghost revision (parent inventory thus absent, but all reqd texts
-    #   present)
-    # - missing parent + missing text [test_get_missing_parent_inventories]
-    # - (missing text + no missing parent?  [perhaps out of scope])
-    #
+    #  [done]
     # Also, perf tests:
     # - if all invs present, then no texts are checked
 
-    # Generic test structure (i.e. make helpers to facilitate this):
-    # - make all needed revisions in one repo ('all'?)
-    # - (make a 'trunk' repo, fetch basis revs into it)
-    # - make a 'stacked' repo, manually insert data into it
-    # - assert repo (or write group) correctly detects if data is missing in
-    #   'stacked'
-    
-    # Things to improve:
-    # - fragility/subtlety of tests: requiring get_delta_closure=True in
-    #   get_record_stream to reproduce.  More generally what we want to test
-    #   depends on the precise behaviour of fileids_altered_by_revision_ids,
-    #   and the behaviour of that method is fairly difficult to explain
-    #   (particularly across different formats).
+    def branch_trunk_and_make_tree(self, trunk_repo, relpath):
+        tree = self.make_branch_and_memory_tree('branch')
+        trunk_repo.lock_read()
+        self.addCleanup(trunk_repo.unlock)
+        tree.branch.repository.fetch(trunk_repo, revision_id='rev-1')
+        tree.set_parent_ids(['rev-1'])
+        return tree 
+
+    def make_first_commit(self, repo):
+        trunk = repo.bzrdir.create_branch()
+        tree = memorytree.MemoryTree.create_on_branch(trunk)
+        tree.lock_write()
+        tree.add([''], ['TREE_ROOT'], ['directory'])
+        tree.add(['dir'], ['dir-id'], ['directory'])
+        tree.add(['filename'], ['file-id'], ['file'])
+        tree.put_file_bytes_non_atomic('file-id', 'content\n')
+        tree.commit('Trunk commit', rev_id='rev-0')
+        tree.commit('Trunk commit', rev_id='rev-1')
+        tree.unlock()
+
+    def make_new_commit_in_new_repo(self, trunk_repo, parents=None):
+        tree = self.branch_trunk_and_make_tree(trunk_repo, 'branch')
+        tree.set_parent_ids(parents)
+        tree.commit('Branch commit', rev_id='rev-2')
+        branch_repo = tree.branch.repository
+        branch_repo.lock_read()
+        self.addCleanup(branch_repo.unlock)
+        return branch_repo
 
     def make_stackable_repo(self, relpath='trunk'):
         if isinstance(self.repository_format, remote.RemoteRepositoryFormat):
@@ -171,35 +181,21 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         repo.bzrdir._format.set_branch_format(BzrBranchFormat7())
         return repo
 
-    def make_first_commit(self, repo):
-        trunk = repo.bzrdir.create_branch()
-        tree = trunk.create_checkout(self.test_dir + '/tree', lightweight=True)
-        #tree = memorytree.MemoryTree.create_on_branch(trunk)
-        tree.lock_write()
-        tree.add([''], ['TREE_ROOT'], ['directory'])
-        tree.add(['dir'], ['dir-id'], ['directory'])
-        tree.add(['filename'], ['file-id'], ['file'])
-        tree.put_file_bytes_non_atomic('file-id', 'content\n')
-        tree.commit('Trunk commit', rev_id='rev-0')
-        tree.commit('Trunk commit', rev_id='rev-1')
-        tree.unlock()
-
-    def branch_trunk_and_make_tree(self, trunk_repo, relpath):
-        tree = self.make_branch_and_memory_tree('branch')
-        trunk_repo.lock_read()
-        self.addCleanup(trunk_repo.unlock)
-        tree.branch.repository.fetch(trunk_repo, revision_id='rev-1')
-        tree.set_parent_ids(['rev-1'])
-        return tree 
-
-    def make_new_commit_in_new_repo(self, trunk_repo, parents=None):
-        tree = self.branch_trunk_and_make_tree(trunk_repo, 'branch')
-        tree.set_parent_ids(parents)
-        tree.commit('Branch commit', rev_id='rev-2')
-        branch_repo = tree.branch.repository
-        branch_repo.lock_read()
-        self.addCleanup(branch_repo.unlock)
-        return branch_repo
+    def reopen_repo_and_resume_write_group(self, repo):
+        try:
+            resume_tokens = repo.suspend_write_group()
+        except errors.UnsuspendableWriteGroup:
+            # If we got this far, and this repo does not support resuming write
+            # groups, then get_missing_parent_inventories works in all
+            # cases this repo supports.
+            repo.unlock()
+            return
+        repo.unlock()
+        reopened_repo = repo.bzrdir.open_repository()
+        reopened_repo.lock_write()
+        self.addCleanup(reopened_repo.unlock)
+        reopened_repo.resume_write_group(resume_tokens)
+        return reopened_repo
 
     def test_ghost_revision(self):
         """A parent inventory may be absent if all the needed texts are present.
@@ -244,27 +240,7 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         self.assertEqual(set(), reopened_repo.get_missing_parent_inventories())
         reopened_repo.abort_write_group()
 
-    def reopen_repo_and_resume_write_group(self, repo):
-        try:
-            resume_tokens = repo.suspend_write_group()
-        except errors.UnsuspendableWriteGroup:
-            # If we got this far, and this repo does not support resuming write
-            # groups, then get_missing_parent_inventories works in all
-            # cases this repo supports.
-            repo.unlock()
-            return
-        repo.unlock()
-        reopened_repo = repo.bzrdir.open_repository()
-        reopened_repo.lock_write()
-        self.addCleanup(reopened_repo.unlock)
-        reopened_repo.resume_write_group(resume_tokens)
-        return reopened_repo
-
     def test_get_missing_parent_inventories(self):
-        # XXX: split into three tests:
-        # - parent inv missing, texts present: ok
-        # - parent inv present, texts missing: ok
-        # - parent inv missing, texts missing: not ok
         """A stacked repo with a single revision and inventory (no parent
         inventory) in it must have all the texts in its inventory (even if not
         changed w.r.t. to the absent parent), otherwise it will report missing

@@ -1455,25 +1455,21 @@ class Repository(object):
         # if the inventories that reference them are missing some texts they
         # appear to introduce.
         # XXX: Texts referenced by all added inventories need to be present,
-        # but here we're only checking for texts referenced by inventories at
-        # the graph's edge.
-        mutter('parents: %r', parents)
+        # but at the moment we're only checking for texts referenced by
+        # inventories at the graph's edge.
         referrers = frozenset(r[0] for r in key_deps.get_referrers())
-        mutter('referrers: %r', referrers)
         file_ids = self.fileids_altered_by_revision_ids(referrers)
-        mutter('file_ids altered by: %r', file_ids)
         missing_texts = set()
         for file_id, version_ids in file_ids.iteritems():
             missing_texts.update(
                 (file_id, version_id) for version_id in version_ids)
         present_texts = self.texts.get_parent_map(missing_texts)
         missing_texts.difference_update(present_texts)
-        mutter('missing texts: %r', file_ids)
         if not missing_texts:
             # no texts are missing, so all revisions and their deltas are
             # reconstructable.
             return set()
-        # XXX: alternatively the text versions could be returned as the missing
+        # Alternatively the text versions could be returned as the missing
         # keys, but this is likely to be less data.
         missing_keys = set(('inventories', rev_id) for (rev_id,) in parents)
         return missing_keys
@@ -1958,14 +1954,10 @@ class Repository(object):
         w = _inv_weave or self.inventories
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            line_iter = w.iter_lines_added_or_present_in_keys(
-                selected_keys, pb=pb)
-            line_iter = list(line_iter)
-            mutter('lines: %r', line_iter)
-#            for (revid,) in selected_keys:
-#                mutter('full xml for %s: %r', revid, self.get_inventory_xml(revid))
             return self._find_file_ids_from_xml_inventory_lines(
-                line_iter, selected_keys)
+                w.iter_lines_added_or_present_in_keys(
+                    selected_keys, pb=pb),
+                selected_keys)
         finally:
             pb.finished()
 
