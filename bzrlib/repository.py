@@ -1454,10 +1454,13 @@ class Repository(object):
         # ok, now we have a list of missing inventories.  But these only matter
         # if the inventories that reference them are missing some texts they
         # appear to introduce.
+        # XXX: Texts referenced by all added inventories need to be present,
+        # but here we're only checking for texts referenced by inventories at
+        # the graph's edge.
         mutter('parents: %r', parents)
-        referrers = key_deps.get_referrers()
+        referrers = frozenset(r[0] for r in key_deps.get_referrers())
         mutter('referrers: %r', referrers)
-        file_ids = self.fileids_altered_by_revision_ids(r[0] for r in referrers)
+        file_ids = self.fileids_altered_by_revision_ids(referrers)
         mutter('file_ids altered by: %r', file_ids)
         missing_texts = set()
         for file_id, version_ids in file_ids.iteritems():
@@ -1470,6 +1473,8 @@ class Repository(object):
             # no texts are missing, so all revisions and their deltas are
             # reconstructable.
             return set()
+        # XXX: alternatively the text versions could be returned as the missing
+        # keys, but this is likely to be less data.
         missing_keys = set(('inventories', rev_id) for (rev_id,) in parents)
         return missing_keys
 
@@ -1953,10 +1958,14 @@ class Repository(object):
         w = _inv_weave or self.inventories
         pb = ui.ui_factory.nested_progress_bar()
         try:
+            line_iter = w.iter_lines_added_or_present_in_keys(
+                selected_keys, pb=pb)
+            line_iter = list(line_iter)
+            mutter('lines: %r', line_iter)
+#            for (revid,) in selected_keys:
+#                mutter('full xml for %s: %r', revid, self.get_inventory_xml(revid))
             return self._find_file_ids_from_xml_inventory_lines(
-                w.iter_lines_added_or_present_in_keys(
-                    selected_keys, pb=pb),
-                selected_keys)
+                line_iter, selected_keys)
         finally:
             pb.finished()
 
