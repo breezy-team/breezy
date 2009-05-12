@@ -2933,8 +2933,8 @@ class cmd_commit(Command):
         except PointlessCommit:
             # FIXME: This should really happen before the file is read in;
             # perhaps prepare the commit; get the message; then actually commit
-            raise errors.BzrCommandError("no changes to commit."
-                              " use --unchanged to commit anyhow")
+            raise errors.BzrCommandError("No changes to commit."
+                              " Use --unchanged to commit anyhow.")
         except ConflictsInTree:
             raise errors.BzrCommandError('Conflicts detected in working '
                 'tree.  Use "bzr conflicts" to list, "bzr resolve FILE" to'
