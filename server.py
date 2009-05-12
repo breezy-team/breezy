@@ -15,19 +15,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os
-import stat
 import tempfile
 
-from bzrlib.bzrdir import (
-    BzrDir,
-    )
-from bzrlib.inventory import (
-    InventoryDirectory,
-    InventoryFile,
-    )
-from bzrlib.osutils import (
-    splitpath,
-    )
 from bzrlib.repository import (
     Repository,
     )
@@ -37,8 +26,6 @@ from bzrlib.plugins.git.fetch import (
     )
 from bzrlib.plugins.git.mapping import (
     default_mapping,
-    inventory_to_tree_and_blobs,
-    revision_to_commit,
     )
 from bzrlib.plugins.git.object_store import (
     get_object_store
@@ -51,12 +38,6 @@ from dulwich.pack import (
     Pack,
     PackData,
     write_pack_index_v2,
-    )
-from dulwich.objects import (
-    Blob,
-    Commit,
-    ShaFile,
-    Tree,
     )
 
 
