@@ -159,6 +159,12 @@ Internals
 
 * Updated the bundled ``ConfigObj`` library to 4.6.0 (Matt Nordhoff)
 
+Testing
+*******
+
+* ``bzr selftest`` will now fail if lock/unlock are not correctly balanced in
+  tests. Using ``-Dlock`` will turn the related failures into warnings.
+  (Vincent Ladeuil, Robert Collins)
 
 bzr 1.14
 ###########
