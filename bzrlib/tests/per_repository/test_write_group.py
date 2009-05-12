@@ -133,9 +133,6 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
             repo.commit_write_group()
             repo.unlock()
 
-    # Also, perf tests:
-    # - if all invs present, then no texts are checked
-
     def branch_trunk_and_make_tree(self, trunk_repo, relpath):
         tree = self.make_branch_and_memory_tree('branch')
         trunk_repo.lock_read()
