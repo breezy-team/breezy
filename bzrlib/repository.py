@@ -1669,25 +1669,49 @@ class Repository(object):
 
     @needs_read_lock
     def get_revisions(self, revision_ids):
-        """Get many revisions at once."""
+        """Get many revisions at once.
+        
+        Repositories that need to check data on every revision read should 
+        subclass this method.
+        """
         return self._get_revisions(revision_ids)
 
     @needs_read_lock
     def _get_revisions(self, revision_ids):
         """Core work logic to get many revisions without sanity checks."""
-        for rev_id in revision_ids:
-            if not rev_id or not isinstance(rev_id, basestring):
-                raise errors.InvalidRevisionId(revision_id=rev_id, branch=self)
+        revs = {}
+        for revid, rev in self._iter_revisions(revision_ids):
+            if rev is None:
+                raise errors.NoSuchRevision(self, revid)
+            revs[revid] = rev
+        return [revs[revid] for revid in revision_ids]
+
+    def _iter_revisions(self, revision_ids):
+        """Iterate over revision objects.
+
+        :param revision_ids: An iterable of revisions to examine. None may be
+            passed to request all revisions known to the repository. Note that
+            not all repositories can find unreferenced revisions; for those
+            repositories only referenced ones will be returned.
+        :return: An iterator of (revid, revision) tuples. Absent revisions (
+            those asked for but not available) are returned as (revid, None).
+        """
+        if revision_ids is None:
+            revision_ids = self.all_revision_ids()
+        else:
+            for rev_id in revision_ids:
+                if not rev_id or not isinstance(rev_id, basestring):
+                    raise errors.InvalidRevisionId(revision_id=rev_id, branch=self)
         keys = [(key,) for key in revision_ids]
         stream = self.revisions.get_record_stream(keys, 'unordered', True)
-        revs = {}
         for record in stream:
+            revid = record.key[0]
             if record.storage_kind == 'absent':
-                raise errors.NoSuchRevision(self, record.key[0])
-            text = record.get_bytes_as('fulltext')
-            rev = self._serializer.read_revision_from_string(text)
-            revs[record.key[0]] = rev
-        return [revs[revid] for revid in revision_ids]
+                yield (revid, None)
+            else:
+                text = record.get_bytes_as('fulltext')
+                rev = self._serializer.read_revision_from_string(text)
+                yield (revid, rev)
 
     @needs_read_lock
     def get_revision_xml(self, revision_id):
@@ -2470,31 +2494,6 @@ class Repository(object):
         :param check_repo: If False do not check the repository contents, just 
             calculate the data callback_refs requires and call them back.
         """
-        # TODO: Reinstate or confirm its obsolescence.
-        # from Branch.check - a cross check that the parents index
-        # (iter_reverse_revision_history uses that) and the revision objects
-        # match up.
-        #real_rev_history = list(self.repository.iter_reverse_revision_history(
-        #                        last_revision_id))
-        #real_rev_history.reverse()
-        #
-        #mainline_parent_id = None
-        #for revision_id in real_rev_history:
-        #    try:
-        #        revision = self.repository.get_revision(revision_id)
-        #    except errors.NoSuchRevision, e:
-        #        result.errors.append(errors.BzrCheckError(
-        #            "mainline revision {%s} not in repository" % revision_id))
-        #        break
-        #    # In general the first entry on the revision history has no parents.
-        #    # But it's not illegal for it to have parents listed; this can happen
-        #    # in imports from Arch when the parents weren't reachable.
-        #    if mainline_parent_id is not None:
-        #        if mainline_parent_id not in revision.parent_ids:
-        #            raise errors.BzrCheckError("previous revision {%s} not listed among "
-        #                                "parents of {%s}"
-        #                                % (mainline_parent_id, revision_id))
-        #            mainline_parent_id = revision_id
         return self._check(revision_ids, callback_refs=callback_refs,
             check_repo=check_repo)
 
