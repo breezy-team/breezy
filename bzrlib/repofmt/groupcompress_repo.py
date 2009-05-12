@@ -958,8 +958,14 @@ class GroupCHKStreamSource(repository.StreamSource):
             yield stream_info
         self._revision_keys = [(rev_id,) for rev_id in revision_ids]
         yield self._get_inventory_stream(self._revision_keys)
-        # The keys to exclude are part of the search recipe
-        _, _, exclude_keys, _ = search.get_recipe()
+        # TODO: The keys to exclude might be part of the search recipe
+        # For now, exclude all parents that are at the edge of ancestry, for
+        # which we have inventories
+        parent_map = self.from_repository.get_parent_map(revision_ids)
+        parents = set()
+        map(parents.update, parent_map.itervalues())
+        parents.difference_update(parent_map)
+        exclude_keys = parents
         for stream_info in self._get_filtered_chk_streams(exclude_keys):
             yield stream_info
         yield self._get_text_stream()
