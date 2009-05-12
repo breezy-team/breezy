@@ -2025,8 +2025,7 @@ class Repository(object):
                 batch_size]
             if not to_query:
                 break
-            for rev_tree in self.revision_trees(to_query):
-                revision_id = rev_tree.get_revision_id()
+            for revision_id in to_query:
                 parent_ids = ancestors[revision_id]
                 for text_key in revision_keys[revision_id]:
                     pb.update("Calculating text parents", processed_texts)
