@@ -41,7 +41,7 @@ class TestCheck(ExternalBase):
                                    r"     0 file-ids\n"
                                    r"     0 unique file texts\n"
                                    r"     0 repeated file texts\n"
-                                   r"     0 unreferenced text versions\n")
+                                   )
         self.assertContainsRe(err, r"Checking branch at '.*'\.\n")
         self.assertContainsRe(err, r"checked branch.*")
 
@@ -61,8 +61,8 @@ class TestCheck(ExternalBase):
                                    r"     1 revisions\n"
                                    r"     0 file-ids\n"
                                    r"     0 unique file texts\n"
-                                   r"     0 repeated file texts\n"
-                                   r"     0 unreferenced text versions$")
+                                   r"     0 repeated file texts\n$"
+                                   )
 
     def test_check_tree(self):
         tree = self.make_branch_and_tree('.')

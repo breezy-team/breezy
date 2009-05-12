@@ -37,7 +37,6 @@ import weakref
 from bzrlib import (
     debug,
     errors,
-    osutils,
     symbol_versioning,
     trace,
     ui,
@@ -46,7 +45,8 @@ from bzrlib import (
 from bzrlib.smart import client, protocol
 from bzrlib.transport import ssh
 """)
-
+#usually already imported, and getting IllegalScoperReplacer on it here.
+from bzrlib import osutils
 
 # We must not read any more than 64k at a time so we don't risk "no buffer
 # space available" errors on some platforms.  Windows in particular is likely

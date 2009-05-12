@@ -43,9 +43,7 @@ class TestNoSpuriousInconsistentAncestors(TestCaseWithRepository):
         check_object = tree.branch.repository.check([revid1, revid2])
         check_object.report_results(verbose=True)
         log = self._get_log(keep_log_file=True)
-        self.assertContainsRe(
-            log,
-            "0 unreferenced text versions")
+        self.assertContainsRe(log, "0 unreferenced text versions")
 
 
 class TestFindInconsistentRevisionParents(TestCaseWithBrokenRevisionIndex):

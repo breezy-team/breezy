@@ -68,7 +68,7 @@ class Check(object):
         self.repository = repository
         self.checked_text_cnt = 0
         self.checked_rev_cnt = 0
-        self.ghosts = []
+        self.ghosts = set()
         self.repeated_text_cnt = 0
         self.missing_parent_links = {}
         self.missing_inventory_sha_cnt = 0
@@ -82,6 +82,11 @@ class Check(object):
         self.text_key_references = {}
         self.check_repo = check_repo
         self.other_results = []
+        # Plain text lines to include in the report
+        self._report_items = []
+        # Sha1 expectations; may be large and need spilling to disk.
+        # key->(sha1, first-referer)
+        self.expected_sha1 = {}
         # Ancestors map for all of revisions being checked; while large helper
         # functions we call would create it anyway, so better to have once and
         # keep.
@@ -107,7 +112,7 @@ class Check(object):
                     self.progress.update('checking revision', revno,
                                          len(self.planned_revisions))
                     revno += 1
-                    self.check_one_rev(rev_id)
+                    self._check_revision_tree(rev_id)
                 # check_weaves is done after the revision scan so that
                 # revision index is known to be valid.
                 self.check_weaves()
@@ -156,13 +161,34 @@ class Check(object):
             self.progress.finished()
             self.repository.unlock()
 
+    def check_revisions(self, revisions_iterator):
+        """Check revision objects by decorating a generator.
+
+        :param revisions_iterator: An iterator of(revid, Revision-or-None).
+        :return: A generator of the contents of revisions_iterator.
+        """
+        self.planned_revisions = set()
+        for revid, revision in revisions_iterator:
+            yield revid, revision
+            self._check_one_rev(revid, revision)
+
     def check_revision_graph(self):
+        revision_iterator = self.repository._iter_revisions(None)
+        revision_iterator = self.check_revisions(revision_iterator)
+        # We read the all revisions here:
+        # - doing this allows later code to depend on the revision index.
+        # - we can fill out existence flags at this point
+        # - we can read the revision inventory sha at this point
+        # - we can check properties and serialisers etc.
         if not self.repository.revision_graph_can_have_wrong_parents():
-            # This check is not necessary.
+            # The check against the index isn't needed.
             self.revs_with_bad_parents_in_index = None
-            return
-        bad_revisions = self.repository._find_inconsistent_revision_parents()
-        self.revs_with_bad_parents_in_index = list(bad_revisions)
+            for thing in revision_iterator:
+                pass
+        else:
+            bad_revisions = self.repository._find_inconsistent_revision_parents(
+                revision_iterator)
+            self.revs_with_bad_parents_in_index = list(bad_revisions)
 
     def plan_revisions(self):
         repository = self.repository
@@ -188,8 +214,13 @@ class Check(object):
         note('%6d file-ids', len(self.checked_weaves))
         note('%6d unique file texts', self.checked_text_cnt)
         note('%6d repeated file texts', self.repeated_text_cnt)
-        note('%6d unreferenced text versions',
-             len(self.unreferenced_versions))
+        if verbose:
+            note('%6d unreferenced text versions',
+                len(self.unreferenced_versions))
+        if verbose and len(self.unreferenced_versions):
+                for file_id, revision_id in self.unreferenced_versions:
+                    log_error('unreferenced version: {%s} in %s', revision_id,
+                        file_id)
         if self.missing_inventory_sha_cnt:
             note('%6d revisions are missing inventory_sha1',
                  self.missing_inventory_sha_cnt)
@@ -209,10 +240,6 @@ class Check(object):
                     note('      %s should be in the ancestry for:', link)
                     for linker in linkers:
                         note('       * %s', linker)
-            if verbose:
-                for file_id, revision_id in self.unreferenced_versions:
-                    log_error('unreferenced version: {%s} in %s', revision_id,
-                        file_id)
         if len(self.inconsistent_parents):
             note('%6d inconsistent parents', len(self.inconsistent_parents))
             if verbose:
@@ -232,48 +259,52 @@ class Check(object):
                         '       %s has wrong parents in index: '
                         '%r should be %r',
                         revision_id, index_parents, actual_parents)
+        for item in self._report_items:
+            note(item)
 
-    def check_one_rev(self, rev_id):
-        """Check one revision.
+    def _check_one_rev(self, rev_id, rev):
+        """Cross-check one revision.
 
-        rev_id - the one to check
+        :param rev_id: A revision id to check.
+        :param rev: A revision or None to indicate a missing revision.
         """
-        rev = self.repository.get_revision(rev_id)
-
         if rev.revision_id != rev_id:
-            raise BzrCheckError('wrong internal revision id in revision {%s}'
-                                % rev_id)
-
+            self._report_items.append(
+                'Mismatched internal revid {%s} and index revid {%s}' % (
+                rev.revision_id, rev_id))
+            rev_id = rev.revision_id
+        # Check this revision tree etc, and count as seen when we encounter a
+        # reference to it.
+        self.planned_revisions.add(rev_id)
+        # It is not a ghost
+        self.ghosts.discard(rev_id)
+        # Count all parents as ghosts if we haven't seen them yet.
         for parent in rev.parent_ids:
             if not parent in self.planned_revisions:
-                # rev has a parent we didn't know about.
-                missing_links = self.missing_parent_links.get(parent, [])
-                missing_links.append(rev_id)
-                self.missing_parent_links[parent] = missing_links
-                # list based so somewhat slow,
-                # TODO have a planned_revisions list and set.
-                if self.repository.has_revision(parent):
-                    missing_ancestry = self.repository.get_ancestry(parent)
-                    for missing in missing_ancestry:
-                        if (missing is not None
-                            and missing not in self.planned_revisions):
-                            self.planned_revisions.append(missing)
-                else:
-                    self.ghosts.append(rev_id)
-
+                self.ghosts.add(parent)
+        
         self.ancestors[rev_id] = tuple(rev.parent_ids) or (NULL_REVISION,)
+        # If the revision has an inventory sha, we want to cross check it later.
         if rev.inventory_sha1:
-            # Loopback - this is currently circular logic as the
-            # knit get_inventory_sha1 call returns rev.inventory_sha1.
-            # Repository.py's get_inventory_sha1 should instead return
-            # inventories.get_record_stream([(revid,)]).next().sha1 or
-            # similar.
-            inv_sha1 = self.repository.get_inventory_sha1(rev_id)
-            if inv_sha1 != rev.inventory_sha1:
-                raise BzrCheckError('Inventory sha1 hash doesn\'t match'
-                    ' value in revision {%s}' % rev_id)
-        self._check_revision_tree(rev_id)
+            self.add_sha_check(rev_id, ('inventories', rev_id),
+            rev.inventory_sha1)
         self.checked_rev_cnt += 1
+
+    def add_sha_check(self, referer, key, sha1):
+        """Add a reference to a sha1 to be cross checked against a key.
+
+        :param referer: The referer that expects key to have sha1.
+        :param key: A storage key e.g. ('texts', 'foo@bar-20040504-1234')
+        :param sha1: A hex sha1.
+        """
+        existing = self.expected_sha1.get(key)
+        if existing:
+            if sha1 != existing[0]:
+                self._report_items.append('Multiple expected sha1s for %s. {%s}'
+                    ' expects {%s}, {%s} expects {%s}', (
+                    key, referer, sha1, existing[1], existing[0]))
+        else:
+            self.expected_sha1[key] = (sha1, referer)
 
     def check_weaves(self):
         """Check all the weaves we can get our hands on.
