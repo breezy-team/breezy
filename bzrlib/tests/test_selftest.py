@@ -622,9 +622,6 @@ class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):
         self.assertRaises(AssertionError, self._check_safety_net)
 
     def test_dangling_locks_cause_failures(self):
-        # This is currently only enabled during debug runs, so turn debugging
-        # on.
-        debug.debug_flags.add('lock')
         class TestDanglingLock(TestCaseWithMemoryTransport):
             def test_function(self):
                 t = self.get_transport('.')

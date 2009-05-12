@@ -978,6 +978,9 @@ class AbstractAuthHandler(urllib2.BaseHandler):
       successful and the request authentication parameters have been updated.
     """
 
+    scheme = None
+    """The scheme as it appears in the server header (lower cased)"""
+
     _max_retry = 3
     """We don't want to retry authenticating endlessly"""
 
@@ -1035,32 +1038,54 @@ class AbstractAuthHandler(urllib2.BaseHandler):
                 # Let's be ready for next round
                 self._retry_count = None
                 return None
-        server_header = headers.get(self.auth_required_header, None)
-        if server_header is None:
+        server_headers = headers.getheaders(self.auth_required_header)
+        if not server_headers:
             # The http error MUST have the associated
             # header. This must never happen in production code.
             raise KeyError('%s not found' % self.auth_required_header)
 
         auth = self.get_auth(request)
         auth['modified'] = False
-        if self.auth_match(server_header, auth):
-            # auth_match may have modified auth (by adding the
-            # password or changing the realm, for example)
-            if (request.get_header(self.auth_header, None) is not None
-                and not auth['modified']):
-                # We already tried that, give up
-                return None
+        # FIXME: the auth handler should be selected at a single place instead
+        # of letting all handlers try to match all headers, but the current
+        # design doesn't allow a simple implementation.
+        for server_header in server_headers:
+            # Several schemes can be proposed by the server, try to match each
+            # one in turn
+            matching_handler = self.auth_match(server_header, auth)
+            if matching_handler:
+                # auth_match may have modified auth (by adding the
+                # password or changing the realm, for example)
+                if (request.get_header(self.auth_header, None) is not None
+                    and not auth['modified']):
+                    # We already tried that, give up
+                    return None
 
-            if self.requires_username and auth.get('user', None) is None:
-                # Without a known user, we can't authenticate
-                return None
+                # Only the most secure scheme proposed by the server should be
+                # used, since the handlers use 'handler_order' to describe that
+                # property, the first handler tried takes precedence, the
+                # others should not attempt to authenticate if the best one
+                # failed.
+                best_scheme = auth.get('best_scheme', None)
+                if best_scheme is None:
+                    # At that point, if current handler should doesn't succeed
+                    # the credentials are wrong (or incomplete), but we know
+                    # that the associated scheme should be used.
+                    best_scheme = auth['best_scheme'] = self.scheme
+                if  best_scheme != self.scheme:
+                    continue
 
-            # Housekeeping
-            request.connection.cleanup_pipe()
-            response = self.parent.open(request)
-            if response:
-                self.auth_successful(request, response)
-            return response
+                if self.requires_username and auth.get('user', None) is None:
+                    # Without a known user, we can't authenticate
+                    return None
+
+                # Housekeeping
+                request.connection.cleanup_pipe()
+                # Retry the request with an authentication header added
+                response = self.parent.open(request)
+                if response:
+                    self.auth_successful(request, response)
+                return response
         # We are not qualified to handle the authentication.
         # Note: the authentication error handling will try all
         # available handlers. If one of them authenticates
@@ -1192,13 +1217,13 @@ class NegotiateAuthHandler(AbstractAuthHandler):
     NTLM support may also be added.
     """
 
+    scheme = 'negotiate'
     handler_order = 480
-
     requires_username = False
 
     def auth_match(self, header, auth):
         scheme, raw_auth = self._parse_auth_header(header)
-        if scheme != 'negotiate':
+        if scheme != self.scheme:
             return False
         self.update_auth(auth, 'scheme', scheme)
         resp = self._auth_match_kerberos(auth)
@@ -1237,8 +1262,8 @@ class NegotiateAuthHandler(AbstractAuthHandler):
 class BasicAuthHandler(AbstractAuthHandler):
     """A custom basic authentication handler."""
 
+    scheme = 'basic'
     handler_order = 500
-
     auth_regexp = re.compile('realm="([^"]*)"', re.I)
 
     def build_auth_header(self, auth, request):
@@ -1255,14 +1280,11 @@ class BasicAuthHandler(AbstractAuthHandler):
 
     def auth_match(self, header, auth):
         scheme, raw_auth = self._parse_auth_header(header)
-        if scheme != 'basic':
+        if scheme != self.scheme:
             return False
 
         match, realm = self.extract_realm(raw_auth)
         if match:
-            if scheme != 'basic':
-                return False
-
             # Put useful info into auth
             self.update_auth(auth, 'scheme', scheme)
             self.update_auth(auth, 'realm', realm)
@@ -1300,6 +1322,7 @@ def get_new_cnonce(nonce, nonce_count):
 class DigestAuthHandler(AbstractAuthHandler):
     """A custom digest authentication handler."""
 
+    scheme = 'digest'
     # Before basic as digest is a bit more secure and should be preferred
     handler_order = 490
 
@@ -1311,7 +1334,7 @@ class DigestAuthHandler(AbstractAuthHandler):
 
     def auth_match(self, header, auth):
         scheme, raw_auth = self._parse_auth_header(header)
-        if scheme != 'digest':
+        if scheme != self.scheme:
             return False
 
         # Put the requested authentication info into a dict

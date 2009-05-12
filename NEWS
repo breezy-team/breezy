@@ -32,6 +32,9 @@ New Features
 Improvements
 ************
 
+* -Dhpss output now includes the number of VFS calls made to the remote
+  server. (Jonathan Lange)
+
 * ``--coverage`` works for code running in threads too.
   (Andrew Bennets, Vincent Ladeuil)
 
@@ -62,6 +65,9 @@ Bug Fixes
   incomplete stacked branches being created by 1.13 bzr:// and
   bzr+ssh:// clients (which have bug #354036).  Instead, the server now
   causes those clients to send the missing records.  (Andrew Bennetts)
+
+* Correctly handle http servers proposing multiple authentication schemes.
+  (Vincent Ladeuil, #366107)
 
 * End-Of-Line content filters are now loaded correctly.
   (Ian Clatworthy, Brian de Alwis, #355280)
@@ -131,7 +137,12 @@ Internals
   called before the first test is started, ``done`` called after the last
   test completes, and a new parameter ``strict``. (Robert Collins)
 
-* -Dlock when passed to the selftest (e.g. ``bzr -Dlock selftest``) will
+* ``-Dhpss`` when passed to bzr will cause a backtrace to be printed when
+  VFS operations are started on a smart server repository. This should not
+  occur on regular push and pull operations, and is a key indicator for
+  performance regressions. (Robert Collins)
+
+* ``-Dlock`` when passed to the selftest (e.g. ``bzr -Dlock selftest``) will
   cause mismatched physical locks to cause test errors rather than just
   reporting to the screen. (Robert Collins)
 
@@ -139,6 +150,13 @@ Internals
   are now be able to provide credentials if obtaining credentials 
   via ~/.bazaar/authentication.conf fails. (Jelmer Vernooij, 
   Vincent Ladeuil, #321918)
+
+* New hook ``Lock.lock_broken`` which runs when a lock is
+  broken. This is mainly for testing that lock/unlock are
+  balanced in tests. (Vincent Ladeuil)
+
+* New MergeDirective hook 'merge_request_body' allows hooks to supply or
+  alter a body for the message produced by ``bzr send``.
 
 * New smart server verb ``BzrDir.initialize_ex`` which implements a
   refactoring to the core of clone allowing less round trips on new
@@ -149,6 +167,12 @@ Internals
 
 * Updated the bundled ``ConfigObj`` library to 4.6.0 (Matt Nordhoff)
 
+Testing
+*******
+
+* ``bzr selftest`` will now fail if lock/unlock are not correctly balanced in
+  tests. Using ``-Dlock`` will turn the related failures into warnings.
+  (Vincent Ladeuil, Robert Collins)
 
 bzr 1.14
 ###########
