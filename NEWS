@@ -20,14 +20,19 @@ Compatibility Breaks
 New Features
 ************
 
+* New command ``bzr dpush`` that can push changes to foreign 
+  branches (svn, git) without setting custom bzr-specific metadata.
+  (Jelmer Vernooij)
+
+* The new development format ``--development6-rich-root`` now supports
+  stacking. We chose not to use a new format marker, since old clients
+  will just fail to open stacked branches, the same as if we used a new
+  format flag. (John Arbash Meinel, #373455)
+
 * Plugins can now define their own annotation tie-breaker when two revisions
   introduce the exact same line. See ``bzrlib.annotate._break_annotation_tie``
   Be aware though that this is temporary, private (as indicated by the leading
   '_') and a first step to address the problem. (Vincent Ladeuil, #348459)
-
-* New command ``bzr dpush`` that can push changes to foreign 
-  branches (svn, git) without setting custom bzr-specific metadata.
-  (Jelmer Vernooij)
 
 Improvements
 ************
