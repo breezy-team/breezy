@@ -130,7 +130,8 @@ class cmd_git_import(Command):
                     head_branch = head_bzrdir.create_branch()
                 revid = mapping.revision_id_foreign_to_bzr(ref)
                 source_branch = GitBranch(source_repo.bzrdir, source_repo, 
-                    name, ref, None)
+                    name, None)
+                source_branch.head = ref
                 head_branch.generate_revision_history(revid)
                 source_branch.tags.merge_to(head_branch.tags)
         finally:
