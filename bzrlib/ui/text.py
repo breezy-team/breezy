@@ -26,6 +26,7 @@ import warnings
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
+    debug,
     progress,
     osutils,
     symbol_versioning,
@@ -128,6 +129,7 @@ class TextProgressView(object):
         self._last_task = None
         self._total_byte_count = 0
         self._bytes_since_update = 0
+        self._fraction = 0
 
     def _show_line(self, s):
         n = self._width - 1
@@ -151,9 +153,14 @@ class TextProgressView(object):
             cols = 20
             if self._last_task is None:
                 completion_fraction = 0
+                self._fraction = 0
             else:
                 completion_fraction = \
                     self._last_task._overall_completion_fraction() or 0
+            if (completion_fraction < self._fraction and 'progress' in
+                debug.debug_flags):
+                import pdb;pdb.set_trace()
+            self._fraction = completion_fraction
             markers = int(round(float(cols) * completion_fraction)) - 1
             bar_str = '[' + ('#' * markers + spin_str).ljust(cols) + '] '
             return bar_str

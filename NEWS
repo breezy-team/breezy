@@ -108,6 +108,9 @@ Internals
   cause mismatched physical locks to cause test errors rather than just
   reporting to the screen. (Robert Collins)
 
+* -Dprogress will cause pdb to start up if a progress view jumps
+  backwards. (Robert Collins)
+
 * Fallback ``CredentialStore`` instances registered with ``fallback=True``
   are now be able to provide credentials if obtaining credentials 
   via ~/.bazaar/authentication.conf fails. (Jelmer Vernooij, 
