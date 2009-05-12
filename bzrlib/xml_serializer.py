@@ -172,7 +172,7 @@ def escape_invalid_chars(message):
     """Escape the XML-invalid characters in a commit message.
 
     :param message: Commit message to escape
-    :param count: Number of characters that were escaped
+    :return: tuple with escaped message and number of characters escaped
     """
     # Python strings can include characters that can't be
     # represented in well-formed XML; escape characters that
