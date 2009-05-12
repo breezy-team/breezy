@@ -31,6 +31,3 @@ class TestCHKBytes(TestCaseWithExternalReferenceRepository):
         super(TestCHKBytes, self).setUp()
         if not self.repository_format.supports_chks:
             raise tests.TestNotApplicable('No chk_bytes support')
-
-    def test_foo(self):
-        pass
