@@ -140,7 +140,8 @@ class BzrBackend(Backend):
         repo.lock_read()
         try:
             store = BazaarObjectStore(repo)
-            missing_sha1s = store.find_missing_objects(wants, graphwalker, progress)
-            return (len(missing_sha1s), iter(store.iter_shas(missing_sha1s)))
+            have = store.find_missing_revisions(graph_walker)
+            missing_sha1s = store.find_missing_objects(have, wants, progress)
+            return self.object_store.iter_shas(missing_sha1s)
         finally:
             repo.unlock()
