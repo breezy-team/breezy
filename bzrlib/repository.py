@@ -1448,7 +1448,31 @@ class Repository(object):
         unstacked_inventories = self.inventories._index
         present_inventories = unstacked_inventories.get_parent_map(
             key[-1:] for key in parents)
-        parents.difference_update(present_inventories)
+        if len(parents.difference(present_inventories)) == 0:
+            # No missing parent inventories.
+            return set()
+        # Ok, now we have a list of missing inventories.  But these only matter
+        # if the inventories that reference them are missing some texts they
+        # appear to introduce.
+        # XXX: Texts referenced by all added inventories need to be present,
+        # but at the moment we're only checking for texts referenced by
+        # inventories at the graph's edge.
+        key_deps = self.revisions._index._key_dependencies
+        key_deps.add_keys(present_inventories)
+        referrers = frozenset(r[0] for r in key_deps.get_referrers())
+        file_ids = self.fileids_altered_by_revision_ids(referrers)
+        missing_texts = set()
+        for file_id, version_ids in file_ids.iteritems():
+            missing_texts.update(
+                (file_id, version_id) for version_id in version_ids)
+        present_texts = self.texts.get_parent_map(missing_texts)
+        missing_texts.difference_update(present_texts)
+        if not missing_texts:
+            # No texts are missing, so all revisions and their deltas are
+            # reconstructable.
+            return set()
+        # Alternatively the text versions could be returned as the missing
+        # keys, but this is likely to be less data.
         missing_keys = set(('inventories', rev_id) for (rev_id,) in parents)
         return missing_keys
 
@@ -3993,6 +4017,7 @@ class StreamSink(object):
     def _locked_insert_stream(self, stream, src_format):
         to_serializer = self.target_repo._format._serializer
         src_serializer = src_format._serializer
+        new_pack = None
         if to_serializer == src_serializer:
             # If serializers match and the target is a pack repository, set the
             # write cache size on the new pack.  This avoids poor performance
@@ -4039,6 +4064,11 @@ class StreamSink(object):
                 self.target_repo.signatures.insert_record_stream(substream)
             else:
                 raise AssertionError('kaboom! %s' % (substream_type,))
+        # Done inserting data, and the missing_keys calculations will try to
+        # read back from the inserted data, so flush the writes to the new pack
+        # (if this is pack format).
+        if new_pack is not None:
+            new_pack._write_data('', flush=True)
         # Find all the new revisions (including ones from resume_tokens)
         missing_keys = self.target_repo.get_missing_parent_inventories()
         try:
