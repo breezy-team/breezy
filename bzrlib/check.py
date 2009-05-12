@@ -341,16 +341,10 @@ class Check(object):
             self._report_items.append(
                 "Missing inventory for revision {%s}" % rev_id)
         inv = tree.inventory
-        seen_ids = set()
         seen_names = set()
         for path, ie in inv.iter_entries():
             self._add_entry_to_text_key_references(inv, ie)
             file_id = ie.file_id
-            if file_id in seen_ids:
-                raise BzrCheckError('duplicated file_id {%s} '
-                                    'in inventory for revision {%s}'
-                                    % (file_id, rev_id))
-            seen_ids.add(file_id)
             ie.check(self, rev_id, inv, tree)
             if path in seen_names:
                 raise BzrCheckError('duplicated path %s '
