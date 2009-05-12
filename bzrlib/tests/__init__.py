@@ -884,7 +884,7 @@ class TestCase(unittest.TestCase):
     def _track_locks(self):
         """Track lock activity during tests."""
         self._lock_actions = []
-        self._lock_check_thorough = 'lock' in debug.debug_flags
+        self._lock_check_thorough = 'lock' not in debug.debug_flags
         self.addCleanup(self._check_locks)
         _mod_lock.Lock.hooks.install_named_hook('lock_acquired',
                                                 self._lock_acquired, None)
