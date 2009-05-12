@@ -41,7 +41,7 @@ from bzrlib.plugins.git.mapping import (
     revision_to_commit,
     )
 from bzrlib.plugins.git.object_store import (
-    BazaarObjectStore,
+    get_object_store
     )
 
 from dulwich.server import (
@@ -71,15 +71,14 @@ class BzrBackend(Backend):
         ret = {}
         repo_dir = BzrDir.open(self.directory)
         repo = repo_dir.open_repository()
+        store = get_object_store(repo)
         branch = None
         for branch in repo.find_branches(using=True):
             #FIXME: Look for 'master' or 'trunk' in here, and set HEAD accordingly...
             #FIXME: Need to get branch path relative to its repository and use this instead of nick
-            rev, mapping = self.mapping.revision_id_bzr_to_foreign(branch.last_revision())
-            ret["refs/heads/"+branch.nick] = rev
+            ret["refs/heads/"+branch.nick] = store._lookup_revision_sha1(branch.last_revision())
         if 'HEAD' not in ret and branch:
-            rev, mapping = self.mapping.revision_id_bzr_to_foreign(branch.last_revision())
-            ret['HEAD'] = rev
+            ret['HEAD'] = store._lookup_revision_sha1(branch.last_revision())
         return ret
 
     def apply_pack(self, refs, read):
