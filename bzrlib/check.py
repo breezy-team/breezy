@@ -98,24 +98,31 @@ class Check(object):
         self.repository.lock_read()
         self.progress = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
+            self.progress.update('check', 0, 4)
             if self.check_repo:
-                self.progress.update('retrieving inventory', 0, 2)
+                self.progress.update('checking revision graph', 0)
+                self.check_revision_graph()
                 # do not put in init, as it should be done with progess,
                 # and inside the lock.
                 self.inventory_weave = self.repository.inventories
-                self.progress.update('checking revision graph', 1)
-                self.check_revision_graph()
-                self.plan_revisions()
+                self.planned_revisions = list(self.planned_revisions)
                 revno = 0
-                while revno < len(self.planned_revisions):
-                    rev_id = self.planned_revisions[revno]
-                    self.progress.update('checking revision', revno,
-                                         len(self.planned_revisions))
-                    revno += 1
-                    self._check_revision_tree(rev_id)
+                self.progress.update('checking revisions', 1)
+                revbar = bzrlib.ui.ui_factory.nested_progress_bar()
+                try:
+                    while revno < len(self.planned_revisions):
+                        rev_id = self.planned_revisions[revno]
+                        revbar.update('checking revision', revno,
+                            len(self.planned_revisions))
+                        revno += 1
+                        self._check_revision_tree(rev_id)
+                finally:
+                    revbar.finished()
+                self.progress.update('checking revision contents', 2)
                 # check_weaves is done after the revision scan so that
                 # revision index is known to be valid.
                 self.check_weaves()
+            self.progress.update('checking branches and trees', 3)
             if callback_refs:
                 repo = self.repository
                 # calculate all refs, and callback the objects requesting them.
@@ -189,16 +196,6 @@ class Check(object):
             bad_revisions = self.repository._find_inconsistent_revision_parents(
                 revision_iterator)
             self.revs_with_bad_parents_in_index = list(bad_revisions)
-
-    def plan_revisions(self):
-        repository = self.repository
-        self.planned_revisions = repository.all_revision_ids()
-        self.progress.clear()
-        inventoried = set(key[-1] for key in self.inventory_weave.keys())
-        awol = set(self.planned_revisions) - inventoried
-        if len(awol) > 0:
-            raise BzrCheckError('Stored revisions missing from inventory'
-                '{%s}' % ','.join([f for f in awol]))
 
     def report_results(self, verbose):
         if self.check_repo:
@@ -310,15 +307,24 @@ class Check(object):
         """Check all the weaves we can get our hands on.
         """
         weave_ids = []
-        self.progress.update('checking inventory', 0, 2)
-        self.inventory_weave.check(progress_bar=self.progress)
-        self.progress.update('checking text storage', 1, 2)
-        self.repository.texts.check(progress_bar=self.progress)
+        storebar = bzrlib.ui.ui_factory.nested_progress_bar()
+        try:
+            self._check_weaves(storebar)
+        finally:
+            storebar.finished()
+
+    def _check_weaves(self, storebar):
+        storebar.update('inventory', 0, 4)
+        self.inventory_weave.check(progress_bar=storebar)
+        storebar.update('text-deltas', 1)
+        self.repository.texts.check(progress_bar=storebar)
+        storebar.update('text-index', 2)
         weave_checker = self.repository._get_versioned_file_checker(
             text_key_references=self.text_key_references,
             ancestors=self.ancestors)
+        storebar.update('file-graph', 3)
         result = weave_checker.check_file_version_parents(
-            self.repository.texts, progress_bar=self.progress)
+            self.repository.texts)
         self.checked_weaves = weave_checker.file_ids
         bad_parents, unused_versions = result
         bad_parents = bad_parents.items()
@@ -333,7 +339,11 @@ class Check(object):
         self.unreferenced_versions.update(unused_versions)
 
     def _check_revision_tree(self, rev_id):
-        tree = self.repository.revision_tree(rev_id)
+        try:
+            tree = self.repository.revision_tree(rev_id)
+        except errors.NoSuchRevision:
+            self._report_items.append(
+                "Missing inventory for revision {%s}" % rev_id)
         inv = tree.inventory
         seen_ids = set()
         seen_names = set()
