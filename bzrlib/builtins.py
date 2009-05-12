@@ -2727,42 +2727,75 @@ class cmd_local_time_offset(Command):
 class cmd_commit(Command):
     """Commit changes into a new revision.
 
-    If no arguments are given, the entire tree is committed.
+    An explanatory message needs to be given for each commit. This is
+    often done by using the --message option (getting the message from the
+    command line) or by using the --file option (getting the message from
+    a file). If neither of these options is given, an editor is opened for
+    the user to enter the message. To see the changed files in the
+    boilerplate text loaded into the editor, use the --show-diff option.
 
-    If selected files are specified, only changes to those files are
-    committed.  If a directory is specified then the directory and everything
-    within it is committed.
+    By default, the entire tree is committed and the person doing the
+    commit is assumed to be the author. These defaults can be overridden
+    as explained below.
 
-    When excludes are given, they take precedence over selected files.
-    For example, too commit only changes within foo, but not changes within
-    foo/bar::
+    :Selective commits:
 
-      bzr commit foo -x foo/bar
+      If selected files are specified, only changes to those files are
+      committed.  If a directory is specified then the directory and
+      everything within it is committed.
+  
+      When excludes are given, they take precedence over selected files.
+      For example, to commit only changes within foo, but not changes
+      within foo/bar::
+  
+        bzr commit foo -x foo/bar
+  
+      A selective commit after a merge is not yet supported.
 
-    If author of the change is not the same person as the committer, you can
-    specify the author's name using the --author option. The name should be
-    in the same format as a committer-id, e.g. "John Doe <jdoe@example.com>".
-    If there is more than one author of the change you can specify the option
-    multiple times, once for each author.
+    :Custom authors:
 
-    A selected-file commit may fail in some cases where the committed
-    tree would be invalid. Consider::
+      If the author of the change is not the same person as the committer,
+      you can specify the author's name using the --author option. The
+      name should be in the same format as a committer-id, e.g.
+      "John Doe <jdoe@example.com>". If there is more than one author of
+      the change you can specify the option multiple times, once for each
+      author.
+  
+    :Checks:
 
-      bzr init foo
-      mkdir foo/bar
-      bzr add foo/bar
-      bzr commit foo -m "committing foo"
-      bzr mv foo/bar foo/baz
-      mkdir foo/bar
-      bzr add foo/bar
-      bzr commit foo/bar -m "committing bar but not baz"
+      A common mistake is to forget to add a new file or directory before
+      running the commit command. The --strict option checks for unknown
+      files and aborts the commit if any are found. More advanced pre-commit
+      checks can be implemented by defining hooks. See ``bzr help hooks``
+      for details.
 
-    In the example above, the last commit will fail by design. This gives
-    the user the opportunity to decide whether they want to commit the
-    rename at the same time, separately first, or not at all. (As a general
-    rule, when in doubt, Bazaar has a policy of Doing the Safe Thing.)
+    :Things to note:
 
-    Note: A selected-file commit after a merge is not yet supported.
+      If you accidentially commit the wrong changes or make a spelling
+      mistake in the commit message say, you can use the uncommit command
+      to undo it. See ``bzr help uncommit`` for details.
+
+      Hooks can also be configured to run after a commit. This allows you
+      to trigger updates to external systems like bug trackers. The --fixes
+      option can be used to record the association between a revision and
+      one or more bugs. See ``bzr help bugs`` for details.
+
+      A selective commit may fail in some cases where the committed
+      tree would be invalid. Consider::
+  
+        bzr init foo
+        mkdir foo/bar
+        bzr add foo/bar
+        bzr commit foo -m "committing foo"
+        bzr mv foo/bar foo/baz
+        mkdir foo/bar
+        bzr add foo/bar
+        bzr commit foo/bar -m "committing bar but not baz"
+  
+      In the example above, the last commit will fail by design. This gives
+      the user the opportunity to decide whether they want to commit the
+      rename at the same time, separately first, or not at all. (As a general
+      rule, when in doubt, Bazaar has a policy of Doing the Safe Thing.)
     """
     # TODO: Run hooks on tree to-be-committed, and after commit.
 
@@ -2773,7 +2806,7 @@ class cmd_commit(Command):
 
     # XXX: verbose currently does nothing
 
-    _see_also = ['bugs', 'uncommit']
+    _see_also = ['add', 'bugs', 'hooks', 'uncommit']
     takes_args = ['selected*']
     takes_options = [
             ListOption('exclude', type=str, short_name='x',
