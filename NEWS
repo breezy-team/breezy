@@ -1,5 +1,12 @@
 0.3.1	UNRELEASED
 
+ FEATURES
+
+  * Alternative (faster) storage for SHA map using the TDB library
+    (http://tdb.samba.org/). This will automatically be used if you have 
+	TDB and its Python bindings installed. In all other situations the previous
+	(slower) Sqlite database format will be used.
+
 0.3.0	2009-05-10
 
  FEATURES

@@ -242,7 +242,7 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
         heads, pb=None):
     """Import a set of git objects into a bzr repository.
 
-    :param repo: Bazaar repository
+    :param repo: Target Bazaar repository
     :param mapping: Mapping to use
     :param object_iter: Iterator over Git objects.
     """
