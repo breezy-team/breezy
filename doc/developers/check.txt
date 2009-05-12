@@ -27,6 +27,7 @@ Things that can go wrong:
 * Data that is referenced may be missing
 * There could be a lot of garbage in upload etc.
 * File graphs may be inconsistent with inventories and parents.
+* The revision graph cache can be inconsistent with the revision data.
 
 Branch
 ------
