@@ -21,7 +21,8 @@ from bzrlib.tests.per_repository import TestCaseWithRepository
 
 class TestDefaultStackingPolicy(TestCaseWithRepository):
 
-    def test_sprout_from_stacked_with_short_history(self):
+    def make_source_branch(self):
+        # It would be nice if there was a way to force this to be memory-only
         builder = self.make_branch_builder('source')
         content = ['content lines\n'
                    'for the first revision\n'
@@ -42,9 +43,13 @@ class TestDefaultStackingPolicy(TestCaseWithRepository):
         source_b = builder.get_branch()
         source_b.lock_read()
         self.addCleanup(source_b.unlock)
+        return content, source_b
+
+    def test_sprout_from_stacked_with_short_history(self):
         # Now copy this data into a branch, and stack on it
         # Use 'make_branch' which gives us a bzr:// branch when appropriate,
         # rather than creating a branch-on-disk
+        content, source_b = self.make_source_branch()
         stack_b = self.make_branch('stack-on')
         stack_b.pull(source_b, stop_revision='B-id')
         target_b = self.make_branch('target')
@@ -52,7 +57,8 @@ class TestDefaultStackingPolicy(TestCaseWithRepository):
         target_b.pull(source_b, stop_revision='C-id')
         # At this point, we should have a target branch, with 1 revision, on
         # top of the source.
-        final_b = target_b.bzrdir.sprout('final').open_branch()
+        final_b = self.make_branch('final')
+        final_b.pull(target_b)
         final_b.lock_read()
         self.addCleanup(final_b.unlock)
         self.assertEqual('C-id', final_b.last_revision())
@@ -74,3 +80,31 @@ class TestDefaultStackingPolicy(TestCaseWithRepository):
             else:
                 self.fail('Unexpected record: %s' % (record.key,))
         self.assertEqual(text_keys, sorted(records))
+
+    def test_sprout_from_smart_stacked_with_short_history(self):
+        content, source_b = self.make_source_branch()
+        transport = self.make_smart_server('server')
+        transport.ensure_base()
+        url = transport.abspath('')
+        stack_b = source_b.bzrdir.sprout(url + '/stack-on', revision_id='B-id')
+        # self.make_branch only takes relative paths, so we do it the 'hard'
+        # way
+        target_transport = transport.clone('target')
+        target_transport.ensure_base()
+        target_bzrdir = self.bzrdir_format.initialize_on_transport(
+                            target_transport)
+        target_bzrdir.create_repository()
+        target_b = target_bzrdir.create_branch()
+        target_b.set_stacked_on_url('../stack-on')
+        target_b.pull(source_b, stop_revision='C-id')
+        # Now we should be able to branch from the remote location to a local
+        # location
+        final_b = target_b.bzrdir.sprout('final').open_branch()
+        self.assertEqual('C-id', final_b.last_revision())
+
+        # bzrdir.sprout() has slightly different code paths if you supply a
+        # revision_id versus not. If you supply revision_id, then you get a
+        # PendingAncestryResult for the search, versus a SearchResult...
+        final2_b = target_b.bzrdir.sprout('final2',
+                                          revision_id='C-id').open_branch()
+        self.assertEqual('C-id', final_b.last_revision())
