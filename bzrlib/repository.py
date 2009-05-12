@@ -3919,6 +3919,18 @@ class _VersionedFileChecker(object):
             revision_id) tuples for versions that are present in this versioned
             file, but not used by the corresponding inventory.
         """
+        local_progress = None
+        if progress_bar is None:
+            local_progress = ui.ui_factory.nested_progress_bar()
+            progress_bar = local_progress
+        try:
+            return self._check_file_version_parents(texts, progress_bar)
+        finally:
+            if local_progress:
+                local_progress.finished()
+
+    def _check_file_version_parents(self, texts, progress_bar):
+        """See check_file_version_parents."""
         wrong_parents = {}
         self.file_ids = set([file_id for file_id, _ in
             self.text_index.iterkeys()])
@@ -3933,8 +3945,7 @@ class _VersionedFileChecker(object):
         text_keys = self.repository.texts.keys()
         unused_keys = frozenset(text_keys) - set(self.text_index)
         for num, key in enumerate(self.text_index.iterkeys()):
-            if progress_bar is not None:
-                progress_bar.update('checking text graph', num, n_versions)
+            progress_bar.update('checking text graph', num, n_versions)
             correct_parents = self.calculate_file_version_parents(key)
             try:
                 knit_parents = parent_map[key]
