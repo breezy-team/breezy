@@ -2204,52 +2204,6 @@ class KnitPackRepository(KnitRepository):
     def _abort_write_group(self):
         self._pack_collection._abort_write_group()
 
-    def _find_inconsistent_revision_parents(self):
-        """Find revisions with incorrectly cached parents.
-
-        :returns: an iterator yielding tuples of (revison-id, parents-in-index,
-            parents-in-revision).
-        """
-        if not self.is_locked():
-            raise errors.ObjectNotLocked(self)
-        pb = ui.ui_factory.nested_progress_bar()
-        result = []
-        try:
-            revision_nodes = self._pack_collection.revision_index \
-                .combined_index.iter_all_entries()
-            index_positions = []
-            # Get the cached index values for all revisions, and also the
-            # location in each index of the revision text so we can perform
-            # linear IO.
-            for index, key, value, refs in revision_nodes:
-                node = (index, key, value, refs)
-                index_memo = self.revisions._index._node_to_position(node)
-                if index_memo[0] != index:
-                    raise AssertionError('%r != %r' % (index_memo[0], index))
-                index_positions.append((index_memo, key[0],
-                                       tuple(parent[0] for parent in refs[0])))
-                pb.update("Reading revision index", 0, 0)
-            index_positions.sort()
-            batch_size = 1000
-            pb.update("Checking cached revision graph", 0,
-                      len(index_positions))
-            for offset in xrange(0, len(index_positions), 1000):
-                pb.update("Checking cached revision graph", offset)
-                to_query = index_positions[offset:offset + batch_size]
-                if not to_query:
-                    break
-                rev_ids = [item[1] for item in to_query]
-                revs = self.get_revisions(rev_ids)
-                for revision, item in zip(revs, to_query):
-                    index_parents = item[2]
-                    rev_parents = tuple(revision.parent_ids)
-                    if index_parents != rev_parents:
-                        result.append((revision.revision_id, index_parents,
-                                       rev_parents))
-        finally:
-            pb.finished()
-        return result
-
     def _make_parents_provider(self):
         return graph.CachingParentsProvider(self)
 
