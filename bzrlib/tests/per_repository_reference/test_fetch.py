@@ -42,11 +42,13 @@ class TestDefaultStackingPolicy(TestCaseWithRepository):
         source_b = builder.get_branch()
         source_b.lock_read()
         self.addCleanup(source_b.unlock)
-        # Now copy this data into a branch, and it stacked on location.
-        stack_b = source_b.bzrdir.sprout('stack-on',
-                                         revision_id='B-id').open_branch()
+        # Now copy this data into a branch, and stack on it
+        # Use 'make_branch' which gives us a bzr:// branch when appropriate,
+        # rather than creating a branch-on-disk
+        stack_b = self.make_branch('stack-on')
+        stack_b.pull(source_b, stop_revision='B-id')
         target_b = self.make_branch('target')
-        target_b.set_stacked_on_url(stack_b.base)
+        target_b.set_stacked_on_url('../stack-on')
         target_b.pull(source_b, stop_revision='C-id')
         # At this point, we should have a target branch, with 1 revision, on
         # top of the source.
