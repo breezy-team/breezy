@@ -65,6 +65,7 @@ from bzrlib.plugins.git.mapping import (
     DEFAULT_FILE_MODE,
     inventory_to_tree_and_blobs,
     text_to_blob,
+    warn_unusual_mode,
     )
 from bzrlib.plugins.git.object_store import (
     BazaarObjectStore,
@@ -308,10 +309,8 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
                 parent_invs, target_git_object_retriever._idmap, lookup_object)
         target_git_object_retriever._idmap.add_entries(shamap)
         if unusual_modes != {}:
-            ret = "unusual modes: \n"
-            for item in unusual_modes.iteritems():
-                ret += "\t%s: %o\n" % item
-            raise AssertionError(ret)
+            for path, mode in unusual_modes.iteritems():
+                warn_unusual_mode(rev.foreign_revid, path, mode)
         try:
             basis_id = rev.parent_ids[0]
         except IndexError:

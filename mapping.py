@@ -24,6 +24,7 @@ from bzrlib import (
     errors,
     foreign,
     osutils,
+    trace,
     urlutils,
     )
 from bzrlib.inventory import (
@@ -69,6 +70,16 @@ def fix_person_identifier(text):
     return "%s <%s>" % (text, text)
 
 
+def warn_escaped(commit, num_escaped):
+    trace.warning("Escaped %d XML-invalid characters in %s. Will be unable "
+                  "to regenerate the SHA map.", num_escaped, commit)
+
+
+def warn_unusual_mode(commit, path, mode):
+    trace.warning("Unusual file mode %o for %s in %s. Will be unable to "
+                  "regenerate the SHA map.", mode, path, commit)
+
+
 class BzrGitMapping(foreign.VcsMapping):
     """Class that maps between Git and Bazaar semantics."""
     experimental = False
@@ -112,10 +123,16 @@ class BzrGitMapping(foreign.VcsMapping):
             raise AssertionError("Commit object can't be None")
         rev = ForeignRevision(commit.id, self, self.revision_id_foreign_to_bzr(commit.id))
         rev.parent_ids = tuple([self.revision_id_foreign_to_bzr(p) for p in commit.parents])
-        rev.message = escape_invalid_chars(commit.message.decode("utf-8", "replace"))[0]
-        rev.committer = escape_invalid_chars(str(commit.committer).decode("utf-8", "replace"))[0]
+        rev.message, num_escaped = escape_invalid_chars(commit.message.decode("utf-8", "replace"))
+        if num_escaped:
+            warn_escaped(commit.id, num_escaped)
+        rev.committer, num_escaped = escape_invalid_chars(str(commit.committer).decode("utf-8", "replace"))
+        if num_escaped:
+            warn_escaped(commit.id, num_escaped)
         if commit.committer != commit.author:
-            rev.properties['author'] = escape_invalid_chars(str(commit.author).decode("utf-8", "replace"))[0]
+            rev.properties['author'], num_escaped = escape_invalid_chars(str(commit.author).decode("utf-8", "replace"))
+            if num_escaped:
+                warn_escaped(commit.id, num_escaped)
 
         if commit.commit_time != commit.author_time:
             rev.properties['author-timestamp'] = str(commit.author_time)
