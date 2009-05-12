@@ -19,8 +19,10 @@
 import zlib
 
 from bzrlib import (
+    btree_index,
     groupcompress,
     errors,
+    index as _mod_index,
     osutils,
     tests,
     versionedfile,
@@ -475,6 +477,23 @@ class TestCaseWithGroupCompressVersionedFiles(tests.TestCaseWithTransport):
 
 class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
 
+    def make_g_index(self, name, ref_lists=0, nodes=[]):
+        builder = btree_index.BTreeBuilder(ref_lists)
+        for node, references, value in nodes:
+            builder.add_node(node, references, value)
+        stream = builder.finish()
+        trans = self.get_transport()
+        size = trans.put_file(name, stream)
+        return btree_index.BTreeGraphIndex(trans, name, size)
+
+    def make_g_index_missing_parent(self):
+        graph_index = self.make_g_index('missing_parent', 1,
+            [(('parent', ), '2 78 2 10', ([],)),
+             (('tip', ), '2 78 2 10',
+              ([('parent', ), ('missing-parent', )],)),
+              ])
+        return graph_index
+
     def test_get_record_stream_as_requested(self):
         # Consider promoting 'as-requested' to general availability, and
         # make this a VF interface test
@@ -605,6 +624,29 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
                 block = record._manager._block
             else:
                 self.assertIs(block, record._manager._block)
+
+    def test_add_missing_noncompression_parent_unvalidated_index(self):
+        unvalidated = self.make_g_index_missing_parent()
+        combined = _mod_index.CombinedGraphIndex([unvalidated])
+        index = groupcompress._GCGraphIndex(combined,
+            is_locked=lambda: True, parents=True)
+        #    track_external_parent_refs=True)
+        index.scan_unvalidated_index(unvalidated)
+        self.assertEqual(
+            frozenset([('missing-parent',)]), index.get_missing_parents())
+
+    def test_track_external_parent_refs(self):
+        g_index = self.make_g_index('empty', 1, [])
+        mod_index = btree_index.BTreeBuilder(1, 1)
+        combined = _mod_index.CombinedGraphIndex([g_index, mod_index])
+        index = groupcompress._GCGraphIndex(combined,
+            is_locked=lambda: True, parents=True,
+            add_callback=mod_index.add_nodes)
+        index.add_records([
+            (('new-key',), '2 10 2 10', [(('parent-1',), ('parent-2',))])])
+        self.assertEqual(
+            frozenset([('parent-1',), ('parent-2',)]),
+            index.get_missing_parents())
 
 
 class TestLazyGroupCompress(tests.TestCaseWithTransport):
