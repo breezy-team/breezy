@@ -98,7 +98,7 @@ class BazaarObjectStore(BaseObjectStore):
         tree_sha = self._get_ie_sha1(inv.root, inv)
         rev = self.repository.get_revision(revid)
         commit_obj = revision_to_commit(rev, tree_sha,
-            self._idmap._parent_lookup)
+                                        self._idmap.lookup_commit)
         try:
             foreign_revid, mapping = mapping_registry.parse_revision_id(revid)
         except errors.InvalidRevisionId:
@@ -185,13 +185,10 @@ class BazaarObjectStore(BaseObjectStore):
     def _lookup_revision_sha1(self, revid):
         """Return the SHA1 matching a Bazaar revision."""
         try:
-            return self._idmap._parent_lookup(revid)
+            return self._idmap.lookup_commit(revid)
         except KeyError:
-            inv = self.repository.get_inventory(revid)
-            tree_sha = self._get_ie_sha1(inv.root, inv)
-            ret = self._get_commit(revid, tree_sha).id
-            self._idmap.add_entry(ret, "commit", (revid, tree_sha))
-            return ret
+            self._update_sha_map(revid)
+            return self._idmap.lookup_commit(revid)
 
     def get_raw(self, sha):
         """Get the raw representation of a Git object by SHA1.

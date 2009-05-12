@@ -159,7 +159,7 @@ class SqliteGitShaMap(GitShaMap):
     def from_repository(cls, repository):
         return cls(os.path.join(repository._transport.local_abspath("."), "git.db"))
 
-    def _parent_lookup(self, revid):
+    def lookup_commit(self, revid):
         row = self.db.execute("select sha1 from commits where revid = ?", (revid,)).fetchone()
         if row is not None:
             return row[0].encode("utf-8")
@@ -281,7 +281,7 @@ class TdbGitShaMap(GitShaMap):
             from bzrlib.config import config_dir
             return cls(os.path.join(config_dir(), "remote-git.tdb"))
 
-    def _parent_lookup(self, revid):
+    def lookup_commit(self, revid):
         return self.db["commit %s" % revid].split(" ")[0]
 
     def commit(self):
