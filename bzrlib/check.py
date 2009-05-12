@@ -102,13 +102,9 @@ class Check(object):
             if self.check_repo:
                 self.progress.update('checking revision graph', 0)
                 self.check_revision_graph()
-                # do not put in init, as it should be done with progess,
-                # and inside the lock.
-                self.inventory_weave = self.repository.inventories
-                self.planned_revisions = list(self.planned_revisions)
-                revno = 0
                 self.progress.update('checking revisions', 1)
                 revbar = bzrlib.ui.ui_factory.nested_progress_bar()
+                revno = 0
                 try:
                     while revno < len(self.planned_revisions):
                         rev_id = self.planned_revisions[revno]
@@ -178,6 +174,7 @@ class Check(object):
         for revid, revision in revisions_iterator:
             yield revid, revision
             self._check_one_rev(revid, revision)
+        self.planned_revisions = list(self.planned_revisions)
 
     def check_revision_graph(self):
         revision_iterator = self.repository._iter_revisions(None)
@@ -315,7 +312,10 @@ class Check(object):
 
     def _check_weaves(self, storebar):
         storebar.update('inventory', 0, 4)
-        self.inventory_weave.check(progress_bar=storebar)
+        # do not put in init, as it should be done with progess,
+        # and inside the lock.
+        inventory_weave = self.repository.inventories
+        inventory_weave.check(progress_bar=storebar)
         storebar.update('text-deltas', 1)
         self.repository.texts.check(progress_bar=storebar)
         storebar.update('text-index', 2)
