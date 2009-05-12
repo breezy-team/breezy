@@ -137,7 +137,12 @@ Internals
   called before the first test is started, ``done`` called after the last
   test completes, and a new parameter ``strict``. (Robert Collins)
 
-* -Dlock when passed to the selftest (e.g. ``bzr -Dlock selftest``) will
+* ``-Dhpss`` when passed to bzr will cause a backtrace to be printed when
+  VFS operations are started on a smart server repository. This should not
+  occur on regular push and pull operations, and is a key indicator for
+  performance regressions. (Robert Collins)
+
+* ``-Dlock`` when passed to the selftest (e.g. ``bzr -Dlock selftest``) will
   cause mismatched physical locks to cause test errors rather than just
   reporting to the screen. (Robert Collins)
 
