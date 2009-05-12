@@ -629,8 +629,8 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
         unvalidated = self.make_g_index_missing_parent()
         combined = _mod_index.CombinedGraphIndex([unvalidated])
         index = groupcompress._GCGraphIndex(combined,
-            is_locked=lambda: True, parents=True)
-        #    track_external_parent_refs=True)
+            is_locked=lambda: True, parents=True,
+            track_external_parent_refs=True)
         index.scan_unvalidated_index(unvalidated)
         self.assertEqual(
             frozenset([('missing-parent',)]), index.get_missing_parents())
@@ -641,7 +641,8 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
         combined = _mod_index.CombinedGraphIndex([g_index, mod_index])
         index = groupcompress._GCGraphIndex(combined,
             is_locked=lambda: True, parents=True,
-            add_callback=mod_index.add_nodes)
+            add_callback=mod_index.add_nodes,
+            track_external_parent_refs=True)
         index.add_records([
             (('new-key',), '2 10 2 10', [(('parent-1',), ('parent-2',))])])
         self.assertEqual(

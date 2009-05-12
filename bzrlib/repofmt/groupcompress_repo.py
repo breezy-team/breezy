@@ -625,7 +625,8 @@ class CHKInventoryRepository(KnitPackRepository):
         self.revisions = GroupCompressVersionedFiles(
             _GCGraphIndex(self._pack_collection.revision_index.combined_index,
                 add_callback=self._pack_collection.revision_index.add_callback,
-                parents=True, is_locked=self.is_locked),
+                parents=True, is_locked=self.is_locked,
+                track_external_parent_refs=True),
             access=self._pack_collection.revision_index.data_access,
             delta=False)
         self.signatures = GroupCompressVersionedFiles(
@@ -752,6 +753,7 @@ class CHKInventoryRepository(KnitPackRepository):
     def _find_file_keys_to_fetch(self, revision_ids, pb):
         rich_root = self.supports_rich_root()
         revision_outside_set = self._find_revision_outside_set(revision_ids)
+        import pdb; pdb.set_trace()
         if revision_outside_set == _mod_revision.NULL_REVISION:
             uninteresting_root_keys = set()
         else:
@@ -797,6 +799,12 @@ class CHKInventoryRepository(KnitPackRepository):
         pb = ui.ui_factory.nested_progress_bar()
         try:
             total = len(revision_ids)
+            # TODO: This could probably be implemented in terms of
+            #       'iter_inventory_deltas'. Since we only include items where
+            #       'entry.revision == inv.revision_id', then we know that all
+            #       the entries which are identical to another inventory are
+            #       *not* going to match. Note that revision_ids may be a set,
+            #       so doesn't have a great iteration order.
             for pos, inv in enumerate(self.iter_inventories(revision_ids)):
                 pb.update("Finding text references", pos, total)
                 for entry in inv.iter_just_entries():

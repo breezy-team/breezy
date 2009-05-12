@@ -31,13 +31,13 @@ from bzrlib import (
     diff,
     errors,
     graph as _mod_graph,
+    knit,
     osutils,
     pack,
     patiencediff,
     trace,
     )
 from bzrlib.graph import Graph
-from bzrlib.knit import _DirectPackAccess
 from bzrlib.btree_index import BTreeBuilder
 from bzrlib.lru_cache import LRUSizeCache
 from bzrlib.tsort import topo_sort
@@ -911,7 +911,7 @@ def make_pack_factory(graph, delta, keylength):
         writer.begin()
         index = _GCGraphIndex(graph_index, lambda:True, parents=parents,
             add_callback=graph_index.add_nodes)
-        access = _DirectPackAccess({})
+        access = knit._DirectPackAccess({})
         access.set_writer(writer, graph_index, (transport, 'newpack'))
         result = GroupCompressVersionedFiles(index, access, delta)
         result.stream = stream
@@ -1543,7 +1543,7 @@ class _GCGraphIndex(object):
     """Mapper from GroupCompressVersionedFiles needs into GraphIndex storage."""
 
     def __init__(self, graph_index, is_locked, parents=True,
-        add_callback=None):
+        add_callback=None, track_external_parent_refs=False):
         """Construct a _GCGraphIndex on a graph_index.
 
         :param graph_index: An implementation of bzrlib.index.GraphIndex.
@@ -1554,12 +1554,19 @@ class _GCGraphIndex(object):
         :param add_callback: If not None, allow additions to the index and call
             this callback with a list of added GraphIndex nodes:
             [(node, value, node_refs), ...]
+        :param track_external_parent_refs: As keys are added, keep track of the
+            keys they reference, so that we can query get_missing_parents(),
+            etc.
         """
         self._add_callback = add_callback
         self._graph_index = graph_index
         self._parents = parents
         self.has_graph = parents
         self._is_locked = is_locked
+        if track_external_parent_refs:
+            self._key_dependencies = knit._KeyRefs()
+        else:
+            self._key_dependencies = None
 
     def add_records(self, records, random_id=False):
         """Add multiple records to the index.
@@ -1610,6 +1617,11 @@ class _GCGraphIndex(object):
                 for key, (value, node_refs) in keys.iteritems():
                     result.append((key, value))
             records = result
+        key_dependencies = self._key_dependencies
+        if key_dependencies is not None and self._parents:
+            for key, value, refs in records:
+                parents = refs[0]
+                key_dependencies.add_references(key, parents)
         self._add_callback(records)
 
     def _check_read(self):
@@ -1665,30 +1677,12 @@ class _GCGraphIndex(object):
         return result
 
     def get_missing_parents(self):
-        # This is called by
-        # repository.StreamSink.get_missing_parent_inventories, and is only
-        # called for the Repository.revisions versioned file.
-        # TODO: This re-computes the full set of missing parents by walking all
-        #       entries. The code for knitpack formats tracks the inserts and
-        #       keeps a set of possible missing parents. We could probably do
-        #       this in a similar way. Though stacking implies not having many
-        #       revisions versus the base, so see what the actual cost is,
-        #       first.
-        if not self._parents:
-            # No parents to be missing
-            return set()
-        parents = set()
-        present_keys = set()
-        for _, key, _, ref_lists in self._graph_index.iter_all_entries():
-            parents.update(ref_lists[0])
-            present_keys.add(key)
-        # TODO: This function is *not* exercised very thoroughly in the test
-        #       suite. At least not by per_repository_reference tests. (Which
-        #       are all the repos that support stacking...) Tracing here, I
-        #       have many tests that have 0 entries for both, and I haven't
-        #       found *any* that have parent_entries, much less a genuine
-        #       missing parent entry.
-        return parents.difference(present_keys)
+        """Return the keys of missing parents."""
+        # Copied from _KnitGraphIndex.get_missing_parents
+        # We may have false positives, so filter those out.
+        self._key_dependencies.add_keys(
+            self.get_parent_map(self._key_dependencies.get_unsatisfied_refs()))
+        return frozenset(self._key_dependencies.get_unsatisfied_refs())
 
     def get_build_details(self, keys):
         """Get the various build details for keys.
@@ -1750,10 +1744,12 @@ class _GCGraphIndex(object):
 
         :param graph_index: A GraphIndex
         """
-        # We currently don't cache anything about external references, etc.
-        # We don't have 'missing_compression_parents' to care about, and we
-        # currently compute 'missing_parents' when requested, rather than
-        # caching the info.
+        if self._key_dependencies is not None:
+            # Add parent refs from graph_index (and discard parent refs that
+            # the graph_index has).
+            add_refs = self._key_dependencies.add_references
+            for node in graph_index.iter_all_entries():
+                add_refs(node[1], node[3][0])
 
 
 
