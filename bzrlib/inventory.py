@@ -481,16 +481,13 @@ class InventoryFile(InventoryEntry):
         key = (self.file_id, self.revision)
         if key in checker.checked_texts:
             prev_sha = checker.checked_texts[key]
-            if prev_sha != self.text_sha1:
-                raise BzrCheckError(
-                    'mismatched sha1 on {%s} in {%s} (%s != %s) %r' %
-                    (self.file_id, tree_revision_id, prev_sha, self.text_sha1,
-                     t))
-            else:
-                checker.repeated_text_cnt += 1
+            if prev_sha == self.text_sha1:
                 return
+            raise BzrCheckError(
+                'mismatched sha1 on {%s} in {%s} (%s != %s) %r' %
+                (self.file_id, tree_revision_id, prev_sha, self.text_sha1,
+                 t))
 
-        checker.checked_text_cnt += 1
         # We can't check the length, because Weave doesn't store that
         # information, and the whole point of looking at the weave's
         # sha1sum is that we don't have to extract the text.

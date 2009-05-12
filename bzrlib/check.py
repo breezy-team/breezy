@@ -66,10 +66,8 @@ class Check(object):
 
     def __init__(self, repository, check_repo=True):
         self.repository = repository
-        self.checked_text_cnt = 0
         self.checked_rev_cnt = 0
         self.ghosts = set()
-        self.repeated_text_cnt = 0
         self.missing_parent_links = {}
         self.missing_inventory_sha_cnt = 0
         self.missing_revision_cnt = 0
@@ -206,8 +204,6 @@ class Check(object):
              self.repository._format)
         note('%6d revisions', self.checked_rev_cnt)
         note('%6d file-ids', len(self.checked_weaves))
-        note('%6d unique file texts', self.checked_text_cnt)
-        note('%6d repeated file texts', self.repeated_text_cnt)
         if verbose:
             note('%6d unreferenced text versions',
                 len(self.unreferenced_versions))

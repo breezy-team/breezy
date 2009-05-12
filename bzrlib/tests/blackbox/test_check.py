@@ -39,8 +39,6 @@ class TestCheck(ExternalBase):
         self.assertContainsRe(err, r"checked repository.*\n"
                                    r"     1 revisions\n"
                                    r"     0 file-ids\n"
-                                   r"     0 unique file texts\n"
-                                   r"     0 repeated file texts\n"
                                    )
         self.assertContainsRe(err, r"Checking branch at '.*'\.\n")
         self.assertContainsRe(err, r"checked branch.*")
@@ -60,8 +58,6 @@ class TestCheck(ExternalBase):
                                    r"checked repository.*\n"
                                    r"     1 revisions\n"
                                    r"     0 file-ids\n"
-                                   r"     0 unique file texts\n"
-                                   r"     0 repeated file texts\n$"
                                    )
 
     def test_check_tree(self):
