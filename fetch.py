@@ -115,7 +115,7 @@ def import_git_blob(texts, mapping, path, hexsha, base_inv, parent_id,
                 and base_ie.kind == ie.kind):
                 # If nothing has changed since the base revision, we're done
                 return [], []
-    if base_sha == hexsha:
+    if base_sha == hexsha and base_ie.kind == ie.kind:
         ie.text_size = base_ie.text_size
         ie.text_sha1 = base_ie.text_sha1
         ie.symlink_target = base_ie.symlink_target
@@ -216,18 +216,17 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id,
             shamap.extend(subshamap)
         else:
             fs_mode = stat.S_IMODE(mode)
-            symlink = stat.S_ISLNK(mode)
             subinvdelta, subshamap = import_git_blob(texts, mapping, 
                     child_path, child_hexsha, base_inv, file_id, revision_id, 
                     parent_invs, shagitmap, lookup_object, 
-                    bool(fs_mode & 0111), symlink)
+                    bool(fs_mode & 0111), stat.S_ISLNK(mode))
             invdelta.extend(subinvdelta)
             shamap.extend(subshamap)
         if mode not in (stat.S_IFDIR, DEFAULT_FILE_MODE,
                         stat.S_IFLNK, DEFAULT_FILE_MODE|0111):
             child_modes[child_path] = mode
     # Remove any children that have disappeared
-    if base_ie is not None:
+    if base_ie is not None and base_ie.kind == 'directory':
         deletable = [v for k,v in base_ie.children.iteritems() if k not in existing_children]
         while deletable:
             ie = deletable.pop()
@@ -383,25 +382,21 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
         def progress(text):
             pb.update("git: %s" % text.rstrip("\r\n"), 0, 0)
         store = BazaarObjectStore(self.target, mapping)
-        self.target.lock_read()
+        self.target.lock_write()
         try:
             heads = self.target.get_graph().heads(self.target.all_revision_ids())
-        finally:
-            self.target.unlock()
-        graph_walker = store.get_graph_walker(
-                [store._lookup_revision_sha1(head) for head in heads])
-        create_pb = None
-        if pb is None:
-            create_pb = pb = ui.ui_factory.nested_progress_bar()
-        recorded_wants = []
+            graph_walker = store.get_graph_walker(
+                    [store._lookup_revision_sha1(head) for head in heads])
+            recorded_wants = []
 
-        def record_determine_wants(heads):
-            wants = determine_wants(heads)
-            recorded_wants.extend(wants)
-            return wants
+            def record_determine_wants(heads):
+                wants = determine_wants(heads)
+                recorded_wants.extend(wants)
+                return wants
         
-        try:
-            self.target.lock_write()
+            create_pb = None
+            if pb is None:
+                create_pb = pb = ui.ui_factory.nested_progress_bar()
             try:
                 self.target.start_write_group()
                 try:
@@ -413,10 +408,10 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
                 finally:
                     self.target.commit_write_group()
             finally:
-                self.target.unlock()
+                if create_pb:
+                    create_pb.finished()
         finally:
-            if create_pb:
-                create_pb.finished()
+            self.target.unlock()
 
     @staticmethod
     def is_compatible(source, target):
