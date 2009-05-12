@@ -1457,7 +1457,6 @@ class Repository(object):
         # XXX: Texts referenced by all added inventories need to be present,
         # but at the moment we're only checking for texts referenced by
         # inventories at the graph's edge.
-        import pdb; pdb.set_trace()
         key_deps = self.revisions._index._key_dependencies
         key_deps.add_keys(present_inventories)
         referrers = frozenset(r[0] for r in key_deps.get_referrers())

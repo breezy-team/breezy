@@ -753,7 +753,6 @@ class CHKInventoryRepository(KnitPackRepository):
     def _find_file_keys_to_fetch(self, revision_ids, pb):
         rich_root = self.supports_rich_root()
         revision_outside_set = self._find_revision_outside_set(revision_ids)
-        import pdb; pdb.set_trace()
         if revision_outside_set == _mod_revision.NULL_REVISION:
             uninteresting_root_keys = set()
         else:
