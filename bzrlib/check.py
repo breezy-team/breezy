@@ -53,6 +53,7 @@ from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import BzrCheckError
 from bzrlib.repository import Repository
+from bzrlib.revision import NULL_REVISION
 from bzrlib.symbol_versioning import deprecated_function, deprecated_in
 from bzrlib.trace import log_error, note
 import bzrlib.ui
@@ -81,6 +82,10 @@ class Check(object):
         self.text_key_references = {}
         self.check_repo = check_repo
         self.other_results = []
+        # Ancestors map for all of revisions being checked; while large helper
+        # functions we call would create it anyway, so better to have once and
+        # keep.
+        self.ancestors = {}
 
     def check(self, callback_refs=None, check_repo=True):
         if callback_refs is None:
@@ -256,6 +261,7 @@ class Check(object):
                 else:
                     self.ghosts.append(rev_id)
 
+        self.ancestors[rev_id] = tuple(rev.parent_ids) or (NULL_REVISION,)
         if rev.inventory_sha1:
             # Loopback - this is currently circular logic as the
             # knit get_inventory_sha1 call returns rev.inventory_sha1.
@@ -278,7 +284,8 @@ class Check(object):
         self.progress.update('checking text storage', 1, 2)
         self.repository.texts.check(progress_bar=self.progress)
         weave_checker = self.repository._get_versioned_file_checker(
-            text_key_references=self.text_key_references)
+            text_key_references=self.text_key_references,
+            ancestors=self.ancestors)
         result = weave_checker.check_file_version_parents(
             self.repository.texts, progress_bar=self.progress)
         self.checked_weaves = weave_checker.file_ids

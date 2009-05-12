@@ -2387,7 +2387,8 @@ class Repository(object):
                 [parents_provider, other_repository._make_parents_provider()])
         return graph.Graph(parents_provider)
 
-    def _get_versioned_file_checker(self, text_key_references=None):
+    def _get_versioned_file_checker(self, text_key_references=None,
+        ancestors=None):
         """Return an object suitable for checking versioned files.
         
         :param text_key_references: if non-None, an already built
@@ -2395,9 +2396,12 @@ class Repository(object):
             to whether they were referred to by the inventory of the
             revision_id that they contain. If None, this will be
             calculated.
+        :param ancestors: Optional result from
+            self.get_graph().get_parent_map(self.all_revision_ids()) if already
+            available.
         """
         return _VersionedFileChecker(self,
-            text_key_references=text_key_references)
+            text_key_references=text_key_references, ancestors=ancestors)
 
     def revision_ids_to_search_result(self, result_set):
         """Convert a set of revision ids to a graph SearchResult."""
@@ -3889,10 +3893,10 @@ def _unescape_xml(data):
 
 class _VersionedFileChecker(object):
 
-    def __init__(self, repository, text_key_references=None):
+    def __init__(self, repository, text_key_references=None, ancestors=None):
         self.repository = repository
         self.text_index = self.repository._generate_text_key_index(
-            text_key_references=text_key_references)
+            text_key_references=text_key_references, ancestors=ancestors)
 
     def calculate_file_version_parents(self, text_key):
         """Calculate the correct parents for a file version according to
