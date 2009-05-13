@@ -209,7 +209,7 @@ class TemporaryPackIterator(Pack):
             try:
                 def report_progress(cur, total):
                     pb.update("generating index", cur, total)
-                self.data.create_index_v2(self._idx_path, self.resolve_ext_ref,
+                self.data.create_index(self._idx_path, self.resolve_ext_ref,
                     progress=report_progress)
             finally:
                 pb.finished()
