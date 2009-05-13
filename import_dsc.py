@@ -1907,9 +1907,9 @@ class DistributionBranch(object):
         dsc_filename = os.path.abspath(dsc_filename)
         proc = Popen("dpkg-source -su -x %s" % (dsc_filename,), shell=True,
                 cwd=tempdir, stdout=PIPE, stderr=PIPE)
-        ret = proc.wait()
-        assert ret == 0, "dpkg-source -x failed, output:\n%s\n%s" % \
-                    (proc.stdout.read(), proc.stderr.read())
+        (stdout, stderr) = proc.communicate()
+        assert proc.returncode == 0, "dpkg-source -x failed, output:\n%s\n%s" % \
+                    (stdout, stderr)
         return tempdir
 
     def _do_import_package(self, version, versions, debian_part, md5,
@@ -2192,11 +2192,9 @@ class DistributionBranch(object):
                        dest_filename]
             print command
             proc = Popen(command, stdin=PIPE, cwd=dest)
-            proc.stdin.write(delta)
-            proc.stdin.close()
-            ret = proc.wait()
-            if ret != 0:
-                raise PristineTarError("Generating tar from delta failed")
+            (stdout, stderr) = proc.communicate(delta)
+            if proc.returncode != 0:
+                raise PristineTarError("Generating tar from delta failed: %s" % stderr)
         finally:
             shutil.rmtree(tmpdir)
 
@@ -2210,9 +2208,9 @@ class DistributionBranch(object):
             command = ["/usr/bin/pristine-tar", "gendelta", tarball_path, "-"]
             info(" ".join(command))
             proc = Popen(command, stdout=PIPE, cwd=dest)
-            ret = proc.wait()
-            if ret != 0:
-                raise PristineTarError("Generating delta from tar failed")
-            return proc.stdout.read()
+            (stdout, stderr) = proc.communicate()
+            if proc.returncode != 0:
+                raise PristineTarError("Generating delta from tar failed: %s" % stderr)
+            return stdout
         finally:
             shutil.rmtree(tmpdir)
