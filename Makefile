@@ -31,16 +31,19 @@ $(TMP_PLUGINS_DIR)/rebase: $(TMP_PLUGINS_DIR)
 	ln -sf .. $@
 
 check:: $(TMP_PLUGINS_DIR)/rebase/
-	BZR_PLUGIN_PATH=$(TMP_PLUGINS_DIR) $(DEBUGGER) $(PYTHON) $(BZR) selftest $(TEST_OPTIONS) --starting-with=bzrlib.plugins.rebase $(TESTS)
+	BZR_PLUGIN_PATH=$(TMP_PLUGINS_DIR):$(BZR_PLUGIN_PATH) $(DEBUGGER) $(PYTHON) $(BZR) $(BZR_OPTIONS) selftest $(TEST_OPTIONS) --starting-with=bzrlib.plugins.rebase $(TESTS)
 
 check-verbose::
 	$(MAKE) check TEST_OPTIONS=-v
+
+coverage::
+	$(MAKE) check BZR_OPTIONS="--coverage coverage"
 
 check-one::
 	$(MAKE) check TEST_OPTIONS=--one
 
 show-plugins::
-	BZR_PLUGIN_PATH=$(TMP_PLUGINS_DIR) $(BZR) plugins
+	BZR_PLUGIN_PATH=$(TMP_PLUGINS_DIR):$(BZR_PLUGIN_PATH) $(BZR) plugins
 
 lint::
 	$(PYLINT) -f parseable *.py */*.py
