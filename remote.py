@@ -205,13 +205,11 @@ class TemporaryPackIterator(Pack):
     @property
     def index(self):
         if self._idx is None:
-            if self._data is None:
-                self._data = PackData(self._data_path)
             pb = ui.ui_factory.nested_progress_bar()
             try:
                 def report_progress(cur, total):
                     pb.update("generating index", cur, total)
-                self._data.create_index_v2(self._idx_path, self.resolve_ext_ref,
+                self.data.create_index_v2(self._idx_path, self.resolve_ext_ref,
                     progress=report_progress)
             finally:
                 pb.finished()
