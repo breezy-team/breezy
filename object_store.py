@@ -229,6 +229,10 @@ class BazaarObjectStore(BaseObjectStore):
         elif type == "blob":
             return self._get_blob(type_data[0], type_data[1], expected_sha=sha)
         elif type == "tree":
-            return self._get_tree(type_data[0], type_data[1], expected_sha=sha)
+            try:
+                return self._get_tree(type_data[0], type_data[1], 
+                                      expected_sha=sha)
+            except errors.NoSuchRevision:
+                raise KeyError(sha)
         else:
             raise AssertionError("Unknown object type '%s'" % type)
