@@ -7,6 +7,12 @@
 	TDB and its Python bindings installed. In all other situations the previous
 	(slower) Sqlite database format will be used.
 
+  * Now warns when escaping XML-invalid characters to work around a bug in the
+    Bazaar revision serializer.
+
+  * Now allows "unusual" file modes (100664, etc) but will warn the user about
+    them.
+
 0.3.0	2009-05-10
 
  FEATURES
