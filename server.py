@@ -17,6 +17,9 @@
 import os
 import tempfile
 
+from bzrlib.bzrdir import (
+    BzrDir,
+    )
 from bzrlib.repository import (
     Repository,
     )
