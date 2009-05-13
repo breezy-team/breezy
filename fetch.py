@@ -422,7 +422,7 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
 
 
 class InterLocalGitNonGitRepository(InterGitNonGitRepository):
-    """InterRepository that copies revisions from a remote Git into a non-Git 
+    """InterRepository that copies revisions from a local Git into a non-Git 
     repository."""
 
     def fetch_objects(self, determine_wants, mapping, pb=None):

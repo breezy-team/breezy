@@ -26,6 +26,7 @@ from bzrlib.repository import (
 
 from bzrlib.plugins.git.fetch import (
     import_git_objects,
+    BazaarObjectStore,
     )
 from bzrlib.plugins.git.mapping import (
     default_mapping,
