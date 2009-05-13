@@ -1,4 +1,4 @@
-0.3.1	UNRELEASED
+0.3.1	2009-05-13
 
  FEATURES
 
@@ -12,6 +12,12 @@
 
   * Now allows "unusual" file modes (100664, etc) but will warn the user about
     them.
+
+ BUG FIXES
+
+  * Fixed git-import.
+
+  * Fixed handling kind changes (tree -> blob) during fetch.
 
 0.3.0	2009-05-10
 
