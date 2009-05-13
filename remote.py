@@ -311,3 +311,8 @@ class RemoteGitBranch(GitBranch):
         """See Branch._synchronize_history()."""
         destination.generate_revision_history(self.last_revision())
  
+    def get_push_location(self):
+        return None
+
+    def set_push_location(self, url):
+        pass
