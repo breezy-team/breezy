@@ -731,7 +731,11 @@ class DiffFromTool(DiffPath):
         return old_disk_path, new_disk_path
 
     def finish(self):
-        osutils.rmtree(self._root)
+        try:
+            osutils.rmtree(self._root)
+        except OSError, e:
+            if e.errno != errno.ENOENT:
+                mutter("The temporary directory \"%s\" was not cleanly removed." % self._root)
 
     def diff(self, file_id, old_path, new_path, old_kind, new_kind):
         if (old_kind, new_kind) != ('file', 'file'):

@@ -106,6 +106,12 @@ Bug Fixes
   set the root data the same way that reconcile does.
   (Robert Collins, #368921)
 
+* The ''bzr diff'' now catches OSError from osutils.rmtree and logs a
+  helpful message to the trace file, unless the temp director really was
+  removed (which would be very strange).  Since the diff operation has
+  succeeded from the user's perspective, no output is written to stderr 
+  or stdout.  (Maritza Mendez, #363837)
+  
 Documentation
 *************
 
