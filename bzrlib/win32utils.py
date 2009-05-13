@@ -433,7 +433,6 @@ def glob_expand(file_list):
     import glob
     expanded_file_list = []
     for possible_glob in file_list:
-
         # work around bugs in glob.glob()
         # - Python bug #1001604 ("glob doesn't return unicode with ...")
         # - failing expansion for */* with non-iso-8859-* chars
@@ -488,3 +487,29 @@ def set_file_attr_hidden(path):
     """Set file attributes to hidden if possible"""
     if has_win32file:
         win32file.SetFileAttributes(path, win32file.FILE_ATTRIBUTE_HIDDEN)
+
+
+if has_ctypes and winver != 'Windows 98':
+    def get_unicode_argv():
+        LPCWSTR = ctypes.c_wchar_p
+        INT = ctypes.c_int
+        POINTER = ctypes.POINTER
+        prototype = ctypes.WINFUNCTYPE(LPCWSTR)
+        GetCommandLine = prototype(("GetCommandLineW",
+                                    ctypes.windll.kernel32))
+        prototype = ctypes.WINFUNCTYPE(POINTER(LPCWSTR), LPCWSTR, POINTER(INT))
+        CommandLineToArgv = prototype(("CommandLineToArgvW",
+                                       ctypes.windll.shell32))
+        c = INT(0)
+        pargv = CommandLineToArgv(GetCommandLine(), ctypes.byref(c))
+        argv = [pargv[i] for i in range(1, c.value)]
+        if getattr(sys, 'frozen', None) is None:
+            # python.exe [PYTHON_OPTIONS] bzr [BZR_OPTIONS]
+            # manually removing python, its options and 'bzr' script name
+            first_item = sys.argv[0]    # should be 'bzr'
+                                        # but we cannot be 100% sure
+            ix = argv.index(first_item)
+            if first_item == '-c':      # python -c "..."
+                ix += 1                 # skip python code
+            argv = argv[ix+1:]
+        return argv

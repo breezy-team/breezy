@@ -106,6 +106,9 @@ Bug Fixes
   set the root data the same way that reconcile does.
   (Robert Collins, #368921)
 
+* Using unicode Windows API to obtain command-line arguments.
+  (Alexander Belchenko, #375934)
+
 Documentation
 *************
 

@@ -1799,3 +1799,17 @@ else:
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, settings)
         return ch
+
+
+def get_unicode_argv():
+    try:
+        user_encoding = get_user_encoding()
+        return [a.decode(user_encoding) for a in sys.argv[1:]]
+    except UnicodeDecodeError:
+        raise errors.BzrError(("Parameter '%r' is unsupported by the current "
+                                                            "encoding." % a))
+
+if sys.platform == 'win32':
+    f = getattr(win32utils, 'get_unicode_argv', None)
+    if f is not None:
+        get_unicode_argv = f
