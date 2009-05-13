@@ -108,11 +108,16 @@ class GitWorkingTree(workingtree.WorkingTree):
                     # TODO: Rather than come up with something here, use the old index
                     file = StringIO()
                     stat_val = (0, 0, 0, 0, stat.S_IFREG | 0644, 0, 0, 0, 0, 0)
-                blob._text = file.read()
+                blob.set_raw_string(file.read())
             elif entry.kind == "symlink":
                 blob = Blob()
-                stat_val = os.stat(self.abspath(path))
-                blob._text = entry.symlink_target
+                try:
+                    stat_val = os.lstat(self.abspath(path))
+                except (errors.NoSuchFile, OSError):
+                    # TODO: Rather than come up with something here, use the 
+                    # old index
+                    stat_val = (0, 0, 0, 0, stat.S_IFLNK, 0, 0, 0, 0, 0)
+                blob.set_raw_string(entry.symlink_target)
             # Add object to the repository if it didn't exist yet
             if not blob.id in self.repository._git.object_store:
                 self.repository._git.object_store.add_object(blob)
@@ -149,7 +154,8 @@ class GitWorkingTree(workingtree.WorkingTree):
     def _reset_data(self):
         self._inventory_is_modified = False
         basis_inv = self.repository.get_inventory(self.mapping.revision_id_foreign_to_bzr(self.repository._git.head()))
-        result = GitIndexInventory(basis_inv, self.mapping, self.index)
+        result = GitIndexInventory(basis_inv, self.mapping, self.index,
+            self.repository._git.object_store)
         self._set_inventory(result, dirty=False)
 
     @needs_read_lock

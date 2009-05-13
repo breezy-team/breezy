@@ -239,7 +239,7 @@ class GitInventory(inventory.Inventory):
 class GitIndexInventory(inventory.Inventory):
     """Inventory that retrieves its contents from an index file."""
 
-    def __init__(self, basis_inventory, mapping, index):
+    def __init__(self, basis_inventory, mapping, index, store):
         super(GitIndexInventory, self).__init__(revision_id=None, root_id=basis_inventory.root.file_id)
         self.basis_inv = basis_inventory
         self.mapping = mapping
@@ -272,6 +272,12 @@ class GitIndexInventory(inventory.Inventory):
                     self.add(old_ie)
                 else:
                     ie = self.add_path(path, kind, file_id, self.add_parents(path))
+                    data = store[sha].data
+                    if kind == "symlink":
+                        ie.symlink_target = data
+                    else:
+                        ie.text_sha1 = osutils.sha_string(data)
+                        ie.text_size = len(data)
                     ie.revision = None
         finally:
             pb.finished()
