@@ -55,6 +55,8 @@ def _valid_tag(tag):
     cdef char *c_tag
     cdef Py_ssize_t c_len
     cdef int i
+    if not PyString_CheckExact(tag):
+        raise TypeError(tag)
     c_tag = PyString_AS_STRING(tag)
     c_len = PyString_GET_SIZE(tag)
     for i from 0 <= i < c_len:
@@ -64,11 +66,11 @@ def _valid_tag(tag):
     return True
 
 cdef object _join_utf8_strip(object entries):
-	"""Join a set of unicode strings and strip the last character."""
+    """Join a set of unicode strings and strip the last character."""
     cdef PyObject *c_ret
     cdef Py_ssize_t size
-	# TODO: This creates a new object just without the last character. 
-	# Ideally, we should just resize it by -1
+    # TODO: This creates a new object just without the last character. 
+    # Ideally, we should just resize it by -1
     entries[-1] = entries[-1][:-1]
     return PyUnicode_Join(unicode(""), entries)
 
@@ -139,8 +141,7 @@ def _read_stanza_unicode(unicode_iter):
             accum_value.append(line[1:])
         else: # new tag:value line
             if tag is not None:
-                pairs.append((tag, 
-					PyUnicode_Join(unicode(""), accum_value)[:-1]))
+                pairs.append((tag, _join_utf8_strip(accum_value)))
             try:
                 colon_index = line.index(unicode(': '))
             except ValueError:
@@ -152,7 +153,7 @@ def _read_stanza_unicode(unicode_iter):
             accum_value = [line[colon_index+2:]]
 
     if tag is not None: # add last tag-value
-        pairs.append((tag, PyUnicode_Join(unicode(""), accum_value[:-1])))
+        pairs.append((tag, _join_utf8_strip(accum_value)))
         return Stanza.from_pairs(pairs)
     else:     # didn't see any content
         return None
