@@ -41,15 +41,18 @@ cdef extern from "Python.h":
     object PyUnicode_Join(object, object)
     object PyUnicode_AsASCIIString(object)
 
-cdef extern from "ctype.h":
-     int isalnum(char c)
-
 cdef extern from "string.h":
     char *strstr(char *a, char *b)
-    int strcmp(char *a, char *b)
 
 
 from bzrlib.rio import Stanza
+
+cdef int _valid_tag_char(char c):
+    return (c == c'_' or c == c'-' or 
+            (c >= c'a' and c <= c'z') or
+            (c >= c'A' and c <= c'Z') or
+            (c >= c'0' and c <= c'9'))
+
 
 def _valid_tag(tag):
     cdef char *c_tag
@@ -60,8 +63,7 @@ def _valid_tag(tag):
     c_tag = PyString_AS_STRING(tag)
     c_len = PyString_GET_SIZE(tag)
     for i from 0 <= i < c_len:
-        if (not isalnum(c_tag[i]) and not c_tag[i] == c'_' and 
-            not c_tag[i] == c'-'):
+        if not _valid_tag_char(c_tag[i]):
             return False
     return True
 
@@ -73,6 +75,16 @@ cdef object _join_utf8_strip(object entries):
     # Ideally, we should just resize it by -1
     entries[-1] = entries[-1][:-1]
     return PyUnicode_Join(unicode(""), entries)
+
+cdef object _split_first_line(char *line, int len):
+    cdef int i
+    for i from 0 <= i < len:
+        if line[i] == c':':
+            if line[i+1] != c' ':
+                raise ValueError("invalid tag in line %r" % line)
+            return (PyString_FromStringAndSize(line, i),
+                    PyUnicode_DecodeUTF8(line+i+2, len-i-2, "strict"))
+    raise ValueError('tag/value separator not found in line %r' % line)
 
 
 def _read_stanza_utf8(line_iter):
@@ -92,9 +104,9 @@ def _read_stanza_utf8(line_iter):
             raise TypeError("%r is not a line" % line)
         c_line = PyString_AS_STRING(line)
         c_len = PyString_GET_SIZE(line)
-        if strcmp(c_line, "") == 0:
+        if c_len < 1:
             break       # end of file
-        if strcmp(c_line, "\n") == 0:
+        if c_len == 1 and c_line[0] == c"\n":
             break       # end of stanza
         if c_line[0] == c'\t': # continues previous value
             if tag is None:
@@ -103,16 +115,10 @@ def _read_stanza_utf8(line_iter):
         else: # new tag:value line
             if tag is not None:
                 pairs.append((tag, _join_utf8_strip(accum_value)))
-            colon = <char *>strstr(c_line, ": ")
-            if colon == NULL:
-                raise ValueError('tag/value separator not found in line %r'
-                                 % line)
-            tag = PyString_FromStringAndSize(c_line, colon-c_line)
+            accum_value = []
+            (tag, new_value) = _split_first_line(c_line, c_len)
             if not _valid_tag(tag):
                 raise ValueError("invalid rio tag %r" % (tag,))
-            accum_value = []
-            new_value = PyUnicode_DecodeUTF8(colon+2, c_len-(colon-c_line+2),
-                                             "strict")
         accum_value.append(new_value)
     if tag is not None: # add last tag-value
         pairs.append((tag, _join_utf8_strip(accum_value)))
