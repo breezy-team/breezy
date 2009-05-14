@@ -513,3 +513,5 @@ if has_ctypes and winver != 'Windows 98':
                 ix += 1                 # skip python code
             argv = argv[ix+1:]
         return argv
+else:
+    get_unicode_argv = None
