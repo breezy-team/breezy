@@ -36,13 +36,11 @@ cdef extern from "Python.h":
     void Py_INCREF(object)
     void Py_DECREF(object)
     object PyList_GetItem(object, int)
-    int PyList_SetItem(object, int, object)    except -1
+    int PyList_SetItem(object, int, object) except -1
     int PyList_Size(object) except -1
     object PyUnicode_Join(object, object)
     object PyUnicode_AsASCIIString(object)
-
-cdef extern from "string.h":
-    char *strstr(char *a, char *b)
+    int PyList_Append(object, object) except -1    
 
 
 from bzrlib.rio import Stanza
@@ -75,6 +73,7 @@ cdef object _join_utf8_strip(object entries):
     # Ideally, we should just resize it by -1
     entries[-1] = entries[-1][:-1]
     return PyUnicode_Join(unicode(""), entries)
+
 
 cdef object _split_first_line(char *line, int len):
     cdef int i
@@ -114,14 +113,14 @@ def _read_stanza_utf8(line_iter):
             new_value = PyUnicode_DecodeUTF8(c_line+1, c_len-1, "strict")
         else: # new tag:value line
             if tag is not None:
-                pairs.append((tag, _join_utf8_strip(accum_value)))
+                PyList_Append(pairs, (tag, _join_utf8_strip(accum_value)))
             accum_value = []
             (tag, new_value) = _split_first_line(c_line, c_len)
             if not _valid_tag(tag):
                 raise ValueError("invalid rio tag %r" % (tag,))
         accum_value.append(new_value)
     if tag is not None: # add last tag-value
-        pairs.append((tag, _join_utf8_strip(accum_value)))
+        PyList_Append(pairs, (tag, _join_utf8_strip(accum_value)))
         return Stanza.from_pairs(pairs)
     else:     # didn't see any content
         return None
@@ -144,10 +143,10 @@ def _read_stanza_unicode(unicode_iter):
         if line[0] == unicode('\t'): # continues previous value
             if tag is None:
                 raise ValueError('invalid continuation line %r' % line)
-            accum_value.append(line[1:])
+            PyList_Append(accum_value, line[1:])
         else: # new tag:value line
             if tag is not None:
-                pairs.append((tag, _join_utf8_strip(accum_value)))
+                PyList_Append(pairs, (tag, _join_utf8_strip(accum_value)))
             try:
                 colon_index = line.index(unicode(': '))
             except ValueError:
@@ -159,7 +158,7 @@ def _read_stanza_unicode(unicode_iter):
             accum_value = [line[colon_index+2:]]
 
     if tag is not None: # add last tag-value
-        pairs.append((tag, _join_utf8_strip(accum_value)))
+        PyList_Append(pairs, (tag, _join_utf8_strip(accum_value)))
         return Stanza.from_pairs(pairs)
     else:     # didn't see any content
         return None
