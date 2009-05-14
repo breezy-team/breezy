@@ -236,9 +236,9 @@ class Stanza(object):
             d[tag] = value
         return d
 
-_tag_re = re.compile(r'^[-a-zA-Z0-9_]+$')
+
 def valid_tag(tag):
-    return bool(_tag_re.match(tag))
+    return _valid_tag(tag)
 
 
 def read_stanza(line_iter):
@@ -254,8 +254,7 @@ def read_stanza(line_iter):
 
     The raw lines must be in utf-8 encoding.
     """
-    unicode_iter = (line.decode('utf-8') for line in line_iter)
-    return read_stanza_unicode(unicode_iter)
+    return _read_stanza_utf8(line_iter)
 
 
 def read_stanza_unicode(unicode_iter):
@@ -275,43 +274,7 @@ def read_stanza_unicode(unicode_iter):
     :return: A Stanza object if there are any lines in the file.
         None otherwise
     """
-    stanza = Stanza()
-    tag = None
-    accum_value = None
-
-    # TODO: jam 20060922 This code should raise real errors rather than
-    #       using 'assert' to process user input, or raising ValueError
-    #       rather than a more specific error.
-
-    for line in unicode_iter:
-        if line is None or line == '':
-            break       # end of file
-        if line == '\n':
-            break       # end of stanza
-        real_l = line
-        if line[0] == '\t': # continues previous value
-            if tag is None:
-                raise ValueError('invalid continuation line %r' % real_l)
-            accum_value += '\n' + line[1:-1]
-        else: # new tag:value line
-            if tag is not None:
-                stanza.add(tag, accum_value)
-            try:
-                colon_index = line.index(': ')
-            except ValueError:
-                raise ValueError('tag/value separator not found in line %r'
-                                 % real_l)
-            tag = str(line[:colon_index])
-            if not valid_tag(tag):
-                raise ValueError("invalid rio tag %r" % (tag,))
-            accum_value = line[colon_index+2:-1]
-
-    if tag is not None: # add last tag-value
-        stanza.add(tag, accum_value)
-        return stanza
-    else:     # didn't see any content
-        return None
-
+    return _read_stanza_unicode(unicode_iter)
 
 def to_patch_lines(stanza, max_width=72):
     """Convert a stanza into RIO-Patch format lines.
@@ -399,3 +362,17 @@ def read_patch_stanza(line_iter):
     :return: a Stanza
     """
     return read_stanza(_patch_stanza_iter(line_iter))
+
+
+try:
+    from bzrlib._rio_pyx import (
+        _read_stanza_utf8,
+        _read_stanza_unicode,
+        _valid_tag,
+        )
+except ImportError:
+    from bzrlib._rio_py import (
+       _read_stanza_utf8,
+       _read_stanza_unicode,
+       _valid_tag,
+       )
