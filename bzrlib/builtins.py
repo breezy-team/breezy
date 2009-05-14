@@ -2089,7 +2089,7 @@ class cmd_log(Command):
 
       When exploring non-mainline history on large projects with deep
       history, the performance of log can be greatly improved by installing
-      the revnocache plugin. This plugin buffers historical information
+      the historycache plugin. This plugin buffers historical information
       trading disk space for faster speed.
     """
     takes_args = ['file*']
