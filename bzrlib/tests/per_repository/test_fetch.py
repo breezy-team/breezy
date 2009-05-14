@@ -308,6 +308,7 @@ class TestSource(TestCaseWithRepository):
         # XXX: Arguably should be in interrepository_implementations but
         # doesn't actually gain coverage there; need a specific set of
         # permutations to cover it.
+        # bug lp:376255 was reported about this.
         builder = self.make_branch_builder('repo')
         builder.start_series()
         builder.build_snapshot('tip', ['ghost'],
