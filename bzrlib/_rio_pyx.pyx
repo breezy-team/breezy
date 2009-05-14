@@ -45,6 +45,9 @@ cdef extern from "Python.h":
     object PyUnicode_FromUnicode(Py_UNICODE *, int)
     void *Py_UNICODE_COPY(Py_UNICODE *, Py_UNICODE *, int)
 
+cdef extern from "string.h":
+    void *memcpy(void *, void *, int)
+
 from bzrlib.rio import Stanza
 
 cdef int _valid_tag_char(char c):
@@ -71,16 +74,14 @@ def _valid_tag(tag):
 
 
 cdef object _split_first_line_utf8(char *line, int len, 
-                                   Py_UNICODE *value, int *value_len):
+                                   char *value, Py_ssize_t *value_len):
     cdef int i
     for i from 0 <= i < len:
         if line[i] == c':':
             if line[i+1] != c' ':
                 raise ValueError("invalid tag in line %r" % line)
-            new_value = PyUnicode_DecodeUTF8(line+i+2, len-i-2, "strict")
-            value_len[0] = PyUnicode_GET_SIZE(new_value)
-            Py_UNICODE_COPY(value, PyUnicode_AS_UNICODE(new_value), 
-                            value_len[0])
+            memcpy(value, line+i+2, len-i-2);
+            value_len[0] = len-i-2;
             return PyString_FromStringAndSize(line, i)
     raise ValueError('tag/value separator not found in line %r' % line)
 
@@ -89,15 +90,14 @@ cdef Py_UNICODE *colon
 colon = PyUnicode_AsUnicode(unicode(":"))
 
 cdef object _split_first_line_unicode(Py_UNICODE *line, int len, 
-                                      Py_UNICODE *value, int *value_len):
+                                      Py_UNICODE *value, Py_ssize_t *value_len):
     cdef int i
     for i from 0 <= i < len:
         if line[i] == colon[0]:
             if not Py_UNICODE_ISSPACE(line[i+1]):
                 raise ValueError("invalid tag in line %r" %
                                  PyUnicode_FromUnicode(line, len))
-            Py_UNICODE_COPY(value, line+(i+2) * sizeof(Py_UNICODE),
-                            len-i-2)
+            memcpy(value, &line[i+2], (len-i-2) * sizeof(Py_UNICODE))
             value_len[0] = len-i-2
             return PyUnicode_EncodeASCII(line, i, "strict")
     raise ValueError("tag/value separator not found in line %r" %
@@ -107,13 +107,13 @@ cdef object _split_first_line_unicode(Py_UNICODE *line, int len,
 def _read_stanza_utf8(line_iter):
     cdef char *c_line
     cdef Py_ssize_t c_len
-    cdef Py_UNICODE *accum_value
-    cdef int accum_len, accum_size
+    cdef char *accum_value
+    cdef Py_ssize_t accum_len, accum_size
     pairs = []
     tag = None
     accum_len = 0
     accum_size = 4096
-    accum_value = <Py_UNICODE *>malloc(accum_size*sizeof(Py_UNICODE))
+    accum_value = <char *>malloc(accum_size)
     if accum_value == NULL:
         raise MemoryError
     try:
@@ -131,27 +131,28 @@ def _read_stanza_utf8(line_iter):
                 break       # end of file
             if c_len == 1 and c_line[0] == c"\n":
                 break       # end of stanza
-            if accum_len + c_len > accum_size:
+            while accum_len + c_len > accum_size:
                 accum_size = (accum_size * 3) / 2
-                accum_value = <Py_UNICODE *>realloc(accum_value, 
-                    accum_size*sizeof(Py_UNICODE))
+                accum_value = <char *>realloc(accum_value, accum_size)
                 if accum_value == NULL:
                     raise MemoryError
             if c_line[0] == c'\t': # continues previous value
                 if tag is None:
                     raise ValueError('invalid continuation line %r' % line)
-                new_value = PyUnicode_DecodeUTF8(c_line+1, c_len-1, "strict")
+                memcpy(accum_value+accum_len, c_line+1, c_len-1);
+                accum_len += c_len-1;
             else: # new tag:value line
                 if tag is not None:
                     PyList_Append(pairs, 
-                        (tag, PyUnicode_FromUnicode(accum_value, accum_len-1)))
+                        (tag, PyUnicode_DecodeUTF8(accum_value, accum_len-1, 
+                                                   "strict")))
                 tag = _split_first_line_utf8(c_line, c_len, accum_value, 
                                              &accum_len)
                 if not _valid_tag(tag):
                     raise ValueError("invalid rio tag %r" % (tag,))
         if tag is not None: # add last tag-value
             PyList_Append(pairs, 
-                (tag, PyUnicode_FromUnicode(accum_value, accum_len-1)))
+                (tag, PyUnicode_DecodeUTF8(accum_value, accum_len-1, "strict")))
             return Stanza.from_pairs(pairs)
         else:     # didn't see any content
             return None
@@ -163,7 +164,7 @@ def _read_stanza_unicode(unicode_iter):
     cdef Py_UNICODE *c_line
     cdef int c_len
     cdef Py_UNICODE *accum_value
-    cdef int accum_len, accum_size
+    cdef Py_ssize_t accum_len, accum_size
     pairs = []
     tag = None
     accum_len = 0
@@ -186,7 +187,7 @@ def _read_stanza_unicode(unicode_iter):
                 break        # end of file
             if Py_UNICODE_ISLINEBREAK(c_line[0]):
                 break       # end of stanza
-            if accum_len + c_len > accum_size:
+            while accum_len + c_len > accum_size:
                 accum_size = (accum_size * 3) / 2
                 accum_value = <Py_UNICODE *>realloc(accum_value, 
                     accum_size*sizeof(Py_UNICODE))
@@ -196,17 +197,20 @@ def _read_stanza_unicode(unicode_iter):
                                             # strictly speaking this should be \t
                 if tag is None:
                     raise ValueError('invalid continuation line %r' % line)
-                Py_UNICODE_COPY(accum_value+accum_len*sizeof(Py_UNICODE),
-                                c_line+1*sizeof(Py_UNICODE), c_len-1);
+                memcpy(&accum_value[accum_len], &c_line[1],
+                    (c_len-1)*sizeof(Py_UNICODE));
+                accum_len += (c_len-1)
             else: # new tag:value line
                 if tag is not None:
-                    PyList_Append(pairs, (tag, PyUnicode_FromUnicode(accum_value, accum_len-1)))
+                    PyList_Append(pairs, 
+                        (tag, PyUnicode_FromUnicode(accum_value, accum_len-1)))
                 tag = _split_first_line_unicode(c_line, c_len, accum_value, 
                                                 &accum_len)
                 if not _valid_tag(tag):
                     raise ValueError("invalid rio tag %r" % (tag,))
         if tag is not None: # add last tag-value
-            PyList_Append(pairs, (tag, PyUnicode_FromUnicode(accum_value, accum_len-1)))
+            PyList_Append(pairs,
+                    (tag, PyUnicode_FromUnicode(accum_value, accum_len-1)))
             return Stanza.from_pairs(pairs)
         else:     # didn't see any content
             return None
