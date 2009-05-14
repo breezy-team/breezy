@@ -508,7 +508,8 @@ if has_ctypes and winver != 'Windows 98':
             # Invoked via 'python.exe' which takes the form:
             #   python.exe [PYTHON_OPTIONS] C:\Path\bzr [BZR_OPTIONS]
             # we need to get only BZR_OPTIONS part,
-            # so using sys.argv[1:] to get the tail of unicode argv
+            # so let's using sys.argv[1:] as reference to get the tail
+            # of unicode argv
             tail_len = len(sys.argv[1:])
             ix = len(argv) - tail_len
             argv = argv[ix:]
