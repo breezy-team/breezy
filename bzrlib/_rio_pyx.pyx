@@ -22,17 +22,39 @@ cdef extern from "python-compat.h":
 
 cdef extern from "Python.h":
     ctypedef int Py_ssize_t # Required for older pyrex versions
+    struct _PyObject:
+        pass
+    ctypedef _PyObject PyObject
     char *PyString_AS_STRING(object s)
-    Py_ssize_t PyString_GET_SIZE(object t)
+    Py_ssize_t PyString_GET_SIZE(object t) except -1
+    object PyUnicode_DecodeUTF8(char *string, Py_ssize_t length, char *errors)
+    Py_ssize_t PyUnicode_GET_SIZE(object t) except -1
+    int PyUnicode_Resize(PyObject **o, Py_ssize_t size) except -1
+    object PyString_FromStringAndSize(char *s, Py_ssize_t len)
+    int PyString_CheckExact(object)
+    int PyUnicode_CheckExact(object)
+    void Py_INCREF(object)
+    void Py_DECREF(object)
+    object PyList_GetItem(object, int)
+    int PyList_SetItem(object, int, object)    except -1
+    int PyList_Size(object) except -1
+    object PyUnicode_Join(object, object)
+    object PyUnicode_AsASCIIString(object)
 
 cdef extern from "ctype.h":
      int isalnum(char c)
+
+cdef extern from "string.h":
+    char *strstr(char *a, char *b)
+    int strcmp(char *a, char *b)
+
 
 from bzrlib.rio import Stanza
 
 def _valid_tag(tag):
     cdef char *c_tag
-    cdef int c_len
+    cdef Py_ssize_t c_len
+    cdef int i
     c_tag = PyString_AS_STRING(tag)
     c_len = PyString_GET_SIZE(tag)
     for i from 0 <= i < c_len:
@@ -41,8 +63,16 @@ def _valid_tag(tag):
             return False
     return True
 
+cdef object _join_utf8_strip(object entries):
+    cdef PyObject *c_ret
+    cdef Py_ssize_t size
+    entries[-1] = entries[-1][:-1]
+    return PyUnicode_Join(unicode(""), entries)
+
 
 def _read_stanza_utf8(line_iter):
+    cdef char *c_line, *colon
+    cdef Py_ssize_t c_len
     pairs = []
     tag = None
     accum_value = []
@@ -51,66 +81,74 @@ def _read_stanza_utf8(line_iter):
     #       using 'assert' to process user input, or raising ValueError
     #       rather than a more specific error.
     for line in line_iter:
-        if line is None or line == '':
+        if line is None:
+            break # end of file
+        if not PyString_CheckExact(line):
+            raise TypeError("%r is not a line" % line)
+        c_line = PyString_AS_STRING(line)
+        c_len = PyString_GET_SIZE(line)
+        if strcmp(c_line, "") == 0:
             break       # end of file
-        if line == '\n':
+        if strcmp(c_line, "\n") == 0:
             break       # end of stanza
-        if line[0] == '\t': # continues previous value
+        if c_line[0] == c'\t': # continues previous value
             if tag is None:
                 raise ValueError('invalid continuation line %r' % line)
-            accum_value.append('\n' + line[1:-1])
+            new_value = PyUnicode_DecodeUTF8(c_line+1, c_len-1, "strict")
         else: # new tag:value line
             if tag is not None:
-                pairs.append((tag, ''.join(accum_value).decode('utf-8')))
-            try:
-                colon_index = line.index(': ')
-            except ValueError:
+                pairs.append((tag, _join_utf8_strip(accum_value)))
+            colon = <char *>strstr(c_line, ": ")
+            if colon == NULL:
                 raise ValueError('tag/value separator not found in line %r'
                                  % line)
-            tag = line[:colon_index]
-            #if not _valid_tag(tag):
-            #    raise ValueError("invalid rio tag %r" % (tag,))
-            accum_value = [line[colon_index+2:-1]]
+            tag = PyString_FromStringAndSize(c_line, colon-c_line)
+            if not _valid_tag(tag):
+                raise ValueError("invalid rio tag %r" % (tag,))
+            accum_value = []
+            new_value = PyUnicode_DecodeUTF8(colon+2, c_len-(colon-c_line+2),
+                                             "strict")
+        accum_value.append(new_value)
     if tag is not None: # add last tag-value
-        pairs.append((tag, ''.join(accum_value).decode('utf-8')))
+        pairs.append((tag, _join_utf8_strip(accum_value)))
         return Stanza.from_pairs(pairs)
     else:     # didn't see any content
         return None
 
 
 def _read_stanza_unicode(unicode_iter):
+    cdef int colon_index
     pairs = []
     tag = None
-    accum_value = None
+    accum_value = []
 
     # TODO: jam 20060922 This code should raise real errors rather than
     #       using 'assert' to process user input, or raising ValueError
     #       rather than a more specific error.
     for line in unicode_iter:
-        if line is None or line == '':
+        if line is None or line == unicode(''):
             break       # end of file
-        if line == '\n':
+        if line == unicode('\n'):
             break       # end of stanza
-        real_l = line
-        if line[0] == '\t': # continues previous value
+        if line[0] == unicode('\t'): # continues previous value
             if tag is None:
-                raise ValueError('invalid continuation line %r' % real_l)
-            accum_value += '\n' + line[1:-1]
+                raise ValueError('invalid continuation line %r' % line)
+            accum_value.append(line[1:])
         else: # new tag:value line
             if tag is not None:
-                pairs.append((tag, accum_value))
+                pairs.append((tag, PyUnicode_Join(unicode(""), accum_value[:-1])))
             try:
-                colon_index = line.index(': ')
+                colon_index = line.index(unicode(': '))
             except ValueError:
                 raise ValueError('tag/value separator not found in line %r'
-                                 % real_l)
-            tag = str(line[:colon_index])
-            #if not _valid_tag(tag):
-            #    raise ValueError("invalid rio tag %r" % (tag,))
-            accum_value = line[colon_index+2:-1]
+                                 % line)
+            tag = PyUnicode_AsASCIIString(line[0:colon_index])
+            if not _valid_tag(tag):
+                raise ValueError("invalid rio tag %r" % (tag,))
+            accum_value = [line[colon_index+2:]]
 
     if tag is not None: # add last tag-value
-        pairs.append((tag, accum_value))
+        pairs.append((tag, PyUnicode_Join(unicode(""), accum_value[:-1])))
         return Stanza.from_pairs(pairs)
     else:     # didn't see any content
         return None
