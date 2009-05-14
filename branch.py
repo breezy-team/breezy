@@ -152,9 +152,6 @@ class GitBranch(ForeignBranch):
     def __repr__(self):
         return "%s(%r, %r)" % (self.__class__.__name__, self.repository.base, self.name)
 
-    def dpull(self, source, stop_revision=None):
-        return branch.InterBranch.get(source, self).lossy_push()
-
     def generate_revision_history(self, revid, old_revid=None):
         # FIXME: Check that old_revid is in the ancestry of revid
         newhead, self.mapping = self.mapping.revision_id_bzr_to_foreign(revid)
@@ -459,6 +456,10 @@ class InterToGitBranch(branch.InterBranch):
         raise NoPushSupport()
 
     def lossy_push(self, stop_revision=None):
+        result = branch.BranchPushResult()
+        result.source_branch = self.source
+        result.target_branch = self.target
+        result.old_revid = self.target.last_revision()
         if stop_revision is None:
             stop_revision = self.source.last_revision()
         # FIXME: Check for diverged branches
@@ -470,7 +471,9 @@ class InterToGitBranch(branch.InterBranch):
             self.source.repository, refs)
         if revidmap != {}:
             self.target.generate_revision_history(revidmap[stop_revision])
-        return revidmap
+        result.new_revid = self.target.last_revision()
+        result.revidmap = revidmap
+        return result
 
 
 branch.InterBranch.register_optimiser(InterGitRemoteLocalBranch)
