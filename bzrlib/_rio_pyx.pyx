@@ -136,7 +136,8 @@ def _read_stanza_unicode(unicode_iter):
             accum_value.append(line[1:])
         else: # new tag:value line
             if tag is not None:
-                pairs.append((tag, PyUnicode_Join(unicode(""), accum_value[:-1])))
+                pairs.append((tag, 
+					PyUnicode_Join(unicode(""), accum_value)[:-1]))
             try:
                 colon_index = line.index(unicode(': '))
             except ValueError:
