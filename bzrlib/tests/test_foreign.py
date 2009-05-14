@@ -110,6 +110,10 @@ class InterToDummyVcsBranch(branch.GenericInterBranch,
         return isinstance(target, DummyForeignVcsBranch)
 
     def lossy_push(self, stop_revision=None):
+        result = branch.BranchPushResult()
+        result.source_branch = self.source
+        result.target_branch = self.target
+        result.old_revno, result.old_revid = self.target.last_revision_info()
         self.source.lock_read()
         try:
             # This just handles simple cases, but that's good enough for tests
@@ -152,7 +156,9 @@ class InterToDummyVcsBranch(branch.GenericInterBranch,
                     revid, revidmap[revid])
         finally:
             self.source.unlock()
-        return revidmap
+        result.new_revno, result.new_revid = self.target.last_revision_info()
+        result.revidmap = revidmap
+        return result
 
 
 class DummyForeignVcsBranchFormat(branch.BzrBranchFormat6):

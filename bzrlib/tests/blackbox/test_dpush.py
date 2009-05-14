@@ -80,7 +80,8 @@ class TestDpush(ExternalBase):
         self.build_tree(("dc/foo", "blaaaa"))
         dc.open_workingtree().commit('msg')
 
-        self.check_output("", "dpush -d dc d")
+        output, error = self.run_bzr("dpush -d dc d")
+        self.assertEquals(error, "Pushed up to revision 2.\n")
         self.check_output("", "status dc")
 
     def test_dpush_new(self):

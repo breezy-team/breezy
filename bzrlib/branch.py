@@ -877,7 +877,8 @@ class Branch(object):
 
         :param target: Target branch
         :param stop_revision: Revision to push, defaults to last revision.
-        :return: Dictionary mapping revision ids from the target branch 
+        :return: BranchPushResult with an extra member revidmap: 
+            A dictionary mapping revision ids from the target branch 
             to new revision ids in the target branch, for each 
             revision that was pushed.
         """
