@@ -292,6 +292,26 @@ class GitBranchPullResult(branch.PullResult):
         self._show_tag_conficts(to_file)
 
 
+class GitBranchPushResult(branch.BranchPushResult):
+
+    def _lookup_revno(self, revid):
+        assert isinstance(revid, str), "was %r" % revid
+        # Try in source branch first, it'll be faster
+        try:
+            return self.source_branch.revision_id_to_revno(revid)
+        except NoSuchRevision:
+            # FIXME: Check using graph.find_distance_to_null() ?
+            return self.target_branch.revision_id_to_revno(revid)
+
+    @property
+    def old_revno(self):
+        return self._lookup_revno(self.old_revid)
+
+    @property
+    def new_revno(self):
+        return self._lookup_revno(self.new_revid)
+
+
 class InterFromGitBranch(branch.GenericInterBranch):
     """InterBranch implementation that pulls from Git into bzr."""
 
@@ -456,7 +476,7 @@ class InterToGitBranch(branch.InterBranch):
         raise NoPushSupport()
 
     def lossy_push(self, stop_revision=None):
-        result = branch.BranchPushResult()
+        result = GitBranchPushResult()
         result.source_branch = self.source
         result.target_branch = self.target
         result.old_revid = self.target.last_revision()
