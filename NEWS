@@ -32,12 +32,17 @@ New Features
 Improvements
 ************
 
+* -Dhpss output now includes the number of VFS calls made to the remote
+  server. (Jonathan Lange)
+
 * ``--coverage`` works for code running in threads too.
   (Andrew Bennets, Vincent Ladeuil)
 
 * ``bzr pull`` now has a ``--local`` option to only make changes to the
   local branch, and not the bound master branch.
   (Gary van der Merwe, #194716)
+
+* ``bzr rm *`` is now as fast as ``bzr rm * --keep``. (Johan Walles, #180116)
 
 Bug Fixes
 *********
@@ -61,6 +66,9 @@ Bug Fixes
   bzr+ssh:// clients (which have bug #354036).  Instead, the server now
   causes those clients to send the missing records.  (Andrew Bennetts)
 
+* Correctly handle http servers proposing multiple authentication schemes.
+  (Vincent Ladeuil, #366107)
+
 * End-Of-Line content filters are now loaded correctly.
   (Ian Clatworthy, Brian de Alwis, #355280)
 
@@ -78,6 +86,21 @@ Bug Fixes
 
 * Several bugs related to unicode symlinks have been fixed and the test suite
   enhanced to better catch regressions for them. (Vincent Ladeuil)
+
+* The smart server will no longer raise 'NoSuchRevision' when streaming
+  content with a size mismatch in a reconstructed graph search: it assumes
+  that the client will make sure it is happy with what it got, and this
+  sort of mismatch is normal for stacked environments.
+  bzr 1.13.0/1 will stream from unstacked branches only - in that case not
+  getting all the content expected would be a bug. However the graph
+  search is how we figured out what we wanted, so a mismatch is both odd
+  and unrecoverable without starting over, and starting over will end up
+  with the same data as if we just permitted the mismatch. If data is
+  gc'd, doing a new search will find only the truncated data, so sending
+  only the truncated data seems reasonable. bzr versions newer than this
+  will stream from stacked branches and check the stream to find missing
+  content in the stacked-on branch, and thus will handle the situation
+  implicitly.  (Robert Collins, #360791)
 
 * Upgrading to, or fetching into a 'rich-root' format will now correctly
   set the root data the same way that reconcile does.
@@ -114,7 +137,12 @@ Internals
   called before the first test is started, ``done`` called after the last
   test completes, and a new parameter ``strict``. (Robert Collins)
 
-* -Dlock when passed to the selftest (e.g. ``bzr -Dlock selftest``) will
+* ``-Dhpss`` when passed to bzr will cause a backtrace to be printed when
+  VFS operations are started on a smart server repository. This should not
+  occur on regular push and pull operations, and is a key indicator for
+  performance regressions. (Robert Collins)
+
+* ``-Dlock`` when passed to the selftest (e.g. ``bzr -Dlock selftest``) will
   cause mismatched physical locks to cause test errors rather than just
   reporting to the screen. (Robert Collins)
 
@@ -122,6 +150,13 @@ Internals
   are now be able to provide credentials if obtaining credentials 
   via ~/.bazaar/authentication.conf fails. (Jelmer Vernooij, 
   Vincent Ladeuil, #321918)
+
+* New hook ``Lock.lock_broken`` which runs when a lock is
+  broken. This is mainly for testing that lock/unlock are
+  balanced in tests. (Vincent Ladeuil)
+
+* New MergeDirective hook 'merge_request_body' allows hooks to supply or
+  alter a body for the message produced by ``bzr send``.
 
 * New smart server verb ``BzrDir.initialize_ex`` which implements a
   refactoring to the core of clone allowing less round trips on new
@@ -132,6 +167,12 @@ Internals
 
 * Updated the bundled ``ConfigObj`` library to 4.6.0 (Matt Nordhoff)
 
+Testing
+*******
+
+* ``bzr selftest`` will now fail if lock/unlock are not correctly balanced in
+  tests. Using ``-Dlock`` will turn the related failures into warnings.
+  (Vincent Ladeuil, Robert Collins)
 
 bzr 1.14
 ###########

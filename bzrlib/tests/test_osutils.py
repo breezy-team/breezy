@@ -789,12 +789,16 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
     def test_minimum_path_selection(self):
         self.assertEqual(set(),
             osutils.minimum_path_selection([]))
+        self.assertEqual(set(['a']),
+            osutils.minimum_path_selection(['a']))
         self.assertEqual(set(['a', 'b']),
             osutils.minimum_path_selection(['a', 'b']))
         self.assertEqual(set(['a/', 'b']),
             osutils.minimum_path_selection(['a/', 'b']))
         self.assertEqual(set(['a/', 'b']),
             osutils.minimum_path_selection(['a/c', 'a/', 'b']))
+        self.assertEqual(set(['a-b', 'a', 'a0b']),
+            osutils.minimum_path_selection(['a-b', 'a/b', 'a0b', 'a']))
 
     def test_mkdtemp(self):
         tmpdir = osutils._win32_mkdtemp(dir='.')

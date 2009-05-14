@@ -4866,13 +4866,7 @@ class cmd_send(Command):
     def _run(self, submit_branch, revision, public_branch, remember, format,
              no_bundle, no_patch, output, from_, mail_to, message, body):
         from bzrlib.revision import NULL_REVISION
-        branch = Branch.open_containing(from_)[0]
-        if output is None:
-            outfile = cStringIO.StringIO()
-        elif output == '-':
-            outfile = self.outf
-        else:
-            outfile = open(output, 'wb')
+        tree, branch = bzrdir.BzrDir.open_containing_tree_or_branch(from_)[:2]
         # we may need to write data into branch's repository to calculate
         # the data to send.
         branch.lock_write()
@@ -4959,21 +4953,20 @@ class cmd_send(Command):
                     public_branch=public_branch, patch_type=patch_type,
                     message=message)
 
-            outfile.writelines(directive.to_lines())
             if output is None:
-                subject = '[MERGE] '
-                if message is not None:
-                    subject += message
+                directive.compose_merge_request(mail_client, mail_to, body,
+                                                branch, tree)
+            else:
+                if output == '-':
+                    outfile = self.outf
                 else:
-                    revision = branch.repository.get_revision(revision_id)
-                    subject += revision.get_summary()
-                basename = directive.get_disk_name(branch)
-                mail_client.compose_merge_request(mail_to, subject,
-                                                  outfile.getvalue(),
-                                                  basename, body)
+                    outfile = open(output, 'wb')
+                try:
+                    outfile.writelines(directive.to_lines())
+                finally:
+                    if outfile is not self.outf:
+                        outfile.close()
         finally:
-            if output != '-':
-                outfile.close()
             branch.unlock()
 
 

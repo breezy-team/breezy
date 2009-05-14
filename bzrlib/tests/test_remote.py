@@ -2600,6 +2600,21 @@ class TestStacking(tests.TestCaseWithTransport):
         # from the backing branch, and one from the stacked on branch.
         self.assertLength(2, self.hpss_calls)
 
+    def test_stacked_pull_more_than_stacking_has_bug_360791(self):
+        # When pulling some fixed amount of content that is more than the
+        # source has (because some is coming from a fallback branch, no error
+        # should be received. This was reported as bug 360791.
+        # Need three branches: a trunk, a stacked branch, and a preexisting
+        # branch pulling content from stacked and trunk.
+        self.setup_smart_server_with_call_log()
+        trunk = self.make_branch_and_tree('trunk', format="1.9-rich-root")
+        r1 = trunk.commit('start')
+        stacked_branch = trunk.branch.create_clone_on_transport(
+            self.get_transport('stacked'), stacked_on=trunk.branch.base)
+        local = self.make_branch('local', format='1.9-rich-root')
+        local.repository.fetch(stacked_branch.repository,
+            stacked_branch.last_revision())
+
 
 class TestRemoteBranchEffort(tests.TestCaseWithTransport):
 

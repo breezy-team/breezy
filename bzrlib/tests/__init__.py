@@ -862,15 +862,19 @@ class TestCase(unittest.TestCase):
         # matching has occured with -Dlock.
         # unhook:
         acquired_locks = [lock for action, lock in self._lock_actions
-            if action == 'acquired']
+                          if action == 'acquired']
         released_locks = [lock for action, lock in self._lock_actions
-            if action == 'released']
+                          if action == 'released']
+        broken_locks = [lock for action, lock in self._lock_actions
+                        if action == 'broken']
         # trivially, given the tests for lock acquistion and release, if we
-        # have as many in each list, it should be ok.
-        if len(acquired_locks) != len(released_locks):
-            message = \
-                ("Different number of acquired and released locks. (%s, %s)" %
-                (acquired_locks, released_locks))
+        # have as many in each list, it should be ok. Some lock tests also
+        # break some locks on purpose and should be taken into account by
+        # considering that breaking a lock is just a dirty way of releasing it.
+        if len(acquired_locks) != (len(released_locks) + len(broken_locks)):
+            message = ('Different number of acquired and '
+                       'released or broken locks. (%s, %s + %s)' %
+                       (acquired_locks, released_locks, broken_locks))
             if not self._lock_check_thorough:
                 # Rather than fail, just warn
                 print "Broken test %s: %s" % (self, message)
@@ -880,16 +884,23 @@ class TestCase(unittest.TestCase):
     def _track_locks(self):
         """Track lock activity during tests."""
         self._lock_actions = []
-        self._lock_check_thorough = 'lock' in debug.debug_flags
+        self._lock_check_thorough = 'lock' not in debug.debug_flags
         self.addCleanup(self._check_locks)
-        _mod_lock.Lock.hooks.install_named_hook('lock_acquired', self._lock_acquired, None)
-        _mod_lock.Lock.hooks.install_named_hook('lock_released', self._lock_released, None)
+        _mod_lock.Lock.hooks.install_named_hook('lock_acquired',
+                                                self._lock_acquired, None)
+        _mod_lock.Lock.hooks.install_named_hook('lock_released',
+                                                self._lock_released, None)
+        _mod_lock.Lock.hooks.install_named_hook('lock_broken',
+                                                self._lock_broken, None)
 
     def _lock_acquired(self, result):
         self._lock_actions.append(('acquired', result))
 
     def _lock_released(self, result):
         self._lock_actions.append(('released', result))
+
+    def _lock_broken(self, result):
+        self._lock_actions.append(('broken', result))
 
     def _ndiff_strings(self, a, b):
         """Return ndiff between two strings containing lines.
@@ -1637,6 +1648,7 @@ class TestCase(unittest.TestCase):
             stdin=stdin,
             working_dir=working_dir,
             )
+        self.assertIsInstance(error_regexes, (list, tuple))
         for regex in error_regexes:
             self.assertContainsRe(err, regex)
         return out, err
@@ -3351,6 +3363,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test__chk_map',
                    'bzrlib.tests.test__dirstate_helpers',
                    'bzrlib.tests.test__groupcompress',
+                   'bzrlib.tests.test__rio',
                    'bzrlib.tests.test__walkdirs_win32',
                    'bzrlib.tests.test_ancestry',
                    'bzrlib.tests.test_annotate',
@@ -3402,7 +3415,6 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_help',
                    'bzrlib.tests.test_hooks',
                    'bzrlib.tests.test_http',
-                   'bzrlib.tests.test_http_implementations',
                    'bzrlib.tests.test_http_response',
                    'bzrlib.tests.test_https_ca_bundle',
                    'bzrlib.tests.test_identitymap',
