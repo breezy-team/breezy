@@ -18,7 +18,10 @@
 """Foreign branch utilities."""
 
 
-from bzrlib.branch import Branch
+from bzrlib.branch import (
+    Branch,
+    InterBranch,
+    )
 from bzrlib.commands import Command, Option
 from bzrlib.repository import Repository
 from bzrlib.revision import Revision
@@ -253,22 +256,6 @@ class ForeignBranch(Branch):
         self.mapping = mapping
         super(ForeignBranch, self).__init__()
 
-    def dpull(self, source, stop_revision=None):
-        """Pull deltas from another branch.
-
-        :note: This does not, like pull, retain the revision ids from 
-            the source branch and will, rather than adding bzr-specific 
-            metadata, push only those semantics of the revision that can be 
-            natively represented by this branch' VCS.
-
-        :param source: Source branch
-        :param stop_revision: Revision to pull, defaults to last revision.
-        :return: Dictionary mapping revision ids from the source branch 
-            to new revision ids in the target branch, for each 
-            revision that was pull.
-        """
-        raise NotImplementedError(self.dpull)
-
 
 def update_workingtree_fileids(wt, target_tree):
     """Update the file ids in a working tree based on another tree.
@@ -340,13 +327,13 @@ class cmd_dpush(Command):
 
         bzrdir = BzrDir.open(location)
         target_branch = bzrdir.open_branch()
-        dpull = getattr(target_branch, "dpull", None)
-        if dpull is None:
-            raise BzrCommandError("%r is not a foreign branch, use "
-                                  "regular push." % target_branch)
         target_branch.lock_write()
         try:
-            revid_map = dpull(source_branch)
+            try:
+                revid_map = source_branch.lossy_push(target_branch)
+            except errors.LossyPushToSameVCS:
+                raise BzrCommandError("%r is not a foreign branch, use regular "
+                                      "push." % target_branch)
             # We successfully created the target, remember it
             if source_branch.get_push_location() is None or remember:
                 source_branch.set_push_location(target_branch.base)
@@ -364,3 +351,22 @@ class cmd_dpush(Command):
                         source_wt.unlock()
         finally:
             target_branch.unlock()
+
+
+class InterToForeignBranch(InterBranch):
+
+    def lossy_push(self, stop_revision=None):
+        """Push deltas into another branch.
+
+        :note: This does not, like push, retain the revision ids from 
+            the source branch and will, rather than adding bzr-specific 
+            metadata, push only those semantics of the revision that can be 
+            natively represented by this branch' VCS.
+
+        :param target: Target branch
+        :param stop_revision: Revision to push, defaults to last revision.
+        :return: Dictionary mapping revision ids from the target branch 
+            to new revision ids in the target branch, for each 
+            revision that was pushed.
+        """
+        raise NotImplementedError(self.lossy_push)
