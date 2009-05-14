@@ -127,7 +127,7 @@ import bzrlib.trace
 
 if __name__ == '__main__':
     bzrlib.trace.enable_default_logging()
-    exit_val = bzrlib.commands.main(sys.argv)
+    exit_val = bzrlib.commands.main()
 
     if profiling:
         profile_imports.log_stack_info(sys.stderr)
