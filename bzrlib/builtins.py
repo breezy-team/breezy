@@ -5294,7 +5294,9 @@ class cmd_switch(Command):
         try:
             this_branch = control_dir.open_branch()
             # This may be a heavy checkout, where we want the master branch
-            return this_branch.get_bound_location()
+            master_location = this_branch.get_bound_location()
+            if master_location is not None:
+                return master_location
             # If not, use a local sibling
             return this_branch.base
         except errors.NotBranchError:
