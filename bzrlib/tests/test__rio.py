@@ -77,13 +77,24 @@ class TestValidTag(tests.TestCase):
     def test_empty(self):
         self.assertFalse(self.module._valid_tag(""))
 
+    def test_unicode(self):
+        self.assertRaises(TypeError, self.module._valid_tag, u"foo")
+
+    def test_non_ascii_char(self):
+        self.assertFalse(self.module._valid_tag("\xb5"))
+
 
 class TestReadUTF8Stanza(tests.TestCase):
 
     module = None # Filled in by test parameterization
 
     def assertReadStanza(self, result, line_iter):
-        self.assertEquals(result, self.module._read_stanza_utf8(line_iter))
+        s = self.module._read_stanza_utf8(line_iter)
+        self.assertEquals(result, s)
+        if s is not None:
+            for tag, value in s.iter_pairs():
+                self.assertIsInstance(tag, str)
+                self.assertIsInstance(value, unicode)
 
     def assertReadStanzaRaises(self, exception, line_iter):
         self.assertRaises(exception, self.module._read_stanza_utf8, line_iter)
@@ -134,7 +145,12 @@ class TestReadUnicodeStanza(tests.TestCase):
     module = None # Filled in by test parameterization
 
     def assertReadStanza(self, result, line_iter):
-        self.assertEquals(result, self.module._read_stanza_unicode(line_iter))
+        s = self.module._read_stanza_unicode(line_iter)
+        self.assertEquals(result, s)
+        if s is not None:
+            for tag, value in s.iter_pairs():
+                self.assertIsInstance(tag, str)
+                self.assertIsInstance(value, unicode)
 
     def assertReadStanzaRaises(self, exception, line_iter):
         self.assertRaises(exception, self.module._read_stanza_unicode,

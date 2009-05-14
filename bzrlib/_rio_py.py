@@ -24,12 +24,18 @@ from bzrlib.rio import (
 
 _tag_re = re.compile(r'^[-a-zA-Z0-9_]+$')
 def _valid_tag(tag):
+    if type(tag) != str:
+        raise TypeError(tag)
     return bool(_tag_re.match(tag))
 
 
 def _read_stanza_utf8(line_iter):
-    unicode_iter = (line.decode('utf-8') for line in line_iter)
-    return _read_stanza_unicode(unicode_iter)
+    def iter_unicode_lines():
+        for line in line_iter:
+            if type(line) != str:
+                raise TypeError(line)
+            yield line.decode('utf-8')
+    return _read_stanza_unicode(iter_unicode_lines())
 
 
 def _read_stanza_unicode(unicode_iter):
