@@ -284,30 +284,30 @@ def read_stanza_unicode(unicode_iter):
     #       rather than a more specific error.
 
     for line in unicode_iter:
-        if line is None or line == '':
+        if line is None or line == u'':
             break       # end of file
-        if line == '\n':
+        if line == u'\n':
             break       # end of stanza
         real_l = line
-        if line[0] == '\t': # continues previous value
+        if line[0] == u'\t': # continues previous value
             if tag is None:
                 raise ValueError('invalid continuation line %r' % real_l)
-            accum_value += '\n' + line[1:-1]
+            accum_value.append(u'\n' + line[1:-1])
         else: # new tag:value line
             if tag is not None:
-                stanza.add(tag, accum_value)
+                stanza.add(tag, u''.join(accum_value))
             try:
-                colon_index = line.index(': ')
+                colon_index = line.index(u': ')
             except ValueError:
                 raise ValueError('tag/value separator not found in line %r'
                                  % real_l)
             tag = str(line[:colon_index])
             if not valid_tag(tag):
                 raise ValueError("invalid rio tag %r" % (tag,))
-            accum_value = line[colon_index+2:-1]
+            accum_value = [line[colon_index+2:-1]]
 
     if tag is not None: # add last tag-value
-        stanza.add(tag, accum_value)
+        stanza.add(tag, u''.join(accum_value))
         return stanza
     else:     # didn't see any content
         return None
