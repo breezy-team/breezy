@@ -973,14 +973,17 @@ def main(argv=None):
     if argv is None:
         argv = osutils.get_unicode_argv()
     else:
-        argv = argv[1:]
+        new_argv = []
         try:
-            # check for presence of non-ascii strings
-            for a in argv:
-                if not isinstance(a, unicode):
-                    a.decode('ascii')
+            # ensure all arguments are unicode strings
+            for a in argv[1:]:
+                if isinstance(a, unicode):
+                    new_argv.append(a)
+                else:
+                    new_argv.append(a.decode('ascii'))
         except UnicodeDecodeError:
             raise errors.BzrError("argv should be list of unicode strings.")
+        argv = new_argv
     ret = run_bzr_catch_errors(argv)
     trace.mutter("return code %d", ret)
     return ret

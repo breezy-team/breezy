@@ -119,6 +119,12 @@ API Changes
   instead of ``InstallFailed`` when they detect a missing revision.
   ``InstallFailed`` itself has been deleted. (Jonathan Lange)
 
+* Not passing arguments to ``bzrlib.commands.main()`` will now grab the
+  arguments from ``osutils.get_unicode_argv()`` which has proper support
+  for unicode arguments on windows. Further, the supplied arguments are now 
+  required to be unicode strings, rather than user_encoded strings.
+  (Alexander Belchenko)
+
 Internals
 *********
 
