@@ -37,10 +37,9 @@ class RIORevisionSerializer1(object):
     to change often, to make it easier to do compression.
     """
 
-    def write_revision(self, rev, f):
-        decode_utf8 = cache_utf8.decode
-        w = rio.RioWriter(f)
+    def _write_revision_stanza(self, rev):
         s = rio.Stanza()
+        decode_utf8 = cache_utf8.decode
         revision_id = decode_utf8(rev.revision_id)
         s.add("revision-id", revision_id)
         s.add("timestamp", "%.3f" % rev.timestamp)
@@ -51,24 +50,27 @@ class RIORevisionSerializer1(object):
         if rev.timezone is not None:
             s.add("timezone", str(rev.timezone))
         if rev.properties:
-            revprops_stanza = rio.Stanza()
             for k, v in rev.properties.iteritems():
                 if isinstance(v, str):
                     v = decode_utf8(v)
-                revprops_stanza.add(decode_utf8(k), v)
-            s.add("properties", revprops_stanza.to_unicode())
+                s.add("property-" + k, v)
         s.add("message", rev.message)
+        return s
+
+    def write_revision(self, rev, f):
+        w = rio.RioWriter(f)
+        s = self._write_revision_stanza(rev)
         w.write_stanza(s)
 
     def write_revision_to_string(self, rev):
-        f = StringIO()
-        self.write_revision(rev, f)
-        return f.getvalue()
+        s = self._write_revision_stanza(rev)
+        return s.to_string()
 
-    def read_revision(self, f):
-        s = rio.read_stanza(f)
+    def _read_revision_stanza(self, s):
         rev = _mod_revision.Revision(None)
+        rev.properties = {}
         rev.parent_ids = []
+        rev.timezone = None
         for (field, value) in s.iter_pairs():
             if field == "revision-id":
                 rev.revision_id = cache_utf8.encode(value)
@@ -84,18 +86,19 @@ class RIORevisionSerializer1(object):
                 rev.timestamp = float(value)
             elif field == "message":
                 rev.message = value
-            elif field == "properties":
-                rev.properties = rio.read_stanza_unicode(
-                    osutils.split_lines(value)).as_dict()
+            elif field.startswith("property-"):
+                rev.properties[field[len("property-"):]] = value
             else:
                 raise AssertionError("Unknown field %s" % field)
-            l = f.readline()
         return rev
 
-    def read_revision_from_string(self, xml_string):
-        f = StringIO(xml_string)
-        rev = self.read_revision(f)
-        return rev
+    def read_revision(self, f):
+        s = rio.read_stanza(f)
+        return self._read_revision_stanza(s)
+
+    def read_revision_from_string(self, text):
+        s = rio.read_stanza(StringIO(text))
+        return self._read_revision_stanza(s)
 
 
 class CHKSerializerSubtree(RIORevisionSerializer1, xml6.Serializer_v6):
