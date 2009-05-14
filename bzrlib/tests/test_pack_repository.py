@@ -266,8 +266,6 @@ class TestPackRepository(TestCaseWithTransport):
         # Test that the ordering of revisions in pack repositories is
         # tip->ancestor
         format = self.get_format()
-        if type(format.repository_format) is RepositoryFormatCHK1:
-            raise TestSkipped("Not updated for GroupCompress internals")
         tree = self.make_branch_and_tree('.', format=format)
         trans = tree.branch.repository.bzrdir.get_repository_transport(None)
         tree.commit('start', rev_id='1')
@@ -280,11 +278,18 @@ class TestPackRepository(TestCaseWithTransport):
         # revision access tends to be tip->ancestor, so ordering that way on
         # disk is a good idea.
         for _1, key, val, refs in pack.revision_index.iter_all_entries():
-            if key == ('1',):
-                pos_1 = int(val[1:].split()[0])
+            if type(format.repository_format) is RepositoryFormatCHK1:
+                # group_start, group_len, internal_start, internal_len
+                pos = map(int, val.split())
             else:
-                pos_2 = int(val[1:].split()[0])
-        self.assertTrue(pos_2 < pos_1)
+                # eol_flag, start, len
+                pos = int(val[1:].split()[0])
+            if key == ('1',):
+                pos_1 = pos
+            else:
+                pos_2 = pos
+        self.assertTrue(pos_2 < pos_1, 'rev 1 came before rev 2 %s > %s'
+                                       % (pos_1, pos_2))
 
     def test_pack_repositories_support_multiple_write_locks(self):
         format = self.get_format()
