@@ -20,6 +20,11 @@
 cdef extern from "python-compat.h":
     pass
 
+cdef extern from "malloc.h":
+    void *malloc(int)
+    void *realloc(void *, int)
+    void free(void *)
+
 cdef extern from "Python.h":
     ctypedef int Py_ssize_t # Required for older pyrex versions
     ctypedef int Py_UNICODE
@@ -30,7 +35,6 @@ cdef extern from "Python.h":
     int PyString_CheckExact(object)
     int PyUnicode_CheckExact(object)
     object PyUnicode_Join(object, object)
-    object PyUnicode_AsASCIIString(object)
     object PyUnicode_EncodeASCII(Py_UNICODE *, int, char *)
     Py_UNICODE *PyUnicode_AS_UNICODE(object)
     Py_UNICODE *PyUnicode_AsUnicode(object)
@@ -39,6 +43,7 @@ cdef extern from "Python.h":
     int Py_UNICODE_ISLINEBREAK(Py_UNICODE)
     int Py_UNICODE_ISSPACE(Py_UNICODE)
     object PyUnicode_FromUnicode(Py_UNICODE *, int)
+    void *Py_UNICODE_COPY(Py_UNICODE *, Py_UNICODE *, int)
 
 from bzrlib.rio import Stanza
 
@@ -62,37 +67,37 @@ def _valid_tag(tag):
             return False
     return True
 
-cdef object _join_unicode_strip(object entries):
-    """Join a set of unicode strings and strip the last character."""
-    # TODO: This creates a new object just without the last character. 
-    # Ideally, we should just resize it by -1
-    entries[-1] = entries[-1][:-1]
-    return PyUnicode_Join(unicode(""), entries)
 
-
-cdef object _split_first_line_utf8(char *line, int len):
+cdef object _split_first_line_utf8(char *line, int len, 
+                                   Py_UNICODE *value, int *value_len):
     cdef int i
     for i from 0 <= i < len:
         if line[i] == c':':
             if line[i+1] != c' ':
                 raise ValueError("invalid tag in line %r" % line)
-            return (PyString_FromStringAndSize(line, i),
-                    PyUnicode_DecodeUTF8(line+i+2, len-i-2, "strict"))
+            new_value = PyUnicode_DecodeUTF8(line+i+2, len-i-2, "strict")
+            value_len[0] = PyUnicode_GET_SIZE(new_value)
+            Py_UNICODE_COPY(value, PyUnicode_AS_UNICODE(new_value), 
+                            value_len[0])
+            return PyString_FromStringAndSize(line, i)
     raise ValueError('tag/value separator not found in line %r' % line)
 
 
 cdef Py_UNICODE *colon
 colon = PyUnicode_AsUnicode(unicode(":"))
 
-cdef object _split_first_line_unicode(Py_UNICODE *line, int len):
+cdef object _split_first_line_unicode(Py_UNICODE *line, int len, 
+                                      Py_UNICODE *value, int *value_len):
     cdef int i
     for i from 0 <= i < len:
         if line[i] == colon[0]:
             if not Py_UNICODE_ISSPACE(line[i+1]):
                 raise ValueError("invalid tag in line %r" %
                                  PyUnicode_FromUnicode(line, len))
-            return (PyUnicode_EncodeASCII(line, i, "strict"),
-                    PyUnicode_FromUnicode(line+i+2, len-i-2))
+            Py_UNICODE_COPY(value, line+(i+2) * sizeof(Py_UNICODE),
+                            len-i-2)
+            value_len[0] = len-i-2
+            return PyUnicode_EncodeASCII(line, i, "strict")
     raise ValueError("tag/value separator not found in line %r" %
                      PyUnicode_FromUnicode(line, len))
 
@@ -100,82 +105,108 @@ cdef object _split_first_line_unicode(Py_UNICODE *line, int len):
 def _read_stanza_utf8(line_iter):
     cdef char *c_line
     cdef Py_ssize_t c_len
+    cdef Py_UNICODE *accum_value
+    cdef int accum_len, accum_size
     pairs = []
     tag = None
-    accum_value = []
-
-    # TODO: jam 20060922 This code should raise real errors rather than
-    #       using 'assert' to process user input, or raising ValueError
-    #       rather than a more specific error.
-    for line in line_iter:
-        if line is None:
-            break # end of file
-        if not PyString_CheckExact(line):
-            raise TypeError("%r is not a plain string" % line)
-        c_line = PyString_AS_STRING(line)
-        c_len = PyString_GET_SIZE(line)
-        if c_len < 1:
-            break       # end of file
-        if c_len == 1 and c_line[0] == c"\n":
-            break       # end of stanza
-        if c_line[0] == c'\t': # continues previous value
-            if tag is None:
-                raise ValueError('invalid continuation line %r' % line)
-            new_value = PyUnicode_DecodeUTF8(c_line+1, c_len-1, "strict")
-        else: # new tag:value line
-            if tag is not None:
-                PyList_Append(pairs, (tag, _join_unicode_strip(accum_value)))
-            accum_value = []
-            (tag, new_value) = _split_first_line_utf8(c_line, c_len)
-            if not _valid_tag(tag):
-                raise ValueError("invalid rio tag %r" % (tag,))
-        accum_value.append(new_value)
-    if tag is not None: # add last tag-value
-        PyList_Append(pairs, (tag, _join_unicode_strip(accum_value)))
-        return Stanza.from_pairs(pairs)
-    else:     # didn't see any content
-        return None
+    accum_len = 0
+    accum_size = 4096
+    accum_value = <Py_UNICODE *>malloc(accum_size*sizeof(Py_UNICODE))
+    if accum_value == NULL:
+        raise MemoryError
+    try:
+        # TODO: jam 20060922 This code should raise real errors rather than
+        #       using 'assert' to process user input, or raising ValueError
+        #       rather than a more specific error.
+        for line in line_iter:
+            if line is None:
+                break # end of file
+            if not PyString_CheckExact(line):
+                raise TypeError("%r is not a plain string" % line)
+            c_line = PyString_AS_STRING(line)
+            c_len = PyString_GET_SIZE(line)
+            if c_len < 1:
+                break       # end of file
+            if c_len == 1 and c_line[0] == c"\n":
+                break       # end of stanza
+            if accum_len + c_len > accum_size:
+                accum_size = (accum_size * 3) / 2
+                accum_value = <Py_UNICODE *>realloc(accum_value, 
+                    accum_size*sizeof(Py_UNICODE))
+                if accum_value == NULL:
+                    raise MemoryError
+            if c_line[0] == c'\t': # continues previous value
+                if tag is None:
+                    raise ValueError('invalid continuation line %r' % line)
+                new_value = PyUnicode_DecodeUTF8(c_line+1, c_len-1, "strict")
+            else: # new tag:value line
+                if tag is not None:
+                    PyList_Append(pairs, 
+                        (tag, PyUnicode_FromUnicode(accum_value, accum_len-1)))
+                tag = _split_first_line_utf8(c_line, c_len, accum_value, 
+                                             &accum_len)
+                if not _valid_tag(tag):
+                    raise ValueError("invalid rio tag %r" % (tag,))
+        if tag is not None: # add last tag-value
+            PyList_Append(pairs, 
+                (tag, PyUnicode_FromUnicode(accum_value, accum_len-1)))
+            return Stanza.from_pairs(pairs)
+        else:     # didn't see any content
+            return None
+    finally:
+        free(accum_value)
 
 
 def _read_stanza_unicode(unicode_iter):
     cdef Py_UNICODE *c_line
     cdef int c_len
+    cdef Py_UNICODE *accum_value
+    cdef int accum_len, accum_size
     pairs = []
     tag = None
-    accum_value = []
-
-    # TODO: jam 20060922 This code should raise real errors rather than
-    #       using 'assert' to process user input, or raising ValueError
-    #       rather than a more specific error.
-    for line in unicode_iter:
-        if line is None:
-            break       # end of file
-        if not PyUnicode_CheckExact(line):
-            raise TypeError("%r is not a unicode string" % line)
-        c_line = PyUnicode_AS_UNICODE(line)
-        c_len = PyUnicode_GET_SIZE(line)
-        if c_len < 1:
-            break        # end of file
-        if Py_UNICODE_ISLINEBREAK(c_line[0]):
-            break       # end of stanza
-        if Py_UNICODE_ISSPACE(c_line[0]): # continues previous value,
-                                        # strictly speaking this should be \t
-            if tag is None:
-                raise ValueError('invalid continuation line %r' % line)
-            new_value = PyUnicode_FromUnicode(c_line+sizeof(Py_UNICODE), 
-                                              c_len-1)
-        else: # new tag:value line
-            if tag is not None:
-                PyList_Append(pairs, (tag, _join_unicode_strip(accum_value)))
-            (tag, new_value) = _split_first_line_unicode(c_line, c_len)
-            if not _valid_tag(tag):
-                raise ValueError("invalid rio tag %r" % (tag,))
-            accum_value = []
-        PyList_Append(accum_value, new_value)
-    if tag is not None: # add last tag-value
-        PyList_Append(pairs, (tag, _join_unicode_strip(accum_value)))
-        return Stanza.from_pairs(pairs)
-    else:     # didn't see any content
-        return None
-
-
+    accum_len = 0
+    accum_size = 4096
+    accum_value = <Py_UNICODE *>malloc(accum_size*sizeof(Py_UNICODE))
+    if accum_value == NULL:
+        raise MemoryError
+    try:
+        # TODO: jam 20060922 This code should raise real errors rather than
+        #       using 'assert' to process user input, or raising ValueError
+        #       rather than a more specific error.
+        for line in unicode_iter:
+            if line is None:
+                break       # end of file
+            if not PyUnicode_CheckExact(line):
+                raise TypeError("%r is not a unicode string" % line)
+            c_line = PyUnicode_AS_UNICODE(line)
+            c_len = PyUnicode_GET_SIZE(line)
+            if c_len < 1:
+                break        # end of file
+            if Py_UNICODE_ISLINEBREAK(c_line[0]):
+                break       # end of stanza
+            if accum_len + c_len > accum_size:
+                accum_size = (accum_size * 3) / 2
+                accum_value = <Py_UNICODE *>realloc(accum_value, 
+                    accum_size*sizeof(Py_UNICODE))
+                if accum_value == NULL:
+                    raise MemoryError
+            if Py_UNICODE_ISSPACE(c_line[0]): # continues previous value,
+                                            # strictly speaking this should be \t
+                if tag is None:
+                    raise ValueError('invalid continuation line %r' % line)
+                Py_UNICODE_COPY(accum_value+accum_len*sizeof(Py_UNICODE),
+                                c_line+1*sizeof(Py_UNICODE), c_len-1);
+            else: # new tag:value line
+                if tag is not None:
+                    PyList_Append(pairs, (tag, PyUnicode_FromUnicode(accum_value, accum_len-1)))
+                tag = _split_first_line_unicode(c_line, c_len, accum_value, 
+                                                &accum_len)
+                if not _valid_tag(tag):
+                    raise ValueError("invalid rio tag %r" % (tag,))
+        if tag is not None: # add last tag-value
+            PyList_Append(pairs, (tag, PyUnicode_FromUnicode(accum_value, accum_len-1)))
+            return Stanza.from_pairs(pairs)
+        else:     # didn't see any content
+            return None
+    finally:
+        free(accum_value)
