@@ -34,7 +34,10 @@ from bzrlib.bzrdir import (
     format_registry,
     )
 from bzrlib.inventory import Inventory
-from bzrlib.revision import Revision
+from bzrlib.revision import (
+    NULL_REVISION,
+    Revision,
+    )
 from bzrlib.tests import (
     TestCase,
     TestCaseWithTransport,
@@ -133,7 +136,11 @@ class InterToDummyVcsBranch(branch.GenericInterBranch,
                     (str(rev.timestamp), str(rev.timezone), 
                         str(self.target.revno())))
                 parent_revno, parent_revid= self.target.last_revision_info()
-                builder = self.target.get_commit_builder([parent_revid], 
+                if parent_revid == NULL_REVISION:
+                    parent_revids = []
+                else:
+                    parent_revids = [parent_revid]
+                builder = self.target.get_commit_builder(parent_revids, 
                         self.target.get_config(), rev.timestamp,
                         rev.timezone, rev.committer, rev.properties,
                         new_revid)
@@ -142,7 +149,7 @@ class InterToDummyVcsBranch(branch.GenericInterBranch,
                         new_ie = ie.copy()
                         new_ie.revision = None
                         builder.record_entry_contents(new_ie, 
-                            [self.target.repository.get_inventory(parent_revid)],
+                            [self.target.repository.revision_tree(parent_revid).inventory],
                             path, tree, 
                             (ie.kind, ie.text_size, ie.executable, ie.text_sha1))
                     builder.finish_inventory()
@@ -378,3 +385,29 @@ class DummyForeignVcsTests(TestCaseWithTransport):
         dir = BzrDir.open("d")
         newdir = dir.sprout("e")
         self.assertNotEquals("A Dummy VCS Dir", newdir._format.get_format_string())
+
+    def test_lossy_push_empty(self):
+        source_tree = self.make_branch_and_tree("source")
+        target_tree = self.make_branch_and_tree("target", 
+            format=DummyForeignVcsDirFormat())
+        pushresult = source_tree.branch.lossy_push(target_tree.branch)
+        self.assertEquals(NULL_REVISION, pushresult.old_revid)
+        self.assertEquals(NULL_REVISION, pushresult.new_revid)
+        self.assertEquals({}, pushresult.revidmap)
+
+    def test_lossy_push_simple(self):
+        source_tree = self.make_branch_and_tree("source")
+        self.build_tree(['source/a', 'source/b'])
+        source_tree.add(['a', 'b'])
+        revid1 = source_tree.commit("msg")
+        target_tree = self.make_branch_and_tree("target", 
+            format=DummyForeignVcsDirFormat())
+        target_tree.branch.lock_write()
+        try:
+            pushresult = source_tree.branch.lossy_push(target_tree.branch)
+        finally:
+            target_tree.branch.unlock()
+        self.assertEquals(NULL_REVISION, pushresult.old_revid)
+        self.assertEquals({revid1:target_tree.branch.last_revision()}, 
+                           pushresult.revidmap)
+        self.assertEquals(pushresult.revidmap[revid1], pushresult.new_revid)
