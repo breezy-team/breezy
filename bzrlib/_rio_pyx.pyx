@@ -41,7 +41,6 @@ cdef extern from "Python.h":
     Py_ssize_t PyUnicode_GET_SIZE(object) except -1
     int PyList_Append(object, object) except -1    
     int Py_UNICODE_ISLINEBREAK(Py_UNICODE)
-    int Py_UNICODE_ISSPACE(Py_UNICODE)
     object PyUnicode_FromUnicode(Py_UNICODE *, int)
     void *Py_UNICODE_COPY(Py_UNICODE *, Py_UNICODE *, int)
 
@@ -80,21 +79,18 @@ cdef object _split_first_line_utf8(char *line, int len,
         if line[i] == c':':
             if line[i+1] != c' ':
                 raise ValueError("invalid tag in line %r" % line)
-            memcpy(value, line+i+2, len-i-2);
-            value_len[0] = len-i-2;
+            memcpy(value, line+i+2, len-i-2)
+            value_len[0] = len-i-2
             return PyString_FromStringAndSize(line, i)
     raise ValueError('tag/value separator not found in line %r' % line)
 
-
-cdef Py_UNICODE *colon
-colon = PyUnicode_AsUnicode(unicode(":"))
 
 cdef object _split_first_line_unicode(Py_UNICODE *line, int len, 
                                       Py_UNICODE *value, Py_ssize_t *value_len):
     cdef int i
     for i from 0 <= i < len:
-        if line[i] == colon[0]:
-            if not Py_UNICODE_ISSPACE(line[i+1]):
+        if line[i] == c':':
+            if line[i+1] != c' ':
                 raise ValueError("invalid tag in line %r" %
                                  PyUnicode_FromUnicode(line, len))
             memcpy(value, &line[i+2], (len-i-2) * sizeof(Py_UNICODE))
@@ -107,7 +103,7 @@ cdef object _split_first_line_unicode(Py_UNICODE *line, int len,
 def _read_stanza_utf8(line_iter):
     cdef char *c_line
     cdef Py_ssize_t c_len
-    cdef char *accum_value
+    cdef char *accum_value, *new_accum_value
     cdef Py_ssize_t accum_len, accum_size
     pairs = []
     tag = None
@@ -117,9 +113,6 @@ def _read_stanza_utf8(line_iter):
     if accum_value == NULL:
         raise MemoryError
     try:
-        # TODO: jam 20060922 This code should raise real errors rather than
-        #       using 'assert' to process user input, or raising ValueError
-        #       rather than a more specific error.
         for line in line_iter:
             if line is None:
                 break # end of file
@@ -131,16 +124,18 @@ def _read_stanza_utf8(line_iter):
                 break       # end of file
             if c_len == 1 and c_line[0] == c"\n":
                 break       # end of stanza
-            while accum_len + c_len > accum_size:
-                accum_size = (accum_size * 3) / 2
-                accum_value = <char *>realloc(accum_value, accum_size)
-                if accum_value == NULL:
+            if accum_len + c_len > accum_size:
+                accum_size = (accum_len + c_len)
+                new_accum_value = <char *>realloc(accum_value, accum_size)
+                if new_accum_value == NULL:
                     raise MemoryError
+                else:
+                    accum_value = new_accum_value
             if c_line[0] == c'\t': # continues previous value
                 if tag is None:
                     raise ValueError('invalid continuation line %r' % line)
-                memcpy(accum_value+accum_len, c_line+1, c_len-1);
-                accum_len += c_len-1;
+                memcpy(accum_value+accum_len, c_line+1, c_len-1)
+                accum_len = accum_len + c_len-1
             else: # new tag:value line
                 if tag is not None:
                     PyList_Append(pairs, 
@@ -163,7 +158,7 @@ def _read_stanza_utf8(line_iter):
 def _read_stanza_unicode(unicode_iter):
     cdef Py_UNICODE *c_line
     cdef int c_len
-    cdef Py_UNICODE *accum_value
+    cdef Py_UNICODE *accum_value, *new_accum_value
     cdef Py_ssize_t accum_len, accum_size
     pairs = []
     tag = None
@@ -173,9 +168,6 @@ def _read_stanza_unicode(unicode_iter):
     if accum_value == NULL:
         raise MemoryError
     try:
-        # TODO: jam 20060922 This code should raise real errors rather than
-        #       using 'assert' to process user input, or raising ValueError
-        #       rather than a more specific error.
         for line in unicode_iter:
             if line is None:
                 break       # end of file
@@ -187,19 +179,20 @@ def _read_stanza_unicode(unicode_iter):
                 break        # end of file
             if Py_UNICODE_ISLINEBREAK(c_line[0]):
                 break       # end of stanza
-            while accum_len + c_len > accum_size:
-                accum_size = (accum_size * 3) / 2
-                accum_value = <Py_UNICODE *>realloc(accum_value, 
+            if accum_len + c_len > accum_size:
+                accum_size = accum_len + c_len
+                new_accum_value = <Py_UNICODE *>realloc(accum_value, 
                     accum_size*sizeof(Py_UNICODE))
-                if accum_value == NULL:
+                if new_accum_value == NULL:
                     raise MemoryError
-            if Py_UNICODE_ISSPACE(c_line[0]): # continues previous value,
-                                            # strictly speaking this should be \t
+                else:
+                    accum_value = new_accum_value
+            if c_line[0] == c'\t': # continues previous value,
                 if tag is None:
                     raise ValueError('invalid continuation line %r' % line)
                 memcpy(&accum_value[accum_len], &c_line[1],
-                    (c_len-1)*sizeof(Py_UNICODE));
-                accum_len += (c_len-1)
+                    (c_len-1)*sizeof(Py_UNICODE))
+                accum_len = accum_len + (c_len-1)
             else: # new tag:value line
                 if tag is not None:
                     PyList_Append(pairs, 
