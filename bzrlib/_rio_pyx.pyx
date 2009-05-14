@@ -62,6 +62,8 @@ def _valid_tag(tag):
         raise TypeError(tag)
     c_tag = PyString_AS_STRING(tag)
     c_len = PyString_GET_SIZE(tag)
+    if c_len < 1:
+        return False
     for i from 0 <= i < c_len:
         if not _valid_tag_char(c_tag[i]):
             return False
