@@ -282,12 +282,11 @@ def update_workingtree_fileids(wt, target_tree):
 
 
 class cmd_dpush(Command):
-    """Push diffs into a foreign version control system without any 
-    Bazaar-specific metadata.
+    """Push into a foreign VCS without any custom bzr metadata.
 
     This will afterwards rebase the local Bazaar branch on the remote
     branch unless the --no-rebase option is used, in which case 
-    the two branches will be out of sync. 
+    the two branches will be out of sync after the push. 
     """
     hidden = True
     takes_args = ['location?']
