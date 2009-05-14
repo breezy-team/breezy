@@ -5271,24 +5271,38 @@ class cmd_switch(Command):
         from bzrlib import switch
         tree_location = '.'
         control_dir = bzrdir.BzrDir.open_containing(tree_location)[0]
-        branch = control_dir.open_branch()
+        try:
+            branch = control_dir.open_branch()
+            had_explicit_nick = branch.get_config().has_explicit_nickname()
+        except errors.NotBranchError:
+            had_explicit_nick = False
         try:
             to_branch = Branch.open(to_location)
         except errors.NotBranchError:
-            this_branch = control_dir.open_branch()
-            # This may be a heavy checkout, where we want the master branch
-            this_url = this_branch.get_bound_location()
-            # If not, use a local sibling
-            if this_url is None:
-                this_url = this_branch.base
+            this_url = self._get_branch_location(control_dir)
             to_branch = Branch.open(
                 urlutils.join(this_url, '..', to_location))
         switch.switch(control_dir, to_branch, force)
-        if branch.get_config().has_explicit_nickname():
+        if had_explicit_nick:
             branch = control_dir.open_branch() #get the new branch!
             branch.nick = to_branch.nick
         note('Switched to branch: %s',
             urlutils.unescape_for_display(to_branch.base, 'utf-8'))
+
+    def _get_branch_location(self, control_dir):
+        """Return location of branch for this control dir."""
+        try:
+            this_branch = control_dir.open_branch()
+            # This may be a heavy checkout, where we want the master branch
+            return this_branch.get_bound_location()
+            # If not, use a local sibling
+            return this_branch.base
+        except errors.NotBranchError:
+            format = control_dir.find_branch_format()
+            if getattr(format, 'get_reference', None) is not None:
+                return format.get_reference(control_dir)
+            else:
+                return control_dir.root_transport.base
 
 
 class cmd_view(Command):
