@@ -129,6 +129,12 @@ class Stanza(object):
                             % (value, type(value)))
         self.items.append((tag, value))
 
+    @classmethod
+    def from_pairs(cls, pairs):
+        ret = cls()
+        ret.items = pairs
+        return ret
+
     def __contains__(self, find_tag):
         """True if there is any field in this stanza with the given tag."""
         for tag, value in self.items:
@@ -191,16 +197,16 @@ class Stanza(object):
 
         result = []
         for tag, value in self.items:
-            if value == '':
-                result.append(tag + ': \n')
-            elif '\n' in value:
+            if value == u'':
+                result.append(tag + u': \n')
+            elif u'\n' in value:
                 # don't want splitlines behaviour on empty lines
-                val_lines = value.split('\n')
-                result.append(tag + ': ' + val_lines[0] + '\n')
+                val_lines = value.split(u'\n')
+                result.append(tag + u': ' + val_lines[0] + u'\n')
                 for line in val_lines[1:]:
-                    result.append('\t' + line + '\n')
+                    result.append(u'\t' + line + u'\n')
             else:
-                result.append(tag + ': ' + value + '\n')
+                result.append(tag + u': ' + value + u'\n')
         return u''.join(result)
 
     def write(self, to_file):

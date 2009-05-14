@@ -16,19 +16,36 @@
 
 """Pyrex implementation of _read_stanza_*."""
 
-import re
+#python2.4 support
+cdef extern from "python-compat.h":
+    pass
+
+cdef extern from "Python.h":
+    ctypedef int Py_ssize_t # Required for older pyrex versions
+    char *PyString_AS_STRING(object s)
+    Py_ssize_t PyString_GET_SIZE(object t)
+
+cdef extern from "ctype.h":
+     int isalnum(char c)
 
 from bzrlib.rio import Stanza
 
-_tag_re = re.compile(r'^[-a-zA-Z0-9_]+$')
 def _valid_tag(tag):
-    return bool(_tag_re.match(tag))
+    cdef char *c_tag
+    cdef int c_len
+    c_tag = PyString_AS_STRING(tag)
+    c_len = PyString_GET_SIZE(tag)
+    for i from 0 <= i < c_len:
+        if (not isalnum(c_tag[i]) and not c_tag[i] == c'_' and 
+            not c_tag[i] == c'-'):
+            return False
+    return True
 
 
 def _read_stanza_utf8(line_iter):
-    stanza = Stanza()
+    pairs = []
     tag = None
-    accum_value = None
+    accum_value = []
 
     # TODO: jam 20060922 This code should raise real errors rather than
     #       using 'assert' to process user input, or raising ValueError
@@ -38,32 +55,31 @@ def _read_stanza_utf8(line_iter):
             break       # end of file
         if line == '\n':
             break       # end of stanza
-        real_l = line
         if line[0] == '\t': # continues previous value
             if tag is None:
-                raise ValueError('invalid continuation line %r' % real_l)
+                raise ValueError('invalid continuation line %r' % line)
             accum_value.append('\n' + line[1:-1])
         else: # new tag:value line
             if tag is not None:
-                stanza.add(tag, ''.join(accum_value).decode('utf-8'))
+                pairs.append((tag, ''.join(accum_value).decode('utf-8')))
             try:
                 colon_index = line.index(': ')
             except ValueError:
                 raise ValueError('tag/value separator not found in line %r'
-                                 % real_l)
+                                 % line)
             tag = line[:colon_index]
-            if not _valid_tag(tag):
-                raise ValueError("invalid rio tag %r" % (tag,))
-            accum_value = line[colon_index+2:-1]
+            #if not _valid_tag(tag):
+            #    raise ValueError("invalid rio tag %r" % (tag,))
+            accum_value = [line[colon_index+2:-1]]
     if tag is not None: # add last tag-value
-        stanza.add(tag, ''.join(accum_value).decode('utf-8'))
-        return stanza
+        pairs.append((tag, ''.join(accum_value).decode('utf-8')))
+        return Stanza.from_pairs(pairs)
     else:     # didn't see any content
         return None
 
 
 def _read_stanza_unicode(unicode_iter):
-    stanza = Stanza()
+    pairs = []
     tag = None
     accum_value = None
 
@@ -82,20 +98,20 @@ def _read_stanza_unicode(unicode_iter):
             accum_value += '\n' + line[1:-1]
         else: # new tag:value line
             if tag is not None:
-                stanza.add(tag, accum_value)
+                pairs.append((tag, accum_value))
             try:
                 colon_index = line.index(': ')
             except ValueError:
                 raise ValueError('tag/value separator not found in line %r'
                                  % real_l)
             tag = str(line[:colon_index])
-            if not _valid_tag(tag):
-                raise ValueError("invalid rio tag %r" % (tag,))
+            #if not _valid_tag(tag):
+            #    raise ValueError("invalid rio tag %r" % (tag,))
             accum_value = line[colon_index+2:-1]
 
     if tag is not None: # add last tag-value
-        stanza.add(tag, accum_value)
-        return stanza
+        pairs.append((tag, accum_value))
+        return Stanza.from_pairs(pairs)
     else:     # didn't see any content
         return None
 
