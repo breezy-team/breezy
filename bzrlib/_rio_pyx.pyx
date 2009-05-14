@@ -64,8 +64,11 @@ def _valid_tag(tag):
     return True
 
 cdef object _join_utf8_strip(object entries):
+	"""Join a set of unicode strings and strip the last character."""
     cdef PyObject *c_ret
     cdef Py_ssize_t size
+	# TODO: This creates a new object just without the last character. 
+	# Ideally, we should just resize it by -1
     entries[-1] = entries[-1][:-1]
     return PyUnicode_Join(unicode(""), entries)
 
