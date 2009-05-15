@@ -24,6 +24,7 @@ from dulwich.objects import (
 
 from bzrlib import (
     branch,
+    bzrdir,
     config,
     errors,
     foreign,
@@ -40,6 +41,9 @@ from bzrlib.trace import (
     mutter,
     )
 
+from bzrlib.plugins.git import (
+    get_rich_root_format,
+    )
 from bzrlib.plugins.git.config import (
     GitBranchConfig,
     )
@@ -233,7 +237,7 @@ class LocalGitBranch(GitBranch):
         :param hardlink: Whether to hardlink
         :return: WorkingTree object of checkout.
         """
-        checkout_branch = BzrDir.create_branch_convenience(
+        checkout_branch = bzrdir.BzrDir.create_branch_convenience(
             to_location, force_new_tree=False, format=get_rich_root_format())
         checkout = checkout_branch.bzrdir
         checkout_branch.bind(self)
