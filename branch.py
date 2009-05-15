@@ -400,10 +400,8 @@ class InterFromGitBranch(branch.GenericInterBranch):
         result = branch.BranchPushResult()
         result.source_branch = self.source
         result.target_branch = self.target
-        result.old_revno, result.old_revid = self.target.last_revision_info()
         graph = self.target.repository.get_graph(self.source.repository)
-        result.old_revno, result.old_revid = \
-            self.target.last_revision_info()
+        result.old_revno, result.old_revid = self.target.last_revision_info()
         self.update_revisions(stop_revision, overwrite=overwrite, 
             graph=graph)
         result.new_git_head = self._head
@@ -430,7 +428,7 @@ class InterGitRemoteLocalBranch(branch.InterBranch):
         refs, stop_revision = self.update_refs(stop_revision)
         self.target.generate_revision_history(stop_revision, result.old_revid)
         self.update_tags(refs)
-        result.new_revid = target.last_revision()
+        result.new_revid = self.target.last_revision()
         return result
 
     def update_tags(self, refs):
