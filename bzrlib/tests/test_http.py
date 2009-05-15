@@ -1544,15 +1544,18 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         self.server.add_user('joe', 'foo')
         t = self.get_user_transport(None, None)
         stdout = tests.StringIOWrapper()
-        ui.ui_factory = tests.TestUIFactory(stdin='joe\nfoo\n', stdout=stdout)
+        stderr = tests.StringIOWrapper()
+        ui.ui_factory = tests.TestUIFactory(stdin='joe\nfoo\n',
+                                            stdout=stdout, stderr=stderr)
         self.assertEqual('contents of a\n',t.get('a').read())
         # stdin should be empty
         self.assertEqual('', ui.ui_factory.stdin.readline())
-        stdout.seek(0)
+        stderr.seek(0)
         expected_prompt = self._expected_username_prompt(t._unqualified_scheme)
-        self.assertEquals(expected_prompt, stdout.read(len(expected_prompt)))
+        self.assertEquals(expected_prompt, stderr.read(len(expected_prompt)))
+        self.assertEquals('', stdout.getvalue())
         self._check_password_prompt(t._unqualified_scheme, 'joe',
-                                    stdout.readline())
+                                    stderr.readline())
 
     def test_prompt_for_password(self):
         if self._testing_pycurl():
@@ -1563,12 +1566,15 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         self.server.add_user('joe', 'foo')
         t = self.get_user_transport('joe', None)
         stdout = tests.StringIOWrapper()
-        ui.ui_factory = tests.TestUIFactory(stdin='foo\n', stdout=stdout)
-        self.assertEqual('contents of a\n',t.get('a').read())
+        stderr = tests.StringIOWrapper()
+        ui.ui_factory = tests.TestUIFactory(stdin='foo\n',
+                                            stdout=stdout, stderr=stderr)
+        self.assertEqual('contents of a\n', t.get('a').read())
         # stdin should be empty
         self.assertEqual('', ui.ui_factory.stdin.readline())
         self._check_password_prompt(t._unqualified_scheme, 'joe',
-                                    stdout.getvalue())
+                                    stderr.getvalue())
+        self.assertEquals('', stdout.getvalue())
         # And we shouldn't prompt again for a different request
         # against the same transport.
         self.assertEqual('contents of b\n',t.get('b').read())

@@ -69,6 +69,9 @@ Bug Fixes
 * Correctly handle http servers proposing multiple authentication schemes.
   (Vincent Ladeuil, #366107)
 
+* Display prompt on stderr when querying users so that the output of commands
+  can be safely redirected. (Vincent Ladeuil, #376582)
+
 * End-Of-Line content filters are now loaded correctly.
   (Ian Clatworthy, Brian de Alwis, #355280)
 
