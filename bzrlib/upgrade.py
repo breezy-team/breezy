@@ -97,53 +97,86 @@ class Convert(object):
             self.bzrdir = converter.convert(self.bzrdir, self.pb)
         self.pb.note("finished")
 
-    def backup_path(self):
-        """Return the url of the backup path used."""
-        return self.backup_newpath
+    def clean_up(self):
+        """Clean-up after a conversion.
+
+        This removes the backup.bzr directory.
+        """
+        backup = self.backup_newpath
+        if backup.startswith("file://"):
+            osutils.rmtree(backup[len("file://"):])
+        else:
+            # TODO: Use transport.delete_tree() so works on remote URLs
+            raise AssertionError(
+                "cannot clean-up after upgrading a remote URL yet")
 
 
-def upgrade(urls, format=None, clean_up=False):
+def upgrade(urls, format=None, clean_up=False, pack=False, dry_run=False):
     """Upgrade locations to format.
-    
+ 
+    This routine wraps the smart_upgrade() routine with a nicer UI.
+    In particular, it ensures all URLs can be opened before starting
+    and reports a summary at the end if more than one upgrade was attempted.
+    This routine is useful for command line tools. Other bzrlib clients
+    probably ought to use smart_upgrade() instead.
+
     :param urls: a sequence of URLs to the locations to upgrade.
       For backwards compatibility, if urls is a string, it is treated
       as a single URL.
     :param format: the format to convert to or None for the best default
     :param clean-up: if True, the backup.bzr directory is removed if the
       upgrade succeeded for a given repo/branch/tree
+    :param pack: pack repositories that successfully upgrade
+    :param dry_run: show what would happen but don't actually do any upgrades
     :return: the list of exceptions encountered
     """
     if isinstance(urls, str):
         urls = [urls]
-    attempted_count = 0
-    succeeded_count = 0
-    all_exceptions = []
-    for url in urls:
-        starting_dir = BzrDir.open_unsupported(url)
-        attempted, succeeded, exceptions = smart_upgrade(starting_dir, format,
-            clean_up=clean_up)
-        attempted_count += len(attempted)
-        succeeded_count += len(succeeded)
-        all_exceptions.extend(exceptions)
-    if attempted_count > 1:
+    control_dirs = [BzrDir.open_unsupported(url) for url in urls]
+    attempted, succeeded, exceptions = smart_upgrade(control_dirs,
+        format, clean_up=clean_up, pack=pack, dry_run=dry_run)
+    if len(attempted) > 1:
+        attempted_count = len(attempted)
+        succeeded_count = len(succeeded)
         failed_count = attempted_count - succeeded_count
         note("\nSUMMARY: %d upgrades attempted, %d succeeded, %d failed",
             attempted_count, succeeded_count, failed_count)
-    return all_exceptions
+    return exceptions
 
 
-def smart_upgrade(control_dir, format, clean_up=False):
-    """Convert a control directory to a new format intelligently.
+def smart_upgrade(control_dirs, format, clean_up=False, pack=False,
+    dry_run=False):
+    """Convert control directories to a new format intelligently.
 
-    If the control directory is a shared repository, dependent branches and
-    trees are also converted provided the repository converted successfully.
+    If the control directory is a shared repository, dependent branches
+    are also converted provided the repository converted successfully.
     If the conversion of a branch fails, remaining branches are still tried.
 
-    :param control_dir: the BzrDir to upgrade
+    :param control_dirs: the BzrDirs to upgrade
     :param format: the format to convert to or None for the best default
     :param clean-up: if True, the backup.bzr directory is removed if the
       upgrade succeeded for a given repo/branch/tree
+    :param pack: pack repositories that successfully upgrade
+    :param dry_run: show what would happen but don't actually do any upgrades
     :return: attempted-control-dirs, succeeded-control-dirs, exceptions
+    """
+    all_attempted = []
+    all_succeeded = []
+    all_exceptions = []
+    for control_dir in control_dirs:
+        attempted, succeeded, exceptions = _smart_upgrade_one(control_dir,
+            format, clean_up=clean_up, pack=pack, dry_run=dry_run)
+        all_attempted.extend(attempted)
+        all_succeeded.extend(succeeded)
+        all_exceptions.extend(exceptions)
+    return all_attempted, all_succeeded, all_exceptions
+
+
+def _smart_upgrade_one(control_dir, format, clean_up=False, pack=False,
+    dry_run=False):
+    """Convert a control directory to a new format intelligently.
+
+    See smart_upgrade fro parameter details.
     """
     # If the URL is a shared repository, find the dependent branches & trees
     dependents = None
@@ -161,7 +194,7 @@ def smart_upgrade(control_dir, format, clean_up=False):
     # Do the conversions
     attempted = [control_dir]
     succeeded, exceptions = _convert_items([control_dir], format, clean_up,
-        verbose=dependents)
+        pack, dry_run, verbose=dependents)
     if succeeded and dependents:
         branches, trees = dependents
         note("Found %d dependents: %d branches, %d trees - upgrading ...",
@@ -170,7 +203,7 @@ def smart_upgrade(control_dir, format, clean_up=False):
         # Convert dependent branches
         branch_cdirs = [b.bzrdir for b in branches]
         successes, problems = _convert_items(branch_cdirs, format, clean_up,
-            label="branch")
+            pack, dry_run, label="branch")
         attempted.extend(branch_cdirs)
         succeeded.extend(successes)
         exceptions.extend(problems)
@@ -180,7 +213,7 @@ def smart_upgrade(control_dir, format, clean_up=False):
         # referring to branches that failed.
         tree_cdirs = [t.bzrdir for t in trees]
         successes, problems = _convert_items(tree_cdirs, format, clean_up,
-            label="tree")
+            pack, dry_run, label="tree")
         attempted.extend(tree_cdirs)
         succeeded.extend(successes)
         exceptions.extend(problems)
@@ -189,13 +222,16 @@ def smart_upgrade(control_dir, format, clean_up=False):
     return attempted, succeeded, exceptions
 
 
-def _convert_items(items, format, clean_up, label=None, verbose=True):
+def _convert_items(items, format, clean_up, pack, dry_run, label=None,
+    verbose=True):
     """Convert a sequence of control directories to the given format.
  
     :param items: the control directories to upgrade
     :param format: the format to convert to or None for the best default
     :param clean-up: if True, the backup.bzr directory is removed if the
       upgrade succeeded for a given repo/branch/tree
+    :param pack: pack repositories that successfully upgrade
+    :param dry_run: show what would happen but don't actually do any upgrades
     :param label: the label for these items or None to calculate one
     :param verbose: if True, output a message before starting and
       display any problems encountered
@@ -204,36 +240,44 @@ def _convert_items(items, format, clean_up, label=None, verbose=True):
     succeeded = []
     exceptions = []
     for control_dir in items:
+        # Do the conversion
+        bzr_object, bzr_label = control_dir.get_object_and_label()
         if verbose:
-            type_label = label or control_dir.get_object_and_label()[1]
+            type_label = label or bzr_label
             location = control_dir.root_transport.base
             note("Upgrading %s %s ...", type_label, location)
         try:
-            cv = Convert(control_dir=control_dir, format=format)
+            if not dry_run:
+                cv = Convert(control_dir=control_dir, format=format)
         except Exception, ex:
             # XXX: If this the right level in the Exception hierarchy to use?
             _verbose_warning(verbose, "conversion error: %s" % ex)
             exceptions.append(ex)
-        else:
-            if clean_up:
-                try:
-                    backup = cv.backup_path()
-                    _clean_up(control_dir, backup, verbose)
-                except Exception, ex:
-                    _verbose_warning(verbose, "failed to clean-up %s: %s" %
-                        (backup_dir, ex))
-                    exceptions.append(ex)
-            succeeded.append(control_dir)
+            continue
+
+        # Do any required post processing
+        succeeded.append(control_dir)
+        if pack and isinstance(bzr_object, Repository):
+            note("Packing ...")
+            try:
+                if not dry_run:
+                    bzr_object.pack()
+            except Exception, ex:
+                _verbose_warning(verbose, "failed to pack %s: %s" %
+                    (location, ex))
+                exceptions.append(ex)
+        if clean_up:
+            try:
+                note("Removing backup ...")
+                if not dry_run:
+                    cv.clean_up()
+            except Exception, ex:
+                _verbose_warning(verbose, "failed to clean-up %s: %s" %
+                    (location, ex))
+                exceptions.append(ex)
+
+    # Return the result
     return succeeded, exceptions
-
-
-def _clean_up(control_dir, backup, verbose):
-    if backup.startswith("file://"):
-        osutils.rmtree(backup[len("file://"):])
-    else:
-        # TODO: Use transport.delete_tree() so works on remote URLs
-        _verbose_warning(verbose,
-            "cannot clean-up after upgrading a remote URL yet")
 
 
 def _verbose_warning(verbose, msg):
@@ -242,7 +286,7 @@ def _verbose_warning(verbose, msg):
         warning(msg)
 
 
-# Maybe move this helper method into repository.py ...
+# TODO: move this helper method into repository.py once it supports trees ...
 def _find_repo_dependents(repo):
     """Find the branches using a shared repository and trees using the branches.
 

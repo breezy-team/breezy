@@ -444,7 +444,7 @@ class TestSmartUpgrade(TestCaseWithTransport):
 
     def test_upgrade_standalone_branch(self):
         control = self.make_standalone_branch()
-        tried, worked, issues = smart_upgrade(control, format=self.to_format)
+        tried, worked, issues = smart_upgrade([control], format=self.to_format)
         self.assertEqual(1, len(tried))
         self.assertEqual(1, len(worked))
         self.assertEqual(0, len(issues))
@@ -452,7 +452,7 @@ class TestSmartUpgrade(TestCaseWithTransport):
 
     def test_upgrade_standalone_branch_cleanup(self):
         control = self.make_standalone_branch()
-        tried, worked, issues = smart_upgrade(control, format=self.to_format,
+        tried, worked, issues = smart_upgrade([control], format=self.to_format,
             clean_up=True)
         self.assertEqual(1, len(tried))
         self.assertEqual(1, len(worked))
@@ -468,7 +468,7 @@ class TestSmartUpgrade(TestCaseWithTransport):
 
     def test_upgrade_repo_with_branches(self):
         control = self.make_repo_with_branches()
-        tried, worked, issues = smart_upgrade(control, format=self.to_format)
+        tried, worked, issues = smart_upgrade([control], format=self.to_format)
         self.assertEqual(3, len(tried))
         self.assertEqual(3, len(worked))
         self.assertEqual(0, len(issues))
@@ -478,7 +478,7 @@ class TestSmartUpgrade(TestCaseWithTransport):
 
     def test_upgrade_repo_with_branches_cleanup(self):
         control = self.make_repo_with_branches()
-        tried, worked, issues = smart_upgrade(control, format=self.to_format,
+        tried, worked, issues = smart_upgrade([control], format=self.to_format,
             clean_up=True)
         self.assertEqual(3, len(tried))
         self.assertEqual(3, len(worked))

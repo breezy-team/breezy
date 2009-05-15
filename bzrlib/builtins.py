@@ -3019,7 +3019,7 @@ class cmd_upgrade(Command):
     """
 
     _see_also = ['check']
-    takes_args = ['url?']
+    takes_args = ['url*']
     takes_options = [
         RegistryOption('format',
             help='Upgrade to a specific format.  See "bzr help'
@@ -3029,11 +3029,19 @@ class cmd_upgrade(Command):
             value_switches=True, title='Branch format'),
         Option('clean',
             help='Remove the backup.bzr directory if successful.'),
+        Option('pack',
+            help='Pack repositories that successful upgrade.'),
+        Option('dry-run',
+            help="Show what would be done, but don't actually do anything."),
     ]
 
-    def run(self, url='.', format=None, clean=False):
+    def run(self, url_list=[], format=None, clean=False, pack=False,
+        dry_run=False):
         from bzrlib.upgrade import upgrade
-        exceptions = upgrade(url, format, clean_up=clean)
+        if url_list == []:
+            url_list = ['.']
+        exceptions = upgrade(url_list, format, clean_up=clean, pack=pack,
+            dry_run=dry_run)
         if exceptions:
             if len(exceptions) == 1:
                 # This provides backwards compatibility
