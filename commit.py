@@ -34,6 +34,11 @@ from dulwich.objects import (
     )
 
 
+from bzrlib.plugins.git.mapping import (
+    entry_mode,
+    )
+
+
 class GitCommitBuilder(CommitBuilder):
 
     def __init__(self, *args, **kwargs):
@@ -86,10 +91,25 @@ class GitCommitBuilder(CommitBuilder):
             self._any_changes = True
             self._blobs[path[1].encode("utf-8")] = (mode, sha)
             yield file_id, path, (None, None)
-        # FIXME: Import all blobs not set yet, and eliminate blobs set to None
+        # Fill in entries that were not changed
+        basis_tree = workingtree.basis_tree()
+        assert basis_tree.get_revision_id() == basis_revid
+        for path, entry in basis_tree.iter_entries_by_dir():
+            if entry.kind not in ("file", "symlink"):
+                continue
+            if not path in self._blobs:
+                blob = Blob()
+                if entry.kind == "symlink":
+                    blob.data = basis_tree.get_symlink_target(entry.file_id)
+                else:
+                    blob.data = basis_tree.get_file_text(entry.file_id)
+                self._blobs[path.encode("utf-8")] = (entry_mode(entry), blob.id)
 
     def finish_inventory(self):
-        pass
+        # eliminate blobs that were removed
+        for path, entry in self._blobs:
+            if entry is None:
+                del self._blobs[path]
 
     def commit(self, message):
         c = Commit()
