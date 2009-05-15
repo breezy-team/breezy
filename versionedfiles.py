@@ -19,6 +19,7 @@ from dulwich.object_store import (
     )
 from dulwich.objects import (
     Blob,
+    Commit,
     Tree,
     )
 
@@ -30,6 +31,45 @@ from bzrlib.versionedfile import (
     FulltextContentFactory,
     VersionedFiles,
     )
+
+
+class GitRevisions(VersionedFiles):
+
+    def __init__(self, object_store):
+        self.object_store = object_store
+
+    def check(self, progressbar=None):
+        return True
+
+    def iterkeys(self):
+        for sha in self.object_store:
+            if type(sha) == Commit:
+                yield (sha,)
+
+    def keys(self):
+        return list(self.iterkeys())
+
+    def add_mpdiffs(self, records):
+        raise NotImplementedError(self.add_mpdiffs)
+
+    def get_record_stream(self, keys, ordering, include_delta_closure):
+        for key in keys:
+            (sha,) = key
+            try:
+                text = self.object_store.get_raw(sha)
+            except KeyError:
+                yield AbsentContentFactory(key)
+            else:
+                yield FulltextContentFactory(key, None, None, text)
+
+    def get_parent_map(self, keys):
+        ret = {}
+        for (key,) in keys:
+            try:
+                ret[(key,)] = [(p,) for p in self.object_store[key].parents]
+            except KeyError:
+                ret[(key,)] = None
+        return ret
 
 
 class GitTexts(VersionedFiles):

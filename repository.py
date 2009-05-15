@@ -42,9 +42,6 @@ from bzrlib.transport import (
 from bzrlib.plugins.git.commit import (
     GitCommitBuilder,
     )
-from bzrlib.plugins.git.foreign import (
-    versionedfiles,
-    )
 from bzrlib.plugins.git.inventory import (
     GitInventory,
     )
@@ -54,6 +51,7 @@ from bzrlib.plugins.git.mapping import (
     mapping_registry,
     )
 from bzrlib.plugins.git.versionedfiles import (
+    GitRevisions,
     GitTexts,
     )
 
@@ -112,9 +110,9 @@ class LocalGitRepository(GitRepository):
         self.base = gitdir.root_transport.base
         self._git = gitdir._git
         self.texts = None
-        self.signatures = versionedfiles.VirtualSignatureTexts(self)
-        self.revisions = versionedfiles.VirtualRevisionTexts(self)
-        self.inventories = versionedfiles.VirtualInventoryTexts(self)
+        self.signatures = None
+        self.revisions = GitRevisions(self._git.object_store)
+        self.inventories = None
         self.texts = GitTexts(self)
 
     def all_revision_ids(self):
