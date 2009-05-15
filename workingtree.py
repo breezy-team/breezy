@@ -151,6 +151,9 @@ class GitWorkingTree(workingtree.WorkingTree):
         self._ignoreset = ignore_globs
         return ignore_globs
 
+    def set_last_revision(self, revid):
+        self._change_last_revision(revid)
+
     def _reset_data(self):
         self._inventory_is_modified = False
         basis_inv = self.repository.get_inventory(self.mapping.revision_id_foreign_to_bzr(self.repository._git.head()))
