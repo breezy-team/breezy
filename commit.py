@@ -38,10 +38,16 @@ class GitCommitBuilder(CommitBuilder):
 
     def __init__(self, *args, **kwargs):
         super(GitCommitBuilder, self).__init__(*args, **kwargs)
+        self.store = self.repository._git.object_store
         self._blobs = {}
+
+    def record_entry_contents(self, ie, parent_invs, path, tree,
+        content_summary):
+        raise NotImplementedError(self.record_entry_contents)        
 
     def record_delete(self, path, file_id):
         self._blobs[path] = None
+        self._any_changes = True
 
     def record_iter_changes(self, workingtree, basis_revid, iter_changes):
         index = getattr(workingtree, "index", None)
@@ -67,27 +73,35 @@ class GitCommitBuilder(CommitBuilder):
             if path[1] is None:
                 self.record_delete(path[0], file_id)
                 continue
-            if kind == "file":
+            if kind[1] == "file":
                 mode = stat.S_IFREG
                 sha = text_sha1(path[1], file_id)
-            else:
+            elif kind[1] == "symlink":
                 mode = stat.S_IFLNK
                 sha = link_sha1(path[1], file_id)
+            else:
+                raise AssertionError("Unknown kind %r" % kind[1])
             if executable:
                 mode |= 0111
+            self._any_changes = True
             self._blobs[path[1].encode("utf-8")] = (mode, sha)
             yield file_id, path, (None, None)
         # FIXME: Import all blobs not set yet, and eliminate blobs set to None
 
+    def finish_inventory(self):
+        pass
+
     def commit(self, message):
         c = Commit()
-        c.tree = commit_tree(self.repository._git.object_store, self._blobs)
+        c.parents = [self.repository.lookup_git_revid(revid)[0] for revid in self.parents]
+        c.tree = commit_tree(self.store, 
+                [(path, sha, mode) for (path, (mode, sha)) in self._blobs.iteritems()])
         c.committer = self._committer
         c.author = self._revprops.get('author', self._committer)
-        c.commit_timestamp = self._timestamp
-        c.author_timestamp = self._timestamp
+        c.commit_time = int(self._timestamp)
+        c.author_time = int(self._timestamp)
         c.commit_timezone = self._timezone
         c.author_timezone = self._timezone
         c.message = message.encode("utf-8")
-        self.repository._git.object_store.add_object(c)
-        return self.repository.mapping.revision_id_foreign_to_bzr(c.id)
+        self.store.add_object(c)
+        return self.repository.get_mapping().revision_id_foreign_to_bzr(c.id)
