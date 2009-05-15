@@ -192,6 +192,8 @@ class GitInventory(inventory.Inventory):
         self.root = GitInventoryDirectory(self, None, tree_id, u"", u"", False)
 
     def _get_ie(self, path):
+        if path == "":
+            return self.root
         parts = path.split("/")
         ie = self.root
         for name in parts:
