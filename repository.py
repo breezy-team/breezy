@@ -229,16 +229,18 @@ class LocalGitRepository(GitRepository):
 class GitRevisionTree(revisiontree.RevisionTree):
 
     def __init__(self, repository, revision_id):
-        self._repository = repository
         self._revision_id = revision_id
+        self._repository = repository
+        store = repository._git.object_store
         assert isinstance(revision_id, str)
         git_id, self.mapping = repository.lookup_git_revid(revision_id)
         try:
-            commit = repository._git.commit(git_id)
+            commit = store[git_id]
         except KeyError, r:
             raise errors.NoSuchRevision(repository, revision_id)
         self.tree = commit.tree
-        self._inventory = GitInventory(self.tree, self.mapping, repository._git.object_store, revision_id)
+        self._inventory = GitInventory(self.tree, self.mapping, store, 
+                                       revision_id)
 
     def get_revision_id(self):
         return self._revision_id
