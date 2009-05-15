@@ -1260,6 +1260,8 @@ class DistributionBranch(object):
         tag_name = self.upstream_tag_name(version)
         self.upstream_branch.tags.set_tag(tag_name,
                 self.upstream_branch.last_revision())
+        self.branch.tags.set_tag(tag_name,
+                self.upstream_branch.last_revision())
 
     def _default_config_for_tree(self, tree):
         # FIXME: shouldn't go to configobj directly
@@ -1504,6 +1506,7 @@ class DistributionBranch(object):
                 stop_revision=pull_revision)
         self.tag_upstream_version(version)
         self.branch.fetch(self.upstream_branch, last_revision=pull_revision)
+        self.upstream_branch.tags.merge_to(self.branch.tags)
 
     def pull_version_from_branch(self, pull_branch, version, native=False):
         """Pull a version from a particular branch.
@@ -1536,7 +1539,8 @@ class DistributionBranch(object):
             if pull_branch.has_upstream_version(version):
                 self.pull_upstream_from_branch(pull_branch, version)
             else:
-                assert False, "Can't find the needed upstream part"
+                assert False, ("Can't find the needed upstream part "
+                        "for version %s" % version)
         if (native and self.upstream_branch.last_revision() == NULL_REVISION
             and pull_branch.upstream_branch.last_revision() != NULL_REVISION):
             # in case the package wasn't native before then we pull
@@ -1902,7 +1906,7 @@ class DistributionBranch(object):
         assert not path.endswith(".orig.tar.gz")
         return (path, md5)
 
-    def upstream_parents(self, versions):
+    def upstream_parents(self, versions, version):
         """Get the parents for importing a new upstream.
 
         The upstream parents will be the last upstream version,
@@ -1926,12 +1930,16 @@ class DistributionBranch(object):
                 parents.append(revid)
                 self.upstream_branch.fetch(self.branch,
                         last_revision=revid)
-        if first_parent == NULL_REVISION:
-            pull_parents = self.get_parents(versions)
-            if len(pull_parents) > 0:
+        pull_parents = self.get_parents(versions)
+        if ((first_parent == NULL_REVISION and len(pull_parents) > 0)
+                or len(pull_parents) > 1):
+            if first_parent == NULL_REVISION:
                 pull_branch = pull_parents[0][0]
                 pull_version = pull_parents[0][1]
-                if not pull_branch.is_version_native(pull_version):
+            else:
+                pull_branch = pull_parents[1][0]
+                pull_version = pull_parents[1][1]
+            if not pull_branch.is_version_native(pull_version):
                     pull_revid = \
                         pull_branch.revid_of_upstream_version(pull_version)
                     mutter("Initialising upstream from %s, version %s" \
@@ -1966,6 +1974,10 @@ class DistributionBranch(object):
             timestamp=None, author=None):
         pull_branch = self.branch_to_pull_version_from(version, md5)
         if pull_branch is not None:
+            if (self.branch_to_pull_upstream_from(version, upstream_md5)
+                    is None):
+                pull_branch = None
+        if pull_branch is not None:
             self.pull_version_from_branch(pull_branch, version)
         else:
             # We need to import at least the diff, possibly upstream.
@@ -1980,7 +1992,8 @@ class DistributionBranch(object):
                     imported_upstream = True
                     # Check whether we should pull first if this initialises
                     # from another branch:
-                    upstream_parents = self.upstream_parents(versions)
+                    upstream_parents = self.upstream_parents(versions,
+                            version)
                     new_revid = self.import_upstream(upstream_part, version,
                             upstream_md5, upstream_parents,
                             upstream_tarball=upstream_tarball,

@@ -2244,13 +2244,15 @@ class DistributionBranchTests(TestCaseWithTransport):
         builder.new_version(version3)
         builder.build()
         self.db1.import_package(builder.dsc_name())
-        try:
-            self.db2.import_package(builder.dsc_name())
-        except DivergedBranches:
-            raise KnownFailure("Pulling from another branch after "
-                    "merge the other way fails due to assuming the "
-                    "upstream branch can be pulled too, but we never "
-                    "merge upstream branches.")
+        self.db2.import_package(builder.dsc_name())
+        self.assertEqual(3, len(self.tree1.branch.revision_history()))
+        self.assertEqual(2, len(self.up_tree1.branch.revision_history()))
+        self.assertEqual(3, len(self.tree2.branch.revision_history()))
+        self.assertEqual(2, len(self.up_tree2.branch.revision_history()))
+        self.assertEqual(self.tree1.last_revision(),
+                self.tree2.last_revision())
+        self.assertEqual(self.up_tree1.last_revision(),
+                self.up_tree2.last_revision())
 
     def test_is_native_version(self):
         version1 = Version("0.1-0ubuntu1")
@@ -2577,3 +2579,39 @@ class DistributionBranchTests(TestCaseWithTransport):
         self.assertFalse(self.db1.is_version_native(version3))
         # TODO: test that file-ids added in the native version
         # are used in the second non-native upstream
+
+    def test_merge_upstream_branches(self):
+        version1 = Version("1.0-1")
+        version2 = Version("1.1-1")
+        version3 = Version("1.2-1")
+        builder = SourcePackageBuilder("package", version1)
+        builder.add_default_control()
+        builder.build()
+        self.db1.import_package(builder.dsc_name())
+        self.db2.import_package(builder.dsc_name())
+        builder.new_version(version2)
+        builder.build()
+        self.db2.import_package(builder.dsc_name())
+        builder = SourcePackageBuilder("package", version1)
+        builder.add_default_control()
+        builder.new_version(version3)
+        builder.build()
+        self.db1.import_package(builder.dsc_name())
+        self.db2.import_package(builder.dsc_name())
+        rh1 = self.tree1.branch.revision_history()
+        up_rh1 = self.up_tree1.branch.revision_history()
+        rh2 = self.tree2.branch.revision_history()
+        up_rh2 = self.up_tree2.branch.revision_history()
+        self.assertEqual(3, len(rh1))
+        self.assertEqual(2, len(up_rh1))
+        self.assertEqual(4, len(rh2))
+        self.assertEqual(3, len(up_rh2))
+        revtree = self.tree2.branch.repository.revision_tree(rh2[-1])
+        self.assertEqual(3, len(revtree.get_parent_ids()))
+        self.assertEqual(up_rh2[-1], revtree.get_parent_ids()[1])
+        self.assertEqual(rh1[-1], revtree.get_parent_ids()[2])
+        up_revtree = self.tree2.branch.repository.revision_tree(up_rh2[-1])
+        self.assertEqual(2, len(up_revtree.get_parent_ids()))
+        self.assertEqual(up_rh1[-1], up_revtree.get_parent_ids()[1])
+        self.assertEqual(up_rh2[-1],
+                self.tree2.branch.tags.lookup_tag("upstream-1.2"))
