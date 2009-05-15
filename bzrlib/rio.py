@@ -282,6 +282,7 @@ def read_stanza_unicode(unicode_iter):
     """
     return _read_stanza_unicode(unicode_iter)
 
+
 def to_patch_lines(stanza, max_width=72):
     """Convert a stanza into RIO-Patch format lines.
 

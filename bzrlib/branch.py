@@ -867,6 +867,26 @@ class Branch(object):
         return InterBranch.get(self, target).push(overwrite, stop_revision,
             *args, **kwargs)
 
+    def lossy_push(self, target, stop_revision=None):
+        """Push deltas into another branch.
+
+        :note: This does not, like push, retain the revision ids from 
+            the source branch and will, rather than adding bzr-specific 
+            metadata, push only those semantics of the revision that can be 
+            natively represented by this branch' VCS.
+
+        :param target: Target branch
+        :param stop_revision: Revision to push, defaults to last revision.
+        :return: Dictionary mapping revision ids from the target branch 
+            to new revision ids in the target branch, for each 
+            revision that was pushed.
+        """
+        inter = InterBranch.get(self, target)
+        lossy_push = getattr(inter, "lossy_push", None)
+        if lossy_push is None:
+            raise errors.LossyPushToSameVCS(self, target)
+        return lossy_push(stop_revision)
+
     def basis_tree(self):
         """Return `Tree` object for last revision."""
         return self.repository.revision_tree(self.last_revision())
