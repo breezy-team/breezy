@@ -172,8 +172,8 @@ def smart_upgrade(control_dir, format, clean_up=False):
         successes, problems = _convert_items(branch_cdirs, format, clean_up,
             label="branch")
         attempted.extend(branch_cdirs)
-        succeeded.append(successes)
-        exceptions.append(problems)
+        succeeded.extend(successes)
+        exceptions.extend(problems)
 
         # Convert dependent trees
         # TODO: Filter trees so that we don't attempt to convert trees
@@ -182,8 +182,8 @@ def smart_upgrade(control_dir, format, clean_up=False):
         successes, problems = _convert_items(tree_cdirs, format, clean_up,
             label="tree")
         attempted.extend(tree_cdirs)
-        succeeded.append(successes)
-        exceptions.append(problems)
+        succeeded.extend(successes)
+        exceptions.extend(problems)
 
     # Return the result
     return attempted, succeeded, exceptions
