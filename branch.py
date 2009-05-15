@@ -256,6 +256,13 @@ class LocalGitBranch(GitBranch):
         except KeyError:
             return None
 
+    def set_last_revision_info(self, revno, revid):
+        self.set_last_revision(revid)
+
+    def set_last_revision(self, revid):
+        (self.head, self.mapping) = self.mapping.revision_id_bzr_to_foreign(
+                revid)
+
     def _set_head(self, value):
         self._head = value
         self.repository._git.refs[self.name] = self._head
