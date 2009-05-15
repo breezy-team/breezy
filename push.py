@@ -213,10 +213,8 @@ class InterToRemoteGitRepository(InterToGitRepository):
         self.source.lock_read()
         try:
             store = BazaarObjectStore(self.source, self.mapping)
-            def generate_blob_contents(have, want):
-                return store.iter_shas(store.find_missing_objects(have, want))
             new_refs = self.target.send_pack(determine_wants,
-                    generate_blob_contents)
+                    store.generate_pack_contents)
         finally:
             self.source.unlock()
         return revidmap, new_refs

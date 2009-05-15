@@ -418,8 +418,40 @@ class InterFromGitBranch(branch.GenericInterBranch):
         return result
 
 
-class InterGitRemoteLocalBranch(branch.InterBranch):
+class InterGitBranch(branch.GenericInterBranch):
     """InterBranch implementation that pulls between Git branches."""
+
+
+class InterGitLocalRemoteBranch(InterGitBranch):
+    """InterBranch that copies from a local to a remote git branch."""
+
+    @classmethod
+    def is_compatible(self, source, target):
+        from bzrlib.plugins.git.remote import RemoteGitBranch
+        return (isinstance(source, LocalGitBranch) and 
+                isinstance(target, RemoteGitBranch))
+
+    def _basic_push(self, overwrite=False, stop_revision=None):
+        result = GitBranchPushResult()
+        result.source_branch = self.source
+        result.target_branch = self.target
+        if stop_revision is None:
+            stop_revision = self.source.last_revision()
+        # FIXME: Check for diverged branches
+        def get_changed_refs(old_refs):
+            result.old_revid = self.target.mapping.revision_id_foreign_to_bzr(old_refs["refs/heads/master"])
+            refs = { "refs/heads/master": self.source.repository.lookup_git_revid(stop_revision)[0] }
+            result.new_revid = stop_revision
+            for name, sha in self.source.repository._git.refs.as_dict("refs/tags").iteritems():
+                refs["refs/tags/%s" % name] = sha
+            return refs
+        self.target.repository.send_pack(get_changed_refs, 
+                self.source.repository._git.object_store.generate_pack_contents)
+        return result
+
+
+class InterGitRemoteLocalBranch(InterGitBranch):
+    """InterBranch that copies from a remote to a local git branch."""
 
     @classmethod
     def is_compatible(self, source, target):
@@ -504,3 +536,4 @@ class InterToGitBranch(branch.InterBranch):
 branch.InterBranch.register_optimiser(InterGitRemoteLocalBranch)
 branch.InterBranch.register_optimiser(InterFromGitBranch)
 branch.InterBranch.register_optimiser(InterToGitBranch)
+branch.InterBranch.register_optimiser(InterGitLocalRemoteBranch)
