@@ -444,43 +444,45 @@ class TestSmartUpgrade(TestCaseWithTransport):
 
     def test_upgrade_standalone_branch(self):
         control = self.make_standalone_branch()
-        tried, worked = smart_upgrade(control, format=self.to_format)
+        tried, worked, issues = smart_upgrade(control, format=self.to_format)
         self.assertEqual(1, len(tried))
         self.assertEqual(1, len(worked))
+        self.assertEqual(0, len(issues))
         self.failUnlessExists('branch1/backup.bzr')
 
     def test_upgrade_standalone_branch_cleanup(self):
         control = self.make_standalone_branch()
-        tried, worked = smart_upgrade(control, format=self.to_format,
+        tried, worked, issues = smart_upgrade(control, format=self.to_format,
             clean_up=True)
         self.assertEqual(1, len(tried))
         self.assertEqual(1, len(worked))
+        self.assertEqual(0, len(issues))
         self.failIfExists('branch1/backup.bzr')
 
-    def make_repo_with_branches(self, with_stacked=False):
+    def make_repo_with_branches(self):
         repo = self.make_repository('repo', shared=True,
             format=self.from_format)
         b1 = self.make_branch("repo/branch1", format=self.from_format)
         b2 = self.make_branch("repo/branch2", format=self.from_format)
-        if with_stacked:
-            b3 = self.make_branch("repo/branch3", format=self.from_format)
-            b3.set_stacked_on_url(b2.base)
         return repo.bzrdir
 
     def test_upgrade_repo_with_branches(self):
         control = self.make_repo_with_branches()
-        tried, worked = smart_upgrade(control, format=self.to_format)
+        tried, worked, issues = smart_upgrade(control, format=self.to_format)
         self.assertEqual(3, len(tried))
         self.assertEqual(3, len(worked))
+        self.assertEqual(0, len(issues))
         self.failUnlessExists('repo/backup.bzr')
         self.failUnlessExists('repo/branch1/backup.bzr')
         self.failUnlessExists('repo/branch2/backup.bzr')
 
-    def test_upgrade_repo_with_branches_stacked(self):
-        control = self.make_repo_with_branches(with_stacked=True)
-        tried, worked = smart_upgrade(control, format=self.to_format)
-        expected_tried = ['repo', 'branch3', 'branch1', 'branch2']
-        # Strip off the /.bzr/ from the end before finding the basenames
-        actual_tried = [osutils.basename(c.transport.base[:-6]) for c in tried]
-        self.assertEqual(expected_tried, actual_tried)
-        self.assertEqual(4, len(worked))
+    def test_upgrade_repo_with_branches_cleanup(self):
+        control = self.make_repo_with_branches()
+        tried, worked, issues = smart_upgrade(control, format=self.to_format,
+            clean_up=True)
+        self.assertEqual(3, len(tried))
+        self.assertEqual(3, len(worked))
+        self.assertEqual(0, len(issues))
+        self.failIfExists('repo/backup.bzr')
+        self.failIfExists('repo/branch1/backup.bzr')
+        self.failIfExists('repo/branch2/backup.bzr')

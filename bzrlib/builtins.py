@@ -3021,17 +3021,25 @@ class cmd_upgrade(Command):
     _see_also = ['check']
     takes_args = ['url?']
     takes_options = [
-                    RegistryOption('format',
-                        help='Upgrade to a specific format.  See "bzr help'
-                             ' formats" for details.',
-                        lazy_registry=('bzrlib.bzrdir', 'format_registry'),
-                        converter=lambda name: bzrdir.format_registry.make_bzrdir(name),
-                        value_switches=True, title='Branch format'),
-                    ]
+        RegistryOption('format',
+            help='Upgrade to a specific format.  See "bzr help'
+                 ' formats" for details.',
+            lazy_registry=('bzrlib.bzrdir', 'format_registry'),
+            converter=lambda name: bzrdir.format_registry.make_bzrdir(name),
+            value_switches=True, title='Branch format'),
+        Option('clean',
+            help='Remove the backup.bzr directory if successful.'),
+    ]
 
-    def run(self, url='.', format=None):
+    def run(self, url='.', format=None, clean=False):
         from bzrlib.upgrade import upgrade
-        upgrade(url, format)
+        exceptions = upgrade(url, format, clean_up=clean)
+        if exceptions:
+            if len(exceptions) == 1:
+                # This provides backwards compatibility
+                raise exceptions[0]
+            else:
+                return 3
 
 
 class cmd_whoami(Command):

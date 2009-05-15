@@ -97,32 +97,56 @@ class Convert(object):
             self.bzrdir = converter.convert(self.bzrdir, self.pb)
         self.pb.note("finished")
 
+    def backup_path(self):
+        """Return the url of the backup path used."""
+        return self.backup_newpath
 
-def upgrade(url, format=None, clean_up=False):
-    """Upgrade to format, or the default bzrdir format if not supplied."""
-    starting_dir = BzrDir.open_unsupported(url)
-    attempted, succeeded = smart_upgrade(starting_dir, format, clean_up)
-    if len(attempted) > 1:
-        failed = len(attempted) - len(succeeded)
+
+def upgrade(urls, format=None, clean_up=False):
+    """Upgrade locations to format.
+    
+    :param urls: a sequence of URLs to the locations to upgrade.
+      For backwards compatibility, if urls is a string, it is treated
+      as a single URL.
+    :param format: the format to convert to or None for the best default
+    :param clean-up: if True, the backup.bzr directory is removed if the
+      upgrade succeeded for a given repo/branch/tree
+    :return: the list of exceptions encountered
+    """
+    if isinstance(urls, str):
+        urls = [urls]
+    attempted_count = 0
+    succeeded_count = 0
+    all_exceptions = []
+    for url in urls:
+        starting_dir = BzrDir.open_unsupported(url)
+        attempted, succeeded, exceptions = smart_upgrade(starting_dir, format,
+            clean_up=clean_up)
+        attempted_count += len(attempted)
+        succeeded_count += len(succeeded)
+        all_exceptions.extend(exceptions)
+    if attempted_count > 1:
+        failed_count = attempted_count - succeeded_count
         note("\nSUMMARY: %d upgrades attempted, %d succeeded, %d failed",
-            len(attempted), len(succeeded), failed)
+            attempted_count, succeeded_count, failed_count)
+    return all_exceptions
 
 
 def smart_upgrade(control_dir, format, clean_up=False):
     """Convert a control directory to a new format intelligently.
 
-    If the control directory is a shared repository, dependent branches
-    are also converted provided the repository converted successfully.
+    If the control directory is a shared repository, dependent branches and
+    trees are also converted provided the repository converted successfully.
     If the conversion of a branch fails, remaining branches are still tried.
 
-    :control_dir: the BzrDir to upgrade
-    :format: the format to convert to
+    :param control_dir: the BzrDir to upgrade
+    :param format: the format to convert to or None for the best default
     :param clean-up: if True, the backup.bzr directory is removed if the
-      upgrade succeeded for a given repo/branch/checkout
-    :return: control-dirs for attempted, control-dirs for succeeded upgrades
+      upgrade succeeded for a given repo/branch/tree
+    :return: attempted-control-dirs, succeeded-control-dirs, exceptions
     """
-    # If the URL is a shared repository, find the dependent branches
-    dependent_branches = []
+    # If the URL is a shared repository, find the dependent branches & trees
+    dependents = None
     try:
         repo = control_dir.open_repository()
     except errors.NoRepositoryPresent:
@@ -130,83 +154,103 @@ def smart_upgrade(control_dir, format, clean_up=False):
         pass
     else:
         # The URL is a repository. If it successfully upgrades,
-        # then upgrade the branches using it as well.
+        # then upgrade the dependent branches and trees as well.
         if repo.is_shared():
-            dependent_branches = repo.find_branches()
+            dependents = _find_repo_dependents(repo)
 
-    # Do the conversions. For each conversion that succeeds, we record
-    # the control directory and backup directory for later optional clean-up
+    # Do the conversions
     attempted = [control_dir]
-    branch_info = []
-    if dependent_branches:
-        note("Upgrading shared repository ...")
-        cv = Convert(control_dir=control_dir, format=format)
-        branch_info.append((control_dir, cv.backup_newpath))
-        unstacked, stacked = _sort_branches(dependent_branches)
-        note("Found %d dependent branches: %d unstacked, %d stacked - "
-            "upgrading ...", len(dependent_branches), len(unstacked),
-            len(stacked))
-        attempted.extend([br.bzrdir for br in stacked])
-        branch_info.extend(_convert_branches(stacked, format, "stacked branch"))
-        attempted.extend([br.bzrdir for br in unstacked])
-        branch_info.extend(_convert_branches(unstacked, format))
-    else:
-        cv = Convert(control_dir=control_dir, format=format)
-        branch_info.append((control_dir, cv.backup_newpath))
+    succeeded, exceptions = _convert_items([control_dir], format, clean_up,
+        verbose=dependents)
+    if succeeded and dependents:
+        branches, trees = dependents
+        note("Found %d dependents: %d branches, %d trees - upgrading ...",
+            len(dependents), len(branches), len(trees))
 
-    # Clean-up if requested
-    if clean_up:
-        note("Removing backup directories for successful conversions ...")
-        for control, backup_dir in branch_info:
-            if backup_dir.startswith("file://"):
-                try:
-                    osutils.rmtree(backup_dir[len("file://"):])
-                except Exception, ex:
-                    mutter("failed to clean-up %s: %s", backup_dir, ex)
-                    warning("failed to clean-up %s: %s", backup_dir, ex)
-            else:
-                # TODO: Use transport.delete_tree() so works on remote URLs
-                warning("cannot clean-up after upgrading a remote URL yet")
+        # Convert dependent branches
+        branch_cdirs = [b.bzrdir for b in branches]
+        successes, problems = _convert_items(branch_cdirs, format, clean_up,
+            label="branch")
+        attempted.extend(branch_cdirs)
+        succeeded.append(successes)
+        exceptions.append(problems)
 
-    # Return the control directories for the attempted & successful conversions
-    succeeded = [c for c, backup in branch_info]
-    return attempted, succeeded
+        # Convert dependent trees
+        # TODO: Filter trees so that we don't attempt to convert trees
+        # referring to branches that failed.
+        tree_cdirs = [t.bzrdir for t in trees]
+        successes, problems = _convert_items(tree_cdirs, format, clean_up,
+            label="tree")
+        attempted.extend(tree_cdirs)
+        succeeded.append(successes)
+        exceptions.append(problems)
+
+    # Return the result
+    return attempted, succeeded, exceptions
 
 
-def _sort_branches(branches):
-    """Partition branches into stacked vs unstacked.
-
-    :return: unstacked_list, stacked_list
+def _convert_items(items, format, clean_up, label=None, verbose=True):
+    """Convert a sequence of control directories to the given format.
+ 
+    :param items: the control directories to upgrade
+    :param format: the format to convert to or None for the best default
+    :param clean-up: if True, the backup.bzr directory is removed if the
+      upgrade succeeded for a given repo/branch/tree
+    :param label: the label for these items or None to calculate one
+    :param verbose: if True, output a message before starting and
+      display any problems encountered
+    :return: items successfully upgraded, exceptions
     """
-    unstacked = []
-    stacked = []
-    for br in branches:
+    succeeded = []
+    exceptions = []
+    for control_dir in items:
+        if verbose:
+            type_label = label or control_dir.get_object_and_label()[1]
+            location = control_dir.root_transport.base
+            note("Upgrading %s %s ...", type_label, location)
         try:
-            br.get_stacked_on_url()
-        except errors.NotStacked:
-            unstacked.append(br)
-        except errors.UnstackableBranchFormat:
-            unstacked.append(br)
-        else:
-            stacked.append(br)
-    # TODO: Within each sublist, sort the branches by path.
-    return unstacked, stacked
-
-
-def _convert_branches(branches, format, label="branch"):
-    """Convert a sequence of branches to the given format.
-    
-    :return: list of (control-dir, backup-dir) tuples for successful upgrades
-    """
-    result = []
-    for br in branches:
-        try:
-            cv = Convert(control_dir=br.bzrdir, format=format)
+            cv = Convert(control_dir=control_dir, format=format)
         except Exception, ex:
             # XXX: If this the right level in the Exception hierarchy to use?
-            mutter("conversion error: %s", ex)
-            warning("conversion error: %s", ex)
+            _verbose_warning(verbose, "conversion error: %s" % ex)
+            exceptions.append(ex)
         else:
-            result.append((br.bzrdir, cv.backup_newpath))
-            note("upgraded %s %s", label, br.base)
-    return result
+            if clean_up:
+                try:
+                    backup = cv.backup_path()
+                    _clean_up(control_dir, backup, verbose)
+                except Exception, ex:
+                    _verbose_warning(verbose, "failed to clean-up %s: %s" %
+                        (backup_dir, ex))
+                    exceptions.append(ex)
+            succeeded.append(control_dir)
+    return succeeded, exceptions
+
+
+def _clean_up(control_dir, backup, verbose):
+    if backup.startswith("file://"):
+        osutils.rmtree(backup[len("file://"):])
+    else:
+        # TODO: Use transport.delete_tree() so works on remote URLs
+        _verbose_warning(verbose,
+            "cannot clean-up after upgrading a remote URL yet")
+
+
+def _verbose_warning(verbose, msg):
+    mutter(msg)
+    if verbose:
+        warning(msg)
+
+
+# Maybe move this helper method into repository.py ...
+def _find_repo_dependents(repo):
+    """Find the branches using a shared repository and trees using the branches.
+
+    :return: (branches, trees) or None if none.
+    """
+    # TODO: find trees (lightweight checkouts), not just branches
+    branches = repo.find_branches()
+    if branches:
+        return (branches, [])
+    else:
+        return None

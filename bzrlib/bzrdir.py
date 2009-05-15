@@ -88,7 +88,7 @@ from bzrlib import (
 
 
 class BzrDir(object):
-    """A .bzr control diretory.
+    """A .bzr control directory.
 
     BzrDir instances let you create or open any of the things that can be
     found within .bzr - checkouts, branches and repositories.
@@ -1292,6 +1292,48 @@ class BzrDir(object):
             push_result.target_branch = \
                 push_result.branch_push_result.target_branch
         return push_result
+
+    def get_object_and_label(self):
+        """Return the primary object and type label for a control directory.
+
+        :return: object, label where
+          object is a Branch, Repository or WorkingTree and
+          label is one of:
+            branch            - an unstacked branch
+            stacked branch    - a branch stacked on another
+            repository        - an unshared repository
+            shared repository - a shared repository
+            tree              - a lightweight checkout
+        """
+        try:
+            br = self.open_branch()
+        except errors.NotBranchError:
+            pass
+        else:
+            try:
+                br.get_stacked_on_url()
+            except errors.NotStacked:
+                return br, "branch"
+            except errors.UnstackableBranchFormat:
+                return br, "branch"
+            else:
+                return br, "stacked branch"
+        try:
+            repo = self.open_repository()
+        except errors.NoRepositoryPresent:
+            pass
+        else:
+            if repo.is_shared():
+                return repo, "shared repository"
+            else:
+                return repo, "repository"
+        try:
+            wt = self.open_workingtree()
+        except (errors.NoWorkingTree, errors.NotLocalUrl):
+            pass
+        else:
+            return wt, "tree"
+        raise AssertionError("unknown type of control directory %s", self)
 
 
 class BzrDirHooks(hooks.Hooks):
