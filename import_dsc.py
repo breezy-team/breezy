@@ -1341,7 +1341,8 @@ class DistributionBranch(object):
                     try:
                         graph = branch.branch.repository.get_graph(
                                 self.branch.repository)
-                        if len(graph.heads([branch.branch.last_revision(),
+                        other_revid = branch.revid_of_version(version)
+                        if len(graph.heads([other_revid,
                                     self.branch.last_revision()])) == 1:
                             return branch
                     finally:
@@ -1353,7 +1354,8 @@ class DistributionBranch(object):
                     try:
                         graph = branch.branch.repository.get_graph(
                                 self.branch.repository)
-                        if len(graph.heads([branch.branch.last_revision(),
+                        other_revid = branch.revid_of_version(version)
+                        if len(graph.heads([other_revid,
                                     self.branch.last_revision()])) == 1:
                             return branch
                     finally:
@@ -1394,7 +1396,9 @@ class DistributionBranch(object):
                     try:
                         graph = other_up_branch.repository.get_graph(
                                 up_branch.repository)
-                        if len(graph.heads([other_up_branch.last_revision(),
+                        other_revid = branch.revid_of_upstream_version(
+                                version)
+                        if len(graph.heads([other_revid,
                                     up_branch.last_revision()])) == 1:
                             return branch
                     finally:
@@ -1407,7 +1411,9 @@ class DistributionBranch(object):
                     try:
                         graph = other_up_branch.repository.get_graph(
                                 up_branch.repository)
-                        if len(graph.heads([other_up_branch.last_revision(),
+                        other_revid = branch.revid_of_upstream_version(
+                                version)
+                        if len(graph.heads([other_revid,
                                     up_branch.last_revision()])) == 1:
                             return branch
                     finally:
