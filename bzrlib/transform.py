@@ -115,10 +115,6 @@ class TreeTransformBase(object):
         self._tree_path_ids = {}
         # Mapping trans_id -> path in old tree
         self._tree_id_paths = {}
-        # Cache of realpath results, to speed up canonical_path
-        self._realpaths = {}
-        # Cache of relpath results, to speed up canonical_path
-        self._relpaths = {}
         # The trans_id that will be used as the tree root
         root_id = tree.get_root_id()
         if root_id is not None:
@@ -240,25 +236,6 @@ class TreeTransformBase(object):
             else:
                 return self.trans_id_tree_file_id(file_id)
 
-    def canonical_path(self, path):
-        """Get the canonical tree-relative path"""
-        # don't follow final symlinks
-        abs = self._tree.abspath(path)
-        if abs in self._relpaths:
-            return self._relpaths[abs]
-        dirname, basename = os.path.split(abs)
-        if dirname not in self._realpaths:
-            self._realpaths[dirname] = os.path.realpath(dirname)
-        dirname = self._realpaths[dirname]
-        abs = pathjoin(dirname, basename)
-        if dirname in self._relpaths:
-            relpath = pathjoin(self._relpaths[dirname], basename)
-            relpath = relpath.rstrip('/\\')
-        else:
-            relpath = self._tree.relpath(abs)
-        self._relpaths[abs] = relpath
-        return relpath
-
     def trans_id_tree_path(self, path):
         """Determine (and maybe set) the transaction ID for a tree path."""
         path = self.canonical_path(path)
@@ -352,22 +329,6 @@ class TreeTransformBase(object):
                         self.final_kind(t))
         new_ids.update(changed_kind)
         return sorted(FinalPaths(self).get_paths(new_ids))
-
-    def tree_kind(self, trans_id):
-        """Determine the file kind in the working tree.
-
-        Raises NoSuchFile if the file does not exist
-        """
-        path = self._tree_id_paths.get(trans_id)
-        if path is None:
-            raise NoSuchFile(None)
-        try:
-            return file_kind(self._tree.abspath(path))
-        except OSError, e:
-            if e.errno != errno.ENOENT:
-                raise
-            else:
-                raise NoSuchFile(path)
 
     def final_kind(self, trans_id):
         """Determine the final file kind, after any changes applied.
@@ -501,26 +462,6 @@ class TreeTransformBase(object):
         for parent_id in parents:
             # ensure that all children are registered with the transaction
             list(self.iter_tree_children(parent_id))
-
-    def iter_tree_children(self, parent_id):
-        """Iterate through the entry's tree children, if any"""
-        try:
-            path = self._tree_id_paths[parent_id]
-        except KeyError:
-            return
-        try:
-            children = os.listdir(self._tree.abspath(path))
-        except OSError, e:
-            if not (osutils._is_error_enotdir(e)
-                    or e.errno in (errno.ENOENT, errno.ESRCH)):
-                raise
-            return
-
-        for child in children:
-            childpath = joinpath(path, child)
-            if self._tree.is_control_filename(childpath):
-                continue
-            yield self.trans_id_tree_path(childpath)
 
     def has_named_child(self, by_parent, parent_id, name):
         try:
@@ -1181,32 +1122,6 @@ class DiskTreeTransform(TreeTransformBase):
     def _read_symlink_target(self, trans_id):
         return os.readlink(self._limbo_name(trans_id))
 
-    def _set_mode(self, trans_id, mode_id, typefunc):
-        """Set the mode of new file contents.
-        The mode_id is the existing file to get the mode from (often the same
-        as trans_id).  The operation is only performed if there's a mode match
-        according to typefunc.
-        """
-        if mode_id is None:
-            mode_id = trans_id
-        try:
-            old_path = self._tree_id_paths[mode_id]
-        except KeyError:
-            return
-        try:
-            mode = os.stat(self._tree.abspath(old_path)).st_mode
-        except OSError, e:
-            if e.errno in (errno.ENOENT, errno.ENOTDIR):
-                # Either old_path doesn't exist, or the parent of the
-                # target is not a directory (but will be one eventually)
-                # Either way, we know it doesn't exist *right now*
-                # See also bug #248448
-                return
-            else:
-                raise
-        if typefunc(mode):
-            os.chmod(self._limbo_name(trans_id), mode)
-
     def create_hardlink(self, path, trans_id):
         """Schedule creation of a hard link"""
         name = self._limbo_name(trans_id)
@@ -1353,9 +1268,95 @@ class TreeTransform(DiskTreeTransform):
             tree.unlock()
             raise
 
+        # Cache of realpath results, to speed up canonical_path
+        self._realpaths = {}
+        # Cache of relpath results, to speed up canonical_path
+        self._relpaths = {}
         DiskTreeTransform.__init__(self, tree, limbodir, pb,
                                    tree.case_sensitive)
         self._deletiondir = deletiondir
+
+    def canonical_path(self, path):
+        """Get the canonical tree-relative path"""
+        # don't follow final symlinks
+        abs = self._tree.abspath(path)
+        if abs in self._relpaths:
+            return self._relpaths[abs]
+        dirname, basename = os.path.split(abs)
+        if dirname not in self._realpaths:
+            self._realpaths[dirname] = os.path.realpath(dirname)
+        dirname = self._realpaths[dirname]
+        abs = pathjoin(dirname, basename)
+        if dirname in self._relpaths:
+            relpath = pathjoin(self._relpaths[dirname], basename)
+            relpath = relpath.rstrip('/\\')
+        else:
+            relpath = self._tree.relpath(abs)
+        self._relpaths[abs] = relpath
+        return relpath
+
+    def tree_kind(self, trans_id):
+        """Determine the file kind in the working tree.
+
+        Raises NoSuchFile if the file does not exist
+        """
+        path = self._tree_id_paths.get(trans_id)
+        if path is None:
+            raise NoSuchFile(None)
+        try:
+            return file_kind(self._tree.abspath(path))
+        except OSError, e:
+            if e.errno != errno.ENOENT:
+                raise
+            else:
+                raise NoSuchFile(path)
+
+    def _set_mode(self, trans_id, mode_id, typefunc):
+        """Set the mode of new file contents.
+        The mode_id is the existing file to get the mode from (often the same
+        as trans_id).  The operation is only performed if there's a mode match
+        according to typefunc.
+        """
+        if mode_id is None:
+            mode_id = trans_id
+        try:
+            old_path = self._tree_id_paths[mode_id]
+        except KeyError:
+            return
+        try:
+            mode = os.stat(self._tree.abspath(old_path)).st_mode
+        except OSError, e:
+            if e.errno in (errno.ENOENT, errno.ENOTDIR):
+                # Either old_path doesn't exist, or the parent of the
+                # target is not a directory (but will be one eventually)
+                # Either way, we know it doesn't exist *right now*
+                # See also bug #248448
+                return
+            else:
+                raise
+        if typefunc(mode):
+            os.chmod(self._limbo_name(trans_id), mode)
+
+    def iter_tree_children(self, parent_id):
+        """Iterate through the entry's tree children, if any"""
+        try:
+            path = self._tree_id_paths[parent_id]
+        except KeyError:
+            return
+        try:
+            children = os.listdir(self._tree.abspath(path))
+        except OSError, e:
+            if not (osutils._is_error_enotdir(e)
+                    or e.errno in (errno.ENOENT, errno.ESRCH)):
+                raise
+            return
+
+        for child in children:
+            childpath = joinpath(path, child)
+            if self._tree.is_control_filename(childpath):
+                continue
+            yield self.trans_id_tree_path(childpath)
+
 
     def apply(self, no_conflicts=False, precomputed_delta=None, _mover=None):
         """Apply all changes to the inventory and filesystem.
