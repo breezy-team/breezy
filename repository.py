@@ -245,8 +245,11 @@ class GitRevisionTree(revisiontree.RevisionTree):
     def get_revision_id(self):
         return self._revision_id
 
-    def get_file_text(self, file_id):
-        entry = self._inventory[file_id]
+    def get_file_text(self, file_id, path=None):
+        if path is not None:
+            entry = self._inventory._get_ie(path)
+        else:
+            entry = self._inventory[file_id]
         if entry.kind == 'directory': return ""
         return entry.object.data
 
