@@ -54,18 +54,9 @@ class TestLog(tests.TestCaseWithTransport):
         return tree
 
     def make_merged_branch(self, path='.', format=None):
-        tree = self.make_branch_and_tree(path, format=format)
-        self.build_tree(
-            [path + '/hello.txt', path + '/goodbye.txt', path + '/meep.txt'])
-        tree.add('hello.txt')
-        revision_id1 = tree.commit(message='message1')
-        tree.add('goodbye.txt')
-        tree.commit(message='message2')
-        tree.add('meep.txt')
-        tree.commit(message='message3')
-
-        tree2 = tree.bzrdir.sprout('tree2', revision_id=revision_id1
-            ).open_workingtree()
+        tree = self.make_linear_branch(path, format)
+        tree2 = tree.bzrdir.sprout('tree2',
+            revision_id=tree.branch.get_rev_id(1)).open_workingtree()
         tree2.commit(message='tree2 message2')
         tree2.commit(message='tree2 message3')
         tree.merge_from_branch(tree2.branch)
