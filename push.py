@@ -47,12 +47,12 @@ class MissingObjectsIterator(object):
 
     """
 
-    def __init__(self, source, mapping, pb=None):
+    def __init__(self, store, source, pb=None):
         """Create a new missing objects iterator.
 
         """
         self.source = source
-        self._object_store = BazaarObjectStore(self.source, mapping)
+        self._object_store = store
         self._revids = set()
         self._sent_shas = set()
         self._pending = []
@@ -126,6 +126,7 @@ class InterToGitRepository(InterRepository):
     def __init__(self, source, target):
         super(InterToGitRepository, self).__init__(source, target)
         self.mapping = self.target.get_mapping()
+        self.source_store = BazaarObjectStore(self.source, self.mapping)
 
     @staticmethod
     def _get_repo_format_to_test():
@@ -142,14 +143,14 @@ class InterToGitRepository(InterRepository):
 
 class InterToLocalGitRepository(InterToGitRepository):
 
-    def missing_revisions(self, stop_revisions):
+    def missing_revisions(self, stop_revisions, check_revid):
         missing = []
         pb = ui.ui_factory.nested_progress_bar()
         try:
             graph = self.source.get_graph()
             for revid, _ in graph.iter_ancestry(stop_revisions):
                 pb.update("determining revisions to fetch", len(missing))
-                if not self.target.has_revision(revid):
+                if not check_revid(revid):
                     missing.append(revid)
             return graph.iter_topo_order(missing)
         finally:
@@ -162,7 +163,7 @@ class InterToLocalGitRepository(InterToGitRepository):
             if revid in gitidmap:
                 gitid = gitidmap[revid]
             else:
-                gitid, _ = self.mapping.revision_id_bzr_to_foreign(revid)
+                gitid = self.source_store._lookup_revision_sha1(revid)
             self.target._git.refs[name] = gitid
             new_refs[name] = gitid
         return revidmap, new_refs
@@ -173,16 +174,21 @@ class InterToLocalGitRepository(InterToGitRepository):
         revidmap = {}
         self.source.lock_read()
         try:
-            todo = [revid for revid in self.missing_revisions(stop_revisions) if revid != NULL_REVISION]
+            target_store = self.target._git.object_store
+            def check_revid(revid):
+                if revid == NULL_REVISION:
+                    return True
+                return (self.source_store._lookup_revision_sha1(revid) in target_store)
+            todo = list(self.missing_revisions(stop_revisions, check_revid))
             pb = ui.ui_factory.nested_progress_bar()
             try:
-                object_generator = MissingObjectsIterator(self.source, self.mapping, pb)
+                object_generator = MissingObjectsIterator(self.source_store, self.source, pb)
                 for old_bzr_revid, git_commit in object_generator.import_revisions(
                     todo):
                     new_bzr_revid = self.mapping.revision_id_foreign_to_bzr(git_commit)
                     revidmap[old_bzr_revid] = new_bzr_revid
                     gitidmap[old_bzr_revid] = git_commit
-                self.target._git.object_store.add_objects(object_generator) 
+                target_store.add_objects(object_generator) 
             finally:
                 pb.finished()
         finally:
@@ -204,13 +210,12 @@ class InterToRemoteGitRepository(InterToGitRepository):
         def determine_wants(refs):
             ret = {}
             for name, revid in new_refs.iteritems():
-                ret[name] = store._lookup_revision_sha1(revid)
+                ret[name] = self.source_store._lookup_revision_sha1(revid)
             return ret
         self.source.lock_read()
         try:
-            store = BazaarObjectStore(self.source, self.mapping)
             new_refs = self.target.send_pack(determine_wants,
-                    store.generate_pack_contents)
+                    self.source_store.generate_pack_contents)
         finally:
             self.source.unlock()
         return revidmap, new_refs
