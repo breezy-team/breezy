@@ -41,6 +41,7 @@ from bzrlib import (
     merge_directive,
     osutils,
     reconfigure,
+    registry,
     rename_map,
     revision as _mod_revision,
     symbol_versioning,
@@ -4856,6 +4857,8 @@ class cmd_send(Command):
     bzr pull by specifying a file containing a merge directive as the location.
     """
 
+    format_registry = registry.Registry()
+
     encoding_type = 'exact'
 
     _see_also = ['merge', 'pull']
@@ -4883,18 +4886,51 @@ class cmd_send(Command):
         'revision',
         'message',
         Option('body', help='Body for the email.', type=unicode),
-        RegistryOption.from_kwargs('format',
-        'Use the specified output format.',
-        **{'4': 'Bundle format 4, Merge Directive 2 (default)',
-           '0.9': 'Bundle format 0.9, Merge Directive 1',})
+        RegistryOption('format',
+                       help='Use the specified output format.', 
+                       registry=format_registry)
         ]
 
     def run(self, submit_branch=None, public_branch=None, no_bundle=False,
             no_patch=False, revision=None, remember=False, output=None,
-            format='4', mail_to=None, message=None, body=None, **kwargs):
+            format=None, mail_to=None, message=None, body=None, **kwargs):
         return self._run(submit_branch, revision, public_branch, remember,
                          format, no_bundle, no_patch, output,
                          kwargs.get('from', '.'), mail_to, message, body)
+
+    def _send_4(branch, revision_id, submit_branch, public_branch,
+                no_patch, no_bundle, message, base_revision_id):
+        return merge_directive.MergeDirective2.from_objects(
+            branch.repository, revision_id, time.time(),
+            osutils.local_time_offset(), submit_branch,
+            public_branch=public_branch, include_patch=not no_patch,
+            include_bundle=not no_bundle, message=message,
+            base_revision_id=base_revision_id)
+
+    def _send_0_9(branch, revision_id, submit_branch, public_branch,
+                  no_patch, no_bundle, message, base_revision_id):
+        if not no_bundle:
+            if not no_patch:
+                patch_type = 'bundle'
+            else:
+                raise errors.BzrCommandError('Format 0.9 does not'
+                    ' permit bundle with no patch')
+        else:
+            if not no_patch:
+                patch_type = 'diff'
+            else:
+                patch_type = None
+        return merge_directive.MergeDirective.from_objects(
+            branch.repository, revision_id, time.time(),
+            osutils.local_time_offset(), submit_branch,
+            public_branch=public_branch, patch_type=patch_type,
+            message=message)
+
+    format_registry.register('4', 
+        _send_4, 'Bundle format 4, Merge Directive 2 (default)')
+    format_registry.register('0.9',
+        _send_0_9, 'Bundle format 0.9, Merge Directive 1')
+    format_registry.default_key = '4'
 
     def _run(self, submit_branch, revision, public_branch, remember, format,
              no_bundle, no_patch, output, from_, mail_to, message, body):
@@ -4961,31 +4997,11 @@ class cmd_send(Command):
                 revision_id = branch.last_revision()
             if revision_id == NULL_REVISION:
                 raise errors.BzrCommandError('No revisions to submit.')
-            if format == '4':
-                directive = merge_directive.MergeDirective2.from_objects(
-                    branch.repository, revision_id, time.time(),
-                    osutils.local_time_offset(), submit_branch,
-                    public_branch=public_branch, include_patch=not no_patch,
-                    include_bundle=not no_bundle, message=message,
-                    base_revision_id=base_revision_id)
-            elif format == '0.9':
-                if not no_bundle:
-                    if not no_patch:
-                        patch_type = 'bundle'
-                    else:
-                        raise errors.BzrCommandError('Format 0.9 does not'
-                            ' permit bundle with no patch')
-                else:
-                    if not no_patch:
-                        patch_type = 'diff'
-                    else:
-                        patch_type = None
-                directive = merge_directive.MergeDirective.from_objects(
-                    branch.repository, revision_id, time.time(),
-                    osutils.local_time_offset(), submit_branch,
-                    public_branch=public_branch, patch_type=patch_type,
-                    message=message)
-
+            if format is None:
+                # TODO: Query submit branch for its preferred format
+                format = self.format_registry.get()
+            directive = format(branch, revision_id, submit_branch, 
+                public_branch, no_patch, no_bundle, message, base_revision_id)
             if output is None:
                 directive.compose_merge_request(mail_client, mail_to, body,
                                                 branch, tree)
@@ -5052,10 +5068,9 @@ class cmd_bundle_revisions(cmd_send):
         Option('output', short_name='o', help='Write directive to this file.',
                type=unicode),
         'revision',
-        RegistryOption.from_kwargs('format',
-        'Use the specified output format.',
-        **{'4': 'Bundle format 4, Merge Directive 2 (default)',
-           '0.9': 'Bundle format 0.9, Merge Directive 1',})
+        RegistryOption('format',
+                       help='Use the specified output format.',
+                       registry=cmd_send.format_registry),
         ]
     aliases = ['bundle']
 
@@ -5065,7 +5080,7 @@ class cmd_bundle_revisions(cmd_send):
 
     def run(self, submit_branch=None, public_branch=None, no_bundle=False,
             no_patch=False, revision=None, remember=False, output=None,
-            format='4', **kwargs):
+            format=None, **kwargs):
         if output is None:
             output = '-'
         return self._run(submit_branch, revision, public_branch, remember,
