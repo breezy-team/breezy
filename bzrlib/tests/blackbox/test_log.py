@@ -53,6 +53,34 @@ class TestLog(tests.TestCaseWithTransport):
         tree.commit(message='message3')
         return tree
 
+    def make_merged_branch(self, path='.', format=None):
+        tree = self.make_branch_and_tree(path, format=format)
+        self.build_tree(
+            [path + '/hello.txt', path + '/goodbye.txt', path + '/meep.txt'])
+        tree.add('hello.txt')
+        revision_id1 = tree.commit(message='message1')
+        tree.add('goodbye.txt')
+        tree.commit(message='message2')
+        tree.add('meep.txt')
+        tree.commit(message='message3')
+
+        tree2 = tree.bzrdir.sprout('tree2', revision_id=revision_id1
+            ).open_workingtree()
+        tree2.commit(message='tree2 message2')
+        tree2.commit(message='tree2 message3')
+        tree.merge_from_branch(tree2.branch)
+        tree.commit(message='merge')
+        return tree
+
+    def assertRevnos(self, log, must_have=(), must_not_have=()):
+        """Check if revnos are in or not in the log output"""
+        for revno in must_have:
+            self.assertTrue(('revno: %s\n' % revno) in log,
+                'Does not contain expected revno %s' % revno)
+        for revno in must_not_have:
+            self.assertFalse(('revno: %s\n' % revno) in log,
+                'Contains unexpected revno %s' % revno)
+
     def commit_options(self):
         """Use some mostly fixed values for commits to simplify tests.
 
@@ -147,11 +175,22 @@ class TestLogRevSpecs(TestLog):
         log = self.run_bzr("log -r 1..3")[0]
         self.assertEqualDiff(full_log, log)
 
+    def test_log_dotted_revspecs(self):
+        self.make_merged_branch()
+        log = self.run_bzr("log -n0 -r 1..1.1.1")[0]
+        self.assertRevnos(log, (1, '1.1.1'), (2, 3, '1.1.2', 4))
+
     def test_log_reversed_revspecs(self):
         self.make_linear_branch()
         self.run_bzr_error(('bzr: ERROR: Start revision must be older than '
                             'the end revision.\n',),
                            ['log', '-r3..1'])
+
+    def test_log_reversed_dotted_revspecs(self):
+        self.make_merged_branch()
+        self.run_bzr_error(('bzr: ERROR: Start revision not found in '
+                            'left-hand history of end revision.\n',),
+                           "log -r 1.1.1..1")
 
     def test_log_revno_n_path(self):
         self.make_linear_branch('branch1')
