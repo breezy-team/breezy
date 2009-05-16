@@ -264,8 +264,9 @@ class LocalGitBranch(GitBranch):
         self.set_last_revision(revid)
 
     def set_last_revision(self, revid):
-        (self.head, self.mapping) = self.mapping.revision_id_bzr_to_foreign(
+        (newhead, self.mapping) = self.mapping.revision_id_bzr_to_foreign(
                 revid)
+        self.head = newhead
 
     def _set_head(self, value):
         self._head = value
@@ -310,7 +311,7 @@ class GitBranchPushResult(branch.BranchPushResult):
         # Try in source branch first, it'll be faster
         try:
             return self.source_branch.revision_id_to_revno(revid)
-        except NoSuchRevision:
+        except errors.NoSuchRevision:
             # FIXME: Check using graph.find_distance_to_null() ?
             return self.target_branch.revision_id_to_revno(revid)
 

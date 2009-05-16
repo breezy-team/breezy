@@ -90,7 +90,7 @@ class GitCommitBuilder(CommitBuilder):
                 sha = "FIXME"
             else:
                 raise AssertionError("Unknown kind %r" % kind[1])
-            if executable:
+            if executable[1]:
                 mode |= 0111
             self._any_changes = True
             self._blobs[path[1].encode("utf-8")] = (mode, sha)
