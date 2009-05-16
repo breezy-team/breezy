@@ -16,11 +16,11 @@
 
 """Tests for the test trees used by the tree_implementations tests."""
 
-from bzrlib.tests import SymlinkFeature
-from bzrlib.tests.tree_implementations import TestCaseWithTree
+from bzrlib import tests
+from bzrlib.tests import tree_implementations
 
 
-class TestTreeShapes(TestCaseWithTree):
+class TestTreeShapes(tree_implementations.TestCaseWithTree):
 
     def test_empty_tree_no_parents(self):
         tree = self.make_branch_and_tree('.')
@@ -147,7 +147,7 @@ class TestTreeShapes(TestCaseWithTree):
         # currently this test tree requires unicode. It might be good
         # to have it simply stop having the single unicode file in it
         # when dealing with a non-unicode filesystem.
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(tests.SymlinkFeature)
         tree = self.get_tree_with_subdirs_and_all_content_types()
         tree.lock_read()
         self.addCleanup(tree.unlock)

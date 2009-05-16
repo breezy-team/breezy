@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -2021,7 +2021,7 @@ class InterDirStateTree(InterTree):
         else:
             specific_files = set([''])
         # -- specific_files is now a utf8 path set --
-        search_specific_files = set()
+
         # -- get the state object and prepare it.
         state = self.target.current_dirstate()
         state._read_dirblocks_if_needed()
@@ -2051,11 +2051,7 @@ class InterDirStateTree(InterTree):
             if not all_versioned:
                 raise errors.PathsNotVersionedError(specific_files)
         # -- remove redundancy in supplied specific_files to prevent over-scanning --
-        for path in specific_files:
-            other_specific_files = specific_files.difference(set([path]))
-            if not osutils.is_inside_any(other_specific_files, path):
-                # this is a top level path, we must check it.
-                search_specific_files.add(path)
+        search_specific_files = osutils.minimum_path_selection(specific_files)
 
         use_filesystem_for_exec = (sys.platform != 'win32')
         iter_changes = self.target._iter_changes(include_unchanged,

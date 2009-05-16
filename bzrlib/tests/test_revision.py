@@ -227,6 +227,13 @@ class TestRevisionMethods(TestCase):
                 r.get_apparent_author)
         self.assertEqual('C', author)
 
+    def test_get_apparent_author_none(self):
+        r = revision.Revision('1')
+        author = self.applyDeprecated(
+                symbol_versioning.deprecated_in((1, 13, 0)),
+                r.get_apparent_author)
+        self.assertEqual(None, author)
+
     def test_get_apparent_authors(self):
         r = revision.Revision('1')
         r.committer = 'A'
@@ -235,6 +242,10 @@ class TestRevisionMethods(TestCase):
         self.assertEqual(['B'], r.get_apparent_authors())
         r.properties['authors'] = 'C\nD'
         self.assertEqual(['C', 'D'], r.get_apparent_authors())
+
+    def test_get_apparent_authors_no_committer(self):
+        r = revision.Revision('1')
+        self.assertEqual([], r.get_apparent_authors())
 
 
 class TestRevisionBugs(TestCase):

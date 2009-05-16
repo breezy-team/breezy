@@ -97,16 +97,22 @@ def minimum_path_selection(paths):
 
     :param paths: A container (and hence not None) of paths.
     :return: A set of paths sufficient to include everything in paths via
-        is_inside_any, drawn from the paths parameter.
+        is_inside, drawn from the paths parameter.
     """
-    search_paths = set()
-    paths = set(paths)
-    for path in paths:
-        other_paths = paths.difference([path])
-        if not is_inside_any(other_paths, path):
-            # this is a top level path, we must check it.
-            search_paths.add(path)
-    return search_paths
+    if len(paths) < 2:
+        return set(paths)
+
+    def sort_key(path):
+        return path.split('/')
+    sorted_paths = sorted(list(paths), key=sort_key)
+
+    search_paths = [sorted_paths[0]]
+    for path in sorted_paths[1:]:
+        if not is_inside(search_paths[-1], path):
+            # This path is unique, add it
+            search_paths.append(path)
+
+    return set(search_paths)
 
 
 _QUOTE_RE = None
@@ -925,6 +931,20 @@ def host_os_dereferences_symlinks():
             and sys.platform not in ('cygwin', 'win32'))
 
 
+def readlink(abspath):
+    """Return a string representing the path to which the symbolic link points.
+
+    :param abspath: The link absolute unicode path.
+
+    This his guaranteed to return the symbolic link in unicode in all python
+    versions.
+    """
+    link = abspath.encode(_fs_enc)
+    target = os.readlink(link)
+    target = target.decode(_fs_enc)
+    return target
+
+
 def contains_whitespace(s):
     """True if there are any whitespace characters in s."""
     # string.whitespace can include '\xa0' in certain locales, because it is
@@ -1392,21 +1412,21 @@ def _walkdirs_utf8(top, prefix=""):
             #       for win98 anyway.
             try:
                 from bzrlib._walkdirs_win32 import Win32ReadDir
-            except ImportError:
-                _selected_dir_reader = UnicodeDirReader()
-            else:
                 _selected_dir_reader = Win32ReadDir()
-        elif fs_encoding not in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968'):
+            except ImportError:
+                pass
+        elif fs_encoding in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968'):
             # ANSI_X3.4-1968 is a form of ASCII
-            _selected_dir_reader = UnicodeDirReader()
-        else:
             try:
                 from bzrlib._readdir_pyx import UTF8DirReader
-            except ImportError:
-                # No optimised code path
-                _selected_dir_reader = UnicodeDirReader()
-            else:
                 _selected_dir_reader = UTF8DirReader()
+            except ImportError:
+                pass
+
+    if _selected_dir_reader is None:
+        # Fallback to the python version
+        _selected_dir_reader = UnicodeDirReader()
+
     # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-toppath
     # But we don't actually uses 1-3 in pending, so set them to None
     pending = [[_selected_dir_reader.top_prefix_to_starting_dir(top, prefix)]]
@@ -1742,12 +1762,12 @@ def until_no_eintr(f, *a, **kw):
 
 def re_compile_checked(re_string, flags=0, where=""):
     """Return a compiled re, or raise a sensible error.
-    
+
     This should only be used when compiling user-supplied REs.
 
     :param re_string: Text form of regular expression.
     :param flags: eg re.IGNORECASE
-    :param where: Message explaining to the user the context where 
+    :param where: Message explaining to the user the context where
         it occurred, eg 'log search filter'.
     """
     # from https://bugs.launchpad.net/bzr/+bug/251352

@@ -1069,7 +1069,7 @@ class WritableEndToEndTests(SmartTCPTests):
         self._captureVar('BZR_NO_SMART_VFS', None)
         err = self.assertRaises(
             errors.NoSuchFile, self.transport.get, 'not%20a%20file')
-        self.assertEqual('not%20a%20file', err.path)
+        self.assertSubset([err.path], ['not%20a%20file', './not%20a%20file'])
 
     def test_simple_clone_conn(self):
         """Test that cloning reuses the same connection."""

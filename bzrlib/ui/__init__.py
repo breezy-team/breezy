@@ -217,8 +217,14 @@ class CLIUIFactory(UIFactory):
         return username
 
     def prompt(self, prompt, **kwargs):
-        """Emit prompt on the CLI."""
-        prompt = prompt % kwargs
+        """Emit prompt on the CLI.
+        
+        :param kwargs: Dictionary of arguments to insert into the prompt,
+            to allow UIs to reformat the prompt.
+        """
+        if kwargs:
+            # See <https://launchpad.net/bugs/365891>
+            prompt = prompt % kwargs
         prompt = prompt.encode(osutils.get_terminal_encoding(), 'replace')
         self.clear_term()
         self.stdout.write(prompt)

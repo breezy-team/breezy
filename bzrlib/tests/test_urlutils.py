@@ -672,3 +672,14 @@ class TestRebaseURL(TestCase):
                          '/bar', '/bar/baz'))
         self.assertEqual('.', urlutils.determine_relative_path(
                          '/bar', '/bar'))
+
+
+class TestParseURL(TestCase):
+
+    def test_parse_url(self):
+        self.assertEqual(urlutils.parse_url('http://example.com:80/one'),
+            ('http', None, None, 'example.com', 80, '/one'))
+        self.assertEqual(urlutils.parse_url('http://[1:2:3::40]/one'),
+                ('http', None, None, '1:2:3::40', None, '/one'))
+        self.assertEqual(urlutils.parse_url('http://[1:2:3::40]:80/one'),
+                ('http', None, None, '1:2:3::40', 80, '/one'))

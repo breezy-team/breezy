@@ -22,6 +22,8 @@ See bzr help eol for details.
 
 import re, sys
 
+from bzrlib.errors import BzrError
+
 
 # Real Linux/Unix/OSX newline - \n without \r before it
 _LINUX_NL_RE = re.compile(r'(?<!\r)\n')
@@ -66,5 +68,8 @@ def register_eol_content_filter():
             [ContentFilter(_to_crlf_converter, _to_crlf_converter)],
         }
     def eol_lookup(key):
-        return _eol_filter_stack_map.get(key)
+        filter = _eol_filter_stack_map.get(key)
+        if filter is None:
+            raise BzrError("Unknown eol value '%s'" % key)
+        return filter
     register_filter_stack_map('eol', eol_lookup)

@@ -1152,6 +1152,10 @@ class MergeCasesMixin(object):
             """
         result = """\
             line 1
+<<<<<<<\x20
+            line 2
+=======
+>>>>>>>\x20
             """
         self._test_merge_from_strings(base, a, b, result)
 

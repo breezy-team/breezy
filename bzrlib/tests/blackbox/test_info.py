@@ -1054,6 +1054,32 @@ Repository:
        ), out)
         self.assertEqual('', err)
 
+    def test_info_repository_hook(self):
+        format = bzrdir.format_registry.make_bzrdir('knit')
+        def repo_info(repo, stats, outf):
+            outf.write("more info\n")
+        info.hooks.install_named_hook('repository', repo_info, None)
+        # Create shared repository with working trees
+        repo = self.make_repository('repo', shared=True, format=format)
+        out, err = self.run_bzr('info -v repo')
+        self.assertEqualDiff(
+"""Shared repository with trees (format: dirstate or dirstate-tags or knit)
+Location:
+  shared repository: repo
+
+Format:
+       control: Meta directory format 1
+    repository: %s
+
+Create working tree for new branches inside the repository.
+
+Repository:
+         0 revisions
+more info
+""" % (format.repository_format.get_format_description(),
+       ), out)
+        self.assertEqual('', err)
+
     def assertCheckoutStatusOutput(self,
         command_string, lco_tree, shared_repo=None,
         repo_branch=None,

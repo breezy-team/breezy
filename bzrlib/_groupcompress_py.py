@@ -23,6 +23,74 @@ useless stuff.
 from bzrlib import osutils
 
 
+class _OutputHandler(object):
+    """A simple class which just tracks how to split up an insert request."""
+
+    def __init__(self, out_lines, index_lines, min_len_to_index):
+        self.out_lines = out_lines
+        self.index_lines = index_lines
+        self.min_len_to_index = min_len_to_index
+        self.cur_insert_lines = []
+        self.cur_insert_len = 0
+
+    def add_copy(self, start_byte, end_byte):
+        # The data stream allows >64kB in a copy, but to match the compiled
+        # code, we will also limit it to a 64kB copy
+        for start_byte in xrange(start_byte, end_byte, 64*1024):
+            num_bytes = min(64*1024, end_byte - start_byte)
+            copy_bytes = encode_copy_instruction(start_byte, num_bytes)
+            self.out_lines.append(copy_bytes)
+            self.index_lines.append(False)
+
+    def _flush_insert(self):
+        if not self.cur_insert_lines:
+            return
+        if self.cur_insert_len > 127:
+            raise AssertionError('We cannot insert more than 127 bytes'
+                                 ' at a time.')
+        self.out_lines.append(chr(self.cur_insert_len))
+        self.index_lines.append(False)
+        self.out_lines.extend(self.cur_insert_lines)
+        if self.cur_insert_len < self.min_len_to_index:
+            self.index_lines.extend([False]*len(self.cur_insert_lines))
+        else:
+            self.index_lines.extend([True]*len(self.cur_insert_lines))
+        self.cur_insert_lines = []
+        self.cur_insert_len = 0
+
+    def _insert_long_line(self, line):
+        # Flush out anything pending
+        self._flush_insert()
+        line_len = len(line)
+        for start_index in xrange(0, line_len, 127):
+            next_len = min(127, line_len - start_index)
+            self.out_lines.append(chr(next_len))
+            self.index_lines.append(False)
+            self.out_lines.append(line[start_index:start_index+next_len])
+            # We don't index long lines, because we won't be able to match
+            # a line split across multiple inserts anway
+            self.index_lines.append(False)
+
+    def add_insert(self, lines):
+        if self.cur_insert_lines != []:
+            raise AssertionError('self.cur_insert_lines must be empty when'
+                                 ' adding a new insert')
+        for line in lines:
+            if len(line) > 127:
+                self._insert_long_line(line)
+            else:
+                next_len = len(line) + self.cur_insert_len
+                if next_len > 127:
+                    # Adding this line would overflow, so flush, and start over
+                    self._flush_insert()
+                    self.cur_insert_lines = [line]
+                    self.cur_insert_len = len(line)
+                else:
+                    self.cur_insert_lines.append(line)
+                    self.cur_insert_len = next_len
+        self._flush_insert()
+
+
 class LinesDeltaIndex(object):
     """This class indexes matches between strings.
 
@@ -32,6 +100,9 @@ class LinesDeltaIndex(object):
         quickly map between a matching line number and the byte location
     :ivar endpoint: The total number of bytes in self.line_offsets
     """
+
+    _MIN_MATCH_BYTES = 10
+    _SOFT_MIN_MATCH_BYTES = 200
 
     def __init__(self, lines):
         self.lines = []
@@ -50,7 +121,11 @@ class LinesDeltaIndex(object):
         for idx, do_index in enumerate(index):
             if not do_index:
                 continue
-            matches.setdefault(new_lines[idx], []).append(start_idx + idx)
+            line = new_lines[idx]
+            try:
+                matches[line].add(start_idx + idx)
+            except KeyError:
+                matches[line] = set([start_idx + idx])
 
     def get_matches(self, line):
         """Return the lines which match the line in right."""
@@ -59,7 +134,7 @@ class LinesDeltaIndex(object):
         except KeyError:
             return None
 
-    def _get_longest_match(self, lines, pos, locations):
+    def _get_longest_match(self, lines, pos):
         """Look at all matches for the current line, return the longest.
 
         :param lines: The lines we are matching against
@@ -74,48 +149,45 @@ class LinesDeltaIndex(object):
         """
         range_start = pos
         range_len = 0
-        copy_ends = None
+        prev_locations = None
         max_pos = len(lines)
+        matching = self._matching_lines
         while pos < max_pos:
-            if locations is None:
-                # TODO: is try/except better than get(..., None)?
-                try:
-                    locations = self._matching_lines[lines[pos]]
-                except KeyError:
-                    locations = None
-            if locations is None:
+            try:
+                locations = matching[lines[pos]]
+            except KeyError:
                 # No more matches, just return whatever we have, but we know
                 # that this last position is not going to match anything
                 pos += 1
                 break
+            # We have a match
+            if prev_locations is None:
+                # This is the first match in a range
+                prev_locations = locations
+                range_len = 1
+                locations = None # Consumed
             else:
-                # We have a match
-                if copy_ends is None:
-                    # This is the first match in a range
-                    copy_ends = [loc + 1 for loc in locations]
-                    range_len = 1
+                # We have a match started, compare to see if any of the
+                # current matches can be continued
+                next_locations = locations.intersection([loc + 1 for loc
+                                                         in prev_locations])
+                if next_locations:
+                    # At least one of the regions continues to match
+                    prev_locations = set(next_locations)
+                    range_len += 1
                     locations = None # Consumed
                 else:
-                    # We have a match started, compare to see if any of the
-                    # current matches can be continued
-                    next_locations = set(copy_ends).intersection(locations)
-                    if next_locations:
-                        # At least one of the regions continues to match
-                        copy_ends = [loc + 1 for loc in next_locations]
-                        range_len += 1
-                        locations = None # Consumed
-                    else:
-                        # All current regions no longer match.
-                        # This line does still match something, just not at the
-                        # end of the previous matches. We will return locations
-                        # so that we can avoid another _matching_lines lookup.
-                        break
+                    # All current regions no longer match.
+                    # This line does still match something, just not at the
+                    # end of the previous matches. We will return locations
+                    # so that we can avoid another _matching_lines lookup.
+                    break
             pos += 1
-        if copy_ends is None:
+        if prev_locations is None:
             # We have no matches, this is a pure insert
-            return None, pos, locations
-        return (((min(copy_ends) - range_len, range_start, range_len)),
-                pos, locations)
+            return None, pos
+        smallest = min(prev_locations)
+        return (smallest - range_len + 1, range_start, range_len), pos
 
     def get_matching_blocks(self, lines, soft=False):
         """Return the ranges in lines which match self.lines.
@@ -133,15 +205,13 @@ class LinesDeltaIndex(object):
         # instructions.
         result = []
         pos = 0
-        locations = None
         max_pos = len(lines)
         result_append = result.append
-        min_match_bytes = 10
+        min_match_bytes = self._MIN_MATCH_BYTES
         if soft:
-            min_match_bytes = 200
+            min_match_bytes = self._SOFT_MIN_MATCH_BYTES
         while pos < max_pos:
-            block, pos, locations = self._get_longest_match(lines, pos,
-                                                            locations)
+            block, pos = self._get_longest_match(lines, pos)
             if block is not None:
                 # Check to see if we match fewer than min_match_bytes. As we
                 # will turn this into a pure 'insert', rather than a copy.
@@ -217,6 +287,8 @@ class LinesDeltaIndex(object):
         # reserved for content type, content length
         out_lines = ['', '', encode_base128_int(bytes_length)]
         index_lines = [False, False, False]
+        output_handler = _OutputHandler(out_lines, index_lines,
+                                        self._MIN_MATCH_BYTES)
         blocks = self.get_matching_blocks(new_lines, soft=soft)
         current_line_num = 0
         # We either copy a range (while there are reusable lines) or we
@@ -224,11 +296,16 @@ class LinesDeltaIndex(object):
         for old_start, new_start, range_len in blocks:
             if new_start != current_line_num:
                 # non-matching region, insert the content
-                self._flush_insert(current_line_num, new_start,
-                                   new_lines, out_lines, index_lines)
+                output_handler.add_insert(new_lines[current_line_num:new_start])
             current_line_num = new_start + range_len
             if range_len:
-                self._flush_copy(old_start, range_len, out_lines, index_lines)
+                # Convert the line based offsets into byte based offsets
+                if old_start == 0:
+                    first_byte = 0
+                else:
+                    first_byte = self.line_offsets[old_start - 1]
+                last_byte = self.line_offsets[old_start + range_len - 1]
+                output_handler.add_copy(first_byte, last_byte)
         return out_lines, index_lines
 
 
@@ -335,7 +412,6 @@ def decode_copy_instruction(bytes, cmd, pos):
 
 def make_delta(source_bytes, target_bytes):
     """Create a delta from source to target."""
-    # TODO: The checks below may not be a the right place yet.
     if type(source_bytes) is not str:
         raise TypeError('source is not a str')
     if type(target_bytes) is not str:

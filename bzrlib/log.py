@@ -1833,6 +1833,8 @@ def _get_info_for_log_files(revisionspec_list, file_list):
     info_list = []
     start_rev_info, end_rev_info = _get_revision_range(revisionspec_list, b,
         "log")
+    if relpaths in ([], [u'']):
+        return b, [], start_rev_info, end_rev_info
     if start_rev_info is None and end_rev_info is None:
         if tree is None:
             tree = b.basis_tree()

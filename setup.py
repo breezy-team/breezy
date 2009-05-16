@@ -602,14 +602,20 @@ elif 'py2exe' in sys.argv:
         # TORTOISE_OVERLAYS_MSI_WIN32 must be set to the location of the
         # TortoiseOverlays MSI installer file. It is in the TSVN svn repo and
         # can be downloaded from (username=guest, blank password):
-        # http://tortoisesvn.tigris.org/svn/tortoisesvn/TortoiseOverlays/version-1.0.4/bin/TortoiseOverlays-1.0.4.11886-win32.msi
+        # http://tortoisesvn.tigris.org/svn/tortoisesvn/TortoiseOverlays
+        # look for: version-1.0.4/bin/TortoiseOverlays-1.0.4.11886-win32.msi
         # Ditto for TORTOISE_OVERLAYS_MSI_X64, pointing at *-x64.msi.
         for needed in ('TORTOISE_OVERLAYS_MSI_WIN32',
                        'TORTOISE_OVERLAYS_MSI_X64'):
+            url = ('http://guest:@tortoisesvn.tigris.org/svn/tortoisesvn'
+                   '/TortoiseOverlays')
             if not os.path.isfile(os.environ.get(needed, '<nofile>')):
-                raise RuntimeError("Please set %s to the"
-                                   " location of the relevant TortoiseOverlays"
-                                   " .msi installer file" % needed)
+                raise RuntimeError(
+                    "\nPlease set %s to the location of the relevant"
+                    "\nTortoiseOverlays .msi installer file."
+                    " The installers can be found at"
+                    "\n  %s"
+                    "\ncheck in the version-X.Y.Z/bin/ subdir" % (needed, url))
         get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
                              gui_targets, data_files)
     else:

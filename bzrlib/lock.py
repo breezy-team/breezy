@@ -55,6 +55,9 @@ class LockHooks(Hooks):
         self.create_hook(HookPoint('lock_released',
             "Called with a bzrlib.lock.LockResult when a physical lock is "
             "released.", (1, 8), None))
+        self.create_hook(HookPoint('lock_broken',
+            "Called with a bzrlib.lock.LockResult when a physical lock is "
+            "broken.", (1, 15), None))
 
 
 class Lock(object):
@@ -76,6 +79,10 @@ class LockResult(object):
 
     def __eq__(self, other):
         return self.lock_url == other.lock_url and self.details == other.details
+
+    def __repr__(self):
+        return '%s(%s%s)' % (self.__class__.__name__,
+                             self.lock_url, self.details)
 
 
 try:

@@ -23,10 +23,10 @@ from bzrlib import (
     osutils,
     tests,
     )
-from bzrlib.tests.tree_implementations import TestCaseWithTree
+from bzrlib.tests import tree_implementations
 
 
-class TestGetSymlinkTarget(TestCaseWithTree):
+class TestGetSymlinkTarget(tree_implementations.TestCaseWithTree):
 
     def get_tree_with_symlinks(self):
         self.requireFeature(tests.SymlinkFeature)
@@ -49,14 +49,13 @@ class TestGetSymlinkTarget(TestCaseWithTree):
 
     def test_get_unicode_symlink_target(self):
         self.requireFeature(tests.SymlinkFeature)
+        self.requireFeature(tests.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree('tree')
-        try:
-            os.symlink('target',  u'tree/\u03b2_link'.encode(osutils._fs_enc))
-        except UnicodeError:
-            raise tests.TestSkipped(
-                'This platform does not support unicode file paths.')
-        tree.add([u'\u03b2_link'], ['unicode-link-id'])
+        target = u'targ\N{Euro Sign}t'
+        os.symlink(target,  u'tree/\u03b2_link'.encode(osutils._fs_enc))
+        tree.add([u'\u03b2_link'], ['link-id'])
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        self.assertEqual('target', tree.get_symlink_target(u'unicode-link-id'))
+        actual = tree.get_symlink_target('link-id')
+        self.assertEqual(target, actual)
 
