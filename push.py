@@ -142,14 +142,12 @@ class InterToGitRepository(InterRepository):
 
 class InterToLocalGitRepository(InterToGitRepository):
 
-    def missing_revisions(self, stop_revision):
-        if stop_revision is None:
-            raise NotImplementedError
+    def missing_revisions(self, stop_revisions):
         missing = []
         pb = ui.ui_factory.nested_progress_bar()
         try:
             graph = self.source.get_graph()
-            for revid, _ in graph.iter_ancestry([stop_revision]):
+            for revid, _ in graph.iter_ancestry(stop_revisions):
                 pb.update("determining revisions to fetch", len(missing))
                 if not self.target.has_revision(revid):
                     missing.append(revid)
@@ -158,26 +156,24 @@ class InterToLocalGitRepository(InterToGitRepository):
             pb.finished()
 
     def dfetch_refs(self, refs):
-        revidmap = {}
         new_refs = {}
+        revidmap, gitidmap = self.dfetch(refs.values())
         for name, revid in refs.iteritems():
-            newrevidmap, newgitidmap = self.dfetch(revid)
-            revidmap.update(newrevidmap)
-            if revid in newgitidmap:
-                gitid = newgitidmap[revid]
+            if revid in gitidmap:
+                gitid = gitidmap[revid]
             else:
                 gitid, _ = self.mapping.revision_id_bzr_to_foreign(revid)
             self.target._git.refs[name] = gitid
             new_refs[name] = gitid
         return revidmap, new_refs
 
-    def dfetch(self, stop_revision=None):
+    def dfetch(self, stop_revisions):
         """Import the gist of the ancestry of a particular revision."""
         gitidmap = {}
         revidmap = {}
         self.source.lock_read()
         try:
-            todo = [revid for revid in self.missing_revisions(stop_revision) if revid != NULL_REVISION]
+            todo = [revid for revid in self.missing_revisions(stop_revisions) if revid != NULL_REVISION]
             pb = ui.ui_factory.nested_progress_bar()
             try:
                 object_generator = MissingObjectsIterator(self.source, self.mapping, pb)
