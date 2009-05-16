@@ -38,6 +38,7 @@ from bzrlib import (
     lockdir,
     osutils,
     transport,
+    tree,
     urlutils,
     workingtree,
     )
@@ -166,6 +167,14 @@ class GitWorkingTree(workingtree.WorkingTree):
         if not path:
             path = self._inventory.id2path(file_id)
         return osutils.sha_file_by_name(self.abspath(path).encode(osutils._fs_enc))
+
+    def iter_changes(self, from_tree, include_unchanged=False,
+                     specific_files=None, pb=None, extra_trees=None,
+                     require_versioned=True, want_unversioned=False):
+
+        intertree = tree.InterTree.get(from_tree, self)
+        return intertree.iter_changes(include_unchanged, specific_files, pb,
+            extra_trees, require_versioned, want_unversioned=want_unversioned)
 
 
 class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):

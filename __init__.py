@@ -26,6 +26,24 @@ import sys
 
 import bzrlib
 import bzrlib.api
+
+# versions ending in 'exp' mean experimental mappings
+# versions ending in 'dev' mean development version
+# versions ending in 'final' mean release (well tested, etc)
+version_info = (0, 3, 1, 'final', 0)
+
+if version_info[3] == 'final':
+    version_string = '%d.%d.%d' % version_info[:3]
+else:
+    version_string = '%d.%d.%d%s%d' % version_info
+__version__ = version_string
+
+MINIMUM_DULWICH_VERSION = (0, 3, 1)
+COMPATIBLE_BZR_VERSIONS = [(1, 14, 0), (1, 15, 0)]
+
+bzrlib.api.require_any_api(bzrlib, COMPATIBLE_BZR_VERSIONS)
+
+
 from bzrlib import (
     bzrdir,
     errors as bzr_errors,
@@ -52,20 +70,6 @@ from bzrlib.version_info_formats.format_rio import (
     )
 
 
-# versions ending in 'exp' mean experimental mappings
-# versions ending in 'dev' mean development version
-# versions ending in 'final' mean release (well tested, etc)
-version_info = (0, 3, 1, 'final', 0)
-
-if version_info[3] == 'final':
-    version_string = '%d.%d.%d' % version_info[:3]
-else:
-    version_string = '%d.%d.%d%s%d' % version_info
-__version__ = version_string
-
-MINIMUM_DULWICH_VERSION = (0, 3, 1)
-COMPATIBLE_BZR_VERSIONS = [(1, 14, 0), (1, 15, 0)]
-
 if getattr(sys, "frozen", None):
     # allow import additional libs from ./_lib for bzr.exe only
     sys.path.append(os.path.normpath(os.path.join(os.path.dirname(__file__), '_lib')))
@@ -83,8 +87,6 @@ def lazy_check_versions():
     else:
         if dulwich_version < MINIMUM_DULWICH_VERSION:
             raise ImportError("bzr-git: Dulwich is too old; at least %d.%d.%d is required" % MINIMUM_DULWICH_VERSION)
-
-bzrlib.api.require_any_api(bzrlib, COMPATIBLE_BZR_VERSIONS)
 
 bzrdir.format_registry.register_lazy('git', 
     "bzrlib.plugins.git.dir", "LocalGitBzrDirFormat",
