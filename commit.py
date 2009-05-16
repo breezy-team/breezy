@@ -28,6 +28,7 @@ from bzrlib.repository import (
     )
 
 from dulwich.objects import (
+    S_IFGITLINK,
     Blob,
     Commit,
     Tree,
@@ -84,6 +85,9 @@ class GitCommitBuilder(CommitBuilder):
             elif kind[1] == "symlink":
                 mode = stat.S_IFLNK
                 sha = link_sha1(path[1], file_id)
+            elif kind[1] == "tree-reference":
+                mode = S_IFGITLINK
+                sha = "FIXME"
             else:
                 raise AssertionError("Unknown kind %r" % kind[1])
             if executable:

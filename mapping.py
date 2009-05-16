@@ -204,6 +204,28 @@ def symlink_to_blob(entry):
     blob._text = entry.symlink_target
     return blob
 
+def mode_is_executable(mode):
+    return bool(mode & 0111)
+
+def mode_kind(mode):
+    entry_kind = (mode & 0700000) / 0100000
+    if entry_kind == 0:
+        return 'directory'
+    elif entry_kind == 1:
+        file_kind = (mode & 070000) / 010000
+        if file_kind == 0:
+            return 'file'
+        elif file_kind == 2:
+            return 'symlink'
+        elif file_kind == 6:
+            return 'tree-reference'
+        else:
+            raise AssertionError(
+                "Unknown file kind %d, perms=%o." % (file_kind, mode,))
+    else:
+        raise AssertionError(
+            "Unknown kind, perms=%r." % (mode,))
+
 
 def entry_mode(entry):
     if entry.kind == 'directory':

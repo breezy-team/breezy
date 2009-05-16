@@ -22,6 +22,7 @@ import stat
 
 
 from dulwich.objects import (
+    S_ISGITLINK,
     Blob,
     Tree,
     )
@@ -33,6 +34,11 @@ from bzrlib import (
     osutils,
     ui,
     urlutils,
+    )
+
+from bzrlib.plugins.git.mapping import (
+    mode_kind,
+    mode_is_executable,
     )
 
 
@@ -128,6 +134,23 @@ class GitInventoryLink(GitInventoryEntry):
         return other
 
 
+class GitInventoryTreeReference(GitInventoryEntry):
+
+    _git_class = None
+
+    def __init__(self, inv, parent_id, hexsha, path, basename, executable):
+        super(GitInventoryTreeReference, self).__init__(inv, parent_id, hexsha, path, basename, executable)
+        self.text_sha1 = None
+        self.text_size = None
+        self.symlink_target = None
+        self.kind = 'tree-reference'
+        self._children = None
+
+    def kind_character(self):
+        """See InventoryEntry.kind_character."""
+        return '/'
+
+
 class GitInventoryDirectory(GitInventoryEntry):
 
     _git_class = Tree
@@ -155,23 +178,11 @@ class GitInventoryDirectory(GitInventoryEntry):
         for mode, name, hexsha in self.object.entries():
             basename = name.decode("utf-8")
             child_path = osutils.pathjoin(self.path, basename)
-            entry_kind = (mode & 0700000) / 0100000
-            fs_mode = mode & 0777
-            executable = bool(fs_mode & 0111)
-            if entry_kind == 0:
-                kind_class = GitInventoryDirectory
-            elif entry_kind == 1:
-                file_kind = (mode & 070000) / 010000
-                if file_kind == 0:
-                    kind_class = GitInventoryFile
-                elif file_kind == 2:
-                    kind_class = GitInventoryLink
-                else:
-                    raise AssertionError(
-                        "Unknown file kind, perms=%o." % (mode,))
-            else:
-                raise AssertionError(
-                    "Unknown blob kind, perms=%r." % (mode,))
+            executable = mode_is_executable(mode)
+            kind_class = {'directory': GitInventoryDirectory,
+                          'file': GitInventoryFile,
+                          'symlink': GitInventoryLink,
+                          'tree-reference': GitInventoryTreeReference}[mode_kind(mode)]
             self._children[basename] = kind_class(self._inventory, self.file_id, hexsha, child_path, basename, executable)
 
     def copy(self):
@@ -265,6 +276,8 @@ class GitIndexInventory(inventory.Inventory):
                     file_id = old_ie.file_id
                 if stat.S_ISLNK(mode):
                     kind = 'symlink'
+                elif S_ISGITLINK(mode):
+                    kind = 'tree-reference'
                 else:
                     assert stat.S_ISREG(mode)
                     kind = 'file'

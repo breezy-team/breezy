@@ -64,6 +64,7 @@ from bzrlib.versionedfile import (
 from bzrlib.plugins.git.mapping import (
     DEFAULT_FILE_MODE,
     inventory_to_tree_and_blobs,
+    mode_is_executable,
     text_to_blob,
     warn_unusual_mode,
     )
@@ -216,11 +217,10 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id,
             child_modes.update(grandchildmodes)
             shamap.extend(subshamap)
         else:
-            fs_mode = stat.S_IMODE(mode)
             subinvdelta, subshamap = import_git_blob(texts, mapping, 
                     child_path, child_hexsha, base_inv, file_id, revision_id, 
                     parent_invs, shagitmap, lookup_object, 
-                    bool(fs_mode & 0111), stat.S_ISLNK(mode))
+                    mode_is_executable(mode), stat.S_ISLNK(mode))
             invdelta.extend(subinvdelta)
             shamap.extend(subshamap)
         if mode not in (stat.S_IFDIR, DEFAULT_FILE_MODE,
