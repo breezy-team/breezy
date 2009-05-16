@@ -41,6 +41,7 @@ from bzrlib import (
     merge_directive,
     osutils,
     reconfigure,
+    registry,
     rename_map,
     revision as _mod_revision,
     symbol_versioning,
@@ -4535,16 +4536,22 @@ class cmd_wait_until_signalled(Command):
 class cmd_serve(Command):
     """Run the bzr server."""
 
+    protocol_registry = registry.Registry()
+
     aliases = ['server']
 
     takes_options = [
         Option('inet',
                help='Serve on stdin/out for use from inetd or sshd.'),
+        RegistryOption('protocol', 
+               help="Protocol to serve.", 
+               registry=protocol_registry,
+               value_switches=True),
         Option('port',
                help='Listen for connections on nominated port of the form '
                     '[hostname:]portnumber.  Passing 0 as the port number will '
-                    'result in a dynamically allocated port.  The default port is '
-                    '4155.',
+                    'result in a dynamically allocated port.  The default port '
+                    'depends on the protocol.',
                type=str),
         Option('directory',
                help='Serve contents of this directory.',
@@ -4619,11 +4626,10 @@ class cmd_serve(Command):
             note('listening on port: %s' % smart_server.port)
         return smart_server
 
-    def run(self, port=None, inet=False, directory=None, allow_writes=False):
+    def serve_bzr(self, port=None, inet=False, directory=None, 
+                  allow_writes=False):
         from bzrlib.transport import get_transport
         from bzrlib.transport.chroot import ChrootServer
-        if directory is None:
-            directory = os.getcwd()
         url = urlutils.local_path_to_url(directory)
         if not allow_writes:
             url = 'readonly+' + url
@@ -4632,6 +4638,18 @@ class cmd_serve(Command):
         t = get_transport(chroot_server.get_url())
         smart_server = self.get_smart_server(t, inet, port)
         self.run_smart_server(smart_server)
+
+    protocol_registry.register('bzr', serve_bzr, 
+        help="The Bazaar smart server protocol over TCP. (default port: 4155)")
+    protocol_registry.default_key = 'bzr'
+
+    def run(self, port=None, inet=False, directory=None, allow_writes=False,
+            protocol=None):
+        if directory is None:
+            directory = os.getcwd()
+        if protocol is None:
+            protocol = serve_protocol_registry.get_default()
+        protocol(self, port, inet, directory, allow_writes)
 
 
 class cmd_join(Command):
