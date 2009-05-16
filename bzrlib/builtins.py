@@ -4648,7 +4648,7 @@ class cmd_serve(Command):
         if directory is None:
             directory = os.getcwd()
         if protocol is None:
-            protocol = serve_protocol_registry.get_default()
+            protocol = self.protocol_registry.get()
         protocol(self, port, inet, directory, allow_writes)
 
 
