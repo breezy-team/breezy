@@ -282,9 +282,9 @@ def update_workingtree_fileids(wt, target_tree):
 
 
 class cmd_dpush(Command):
-    """Push into a foreign VCS without any custom bzr metadata.
+    """Push into a different VCS without any custom bzr metadata.
 
-    This will afterwards rebase the local Bazaar branch on the remote
+    This will afterwards rebase the local branch on the remote
     branch unless the --no-rebase option is used, in which case 
     the two branches will be out of sync after the push. 
     """
@@ -331,8 +331,9 @@ class cmd_dpush(Command):
             try:
                 revid_map = source_branch.lossy_push(target_branch)
             except errors.LossyPushToSameVCS:
-                raise BzrCommandError("%r is not a foreign branch, use regular "
-                                      "push." % target_branch)
+                raise BzrCommandError("%r and %r are in the same VCS, lossy "
+                    "push not possible. Please use regular push." %
+                    (source_branch, target_branch))
             # We successfully created the target, remember it
             if source_branch.get_push_location() is None or remember:
                 source_branch.set_push_location(target_branch.base)
