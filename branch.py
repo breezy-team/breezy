@@ -532,7 +532,9 @@ class InterToGitBranch(branch.InterBranch):
             self.source.repository, refs)
         if revidmap != {}:
             self.target.generate_revision_history(revidmap[stop_revision])
-        result.new_revid = self.target.last_revision()
+            result.new_revid = revidmap[stop_revision]
+        else:
+            result.new_revid = result.old_revid
         result.revidmap = revidmap
         return result
 
