@@ -265,7 +265,7 @@ class GitIndexInventory(inventory.Inventory):
                         i, len(self.index))
                 assert isinstance(path, str)
                 assert isinstance(value, tuple) and len(value) == 10
-                (ctime, mtime, ino, dev, mode, uid, gid, size, sha, flags) = value
+                (ctime, mtime, dev, ino, mode, uid, gid, size, sha, flags) = value
                 try:
                     old_ie = self.basis_inv._get_ie(path)
                 except KeyError:
@@ -274,13 +274,7 @@ class GitIndexInventory(inventory.Inventory):
                     file_id = self.mapping.generate_file_id(path)
                 else:
                     file_id = old_ie.file_id
-                if stat.S_ISLNK(mode):
-                    kind = 'symlink'
-                elif S_ISGITLINK(mode):
-                    kind = 'tree-reference'
-                else:
-                    assert stat.S_ISREG(mode)
-                    kind = 'file'
+                kind = mode_kind(mode)
                 if old_ie is not None and old_ie.hexsha == sha:
                     # Hasn't changed since basis inv
                     self.add_parents(path)

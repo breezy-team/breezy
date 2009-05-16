@@ -123,9 +123,8 @@ class GitWorkingTree(workingtree.WorkingTree):
             if not blob.id in self.repository._git.object_store:
                 self.repository._git.object_store.add_object(blob)
             # Add an entry to the index or update the existing entry
-            (mode, ino, dev, links, uid, gid, size, atime, mtime, ctime) = stat_val
-            flags = 0
-            self.index[path.encode("utf-8")] = (ctime, mtime, ino, dev, mode, uid, gid, size, blob.id, flags)
+            flags = 0 # FIXME
+            self.index[path.encode("utf-8")] = (stat_val.st_ctime, stat_val.st_mtime, stat_val.st_dev, stat_val.st_ino, stat_val.st_mode, stat_val.st_uid, stat_val.st_gid, stat_val.st_size, blob.id, flags)
 
     def flush(self):
         # TODO: Maybe this should only write on dirty ?
