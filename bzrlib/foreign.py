@@ -332,7 +332,7 @@ class cmd_dpush(Command):
                 revid_map = source_branch.lossy_push(target_branch)
             except errors.LossyPushToSameVCS:
                 raise BzrCommandError("%r and %r are in the same VCS, lossy "
-                    "push not possible. Please use regular push." %
+                    "push not necessary. Please use regular push." %
                     (source_branch, target_branch))
             # We successfully created the target, remember it
             if source_branch.get_push_location() is None or remember:
