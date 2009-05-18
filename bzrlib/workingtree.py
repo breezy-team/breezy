@@ -1115,15 +1115,16 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def _kind(self, relpath):
         return osutils.file_kind(self.abspath(relpath))
 
-    def list_files(self, include_root=False):
-        """Recursively list all files as (path, class, kind, id, entry).
+    def list_files(self, include_root=False, from_dir=None, recursive=True):
+        """List all files as (path, class, kind, id, entry).
 
         Lists, but does not descend into unversioned directories.
-
         This does not include files that have been deleted in this
-        tree.
+        tree. Skips the control directory.
 
-        Skips the control directory.
+        :param include_root: if True, do not return an entry for the root
+        :param from_dir: start from this directory or None for the root
+        :param recursive: whether to recurse into subdirectories or not
         """
         # list_files is an iterator, so @needs_read_lock doesn't work properly
         # with it. So callers should be careful to always read_lock the tree.
@@ -1131,7 +1132,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             raise errors.ObjectNotLocked(self)
 
         inv = self.inventory
-        if include_root is True:
+        if from_dir is None and include_root is True:
             yield ('', 'V', 'directory', inv.root.file_id, inv.root)
         # Convert these into local objects to save lookup times
         pathjoin = osutils.pathjoin
@@ -1144,13 +1145,19 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         fk_entries = {'directory':TreeDirectory, 'file':TreeFile, 'symlink':TreeLink}
 
         # directory file_id, relative path, absolute path, reverse sorted children
-        children = os.listdir(self.basedir)
+        if from_dir is not None:
+            from_dir_id = inv.path2id(from_dir)
+            from_dir_abspath = pathjoin(self.basedir, from_dir)
+        else:
+            from_dir_id = inv.root.file_id
+            from_dir_abspath = self.basedir
+        children = os.listdir(from_dir_abspath)
         children.sort()
         # jam 20060527 The kernel sized tree seems equivalent whether we
         # use a deque and popleft to keep them sorted, or if we use a plain
         # list and just reverse() them.
         children = collections.deque(children)
-        stack = [(inv.root.file_id, u'', self.basedir, children)]
+        stack = [(from_dir_id, u'', from_dir_abspath, children)]
         while stack:
             from_dir_id, from_dir_relpath, from_dir_abspath, children = stack[-1]
 
@@ -1214,14 +1221,15 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 if fk != 'directory':
                     continue
 
-                # But do this child first
-                new_children = os.listdir(fap)
-                new_children.sort()
-                new_children = collections.deque(new_children)
-                stack.append((f_ie.file_id, fp, fap, new_children))
-                # Break out of inner loop,
-                # so that we start outer loop with child
-                break
+                # But do this child first if recursing down
+                if recursive:
+                    new_children = os.listdir(fap)
+                    new_children.sort()
+                    new_children = collections.deque(new_children)
+                    stack.append((f_ie.file_id, fp, fap, new_children))
+                    # Break out of inner loop,
+                    # so that we start outer loop with child
+                    break
             else:
                 # if we finished all children, pop it off the stack
                 stack.pop()
