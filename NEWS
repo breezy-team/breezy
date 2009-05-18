@@ -9,6 +9,33 @@ Bazaar Release Notes
 In Development
 ##############
 
+Compatibility Breaks
+********************
+
+New Features
+************
+
+Improvements
+************
+
+Bug Fixes
+*********
+
+Documentation
+*************
+
+API Changes
+***********
+
+* Added osutils.parent_directories(). (Ian Clatworthy)
+
+Internals
+*********
+
+Testing
+*******
+
+
 bzr 1.15
 ########
 :1.15rc1: 2009-04-06
