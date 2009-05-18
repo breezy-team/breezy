@@ -1147,6 +1147,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         # directory file_id, relative path, absolute path, reverse sorted children
         if from_dir is not None:
             from_dir_id = inv.path2id(from_dir)
+            if from_dir_id is None:
+                # Directory not versioned
+                return
             from_dir_abspath = pathjoin(self.basedir, from_dir)
         else:
             from_dir_id = inv.root.file_id

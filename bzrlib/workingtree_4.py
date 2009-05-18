@@ -1837,6 +1837,9 @@ class DirStateRevisionTree(Tree):
             from_dir_id = None
         else:
             from_dir_id = inv.path2id(from_dir)
+            if from_dir_id is None:
+                # Directory not versioned
+                return
         entries = inv.iter_entries(from_dir=from_dir_id, recursive=recursive)
         if inv.root is not None and not include_root and from_dir is None:
             entries.next()
