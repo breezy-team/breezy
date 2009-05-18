@@ -1204,7 +1204,8 @@ class BzrDir(object):
                 wt.unlock()
         else:
             wt = None
-        if recurse == 'down':
+        if (recurse == 'down' and
+                result_branch.repository._format.supports_tree_reference):
             if wt is not None:
                 basis = wt.basis_tree()
                 basis.lock_read()
