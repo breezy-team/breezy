@@ -1169,6 +1169,142 @@ class FrozenHeadsCache(object):
         self._heads[frozenset(keys)] = frozenset(heads)
 
 
+class _KnownGraphNode(object):
+    """Represents a single object in the known graph."""
+
+    __slots__ = ('key', 'parent_keys', 'children', 'linear_dominator',
+                 'dominator_distance')
+
+    def __init__(self, key, parent_keys):
+        self.key = key
+        self.parent_keys = parent_keys
+        self.children = []
+        self.linear_dominator = None
+        self.dominator_distance = 0
+
+    def __repr__(self):
+        return '%s(%s, par:%s, child:%s, dom:%s %s)' % (
+            self.__class__.__name__, self.key, self.parent_keys, self.children,
+            self.linear_dominator, self.dominator_distance)
+
+
+class KnownGraph(object):
+    """This is a class which assumes we already know the full graph."""
+
+    def __init__(self, parent_map):
+        """Create a new KnownGraph instance.
+
+        :param parent_map: A dictionary mapping key => parent_keys
+        """
+        self._nodes = {}
+        self._initialize_nodes(parent_map)
+
+    def _initialize_nodes(self, parent_map):
+        """Populate self._nodes.
+
+        After this has finished, self._nodes will have an entry for every entry
+        in parent_map. Ghosts will have a parent_keys = None, all nodes found
+        will also have .children populated with all known children.
+        """
+        nodes = self._nodes
+        for key, parent_keys in parent_map.iteritems():
+            if key in nodes:
+                node = nodes[key]
+                assert node.parent_keys is None
+                node.parent_keys = parent_keys
+            else:
+                node = _KnownGraphNode(key, parent_keys)
+                nodes[key] = node
+            for parent_key in parent_keys:
+                try:
+                    parent_node = nodes[parent_key]
+                except KeyError:
+                    parent_node = _KnownGraphNode(parent_key, None)
+                    nodes[parent_key] = parent_node
+                parent_node.children.append(key)
+        self._find_linear_dominators()
+
+    def _find_linear_dominators(self):
+        """For each node in the set, find any linear dominators.
+
+        For any given node, the 'linear dominator' is an ancestor, such that
+        all parents between this node and that one have a single parent, and a
+        single child. So if A->B->C->D then B,C,D all have a linear dominator
+        of A. Because there are no interesting siblings, we can quickly skip to
+        the nearest dominator when doing comparisons.
+        """
+        def check_node(node):
+            if node.parent_keys is None or len(node.parent_keys) > 1:
+                # This node already has multiple parents, it is its own
+                # dominator
+                node.linear_dominator = node.key
+                node.dominator_distance = 0
+                return None
+            parent_node = self._nodes[node.parent_keys[0]]
+            if len(parent_node.children) > 1:
+                # The parent has multiple children, so *this* node is the
+                # dominator
+                node.linear_dominator = node.key
+                node.dominator_distance = 0
+                return None
+            # The parent is already filled in, so add and continue
+            if parent_node.linear_dominator is not None:
+                node.linear_dominator = parent_node.linear_dominator
+                node.dominator_distance = parent_node.dominator_distance + 1
+                return None
+            # We don't know this node, or its parent node, so start walking to
+            # next
+            return parent_node
+
+        for node in self._nodes.itervalues():
+            # The parent is not filled in, so walk until we get somewhere
+            if node.linear_dominator is not None: #already done
+                continue
+            next_node = check_node(node)
+            if next_node is None:
+                # Nothing more needs to be done
+                continue
+            stack = []
+            while next_node is not None:
+                stack.append(node)
+                node = next_node
+                next_node = check_node(node)
+            # The stack now contains the linear chain, and 'node' should have
+            # been labeled
+            assert node.linear_dominator is not None
+            dominator = node.linear_dominator
+            while stack:
+                next_node = stack.pop()
+                next_node.linear_dominator = dominator
+                next_node.dominator_distance = node.dominator_distance + 1
+                node = next_node
+
+    def heads(self, keys):
+        """Return the heads from amongst keys.
+
+        This is done by searching the ancestries of each key.  Any key that is
+        reachable from another key is not returned; all the others are.
+
+        This operation scales with the relative depth between any two keys. If
+        any two keys are completely disconnected all ancestry of both sides
+        will be retrieved.
+
+        :param keys: An iterable of keys.
+        :return: A set of the heads. Note that as a set there is no ordering
+            information. Callers will need to filter their input to create
+            order if they need it.
+        """
+        candidate_nodes = dict((key, self._nodes[key]) for key in keys)
+        if revision.NULL_REVISION in candidate_nodes:
+            # NULL_REVISION is only a head if it is the only entry
+            candidate_nodes.pop(revision.NULL_REVISION)
+            if not candidate_nodes:
+                return set([revision.NULL_REVISION])
+        if len(candidate_nodes) < 2:
+            return set(candidate_nodes)
+        return set(candidate_nodes)
+
+
 class _BreadthFirstSearcher(object):
     """Parallel search breadth-first the ancestry of revisions.
 

@@ -1354,6 +1354,127 @@ class TestGraphFindDistanceToNull(TestGraphBase):
         self.assertFindDistance(6, graph, 'g', [('i', 8)])
 
 
+class TestKnownGraph(tests.TestCase):
+
+    def make_known_graph(self, ancestry):
+        return _mod_graph.KnownGraph(ancestry)
+
+    def assertDominator(self, graph, rev, dominator, distance):
+        node = graph._nodes[rev]
+        self.assertEqual(dominator, node.linear_dominator)
+        self.assertEqual(distance, node.dominator_distance)
+
+    def test_children_ancestry1(self):
+        graph = self.make_known_graph(ancestry_1)
+        self.assertEqual(['rev1'], graph._nodes[NULL_REVISION])
+        self.assertEqual(['rev2a', 'rev2b'], sorted(graph._nodes['rev1']))
+        self.assertEqual(['rev3'], sorted(graph._nodes['rev2a']))
+        self.assertEqual(['rev4'], sorted(graph._nodes['rev3']))
+        self.assertEqual(['rev4'], sorted(graph._nodes['rev2b']))
+
+    def test_dominators_ancestry_1(self):
+        graph = self.make_known_graph(ancestry_1)
+        self.assertDominator(graph, 'rev1', NULL_REVISION, 1)
+        self.assertDominator(graph, 'rev2b', 'rev2b', 0)
+        self.assertDominator(graph, 'rev2a', 'rev2a', 0)
+        self.assertDominator(graph, 'rev3', 'rev2a', 1)
+        self.assertDominator(graph, 'rev4', 'rev4', 0)
+
+    def test_dominators_feature_branch(self):
+        graph = self.make_known_graph(feature_branch)
+        self.assertDominator(graph, 'rev1', NULL_REVISION, 1)
+        self.assertDominator(graph, 'rev2b', NULL_REVISION, 2)
+        self.assertDominator(graph, 'rev3b', NULL_REVISION, 3)
+
+    def test_dominators_extended_history_shortcut(self):
+        graph = self.make_known_graph(extended_history_shortcut)
+        self.assertDominator(graph, 'a', NULL_REVISION, 1)
+        self.assertDominator(graph, 'b', 'b', 0)
+        self.assertDominator(graph, 'c', 'b', 1)
+        self.assertDominator(graph, 'd', 'b', 2)
+        self.assertDominator(graph, 'e', 'e', 0)
+        self.assertDominator(graph, 'f', 'f', 0)
+
+    def test_heads_null(self):
+        graph = self.make_known_graph(ancestry_1)
+        self.assertEqual(set(['null:']), graph.heads(['null:']))
+        self.assertEqual(set(['rev1']), graph.heads(['null:', 'rev1']))
+        self.assertEqual(set(['rev1']), graph.heads(['rev1', 'null:']))
+        self.assertEqual(set(['rev1']), graph.heads(set(['rev1', 'null:'])))
+        self.assertEqual(set(['rev1']), graph.heads(('rev1', 'null:')))
+
+    def test_heads_one(self):
+        # A single node will always be a head
+        graph = self.make_known_graph(ancestry_1)
+        self.assertEqual(set(['null:']), graph.heads(['null:']))
+        self.assertEqual(set(['rev1']), graph.heads(['rev1']))
+        self.assertEqual(set(['rev2a']), graph.heads(['rev2a']))
+        self.assertEqual(set(['rev2b']), graph.heads(['rev2b']))
+        self.assertEqual(set(['rev3']), graph.heads(['rev3']))
+        self.assertEqual(set(['rev4']), graph.heads(['rev4']))
+
+    def test_heads_single(self):
+        graph = self.make_known_graph(ancestry_1)
+        self.assertEqual(set(['rev4']), graph.heads(['null:', 'rev4']))
+        self.assertEqual(set(['rev2a']), graph.heads(['rev1', 'rev2a']))
+        self.assertEqual(set(['rev2b']), graph.heads(['rev1', 'rev2b']))
+        self.assertEqual(set(['rev3']), graph.heads(['rev1', 'rev3']))
+        self.assertEqual(set(['rev4']), graph.heads(['rev1', 'rev4']))
+        self.assertEqual(set(['rev4']), graph.heads(['rev2a', 'rev4']))
+        self.assertEqual(set(['rev4']), graph.heads(['rev2b', 'rev4']))
+        self.assertEqual(set(['rev4']), graph.heads(['rev3', 'rev4']))
+
+    def test_heads_two_heads(self):
+        graph = self.make_known_graph(ancestry_1)
+        self.assertEqual(set(['rev2a', 'rev2b']),
+                         graph.heads(['rev2a', 'rev2b']))
+        self.assertEqual(set(['rev3', 'rev2b']),
+                         graph.heads(['rev3', 'rev2b']))
+
+    def test_heads_criss_cross(self):
+        graph = self.make_known_graph(criss_cross)
+        self.assertEqual(set(['rev2a']),
+                         graph.heads(['rev2a', 'rev1']))
+        self.assertEqual(set(['rev2b']),
+                         graph.heads(['rev2b', 'rev1']))
+        self.assertEqual(set(['rev3a']),
+                         graph.heads(['rev3a', 'rev1']))
+        self.assertEqual(set(['rev3b']),
+                         graph.heads(['rev3b', 'rev1']))
+        self.assertEqual(set(['rev2a', 'rev2b']),
+                         graph.heads(['rev2a', 'rev2b']))
+        self.assertEqual(set(['rev3a']),
+                         graph.heads(['rev3a', 'rev2a']))
+        self.assertEqual(set(['rev3a']),
+                         graph.heads(['rev3a', 'rev2b']))
+        self.assertEqual(set(['rev3a']),
+                         graph.heads(['rev3a', 'rev2a', 'rev2b']))
+        self.assertEqual(set(['rev3b']),
+                         graph.heads(['rev3b', 'rev2a']))
+        self.assertEqual(set(['rev3b']),
+                         graph.heads(['rev3b', 'rev2b']))
+        self.assertEqual(set(['rev3b']),
+                         graph.heads(['rev3b', 'rev2a', 'rev2b']))
+        self.assertEqual(set(['rev3a', 'rev3b']),
+                         graph.heads(['rev3a', 'rev3b']))
+        self.assertEqual(set(['rev3a', 'rev3b']),
+                         graph.heads(['rev3a', 'rev3b', 'rev2a', 'rev2b']))
+
+    def test_heads_shortcut(self):
+        graph = self.make_known_graph(history_shortcut)
+        self.assertEqual(set(['rev2a', 'rev2b', 'rev2c']),
+                         graph.heads(['rev2a', 'rev2b', 'rev2c']))
+        self.assertEqual(set(['rev3a', 'rev3b']),
+                         graph.heads(['rev3a', 'rev3b']))
+        self.assertEqual(set(['rev3a', 'rev3b']),
+                         graph.heads(['rev2a', 'rev3a', 'rev3b']))
+        self.assertEqual(set(['rev2a', 'rev3b']),
+                         graph.heads(['rev2a', 'rev3b']))
+        self.assertEqual(set(['rev2c', 'rev3a']),
+                         graph.heads(['rev2c', 'rev3a']))
+
+
+
 class TestFindMergeOrder(TestGraphBase):
 
     def assertMergeOrder(self, expected, graph, tip, base_revisions):
