@@ -1301,8 +1301,16 @@ class KnownGraph(object):
             if not candidate_nodes:
                 return set([revision.NULL_REVISION])
         if len(candidate_nodes) < 2:
-            return set(candidate_nodes)
-        return set(candidate_nodes)
+            return set(candidate_nodes.keys())
+        g = Graph(self)
+        return g.heads(candidate_nodes.keys())
+
+    def get_parent_map(self, keys):
+        # Thunk for now
+        nodes = [self._nodes[key] for key in keys]
+        return dict((node.key, node.parent_keys)
+                    for node in nodes if node.parent_keys is not None)
+
 
 
 class _BreadthFirstSearcher(object):
