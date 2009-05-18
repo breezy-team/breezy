@@ -2353,84 +2353,36 @@ class cmd_ls(Command):
             recursive=False, from_root=False,
             unknown=False, versioned=False, ignored=False,
             null=False, kind=None, show_ids=False, path=None):
-
+        # Validate the command line options
         if kind and kind not in ('file', 'directory', 'symlink'):
             raise errors.BzrCommandError('invalid kind specified')
-
         if verbose and null:
             raise errors.BzrCommandError('Cannot set both --verbose and --null')
-        all = not (unknown or versioned or ignored)
-
-        selection = {'I':ignored, '?':unknown, 'V':versioned}
-
         if path is None:
-            fs_path = '.'
-            prefix = ''
-        else:
-            if from_root:
-                raise errors.BzrCommandError('cannot specify both --from-root'
-                                             ' and PATH')
-            fs_path = path
-            prefix = path
-        tree, branch, relpath = bzrdir.BzrDir.open_containing_tree_or_branch(
-            fs_path)
-        if from_root:
-            relpath = u''
-        elif relpath:
-            relpath += '/'
+            path = '.'
+        elif from_root:
+            raise errors.BzrCommandError('cannot specify both --from-root'
+                                         ' and PATH')
+
+        # Get the tree
+        tree, branch, dir = bzrdir.BzrDir.open_containing_tree_or_branch(path)
+        mutter("ls dir is %s", dir)
         if revision is not None or tree is None:
             tree = _get_one_revision_tree('ls', revision, branch=branch)
 
-        apply_view = False
-        if isinstance(tree, WorkingTree) and tree.supports_views():
-            view_files = tree.views.lookup_view()
-            if view_files:
-                apply_view = True
-                view_str = views.view_display_str(view_files)
-                note("Ignoring files outside view. View is %s" % view_str)
+        # Calculate the prefix to use
+        prefix = None
+        if from_root:
+            if dir:
+                prefix = dir + '/'
+        elif path != '.':
+            prefix = path + '/'
 
-        tree.lock_read()
-        try:
-            for fp, fc, fkind, fid, entry in tree.list_files(include_root=False):
-                if fp.startswith(relpath):
-                    rp = fp[len(relpath):]
-                    fp = osutils.pathjoin(prefix, rp)
-                    if not recursive and '/' in rp:
-                        continue
-                    if not all and not selection[fc]:
-                        continue
-                    if kind is not None and fkind != kind:
-                        continue
-                    if apply_view:
-                        try:
-                            views.check_path_in_view(tree, fp)
-                        except errors.FileOutsideView:
-                            continue
-                    kindch = entry.kind_character()
-                    outstring = fp + kindch
-                    if verbose:
-                        outstring = '%-8s %s' % (fc, outstring)
-                        if show_ids and fid is not None:
-                            outstring = "%-50s %s" % (outstring, fid)
-                        self.outf.write(outstring + '\n')
-                    elif null:
-                        self.outf.write(fp + '\0')
-                        if show_ids:
-                            if fid is not None:
-                                self.outf.write(fid)
-                            self.outf.write('\0')
-                        self.outf.flush()
-                    else:
-                        if fid is not None:
-                            my_id = fid
-                        else:
-                            my_id = ''
-                        if show_ids:
-                            self.outf.write('%-50s %s\n' % (outstring, my_id))
-                        else:
-                            self.outf.write(outstring + '\n')
-        finally:
-            tree.unlock()
+        # Display the files
+        from bzrlib import ls
+        ls.ls(tree, self.outf, from_dir=dir, recursive=recursive,
+            kind=kind, unknown=unknown, versioned=versioned, ignored=ignored,
+            verbose=verbose, null=null, show_ids=show_ids, prefix=prefix)
 
 
 class cmd_unknowns(Command):
