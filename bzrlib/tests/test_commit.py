@@ -24,6 +24,7 @@ from bzrlib import (
     lockdir,
     osutils,
     tests,
+    transform,
     )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir, BzrDirMetaFormat1
@@ -799,3 +800,24 @@ class TestCommit(TestCaseWithTransport):
         tree2 = branch.create_checkout('repo/tree2')
         tree2.commit('message', rev_id='rev1')
         self.assertTrue(tree2.branch.repository.has_revision('rev1'))
+
+    def test_commit_preview_tree(self):
+        tree = self.make_branch_and_tree('tree')
+        rev_id = tree.commit('rev1')
+        tree.branch.lock_write()
+        self.addCleanup(tree.branch.unlock)
+        tt = transform.TransformPreview(tree)
+        self.addCleanup(tt.finalize)
+        preview = tt.get_preview_tree(tree.branch.repository)
+        preview.set_parent_ids([rev_id])
+        Commit().commit('rev2', working_tree=preview,
+                        target_branch=tree.branch)
+
+    def test_target_branch(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.commit('rev1')
+        target = tree.bzrdir.sprout('target').open_branch()
+        rev = Commit().commit('rev2', working_tree=tree, target_branch=target)
+        self.assertRaises(errors.NoSuchRevision,
+                          tree.branch.repository.get_revision, rev)
+        target.repository.get_revision(rev)

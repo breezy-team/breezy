@@ -206,7 +206,8 @@ class Commit(object):
                message_callback=None,
                recursive='down',
                exclude=None,
-               possible_master_transports=None):
+               possible_master_transports=None,
+               target_branch=None):
         """Commit working copy as a new revision.
 
         :param message: the commit message (it or message_callback is required)
@@ -244,7 +245,12 @@ class Commit(object):
             raise BzrError("working_tree must be passed into commit().")
         else:
             self.work_tree = working_tree
-            self.branch = self.work_tree.branch
+            if target_branch is None:
+                self.branch = self.work_tree.branch
+                update_tree = True
+            else:
+                self.branch = target_branch
+                update_tree = False
             if getattr(self.work_tree, 'requires_rich_root', lambda: False)():
                 if not self.branch.repository.supports_rich_root():
                     raise errors.RootNotRich()
@@ -284,7 +290,11 @@ class Commit(object):
         self.strict = strict
         self.verbose = verbose
 
-        self.work_tree.lock_write()
+        self.branch.lock_write()
+        if update_tree:
+            self.work_tree.lock_write()
+        else:
+            self.work_tree.lock_read()
         self.parents = self.work_tree.get_parent_ids()
         # We can use record_iter_changes IFF iter_changes is compatible with
         # the command line parameters, and the repository has fast delta
@@ -360,7 +370,7 @@ class Commit(object):
                 # report the start of the commit
                 self.reporter.started(new_revno, self.rev_id, master_location)
 
-                self._update_builder_with_changes()
+                self._update_builder_with_changes(update_tree)
                 self._check_pointless()
 
                 # TODO: Now the new inventory is known, check for conflicts.
@@ -400,9 +410,10 @@ class Commit(object):
             self.branch.set_last_revision_info(new_revno, self.rev_id)
 
             # Make the working tree up to date with the branch
-            self._set_progress_stage("Updating the working tree")
-            self.work_tree.update_basis_by_delta(self.rev_id,
-                 self.builder.get_basis_delta())
+            if update_tree:
+                self._set_progress_stage("Updating the working tree")
+                self.work_tree.update_basis_by_delta(self.rev_id,
+                     self.builder.get_basis_delta())
             self.reporter.completed(new_revno, self.rev_id)
             self._process_post_hooks(old_revno, new_revno)
         finally:
@@ -571,6 +582,7 @@ class Commit(object):
         cleanups = [self._cleanup_bound_branch,
                     self.basis_tree.unlock,
                     self.work_tree.unlock,
+                    self.branch.unlock,
                     self.pb.finished]
         found_exception = None
         for cleanup in cleanups:
@@ -629,7 +641,7 @@ class Commit(object):
             else:
                 mutter('commit parent ghost revision {%s}', revision)
 
-    def _update_builder_with_changes(self):
+    def _update_builder_with_changes(self, update_tree):
         """Update the commit builder with the data about what has changed.
         """
         exclude = self.exclude
@@ -639,7 +651,7 @@ class Commit(object):
         self._check_strict()
         if self.use_record_iter_changes:
             iter_changes = self.work_tree.iter_changes(self.basis_tree)
-            iter_changes = self._filter_iter_changes(iter_changes)
+            iter_changes = self._filter_iter_changes(iter_changes, update_tree)
             for file_id, path, fs_hash in self.builder.record_iter_changes(
                 self.work_tree, self.basis_revid, iter_changes):
                 self.work_tree._observed_sha1(file_id, path, fs_hash)
@@ -649,7 +661,7 @@ class Commit(object):
             self._record_unselected()
             self._report_and_accumulate_deletes()
 
-    def _filter_iter_changes(self, iter_changes):
+    def _filter_iter_changes(self, iter_changes, update_tree):
         """Process iter_changes.
 
         This method reports on the changes in iter_changes to the user, and 
@@ -697,7 +709,8 @@ class Commit(object):
                             reporter.snapshot_change('modified', new_path)
             self._next_progress_entry()
         # Unversion IDs that were found to be deleted
-        self.work_tree.unversion(deleted_ids)
+        if update_tree:
+            self.work_tree.unversion(deleted_ids)
 
     def _record_unselected(self):
         # If specific files are selected, then all un-selected files must be
