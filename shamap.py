@@ -16,6 +16,10 @@
 
 """Map from Git sha's to Bazaar objects."""
 
+from dulwich.objects import (
+    sha_to_hex,
+    hex_to_sha,
+    )
 import os
 import threading
 
@@ -244,7 +248,7 @@ class SqliteGitShaMap(GitShaMap):
                 yield row[0].encode("utf-8")
 
 
-TDB_MAP_VERSION = 1
+TDB_MAP_VERSION = 2
 
 
 class TdbGitShaMap(GitShaMap):
@@ -271,7 +275,11 @@ class TdbGitShaMap(GitShaMap):
         if not "version" in self.db:
             self.db["version"] = str(TDB_MAP_VERSION)
         else:
-            assert int(self.db["version"]) == TDB_MAP_VERSION
+            if int(self.db["version"]) != TDB_MAP_VERSION:
+                trace.warning("SHA Map is incompatible (%s -> %d), rebuilding database.",
+                              self.db["version"], TDB_MAP_VERSION)
+                self.db.clear()
+            self.db["version"] = str(TDB_MAP_VERSION)
 
     @classmethod
     def from_repository(cls, repository):
@@ -285,7 +293,7 @@ class TdbGitShaMap(GitShaMap):
         return cls(os.path.join(config_dir(), "remote-git.tdb"))
 
     def lookup_commit(self, revid):
-        return self.db["commit %s" % revid].split(" ")[0]
+        return sha_to_hex(self.db["commit\0" + revid][:20])
 
     def commit(self):
         pass
@@ -293,17 +301,17 @@ class TdbGitShaMap(GitShaMap):
     def add_entry(self, sha, type, type_data):
         """Add a new entry to the database.
         """
-        self.db["git %s" % sha] = "%s %s %s" % (type, type_data[0], type_data[1])
+        self.db["git\0" + hex_to_sha(sha)] = "\0".join((type, type_data[0], type_data[1]))
         if type == "commit":
-            self.db["commit %s" % type_data[0]] = "%s %s" % (sha, type_data[1])
+            self.db["commit\0" + type_data[0]] = "\0".join((hex_to_sha(sha), type_data[1]))
         else:
-            self.db["%s %s %s" % (type, type_data[0], type_data[1])] = sha
+            self.db["\0".join((type, type_data[0], type_data[1]))] = hex_to_sha(sha)
 
     def lookup_tree(self, fileid, revid):
-        return self.db["tree %s %s" % (fileid, revid)]
+        return sha_to_hex(self.db["\0".join(("tree", fileid, revid))])
 
     def lookup_blob(self, fileid, revid):
-        return self.db["blob %s %s" % (fileid, revid)]
+        return sha_to_hex(self.db["\0".join(("blob", fileid, revid))])
 
     def lookup_git_sha(self, sha):
         """Lookup a Git sha in the database.
@@ -312,17 +320,17 @@ class TdbGitShaMap(GitShaMap):
         :return: (type, type_data) with type_data:
             revision: revid, tree sha
         """
-        data = self.db["git %s" % sha].split(" ")
+        data = self.db["git\0" + hex_to_sha(sha)].split("\0")
         return (data[0], (data[1], data[2]))
 
     def revids(self):
         """List the revision ids known."""
         for key in self.db.iterkeys():
-            if key.startswith("commit "):
-                yield key.split(" ")[1]
+            if key.startswith("commit\0"):
+                yield key[7:]
 
     def sha1s(self):
         """List the SHA1s."""
         for key in self.db.iterkeys():
-            if key.startswith("git "):
-                yield key.split(" ")[1]
+            if key.startswith("git\0"):
+                yield sha_to_hex(key[4:])

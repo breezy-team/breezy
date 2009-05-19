@@ -40,6 +40,9 @@ from bzrlib.plugins.git import (
 from bzrlib.plugins.git.mapping import (
     default_mapping,
     )
+from bzrlib.plugins.git.object_store import (
+    BazaarObjectStore,
+    )
 from bzrlib.plugins.git.push import (
     MissingObjectsIterator,
     )
@@ -209,8 +212,8 @@ class RevisionGistImportTests(tests.TestCaseWithTransport):
                                    self.git_repo)
 
     def object_iter(self):
-        return MissingObjectsIterator(self.bzr_tree.branch.repository, 
-                                      default_mapping)
+        store = BazaarObjectStore(self.bzr_tree.branch.repository, default_mapping)
+        return MissingObjectsIterator(store, self.bzr_tree.branch.repository)
 
     def import_rev(self, revid, parent_lookup=None):
         return self.object_iter().import_revision(revid)
