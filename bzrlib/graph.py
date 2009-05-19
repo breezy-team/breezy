@@ -15,6 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import heapq
+import sys
 import time
 
 from bzrlib import (
@@ -1226,7 +1227,7 @@ class KnownGraph(object):
                     parent_node = _KnownGraphNode(parent_key, None)
                     nodes[parent_key] = parent_node
                 parent_node.children.append(key)
-        self._find_linear_dominators()
+        # self._find_linear_dominators()
         self._find_gdfo()
 
     def _find_linear_dominators(self):
@@ -1287,27 +1288,41 @@ class KnownGraph(object):
     def _find_gdfo(self):
         # TODO: Consider moving the tails search into the first-pass over the
         #       data, inside _find_linear_dominators
-        tails = [node for node in self._nodes.itervalues()
+        def find_tails():
+            return [node for node in self._nodes.itervalues()
                        if not node.parent_keys]
+        tails = find_tails()
         todo = []
         for node in tails:
             node.gdfo = 1
             heapq.heappush(todo, (1, node))
+        tstart = time.time()
+        tnext = tstart + 0.2
+        processed = 0
+        skipped = 0
+        max_gdfo = len(self._nodes)
         while todo:
             gdfo, next = heapq.heappop(todo)
+            processed += 1
             if gdfo != next.gdfo:
                 # This node was reached from a longer path, we assume it was
                 # enqued correctly with the longer gdfo, so don't continue
                 # processing now
                 assert gdfo < next.gdfo
+                skipped += 1
                 continue
             next_gdfo = gdfo + 1
+            assert next_gdfo < max_gdfo
             for child_key in next.children:
                 child_node = self._nodes[child_key]
                 if child_node.gdfo is None or child_node.gdfo < next_gdfo:
                     child_node.gdfo = next_gdfo
                     heapq.heappush(todo, (next_gdfo, child_node))
-
+            tnow = time.time()
+            if tnow > tnext:
+                sys.stderr.write('todo: %8d %8d %8d %8d\r'
+                                 % (len(todo), processed, skipped, next_gdfo))
+                tnext = tnow + 0.2
 
     def heads(self, keys):
         """Return the heads from amongst keys.
