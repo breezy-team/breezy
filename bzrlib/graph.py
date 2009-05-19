@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import heapq
 import time
 
 from bzrlib import (
@@ -1173,7 +1174,7 @@ class _KnownGraphNode(object):
     """Represents a single object in the known graph."""
 
     __slots__ = ('key', 'parent_keys', 'children', 'linear_dominator',
-                 'dominator_distance')
+                 'dominator_distance', 'gdfo')
 
     def __init__(self, key, parent_keys):
         self.key = key
@@ -1181,10 +1182,13 @@ class _KnownGraphNode(object):
         self.children = []
         self.linear_dominator = None
         self.dominator_distance = 0
+        # Greatest distance from origin
+        self.gdfo = None
 
     def __repr__(self):
-        return '%s(%s, par:%s, child:%s, dom:%s %s)' % (
-            self.__class__.__name__, self.key, self.parent_keys, self.children,
+        return '%s(%s  gdfo:%s par:%s child:%s dom:%s %s)' % (
+            self.__class__.__name__, self.key, self.gdfo,
+            self.parent_keys, self.children,
             self.linear_dominator, self.dominator_distance)
 
 
@@ -1223,6 +1227,7 @@ class KnownGraph(object):
                     nodes[parent_key] = parent_node
                 parent_node.children.append(key)
         self._find_linear_dominators()
+        self._find_gdfo()
 
     def _find_linear_dominators(self):
         """For each node in the set, find any linear dominators.
@@ -1234,9 +1239,9 @@ class KnownGraph(object):
         the nearest dominator when doing comparisons.
         """
         def check_node(node):
-            if node.parent_keys is None or len(node.parent_keys) > 1:
-                # This node already has multiple parents, it is its own
-                # dominator
+            if node.parent_keys is None or len(node.parent_keys) != 1:
+                # This node is either a ghost, a tail, or has multiple parents
+                # It its own dominator
                 node.linear_dominator = node.key
                 node.dominator_distance = 0
                 return None
@@ -1279,6 +1284,31 @@ class KnownGraph(object):
                 next_node.dominator_distance = node.dominator_distance + 1
                 node = next_node
 
+    def _find_gdfo(self):
+        # TODO: Consider moving the tails search into the first-pass over the
+        #       data, inside _find_linear_dominators
+        tails = [node for node in self._nodes.itervalues()
+                       if not node.parent_keys]
+        todo = []
+        for node in tails:
+            node.gdfo = 1
+            heapq.heappush(todo, (1, node))
+        while todo:
+            gdfo, next = heapq.heappop(todo)
+            if gdfo != next.gdfo:
+                # This node was reached from a longer path, we assume it was
+                # enqued correctly with the longer gdfo, so don't continue
+                # processing now
+                assert gdfo < next.gdfo
+                continue
+            next_gdfo = gdfo + 1
+            for child_key in next.children:
+                child_node = self._nodes[child_key]
+                if child_node.gdfo is None or child_node.gdfo < next_gdfo:
+                    child_node.gdfo = next_gdfo
+                    heapq.heappush(todo, (next_gdfo, child_node))
+
+
     def heads(self, keys):
         """Return the heads from amongst keys.
 
@@ -1301,12 +1331,36 @@ class KnownGraph(object):
             if not candidate_nodes:
                 return set([revision.NULL_REVISION])
         if len(candidate_nodes) < 2:
-            return set(candidate_nodes.keys())
+            return set(candidate_nodes)
+        dominator = None
+        # TODO: We could optimize for the len(candidate_nodes) > 2 by checking
+        #       for *any* pair-wise matching, and then eliminating one of the
+        #       nodes trivially. However, the fairly common case is just 2
+        #       keys, so we'll focus on that, first
+        for node in candidate_nodes.itervalues():
+            if dominator is None:
+                dominator = node.linear_dominator
+            elif dominator != node.linear_dominator:
+                break
+        else:
+            # All of these nodes have the same linear_dominator, which means
+            # they are in a line, the head is just the one with the highest
+            # distance
+            def get_distance(key):
+                return self._nodes[key].dominator_distance
+            def get_linear_head():
+                return max(candidate_nodes, key=get_distance)
+            return set([get_linear_head()])
+        if len(candidate_nodes) > 2:
+            # Not supported yet
+            g = Graph(self)
+            return g.heads(candidate_nodes.keys())
+        # So we know we have 2 candidate nodes, lets see what we can find
         g = Graph(self)
         return g.heads(candidate_nodes.keys())
 
     def get_parent_map(self, keys):
-        # Thunk for now
+        # Thunk to match the Graph._parents_provider api.
         nodes = [self._nodes[key] for key in keys]
         return dict((node.key, node.parent_keys)
                     for node in nodes if node.parent_keys is not None)

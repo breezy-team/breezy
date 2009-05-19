@@ -1364,6 +1364,10 @@ class TestKnownGraph(tests.TestCase):
         self.assertEqual(dominator, node.linear_dominator)
         self.assertEqual(distance, node.dominator_distance)
 
+    def assertGDFO(self, graph, rev, gdfo):
+        node = graph._nodes[rev]
+        self.assertEqual(gdfo, node.gdfo)
+
     def test_children_ancestry1(self):
         graph = self.make_known_graph(ancestry_1)
         self.assertEqual(['rev1'], graph._nodes[NULL_REVISION].children)
@@ -1395,6 +1399,39 @@ class TestKnownGraph(tests.TestCase):
         self.assertDominator(graph, 'e', 'e', 0)
         self.assertDominator(graph, 'f', 'f', 0)
 
+    def test_gdfo_ancestry_1(self):
+        graph = self.make_known_graph(ancestry_1)
+        self.assertGDFO(graph, 'rev1', 2)
+        self.assertGDFO(graph, 'rev2b', 3)
+        self.assertGDFO(graph, 'rev2a', 3)
+        self.assertGDFO(graph, 'rev3', 4)
+        self.assertGDFO(graph, 'rev4', 5)
+
+    def test_gdfo_feature_branch(self):
+        graph = self.make_known_graph(feature_branch)
+        self.assertGDFO(graph, 'rev1', 2)
+        self.assertGDFO(graph, 'rev2b', 3)
+        self.assertGDFO(graph, 'rev3b', 4)
+
+    def test_gdfo_extended_history_shortcut(self):
+        graph = self.make_known_graph(extended_history_shortcut)
+        self.assertGDFO(graph, 'a', 2)
+        self.assertGDFO(graph, 'b', 3)
+        self.assertGDFO(graph, 'c', 4)
+        self.assertGDFO(graph, 'd', 5)
+        self.assertGDFO(graph, 'e', 6)
+        self.assertGDFO(graph, 'f', 6)
+
+    def test_gdfo_with_ghost(self):
+        graph = self.make_known_graph(with_ghost)
+        self.assertGDFO(graph, 'f', 2)
+        self.assertGDFO(graph, 'e', 3)
+        self.assertGDFO(graph, 'g', 1)
+        self.assertGDFO(graph, 'b', 4)
+        self.assertGDFO(graph, 'd', 4)
+        self.assertGDFO(graph, 'a', 5)
+        self.assertGDFO(graph, 'c', 5)
+
     def test_heads_null(self):
         graph = self.make_known_graph(ancestry_1)
         self.assertEqual(set(['null:']), graph.heads(['null:']))
@@ -1419,6 +1456,7 @@ class TestKnownGraph(tests.TestCase):
         self.assertEqual(set(['rev2a']), graph.heads(['rev1', 'rev2a']))
         self.assertEqual(set(['rev2b']), graph.heads(['rev1', 'rev2b']))
         self.assertEqual(set(['rev3']), graph.heads(['rev1', 'rev3']))
+        self.assertEqual(set(['rev3']), graph.heads(['rev3', 'rev2a']))
         self.assertEqual(set(['rev4']), graph.heads(['rev1', 'rev4']))
         self.assertEqual(set(['rev4']), graph.heads(['rev2a', 'rev4']))
         self.assertEqual(set(['rev4']), graph.heads(['rev2b', 'rev4']))
