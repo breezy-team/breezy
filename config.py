@@ -35,5 +35,5 @@ class GitBranchConfig(config.BranchConfig):
             store=config.STORE_LOCATION, warn_masked=warn_masked)
 
     def _get_user_id(self):
-        return None
-
+        # TODO: Read from ~/.gitconfig
+        return self._get_best_value('_get_user_id')
