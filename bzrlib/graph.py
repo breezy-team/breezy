@@ -1300,11 +1300,11 @@ class KnownGraph(object):
         tnext = tstart + 0.2
         processed = 0
         skipped = 0
-        max_gdfo = len(self._nodes)
+        max_gdfo = len(self._nodes) + 1
         while todo:
             gdfo, next = heapq.heappop(todo)
             processed += 1
-            if gdfo != next.gdfo:
+            if next.gdfo is not None and gdfo < next.gdfo:
                 # This node was reached from a longer path, we assume it was
                 # enqued correctly with the longer gdfo, so don't continue
                 # processing now
@@ -1312,17 +1312,28 @@ class KnownGraph(object):
                 skipped += 1
                 continue
             next_gdfo = gdfo + 1
-            assert next_gdfo < max_gdfo
+            assert next_gdfo <= max_gdfo
             for child_key in next.children:
                 child_node = self._nodes[child_key]
                 if child_node.gdfo is None or child_node.gdfo < next_gdfo:
-                    child_node.gdfo = next_gdfo
-                    heapq.heappush(todo, (next_gdfo, child_node))
+                    # Only enque children when all of their parents have been
+                    # resolved
+                    for parent_key in child_node.parent_keys:
+                        # We know that 'this' parent is counted
+                        if parent_key != next.key:
+                            parent_node = self._nodes[parent_key]
+                            if parent_node.gdfo is None:
+                                break
+                    else:
+                        child_node.gdfo = next_gdfo
+                        heapq.heappush(todo, (next_gdfo, child_node))
             tnow = time.time()
             if tnow > tnext:
                 sys.stderr.write('todo: %8d %8d %8d %8d\r'
                                  % (len(todo), processed, skipped, next_gdfo))
                 tnext = tnow + 0.2
+        sys.stderr.write('todo: %8d %8d %8d %8d\n'
+                         % (len(todo), processed, skipped, next_gdfo))
 
     def heads(self, keys):
         """Return the heads from amongst keys.
