@@ -18,6 +18,8 @@ New Features
 Improvements
 ************
 
+* ``bzr branch --notree`` is now faster. (Ian Clatworthy)
+
 Bug Fixes
 *********
 
