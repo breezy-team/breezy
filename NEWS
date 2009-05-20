@@ -12,6 +12,42 @@ In Development
 Compatibility Breaks
 ********************
 
+New Features
+************
+
+Improvements
+************
+
+Bug Fixes
+*********
+
+Documentation
+*************
+
+API Changes
+***********
+
+* Added osutils.parent_directories(). (Ian Clatworthy)
+
+Internals
+*********
+
+Testing
+*******
+
+
+bzr 1.15
+########
+:1.15rc1: 2009-04-06
+
+The smart server will no longer raise 'NoSuchRevision' when streaming content
+with a size mismatch in a reconstructed graph search. New command ``bzr
+dpush``. Plugins can now define their own annotation tie-breaker when two
+revisions introduce the exact same line.
+
+Compatibility Breaks
+********************
+
 * ``bzr ls`` is no longer recursive by default. To recurse, use the
   new ``-R`` option. The old ``--non-recursive`` option has been removed.
   If you alias ``ls`` to ``ls -R``, you can disable recursion using
@@ -106,6 +142,9 @@ Bug Fixes
   set the root data the same way that reconcile does.
   (Robert Collins, #368921)
 
+* Using unicode Windows API to obtain command-line arguments.
+  (Alexander Belchenko, #375934)
+
 Documentation
 *************
 
@@ -115,6 +154,12 @@ API Changes
 * ``InterPackRepo.fetch`` and ``RepoFetcher`` now raise ``NoSuchRevision``
   instead of ``InstallFailed`` when they detect a missing revision.
   ``InstallFailed`` itself has been deleted. (Jonathan Lange)
+
+* Not passing arguments to ``bzrlib.commands.main()`` will now grab the
+  arguments from ``osutils.get_unicode_argv()`` which has proper support
+  for unicode arguments on windows. Further, the supplied arguments are now 
+  required to be unicode strings, rather than user_encoded strings.
+  (Alexander Belchenko)
 
 Internals
 *********

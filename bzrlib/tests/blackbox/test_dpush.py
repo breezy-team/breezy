@@ -22,6 +22,7 @@ import os
 
 from bzrlib.branch import (
     Branch,
+    InterBranch,
     )
 from bzrlib.bzrdir import (
     BzrDirFormat,
@@ -38,6 +39,7 @@ from bzrlib.tests.blackbox import (
     )
 from bzrlib.tests.test_foreign import (
     DummyForeignVcsDirFormat,
+    InterToDummyVcsBranch,
     )
 
 
@@ -45,6 +47,7 @@ class TestDpush(ExternalBase):
 
     def setUp(self):
         BzrDirFormat.register_control_format(DummyForeignVcsDirFormat)
+        InterBranch.register_optimiser(InterToDummyVcsBranch)
         self.addCleanup(self.unregister_format)
         super(TestDpush, self).setUp()
 
@@ -53,6 +56,7 @@ class TestDpush(ExternalBase):
             BzrDirFormat.unregister_control_format(DummyForeignVcsDirFormat)
         except ValueError:
             pass
+        InterBranch.unregister_optimiser(InterToDummyVcsBranch)
 
     def make_dummy_builder(self, relpath):
         builder = self.make_branch_builder(relpath, 
@@ -67,7 +71,7 @@ class TestDpush(ExternalBase):
         source_tree = self.make_branch_and_tree("dc")
         output, error = self.run_bzr("dpush -d dc dp", retcode=3)
         self.assertEquals("", output)
-        self.assertContainsRe(error, 'not a foreign branch, use regular push')
+        self.assertContainsRe(error, 'in the same VCS, lossy push not necessary. Please use regular push.')
 
     def test_dpush(self):
         branch = self.make_dummy_builder('d').get_branch()
