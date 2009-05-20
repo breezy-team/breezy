@@ -807,11 +807,14 @@ class TestCommit(TestCaseWithTransport):
         tree.branch.lock_write()
         self.addCleanup(tree.branch.unlock)
         tt = transform.TransformPreview(tree)
+        tt.new_file('file', tt.root, 'contents', 'file_id')
         self.addCleanup(tt.finalize)
         preview = tt.get_preview_tree(tree.branch.repository)
         preview.set_parent_ids([rev_id])
-        Commit().commit('rev2', working_tree=preview,
-                        target_branch=tree.branch)
+        rev2_id = Commit().commit('rev2', working_tree=preview,
+                                  target_branch=tree.branch)
+        rev2_tree = tree.branch.repository.revision_tree(rev2_id)
+        self.assertEqual('contents', rev2_tree.get_file_text('file_id'))
 
     def test_target_branch(self):
         tree = self.make_branch_and_tree('tree')

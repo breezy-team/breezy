@@ -1881,6 +1881,9 @@ class _PreviewTree(tree.Tree):
         name = self._transform._limbo_name(trans_id)
         return open(name, 'rb')
 
+    def get_file_with_stat(self, file_id, path):
+        return self.get_file(file_id, path), None
+
     def annotate_iter(self, file_id,
                       default_revision=_mod_revision.CURRENT_REVISION):
         changes = self._changes(file_id)

@@ -654,7 +654,8 @@ class Commit(object):
             iter_changes = self._filter_iter_changes(iter_changes, update_tree)
             for file_id, path, fs_hash in self.builder.record_iter_changes(
                 self.work_tree, self.basis_revid, iter_changes):
-                self.work_tree._observed_sha1(file_id, path, fs_hash)
+                if fs_hash[1] is not None:
+                    self.work_tree._observed_sha1(file_id, path, fs_hash)
         else:
             # Build the new inventory
             self._populate_from_inventory()
