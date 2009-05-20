@@ -1119,13 +1119,13 @@ class TreeTransformBase(object):
                    (from_executable, to_executable)))
         return iter(sorted(results, key=lambda x:x[1]))
 
-    def get_preview_tree(self, repository=None):
+    def get_preview_tree(self):
         """Return a tree representing the result of the transform.
 
         This tree only supports the subset of Tree functionality required
         by show_diff_trees.  It must only be compared to tt._tree.
         """
-        return _PreviewTree(self, repository)
+        return _PreviewTree(self)
 
     def _text_parent(self, trans_id):
         file_id = self.tree_file_id(trans_id)
@@ -1556,7 +1556,7 @@ class TransformPreview(TreeTransformBase):
 class _PreviewTree(tree.Tree):
     """Partial implementation of Tree to support show_diff_trees"""
 
-    def __init__(self, transform, repository=None):
+    def __init__(self, transform):
         self._transform = transform
         self._final_paths = FinalPaths(transform)
         self.__by_parent = None
@@ -1564,7 +1564,6 @@ class _PreviewTree(tree.Tree):
         self._all_children_cache = {}
         self._path2trans_id_cache = {}
         self._final_name_cache = {}
-        self._repository = repository
 
     def _changes(self, file_id):
         for changes in self._transform.iter_changes():
@@ -1947,14 +1946,6 @@ class _PreviewTree(tree.Tree):
 
     def get_parent_ids(self):
         return self._parent_ids
-
-    def last_revision(self):
-        if len(self._parent_ids) == 0:
-            return _mod_revision.NULL_REVISION
-        return self._parent_ids[0]
-
-    def basis_tree(self):
-        return self._repository.revision_tree(self.last_revision())
 
     def set_parent_ids(self, parent_ids):
         self._parent_ids = parent_ids
