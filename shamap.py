@@ -24,6 +24,9 @@ import os
 import threading
 
 import bzrlib
+from bzrlib import (
+    trace,
+    )
 from bzrlib.errors import (
     NoSuchRevision,
     )
