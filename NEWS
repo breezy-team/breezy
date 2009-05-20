@@ -1,8 +1,8 @@
-0.3.2	UNRELEASED
+0.3.2	2009-05-20
 
  FEATURES
 
-  * "bzr commit" in git working trees works.
+  * "bzr commit" in git working trees works to some extent.
 
   * "bzr push" from local git repositories to remote git repositories works.
 
