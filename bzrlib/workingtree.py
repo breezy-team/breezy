@@ -1462,9 +1462,17 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         from_tail = splitpath(from_rel)[-1]
         from_id = inv.path2id(from_rel)
         if from_id is None:
-            raise errors.BzrRenameFailedError(from_rel,to_rel,
-                errors.NotVersionedError(path=str(from_rel)))
-        from_entry = inv[from_id]
+            # if file is missing in the inventory maybe it's in the basis_tree
+            basis_tree = self.branch.basis_tree()
+            from_id = basis_tree.path2id(from_rel)
+            if from_id is None:
+                raise errors.BzrRenameFailedError(from_rel,to_rel,
+                    errors.NotVersionedError(path=str(from_rel)))
+            # put entry back in the inventory so we can rename it
+            from_entry = basis_tree.inventory[from_id]
+            inv.add(from_entry)
+        else:
+            from_entry = inv[from_id]
         from_parent_id = from_entry.parent_id
         to_dir, to_tail = os.path.split(to_rel)
         to_dir_id = inv.path2id(to_dir)
