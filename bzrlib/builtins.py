@@ -4891,7 +4891,7 @@ class cmd_send(Command):
 
     def run(self, submit_branch=None, public_branch=None, no_bundle=False,
             no_patch=False, revision=None, remember=False, output=None,
-            format='4', mail_to=None, message=None, body=None, **kwargs):
+            format=None, mail_to=None, message=None, body=None, **kwargs):
         return self._run(submit_branch, revision, public_branch, remember,
                          format, no_bundle, no_patch, output,
                          kwargs.get('from', '.'), mail_to, message, body)
@@ -4936,9 +4936,12 @@ class cmd_send(Command):
                         'changes to submit.', remembered_submit_branch,
                         submit_branch)
 
-            if mail_to is None:
+            if mail_to is None or format is None:
                 submit_config = Branch.open(submit_branch).get_config()
-                mail_to = submit_config.get_user_option("child_submit_to")
+                if mail_to is None:
+                    mail_to = submit_config.get_user_option("child_submit_to")
+                if format is None:
+                    format = submit_config.get_user_option("child_submit_format")
 
             stored_public_branch = branch.get_public_branch()
             if public_branch is None:
@@ -4961,6 +4964,8 @@ class cmd_send(Command):
                 revision_id = branch.last_revision()
             if revision_id == NULL_REVISION:
                 raise errors.BzrCommandError('No revisions to submit.')
+            if format is None:
+                format = '4'
             if format == '4':
                 directive = merge_directive.MergeDirective2.from_objects(
                     branch.repository, revision_id, time.time(),
@@ -4985,6 +4990,9 @@ class cmd_send(Command):
                     osutils.local_time_offset(), submit_branch,
                     public_branch=public_branch, patch_type=patch_type,
                     message=message)
+            else:
+                raise errors.BzrCommandError("No such send format '%s'." % 
+                                             format)
 
             if output is None:
                 directive.compose_merge_request(mail_client, mail_to, body,
@@ -5065,7 +5073,7 @@ class cmd_bundle_revisions(cmd_send):
 
     def run(self, submit_branch=None, public_branch=None, no_bundle=False,
             no_patch=False, revision=None, remember=False, output=None,
-            format='4', **kwargs):
+            format=None, **kwargs):
         if output is None:
             output = '-'
         return self._run(submit_branch, revision, public_branch, remember,

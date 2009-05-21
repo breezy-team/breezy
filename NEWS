@@ -65,6 +65,10 @@ New Features
   branches (svn, git) without setting custom bzr-specific metadata.
   (Jelmer Vernooij)
 
+* ``bzr send`` will now check the ``child_submit_format`` setting in
+  the submit branch to determine what format to use, if none was 
+  specified on the command-line.  (Jelmer Vernooij)
+
 Improvements
 ************
 
