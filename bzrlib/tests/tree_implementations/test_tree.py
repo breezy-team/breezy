@@ -163,6 +163,21 @@ class TestFileContent(TestCaseWithTree):
         finally:
             tree.unlock()
 
+    def test_get_file_with_stat(self):
+        work_tree = self.make_branch_and_tree('wt')
+        tree = self.get_tree_no_parents_abc_content_2(work_tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        # Test lookup without path works
+        tree_file, stat = tree.get_file_with_stat('a-id')
+        # We should get None or a stat value.
+        self.assertTrue(stat is None or len(stat) == 10)
+        lines = tree_file.readlines()
+        self.assertEqual(['foobar\n'], lines)
+        # Test lookup with path works
+        lines = tree.get_file_with_stat('a-id', path='a')[0].readlines()
+        self.assertEqual(['foobar\n'], lines)
+
     def test_get_file_text(self):
         work_tree = self.make_branch_and_tree('wt')
         tree = self.get_tree_no_parents_abc_content_2(work_tree)

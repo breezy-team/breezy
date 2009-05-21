@@ -262,6 +262,9 @@ class Tree(object):
         """
         raise NotImplementedError(self.get_file)
 
+    def get_file_with_stat(self, file_id, path=None):
+        return self.get_file(file_id, path), None
+
     def get_file_text(self, file_id, path=None):
         """Return the byte content of a file.
 
