@@ -4587,6 +4587,7 @@ class cmd_serve(Command):
     def serve_bzr(self, transport, host=None, port=None, inet=False):
         from bzrlib import lockdir
         from bzrlib.smart import medium, server
+        from bzrlib.transport import get_transport
         from bzrlib.transport.chroot import ChrootServer
         chroot_server = ChrootServer(transport)
         chroot_server.setUp()
