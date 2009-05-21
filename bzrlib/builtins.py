@@ -41,7 +41,6 @@ from bzrlib import (
     merge_directive,
     osutils,
     reconfigure,
-    registry,
     rename_map,
     revision as _mod_revision,
     symbol_versioning,
@@ -4536,8 +4535,6 @@ class cmd_wait_until_signalled(Command):
 class cmd_serve(Command):
     """Run the bzr server."""
 
-    protocol_registry = registry.Registry()
-
     aliases = ['server']
 
     takes_options = [
@@ -4545,7 +4542,7 @@ class cmd_serve(Command):
                help='Serve on stdin/out for use from inetd or sshd.'),
         RegistryOption('protocol', 
                help="Protocol to serve.", 
-               registry=protocol_registry,
+               lazy_registry=('bzrlib.transport', 'transport_server_registry'),
                value_switches=True),
         Option('port',
                help='Listen for connections on nominated port of the form '
@@ -4584,56 +4581,19 @@ class cmd_serve(Command):
             port = int(port)
         return host, port
 
-    def serve_bzr(self, transport, host=None, port=None, inet=False):
-        from bzrlib import lockdir
-        from bzrlib.smart import medium, server
-        from bzrlib.transport import get_transport
-        from bzrlib.transport.chroot import ChrootServer
-        chroot_server = ChrootServer(transport)
-        chroot_server.setUp()
-        t = get_transport(chroot_server.get_url())
-        if inet:
-            smart_server = medium.SmartServerPipeStreamMedium(
-                sys.stdin, sys.stdout, transport)
-        else:
-            if host is None:
-                host = medium.BZR_DEFAULT_INTERFACE
-            if port is None:
-                port = medium.BZR_DEFAULT_PORT
-            smart_server = server.SmartTCPServer(
-                transport, host=host, port=port)
-            note('listening on port: %s' % smart_server.port)
-        # For the duration of this server, no UI output is permitted. note
-        # that this may cause problems with blackbox tests. This should be
-        # changed with care though, as we dont want to use bandwidth sending
-        # progress over stderr to smart server clients!
-        old_factory = ui.ui_factory
-        old_lockdir_timeout = lockdir._DEFAULT_TIMEOUT_SECONDS
-        try:
-            ui.ui_factory = ui.SilentUIFactory()
-            lockdir._DEFAULT_TIMEOUT_SECONDS = 0
-            smart_server.serve()
-        finally:
-            ui.ui_factory = old_factory
-            lockdir._DEFAULT_TIMEOUT_SECONDS = old_lockdir_timeout
-
-    protocol_registry.register('bzr', serve_bzr, 
-        help="The Bazaar smart server protocol over TCP. (default port: 4155)")
-    protocol_registry.default_key = 'bzr'
-
     def run(self, port=None, inet=False, directory=None, allow_writes=False,
             protocol=None):
-        from bzrlib.transport import get_transport
+        from bzrlib.transport import get_transport, transport_server_registry
         if directory is None:
             directory = os.getcwd()
         if protocol is None:
-            protocol = self.protocol_registry.get()
+            protocol = transport_server_registry.get()
         host, port = self.get_host_and_port(port)
         url = urlutils.local_path_to_url(directory)
         if not allow_writes:
             url = 'readonly+' + url
         transport = get_transport(url)
-        protocol(self, transport, host, port, inet)
+        protocol(transport, host, port, inet)
 
 
 class cmd_join(Command):
