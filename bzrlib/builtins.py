@@ -4563,23 +4563,6 @@ class cmd_serve(Command):
                 ),
         ]
 
-    def run_smart_server(self, smart_server):
-        """Run 'smart_server' forever, with no UI output at all."""
-        # For the duration of this server, no UI output is permitted. note
-        # that this may cause problems with blackbox tests. This should be
-        # changed with care though, as we dont want to use bandwidth sending
-        # progress over stderr to smart server clients!
-        from bzrlib import lockdir
-        old_factory = ui.ui_factory
-        old_lockdir_timeout = lockdir._DEFAULT_TIMEOUT_SECONDS
-        try:
-            ui.ui_factory = ui.SilentUIFactory()
-            lockdir._DEFAULT_TIMEOUT_SECONDS = 0
-            smart_server.serve()
-        finally:
-            ui.ui_factory = old_factory
-            lockdir._DEFAULT_TIMEOUT_SECONDS = old_lockdir_timeout
-
     def get_host_and_port(self, port):
         """Return the host and port to run the smart server on.
 
@@ -4601,45 +4584,37 @@ class cmd_serve(Command):
             port = int(port)
         return host, port
 
-    def get_smart_server(self, transport, inet, host, port):
-        """Construct a smart server.
-
-        :param transport: The base transport from which branches will be
-            served.
-        :param inet: If True, serve over stdin and stdout. Used for running
-            from inet.
-        :param host: The host address to listen on. If None, 
-            defaults to `medium.BZR_DEFAULT_INTERFACE`.
-        :param port: The port to listen on. If None, defaults to 
-            `medium.BZR_DEFAULT_PORT`. 
-        :return: A smart server.
-        """
+    def serve_bzr(self, transport, host=None, port=None, inet=False):
+        from bzrlib import lockdir
         from bzrlib.smart import medium, server
+        from bzrlib.transport.chroot import ChrootServer
+        chroot_server = ChrootServer(transport)
+        chroot_server.setUp()
+        t = get_transport(chroot_server.get_url())
         if inet:
             smart_server = medium.SmartServerPipeStreamMedium(
                 sys.stdin, sys.stdout, transport)
         else:
             if host is None:
                 host = medium.BZR_DEFAULT_INTERFACE
-            if port = None
+            if port is None:
                 port = medium.BZR_DEFAULT_PORT
             smart_server = server.SmartTCPServer(
                 transport, host=host, port=port)
             note('listening on port: %s' % smart_server.port)
-        return smart_server
-
-    def serve_bzr(self, host=None, port=None, inet=False, directory=None, 
-                  allow_writes=False):
-        from bzrlib.transport import get_transport
-        from bzrlib.transport.chroot import ChrootServer
-        url = urlutils.local_path_to_url(directory)
-        if not allow_writes:
-            url = 'readonly+' + url
-        chroot_server = ChrootServer(get_transport(url))
-        chroot_server.setUp()
-        t = get_transport(chroot_server.get_url())
-        smart_server = self.get_smart_server(t, inet, host, port)
-        self.run_smart_server(smart_server)
+        # For the duration of this server, no UI output is permitted. note
+        # that this may cause problems with blackbox tests. This should be
+        # changed with care though, as we dont want to use bandwidth sending
+        # progress over stderr to smart server clients!
+        old_factory = ui.ui_factory
+        old_lockdir_timeout = lockdir._DEFAULT_TIMEOUT_SECONDS
+        try:
+            ui.ui_factory = ui.SilentUIFactory()
+            lockdir._DEFAULT_TIMEOUT_SECONDS = 0
+            smart_server.serve()
+        finally:
+            ui.ui_factory = old_factory
+            lockdir._DEFAULT_TIMEOUT_SECONDS = old_lockdir_timeout
 
     protocol_registry.register('bzr', serve_bzr, 
         help="The Bazaar smart server protocol over TCP. (default port: 4155)")
@@ -4647,12 +4622,17 @@ class cmd_serve(Command):
 
     def run(self, port=None, inet=False, directory=None, allow_writes=False,
             protocol=None):
+        from bzrlib.transport import get_transport
         if directory is None:
             directory = os.getcwd()
         if protocol is None:
             protocol = self.protocol_registry.get()
         host, port = self.get_host_and_port(port)
-        protocol(self, host, port, inet, directory, allow_writes)
+        url = urlutils.local_path_to_url(directory)
+        if not allow_writes:
+            url = 'readonly+' + url
+        transport = get_transport(url)
+        protocol(self, transport, host, port, inet)
 
 
 class cmd_join(Command):
