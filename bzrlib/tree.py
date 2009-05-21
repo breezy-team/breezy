@@ -263,7 +263,18 @@ class Tree(object):
         raise NotImplementedError(self.get_file)
 
     def get_file_with_stat(self, file_id, path=None):
-        return self.get_file(file_id, path), None
+        """Get a file handle and stat object for file_id.
+
+        The default implementation returns (self.get_file, None) for backwards
+        compatibility.
+
+        :param file_id: The file id to read.
+        :param path: The path of the file, if it is known.
+        :return: A tuple (file_handle, stat_value_or_None). If the tree has
+            no stat facility, or need for a stat cache feedback during commit,
+            it may return None for the second element of the tuple.
+        """
+        return (self.get_file(file_id, path), None)
 
     def get_file_text(self, file_id, path=None):
         """Return the byte content of a file.
