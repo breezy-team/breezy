@@ -4583,8 +4583,7 @@ class cmd_serve(Command):
     def get_host_and_port(self, port):
         """Return the host and port to run the smart server on.
 
-        If 'port' is None, the default host (`medium.BZR_DEFAULT_INTERFACE`)
-        and port (`medium.BZR_DEFAULT_PORT`) will be used.
+        If 'port' is None, None will be returned for the host and port.
 
         If 'port' has a colon in it, the string before the colon will be
         interpreted as the host.
@@ -4593,26 +4592,26 @@ class cmd_serve(Command):
         :return: A tuple of (host, port), where 'host' is a host name or IP,
             and port is an integer TCP/IP port.
         """
-        from bzrlib.smart import medium
-        host = medium.BZR_DEFAULT_INTERFACE
+        host = None
         if port is None:
-            port = medium.BZR_DEFAULT_PORT
+            port = None
         else:
             if ':' in port:
                 host, port = port.split(':')
             port = int(port)
         return host, port
 
-    def get_smart_server(self, transport, inet, port):
+    def get_smart_server(self, transport, inet, host, port):
         """Construct a smart server.
 
         :param transport: The base transport from which branches will be
             served.
         :param inet: If True, serve over stdin and stdout. Used for running
             from inet.
-        :param port: The port to listen on. By default, it's `
-            medium.BZR_DEFAULT_PORT`. See `get_host_and_port` for more
-            information.
+        :param host: The host address to listen on. If None, 
+            defaults to `medium.BZR_DEFAULT_INTERFACE`.
+        :param port: The port to listen on. If None, defaults to 
+            `medium.BZR_DEFAULT_PORT`. 
         :return: A smart server.
         """
         from bzrlib.smart import medium, server
@@ -4620,13 +4619,16 @@ class cmd_serve(Command):
             smart_server = medium.SmartServerPipeStreamMedium(
                 sys.stdin, sys.stdout, transport)
         else:
-            host, port = self.get_host_and_port(port)
+            if host is None:
+                host = medium.BZR_DEFAULT_INTERFACE
+            if port = None
+                port = medium.BZR_DEFAULT_PORT
             smart_server = server.SmartTCPServer(
                 transport, host=host, port=port)
             note('listening on port: %s' % smart_server.port)
         return smart_server
 
-    def serve_bzr(self, port=None, inet=False, directory=None, 
+    def serve_bzr(self, host=None, port=None, inet=False, directory=None, 
                   allow_writes=False):
         from bzrlib.transport import get_transport
         from bzrlib.transport.chroot import ChrootServer
@@ -4636,7 +4638,7 @@ class cmd_serve(Command):
         chroot_server = ChrootServer(get_transport(url))
         chroot_server.setUp()
         t = get_transport(chroot_server.get_url())
-        smart_server = self.get_smart_server(t, inet, port)
+        smart_server = self.get_smart_server(t, inet, host, port)
         self.run_smart_server(smart_server)
 
     protocol_registry.register('bzr', serve_bzr, 
@@ -4649,7 +4651,8 @@ class cmd_serve(Command):
             directory = os.getcwd()
         if protocol is None:
             protocol = self.protocol_registry.get()
-        protocol(self, port, inet, directory, allow_writes)
+        host, port = self.get_host_and_port(port)
+        protocol(self, host, port, inet, directory, allow_writes)
 
 
 class cmd_join(Command):
