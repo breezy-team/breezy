@@ -1434,6 +1434,14 @@ class DirStateWorkingTreeFormat(WorkingTreeFormat3):
                 if basis_root_id is not None:
                     wt._set_root_id(basis_root_id)
                     wt.flush()
+                # If content filtering is supported, do not use the accelerator
+                # tree - the cost of transforming the content both ways and
+                # checking for changed content can outweight the gains it gives.
+                # Note: do NOT move this logic up higher - using the basis from
+                # the accelerator tree is still desirable because that can save
+                # a minute or more of processing on large trees!
+                if wt.supports_content_filtering():
+                    accelerator_tree = None
                 # delta_from_tree is safe even for DirStateRevisionTrees,
                 # because wt4.apply_inventory_delta does not mutate the input
                 # inventory entries.
