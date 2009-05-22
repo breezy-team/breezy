@@ -18,6 +18,9 @@ New Features
 Improvements
 ************
 
+* ``bzr branch`` in a shared repository is now faster for
+  development6-rich-root format. (Ian Clatworthy)
+
 * ``bzr branch --notree`` is now faster. (Ian Clatworthy)
 
 Bug Fixes
