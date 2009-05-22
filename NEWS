@@ -20,6 +20,8 @@ Improvements
 
 * ``bzr branch --notree`` is now faster. (Ian Clatworthy)
 
+* ``bzr diff`` is now faster on large trees. (Ian Clatworthy)
+
 Bug Fixes
 *********
 

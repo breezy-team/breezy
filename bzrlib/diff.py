@@ -882,7 +882,7 @@ class DiffTree(object):
                 self.to_file.write("=== modified %s '%s'%s\n" % (kind[0],
                                    newpath_encoded, prop_str))
             if changed_content:
-                self.diff(file_id, oldpath, newpath)
+                self._diff(file_id, oldpath, newpath, kind[0], kind[1])
                 has_changes = 1
             if renamed:
                 has_changes = 1
@@ -903,7 +903,10 @@ class DiffTree(object):
             new_kind = self.new_tree.kind(file_id)
         except (errors.NoSuchId, errors.NoSuchFile):
             new_kind = None
+        self._diff(file_id, old_path, new_path, old_kind, new_kind)
 
+
+    def _diff(self, file_id, old_path, new_path, old_kind, new_kind):
         result = DiffPath._diff_many(self.differs, file_id, old_path,
                                        new_path, old_kind, new_kind)
         if result is DiffPath.CANNOT_DIFF:
