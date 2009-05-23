@@ -163,6 +163,7 @@ class TestRegisterLazy(tests.TestCase):
         del sys.modules['bzrlib.tests.fake_command']
         global lazy_command_imported
         lazy_command_imported = False
+        commands.install_bzr_command_hooks()
 
     @staticmethod
     def remove_fake():
@@ -205,6 +206,7 @@ class TestExtendCommandHook(tests.TestCase):
         # commands are registered).
         # when they are simply created.
         hook_calls = []
+        commands.install_bzr_command_hooks()
         commands.Command.hooks.install_named_hook(
             "extend_command", hook_calls.append, None)
         # create a command, should not fire
@@ -244,6 +246,7 @@ class TestGetCommandHook(tests.TestCase):
     def test_fires_on_get_cmd_object(self):
         # The get_command(cmd) hook fires when commands are delivered to the
         # ui.
+        commands.install_bzr_command_hooks()
         hook_calls = []
         class ACommand(commands.Command):
             """A sample command."""
@@ -271,11 +274,42 @@ class TestGetCommandHook(tests.TestCase):
         self.assertIsInstance(hook_calls[0][1], builtins.cmd_info)
 
 
+class TestGetMissingCommandHook(tests.TestCase):
+
+    def test_fires_on_get_cmd_object(self):
+        # The get_missing_command(cmd) hook fires when commands are delivered to the
+        # ui.
+        hook_calls = []
+        class ACommand(commands.Command):
+            """A sample command."""
+        def get_missing_cmd(cmd_name):
+            hook_calls.append(('called', cmd_name))
+            if cmd_name in ('foo', 'info'):
+                return ACommand()
+        commands.Command.hooks.install_named_hook(
+            "get_missing_command", get_missing_cmd, None)
+        # create a command directly, should not fire
+        cmd = ACommand()
+        self.assertEqual([], hook_calls)
+        # ask by name, should fire and give us our command
+        cmd = commands.get_cmd_object('foo')
+        self.assertEqual([('called', 'foo')], hook_calls)
+        self.assertIsInstance(cmd, ACommand)
+        del hook_calls[:]
+        # ask by a name that is supplied by a builtin - the hook should not
+        # fire and we still get our object.
+        commands.install_bzr_command_hooks()
+        cmd = commands.get_cmd_object('info')
+        self.assertNotEqual(None, cmd)
+        self.assertEqual(0, len(hook_calls))
+
+
 class TestListCommandHook(tests.TestCase):
 
     def test_fires_on_all_command_names(self):
         # The list_commands() hook fires when all_command_names() is invoked.
         hook_calls = []
+        commands.install_bzr_command_hooks()
         def list_my_commands(cmd_names):
             hook_calls.append('called')
             cmd_names.update(['foo', 'bar'])

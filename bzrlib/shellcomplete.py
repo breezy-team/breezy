@@ -64,15 +64,16 @@ def shellcomplete_commands(outfile = None):
         outfile = sys.stdout
 
     cmds = []
-    for cmdname, cmdclass in commands.get_all_cmds():
-        cmds.append((cmdname, cmdclass))
-        for alias in cmdclass.aliases:
-            cmds.append((alias, cmdclass))
+    for cmdname in commands.all_command_names():
+        cmd = commands.get_cmd_object(cmdname)))
+        cmds.append((cmdname, cmd))
+        for alias in cmd.aliases:
+            cmds.append((alias, cmd))
     cmds.sort()
-    for cmdname, cmdclass in cmds:
-        if cmdclass.hidden:
+    for cmdname, cmd in cmds:
+        if cmd.hidden:
             continue
-        doc = getdoc(cmdclass)
+        doc = getdoc(cmd)
         if doc is None:
             outfile.write(cmdname + '\n')
         else:

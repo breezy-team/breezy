@@ -49,10 +49,11 @@ from bzrlib import (
     )
 """)
 
-from bzrlib import registry
-# Compatibility
 from bzrlib.hooks import HookPoint, Hooks
+# Compatibility - Option used to be in commands.
 from bzrlib.option import Option
+from bzrlib import registry
+from bzrlib.symbol_versioning import deprecated_function, deprecated_in
 
 
 class CommandInfo(object):
@@ -182,17 +183,20 @@ def plugin_command_names():
     return plugin_cmds.keys()
 
 
-def _get_cmd_dict(plugins_override=True):
-    """Return name->class mapping for all commands."""
+@deprecated_function(deprecated_in((1, 16, 0)))
+def get_all_cmds():
+    """Return canonical name and class for most commands.
+    
+    NB: This does not return all commands since the introduction of
+    command hooks, and returning the class is not sufficient to 
+    get correctly setup commands, which is why it is deprecated.
+
+    Use 'all_command_names' + 'get_cmd_object' instead.
+    """
     d = _builtin_commands()
     if plugins_override:
         d.update(plugin_cmds.iteritems())
-    return d
-
-
-def get_all_cmds(plugins_override=True):
-    """Return canonical name and class for all registered commands."""
-    for k, v in _get_cmd_dict(plugins_override=plugins_override).iteritems():
+    for k, v in d.iteritems():
         yield k,v
 
 
@@ -220,7 +224,6 @@ def _get_cmd_object(cmd_name, plugins_override=True):
     # in a Unicode name. In that case, they should just get a
     # 'command not found' error later.
     # In the future, we may actually support Unicode command names.
-
     cmd = None
     # Get a command
     for hook in Command.hooks['get_command']:
@@ -231,18 +234,27 @@ def _get_cmd_object(cmd_name, plugins_override=True):
             if not cmd.plugin_name():
                 break
     if cmd is None:
-        try:
-            plugin_metadata, provider = probe_for_provider(cmd_name)
-            raise errors.CommandAvailableInPlugin(cmd_name,
-                plugin_metadata, provider)
-        except errors.NoPluginAvailable:
-            pass
+        for hook in Command.hooks['get_missing_command']:
+            cmd = hook(cmd_name)
+            if cmd is not None:
+                break
+    if cmd is None:
         # No command found.
         raise KeyError
     # Allow plugins to extend commands
     for hook in Command.hooks['extend_command']:
         hook(cmd)
     return cmd
+
+
+def _try_plugin_provider(cmd_name):
+    """Probe for a plugin provider having cmd_name."""
+    try:
+        plugin_metadata, provider = probe_for_provider(cmd_name)
+        raise errors.CommandAvailableInPlugin(cmd_name,
+            plugin_metadata, provider)
+    except errors.NoPluginAvailable:
+        pass
 
 
 def probe_for_provider(cmd_name):
@@ -263,7 +275,7 @@ def probe_for_provider(cmd_name):
 
 def _get_bzr_command(cmd_or_None, cmd_name):
     """Get a command from bzr's core."""
-    cmds = _get_cmd_dict(plugins_override=False)
+    cmds = _builtin_commands()
     try:
         return cmds[cmd_name]()
     except KeyError:
@@ -684,24 +696,19 @@ class CommandHooks(Hooks):
             "Called when creating a single command. Called with "
             "(cmd_or_None, command_name). get_command should either return "
             "the cmd_or_None parameter, or a replacement Command object that "
-            "should be used for the command.", (1, 14), None))
+            "should be used for the command.", (1, 16), None))
+        self.create_hook(HookPoint('get_missing_command',
+            "Called when creating a single command if no command could be "
+            "found. Called with (command_name). get_missing_command should "
+            "either return None, or a Command object to be used for the "
+            "command.", (1, 16), None))
         self.create_hook(HookPoint('list_commands',
             "Called when enumerating commands. Called with a dict of "
             "cmd_name: cmd_class tuples for all the commands found "
             "so far. This dict is safe to mutate - to remove a command or "
             "to replace it with another (eg plugin supplied) version. "
             "list_commands should return the updated dict of commands.",
-            (1, 14), None))
-        # We currently ship default hooks to get builtin and plugin supplied
-        # command names.
-        self.install_named_hook("list_commands", _list_bzr_commands,
-            "bzr commands")
-        self.install_named_hook("get_command", _get_bzr_command,
-            "bzr commands")
-        self.install_named_hook("get_command", _get_plugin_command,
-            "bzr plugin commands")
-        self.install_named_hook("get_command", _get_external_command,
-            "bzr external command lookup")
+            (1, 16), None))
 
 Command.hooks = CommandHooks()
 
@@ -1046,6 +1053,20 @@ def display_command(func):
     return ignore_pipe
 
 
+def install_bzr_command_hooks():
+    """Install the hooks to supply bzr's own commands."""
+    Command.hooks.install_named_hook("list_commands", _list_bzr_commands,
+        "bzr commands")
+    Command.hooks.install_named_hook("get_command", _get_bzr_command,
+        "bzr commands")
+    Command.hooks.install_named_hook("get_command", _get_plugin_command,
+        "bzr plugin commands")
+    Command.hooks.install_named_hook("get_command", _get_external_command,
+        "bzr external command lookup")
+    Command.hooks.install_named_hook("get_missing_command", _try_plugin_provider,
+        "bzr plugin-provider-db check")
+
+
 def main(argv=None):
     """Main entry point of command-line interface.
 
@@ -1062,7 +1083,6 @@ def main(argv=None):
 
     # Is this a final release version? If so, we should suppress warnings
     if bzrlib.version_info[3] == 'final':
-        from bzrlib import symbol_versioning
         symbol_versioning.suppress_deprecation_warnings(override=False)
     if argv is None:
         argv = osutils.get_unicode_argv()
@@ -1078,6 +1098,7 @@ def main(argv=None):
         except UnicodeDecodeError:
             raise errors.BzrError("argv should be list of unicode strings.")
         argv = new_argv
+    install_bzr_command_hooks()
     ret = run_bzr_catch_errors(argv)
     trace.mutter("return code %d", ret)
     return ret
