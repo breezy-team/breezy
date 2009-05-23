@@ -1,0 +1,24 @@
+Debug Flags
+===========
+
+These flags can be passed on the bzr command line or (without the ``-D``
+prefix) put in the ``debug_flags`` variable in ``bazaar.conf``.
+
+-Dauth            Trace authentication sections used.
+-Derror           Instead of normal error handling, always print a traceback
+                  on error.
+-Devil            Capture call sites that do expensive or badly-scaling
+                  operations.
+-Dfetch           Trace history copying between repositories.
+-Dfilters         Emit information for debugging content filtering.
+-Dgraph           Trace graph traversal.
+-Dhashcache       Log every time a working file is read to determine its hash.
+-Dhooks           Trace hook execution.
+-Dhpss            Trace smart protocol requests and responses.
+-Dhttp            Trace http connections, requests and responses
+-Dindex           Trace major index operations.
+-Dknit            Trace knit operations.
+-Dlock            Trace when lockdir locks are taken or released.
+-Dmerge           Emit information for debugging merges.
+-Dpack            Emit information about pack operations.
+-Dsftp            Trace SFTP internals.

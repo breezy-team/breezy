@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Implementaion of urllib2 tailored to bzr needs
 
@@ -917,6 +917,8 @@ class ProxyHandler(urllib2.ProxyHandler):
 
         (scheme, user, password,
          host, port, path) = transport.ConnectedTransport._split_url(proxy)
+        if not host:
+            raise errors.InvalidURL(proxy, 'No host component')
 
         if request.proxy_auth == {}:
             # No proxy auth parameter are available, we are handling the first
@@ -976,6 +978,9 @@ class AbstractAuthHandler(urllib2.BaseHandler):
       successful and the request authentication parameters have been updated.
     """
 
+    scheme = None
+    """The scheme as it appears in the server header (lower cased)"""
+
     _max_retry = 3
     """We don't want to retry authenticating endlessly"""
 
@@ -1033,32 +1038,54 @@ class AbstractAuthHandler(urllib2.BaseHandler):
                 # Let's be ready for next round
                 self._retry_count = None
                 return None
-        server_header = headers.get(self.auth_required_header, None)
-        if server_header is None:
+        server_headers = headers.getheaders(self.auth_required_header)
+        if not server_headers:
             # The http error MUST have the associated
             # header. This must never happen in production code.
             raise KeyError('%s not found' % self.auth_required_header)
 
         auth = self.get_auth(request)
         auth['modified'] = False
-        if self.auth_match(server_header, auth):
-            # auth_match may have modified auth (by adding the
-            # password or changing the realm, for example)
-            if (request.get_header(self.auth_header, None) is not None
-                and not auth['modified']):
-                # We already tried that, give up
-                return None
+        # FIXME: the auth handler should be selected at a single place instead
+        # of letting all handlers try to match all headers, but the current
+        # design doesn't allow a simple implementation.
+        for server_header in server_headers:
+            # Several schemes can be proposed by the server, try to match each
+            # one in turn
+            matching_handler = self.auth_match(server_header, auth)
+            if matching_handler:
+                # auth_match may have modified auth (by adding the
+                # password or changing the realm, for example)
+                if (request.get_header(self.auth_header, None) is not None
+                    and not auth['modified']):
+                    # We already tried that, give up
+                    return None
 
-            if self.requires_username and auth.get('user', None) is None:
-                # Without a known user, we can't authenticate
-                return None
+                # Only the most secure scheme proposed by the server should be
+                # used, since the handlers use 'handler_order' to describe that
+                # property, the first handler tried takes precedence, the
+                # others should not attempt to authenticate if the best one
+                # failed.
+                best_scheme = auth.get('best_scheme', None)
+                if best_scheme is None:
+                    # At that point, if current handler should doesn't succeed
+                    # the credentials are wrong (or incomplete), but we know
+                    # that the associated scheme should be used.
+                    best_scheme = auth['best_scheme'] = self.scheme
+                if  best_scheme != self.scheme:
+                    continue
 
-            # Housekeeping
-            request.connection.cleanup_pipe()
-            response = self.parent.open(request)
-            if response:
-                self.auth_successful(request, response)
-            return response
+                if self.requires_username and auth.get('user', None) is None:
+                    # Without a known user, we can't authenticate
+                    return None
+
+                # Housekeeping
+                request.connection.cleanup_pipe()
+                # Retry the request with an authentication header added
+                response = self.parent.open(request)
+                if response:
+                    self.auth_successful(request, response)
+                return response
         # We are not qualified to handle the authentication.
         # Note: the authentication error handling will try all
         # available handlers. If one of them authenticates
@@ -1127,7 +1154,8 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         if user is None:
             user = auth_conf.get_user(auth['protocol'], auth['host'],
                                       port=auth['port'], path=auth['path'],
-                                      realm=realm)
+                                      realm=realm, ask=True,
+                                      prompt=self.build_username_prompt(auth))
         if user is not None and password is None:
             password = auth_conf.get_password(
                 auth['protocol'], auth['host'], user, port=auth['port'],
@@ -1154,6 +1182,24 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         prompt += ' password'
         return prompt
 
+    def _build_username_prompt(self, auth):
+        """Build a prompt taking the protocol used into account.
+
+        The AuthHandler is used by http and https, we want that information in
+        the prompt, so we build the prompt from the authentication dict which
+        contains all the needed parts.
+
+        Also, http and proxy AuthHandlers present different prompts to the
+        user. The daughter classes should implements a public
+        build_username_prompt using this method.
+        """
+        prompt = '%s' % auth['protocol'].upper() + ' %(host)s'
+        realm = auth['realm']
+        if realm is not None:
+            prompt += ", Realm: '%s'" % realm
+        prompt += ' username'
+        return prompt
+
     def http_request(self, request):
         """Insert an authentication header if information is available"""
         auth = self.get_auth(request)
@@ -1171,13 +1217,13 @@ class NegotiateAuthHandler(AbstractAuthHandler):
     NTLM support may also be added.
     """
 
+    scheme = 'negotiate'
     handler_order = 480
-
     requires_username = False
 
     def auth_match(self, header, auth):
         scheme, raw_auth = self._parse_auth_header(header)
-        if scheme != 'negotiate':
+        if scheme != self.scheme:
             return False
         self.update_auth(auth, 'scheme', scheme)
         resp = self._auth_match_kerberos(auth)
@@ -1216,8 +1262,8 @@ class NegotiateAuthHandler(AbstractAuthHandler):
 class BasicAuthHandler(AbstractAuthHandler):
     """A custom basic authentication handler."""
 
+    scheme = 'basic'
     handler_order = 500
-
     auth_regexp = re.compile('realm="([^"]*)"', re.I)
 
     def build_auth_header(self, auth, request):
@@ -1225,17 +1271,20 @@ class BasicAuthHandler(AbstractAuthHandler):
         auth_header = 'Basic ' + raw.encode('base64').strip()
         return auth_header
 
+    def extract_realm(self, header_value):
+        match = self.auth_regexp.search(header_value)
+        realm = None
+        if match:
+            realm = match.group(1)
+        return match, realm
+
     def auth_match(self, header, auth):
         scheme, raw_auth = self._parse_auth_header(header)
-        if scheme != 'basic':
+        if scheme != self.scheme:
             return False
 
-        match = self.auth_regexp.search(raw_auth)
+        match, realm = self.extract_realm(raw_auth)
         if match:
-            realm = match.groups()
-            if scheme != 'basic':
-                return False
-
             # Put useful info into auth
             self.update_auth(auth, 'scheme', scheme)
             self.update_auth(auth, 'realm', realm)
@@ -1273,6 +1322,7 @@ def get_new_cnonce(nonce, nonce_count):
 class DigestAuthHandler(AbstractAuthHandler):
     """A custom digest authentication handler."""
 
+    scheme = 'digest'
     # Before basic as digest is a bit more secure and should be preferred
     handler_order = 490
 
@@ -1284,7 +1334,7 @@ class DigestAuthHandler(AbstractAuthHandler):
 
     def auth_match(self, header, auth):
         scheme, raw_auth = self._parse_auth_header(header)
-        if scheme != 'digest':
+        if scheme != self.scheme:
             return False
 
         # Put the requested authentication info into a dict
@@ -1385,6 +1435,9 @@ class HTTPAuthHandler(AbstractAuthHandler):
     def build_password_prompt(self, auth):
         return self._build_password_prompt(auth)
 
+    def build_username_prompt(self, auth):
+        return self._build_username_prompt(auth)
+
     def http_error_401(self, req, fp, code, msg, headers):
         return self.auth_required(req, headers)
 
@@ -1413,6 +1466,11 @@ class ProxyAuthHandler(AbstractAuthHandler):
 
     def build_password_prompt(self, auth):
         prompt = self._build_password_prompt(auth)
+        prompt = 'Proxy ' + prompt
+        return prompt
+
+    def build_username_prompt(self, auth):
+        prompt = self._build_username_prompt(auth)
         prompt = 'Proxy ' + prompt
         return prompt
 

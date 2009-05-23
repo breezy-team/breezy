@@ -12,9 +12,9 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for bzrdir implementations - tests a bzrdir format."""
+"""Tests for repository implementations - tests a repository format."""
 
 from cStringIO import StringIO
 import re
@@ -31,7 +31,7 @@ from bzrlib import (
     )
 from bzrlib.branch import BzrBranchFormat6
 from bzrlib.delta import TreeDelta
-from bzrlib.inventory import Inventory, InventoryDirectory
+from bzrlib.inventory import CommonInventory, Inventory, InventoryDirectory
 from bzrlib.repofmt.weaverepo import (
     RepositoryFormat5,
     RepositoryFormat6,
@@ -39,7 +39,6 @@ from bzrlib.repofmt.weaverepo import (
     )
 from bzrlib.revision import NULL_REVISION, Revision
 from bzrlib.smart import server
-from bzrlib.symbol_versioning import one_two, one_three, one_four
 from bzrlib.tests import (
     KnownFailure,
     TestCaseWithTransport,
@@ -77,6 +76,12 @@ class TestRepository(TestCaseWithRepository):
         tree = self.make_branch_and_tree('tree')
         repo = tree.branch.repository
         self.assertTrue(repo._format._fetch_uses_deltas in (True, False))
+
+    def test_attribute_fast_deltas(self):
+        """Test the format.fast_deltas attribute."""
+        tree = self.make_branch_and_tree('tree')
+        repo = tree.branch.repository
+        self.assertTrue(repo._format.fast_deltas in (True, False))
 
     def test_attribute__fetch_reconcile(self):
         """Test the the _fetch_reconcile attribute."""
@@ -244,13 +249,16 @@ class TestRepository(TestCaseWithRepository):
         invs = tree.branch.repository.iter_inventories(revs)
         for rev_id, inv in zip(revs, invs):
             self.assertEqual(rev_id, inv.revision_id)
-            self.assertIsInstance(inv, Inventory)
+            self.assertIsInstance(inv, CommonInventory)
 
     def test_supports_rich_root(self):
         tree = self.make_branch_and_tree('a')
         tree.commit('')
         second_revision = tree.commit('')
-        inv = tree.branch.repository.revision_tree(second_revision).inventory
+        rev_tree = tree.branch.repository.revision_tree(second_revision)
+        rev_tree.lock_read()
+        self.addCleanup(rev_tree.unlock)
+        inv = rev_tree.inventory
         rich_root = (inv.root.revision != second_revision)
         self.assertEqual(rich_root,
                          tree.branch.repository.supports_rich_root())
@@ -358,17 +366,29 @@ class TestRepository(TestCaseWithRepository):
         wt.set_root_id('fixed-root')
         wt.commit('lala!', rev_id='revision-1', allow_pointless=True)
         tree = wt.branch.repository.revision_tree('revision-1')
-        self.assertEqual('revision-1', tree.inventory.root.revision)
-        expected = InventoryDirectory('fixed-root', '', None)
-        expected.revision = 'revision-1'
-        self.assertEqual([('', 'V', 'directory', 'fixed-root', expected)],
-                         list(tree.list_files(include_root=True)))
+        tree.lock_read()
+        try:
+            self.assertEqual('revision-1', tree.inventory.root.revision)
+            expected = InventoryDirectory('fixed-root', '', None)
+            expected.revision = 'revision-1'
+            self.assertEqual([('', 'V', 'directory', 'fixed-root', expected)],
+                             list(tree.list_files(include_root=True)))
+        finally:
+            tree.unlock()
         tree = self.callDeprecated(['NULL_REVISION should be used for the null'
             ' revision instead of None, as of bzr 0.91.'],
             wt.branch.repository.revision_tree, None)
-        self.assertEqual([], list(tree.list_files(include_root=True)))
+        tree.lock_read()
+        try:
+            self.assertEqual([], list(tree.list_files(include_root=True)))
+        finally:
+            tree.unlock()
         tree = wt.branch.repository.revision_tree(NULL_REVISION)
-        self.assertEqual([], list(tree.list_files(include_root=True)))
+        tree.lock_read()
+        try:
+            self.assertEqual([], list(tree.list_files(include_root=True)))
+        finally:
+            tree.unlock()
 
     def test_get_revision_delta(self):
         tree_a = self.make_branch_and_tree('a')
@@ -385,6 +405,54 @@ class TestRepository(TestCaseWithRepository):
         delta = tree_a.branch.repository.get_revision_delta('rev2')
         self.assertIsInstance(delta, TreeDelta)
         self.assertEqual([('vla', 'file2', 'file')], delta.added)
+
+    def test_get_revision_delta_filtered(self):
+        tree_a = self.make_branch_and_tree('a')
+        self.build_tree(['a/foo', 'a/bar/', 'a/bar/b1', 'a/bar/b2', 'a/baz'])
+        tree_a.add(['foo', 'bar', 'bar/b1', 'bar/b2', 'baz'],
+                   ['foo-id', 'bar-id', 'b1-id', 'b2-id', 'baz-id'])
+        tree_a.commit('rev1', rev_id='rev1')
+        self.build_tree(['a/bar/b3'])
+        tree_a.add('bar/b3', 'b3-id')
+        tree_a.commit('rev2', rev_id='rev2')
+
+        # Test multiple files
+        delta = tree_a.branch.repository.get_revision_delta('rev1',
+            specific_fileids=['foo-id', 'baz-id'])
+        self.assertIsInstance(delta, TreeDelta)
+        self.assertEqual([
+            ('baz', 'baz-id', 'file'),
+            ('foo', 'foo-id', 'file'),
+            ], delta.added)
+        # Test a directory
+        delta = tree_a.branch.repository.get_revision_delta('rev1',
+            specific_fileids=['bar-id'])
+        self.assertIsInstance(delta, TreeDelta)
+        self.assertEqual([
+            ('bar', 'bar-id', 'directory'),
+            ('bar/b1', 'b1-id', 'file'),
+            ('bar/b2', 'b2-id', 'file'),
+            ], delta.added)
+        # Test a file in a directory
+        delta = tree_a.branch.repository.get_revision_delta('rev1',
+            specific_fileids=['b2-id'])
+        self.assertIsInstance(delta, TreeDelta)
+        self.assertEqual([
+            ('bar', 'bar-id', 'directory'),
+            ('bar/b2', 'b2-id', 'file'),
+            ], delta.added)
+        # Try another revision
+        delta = tree_a.branch.repository.get_revision_delta('rev2',
+                specific_fileids=['b3-id'])
+        self.assertIsInstance(delta, TreeDelta)
+        self.assertEqual([
+            ('bar', 'bar-id', 'directory'),
+            ('bar/b3', 'b3-id', 'file'),
+            ], delta.added)
+        delta = tree_a.branch.repository.get_revision_delta('rev2',
+                specific_fileids=['foo-id'])
+        self.assertIsInstance(delta, TreeDelta)
+        self.assertEqual([], delta.added)
 
     def test_clone_bzrdir_repository_revision(self):
         # make a repository with some revisions,
@@ -518,6 +586,8 @@ class TestRepository(TestCaseWithRepository):
         tree = self.make_branch_and_tree('.')
         tree.commit('message', rev_id='rev_id')
         rev_tree = tree.branch.repository.revision_tree(tree.last_revision())
+        rev_tree.lock_read()
+        self.addCleanup(rev_tree.unlock)
         self.assertEqual('rev_id', rev_tree.inventory.root.revision)
 
     def test_upgrade_from_format4(self):
@@ -691,10 +761,20 @@ class TestRepository(TestCaseWithRepository):
                          repo.get_signature_text('A'))
 
     def test_add_revision_inventory_sha1(self):
-        repo = self.make_repository('repo')
         inv = Inventory(revision_id='A')
         inv.root.revision = 'A'
         inv.root.file_id = 'fixed-root'
+        # Insert the inventory on its own to an identical repository, to get
+        # its sha1.
+        reference_repo = self.make_repository('reference_repo')
+        reference_repo.lock_write()
+        reference_repo.start_write_group()
+        inv_sha1 = reference_repo.add_inventory('A', inv, [])
+        reference_repo.abort_write_group()
+        reference_repo.unlock()
+        # Now insert a revision with this inventory, and it should get the same
+        # sha1.
+        repo = self.make_repository('repo')
         repo.lock_write()
         repo.start_write_group()
         repo.add_revision('A', Revision('A', committer='B', timestamp=0,
@@ -702,9 +782,7 @@ class TestRepository(TestCaseWithRepository):
         repo.commit_write_group()
         repo.unlock()
         repo.lock_read()
-        self.assertEquals(osutils.sha_string(
-            repo._serializer.write_inventory_to_string(inv)),
-            repo.get_revision('A').inventory_sha1)
+        self.assertEquals(inv_sha1, repo.get_revision('A').inventory_sha1)
         repo.unlock()
 
     def test_install_revisions(self):
@@ -807,6 +885,26 @@ class TestRepository(TestCaseWithRepository):
                 "Cannot lock_read old formats like AllInOne over HPSS.")
         local_repo = local_bzrdir.open_repository()
         self.assertEqual(remote_backing_repo._format, local_repo._format)
+
+    # XXX: this helper probably belongs on TestCaseWithTransport
+    def make_smart_server(self, path):
+        smart_server = server.SmartTCPServer_for_testing()
+        smart_server.setUp(self.get_server())
+        remote_transport = get_transport(smart_server.get_url()).clone(path)
+        self.addCleanup(smart_server.tearDown)
+        return remote_transport
+
+    def test_clone_to_hpss(self):
+        pre_metadir_formats = [RepositoryFormat5(), RepositoryFormat6()]
+        if self.repository_format in pre_metadir_formats:
+            raise TestNotApplicable(
+                "Cannot lock pre_metadir_formats remotely.")
+        remote_transport = self.make_smart_server('remote')
+        local_branch = self.make_branch('local')
+        remote_branch = local_branch.create_clone_on_transport(remote_transport)
+        self.assertEqual(
+            local_branch.repository._format.supports_external_lookups,
+            remote_branch.repository._format.supports_external_lookups)
 
     def test_clone_unstackable_branch_preserves_stackable_repo_format(self):
         """Cloning an unstackable branch format to a somewhere with a default
@@ -948,6 +1046,10 @@ class TestRepositoryLocking(TestCaseWithRepository):
             repo.unlock()
         # We should be unable to relock the repo.
         self.assertRaises(errors.LockContention, repo.lock_write)
+        # Cleanup
+        repo.lock_write(token)
+        repo.dont_leave_lock_in_place()
+        repo.unlock()
 
     def test_dont_leave_lock_in_place(self):
         repo = self.make_repository('r')

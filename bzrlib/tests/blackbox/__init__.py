@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Black-box tests for bzr.
@@ -54,6 +54,7 @@ def load_tests(basic_tests, module, loader):
                      'bzrlib.tests.blackbox.test_debug',
                      'bzrlib.tests.blackbox.test_diff',
                      'bzrlib.tests.blackbox.test_dump_btree',
+                     'bzrlib.tests.blackbox.test_dpush',
                      'bzrlib.tests.blackbox.test_exceptions',
                      'bzrlib.tests.blackbox.test_export',
                      'bzrlib.tests.blackbox.test_filesystem_cicp',
@@ -85,6 +86,7 @@ def load_tests(basic_tests, module, loader):
                      'bzrlib.tests.blackbox.test_push',
                      'bzrlib.tests.blackbox.test_reconcile',
                      'bzrlib.tests.blackbox.test_reconfigure',
+                     'bzrlib.tests.blackbox.test_reference',
                      'bzrlib.tests.blackbox.test_remerge',
                      'bzrlib.tests.blackbox.test_remove',
                      'bzrlib.tests.blackbox.test_re_sign',

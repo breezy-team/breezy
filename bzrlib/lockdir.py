@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """On-disk mutex protecting a resource
 
@@ -325,7 +325,7 @@ class LockDir(lock.Lock):
             self._trace("... unlock succeeded after %dms",
                     (time.time() - start_time) * 1000)
             result = lock.LockResult(self.transport.abspath(self.path),
-                old_nonce)
+                                     old_nonce)
             for hook in self.hooks['lock_released']:
                 hook(result)
 
@@ -379,6 +379,10 @@ class LockDir(lock.Lock):
             raise LockBreakMismatch(self, broken_info, dead_holder_info)
         self.transport.delete(broken_info_path)
         self.transport.rmdir(tmpname)
+        result = lock.LockResult(self.transport.abspath(self.path),
+                                 current_info.get('nonce'))
+        for hook in self.hooks['lock_broken']:
+            hook(result)
 
     def _check_not_locked(self):
         """If the lock is held by this instance, raise an error."""

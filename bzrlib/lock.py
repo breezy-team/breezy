@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Locking using OS file locks or file existence.
@@ -55,6 +55,9 @@ class LockHooks(Hooks):
         self.create_hook(HookPoint('lock_released',
             "Called with a bzrlib.lock.LockResult when a physical lock is "
             "released.", (1, 8), None))
+        self.create_hook(HookPoint('lock_broken',
+            "Called with a bzrlib.lock.LockResult when a physical lock is "
+            "broken.", (1, 15), None))
 
 
 class Lock(object):
@@ -76,6 +79,10 @@ class LockResult(object):
 
     def __eq__(self, other):
         return self.lock_url == other.lock_url and self.details == other.details
+
+    def __repr__(self):
+        return '%s(%s%s)' % (self.__class__.__name__,
+                             self.lock_url, self.details)
 
 
 try:

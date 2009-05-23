@@ -12,14 +12,13 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from cStringIO import StringIO
 from email.Message import Message
 import errno
 import smtplib
 import socket
-import sys
 
 from bzrlib import (
     config,
@@ -86,7 +85,7 @@ class WideOpenSMTPFactory(StubSMTPFactory):
     """A fake smtp server that implements login by accepting anybody."""
 
     def login(self, user, password):
-        pass
+        self._calls.append(('login', user, password))
 
 
 class TestSMTPConnection(tests.TestCaseInTempDir):
@@ -161,6 +160,23 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
 
         conn._connect()
         self.assertEqual(password, conn._smtp_password)
+
+    def test_authenticate_with_byte_strings(self):
+        user = 'joe'
+        password = 'h\xC3\xACspass'
+        factory = WideOpenSMTPFactory()
+        conn = self.get_connection(
+            '[DEFAULT]\nsmtp_username=%s\nsmtp_password=%s\n'
+            % (user, password), smtp_factory=factory)
+        self.assertEqual(u'h\xECspass', conn._smtp_password)
+        conn._connect()
+        self.assertEqual([('connect', 'localhost'),
+                          ('ehlo',),
+                          ('has_extn', 'starttls'),
+                          ('login', user, password)], factory._calls)
+        smtp_username, smtp_password = factory._calls[-1][1:]
+        self.assertIsInstance(smtp_username, str)
+        self.assertIsInstance(smtp_password, str)
 
     def test_create_connection(self):
         factory = StubSMTPFactory()

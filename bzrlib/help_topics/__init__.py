@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """A collection of extra help information for using bzr.
 
@@ -299,27 +299,7 @@ command.  (e.g. "bzr --profile help").
 
 See doc/developers/profiling.txt for more information on profiling.
 A number of debug flags are also available to assist troubleshooting and
-development.
-
--Dauth            Trace authentication sections used.
--Derror           Instead of normal error handling, always print a traceback
-                  on error.
--Devil            Capture call sites that do expensive or badly-scaling
-                  operations.
--Dfetch           Trace history copying between repositories.
--Dgraph           Trace graph traversal.
--Dhashcache       Log every time a working file is read to determine its hash.
--Dhooks           Trace hook execution.
--Dhpss            Trace smart protocol requests and responses.
--Dhttp            Trace http connections, requests and responses
--Dindex           Trace major index operations.
--Dknit            Trace knit operations.
--Dlock            Trace when lockdir locks are taken or released.
--Dmerge           Emit information for debugging merges.
--Dpack            Emit information about pack operations.
--Dsftp            Trace SFTP internals.
-
-These can also be set in the debug_flags configuration variable.
+development.  See `bzr help debug-flags`.
 """
 
 _standard_options = \
@@ -671,10 +651,10 @@ as soon as a condition is true):
   by default).
 
 * If you are using bzr-svn to interoperate with a Subversion
-  repository, use 1.9-rich-root.
+  repository, use 1.14-rich-root.
 
 * If you are working on a project with big trees (5000+ paths)
-  or deep history (5000+ revisions), use 1.9.
+  or deep history (5000+ revisions), use 1.14.
 
 * Otherwise, use the default format - it is good enough for
   most projects.
@@ -682,8 +662,8 @@ as soon as a condition is true):
 If some of your developers are unable to use the most recent
 version of Bazaar (due to distro package availability say), be
 sure to adjust the guidelines above accordingly. For example,
-you may need to select 1.6 instead of 1.9 if your project has
-standardized on Bazaar 1.7.
+you may need to select 1.9 instead of 1.14 if your project has
+standardized on Bazaar 1.13.1 say.
 
 Note: Many of the currently supported formats have two variants:
 a plain one and a rich-root one. The latter include an additional
@@ -748,6 +728,8 @@ topic_registry.register('configuration', _load_from_file,
                         'Details on the configuration settings available')
 topic_registry.register('conflicts', _load_from_file,
                         'Types of conflicts and what to do about them')
+topic_registry.register('debug-flags', _load_from_file,
+                        'Options to show or record debug information')
 topic_registry.register('log-formats', _load_from_file,
                         'Details on the logging formats available')
 
@@ -760,6 +742,12 @@ topic_registry.register('branches', _branches,
                         'Information on what a branch is', SECT_CONCEPT)
 topic_registry.register('checkouts', _checkouts,
                         'Information on what a checkout is', SECT_CONCEPT)
+topic_registry.register('content-filters', _load_from_file,
+                        'Conversion of content into/from working trees',
+                        SECT_CONCEPT)
+topic_registry.register('eol', _load_from_file,
+                        'Information on end-of-line handling',
+                        SECT_CONCEPT)
 topic_registry.register('formats', _storage_formats,
                         'Information on choosing a storage format',
                         SECT_CONCEPT)

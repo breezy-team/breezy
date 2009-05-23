@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the BzrDir facility and any format specific tests.
 
@@ -1306,3 +1306,26 @@ class TestBzrDirSprout(TestCaseWithMemoryTransport):
         parent = grandparent_tree.bzrdir.sprout('parent').open_branch()
         branch_tree = parent.bzrdir.sprout('branch').open_branch()
         self.assertContainsRe(branch_tree.get_parent(), '/parent/$')
+
+
+class TestBzrDirHooks(TestCaseWithMemoryTransport):
+
+    def test_pre_open_called(self):
+        calls = []
+        bzrdir.BzrDir.hooks.install_named_hook('pre_open', calls.append, None)
+        transport = self.get_transport('foo')
+        url = transport.base
+        self.assertRaises(errors.NotBranchError, bzrdir.BzrDir.open, url)
+        self.assertEqual([transport.base], [t.base for t in calls])
+
+    def test_pre_open_actual_exceptions_raised(self):
+        count = [0]
+        def fail_once(transport):
+            count[0] += 1
+            if count[0] == 1:
+                raise errors.BzrError("fail")
+        bzrdir.BzrDir.hooks.install_named_hook('pre_open', fail_once, None)
+        transport = self.get_transport('foo')
+        url = transport.base
+        err = self.assertRaises(errors.BzrError, bzrdir.BzrDir.open, url)
+        self.assertEqual('fail', err._preformatted_string)

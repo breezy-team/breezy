@@ -12,15 +12,15 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the test trees used by the tree_implementations tests."""
 
-from bzrlib.tests import SymlinkFeature
-from bzrlib.tests.tree_implementations import TestCaseWithTree
+from bzrlib import tests
+from bzrlib.tests import tree_implementations
 
 
-class TestTreeShapes(TestCaseWithTree):
+class TestTreeShapes(tree_implementations.TestCaseWithTree):
 
     def test_empty_tree_no_parents(self):
         tree = self.make_branch_and_tree('.')
@@ -147,7 +147,7 @@ class TestTreeShapes(TestCaseWithTree):
         # currently this test tree requires unicode. It might be good
         # to have it simply stop having the single unicode file in it
         # when dealing with a non-unicode filesystem.
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(tests.SymlinkFeature)
         tree = self.get_tree_with_subdirs_and_all_content_types()
         tree.lock_read()
         self.addCleanup(tree.unlock)

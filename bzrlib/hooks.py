@@ -12,13 +12,13 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Support for plugin hooking logic."""
-from bzrlib.lazy_import import lazy_import
 from bzrlib import registry
-from bzrlib.symbol_versioning import deprecated_method, one_five
+from bzrlib.lazy_import import lazy_import
+from bzrlib.symbol_versioning import deprecated_method
 lazy_import(globals(), """
 import textwrap
 
@@ -31,18 +31,34 @@ from bzrlib.help_topics import help_as_plain_text
 
 
 known_hooks = registry.Registry()
+# known_hooks registry contains
+# tuple of (module, member name) which is the hook point
+# module where the specific hooks are defined
+# callable to get the empty specific Hooks for that attribute
 known_hooks.register_lazy(('bzrlib.branch', 'Branch.hooks'), 'bzrlib.branch',
     'BranchHooks')
+known_hooks.register_lazy(('bzrlib.bzrdir', 'BzrDir.hooks'), 'bzrlib.bzrdir',
+    'BzrDirHooks')
 known_hooks.register_lazy(('bzrlib.commands', 'Command.hooks'),
     'bzrlib.commands', 'CommandHooks')
+known_hooks.register_lazy(('bzrlib.info', 'hooks'),
+    'bzrlib.info', 'InfoHooks')
 known_hooks.register_lazy(('bzrlib.lock', 'Lock.hooks'), 'bzrlib.lock',
     'LockHooks')
+known_hooks.register_lazy(('bzrlib.msgeditor', 'hooks'), 'bzrlib.msgeditor',
+    'MessageEditorHooks')
 known_hooks.register_lazy(('bzrlib.mutabletree', 'MutableTree.hooks'),
     'bzrlib.mutabletree', 'MutableTreeHooks')
 known_hooks.register_lazy(('bzrlib.smart.client', '_SmartClient.hooks'),
     'bzrlib.smart.client', 'SmartClientHooks')
 known_hooks.register_lazy(('bzrlib.smart.server', 'SmartTCPServer.hooks'),
     'bzrlib.smart.server', 'SmartServerHooks')
+known_hooks.register_lazy(
+    ('bzrlib.version_info_formats.format_rio', 'RioVersionInfoBuilder.hooks'),
+    'bzrlib.version_info_formats.format_rio', 'RioVersionInfoBuilderHooks')
+known_hooks.register_lazy(
+    ('bzrlib.merge_directive', '_BaseMergeDirective.hooks'),
+    'bzrlib.merge_directive', 'MergeDirectiveHooks')
 
 
 def known_hooks_key_to_object((module_name, member_name)):
@@ -130,18 +146,6 @@ class Hooks(dict):
         """
         return self._callable_names.get(a_callable, "No hook name")
 
-    @deprecated_method(one_five)
-    def install_hook(self, hook_name, a_callable):
-        """Install a_callable in to the hook hook_name.
-
-        :param hook_name: A hook name. See the __init__ method of BranchHooks
-            for the complete list of hooks.
-        :param a_callable: The callable to be invoked when the hook triggers.
-            The exact signature will depend on the hook - see the __init__
-            method of BranchHooks for details on each hook.
-        """
-        self.install_named_hook(hook_name, a_callable, None)
-
     def install_named_hook(self, hook_name, a_callable, name):
         """Install a_callable in to the hook hook_name, and label it name.
 
@@ -177,8 +181,8 @@ class HookPoint(object):
     :ivar introduced: A version tuple specifying what version the hook was
         introduced in. None indicates an unknown version.
     :ivar deprecated: A version tuple specifying what version the hook was
-        deprecated or superceded in. None indicates that the hook is not
-        superceded or deprecated. If the hook is superceded then the doc
+        deprecated or superseded in. None indicates that the hook is not
+        superseded or deprecated. If the hook is superseded then the doc
         should describe the recommended replacement hook to register for.
     :ivar doc: The docs for using the hook.
     """

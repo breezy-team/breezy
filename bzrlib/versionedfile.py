@@ -15,7 +15,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Versioned text file storage api."""
 
@@ -31,6 +31,7 @@ import urllib
 
 from bzrlib import (
     errors,
+    groupcompress,
     index,
     knit,
     osutils,
@@ -794,7 +795,8 @@ class VersionedFiles(object):
         check_content=True):
         """Add a text to the store.
 
-        :param key: The key tuple of the text to add.
+        :param key: The key tuple of the text to add. If the last element is
+            None, a CHK string will be generated during the addition.
         :param parents: The parents key tuples of the text to add.
         :param lines: A list of lines. Each line must be a bytestring. And all
             of them except the last must be terminated with \n and contain no
@@ -1401,9 +1403,13 @@ class PlanWeaveMerge(TextMerge):
             elif state == 'conflicted-b':
                 ch_b = ch_a = True
                 lines_b.append(line)
+            elif state == 'killed-both':
+                # This counts as a change, even though there is no associated
+                # line
+                ch_b = ch_a = True
             else:
                 if state not in ('irrelevant', 'ghost-a', 'ghost-b',
-                        'killed-base', 'killed-both'):
+                        'killed-base'):
                     raise AssertionError(state)
         for struct in outstanding_struct():
             yield struct
@@ -1484,7 +1490,7 @@ class VirtualVersionedFiles(VersionedFiles):
         """See VersionedFile.iter_lines_added_or_present_in_versions()."""
         for i, (key,) in enumerate(keys):
             if pb is not None:
-                pb.update("iterating texts", i, len(keys))
+                pb.update("Finding changed lines", i, len(keys))
             for l in self._get_lines(key):
                 yield (l, key)
 
@@ -1517,6 +1523,7 @@ class NetworkRecordStream(object):
             'knit-annotated-delta-gz':knit.knit_network_to_record,
             'knit-delta-closure':knit.knit_delta_closure_to_records,
             'fulltext':fulltext_network_to_record,
+            'groupcompress-block':groupcompress.network_block_to_records,
             }
 
     def read(self):

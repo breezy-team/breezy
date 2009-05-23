@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Reconfigure a bzrdir into a new tree/branch/repository layout"""
 
@@ -31,6 +31,7 @@ class Reconfigure(object):
             self.repository = self.bzrdir.find_repository()
         except errors.NoRepositoryPresent:
             self.repository = None
+            self.local_repository = None
         else:
             if (self.repository.bzrdir.root_transport.base ==
                 self.bzrdir.root_transport.base):
@@ -268,7 +269,20 @@ class Reconfigure(object):
         if not force:
             self._check()
         if self._create_repository:
-            repo = self.bzrdir.create_repository()
+            if self.local_branch and not self._destroy_branch:
+                old_repo = self.local_branch.repository
+            elif self._create_branch and self.referenced_branch is not None:
+                old_repo = self.referenced_branch.repository
+            else:
+                old_repo = None
+            if old_repo is not None:
+                repository_format = old_repo._format
+            else:
+                repository_format = None
+            if repository_format is not None:
+                repo = repository_format.initialize(self.bzrdir)
+            else:
+                repo = self.bzrdir.create_repository()
             if self.local_branch and not self._destroy_branch:
                 repo.fetch(self.local_branch.repository,
                            self.local_branch.last_revision())
@@ -302,6 +316,7 @@ class Reconfigure(object):
                 local_branch.set_last_revision_info(*last_revision_info)
             if self._destroy_reference:
                 self.referenced_branch.tags.merge_to(local_branch.tags)
+                self.referenced_branch.update_references(local_branch)
         else:
             local_branch = self.local_branch
         if self._create_reference:

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests of the dirstate functionality being built for WorkingTreeFormat4."""
 
@@ -23,15 +23,12 @@ from bzrlib import (
     dirstate,
     errors,
     inventory,
+    memorytree,
     osutils,
     revision as _mod_revision,
+    tests,
     )
-from bzrlib.memorytree import MemoryTree
-from bzrlib.tests import (
-        SymlinkFeature,
-        TestCase,
-        TestCaseWithTransport,
-        )
+from bzrlib.tests import test_osutils
 
 
 # TODO:
@@ -47,8 +44,34 @@ from bzrlib.tests import (
 # set_path_id  setting id when state is in memory modified
 
 
-class TestCaseWithDirState(TestCaseWithTransport):
+def load_tests(basic_tests, module, loader):
+    suite = loader.suiteClass()
+    dir_reader_tests, remaining_tests = tests.split_suite_by_condition(
+        basic_tests, tests.condition_isinstance(TestCaseWithDirState))
+    tests.multiply_tests(dir_reader_tests,
+                         test_osutils.dir_reader_scenarios(), suite)
+    suite.addTest(remaining_tests)
+    return suite
+
+
+class TestCaseWithDirState(tests.TestCaseWithTransport):
     """Helper functions for creating DirState objects with various content."""
+
+    # Set by load_tests
+    _dir_reader_class = None
+    _native_to_unicode = None # Not used yet
+
+    def setUp(self):
+        tests.TestCaseWithTransport.setUp(self)
+
+        # Save platform specific info and reset it
+        cur_dir_reader = osutils._selected_dir_reader
+
+        def restore():
+            osutils._selected_dir_reader = cur_dir_reader
+        self.addCleanup(restore)
+
+        osutils._selected_dir_reader = self._dir_reader_class()
 
     def create_empty_dirstate(self):
         """Return a locked but empty dirstate"""
@@ -930,7 +953,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         finally:
             tree1.unlock()
         branch2 = tree1.branch.bzrdir.clone('tree2').open_branch()
-        tree2 = MemoryTree.create_on_branch(branch2)
+        tree2 = memorytree.MemoryTree.create_on_branch(branch2)
         tree2.lock_write()
         try:
             revid2 = tree2.commit('foo')
@@ -1000,7 +1023,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
         finally:
             tree1.unlock()
         branch2 = tree1.branch.bzrdir.clone('tree2').open_branch()
-        tree2 = MemoryTree.create_on_branch(branch2)
+        tree2 = memorytree.MemoryTree.create_on_branch(branch2)
         tree2.lock_write()
         try:
             tree2.put_file_bytes_non_atomic('file-id', 'new file-content')
@@ -1065,10 +1088,8 @@ class TestDirStateManipulations(TestCaseWithDirState):
             state.unlock()
         state = dirstate.DirState.on_file('dirstate')
         state.lock_read()
-        try:
-            self.assertEqual(expected_entries, list(state._iter_entries()))
-        finally:
-            state.unlock()
+        self.addCleanup(state.unlock)
+        self.assertEqual(expected_entries, list(state._iter_entries()))
 
     def test_add_path_to_unversioned_directory(self):
         """Adding a path to an unversioned directory should error.
@@ -1079,11 +1100,9 @@ class TestDirStateManipulations(TestCaseWithDirState):
         """
         self.build_tree(['unversioned/', 'unversioned/a file'])
         state = dirstate.DirState.initialize('dirstate')
-        try:
-            self.assertRaises(errors.NotVersionedError, state.add,
-                'unversioned/a file', 'a-file-id', 'file', None, None)
-        finally:
-            state.unlock()
+        self.addCleanup(state.unlock)
+        self.assertRaises(errors.NotVersionedError, state.add,
+                          'unversioned/a file', 'a-file-id', 'file', None, None)
 
     def test_add_directory_to_root_no_parents_all_data(self):
         # The most trivial addition of a dir is when there are no parents and
@@ -1109,30 +1128,30 @@ class TestDirStateManipulations(TestCaseWithDirState):
             state.unlock()
         state = dirstate.DirState.on_file('dirstate')
         state.lock_read()
+        self.addCleanup(state.unlock)
         state._validate()
-        try:
-            self.assertEqual(expected_entries, list(state._iter_entries()))
-        finally:
-            state.unlock()
+        self.assertEqual(expected_entries, list(state._iter_entries()))
 
-    def test_add_symlink_to_root_no_parents_all_data(self):
+    def _test_add_symlink_to_root_no_parents_all_data(self, link_name, target):
         # The most trivial addition of a symlink when there are no parents and
         # its in the root and all data about the file is supplied
         # bzr doesn't support fake symlinks on windows, yet.
-        self.requireFeature(SymlinkFeature)
-        os.symlink('target', 'a link')
-        stat = os.lstat('a link')
+        self.requireFeature(tests.SymlinkFeature)
+        os.symlink(target, link_name)
+        stat = os.lstat(link_name)
         expected_entries = [
             (('', '', 'TREE_ROOT'), [
              ('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree
              ]),
-            (('', 'a link', 'a link id'), [
-             ('l', 'target', 6, False, dirstate.pack_stat(stat)), # current tree
+            (('', link_name.encode('UTF-8'), 'a link id'), [
+             ('l', target.encode('UTF-8'), stat[6],
+              False, dirstate.pack_stat(stat)), # current tree
              ]),
             ]
         state = dirstate.DirState.initialize('dirstate')
         try:
-            state.add('a link', 'a link id', 'symlink', stat, 'target')
+            state.add(link_name, 'a link id', 'symlink', stat,
+                      target.encode('UTF-8'))
             # having added it, it should be in the output of iter_entries.
             self.assertEqual(expected_entries, list(state._iter_entries()))
             # saving and reloading should not affect this.
@@ -1141,10 +1160,16 @@ class TestDirStateManipulations(TestCaseWithDirState):
             state.unlock()
         state = dirstate.DirState.on_file('dirstate')
         state.lock_read()
-        try:
-            self.assertEqual(expected_entries, list(state._iter_entries()))
-        finally:
-            state.unlock()
+        self.addCleanup(state.unlock)
+        self.assertEqual(expected_entries, list(state._iter_entries()))
+
+    def test_add_symlink_to_root_no_parents_all_data(self):
+        self._test_add_symlink_to_root_no_parents_all_data('a link', 'target')
+
+    def test_add_symlink_unicode_to_root_no_parents_all_data(self):
+        self.requireFeature(tests.UnicodeFilenameFeature)
+        self._test_add_symlink_to_root_no_parents_all_data(
+            u'\N{Euro Sign}link', u'targ\N{Euro Sign}et')
 
     def test_add_directory_and_child_no_parents_all_data(self):
         # after adding a directory, we should be able to add children to it.
@@ -1175,10 +1200,8 @@ class TestDirStateManipulations(TestCaseWithDirState):
             state.unlock()
         state = dirstate.DirState.on_file('dirstate')
         state.lock_read()
-        try:
-            self.assertEqual(expected_entries, list(state._iter_entries()))
-        finally:
-            state.unlock()
+        self.addCleanup(state.unlock)
+        self.assertEqual(expected_entries, list(state._iter_entries()))
 
     def test_add_tree_reference(self):
         # make a dirstate and add a tree reference
@@ -1198,16 +1221,14 @@ class TestDirStateManipulations(TestCaseWithDirState):
             state.unlock()
         # now check we can read it back
         state.lock_read()
+        self.addCleanup(state.unlock)
         state._validate()
-        try:
-            entry2 = state._get_entry(0, 'subdir-id', 'subdir')
-            self.assertEqual(entry, entry2)
-            self.assertEqual(entry, expected_entry)
-            # and lookup by id should work too
-            entry2 = state._get_entry(0, fileid_utf8='subdir-id')
-            self.assertEqual(entry, expected_entry)
-        finally:
-            state.unlock()
+        entry2 = state._get_entry(0, 'subdir-id', 'subdir')
+        self.assertEqual(entry, entry2)
+        self.assertEqual(entry, expected_entry)
+        # and lookup by id should work too
+        entry2 = state._get_entry(0, fileid_utf8='subdir-id')
+        self.assertEqual(entry, expected_entry)
 
     def test_add_forbidden_names(self):
         state = dirstate.DirState.initialize('dirstate')
@@ -1551,7 +1572,7 @@ class TestIterChildEntries(TestCaseWithDirState):
             list(state._iter_child_entries(1, '')))
 
 
-class TestDirstateSortOrder(TestCaseWithTransport):
+class TestDirstateSortOrder(tests.TestCaseWithTransport):
     """Test that DirState adds entries in the right order."""
 
     def test_add_sorting(self):
@@ -1616,11 +1637,12 @@ class TestDirstateSortOrder(TestCaseWithTransport):
 class InstrumentedDirState(dirstate.DirState):
     """An DirState with instrumented sha1 functionality."""
 
-    def __init__(self, path):
-        super(InstrumentedDirState, self).__init__(path)
+    def __init__(self, path, sha1_provider):
+        super(InstrumentedDirState, self).__init__(path, sha1_provider)
         self._time_offset = 0
         self._log = []
         # member is dynamically set in DirState.__init__ to turn on trace
+        self._sha1_provider = sha1_provider
         self._sha1_file = self._sha1_file_and_log
 
     def _sha_cutoff_time(self):
@@ -1629,7 +1651,7 @@ class InstrumentedDirState(dirstate.DirState):
 
     def _sha1_file_and_log(self, abspath):
         self._log.append(('sha1', abspath))
-        return osutils.sha_file_by_name(abspath)
+        return self._sha1_provider.sha1(abspath)
 
     def _read_link(self, abspath, old_link):
         self._log.append(('read_link', abspath, old_link))
@@ -1666,8 +1688,13 @@ class _FakeStat(object):
         self.st_ino = ino
         self.st_mode = mode
 
+    @staticmethod
+    def from_stat(st):
+        return _FakeStat(st.st_size, st.st_mtime, st.st_ctime, st.st_dev,
+            st.st_ino, st.st_mode)
 
-class TestPackStat(TestCaseWithTransport):
+
+class TestPackStat(tests.TestCaseWithTransport):
 
     def assertPackStat(self, expected, stat_value):
         """Check the packed and serialized form of a stat value."""
@@ -2200,7 +2227,7 @@ class TestDiscardMergeParents(TestCaseWithDirState):
         self.assertEqual(exp_dirblocks, state._dirblocks)
 
 
-class Test_InvEntryToDetails(TestCaseWithDirState):
+class Test_InvEntryToDetails(tests.TestCase):
 
     def assertDetails(self, expected, inv_entry):
         details = dirstate.DirState._inv_entry_to_details(inv_entry)
@@ -2213,11 +2240,36 @@ class Test_InvEntryToDetails(TestCaseWithDirState):
         self.assertIsInstance(tree_data, str)
 
     def test_unicode_symlink(self):
-        # In general, the code base doesn't support a target that contains
-        # non-ascii characters. So we just assert tha
-        inv_entry = inventory.InventoryLink('link-file-id', 'name',
+        inv_entry = inventory.InventoryLink('link-file-id',
+                                            u'nam\N{Euro Sign}e',
                                             'link-parent-id')
         inv_entry.revision = 'link-revision-id'
-        inv_entry.symlink_target = u'link-target'
-        details = self.assertDetails(('l', 'link-target', 0, False,
-                                      'link-revision-id'), inv_entry)
+        target = u'link-targ\N{Euro Sign}t'
+        inv_entry.symlink_target = target
+        self.assertDetails(('l', target.encode('UTF-8'), 0, False,
+                            'link-revision-id'), inv_entry)
+
+
+class TestSHA1Provider(tests.TestCaseInTempDir):
+
+    def test_sha1provider_is_an_interface(self):
+        p = dirstate.SHA1Provider()
+        self.assertRaises(NotImplementedError, p.sha1, "foo")
+        self.assertRaises(NotImplementedError, p.stat_and_sha1, "foo")
+
+    def test_defaultsha1provider_sha1(self):
+        text = 'test\r\nwith\nall\rpossible line endings\r\n'
+        self.build_tree_contents([('foo', text)])
+        expected_sha = osutils.sha_string(text)
+        p = dirstate.DefaultSHA1Provider()
+        self.assertEqual(expected_sha, p.sha1('foo'))
+
+    def test_defaultsha1provider_stat_and_sha1(self):
+        text = 'test\r\nwith\nall\rpossible line endings\r\n'
+        self.build_tree_contents([('foo', text)])
+        expected_sha = osutils.sha_string(text)
+        p = dirstate.DefaultSHA1Provider()
+        statvalue, sha1 = p.stat_and_sha1('foo')
+        self.assertTrue(len(statvalue) >= 10)
+        self.assertEqual(len(text), statvalue.st_size)
+        self.assertEqual(expected_sha, sha1)

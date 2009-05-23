@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Server-side branch related request implmentations."""
 
@@ -45,7 +45,7 @@ class SmartServerBranchRequest(SmartServerRequest):
         bzrdir = BzrDir.open_from_transport(transport)
         if bzrdir.get_branch_reference() is not None:
             raise errors.NotBranchError(transport.base)
-        branch = bzrdir.open_branch()
+        branch = bzrdir.open_branch(ignore_fallbacks=True)
         return self.do_with_branch(branch, *args)
 
 
@@ -80,11 +80,6 @@ class SmartServerBranchGetConfigFile(SmartServerBranchRequest):
 
         The body is not utf8 decoded - its the literal bytestream from disk.
         """
-        # This was at one time called by RemoteBranchLockableFiles
-        # intercepting access to this file; as of 1.5 it is not called by the
-        # client but retained for compatibility.  It may be called again to
-        # allow the client to get the configuration without needing vfs
-        # access.
         try:
             content = branch._transport.get_bytes('branch.conf')
         except errors.NoSuchFile:
@@ -151,6 +146,16 @@ class SmartServerSetTipRequest(SmartServerLockedBranchRequest):
             if isinstance(msg, unicode):
                 msg = msg.encode('utf-8')
             return FailedSmartServerResponse(('TipChangeRejected', msg))
+
+
+class SmartServerBranchRequestSetConfigOption(SmartServerLockedBranchRequest):
+    """Set an option in the branch configuration."""
+
+    def do_with_locked_branch(self, branch, value, name, section):
+        if not section:
+            section = None
+        branch._get_config().set_option(value.decode('utf8'), name, section)
+        return SuccessfulSmartServerResponse(())
 
 
 class SmartServerBranchRequestSetLastRevision(SmartServerSetTipRequest):
@@ -230,6 +235,17 @@ class SmartServerBranchRequestSetLastRevisionInfo(SmartServerSetTipRequest):
             return FailedSmartServerResponse(
                 ('NoSuchRevision', new_last_revision_id))
         return SuccessfulSmartServerResponse(('ok',))
+
+
+class SmartServerBranchRequestSetParentLocation(SmartServerLockedBranchRequest):
+    """Set the parent location for a branch.
+    
+    Takes a location to set, which must be utf8 encoded.
+    """
+
+    def do_with_locked_branch(self, branch, location):
+        branch._set_parent_location(location)
+        return SuccessfulSmartServerResponse(())
 
 
 class SmartServerBranchRequestLockWrite(SmartServerBranchRequest):

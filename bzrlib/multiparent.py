@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from bzrlib.lazy_import import lazy_import
 
@@ -316,7 +316,7 @@ class BaseVersionedFile(object):
         return version in self._parents
 
     def do_snapshot(self, version_id, parent_ids):
-        """Determine whether to perform a a snapshot for this version"""
+        """Determine whether to perform a snapshot for this version"""
         if self.snapshot_interval is None:
             return False
         if self.max_snapshots is not None and\

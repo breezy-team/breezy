@@ -12,11 +12,19 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
 
-from bzrlib import errors, pack, shelf, tests, transform, workingtree
+from bzrlib import (
+    errors,
+    osutils,
+    pack,
+    shelf,
+    tests,
+    transform,
+    workingtree,
+    )
 
 
 EMPTY_SHELF = ("Bazaar pack format 1 (introduced in 0.18)\n"
@@ -121,24 +129,67 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         self.assertEqual('directory',
             creator.shelf_transform.final_kind(s_bar_trans_id))
 
-    def test_shelve_symlink_creation(self):
+    def _test_shelve_symlink_creation(self, link_name, link_target):
         self.requireFeature(tests.SymlinkFeature)
         tree = self.make_branch_and_tree('.')
         tree.lock_write()
         self.addCleanup(tree.unlock)
         tree.commit('Empty tree')
-        os.symlink('bar', 'foo')
-        tree.add('foo', 'foo-id')
+        os.symlink(link_target, link_name)
+        tree.add(link_name, 'foo-id')
         creator = shelf.ShelfCreator(tree, tree.basis_tree())
         self.addCleanup(creator.finalize)
-        self.assertEqual([('add file', 'foo-id', 'symlink', 'foo')],
+        self.assertEqual([('add file', 'foo-id', 'symlink', link_name)],
                          list(creator.iter_shelvable()))
         creator.shelve_creation('foo-id')
         creator.transform()
         s_trans_id = creator.shelf_transform.trans_id_file_id('foo-id')
-        self.failIfExists('foo')
+        self.failIfExists(link_name)
         limbo_name = creator.shelf_transform._limbo_name(s_trans_id)
-        self.assertEqual('bar', os.readlink(limbo_name))
+        self.assertEqual(link_target, osutils.readlink(limbo_name))
+        ptree = creator.shelf_transform.get_preview_tree()
+        self.assertEqual(link_target, ptree.get_symlink_target('foo-id'))
+
+    def test_shelve_symlink_creation(self):
+        self._test_shelve_symlink_creation('foo', 'bar')
+
+    def test_shelve_unicode_symlink_creation(self):
+        self.requireFeature(tests.UnicodeFilenameFeature)
+        self._test_shelve_symlink_creation(u'fo\N{Euro Sign}o',
+                                           u'b\N{Euro Sign}ar')
+
+    def _test_shelve_symlink_target_change(self, link_name,
+                                           old_target, new_target):
+        self.requireFeature(tests.SymlinkFeature)
+        tree = self.make_branch_and_tree('.')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        os.symlink(old_target, link_name)
+        tree.add(link_name, 'foo-id')
+        tree.commit("commit symlink")
+        os.unlink(link_name)
+        os.symlink(new_target, link_name)
+        creator = shelf.ShelfCreator(tree, tree.basis_tree())
+        self.addCleanup(creator.finalize)
+        self.assertEqual([('modify target', 'foo-id', link_name,
+                           old_target, new_target)],
+                         list(creator.iter_shelvable()))
+        creator.shelve_modify_target('foo-id')
+        creator.transform()
+        self.assertEqual(old_target, osutils.readlink(link_name))
+        s_trans_id = creator.shelf_transform.trans_id_file_id('foo-id')
+        limbo_name = creator.shelf_transform._limbo_name(s_trans_id)
+        self.assertEqual(new_target, osutils.readlink(limbo_name))
+        ptree = creator.shelf_transform.get_preview_tree()
+        self.assertEqual(new_target, ptree.get_symlink_target('foo-id'))
+
+    def test_shelve_symlink_target_change(self):
+        self._test_shelve_symlink_target_change('foo', 'bar', 'baz')
+
+    def test_shelve_unicode_symlink_target_change(self):
+        self.requireFeature(tests.UnicodeFilenameFeature)
+        self._test_shelve_symlink_target_change(
+            u'fo\N{Euro Sign}o', u'b\N{Euro Sign}ar', u'b\N{Euro Sign}az')
 
     def test_shelve_creation_no_contents(self):
         tree = self.make_branch_and_tree('.')

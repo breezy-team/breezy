@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 # A relatively simple Makefile to assist in building parts of bzr. Mostly for
 # building documentation, etc.
@@ -84,12 +84,12 @@ endif
 # translate txt docs to html
 derived_txt_files := \
 	doc/en/user-reference/bzr_man.txt \
-	doc/en/developer-guide/HACKING.txt \
 	doc/en/release-notes/NEWS.txt
 txt_files := $(wildcard doc/en/tutorials/*.txt) \
 	$(derived_txt_files) \
 	doc/en/user-guide/index.txt \
 	doc/en/mini-tutorial/index.txt \
+	doc/en/developer-guide/HACKING.txt \
 	$(wildcard doc/es/guia-usario/*.txt) \
 	doc/es/mini-tutorial/index.txt \
 	doc/index.txt \
@@ -105,7 +105,32 @@ non_txt_files := \
        doc/es/referencia-rapida/referencia-rapida.pdf \
        $(wildcard doc/es/guia-usuario/images/*.png)
 htm_files := $(patsubst %.txt, %.html, $(txt_files)) 
-dev_txt_files := $(wildcard $(addsuffix /*.txt, doc/developers))
+
+# doc/developers/*.txt files that should *not* be individually
+# converted to HTML
+dev_txt_nohtml := \
+	doc/developers/add.txt \
+	doc/developers/annotate.txt \
+	doc/developers/bundle-creation.txt \
+	doc/developers/commit.txt \
+	doc/developers/diff.txt \
+	doc/developers/directory-fingerprints.txt \
+	doc/developers/gc.txt \
+	doc/developers/incremental-push-pull.txt \
+	doc/developers/initial-push-pull.txt \
+	doc/developers/merge-scaling.txt \
+	doc/developers/missing.txt \
+	doc/developers/performance-contributing.txt \
+	doc/developers/performance-roadmap-rationale.txt \
+	doc/developers/performance-use-case-analysis.txt \
+	doc/developers/planned-change-integration.txt \
+	doc/developers/planned-performance-changes.txt \
+	doc/developers/revert.txt \
+	doc/developers/status.txt \
+	doc/developers/uncommit.txt
+
+dev_txt_all := $(wildcard $(addsuffix /*.txt, doc/developers))
+dev_txt_files := $(filter-out $(dev_txt_nohtml), $(dev_txt_all))
 dev_htm_files := $(patsubst %.txt, %.html, $(dev_txt_files)) 
 
 doc/en/user-guide/index.html: $(wildcard $(addsuffix /*.txt, doc/en/user-guide)) 
@@ -155,9 +180,6 @@ MAN_DEPENDENCIES = bzrlib/builtins.py \
 
 doc/en/user-reference/bzr_man.txt: $(MAN_DEPENDENCIES)
 	$(PYTHON) generate_docs.py -o $@ rstx
-
-doc/en/developer-guide/HACKING.txt: doc/developers/HACKING.txt
-	$(PYTHON) tools/win32/ostools.py copytodir doc/developers/HACKING.txt doc/en/developer-guide
 
 doc/en/release-notes/NEWS.txt: NEWS
 	$(PYTHON) -c "import shutil; shutil.copyfile('$<', '$@')"

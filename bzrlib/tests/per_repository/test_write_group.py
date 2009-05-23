@@ -12,15 +12,17 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for repository write groups."""
 
 import sys
 
-from bzrlib import errors
+from bzrlib import bzrdir, errors, graph, memorytree, remote
+from bzrlib.branch import BzrBranchFormat7
+from bzrlib.inventory import InventoryDirectory
 from bzrlib.transport import local, memory
-from bzrlib.tests import TestNotApplicable
+from bzrlib.tests import KnownFailure, TestNotApplicable
 from bzrlib.tests.per_repository import TestCaseWithRepository
 
 
@@ -110,13 +112,177 @@ class TestWriteGroup(TestCaseWithRepository):
         self.addCleanup(repo.unlock)
         repo.start_write_group()
         # Damage the repository on the filesystem
-        self.get_transport('').rename('repo', 'foo')
+        t = self.get_transport('')
+        t.rename('repo', 'foo')
+        self.addCleanup(t.rename, 'foo', 'repo')
         # abort_write_group will not raise an error, because either an
         # exception was not generated, or the exception was caught and
         # suppressed.  See also test_pack_repository's test of the same name.
         self.assertEqual(None, repo.abort_write_group(suppress_errors=True))
-        if token is not None:
-            repo.leave_lock_in_place()
+
+class TestGetMissingParentInventories(TestCaseWithRepository):
+
+    def test_empty_get_missing_parent_inventories(self):
+        """A new write group has no missing parent inventories."""
+        repo = self.make_repository('.')
+        repo.lock_write()
+        repo.start_write_group()
+        try:
+            self.assertEqual(set(), set(repo.get_missing_parent_inventories()))
+        finally:
+            repo.commit_write_group()
+            repo.unlock()
+
+    def branch_trunk_and_make_tree(self, trunk_repo, relpath):
+        tree = self.make_branch_and_memory_tree('branch')
+        trunk_repo.lock_read()
+        self.addCleanup(trunk_repo.unlock)
+        tree.branch.repository.fetch(trunk_repo, revision_id='rev-1')
+        tree.set_parent_ids(['rev-1'])
+        return tree 
+
+    def make_first_commit(self, repo):
+        trunk = repo.bzrdir.create_branch()
+        tree = memorytree.MemoryTree.create_on_branch(trunk)
+        tree.lock_write()
+        tree.add([''], ['TREE_ROOT'], ['directory'])
+        tree.add(['dir'], ['dir-id'], ['directory'])
+        tree.add(['filename'], ['file-id'], ['file'])
+        tree.put_file_bytes_non_atomic('file-id', 'content\n')
+        tree.commit('Trunk commit', rev_id='rev-0')
+        tree.commit('Trunk commit', rev_id='rev-1')
+        tree.unlock()
+
+    def make_new_commit_in_new_repo(self, trunk_repo, parents=None):
+        tree = self.branch_trunk_and_make_tree(trunk_repo, 'branch')
+        tree.set_parent_ids(parents)
+        tree.commit('Branch commit', rev_id='rev-2')
+        branch_repo = tree.branch.repository
+        branch_repo.lock_read()
+        self.addCleanup(branch_repo.unlock)
+        return branch_repo
+
+    def make_stackable_repo(self, relpath='trunk'):
+        if isinstance(self.repository_format, remote.RemoteRepositoryFormat):
+            # RemoteRepository by default builds a default format real
+            # repository, but the default format is unstackble.  So explicitly
+            # make a stackable real repository and use that.
+            repo = self.make_repository(relpath, format='1.9')
+            repo = bzrdir.BzrDir.open(self.get_url(relpath)).open_repository()
+        else:
+            repo = self.make_repository(relpath)
+        if not repo._format.supports_external_lookups:
+            raise TestNotApplicable('format not stackable')
+        repo.bzrdir._format.set_branch_format(BzrBranchFormat7())
+        return repo
+
+    def reopen_repo_and_resume_write_group(self, repo):
+        try:
+            resume_tokens = repo.suspend_write_group()
+        except errors.UnsuspendableWriteGroup:
+            # If we got this far, and this repo does not support resuming write
+            # groups, then get_missing_parent_inventories works in all
+            # cases this repo supports.
+            repo.unlock()
+            return
+        repo.unlock()
+        reopened_repo = repo.bzrdir.open_repository()
+        reopened_repo.lock_write()
+        self.addCleanup(reopened_repo.unlock)
+        reopened_repo.resume_write_group(resume_tokens)
+        return reopened_repo
+
+    def test_ghost_revision(self):
+        """A parent inventory may be absent if all the needed texts are present.
+        i.e., a ghost revision isn't (necessarily) considered to be a missing
+        parent inventory.
+        """
+        # Make a trunk with one commit.
+        trunk_repo = self.make_stackable_repo()
+        self.make_first_commit(trunk_repo)
+        trunk_repo.lock_read()
+        self.addCleanup(trunk_repo.unlock)
+        # Branch the trunk, add a new commit.
+        branch_repo = self.make_new_commit_in_new_repo(
+            trunk_repo, parents=['rev-1', 'ghost-rev'])
+        inv = branch_repo.get_inventory('rev-2')
+        # Make a new repo stacked on trunk, and then copy into it:
+        #  - all texts in rev-2
+        #  - the new inventory (rev-2)
+        #  - the new revision (rev-2)
+        repo = self.make_stackable_repo('stacked')
+        repo.lock_write()
+        repo.start_write_group()
+        # Add all texts from in rev-2 inventory.  Note that this has to exclude
+        # the root if the repo format does not support rich roots.
+        rich_root = branch_repo._format.rich_root_data
+        all_texts = [
+            (ie.file_id, ie.revision) for ie in inv.iter_just_entries()
+             if rich_root or inv.id2path(ie.file_id) != '']
+        repo.texts.insert_record_stream(
+            branch_repo.texts.get_record_stream(all_texts, 'unordered', False))
+        # Add inventory and revision for rev-2.
+        repo.add_inventory('rev-2', inv, ['rev-1', 'ghost-rev'])
+        repo.revisions.insert_record_stream(
+            branch_repo.revisions.get_record_stream(
+                [('rev-2',)], 'unordered', False))
+        # Now, no inventories are reported as missing, even though there is a
+        # ghost.
+        self.assertEqual(set(), repo.get_missing_parent_inventories())
+        # Resuming the write group does not affect
+        # get_missing_parent_inventories.
+        reopened_repo = self.reopen_repo_and_resume_write_group(repo)
+        self.assertEqual(set(), reopened_repo.get_missing_parent_inventories())
+        reopened_repo.abort_write_group()
+
+    def test_get_missing_parent_inventories(self):
+        """A stacked repo with a single revision and inventory (no parent
+        inventory) in it must have all the texts in its inventory (even if not
+        changed w.r.t. to the absent parent), otherwise it will report missing
+        texts/parent inventory.
+        
+        The core of this test is that a file was changed in rev-1, but in a
+        stacked repo that only has rev-2 
+        """
+        # Make a trunk with one commit.
+        trunk_repo = self.make_stackable_repo()
+        self.make_first_commit(trunk_repo)
+        trunk_repo.lock_read()
+        self.addCleanup(trunk_repo.unlock)
+        # Branch the trunk, add a new commit.
+        branch_repo = self.make_new_commit_in_new_repo(
+            trunk_repo, parents=['rev-1'])
+        inv = branch_repo.get_inventory('rev-2')
+        # Make a new repo stacked on trunk, and copy the new commit's revision
+        # and inventory records to it.
+        repo = self.make_stackable_repo('stacked')
+        repo.lock_write()
+        repo.start_write_group()
+        # Insert a single fulltext inv (using add_inventory because it's
+        # simpler than insert_record_stream)
+        repo.add_inventory('rev-2', inv, ['rev-1'])
+        repo.revisions.insert_record_stream(
+            branch_repo.revisions.get_record_stream(
+                [('rev-2',)], 'unordered', False))
+        # There should be no missing compression parents
+        self.assertEqual(set(),
+                repo.inventories.get_missing_compression_parent_keys())
+        self.assertEqual(
+            set([('inventories', 'rev-1')]),
+            repo.get_missing_parent_inventories())
+        # Resuming the write group does not affect
+        # get_missing_parent_inventories.
+        reopened_repo = self.reopen_repo_and_resume_write_group(repo)
+        self.assertEqual(
+            set([('inventories', 'rev-1')]),
+            reopened_repo.get_missing_parent_inventories())
+        # Adding the parent inventory satisfies get_missing_parent_inventories.
+        reopened_repo.inventories.insert_record_stream(
+            branch_repo.inventories.get_record_stream(
+                [('rev-1',)], 'unordered', False))
+        self.assertEqual(
+            set(), reopened_repo.get_missing_parent_inventories())
+        reopened_repo.abort_write_group()
 
 
 class TestResumeableWriteGroup(TestCaseWithRepository):

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for Branch.get_stacked_on_url and set_stacked_on_url."""
 
@@ -125,14 +125,6 @@ class TestStacking(TestCaseWithBranch):
         new_branch_revid = new_tree.commit('something local')
         self.assertRevisionNotInRepository('mainline', new_branch_revid)
         self.assertRevisionInRepository('newbranch', new_branch_revid)
-
-    # XXX: this helper probably belongs on TestCaseWithTransport
-    def make_smart_server(self, path):
-        smart_server = server.SmartTCPServer_for_testing()
-        smart_server.setUp(self.get_server())
-        remote_transport = get_transport(smart_server.get_url()).clone(path)
-        self.addCleanup(smart_server.tearDown)
-        return remote_transport
 
     def test_sprout_stacked_from_smart_server(self):
         if isinstance(self.branch_format, branch.BzrBranchFormat4):
