@@ -30,6 +30,7 @@ from bzrlib.option import (
 
 from bzrlib.plugins.git import (
     get_rich_root_format,
+    lazy_check_versions,
     )
 
 class cmd_git_serve(Command):
