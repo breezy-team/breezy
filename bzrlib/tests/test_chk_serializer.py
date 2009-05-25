@@ -29,26 +29,10 @@ from bzrlib.revision import (
     )
 from bzrlib.tests import TestCase
 
-_working_revision_bencode1 = """revision-id: pqm@pqm.ubuntu.com-20090514113250-jntkkpminfn3e0tz
-timestamp: 1242300770.844
-parent-id: pqm@pqm.ubuntu.com-20090514104039-kggemn7lrretzpvc
-parent-id: jelmer@samba.org-20090510012654-jp9ufxquekaokbeo
-inventory-sha1: 4a2c7fb50e077699242cf6eb16a61779c7b680a7
-committer: Canonical.com Patch Queue Manager <pqm@pqm.ubuntu.com>
-timezone: 3600
-property-branch-nick: +trunk
-message: (Jelmer) Move dpush to InterBranch.
-"""
+_working_revision_bencode1 = 'd9:committer54:Canonical.com Patch Queue Manager <pqm@pqm.ubuntu.com>14:inventory-sha140:4a2c7fb50e077699242cf6eb16a61779c7b680a77:message35:(Jelmer) Move dpush to InterBranch.10:parent-idsl50:pqm@pqm.ubuntu.com-20090514104039-kggemn7lrretzpvc48:jelmer@samba.org-20090510012654-jp9ufxquekaokbeoe10:propertiesd11:branch-nick6:+trunke11:revision-id50:pqm@pqm.ubuntu.com-20090514113250-jntkkpminfn3e0tz9:timestamp14:1242300770.8448:timezone4:3600e'
 
-_working_revision_bencode1_no_timestamp = """revision-id: pqm@pqm.ubuntu.com-20090514113250-jntkkpminfn3e0tz
-timestamp: 1242300770.844
-parent-id: pqm@pqm.ubuntu.com-20090514104039-kggemn7lrretzpvc
-parent-id: jelmer@samba.org-20090510012654-jp9ufxquekaokbeo
-inventory-sha1: 4a2c7fb50e077699242cf6eb16a61779c7b680a7
-committer: Canonical.com Patch Queue Manager <pqm@pqm.ubuntu.com>
-property-branch-nick: +trunk
-message: (Jelmer) Move dpush to InterBranch.
-"""
+_working_revision_bencode1_no_timestamp = 'd9:committer54:Canonical.com Patch Queue Manager <pqm@pqm.ubuntu.com>14:inventory-sha140:4a2c7fb50e077699242cf6eb16a61779c7b680a77:message35:(Jelmer) Move dpush to InterBranch.10:parent-idsl50:pqm@pqm.ubuntu.com-20090514104039-kggemn7lrretzpvc48:jelmer@samba.org-20090510012654-jp9ufxquekaokbeoe10:propertiesd11:branch-nick6:+trunke11:revision-id50:pqm@pqm.ubuntu.com-20090514113250-jntkkpminfn3e0tz9:timestamp14:1242300770.844e'
+
 
 class TestBEncodeSerializer1(TestCase):
     """Test BEncode serialization"""
