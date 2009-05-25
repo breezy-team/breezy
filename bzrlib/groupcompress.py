@@ -1018,15 +1018,19 @@ class GroupCompressVersionedFiles(VersionedFiles):
         else:
             keys = [key]
             parent_map = {key:()}
+        # So we used Graph(self) to load the parent_map, but now that we have
+        # it, we can just query the parent map directly, so create a new Graph
+        # object
+        graph = _mod_graph.Graph(_mod_graph.DictParentsProvider(parent_map))
         head_cache = _mod_graph.FrozenHeadsCache(graph)
         parent_cache = {}
         reannotate = annotate.reannotate
         for record in self.get_record_stream(keys, 'topological', True):
             key = record.key
-            chunks = osutils.chunks_to_lines(record.get_bytes_as('chunked'))
+            lines = osutils.chunks_to_lines(record.get_bytes_as('chunked'))
             parent_lines = [parent_cache[parent] for parent in parent_map[key]]
             parent_cache[key] = list(
-                reannotate(parent_lines, chunks, key, None, head_cache))
+                reannotate(parent_lines, lines, key, None, head_cache))
         return parent_cache[key]
 
     def check(self, progress_bar=None):
