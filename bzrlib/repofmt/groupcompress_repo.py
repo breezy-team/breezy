@@ -1004,9 +1004,9 @@ class RepositoryFormatCHK1(RepositoryFormatPack):
 
 
 class RepositoryFormatCHK2(RepositoryFormatCHK1):
-    """A CHK repository that uses the RIO revision serializer."""
+    """A CHK repository that uses the bencode revision serializer."""
 
-    _serializer = chk_serializer.chk_rio_serializer
+    _serializer = chk_serializer.chk_bencode_serializer
 
     def _get_matching_bzrdir(self):
         return bzrdir.format_registry.make_bzrdir('development7-rich-root')
@@ -1018,7 +1018,7 @@ class RepositoryFormatCHK2(RepositoryFormatCHK1):
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
-        return ('Bazaar development format - chk repository with rio revision '
-                'serialization (needs bzr.dev from 1.15)\n')
+        return ('Bazaar development format - chk repository with bencode '
+                'revision serialization (needs bzr.dev from 1.15)\n')
 
 

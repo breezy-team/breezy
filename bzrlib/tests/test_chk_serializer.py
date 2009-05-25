@@ -22,14 +22,14 @@ from bzrlib import (
     serializer,
     )
 from bzrlib.chk_serializer import (
-    chk_rio_serializer,
+    chk_bencode_serializer,
     )
 from bzrlib.revision import (
     Revision,
     )
 from bzrlib.tests import TestCase
 
-_working_revision_rio1 = """revision-id: pqm@pqm.ubuntu.com-20090514113250-jntkkpminfn3e0tz
+_working_revision_bencode1 = """revision-id: pqm@pqm.ubuntu.com-20090514113250-jntkkpminfn3e0tz
 timestamp: 1242300770.844
 parent-id: pqm@pqm.ubuntu.com-20090514104039-kggemn7lrretzpvc
 parent-id: jelmer@samba.org-20090510012654-jp9ufxquekaokbeo
@@ -40,7 +40,7 @@ property-branch-nick: +trunk
 message: (Jelmer) Move dpush to InterBranch.
 """
 
-_working_revision_rio1_no_timestamp = """revision-id: pqm@pqm.ubuntu.com-20090514113250-jntkkpminfn3e0tz
+_working_revision_bencode1_no_timestamp = """revision-id: pqm@pqm.ubuntu.com-20090514113250-jntkkpminfn3e0tz
 timestamp: 1242300770.844
 parent-id: pqm@pqm.ubuntu.com-20090514104039-kggemn7lrretzpvc
 parent-id: jelmer@samba.org-20090510012654-jp9ufxquekaokbeo
@@ -50,14 +50,14 @@ property-branch-nick: +trunk
 message: (Jelmer) Move dpush to InterBranch.
 """
 
-class TestRIOSerializer1(TestCase):
-    """Test RIO serialization"""
+class TestBEncodeSerializer1(TestCase):
+    """Test BEncode serialization"""
 
     def test_unpack_revision(self):
         """Test unpacking a revision"""
         inp = StringIO()
-        rev = chk_rio_serializer.read_revision_from_string(
-                _working_revision_rio1)
+        rev = chk_bencode_serializer.read_revision_from_string(
+                _working_revision_bencode1)
         eq = self.assertEqual
         eq(rev.committer,
            "Canonical.com Patch Queue Manager <pqm@pqm.ubuntu.com>")
@@ -73,8 +73,8 @@ class TestRIOSerializer1(TestCase):
         eq(3600, rev.timezone)
 
     def test_unpack_revision_no_timestamp(self):
-        rev = chk_rio_serializer.read_revision_from_string(
-            _working_revision_rio1_no_timestamp)
+        rev = chk_bencode_serializer.read_revision_from_string(
+            _working_revision_bencode1_no_timestamp)
         self.assertEquals(None, rev.timezone)
 
     def assertRoundTrips(self, serializer, orig_rev):
@@ -89,7 +89,7 @@ class TestRIOSerializer1(TestCase):
         rev.timestamp = 1242385452
         rev.inventory_sha1 = "4a2c7fb50e077699242cf6eb16a61779c7b680a7"
         rev.timezone = 3600
-        self.assertRoundTrips(chk_rio_serializer, rev)
+        self.assertRoundTrips(chk_bencode_serializer, rev)
 
     def test_roundtrips_xml_invalid_chars(self):
         rev = Revision("revid1")
@@ -98,4 +98,4 @@ class TestRIOSerializer1(TestCase):
         rev.timestamp = 1242385452
         rev.timezone = 3600
         rev.inventory_sha1 = "4a2c7fb50e077699242cf6eb16a61779c7b680a7"
-        self.assertRoundTrips(chk_rio_serializer, rev)
+        self.assertRoundTrips(chk_bencode_serializer, rev)

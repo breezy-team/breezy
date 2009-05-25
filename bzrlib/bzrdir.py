@@ -3782,7 +3782,7 @@ format_registry.register_metadir('development6-rich-root',
 
 format_registry.register_metadir('development7-rich-root',
     'bzrlib.repofmt.groupcompress_repo.RepositoryFormatCHK2',
-    help='pack-1.9 with 255-way hashed CHK inv, rio revision, group compress, '
+    help='pack-1.9 with 255-way hashed CHK inv, bencode revision, group compress, '
         'rich roots. Please read '
         'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
         'before use.',

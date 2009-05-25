@@ -25,83 +25,66 @@ from bzrlib import (
     inventory,
     osutils,
     revision as _mod_revision,
-    rio,
     xml5,
     xml6,
     )
+from bzrlib.util.bencode import (
+    bdecode,
+    bencode,
+    )
 
-class RIORevisionSerializer1(object):
-    """Simple revision serializer based around RIO. 
+class BEncodeRevisionSerializer1(object):
+    """Simple revision serializer based around bencode. 
     
     It tries to group entries together that are less likely
     to change often, to make it easier to do compression.
     """
 
-    def _write_revision_stanza(self, rev):
-        s = rio.Stanza()
-        decode_utf8 = cache_utf8.decode
-        revision_id = decode_utf8(rev.revision_id)
-        s.add("revision-id", revision_id)
-        s.add("timestamp", "%.3f" % rev.timestamp)
-        for p in rev.parent_ids:
-            s.add("parent-id", decode_utf8(p))
-        s.add("inventory-sha1", rev.inventory_sha1)
-        s.add("committer", rev.committer)
+    def write_revision_to_string(self, rev):
+        encode_utf8 = cache_utf8.encode
+        ret = {
+            "revision-id": rev.revision_id,
+            "timestamp": "%.3f" % rev.timestamp,
+            "parent-ids": rev.parent_ids,
+            "inventory-sha1": rev.inventory_sha1,
+            "committer": encode_utf8(rev.committer),
+            "message": encode_utf8(rev.message),
+            }
+        revprops = {}
+        for key, value in rev.properties.iteritems():
+            revprops[key] = encode_utf8(value)
+        ret["properties"] = revprops
         if rev.timezone is not None:
-            s.add("timezone", str(rev.timezone))
-        if rev.properties:
-            for k, v in rev.properties.iteritems():
-                if isinstance(v, str):
-                    v = decode_utf8(v)
-                s.add("property-" + k, v)
-        s.add("message", rev.message)
-        return s
+            ret["timezone"] = str(rev.timezone)
+        return bencode(ret)
 
     def write_revision(self, rev, f):
-        w = rio.RioWriter(f)
-        s = self._write_revision_stanza(rev)
-        w.write_stanza(s)
+        f.write(self.write_revision_to_string(rev))
 
-    def write_revision_to_string(self, rev):
-        s = self._write_revision_stanza(rev)
-        return s.to_string()
-
-    def _read_revision_stanza(self, s):
-        rev = _mod_revision.Revision(None)
-        rev.properties = {}
-        rev.parent_ids = []
-        rev.timezone = None
-        for (field, value) in s.iter_pairs():
-            if field == "revision-id":
-                rev.revision_id = cache_utf8.encode(value)
-            elif field == "parent-id":
-                rev.parent_ids.append(cache_utf8.encode(value))
-            elif field == "committer":
-                rev.committer = value
-            elif field == "inventory-sha1":
-                rev.inventory_sha1 = value
-            elif field == "timezone":
-                rev.timezone = int(value)
-            elif field == "timestamp":
-                rev.timestamp = float(value)
-            elif field == "message":
-                rev.message = value
-            elif field.startswith("property-"):
-                rev.properties[field[len("property-"):]] = value
-            else:
-                raise AssertionError("Unknown field %s" % field)
+    def read_revision_from_string(self, text):
+        decode_utf8 = cache_utf8.decode
+        ret = bdecode(text)
+        rev = _mod_revision.Revision(
+            committer=decode_utf8(ret["committer"]),
+            revision_id=ret["revision-id"],
+            parent_ids=ret["parent-ids"],
+            inventory_sha1=ret["inventory-sha1"],
+            timestamp=float(ret["timestamp"]),
+            message=decode_utf8(ret["message"]),
+            properties={})
+        if "timezone" in ret:
+            rev.timezone = int(ret["timezone"])
+        else:
+            rev.timezone = None
+        for key, value in ret["properties"].iteritems():
+            rev.properties[key] = decode_utf8(value)
         return rev
 
     def read_revision(self, f):
-        s = rio.read_stanza(f)
-        return self._read_revision_stanza(s)
-
-    def read_revision_from_string(self, text):
-        s = rio.read_stanza(StringIO(text))
-        return self._read_revision_stanza(s)
+        return self.read_revision_from_string(f.read())
 
 
-class CHKSerializerSubtree(RIORevisionSerializer1, xml6.Serializer_v6):
+class CHKSerializerSubtree(BEncodeRevisionSerializer1, xml6.Serializer_v6):
     """A CHKInventory based serializer that supports tree references"""
 
     supported_kinds = set(['file', 'directory', 'symlink', 'tree-reference'])
@@ -144,10 +127,10 @@ class CHKSerializer(xml5.Serializer_v5):
 chk_serializer_255_bigpage = CHKSerializer(65536, 'hash-255-way')
 
 
-class CHKRIOSerializer(RIORevisionSerializer1, CHKSerializer):
-    """A CHKInventory and RIO based serializer with 'plain' behaviour."""
+class CHKBEncodeSerializer(BEncodeRevisionSerializer1, CHKSerializer):
+    """A CHKInventory and BEncode based serializer with 'plain' behaviour."""
 
     format_num = '10'
 
 
-chk_rio_serializer = CHKRIOSerializer(65536, 'hash-255-way')
+chk_bencode_serializer = CHKBEncodeSerializer(65536, 'hash-255-way')
