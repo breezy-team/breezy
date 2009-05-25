@@ -686,6 +686,8 @@ def local_time_offset(t=None):
     return offset.days * 86400 + offset.seconds
 
 weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+_default_format_by_weekday_num = [wd + " %Y-%m-%d %H:%M:%S" for wd in weekdays]
+
 
 def format_date(t, offset=0, timezone='original', date_fmt=None,
                 show_offset=True):
@@ -705,6 +707,32 @@ def format_date(t, offset=0, timezone='original', date_fmt=None,
     date_str = time.strftime(date_fmt, tt)
     return date_str + offset_str
 
+
+# Cache of formatted offset strings
+_offset_cache = {}
+
+
+def format_date_with_offset_in_original_timezone(t, offset,
+    _cache=_offset_cache):
+    """Return a formatted date string in the original timezone.
+
+    This routine may be faster then format_date.
+
+    :param t: Seconds since the epoch.
+    :param offset: Timezone offset in seconds east of utc.
+    """
+    if offset is None:
+        offset = 0
+    tt = time.gmtime(t + offset)
+    date_fmt = _default_format_by_weekday_num[tt[6]]
+    date_str = time.strftime(date_fmt, tt)
+    offset_str = _cache.get(offset, None)
+    if offset_str is None:
+        offset_str = ' %+03d%02d' % (offset / 3600, (offset / 60) % 60)
+        _cache[offset] = offset_str
+    return date_str + offset_str
+
+
 def format_local_date(t, offset=0, timezone='original', date_fmt=None,
                       show_offset=True):
     """Return an unicode date string formatted according to the current locale.
@@ -723,6 +751,7 @@ def format_local_date(t, offset=0, timezone='original', date_fmt=None,
     if not isinstance(date_str, unicode):
         date_str = date_str.decode(bzrlib.user_encoding, 'replace')
     return date_str + offset_str
+
 
 def _format_date(t, offset, timezone, date_fmt, show_offset):
     if timezone == 'utc':
