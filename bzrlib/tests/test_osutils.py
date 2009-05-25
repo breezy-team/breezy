@@ -353,6 +353,14 @@ class TestDateTime(tests.TestCase):
         # Instead blackbox.test_locale should check for localized
         # dates once they do occur in output strings.
 
+    def test_format_date_with_offset_in_original_timezone(self):
+        self.assertEqual("Thu 1970-01-01 00:00:00 +0000",
+            osutils.format_date_with_offset_in_original_timezone(0))
+        self.assertEqual("Fri 1970-01-02 03:46:40 +0000",
+            osutils.format_date_with_offset_in_original_timezone(100000))
+        self.assertEqual("Fri 1970-01-02 05:46:40 +0200",
+            osutils.format_date_with_offset_in_original_timezone(100000, 7200))
+
     def test_local_time_offset(self):
         """Test that local_time_offset() returns a sane value."""
         offset = osutils.local_time_offset()

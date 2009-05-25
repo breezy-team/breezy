@@ -712,7 +712,7 @@ def format_date(t, offset=0, timezone='original', date_fmt=None,
 _offset_cache = {}
 
 
-def format_date_with_offset_in_original_timezone(t, offset,
+def format_date_with_offset_in_original_timezone(t, offset=0,
     _cache=_offset_cache):
     """Return a formatted date string in the original timezone.
 
