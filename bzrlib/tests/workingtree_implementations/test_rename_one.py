@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for interface conformance of 'WorkingTree.rename_one'"""
 
@@ -21,9 +21,9 @@ import os
 from bzrlib import (
     errors,
     osutils,
+    tests,
     )
 
-from bzrlib.workingtree_4 import WorkingTreeFormat4
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 
 
@@ -308,3 +308,12 @@ class TestRenameOne(TestCaseWithWorkingTree):
                                ('c', 'c-id')], tree)
         self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('c', 'c-id'),
                                ('a/b', 'b-id')], tree.basis_tree())
+
+    def test_rename_to_denormalised_fails(self):
+        if osutils.normalizes_filenames():
+            raise tests.TestNotApplicable('OSX normalizes filenames')
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a'])
+        tree.add(['a'])
+        self.assertRaises((errors.InvalidNormalization, UnicodeEncodeError),
+            tree.rename_one, 'a', u'ba\u030arry')

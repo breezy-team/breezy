@@ -12,15 +12,18 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from cStringIO import StringIO
 import errno
+import sys
 
 from bzrlib import (
+    builtins,
     commands,
     config,
     errors,
+    option,
     tests,
     )
 from bzrlib.commands import display_command
@@ -57,6 +60,23 @@ class TestCommands(tests.TestCase):
             raise TestSkipped("optparse 1.5.3 can't handle unicode options")
         self.assertRaises(errors.BzrCommandError,
                           commands.run_bzr, ['log', u'--option\xb5'])
+
+    @staticmethod
+    def get_command(options):
+        class cmd_foo(commands.Command):
+            'Bar'
+
+            takes_options = options
+
+        return cmd_foo()
+
+    def test_help_hidden(self):
+        c = self.get_command([option.Option('foo', hidden=True)])
+        self.assertNotContainsRe(c.get_help_text(), '--foo')
+
+    def test_help_not_hidden(self):
+        c = self.get_command([option.Option('foo', hidden=False)])
+        self.assertContainsRe(c.get_help_text(), '--foo')
 
 
 class TestGetAlias(tests.TestCase):
@@ -134,3 +154,86 @@ class TestSeeAlso(tests.TestCase):
         self.assertEqual(['bar', 'foo', 'gam'],
             command.get_see_also(['gam', 'bar', 'gam']))
 
+
+class TestRegisterLazy(tests.TestCase):
+
+    def setUp(self):
+        tests.TestCase.setUp(self)
+        import bzrlib.tests.fake_command
+        del sys.modules['bzrlib.tests.fake_command']
+        global lazy_command_imported
+        lazy_command_imported = False
+
+    @staticmethod
+    def remove_fake():
+        commands.plugin_cmds.remove('fake')
+
+    def assertIsFakeCommand(self, cmd_obj):
+        from bzrlib.tests.fake_command import cmd_fake
+        self.assertIsInstance(cmd_obj, cmd_fake)
+
+    def test_register_lazy(self):
+        """Ensure lazy registration works"""
+        commands.plugin_cmds.register_lazy('cmd_fake', [],
+                                           'bzrlib.tests.fake_command')
+        self.addCleanup(self.remove_fake)
+        self.assertFalse(lazy_command_imported)
+        fake_instance = commands.get_cmd_object('fake')
+        self.assertTrue(lazy_command_imported)
+        self.assertIsFakeCommand(fake_instance)
+
+    def test_get_unrelated_does_not_import(self):
+        commands.plugin_cmds.register_lazy('cmd_fake', [],
+                                           'bzrlib.tests.fake_command')
+        self.addCleanup(self.remove_fake)
+        commands.get_cmd_object('status')
+        self.assertFalse(lazy_command_imported)
+
+    def test_aliases(self):
+        commands.plugin_cmds.register_lazy('cmd_fake', ['fake_alias'],
+                                           'bzrlib.tests.fake_command')
+        self.addCleanup(self.remove_fake)
+        fake_instance = commands.get_cmd_object('fake_alias')
+        self.assertIsFakeCommand(fake_instance)
+
+
+class TestExtendCommandHook(tests.TestCase):
+
+    def test_fires_on_get_cmd_object(self):
+        # The extend_command(cmd) hook fires when commands are delivered to the
+        # ui, not simply at registration (because lazy registered plugin
+        # commands are registered).
+        # when they are simply created.
+        hook_calls = []
+        commands.Command.hooks.install_named_hook(
+            "extend_command", hook_calls.append, None)
+        # create a command, should not fire
+        class ACommand(commands.Command):
+            """A sample command."""
+        cmd = ACommand()
+        self.assertEqual([], hook_calls)
+        # -- as a builtin
+        # register the command class, should not fire
+        try:
+            builtins.cmd_test_extend_command_hook = ACommand
+            self.assertEqual([], hook_calls)
+            # and ask for the object, should fire
+            cmd = commands.get_cmd_object('test-extend-command-hook')
+            # For resilience - to ensure all code paths hit it - we
+            # fire on everything returned in the 'cmd_dict', which is currently
+            # all known commands, so assert that cmd is in hook_calls
+            self.assertSubset([cmd], hook_calls)
+            del hook_calls[:]
+        finally:
+            del builtins.cmd_test_extend_command_hook
+        # -- as a plugin lazy registration
+        try:
+            # register the command class, should not fire
+            commands.plugin_cmds.register_lazy('cmd_fake', [],
+                                               'bzrlib.tests.fake_command')
+            self.assertEqual([], hook_calls)
+            # and ask for the object, should fire
+            cmd = commands.get_cmd_object('fake')
+            self.assertEqual([cmd], hook_calls)
+        finally:
+            commands.plugin_cmds.remove('fake')

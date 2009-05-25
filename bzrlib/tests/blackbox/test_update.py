@@ -13,7 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Tests for the update command of bzr."""
@@ -21,7 +21,6 @@
 import os
 
 from bzrlib import branch, bzrdir
-from bzrlib.tests import TestSkipped
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.workingtree import WorkingTree
 
@@ -29,13 +28,13 @@ from bzrlib.workingtree import WorkingTree
 class TestUpdate(ExternalBase):
 
     def test_update_standalone_trivial(self):
-        self.run_bzr("init")
+        self.make_branch_and_tree('.')
         out, err = self.run_bzr('update')
         self.assertEqual('Tree is up to date at revision 0.\n', err)
         self.assertEqual('', out)
 
     def test_update_standalone_trivial_with_alias_up(self):
-        self.run_bzr("init")
+        self.make_branch_and_tree('.')
         out, err = self.run_bzr('up')
         self.assertEqual('Tree is up to date at revision 0.\n', err)
         self.assertEqual('', out)

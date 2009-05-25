@@ -12,15 +12,25 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """A convenience class around smtplib."""
 
 from email import Utils
+import errno
 import smtplib
+import socket
 
-from bzrlib import ui
-from bzrlib.errors import NoDestinationAddress, SMTPError
+from bzrlib import (
+    config,
+    osutils,
+    )
+from bzrlib.errors import (
+    NoDestinationAddress,
+    SMTPError,
+    DefaultSMTPConnectionRefused,
+    SMTPConnectionRefused,
+    )
 
 
 class SMTPConnection(object):
@@ -33,9 +43,13 @@ class SMTPConnection(object):
 
     _default_smtp_server = 'localhost'
 
-    def __init__(self, config):
+    def __init__(self, config, _smtp_factory=None):
+        self._smtp_factory = _smtp_factory
+        if self._smtp_factory is None:
+            self._smtp_factory = smtplib.SMTP
         self._config = config
-        self._smtp_server = config.get_user_option('smtp_server')
+        self._config_smtp_server = config.get_user_option('smtp_server')
+        self._smtp_server = self._config_smtp_server
         if self._smtp_server is None:
             self._smtp_server = self._default_smtp_server
 
@@ -50,30 +64,67 @@ class SMTPConnection(object):
             return
 
         self._create_connection()
+        # FIXME: _authenticate() should only be called when the server has
+        # refused unauthenticated access, so it can safely try to authenticate 
+        # with the default username. JRV20090407
         self._authenticate()
 
     def _create_connection(self):
         """Create an SMTP connection."""
-        self._connection = smtplib.SMTP()
-        self._connection.connect(self._smtp_server)
+        self._connection = self._smtp_factory()
+        try:
+            self._connection.connect(self._smtp_server)
+        except socket.error, e:
+            if e.args[0] == errno.ECONNREFUSED:
+                if self._config_smtp_server is None:
+                    raise DefaultSMTPConnectionRefused(socket.error,
+                                                       self._smtp_server)
+                else:
+                    raise SMTPConnectionRefused(socket.error,
+                                                self._smtp_server)
+            else:
+                raise
 
-        # If this fails, it just returns an error, but it shouldn't raise an
-        # exception unless something goes really wrong (in which case we want
-        # to fail anyway).
-        self._connection.starttls()
+        # Say EHLO (falling back to HELO) to query the server's features.
+        code, resp = self._connection.ehlo()
+        if not (200 <= code <= 299):
+            code, resp = self._connection.helo()
+            if not (200 <= code <= 299):
+                raise SMTPError("server refused HELO: %d %s" % (code, resp))
+
+        # Use TLS if the server advertised it:
+        if self._connection.has_extn("starttls"):
+            code, resp = self._connection.starttls()
+            if not (200 <= code <= 299):
+                raise SMTPError("server refused STARTTLS: %d %s" % (code, resp))
+            # Say EHLO again, to check for newly revealed features
+            code, resp = self._connection.ehlo()
+            if not (200 <= code <= 299):
+                raise SMTPError("server refused EHLO: %d %s" % (code, resp))
 
     def _authenticate(self):
         """If necessary authenticate yourself to the server."""
+        auth = config.AuthenticationConfig()
         if self._smtp_username is None:
-            return
+            # FIXME: Since _authenticate gets called even when no authentication
+            # is necessary, it's not possible to use the default username 
+            # here yet.
+            self._smtp_username = auth.get_user('smtp', self._smtp_server)
+            if self._smtp_username is None:
+                return
 
         if self._smtp_password is None:
-            self._smtp_password = ui.ui_factory.get_password(
-                'Please enter the SMTP password: %(user)s@%(host)s',
-                user=self._smtp_username,
-                host=self._smtp_server)
+            self._smtp_password = auth.get_password(
+                'smtp', self._smtp_server, self._smtp_username)
 
-        self._connection.login(self._smtp_username, self._smtp_password)
+        # smtplib requires that the username and password be byte
+        # strings.  The CRAM-MD5 spec doesn't give any guidance on
+        # encodings, but the SASL PLAIN spec says UTF-8, so that's
+        # what we'll use.
+        username = osutils.safe_utf8(self._smtp_username)
+        password = osutils.safe_utf8(self._smtp_password)
+
+        self._connection.login(username, password)
 
     @staticmethod
     def get_message_addresses(message):

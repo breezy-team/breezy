@@ -12,12 +12,39 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for Branch.revision_history."""
+"""Tests for Branch.revision_history and last_revision."""
 
-from bzrlib import branch
+from bzrlib import (
+    branch,
+    errors,
+    revision as _mod_revision,
+    )
 from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
+
+
+class TestLastRevision(TestCaseWithBranch):
+    """Tests for the last_revision property of the branch.
+    """
+
+    def test_set_last_revision_info(self):
+        # based on TestBranch.test_append_revisions, which uses the old
+        # append_revision api
+        wt = self.make_branch_and_tree('tree')
+        wt.commit('f', rev_id='rev1')
+        wt.commit('f', rev_id='rev2')
+        wt.commit('f', rev_id='rev3')
+        br = self.get_branch()
+        br.fetch(wt.branch)
+        br.set_last_revision_info(1, 'rev1')
+        self.assertEquals(br.revision_history(), ["rev1",])
+        br.set_last_revision_info(3, 'rev3')
+        self.assertEquals(br.revision_history(), ["rev1", "rev2", "rev3"])
+        # append_revision specifically prohibits some ids;
+        # set_last_revision_info currently does not
+        ## self.assertRaises(errors.ReservedId,
+        ##         br.set_last_revision_info, 4, 'current:')
 
 
 class TestRevisionHistoryCaching(TestCaseWithBranch):
@@ -97,8 +124,6 @@ class TestRevisionHistoryCaching(TestCaseWithBranch):
         cause the revision history to be cached.
         """
         branch, calls = self.get_instrumented_branch()
-        # Lock the branch, set the revision history, then repeatedly call
-        # revision_history.
         branch.set_revision_history([])
         branch.revision_history()
         self.assertEqual(['_gen_revision_history'], calls)
@@ -113,13 +138,26 @@ class TestRevisionHistoryCaching(TestCaseWithBranch):
         # Lock the branch, set the last revision info, then call
         # last_revision_info.
         a_branch.lock_write()
-        a_branch.set_last_revision_info(0, None)
+        a_branch.set_last_revision_info(0, _mod_revision.NULL_REVISION)
         del calls[:]
         try:
             a_branch.last_revision_info()
             self.assertEqual([], calls)
         finally:
             a_branch.unlock()
+
+    def test_set_last_revision_info_none(self):
+        """Passing None to revision_info to None sets it to NULL_REVISION."""
+        a_branch = self.get_branch()
+        # Lock the branch, set the last revision info, then call
+        # last_revision_info.
+        a_branch.lock_write()
+        self.addCleanup(a_branch.unlock)
+        self.callDeprecated(['NULL_REVISION should be used for the null'
+            ' revision instead of None, as of bzr 0.91.'],
+            a_branch.set_last_revision_info, 0, None)
+        self.assertEqual((0, _mod_revision.NULL_REVISION),
+                         a_branch.last_revision_info())
 
     def test_set_last_revision_info_uncaches_revision_history_for_format6(self):
         """On format 6 branches, set_last_revision_info invalidates the revision
@@ -132,7 +170,7 @@ class TestRevisionHistoryCaching(TestCaseWithBranch):
         a_branch.lock_write()
         a_branch.revision_history()
         # Set the last revision info, clearing the cache.
-        a_branch.set_last_revision_info(0, None)
+        a_branch.set_last_revision_info(0, _mod_revision.NULL_REVISION)
         del calls[:]
         try:
             a_branch.revision_history()
@@ -163,4 +201,12 @@ class TestRevisionHistoryCaching(TestCaseWithBranch):
             branch.unlock()
 
 
+class TestRevisionHistory(TestCaseWithBranch):
 
+    def test_parent_ghost(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.add_parent_tree_id('ghost-revision',
+                                allow_leftmost_as_ghost=True)
+        tree.commit('first non-ghost commit', rev_id='non-ghost-revision')
+        self.assertEqual(['non-ghost-revision'],
+                         tree.branch.revision_history())

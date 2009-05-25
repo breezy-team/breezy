@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Test branches with inaccessible parents."""
 
@@ -20,14 +20,14 @@ import os
 
 from bzrlib import branch, errors
 from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
-from bzrlib.tests.HttpServer import HttpServer
+from bzrlib.tests.http_server import HttpServer
 from bzrlib.transport.local import LocalURLServer
 from bzrlib.transport.chroot import TestingChrootServer
 
 
 class InaccessibleParentTests(TestCaseWithBranch):
     """Tests with branches with "inaccessible" parents.
-    
+
     An "inaccessible" parent location is one that cannot be represented, e.g. if
     a child branch says its parent is at "../../my-parent", but that child is at
     "http://host/one" then that parent location is inaccessible.  These

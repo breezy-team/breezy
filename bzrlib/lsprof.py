@@ -10,6 +10,7 @@ import thread
 import threading
 from _lsprof import Profiler, profiler_entry
 
+
 __all__ = ['profile', 'Stats']
 
 _g_threadmap = {}
@@ -26,7 +27,14 @@ def _thread_profile(f, *args, **kwds):
 
 
 def profile(f, *args, **kwds):
-    """XXX docstring"""
+    """Run a function profile.
+
+    Exceptions are not caught: If you need stats even when exceptions are to be
+    raised, passing in a closure that will catch the exceptions and transform
+    them appropriately for your driver function.
+
+    :return: The functions return value and a stats object.
+    """
     global _g_threadmap
     p = Profiler()
     p.enable(subcalls=True)
@@ -38,7 +46,7 @@ def profile(f, *args, **kwds):
         for pp in _g_threadmap.values():
             pp.disable()
         threading.setprofile(None)
-    
+
     threads = {}
     for tid, pp in _g_threadmap.items():
         threads[tid] = Stats(pp.getstats(), {})
@@ -118,7 +126,8 @@ class Stats(object):
             otherwise the format is given by the filename extension.
         """
         if format is None:
-            if filename.startswith('callgrind.out'):
+            basename = os.path.basename(filename)
+            if basename.startswith('callgrind.out'):
                 format = "callgrind"
             else:
                 ext = os.path.splitext(filename)[1]
@@ -142,7 +151,7 @@ class _CallTreeFilter(object):
 
     This code is taken from http://ddaa.net/blog/python/lsprof-calltree
     with the changes made by J.P. Calderone and Itamar applied. Note that
-    isinstance(code, str) needs to be used at times to determine if the code 
+    isinstance(code, str) needs to be used at times to determine if the code
     object is actually an external code object (with a filename, etc.) or
     a Python built-in.
     """
@@ -152,8 +161,8 @@ class _CallTreeFilter(object):
         self.out_file = None
 
     def output(self, out_file):
-        self.out_file = out_file        
-        print >> out_file, 'events: Ticks'
+        self.out_file = out_file
+        out_file.write('events: Ticks\n')
         self._print_summary()
         for entry in self.data:
             self._entry(entry)
@@ -163,22 +172,22 @@ class _CallTreeFilter(object):
         for entry in self.data:
             totaltime = int(entry.totaltime * 1000)
             max_cost = max(max_cost, totaltime)
-        print >> self.out_file, 'summary: %d' % (max_cost,)
+        self.out_file.write('summary: %d\n' % (max_cost,))
 
     def _entry(self, entry):
         out_file = self.out_file
         code = entry.code
         inlinetime = int(entry.inlinetime * 1000)
-        #print >> out_file, 'ob=%s' % (code.co_filename,)
+        #out_file.write('ob=%s\n' % (code.co_filename,))
         if isinstance(code, str):
-            print >> out_file, 'fi=~'
+            out_file.write('fi=~\n')
         else:
-            print >> out_file, 'fi=%s' % (code.co_filename,)
-        print >> out_file, 'fn=%s' % (label(code, True),)
+            out_file.write('fi=%s\n' % (code.co_filename,))
+        out_file.write('fn=%s\n' % (label(code, True),))
         if isinstance(code, str):
-            print >> out_file, '0 ', inlinetime
+            out_file.write('0  %s\n' % (inlinetime,))
         else:
-            print >> out_file, '%d %d' % (code.co_firstlineno, inlinetime)
+            out_file.write('%d %d\n' % (code.co_firstlineno, inlinetime))
         # recursive calls are counted in entry.calls
         if entry.calls:
             calls = entry.calls
@@ -190,22 +199,22 @@ class _CallTreeFilter(object):
             lineno = code.co_firstlineno
         for subentry in calls:
             self._subentry(lineno, subentry)
-        print >> out_file
+        out_file.write('\n')
 
     def _subentry(self, lineno, subentry):
         out_file = self.out_file
         code = subentry.code
         totaltime = int(subentry.totaltime * 1000)
-        #print >> out_file, 'cob=%s' % (code.co_filename,)
-        print >> out_file, 'cfn=%s' % (label(code, True),)
+        #out_file.write('cob=%s\n' % (code.co_filename,))
+        out_file.write('cfn=%s\n' % (label(code, True),))
         if isinstance(code, str):
-            print >> out_file, 'cfi=~'
-            print >> out_file, 'calls=%d 0' % (subentry.callcount,)
+            out_file.write('cfi=~\n')
+            out_file.write('calls=%d 0\n' % (subentry.callcount,))
         else:
-            print >> out_file, 'cfi=%s' % (code.co_filename,)
-            print >> out_file, 'calls=%d %d' % (
-                subentry.callcount, code.co_firstlineno)
-        print >> out_file, '%d %d' % (lineno, totaltime)
+            out_file.write('cfi=%s\n' % (code.co_filename,))
+            out_file.write('calls=%d %d\n' % (
+                subentry.callcount, code.co_firstlineno))
+        out_file.write('%d %d\n' % (lineno, totaltime))
 
 _fn2mod = {}
 
@@ -237,7 +246,7 @@ if __name__ == '__main__':
     import os
     sys.argv = sys.argv[1:]
     if not sys.argv:
-        print >> sys.stderr, "usage: lsprof.py <script> <arguments...>"
+        sys.stderr.write("usage: lsprof.py <script> <arguments...>\n")
         sys.exit(2)
     sys.path.insert(0, os.path.abspath(os.path.dirname(sys.argv[0])))
     stats = profile(execfile, sys.argv[0], globals(), locals())

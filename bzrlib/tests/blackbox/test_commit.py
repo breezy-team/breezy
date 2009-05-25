@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,23 +12,26 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Tests for the commit CLI of bzr."""
 
 import os
-import re
 import sys
 
 from bzrlib import (
+    osutils,
     ignores,
+    msgeditor,
+    osutils,
     )
-from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import BzrCommandError
+from bzrlib.tests import (
+    probe_bad_non_ascii,
+    TestSkipped,
+    )
 from bzrlib.tests.blackbox import ExternalBase
-from bzrlib.workingtree import WorkingTree
 
 
 class TestCommit(ExternalBase):
@@ -36,16 +39,16 @@ class TestCommit(ExternalBase):
     def test_05_empty_commit(self):
         """Commit of tree with no versioned files should fail"""
         # If forced, it should succeed, but this is not tested here.
-        self.run_bzr("init")
+        self.make_branch_and_tree('.')
         self.build_tree(['hello.txt'])
         out,err = self.run_bzr('commit -m empty', retcode=3)
         self.assertEqual('', out)
-        self.assertStartsWith(err, 'bzr: ERROR: no changes to commit.'
-                                  ' use --unchanged to commit anyhow\n')
+        self.assertContainsRe(err, 'bzr: ERROR: No changes to commit\.'
+                                  ' Use --unchanged to commit anyhow.\n')
 
     def test_commit_success(self):
         """Successful commit should not leave behind a bzr-commit-* file"""
-        self.run_bzr("init")
+        self.make_branch_and_tree('.')
         self.run_bzr('commit --unchanged -m message')
         self.assertEqual('', self.run_bzr('unknowns')[0])
 
@@ -55,35 +58,34 @@ class TestCommit(ExternalBase):
 
     def test_commit_with_path(self):
         """Commit tree with path of root specified"""
-        self.run_bzr('init a')
+        a_tree = self.make_branch_and_tree('a')
         self.build_tree(['a/a_file'])
-        self.run_bzr('add a/a_file')
+        a_tree.add('a_file')
         self.run_bzr(['commit', '-m', 'first commit', 'a'])
 
-        self.run_bzr('branch a b')
+        b_tree = a_tree.bzrdir.sprout('b').open_workingtree()
         self.build_tree_contents([('b/a_file', 'changes in b')])
         self.run_bzr(['commit', '-m', 'first commit in b', 'b'])
 
         self.build_tree_contents([('a/a_file', 'new contents')])
         self.run_bzr(['commit', '-m', 'change in a', 'a'])
 
-        os.chdir('b')
-        self.run_bzr('merge ../a', retcode=1) # will conflict
-        os.chdir('..')
+        b_tree.merge_from_branch(a_tree.branch)
+        self.assertEqual(len(b_tree.conflicts()), 1)
         self.run_bzr('resolved b/a_file')
         self.run_bzr(['commit', '-m', 'merge into b', 'b'])
 
 
     def test_10_verbose_commit(self):
         """Add one file and examine verbose commit output"""
-        self.run_bzr("init")
+        tree = self.make_branch_and_tree('.')
         self.build_tree(['hello.txt'])
-        self.run_bzr("add hello.txt")
+        tree.add("hello.txt")
         out,err = self.run_bzr('commit -m added')
         self.assertEqual('', out)
-        self.assertEqual('added hello.txt\n'
-                         'Committed revision 1.\n',
-                         err)
+        self.assertContainsRe(err, '^Committing to: .*\n'
+                              'added hello.txt\n'
+                              'Committed revision 1.\n$',)
 
     def prepare_simple_history(self):
         """Prepare and return a working tree with one commit of one file"""
@@ -100,9 +102,9 @@ class TestCommit(ExternalBase):
         self.build_tree_contents([('hello.txt', 'new contents')])
         out, err = self.run_bzr('commit -m modified')
         self.assertEqual('', out)
-        self.assertEqual('modified hello.txt\n'
-                         'Committed revision 2.\n',
-                         err)
+        self.assertContainsRe(err, '^Committing to: .*\n'
+                              'modified hello\.txt\n'
+                              'Committed revision 2\.\n$')
 
     def test_verbose_commit_renamed(self):
         # Verbose commit of renamed file should say so
@@ -110,9 +112,9 @@ class TestCommit(ExternalBase):
         wt.rename_one('hello.txt', 'gutentag.txt')
         out, err = self.run_bzr('commit -m renamed')
         self.assertEqual('', out)
-        self.assertEqual('renamed hello.txt => gutentag.txt\n'
-                         'Committed revision 2.\n',
-                         err)
+        self.assertContainsRe(err, '^Committing to: .*\n'
+                              'renamed hello\.txt => gutentag\.txt\n'
+                              'Committed revision 2\.$\n')
 
     def test_verbose_commit_moved(self):
         # Verbose commit of file moved to new directory should say so
@@ -122,10 +124,13 @@ class TestCommit(ExternalBase):
         wt.rename_one('hello.txt', 'subdir/hello.txt')
         out, err = self.run_bzr('commit -m renamed')
         self.assertEqual('', out)
-        self.assertEqualDiff('added subdir\n'
-                             'renamed hello.txt => subdir/hello.txt\n'
-                             'Committed revision 2.\n',
-                             err)
+        self.assertEqual(set([
+            'Committing to: %s/' % osutils.getcwd(),
+            'added subdir',
+            'renamed hello.txt => subdir/hello.txt',
+            'Committed revision 2.',
+            '',
+            ]), set(err.split('\n')))
 
     def test_verbose_commit_with_unknown(self):
         """Unknown files should not be listed by default in verbose output"""
@@ -135,22 +140,35 @@ class TestCommit(ExternalBase):
         wt.add(['hello.txt'])
         out,err = self.run_bzr('commit -m added')
         self.assertEqual('', out)
-        self.assertEqual('added hello.txt\n'
-                         'Committed revision 1.\n',
-                         err)
+        self.assertContainsRe(err, '^Committing to: .*\n'
+                              'added hello\.txt\n'
+                              'Committed revision 1\.\n$')
 
     def test_verbose_commit_with_unchanged(self):
         """Unchanged files should not be listed by default in verbose output"""
-        self.run_bzr("init")
+        tree = self.make_branch_and_tree('.')
         self.build_tree(['hello.txt', 'unchanged.txt'])
-        self.run_bzr('add unchanged.txt')
+        tree.add('unchanged.txt')
         self.run_bzr('commit -m unchanged unchanged.txt')
-        self.run_bzr("add hello.txt")
+        tree.add("hello.txt")
         out,err = self.run_bzr('commit -m added')
         self.assertEqual('', out)
-        self.assertEqual('added hello.txt\n'
-                         'Committed revision 2.\n',
-                         err)
+        self.assertContainsRe(err, '^Committing to: .*\n'
+                              'added hello\.txt\n'
+                              'Committed revision 2\.$\n')
+
+    def test_verbose_commit_includes_master_location(self):
+        """Location of master is displayed when committing to bound branch"""
+        a_tree = self.make_branch_and_tree('a')
+        self.build_tree(['a/b'])
+        a_tree.add('b')
+        a_tree.commit(message='Initial message')
+
+        b_tree = a_tree.branch.create_checkout('b')
+        expected = "%s/" % (osutils.abspath('a'), )
+        out, err = self.run_bzr('commit -m blah --unchanged', working_dir='b')
+        self.assertEqual(err, 'Committing to: %s\n'
+                         'Committed revision 2.\n' % expected)
 
     def test_commit_merge_reports_all_modified_files(self):
         # the commit command should show all the files that are shown by
@@ -189,10 +207,11 @@ class TestCommit(ExternalBase):
             other_tree.rename_one('dirtorename', 'renameddir')
             other_tree.rename_one('dirtoreparent', 'renameddir/reparenteddir')
             other_tree.rename_one('filetorename', 'renamedfile')
-            other_tree.rename_one('filetoreparent', 'renameddir/reparentedfile')
+            other_tree.rename_one('filetoreparent',
+                                  'renameddir/reparentedfile')
             other_tree.remove(['dirtoremove', 'filetoremove'])
             self.build_tree_contents([
-                ('other/newdir/', ),
+                ('other/newdir/',),
                 ('other/filetomodify', 'new content'),
                 ('other/newfile', 'new file content')])
             other_tree.add('newfile')
@@ -203,41 +222,55 @@ class TestCommit(ExternalBase):
         this_tree.merge_from_branch(other_tree.branch)
         os.chdir('this')
         out,err = self.run_bzr('commit -m added')
-        os.chdir('..')
         self.assertEqual('', out)
-        self.assertEqualDiff(
-            'modified filetomodify\n'
-            'added newdir\n'
-            'added newfile\n'
-            'renamed dirtorename => renameddir\n'
-            'renamed dirtoreparent => renameddir/reparenteddir\n'
-            'renamed filetoreparent => renameddir/reparentedfile\n'
-            'renamed filetorename => renamedfile\n'
-            'deleted dirtoremove\n'
-            'deleted filetoremove\n'
-            'Committed revision 2.\n',
-            err)
+        self.assertEqual(set([
+            'Committing to: %s/' % osutils.getcwd(),
+            'modified filetomodify',
+            'added newdir',
+            'added newfile',
+            'renamed dirtorename => renameddir',
+            'renamed filetorename => renamedfile',
+            'renamed dirtoreparent => renameddir/reparenteddir',
+            'renamed filetoreparent => renameddir/reparentedfile',
+            'deleted dirtoremove',
+            'deleted filetoremove',
+            'Committed revision 2.',
+            ''
+            ]), set(err.split('\n')))
 
     def test_empty_commit_message(self):
-        self.run_bzr("init")
-        file('foo.c', 'wt').write('int main() {}')
-        self.run_bzr('add foo.c')
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([('foo.c', 'int main() {}')])
+        tree.add('foo.c')
         self.run_bzr('commit -m ""', retcode=3)
+
+    def test_unsupported_encoding_commit_message(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([('foo.c', 'int main() {}')])
+        tree.add('foo.c')
+        # LANG env variable has no effect on Windows
+        # but some characters anyway cannot be represented
+        # in default user encoding
+        char = probe_bad_non_ascii(osutils.get_user_encoding())
+        if char is None:
+            raise TestSkipped('Cannot find suitable non-ascii character'
+                'for user_encoding (%s)' % osutils.get_user_encoding())
+        out,err = self.run_bzr_subprocess('commit -m "%s"' % char,
+                                          retcode=1,
+                                          env_changes={'LANG': 'C'})
+        self.assertContainsRe(err, r'bzrlib.errors.BzrError: Parameter.*is '
+                                    'unsupported by the current encoding.')
 
     def test_other_branch_commit(self):
         # this branch is to ensure consistent behaviour, whether we're run
         # inside a branch, or not.
-        os.mkdir('empty_branch')
-        os.chdir('empty_branch')
-        self.run_bzr('init')
-        os.mkdir('branch')
-        os.chdir('branch')
-        self.run_bzr('init')
-        file('foo.c', 'wt').write('int main() {}')
-        file('bar.c', 'wt').write('int main() {}')
-        os.chdir('..')
-        self.run_bzr('add branch/foo.c')
-        self.run_bzr('add branch')
+        outer_tree = self.make_branch_and_tree('.')
+        inner_tree = self.make_branch_and_tree('branch')
+        self.build_tree_contents([
+            ('branch/foo.c', 'int main() {}'),
+            ('branch/bar.c', 'int main() {}')])
+        inner_tree.add('foo.c')
+        inner_tree.add('bar.c')
         # can't commit files in different trees; sane error
         self.run_bzr('commit -m newstuff branch/foo.c .', retcode=3)
         self.run_bzr('commit -m newstuff branch/foo.c')
@@ -247,19 +280,19 @@ class TestCommit(ExternalBase):
     def test_out_of_date_tree_commit(self):
         # check we get an error code and a clear message committing with an out
         # of date checkout
-        self.make_branch_and_tree('branch')
+        tree = self.make_branch_and_tree('branch')
         # make a checkout
-        self.run_bzr('checkout --lightweight branch checkout')
+        checkout = tree.branch.create_checkout('checkout', lightweight=True)
         # commit to the original branch to make the checkout out of date
-        self.run_bzr('commit --unchanged -m message branch')
+        tree.commit('message branch', allow_pointless=True)
         # now commit to the checkout should emit
         # ERROR: Out of date with the branch, 'bzr update' is suggested
         output = self.run_bzr('commit --unchanged -m checkout_message '
                              'checkout', retcode=3)
         self.assertEqual(output,
                          ('',
-                          "bzr: ERROR: Working tree is out of date, please run "
-                          "'bzr update'.\n"))
+                          "bzr: ERROR: Working tree is out of date, please "
+                          "run 'bzr update'.\n"))
 
     def test_local_commit_unbound(self):
         # a --local commit on an unbound branch is an error
@@ -272,17 +305,17 @@ class TestCommit(ExternalBase):
     def test_commit_a_text_merge_in_a_checkout(self):
         # checkouts perform multiple actions in a transaction across bond
         # branches and their master, and have been observed to fail in the
-        # past. This is a user story reported to fail in bug #43959 where 
+        # past. This is a user story reported to fail in bug #43959 where
         # a merge done in a checkout (using the update command) failed to
         # commit correctly.
-        self.run_bzr('init trunk')
+        trunk = self.make_branch_and_tree('trunk')
 
-        self.run_bzr('checkout trunk u1')
+        u1 = trunk.branch.create_checkout('u1')
         self.build_tree_contents([('u1/hosts', 'initial contents')])
-        self.run_bzr('add u1/hosts')
+        u1.add('hosts')
         self.run_bzr('commit -m add-hosts u1')
 
-        self.run_bzr('checkout trunk u2')
+        u2 = trunk.branch.create_checkout('u2')
         self.build_tree_contents([('u2/hosts', 'altered in u2')])
         self.run_bzr('commit -m checkin-from-u2 u2')
 
@@ -300,6 +333,35 @@ class TestCommit(ExternalBase):
         # version or the u2 version.
         self.build_tree_contents([('u1/hosts', 'merge resolution\n')])
         self.run_bzr('commit -m checkin-merge-of-the-offline-work-from-u1 u1')
+
+    def test_commit_exclude_excludes_modified_files(self):
+        """Commit -x foo should ignore changes to foo."""
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a', 'b', 'c'])
+        tree.smart_add(['.'])
+        out, err = self.run_bzr(['commit', '-m', 'test', '-x', 'b'])
+        self.assertFalse('added b' in out)
+        self.assertFalse('added b' in err)
+        # If b was excluded it will still be 'added' in status.
+        out, err = self.run_bzr(['added'])
+        self.assertEqual('b\n', out)
+        self.assertEqual('', err)
+
+    def test_commit_exclude_twice_uses_both_rules(self):
+        """Commit -x foo -x bar should ignore changes to foo and bar."""
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a', 'b', 'c'])
+        tree.smart_add(['.'])
+        out, err = self.run_bzr(['commit', '-m', 'test', '-x', 'b', '-x', 'c'])
+        self.assertFalse('added b' in out)
+        self.assertFalse('added c' in out)
+        self.assertFalse('added b' in err)
+        self.assertFalse('added c' in err)
+        # If b was excluded it will still be 'added' in status.
+        out, err = self.run_bzr(['added'])
+        self.assertTrue('b\n' in out)
+        self.assertTrue('c\n' in out)
+        self.assertEqual('', err)
 
     def test_commit_respects_spec_for_removals(self):
         """Commit with a file spec should only commit removals that match"""
@@ -333,7 +395,7 @@ class TestCommit(ExternalBase):
 
         # With no changes, it should just be 'no changes'
         # Make sure that commit is failing because there is nothing to do
-        self.run_bzr_error(['no changes to commit'],
+        self.run_bzr_error(['No changes to commit'],
                            'commit --strict -m no-changes',
                            working_dir='tree')
 
@@ -367,7 +429,9 @@ class TestCommit(ExternalBase):
         output, err = self.run_bzr(
             'commit -m hello --fixes=lp:23452 tree/hello.txt')
         self.assertEqual('', output)
-        self.assertEqual('added hello.txt\nCommitted revision 1.\n', err)
+        self.assertContainsRe(err, 'Committing to: .*\n'
+                              'added hello\.txt\n'
+                              'Committed revision 1\.\n')
 
     def test_no_bugs_no_properties(self):
         """If no bugs are fixed, the bugs property is not set.
@@ -456,7 +520,9 @@ class TestCommit(ExternalBase):
         self.build_tree(['tree/hello.txt'])
         tree.add('hello.txt')
         self.run_bzr_error(
-            ["Invalid bug identifier for %s. Commit refused." % 'lp:orange'],
+            ["Did not understand bug identifier orange: Must be an integer. "
+             "See \"bzr help bugs\" for more information on this feature.\n"
+             "Commit refused."],
             'commit -m add-b --fixes=lp:orange',
             working_dir='tree')
 
@@ -466,7 +532,110 @@ class TestCommit(ExternalBase):
         self.build_tree(['tree/hello.txt'])
         tree.add('hello.txt')
         self.run_bzr_error(
-            [r"Invalid bug orange. Must be in the form of 'tag:id'\. "
+            [r"Invalid bug orange. Must be in the form of 'tracker:id'\. "
+             r"See \"bzr help bugs\" for more information on this feature.\n"
              r"Commit refused\."],
             'commit -m add-b --fixes=orange',
             working_dir='tree')
+
+    def test_no_author(self):
+        """If the author is not specified, the author property is not set."""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        self.run_bzr( 'commit -m hello tree/hello.txt')
+        last_rev = tree.branch.repository.get_revision(tree.last_revision())
+        properties = last_rev.properties
+        self.assertFalse('author' in properties)
+
+    def test_author_sets_property(self):
+        """commit --author='John Doe <jdoe@example.com>' sets the author
+           revprop.
+        """
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        self.run_bzr(["commit", '-m', 'hello',
+                      '--author', u'John D\xf6 <jdoe@example.com>',
+                     "tree/hello.txt"])
+        last_rev = tree.branch.repository.get_revision(tree.last_revision())
+        properties = last_rev.properties
+        self.assertEqual(u'John D\xf6 <jdoe@example.com>', properties['authors'])
+
+    def test_author_no_email(self):
+        """Author's name without an email address is allowed, too."""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        out, err = self.run_bzr("commit -m hello --author='John Doe' "
+                                "tree/hello.txt")
+        last_rev = tree.branch.repository.get_revision(tree.last_revision())
+        properties = last_rev.properties
+        self.assertEqual('John Doe', properties['authors'])
+
+    def test_multiple_authors(self):
+        """Multiple authors can be specyfied, and all are stored."""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        out, err = self.run_bzr("commit -m hello --author='John Doe' "
+                                "--author='Jane Rey' tree/hello.txt")
+        last_rev = tree.branch.repository.get_revision(tree.last_revision())
+        properties = last_rev.properties
+        self.assertEqual('John Doe\nJane Rey', properties['authors'])
+
+    def test_partial_commit_with_renames_in_tree(self):
+        # this test illustrates bug #140419
+        t = self.make_branch_and_tree('.')
+        self.build_tree(['dir/', 'dir/a', 'test'])
+        t.add(['dir/', 'dir/a', 'test'])
+        t.commit('initial commit')
+        # important part: file dir/a should change parent
+        # and should appear before old parent
+        # then during partial commit we have error
+        # parent_id {dir-XXX} not in inventory
+        t.rename_one('dir/a', 'a')
+        self.build_tree_contents([('test', 'changes in test')])
+        # partial commit
+        out, err = self.run_bzr('commit test -m "partial commit"')
+        self.assertEquals('', out)
+        self.assertContainsRe(err, r'modified test\nCommitted revision 2.')
+
+    def test_commit_readonly_checkout(self):
+        # https://bugs.edge.launchpad.net/bzr/+bug/129701
+        # "UnlockableTransport error trying to commit in checkout of readonly
+        # branch"
+        self.make_branch('master')
+        master = BzrDir.open_from_transport(
+            self.get_readonly_transport('master')).open_branch()
+        master.create_checkout('checkout')
+        out, err = self.run_bzr(['commit', '--unchanged', '-mfoo', 'checkout'],
+            retcode=3)
+        self.assertContainsRe(err,
+            r'^bzr: ERROR: Cannot lock.*readonly transport')
+
+    def test_commit_hook_template(self):
+        # Test that commit template hooks work
+        def restoreDefaults():
+            msgeditor.hooks['commit_message_template'] = []
+            osutils.set_or_unset_env('BZR_EDITOR', default_editor)
+        if sys.platform == "win32":
+            f = file('fed.bat', 'w')
+            f.write('@rem dummy fed')
+            f.close()
+            default_editor = osutils.set_or_unset_env('BZR_EDITOR', "fed.bat")
+        else:
+            f = file('fed.sh', 'wb')
+            f.write('#!/bin/sh\n')
+            f.close()
+            os.chmod('fed.sh', 0755)
+            default_editor = osutils.set_or_unset_env('BZR_EDITOR', "./fed.sh")
+        self.addCleanup(restoreDefaults)
+        msgeditor.hooks.install_named_hook("commit_message_template",
+                lambda commit_obj, msg: "save me some typing\n", None)
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        out, err = self.run_bzr("commit tree/hello.txt")
+        last_rev = tree.branch.repository.get_revision(tree.last_revision())
+        self.assertEqual('save me some typing\n', last_rev.message)

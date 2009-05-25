@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for bzrlib/generate_ids.py"""
 
@@ -52,7 +52,7 @@ class TestFileIds(tests.TestCase):
         self.assertStartsWith(gen_file_id('..gam.py'), 'gam.py-')
         self.assertStartsWith(gen_file_id('..Mwoo oof\t m'), 'mwoooofm-')
 
-        # we remove unicode characters, and still don't end up with a 
+        # we remove unicode characters, and still don't end up with a
         # hidden file id
         self.assertStartsWith(gen_file_id(u'\xe5\xb5.txt'), 'txt-')
 
@@ -112,15 +112,10 @@ class TestFileIds(tests.TestCase):
 class TestGenRevisionId(tests.TestCase):
     """Test generating revision ids"""
 
-    def assertMatchesRe(self, regex, text):
-        """Make sure text is matched by the regex given"""
-        if re.match(regex, text) is None:
-            self.fail('Pattern %s did not match text %s' % (regex, text))
-
     def assertGenRevisionId(self, regex, username, timestamp=None):
         """gen_revision_id should create a revision id matching the regex"""
         revision_id = generate_ids.gen_revision_id(username, timestamp)
-        self.assertMatchesRe(regex, revision_id)
+        self.assertContainsRe(revision_id, '^'+regex+'$')
         # It should be a utf8 revision_id, not a unicode one
         self.assertIsInstance(revision_id, str)
         # gen_revision_id should always return ascii revision ids.

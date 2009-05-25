@@ -1,0 +1,60 @@
+Configuring Bazaar
+==================
+
+Telling Bazaar about yourself
+-----------------------------
+
+One function of a version control system is to keep track of who changed
+what.  In a decentralized system, that requires an identifier for each
+author that is globally unique.  Most people already have one of these: an
+email address. Bazaar is smart enough to automatically generate an email
+address by looking up your username and hostname. If you don't like the
+guess that Bazaar makes, then use the ``whoami`` command to set the
+identifier you want::
+
+    % bzr whoami "Your Name <email@example.com>"
+ 
+If ``whoami`` is used without an argument, the current value is displayed.
+
+Configuration files
+-------------------
+
+Configuration files are located in ``$HOME/.bazaar`` on Linux/Unix and
+``C:\Documents and Settings\<username>\Application Data\Bazaar\2.0`` on
+Windows. There are three primary configuration files in this location:
+
+* ``bazaar.conf`` describes default configuration options,
+
+* ``locations.conf`` describes configuration information for
+  specific branch locations,
+
+* ``authentication.conf`` describes credential information for
+  remote servers.
+
+Each branch can also contain a configuration file that sets values specific
+to that branch. This file is found at ``.bzr/branch/branch.conf`` within the
+branch. This file is visible to **all users of a branch**. If you wish to
+override one of the values for a branch with a setting that is specific to you,
+then you can do so in ``locations.conf``.
+
+Here is sample content of ``bazaar.conf`` after setting an email address using
+the ``whoami`` command::
+
+  [DEFAULT]
+  email = Your Name <email@example.com>
+
+For further details on the syntax and configuration settings supported, see
+`Configuration Settings <../user-reference/bzr_man.html#configuration-settings>`_
+in the Bazaar User Reference.
+
+
+Rule-based preferences
+----------------------
+
+Some commands and plugins provide custom processing on files matching
+certain patterns. Per-user rule-based preferences are defined in
+``BZR_HOME/rules``.
+
+For further information on how rules are searched and the detailed syntax of
+the relevant files, see `Rules <../user-reference/bzr_man.html#rules>`_
+in the Bazaar User Reference.

@@ -13,7 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from cStringIO import StringIO
 import os
@@ -21,16 +21,19 @@ import os
 from bzrlib import (
     branch,
     bzrdir,
+    conflicts,
     errors,
+    mutabletree,
+    osutils,
     revision as _mod_revision,
     ui,
     uncommit,
     workingtree,
     )
-from bzrlib.errors import (NotBranchError, NotVersionedError, 
+from bzrlib.errors import (NotBranchError, NotVersionedError,
                            UnsupportedOperation)
-from bzrlib.osutils import pathjoin, getcwd, has_symlinks
-from bzrlib.tests import TestSkipped, TestCase
+from bzrlib.osutils import pathjoin, getcwd
+from bzrlib.tests import TestCase
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 from bzrlib.trace import mutter
 from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
@@ -60,7 +63,7 @@ class CapturingUIFactory(ui.UIFactory):
 
     def progress_bar(self):
         return self
-    
+
     def nested_progress_bar(self):
         self.depth += 1
         return self
@@ -88,21 +91,171 @@ class TestCapturingUI(TestCase):
 
 class TestCommit(TestCaseWithWorkingTree):
 
+    def test_autodelete_renamed(self):
+        tree_a = self.make_branch_and_tree('a')
+        self.build_tree(['a/dir/', 'a/dir/f1', 'a/dir/f2'])
+        tree_a.add(['dir', 'dir/f1', 'dir/f2'], ['dir-id', 'f1-id', 'f2-id'])
+        rev_id1 = tree_a.commit('init')
+        # Start off by renaming entries,
+        # but then actually auto delete the whole tree
+        # https://bugs.launchpad.net/bzr/+bug/114615
+        tree_a.rename_one('dir/f1', 'dir/a')
+        tree_a.rename_one('dir/f2', 'dir/z')
+        osutils.rmtree('a/dir')
+        tree_a.commit('autoremoved')
+
+        tree_a.lock_read()
+        try:
+            root_id = tree_a.get_root_id()
+            paths = [(path, ie.file_id)
+                     for path, ie in tree_a.iter_entries_by_dir()]
+        finally:
+            tree_a.unlock()
+        # The only paths left should be the root
+        self.assertEqual([('', root_id)], paths)
+
+    def test_no_autodelete_renamed_away(self):
+        tree_a = self.make_branch_and_tree('a')
+        self.build_tree(['a/dir/', 'a/dir/f1', 'a/dir/f2', 'a/dir2/'])
+        tree_a.add(['dir', 'dir/f1', 'dir/f2', 'dir2'],
+                   ['dir-id', 'f1-id', 'f2-id', 'dir2-id'])
+        rev_id1 = tree_a.commit('init')
+        # Rename one entry out of this directory
+        tree_a.rename_one('dir/f1', 'dir2/a')
+        osutils.rmtree('a/dir')
+        tree_a.commit('autoremoved')
+
+        tree_a.lock_read()
+        try:
+            root_id = tree_a.get_root_id()
+            paths = [(path, ie.file_id)
+                     for path, ie in tree_a.iter_entries_by_dir()]
+        finally:
+            tree_a.unlock()
+        # The only paths left should be the root
+        self.assertEqual([('', root_id), ('dir2', 'dir2-id'),
+                          ('dir2/a', 'f1-id'),
+                         ], paths)
+
+    def test_no_autodelete_alternate_renamed(self):
+        # Test for bug #114615
+        tree_a = self.make_branch_and_tree('A')
+        self.build_tree(['A/a/', 'A/a/m', 'A/a/n'])
+        tree_a.add(['a', 'a/m', 'a/n'], ['a-id', 'm-id', 'n-id'])
+        tree_a.commit('init')
+
+        tree_a.lock_read()
+        try:
+            root_id = tree_a.get_root_id()
+        finally:
+            tree_a.unlock()
+
+        tree_b = tree_a.bzrdir.sprout('B').open_workingtree()
+        self.build_tree(['B/xyz/'])
+        tree_b.add(['xyz'], ['xyz-id'])
+        tree_b.rename_one('a/m', 'xyz/m')
+        osutils.rmtree('B/a')
+        tree_b.commit('delete in B')
+
+        paths = [(path, ie.file_id)
+                 for path, ie in tree_b.iter_entries_by_dir()]
+        self.assertEqual([('', root_id),
+                          ('xyz', 'xyz-id'),
+                          ('xyz/m', 'm-id'),
+                         ], paths)
+
+        self.build_tree_contents([('A/a/n', 'new contents for n\n')])
+        tree_a.commit('change n in A')
+
+        # Merging from A should introduce conflicts because 'n' was modified
+        # and removed, so 'a' needs to be restored.
+        num_conflicts = tree_b.merge_from_branch(tree_a.branch)
+        self.assertEqual(3, num_conflicts)
+        paths = [(path, ie.file_id)
+                 for path, ie in tree_b.iter_entries_by_dir()]
+        self.assertEqual([('', root_id),
+                          ('a', 'a-id'),
+                          ('xyz', 'xyz-id'),
+                          ('a/n.OTHER', 'n-id'),
+                          ('xyz/m', 'm-id'),
+                         ], paths)
+        osutils.rmtree('B/a')
+        try:
+            # bzr resolve --all
+            tree_b.set_conflicts(conflicts.ConflictList())
+        except errors.UnsupportedOperation:
+            # On WT2, set_conflicts is unsupported, but the rmtree has the same
+            # effect.
+            pass
+        tree_b.commit('autoremove a, without touching xyz/m')
+        paths = [(path, ie.file_id)
+                 for path, ie in tree_b.iter_entries_by_dir()]
+        self.assertEqual([('', root_id),
+                          ('xyz', 'xyz-id'),
+                          ('xyz/m', 'm-id'),
+                         ], paths)
+
+    def test_commit_exclude_pending_merge_fails(self):
+        """Excludes are a form of partial commit."""
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['foo'])
+        wt.add('foo')
+        wt.commit('commit one')
+        wt2 = wt.bzrdir.sprout('to').open_workingtree()
+        wt2.commit('change_right')
+        wt.merge_from_branch(wt2.branch)
+        self.assertRaises(errors.CannotCommitSelectedFileMerge,
+            wt.commit, 'test', exclude=['foo'])
+
+    def test_commit_exclude_exclude_changed_is_pointless(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a'])
+        tree.smart_add(['.'])
+        tree.commit('setup test')
+        self.build_tree_contents([('a', 'new contents for "a"\n')])
+        self.assertRaises(errors.PointlessCommit, tree.commit, 'test',
+            exclude=['a'], allow_pointless=False)
+
+    def test_commit_exclude_excludes_modified_files(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a', 'b', 'c'])
+        tree.smart_add(['.'])
+        tree.commit('test', exclude=['b', 'c'])
+        # If b was excluded it will still be 'added' in status.
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        changes = list(tree.iter_changes(tree.basis_tree()))
+        self.assertEqual(2, len(changes))
+        self.assertEqual((None, 'b'), changes[0][1])
+        self.assertEqual((None, 'c'), changes[1][1])
+
+    def test_commit_exclude_subtree_of_selected(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a/', 'a/b'])
+        tree.smart_add(['.'])
+        tree.commit('test', specific_files=['a'], exclude=['a/b'])
+        # If a/b was excluded it will still be 'added' in status.
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        changes = list(tree.iter_changes(tree.basis_tree()))
+        self.assertEqual(1, len(changes))
+        self.assertEqual((None, 'a/b'), changes[0][1])
+
     def test_commit_sets_last_revision(self):
         tree = self.make_branch_and_tree('tree')
-        committed_id = tree.commit('foo', rev_id='foo', allow_pointless=True)
+        committed_id = tree.commit('foo', rev_id='foo')
         self.assertEqual(['foo'], tree.get_parent_ids())
         # the commit should have returned the same id we asked for.
         self.assertEqual('foo', committed_id)
 
     def test_commit_returns_revision_id(self):
         tree = self.make_branch_and_tree('.')
-        committed_id = tree.commit('message', allow_pointless=True)
+        committed_id = tree.commit('message')
         self.assertTrue(tree.branch.repository.has_revision(committed_id))
         self.assertNotEqual(None, committed_id)
 
     def test_commit_local_unbound(self):
-        # using the library api to do a local commit on unbound branches is 
+        # using the library api to do a local commit on unbound branches is
         # also an error
         tree = self.make_branch_and_tree('tree')
         self.assertRaises(errors.LocalRequiresBoundBranch,
@@ -146,7 +299,7 @@ class TestCommit(TestCaseWithWorkingTree):
                           bzrdir.BzrDir.open,
                           'master')
         tree.commit('foo', rev_id='foo', local=True)
- 
+
     def test_local_commit_does_not_push_to_master(self):
         # a --local commit does not require access to the master branch
         # at all, or even for it to exist.
@@ -271,7 +424,7 @@ class TestCommit(TestCaseWithWorkingTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         # the deepest subtree has not changed, so no commit should take place.
-        self.assertEqual(None, subsubtree.last_revision())
+        self.assertEqual('null:', subsubtree.last_revision())
         # the intermediate tree should have committed a pointer to the current
         # subtree revision.
         sub_basis = subtree.basis_tree()
@@ -291,7 +444,7 @@ class TestCommit(TestCaseWithWorkingTree):
             basis.get_reference_revision(basis.path2id('subtree')))
         # the outer tree must have have changed too.
         self.assertNotEqual(None, rev_id)
-        
+
     def test_nested_commit_second_commit_detects_changes(self):
         """Commit with a nested tree picks up the correct child revid."""
         tree = self.make_branch_and_tree('.')
@@ -303,6 +456,7 @@ class TestCommit(TestCaseWithWorkingTree):
         self.build_tree(['subtree/file'])
         subtree.add(['file'], ['file-id'])
         rev_id = tree.commit('added reference', allow_pointless=False)
+        tree.get_reference_revision(tree.path2id('subtree'))
         child_revid = subtree.last_revision()
         # now change the child tree
         self.build_tree_contents([('subtree/file', 'new-content')])
@@ -323,19 +477,35 @@ class TestCommit(TestCaseWithWorkingTree):
             basis.get_reference_revision(basis.path2id('subtree')))
         self.assertNotEqual(rev_id, rev_id2)
 
+    def test_nested_pointless_commits_are_pointless(self):
+        tree = self.make_branch_and_tree('.')
+        if not tree.supports_tree_reference():
+            # inapplicable test.
+            return
+        subtree = self.make_branch_and_tree('subtree')
+        tree.add(['subtree'])
+        # record the reference.
+        rev_id = tree.commit('added reference')
+        child_revid = subtree.last_revision()
+        # now do a no-op commit with allow_pointless=False
+        self.assertRaises(errors.PointlessCommit, tree.commit, '',
+            allow_pointless=False)
+        self.assertEqual(child_revid, subtree.last_revision())
+        self.assertEqual(rev_id, tree.last_revision())
+
 
 class TestCommitProgress(TestCaseWithWorkingTree):
-    
+
     def restoreDefaults(self):
         ui.ui_factory = self.old_ui_factory
 
     def test_commit_progress_steps(self):
-        # during commit we one progress update for every entry in the 
+        # during commit we one progress update for every entry in the
         # inventory, and then one for the inventory, and one for the
         # inventory, and one for the revision insertions.
-        # first we need a test commit to do. Lets setup a branch with 
+        # first we need a test commit to do. Lets setup a branch with
         # 3 files, and alter one in a selected-file commit. This exercises
-        # a number of cases quickly. We should also test things like 
+        # a number of cases quickly. We should also test things like
         # selective commits which excludes newly added files.
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b', 'c'])
@@ -344,7 +514,7 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         f = file('b', 'wt')
         f.write('new content')
         f.close()
-        # set a progress bar that captures the calls so we can see what is 
+        # set a progress bar that captures the calls so we can see what is
         # emitted
         self.old_ui_factory = ui.ui_factory
         self.addCleanup(self.restoreDefaults)
@@ -354,19 +524,20 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         # into the factory for this test - just make the test ui factory
         # pun as a reporter. Then we can check the ordering is right.
         tree.commit('second post', specific_files=['b'])
-        # 4 steps, the first of which is reported 2 times, once per dir
+        # 5 steps, the first of which is reported 2 times, once per dir
         self.assertEqual(
-            [('update', 1, 4, 'Collecting changes [Directory 0] - Stage'),
-             ('update', 1, 4, 'Collecting changes [Directory 1] - Stage'),
-             ('update', 2, 4, 'Saving data locally - Stage'),
-             ('update', 3, 4, 'Updating the working tree - Stage'),
-             ('update', 4, 4, 'Running post commit hooks - Stage')],
+            [('update', 1, 5, 'Collecting changes [0] - Stage'),
+             ('update', 1, 5, 'Collecting changes [1] - Stage'),
+             ('update', 2, 5, 'Saving data locally - Stage'),
+             ('update', 3, 5, 'Running pre_commit hooks - Stage'),
+             ('update', 4, 5, 'Updating the working tree - Stage'),
+             ('update', 5, 5, 'Running post_commit hooks - Stage')],
             factory._calls
            )
 
-    def test_commit_progress_shows_hook_names(self):
+    def test_commit_progress_shows_post_hook_names(self):
         tree = self.make_branch_and_tree('.')
-        # set a progress bar that captures the calls so we can see what is 
+        # set a progress bar that captures the calls so we can see what is
         # emitted
         self.old_ui_factory = ui.ui_factory
         self.addCleanup(self.restoreDefaults)
@@ -374,19 +545,60 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         ui.ui_factory = factory
         def a_hook(_, _2, _3, _4, _5, _6):
             pass
-        branch.Branch.hooks.install_hook('post_commit', a_hook)
-        branch.Branch.hooks.name_hook(a_hook, 'hook name')
+        branch.Branch.hooks.install_named_hook('post_commit', a_hook,
+                                               'hook name')
         tree.commit('first post')
         self.assertEqual(
-            [('update', 1, 4, 'Collecting changes [Directory 0] - Stage'),
-             ('update', 1, 4, 'Collecting changes [Directory 1] - Stage'),
-             ('update', 2, 4, 'Saving data locally - Stage'),
-             ('update', 3, 4, 'Updating the working tree - Stage'),
-             ('update', 4, 4, 'Running post commit hooks - Stage'),
-             ('update', 4, 4, 'Running post commit hooks [hook name] - Stage'),
+            [('update', 1, 5, 'Collecting changes [0] - Stage'),
+             ('update', 1, 5, 'Collecting changes [1] - Stage'),
+             ('update', 2, 5, 'Saving data locally - Stage'),
+             ('update', 3, 5, 'Running pre_commit hooks - Stage'),
+             ('update', 4, 5, 'Updating the working tree - Stage'),
+             ('update', 5, 5, 'Running post_commit hooks - Stage'),
+             ('update', 5, 5, 'Running post_commit hooks [hook name] - Stage'),
              ],
             factory._calls
            )
 
+    def test_commit_progress_shows_pre_hook_names(self):
+        tree = self.make_branch_and_tree('.')
+        # set a progress bar that captures the calls so we can see what is
+        # emitted
+        self.old_ui_factory = ui.ui_factory
+        self.addCleanup(self.restoreDefaults)
+        factory = CapturingUIFactory()
+        ui.ui_factory = factory
+        def a_hook(_, _2, _3, _4, _5, _6, _7, _8):
+            pass
+        branch.Branch.hooks.install_named_hook('pre_commit', a_hook,
+                                               'hook name')
+        tree.commit('first post')
+        self.assertEqual(
+            [('update', 1, 5, 'Collecting changes [0] - Stage'),
+             ('update', 1, 5, 'Collecting changes [1] - Stage'),
+             ('update', 2, 5, 'Saving data locally - Stage'),
+             ('update', 3, 5, 'Running pre_commit hooks - Stage'),
+             ('update', 3, 5, 'Running pre_commit hooks [hook name] - Stage'),
+             ('update', 4, 5, 'Updating the working tree - Stage'),
+             ('update', 5, 5, 'Running post_commit hooks - Stage'),
+             ],
+            factory._calls
+           )
 
-
+    def test_start_commit_hook(self):
+        """Make sure a start commit hook can modify the tree that is
+        committed."""
+        def start_commit_hook_adds_file(tree):
+            open(tree.abspath("newfile"), 'w').write("data")
+            tree.add(["newfile"])
+        def restoreDefaults():
+            mutabletree.MutableTree.hooks['start_commit'] = []
+        self.addCleanup(restoreDefaults)
+        tree = self.make_branch_and_tree('.')
+        mutabletree.MutableTree.hooks.install_named_hook(
+            'start_commit',
+            start_commit_hook_adds_file,
+            None)
+        revid = tree.commit('first post')
+        committed_tree = tree.basis_tree()
+        self.assertTrue(committed_tree.has_filename("newfile"))

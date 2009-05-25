@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 import os
@@ -51,25 +51,26 @@ class AtomicFile(object):
         global _hostname
 
         self._fd = None
-        assert mode in ('wb', 'wt'), \
-            "invalid AtomicFile mode %r" % mode
 
         if _hostname is None:
-            _hostname = socket.gethostname()
+            _hostname = osutils.get_host_name()
 
-        self.tmpfilename = '%s.%d.%s.tmp' % (filename, _pid, _hostname)
+        self.tmpfilename = '%s.%d.%s.%s.tmp' % (filename, _pid, _hostname,
+                                                osutils.rand_chars(10))
 
         self.realfilename = filename
-        
+
         flags = os.O_EXCL | os.O_CREAT | os.O_WRONLY
         if mode == 'wb':
             flags |= osutils.O_BINARY
+        elif mode != 'wt':
+            raise ValueError("invalid AtomicFile mode %r" % mode)
 
         if new_mode is not None:
             local_mode = new_mode
         else:
             local_mode = 0666
-        
+
         # Use a low level fd operation to avoid chmodding later.
         # This may not succeed, but it should help most of the time
         self._fd = os.open(self.tmpfilename, flags, local_mode)

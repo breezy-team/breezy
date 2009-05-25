@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Locking using OS file locks or file existence.
@@ -42,6 +42,70 @@ from bzrlib import (
     osutils,
     trace,
     )
+from bzrlib.hooks import HookPoint, Hooks
+
+
+class LockHooks(Hooks):
+
+    def __init__(self):
+        Hooks.__init__(self)
+        self.create_hook(HookPoint('lock_acquired',
+            "Called with a bzrlib.lock.LockResult when a physical lock is "
+            "acquired.", (1, 8), None))
+        self.create_hook(HookPoint('lock_released',
+            "Called with a bzrlib.lock.LockResult when a physical lock is "
+            "released.", (1, 8), None))
+        self.create_hook(HookPoint('lock_broken',
+            "Called with a bzrlib.lock.LockResult when a physical lock is "
+            "broken.", (1, 15), None))
+
+
+class Lock(object):
+    """Base class for locks.
+
+    :cvar hooks: Hook dictionary for operations on locks.
+    """
+
+    hooks = LockHooks()
+
+
+class LockResult(object):
+    """Result of an operation on a lock; passed to a hook"""
+
+    def __init__(self, lock_url, details=None):
+        """Create a lock result for lock with optional details about the lock."""
+        self.lock_url = lock_url
+        self.details = details
+
+    def __eq__(self, other):
+        return self.lock_url == other.lock_url and self.details == other.details
+
+    def __repr__(self):
+        return '%s(%s%s)' % (self.__class__.__name__,
+                             self.lock_url, self.details)
+
+
+try:
+    import fcntl
+    have_fcntl = True
+except ImportError:
+    have_fcntl = False
+
+have_pywin32 = False
+have_ctypes_win32 = False
+if sys.platform == 'win32':
+    import msvcrt
+    try:
+        import win32con, win32file, pywintypes, winerror
+        have_pywin32 = True
+    except ImportError:
+        pass
+
+    try:
+        import ctypes
+        have_ctypes_win32 = True
+    except ImportError:
+        pass
 
 
 class _OSLock(object):
@@ -57,7 +121,7 @@ class _OSLock(object):
             return self.f
         except IOError, e:
             if e.errno in (errno.EACCES, errno.EPERM):
-                raise errors.ReadOnlyLockError(self.filename, str(e))
+                raise errors.LockFailed(self.filename, str(e))
             if e.errno != errno.ENOENT:
                 raise
 
@@ -81,23 +145,6 @@ class _OSLock(object):
 
     def unlock(self):
         raise NotImplementedError()
-
-
-try:
-    import fcntl
-    have_fcntl = True
-except ImportError:
-    have_fcntl = False
-try:
-    import win32con, win32file, pywintypes, winerror, msvcrt
-    have_pywin32 = True
-except ImportError:
-    have_pywin32 = False
-try:
-    import ctypes, msvcrt
-    have_ctypes = True
-except ImportError:
-    have_ctypes = False
 
 
 _lock_classes = []
@@ -143,7 +190,7 @@ if have_fcntl:
                     self.unlock()
                 # we should be more precise about whats a locking
                 # error and whats a random-other error
-                raise errors.LockContention(e)
+                raise errors.LockContention(self.filename, e)
 
         def unlock(self):
             _fcntl_WriteLock._open_locks.remove(self.filename)
@@ -167,7 +214,7 @@ if have_fcntl:
             except IOError, e:
                 # we should be more precise about whats a locking
                 # error and whats a random-other error
-                raise errors.LockContention(e)
+                raise errors.LockContention(self.filename, e)
 
         def unlock(self):
             count = _fcntl_ReadLock._open_locks[self.filename]
@@ -187,7 +234,9 @@ if have_fcntl:
 
             :return: A token which can be used to switch back to a read lock.
             """
-            assert self.filename not in _fcntl_WriteLock._open_locks
+            if self.filename in _fcntl_WriteLock._open_locks:
+                raise AssertionError('file already locked: %r'
+                    % (self.filename,))
             try:
                 wlock = _fcntl_TemporaryWriteLock(self)
             except errors.LockError:
@@ -213,7 +262,9 @@ if have_fcntl:
                 # write lock.
                 raise errors.LockContention(self.filename)
 
-            assert self.filename not in _fcntl_WriteLock._open_locks
+            if self.filename in _fcntl_WriteLock._open_locks:
+                raise AssertionError('file already locked: %r'
+                    % (self.filename,))
 
             # See if we can open the file for writing. Another process might
             # have a read lock. We don't use self._open() because we don't want
@@ -223,7 +274,7 @@ if have_fcntl:
                 new_f = open(self.filename, 'rb+')
             except IOError, e:
                 if e.errno in (errno.EACCES, errno.EPERM):
-                    raise errors.ReadOnlyLockError(self.filename, str(e))
+                    raise errors.LockFailed(self.filename, str(e))
                 raise
             try:
                 # LOCK_NB will cause IOError to be raised if we can't grab a
@@ -231,7 +282,7 @@ if have_fcntl:
                 fcntl.lockf(new_f, fcntl.LOCK_EX | fcntl.LOCK_NB)
             except IOError, e:
                 # TODO: Raise a more specific error based on the type of error
-                raise errors.LockContention(e)
+                raise errors.LockContention(self.filename, e)
             _fcntl_WriteLock._open_locks.add(self.filename)
 
             self.f = new_f
@@ -276,7 +327,7 @@ if have_pywin32 and sys.platform == 'win32':
                 raise
             except Exception, e:
                 self._clear_f()
-                raise errors.LockContention(e)
+                raise errors.LockContention(filename, e)
 
         def unlock(self):
             overlapped = pywintypes.OVERLAPPED()
@@ -284,7 +335,7 @@ if have_pywin32 and sys.platform == 'win32':
                 win32file.UnlockFileEx(self.hfile, 0, 0x7fff0000, overlapped)
                 self._clear_f()
             except Exception, e:
-                raise errors.LockContention(e)
+                raise errors.LockContention(self.filename, e)
 
 
     class _w32c_ReadLock(_w32c_FileLock):
@@ -328,7 +379,7 @@ if have_pywin32 and sys.platform == 'win32':
     _lock_classes.append(('pywin32', _w32c_WriteLock, _w32c_ReadLock))
 
 
-if have_ctypes and sys.platform == 'win32':
+if have_ctypes_win32:
     # These constants were copied from the win32con.py module.
     LOCKFILE_FAIL_IMMEDIATELY = 1
     LOCKFILE_EXCLUSIVE_LOCK = 2
@@ -393,8 +444,8 @@ if have_ctypes and sys.platform == 'win32':
                 last_err = _GetLastError()
                 if last_err in (ERROR_LOCK_VIOLATION,):
                     raise errors.LockContention(filename)
-                raise errors.LockContention('Unknown locking error: %s'
-                                            % (last_err,))
+                raise errors.LockContention(filename,
+                    'Unknown locking error: %s' % (last_err,))
 
         def unlock(self):
             overlapped = OVERLAPPED()
@@ -408,8 +459,8 @@ if have_ctypes and sys.platform == 'win32':
             if result == 0:
                 self._clear_f()
                 last_err = _GetLastError()
-                raise errors.LockContention('Unknown unlocking error: %s'
-                                            % (last_err,))
+                raise errors.LockContention(self.filename,
+                    'Unknown unlocking error: %s' % (last_err,))
 
 
     class _ctypes_ReadLock(_ctypes_FileLock):

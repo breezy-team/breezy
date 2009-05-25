@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """MemoryTree object.
 
@@ -20,11 +20,12 @@ See MemoryTree for more details.
 """
 
 
-from copy import deepcopy
+import os
 
 from bzrlib import (
     errors,
     mutabletree,
+    osutils,
     revision as _mod_revision,
     )
 from bzrlib.decorators import needs_read_lock, needs_write_lock
@@ -35,7 +36,7 @@ from bzrlib.transport.memory import MemoryTransport
 
 class MemoryTree(mutabletree.MutableTree):
     """A MemoryTree is a specialisation of MutableTree.
-    
+
     It maintains nearly no state outside of read_lock and write_lock
     transactions. (it keeps a reference to the branch, and its last-revision
     only).
@@ -68,20 +69,20 @@ class MemoryTree(mutabletree.MutableTree):
     def create_on_branch(branch):
         """Create a MemoryTree for branch, using the last-revision of branch."""
         revision_id = _mod_revision.ensure_null(branch.last_revision())
-        if _mod_revision.is_null(revision_id):
-            revision_id = None
         return MemoryTree(branch, revision_id)
 
     def _gather_kinds(self, files, kinds):
         """See MutableTree._gather_kinds.
-        
+
         This implementation does not care about the file kind of
         missing files, so is a no-op.
         """
 
-    def get_file(self, file_id):
+    def get_file(self, file_id, path=None):
         """See Tree.get_file."""
-        return self._file_transport.get(self.id2path(file_id))
+        if path is None:
+            path = self.id2path(file_id)
+        return self._file_transport.get(path)
 
     def get_file_sha1(self, file_id, path=None, stat_value=None):
         """See Tree.get_file_sha1()."""
@@ -90,11 +91,42 @@ class MemoryTree(mutabletree.MutableTree):
         stream = self._file_transport.get(path)
         return sha_file(stream)
 
+    def get_root_id(self):
+        return self.path2id('')
+
     def _comparison_data(self, entry, path):
         """See Tree._comparison_data."""
         if entry is None:
             return None, False, None
         return entry.kind, entry.executable, None
+
+    @needs_tree_write_lock
+    def rename_one(self, from_rel, to_rel):
+        file_id = self.path2id(from_rel)
+        to_dir, to_tail = os.path.split(to_rel)
+        to_parent_id = self.path2id(to_dir)
+        self._file_transport.move(from_rel, to_rel)
+        self._inventory.rename(file_id, to_parent_id, to_tail)
+
+    def path_content_summary(self, path):
+        """See Tree.path_content_summary."""
+        id = self.path2id(path)
+        if id is None:
+            return 'missing', None, None, None
+        kind = self.kind(id)
+        if kind == 'file':
+            bytes = self._file_transport.get_bytes(path)
+            size = len(bytes)
+            executable = self._inventory[id].executable
+            sha1 = None # no stat cache
+            return (kind, size, executable, sha1)
+        elif kind == 'directory':
+            # memory tree does not support nested trees yet.
+            return kind, None, None, None
+        elif kind == 'symlink':
+            raise NotImplementedError('symlink support')
+        else:
+            raise NotImplementedError('unknown kind')
 
     def _file_size(self, entry, stat_value):
         """See Tree._file_size."""
@@ -179,13 +211,12 @@ class MemoryTree(mutabletree.MutableTree):
 
     def _populate_from_branch(self):
         """Populate the in-tree state from the branch."""
-        self._basis_tree = self.branch.repository.revision_tree(
-            self._branch_revision_id)
-        if self._branch_revision_id is None:
+        self._set_basis()
+        if self._branch_revision_id == _mod_revision.NULL_REVISION:
             self._parent_ids = []
         else:
             self._parent_ids = [self._branch_revision_id]
-        self._inventory = deepcopy(self._basis_tree._inventory)
+        self._inventory = self._basis_tree._inventory._get_mutable_inventory()
         self._file_transport = MemoryTransport()
         # TODO copy the revision trees content, or do it lazy, or something.
         inventory_entries = self._inventory.iter_entries()
@@ -247,26 +278,38 @@ class MemoryTree(mutabletree.MutableTree):
             _mod_revision.check_not_reserved_id(revision_id)
         if len(revision_ids) == 0:
             self._parent_ids = []
-            self._basis_tree = self.branch.repository.revision_tree(None)
+            self._branch_revision_id = _mod_revision.NULL_REVISION
         else:
             self._parent_ids = revision_ids
-            self._basis_tree = self.branch.repository.revision_tree(
-                                    revision_ids[0])
             self._branch_revision_id = revision_ids[0]
+        self._allow_leftmost_as_ghost = allow_leftmost_as_ghost
+        self._set_basis()
+    
+    def _set_basis(self):
+        try:
+            self._basis_tree = self.branch.repository.revision_tree(
+                self._branch_revision_id)
+        except errors.NoSuchRevision:
+            if self._allow_leftmost_as_ghost:
+                self._basis_tree = self.branch.repository.revision_tree(
+                    _mod_revision.NULL_REVISION)
+            else:
+                raise
 
     def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
         """See MutableTree.set_parent_trees()."""
         if len(parents_list) == 0:
             self._parent_ids = []
-            self._basis_tree = self.branch.repository.revision_tree(None)
+            self._basis_tree = self.branch.repository.revision_tree(
+                                   _mod_revision.NULL_REVISION)
         else:
             if parents_list[0][1] is None and not allow_leftmost_as_ghost:
                 # a ghost in the left most parent
                 raise errors.GhostRevisionUnusableHere(parents_list[0][0])
             self._parent_ids = [parent_id for parent_id, tree in parents_list]
             if parents_list[0][1] is None or parents_list[0][1] == 'null:':
-                import pdb; pdb.set_trace()
-                self._basis_tree = self.branch.repository.revision_tree(None)
+                self._basis_tree = self.branch.repository.revision_tree(
+                                       _mod_revision.NULL_REVISION)
             else:
                 self._basis_tree = parents_list[0][1]
             self._branch_revision_id = parents_list[0][0]

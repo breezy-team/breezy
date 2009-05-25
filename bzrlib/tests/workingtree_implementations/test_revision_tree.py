@@ -12,11 +12,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for WorkingTree.revision_tree.
 
-These tests are in addition to the tests from 
+These tests are in addition to the tests from
 tree_implementations.test_revision_tree which cover the behaviour expected from
 all Trees. WorkingTrees implement the revision_tree api to allow access to
 cached data, but we don't require that all WorkingTrees have such a cache,

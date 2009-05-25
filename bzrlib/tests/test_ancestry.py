@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 from cStringIO import StringIO
@@ -22,7 +22,6 @@ import sys
 from bzrlib.tests import TestCaseWithMemoryTransport
 from bzrlib.branch import Branch
 from bzrlib.branchbuilder import BranchBuilder
-from bzrlib.revision import is_ancestor
 
 
 class TestAncestry(TestCaseWithMemoryTransport):
@@ -41,18 +40,5 @@ class TestAncestry(TestCaseWithMemoryTransport):
         self.assertAncestryEqual([None, rev_id_one, rev_id_two],
             rev_id_two, branch)
         self.assertAncestryEqual([None, rev_id_one], rev_id_one, branch)
-
-    def test_none_is_ancestor_empty_branch(self):
-        branch = self.make_branch('.')
-        self.assertTrue(is_ancestor('null:', 'null:', branch))
-
-    def test_none_is_ancestor_non_empty_branch(self):
-        builder = BranchBuilder(self.get_transport())
-        rev_id = builder.build_commit()
-        branch = builder.get_branch()
-        self.assertTrue(is_ancestor('null:', 'null:', branch))
-        self.assertTrue(is_ancestor(rev_id, 'null:',  branch))
-        self.assertFalse(is_ancestor('null:', rev_id, branch))
-
 
 # TODO: check that ancestry is updated to include indirectly merged revisions

@@ -1,0 +1,106 @@
+Controlling file registration
+=============================
+
+What does Bazaar track?
+-----------------------
+
+As explained earlier, ``bzr add`` finds and registers all the things in
+and under the current directory that Bazaar thinks ought to be
+version controlled. These things may be:
+
+ * files
+ * directories
+ * symbolic links.
+
+Bazaar has default rules for deciding which files are
+interesting and which ones are not. You can tune those rules as
+explained in `Ignoring files`_ below.
+
+Unlike many other VCS tools, Bazaar tracks directories as first class
+items. As a consequence, empty directories are correctly supported -
+you don't need to create a dummy file inside a directory just to
+ensure it gets tracked and included in project exports.
+
+For symbolic links, the value of the symbolic link is tracked,
+not the content of the thing the symbolic link is pointing to.
+
+Note: Support for tracking projects-within-projects ("nested trees")
+is currently under development. Please contact the Bazaar developers
+if you are interested in helping develop or test this functionality.
+
+Selective registration
+----------------------
+
+In some cases, you may want or need to explicitly nominate the things
+to register rather than leave it up to Bazaar to find things. To do this,
+simply provide paths as arguments to the ``add`` command like this::
+
+  bzr add fileX dirY/
+
+Adding a directory implicitly adds all interesting things
+underneath it.
+
+Ignoring files
+--------------
+
+Many source trees contain some files that do not need to be versioned,
+such as editor backups, object or bytecode files, and built programs.  You
+can simply not add them, but then they'll always crop up as unknown files.
+You can also tell Bazaar to ignore these files by adding them to a file
+called ``.bzrignore`` at the top of the tree.
+
+This file contains a list of file wildcards (or "globs"), one per line.
+Typical contents are like this::
+
+    *.o
+    *~
+    *.tmp
+    *.py[co]
+
+If a glob contains a slash, it is matched against the whole path from the
+top of the tree; otherwise it is matched against only the filename.  So
+the previous example ignores files with extension ``.o`` in all
+subdirectories, but this example ignores only ``config.h`` at the top level
+and HTML files in ``doc/``::
+
+    ./config.h
+    doc/*.html
+
+To get a list of which files are ignored and what pattern they matched,
+use ``bzr ignored``::
+
+    % bzr ignored
+    config.h                 ./config.h
+    configure.in~            *~
+
+Note that ignore patterns are only matched against non-versioned files,
+and control whether they are treated as "unknown" or "ignored".  If a file
+is explicitly added, it remains versioned regardless of whether it matches
+an ignore pattern.
+
+The ``.bzrignore`` file should normally be versioned, so that new copies
+of the branch see the same patterns::
+
+    % bzr add .bzrignore
+    % bzr commit -m "Add ignore patterns"
+
+The command ``bzr ignore PATTERN`` can be used to easily add PATTERN to
+the ``.bzrignore file`` (creating it if necessary and registering it to
+be tracked by Bazaar).  Removing and modifying patterns are done by
+directly editing the ``.bzrignore`` file.
+
+Global ignores
+--------------
+
+There are some ignored files which are not project specific, but more user
+specific. Things like editor temporary files, or personal temporary files.
+Rather than add these ignores to every project, bzr supports a global
+ignore file in ``~/.bazaar/ignore`` [#]_. It has the same syntax as the
+per-project ignore file.
+
+.. [#] On Windows, the users configuration files can be found in the
+   application data directory. So instead of ``~/.bazaar/branch.conf``
+   the configuration file can be found as: 
+   ``C:\Documents and Settings\<username>\Application Data\Bazaar\2.0\branch.conf``.
+   The same is true for ``locations.conf``, ``ignore``, and the
+   ``plugins`` directory.

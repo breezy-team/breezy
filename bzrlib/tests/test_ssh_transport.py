@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from bzrlib.tests import TestCase
 from bzrlib.errors import SSHVendorNotFound, UnknownSSH
@@ -184,7 +184,7 @@ class SubprocessVendorsTests(TestCase):
         self.assertEqual(
             vendor._get_vendor_specific_argv(
                 "user", "host", 100, command=["bzr"]),
-            ["plink", "-x", "-a", "-ssh", "-2",
+            ["plink", "-x", "-a", "-ssh", "-2", "-batch",
                 "-P", "100",
                 "-l", "user",
                 "host", "bzr"]
@@ -195,7 +195,7 @@ class SubprocessVendorsTests(TestCase):
         self.assertEqual(
             vendor._get_vendor_specific_argv(
                 "user", "host", 100, subsystem="sftp"),
-            ["plink", "-x", "-a", "-ssh", "-2",
+            ["plink", "-x", "-a", "-ssh", "-2", "-batch",
                 "-P", "100",
                 "-l", "user",
                 "-s", "host", "sftp"]

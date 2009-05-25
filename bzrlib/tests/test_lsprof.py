@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for profiling data collection."""
 
@@ -64,7 +64,7 @@ class TestStatsSave(tests.TestCaseInTempDir):
 
     def _tempfile(self, ext):
         dir = self.test_dir
-        return os.path.join(dir, "tmp_profile_data." + ext)
+        return bzrlib.osutils.pathjoin(dir, "tmp_profile_data." + ext)
 
     def test_stats_save_to_txt(self):
         f = self._tempfile("txt")
@@ -74,6 +74,10 @@ class TestStatsSave(tests.TestCaseInTempDir):
 
     def test_stats_save_to_callgrind(self):
         f = self._tempfile("callgrind")
+        self.stats.save(f)
+        lines = open(f).readlines()
+        self.assertEqual(lines[0], "events: Ticks\n")
+        f = bzrlib.osutils.pathjoin(self.test_dir, "callgrind.out.foo")
         self.stats.save(f)
         lines = open(f).readlines()
         self.assertEqual(lines[0], "events: Ticks\n")

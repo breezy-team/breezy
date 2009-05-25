@@ -12,14 +12,18 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 import sys
 
 import bzrlib.errors
 from bzrlib.osutils import getcwd
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import (
+    TestCaseWithTransport,
+    TestNotApplicable,
+    TestSkipped,
+    )
 from bzrlib import urlutils
 
 
@@ -32,7 +36,7 @@ class TestParent(TestCaseWithTransport):
         """Branches should have no parent by default"""
         b = self.make_branch('.')
         self.assertEqual(None, b.get_parent())
-        
+
     def test_set_get_parent(self):
         """Set, re-get and reset the parent"""
         b = self.make_branch('subdir')
@@ -67,7 +71,9 @@ class TestParent(TestCaseWithTransport):
             #       paths as well? Nobody has complained about it.
             pass
         else:
+            b.lock_write()
             b._set_parent_location('/local/abs/path')
+            b.unlock()
             self.assertEqual('file:///local/abs/path', b.get_parent())
 
     def test_get_invalid_parent(self):
@@ -79,8 +85,23 @@ class TestParent(TestCaseWithTransport):
         # Force the relative path to be something invalid
         # This should attempt to go outside the filesystem
         path = ('../'*(n_dirs+5)) + 'foo'
+        b.lock_write()
         b._set_parent_location(path)
+        b.unlock()
 
         # With an invalid branch parent, just return None
         self.assertRaises(bzrlib.errors.InaccessibleParent, b.get_parent)
 
+    def test_win32_set_parent_on_another_drive(self):
+        if sys.platform != 'win32':
+            raise TestSkipped('windows-specific test')
+        b = self.make_branch('.')
+        base_url = b.abspath('.')
+        if not base_url.startswith('file:///'):
+            raise TestNotApplicable('this test should be run with local base')
+        base = urlutils.local_path_from_url(base_url)
+        other = 'file:///B:/path'
+        if base[0] != 'C':
+            other = 'file:///C:/path'
+        b.set_parent(other)
+        self.assertEquals(other, b._get_parent_location())

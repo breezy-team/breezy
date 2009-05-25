@@ -13,7 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the RevisionTree class."""
 
@@ -22,7 +22,6 @@ from bzrlib import (
     )
 import bzrlib
 from bzrlib.tests import TestCaseWithTransport
-from bzrlib.tree import RevisionTree
 
 
 class TestTreeWithCommits(TestCaseWithTransport):
@@ -51,9 +50,10 @@ class TestTreeWithCommits(TestCaseWithTransport):
             self.t.branch.repository.revision_tree(revid_2).get_parent_ids())
         # TODO commit a merge and check it is reported correctly.
 
-        # the parents for a revision_tree(None) are []:
+        # the parents for a revision_tree(NULL_REVISION) are []:
         self.assertEqual([],
-            self.t.branch.repository.revision_tree(None).get_parent_ids())
+            self.t.branch.repository.revision_tree(
+                revision.NULL_REVISION).get_parent_ids())
 
     def test_empty_no_root(self):
         null_tree = self.t.branch.repository.revision_tree(

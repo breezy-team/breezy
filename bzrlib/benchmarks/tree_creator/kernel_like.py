@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tree creators for kernel-like trees"""
 
@@ -69,8 +69,8 @@ class KernelLikeTreeCreator(TreeCreator):
         return tree
 
     def _create_tree(self, root, in_cache=False):
-        # a kernel tree has ~10000 and 500 directory, with most files around 
-        # 3-4 levels deep. 
+        # a kernel tree has ~10000 and 500 directory, with most files around
+        # 3-4 levels deep.
         # we simulate this by three levels of dirs named 0-7, givin 512 dirs,
         # and 20 files each.
         files = []
@@ -195,7 +195,6 @@ class KernelLikeInventoryCreator(TreeCreator):
             returns only an in-memory Inventory, so it should always be None.
         :return: An Inventory object.
         """
-        assert root is None, "Cannot create a memory inventory in a on disk."
         cache_dir = self._get_cache_dir()
         if cache_dir is None:
             return self._create_and_return()
@@ -210,7 +209,12 @@ class KernelLikeInventoryCreator(TreeCreator):
                                                  link_bzr=True,
                                                  hot_cache=False)
         tree = creator.create('.')
-        return tree.basis_tree().inventory
+        basis = tree.basis_tree()
+        basis.lock_read()
+        try:
+            return basis.inventory
+        finally:
+            basis.unlock()
 
     def _open_cached(self, cache_dir):
         f = open(cache_dir + '/inventory', 'rb')

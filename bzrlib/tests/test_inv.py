@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,177 +12,13 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from bzrlib import errors, inventory, osutils
-from bzrlib.inventory import (Inventory, ROOT_ID, InventoryFile,
+
+from bzrlib import errors, chk_map, inventory, osutils
+from bzrlib.inventory import (CHKInventory, Inventory, ROOT_ID, InventoryFile,
     InventoryDirectory, InventoryEntry, TreeReference)
-from bzrlib.osutils import (pathjoin, is_inside_any, 
-    is_inside_or_parent_of_any)
-from bzrlib.tests import TestCase
-
-
-class TestInventory(TestCase):
-
-    def test_add_path(self):
-
-        inv = Inventory(root_id=None)
-        self.assertIs(None, inv.root)
-        ie = inv.add_path("", "directory", "my-root")
-        self.assertEqual("my-root", ie.file_id)
-        self.assertIs(ie, inv.root)
-
-    def test_is_within(self):
-
-        SRC_FOO_C = pathjoin('src', 'foo.c')
-        for dirs, fn in [(['src', 'doc'], SRC_FOO_C),
-                         (['src'], SRC_FOO_C),
-                         (['src'], 'src'),
-                         ]:
-            self.assert_(is_inside_any(dirs, fn))
-            
-        for dirs, fn in [(['src'], 'srccontrol'),
-                         (['src'], 'srccontrol/foo')]:
-            self.assertFalse(is_inside_any(dirs, fn))
-
-    def test_is_within_or_parent(self):
-        for dirs, fn in [(['src', 'doc'], 'src/foo.c'),
-                         (['src'], 'src/foo.c'),
-                         (['src/bar.c'], 'src'),
-                         (['src/bar.c', 'bla/foo.c'], 'src'),
-                         (['src'], 'src'),
-                         ]:
-            self.assert_(is_inside_or_parent_of_any(dirs, fn))
-            
-        for dirs, fn in [(['src'], 'srccontrol'),
-                         (['srccontrol/foo.c'], 'src'),
-                         (['src'], 'srccontrol/foo')]:
-            self.assertFalse(is_inside_or_parent_of_any(dirs, fn))
-
-    def test_ids(self):
-        """Test detection of files within selected directories."""
-        inv = Inventory()
-        
-        for args in [('src', 'directory', 'src-id'), 
-                     ('doc', 'directory', 'doc-id'), 
-                     ('src/hello.c', 'file'),
-                     ('src/bye.c', 'file', 'bye-id'),
-                     ('Makefile', 'file')]:
-            inv.add_path(*args)
-            
-        self.assertEqual(inv.path2id('src'), 'src-id')
-        self.assertEqual(inv.path2id('src/bye.c'), 'bye-id')
-        
-        self.assert_('src-id' in inv)
-
-    def test_non_directory_children(self):
-        """Test path2id when a parent directory has no children"""
-        inv = inventory.Inventory('tree_root')
-        inv.add(inventory.InventoryFile('file-id','file', 
-                                        parent_id='tree_root'))
-        inv.add(inventory.InventoryLink('link-id','link', 
-                                        parent_id='tree_root'))
-        self.assertIs(None, inv.path2id('file/subfile'))
-        self.assertIs(None, inv.path2id('link/subfile'))
-
-    def test_iter_entries(self):
-        inv = Inventory()
-        
-        for args in [('src', 'directory', 'src-id'), 
-                     ('doc', 'directory', 'doc-id'), 
-                     ('src/hello.c', 'file', 'hello-id'),
-                     ('src/bye.c', 'file', 'bye-id'),
-                     ('Makefile', 'file', 'makefile-id')]:
-            inv.add_path(*args)
-
-        self.assertEqual([
-            ('', ROOT_ID),
-            ('Makefile', 'makefile-id'),
-            ('doc', 'doc-id'),
-            ('src', 'src-id'),
-            ('src/bye.c', 'bye-id'),
-            ('src/hello.c', 'hello-id'),
-            ], [(path, ie.file_id) for path, ie in inv.iter_entries()])
-            
-    def test_iter_entries_by_dir(self):
-        inv = Inventory()
-        
-        for args in [('src', 'directory', 'src-id'), 
-                     ('doc', 'directory', 'doc-id'), 
-                     ('src/hello.c', 'file', 'hello-id'),
-                     ('src/bye.c', 'file', 'bye-id'),
-                     ('zz', 'file', 'zz-id'),
-                     ('src/sub/', 'directory', 'sub-id'),
-                     ('src/zz.c', 'file', 'zzc-id'),
-                     ('src/sub/a', 'file', 'a-id'),
-                     ('Makefile', 'file', 'makefile-id')]:
-            inv.add_path(*args)
-
-        self.assertEqual([
-            ('', ROOT_ID),
-            ('Makefile', 'makefile-id'),
-            ('doc', 'doc-id'),
-            ('src', 'src-id'),
-            ('zz', 'zz-id'),
-            ('src/bye.c', 'bye-id'),
-            ('src/hello.c', 'hello-id'),
-            ('src/sub', 'sub-id'),
-            ('src/zz.c', 'zzc-id'),
-            ('src/sub/a', 'a-id'),
-            ], [(path, ie.file_id) for path, ie in inv.iter_entries_by_dir()])
-            
-        self.assertEqual([
-            ('', ROOT_ID),
-            ('Makefile', 'makefile-id'),
-            ('doc', 'doc-id'),
-            ('src', 'src-id'),
-            ('zz', 'zz-id'),
-            ('src/bye.c', 'bye-id'),
-            ('src/hello.c', 'hello-id'),
-            ('src/sub', 'sub-id'),
-            ('src/zz.c', 'zzc-id'),
-            ('src/sub/a', 'a-id'),
-            ], [(path, ie.file_id) for path, ie in inv.iter_entries_by_dir(
-                specific_file_ids=('a-id', 'zzc-id', 'doc-id', ROOT_ID,
-                'hello-id', 'bye-id', 'zz-id', 'src-id', 'makefile-id', 
-                'sub-id'))])
-
-        self.assertEqual([
-            ('Makefile', 'makefile-id'),
-            ('doc', 'doc-id'),
-            ('zz', 'zz-id'),
-            ('src/bye.c', 'bye-id'),
-            ('src/hello.c', 'hello-id'),
-            ('src/zz.c', 'zzc-id'),
-            ('src/sub/a', 'a-id'),
-            ], [(path, ie.file_id) for path, ie in inv.iter_entries_by_dir(
-                specific_file_ids=('a-id', 'zzc-id', 'doc-id',
-                'hello-id', 'bye-id', 'zz-id', 'makefile-id'))])
-
-        self.assertEqual([
-            ('Makefile', 'makefile-id'),
-            ('src/bye.c', 'bye-id'),
-            ], [(path, ie.file_id) for path, ie in inv.iter_entries_by_dir(
-                specific_file_ids=('bye-id', 'makefile-id'))])
-
-        self.assertEqual([
-            ('Makefile', 'makefile-id'),
-            ('src/bye.c', 'bye-id'),
-            ], [(path, ie.file_id) for path, ie in inv.iter_entries_by_dir(
-                specific_file_ids=('bye-id', 'makefile-id'))])
-
-        self.assertEqual([
-            ('src/bye.c', 'bye-id'),
-            ], [(path, ie.file_id) for path, ie in inv.iter_entries_by_dir(
-                specific_file_ids=('bye-id',))])
-
-    def test_add_recursive(self):
-        parent = InventoryDirectory('src-id', 'src', ROOT_ID)
-        child = InventoryFile('hello-id', 'hello.c', 'src-id')
-        parent.children[child.file_id] = child
-        inv = Inventory()
-        inv.add(parent)
-        self.assertEqual('src/hello.c', inv.id2path('hello-id'))
+from bzrlib.tests import TestCase, TestCaseWithTransport
 
 
 class TestInventoryEntry(TestCase):
@@ -304,7 +140,7 @@ class TestDescribeChanges(TestCase):
         # perhaps a bit questionable but seems like the most reasonable thing...
         self.assertChangeDescription('unchanged', None, None)
 
-        # in this case it's both renamed and modified; show a rename and 
+        # in this case it's both renamed and modified; show a rename and
         # modification:
         new_a.name = 'newfilename'
         self.assertChangeDescription('modified and renamed', old_a, new_a)
@@ -332,38 +168,471 @@ class TestDescribeChanges(TestCase):
         self.assertEqual(expected_change, change)
 
 
-class TestIsRoot(TestCase):
-    """Ensure our root-checking code is accurate."""
+class TestCHKInventory(TestCaseWithTransport):
 
-    def test_is_root(self):
-        inv = Inventory('TREE_ROOT')
-        self.assertTrue(inv.is_root('TREE_ROOT'))
-        self.assertFalse(inv.is_root('booga'))
-        inv.root.file_id = 'booga'
-        self.assertFalse(inv.is_root('TREE_ROOT'))
-        self.assertTrue(inv.is_root('booga'))
-        # works properly even if no root is set
-        inv.root = None
-        self.assertFalse(inv.is_root('TREE_ROOT'))
-        self.assertFalse(inv.is_root('booga'))
+    def get_chk_bytes(self):
+        # The easiest way to get a CHK store is a development6 repository and
+        # then work with the chk_bytes attribute directly.
+        repo = self.make_repository(".", format="development6-rich-root")
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        self.addCleanup(repo.abort_write_group)
+        return repo.chk_bytes
 
+    def read_bytes(self, chk_bytes, key):
+        stream = chk_bytes.get_record_stream([key], 'unordered', True)
+        return stream.next().get_bytes_as("fulltext")
 
-class TestTreeReference(TestCase):
-    
-    def test_create(self):
-        inv = Inventory('tree-root-123')
-        inv.add(TreeReference('nested-id', 'nested', parent_id='tree-root-123',
-                              revision='rev', reference_revision='rev2'))
+    def test_deserialise_gives_CHKInventory(self):
+        inv = Inventory()
+        inv.revision_id = "revid"
+        inv.root.revision = "rootrev"
+        chk_bytes = self.get_chk_bytes()
+        chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        bytes = ''.join(chk_inv.to_lines())
+        new_inv = CHKInventory.deserialise(chk_bytes, bytes, ("revid",))
+        self.assertEqual("revid", new_inv.revision_id)
+        self.assertEqual("directory", new_inv.root.kind)
+        self.assertEqual(inv.root.file_id, new_inv.root.file_id)
+        self.assertEqual(inv.root.parent_id, new_inv.root.parent_id)
+        self.assertEqual(inv.root.name, new_inv.root.name)
+        self.assertEqual("rootrev", new_inv.root.revision)
+        self.assertEqual('plain', new_inv._search_key_name)
 
+    def test_deserialise_wrong_revid(self):
+        inv = Inventory()
+        inv.revision_id = "revid"
+        inv.root.revision = "rootrev"
+        chk_bytes = self.get_chk_bytes()
+        chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        bytes = ''.join(chk_inv.to_lines())
+        self.assertRaises(ValueError, CHKInventory.deserialise, chk_bytes,
+            bytes, ("revid2",))
 
-class TestEncoding(TestCase):
+    def test_captures_rev_root_byid(self):
+        inv = Inventory()
+        inv.revision_id = "foo"
+        inv.root.revision = "bar"
+        chk_bytes = self.get_chk_bytes()
+        chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        lines = chk_inv.to_lines()
+        self.assertEqual([
+            'chkinventory:\n',
+            'revision_id: foo\n',
+            'root_id: TREE_ROOT\n',
+            'parent_id_basename_to_file_id: sha1:eb23f0ad4b07f48e88c76d4c94292be57fb2785f\n',
+            'id_to_entry: sha1:debfe920f1f10e7929260f0534ac9a24d7aabbb4\n',
+            ], lines)
+        chk_inv = CHKInventory.deserialise(chk_bytes, ''.join(lines), ('foo',))
+        self.assertEqual('plain', chk_inv._search_key_name)
 
-    def test_error_encoding(self):
-        inv = Inventory('tree-root')
-        inv.add(InventoryFile('a-id', u'\u1234', 'tree-root'))
-        try:
-            inv.add(InventoryFile('b-id', u'\u1234', 'tree-root'))
-        except errors.BzrError, e:
-            self.assertContainsRe(str(e), u'\u1234'.encode('utf-8'))
-        else:
-            self.fail('BzrError not raised')
+    def test_captures_parent_id_basename_index(self):
+        inv = Inventory()
+        inv.revision_id = "foo"
+        inv.root.revision = "bar"
+        chk_bytes = self.get_chk_bytes()
+        chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        lines = chk_inv.to_lines()
+        self.assertEqual([
+            'chkinventory:\n',
+            'revision_id: foo\n',
+            'root_id: TREE_ROOT\n',
+            'parent_id_basename_to_file_id: sha1:eb23f0ad4b07f48e88c76d4c94292be57fb2785f\n',
+            'id_to_entry: sha1:debfe920f1f10e7929260f0534ac9a24d7aabbb4\n',
+            ], lines)
+        chk_inv = CHKInventory.deserialise(chk_bytes, ''.join(lines), ('foo',))
+        self.assertEqual('plain', chk_inv._search_key_name)
+
+    def test_captures_search_key_name(self):
+        inv = Inventory()
+        inv.revision_id = "foo"
+        inv.root.revision = "bar"
+        chk_bytes = self.get_chk_bytes()
+        chk_inv = CHKInventory.from_inventory(chk_bytes, inv,
+                                              search_key_name='hash-16-way')
+        lines = chk_inv.to_lines()
+        self.assertEqual([
+            'chkinventory:\n',
+            'search_key_name: hash-16-way\n',
+            'root_id: TREE_ROOT\n',
+            'parent_id_basename_to_file_id: sha1:eb23f0ad4b07f48e88c76d4c94292be57fb2785f\n',
+            'revision_id: foo\n',
+            'id_to_entry: sha1:debfe920f1f10e7929260f0534ac9a24d7aabbb4\n',
+            ], lines)
+        chk_inv = CHKInventory.deserialise(chk_bytes, ''.join(lines), ('foo',))
+        self.assertEqual('hash-16-way', chk_inv._search_key_name)
+
+    def test_directory_children_on_demand(self):
+        inv = Inventory()
+        inv.revision_id = "revid"
+        inv.root.revision = "rootrev"
+        inv.add(InventoryFile("fileid", "file", inv.root.file_id))
+        inv["fileid"].revision = "filerev"
+        inv["fileid"].executable = True
+        inv["fileid"].text_sha1 = "ffff"
+        inv["fileid"].text_size = 1
+        chk_bytes = self.get_chk_bytes()
+        chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        bytes = ''.join(chk_inv.to_lines())
+        new_inv = CHKInventory.deserialise(chk_bytes, bytes, ("revid",))
+        root_entry = new_inv[inv.root.file_id]
+        self.assertEqual(None, root_entry._children)
+        self.assertEqual(['file'], root_entry.children.keys())
+        file_direct = new_inv["fileid"]
+        file_found = root_entry.children['file']
+        self.assertEqual(file_direct.kind, file_found.kind)
+        self.assertEqual(file_direct.file_id, file_found.file_id)
+        self.assertEqual(file_direct.parent_id, file_found.parent_id)
+        self.assertEqual(file_direct.name, file_found.name)
+        self.assertEqual(file_direct.revision, file_found.revision)
+        self.assertEqual(file_direct.text_sha1, file_found.text_sha1)
+        self.assertEqual(file_direct.text_size, file_found.text_size)
+        self.assertEqual(file_direct.executable, file_found.executable)
+
+    def test_from_inventory_maximum_size(self):
+        # from_inventory supports the maximum_size parameter.
+        inv = Inventory()
+        inv.revision_id = "revid"
+        inv.root.revision = "rootrev"
+        chk_bytes = self.get_chk_bytes()
+        chk_inv = CHKInventory.from_inventory(chk_bytes, inv, 120)
+        self.assertEqual(120, chk_inv.id_to_entry._root_node.maximum_size)
+
+    def test___iter__(self):
+        inv = Inventory()
+        inv.revision_id = "revid"
+        inv.root.revision = "rootrev"
+        inv.add(InventoryFile("fileid", "file", inv.root.file_id))
+        inv["fileid"].revision = "filerev"
+        inv["fileid"].executable = True
+        inv["fileid"].text_sha1 = "ffff"
+        inv["fileid"].text_size = 1
+        chk_bytes = self.get_chk_bytes()
+        chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        bytes = ''.join(chk_inv.to_lines())
+        new_inv = CHKInventory.deserialise(chk_bytes, bytes, ("revid",))
+        fileids = list(new_inv.__iter__())
+        fileids.sort()
+        self.assertEqual([inv.root.file_id, "fileid"], fileids)
+
+    def test__len__(self):
+        inv = Inventory()
+        inv.revision_id = "revid"
+        inv.root.revision = "rootrev"
+        inv.add(InventoryFile("fileid", "file", inv.root.file_id))
+        inv["fileid"].revision = "filerev"
+        inv["fileid"].executable = True
+        inv["fileid"].text_sha1 = "ffff"
+        inv["fileid"].text_size = 1
+        chk_bytes = self.get_chk_bytes()
+        chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        self.assertEqual(2, len(chk_inv))
+
+    def test___getitem__(self):
+        inv = Inventory()
+        inv.revision_id = "revid"
+        inv.root.revision = "rootrev"
+        inv.add(InventoryFile("fileid", "file", inv.root.file_id))
+        inv["fileid"].revision = "filerev"
+        inv["fileid"].executable = True
+        inv["fileid"].text_sha1 = "ffff"
+        inv["fileid"].text_size = 1
+        chk_bytes = self.get_chk_bytes()
+        chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        bytes = ''.join(chk_inv.to_lines())
+        new_inv = CHKInventory.deserialise(chk_bytes, bytes, ("revid",))
+        root_entry = new_inv[inv.root.file_id]
+        file_entry = new_inv["fileid"]
+        self.assertEqual("directory", root_entry.kind)
+        self.assertEqual(inv.root.file_id, root_entry.file_id)
+        self.assertEqual(inv.root.parent_id, root_entry.parent_id)
+        self.assertEqual(inv.root.name, root_entry.name)
+        self.assertEqual("rootrev", root_entry.revision)
+        self.assertEqual("file", file_entry.kind)
+        self.assertEqual("fileid", file_entry.file_id)
+        self.assertEqual(inv.root.file_id, file_entry.parent_id)
+        self.assertEqual("file", file_entry.name)
+        self.assertEqual("filerev", file_entry.revision)
+        self.assertEqual("ffff", file_entry.text_sha1)
+        self.assertEqual(1, file_entry.text_size)
+        self.assertEqual(True, file_entry.executable)
+        self.assertRaises(errors.NoSuchId, new_inv.__getitem__, 'missing')
+
+    def test_has_id_true(self):
+        inv = Inventory()
+        inv.revision_id = "revid"
+        inv.root.revision = "rootrev"
+        inv.add(InventoryFile("fileid", "file", inv.root.file_id))
+        inv["fileid"].revision = "filerev"
+        inv["fileid"].executable = True
+        inv["fileid"].text_sha1 = "ffff"
+        inv["fileid"].text_size = 1
+        chk_bytes = self.get_chk_bytes()
+        chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        self.assertTrue(chk_inv.has_id('fileid'))
+        self.assertTrue(chk_inv.has_id(inv.root.file_id))
+
+    def test_has_id_not(self):
+        inv = Inventory()
+        inv.revision_id = "revid"
+        inv.root.revision = "rootrev"
+        chk_bytes = self.get_chk_bytes()
+        chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        self.assertFalse(chk_inv.has_id('fileid'))
+
+    def test_id2path(self):
+        inv = Inventory()
+        inv.revision_id = "revid"
+        inv.root.revision = "rootrev"
+        direntry = InventoryDirectory("dirid", "dir", inv.root.file_id)
+        fileentry = InventoryFile("fileid", "file", "dirid")
+        inv.add(direntry)
+        inv.add(fileentry)
+        inv["fileid"].revision = "filerev"
+        inv["fileid"].executable = True
+        inv["fileid"].text_sha1 = "ffff"
+        inv["fileid"].text_size = 1
+        inv["dirid"].revision = "filerev"
+        chk_bytes = self.get_chk_bytes()
+        chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        bytes = ''.join(chk_inv.to_lines())
+        new_inv = CHKInventory.deserialise(chk_bytes, bytes, ("revid",))
+        self.assertEqual('', new_inv.id2path(inv.root.file_id))
+        self.assertEqual('dir', new_inv.id2path('dirid'))
+        self.assertEqual('dir/file', new_inv.id2path('fileid'))
+
+    def test_path2id(self):
+        inv = Inventory()
+        inv.revision_id = "revid"
+        inv.root.revision = "rootrev"
+        direntry = InventoryDirectory("dirid", "dir", inv.root.file_id)
+        fileentry = InventoryFile("fileid", "file", "dirid")
+        inv.add(direntry)
+        inv.add(fileentry)
+        inv["fileid"].revision = "filerev"
+        inv["fileid"].executable = True
+        inv["fileid"].text_sha1 = "ffff"
+        inv["fileid"].text_size = 1
+        inv["dirid"].revision = "filerev"
+        chk_bytes = self.get_chk_bytes()
+        chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        bytes = ''.join(chk_inv.to_lines())
+        new_inv = CHKInventory.deserialise(chk_bytes, bytes, ("revid",))
+        self.assertEqual(inv.root.file_id, new_inv.path2id(''))
+        self.assertEqual('dirid', new_inv.path2id('dir'))
+        self.assertEqual('fileid', new_inv.path2id('dir/file'))
+
+    def test_create_by_apply_delta_sets_root(self):
+        inv = Inventory()
+        inv.revision_id = "revid"
+        chk_bytes = self.get_chk_bytes()
+        base_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        inv.add_path("", "directory", "myrootid", None)
+        inv.revision_id = "expectedid"
+        reference_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        delta = [(None, "",  "myrootid", inv.root)]
+        new_inv = base_inv.create_by_apply_delta(delta, "expectedid")
+        self.assertEquals(reference_inv.root, new_inv.root)
+
+    def test_create_by_apply_delta_empty_add_child(self):
+        inv = Inventory()
+        inv.revision_id = "revid"
+        inv.root.revision = "rootrev"
+        chk_bytes = self.get_chk_bytes()
+        base_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        a_entry = InventoryFile("A-id", "A", inv.root.file_id)
+        a_entry.revision = "filerev"
+        a_entry.executable = True
+        a_entry.text_sha1 = "ffff"
+        a_entry.text_size = 1
+        inv.add(a_entry)
+        inv.revision_id = "expectedid"
+        reference_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        delta = [(None, "A",  "A-id", a_entry)]
+        new_inv = base_inv.create_by_apply_delta(delta, "expectedid")
+        # new_inv should be the same as reference_inv.
+        self.assertEqual(reference_inv.revision_id, new_inv.revision_id)
+        self.assertEqual(reference_inv.root_id, new_inv.root_id)
+        self.assertEqual(reference_inv.id_to_entry._root_node._key,
+            new_inv.id_to_entry._root_node._key)
+
+    def test_create_by_apply_delta_empty_add_child_updates_parent_id(self):
+        inv = Inventory()
+        inv.revision_id = "revid"
+        inv.root.revision = "rootrev"
+        chk_bytes = self.get_chk_bytes()
+        base_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        a_entry = InventoryFile("A-id", "A", inv.root.file_id)
+        a_entry.revision = "filerev"
+        a_entry.executable = True
+        a_entry.text_sha1 = "ffff"
+        a_entry.text_size = 1
+        inv.add(a_entry)
+        inv.revision_id = "expectedid"
+        reference_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        delta = [(None, "A",  "A-id", a_entry)]
+        new_inv = base_inv.create_by_apply_delta(delta, "expectedid")
+        # new_inv should be the same as reference_inv.
+        self.assertEqual(reference_inv.revision_id, new_inv.revision_id)
+        self.assertEqual(reference_inv.root_id, new_inv.root_id)
+        self.assertEqual(reference_inv.id_to_entry._root_node._key,
+            new_inv.id_to_entry._root_node._key)
+        self.assertEqual(reference_inv.parent_id_basename_to_file_id._root_node._key,
+            new_inv.parent_id_basename_to_file_id._root_node._key)
+
+    def test_iter_changes(self):
+        # Low level bootstrapping smoke test; comprehensive generic tests via
+        # InterTree are coming.
+        inv = Inventory()
+        inv.revision_id = "revid"
+        inv.root.revision = "rootrev"
+        inv.add(InventoryFile("fileid", "file", inv.root.file_id))
+        inv["fileid"].revision = "filerev"
+        inv["fileid"].executable = True
+        inv["fileid"].text_sha1 = "ffff"
+        inv["fileid"].text_size = 1
+        inv2 = Inventory()
+        inv2.revision_id = "revid2"
+        inv2.root.revision = "rootrev"
+        inv2.add(InventoryFile("fileid", "file", inv.root.file_id))
+        inv2["fileid"].revision = "filerev2"
+        inv2["fileid"].executable = False
+        inv2["fileid"].text_sha1 = "bbbb"
+        inv2["fileid"].text_size = 2
+        # get fresh objects.
+        chk_bytes = self.get_chk_bytes()
+        chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        bytes = ''.join(chk_inv.to_lines())
+        inv_1 = CHKInventory.deserialise(chk_bytes, bytes, ("revid",))
+        chk_inv2 = CHKInventory.from_inventory(chk_bytes, inv2)
+        bytes = ''.join(chk_inv2.to_lines())
+        inv_2 = CHKInventory.deserialise(chk_bytes, bytes, ("revid2",))
+        self.assertEqual([('fileid', (u'file', u'file'), True, (True, True),
+            ('TREE_ROOT', 'TREE_ROOT'), (u'file', u'file'), ('file', 'file'),
+            (False, True))],
+            list(inv_1.iter_changes(inv_2)))
+
+    def test_parent_id_basename_to_file_id_index_enabled(self):
+        inv = Inventory()
+        inv.revision_id = "revid"
+        inv.root.revision = "rootrev"
+        inv.add(InventoryFile("fileid", "file", inv.root.file_id))
+        inv["fileid"].revision = "filerev"
+        inv["fileid"].executable = True
+        inv["fileid"].text_sha1 = "ffff"
+        inv["fileid"].text_size = 1
+        # get fresh objects.
+        chk_bytes = self.get_chk_bytes()
+        tmp_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        bytes = ''.join(tmp_inv.to_lines())
+        chk_inv = CHKInventory.deserialise(chk_bytes, bytes, ("revid",))
+        self.assertIsInstance(chk_inv.parent_id_basename_to_file_id, chk_map.CHKMap)
+        self.assertEqual(
+            {('', ''): 'TREE_ROOT', ('TREE_ROOT', 'file'): 'fileid'},
+            dict(chk_inv.parent_id_basename_to_file_id.iteritems()))
+
+    def test_file_entry_to_bytes(self):
+        inv = CHKInventory(None)
+        ie = inventory.InventoryFile('file-id', 'filename', 'parent-id')
+        ie.executable = True
+        ie.revision = 'file-rev-id'
+        ie.text_sha1 = 'abcdefgh'
+        ie.text_size = 100
+        bytes = inv._entry_to_bytes(ie)
+        self.assertEqual('file: file-id\nparent-id\nfilename\n'
+                         'file-rev-id\nabcdefgh\n100\nY', bytes)
+        ie2 = inv._bytes_to_entry(bytes)
+        self.assertEqual(ie, ie2)
+        self.assertIsInstance(ie2.name, unicode)
+        self.assertEqual(('filename', 'file-id', 'file-rev-id'),
+                         inv._bytes_to_utf8name_key(bytes))
+
+    def test_file2_entry_to_bytes(self):
+        inv = CHKInventory(None)
+        # \u30a9 == 'omega'
+        ie = inventory.InventoryFile('file-id', u'\u03a9name', 'parent-id')
+        ie.executable = False
+        ie.revision = 'file-rev-id'
+        ie.text_sha1 = '123456'
+        ie.text_size = 25
+        bytes = inv._entry_to_bytes(ie)
+        self.assertEqual('file: file-id\nparent-id\n\xce\xa9name\n'
+                         'file-rev-id\n123456\n25\nN', bytes)
+        ie2 = inv._bytes_to_entry(bytes)
+        self.assertEqual(ie, ie2)
+        self.assertIsInstance(ie2.name, unicode)
+        self.assertEqual(('\xce\xa9name', 'file-id', 'file-rev-id'),
+                         inv._bytes_to_utf8name_key(bytes))
+
+    def test_dir_entry_to_bytes(self):
+        inv = CHKInventory(None)
+        ie = inventory.InventoryDirectory('dir-id', 'dirname', 'parent-id')
+        ie.revision = 'dir-rev-id'
+        bytes = inv._entry_to_bytes(ie)
+        self.assertEqual('dir: dir-id\nparent-id\ndirname\ndir-rev-id', bytes)
+        ie2 = inv._bytes_to_entry(bytes)
+        self.assertEqual(ie, ie2)
+        self.assertIsInstance(ie2.name, unicode)
+        self.assertEqual(('dirname', 'dir-id', 'dir-rev-id'),
+                         inv._bytes_to_utf8name_key(bytes))
+
+    def test_dir2_entry_to_bytes(self):
+        inv = CHKInventory(None)
+        ie = inventory.InventoryDirectory('dir-id', u'dir\u03a9name',
+                                          None)
+        ie.revision = 'dir-rev-id'
+        bytes = inv._entry_to_bytes(ie)
+        self.assertEqual('dir: dir-id\n\ndir\xce\xa9name\n'
+                         'dir-rev-id', bytes)
+        ie2 = inv._bytes_to_entry(bytes)
+        self.assertEqual(ie, ie2)
+        self.assertIsInstance(ie2.name, unicode)
+        self.assertIs(ie2.parent_id, None)
+        self.assertEqual(('dir\xce\xa9name', 'dir-id', 'dir-rev-id'),
+                         inv._bytes_to_utf8name_key(bytes))
+
+    def test_symlink_entry_to_bytes(self):
+        inv = CHKInventory(None)
+        ie = inventory.InventoryLink('link-id', 'linkname', 'parent-id')
+        ie.revision = 'link-rev-id'
+        ie.symlink_target = u'target/path'
+        bytes = inv._entry_to_bytes(ie)
+        self.assertEqual('symlink: link-id\nparent-id\nlinkname\n'
+                         'link-rev-id\ntarget/path', bytes)
+        ie2 = inv._bytes_to_entry(bytes)
+        self.assertEqual(ie, ie2)
+        self.assertIsInstance(ie2.name, unicode)
+        self.assertIsInstance(ie2.symlink_target, unicode)
+        self.assertEqual(('linkname', 'link-id', 'link-rev-id'),
+                         inv._bytes_to_utf8name_key(bytes))
+
+    def test_symlink2_entry_to_bytes(self):
+        inv = CHKInventory(None)
+        ie = inventory.InventoryLink('link-id', u'link\u03a9name', 'parent-id')
+        ie.revision = 'link-rev-id'
+        ie.symlink_target = u'target/\u03a9path'
+        bytes = inv._entry_to_bytes(ie)
+        self.assertEqual('symlink: link-id\nparent-id\nlink\xce\xa9name\n'
+                         'link-rev-id\ntarget/\xce\xa9path', bytes)
+        ie2 = inv._bytes_to_entry(bytes)
+        self.assertEqual(ie, ie2)
+        self.assertIsInstance(ie2.name, unicode)
+        self.assertIsInstance(ie2.symlink_target, unicode)
+        self.assertEqual(('link\xce\xa9name', 'link-id', 'link-rev-id'),
+                         inv._bytes_to_utf8name_key(bytes))
+
+    def test_tree_reference_entry_to_bytes(self):
+        inv = CHKInventory(None)
+        ie = inventory.TreeReference('tree-root-id', u'tree\u03a9name',
+                                     'parent-id')
+        ie.revision = 'tree-rev-id'
+        ie.reference_revision = 'ref-rev-id'
+        bytes = inv._entry_to_bytes(ie)
+        self.assertEqual('tree: tree-root-id\nparent-id\ntree\xce\xa9name\n'
+                         'tree-rev-id\nref-rev-id', bytes)
+        ie2 = inv._bytes_to_entry(bytes)
+        self.assertEqual(ie, ie2)
+        self.assertIsInstance(ie2.name, unicode)
+        self.assertEqual(('tree\xce\xa9name', 'tree-root-id', 'tree-rev-id'),
+                         inv._bytes_to_utf8name_key(bytes))

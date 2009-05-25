@@ -12,14 +12,14 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Benchmark test suite for bzr."""
 
 from bzrlib import (
     bzrdir,
-    plugin,
     )
+from bzrlib import plugin as _mod_plugin
 import bzrlib.branch
 from bzrlib.tests.TestUtil import TestLoader
 from bzrlib.tests.blackbox import ExternalBase
@@ -77,7 +77,7 @@ class Benchmark(ExternalBase):
         :param link_working: Instead of copying all of the working tree
             files, just hardlink them to the cached files. Tests can unlink
             files that they will change.
-        :param link_bzr: Hardlink the .bzr directory. For readonly 
+        :param link_bzr: Hardlink the .bzr directory. For readonly
             operations this is safe, and shaves off a lot of setup time
         """
         from bzrlib.benchmarks.tree_creator.kernel_like import (
@@ -104,8 +104,8 @@ class Benchmark(ExternalBase):
     def make_many_commit_tree(self, directory_name='.',
                               hardlink=False):
         """Create a tree with many commits.
-        
-        No file changes are included. Not hardlinking the working tree, 
+
+        No file changes are included. Not hardlinking the working tree,
         because there are no working tree files.
         """
         from bzrlib.benchmarks.tree_creator.simple_many_commit import (
@@ -117,11 +117,11 @@ class Benchmark(ExternalBase):
     def make_heavily_merged_tree(self, directory_name='.',
                                  hardlink=False):
         """Create a tree in which almost every commit is a merge.
-       
-        No file changes are included.  This produces two trees, 
+
+        No file changes are included.  This produces two trees,
         one of which is returned.  Except for the first commit, every
         commit in its revision-history is a merge another commit in the other
-        tree.  Not hardlinking the working tree, because there are no working 
+        tree.  Not hardlinking the working tree, because there are no working
         tree files.
         """
         from bzrlib.benchmarks.tree_creator.heavily_merged import (
@@ -185,6 +185,7 @@ def test_suite():
                    'bzrlib.benchmarks.bench_inventory',
                    'bzrlib.benchmarks.bench_knit',
                    'bzrlib.benchmarks.bench_log',
+                   'bzrlib.benchmarks.bench_pack',
                    'bzrlib.benchmarks.bench_osutils',
                    'bzrlib.benchmarks.bench_rocks',
                    'bzrlib.benchmarks.bench_startup',
@@ -195,11 +196,11 @@ def test_suite():
                    'bzrlib.benchmarks.bench_sftp',
                    'bzrlib.benchmarks.bench_xml',
                    ]
-    suite = TestLoader().loadTestsFromModuleNames(testmod_names) 
+    suite = TestLoader().loadTestsFromModuleNames(testmod_names)
 
     # Load any benchmarks from plugins
-    for name, module in plugin.all_plugins().items():
-        if getattr(module, 'bench_suite', None) is not None:
-            suite.addTest(module.bench_suite())
+    for name, plugin in _mod_plugin.plugins().items():
+        if getattr(plugin.module, 'bench_suite', None) is not None:
+            suite.addTest(plugin.module.bench_suite())
 
     return suite

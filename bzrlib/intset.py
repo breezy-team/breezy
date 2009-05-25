@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 # Author: Martin Pool <mbp@canonical.com>
 
@@ -60,7 +60,7 @@ class IntSet(Exception):
     True
     >>> list(a)
     [10]
-    
+
     """
     __slots__ = ['_val']
 
@@ -80,7 +80,7 @@ class IntSet(Exception):
 
         >>> bool(IntSet())
         False
-        
+
         >>> bool(IntSet([0]))
         True
         """
@@ -129,7 +129,7 @@ class IntSet(Exception):
         """
         if not isinstance(other, IntSet):
             raise NotImplementedError(type(other))
-        return IntSet(bitmask=(self._val | other._val))        
+        return IntSet(bitmask=(self._val | other._val))
 
 
     def __eq__(self, other):
@@ -149,7 +149,6 @@ class IntSet(Exception):
 
 
     def __contains__(self, i):
-        assert i >= 0
         return self._val & (1L << i)
 
 
@@ -170,19 +169,17 @@ class IntSet(Exception):
             v = v >> 1
             o = o + 1
 
-        
+
     def update(self, to_add):
         """Add all the values from the sequence or intset to_add"""
         if isinstance(to_add, IntSet):
             self._val |= to_add._val
         else:
             for i in to_add:
-                assert i >= 0
                 self._val |= (1L << i)
 
 
     def add(self, to_add):
-        assert 0 <= to_add
         self._val |= (1L << to_add)
 
 
@@ -203,7 +200,6 @@ class IntSet(Exception):
         >>> not a
         True
         """
-        assert 0 <= to_remove
         m = 1L << to_remove
         if not self._val & m:
             raise KeyError(to_remove)

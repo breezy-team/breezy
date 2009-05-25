@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2008 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tools for converting globs to regular expressions.
 
@@ -52,8 +52,8 @@ class Replacer(object):
 
         The pattern must not contain capturing groups.
         The replacement might be either a string template in which \& will be
-        replaced with the match, or a function that will get the matching text  
-        as argument. It does not get match object, because capturing is 
+        replaced with the match, or a function that will get the matching text
+        as argument. It does not get match object, because capturing is
         forbidden anyway.
         """
         self._pat = None
@@ -160,20 +160,20 @@ class Globster(object):
 
     Patterns are translated to regular expressions to expidite matching.
 
-    The regular expressions for multiple patterns are aggregated into 
-    a super-regex containing groups of up to 99 patterns.  
+    The regular expressions for multiple patterns are aggregated into
+    a super-regex containing groups of up to 99 patterns.
     The 99 limitation is due to the grouping limit of the Python re module.
     The resulting super-regex and associated patterns are stored as a list of
     (regex,[patterns]) in _regex_patterns.
-    
+
     For performance reasons the patterns are categorised as extension patterns
     (those that match against a file extension), basename patterns
     (those that match against the basename of the filename),
     and fullpath patterns (those that match against the full path).
-    The translations used for extensions and basenames are relatively simpler 
+    The translations used for extensions and basenames are relatively simpler
     and therefore faster to perform than the fullpath patterns.
 
-    Also, the extension patterns are more likely to find a match and 
+    Also, the extension patterns are more likely to find a match and
     so are matched first, then the basename patterns, then the fullpath
     patterns.
     """
@@ -192,21 +192,21 @@ class Globster(object):
                 base_patterns.append(pat)
         self._add_patterns(ext_patterns,_sub_extension,
             prefix=r'(?:.*/)?(?!.*/)(?:.*\.)')
-        self._add_patterns(base_patterns,_sub_basename, 
+        self._add_patterns(base_patterns,_sub_basename,
             prefix=r'(?:.*/)?(?!.*/)')
-        self._add_patterns(path_patterns,_sub_fullpath) 
+        self._add_patterns(path_patterns,_sub_fullpath)
 
     def _add_patterns(self, patterns, translator, prefix=''):
         while patterns:
             grouped_rules = ['(%s)' % translator(pat) for pat in patterns[:99]]
             joined_rule = '%s(?:%s)$' % (prefix, '|'.join(grouped_rules))
-            self._regex_patterns.append((re.compile(joined_rule, re.UNICODE), 
+            self._regex_patterns.append((re.compile(joined_rule, re.UNICODE),
                 patterns[:99]))
             patterns = patterns[99:]
 
     def match(self, filename):
         """Searches for a pattern that matches the given filename.
-        
+
         :return A matching pattern or None if there is no matching pattern.
         """
         for regex, patterns in self._regex_patterns:
@@ -214,11 +214,33 @@ class Globster(object):
             if match:
                 return patterns[match.lastindex -1]
         return None
-        
+
+
+class _OrderedGlobster(Globster):
+    """A Globster that keeps pattern order."""
+
+    def __init__(self, patterns):
+        """Constructor.
+
+        :param patterns: sequence of glob patterns
+        """
+        # Note: This could be smarter by running like sequences together
+        self._regex_patterns = []
+        for pat in patterns:
+            pat = normalize_pattern(pat)
+            if pat.startswith(u'RE:') or u'/' in pat:
+                self._add_patterns([pat], _sub_fullpath)
+            elif pat.startswith(u'*.'):
+                self._add_patterns([pat], _sub_extension,
+                    prefix=r'(?:.*/)?(?!.*/)(?:.*\.)')
+            else:
+                self._add_patterns([pat], _sub_basename,
+                    prefix=r'(?:.*/)?(?!.*/)')
+
 
 def normalize_pattern(pattern):
     """Converts backslashes in path patterns to forward slashes.
-    
+
     Doesn't normalize regular expressions - they may contain escapes.
     """
     if not pattern.startswith('RE:'):

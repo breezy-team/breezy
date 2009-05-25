@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """API Documentation for bzrlib.
 
@@ -26,8 +26,12 @@ For details on specific apis, see pydoc on the api, or read the source.
 
 import doctest
 import os
-    
-def test_suite():
+
+from bzrlib import tests
+
+def load_tests(basic_tests, module, loader):
+    """This module creates its own test suite with DocFileSuite."""
+
     dir_ = os.path.dirname(__file__)
     if os.path.isdir(dir_):
         candidates = os.listdir(dir_)
@@ -35,4 +39,13 @@ def test_suite():
         candidates = []
     scripts = [candidate for candidate in candidates
                if candidate.endswith('.txt')]
-    return doctest.DocFileSuite(*scripts)
+    # since this module doesn't define tests, we ignore basic_tests
+    suite = doctest.DocFileSuite(*scripts)
+    # DocFileCase reduces the test id to the base name of the tested file, we
+    # want the module to appears there.
+    for t in tests.iter_suite_tests(suite):
+        def make_new_test_id():
+            new_id = '%s.DocFileTest(%s)' % ( __name__, t)
+            return lambda: new_id
+        t.id = make_new_test_id()
+    return suite

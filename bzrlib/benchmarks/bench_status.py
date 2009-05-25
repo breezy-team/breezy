@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for bzr status performance."""
 
@@ -25,15 +25,15 @@ class StatusBenchmark(Benchmark):
 
     def test_no_ignored_unknown_kernel_like_tree(self):
         """Status in a kernel sized tree with no ignored or unknowns.
-        
+
         This should be bearable (<2secs) fast.
-        """ 
+        """
         self.make_kernel_like_added_tree()
         # on robertc's machine the first sample of this took 1687ms/15994ms
         self.time(self.run_bzr, 'status')
 
     def test_no_changes_known_kernel_like_tree(self):
-        """Status in a kernel sized tree with no ignored, unknowns, or added.""" 
+        """Status in a kernel sized tree with no ignored, unknowns, or added."""
         self.make_kernel_like_committed_tree(link_bzr=True)
         self.time(self.run_bzr, 'status')
 

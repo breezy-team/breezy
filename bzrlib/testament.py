@@ -12,13 +12,13 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Testament - a summary of a revision for signing.
 
-A testament can be defined as "something that serves as tangible 
+A testament can be defined as "something that serves as tangible
 proof or evidence."  In bzr we use them to allow people to certify
-particular revisions as authentic.  
+particular revisions as authentic.
 
 The goal is that if two revisions are semantically equal, then they will
 have a byte-for-byte equal testament.  We can define different versions of
@@ -61,7 +61,7 @@ Testament format 1
 
 # XXX: At the moment, clients trust that the graph described in a weave
 # is accurate, but that's not covered by the testament.  Perhaps the best
-# fix is when verifying a revision to make sure that every file mentioned 
+# fix is when verifying a revision to make sure that every file mentioned
 # in the revision has compatible ancestry links.
 
 # TODO: perhaps write timestamp in a more readable form
@@ -70,15 +70,18 @@ Testament format 1
 # revisions can be serialized.
 
 from copy import copy
-from sha import sha
 
-from bzrlib.osutils import contains_whitespace, contains_linebreaks
+from bzrlib.osutils import (
+    contains_whitespace,
+    contains_linebreaks,
+    sha,
+    )
 
 
 class Testament(object):
     """Reduced summary of a revision.
 
-    Testaments can be 
+    Testaments can be
 
       - produced from a revision
       - written to a stream
@@ -106,8 +109,10 @@ class Testament(object):
         self.parent_ids = rev.parent_ids[:]
         self.inventory = inventory
         self.revprops = copy(rev.properties)
-        assert not contains_whitespace(self.revision_id)
-        assert not contains_linebreaks(self.committer)
+        if contains_whitespace(self.revision_id):
+            raise ValueError(self.revision_id)
+        if contains_linebreaks(self.committer):
+            raise ValueError(self.committer)
 
     def as_text_lines(self):
         """Yield text form as a sequence of lines.
@@ -125,7 +130,8 @@ class Testament(object):
         # inventory length contains the root, which is not shown here
         a('parents:\n')
         for parent_id in sorted(self.parent_ids):
-            assert not contains_whitespace(parent_id)
+            if contains_whitespace(parent_id):
+                raise ValueError(parent_id)
             a('  %s\n' % parent_id)
         a('message:\n')
         for l in self.message.splitlines():
@@ -134,10 +140,6 @@ class Testament(object):
         for path, ie in self._get_entries():
             a(self._entry_to_line(path, ie))
         r.extend(self._revprops_to_lines())
-        if __debug__:
-            for l in r:
-                assert isinstance(l, basestring), \
-                    '%r of type %s is not a plain string' % (l, type(l))
         return [line.encode('utf-8') for line in r]
 
     def _get_entries(self):
@@ -146,22 +148,25 @@ class Testament(object):
         return entries
 
     def _escape_path(self, path):
-        assert not contains_linebreaks(path)
+        if contains_linebreaks(path):
+            raise ValueError(path)
         return unicode(path.replace('\\', '/').replace(' ', '\ '))
 
     def _entry_to_line(self, path, ie):
         """Turn an inventory entry into a testament line"""
-        assert not contains_whitespace(ie.file_id)
-
+        if contains_whitespace(ie.file_id):
+            raise ValueError(ie.file_id)
         content = ''
         content_spacer=''
         if ie.kind == 'file':
             # TODO: avoid switching on kind
-            assert ie.text_sha1
+            if not ie.text_sha1:
+                raise AssertionError()
             content = ie.text_sha1
             content_spacer = ' '
         elif ie.kind == 'symlink':
-            assert ie.symlink_target
+            if not ie.symlink_target:
+                raise AssertionError()
             content = self._escape_path(ie.symlink_target)
             content_spacer = ' '
 
@@ -175,7 +180,7 @@ class Testament(object):
 
     def as_short_text(self):
         """Return short digest-based testament."""
-        return (self.short_header + 
+        return (self.short_header +
                 'revision-id: %s\n'
                 'sha1: %s\n'
                 % (self.revision_id, self.as_sha1()))
@@ -186,8 +191,8 @@ class Testament(object):
             return []
         r = ['properties:\n']
         for name, value in sorted(self.revprops.items()):
-            assert isinstance(name, str)
-            assert not contains_whitespace(name)
+            if contains_whitespace(name):
+                raise ValueError(name)
             r.append('  %s:\n' % name)
             for line in value.splitlines():
                 r.append(u'    %s\n' % line)
@@ -213,7 +218,7 @@ class StrictTestament(Testament):
 
 class StrictTestament3(StrictTestament):
     """This testament format is for use as a checksum in bundle format 0.9+
-    
+
     It differs from StrictTestament by including data about the tree root.
     """
 
@@ -223,7 +228,8 @@ class StrictTestament3(StrictTestament):
         return self.inventory.iter_entries()
 
     def _escape_path(self, path):
-        assert not contains_linebreaks(path)
+        if contains_linebreaks(path):
+            raise ValueError(path)
         if path == '':
             path = '.'
         return unicode(path.replace('\\', '/').replace(' ', '\ '))

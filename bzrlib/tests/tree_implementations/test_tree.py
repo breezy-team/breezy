@@ -12,11 +12,15 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from bzrlib import (
     errors,
+    conflicts,
+    osutils,
+    revisiontree,
     tests,
+    workingtree_4,
     )
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.tree_implementations import TestCaseWithTree
@@ -55,8 +59,8 @@ class TestPlanFileMerge(TestCaseWithTree):
         tree_b.lock_read()
         self.addCleanup(tree_b.unlock)
         self.assertEqual([
-            ('killed-b', 'b\n'),
             ('killed-a', 'a\n'),
+            ('killed-b', 'b\n'),
             ('unchanged', 'c\n'),
             ('unchanged', 'd\n'),
             ('new-a', 'e\n'),
@@ -68,7 +72,7 @@ class TestReference(TestCaseWithTree):
 
     def skip_if_no_reference(self, tree):
         if not getattr(tree, 'supports_tree_reference', lambda: False)():
-            raise tests.TestSkipped('Tree references not supported')
+            raise tests.TestNotApplicable('Tree references not supported')
 
     def create_nested(self):
         work_tree = self.make_branch_and_tree('wt')
@@ -87,6 +91,8 @@ class TestReference(TestCaseWithTree):
 
     def test_get_reference_revision(self):
         tree = self.create_nested()
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
         path = tree.id2path('sub-root')
         self.assertEqual('sub-1', tree.get_reference_revision('sub-root', path))
 
@@ -95,7 +101,7 @@ class TestReference(TestCaseWithTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         entry = tree.inventory['sub-root']
-        self.assertEqual([(tree.abspath('subtree'), 'sub-root')],
+        self.assertEqual([(u'subtree', 'sub-root')],
             list(tree.iter_references()))
 
     def test_get_root_id(self):
@@ -119,3 +125,170 @@ class TestFileIds(TestCaseWithTree):
             self.assertRaises(errors.NoSuchId, tree.id2path, 'a')
         finally:
             tree.unlock()
+
+    def test_all_file_ids(self):
+        work_tree = self.make_branch_and_tree('wt')
+        tree = self.get_tree_no_parents_abc_content(work_tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertEqual(tree.all_file_ids(),
+                         set(['b-id', 'root-id', 'c-id', 'a-id']))
+
+
+class TestStoredKind(TestCaseWithTree):
+
+    def test_stored_kind(self):
+        tree = self.make_branch_and_tree('tree')
+        work_tree = self.make_branch_and_tree('wt')
+        tree = self.get_tree_no_parents_abc_content(work_tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertEqual('file', tree.stored_kind('a-id'))
+        self.assertEqual('directory', tree.stored_kind('b-id'))
+
+
+class TestFileContent(TestCaseWithTree):
+
+    def test_get_file(self):
+        work_tree = self.make_branch_and_tree('wt')
+        tree = self.get_tree_no_parents_abc_content_2(work_tree)
+        tree.lock_read()
+        try:
+            # Test lookup without path works
+            lines = tree.get_file('a-id').readlines()
+            self.assertEqual(['foobar\n'], lines)
+            # Test lookup with path works
+            lines = tree.get_file('a-id', path='a').readlines()
+            self.assertEqual(['foobar\n'], lines)
+        finally:
+            tree.unlock()
+
+    def test_get_file_text(self):
+        work_tree = self.make_branch_and_tree('wt')
+        tree = self.get_tree_no_parents_abc_content_2(work_tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        # test read by file-id
+        self.assertEqual('foobar\n', tree.get_file_text('a-id'))
+        # test read by path
+        self.assertEqual('foobar\n', tree.get_file_text('a-id', path='a'))
+
+    def test_get_file_lines(self):
+        work_tree = self.make_branch_and_tree('wt')
+        tree = self.get_tree_no_parents_abc_content_2(work_tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        # test read by file-id
+        self.assertEqual(['foobar\n'], tree.get_file_lines('a-id'))
+        # test read by path
+        self.assertEqual(['foobar\n'], tree.get_file_lines('a-id', path='a'))
+
+    def test_get_file_lines_multi_line_breaks(self):
+        work_tree = self.make_branch_and_tree('wt')
+        self.build_tree_contents([('wt/foobar', 'a\rb\nc\r\nd')])
+        work_tree.add('foobar', 'foobar-id')
+        tree = self._convert_tree(work_tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertEqual(['a\rb\n', 'c\r\n', 'd'],
+                         tree.get_file_lines('foobar-id'))
+
+
+class TestExtractFilesBytes(TestCaseWithTree):
+
+    def test_iter_files_bytes(self):
+        work_tree = self.make_branch_and_tree('wt')
+        self.build_tree_contents([('wt/foo', 'foo'),
+                                  ('wt/bar', 'bar'),
+                                  ('wt/baz', 'baz')])
+        work_tree.add(['foo', 'bar', 'baz'], ['foo-id', 'bar-id', 'baz-id'])
+        tree = self._convert_tree(work_tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        extracted = dict((i, ''.join(b)) for i, b in
+                         tree.iter_files_bytes([('foo-id', 'id1'),
+                                                ('bar-id', 'id2'),
+                                                ('baz-id', 'id3')]))
+        self.assertEqual('foo', extracted['id1'])
+        self.assertEqual('bar', extracted['id2'])
+        self.assertEqual('baz', extracted['id3'])
+        self.assertRaises(errors.NoSuchId, lambda: list(
+                          tree.iter_files_bytes(
+                          [('qux-id', 'file1-notpresent')])))
+
+
+class TestConflicts(TestCaseWithTree):
+
+    def test_conflicts(self):
+        """Tree.conflicts() should return a ConflictList instance."""
+        work_tree = self.make_branch_and_tree('wt')
+        tree = self._convert_tree(work_tree)
+        self.assertIsInstance(tree.conflicts(), conflicts.ConflictList)
+
+
+class TestIterEntriesByDir(TestCaseWithTree):
+
+    def test_iteration_order(self):
+        work_tree = self.make_branch_and_tree('.')
+        self.build_tree(['a/', 'a/b/', 'a/b/c', 'a/d/', 'a/d/e', 'f/', 'f/g'])
+        work_tree.add(['a', 'a/b', 'a/b/c', 'a/d', 'a/d/e', 'f', 'f/g'])
+        tree = self._convert_tree(work_tree)
+        output_order = [p for p, e in tree.iter_entries_by_dir()]
+        self.assertEqual(['', 'a', 'f', 'a/b', 'a/d', 'a/b/c', 'a/d/e', 'f/g'],
+                         output_order)
+
+
+class TestHasId(TestCaseWithTree):
+
+    def test_has_id(self):
+        work_tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/file'])
+        work_tree.add('file', 'file-id')
+        tree = self._convert_tree(work_tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertTrue(tree.has_id('file-id'))
+        self.assertFalse(tree.has_id('dir-id'))
+
+    def test___contains__(self):
+        work_tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/file'])
+        work_tree.add('file', 'file-id')
+        tree = self._convert_tree(work_tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertTrue('file-id' in tree)
+        self.assertFalse('dir-id' in tree)
+
+
+class TestExtras(TestCaseWithTree):
+
+    def test_extras(self):
+        work_tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/file', 'tree/versioned-file'])
+        work_tree.add(['file', 'versioned-file'])
+        work_tree.commit('add files')
+        work_tree.remove('file')
+        tree = self._convert_tree(work_tree)
+        if isinstance(tree,
+                      (revisiontree.RevisionTree,
+                       workingtree_4.DirStateRevisionTree)):
+            expected = []
+        else:
+            expected = ['file']
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertEqual(expected, list(tree.extras()))
+
+
+class TestGetFileSha1(TestCaseWithTree):
+
+    def test_get_file_sha1(self):
+        work_tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/file', 'file content')])
+        work_tree.add('file', 'file-id')
+        tree = self._convert_tree(work_tree)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        expected = osutils.sha_strings('file content')
+        self.assertEqual(expected, tree.get_file_sha1('file-id'))

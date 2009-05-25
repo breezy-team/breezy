@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,14 +12,16 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for bzrlib.counted_lock"""
 
 from bzrlib.counted_lock import CountedLock
 from bzrlib.errors import (
     LockError,
+    LockNotHeld,
     ReadOnlyError,
+    TokenMismatch,
     )
 from bzrlib.tests import TestCase
 
@@ -39,10 +41,17 @@ class DummyLock(object):
         self._lock_mode = 'r'
         self._calls.append('lock_read')
 
-    def lock_write(self):
+    def lock_write(self, token=None):
+        if token is not None:
+            if token == 'token':
+                # already held by this caller
+                return 'token'
+            else:
+                raise TokenMismatch()
         self._assert_not_locked()
         self._lock_mode = 'w'
         self._calls.append('lock_write')
+        return 'token'
 
     def unlock(self):
         self._assert_locked()
@@ -61,6 +70,15 @@ class DummyLock(object):
         if self._lock_mode:
             raise LockError("%s is already locked in mode %r" %
                 (self, self._lock_mode))
+
+    def validate_token(self, token):
+        if token == 'token':
+            # already held by this caller
+            return 'token'
+        elif token is None:
+            return
+        else:
+            raise TokenMismatch(token, 'token')
 
 
 class TestDummyLock(TestCase):
@@ -89,7 +107,8 @@ class TestDummyLock(TestCase):
         real_lock.unlock()
         self.assertFalse(real_lock.is_locked())
         # lock write and unlock
-        real_lock.lock_write()
+        result = real_lock.lock_write()
+        self.assertEqual('token', result)
         self.assertTrue(real_lock.is_locked())
         real_lock.unlock()
         self.assertFalse(real_lock.is_locked())
@@ -110,7 +129,7 @@ class TestDummyLock(TestCase):
 
 class TestCountedLock(TestCase):
 
-    def test_lock_unlock(self):
+    def test_read_lock(self):
         # Lock and unlock a counted lock
         real_lock = DummyLock()
         l = CountedLock(real_lock)
@@ -131,14 +150,14 @@ class TestCountedLock(TestCase):
     def test_unlock_not_locked(self):
         real_lock = DummyLock()
         l = CountedLock(real_lock)
-        self.assertRaises(LockError, l.unlock)
+        self.assertRaises(LockNotHeld, l.unlock)
 
     def test_read_lock_while_write_locked(self):
         real_lock = DummyLock()
         l = CountedLock(real_lock)
         l.lock_write()
         l.lock_read()
-        l.lock_write()
+        self.assertEquals('token', l.lock_write())
         l.unlock()
         l.unlock()
         l.unlock()
@@ -158,6 +177,34 @@ class TestCountedLock(TestCase):
         self.assertEquals(
             ['lock_read', 'unlock'],
             real_lock._calls)
+
+    def test_write_lock_reentrant(self):
+        real_lock = DummyLock()
+        l = CountedLock(real_lock)
+        self.assertEqual('token', l.lock_write())
+        self.assertEqual('token', l.lock_write())
+        l.unlock()
+        l.unlock()
+
+    def test_reenter_with_token(self):
+        real_lock = DummyLock()
+        l1 = CountedLock(real_lock)
+        l2 = CountedLock(real_lock)
+        token = l1.lock_write()
+        self.assertEqual('token', token)
+        # now imagine that we lost that connection, but we still have the
+        # token...
+        del l1
+        # because we can supply the token, we can acquire the lock through
+        # another instance
+        self.assertTrue(real_lock.is_locked())
+        self.assertFalse(l2.is_locked())
+        self.assertEqual(token, l2.lock_write(token=token))
+        self.assertTrue(l2.is_locked())
+        self.assertTrue(real_lock.is_locked())
+        l2.unlock()
+        self.assertFalse(l2.is_locked())
+        self.assertFalse(real_lock.is_locked())
 
     def test_break_lock(self):
         real_lock = DummyLock()

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 """\
 This contains functionality for installing bundles into repositories
 """
@@ -44,7 +44,7 @@ def install_bundle(repository, bundle_reader):
         pb.finished()
 
 
-def merge_bundle(reader, tree, check_clean, merge_type, 
+def merge_bundle(reader, tree, check_clean, merge_type,
                     reprocess, show_base, change_reporter=None):
     """Merge a revision bundle into the current tree."""
     pb = bzrlib.ui.ui_factory.nested_progress_bar()

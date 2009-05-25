@@ -12,19 +12,41 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
 """Tests of the 'bzr add' command."""
 
 import os
 
+from bzrlib import osutils
+from bzrlib.tests import (
+    condition_isinstance,
+    split_suite_by_condition,
+    multiply_tests,
+    SymlinkFeature
+    )
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.tests.test_win32utils import NeedsGlobExpansionFeature
 
 
+def load_tests(standard_tests, module, loader):
+    """Parameterize tests for view-aware vs not."""
+    to_adapt, result = split_suite_by_condition(
+        standard_tests, condition_isinstance(TestAdd))
+    scenarios = [
+        ('pre-views', {'branch_tree_format': 'pack-0.92'}),
+        ('view-aware', {'branch_tree_format': 'development6-rich-root'}),
+        ]
+    return multiply_tests(to_adapt, scenarios, result)
+
+
 class TestAdd(ExternalBase):
-        
+
+    def make_branch_and_tree(self, dir):
+        return ExternalBase.make_branch_and_tree(self, dir,
+            format=self.branch_tree_format)
+
     def test_add_reports(self):
         """add command prints the names of added files."""
         tree = self.make_branch_and_tree('.')
@@ -35,10 +57,10 @@ class TestAdd(ExternalBase):
         results = sorted(out.rstrip('\n').split('\n'))
         self.assertEquals(['If you wish to add some of these files, please'\
                            ' add them by name.',
-                           'added .bzrignore',
-                           'added dir',
-                           'added dir/sub.txt',
-                           'added top.txt',
+                           'adding .bzrignore',
+                           'adding dir',
+                           'adding dir/sub.txt',
+                           'adding top.txt',
                            'ignored 1 file(s).'],
                           results)
         out = self.run_bzr('add -v')[0]
@@ -50,7 +72,7 @@ class TestAdd(ExternalBase):
 
     def test_add_quiet_is(self):
         """add -q does not print the names of added files."""
-        tree = self.make_branch_and_tree('.') 
+        tree = self.make_branch_and_tree('.')
         self.build_tree(['top.txt', 'dir/', 'dir/sub.txt'])
         out = self.run_bzr('add -q')[0]
         # the ordering is not defined at the moment
@@ -100,18 +122,18 @@ class TestAdd(ExternalBase):
         eq = self.assertEqual
         ass = self.assertTrue
         chdir = os.chdir
-        
+
         t = self.make_branch_and_tree('.')
         b = t.branch
         self.build_tree(['src/', 'README'])
-        
+
         eq(sorted(t.unknowns()),
            ['README', 'src'])
-        
+
         self.run_bzr('add src')
-        
+
         self.build_tree(['src/foo.c'])
-        
+
         # add with no arguments in a subdirectory gets only files below that
         # subdirectory
         chdir('src')
@@ -122,7 +144,7 @@ class TestAdd(ExternalBase):
         versioned = [path for path, entry in t.iter_entries_by_dir()]
         self.assertEquals(versioned,
             ['', 'src', 'src/foo.c'])
-                
+
         # add from the parent directory should pick up all file names
         chdir('..')
         self.run_bzr('add')
@@ -146,9 +168,9 @@ class TestAdd(ExternalBase):
         os.chdir('new')
         out, err = self.run_bzr('add --file-ids-from ../base')
         self.assertEqual('', err)
-        self.assertEqualDiff('added a w/ file id from a\n'
-                             'added b w/ file id from b\n'
-                             'added b/c w/ file id from b/c\n',
+        self.assertEqualDiff('adding a w/ file id from a\n'
+                             'adding b w/ file id from b\n'
+                             'adding b/c w/ file id from b/c\n',
                              out)
         new_tree = new_tree.bzrdir.open_workingtree()
         self.assertEqual(base_tree.path2id('a'), new_tree.path2id('a'))
@@ -167,8 +189,8 @@ class TestAdd(ExternalBase):
         os.chdir('new')
         out, err = self.run_bzr('add --file-ids-from ../base/b')
         self.assertEqual('', err)
-        self.assertEqualDiff('added c w/ file id from b/c\n'
-                             'added d w/ file id from b/d\n',
+        self.assertEqualDiff('adding c w/ file id from b/c\n'
+                             'adding d w/ file id from b/d\n',
                              out)
 
         new_tree = new_tree.bzrdir.open_workingtree()
@@ -207,3 +229,18 @@ class TestAdd(ExternalBase):
         self.build_tree([u'\u1234A', u'\u1235A', u'\u1235AA', 'cc'])
         self.run_bzr(['add', u'\u1234?', u'\u1235*'])
         self.assertEquals(self.run_bzr('unknowns')[0], 'cc\n')
+
+    def test_add_via_symlink(self):
+        self.requireFeature(SymlinkFeature)
+        self.make_branch_and_tree('source')
+        self.build_tree(['source/top.txt'])
+        os.symlink('source', 'link')
+        out = self.run_bzr(['add', 'link/top.txt'])[0]
+        self.assertEquals(out, 'adding top.txt\n')
+
+    def test_add_symlink_to_abspath(self):
+        self.requireFeature(SymlinkFeature)
+        self.make_branch_and_tree('tree')
+        os.symlink(osutils.abspath('target'), 'tree/link')
+        out = self.run_bzr(['add', 'tree/link'])[0]
+        self.assertEquals(out, 'adding link\n')

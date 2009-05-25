@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for WorkingTree.paths2ids.
 
@@ -91,7 +91,7 @@ class TestPaths2Ids(TestCaseWithWorkingTree):
         """Check the basic nasty corner case that path2ids should handle.
 
         This is the following situation:
-        basis: 
+        basis:
           / ROOT
           /dir dir
           /dir/child-moves child-moves
@@ -118,7 +118,7 @@ class TestPaths2Ids(TestCaseWithWorkingTree):
           child-stays either because its under newdir/dir in current, or under dir in old
           child-goes because its under dir in old.
           new-child because its under dir in new
-        
+
         Symmetrically, current_tree.path2ids(['dir'], [basis]) is meant to show
         new-child, even though its not under the path 'dir' in current, because
         its under a path selected by 'dir' in basis:

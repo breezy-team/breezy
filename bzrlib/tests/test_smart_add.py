@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from cStringIO import StringIO
 
@@ -150,7 +150,7 @@ class TestAddActions(TestCase):
         self.run_action("")
 
     def test__print(self):
-        self.run_action("added path\n")
+        self.run_action("adding path\n")
 
     def run_action(self, output):
         from bzrlib.add import AddAction

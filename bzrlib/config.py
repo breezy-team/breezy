@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2007 Canonical Ltd
+# Copyright (C) 2005, 2007, 2008 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #            and others
 #
@@ -14,7 +14,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Configuration that affects the behaviour of Bazaar.
 
@@ -37,7 +37,7 @@ setting.
 [/home/robertc/source]
 recurse=False|True(default)
 email= as above
-check_signatures= as above 
+check_signatures= as above
 create_signatures= as above.
 
 explanation of options
@@ -45,9 +45,9 @@ explanation of options
 editor - this option sets the pop up editor to use during commits.
 email - this option sets the user id bzr will use when committing.
 check_signatures - this option controls whether bzr will require good gpg
-                   signatures, ignore them, or check them if they are 
+                   signatures, ignore them, or check them if they are
                    present.
-create_signatures - this option controls whether bzr will always create 
+create_signatures - this option controls whether bzr will always create
                     gpg signatures, never create them, or create them if the
                     branch is configured to require them.
 log_format - this option sets the default log format.  Possible values are
@@ -70,21 +70,23 @@ lazy_import(globals(), """
 import errno
 from fnmatch import fnmatch
 import re
-from StringIO import StringIO
+from cStringIO import StringIO
 
 import bzrlib
 from bzrlib import (
+    debug,
     errors,
+    mail_client,
     osutils,
+    registry,
     symbol_versioning,
     trace,
+    ui,
     urlutils,
     win32utils,
     )
-import bzrlib.util.configobj.configobj as configobj
+from bzrlib.util.configobj import configobj
 """)
-
-from bzrlib.trace import mutter, warning
 
 
 CHECK_IF_POSSIBLE=0
@@ -120,20 +122,25 @@ STORE_LOCATION_APPENDPATH = POLICY_APPENDPATH
 STORE_BRANCH = 3
 STORE_GLOBAL = 4
 
+_ConfigObj = None
+def ConfigObj(*args, **kwargs):
+    global _ConfigObj
+    if _ConfigObj is None:
+        class ConfigObj(configobj.ConfigObj):
 
-class ConfigObj(configobj.ConfigObj):
+            def get_bool(self, section, key):
+                return self[section].as_bool(key)
 
-    def get_bool(self, section, key):
-        return self[section].as_bool(key)
-
-    def get_value(self, section, name):
-        # Try [] for the old DEFAULT section.
-        if section == "DEFAULT":
-            try:
-                return self[name]
-            except KeyError:
-                pass
-        return self[section][name]
+            def get_value(self, section, name):
+                # Try [] for the old DEFAULT section.
+                if section == "DEFAULT":
+                    try:
+                        return self[name]
+                    except KeyError:
+                        pass
+                return self[section][name]
+        _ConfigObj = ConfigObj
+    return _ConfigObj(*args, **kwargs)
 
 
 class Config(object):
@@ -142,6 +149,16 @@ class Config(object):
     def get_editor(self):
         """Get the users pop up editor."""
         raise NotImplementedError
+
+    def get_mail_client(self):
+        """Get a mail client to use"""
+        selected_client = self.get_user_option('mail_client')
+        _registry = mail_client.mail_client_registry
+        try:
+            mail_client_class = _registry.get(selected_client)
+        except KeyError:
+            raise errors.UnknownMailClient(selected_client)
+        return mail_client_class(self)
 
     def _get_signature_checking(self):
         """Template method to override signature checking policy."""
@@ -199,33 +216,29 @@ class Config(object):
 
     def username(self):
         """Return email-style username.
-    
+
         Something similar to 'Martin Pool <mbp@sourcefrog.net>'
-        
+
         $BZR_EMAIL can be set to override this (as well as the
         deprecated $BZREMAIL), then
         the concrete policy type is checked, and finally
         $EMAIL is examined.
         If none is found, a reasonable default is (hopefully)
         created.
-    
+
         TODO: Check it's reasonably well-formed.
         """
         v = os.environ.get('BZR_EMAIL')
         if v:
-            return v.decode(bzrlib.user_encoding)
-        v = os.environ.get('BZREMAIL')
-        if v:
-            warning('BZREMAIL is deprecated in favor of BZR_EMAIL. Please update your configuration.')
-            return v.decode(bzrlib.user_encoding)
-    
+            return v.decode(osutils.get_user_encoding())
+
         v = self._get_user_id()
         if v:
             return v
-        
+
         v = os.environ.get('EMAIL')
         if v:
-            return v.decode(bzrlib.user_encoding)
+            return v.decode(osutils.get_user_encoding())
 
         name, email = _auto_user_id()
         if name:
@@ -253,8 +266,8 @@ class Config(object):
         if policy is None:
             policy = self._get_signature_checking()
             if policy is not None:
-                warning("Please use create_signatures, not check_signatures "
-                        "to set signing policy.")
+                trace.warning("Please use create_signatures,"
+                              " not check_signatures to set signing policy.")
             if policy == CHECK_ALWAYS:
                 return True
         elif policy == SIGN_ALWAYS:
@@ -272,6 +285,15 @@ class Config(object):
 
     def _get_nickname(self):
         return None
+
+    def get_bzr_remote_path(self):
+        try:
+            return os.environ['BZR_REMOTE_PATH']
+        except KeyError:
+            path = self.get_user_option("bzr_remote_path")
+            if path is None:
+                path = 'bzr'
+            return path
 
 
 class IniBasedConfig(Config):
@@ -363,7 +385,7 @@ class IniBasedConfig(Config):
         super(IniBasedConfig, self).__init__()
         self._get_filename = get_filename
         self._parser = None
-        
+
     def _post_commit(self):
         """See Config.post_commit."""
         return self._get_user_option('post_commit')
@@ -392,7 +414,7 @@ class IniBasedConfig(Config):
 
     def _get_alias(self, value):
         try:
-            return self._get_parser().get_value("ALIASES", 
+            return self._get_parser().get_value("ALIASES",
                                                 value)
         except KeyError:
             pass
@@ -412,13 +434,36 @@ class GlobalConfig(IniBasedConfig):
 
     def set_user_option(self, option, value):
         """Save option and its value in the configuration."""
+        self._set_option(option, value, 'DEFAULT')
+
+    def get_aliases(self):
+        """Return the aliases section."""
+        if 'ALIASES' in self._get_parser():
+            return self._get_parser()['ALIASES']
+        else:
+            return {}
+
+    def set_alias(self, alias_name, alias_command):
+        """Save the alias in the configuration."""
+        self._set_option(alias_name, alias_command, 'ALIASES')
+
+    def unset_alias(self, alias_name):
+        """Unset an existing alias."""
+        aliases = self._get_parser().get('ALIASES')
+        if not aliases or alias_name not in aliases:
+            raise errors.NoSuchAlias(alias_name)
+        del aliases[alias_name]
+        self._write_config_file()
+
+    def _set_option(self, option, value, section):
         # FIXME: RBC 20051029 This should refresh the parser and also take a
         # file lock on bazaar.conf.
         conf_dir = os.path.dirname(self._get_filename())
         ensure_config_dir_exists(conf_dir)
-        if 'DEFAULT' not in self._get_parser():
-            self._get_parser()['DEFAULT'] = {}
-        self._get_parser()['DEFAULT'][option] = value
+        self._get_parser().setdefault(section, {})[option] = value
+        self._write_config_file()
+
+    def _write_config_file(self):
         f = open(self._get_filename(), 'wb')
         self._get_parser().write(f)
         f.close()
@@ -429,15 +474,15 @@ class LocationConfig(IniBasedConfig):
 
     def __init__(self, location):
         name_generator = locations_config_filename
-        if (not os.path.exists(name_generator()) and 
+        if (not os.path.exists(name_generator()) and
                 os.path.exists(branches_config_filename())):
             if sys.platform == 'win32':
-                warning('Please rename %s to %s' 
-                         % (branches_config_filename(),
-                            locations_config_filename()))
+                trace.warning('Please rename %s to %s'
+                              % (branches_config_filename(),
+                                 locations_config_filename()))
             else:
-                warning('Please rename ~/.bazaar/branches.conf'
-                        ' to ~/.bazaar/locations.conf')
+                trace.warning('Please rename ~/.bazaar/branches.conf'
+                              ' to ~/.bazaar/locations.conf')
             name_generator = branches_config_filename
         super(LocationConfig, self).__init__(name_generator)
         # local file locations are looked up by local path, rather than
@@ -542,9 +587,11 @@ class LocationConfig(IniBasedConfig):
 
     def set_user_option(self, option, value, store=STORE_LOCATION):
         """Save option and its value in the configuration."""
-        assert store in [STORE_LOCATION,
+        if store not in [STORE_LOCATION,
                          STORE_LOCATION_NORECURSE,
-                         STORE_LOCATION_APPENDPATH], 'bad storage policy'
+                         STORE_LOCATION_APPENDPATH]:
+            raise ValueError('bad storage policy %r for %r' %
+                (store, option))
         # FIXME: RBC 20051029 This should refresh the parser and also take a
         # file lock on locations.conf.
         conf_dir = os.path.dirname(self._get_filename())
@@ -595,7 +642,7 @@ class BranchConfig(Config):
 
     def _get_safe_value(self, option_name):
         """This variant of get_best_value never returns untrusted values.
-        
+
         It does not return values from the branch data, because the branch may
         not be controlled by the user.
 
@@ -610,18 +657,17 @@ class BranchConfig(Config):
 
     def _get_user_id(self):
         """Return the full user id for the branch.
-    
-        e.g. "John Hacker <jhacker@foo.org>"
+
+        e.g. "John Hacker <jhacker@example.com>"
         This is looked up in the email controlfile for the branch.
         """
         try:
-            return (self.branch.control_files.get_utf8("email") 
-                    .read()
-                    .decode(bzrlib.user_encoding)
+            return (self.branch._transport.get_bytes("email")
+                    .decode(osutils.get_user_encoding())
                     .rstrip("\r\n"))
         except errors.NoSuchFile, e:
             pass
-        
+
         return self._get_best_value('_get_user_id')
 
     def _get_signature_checking(self):
@@ -663,18 +709,17 @@ class BranchConfig(Config):
                         trace.warning('Value "%s" is masked by "%s" from'
                                       ' branch.conf', value, mask_value)
 
-
     def _gpg_signing_command(self):
         """See Config.gpg_signing_command."""
         return self._get_safe_value('_gpg_signing_command')
-        
+
     def __init__(self, branch):
         super(BranchConfig, self).__init__()
         self._location_config = None
         self._branch_data_config = None
         self._global_config = None
         self.branch = branch
-        self.option_sources = (self._get_location_config, 
+        self.option_sources = (self._get_location_config,
                                self._get_branch_data_config,
                                self._get_global_config)
 
@@ -712,9 +757,9 @@ def ensure_config_dir_exists(path=None):
         if sys.platform == 'win32':
             parent_dir = os.path.dirname(path)
             if not os.path.isdir(parent_dir):
-                mutter('creating config parent directory: %r', parent_dir)
+                trace.mutter('creating config parent directory: %r', parent_dir)
             os.mkdir(parent_dir)
-        mutter('creating config directory: %r', path)
+        trace.mutter('creating config directory: %r', path)
         os.mkdir(path)
 
 
@@ -722,7 +767,7 @@ def config_dir():
     """Return per-user configuration directory.
 
     By default this is ~/.bazaar/
-    
+
     TODO: Global option --config-dir to override this.
     """
     base = os.environ.get('BZR_HOME', None)
@@ -732,7 +777,8 @@ def config_dir():
         if base is None:
             base = os.environ.get('HOME', None)
         if base is None:
-            raise errors.BzrError('You must have one of BZR_HOME, APPDATA, or HOME set')
+            raise errors.BzrError('You must have one of BZR_HOME, APPDATA,'
+                                  ' or HOME set')
         return osutils.pathjoin(base, 'bazaar', '2.0')
     else:
         # cygwin, linux, and darwin all have a $HOME directory
@@ -754,6 +800,11 @@ def branches_config_filename():
 def locations_config_filename():
     """Return per-user configuration ini file filename."""
     return osutils.pathjoin(config_dir(), 'locations.conf')
+
+
+def authentication_config_filename():
+    """Return per-user authentication ini file filename."""
+    return osutils.pathjoin(config_dir(), 'authentication.conf')
 
 
 def user_ignore_config_filename():
@@ -788,7 +839,11 @@ def _auto_user_id():
     try:
         import pwd
         uid = os.getuid()
-        w = pwd.getpwuid(uid)
+        try:
+            w = pwd.getpwuid(uid)
+        except KeyError:
+            raise errors.BzrCommandError('Unable to determine your name.  '
+                'Please use "bzr whoami" to set it.')
 
         # we try utf-8 first, because on many variants (like Linux),
         # /etc/passwd "should" be in utf-8, and because it's unlikely to give
@@ -799,8 +854,8 @@ def _auto_user_id():
             encoding = 'utf-8'
         except UnicodeError:
             try:
-                gecos = w.pw_gecos.decode(bzrlib.user_encoding)
-                encoding = bzrlib.user_encoding
+                encoding = osutils.get_user_encoding()
+                gecos = w.pw_gecos.decode(encoding)
             except UnicodeError:
                 raise errors.BzrCommandError('Unable to determine your name.  '
                    'Use "bzr whoami" to set it.')
@@ -821,58 +876,58 @@ def _auto_user_id():
     except ImportError:
         import getpass
         try:
-            realname = username = getpass.getuser().decode(bzrlib.user_encoding)
+            user_encoding = osutils.get_user_encoding()
+            realname = username = getpass.getuser().decode(user_encoding)
         except UnicodeDecodeError:
             raise errors.BzrError("Can't decode username as %s." % \
-                    bzrlib.user_encoding)
+                    user_encoding)
 
     return realname, (username + '@' + socket.gethostname())
 
 
+def parse_username(username):
+    """Parse e-mail username and return a (name, address) tuple."""
+    match = re.match(r'(.*?)\s*<?([\w+.-]+@[\w+.-]+)>?', username)
+    if match is None:
+        return (username, '')
+    else:
+        return (match.group(1), match.group(2))
+
+
 def extract_email_address(e):
     """Return just the address part of an email string.
-    
-    That is just the user@domain part, nothing else. 
+
+    That is just the user@domain part, nothing else.
     This part is required to contain only ascii characters.
     If it can't be extracted, raises an error.
-    
+
     >>> extract_email_address('Jane Tester <jane@test.com>')
     "jane@test.com"
     """
-    m = re.search(r'[\w+.-]+@[\w+.-]+', e)
-    if not m:
+    name, email = parse_username(e)
+    if not email:
         raise errors.NoEmailInUsername(e)
-    return m.group(0)
+    return email
 
 
 class TreeConfig(IniBasedConfig):
     """Branch configuration data associated with its contents, not location"""
+
+    # XXX: Really needs a better name, as this is not part of the tree! -- mbp 20080507
+
     def __init__(self, branch):
+        self._config = branch._get_config()
         self.branch = branch
 
     def _get_parser(self, file=None):
         if file is not None:
             return IniBasedConfig._get_parser(file)
-        return self._get_config()
-
-    def _get_config(self):
-        try:
-            obj = ConfigObj(self.branch.control_files.get('branch.conf'),
-                            encoding='utf-8')
-        except errors.NoSuchFile:
-            obj = ConfigObj(encoding='utf=8')
-        return obj
+        return self._config._get_configobj()
 
     def get_option(self, name, section=None, default=None):
         self.branch.lock_read()
         try:
-            obj = self._get_config()
-            try:
-                if section is not None:
-                    obj = obj[section]
-                result = obj[name]
-            except KeyError:
-                result = default
+            return self._config.get_option(name, section, default)
         finally:
             self.branch.unlock()
         return result
@@ -881,19 +936,505 @@ class TreeConfig(IniBasedConfig):
         """Set a per-branch configuration option"""
         self.branch.lock_write()
         try:
-            cfg_obj = self._get_config()
-            if section is None:
-                obj = cfg_obj
-            else:
-                try:
-                    obj = cfg_obj[section]
-                except KeyError:
-                    cfg_obj[section] = {}
-                    obj = cfg_obj[section]
-            obj[name] = value
-            out_file = StringIO()
-            cfg_obj.write(out_file)
-            out_file.seek(0)
-            self.branch.control_files.put('branch.conf', out_file)
+            self._config.set_option(value, name, section)
         finally:
             self.branch.unlock()
+
+
+class AuthenticationConfig(object):
+    """The authentication configuration file based on a ini file.
+
+    Implements the authentication.conf file described in
+    doc/developers/authentication-ring.txt.
+    """
+
+    def __init__(self, _file=None):
+        self._config = None # The ConfigObj
+        if _file is None:
+            self._filename = authentication_config_filename()
+            self._input = self._filename = authentication_config_filename()
+        else:
+            # Tests can provide a string as _file
+            self._filename = None
+            self._input = _file
+
+    def _get_config(self):
+        if self._config is not None:
+            return self._config
+        try:
+            # FIXME: Should we validate something here ? Includes: empty
+            # sections are useless, at least one of
+            # user/password/password_encoding should be defined, etc.
+
+            # Note: the encoding below declares that the file itself is utf-8
+            # encoded, but the values in the ConfigObj are always Unicode.
+            self._config = ConfigObj(self._input, encoding='utf-8')
+        except configobj.ConfigObjError, e:
+            raise errors.ParseConfigError(e.errors, e.config.filename)
+        return self._config
+
+    def _save(self):
+        """Save the config file, only tests should use it for now."""
+        conf_dir = os.path.dirname(self._filename)
+        ensure_config_dir_exists(conf_dir)
+        self._get_config().write(file(self._filename, 'wb'))
+
+    def _set_option(self, section_name, option_name, value):
+        """Set an authentication configuration option"""
+        conf = self._get_config()
+        section = conf.get(section_name)
+        if section is None:
+            conf[section] = {}
+            section = conf[section]
+        section[option_name] = value
+        self._save()
+
+    def get_credentials(self, scheme, host, port=None, user=None, path=None, 
+                        realm=None):
+        """Returns the matching credentials from authentication.conf file.
+
+        :param scheme: protocol
+
+        :param host: the server address
+
+        :param port: the associated port (optional)
+
+        :param user: login (optional)
+
+        :param path: the absolute path on the server (optional)
+        
+        :param realm: the http authentication realm (optional)
+
+        :return: A dict containing the matching credentials or None.
+           This includes:
+           - name: the section name of the credentials in the
+             authentication.conf file,
+           - user: can't be different from the provided user if any,
+           - scheme: the server protocol,
+           - host: the server address,
+           - port: the server port (can be None),
+           - path: the absolute server path (can be None),
+           - realm: the http specific authentication realm (can be None),
+           - password: the decoded password, could be None if the credential
+             defines only the user
+           - verify_certificates: https specific, True if the server
+             certificate should be verified, False otherwise.
+        """
+        credentials = None
+        for auth_def_name, auth_def in self._get_config().items():
+            if type(auth_def) is not configobj.Section:
+                raise ValueError("%s defined outside a section" % auth_def_name)
+
+            a_scheme, a_host, a_user, a_path = map(
+                auth_def.get, ['scheme', 'host', 'user', 'path'])
+
+            try:
+                a_port = auth_def.as_int('port')
+            except KeyError:
+                a_port = None
+            except ValueError:
+                raise ValueError("'port' not numeric in %s" % auth_def_name)
+            try:
+                a_verify_certificates = auth_def.as_bool('verify_certificates')
+            except KeyError:
+                a_verify_certificates = True
+            except ValueError:
+                raise ValueError(
+                    "'verify_certificates' not boolean in %s" % auth_def_name)
+
+            # Attempt matching
+            if a_scheme is not None and scheme != a_scheme:
+                continue
+            if a_host is not None:
+                if not (host == a_host
+                        or (a_host.startswith('.') and host.endswith(a_host))):
+                    continue
+            if a_port is not None and port != a_port:
+                continue
+            if (a_path is not None and path is not None
+                and not path.startswith(a_path)):
+                continue
+            if (a_user is not None and user is not None
+                and a_user != user):
+                # Never contradict the caller about the user to be used
+                continue
+            if a_user is None:
+                # Can't find a user
+                continue
+            # Prepare a credentials dictionary with additional keys
+            # for the credential providers
+            credentials = dict(name=auth_def_name,
+                               user=a_user,
+                               scheme=a_scheme,
+                               host=host,
+                               port=port,
+                               path=path,
+                               realm=realm,
+                               password=auth_def.get('password', None),
+                               verify_certificates=a_verify_certificates)
+            # Decode the password in the credentials (or get one)
+            self.decode_password(credentials,
+                                 auth_def.get('password_encoding', None))
+            if 'auth' in debug.debug_flags:
+                trace.mutter("Using authentication section: %r", auth_def_name)
+            break
+
+        if credentials is None:
+            # No credentials were found in authentication.conf, try the fallback
+            # credentials stores.
+            credentials = credential_store_registry.get_fallback_credentials(
+                scheme, host, port, user, path, realm)
+
+        return credentials
+
+    def set_credentials(self, name, host, user, scheme=None, password=None,
+                        port=None, path=None, verify_certificates=None,
+                        realm=None):
+        """Set authentication credentials for a host.
+
+        Any existing credentials with matching scheme, host, port and path
+        will be deleted, regardless of name.
+
+        :param name: An arbitrary name to describe this set of credentials.
+        :param host: Name of the host that accepts these credentials.
+        :param user: The username portion of these credentials.
+        :param scheme: The URL scheme (e.g. ssh, http) the credentials apply
+            to.
+        :param password: Password portion of these credentials.
+        :param port: The IP port on the host that these credentials apply to.
+        :param path: A filesystem path on the host that these credentials
+            apply to.
+        :param verify_certificates: On https, verify server certificates if
+            True.
+        :param realm: The http authentication realm (optional).
+        """
+        values = {'host': host, 'user': user}
+        if password is not None:
+            values['password'] = password
+        if scheme is not None:
+            values['scheme'] = scheme
+        if port is not None:
+            values['port'] = '%d' % port
+        if path is not None:
+            values['path'] = path
+        if verify_certificates is not None:
+            values['verify_certificates'] = str(verify_certificates)
+        if realm is not None:
+            values['realm'] = realm
+        config = self._get_config()
+        for_deletion = []
+        for section, existing_values in config.items():
+            for key in ('scheme', 'host', 'port', 'path', 'realm'):
+                if existing_values.get(key) != values.get(key):
+                    break
+            else:
+                del config[section]
+        config.update({name: values})
+        self._save()
+
+    def get_user(self, scheme, host, port=None, realm=None, path=None,
+                 prompt=None, ask=False, default=None):
+        """Get a user from authentication file.
+
+        :param scheme: protocol
+
+        :param host: the server address
+
+        :param port: the associated port (optional)
+
+        :param realm: the realm sent by the server (optional)
+
+        :param path: the absolute path on the server (optional)
+
+        :param ask: Ask the user if there is no explicitly configured username 
+                    (optional)
+
+        :param default: The username returned if none is defined (optional).
+
+        :return: The found user.
+        """
+        credentials = self.get_credentials(scheme, host, port, user=None,
+                                           path=path, realm=realm)
+        if credentials is not None:
+            user = credentials['user']
+        else:
+            user = None
+        if user is None:
+            if ask:
+                if prompt is None:
+                    # Create a default prompt suitable for most cases
+                    prompt = scheme.upper() + ' %(host)s username'
+                # Special handling for optional fields in the prompt
+                if port is not None:
+                    prompt_host = '%s:%d' % (host, port)
+                else:
+                    prompt_host = host
+                user = ui.ui_factory.get_username(prompt, host=prompt_host)
+            else:
+                user = default
+        return user
+
+    def get_password(self, scheme, host, user, port=None,
+                     realm=None, path=None, prompt=None):
+        """Get a password from authentication file or prompt the user for one.
+
+        :param scheme: protocol
+
+        :param host: the server address
+
+        :param port: the associated port (optional)
+
+        :param user: login
+
+        :param realm: the realm sent by the server (optional)
+
+        :param path: the absolute path on the server (optional)
+
+        :return: The found password or the one entered by the user.
+        """
+        credentials = self.get_credentials(scheme, host, port, user, path,
+                                           realm)
+        if credentials is not None:
+            password = credentials['password']
+            if password is not None and scheme is 'ssh':
+                trace.warning('password ignored in section [%s],'
+                              ' use an ssh agent instead'
+                              % credentials['name'])
+                password = None
+        else:
+            password = None
+        # Prompt user only if we could't find a password
+        if password is None:
+            if prompt is None:
+                # Create a default prompt suitable for most cases
+                prompt = '%s' % scheme.upper() + ' %(user)s@%(host)s password'
+            # Special handling for optional fields in the prompt
+            if port is not None:
+                prompt_host = '%s:%d' % (host, port)
+            else:
+                prompt_host = host
+            password = ui.ui_factory.get_password(prompt,
+                                                  host=prompt_host, user=user)
+        return password
+
+    def decode_password(self, credentials, encoding):
+        try:
+            cs = credential_store_registry.get_credential_store(encoding)
+        except KeyError:
+            raise ValueError('%r is not a known password_encoding' % encoding)
+        credentials['password'] = cs.decode_password(credentials)
+        return credentials
+
+
+class CredentialStoreRegistry(registry.Registry):
+    """A class that registers credential stores.
+
+    A credential store provides access to credentials via the password_encoding
+    field in authentication.conf sections.
+
+    Except for stores provided by bzr itself, most stores are expected to be
+    provided by plugins that will therefore use
+    register_lazy(password_encoding, module_name, member_name, help=help,
+    fallback=fallback) to install themselves.
+
+    A fallback credential store is one that is queried if no credentials can be
+    found via authentication.conf.
+    """
+
+    def get_credential_store(self, encoding=None):
+        cs = self.get(encoding)
+        if callable(cs):
+            cs = cs()
+        return cs
+
+    def is_fallback(self, name):
+        """Check if the named credentials store should be used as fallback."""
+        return self.get_info(name)
+
+    def get_fallback_credentials(self, scheme, host, port=None, user=None,
+                                 path=None, realm=None):
+        """Request credentials from all fallback credentials stores.
+
+        The first credentials store that can provide credentials wins.
+        """
+        credentials = None
+        for name in self.keys():
+            if not self.is_fallback(name):
+                continue
+            cs = self.get_credential_store(name)
+            credentials = cs.get_credentials(scheme, host, port, user,
+                                             path, realm)
+            if credentials is not None:
+                # We found some credentials
+                break
+        return credentials
+
+    def register(self, key, obj, help=None, override_existing=False,
+                 fallback=False):
+        """Register a new object to a name.
+
+        :param key: This is the key to use to request the object later.
+        :param obj: The object to register.
+        :param help: Help text for this entry. This may be a string or
+                a callable. If it is a callable, it should take two
+                parameters (registry, key): this registry and the key that
+                the help was registered under.
+        :param override_existing: Raise KeyErorr if False and something has
+                already been registered for that key. If True, ignore if there
+                is an existing key (always register the new value).
+        :param fallback: Whether this credential store should be 
+                used as fallback.
+        """
+        return super(CredentialStoreRegistry,
+                     self).register(key, obj, help, info=fallback,
+                                    override_existing=override_existing)
+
+    def register_lazy(self, key, module_name, member_name,
+                      help=None, override_existing=False,
+                      fallback=False):
+        """Register a new credential store to be loaded on request.
+
+        :param module_name: The python path to the module. Such as 'os.path'.
+        :param member_name: The member of the module to return.  If empty or
+                None, get() will return the module itself.
+        :param help: Help text for this entry. This may be a string or
+                a callable.
+        :param override_existing: If True, replace the existing object
+                with the new one. If False, if there is already something
+                registered with the same key, raise a KeyError
+        :param fallback: Whether this credential store should be 
+                used as fallback.
+        """
+        return super(CredentialStoreRegistry, self).register_lazy(
+            key, module_name, member_name, help,
+            info=fallback, override_existing=override_existing)
+
+
+credential_store_registry = CredentialStoreRegistry()
+
+
+class CredentialStore(object):
+    """An abstract class to implement storage for credentials"""
+
+    def decode_password(self, credentials):
+        """Returns a clear text password for the provided credentials."""
+        raise NotImplementedError(self.decode_password)
+
+    def get_credentials(self, scheme, host, port=None, user=None, path=None,
+                        realm=None):
+        """Return the matching credentials from this credential store.
+
+        This method is only called on fallback credential stores.
+        """
+        raise NotImplementedError(self.get_credentials)
+
+
+
+class PlainTextCredentialStore(CredentialStore):
+    """Plain text credential store for the authentication.conf file."""
+
+    def decode_password(self, credentials):
+        """See CredentialStore.decode_password."""
+        return credentials['password']
+
+
+credential_store_registry.register('plain', PlainTextCredentialStore,
+                                   help=PlainTextCredentialStore.__doc__)
+credential_store_registry.default_key = 'plain'
+
+
+class BzrDirConfig(object):
+
+    def __init__(self, bzrdir):
+        self._bzrdir = bzrdir
+        self._config = bzrdir._get_config()
+
+    def set_default_stack_on(self, value):
+        """Set the default stacking location.
+
+        It may be set to a location, or None.
+
+        This policy affects all branches contained by this bzrdir, except for
+        those under repositories.
+        """
+        if self._config is None:
+            raise errors.BzrError("Cannot set configuration in %s" % self._bzrdir)
+        if value is None:
+            self._config.set_option('', 'default_stack_on')
+        else:
+            self._config.set_option(value, 'default_stack_on')
+
+    def get_default_stack_on(self):
+        """Return the default stacking location.
+
+        This will either be a location, or None.
+
+        This policy affects all branches contained by this bzrdir, except for
+        those under repositories.
+        """
+        if self._config is None:
+            return None
+        value = self._config.get_option('default_stack_on')
+        if value == '':
+            value = None
+        return value
+
+
+class TransportConfig(object):
+    """A Config that reads/writes a config file on a Transport.
+
+    It is a low-level object that considers config data to be name/value pairs
+    that may be associated with a section.  Assigning meaning to the these
+    values is done at higher levels like TreeConfig.
+    """
+
+    def __init__(self, transport, filename):
+        self._transport = transport
+        self._filename = filename
+
+    def get_option(self, name, section=None, default=None):
+        """Return the value associated with a named option.
+
+        :param name: The name of the value
+        :param section: The section the option is in (if any)
+        :param default: The value to return if the value is not set
+        :return: The value or default value
+        """
+        configobj = self._get_configobj()
+        if section is None:
+            section_obj = configobj
+        else:
+            try:
+                section_obj = configobj[section]
+            except KeyError:
+                return default
+        return section_obj.get(name, default)
+
+    def set_option(self, value, name, section=None):
+        """Set the value associated with a named option.
+
+        :param value: The value to set
+        :param name: The name of the value to set
+        :param section: The section the option is in (if any)
+        """
+        configobj = self._get_configobj()
+        if section is None:
+            configobj[name] = value
+        else:
+            configobj.setdefault(section, {})[name] = value
+        self._set_configobj(configobj)
+
+    def _get_config_file(self):
+        try:
+            return self._transport.get(self._filename)
+        except errors.NoSuchFile:
+            return StringIO()
+
+    def _get_configobj(self):
+        return ConfigObj(self._get_config_file(), encoding='utf-8')
+
+    def _set_configobj(self, configobj):
+        out_file = StringIO()
+        configobj.write(out_file)
+        out_file.seek(0)
+        self._transport.put_file(self._filename, out_file)

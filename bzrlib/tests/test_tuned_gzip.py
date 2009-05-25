@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Tests for tuned_gzip."""
@@ -36,7 +36,7 @@ class FakeDecompress(object):
 
     def decompress(self, buf):
         """Return an empty string as though we are at eof."""
-        # note that the zlib module *overwrites* unused data 
+        # note that the zlib module *overwrites* unused data
         # on writes after EOF.
         self.unused_data = buf
         return ''
@@ -71,7 +71,7 @@ class TestGzip(TestCase):
 
     def test__read_short_remainder(self):
         # a _read call at the end of a compressed hunk should
-        # read more bytes if there is less than 8 bytes (the 
+        # read more bytes if there is less than 8 bytes (the
         # gzip trailer) unread.
         stream = StringIO('\0\0\0\0\0\0\0\0')
         myfile = tuned_gzip.GzipFile(fileobj=stream)

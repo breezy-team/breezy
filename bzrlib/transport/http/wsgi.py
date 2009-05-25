@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """WSGI application for bzr HTTP smart server.
 
@@ -22,14 +22,15 @@ For more information about WSGI, see PEP 333:
 
 from cStringIO import StringIO
 
-from bzrlib.smart import protocol
+from bzrlib.smart import protocol, medium
 from bzrlib.transport import chroot, get_transport
 from bzrlib.urlutils import local_path_to_url
-    
 
-def make_app(root, prefix, path_var, readonly=True):
+
+def make_app(root, prefix, path_var='REQUEST_URI', readonly=True,
+    load_plugins=True, enable_logging=True):
     """Convenience function to construct a WSGI bzr smart server.
-    
+
     :param root: a local path that requests will be relative to.
     :param prefix: See RelpathSetter.
     :param path_var: See RelpathSetter.
@@ -39,14 +40,20 @@ def make_app(root, prefix, path_var, readonly=True):
         base_transport = get_transport('readonly+' + local_url)
     else:
         base_transport = get_transport(local_url)
-    app = SmartWSGIApp(base_transport)
-    app = RelpathSetter(app, prefix, path_var)
+    if load_plugins:
+        from bzrlib.plugin import load_plugins
+        load_plugins()
+    if enable_logging:
+        import bzrlib.trace
+        bzrlib.trace.enable_default_logging()
+    app = SmartWSGIApp(base_transport, prefix)
+    app = RelpathSetter(app, '', path_var)
     return app
 
 
 class RelpathSetter(object):
     """WSGI middleware to set 'bzrlib.relpath' in the environ.
-    
+
     Different servers can invoke a SmartWSGIApp in different ways.  This
     middleware allows an adminstrator to configure how to the SmartWSGIApp will
     determine what path it should be serving for a given request for many common
@@ -58,7 +65,7 @@ class RelpathSetter(object):
     prefix="/some/prefix/" and path_var="REQUEST_URI" will set that request's
     'bzrlib.relpath' variable to "repo/branch".
     """
-    
+
     def __init__(self, app, prefix='', path_var='REQUEST_URI'):
         """Constructor.
 
@@ -76,7 +83,7 @@ class RelpathSetter(object):
         path = environ[self.path_var]
         suffix = '/.bzr/smart'
         if not (path.startswith(self.prefix) and path.endswith(suffix)):
-            start_response('404 Not Found', {})
+            start_response('404 Not Found', [])
             return []
         environ['bzrlib.relpath'] = path[len(self.prefix):-len(suffix)]
         return self.app(environ, start_response)
@@ -85,11 +92,14 @@ class RelpathSetter(object):
 class SmartWSGIApp(object):
     """A WSGI application for the bzr smart server."""
 
-    def __init__(self, backing_transport):
+    def __init__(self, backing_transport, root_client_path='/'):
         """Constructor.
 
         :param backing_transport: a transport.  Requests will be processed
             relative to this transport.
+        :param root_client_path: the client path that maps to the root of
+            backing_transport.  This is used to interpret relpaths received from
+            the client.
         """
         # Use a ChrootTransportDecorator so that this web application won't
         # accidentally let people access locations they shouldn't.
@@ -98,9 +108,10 @@ class SmartWSGIApp(object):
         self.chroot_server = chroot.ChrootServer(backing_transport)
         self.chroot_server.setUp()
         self.backing_transport = get_transport(self.chroot_server.get_url())
+        self.root_client_path = root_client_path
         # While the chroot server can technically be torn down at this point,
-        # as all it does is remove the scheme registration from transport's 
-        # protocol dictionary, we don't *just in case* there are parts of 
+        # as all it does is remove the scheme registration from transport's
+        # protocol dictionary, we don't *just in case* there are parts of
         # bzrlib that will invoke 'get_transport' on urls rather than cloning
         # around the existing transport.
         #self.chroot_server.tearDown()
@@ -112,12 +123,43 @@ class SmartWSGIApp(object):
             return []
 
         relpath = environ['bzrlib.relpath']
-        transport = self.backing_transport.clone(relpath)
+
+        if not relpath.startswith('/'):
+            relpath = '/' + relpath
+        if not relpath.endswith('/'):
+            relpath += '/'
+
+        # Compare the HTTP path (relpath) and root_client_path, and calculate
+        # new relpath and root_client_path accordingly, to be used to build the
+        # request.
+        if relpath.startswith(self.root_client_path):
+            # The relpath traverses all of the mandatory root client path.
+            # Remove the root_client_path from the relpath, and set
+            # adjusted_tcp to None to tell the request handler that no further
+            # path translation is required.
+            adjusted_rcp = None
+            adjusted_relpath = relpath[len(self.root_client_path):]
+        elif self.root_client_path.startswith(relpath):
+            # The relpath traverses some of the mandatory root client path.
+            # Subtract the relpath from the root_client_path, and set the
+            # relpath to '.'.
+            adjusted_rcp = '/' + self.root_client_path[len(relpath):]
+            adjusted_relpath = '.'
+        else:
+            adjusted_rcp = self.root_client_path
+            adjusted_relpath = relpath
+
+        if adjusted_relpath.startswith('/'):
+            adjusted_relpath = adjusted_relpath[1:]
+        if adjusted_relpath.startswith('/'):
+            raise AssertionError(adjusted_relpath)
+
+        transport = self.backing_transport.clone(adjusted_relpath)
         out_buffer = StringIO()
         request_data_length = int(environ['CONTENT_LENGTH'])
         request_data_bytes = environ['wsgi.input'].read(request_data_length)
         smart_protocol_request = self.make_request(
-            transport, out_buffer.write, request_data_bytes)
+            transport, out_buffer.write, request_data_bytes, adjusted_rcp)
         if smart_protocol_request.next_read_size() != 0:
             # The request appears to be incomplete, or perhaps it's just a
             # newer version we don't understand.  Regardless, all we can do
@@ -131,14 +173,9 @@ class SmartWSGIApp(object):
         start_response('200 OK', headers)
         return [response_data]
 
-    def make_request(self, transport, write_func, request_bytes):
-        # XXX: This duplicates the logic in
-        # SmartServerStreamMedium._build_protocol.
-        if request_bytes.startswith(protocol.REQUEST_VERSION_TWO):
-            protocol_class = protocol.SmartServerRequestProtocolTwo
-            request_bytes = request_bytes[len(protocol.REQUEST_VERSION_TWO):]
-        else:
-            protocol_class = protocol.SmartServerRequestProtocolOne
-        server_protocol = protocol_class(transport, write_func)
-        server_protocol.accept_bytes(request_bytes)
+    def make_request(self, transport, write_func, request_bytes, rcp):
+        protocol_factory, unused_bytes = medium._get_protocol_factory_for_bytes(
+            request_bytes)
+        server_protocol = protocol_factory(transport, write_func, rcp)
+        server_protocol.accept_bytes(unused_bytes)
         return server_protocol

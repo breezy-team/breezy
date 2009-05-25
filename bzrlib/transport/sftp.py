@@ -1,5 +1,4 @@
-# Copyright (C) 2005 Robey Pointer <robey@lag.net>
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -13,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Implementation of Transport over SFTP, using paramiko."""
 
@@ -24,7 +23,9 @@
 # suite.  Those formats all date back to 0.7; so we should be able to remove
 # these methods when we officially drop support for those formats.
 
+import bisect
 import errno
+import itertools
 import os
 import random
 import select
@@ -34,8 +35,11 @@ import sys
 import time
 import urllib
 import urlparse
+import warnings
 
 from bzrlib import (
+    config,
+    debug,
     errors,
     urlutils,
     )
@@ -49,16 +53,29 @@ from bzrlib.errors import (FileExists,
 from bzrlib.osutils import pathjoin, fancy_rename, getcwd
 from bzrlib.symbol_versioning import (
         deprecated_function,
-        zero_ninety,
         )
 from bzrlib.trace import mutter, warning
 from bzrlib.transport import (
+    FileFileStream,
+    _file_streams,
     local,
-    register_urlparse_netloc_protocol,
     Server,
     ssh,
     ConnectedTransport,
     )
+
+# Disable one particular warning that comes from paramiko in Python2.5; if
+# this is emitted at the wrong time it tends to cause spurious test failures
+# or at least noise in the test case::
+#
+# [1770/7639 in 86s, 1 known failures, 50 skipped, 2 missing features]
+# test_permissions.TestSftpPermissions.test_new_files
+# /var/lib/python-support/python2.5/paramiko/message.py:226: DeprecationWarning: integer argument expected, got float
+#  self.packet.write(struct.pack('>I', n))
+warnings.filterwarnings('ignore',
+        'integer argument expected, got float',
+        category=DeprecationWarning,
+        module='paramiko.message')
 
 try:
     import paramiko
@@ -72,35 +89,22 @@ else:
     from paramiko.sftp_file import SFTPFile
 
 
-register_urlparse_netloc_protocol('sftp')
-
-
 _paramiko_version = getattr(paramiko, '__version_info__', (0, 0, 0))
 # don't use prefetch unless paramiko version >= 1.5.5 (there were bugs earlier)
 _default_do_prefetch = (_paramiko_version >= (1, 5, 5))
 
 
-@deprecated_function(zero_ninety)
-def clear_connection_cache():
-    """Remove all hosts from the SFTP connection cache.
-
-    Primarily useful for test cases wanting to force garbage collection.
-    We don't have a global connection cache anymore.
-    """
-
 class SFTPLock(object):
     """This fakes a lock in a remote location.
-    
+
     A present lock is indicated just by the existence of a file.  This
-    doesn't work well on all transports and they are only used in 
+    doesn't work well on all transports and they are only used in
     deprecated storage formats.
     """
-    
+
     __slots__ = ['path', 'lock_path', 'lock_file', 'transport']
 
     def __init__(self, path, transport):
-        assert isinstance(transport, SFTPTransport)
-
         self.lock_file = None
         self.path = path
         self.lock_path = path + '.write-lock'
@@ -130,6 +134,194 @@ class SFTPLock(object):
             pass
 
 
+class _SFTPReadvHelper(object):
+    """A class to help with managing the state of a readv request."""
+
+    # See _get_requests for an explanation.
+    _max_request_size = 32768
+
+    def __init__(self, original_offsets, relpath, _report_activity):
+        """Create a new readv helper.
+
+        :param original_offsets: The original requests given by the caller of
+            readv()
+        :param relpath: The name of the file (if known)
+        :param _report_activity: A Transport._report_activity bound method,
+            to be called as data arrives.
+        """
+        self.original_offsets = list(original_offsets)
+        self.relpath = relpath
+        self._report_activity = _report_activity
+
+    def _get_requests(self):
+        """Break up the offsets into individual requests over sftp.
+
+        The SFTP spec only requires implementers to support 32kB requests. We
+        could try something larger (openssh supports 64kB), but then we have to
+        handle requests that fail.
+        So instead, we just break up our maximum chunks into 32kB chunks, and
+        asyncronously requests them.
+        Newer versions of paramiko would do the chunking for us, but we want to
+        start processing results right away, so we do it ourselves.
+        """
+        # TODO: Because we issue async requests, we don't 'fudge' any extra
+        #       data.  I'm not 100% sure that is the best choice.
+
+        # The first thing we do, is to collapse the individual requests as much
+        # as possible, so we don't issues requests <32kB
+        sorted_offsets = sorted(self.original_offsets)
+        coalesced = list(ConnectedTransport._coalesce_offsets(sorted_offsets,
+                                                        limit=0, fudge_factor=0))
+        requests = []
+        for c_offset in coalesced:
+            start = c_offset.start
+            size = c_offset.length
+
+            # Break this up into 32kB requests
+            while size > 0:
+                next_size = min(size, self._max_request_size)
+                requests.append((start, next_size))
+                size -= next_size
+                start += next_size
+        if 'sftp' in debug.debug_flags:
+            mutter('SFTP.readv(%s) %s offsets => %s coalesced => %s requests',
+                self.relpath, len(sorted_offsets), len(coalesced),
+                len(requests))
+        return requests
+
+    def request_and_yield_offsets(self, fp):
+        """Request the data from the remote machine, yielding the results.
+
+        :param fp: A Paramiko SFTPFile object that supports readv.
+        :return: Yield the data requested by the original readv caller, one by
+            one.
+        """
+        requests = self._get_requests()
+        offset_iter = iter(self.original_offsets)
+        cur_offset, cur_size = offset_iter.next()
+        # paramiko .readv() yields strings that are in the order of the requests
+        # So we track the current request to know where the next data is
+        # being returned from.
+        input_start = None
+        last_end = None
+        buffered_data = []
+        buffered_len = 0
+
+        # This is used to buffer chunks which we couldn't process yet
+        # It is (start, end, data) tuples.
+        data_chunks = []
+        # Create an 'unlimited' data stream, so we stop based on requests,
+        # rather than just because the data stream ended. This lets us detect
+        # short readv.
+        data_stream = itertools.chain(fp.readv(requests),
+                                      itertools.repeat(None))
+        for (start, length), data in itertools.izip(requests, data_stream):
+            if data is None:
+                if cur_coalesced is not None:
+                    raise errors.ShortReadvError(self.relpath,
+                        start, length, len(data))
+            if len(data) != length:
+                raise errors.ShortReadvError(self.relpath,
+                    start, length, len(data))
+            self._report_activity(length, 'read')
+            if last_end is None:
+                # This is the first request, just buffer it
+                buffered_data = [data]
+                buffered_len = length
+                input_start = start
+            elif start == last_end:
+                # The data we are reading fits neatly on the previous
+                # buffer, so this is all part of a larger coalesced range.
+                buffered_data.append(data)
+                buffered_len += length
+            else:
+                # We have an 'interrupt' in the data stream. So we know we are
+                # at a request boundary.
+                if buffered_len > 0:
+                    # We haven't consumed the buffer so far, so put it into
+                    # data_chunks, and continue.
+                    buffered = ''.join(buffered_data)
+                    data_chunks.append((input_start, buffered))
+                input_start = start
+                buffered_data = [data]
+                buffered_len = length
+            last_end = start + length
+            if input_start == cur_offset and cur_size <= buffered_len:
+                # Simplify the next steps a bit by transforming buffered_data
+                # into a single string. We also have the nice property that
+                # when there is only one string ''.join([x]) == x, so there is
+                # no data copying.
+                buffered = ''.join(buffered_data)
+                # Clean out buffered data so that we keep memory
+                # consumption low
+                del buffered_data[:]
+                buffered_offset = 0
+                # TODO: We *could* also consider the case where cur_offset is in
+                #       in the buffered range, even though it doesn't *start*
+                #       the buffered range. But for packs we pretty much always
+                #       read in order, so you won't get any extra data in the
+                #       middle.
+                while (input_start == cur_offset
+                       and (buffered_offset + cur_size) <= buffered_len):
+                    # We've buffered enough data to process this request, spit it
+                    # out
+                    cur_data = buffered[buffered_offset:buffered_offset + cur_size]
+                    # move the direct pointer into our buffered data
+                    buffered_offset += cur_size
+                    # Move the start-of-buffer pointer
+                    input_start += cur_size
+                    # Yield the requested data
+                    yield cur_offset, cur_data
+                    cur_offset, cur_size = offset_iter.next()
+                # at this point, we've consumed as much of buffered as we can,
+                # so break off the portion that we consumed
+                if buffered_offset == len(buffered_data):
+                    # No tail to leave behind
+                    buffered_data = []
+                    buffered_len = 0
+                else:
+                    buffered = buffered[buffered_offset:]
+                    buffered_data = [buffered]
+                    buffered_len = len(buffered)
+        if buffered_len:
+            buffered = ''.join(buffered_data)
+            del buffered_data[:]
+            data_chunks.append((input_start, buffered))
+        if data_chunks:
+            if 'sftp' in debug.debug_flags:
+                mutter('SFTP readv left with %d out-of-order bytes',
+                    sum(map(lambda x: len(x[1]), data_chunks)))
+            # We've processed all the readv data, at this point, anything we
+            # couldn't process is in data_chunks. This doesn't happen often, so
+            # this code path isn't optimized
+            # We use an interesting process for data_chunks
+            # Specifically if we have "bisect_left([(start, len, entries)],
+            #                                       (qstart,)])
+            # If start == qstart, then we get the specific node. Otherwise we
+            # get the previous node
+            while True:
+                idx = bisect.bisect_left(data_chunks, (cur_offset,))
+                if idx < len(data_chunks) and data_chunks[idx][0] == cur_offset:
+                    # The data starts here
+                    data = data_chunks[idx][1][:cur_size]
+                elif idx > 0:
+                    # The data is in a portion of a previous page
+                    idx -= 1
+                    sub_offset = cur_offset - data_chunks[idx][0]
+                    data = data_chunks[idx][1]
+                    data = data[sub_offset:sub_offset + cur_size]
+                else:
+                    # We are missing the page where the data should be found,
+                    # something is wrong
+                    data = ''
+                if len(data) != cur_size:
+                    raise AssertionError('We must have miscalulated.'
+                        ' We expected %d bytes, but only found %d'
+                        % (cur_size, len(data)))
+                yield cur_offset, data
+                cur_offset, cur_size = offset_iter.next()
+
+
 class SFTPTransport(ConnectedTransport):
     """Transport implementation for SFTP access."""
 
@@ -152,13 +344,12 @@ class SFTPTransport(ConnectedTransport):
     _max_request_size = 32768
 
     def __init__(self, base, _from_transport=None):
-        assert base.startswith('sftp://')
         super(SFTPTransport, self).__init__(base,
                                             _from_transport=_from_transport)
 
     def _remote_path(self, relpath):
         """Return the path to be passed along the sftp protocol for relpath.
-        
+
         :param relpath: is a urlencoded string.
         """
         relative = urlutils.unescape(relpath).encode('utf-8')
@@ -192,9 +383,13 @@ class SFTPTransport(ConnectedTransport):
             password = credentials
 
         vendor = ssh._get_ssh_vendor()
+        user = self._user
+        if user is None:
+            auth = config.AuthenticationConfig()
+            user = auth.get_user('ssh', self._host, self._port)
         connection = vendor.connect_sftp(self._user, password,
                                          self._host, self._port)
-        return connection, password
+        return connection, (user, password)
 
     def _get_sftp(self):
         """Ensures that a connection is established"""
@@ -205,30 +400,29 @@ class SFTPTransport(ConnectedTransport):
             self._set_connection(connection, credentials)
         return connection
 
-
-    def should_cache(self):
-        """
-        Return True if the data pulled across should be cached locally.
-        """
-        return True
-
     def has(self, relpath):
         """
         Does the target location exist?
         """
         try:
             self._get_sftp().stat(self._remote_path(relpath))
+            # stat result is about 20 bytes, let's say
+            self._report_activity(20, 'read')
             return True
         except IOError:
             return False
 
     def get(self, relpath):
-        """
-        Get the file at the given relative path.
+        """Get the file at the given relative path.
 
         :param relpath: The relative path to the file
         """
         try:
+            # FIXME: by returning the file directly, we don't pass this
+            # through to report_activity.  We could try wrapping the object
+            # before it's returned.  For readv and get_bytes it's handled in
+            # the higher-level function.
+            # -- mbp 20090126
             path = self._remote_path(relpath)
             f = self._get_sftp().file(path, mode='rb')
             if self._do_prefetch and (getattr(f, 'prefetch', None) is not None):
@@ -238,7 +432,17 @@ class SFTPTransport(ConnectedTransport):
             self._translate_io_exception(e, path, ': error retrieving',
                 failure_exc=errors.ReadError)
 
-    def readv(self, relpath, offsets):
+    def get_bytes(self, relpath):
+        # reimplement this here so that we can report how many bytes came back
+        f = self.get(relpath)
+        try:
+            bytes = f.read()
+            self._report_activity(len(bytes), 'read')
+            return bytes
+        finally:
+            f.close()
+
+    def _readv(self, relpath, offsets):
         """See Transport.readv()"""
         # We overload the default readv() because we want to use a file
         # that does not have prefetch enabled.
@@ -252,113 +456,29 @@ class SFTPTransport(ConnectedTransport):
             readv = getattr(fp, 'readv', None)
             if readv:
                 return self._sftp_readv(fp, offsets, relpath)
-            mutter('seek and read %s offsets', len(offsets))
+            if 'sftp' in debug.debug_flags:
+                mutter('seek and read %s offsets', len(offsets))
             return self._seek_and_read(fp, offsets, relpath)
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': error retrieving')
 
-    def _sftp_readv(self, fp, offsets, relpath='<unknown>'):
+    def recommended_page_size(self):
+        """See Transport.recommended_page_size().
+
+        For SFTP we suggest a large page size to reduce the overhead
+        introduced by latency.
+        """
+        return 64 * 1024
+
+    def _sftp_readv(self, fp, offsets, relpath):
         """Use the readv() member of fp to do async readv.
 
-        And then read them using paramiko.readv(). paramiko.readv()
+        Then read them using paramiko.readv(). paramiko.readv()
         does not support ranges > 64K, so it caps the request size, and
-        just reads until it gets all the stuff it wants
+        just reads until it gets all the stuff it wants.
         """
-        offsets = list(offsets)
-        sorted_offsets = sorted(offsets)
-
-        # The algorithm works as follows:
-        # 1) Coalesce nearby reads into a single chunk
-        #    This generates a list of combined regions, the total size
-        #    and the size of the sub regions. This coalescing step is limited
-        #    in the number of nearby chunks to combine, and is allowed to
-        #    skip small breaks in the requests. Limiting it makes sure that
-        #    we can start yielding some data earlier, and skipping means we
-        #    make fewer requests. (Beneficial even when using async)
-        # 2) Break up this combined regions into chunks that are smaller
-        #    than 64KiB. Technically the limit is 65536, but we are a
-        #    little bit conservative. This is because sftp has a maximum
-        #    return chunk size of 64KiB (max size of an unsigned short)
-        # 3) Issue a readv() to paramiko to create an async request for
-        #    all of this data
-        # 4) Read in the data as it comes back, until we've read one
-        #    continuous section as determined in step 1
-        # 5) Break up the full sections into hunks for the original requested
-        #    offsets. And put them in a cache
-        # 6) Check if the next request is in the cache, and if it is, remove
-        #    it from the cache, and yield its data. Continue until no more
-        #    entries are in the cache.
-        # 7) loop back to step 4 until all data has been read
-        #
-        # TODO: jam 20060725 This could be optimized one step further, by
-        #       attempting to yield whatever data we have read, even before
-        #       the first coallesced section has been fully processed.
-
-        # When coalescing for use with readv(), we don't really need to
-        # use any fudge factor, because the requests are made asynchronously
-        coalesced = list(self._coalesce_offsets(sorted_offsets,
-                               limit=self._max_readv_combine,
-                               fudge_factor=0,
-                               ))
-        requests = []
-        for c_offset in coalesced:
-            start = c_offset.start
-            size = c_offset.length
-
-            # We need to break this up into multiple requests
-            while size > 0:
-                next_size = min(size, self._max_request_size)
-                requests.append((start, next_size))
-                size -= next_size
-                start += next_size
-
-        mutter('SFTP.readv() %s offsets => %s coalesced => %s requests',
-                len(offsets), len(coalesced), len(requests))
-
-        # Queue the current read until we have read the full coalesced section
-        cur_data = []
-        cur_data_len = 0
-        cur_coalesced_stack = iter(coalesced)
-        cur_coalesced = cur_coalesced_stack.next()
-
-        # Cache the results, but only until they have been fulfilled
-        data_map = {}
-        # turn the list of offsets into a stack
-        offset_stack = iter(offsets)
-        cur_offset_and_size = offset_stack.next()
-
-        for data in fp.readv(requests):
-            cur_data += data
-            cur_data_len += len(data)
-
-            if cur_data_len < cur_coalesced.length:
-                continue
-            assert cur_data_len == cur_coalesced.length, \
-                "Somehow we read too much: %s != %s" % (cur_data_len,
-                                                        cur_coalesced.length)
-            all_data = ''.join(cur_data)
-            cur_data = []
-            cur_data_len = 0
-
-            for suboffset, subsize in cur_coalesced.ranges:
-                key = (cur_coalesced.start+suboffset, subsize)
-                data_map[key] = all_data[suboffset:suboffset+subsize]
-
-            # Now that we've read some data, see if we can yield anything back
-            while cur_offset_and_size in data_map:
-                this_data = data_map.pop(cur_offset_and_size)
-                yield cur_offset_and_size[0], this_data
-                cur_offset_and_size = offset_stack.next()
-
-            # We read a coalesced entry, so mark it as done
-            cur_coalesced = None
-            # Now that we've read all of the data for this coalesced section
-            # on to the next
-            cur_coalesced = cur_coalesced_stack.next()
-
-        if cur_coalesced is not None:
-            raise errors.ShortReadvError(relpath, cur_coalesced.start,
-                cur_coalesced.length, len(data))
+        helper = _SFTPReadvHelper(offsets, relpath, self._report_activity)
+        return helper.request_and_yield_offsets(fp)
 
     def put_file(self, relpath, f, mode=None):
         """
@@ -369,7 +489,7 @@ class SFTPTransport(ConnectedTransport):
         :param mode: The final mode for the file
         """
         final_path = self._remote_path(relpath)
-        self._put(final_path, f, mode=mode)
+        return self._put(final_path, f, mode=mode)
 
     def _put(self, abspath, f, mode=None):
         """Helper function so both put() and copy_abspaths can reuse the code"""
@@ -380,7 +500,7 @@ class SFTPTransport(ConnectedTransport):
         try:
             try:
                 fout.set_pipelined(True)
-                self._pump(f, fout)
+                length = self._pump(f, fout)
             except (IOError, paramiko.SSHException), e:
                 self._translate_io_exception(e, tmp_abspath)
             # XXX: This doesn't truly help like we would like it to.
@@ -389,18 +509,19 @@ class SFTPTransport(ConnectedTransport):
             #      sticky bit. So it is probably best to stop chmodding, and
             #      just tell users that they need to set the umask correctly.
             #      The attr.st_mode = mode, in _sftp_open_exclusive
-            #      will handle when the user wants the final mode to be more 
-            #      restrictive. And then we avoid a round trip. Unless 
+            #      will handle when the user wants the final mode to be more
+            #      restrictive. And then we avoid a round trip. Unless
             #      paramiko decides to expose an async chmod()
 
             # This is designed to chmod() right before we close.
-            # Because we set_pipelined() earlier, theoretically we might 
+            # Because we set_pipelined() earlier, theoretically we might
             # avoid the round trip for fout.close()
             if mode is not None:
                 self._get_sftp().chmod(tmp_abspath, mode)
             fout.close()
             closed = True
             self._rename_and_overwrite(tmp_abspath, abspath)
+            return length
         except Exception, e:
             # If we fail, try to clean up the temporary file
             # before we throw the exception
@@ -441,7 +562,7 @@ class SFTPTransport(ConnectedTransport):
                                                  ': unable to open')
 
                 # This is designed to chmod() right before we close.
-                # Because we set_pipelined() earlier, theoretically we might 
+                # Because we set_pipelined() earlier, theoretically we might
                 # avoid the round trip for fout.close()
                 if mode is not None:
                     self._get_sftp().chmod(abspath, mode)
@@ -498,6 +619,7 @@ class SFTPTransport(ConnectedTransport):
 
     def iter_files_recursive(self):
         """Walk the relative paths of all files in this transport."""
+        # progress is handled by list_dir
         queue = list(self.list_dir('.'))
         while queue:
             relpath = queue.pop(0)
@@ -514,9 +636,25 @@ class SFTPTransport(ConnectedTransport):
         else:
             local_mode = mode
         try:
+            self._report_activity(len(abspath), 'write')
             self._get_sftp().mkdir(abspath, local_mode)
+            self._report_activity(1, 'read')
             if mode is not None:
-                self._get_sftp().chmod(abspath, mode=mode)
+                # chmod a dir through sftp will erase any sgid bit set
+                # on the server side.  So, if the bit mode are already
+                # set, avoid the chmod.  If the mode is not fine but
+                # the sgid bit is set, report a warning to the user
+                # with the umask fix.
+                stat = self._get_sftp().lstat(abspath)
+                mode = mode & 0777 # can't set special bits anyway
+                if mode != stat.st_mode & 0777:
+                    if stat.st_mode & 06000:
+                        warning('About to chmod %s over sftp, which will result'
+                                ' in its suid or sgid bits being cleared.  If'
+                                ' you want to preserve those bits, change your '
+                                ' environment on the server to use umask 0%03o.'
+                                % (abspath, 0777 - mode))
+                    self._get_sftp().chmod(abspath, mode=mode)
         except (paramiko.SSHException, IOError), e:
             self._translate_io_exception(e, abspath, ': unable to mkdir',
                 failure_exc=FileExists)
@@ -524,6 +662,28 @@ class SFTPTransport(ConnectedTransport):
     def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
         self._mkdir(self._remote_path(relpath), mode=mode)
+
+    def open_write_stream(self, relpath, mode=None):
+        """See Transport.open_write_stream."""
+        # initialise the file to zero-length
+        # this is three round trips, but we don't use this
+        # api more than once per write_group at the moment so
+        # it is a tolerable overhead. Better would be to truncate
+        # the file after opening. RBC 20070805
+        self.put_bytes_non_atomic(relpath, "", mode)
+        abspath = self._remote_path(relpath)
+        # TODO: jam 20060816 paramiko doesn't publicly expose a way to
+        #       set the file mode at create time. If it does, use it.
+        #       But for now, we just chmod later anyway.
+        handle = None
+        try:
+            handle = self._get_sftp().file(abspath, mode='wb')
+            handle.set_pipelined(True)
+        except (paramiko.SSHException, IOError), e:
+            self._translate_io_exception(e, abspath,
+                                         ': unable to open')
+        _file_streams[self.abspath(relpath)] = handle
+        return FileFileStream(self, relpath, handle)
 
     def _translate_io_exception(self, e, path, more_info='',
                                 failure_exc=PathError):
@@ -536,7 +696,7 @@ class SFTPTransport(ConnectedTransport):
         :param failure_exc: Paramiko has the super fun ability to raise completely
                            opaque errors that just set "e.args = ('Failure',)" with
                            no more information.
-                           If this parameter is set, it defines the exception 
+                           If this parameter is set, it defines the exception
                            to raise in these cases.
         """
         # paramiko seems to generate detailless errors.
@@ -545,7 +705,8 @@ class SFTPTransport(ConnectedTransport):
             if (e.args == ('No such file or directory',) or
                 e.args == ('No such file',)):
                 raise NoSuchFile(path, str(e) + more_info)
-            if (e.args == ('mkdir failed',)):
+            if (e.args == ('mkdir failed',) or
+                e.args[0].startswith('syserr: File exists')):
                 raise FileExists(path, str(e) + more_info)
             # strange but true, for the paramiko server.
             if (e.args == ('Failure',)):
@@ -582,7 +743,7 @@ class SFTPTransport(ConnectedTransport):
 
     def _rename_and_overwrite(self, abs_from, abs_to):
         """Do a fancy rename on the remote server.
-        
+
         Using the implementation provided by osutils.
         """
         try:
@@ -607,7 +768,7 @@ class SFTPTransport(ConnectedTransport):
             self._get_sftp().remove(path)
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': unable to delete')
-            
+
     def external_url(self):
         """See bzrlib.transport.Transport.external_url."""
         # the external path for SFTP is the base
@@ -628,6 +789,7 @@ class SFTPTransport(ConnectedTransport):
         path = self._remote_path(relpath)
         try:
             entries = self._get_sftp().listdir(path)
+            self._report_activity(sum(map(len, entries)), 'read')
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': failed to list_dir')
         return [urlutils.escape(entry) for entry in entries]
@@ -690,14 +852,14 @@ class SFTPTransport(ConnectedTransport):
         """
         # TODO: jam 20060816 Paramiko >= 1.6.2 (probably earlier) supports
         #       using the 'x' flag to indicate SFTP_FLAG_EXCL.
-        #       However, there is no way to set the permission mode at open 
+        #       However, there is no way to set the permission mode at open
         #       time using the sftp_client.file() functionality.
         path = self._get_sftp()._adjust_cwd(abspath)
         # mutter('sftp abspath %s => %s', abspath, path)
         attr = SFTPAttributes()
         if mode is not None:
             attr.st_mode = mode
-        omode = (SFTP_FLAG_WRITE | SFTP_FLAG_CREATE 
+        omode = (SFTP_FLAG_WRITE | SFTP_FLAG_CREATE
                 | SFTP_FLAG_TRUNC | SFTP_FLAG_EXCL)
         try:
             t, msg = self._get_sftp()._request(CMD_OPEN, path, omode, attr)
@@ -781,7 +943,7 @@ class SocketListener(threading.Thread):
                 # probably a failed test; unit test thread will log the
                 # failure/error
                 sys.excepthook(*sys.exc_info())
-                warning('Exception from within unit test server thread: %r' % 
+                warning('Exception from within unit test server thread: %r' %
                         x)
 
 
@@ -798,7 +960,7 @@ class SocketDelay(object):
 
     Not all methods are implemented, this is deliberate as this class is not a
     replacement for the builtin sockets layer. fileno is not implemented to
-    prevent the proxy being bypassed. 
+    prevent the proxy being bypassed.
     """
 
     simulated_time = 0
@@ -806,9 +968,9 @@ class SocketDelay(object):
         "close", "getpeername", "getsockname", "getsockopt", "gettimeout",
         "setblocking", "setsockopt", "settimeout", "shutdown"])
 
-    def __init__(self, sock, latency, bandwidth=1.0, 
+    def __init__(self, sock, latency, bandwidth=1.0,
                  really_sleep=True):
-        """ 
+        """
         :param bandwith: simulated bandwith (MegaBit)
         :param really_sleep: If set to false, the SocketDelay will just
         increase a counter, instead of calling time.sleep. This is useful for
@@ -817,7 +979,7 @@ class SocketDelay(object):
         self.sock = sock
         self.latency = latency
         self.really_sleep = really_sleep
-        self.time_per_byte = 1 / (bandwidth / 8.0 * 1024 * 1024) 
+        self.time_per_byte = 1 / (bandwidth / 8.0 * 1024 * 1024)
         self.new_roundtrip = False
 
     def sleep(self, s):
@@ -885,7 +1047,7 @@ class SFTPServer(Server):
 
     def _run_server_entry(self, sock):
         """Entry point for all implementations of _run_server.
-        
+
         If self.add_latency is > 0.000001 then sock is given a latency adding
         decorator.
         """
@@ -908,14 +1070,15 @@ class SFTPServer(Server):
         event = threading.Event()
         ssh_server.start_server(event, server)
         event.wait(5.0)
-    
+
     def setUp(self, backing_server=None):
         # XXX: TODO: make sftpserver back onto backing_server rather than local
         # disk.
-        assert (backing_server is None or
-                isinstance(backing_server, local.LocalURLServer)), (
-            "backing_server should not be %r, because this can only serve the "
-            "local current working directory." % (backing_server,))
+        if not (backing_server is None or
+                isinstance(backing_server, local.LocalURLServer)):
+            raise AssertionError(
+                "backing_server should not be %r, because this can only serve the "
+                "local current working directory." % (backing_server,))
         self._original_vendor = ssh._ssh_vendor_manager._cached_ssh_vendor
         ssh._ssh_vendor_manager._cached_ssh_vendor = self._vendor
         if sys.platform == 'win32':
@@ -983,10 +1146,12 @@ class SFTPServerWithoutSSH(SFTPServer):
             def close(self):
                 pass
 
-        server = paramiko.SFTPServer(FakeChannel(), 'sftp', StubServer(self), StubSFTPServer,
-                                     root=self._root, home=self._server_homedir)
+        server = paramiko.SFTPServer(
+            FakeChannel(), 'sftp', StubServer(self), StubSFTPServer,
+            root=self._root, home=self._server_homedir)
         try:
-            server.start_subsystem('sftp', None, sock)
+            server.start_subsystem(
+                'sftp', None, ssh.SocketAsChannelAdapter(sock))
         except socket.error, e:
             if (len(e.args) > 0) and (e.args[0] == errno.EPIPE):
                 # it's okay for the client to disconnect abruptly

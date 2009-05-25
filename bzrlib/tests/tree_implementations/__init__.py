@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Tree implementation tests for bzr.
@@ -28,23 +28,18 @@ Specific tests for individual variations are in other places such as:
 from bzrlib import (
     errors,
     osutils,
+    progress,
     tests,
     transform,
     )
-from bzrlib.transport import get_transport
-from bzrlib.tests import (
-                          adapt_modules,
-                          default_transport,
-                          TestCaseWithTransport,
-                          TestLoader,
-                          TestSkipped,
-                          TestSuite,
-                          )
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.tests.workingtree_implementations import (
-    WorkingTreeTestProviderAdapter,
+    make_scenarios as wt_make_scenarios,
+    make_scenario as wt_make_scenario,
     )
+from bzrlib.revision import NULL_REVISION
 from bzrlib.revisiontree import RevisionTree
+from bzrlib.transform import TransformPreview
 from bzrlib.workingtree import (
     WorkingTreeFormat,
     WorkingTreeFormat3,
@@ -53,30 +48,53 @@ from bzrlib.workingtree import (
 from bzrlib.workingtree_4 import (
     DirStateRevisionTree,
     WorkingTreeFormat4,
+    WorkingTreeFormat5,
     )
 
 
-def return_parameter(something):
+def return_parameter(testcase, something):
     """A trivial thunk to return its input."""
     return something
 
 
-def revision_tree_from_workingtree(tree):
+def revision_tree_from_workingtree(testcase, tree):
     """Create a revision tree from a working tree."""
     revid = tree.commit('save tree', allow_pointless=True, recursive=None)
     return tree.branch.repository.revision_tree(revid)
 
 
-def _dirstate_tree_from_workingtree(tree):
-    revid = tree.commit('save tree', allow_pointless=True)
+def _dirstate_tree_from_workingtree(testcase, tree):
+    revid = tree.commit('save tree', allow_pointless=True, recursive=None)
     return tree.basis_tree()
 
 
-class TestTreeImplementationSupport(TestCaseWithTransport):
+def preview_tree_pre(testcase, tree):
+    tt = TransformPreview(tree)
+    testcase.addCleanup(tt.finalize)
+    preview_tree = tt.get_preview_tree()
+    preview_tree.set_parent_ids(tree.get_parent_ids())
+    return preview_tree
+
+
+def preview_tree_post(testcase, tree):
+    basis = tree.basis_tree()
+    tt = TransformPreview(basis)
+    testcase.addCleanup(tt.finalize)
+    pp = progress.ProgressPhase('', 1, progress.DummyProgress())
+    tree.lock_read()
+    testcase.addCleanup(tree.unlock)
+    transform._prepare_revert_transform(basis, tree, tt, None, False, pp,
+                                        basis, {})
+    preview_tree = tt.get_preview_tree()
+    preview_tree.set_parent_ids(tree.get_parent_ids())
+    return preview_tree
+
+
+class TestTreeImplementationSupport(tests.TestCaseWithTransport):
 
     def test_revision_tree_from_workingtree(self):
         tree = self.make_branch_and_tree('.')
-        tree = revision_tree_from_workingtree(tree)
+        tree = revision_tree_from_workingtree(self, tree)
         self.assertIsInstance(tree, RevisionTree)
 
 
@@ -89,6 +107,9 @@ class TestCaseWithTree(TestCaseWithBzrDir):
         made_control.create_branch()
         return self.workingtree_format.initialize(made_control)
 
+    def workingtree_to_test_tree(self, tree):
+        return self._workingtree_to_test_tree(self, tree)
+
     def _convert_tree(self, tree, converter=None):
         """helper to convert using the converter or a supplied one."""
         # convert that to the final shape
@@ -98,7 +119,7 @@ class TestCaseWithTree(TestCaseWithBzrDir):
 
     def get_tree_no_parents_no_content(self, empty_tree, converter=None):
         """Make a tree with no parents and no contents from empty_tree.
-        
+
         :param empty_tree: A working tree with no content and no parents to
             modify.
         """
@@ -120,7 +141,7 @@ class TestCaseWithTree(TestCaseWithBzrDir):
 
     def get_tree_no_parents_abc_content_2(self, tree, converter=None):
         """return a test tree with a, b/, b/c contents.
-        
+
         This variation changes the content of 'a' to foobar\n.
         """
         self._make_abc_tree(tree)
@@ -133,7 +154,7 @@ class TestCaseWithTree(TestCaseWithBzrDir):
 
     def get_tree_no_parents_abc_content_3(self, tree, converter=None):
         """return a test tree with a, b/, b/c contents.
-        
+
         This variation changes the executable flag of b/c to True.
         """
         self._make_abc_tree(tree)
@@ -145,7 +166,7 @@ class TestCaseWithTree(TestCaseWithBzrDir):
 
     def get_tree_no_parents_abc_content_4(self, tree, converter=None):
         """return a test tree with d, b/, b/c contents.
-        
+
         This variation renames a to d.
         """
         self._make_abc_tree(tree)
@@ -154,7 +175,7 @@ class TestCaseWithTree(TestCaseWithBzrDir):
 
     def get_tree_no_parents_abc_content_5(self, tree, converter=None):
         """return a test tree with d, b/, b/c contents.
-        
+
         This variation renames a to d and alters its content to 'bar\n'.
         """
         self._make_abc_tree(tree)
@@ -168,7 +189,7 @@ class TestCaseWithTree(TestCaseWithBzrDir):
 
     def get_tree_no_parents_abc_content_6(self, tree, converter=None):
         """return a test tree with a, b/, e contents.
-        
+
         This variation renames b/c to e, and makes it executable.
         """
         self._make_abc_tree(tree)
@@ -208,9 +229,10 @@ class TestCaseWithTree(TestCaseWithBzrDir):
         where each component has the type of its name -
         i.e. '1file..' is afile.
 
-        note that the order of the paths and fileids is deliberately 
+        note that the order of the paths and fileids is deliberately
         mismatched to ensure that the result order is path based.
         """
+        self.requireFeature(tests.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree('.')
         paths = ['0file',
             '1top-dir/',
@@ -225,11 +247,7 @@ class TestCaseWithTree(TestCaseWithBzrDir):
             '1file-in-1topdir',
             '0dir-in-1topdir'
             ]
-        try:
-            self.build_tree(paths)
-        except UnicodeError:
-            raise TestSkipped(
-                'This platform does not support unicode file paths.')
+        self.build_tree(paths)
         tree.add(paths, ids)
         tt = transform.TreeTransform(tree)
         if symlinks:
@@ -246,23 +264,25 @@ class TestCaseWithTree(TestCaseWithBzrDir):
 
     def _create_tree_with_utf8(self, tree):
         """Generate a tree with a utf8 revision and unicode paths."""
+        self.requireFeature(tests.UnicodeFilenameFeature)
+        # We avoid combining characters in file names here, normalization
+        # checks (as performed by some file systems (OSX) are outside the scope
+        # of these tests).  We use the euro sign \N{Euro Sign} or \u20ac in
+        # unicode strings or '\xe2\x82\ac' (its utf-8 encoding) in raw strings.
         paths = [u'',
-                 u'f\xf6',
-                 u'b\xe5r/',
-                 u'b\xe5r/b\xe1z',
+                 u'fo\N{Euro Sign}o',
+                 u'ba\N{Euro Sign}r/',
+                 u'ba\N{Euro Sign}r/ba\N{Euro Sign}z',
                 ]
         # bzr itself does not create unicode file ids, but we want them for
         # testing.
         file_ids = ['TREE_ROOT',
-                    'f\xc3\xb6-id',
-                    'b\xc3\xa5r-id',
-                    'b\xc3\xa1z-id',
+                    'fo\xe2\x82\xaco-id',
+                    'ba\xe2\x82\xacr-id',
+                    'ba\xe2\x82\xacz-id',
                    ]
-        try:
-            self.build_tree(paths[1:])
-        except UnicodeError:
-            raise tests.TestSkipped('filesystem does not support unicode.')
-        if tree.path2id('') is None:
+        self.build_tree(paths[1:])
+        if tree.get_root_id() is None:
             # Some trees do not have a root yet.
             tree.add(paths, file_ids)
         else:
@@ -278,9 +298,9 @@ class TestCaseWithTree(TestCaseWithBzrDir):
         """Generate a tree with utf8 ancestors."""
         self._create_tree_with_utf8(tree)
         tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
-        self.build_tree([u'tree2/b\xe5r/z\xf7z'])
-        self.callDeprecated([osutils._file_id_warning],
-                            tree2.add, [u'b\xe5r/z\xf7z'], [u'z\xf7z-id'])
+        self.build_tree([u'tree2/ba\N{Euro Sign}r/qu\N{Euro Sign}x'])
+        tree2.add([u'ba\N{Euro Sign}r/qu\N{Euro Sign}x'],
+                  [u'qu\N{Euro Sign}x-id'.encode('utf-8')])
         tree2.commit(u'to m\xe9rge', rev_id=u'r\xe9v-2'.encode('utf8'))
 
         tree.merge_from_branch(tree2.branch)
@@ -288,58 +308,79 @@ class TestCaseWithTree(TestCaseWithBzrDir):
         return self.workingtree_to_test_tree(tree)
 
 
-class TreeTestProviderAdapter(WorkingTreeTestProviderAdapter):
+def make_scenarios(transport_server, transport_readonly_server, formats):
     """Generate test suites for each Tree implementation in bzrlib.
 
     Currently this covers all working tree formats, and RevisionTree and
     DirStateRevisionTree by committing a working tree to create the revision
     tree.
     """
+    scenarios = wt_make_scenarios(transport_server, transport_readonly_server,
+        formats)
+    # now adjust the scenarios and add the non-working-tree tree scenarios.
+    for scenario in scenarios:
+        # for working tree format tests, preserve the tree
+        scenario[1]["_workingtree_to_test_tree"] = return_parameter
+    # add RevisionTree scenario
+    workingtree_format = WorkingTreeFormat._default_format
+    scenarios.append((RevisionTree.__name__,
+        create_tree_scenario(transport_server, transport_readonly_server,
+        workingtree_format, revision_tree_from_workingtree,)))
 
-    def __init__(self, transport_server, transport_readonly_server, formats):
-        super(TreeTestProviderAdapter, self).__init__(transport_server,
-            transport_readonly_server, formats)
-        # now adjust the scenarios and add the non-working-tree tree scenarios.
-        for scenario in self.scenarios:
-            # for working tree adapted tests, preserve the tree
-            scenario[1]["workingtree_to_test_tree"] = return_parameter
-        # add RevisionTree scenario
-        # this is the 'default format' in that it's used to test the generic InterTree
-        # code.
-        default_format = WorkingTreeFormat3()
-        self.scenarios.append(self.formats_to_scenarios([
-            (default_format, default_format._matchingbzrdir)])[0])
-        self.scenarios[-1] = (RevisionTree.__name__, self.scenarios[-1][1])
-        self.scenarios[-1][1]["workingtree_to_test_tree"] = revision_tree_from_workingtree
-
-        # also test WorkingTree4's RevisionTree implementation which is specialised.
-        dirstate_format = WorkingTreeFormat4()
-        self.scenarios.append(self.formats_to_scenarios([
-            (dirstate_format, dirstate_format._matchingbzrdir)])[0])
-        self.scenarios[-1] = (DirStateRevisionTree.__name__, self.scenarios[-1][1])
-        self.scenarios[-1][1]["workingtree_to_test_tree"] = _dirstate_tree_from_workingtree
+    # also test WorkingTree4/5's RevisionTree implementation which is
+    # specialised.
+    # XXX: Ask igc if WT5 revision tree actually is different.
+    scenarios.append((DirStateRevisionTree.__name__ + ",WT4",
+        create_tree_scenario(transport_server, transport_readonly_server,
+        WorkingTreeFormat4(), _dirstate_tree_from_workingtree)))
+    scenarios.append((DirStateRevisionTree.__name__ + ",WT5",
+        create_tree_scenario(transport_server, transport_readonly_server,
+        WorkingTreeFormat5(), _dirstate_tree_from_workingtree)))
+    scenarios.append(("PreviewTree", create_tree_scenario(transport_server,
+        transport_readonly_server, workingtree_format, preview_tree_pre)))
+    scenarios.append(("PreviewTreePost", create_tree_scenario(transport_server,
+        transport_readonly_server, workingtree_format, preview_tree_post)))
+    return scenarios
 
 
-def test_suite():
-    result = TestSuite()
-    test_tree_implementations = [
+def create_tree_scenario(transport_server, transport_readonly_server,
+    workingtree_format, converter):
+    """Create a scenario for the specified converter
+
+    :param converter: A function that converts a workingtree into the
+        desired format.
+    :param workingtree_format: The particular workingtree format to
+        convert from.
+    :return: a (name, options) tuple, where options is a dict of values
+        to be used as members of the TestCase.
+    """
+    scenario_options = wt_make_scenario(transport_server,
+                                        transport_readonly_server,
+                                        workingtree_format)
+    scenario_options["_workingtree_to_test_tree"] = converter
+    return scenario_options
+
+
+def load_tests(standard_tests, module, loader):
+    submod_tests = loader.loadTestsFromModuleNames([
+        'bzrlib.tests.tree_implementations.test_annotate_iter',
         'bzrlib.tests.tree_implementations.test_get_file_mtime',
+        'bzrlib.tests.tree_implementations.test_get_root_id',
         'bzrlib.tests.tree_implementations.test_get_symlink_target',
         'bzrlib.tests.tree_implementations.test_inv',
+        'bzrlib.tests.tree_implementations.test_iter_search_rules',
         'bzrlib.tests.tree_implementations.test_list_files',
+        'bzrlib.tests.tree_implementations.test_path_content_summary',
         'bzrlib.tests.tree_implementations.test_revision_tree',
         'bzrlib.tests.tree_implementations.test_test_trees',
         'bzrlib.tests.tree_implementations.test_tree',
         'bzrlib.tests.tree_implementations.test_walkdirs',
-        ]
-    adapter = TreeTestProviderAdapter(
-        default_transport,
+        ])
+    scenarios = make_scenarios(
+        tests.default_transport,
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
-        [(format, format._matchingbzrdir) for format in 
-         WorkingTreeFormat._formats.values() + _legacy_formats])
-    loader = TestLoader()
-    adapt_modules(test_tree_implementations, adapter, loader, result)
-    result.addTests(loader.loadTestsFromModuleNames(['bzrlib.tests.tree_implementations']))
-    return result
+        WorkingTreeFormat._formats.values() + _legacy_formats)
+    # add the tests for the sub modules
+    return tests.multiply_tests(submod_tests, scenarios, standard_tests)

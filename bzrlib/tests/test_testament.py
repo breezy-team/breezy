@@ -12,19 +12,18 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Test testaments for gpg signing."""
 
 # TODO: Testaments with x-bits
 
 import os
-from sha import sha
 
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib import osutils
+from bzrlib.tests import SymlinkFeature, TestCaseWithTransport
 from bzrlib.testament import Testament, StrictTestament, StrictTestament3
 from bzrlib.transform import TreeTransform
-from bzrlib.osutils import has_symlinks
 
 
 class TestamentSetup(TestCaseWithTransport):
@@ -98,8 +97,7 @@ class TestamentTests(TestamentSetup):
 
     def test_testament_symlinks(self):
         """Testament containing symlink (where possible)"""
-        if not has_symlinks():
-            return
+        self.requireFeature(SymlinkFeature)
         os.symlink('wibble/linktarget', 'link')
         self.wt.add(['link'], ['link-id'])
         self.wt.commit(message='add symlink',
@@ -143,19 +141,19 @@ class TestamentTests(TestamentSetup):
         inventory = self.b.repository.get_inventory('test@user-2')
         testament_1 = self.testament_class()(revision, inventory)
         text_1 = testament_1.as_short_text()
-        text_2 = self.from_revision(self.b.repository, 
+        text_2 = self.from_revision(self.b.repository,
                                     'test@user-2').as_short_text()
         self.assertEqual(text_1, text_2)
-                    
+
 
 class TestamentTestsStrict(TestamentTests):
-    
+
     def testament_class(self):
         return StrictTestament
 
 
 class TestamentTestsStrict2(TestamentTests):
-    
+
     def testament_class(self):
         return StrictTestament3
 
@@ -213,21 +211,21 @@ REV_1_SHORT = """\
 bazaar-ng testament short form 1
 revision-id: test@user-1
 sha1: %s
-""" % sha(REV_1_TESTAMENT).hexdigest()
+""" % osutils.sha(REV_1_TESTAMENT).hexdigest()
 
 
 REV_1_SHORT_STRICT = """\
 bazaar-ng testament short form 2.1
 revision-id: test@user-1
 sha1: %s
-""" % sha(REV_1_STRICT_TESTAMENT).hexdigest()
+""" % osutils.sha(REV_1_STRICT_TESTAMENT).hexdigest()
 
 
 REV_1_SHORT_STRICT3 = """\
 bazaar testament short form 3 strict
 revision-id: test@user-1
 sha1: %s
-""" % sha(REV_1_STRICT_TESTAMENT3).hexdigest()
+""" % osutils.sha(REV_1_STRICT_TESTAMENT3).hexdigest()
 
 
 REV_2_TESTAMENT = """\
@@ -295,21 +293,21 @@ REV_2_SHORT = """\
 bazaar-ng testament short form 1
 revision-id: test@user-2
 sha1: %s
-""" % sha(REV_2_TESTAMENT).hexdigest()
+""" % osutils.sha(REV_2_TESTAMENT).hexdigest()
 
 
 REV_2_SHORT_STRICT = """\
 bazaar-ng testament short form 2.1
 revision-id: test@user-2
 sha1: %s
-""" % sha(REV_2_STRICT_TESTAMENT).hexdigest()
+""" % osutils.sha(REV_2_STRICT_TESTAMENT).hexdigest()
 
 
 REV_2_SHORT_STRICT3 = """\
 bazaar testament short form 3 strict
 revision-id: test@user-2
 sha1: %s
-""" % sha(REV_2_STRICT_TESTAMENT3).hexdigest()
+""" % osutils.sha(REV_2_STRICT_TESTAMENT3).hexdigest()
 
 
 REV_PROPS_TESTAMENT = """\

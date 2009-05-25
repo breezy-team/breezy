@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Copying of history from one branch to another.
@@ -21,289 +21,182 @@ The basic plan is that every branch knows the history of everything
 that has merged into it.  As the first step of a merge, pull, or
 branch operation we copy history from the source into the destination
 branch.
-
-The copying is done in a slightly complicated order.  We don't want to
-add a revision to the store until everything it refers to is also
-stored, so that if a revision is present we can totally recreate it.
-However, we can't know what files are included in a revision until we
-read its inventory.  So we query the inventory store of the source for
-the ids we need, and then pull those ids and finally actually join
-the inventories.
 """
 
+import operator
+
 import bzrlib
-import bzrlib.errors as errors
-from bzrlib.errors import (InstallFailed,
-                           )
-from bzrlib.progress import ProgressPhase
+from bzrlib import (
+    errors,
+    symbol_versioning,
+    )
 from bzrlib.revision import NULL_REVISION
-from bzrlib.symbol_versioning import (deprecated_function,
-        deprecated_method,
-        zero_eight,
-        )
+from bzrlib.tsort import topo_sort
 from bzrlib.trace import mutter
 import bzrlib.ui
-
-from bzrlib.lazy_import import lazy_import
-
-# TODO: Avoid repeatedly opening weaves so many times.
-
-# XXX: This doesn't handle ghost (not present in branch) revisions at
-# all yet.  I'm not sure they really should be supported.
-
-# NOTE: This doesn't copy revisions which may be present but not
-# merged into the last revision.  I'm not sure we want to do that.
-
-# - get a list of revisions that need to be pulled in
-# - for each one, pull in that revision file
-#   and get the inventory, and store the inventory with right
-#   parents.
-# - and get the ancestry, and store that with right parents too
-# - and keep a note of all file ids and version seen
-# - then go through all files; for each one get the weave,
-#   and add in all file versions
-
-
-@deprecated_function(zero_eight)
-def greedy_fetch(to_branch, from_branch, revision=None, pb=None):
-    """Legacy API, please see branch.fetch(from_branch, last_revision, pb)."""
-    f = Fetcher(to_branch, from_branch, revision, pb)
-    return f.count_copied, f.failed_revisions
-
-fetch = greedy_fetch
+from bzrlib.versionedfile import FulltextContentFactory
 
 
 class RepoFetcher(object):
     """Pull revisions and texts from one repository to another.
 
-    last_revision
-        if set, try to limit to the data this revision references.
-
-    after running:
-    count_copied -- number of revisions copied
-
-    This should not be used directory, its essential a object to encapsulate
+    This should not be used directly, it's essential a object to encapsulate
     the logic in InterRepository.fetch().
     """
-    def __init__(self, to_repository, from_repository, last_revision=None, pb=None):
-        # result variables.
-        self.failed_revisions = []
-        self.count_copied = 0
-        if to_repository.control_files._transport.base == from_repository.control_files._transport.base:
-            # check that last_revision is in 'from' and then return a no-operation.
-            if last_revision not in (None, NULL_REVISION):
-                to_repository.get_revision(last_revision)
-            return
+
+    def __init__(self, to_repository, from_repository, last_revision=None,
+        pb=None, find_ghosts=True, fetch_spec=None):
+        """Create a repo fetcher.
+
+        :param last_revision: If set, try to limit to the data this revision
+            references.
+        :param find_ghosts: If True search the entire history for ghosts.
+        :param _write_group_acquired_callable: Don't use; this parameter only
+            exists to facilitate a hack done in InterPackRepo.fetch.  We would
+            like to remove this parameter.
+        :param pb: ProgressBar object to use; deprecated and ignored.
+            This method will just create one on top of the stack.
+        """
+        if pb is not None:
+            symbol_versioning.warn(
+                symbol_versioning.deprecated_in((1, 14, 0))
+                % "pb parameter to RepoFetcher.__init__")
+            # and for simplicity it is in fact ignored
+        if to_repository.has_same_location(from_repository):
+            # repository.fetch should be taking care of this case.
+            raise errors.BzrError('RepoFetcher run '
+                    'between two objects at the same location: '
+                    '%r and %r' % (to_repository, from_repository))
         self.to_repository = to_repository
         self.from_repository = from_repository
+        self.sink = to_repository._get_sink()
         # must not mutate self._last_revision as its potentially a shared instance
         self._last_revision = last_revision
-        if pb is None:
-            self.pb = bzrlib.ui.ui_factory.nested_progress_bar()
-            self.nested_pb = self.pb
-        else:
-            self.pb = pb
-            self.nested_pb = None
+        self._fetch_spec = fetch_spec
+        self.find_ghosts = find_ghosts
         self.from_repository.lock_read()
+        mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
+               self.from_repository, self.from_repository._format,
+               self.to_repository, self.to_repository._format)
         try:
-            self.to_repository.lock_write()
-            try:
-                self.to_repository.start_write_group()
-                try:
-                    self.__fetch()
-                except:
-                    self.to_repository.abort_write_group()
-                    raise
-                else:
-                    self.to_repository.commit_write_group()
-            finally:
-                if self.nested_pb is not None:
-                    self.nested_pb.finished()
-                self.to_repository.unlock()
+            self.__fetch()
         finally:
             self.from_repository.unlock()
 
     def __fetch(self):
         """Primary worker function.
 
-        This initialises all the needed variables, and then fetches the 
+        This initialises all the needed variables, and then fetches the
         requested revisions, finally clearing the progress bar.
         """
-        self.to_weaves = self.to_repository.weave_store
-        self.to_control = self.to_repository.control_weaves
-        self.from_weaves = self.from_repository.weave_store
-        self.from_control = self.from_repository.control_weaves
+        # Roughly this is what we're aiming for fetch to become:
+        #
+        # missing = self.sink.insert_stream(self.source.get_stream(search))
+        # if missing:
+        #     missing = self.sink.insert_stream(self.source.get_items(missing))
+        # assert not missing
         self.count_total = 0
         self.file_ids_names = {}
-        pp = ProgressPhase('Fetch phase', 4, self.pb)
+        pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        pb.show_pct = pb.show_count = False
         try:
-            pp.next_phase()
-            revs = self._revids_to_fetch()
-            # something to do ?
-            if revs:
-                pp.next_phase()
-                self._fetch_weave_texts(revs)
-                pp.next_phase()
-                self._fetch_inventory_weave(revs)
-                pp.next_phase()
-                self._fetch_revision_texts(revs)
-                self.count_copied += len(revs)
+            pb.update("Finding revisions", 0, 2)
+            search = self._revids_to_fetch()
+            if search is None:
+                return
+            pb.update("Fetching revisions", 1, 2)
+            self._fetch_everything_for_search(search)
         finally:
-            self.pb.clear()
+            pb.finished()
+
+    def _fetch_everything_for_search(self, search):
+        """Fetch all data for the given set of revisions."""
+        # The first phase is "file".  We pass the progress bar for it directly
+        # into item_keys_introduced_by, which has more information about how
+        # that phase is progressing than we do.  Progress updates for the other
+        # phases are taken care of in this function.
+        # XXX: there should be a clear owner of the progress reporting.  Perhaps
+        # item_keys_introduced_by should have a richer API than it does at the
+        # moment, so that it can feed the progress information back to this
+        # function?
+        if (self.from_repository._format.rich_root_data and
+            not self.to_repository._format.rich_root_data):
+            raise errors.IncompatibleRepositories(
+                self.from_repository, self.to_repository,
+                "different rich-root support")
+        pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        try:
+            pb.update("Get stream source")
+            source = self.from_repository._get_source(
+                self.to_repository._format)
+            stream = source.get_stream(search)
+            from_format = self.from_repository._format
+            pb.update("Inserting stream")
+            resume_tokens, missing_keys = self.sink.insert_stream(
+                stream, from_format, [])
+            if self.to_repository._fallback_repositories:
+                missing_keys.update(
+                    self._parent_inventories(search.get_keys()))
+            if missing_keys:
+                pb.update("Missing keys")
+                stream = source.get_stream_for_missing_keys(missing_keys)
+                pb.update("Inserting missing keys")
+                resume_tokens, missing_keys = self.sink.insert_stream(
+                    stream, from_format, resume_tokens)
+            if missing_keys:
+                raise AssertionError(
+                    "second push failed to complete a fetch %r." % (
+                        missing_keys,))
+            if resume_tokens:
+                raise AssertionError(
+                    "second push failed to commit the fetch %r." % (
+                        resume_tokens,))
+            pb.update("Finishing stream")
+            self.sink.finished()
+        finally:
+            pb.finished()
 
     def _revids_to_fetch(self):
+        """Determines the exact revisions needed from self.from_repository to
+        install self._last_revision in self.to_repository.
+
+        If no revisions need to be fetched, then this just returns None.
+        """
+        if self._fetch_spec is not None:
+            return self._fetch_spec
         mutter('fetch up to rev {%s}', self._last_revision)
         if self._last_revision is NULL_REVISION:
             # explicit limit of no revisions needed
             return None
-        if (self._last_revision is not None and
-            self.to_repository.has_revision(self._last_revision)):
-            return None
-            
-        try:
-            return self.to_repository.missing_revision_ids(self.from_repository,
-                                                           self._last_revision)
-        except errors.NoSuchRevision:
-            raise InstallFailed([self._last_revision])
+        return self.to_repository.search_missing_revision_ids(
+            self.from_repository, self._last_revision,
+            find_ghosts=self.find_ghosts)
 
-    def _fetch_weave_texts(self, revs):
-        texts_pb = bzrlib.ui.ui_factory.nested_progress_bar()
-        try:
-            # fileids_altered_by_revision_ids requires reading the inventory
-            # weave, we will need to read the inventory weave again when
-            # all this is done, so enable caching for that specific weave
-            inv_w = self.from_repository.get_inventory_weave()
-            inv_w.enable_cache()
-            file_ids = self.from_repository.fileids_altered_by_revision_ids(revs)
-            count = 0
-            num_file_ids = len(file_ids)
-            for file_id, required_versions in file_ids.items():
-                texts_pb.update("fetch texts", count, num_file_ids)
-                count +=1
-                to_weave = self.to_weaves.get_weave_or_empty(file_id,
-                    self.to_repository.get_transaction())
-                from_weave = self.from_weaves.get_weave(file_id,
-                    self.from_repository.get_transaction())
-                # we fetch all the texts, because texts do
-                # not reference anything, and its cheap enough
-                to_weave.join(from_weave, version_ids=required_versions)
-                # we don't need *all* of this data anymore, but we dont know
-                # what we do. This cache clearing will result in a new read 
-                # of the knit data when we do the checkout, but probably we
-                # want to emit the needed data on the fly rather than at the
-                # end anyhow.
-                # the from weave should know not to cache data being joined,
-                # but its ok to ask it to clear.
-                from_weave.clear_cache()
-                to_weave.clear_cache()
-        finally:
-            texts_pb.finished()
-
-    def _fetch_inventory_weave(self, revs):
-        pb = bzrlib.ui.ui_factory.nested_progress_bar()
-        try:
-            pb.update("fetch inventory", 0, 2)
-            to_weave = self.to_control.get_weave('inventory',
-                    self.to_repository.get_transaction())
-    
-            child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
-            try:
-                # just merge, this is optimisable and its means we don't
-                # copy unreferenced data such as not-needed inventories.
-                pb.update("fetch inventory", 1, 3)
-                from_weave = self.from_repository.get_inventory_weave()
-                pb.update("fetch inventory", 2, 3)
-                # we fetch only the referenced inventories because we do not
-                # know for unselected inventories whether all their required
-                # texts are present in the other repository - it could be
-                # corrupt.
-                to_weave.join(from_weave, pb=child_pb, msg='merge inventory',
-                              version_ids=revs)
-                from_weave.clear_cache()
-            finally:
-                child_pb.finished()
-        finally:
-            pb.finished()
-
-
-class GenericRepoFetcher(RepoFetcher):
-    """This is a generic repo to repo fetcher.
-
-    This makes minimal assumptions about repo layout and contents.
-    It triggers a reconciliation after fetching to ensure integrity.
-    """
-
-    def _fetch_revision_texts(self, revs):
-        """Fetch revision object texts"""
-        rev_pb = bzrlib.ui.ui_factory.nested_progress_bar()
-        try:
-            to_txn = self.to_transaction = self.to_repository.get_transaction()
-            count = 0
-            total = len(revs)
-            to_store = self.to_repository._revision_store
-            for rev in revs:
-                pb = bzrlib.ui.ui_factory.nested_progress_bar()
-                try:
-                    pb.update('copying revisions', count, total)
-                    try:
-                        sig_text = self.from_repository.get_signature_text(rev)
-                        to_store.add_revision_signature_text(rev, sig_text, to_txn)
-                    except errors.NoSuchRevision:
-                        # not signed.
-                        pass
-                    to_store.add_revision(self.from_repository.get_revision(rev),
-                                          to_txn)
-                    count += 1
-                finally:
-                    pb.finished()
-            # fixup inventory if needed: 
-            # this is expensive because we have no inverse index to current ghosts.
-            # but on local disk its a few seconds and sftp push is already insane.
-            # so we just-do-it.
-            # FIXME: repository should inform if this is needed.
-            self.to_repository.reconcile()
-        finally:
-            rev_pb.finished()
-    
-
-class KnitRepoFetcher(RepoFetcher):
-    """This is a knit format repository specific fetcher.
-
-    This differs from the GenericRepoFetcher by not doing a 
-    reconciliation after copying, and using knit joining to
-    copy revision texts.
-    """
-
-    def _fetch_revision_texts(self, revs):
-        # may need to be a InterRevisionStore call here.
-        from_transaction = self.from_repository.get_transaction()
-        to_transaction = self.to_repository.get_transaction()
-        to_sf = self.to_repository._revision_store.get_signature_file(
-            to_transaction)
-        from_sf = self.from_repository._revision_store.get_signature_file(
-            from_transaction)
-        to_sf.join(from_sf, version_ids=revs, ignore_missing=True)
-        to_rf = self.to_repository._revision_store.get_revision_file(
-            to_transaction)
-        from_rf = self.from_repository._revision_store.get_revision_file(
-            from_transaction)
-        to_rf.join(from_rf, version_ids=revs)
+    def _parent_inventories(self, revision_ids):
+        # Find all the parent revisions referenced by the stream, but
+        # not present in the stream, and make sure we send their
+        # inventories.
+        parent_maps = self.to_repository.get_parent_map(revision_ids)
+        parents = set()
+        map(parents.update, parent_maps.itervalues())
+        parents.discard(NULL_REVISION)
+        parents.difference_update(revision_ids)
+        missing_keys = set(('inventories', rev_id) for rev_id in parents)
+        return missing_keys
 
 
 class Inter1and2Helper(object):
     """Helper for operations that convert data from model 1 and 2
-    
+
     This is for use by fetchers and converters.
     """
 
-    def __init__(self, source, target):
+    def __init__(self, source):
         """Constructor.
 
         :param source: The repository data comes from
-        :param target: The repository data goes to
         """
         self.source = source
-        self.target = target
 
     def iter_rev_trees(self, revs):
         """Iterate through RevisionTrees efficiently.
@@ -315,6 +208,8 @@ class Inter1and2Helper(object):
 
         :param revs: A list of revision ids
         """
+        # In case that revs is not a list.
+        revs = list(revs)
         while revs:
             for tree in self.source.revision_trees(revs[:100]):
                 if tree.inventory.revision_id is None:
@@ -322,79 +217,58 @@ class Inter1and2Helper(object):
                 yield tree
             revs = revs[100:]
 
-    def generate_root_texts(self, revs):
-        """Generate VersionedFiles for all root ids.
-        
-        :param revs: the revisions to include
-        """
-        inventory_weave = self.source.get_inventory_weave()
-        parent_texts = {}
-        versionedfile = {}
-        to_store = self.target.weave_store
+    def _find_root_ids(self, revs, parent_map, graph):
+        revision_root = {}
+        planned_versions = {}
         for tree in self.iter_rev_trees(revs):
             revision_id = tree.inventory.root.revision
-            root_id = tree.inventory.root.file_id
-            parents = inventory_weave.get_parents(revision_id)
-            if root_id not in versionedfile:
-                versionedfile[root_id] = to_store.get_weave_or_empty(root_id, 
-                    self.target.get_transaction())
-            parent_texts[root_id] = versionedfile[root_id].add_lines(
-                revision_id, parents, [], parent_texts)
+            root_id = tree.get_root_id()
+            planned_versions.setdefault(root_id, []).append(revision_id)
+            revision_root[revision_id] = root_id
+        # Find out which parents we don't already know root ids for
+        parents = set()
+        for revision_parents in parent_map.itervalues():
+            parents.update(revision_parents)
+        parents.difference_update(revision_root.keys() + [NULL_REVISION])
+        # Limit to revisions present in the versionedfile
+        parents = graph.get_parent_map(parents).keys()
+        for tree in self.iter_rev_trees(parents):
+            root_id = tree.get_root_id()
+            revision_root[tree.get_revision_id()] = root_id
+        return revision_root, planned_versions
 
-    def regenerate_inventory(self, revs):
-        """Generate a new inventory versionedfile in target, convertin data.
-        
-        The inventory is retrieved from the source, (deserializing it), and
-        stored in the target (reserializing it in a different format).
-        :param revs: The revisions to include
+    def generate_root_texts(self, revs):
+        """Generate VersionedFiles for all root ids.
+
+        :param revs: the revisions to include
         """
-        inventory_weave = self.source.get_inventory_weave()
-        for tree in self.iter_rev_trees(revs):
-            parents = inventory_weave.get_parents(tree.get_revision_id())
-            self.target.add_inventory(tree.get_revision_id(), tree.inventory,
-                                      parents)
-
-
-class Model1toKnit2Fetcher(GenericRepoFetcher):
-    """Fetch from a Model1 repository into a Knit2 repository
-    """
-    def __init__(self, to_repository, from_repository, last_revision=None, 
-                 pb=None):
-        self.helper = Inter1and2Helper(from_repository, to_repository)
-        GenericRepoFetcher.__init__(self, to_repository, from_repository,
-                                    last_revision, pb)
-
-    def _fetch_weave_texts(self, revs):
-        GenericRepoFetcher._fetch_weave_texts(self, revs)
-        # Now generate a weave for the tree root
-        self.helper.generate_root_texts(revs)
-
-    def _fetch_inventory_weave(self, revs):
-        self.helper.regenerate_inventory(revs)
- 
-
-class Knit1to2Fetcher(KnitRepoFetcher):
-    """Fetch from a Knit1 repository into a Knit2 repository"""
-
-    def __init__(self, to_repository, from_repository, last_revision=None, 
-                 pb=None):
-        self.helper = Inter1and2Helper(from_repository, to_repository)
-        KnitRepoFetcher.__init__(self, to_repository, from_repository,
-                                 last_revision, pb)
-
-    def _fetch_weave_texts(self, revs):
-        KnitRepoFetcher._fetch_weave_texts(self, revs)
-        # Now generate a weave for the tree root
-        self.helper.generate_root_texts(revs)
-
-    def _fetch_inventory_weave(self, revs):
-        self.helper.regenerate_inventory(revs)
-        
-
-class Fetcher(object):
-    """Backwards compatibility glue for branch.fetch()."""
-
-    @deprecated_method(zero_eight)
-    def __init__(self, to_branch, from_branch, last_revision=None, pb=None):
-        """Please see branch.fetch()."""
-        to_branch.fetch(from_branch, last_revision, pb)
+        graph = self.source.get_graph()
+        parent_map = graph.get_parent_map(revs)
+        rev_order = topo_sort(parent_map)
+        rev_id_to_root_id, root_id_to_rev_ids = self._find_root_ids(
+            revs, parent_map, graph)
+        root_id_order = [(rev_id_to_root_id[rev_id], rev_id) for rev_id in
+            rev_order]
+        # Guaranteed stable, this groups all the file id operations together
+        # retaining topological order within the revisions of a file id.
+        # File id splits and joins would invalidate this, but they don't exist
+        # yet, and are unlikely to in non-rich-root environments anyway.
+        root_id_order.sort(key=operator.itemgetter(0))
+        # Create a record stream containing the roots to create.
+        def yield_roots():
+            for key in root_id_order:
+                root_id, rev_id = key
+                rev_parents = parent_map[rev_id]
+                # We drop revision parents with different file-ids, because
+                # that represents a rename of the root to a different location
+                # - its not actually a parent for us. (We could look for that
+                # file id in the revision tree at considerably more expense,
+                # but for now this is sufficient (and reconcile will catch and
+                # correct this anyway).
+                # When a parent revision is a ghost, we guess that its root id
+                # was unchanged (rather than trimming it from the parent list).
+                parent_keys = tuple((root_id, parent) for parent in rev_parents
+                    if parent != NULL_REVISION and
+                        rev_id_to_root_id.get(parent, root_id) == root_id)
+                yield FulltextContentFactory(key, parent_keys, None, '')
+        return [('texts', yield_roots())]

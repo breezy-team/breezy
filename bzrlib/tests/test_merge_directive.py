@@ -12,14 +12,17 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import re
 
 from bzrlib import (
     errors,
     gpg,
+    mail_client,
     merge_directive,
     tests,
+    trace,
     )
 
 
@@ -107,6 +110,45 @@ Aaron
 #\x20
 # Begin patch
 booga""".splitlines(True)
+
+
+INPUT1_2_OLD = """
+I was thinking today about creating a merge directive.
+
+So I did.
+
+Here it is.
+
+(I've pasted it in the body of this message)
+
+Aaron
+
+# Bazaar merge directive format 2 (Bazaar 0.19)\r
+# revision_id: example:
+# target_branch: http://example.com
+# testament_sha1: sha
+# timestamp: 1970-01-01 00:09:33 +0002
+# source_branch: http://example.org
+# base_revision_id: null:
+# message: Hi mom!
+#\x20
+# Begin patch
+booga""".splitlines(True)
+
+
+OLD_DIRECTIVE_2 = """# Bazaar merge directive format 2 (Bazaar 0.19)
+# revision_id: abentley@panoramicfeedback.com-20070807234458-\
+#   nzhkoyza56lan7z5
+# target_branch: http://panoramicfeedback.com/opensource/bzr/repo\
+#   /bzr.ab
+# testament_sha1: d825a5cdb267a90ec2ba86b00895f3d8a9bed6bf
+# timestamp: 2007-08-10 16:15:02 -0400
+# source_branch: http://panoramicfeedback.com/opensource/bzr/repo\
+#   /bzr.ab
+# base_revision_id: abentley@panoramicfeedback.com-20070731163346-\
+#   623xwcycwij91xen
+#
+""".splitlines(True)
 
 
 class TestMergeDirective(object):
@@ -313,13 +355,15 @@ class TestMergeDirectiveBranch(object):
         tree_a = self.make_branch_and_tree('tree_a')
         tree_a.branch.get_config().set_user_option('email',
             'J. Random Hacker <jrandom@example.com>')
-        self.build_tree_contents([('tree_a/file', 'content_a\ncontent_b\n')])
-        tree_a.add('file')
+        self.build_tree_contents([('tree_a/file', 'content_a\ncontent_b\n'),
+                                  ('tree_a/file_2', 'content_x\rcontent_y\r')])
+        tree_a.add(['file', 'file_2'])
         tree_a.commit('message', rev_id='rev1')
         tree_b = tree_a.bzrdir.sprout('tree_b').open_workingtree()
         branch_c = tree_a.bzrdir.sprout('branch_c').open_branch()
         tree_b.commit('message', rev_id='rev2b')
-        self.build_tree_contents([('tree_a/file', 'content_a\ncontent_c \n')])
+        self.build_tree_contents([('tree_a/file', 'content_a\ncontent_c \n'),
+                                  ('tree_a/file_2', 'content_x\rcontent_z\r')])
         tree_a.commit('Commit of rev2a', rev_id='rev2a')
         return tree_a, tree_b, branch_c
 
@@ -329,6 +373,20 @@ class TestMergeDirectiveBranch(object):
         md2 = self.from_objects(tree_a.branch.repository, 'rev2a', 500, 120,
             tree_d.branch.base, patch_type='diff',
             public_branch=tree_a.branch.base)
+
+    def test_disk_name(self):
+        tree_a, tree_b, branch_c = self.make_trees()
+        tree_a.branch.nick = 'fancy <name>'
+        md = self.from_objects(tree_a.branch.repository, 'rev2a', 500, 120,
+            tree_b.branch.base)
+        self.assertEqual('fancy-name-2', md.get_disk_name(tree_a.branch))
+
+    def test_disk_name_old_revno(self):
+        tree_a, tree_b, branch_c = self.make_trees()
+        tree_a.branch.nick = 'fancy-name'
+        md = self.from_objects(tree_a.branch.repository, 'rev1', 500, 120,
+            tree_b.branch.base)
+        self.assertEqual('fancy-name-1', md.get_disk_name(tree_a.branch))
 
     def test_generate_patch(self):
         tree_a, tree_b, branch_c = self.make_trees()
@@ -511,6 +569,26 @@ class TestMergeDirectiveBranch(object):
         revision = md.install_revisions(tree_b.branch.repository)
         self.assertEqual('rev2a', revision)
 
+    def test_use_submit_for_missing_dependency(self):
+        tree_a, tree_b, branch_c = self.make_trees()
+        branch_c.pull(tree_a.branch)
+        self.build_tree_contents([('tree_a/file', 'content_q\ncontent_r\n')])
+        tree_a.commit('rev3a', rev_id='rev3a')
+        md = self.from_objects(tree_a.branch.repository, 'rev3a', 500, 36,
+            branch_c.base, base_revision_id='rev2a')
+        revision = md.install_revisions(tree_b.branch.repository)
+
+    def test_handle_target_not_a_branch(self):
+        tree_a, tree_b, branch_c = self.make_trees()
+        branch_c.pull(tree_a.branch)
+        self.build_tree_contents([('tree_a/file', 'content_q\ncontent_r\n')])
+        tree_a.commit('rev3a', rev_id='rev3a')
+        md = self.from_objects(tree_a.branch.repository, 'rev3a', 500, 36,
+            branch_c.base, base_revision_id='rev2a')
+        md.target_branch = self.get_url('not-a-branch')
+        self.assertRaises(errors.TargetNotBranch, md.install_revisions,
+                tree_b.branch.repository)
+
 
 class TestMergeDirective1Branch(tests.TestCaseWithTransport,
     TestMergeDirectiveBranch):
@@ -522,10 +600,17 @@ class TestMergeDirective1Branch(tests.TestCaseWithTransport,
 
     def from_objects(self, repository, revision_id, time, timezone,
         target_branch, patch_type='bundle', local_target_branch=None,
-        public_branch=None, message=None):
-        return merge_directive.MergeDirective.from_objects(
-            repository, revision_id, time, timezone, target_branch,
-            patch_type, local_target_branch, public_branch, message)
+        public_branch=None, message=None, base_revision_id=None):
+        if base_revision_id is not None:
+            raise tests.TestNotApplicable('This format does not support'
+                                          ' explicit bases.')
+        repository.lock_write()
+        try:
+            return merge_directive.MergeDirective.from_objects( repository,
+                revision_id, time, timezone, target_branch, patch_type,
+                local_target_branch, public_branch, message)
+        finally:
+            repository.unlock()
 
     def make_merge_directive(self, revision_id, testament_sha1, time, timezone,
                  target_branch, patch=None, patch_type=None,
@@ -548,7 +633,7 @@ class TestMergeDirective2Branch(tests.TestCaseWithTransport,
         public_branch=None, message=None, base_revision_id=None):
         include_patch = (patch_type in ('bundle', 'diff'))
         include_bundle = (patch_type == 'bundle')
-        assert patch_type in ('bundle', 'diff', None)
+        self.assertTrue(patch_type in ('bundle', 'diff', None))
         return merge_directive.MergeDirective2.from_objects(
             repository, revision_id, time, timezone, target_branch,
             include_patch, include_bundle, local_target_branch, public_branch,
@@ -588,14 +673,115 @@ class TestMergeDirective2Branch(tests.TestCaseWithTransport,
         lines = md.to_lines()
         md2 = merge_directive.MergeDirective.from_lines(lines)
         md2._verify_patch(tree_a.branch.repository)
-        # Stript trailing whitespace
+        # Strip trailing whitespace
         md2.patch = md2.patch.replace(' \n', '\n')
         md2._verify_patch(tree_a.branch.repository)
         # Convert to Mac line-endings
-        md2.patch = md2.patch.replace('\n', '\r')
+        md2.patch = re.sub('(\r\n|\r|\n)', '\r', md2.patch)
         self.assertTrue(md2._verify_patch(tree_a.branch.repository))
         # Convert to DOS line-endings
-        md2.patch = md2.patch.replace('\r', '\r\n')
+        md2.patch = re.sub('(\r\n|\r|\n)', '\r\n', md2.patch)
         self.assertTrue(md2._verify_patch(tree_a.branch.repository))
         md2.patch = md2.patch.replace('content_c', 'content_d')
         self.assertFalse(md2._verify_patch(tree_a.branch.repository))
+
+
+class TestParseOldMergeDirective2(tests.TestCase):
+
+    def test_parse_old_merge_directive(self):
+        md = merge_directive.MergeDirective.from_lines(INPUT1_2_OLD)
+        self.assertEqual('example:', md.revision_id)
+        self.assertEqual('sha', md.testament_sha1)
+        self.assertEqual('http://example.com', md.target_branch)
+        self.assertEqual('http://example.org', md.source_branch)
+        self.assertEqual(453, md.time)
+        self.assertEqual(120, md.timezone)
+        self.assertEqual('booga', md.patch)
+        self.assertEqual('diff', md.patch_type)
+        self.assertEqual('Hi mom!', md.message)
+
+
+class TestHook(object):
+    """Hook callback for test purposes."""
+
+    def __init__(self, result=None):
+        self.calls = []
+        self.result = result
+
+    def __call__(self, params):
+        self.calls.append(params)
+        return self.result
+
+
+class HookMailClient(mail_client.MailClient):
+    """Mail client for testing hooks."""
+
+    def __init__(self, config):
+        self.body = None
+        self.config = config
+
+    def compose(self, prompt, to, subject, attachment, mime_subtype,
+                extension, basename=None, body=None):
+        self.body = body
+
+
+class TestBodyHook(tests.TestCaseWithTransport):
+
+    def compose_with_hooks(self, test_hooks, supports_body=True):
+        client = HookMailClient({})
+        client.supports_body = supports_body
+        for test_hook in test_hooks:
+            merge_directive.MergeDirective.hooks.install_named_hook(
+                'merge_request_body', test_hook, 'test')
+        tree = self.make_branch_and_tree('foo')
+        tree.commit('foo')
+        directive = merge_directive.MergeDirective2(
+            tree.branch.last_revision(), 'sha', 0, 0, 'sha',
+            source_branch=tree.branch.base,
+            base_revision_id=tree.branch.last_revision(),
+            message='This code rox')
+        directive.compose_merge_request(client, 'jrandom@example.com',
+            None, tree.branch)
+        return client, directive
+
+    def test_no_supports_body(self):
+        test_hook = TestHook('foo')
+        old_warn = trace.warning
+        warnings = []
+        def warn(*args):
+            warnings.append(args)
+        trace.warning = warn
+        try:
+            client, directive = self.compose_with_hooks([test_hook],
+                supports_body=False)
+        finally:
+            trace.warning = old_warn
+        self.assertEqual(0, len(test_hook.calls))
+        self.assertEqual(('Cannot run merge_request_body hooks because mail'
+                          ' client %s does not support message bodies.',
+                          'HookMailClient'), warnings[0])
+
+    def test_body_hook(self):
+        test_hook = TestHook('foo')
+        client, directive = self.compose_with_hooks([test_hook])
+        self.assertEqual(1, len(test_hook.calls))
+        self.assertEqual('foo', client.body)
+        params = test_hook.calls[0]
+        self.assertIsInstance(params,
+                              merge_directive.MergeRequestBodyParams)
+        self.assertIs(None, params.body)
+        self.assertIs(None, params.orig_body)
+        self.assertEqual('jrandom@example.com', params.to)
+        self.assertEqual('[MERGE] This code rox', params.subject)
+        self.assertEqual(directive, params.directive)
+        self.assertEqual('foo-1', params.basename)
+
+    def test_body_hook_chaining(self):
+        test_hook1 = TestHook('foo')
+        test_hook2 = TestHook('bar')
+        client = self.compose_with_hooks([test_hook1, test_hook2])[0]
+        self.assertEqual(None, test_hook1.calls[0].body)
+        self.assertEqual(None, test_hook1.calls[0].orig_body)
+        self.assertEqual('foo', test_hook2.calls[0].body)
+        self.assertEqual(None, test_hook2.calls[0].orig_body)
+        self.assertEqual('bar', client.body)

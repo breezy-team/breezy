@@ -13,7 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the WorkingTree.merge_from_branch api."""
 
@@ -69,7 +69,7 @@ class TestMergeFromBranch(TestCaseWithWorkingTree):
         tree_a.merge_from_branch(tree_b.branch)
         tree_a.lock_read()
         self.addCleanup(tree_a.unlock)
-        list(tree_a._iter_changes(tree_a.basis_tree()))
+        list(tree_a.iter_changes(tree_a.basis_tree()))
 
     def test_merge_empty(self):
         tree_a = self.make_branch_and_tree('tree_a')
@@ -96,7 +96,7 @@ class TestMergeFromBranch(TestCaseWithWorkingTree):
         tree_a.merge_from_branch(tree_b.branch, from_revision='rev_1')
         tree_a.lock_read()
         self.addCleanup(tree_a.unlock)
-        changes = list(tree_a._iter_changes(tree_a.basis_tree()))
+        changes = list(tree_a.iter_changes(tree_a.basis_tree()))
         self.assertEqual(1, len(changes))
 
     def test_merge_type(self):

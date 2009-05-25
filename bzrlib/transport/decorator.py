@@ -12,11 +12,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Implementation of Transport that decorates another transport.
 
-This does not change the transport behaviour at all, but provides all the 
+This does not change the transport behaviour at all, but provides all the
 stub functions to allow other decorators to be written easily.
 """
 
@@ -27,9 +27,9 @@ class TransportDecorator(Transport):
     """A no-change decorator for Transports.
 
     Subclasses of this are new transports that are based on an
-    underlying transport and can override or intercept some 
-    behavior.  For example ReadonlyTransportDecorator prevents 
-    all write attempts, and FakeNFSTransportDecorator simulates 
+    underlying transport and can override or intercept some
+    behavior.  For example ReadonlyTransportDecorator prevents
+    all write attempts, and FakeNFSTransportDecorator simulates
     some NFS quirks.
 
     This decorator class is not directly usable as a decorator:
@@ -37,21 +37,23 @@ class TransportDecorator(Transport):
     method to return the url prefix for the subclass.
     """
 
-    def __init__(self, url, _decorated=None):
-        """Set the 'base' path where files will be stored.
-        
-        _decorated is a private parameter for cloning."""
+    def __init__(self, url, _decorated=None, _from_transport=None):
+        """Set the 'base' path of the transport.
+
+        :param _decorated: A private parameter for cloning.
+        :param _from_transport: Is available for subclasses that
+            need to share state across clones.
+        """
         prefix = self._get_url_prefix()
-        assert url.startswith(prefix), \
-                "url %r doesn't start with decorator prefix %r" % \
-                (url, prefix)
-        decorated_url = url[len(prefix):]
+        if not url.startswith(prefix):
+            raise ValueError("url %r doesn't start with decorator prefix %r" %
+                             (url, prefix))
+        not_decorated_url = url[len(prefix):]
         if _decorated is None:
-            self._decorated = get_transport(decorated_url)
+            self._decorated = get_transport(not_decorated_url)
         else:
             self._decorated = _decorated
-        super(TransportDecorator, self).__init__(
-            prefix + self._decorated.base)
+        super(TransportDecorator, self).__init__(prefix + self._decorated.base)
 
     def abspath(self, relpath):
         """See Transport.abspath()."""
@@ -65,11 +67,16 @@ class TransportDecorator(Transport):
         """See Transport.append_bytes()."""
         return self._decorated.append_bytes(relpath, bytes, mode=mode)
 
+    def _can_roundtrip_unix_modebits(self):
+        """See Transport._can_roundtrip_unix_modebits()."""
+        return self._decorated._can_roundtrip_unix_modebits()
+
     def clone(self, offset=None):
         """See Transport.clone()."""
         decorated_clone = self._decorated.clone(offset)
         return self.__class__(
-            self._get_url_prefix() + decorated_clone.base, decorated_clone)
+            self._get_url_prefix() + decorated_clone.base, decorated_clone,
+            self)
 
     def delete(self, relpath):
         """See Transport.delete()."""
@@ -110,10 +117,14 @@ class TransportDecorator(Transport):
         """See Transport.mkdir()."""
         return self._decorated.mkdir(relpath, mode)
 
+    def open_write_stream(self, relpath, mode=None):
+        """See Transport.open_write_stream."""
+        return self._decorated.open_write_stream(relpath, mode=mode)
+
     def put_file(self, relpath, f, mode=None):
         """See Transport.put_file()."""
         return self._decorated.put_file(relpath, f, mode)
-    
+
     def put_bytes(self, relpath, bytes, mode=None):
         """See Transport.put_bytes()."""
         return self._decorated.put_bytes(relpath, bytes, mode)
@@ -125,21 +136,25 @@ class TransportDecorator(Transport):
     def iter_files_recursive(self):
         """See Transport.iter_files_recursive()."""
         return self._decorated.iter_files_recursive()
-    
+
     def list_dir(self, relpath):
         """See Transport.list_dir()."""
         return self._decorated.list_dir(relpath)
 
+    def _readv(self, relpath, offsets):
+        """See Transport._readv."""
+        return self._decorated._readv(relpath, offsets)
+
+    def recommended_page_size(self):
+        """See Transport.recommended_page_size()."""
+        return self._decorated.recommended_page_size()
+
     def rename(self, rel_from, rel_to):
         return self._decorated.rename(rel_from, rel_to)
-    
+
     def rmdir(self, relpath):
         """See Transport.rmdir."""
         return self._decorated.rmdir(relpath)
-
-    def should_cache(self):
-        """See Transport.should_cache()."""
-        return self._decorated.should_cache()
 
     def stat(self, relpath):
         """See Transport.stat()."""
@@ -153,10 +168,18 @@ class TransportDecorator(Transport):
         """See Transport.lock_write."""
         return self._decorated.lock_write(relpath)
 
+    def _redirected_to(self, source, target):
+        redirected = self._decorated._redirected_to(source, target)
+        if redirected is not None:
+            return self.__class__(self._get_url_prefix() + redirected.base,
+                                  redirected)
+        else:
+            return None
+
 
 class DecoratorServer(Server):
     """Server for the TransportDecorator for testing with.
-    
+
     To use this when subclassing TransportDecorator, override override the
     get_decorator_class method.
     """
@@ -200,7 +223,7 @@ class DecoratorServer(Server):
 
 def get_test_permutations():
     """Return the permutations to be used in testing.
-    
+
     The Decorator class is not directly usable, and testing it would not have
     any benefit - its the concrete classes which need to be tested.
     """

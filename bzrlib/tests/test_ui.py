@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the bzrlib ui
 """
@@ -21,13 +21,18 @@ import os
 from StringIO import StringIO
 import re
 import sys
+import time
 
 import bzrlib
 import bzrlib.errors as errors
 from bzrlib.progress import (
     DotsProgressBar,
     ProgressBarStack,
+    ProgressTask,
     TTYProgressBar,
+    )
+from bzrlib.symbol_versioning import (
+    deprecated_in,
     )
 from bzrlib.tests import (
     TestCase,
@@ -39,7 +44,10 @@ from bzrlib.ui import (
     CLIUIFactory,
     SilentUIFactory,
     )
-from bzrlib.ui.text import TextUIFactory
+from bzrlib.ui.text import (
+    TextProgressView,
+    TextUIFactory,
+    )
 
 
 class UITests(TestCase):
@@ -101,11 +109,11 @@ class UITests(TestCase):
     def test_progress_note(self):
         stderr = StringIO()
         stdout = StringIO()
-        ui_factory = TextUIFactory(bar_type=TTYProgressBar)
+        ui_factory = TextUIFactory(stdin=StringIO(''),
+            stderr=stderr,
+            stdout=stdout)
         pb = ui_factory.nested_progress_bar()
         try:
-            pb.to_messages_file = stdout
-            ui_factory._progress_bar_stack.bottom().to_file = stderr
             result = pb.note('t')
             self.assertEqual(None, result)
             self.assertEqual("t\n", stdout.getvalue())
@@ -122,13 +130,12 @@ class UITests(TestCase):
         # The PQM redirects the output to a file, so it
         # defaults to creating a Dots progress bar. we
         # need to force it to believe we are a TTY
-        ui_factory = TextUIFactory(bar_type=TTYProgressBar)
+        ui_factory = TextUIFactory(
+            stdin=StringIO(''),
+            stdout=stdout, stderr=stderr)
         pb = ui_factory.nested_progress_bar()
         try:
-            pb.to_messages_file = stdout
-            ui_factory._progress_bar_stack.bottom().to_file = stderr
             # Create a progress update that isn't throttled
-            pb.start_time -= 10
             pb.update('x', 1, 1)
             result = pb.note('t')
             self.assertEqual(None, result)
@@ -142,45 +149,44 @@ class UITests(TestCase):
 
     def test_progress_nested(self):
         # test factory based nested and popping.
-        ui = TextUIFactory()
+        ui = TextUIFactory(None, None, None)
         pb1 = ui.nested_progress_bar()
         pb2 = ui.nested_progress_bar()
-        self.assertRaises(errors.MissingProgressBarFinish, pb1.finished)
+        # You do get a warning if the outermost progress bar wasn't finished
+        # first - it's not clear if this is really useful or if it should just
+        # become orphaned -- mbp 20090120
+        warnings, _ = self.callCatchWarnings(pb1.finished)
+        if len(warnings) != 1:
+            self.fail("unexpected warnings: %r" % (warnings,))
         pb2.finished()
         pb1.finished()
 
     def test_progress_stack(self):
-        # test the progress bar stack which the default text factory 
+        # test the progress bar stack which the default text factory
         # uses.
         stderr = StringIO()
         stdout = StringIO()
         # make a stack, which accepts parameters like a pb.
-        stack = ProgressBarStack(to_file=stderr, to_messages_file=stdout)
+        stack = self.applyDeprecated(
+            deprecated_in((1, 12, 0)),
+            ProgressBarStack,
+            to_file=stderr, to_messages_file=stdout)
         # but is not one
         self.assertFalse(getattr(stack, 'note', False))
         pb1 = stack.get_nested()
         pb2 = stack.get_nested()
-        self.assertRaises(errors.MissingProgressBarFinish, pb1.finished)
+        warnings, _ = self.callCatchWarnings(pb1.finished)
+        self.assertEqual(len(warnings), 1)
         pb2.finished()
         pb1.finished()
         # the text ui factory never actually removes the stack once its setup.
         # we need to be able to nest again correctly from here.
         pb1 = stack.get_nested()
         pb2 = stack.get_nested()
-        self.assertRaises(errors.MissingProgressBarFinish, pb1.finished)
+        warnings, _ = self.callCatchWarnings(pb1.finished)
+        self.assertEqual(len(warnings), 1)
         pb2.finished()
         pb1.finished()
-
-    def test_text_factory_setting_progress_bar(self):
-        # we should be able to choose the progress bar type used.
-        factory = TextUIFactory(bar_type=DotsProgressBar)
-        bar = factory.nested_progress_bar()
-        bar.finished()
-        self.assertIsInstance(bar, DotsProgressBar)
-
-    def test_cli_stdin_is_default_stdin(self):
-        factory = CLIUIFactory()
-        self.assertEqual(sys.stdin, factory.stdin)
 
     def assert_get_bool_acceptance_of_user_input(self, factory):
         factory.stdin = StringIO("y\nyes with garbage\n"
@@ -212,28 +218,141 @@ class UITests(TestCase):
         self.assertEqual('', factory.stdin.readline())
 
     def test_text_ui_getbool(self):
-        factory = TextUIFactory()
+        factory = TextUIFactory(None, None, None)
         self.assert_get_bool_acceptance_of_user_input(factory)
+
+    def test_text_factory_prompt(self):
+        # see <https://launchpad.net/bugs/365891>
+        factory = TextUIFactory(None, StringIO(), StringIO())
+        factory.prompt('foo %2e')
 
     def test_text_factory_prompts_and_clears(self):
         # a get_boolean call should clear the pb before prompting
-        factory = TextUIFactory(bar_type=DotsProgressBar)
-        factory.stdout = _TTYStringIO()
-        factory.stdin = StringIO("yada\ny\n")
-        pb = self.apply_redirected(factory.stdin, factory.stdout,
-                                   factory.stdout, factory.nested_progress_bar)
-        pb.start_time = None
-        self.apply_redirected(factory.stdin, factory.stdout,
-                              factory.stdout, pb.update, "foo", 0, 1)
+        out = _TTYStringIO()
+        factory = TextUIFactory(stdin=StringIO("yada\ny\n"), stdout=out, stderr=out)
+        pb = factory.nested_progress_bar()
+        pb.show_bar = False
+        pb.show_spinner = False
+        pb.show_count = False
+        pb.update("foo", 0, 1)
         self.assertEqual(True,
                          self.apply_redirected(None, factory.stdout,
                                                factory.stdout,
                                                factory.get_boolean,
                                                "what do you want"))
-        output = factory.stdout.getvalue()
-        self.assertEqual("foo: .\n"
-                         "what do you want? [y/n]: what do you want? [y/n]: ",
-                         factory.stdout.getvalue())
+        output = out.getvalue()
+        self.assertContainsRe(factory.stdout.getvalue(),
+            "foo *\r\r  *\r*")
+        self.assertContainsRe(factory.stdout.getvalue(),
+            r"what do you want\? \[y/n\]: what do you want\? \[y/n\]: ")
+        # stdin should have been totally consumed
+        self.assertEqual('', factory.stdin.readline())
+
+    def test_text_tick_after_update(self):
+        ui_factory = TextUIFactory(stdout=StringIO(), stderr=StringIO())
+        pb = ui_factory.nested_progress_bar()
+        try:
+            pb.update('task', 0, 3)
+            # Reset the clock, so that it actually tries to repaint itself
+            ui_factory._progress_view._last_repaint = time.time() - 1.0
+            pb.tick()
+        finally:
+            pb.finished()
+
+    def test_silent_ui_getusername(self):
+        factory = SilentUIFactory()
+        factory.stdin = StringIO("someuser\n\n")
+        factory.stdout = StringIO()
+        self.assertEquals(None, 
+            factory.get_username(u'Hello\u1234 %(host)s', host=u'some\u1234'))
+        self.assertEquals("", factory.stdout.getvalue())
+        self.assertEquals("someuser\n\n", factory.stdin.getvalue())
+
+    def test_text_ui_getusername(self):
+        factory = TextUIFactory(None, None, None)
+        factory.stdin = StringIO("someuser\n\n")
+        factory.stdout = StringIO()
+        factory.stdout.encoding = "utf8"
+        # there is no output from the base factory
+        self.assertEqual("someuser", 
+            factory.get_username('Hello %(host)s', host='some'))
+        self.assertEquals("Hello some: ", factory.stdout.getvalue())
+        self.assertEqual("", factory.get_username("Gebruiker"))
         # stdin should be empty
         self.assertEqual('', factory.stdin.readline())
+
+    def test_text_ui_getusername_utf8(self):
+        ui = TestUIFactory(stdin=u'someuser\u1234'.encode('utf8'),
+                           stdout=StringIOWrapper())
+        ui.stdin.encoding = "utf8"
+        ui.stdout.encoding = ui.stdin.encoding
+        pb = ui.nested_progress_bar()
+        try:
+            # there is no output from the base factory
+            username = self.apply_redirected(ui.stdin, ui.stdout, ui.stdout,
+                ui.get_username, u'Hello\u1234 %(host)s', host=u'some\u1234')
+            self.assertEquals(u"someuser\u1234", username.decode('utf8'))
+            self.assertEquals(u"Hello\u1234 some\u1234: ", 
+                ui.stdout.getvalue().decode("utf8"))
+        finally:
+            pb.finished()
+
+
+class TestTextProgressView(TestCase):
+    """Tests for text display of progress bars.
+    """
+    # XXX: These might be a bit easier to write if the rendering and
+    # state-maintaining parts of TextProgressView were more separate, and if
+    # the progress task called back directly to its own view not to the ui
+    # factory. -- mbp 20090312
+    
+    def _make_factory(self):
+        out = StringIO()
+        uif = TextUIFactory(stderr=out)
+        uif._progress_view._width = 80
+        return out, uif
+
+    def test_render_progress_easy(self):
+        """Just one task and one quarter done"""
+        out, uif = self._make_factory()
+        task = uif.nested_progress_bar()
+        task.update('reticulating splines', 5, 20)
+        self.assertEqual(
+'\r[####/               ] reticulating splines 5/20                               \r'
+            , out.getvalue())
+
+    def test_render_progress_nested(self):
+        """Tasks proportionally contribute to overall progress"""
+        out, uif = self._make_factory()
+        task = uif.nested_progress_bar()
+        task.update('reticulating splines', 0, 2)
+        task2 = uif.nested_progress_bar()
+        task2.update('stage2', 1, 2)
+        # so we're in the first half of the main task, and half way through
+        # that
+        self.assertEqual(
+r'[####\               ] reticulating splines:stage2 1/2'
+            , uif._progress_view._render_line())
+        # if the nested task is complete, then we're all the way through the
+        # first half of the overall work
+        task2.update('stage2', 2, 2)
+        self.assertEqual(
+r'[#########|          ] reticulating splines:stage2 2/2'
+            , uif._progress_view._render_line())
+
+    def test_render_progress_sub_nested(self):
+        """Intermediate tasks don't mess up calculation."""
+        out, uif = self._make_factory()
+        task_a = uif.nested_progress_bar()
+        task_a.update('a', 0, 2)
+        task_b = uif.nested_progress_bar()
+        task_b.update('b')
+        task_c = uif.nested_progress_bar()
+        task_c.update('c', 1, 2)
+        # the top-level task is in its first half; the middle one has no
+        # progress indication, just a label; and the bottom one is half done,
+        # so the overall fraction is 1/4
+        self.assertEqual(
+            r'[####|               ] a:b:c 1/2'
+            , uif._progress_view._render_line())
 

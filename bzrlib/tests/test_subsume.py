@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from bzrlib import bzrdir, errors, repository, workingtree, tests
 
@@ -22,7 +22,7 @@ class TestWorkingTree(tests.TestCaseWithTransport):
     def make_branch_and_tree(self, relpath, format=None):
         if format is None:
             format = 'dirstate-with-subtree'
-        return tests.TestCaseWithTransport.make_branch_and_tree(self, relpath, 
+        return tests.TestCaseWithTransport.make_branch_and_tree(self, relpath,
                                                                 format)
 
     def make_trees(self, format=None, same_root=False):
@@ -49,17 +49,17 @@ class TestWorkingTree(tests.TestCaseWithTransport):
         """
         base_tree, sub_tree = self.make_trees(format='knit',
                                               same_root=True)
-        self.assertRaises(errors.BadSubsumeSource, base_tree.subsume, 
+        self.assertRaises(errors.BadSubsumeSource, base_tree.subsume,
                           sub_tree)
 
     def test_knit1_failure(self):
         base_tree, sub_tree = self.make_trees(format='knit')
-        self.assertRaises(errors.SubsumeTargetNeedsUpgrade, base_tree.subsume, 
+        self.assertRaises(errors.SubsumeTargetNeedsUpgrade, base_tree.subsume,
                           sub_tree)
 
     def test_subsume_tree(self):
         base_tree, sub_tree = self.make_trees()
-        assert base_tree.get_root_id() != sub_tree.get_root_id()
+        self.assertNotEqual(base_tree.get_root_id(), sub_tree.get_root_id())
         sub_root_id = sub_tree.get_root_id()
         # this test checks the subdir is removed, so it needs to know the
         # control directory; that changes rarely so just hardcode (and check)
@@ -100,13 +100,13 @@ class TestWorkingTree(tests.TestCaseWithTransport):
         if base_tree.get_root_id() == sub_tree.get_root_id():
             raise tests.TestSkipped('This test requires unique roots')
         sub_root_id = sub_tree.get_root_id()
-        self.assertRaises(errors.BadSubsumeSource, base_tree.subsume, 
+        self.assertRaises(errors.BadSubsumeSource, base_tree.subsume,
                           base_tree)
-        self.assertRaises(errors.BadSubsumeSource, sub_tree.subsume, 
+        self.assertRaises(errors.BadSubsumeSource, sub_tree.subsume,
                           base_tree)
         self.build_tree(['subtree2/'])
         sub_tree2 = self.make_branch_and_tree('subtree2')
-        self.assertRaises(errors.BadSubsumeSource, sub_tree.subsume, 
+        self.assertRaises(errors.BadSubsumeSource, sub_tree.subsume,
                           sub_tree2)
         self.build_tree(['tree/subtree/subtree3/'])
         sub_tree3 = self.make_branch_and_tree('tree/subtree/subtree3')

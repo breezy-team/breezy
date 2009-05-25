@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 from StringIO import StringIO
@@ -23,11 +23,13 @@ from bzrlib import (
     diff,
     errors,
     gpg,
+    hooks,
     registry,
     revision as _mod_revision,
     rio,
     testament,
     timestamp,
+    trace,
     )
 from bzrlib.bundle import (
     serializer as bundle_serializer,
@@ -35,7 +37,36 @@ from bzrlib.bundle import (
 from bzrlib.email_message import EmailMessage
 
 
+class MergeRequestBodyParams(object):
+    """Parameter object for the merge_request_body hook."""
+
+    def __init__(self, body, orig_body, directive, to, basename, subject,
+                 branch, tree=None):
+        self.body = body
+        self.orig_body = orig_body
+        self.directive = directive
+        self.branch = branch
+        self.tree = tree
+        self.to = to
+        self.basename = basename
+        self.subject = subject
+
+
+class MergeDirectiveHooks(hooks.Hooks):
+    """Hooks for MergeDirective classes."""
+
+    def __init__(self):
+        hooks.Hooks.__init__(self)
+        self.create_hook(hooks.HookPoint('merge_request_body',
+            "Called with a MergeRequestBodyParams when a body is needed for"
+            " a merge request.  Callbacks must return a body.  If more"
+            " than one callback is registered, the output of one callback is"
+            " provided to the next.", (1, 15, 0), False))
+
+
 class _BaseMergeDirective(object):
+
+    hooks = MergeDirectiveHooks()
 
     def __init__(self, revision_id, testament_sha1, time, timezone,
                  target_branch, patch=None, source_branch=None, message=None,
@@ -136,6 +167,21 @@ class _BaseMergeDirective(object):
         return klass(revision_id, t.as_sha1(), time, timezone, target_branch,
             patch, patch_type, public_branch, message)
 
+    def get_disk_name(self, branch):
+        """Generate a suitable basename for storing this directive on disk
+
+        :param branch: The Branch this merge directive was generated fro
+        :return: A string
+        """
+        revno, revision_id = branch.last_revision_info()
+        if self.revision_id == revision_id:
+            revno = [revno]
+        else:
+            revno = branch.get_revision_id_to_revno_map().get(self.revision_id,
+                ['merge'])
+        nick = re.sub('(\W+)', '-', branch.nick).strip('-')
+        return '%s-%s' % (nick, '.'.join(str(n) for n in revno))
+
     @staticmethod
     def _generate_diff(repository, revision_id, ancestor_id):
         tree_1 = repository.revision_tree(ancestor_id)
@@ -190,11 +236,71 @@ class _BaseMergeDirective(object):
                     StringIO(self.get_raw_bundle()))
                 # We don't use the bundle's target revision, because
                 # MergeDirective.revision_id is authoritative.
-                info.install_revisions(target_repo)
+                try:
+                    info.install_revisions(target_repo, stream_input=False)
+                except errors.RevisionNotPresent:
+                    # At least one dependency isn't present.  Try installing
+                    # missing revisions from the submit branch
+                    try:
+                        submit_branch = \
+                            _mod_branch.Branch.open(self.target_branch)
+                    except errors.NotBranchError:
+                        raise errors.TargetNotBranch(self.target_branch)
+                    missing_revisions = []
+                    bundle_revisions = set(r.revision_id for r in
+                                           info.real_revisions)
+                    for revision in info.real_revisions:
+                        for parent_id in revision.parent_ids:
+                            if (parent_id not in bundle_revisions and
+                                not target_repo.has_revision(parent_id)):
+                                missing_revisions.append(parent_id)
+                    # reverse missing revisions to try to get heads first
+                    unique_missing = []
+                    unique_missing_set = set()
+                    for revision in reversed(missing_revisions):
+                        if revision in unique_missing_set:
+                            continue
+                        unique_missing.append(revision)
+                        unique_missing_set.add(revision)
+                    for missing_revision in unique_missing:
+                        target_repo.fetch(submit_branch.repository,
+                                          missing_revision)
+                    info.install_revisions(target_repo, stream_input=False)
             else:
                 source_branch = _mod_branch.Branch.open(self.source_branch)
                 target_repo.fetch(source_branch.repository, self.revision_id)
         return self.revision_id
+
+    def compose_merge_request(self, mail_client, to, body, branch, tree=None):
+        """Compose a request to merge this directive.
+
+        :param mail_client: The mail client to use for composing this request.
+        :param to: The address to compose the request to.
+        :param branch: The Branch that was used to produce this directive.
+        :param tree: The Tree (if any) for the Branch used to produce this
+            directive.
+        """
+        basename = self.get_disk_name(branch)
+        subject = '[MERGE] '
+        if self.message is not None:
+            subject += self.message
+        else:
+            revision = branch.repository.get_revision(self.revision_id)
+            subject += revision.get_summary()
+        if getattr(mail_client, 'supports_body', False):
+            orig_body = body
+            for hook in self.hooks['merge_request_body']:
+                params = MergeRequestBodyParams(body, orig_body, self,
+                                                to, basename, subject, branch,
+                                                tree)
+                body = hook(params)
+        elif len(self.hooks['merge_request_body']) > 0:
+            trace.warning('Cannot run merge_request_body hooks because mail'
+                          ' client %s does not support message bodies.',
+                        mail_client.__class__.__name__)
+        mail_client.compose_merge_request(to, subject,
+                                          ''.join(self.to_lines()),
+                                          basename, body)
 
 
 class MergeDirective(_BaseMergeDirective):
@@ -234,7 +340,8 @@ class MergeDirective(_BaseMergeDirective):
         """
         _BaseMergeDirective.__init__(self, revision_id, testament_sha1, time,
             timezone, target_branch, patch, source_branch, message)
-        assert patch_type in (None, 'diff', 'bundle'), patch_type
+        if patch_type not in (None, 'diff', 'bundle'):
+            raise ValueError(patch_type)
         if patch_type != 'bundle' and source_branch is None:
             raise errors.NoMergeSource()
         if patch_type is not None and patch is None:
@@ -486,6 +593,7 @@ class MergeDirective2(_BaseMergeDirective):
                                                self.base_revision_id)
         # Convert line-endings to UNIX
         stored_patch = re.sub('\r\n?', '\n', self.patch)
+        calculated_patch = re.sub('\r\n?', '\n', calculated_patch)
         # Strip trailing whitespace
         calculated_patch = re.sub(' *\n', '\n', calculated_patch)
         stored_patch = re.sub(' *\n', '\n', stored_patch)
@@ -511,10 +619,17 @@ class MergeDirective2(_BaseMergeDirective):
 
 class MergeDirectiveFormatRegistry(registry.Registry):
 
-    def register(self, directive):
-        registry.Registry.register(self, directive._format_string, directive)
+    def register(self, directive, format_string=None):
+        if format_string is None:
+            format_string = directive._format_string
+        registry.Registry.register(self, format_string, directive)
 
 
 _format_registry = MergeDirectiveFormatRegistry()
 _format_registry.register(MergeDirective)
 _format_registry.register(MergeDirective2)
+# 0.19 never existed.  It got renamed to 0.90.  But by that point, there were
+# already merge directives in the wild that used 0.19. Registering with the old
+# format string to retain compatibility with those merge directives.
+_format_registry.register(MergeDirective2,
+                          'Bazaar merge directive format 2 (Bazaar 0.19)')

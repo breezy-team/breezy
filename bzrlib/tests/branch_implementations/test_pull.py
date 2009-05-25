@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for branch.pull behaviour."""
 
@@ -23,14 +23,13 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib import errors
 from bzrlib.memorytree import MemoryTree
 from bzrlib.revision import NULL_REVISION
-from bzrlib.tests import TestSkipped
 from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
 
 
 class TestPull(TestCaseWithBranch):
 
     def test_pull_convergence_simple(self):
-        # when revisions are pulled, the left-most accessible parents must 
+        # when revisions are pulled, the left-most accessible parents must
         # become the revision-history.
         parent = self.make_branch_and_tree('parent')
         parent.commit('1st post', rev_id='P1', allow_pointless=True)
@@ -71,6 +70,32 @@ class TestPull(TestCaseWithBranch):
         self.assertEqual([rev1, rev2], checkout.branch.revision_history())
         self.assertEqual([rev1, rev2], master_tree.branch.revision_history())
 
+    def test_pull_local_updates_checkout_only(self):
+        """Pulling --local into a checkout updates the checkout and not the
+        master branch"""
+        master_tree = self.make_branch_and_tree('master')
+        rev1 = master_tree.commit('master')
+        checkout = master_tree.branch.create_checkout('checkout')
+
+        other = master_tree.branch.bzrdir.sprout('other').open_workingtree()
+        rev2 = other.commit('other commit')
+        # now pull local, which should update checkout but not master.
+        checkout.branch.pull(other.branch, local = True)
+        self.assertEqual([rev1, rev2], checkout.branch.revision_history())
+        self.assertEqual([rev1], master_tree.branch.revision_history())
+
+    def test_pull_local_raises_LocalRequiresBoundBranch_on_unbound(self):
+        """Pulling --local into a branch that is not bound should fail."""
+        master_tree = self.make_branch_and_tree('branch')
+        rev1 = master_tree.commit('master')
+
+        other = master_tree.branch.bzrdir.sprout('other').open_workingtree()
+        rev2 = other.commit('other commit')
+        # now pull --local, which should raise LocalRequiresBoundBranch error.
+        self.assertRaises(errors.LocalRequiresBoundBranch,
+                          master_tree.branch.pull, other.branch, local = True)
+        self.assertEqual([rev1], master_tree.branch.revision_history())
+
     def test_pull_raises_specific_error_on_master_connection_error(self):
         master_tree = self.make_branch_and_tree('master')
         checkout = master_tree.branch.create_checkout('checkout')
@@ -82,6 +107,23 @@ class TestPull(TestCaseWithBranch):
         self.assertRaises(errors.BoundBranchConnectionFailure,
                 checkout.branch.pull, other.branch)
 
+    def test_pull_returns_result(self):
+        parent = self.make_branch_and_tree('parent')
+        parent.commit('1st post', rev_id='P1')
+        mine = parent.bzrdir.sprout('mine').open_workingtree()
+        mine.commit('my change', rev_id='M1')
+        result = parent.branch.pull(mine.branch)
+        self.assertIsNot(None, result)
+        self.assertIs(mine.branch, result.source_branch)
+        self.assertIs(parent.branch, result.target_branch)
+        self.assertIs(parent.branch, result.master_branch)
+        self.assertIs(None, result.local_branch)
+        self.assertEqual(1, result.old_revno)
+        self.assertEqual('P1', result.old_revid)
+        self.assertEqual(2, result.new_revno)
+        self.assertEqual('M1', result.new_revid)
+        self.assertEqual(None, result.tag_conflicts)
+
     def test_pull_overwrite(self):
         tree_a = self.make_branch_and_tree('tree_a')
         tree_a.commit('message 1')
@@ -89,7 +131,14 @@ class TestPull(TestCaseWithBranch):
         tree_a.commit('message 2', rev_id='rev2a')
         tree_b.commit('message 2', rev_id='rev2b')
         self.assertRaises(errors.DivergedBranches, tree_a.pull, tree_b.branch)
-        tree_a.branch.pull(tree_a.branch, overwrite=True,
+        self.assertRaises(errors.DivergedBranches,
+                          tree_a.branch.pull, tree_b.branch,
+                          overwrite=False, stop_revision='rev2b')
+        # It should not have updated the branch tip, but it should have fetched
+        # the revision
+        self.assertEqual('rev2a', tree_a.branch.last_revision())
+        self.assertTrue(tree_a.branch.repository.has_revision('rev2b'))
+        tree_a.branch.pull(tree_b.branch, overwrite=True,
                            stop_revision='rev2b')
         self.assertEqual('rev2b', tree_a.branch.last_revision())
         self.assertEqual(tree_b.branch.revision_history(),
@@ -104,7 +153,7 @@ class TestPullHook(TestCaseWithBranch):
 
     def capture_post_pull_hook(self, result):
         """Capture post pull hook calls to self.hook_calls.
-        
+
         The call is logged, as is some state of the two branches.
         """
         if result.local_branch:
@@ -124,7 +173,8 @@ class TestPullHook(TestCaseWithBranch):
     def test_post_pull_empty_history(self):
         target = self.make_branch('target')
         source = self.make_branch('source')
-        Branch.hooks.install_hook('post_pull', self.capture_post_pull_hook)
+        Branch.hooks.install_named_hook('post_pull',
+            self.capture_post_pull_hook, None)
         target.pull(source)
         # with nothing there we should still get a notification, and
         # have both branches locked at the notification time.
@@ -137,7 +187,7 @@ class TestPullHook(TestCaseWithBranch):
     def test_post_pull_bound_branch(self):
         # pulling to a bound branch should pass in the master branch to the
         # hook, allowing the correct number of emails to be sent, while still
-        # allowing hooks that want to modify the target to do so to both 
+        # allowing hooks that want to modify the target to do so to both
         # instances.
         target = self.make_branch('target')
         local = self.make_branch('local')
@@ -152,7 +202,8 @@ class TestPullHook(TestCaseWithBranch):
             local = BzrDir.create_branch_convenience('local2')
             local.bind(target)
         source = self.make_branch('source')
-        Branch.hooks.install_hook('post_pull', self.capture_post_pull_hook)
+        Branch.hooks.install_named_hook('post_pull',
+            self.capture_post_pull_hook, None)
         local.pull(source)
         # with nothing there we should still get a notification, and
         # have both branches locked at the notification time.
@@ -171,7 +222,8 @@ class TestPullHook(TestCaseWithBranch):
         sourcedir = target.bzrdir.clone(self.get_url('source'))
         source = MemoryTree.create_on_branch(sourcedir.open_branch())
         rev2 = source.commit('rev 2')
-        Branch.hooks.install_hook('post_pull', self.capture_post_pull_hook)
+        Branch.hooks.install_named_hook('post_pull',
+            self.capture_post_pull_hook, None)
         target.branch.pull(source.branch)
         # with nothing there we should still get a notification, and
         # have both branches locked at the notification time.

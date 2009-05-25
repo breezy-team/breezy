@@ -13,7 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
 import socket
@@ -21,9 +21,19 @@ import sys
 import threading
 import time
 
+try:
+    import paramiko
+    paramiko_loaded = True
+except ImportError:
+    paramiko_loaded = False
+
 from bzrlib import (
     bzrdir,
+    config,
     errors,
+    tests,
+    transport as _mod_transport,
+    ui,
     )
 from bzrlib.osutils import (
     pathjoin,
@@ -35,21 +45,19 @@ from bzrlib.tests import (
     TestCase,
     TestSkipped,
     )
-from bzrlib.tests.HttpServer import HttpServer
+from bzrlib.tests.http_server import HttpServer
 from bzrlib.transport import get_transport
 import bzrlib.transport.http
-from bzrlib.transport.sftp import (
-    SFTPAbsoluteServer,
-    SFTPHomeDirServer,
-    SFTPTransport,
-    )
-from bzrlib.workingtree import WorkingTree
 
-try:
-    import paramiko
-    paramiko_loaded = True
-except ImportError:
-    paramiko_loaded = False
+if paramiko_loaded:
+    from bzrlib.transport import sftp as _mod_sftp
+    from bzrlib.transport.sftp import (
+        SFTPAbsoluteServer,
+        SFTPHomeDirServer,
+        SFTPTransport,
+        )
+
+from bzrlib.workingtree import WorkingTree
 
 
 def set_test_transport_to_sftp(testcase):
@@ -73,7 +81,7 @@ class TestCaseWithSFTPServer(TestCaseWithTransport):
         set_test_transport_to_sftp(self)
 
 
-class SFTPLockTests (TestCaseWithSFTPServer):
+class SFTPLockTests(TestCaseWithSFTPServer):
 
     def test_sftp_locks(self):
         from bzrlib.errors import LockError
@@ -105,6 +113,16 @@ class SFTPTransportTestRelative(TestCaseWithSFTPServer):
     """Test the SFTP transport with homedir based relative paths."""
 
     def test__remote_path(self):
+        if sys.platform == 'darwin':
+            # This test is about sftp absolute path handling. There is already
+            # (in this test) a TODO about windows needing an absolute path
+            # without drive letter. To me, using self.test_dir is a trick to
+            # get an absolute path for comparison purposes.  That fails for OSX
+            # because the sftp server doesn't resolve the links (and it doesn't
+            # have to). --vila 20070924
+            self.knownFailure('Mac OSX symlinks /tmp to /private/tmp,'
+                              ' testing against self.test_dir'
+                              ' is not appropriate')
         t = self.get_transport()
         # This test require unix-like absolute path
         test_dir = self.test_dir
@@ -115,12 +133,14 @@ class SFTPTransportTestRelative(TestCaseWithSFTPServer):
             test_dir = '/' + test_dir
         # try what is currently used:
         # remote path = self._abspath(relpath)
-        self.assertEqual(test_dir + '/relative', t._remote_path('relative'))
+        self.assertIsSameRealPath(test_dir + '/relative',
+                                  t._remote_path('relative'))
         # we dont os.path.join because windows gives us the wrong path
         root_segments = test_dir.split('/')
         root_parent = '/'.join(root_segments[:-1])
         # .. should be honoured
-        self.assertEqual(root_parent + '/sibling', t._remote_path('../sibling'))
+        self.assertIsSameRealPath(root_parent + '/sibling',
+                                  t._remote_path('../sibling'))
         # /  should be illegal ?
         ### FIXME decide and then test for all transports. RBC20051208
 
@@ -239,7 +259,7 @@ class SSHVendorConnection(TestCaseWithSFTPServer):
       None:       If 'ssh' exists on the machine, then it will be spawned as a
                   child process.
     """
-    
+
     def setUp(self):
         super(SSHVendorConnection, self).setUp()
         from bzrlib.transport.sftp import SFTPFullAbsoluteServer
@@ -334,7 +354,7 @@ class SSHVendorBadConnection(TestCaseWithTransport):
         # else:
         #     self.fail('Excepted ConnectionError to be raised')
 
-        out, err = self.run_bzr_subprocess('log', self.bogus_url, retcode=3)
+        out, err = self.run_bzr_subprocess(['log', self.bogus_url], retcode=3)
         self.assertEqual('', out)
         if "NameError: global name 'SSHException'" in err:
             # We aren't fixing this bug, because it is a bug in
@@ -349,7 +369,7 @@ class SFTPLatencyKnob(TestCaseWithSFTPServer):
     """Test that the testing SFTPServer's latency knob works."""
 
     def test_latency_knob_slows_transport(self):
-        # change the latency knob to 500ms. We take about 40ms for a 
+        # change the latency knob to 500ms. We take about 40ms for a
         # loopback connection ordinarily.
         start_time = time.time()
         self.get_server().add_latency = 0.5
@@ -444,3 +464,95 @@ class TestSocketDelay(TestCase):
         self.assertAlmostEqual(t2 - t1, 100 + 7)
 
 
+class ReadvFile(object):
+    """An object that acts like Paramiko's SFTPFile.readv()"""
+
+    def __init__(self, data):
+        self._data = data
+
+    def readv(self, requests):
+        for start, length in requests:
+            yield self._data[start:start+length]
+
+
+def _null_report_activity(*a, **k):
+    pass
+
+
+class Test_SFTPReadvHelper(tests.TestCase):
+
+    def checkGetRequests(self, expected_requests, offsets):
+        if not paramiko_loaded:
+            raise TestSkipped('you must have paramiko to run this test')
+        helper = _mod_sftp._SFTPReadvHelper(offsets, 'artificial_test',
+            _null_report_activity)
+        self.assertEqual(expected_requests, helper._get_requests())
+
+    def test__get_requests(self):
+        # Small single requests become a single readv request
+        self.checkGetRequests([(0, 100)],
+                              [(0, 20), (30, 50), (20, 10), (80, 20)])
+        # Non-contiguous ranges are given as multiple requests
+        self.checkGetRequests([(0, 20), (30, 50)],
+                              [(10, 10), (30, 20), (0, 10), (50, 30)])
+        # Ranges larger than _max_request_size (32kB) are broken up into
+        # multiple requests, even if it actually spans multiple logical
+        # requests
+        self.checkGetRequests([(0, 32768), (32768, 32768), (65536, 464)],
+                              [(0, 40000), (40000, 100), (40100, 1900),
+                               (42000, 24000)])
+
+    def checkRequestAndYield(self, expected, data, offsets):
+        if not paramiko_loaded:
+            raise TestSkipped('you must have paramiko to run this test')
+        helper = _mod_sftp._SFTPReadvHelper(offsets, 'artificial_test',
+            _null_report_activity)
+        data_f = ReadvFile(data)
+        result = list(helper.request_and_yield_offsets(data_f))
+        self.assertEqual(expected, result)
+
+    def test_request_and_yield_offsets(self):
+        data = 'abcdefghijklmnopqrstuvwxyz'
+        self.checkRequestAndYield([(0, 'a'), (5, 'f'), (10, 'klm')], data,
+                                  [(0, 1), (5, 1), (10, 3)])
+        # Should combine requests, and split them again
+        self.checkRequestAndYield([(0, 'a'), (1, 'b'), (10, 'klm')], data,
+                                  [(0, 1), (1, 1), (10, 3)])
+        # Out of order requests. The requests should get combined, but then be
+        # yielded out-of-order. We also need one that is at the end of a
+        # previous range. See bug #293746
+        self.checkRequestAndYield([(0, 'a'), (10, 'k'), (4, 'efg'), (1, 'bcd')],
+                                  data, [(0, 1), (10, 1), (4, 3), (1, 3)])
+
+
+class TestUsesAuthConfig(TestCaseWithSFTPServer):
+    """Test that AuthenticationConfig can supply default usernames."""
+
+    def get_transport_for_connection(self, set_config):
+        port = self.get_server()._listener.port
+        if set_config:
+            conf = config.AuthenticationConfig()
+            conf._get_config().update(
+                {'sftptest': {'scheme': 'ssh', 'port': port, 'user': 'bar'}})
+            conf._save()
+        t = get_transport('sftp://localhost:%d' % port)
+        # force a connection to be performed.
+        t.has('foo')
+        return t
+
+    def test_sftp_uses_config(self):
+        t = self.get_transport_for_connection(set_config=True)
+        self.assertEqual('bar', t._get_credentials()[0])
+
+    def test_sftp_is_none_if_no_config(self):
+        t = self.get_transport_for_connection(set_config=False)
+        self.assertIs(None, t._get_credentials()[0])
+
+    def test_sftp_doesnt_prompt_username(self):
+        stdout = tests.StringIOWrapper()
+        ui.ui_factory = tests.TestUIFactory(stdin='joe\nfoo\n', stdout=stdout)
+        t = self.get_transport_for_connection(set_config=False)
+        self.assertIs(None, t._get_credentials()[0])
+        # No prompts should've been printed, stdin shouldn't have been read
+        self.assertEquals("", stdout.getvalue())
+        self.assertEquals(0, ui.ui_factory.stdin.tell())

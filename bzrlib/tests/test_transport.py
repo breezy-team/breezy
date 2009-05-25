@@ -12,33 +12,28 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-import os
-import sys
-import stat
 from cStringIO import StringIO
 
 import bzrlib
 from bzrlib import (
     errors,
+    osutils,
     urlutils,
     )
-from bzrlib.errors import (ConnectionError,
-                           DependencyNotPresent,
+from bzrlib.errors import (DependencyNotPresent,
                            FileExists,
                            InvalidURLJoin,
                            NoSuchFile,
                            PathNotChild,
-                           TransportNotPossible,
-                           ConnectionError,
-                           DependencyNotPresent,
                            ReadError,
                            UnsupportedProtocol,
                            )
 from bzrlib.tests import TestCase, TestCaseInTempDir
-from bzrlib.transport import (_CoalescedOffset,
+from bzrlib.transport import (_clear_protocol_handlers,
+                              _CoalescedOffset,
                               ConnectedTransport,
                               _get_protocol_handlers,
                               _set_protocol_handlers,
@@ -47,7 +42,6 @@ from bzrlib.transport import (_CoalescedOffset,
                               LateReadError,
                               register_lazy_transport,
                               register_transport_proto,
-                              _clear_protocol_handlers,
                               Transport,
                               )
 from bzrlib.transport.chroot import ChrootServer
@@ -73,15 +67,20 @@ class TestTransport(TestCase):
 
     def test_get_transport_modules(self):
         handlers = _get_protocol_handlers()
+        # don't pollute the current handlers
+        _clear_protocol_handlers()
         class SampleHandler(object):
             """I exist, isnt that enough?"""
         try:
             _clear_protocol_handlers()
             register_transport_proto('foo')
-            register_lazy_transport('foo', 'bzrlib.tests.test_transport', 'TestTransport.SampleHandler')
+            register_lazy_transport('foo', 'bzrlib.tests.test_transport',
+                                    'TestTransport.SampleHandler')
             register_transport_proto('bar')
-            register_lazy_transport('bar', 'bzrlib.tests.test_transport', 'TestTransport.SampleHandler')
-            self.assertEqual([SampleHandler.__module__, 'bzrlib.transport.chroot'],
+            register_lazy_transport('bar', 'bzrlib.tests.test_transport',
+                                    'TestTransport.SampleHandler')
+            self.assertEqual([SampleHandler.__module__,
+                              'bzrlib.transport.chroot'],
                              _get_transport_modules())
         finally:
             _set_protocol_handlers(handlers)
@@ -89,6 +88,8 @@ class TestTransport(TestCase):
     def test_transport_dependency(self):
         """Transport with missing dependency causes no error"""
         saved_handlers = _get_protocol_handlers()
+        # don't pollute the current handlers
+        _clear_protocol_handlers()
         try:
             register_transport_proto('foo')
             register_lazy_transport('foo', 'bzrlib.tests.test_transport',
@@ -106,7 +107,7 @@ class TestTransport(TestCase):
         finally:
             # restore original values
             _set_protocol_handlers(saved_handlers)
-            
+
     def test_transport_fallback(self):
         """Transport with missing dependency causes no error"""
         saved_handlers = _get_protocol_handlers()
@@ -121,6 +122,19 @@ class TestTransport(TestCase):
             self.assertTrue(isinstance(t, BackupTransportHandler))
         finally:
             _set_protocol_handlers(saved_handlers)
+
+    def test_ssh_hints(self):
+        """Transport ssh:// should raise an error pointing out bzr+ssh://"""
+        try:
+            get_transport('ssh://fooserver/foo')
+        except UnsupportedProtocol, e:
+            e_str = str(e)
+            self.assertEquals('Unsupported protocol'
+                              ' for url "ssh://fooserver/foo":'
+                              ' bzr supports bzr+ssh to operate over ssh, use "bzr+ssh://fooserver/foo".',
+                              str(e))
+        else:
+            self.fail('Did not raise UnsupportedProtocol')
 
     def test_LateReadError(self):
         """The LateReadError helper should raise on read()."""
@@ -151,11 +165,12 @@ class TestTransport(TestCase):
 
 
 class TestCoalesceOffsets(TestCase):
-    
-    def check(self, expected, offsets, limit=0, fudge=0):
+
+    def check(self, expected, offsets, limit=0, max_size=0, fudge=0):
         coalesce = Transport._coalesce_offsets
         exp = [_CoalescedOffset(*x) for x in expected]
-        out = list(coalesce(offsets, limit=limit, fudge_factor=fudge))
+        out = list(coalesce(offsets, limit=limit, fudge_factor=fudge,
+                            max_size=max_size))
         self.assertEqual(exp, out)
 
     def test_coalesce_empty(self):
@@ -168,7 +183,7 @@ class TestCoalesceOffsets(TestCase):
         self.check([(0, 10, [(0, 10)]),
                     (20, 10, [(0, 10)]),
                    ], [(0, 10), (20, 10)])
-            
+
     def test_coalesce_unsorted(self):
         self.check([(20, 10, [(0, 10)]),
                     (0, 10, [(0, 10)]),
@@ -179,8 +194,9 @@ class TestCoalesceOffsets(TestCase):
                    [(0, 10), (10, 10)])
 
     def test_coalesce_overlapped(self):
-        self.check([(0, 15, [(0, 10), (5, 10)])],
-                   [(0, 10), (5, 10)])
+        self.assertRaises(ValueError,
+            self.check, [(0, 15, [(0, 10), (5, 10)])],
+                        [(0, 10), (5, 10)])
 
     def test_coalesce_limit(self):
         self.check([(10, 50, [(0, 10), (10, 10), (20, 10),
@@ -207,6 +223,30 @@ class TestCoalesceOffsets(TestCase):
                    ], [(10, 10), (30, 10), (100, 10)],
                    fudge=10
                   )
+    def test_coalesce_max_size(self):
+        self.check([(10, 20, [(0, 10), (10, 10)]),
+                    (30, 50, [(0, 50)]),
+                    # If one range is above max_size, it gets its own coalesced
+                    # offset
+                    (100, 80, [(0, 80),]),],
+                   [(10, 10), (20, 10), (30, 50), (100, 80)],
+                   max_size=50
+                  )
+
+    def test_coalesce_no_max_size(self):
+        self.check([(10, 170, [(0, 10), (10, 10), (20, 50), (70, 100)]),],
+                   [(10, 10), (20, 10), (30, 50), (80, 100)],
+                  )
+
+    def test_coalesce_default_limit(self):
+        # By default we use a 100MB max size.
+        ten_mb = 10*1024*1024
+        self.check([(0, 10*ten_mb, [(i*ten_mb, ten_mb) for i in range(10)]),
+                    (10*ten_mb, ten_mb, [(0, ten_mb)])],
+                   [(i*ten_mb, ten_mb) for i in range(11)])
+        self.check([(0, 11*ten_mb, [(i*ten_mb, ten_mb) for i in range(11)]),],
+                   [(i*ten_mb, ten_mb) for i in range(11)],
+                   max_size=1*1024*1024*1024)
 
 
 class TestMemoryTransport(TestCase):
@@ -298,7 +338,6 @@ class TestMemoryTransport(TestCase):
     def test_parameters(self):
         transport = MemoryTransport()
         self.assertEqual(True, transport.listable())
-        self.assertEqual(False, transport.should_cache())
         self.assertEqual(False, transport.is_readonly())
 
     def test_iter_files_recursive(self):
@@ -342,7 +381,7 @@ class ChrootDecoratorTransportTest(TestCase):
         self.assertEqual(server, relpath_cloned.server)
         self.assertEqual(server, abspath_cloned.server)
         server.tearDown()
-    
+
     def test_chroot_url_preserves_chroot(self):
         """Calling get_transport on a chroot transport's base should produce a
         transport with exactly the same behaviour as the original chroot
@@ -360,7 +399,7 @@ class ChrootDecoratorTransportTest(TestCase):
         self.assertEqual(transport.server, new_transport.server)
         self.assertEqual(transport.base, new_transport.base)
         server.tearDown()
-        
+
     def test_urljoin_preserves_chroot(self):
         """Using urlutils.join(url, '..') on a chroot URL should not produce a
         URL that escapes the intended chroot.
@@ -414,13 +453,12 @@ class ReadonlyDecoratorTransportTest(TestCase):
         # connect to . in readonly mode
         transport = readonly.ReadonlyTransportDecorator('readonly+.')
         self.assertEqual(True, transport.listable())
-        self.assertEqual(False, transport.should_cache())
         self.assertEqual(True, transport.is_readonly())
 
     def test_http_parameters(self):
-        from bzrlib.tests.HttpServer import HttpServer
+        from bzrlib.tests.http_server import HttpServer
         import bzrlib.transport.readonly as readonly
-        # connect to . via http which is not listable
+        # connect to '.' via http which is not listable
         server = HttpServer()
         server.setUp()
         try:
@@ -428,7 +466,6 @@ class ReadonlyDecoratorTransportTest(TestCase):
             self.failUnless(isinstance(transport,
                                        readonly.ReadonlyTransportDecorator))
             self.assertEqual(False, transport.listable())
-            self.assertEqual(True, transport.should_cache())
             self.assertEqual(True, transport.is_readonly())
         finally:
             server.tearDown()
@@ -443,18 +480,17 @@ class FakeNFSDecoratorTests(TestCaseInTempDir):
         return fakenfs.FakeNFSTransportDecorator('fakenfs+' + url)
 
     def test_local_parameters(self):
-        # the listable, should_cache and is_readonly parameters
+        # the listable and is_readonly parameters
         # are not changed by the fakenfs decorator
         transport = self.get_nfs_transport('.')
         self.assertEqual(True, transport.listable())
-        self.assertEqual(False, transport.should_cache())
         self.assertEqual(False, transport.is_readonly())
 
     def test_http_parameters(self):
-        # the listable, should_cache and is_readonly parameters
+        # the listable and is_readonly parameters
         # are not changed by the fakenfs decorator
-        from bzrlib.tests.HttpServer import HttpServer
-        # connect to . via http which is not listable
+        from bzrlib.tests.http_server import HttpServer
+        # connect to '.' via http which is not listable
         server = HttpServer()
         server.setUp()
         try:
@@ -462,7 +498,6 @@ class FakeNFSDecoratorTests(TestCaseInTempDir):
             self.assertIsInstance(
                 transport, bzrlib.transport.fakenfs.FakeNFSTransportDecorator)
             self.assertEqual(False, transport.listable())
-            self.assertEqual(True, transport.should_cache())
             self.assertEqual(True, transport.is_readonly())
         finally:
             server.tearDown()
@@ -529,26 +564,26 @@ class BackupTransportHandler(Transport):
 
 class TestTransportImplementation(TestCaseInTempDir):
     """Implementation verification for transports.
-    
+
     To verify a transport we need a server factory, which is a callable
     that accepts no parameters and returns an implementation of
     bzrlib.transport.Server.
-    
+
     That Server is then used to construct transport instances and test
     the transport via loopback activity.
 
-    Currently this assumes that the Transport object is connected to the 
-    current working directory.  So that whatever is done 
-    through the transport, should show up in the working 
+    Currently this assumes that the Transport object is connected to the
+    current working directory.  So that whatever is done
+    through the transport, should show up in the working
     directory, and vice-versa. This is a bug, because its possible to have
-    URL schemes which provide access to something that may not be 
-    result in storage on the local disk, i.e. due to file system limits, or 
+    URL schemes which provide access to something that may not be
+    result in storage on the local disk, i.e. due to file system limits, or
     due to it being a database or some other non-filesystem tool.
 
     This also tests to make sure that the functions work with both
     generators and lists (assuming iter(list) is effectively a generator)
     """
-    
+
     def setUp(self):
         super(TestTransportImplementation, self).setUp()
         self._server = self.transport_server()
@@ -577,26 +612,26 @@ class TestTransportImplementation(TestCaseInTempDir):
 class TestLocalTransports(TestCase):
 
     def test_get_transport_from_abspath(self):
-        here = os.path.abspath('.')
+        here = osutils.abspath('.')
         t = get_transport(here)
         self.assertIsInstance(t, LocalTransport)
         self.assertEquals(t.base, urlutils.local_path_to_url(here) + '/')
 
     def test_get_transport_from_relpath(self):
-        here = os.path.abspath('.')
+        here = osutils.abspath('.')
         t = get_transport('.')
         self.assertIsInstance(t, LocalTransport)
         self.assertEquals(t.base, urlutils.local_path_to_url('.') + '/')
 
     def test_get_transport_from_local_url(self):
-        here = os.path.abspath('.')
+        here = osutils.abspath('.')
         here_url = urlutils.local_path_to_url(here) + '/'
         t = get_transport(here_url)
         self.assertIsInstance(t, LocalTransport)
         self.assertEquals(t.base, here_url)
 
     def test_local_abspath(self):
-        here = os.path.abspath('.')
+        here = osutils.abspath('.')
         t = get_transport(here)
         self.assertEquals(t.local_abspath(''), here)
 
@@ -620,14 +655,19 @@ class TestConnectedTransport(TestCase):
     """Tests for connected to remote server transports"""
 
     def test_parse_url(self):
-        t = ConnectedTransport('sftp://simple.example.com/home/source')
+        t = ConnectedTransport('http://simple.example.com/home/source')
         self.assertEquals(t._host, 'simple.example.com')
         self.assertEquals(t._port, None)
         self.assertEquals(t._path, '/home/source/')
         self.failUnless(t._user is None)
         self.failUnless(t._password is None)
 
-        self.assertEquals(t.base, 'sftp://simple.example.com/home/source/')
+        self.assertEquals(t.base, 'http://simple.example.com/home/source/')
+
+    def test_parse_url_with_at_in_user(self):
+        # Bug 228058
+        t = ConnectedTransport('ftp://user@host.com@www.host.com/')
+        self.assertEquals(t._user, 'user@host.com')
 
     def test_parse_quoted_url(self):
         t = ConnectedTransport('http://ro%62ey:h%40t@ex%41mple.com:2222/path')
@@ -666,11 +706,13 @@ class TestConnectedTransport(TestCase):
         self.assertEquals(t.relpath('sftp://host.com/dev/%path/sub'), 'sub')
 
     def test_connection_sharing_propagate_credentials(self):
-        t = ConnectedTransport('foo://user@host.com/abs/path')
+        t = ConnectedTransport('ftp://user@host.com/abs/path')
+        self.assertEquals('user', t._user)
+        self.assertEquals('host.com', t._host)
         self.assertIs(None, t._get_connection())
         self.assertIs(None, t._password)
         c = t.clone('subdir')
-        self.assertEquals(None, c._get_connection())
+        self.assertIs(None, c._get_connection())
         self.assertIs(None, t._password)
 
         # Simulate the user entering a password
@@ -695,7 +737,10 @@ class TestReusedTransports(TestCase):
     """Tests for transport reuse"""
 
     def test_reuse_same_transport(self):
-        t1 = get_transport('http://foo/')
+        possible_transports = []
+        t1 = get_transport('http://foo/',
+                           possible_transports=possible_transports)
+        self.assertEqual([t1], possible_transports)
         t2 = get_transport('http://foo/', possible_transports=[t1])
         self.assertIs(t1, t2)
 
@@ -714,11 +759,44 @@ class TestReusedTransports(TestCase):
         self.assertIsNot(t1, t2)
 
 
-def get_test_permutations():
-    """Return transport permutations to be used in testing.
+class TestTransportTrace(TestCase):
 
-    This module registers some transports, but they're only for testing
-    registration.  We don't really want to run all the transport tests against
-    them.
-    """
-    return []
+    def test_get(self):
+        transport = get_transport('trace+memory://')
+        self.assertIsInstance(
+            transport, bzrlib.transport.trace.TransportTraceDecorator)
+
+    def test_clone_preserves_activity(self):
+        transport = get_transport('trace+memory://')
+        transport2 = transport.clone('.')
+        self.assertTrue(transport is not transport2)
+        self.assertTrue(transport._activity is transport2._activity)
+
+    # the following specific tests are for the operations that have made use of
+    # logging in tests; we could test every single operation but doing that
+    # still won't cause a test failure when the top level Transport API
+    # changes; so there is little return doing that.
+    def test_get(self):
+        transport = get_transport('trace+memory:///')
+        transport.put_bytes('foo', 'barish')
+        transport.get('foo')
+        expected_result = []
+        # put_bytes records the bytes, not the content to avoid memory
+        # pressure.
+        expected_result.append(('put_bytes', 'foo', 6, None))
+        # get records the file name only.
+        expected_result.append(('get', 'foo'))
+        self.assertEqual(expected_result, transport._activity)
+
+    def test_readv(self):
+        transport = get_transport('trace+memory:///')
+        transport.put_bytes('foo', 'barish')
+        list(transport.readv('foo', [(0, 1), (3, 2)], adjust_for_latency=True,
+            upper_limit=6))
+        expected_result = []
+        # put_bytes records the bytes, not the content to avoid memory
+        # pressure.
+        expected_result.append(('put_bytes', 'foo', 6, None))
+        # readv records the supplied offset request
+        expected_result.append(('readv', 'foo', [(0, 1), (3, 2)], True, 6))
+        self.assertEqual(expected_result, transport._activity)

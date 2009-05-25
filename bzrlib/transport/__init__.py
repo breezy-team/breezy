@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Transport is an abstraction layer to handle file access.
 
@@ -33,37 +33,33 @@ import sys
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import errno
-from collections import deque
 from stat import S_ISDIR
-import unittest
 import urllib
 import urlparse
-import warnings
 
-import bzrlib
 from bzrlib import (
     errors,
     osutils,
     symbol_versioning,
+    ui,
     urlutils,
     )
 """)
 
 from bzrlib.symbol_versioning import (
-        deprecated_passed,
         deprecated_method,
         deprecated_function,
         DEPRECATED_PARAMETER,
-        zero_eight,
-        zero_eleven,
-        zero_ninety,
         )
 from bzrlib.trace import (
-    note,
     mutter,
-    warning,
     )
 from bzrlib import registry
+
+
+# a dictionary of open file streams. Keys are absolute paths, values are
+# transport defined.
+_file_streams = {}
 
 
 def _get_protocol_handlers():
@@ -88,13 +84,13 @@ def _clear_protocol_handlers():
 def _get_transport_modules():
     """Return a list of the modules providing transports."""
     modules = set()
-    for prefix, factory_list in transport_list_registry.iteritems():
+    for prefix, factory_list in transport_list_registry.items():
         for factory in factory_list:
             if hasattr(factory, "_module_name"):
                 modules.add(factory._module_name)
             else:
                 modules.add(factory._obj.__module__)
-    # Add chroot directly, because there is not handler registered for it.
+    # Add chroot directly, because there is no handler registered for it.
     modules.add('bzrlib.transport.chroot')
     result = list(modules)
     result.sort()
@@ -104,7 +100,7 @@ def _get_transport_modules():
 class TransportListRegistry(registry.Registry):
     """A registry which simplifies tracking available Transports.
 
-    A registration of a new protocol requires two step:
+    A registration of a new protocol requires two steps:
     1) register the prefix with the function register_transport( )
     2) register the protocol provider with the function
     register_transport_provider( ) ( and the "lazy" variant )
@@ -120,22 +116,27 @@ class TransportListRegistry(registry.Registry):
         self.get(key).insert(0, registry._ObjectGetter(obj))
 
     def register_lazy_transport_provider(self, key, module_name, member_name):
-        self.get(key).insert(0, 
+        self.get(key).insert(0,
                 registry._LazyObjectGetter(module_name, member_name))
 
-    def register_transport(self, key, help=None, info=None):
-        self.register(key, [], help, info)
+    def register_transport(self, key, help=None):
+        self.register(key, [], help)
 
     def set_default_transport(self, key=None):
         """Return either 'key' or the default key if key is None"""
         self._default_key = key
 
 
-transport_list_registry = TransportListRegistry( )
+transport_list_registry = TransportListRegistry()
 
 
-def register_transport_proto(prefix, help=None, info=None):
-    transport_list_registry.register_transport(prefix, help, info)
+def register_transport_proto(prefix, help=None, info=None,
+                             register_netloc=False):
+    transport_list_registry.register_transport(prefix, help)
+    if register_netloc:
+        if not prefix.endswith('://'):
+            raise ValueError(prefix)
+        register_urlparse_netloc_protocol(prefix[:-3])
 
 
 def register_lazy_transport(prefix, module, classname):
@@ -178,39 +179,6 @@ def unregister_transport(scheme, factory):
         transport_list_registry.remove(scheme)
 
 
-
-@deprecated_function(zero_ninety)
-def split_url(url):
-    # TODO: jam 20060606 urls should only be ascii, or they should raise InvalidURL
-    if isinstance(url, unicode):
-        url = url.encode('utf-8')
-    (scheme, netloc, path, params,
-     query, fragment) = urlparse.urlparse(url, allow_fragments=False)
-    username = password = host = port = None
-    if '@' in netloc:
-        username, host = netloc.split('@', 1)
-        if ':' in username:
-            username, password = username.split(':', 1)
-            password = urllib.unquote(password)
-        username = urllib.unquote(username)
-    else:
-        host = netloc
-
-    if ':' in host:
-        host, port = host.rsplit(':', 1)
-        try:
-            port = int(port)
-        except ValueError:
-            # TODO: Should this be ConnectionError?
-            raise errors.TransportError(
-                'invalid port number %s in url:\n%s' % (port, url))
-    host = urllib.unquote(host)
-
-    path = urllib.unquote(path)
-
-    return (scheme, username, password, host, port, path)
-
-
 class _CoalescedOffset(object):
     """A data container for keeping track of coalesced offsets."""
 
@@ -224,6 +192,10 @@ class _CoalescedOffset(object):
     def __cmp__(self, other):
         return cmp((self.start, self.length, self.ranges),
                    (other.start, other.length, other.ranges))
+
+    def __repr__(self):
+        return '%s(%r, %r, %r)' % (self.__class__.__name__,
+            self.start, self.length, self.ranges)
 
 
 class LateReadError(object):
@@ -252,12 +224,55 @@ class LateReadError(object):
         self._fail()
 
 
+class FileStream(object):
+    """Base class for FileStreams."""
+
+    def __init__(self, transport, relpath):
+        """Create a FileStream for relpath on transport."""
+        self.transport = transport
+        self.relpath = relpath
+
+    def _close(self):
+        """A hook point for subclasses that need to take action on close."""
+
+    def close(self):
+        self._close()
+        del _file_streams[self.transport.abspath(self.relpath)]
+
+
+class FileFileStream(FileStream):
+    """A file stream object returned by open_write_stream.
+
+    This version uses a file like object to perform writes.
+    """
+
+    def __init__(self, transport, relpath, file_handle):
+        FileStream.__init__(self, transport, relpath)
+        self.file_handle = file_handle
+
+    def _close(self):
+        self.file_handle.close()
+
+    def write(self, bytes):
+        osutils.pump_string_file(bytes, self.file_handle)
+
+
+class AppendBasedFileStream(FileStream):
+    """A file stream object returned by open_write_stream.
+
+    This version uses append on a transport to perform writes.
+    """
+
+    def write(self, bytes):
+        self.transport.append_bytes(self.relpath, bytes)
+
+
 class Transport(object):
     """This class encapsulates methods for retrieving or putting a file
     from/to a storage location.
 
     Most functions have a _multi variant, which allows you to queue up
-    multiple requests. They generally have a dumb base implementation 
+    multiple requests. They generally have a dumb base implementation
     which just iterates over the arguments, but smart Transport
     implementations can do pipelining.
     In general implementations should support having a generator or a list
@@ -287,7 +302,7 @@ class Transport(object):
         This handles things like ENOENT, ENOTDIR, EEXIST, and EACCESS
         """
         if getattr(e, 'errno', None) is not None:
-            if e.errno in (errno.ENOENT, errno.ENOTDIR):
+            if e.errno in (errno.ENOENT, errno.ENOTDIR, errno.EINVAL):
                 raise errors.NoSuchFile(path, extra=e)
             # I would rather use errno.EFOO, but there doesn't seem to be
             # any matching for 267
@@ -308,10 +323,35 @@ class Transport(object):
 
     def clone(self, offset=None):
         """Return a new Transport object, cloned from the current location,
-        using a subdirectory or parent directory. This allows connections 
+        using a subdirectory or parent directory. This allows connections
         to be pooled, rather than a new one needed for each subdir.
         """
         raise NotImplementedError(self.clone)
+
+    def create_prefix(self):
+        """Create all the directories leading down to self.base."""
+        cur_transport = self
+        needed = [cur_transport]
+        # Recurse upwards until we can create a directory successfully
+        while True:
+            new_transport = cur_transport.clone('..')
+            if new_transport.base == cur_transport.base:
+                raise errors.BzrCommandError(
+                    "Failed to create path prefix for %s."
+                    % cur_transport.base)
+            try:
+                new_transport.mkdir('.')
+            except errors.NoSuchFile:
+                needed.append(new_transport)
+                cur_transport = new_transport
+            except errors.FileExists:
+                break
+            else:
+                break
+        # Now we only need to create child directories
+        while needed:
+            cur_transport = needed.pop()
+            cur_transport.ensure_base()
 
     def ensure_base(self):
         """Ensure that the directory this transport references exists.
@@ -321,10 +361,10 @@ class Transport(object):
         """
         # The default implementation just uses "Easier to ask for forgiveness
         # than permission". We attempt to create the directory, and just
-        # suppress a FileExists exception.
+        # suppress FileExists and PermissionDenied (for Windows) exceptions.
         try:
             self.mkdir('.')
-        except errors.FileExists:
+        except (errors.FileExists, errors.PermissionDenied):
             return False
         else:
             return True
@@ -351,19 +391,12 @@ class Transport(object):
         """
         raise NotImplementedError(self.external_url)
 
-    def should_cache(self):
-        """Return True if the data pulled across should be cached locally.
-        """
-        return False
-
     def _pump(self, from_file, to_file):
-        """Most children will need to copy from one file-like 
+        """Most children will need to copy from one file-like
         object or string to another one.
         This just gives them something easy to call.
         """
-        assert not isinstance(from_file, basestring), \
-            '_pump should only be called on files not %s' % (type(from_file,))
-        osutils.pumpfile(from_file, to_file)
+        return osutils.pumpfile(from_file, to_file)
 
     def _get_total(self, multi):
         """Try to figure out how many entries are in multi,
@@ -373,6 +406,18 @@ class Transport(object):
             return len(multi)
         except TypeError: # We can't tell how many, because relpaths is a generator
             return None
+
+    def _report_activity(self, bytes, direction):
+        """Notify that this transport has activity.
+
+        Implementations should call this from all methods that actually do IO.
+        Be careful that it's not called twice, if one method is implemented on
+        top of another.
+
+        :param bytes: Number of bytes read or written.
+        :param direction: 'read' or 'write' or None.
+        """
+        ui.ui_factory.report_transport_activity(self, bytes, direction)
 
     def _update_pb(self, pb, msg, count, total):
         """Update the progress bar based on the current count
@@ -431,7 +476,7 @@ class Transport(object):
             t._combine_paths('/home/sarah', '/etc')
                 => '/etc'
 
-        :param base_path: urlencoded path for the transport root; typically a 
+        :param base_path: urlencoded path for the transport root; typically a
              URL but need not contain scheme/host/etc.
         :param relpath: relative url string for relative part of remote path.
         :return: urlencoded string for final path.
@@ -460,12 +505,24 @@ class Transport(object):
             path = '/' + path
         return path
 
+    def recommended_page_size(self):
+        """Return the recommended page size for this transport.
+
+        This is potentially different for every path in a given namespace.
+        For example, local transports might use an operating system call to
+        get the block size for a given path, which can vary due to mount
+        points.
+
+        :return: The page size in bytes.
+        """
+        return 4 * 1024
+
     def relpath(self, abspath):
         """Return the local path portion from a given absolute path.
 
         This default implementation is not suitable for filesystems with
-        aliasing, such as that given by symlinks, where a path may not 
-        start with our base, but still be a relpath once aliasing is 
+        aliasing, such as that given by symlinks, where a path may not
+        start with our base, but still be a relpath once aliasing is
         resolved.
         """
         # TODO: This might want to use bzrlib.osutils.relpath
@@ -483,12 +540,11 @@ class Transport(object):
         """
         raise errors.NotLocalUrl(self.abspath(relpath))
 
-
     def has(self, relpath):
         """Does the file relpath exist?
-        
+
         Note that some transports MAY allow querying on directories, but this
-        is not part of the protocol.  In other words, the results of 
+        is not part of the protocol.  In other words, the results of
         t.has("a_directory_name") are undefined.
 
         :rtype: bool
@@ -515,9 +571,9 @@ class Transport(object):
         """Iter the relative paths of files in the transports sub-tree.
 
         *NOTE*: This only lists *files*, not subdirectories!
-        
+
         As with other listing functions, only some transports implement this,.
-        you may check via is_listable to determine if it will.
+        you may check via listable() to determine if it will.
         """
         raise errors.TransportNotPossible("This transport has not "
                                           "implemented iter_files_recursive "
@@ -548,17 +604,11 @@ class Transport(object):
 
         :param relpath: The relative path to the file
         """
-        return self.get(relpath).read()
-
-    def get_smart_client(self):
-        """Return a smart client for this transport if possible.
-
-        A smart client doesn't imply the presence of a smart server: it implies
-        that the smart protocol can be tunnelled via this transport.
-
-        :raises NoSmartServer: if no smart server client is available.
-        """
-        raise errors.NoSmartServer(self.base)
+        f = self.get(relpath)
+        try:
+            return f.read()
+        finally:
+            f.close()
 
     def get_smart_medium(self):
         """Return a smart client medium for this transport if possible.
@@ -570,20 +620,46 @@ class Transport(object):
         """
         raise errors.NoSmartMedium(self)
 
-    def get_shared_medium(self):
-        """Return a smart client shared medium for this transport if possible.
-
-        A smart medium doesn't imply the presence of a smart server: it implies
-        that the smart protocol can be tunnelled via this transport.
-
-        :raises NoSmartMedium: if no smart server medium is available.
-        """
-        raise errors.NoSmartMedium(self)
-
-    def readv(self, relpath, offsets):
+    def readv(self, relpath, offsets, adjust_for_latency=False,
+        upper_limit=None):
         """Get parts of the file at the given relative path.
 
-        :offsets: A list of (offset, size) tuples.
+        :param relpath: The path to read data from.
+        :param offsets: A list of (offset, size) tuples.
+        :param adjust_for_latency: Adjust the requested offsets to accomodate
+            transport latency. This may re-order the offsets, expand them to
+            grab adjacent data when there is likely a high cost to requesting
+            data relative to delivering it.
+        :param upper_limit: When adjust_for_latency is True setting upper_limit
+            allows the caller to tell the transport about the length of the
+            file, so that requests are not issued for ranges beyond the end of
+            the file. This matters because some servers and/or transports error
+            in such a case rather than just satisfying the available ranges.
+            upper_limit should always be provided when adjust_for_latency is
+            True, and should be the size of the file in bytes.
+        :return: A list or generator of (offset, data) tuples
+        """
+        if adjust_for_latency:
+            # Design note: We may wish to have different algorithms for the
+            # expansion of the offsets per-transport. E.g. for local disk to
+            # use page-aligned expansion. If that is the case consider the
+            # following structure:
+            #  - a test that transport.readv uses self._offset_expander or some
+            #    similar attribute, to do the expansion
+            #  - a test for each transport that it has some known-good offset
+            #    expander
+            #  - unit tests for each offset expander
+            #  - a set of tests for the offset expander interface, giving
+            #    baseline behaviour (which the current transport
+            #    adjust_for_latency tests could be repurposed to).
+            offsets = self._sort_expand_and_combine(offsets, upper_limit)
+        return self._readv(relpath, offsets)
+
+    def _readv(self, relpath, offsets):
+        """Get parts of the file at the given relative path.
+
+        :param relpath: The path to read.
+        :param offsets: A list of (offset, size) tuples.
         :return: A list or generator of (offset, data) tuples
         """
         if not offsets:
@@ -615,7 +691,7 @@ class Transport(object):
         # Cache the results, but only until they have been fulfilled
         data_map = {}
         for c_offset in coalesced:
-            # TODO: jam 20060724 it might be faster to not issue seek if 
+            # TODO: jam 20060724 it might be faster to not issue seek if
             #       we are already at the right location. This should be
             #       benchmarked.
             fp.seek(c_offset.start)
@@ -630,51 +706,141 @@ class Transport(object):
             # Now that we've read some data, see if we can yield anything back
             while cur_offset_and_size in data_map:
                 this_data = data_map.pop(cur_offset_and_size)
-                yield cur_offset_and_size[0], this_data
-                cur_offset_and_size = offset_stack.next()
+                this_offset = cur_offset_and_size[0]
+                try:
+                    cur_offset_and_size = offset_stack.next()
+                except StopIteration:
+                    # Close the file handle as there will be no more data
+                    # The handle would normally be cleaned up as this code goes
+                    # out of scope, but as we are a generator, not all code
+                    # will re-enter once we have consumed all the expected
+                    # data. For example:
+                    #   zip(range(len(requests)), readv(foo, requests))
+                    # Will stop because the range is done, and not run the
+                    # cleanup code for the readv().
+                    fp.close()
+                    cur_offset_and_size = None
+                yield this_offset, this_data
+
+    def _sort_expand_and_combine(self, offsets, upper_limit):
+        """Helper for readv.
+
+        :param offsets: A readv vector - (offset, length) tuples.
+        :param upper_limit: The highest byte offset that may be requested.
+        :return: A readv vector that will read all the regions requested by
+            offsets, in start-to-end order, with no duplicated regions,
+            expanded by the transports recommended page size.
+        """
+        offsets = sorted(offsets)
+        # short circuit empty requests
+        if len(offsets) == 0:
+            def empty_yielder():
+                # Quick thunk to stop this function becoming a generator
+                # itself, rather we return a generator that has nothing to
+                # yield.
+                if False:
+                    yield None
+            return empty_yielder()
+        # expand by page size at either end
+        maximum_expansion = self.recommended_page_size()
+        new_offsets = []
+        for offset, length in offsets:
+            expansion = maximum_expansion - length
+            if expansion < 0:
+                # we're asking for more than the minimum read anyway.
+                expansion = 0
+            reduction = expansion / 2
+            new_offset = offset - reduction
+            new_length = length + expansion
+            if new_offset < 0:
+                # don't ask for anything < 0
+                new_offset = 0
+            if (upper_limit is not None and
+                new_offset + new_length > upper_limit):
+                new_length = upper_limit - new_offset
+            new_offsets.append((new_offset, new_length))
+        # combine the expanded offsets
+        offsets = []
+        current_offset, current_length = new_offsets[0]
+        current_finish = current_length + current_offset
+        for offset, length in new_offsets[1:]:
+            finish = offset + length
+            if offset > current_finish:
+                # there is a gap, output the current accumulator and start
+                # a new one for the region we're examining.
+                offsets.append((current_offset, current_length))
+                current_offset = offset
+                current_length = length
+                current_finish = finish
+                continue
+            if finish > current_finish:
+                # extend the current accumulator to the end of the region
+                # we're examining.
+                current_finish = finish
+                current_length = finish - current_offset
+        offsets.append((current_offset, current_length))
+        return offsets
 
     @staticmethod
-    def _coalesce_offsets(offsets, limit, fudge_factor):
+    def _coalesce_offsets(offsets, limit=0, fudge_factor=0, max_size=0):
         """Yield coalesced offsets.
 
         With a long list of neighboring requests, combine them
         into a single large request, while retaining the original
         offsets.
         Turns  [(15, 10), (25, 10)] => [(15, 20, [(0, 10), (10, 10)])]
+        Note that overlapping requests are not permitted. (So [(15, 10), (20,
+        10)] will raise a ValueError.) This is because the data we access never
+        overlaps, and it allows callers to trust that we only need any byte of
+        data for 1 request (so nothing needs to be buffered to fulfill a second
+        request.)
 
         :param offsets: A list of (start, length) pairs
-        :param limit: Only combine a maximum of this many pairs
-                      Some transports penalize multiple reads more than
-                      others, and sometimes it is better to return early.
-                      0 means no limit
+        :param limit: Only combine a maximum of this many pairs Some transports
+                penalize multiple reads more than others, and sometimes it is
+                better to return early.
+                0 means no limit
         :param fudge_factor: All transports have some level of 'it is
-                better to read some more data and throw it away rather 
+                better to read some more data and throw it away rather
                 than seek', so collapse if we are 'close enough'
-        :return: yield _CoalescedOffset objects, which have members for where
-                to start, how much to read, and how to split those 
-                chunks back up
+        :param max_size: Create coalesced offsets no bigger than this size.
+                When a single offset is bigger than 'max_size', it will keep
+                its size and be alone in the coalesced offset.
+                0 means no maximum size.
+        :return: return a list of _CoalescedOffset objects, which have members
+            for where to start, how much to read, and how to split those chunks
+            back up
         """
         last_end = None
         cur = _CoalescedOffset(None, None, [])
+        coalesced_offsets = []
+
+        if max_size <= 0:
+            # 'unlimited', but we actually take this to mean 100MB buffer limit
+            max_size = 100*1024*1024
 
         for start, size in offsets:
             end = start + size
-            if (last_end is not None 
+            if (last_end is not None
                 and start <= last_end + fudge_factor
                 and start >= cur.start
-                and (limit <= 0 or len(cur.ranges) < limit)):
+                and (limit <= 0 or len(cur.ranges) < limit)
+                and (max_size <= 0 or end - cur.start <= max_size)):
+                if start < last_end:
+                    raise ValueError('Overlapping range not allowed:'
+                        ' last range ended at %s, new one starts at %s'
+                        % (last_end, start))
                 cur.length = end - cur.start
                 cur.ranges.append((start-cur.start, size))
             else:
                 if cur.start is not None:
-                    yield cur
+                    coalesced_offsets.append(cur)
                 cur = _CoalescedOffset(start, size, [(0, size)])
             last_end = end
 
         if cur.start is not None:
-            yield cur
-
-        return
+            coalesced_offsets.append(cur)
+        return coalesced_offsets
 
     def get_multi(self, relpaths, pb=None):
         """Get a list of file-like objects, one for each entry in relpaths.
@@ -692,20 +858,6 @@ class Transport(object):
             self._update_pb(pb, 'get', count, total)
             yield self.get(relpath)
             count += 1
-
-    @deprecated_method(zero_eleven)
-    def put(self, relpath, f, mode=None):
-        """Copy the file-like object into the location.
-
-        :param relpath: Location to put the contents, relative to base.
-        :param f:       File-like object.
-        :param mode: The mode for the newly created file, 
-                     None means just use the default
-        """
-        if isinstance(f, str):
-            return self.put_bytes(relpath, f, mode=mode)
-        else:
-            return self.put_file(relpath, f, mode=mode)
 
     def put_bytes(self, relpath, bytes, mode=None):
         """Atomically put the supplied bytes into the given location.
@@ -726,7 +878,7 @@ class Transport(object):
                              dir_mode=None):
         """Copy the string into the target location.
 
-        This function is not strictly safe to use. See 
+        This function is not strictly safe to use. See
         Transport.put_bytes_non_atomic for more information.
 
         :param relpath: The remote location to put the contents.
@@ -753,6 +905,7 @@ class Transport(object):
         :param f:       File-like object.
         :param mode: The mode for the newly created file,
                      None means just use the default.
+        :return: The length of the file that was written.
         """
         # We would like to mark this as NotImplemented, but most likely
         # transports have defined it in terms of the old api.
@@ -794,22 +947,6 @@ class Transport(object):
                 self.mkdir(parent_dir, mode=dir_mode)
                 return self.put_file(relpath, f, mode=mode)
 
-    @deprecated_method(zero_eleven)
-    def put_multi(self, files, mode=None, pb=None):
-        """Put a set of files into the location.
-
-        :param files: A list of tuples of relpath, file object [(path1, file1), (path2, file2),...]
-        :param pb:  An optional ProgressBar for indicating percent done.
-        :param mode: The mode for the newly created files
-        :return: The number of files copied.
-        """
-        def _put(path, f):
-            if isinstance(f, str):
-                self.put_bytes(path, f, mode=mode)
-            else:
-                self.put_file(path, f, mode=mode)
-        return len(self._iterate_over(files, _put, pb, 'put', expand=True))
-
     def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
         raise NotImplementedError(self.mkdir)
@@ -820,15 +957,23 @@ class Transport(object):
             self.mkdir(path, mode=mode)
         return len(self._iterate_over(relpaths, mkdir, pb, 'mkdir', expand=False))
 
-    @deprecated_method(zero_eleven)
-    def append(self, relpath, f, mode=None):
-        """Append the text in the file-like object to the supplied location.
+    def open_write_stream(self, relpath, mode=None):
+        """Open a writable file stream at relpath.
 
-        returns the length of relpath before the content was written to it.
-        
-        If the file does not exist, it is created with the supplied mode.
+        A file stream is a file like object with a write() method that accepts
+        bytes to write.. Buffering may occur internally until the stream is
+        closed with stream.close().  Calls to readv or the get_* methods will
+        be synchronised with any internal buffering that may be present.
+
+        :param relpath: The relative path to the file.
+        :param mode: The mode for the newly created file,
+                     None means just use the default
+        :return: A FileStream. FileStream objects have two methods, write() and
+            close(). There is no guarantee that data is committed to the file
+            if close() has not been called (even if get() is called on the same
+            path).
         """
-        return self.append_file(relpath, f, mode=mode)
+        raise NotImplementedError(self.open_write_stream)
 
     def append_file(self, relpath, f, mode=None):
         """Append bytes from a file-like object to a file at relpath.
@@ -860,8 +1005,9 @@ class Transport(object):
 
         :returns: the length of relpath before the content was written to it.
         """
-        assert isinstance(bytes, str), \
-            'bytes must be a plain string, not %s' % type(bytes)
+        if not isinstance(bytes, str):
+            raise TypeError(
+                'bytes must be a plain string, not %s' % type(bytes))
         return self.append_file(relpath, StringIO(bytes), mode=mode)
 
     def append_multi(self, files, pb=None):
@@ -875,15 +1021,15 @@ class Transport(object):
 
     def copy(self, rel_from, rel_to):
         """Copy the item at rel_from to the location at rel_to.
-        
-        Override this for efficiency if a specific transport can do it 
+
+        Override this for efficiency if a specific transport can do it
         faster than this default implementation.
         """
         self.put_file(rel_to, self.get(rel_from))
 
     def copy_multi(self, relpaths, pb=None):
         """Copy a bunch of entries.
-        
+
         :param relpaths: A list of tuples of the form [(from, to), (from, to),...]
         """
         # This is the non-pipelined implementation, so that
@@ -907,26 +1053,35 @@ class Transport(object):
     def copy_tree(self, from_relpath, to_relpath):
         """Copy a subtree from one relpath to another.
 
-        If a faster implementation is available, specific transports should 
+        If a faster implementation is available, specific transports should
         implement it.
         """
         source = self.clone(from_relpath)
-        self.mkdir(to_relpath)
         target = self.clone(to_relpath)
+        target.mkdir('.')
+        source.copy_tree_to_transport(target)
+
+    def copy_tree_to_transport(self, to_transport):
+        """Copy a subtree from one transport to another.
+
+        self.base is used as the source tree root, and to_transport.base
+        is used as the target.  to_transport.base must exist (and be a
+        directory).
+        """
         files = []
         directories = ['.']
         while directories:
             dir = directories.pop()
             if dir != '.':
-                target.mkdir(dir)
-            for path in source.list_dir(dir):
+                to_transport.mkdir(dir)
+            for path in self.list_dir(dir):
                 path = dir + '/' + path
-                stat = source.stat(path)
+                stat = self.stat(path)
                 if S_ISDIR(stat.st_mode):
                     directories.append(path)
                 else:
                     files.append(path)
-        source.copy_to(files, target)
+        self.copy_to(files, to_transport)
 
     def rename(self, rel_from, rel_to):
         """Rename a file or directory.
@@ -952,7 +1107,7 @@ class Transport(object):
 
         The destination is deleted if possible, even if it's a non-empty
         directory tree.
-        
+
         If a transport can directly implement this it is suggested that
         it do so for efficiency.
         """
@@ -965,7 +1120,7 @@ class Transport(object):
 
     def move_multi(self, relpaths, pb=None):
         """Move a bunch of entries.
-        
+
         :param relpaths: A list of tuples of the form [(from1, to1), (from2, to2),...]
         """
         return self._iterate_over(relpaths, self.move, pb, 'move', expand=True)
@@ -1024,7 +1179,7 @@ class Transport(object):
         NOTE: This returns an object with fields such as 'st_size'. It MAY
         or MAY NOT return the literal result of an os.stat() call, so all
         access should be via named fields.
-        ALSO NOTE: Stats of directories may not be supported on some 
+        ALSO NOTE: Stats of directories may not be supported on some
         transports.
         """
         raise NotImplementedError(self.stat)
@@ -1067,7 +1222,7 @@ class Transport(object):
         These methods may be removed in the future.
 
         Transports may raise TransportNotPossible if OS-level locks cannot be
-        taken over this transport.  
+        taken over this transport.
 
         :return: A lock object, which should contain an unlock() function.
         """
@@ -1094,12 +1249,12 @@ class Transport(object):
         """Return true if this transport can store and retrieve unix modebits.
 
         (For example, 0700 to make a directory owner-private.)
-        
-        Note: most callers will not want to switch on this, but should rather 
+
+        Note: most callers will not want to switch on this, but should rather
         just try and set permissions and let them be either stored or not.
         This is intended mainly for the use of the test suite.
-        
-        Warning: this is not guaranteed to be accurate as sometimes we can't 
+
+        Warning: this is not guaranteed to be accurate as sometimes we can't
         be sure: for example with vfat mounted on unix, or a windows sftp
         server."""
         # TODO: Perhaps return a e.g. TransportCharacteristics that can answer
@@ -1112,11 +1267,27 @@ class Transport(object):
         # should be asked to ConnectedTransport only.
         return None
 
+    def _redirected_to(self, source, target):
+        """Returns a transport suitable to re-issue a redirected request.
+
+        :param source: The source url as returned by the server.
+        :param target: The target url as returned by the server.
+
+        The redirection can be handled only if the relpath involved is not
+        renamed by the redirection.
+
+        :returns: A transport or None.
+        """
+        # This returns None by default, meaning the transport can't handle the
+        # redirection.
+        return None
+
+
 
 class _SharedConnection(object):
     """A connection shared between several transports."""
 
-    def __init__(self, connection=None, credentials=None):
+    def __init__(self, connection=None, credentials=None, base=None):
         """Constructor.
 
         :param connection: An opaque object specific to each transport.
@@ -1126,6 +1297,7 @@ class _SharedConnection(object):
         """
         self.connection = connection
         self.credentials = credentials
+        self.base = base
 
 
 class ConnectedTransport(Transport):
@@ -1186,43 +1358,7 @@ class ConnectedTransport(Transport):
 
     @staticmethod
     def _split_url(url):
-        """
-        Extract the server address, the credentials and the path from the url.
-
-        user, password, host and path should be quoted if they contain reserved
-        chars.
-
-        :param url: an quoted url
-
-        :return: (scheme, user, password, host, port, path) tuple, all fields
-            are unquoted.
-        """
-        if isinstance(url, unicode):
-            raise errors.InvalidURL('should be ascii:\n%r' % url)
-        url = url.encode('utf-8')
-        (scheme, netloc, path, params,
-         query, fragment) = urlparse.urlparse(url, allow_fragments=False)
-        user = password = host = port = None
-        if '@' in netloc:
-            user, host = netloc.split('@', 1)
-            if ':' in user:
-                user, password = user.split(':', 1)
-                password = urllib.unquote(password)
-            user = urllib.unquote(user)
-        else:
-            host = netloc
-
-        if ':' in host:
-            host, port = host.rsplit(':', 1)
-            try:
-                port = int(port)
-            except ValueError:
-                raise errors.InvalidURL('invalid port number %s in url:\n%s' %
-                                        (port, url))
-        host = urllib.unquote(host)
-        path = urllib.unquote(path)
-
-        return (scheme, user, password, host, port, path)
+        return urlutils.parse_url(url)
 
     @staticmethod
     def _unsplit_url(scheme, user, password, host, port, path):
@@ -1279,7 +1415,7 @@ class ConnectedTransport(Transport):
 
     def abspath(self, relpath):
         """Return the full url to the given relative path.
-        
+
         :param relpath: the relative path urlencoded
 
         :returns: the Unicode version of the absolute path for relpath.
@@ -1309,7 +1445,7 @@ class ConnectedTransport(Transport):
         """Get the object shared amongst cloned transports.
 
         This should be used only by classes that needs to extend the sharing
-        with other objects than tramsports.
+        with objects other than transports.
 
         Use _get_connection to get the connection itself.
         """
@@ -1345,7 +1481,7 @@ class ConnectedTransport(Transport):
 
         Some protocols can renegociate the credentials within a connection,
         this method allows daughter classes to share updated credentials.
-        
+
         :param credentials: the updated credentials.
         """
         # We don't want to call _set_connection here as we are only updating
@@ -1367,7 +1503,14 @@ class ConnectedTransport(Transport):
 
         :return: A new transport or None if the connection cannot be shared.
         """
-        (scheme, user, password, host, port, path) = self._split_url(other_base)
+        try:
+            (scheme, user, password,
+             host, port, path) = self._split_url(other_base)
+        except errors.InvalidURL:
+            # No hope in trying to reuse an existing transport for an invalid
+            # URL
+            return None
+
         transport = None
         # Don't compare passwords, they may be absent from other_base or from
         # self and they don't carry more information than user anyway.
@@ -1389,15 +1532,6 @@ class ConnectedTransport(Transport):
         return transport
 
 
-@deprecated_function(zero_ninety)
-def urlescape(relpath):
-    urlutils.escape(relpath)
-
-
-@deprecated_function(zero_ninety)
-def urlunescape(url):
-    urlutils.unescape(url)
-
 # We try to recognize an url lazily (ignoring user, password, etc)
 _urlRE = re.compile(r'^(?P<proto>[^:/\\]+)://(?P<rest>.*)$')
 
@@ -1415,11 +1549,13 @@ def get_transport(base, possible_transports=None):
     if base is None:
         base = '.'
     last_err = None
+    from bzrlib.directory_service import directories
+    base = directories.dereference(base)
 
     def convert_path_to_url(base, error_str):
         m = _urlRE.match(base)
         if m:
-            # This looks like a URL, but we weren't able to 
+            # This looks like a URL, but we weren't able to
             # instantiate it as such raise an appropriate error
             # FIXME: we have a 'error_str' unused and we use last_err below
             raise errors.UnsupportedProtocol(base, last_err)
@@ -1437,7 +1573,7 @@ def get_transport(base, possible_transports=None):
             'URLs must be properly escaped (protocol: %s)')
 
     transport = None
-    if possible_transports:
+    if possible_transports is not None:
         for t in possible_transports:
             t_same_connection = t._reuse_for(base)
             if t_same_connection is not None:
@@ -1446,12 +1582,13 @@ def get_transport(base, possible_transports=None):
                     possible_transports.append(t_same_connection)
                 return t_same_connection
 
-    for proto, factory_list in transport_list_registry.iteritems():
+    for proto, factory_list in transport_list_registry.items():
         if proto is not None and base.startswith(proto):
             transport, last_err = _try_transport_factories(base, factory_list)
             if transport:
-                if possible_transports:
-                    assert transport not in possible_transports
+                if possible_transports is not None:
+                    if transport in possible_transports:
+                        raise AssertionError()
                     possible_transports.append(transport)
                 return transport
 
@@ -1490,7 +1627,7 @@ def do_catching_redirections(action, transport, redirected):
     :param action: A callable, what the caller want to do while catching
                   redirections.
     :param transport: The initial transport used.
-    :param redirected: A callable receiving the redirected transport and the 
+    :param redirected: A callable receiving the redirected transport and the
                   RedirectRequested exception.
 
     :return: Whatever 'action' returns
@@ -1523,12 +1660,12 @@ def do_catching_redirections(action, transport, redirected):
 
 class Server(object):
     """A Transport Server.
-    
+
     The Server interface provides a server for a given transport. We use
     these servers as loopback testing tools. For any given transport the
     Servers it provides must either allow writing, or serve the contents
     of os.getcwdu() at the time setUp is called.
-    
+
     Note that these are real servers - they must implement all the things
     that we want bzr transports to take advantage of.
     """
@@ -1541,48 +1678,24 @@ class Server(object):
 
     def get_url(self):
         """Return a url for this server.
-        
-        If the transport does not represent a disk directory (i.e. it is 
+
+        If the transport does not represent a disk directory (i.e. it is
         a database like svn, or a memory only transport, it should return
         a connection to a newly established resource for this Server.
         Otherwise it should return a url that will provide access to the path
         that was os.getcwdu() when setUp() was called.
-        
+
         Subsequent calls will return the same resource.
         """
         raise NotImplementedError
 
     def get_bogus_url(self):
         """Return a url for this protocol, that will fail to connect.
-        
+
         This may raise NotImplementedError to indicate that this server cannot
         provide bogus urls.
         """
         raise NotImplementedError
-
-
-class TransportLogger(object):
-    """Adapt a transport to get clear logging data on api calls.
-    
-    Feel free to extend to log whatever calls are of interest.
-    """
-
-    def __init__(self, adapted):
-        self._adapted = adapted
-        self._calls = []
-
-    def get(self, name):
-        self._calls.append((name,))
-        return self._adapted.get(name)
-
-    def __getattr__(self, name):
-        """Thunk all undefined access through to self._adapted."""
-        # raise AttributeError, name 
-        return getattr(self._adapted, name)
-
-    def readv(self, name, offsets):
-        self._calls.append((name, offsets))
-        return self._adapted.readv(name, offsets)
 
 
 # None is the default transport, for things with no url scheme
@@ -1592,85 +1705,151 @@ register_lazy_transport('file://', 'bzrlib.transport.local', 'LocalTransport')
 transport_list_registry.set_default_transport("file://")
 
 register_transport_proto('sftp://',
-            help="Access using SFTP (most SSH servers provide SFTP).")
+            help="Access using SFTP (most SSH servers provide SFTP).",
+            register_netloc=True)
 register_lazy_transport('sftp://', 'bzrlib.transport.sftp', 'SFTPTransport')
 # Decorated http transport
 register_transport_proto('http+urllib://',
 #                help="Read-only access of branches exported on the web."
-            )
+                         register_netloc=True)
 register_lazy_transport('http+urllib://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
 register_transport_proto('https+urllib://',
 #                help="Read-only access of branches exported on the web using SSL."
-            )
+                         register_netloc=True)
 register_lazy_transport('https+urllib://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
 register_transport_proto('http+pycurl://',
 #                help="Read-only access of branches exported on the web."
-            )
+                         register_netloc=True)
 register_lazy_transport('http+pycurl://', 'bzrlib.transport.http._pycurl',
                         'PyCurlTransport')
 register_transport_proto('https+pycurl://',
 #                help="Read-only access of branches exported on the web using SSL."
-            )
+                         register_netloc=True)
 register_lazy_transport('https+pycurl://', 'bzrlib.transport.http._pycurl',
                         'PyCurlTransport')
 # Default http transports (last declared wins (if it can be imported))
 register_transport_proto('http://',
-            help="Read-only access of branches exported on the web.")
+                 help="Read-only access of branches exported on the web.")
 register_transport_proto('https://',
             help="Read-only access of branches exported on the web using SSL.")
+# The default http implementation is urllib, but https is pycurl if available
+register_lazy_transport('http://', 'bzrlib.transport.http._pycurl',
+                        'PyCurlTransport')
 register_lazy_transport('http://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
 register_lazy_transport('https://', 'bzrlib.transport.http._urllib',
                         'HttpTransport_urllib')
-register_lazy_transport('http://', 'bzrlib.transport.http._pycurl', 'PyCurlTransport')
-register_lazy_transport('https://', 'bzrlib.transport.http._pycurl', 'PyCurlTransport')
+register_lazy_transport('https://', 'bzrlib.transport.http._pycurl',
+                        'PyCurlTransport')
 
-register_transport_proto('ftp://',
-            help="Access using passive FTP.")
+register_transport_proto('ftp://', help="Access using passive FTP.")
 register_lazy_transport('ftp://', 'bzrlib.transport.ftp', 'FtpTransport')
-register_transport_proto('aftp://',
-            help="Access using active FTP.")
+register_transport_proto('aftp://', help="Access using active FTP.")
 register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 
+try:
+    import kerberos
+    kerberos_available = True
+except ImportError:
+    kerberos_available = False
+
+if kerberos_available:
+    # Default to trying GSSAPI authentication (if the kerberos module is
+    # available)
+    register_transport_proto('ftp+gssapi://', register_netloc=True)
+    register_lazy_transport('ftp+gssapi://', 'bzrlib.transport.ftp._gssapi',
+                            'GSSAPIFtpTransport')
+    register_transport_proto('aftp+gssapi://', register_netloc=True)
+    register_lazy_transport('aftp+gssapi://', 'bzrlib.transport.ftp._gssapi',
+                            'GSSAPIFtpTransport')
+    register_transport_proto('ftp+nogssapi://', register_netloc=True)
+    register_transport_proto('aftp+nogssapi://', register_netloc=True)
+
+    register_lazy_transport('ftp://', 'bzrlib.transport.ftp._gssapi',
+                            'GSSAPIFtpTransport')
+    register_lazy_transport('aftp://', 'bzrlib.transport.ftp._gssapi',
+                            'GSSAPIFtpTransport')
+    register_lazy_transport('ftp+nogssapi://', 'bzrlib.transport.ftp',
+                            'FtpTransport')
+    register_lazy_transport('aftp+nogssapi://', 'bzrlib.transport.ftp',
+                            'FtpTransport')
+
 register_transport_proto('memory://')
-register_lazy_transport('memory://', 'bzrlib.transport.memory', 'MemoryTransport')
+register_lazy_transport('memory://', 'bzrlib.transport.memory',
+                        'MemoryTransport')
+
+# chroots cannot be implicitly accessed, they must be explicitly created:
 register_transport_proto('chroot+')
 
 register_transport_proto('readonly+',
 #              help="This modifier converts any transport to be readonly."
             )
-register_lazy_transport('readonly+', 'bzrlib.transport.readonly', 'ReadonlyTransportDecorator')
+register_lazy_transport('readonly+', 'bzrlib.transport.readonly',
+                        'ReadonlyTransportDecorator')
 
 register_transport_proto('fakenfs+')
-register_lazy_transport('fakenfs+', 'bzrlib.transport.fakenfs', 'FakeNFSTransportDecorator')
+register_lazy_transport('fakenfs+', 'bzrlib.transport.fakenfs',
+                        'FakeNFSTransportDecorator')
+
+register_transport_proto('log+')
+register_lazy_transport('log+', 'bzrlib.transport.log', 'TransportLogDecorator')
+
+register_transport_proto('trace+')
+register_lazy_transport('trace+', 'bzrlib.transport.trace',
+                        'TransportTraceDecorator')
 
 register_transport_proto('unlistable+')
-register_lazy_transport('unlistable+', 'bzrlib.transport.unlistable', 'UnlistableTransportDecorator')
+register_lazy_transport('unlistable+', 'bzrlib.transport.unlistable',
+                        'UnlistableTransportDecorator')
 
 register_transport_proto('brokenrename+')
 register_lazy_transport('brokenrename+', 'bzrlib.transport.brokenrename',
-        'BrokenRenameTransportDecorator')
+                        'BrokenRenameTransportDecorator')
 
 register_transport_proto('vfat+')
 register_lazy_transport('vfat+',
                         'bzrlib.transport.fakevfat',
                         'FakeVFATTransportDecorator')
-register_transport_proto('bzr://',
-            help="Fast access using the Bazaar smart server.")
 
-register_lazy_transport('bzr://',
-                        'bzrlib.transport.remote',
+register_transport_proto('nosmart+')
+register_lazy_transport('nosmart+', 'bzrlib.transport.nosmart',
+                        'NoSmartTransportDecorator')
+
+# These two schemes were registered, but don't seem to have an actual transport
+# protocol registered
+for scheme in ['ssh', 'bzr+loopback']:
+    register_urlparse_netloc_protocol(scheme)
+del scheme
+
+register_transport_proto('bzr://',
+            help="Fast access using the Bazaar smart server.",
+                         register_netloc=True)
+
+register_lazy_transport('bzr://', 'bzrlib.transport.remote',
                         'RemoteTCPTransport')
+register_transport_proto('bzr-v2://', register_netloc=True)
+
+register_lazy_transport('bzr-v2://', 'bzrlib.transport.remote',
+                        'RemoteTCPTransportV2Only')
 register_transport_proto('bzr+http://',
 #                help="Fast access using the Bazaar smart server over HTTP."
-             )
-register_lazy_transport('bzr+http://',
+                         register_netloc=True)
+register_lazy_transport('bzr+http://', 'bzrlib.transport.remote',
+                        'RemoteHTTPTransport')
+register_transport_proto('bzr+https://',
+#                help="Fast access using the Bazaar smart server over HTTPS."
+                         register_netloc=True)
+register_lazy_transport('bzr+https://',
                         'bzrlib.transport.remote',
                         'RemoteHTTPTransport')
 register_transport_proto('bzr+ssh://',
-            help="Fast access using the Bazaar smart server over SSH.")
-register_lazy_transport('bzr+ssh://',
-                        'bzrlib.transport.remote',
+            help="Fast access using the Bazaar smart server over SSH.",
+            register_netloc=True)
+register_lazy_transport('bzr+ssh://', 'bzrlib.transport.remote',
                         'RemoteSSHTransport')
+
+register_transport_proto('ssh:')
+register_lazy_transport('ssh:', 'bzrlib.transport.remote',
+                        'HintingSSHTransport')

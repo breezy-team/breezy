@@ -12,14 +12,16 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """UI tests for the test framework."""
 
+from cStringIO import StringIO
 import os
 import re
 import signal
 import sys
+import unittest
 
 import bzrlib
 from bzrlib import (
@@ -27,6 +29,7 @@ from bzrlib import (
     )
 from bzrlib.errors import ParamikoNotPresent
 from bzrlib.tests import (
+                          SubUnitFeature,
                           TestCase,
                           TestCaseInTempDir,
                           TestCaseWithMemoryTransport,
@@ -34,9 +37,6 @@ from bzrlib.tests import (
                           TestUIFactory,
                           TestSkipped,
                           )
-from bzrlib.symbol_versioning import (
-    zero_eighteen,
-    )
 from bzrlib.tests.blackbox import ExternalBase
 
 
@@ -91,6 +91,19 @@ class TestOptions(TestCase):
             TestOptions.current_test = None
             TestCaseWithMemoryTransport.TEST_ROOT = old_root
 
+    def test_subunit(self):
+        """Passing --subunit results in subunit output."""
+        self.requireFeature(SubUnitFeature)
+        from subunit import ProtocolTestCase
+        stdout = self.run_bzr(
+            'selftest --subunit --no-plugins '
+            'tests.test_selftest.SelftestTests.test_import_tests')[0]
+        stream = StringIO(str(stdout))
+        test = ProtocolTestCase(stream)
+        result = unittest.TestResult()
+        test.run(result)
+        self.assertEqual(1, result.testsRun)
+
 
 class TestRunBzr(ExternalBase):
 
@@ -110,14 +123,6 @@ class TestRunBzr(ExternalBase):
         self.stdin = stdin
         self.working_dir = working_dir
         return '', ''
-
-    def test_args(self):
-        """Test that run_bzr passes args correctly to _run_bzr_core"""
-        self.callDeprecated(
-                ['passing varargs to run_bzr was deprecated in version 0.18.'],
-                self.run_bzr,
-                'arg1', 'arg2', 'arg3', retcode=1)
-        self.assertEqual(['arg1', 'arg2', 'arg3'], self.argv)
 
     def test_encoding(self):
         """Test that run_bzr passes encoding to _run_bzr_core"""
@@ -152,7 +157,7 @@ class TestRunBzr(ExternalBase):
         # test that the stdin keyword to run_bzr is passed through to
         # _run_bzr_core as-is. We do this by overriding
         # _run_bzr_core in this class, and then calling run_bzr,
-        # which is a convenience function for _run_bzr_core, so 
+        # which is a convenience function for _run_bzr_core, so
         # should invoke it.
         self.run_bzr('foo bar', stdin='gam')
         self.assertEqual('gam', self.stdin)
@@ -182,7 +187,7 @@ class TestBenchmarkTests(TestCaseWithTransport):
     def test_benchmark_runs_benchmark_tests(self):
         """bzr selftest --benchmark should not run the default test suite."""
         # We test this by passing a regression test name to --benchmark, which
-        # should result in 0 rests run.
+        # should result in 0 tests run.
         old_root = TestCaseWithMemoryTransport.TEST_ROOT
         try:
             TestCaseWithMemoryTransport.TEST_ROOT = None
@@ -191,9 +196,7 @@ class TestBenchmarkTests(TestCaseWithTransport):
         finally:
             TestCaseWithMemoryTransport.TEST_ROOT = old_root
         self.assertContainsRe(out, 'Ran 0 tests.*\n\nOK')
-        self.assertEqual(
-            'tests passed\n',
-            err)
+        self.assertContainsRe(out, 'tests passed\n')
         benchfile = open(".perf_history", "rt")
         try:
             lines = benchfile.readlines()
@@ -219,7 +222,7 @@ class TestRunBzrCaptured(ExternalBase):
         # test that the stdin keyword to _run_bzr_core is passed through to
         # apply_redirected as a StringIO. We do this by overriding
         # apply_redirected in this class, and then calling _run_bzr_core,
-        # which calls apply_redirected. 
+        # which calls apply_redirected.
         self.run_bzr(['foo', 'bar'], stdin='gam')
         self.assertEqual('gam', self.stdin.read())
         self.assertTrue(self.stdin is self.factory_stdin)
@@ -268,17 +271,18 @@ class TestRunBzrCaptured(ExternalBase):
 class TestRunBzrSubprocess(TestCaseWithTransport):
 
     def test_run_bzr_subprocess(self):
-        """The run_bzr_helper_external comand behaves nicely."""
+        """The run_bzr_helper_external command behaves nicely."""
         result = self.run_bzr_subprocess('--version')
+        result = self.run_bzr_subprocess(['--version'])
         result = self.run_bzr_subprocess('--version', retcode=None)
         self.assertContainsRe(result[0], 'is free software')
-        self.assertRaises(AssertionError, self.run_bzr_subprocess, 
+        self.assertRaises(AssertionError, self.run_bzr_subprocess,
                           '--versionn')
         result = self.run_bzr_subprocess('--versionn', retcode=3)
         result = self.run_bzr_subprocess('--versionn', retcode=None)
         self.assertContainsRe(result[1], 'unknown command')
-        err = self.run_bzr_subprocess('merge', '--merge-type', 'magic merge', 
-                                      retcode=3)[1]
+        err = self.run_bzr_subprocess(['merge', '--merge-type',
+                                      'magic merge'], retcode=3)[1]
         self.assertContainsRe(err, 'Bad value "magic merge" for option'
                               ' "merge-type"')
 
@@ -392,7 +396,7 @@ class TestRunBzrSubprocessCommands(TestCaseWithTransport):
         raise _DontSpawnProcess()
 
     def test_run_bzr_subprocess_no_plugins(self):
-        self.assertRaises(_DontSpawnProcess, self.run_bzr_subprocess)
+        self.assertRaises(_DontSpawnProcess, self.run_bzr_subprocess, '')
         command = self._popen_args[0]
         self.assertEqual(sys.executable, command[0])
         self.assertEqual(self.get_bzr_path(), command[1])
@@ -400,7 +404,7 @@ class TestRunBzrSubprocessCommands(TestCaseWithTransport):
 
     def test_allow_plugins(self):
         self.assertRaises(_DontSpawnProcess,
-                          self.run_bzr_subprocess, allow_plugins=True)
+                          self.run_bzr_subprocess, '', allow_plugins=True)
         command = self._popen_args[0]
         self.assertEqual([], command[2:])
 
@@ -438,7 +442,7 @@ class TestBzrSubprocess(TestCaseWithTransport):
         process = self.start_bzr_subprocess(['--versionn'])
         self.assertRaises(self.failureException, self.finish_bzr_subprocess,
                           process)
-        
+
     def test_start_and_stop_bzr_subprocess_send_signal(self):
         """finish_bzr_subprocess raises self.failureException if the retcode is
         not the expected one.
@@ -479,15 +483,14 @@ class TestRunBzrError(ExternalBase):
 class TestSelftestListOnly(TestCase):
 
     @staticmethod
-    def _parse_test_list(lines, newlines_in_header=1):
+    def _parse_test_list(lines, newlines_in_header=0):
         "Parse a list of lines into a tuple of 3 lists (header,body,footer)."
-
-        in_header = True
+        in_header = newlines_in_header != 0
         in_footer = False
         header = []
         body = []
         footer = []
-        header_newlines_found = 0 
+        header_newlines_found = 0
         for line in lines:
             if in_header:
                 if line == '':
@@ -505,16 +508,17 @@ class TestSelftestListOnly(TestCase):
                 footer.append(line)
         # If the last body line is blank, drop it off the list
         if len(body) > 0 and body[-1] == '':
-            body.pop()                
+            body.pop()
         return (header,body,footer)
 
     def test_list_only(self):
         # check that bzr selftest --list-only works correctly
         out,err = self.run_bzr('selftest selftest --list-only')
-        self.assertEndsWith(err, 'tests passed\n')
         (header,body,footer) = self._parse_test_list(out.splitlines())
         num_tests = len(body)
-        self.assertContainsRe(footer[0], 'Listed %s tests in' % num_tests)
+        self.assertLength(0, header)
+        self.assertLength(0, footer)
+        self.assertEqual('', err)
 
     def test_list_only_filtered(self):
         # check that a filtered --list-only works, both include and exclude
@@ -544,7 +548,12 @@ class TestSelftestListOnly(TestCase):
         out_rand,err_rand = self.run_bzr(['selftest', '--list-only',
                                           'selftest', '--randomize', 'now'])
         (header_rand,tests_rand,dummy) = self._parse_test_list(
-            out_rand.splitlines(), 2)
+            out_rand.splitlines(), 1)
+        # XXX: The following line asserts that the randomized order is not the
+        # same as the default order.  It is just possible that they'll get
+        # randomized into the same order and this will falsely fail, but
+        # that's very unlikely in practice because there are thousands of
+        # tests.
         self.assertNotEqual(tests_all, tests_rand)
         self.assertEqual(sorted(tests_all), sorted(tests_rand))
         # Check that the seed can be reused to get the exact same order
@@ -554,6 +563,41 @@ class TestSelftestListOnly(TestCase):
         out_rand2,err_rand2 = self.run_bzr(['selftest', '--list-only',
                                             'selftest', '--randomize', seed])
         (header_rand2,tests_rand2,dummy) = self._parse_test_list(
-            out_rand2.splitlines(), 2)
+            out_rand2.splitlines(), 1)
         self.assertEqual(tests_rand, tests_rand2)
 
+
+class TestSelftestWithIdList(TestCaseInTempDir):
+
+    def test_load_list(self):
+        # We don't want to call selftest for the whole suite, so we start with
+        # a reduced list.
+        test_list_fname = 'test.list'
+        fl = open(test_list_fname, 'wt')
+        fl.write('%s\n' % self.id())
+        fl.close()
+        out, err = self.run_bzr(
+            ['selftest', '--load-list', test_list_fname, '--list'])
+        self.assertContainsRe(out, "TestSelftestWithIdList")
+        self.assertLength(1, out.splitlines())
+
+    def test_load_unknown(self):
+        out, err = self.run_bzr('selftest --load-list I_do_not_exist ',
+                                retcode=3)
+
+
+class TestSelftestStartingWith(TestCase):
+
+    def test_starting_with_single_argument(self):
+        out, err = self.run_bzr(
+            ['selftest', '--starting-with', self.id(), '--list'])
+        self.assertContainsRe(out, self.id())
+
+    def test_starting_with_multiple_argument(self):
+        out, err = self.run_bzr(
+            ['selftest',
+             '--starting-with', self.id(),
+             '--starting-with', 'bzrlib.tests.test_sampler',
+             '--list'])
+        self.assertContainsRe(out, self.id())
+        self.assertContainsRe(out, 'bzrlib.tests.test_sampler')

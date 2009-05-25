@@ -13,13 +13,14 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from cStringIO import StringIO
 import os
 
 import bzrlib
 import bzrlib.errors as errors
+from bzrlib.tests import TestNotApplicable
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 
 
@@ -51,14 +52,19 @@ class TestBreakLock(TestCaseWithWorkingTree):
         # if the workingtree isn't locked - and the easiest way
         # to see if that happened is to lock the repo.
         self.workingtree.branch.repository.lock_write()
-        bzrlib.ui.ui_factory.stdin = StringIO("y\n")
+        stdin = StringIO("y\n")
+        bzrlib.ui.ui_factory.stdin = stdin
         try:
             self.unused_workingtree.break_lock()
         except NotImplementedError:
             # workingtree does not support break_lock
             self.workingtree.branch.repository.unlock()
             return
-        self.assertRaises(errors.LockBroken, self.workingtree.branch.repository.unlock)
+        remaining = stdin.read()
+        if remaining == 'y\n':
+            raise TestNotApplicable("repository does not physically lock.")
+        self.assertRaises(errors.LockBroken,
+            self.workingtree.branch.repository.unlock)
 
     def test_locked(self):
         # break_lock when locked should

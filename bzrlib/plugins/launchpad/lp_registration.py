@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 from getpass import getpass
@@ -21,31 +21,73 @@ from urlparse import urlsplit, urlunsplit
 import urllib
 import xmlrpclib
 
-import bzrlib.config
-import bzrlib.errors as errors
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib import urlutils
+""")
+
+from bzrlib import (
+    config,
+    errors,
+    __version__ as _bzrlib_version,
+    )
 
 # for testing, do
 '''
 export BZR_LP_XMLRPC_URL=http://xmlrpc.staging.launchpad.net/bazaar/
 '''
 
+class InvalidLaunchpadInstance(errors.BzrError):
+
+    _fmt = "%(lp_instance)s is not a valid Launchpad instance."
+
+    def __init__(self, lp_instance):
+        errors.BzrError.__init__(self, lp_instance=lp_instance)
+
+
+class NotLaunchpadBranch(errors.BzrError):
+
+    _fmt = "%(url)s is not registered on Launchpad."
+
+    def __init__(self, url):
+        errors.BzrError.__init__(self, url=url)
+
+
 class LaunchpadService(object):
     """A service to talk to Launchpad via XMLRPC.
-    
+
     See http://bazaar-vcs.org/Specs/LaunchpadRpc for the methods we can call.
     """
 
-    # NB: this should always end in a slash to avoid xmlrpclib appending
+    LAUNCHPAD_DOMAINS = {
+        'production': 'launchpad.net',
+        'edge': 'edge.launchpad.net',
+        'staging': 'staging.launchpad.net',
+        'demo': 'demo.launchpad.net',
+        'dev': 'launchpad.dev',
+        }
+
+    # NB: these should always end in a slash to avoid xmlrpclib appending
     # '/RPC2'
-    DEFAULT_SERVICE_URL = 'https://xmlrpc.launchpad.net/bazaar/'
+    LAUNCHPAD_INSTANCE = {}
+    for instance, domain in LAUNCHPAD_DOMAINS.iteritems():
+        LAUNCHPAD_INSTANCE[instance] = 'https://xmlrpc.%s/bazaar/' % domain
+
+    # We use edge as the default because:
+    # Beta users get redirected to it
+    # All users can use it
+    # There is a bug in the launchpad side where redirection causes an OOPS.
+    DEFAULT_INSTANCE = 'edge'
+    DEFAULT_SERVICE_URL = LAUNCHPAD_INSTANCE[DEFAULT_INSTANCE]
 
     transport = None
     registrant_email = None
     registrant_password = None
 
 
-    def __init__(self, transport=None):
+    def __init__(self, transport=None, lp_instance=None):
         """Construct a new service talking to the launchpad rpc server"""
+        self._lp_instance = lp_instance
         if transport is None:
             uri_type = urllib.splittype(self.service_url)[0]
             if uri_type == 'https':
@@ -53,7 +95,7 @@ class LaunchpadService(object):
             else:
                 transport = xmlrpclib.Transport()
             transport.user_agent = 'bzr/%s (xmlrpclib/%s)' \
-                    % (bzrlib.__version__, xmlrpclib.__version__)
+                    % (_bzrlib_version, xmlrpclib.__version__)
         self.transport = transport
 
 
@@ -66,42 +108,59 @@ class LaunchpadService(object):
         key = 'BZR_LP_XMLRPC_URL'
         if key in os.environ:
             return os.environ[key]
+        elif self._lp_instance is not None:
+            try:
+                return self.LAUNCHPAD_INSTANCE[self._lp_instance]
+            except KeyError:
+                raise InvalidLaunchpadInstance(self._lp_instance)
         else:
             return self.DEFAULT_SERVICE_URL
 
-    def get_proxy(self):
+    def get_proxy(self, authenticated):
         """Return the proxy for XMLRPC requests."""
-        # auth info must be in url
-        # TODO: if there's no registrant email perhaps we should just connect
-        # anonymously?
-        scheme, hostinfo, path = urlsplit(self.service_url)[:3]
-        assert '@' not in hostinfo
-        assert self.registrant_email is not None
-        assert self.registrant_password is not None
-        # TODO: perhaps fully quote the password to make it very slightly
-        # obscured
-        # TODO: can we perhaps add extra Authorization headers directly to the 
-        # request, rather than putting this into the url?  perhaps a bit more 
-        # secure against accidentally revealing it.  std66 s3.2.1 discourages putting
-        # the password in the url.
-        hostinfo = '%s:%s@%s' % (urllib.quote(self.registrant_email),
-                                 urllib.quote(self.registrant_password),
-                                 hostinfo)
-        url = urlunsplit((scheme, hostinfo, path, '', ''))
+        if authenticated:
+            # auth info must be in url
+            # TODO: if there's no registrant email perhaps we should
+            # just connect anonymously?
+            scheme, hostinfo, path = urlsplit(self.service_url)[:3]
+            if '@' in hostinfo:
+                raise AssertionError(hostinfo)
+            if self.registrant_email is None:
+                raise AssertionError()
+            if self.registrant_password is None:
+                raise AssertionError()
+            # TODO: perhaps fully quote the password to make it very slightly
+            # obscured
+            # TODO: can we perhaps add extra Authorization headers
+            # directly to the request, rather than putting this into
+            # the url?  perhaps a bit more secure against accidentally
+            # revealing it.  std66 s3.2.1 discourages putting the
+            # password in the url.
+            hostinfo = '%s:%s@%s' % (urllib.quote(self.registrant_email),
+                                     urllib.quote(self.registrant_password),
+                                     hostinfo)
+            url = urlunsplit((scheme, hostinfo, path, '', ''))
+        else:
+            url = self.service_url
         return xmlrpclib.ServerProxy(url, transport=self.transport)
 
     def gather_user_credentials(self):
         """Get the password from the user."""
-        config = bzrlib.config.GlobalConfig()
-        self.registrant_email = config.user_email()
+        the_config = config.GlobalConfig()
+        self.registrant_email = the_config.user_email()
         if self.registrant_password is None:
+            auth = config.AuthenticationConfig()
+            scheme, hostinfo = urlsplit(self.service_url)[:2]
             prompt = 'launchpad.net password for %s: ' % \
                     self.registrant_email
-            self.registrant_password = getpass(prompt)
+            # We will reuse http[s] credentials if we can, prompt user
+            # otherwise
+            self.registrant_password = auth.get_password(scheme, hostinfo,
+                                                         self.registrant_email,
+                                                         prompt=prompt)
 
-    def send_request(self, method_name, method_params):
-        proxy = self.get_proxy()
-        assert method_name
+    def send_request(self, method_name, method_params, authenticated):
+        proxy = self.get_proxy(authenticated)
         method = getattr(proxy, method_name)
         try:
             result = method(*method_params)
@@ -120,12 +179,47 @@ class LaunchpadService(object):
                         % (self.service_url, e.errcode, e.errmsg))
         return result
 
+    @property
+    def domain(self):
+        if self._lp_instance is None:
+            instance = self.DEFAULT_INSTANCE
+        else:
+            instance = self._lp_instance
+        return self.LAUNCHPAD_DOMAINS[instance]
+
+    def get_web_url_from_branch_url(self, branch_url, _request_factory=None):
+        """Get the Launchpad web URL for the given branch URL.
+
+        :raise errors.InvalidURL: if 'branch_url' cannot be identified as a
+            Launchpad branch URL.
+        :return: The URL of the branch on Launchpad.
+        """
+        scheme, hostinfo, path = urlsplit(branch_url)[:3]
+        if _request_factory is None:
+            _request_factory = ResolveLaunchpadPathRequest
+        if scheme == 'lp':
+            resolve = _request_factory(path)
+            try:
+                result = resolve.submit(self)
+            except xmlrpclib.Fault, fault:
+                raise errors.InvalidURL(branch_url, str(fault))
+            branch_url = result['urls'][0]
+            path = urlsplit(branch_url)[2]
+        else:
+            domains = (
+                'bazaar.%s' % domain
+                for domain in self.LAUNCHPAD_DOMAINS.itervalues())
+            if hostinfo not in domains:
+                raise NotLaunchpadBranch(branch_url)
+        return urlutils.join('https://code.%s' % self.domain, path)
+
 
 class BaseRequest(object):
     """Base request for talking to a XMLRPC server."""
 
     # Set this to the XMLRPC method name.
     _methodname = None
+    _authenticated = True
 
     def _request_params(self):
         """Return the arguments to pass to the method"""
@@ -137,16 +231,17 @@ class BaseRequest(object):
         :param service: LaunchpadService indicating where to send
             the request and the authentication credentials.
         """
-        return service.send_request(self._methodname, self._request_params())
+        return service.send_request(self._methodname, self._request_params(),
+                                    self._authenticated)
 
 
 class DryRunLaunchpadService(LaunchpadService):
     """Service that just absorbs requests without sending to server.
-    
+
     The dummy service does not need authentication.
     """
 
-    def send_request(self, method_name, method_params):
+    def send_request(self, method_name, method_params, authenticated):
         pass
 
     def gather_user_credentials(self):
@@ -165,7 +260,8 @@ class BranchRegistrationRequest(BaseRequest):
                  author_email='',
                  product_name='',
                  ):
-        assert branch_url
+        if not branch_url:
+            raise errors.InvalidURL(branch_url, "You need to specify a non-empty branch URL.")
         self.branch_url = branch_url
         if branch_name:
             self.branch_name = branch_name
@@ -199,7 +295,6 @@ class BranchBugLinkRequest(BaseRequest):
     _methodname = 'link_branch_to_bug'
 
     def __init__(self, branch_url, bug_id):
-        assert branch_url
         self.bug_id = bug_id
         self.branch_url = branch_url
 
@@ -208,3 +303,20 @@ class BranchBugLinkRequest(BaseRequest):
         # This must match the parameter tuple expected by Launchpad for this
         # method
         return (self.branch_url, self.bug_id, '')
+
+
+class ResolveLaunchpadPathRequest(BaseRequest):
+    """Request to resolve the path component of an lp: URL."""
+
+    _methodname = 'resolve_lp_path'
+    _authenticated = False
+
+    def __init__(self, path):
+        if not path:
+            raise errors.InvalidURL(path=path,
+                                    extra="You must specify a product.")
+        self.path = path
+
+    def _request_params(self):
+        """Return xmlrpc request parameters"""
+        return (self.path,)

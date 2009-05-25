@@ -12,20 +12,17 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import re
 
 from bzrlib import (
-    builtins,
     bzrdir,
     commands,
     errors,
     option,
-    repository,
-    symbol_versioning,
     )
-from bzrlib.builtins import cmd_commit, cmd_log, cmd_status
+from bzrlib.builtins import cmd_commit
 from bzrlib.commands import Command, parse_args
 from bzrlib.tests import TestCase
 from bzrlib.repofmt import knitrepo
@@ -41,16 +38,18 @@ class OptionTests(TestCase):
 
     def test_parse_args(self):
         """Option parser"""
-        eq = self.assertEquals
-        eq(parse_args(cmd_commit(), ['--help']),
-           ([], {'fixes': [], 'help': True}))
-        eq(parse_args(cmd_commit(), ['--message=biter']),
-           ([], {'fixes': [], 'message': 'biter'}))
+        # XXX: Using cmd_commit makes these tests overly sensitive to changes
+        # to cmd_commit, when they are meant to be about option parsing in
+        # general.
+        self.assertEqual(parse_args(cmd_commit(), ['--help']),
+           ([], {'author': [], 'exclude': [], 'fixes': [], 'help': True}))
+        self.assertEqual(parse_args(cmd_commit(), ['--message=biter']),
+           ([], {'author': [], 'exclude': [], 'fixes': [], 'message': 'biter'}))
 
     def test_no_more_opts(self):
         """Terminated options"""
-        self.assertEquals(parse_args(cmd_commit(), ['--', '-file-with-dashes']),
-                          (['-file-with-dashes'], {'fixes': []}))
+        self.assertEqual(parse_args(cmd_commit(), ['--', '-file-with-dashes']),
+                          (['-file-with-dashes'], {'author': [], 'exclude': [], 'fixes': []}))
 
     def test_option_help(self):
         """Options have help strings."""
@@ -67,7 +66,7 @@ class OptionTests(TestCase):
     def test_option_arg_help(self):
         """Help message shows option arguments."""
         out, err = self.run_bzr('help commit')
-        self.assertEquals(err, '')
+        self.assertEqual(err, '')
         self.assertContainsRe(out, r'--file[ =]MSGFILE')
 
     def test_unknown_short_opt(self):
@@ -81,8 +80,7 @@ class OptionTests(TestCase):
 
     def test_allow_dash(self):
         """Test that we can pass a plain '-' as an argument."""
-        self.assertEqual(
-            (['-'], {'fixes': []}), parse_args(cmd_commit(), ['-']))
+        self.assertEqual((['-']), parse_args(cmd_commit(), ['-'])[0])
 
     def parse(self, options, args):
         parser = option.get_optparser(dict((o.name, o) for o in options))
@@ -93,7 +91,7 @@ class OptionTests(TestCase):
         opts, args = self.parse(options, ['--no-hello', '--hello'])
         self.assertEqual(True, opts.hello)
         opts, args = self.parse(options, [])
-        self.assertEqual(option.OptionParser.DEFAULT_VALUE, opts.hello)
+        self.assertFalse(hasattr(opts, 'hello'))
         opts, args = self.parse(options, ['--hello', '--no-hello'])
         self.assertEqual(False, opts.hello)
         options = [option.Option('number', type=int)]
@@ -103,6 +101,10 @@ class OptionTests(TestCase):
                           ['--number'])
         self.assertRaises(errors.BzrCommandError, self.parse, options,
                           ['--no-number'])
+
+    def test_is_hidden(self):
+        self.assertTrue(option.Option('foo', hidden=True).is_hidden('foo'))
+        self.assertFalse(option.Option('foo', hidden=False).is_hidden('foo'))
 
     def test_registry_conversion(self):
         registry = bzrdir.BzrDirFormatRegistry()
@@ -134,12 +136,33 @@ class OptionTests(TestCase):
         self.assertRaises(errors.BzrCommandError, self.parse, options,
                           ['--format', 'two'])
 
+    def test_override(self):
+        options = [option.Option('hello', type=str),
+                   option.Option('hi', type=str, param_name='hello')]
+        opts, args = self.parse(options, ['--hello', 'a', '--hello', 'b'])
+        self.assertEqual('b', opts.hello)
+        opts, args = self.parse(options, ['--hello', 'b', '--hello', 'a'])
+        self.assertEqual('a', opts.hello)
+        opts, args = self.parse(options, ['--hello', 'a', '--hi', 'b'])
+        self.assertEqual('b', opts.hello)
+        opts, args = self.parse(options, ['--hi', 'b', '--hello', 'a'])
+        self.assertEqual('a', opts.hello)
+
     def test_registry_converter(self):
         options = [option.RegistryOption('format', '',
                    bzrdir.format_registry, bzrdir.format_registry.make_bzrdir)]
         opts, args = self.parse(options, ['--format', 'knit'])
         self.assertIsInstance(opts.format.repository_format,
                               knitrepo.RepositoryFormatKnit1)
+
+    def test_lazy_registry(self):
+        options = [option.RegistryOption('format', '',
+                   lazy_registry=('bzrlib.bzrdir','format_registry'),
+                   converter=str)]
+        opts, args = self.parse(options, ['--format', 'knit'])
+        self.assertEqual({'format': 'knit'}, opts)
+        self.assertRaises(
+            errors.BadOptionValue, self.parse, options, ['--format', 'BAD'])
 
     def test_from_kwargs(self):
         my_option = option.RegistryOption.from_kwargs('my-option',
@@ -202,6 +225,37 @@ class OptionTests(TestCase):
                           ('two', None, None, 'two help'),
                           ])
 
+    def test_option_callback_bool(self):
+        "Test booleans get True and False passed correctly to a callback."""
+        cb_calls = []
+        def cb(option, name, value, parser):
+            cb_calls.append((option,name,value,parser))
+        options = [option.Option('hello', custom_callback=cb)]
+        opts, args = self.parse(options, ['--hello', '--no-hello'])
+        self.assertEqual(2, len(cb_calls))
+        opt,name,value,parser = cb_calls[0]
+        self.assertEqual('hello', name)
+        self.assertTrue(value)
+        opt,name,value,parser = cb_calls[1]
+        self.assertEqual('hello', name)
+        self.assertFalse(value)
+
+    def test_option_callback_str(self):
+        """Test callbacks work for string options both long and short."""
+        cb_calls = []
+        def cb(option, name, value, parser):
+            cb_calls.append((option,name,value,parser))
+        options = [option.Option('hello', type=str, custom_callback=cb,
+            short_name='h')]
+        opts, args = self.parse(options, ['--hello', 'world', '-h', 'mars'])
+        self.assertEqual(2, len(cb_calls))
+        opt,name,value,parser = cb_calls[0]
+        self.assertEqual('hello', name)
+        self.assertEqual('world', value)
+        opt,name,value,parser = cb_calls[1]
+        self.assertEqual('hello', name)
+        self.assertEqual('mars', value)
+
 
 class TestListOptions(TestCase):
     """Tests for ListOption, used to specify lists on the command-line."""
@@ -214,6 +268,12 @@ class TestListOptions(TestCase):
         options = [option.ListOption('hello', type=str)]
         opts, args = self.parse(options, ['--hello=world', '--hello=sailor'])
         self.assertEqual(['world', 'sailor'], opts.hello)
+
+    def test_list_option_with_dash(self):
+        options = [option.ListOption('with-dash', type=str)]
+        opts, args = self.parse(options, ['--with-dash=world',
+                                          '--with-dash=sailor'])
+        self.assertEqual(['world', 'sailor'], opts.with_dash)
 
     def test_list_option_no_arguments(self):
         options = [option.ListOption('hello', type=str)]
@@ -237,6 +297,26 @@ class TestListOptions(TestCase):
         opts, args = self.parse(
             options, ['--hello=a', '--hello=b', '--hello=-', '--hello=c'])
         self.assertEqual(['c'], opts.hello)
+
+    def test_option_callback_list(self):
+        """Test callbacks work for list options."""
+        cb_calls = []
+        def cb(option, name, value, parser):
+            # Note that the value is a reference so copy to keep it
+            cb_calls.append((option,name,value[:],parser))
+        options = [option.ListOption('hello', type=str, custom_callback=cb)]
+        opts, args = self.parse(options, ['--hello=world', '--hello=mars',
+            '--hello=-'])
+        self.assertEqual(3, len(cb_calls))
+        opt,name,value,parser = cb_calls[0]
+        self.assertEqual('hello', name)
+        self.assertEqual(['world'], value)
+        opt,name,value,parser = cb_calls[1]
+        self.assertEqual('hello', name)
+        self.assertEqual(['world', 'mars'], value)
+        opt,name,value,parser = cb_calls[2]
+        self.assertEqual('hello', name)
+        self.assertEqual([], value)
 
 
 class TestOptionDefinitions(TestCase):
@@ -286,13 +366,51 @@ class TestOptionDefinitions(TestCase):
         # period and be all on a single line, because the display code will
         # wrap it.
         option_re = re.compile(r'^[A-Z][^\n]+\.$')
-        for scope, option in self.get_builtin_command_options():
-            if not option.help:
+        for scope, opt in self.get_builtin_command_options():
+            if not opt.help:
                 msgs.append('%-16s %-16s %s' %
-                       ((scope or 'GLOBAL'), option.name, 'NO HELP'))
-            elif not option_re.match(option.help):
+                       ((scope or 'GLOBAL'), opt.name, 'NO HELP'))
+            elif not option_re.match(opt.help):
                 msgs.append('%-16s %-16s %s' %
-                        ((scope or 'GLOBAL'), option.name, option.help))
+                        ((scope or 'GLOBAL'), opt.name, opt.help))
         if msgs:
             self.fail("The following options don't match the style guide:\n"
                     + '\n'.join(msgs))
+
+    def test_is_hidden(self):
+        registry = bzrdir.BzrDirFormatRegistry()
+        registry.register_metadir('hidden', 'HiddenFormat',
+            'hidden help text', hidden=True)
+        registry.register_metadir('visible', 'VisibleFormat',
+            'visible help text', hidden=False)
+        format = option.RegistryOption('format', '', registry, str)
+        self.assertTrue(format.is_hidden('hidden'))
+        self.assertFalse(format.is_hidden('visible'))
+
+    def test_option_custom_help(self):
+        the_opt = option.Option.OPTIONS['help']
+        orig_help = the_opt.help[:]
+        my_opt = option.custom_help('help', 'suggest lottery numbers')
+        # Confirm that my_opt has my help and the original is unchanged
+        self.assertEqual('suggest lottery numbers', my_opt.help)
+        self.assertEqual(orig_help, the_opt.help)
+
+
+class TestVerboseQuietLinkage(TestCase):
+
+    def check(self, parser, level, args):
+        option._verbosity_level = 0
+        opts, args = parser.parse_args(args)
+        self.assertEqual(level, option._verbosity_level)
+
+    def test_verbose_quiet_linkage(self):
+        parser = option.get_optparser(option.Option.STD_OPTIONS)
+        self.check(parser, 0, [])
+        self.check(parser, 1, ['-v'])
+        self.check(parser, 2, ['-v', '-v'])
+        self.check(parser, -1, ['-q'])
+        self.check(parser, -2, ['-qq'])
+        self.check(parser, -1, ['-v', '-v', '-q'])
+        self.check(parser, 2, ['-q', '-v', '-v'])
+        self.check(parser, 0, ['--no-verbose'])
+        self.check(parser, 0, ['-v', '-q', '--no-quiet'])

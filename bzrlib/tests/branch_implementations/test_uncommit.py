@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the contract of uncommit on branches.
 
@@ -34,7 +34,7 @@ class TestUncommitHook(TestCaseWithBranch):
     def capture_post_uncommit_hook(self, local, master, old_revno,
         old_revid, new_revno, new_revid):
         """Capture post uncommit hook calls to self.hook_calls.
-        
+
         The call is logged, as is some state of the two branches.
         """
         if local:
@@ -53,8 +53,8 @@ class TestUncommitHook(TestCaseWithBranch):
         tree.add('')
         revid = tree.commit('a revision')
         tree.unlock()
-        Branch.hooks.install_hook('post_uncommit',
-            self.capture_post_uncommit_hook)
+        Branch.hooks.install_named_hook('post_uncommit',
+            self.capture_post_uncommit_hook, None)
         uncommit(tree.branch)
         # with nothing left we should still get a notification, and
         # have the branch locked at notification time.
@@ -76,8 +76,8 @@ class TestUncommitHook(TestCaseWithBranch):
         tree.add('')
         revid = tree.commit('a revision')
         tree.unlock()
-        Branch.hooks.install_hook('post_uncommit',
-            self.capture_post_uncommit_hook)
+        Branch.hooks.install_named_hook('post_uncommit',
+            self.capture_post_uncommit_hook, None)
         uncommit(tree.branch)
         # with nothing left we should still get a notification, and
         # have the branch locked at notification time.
@@ -95,8 +95,8 @@ class TestUncommitHook(TestCaseWithBranch):
         revid2 = tree.commit('second revision')
         revid3 = tree.commit('third revision')
         tree.unlock()
-        Branch.hooks.install_hook('post_uncommit',
-            self.capture_post_uncommit_hook)
+        Branch.hooks.install_named_hook('post_uncommit',
+            self.capture_post_uncommit_hook, None)
         uncommit(tree.branch, revno=2)
         # having uncommitted from up the branch, we should get the
         # before and after revnos and revids correctly.

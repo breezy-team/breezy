@@ -12,15 +12,25 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Export a Tree to a non-versioned directory.
 """
 
+
 import os
+import StringIO
+
+from bzrlib import errors, osutils
+from bzrlib.export import _export_iter_entries
+from bzrlib.filters import (
+    ContentFilterContext,
+    filtered_output_bytes,
+    )
 from bzrlib.trace import mutter
 
-def dir_exporter(tree, dest, root):
+
+def dir_exporter(tree, dest, root, subdir, filtered=False):
     """Export this tree to a new directory.
 
     `dest` should not exist, and will be created holding the
@@ -32,17 +42,32 @@ def dir_exporter(tree, dest, root):
     :note: If the export fails, the destination directory will be
            left in a half-assed state.
     """
-    import os
-    os.mkdir(dest)
     mutter('export version %r', tree)
-    inv = tree.inventory
-    entries = inv.iter_entries()
-    entries.next() # skip root
-    for dp, ie in entries:
-        # .bzrignore has no meaning outside of a working tree
-        # so do not export it
-        if dp == ".bzrignore":
-            continue
-        
-        ie.put_on_disk(dest, dp, tree)
-
+    os.mkdir(dest)
+    for dp, ie in _export_iter_entries(tree, subdir):
+        fullpath = osutils.pathjoin(dest, dp)
+        if ie.kind == "file":
+            if filtered:
+                chunks = tree.get_file_lines(ie.file_id)
+                filters = tree._content_filter_stack(dp)
+                context = ContentFilterContext(dp, tree, ie)
+                contents = filtered_output_bytes(chunks, filters, context)
+                content = ''.join(contents)
+                fileobj = StringIO.StringIO(content)
+            else:
+                fileobj = tree.get_file(ie.file_id)
+            osutils.pumpfile(fileobj, file(fullpath, 'wb'))
+            if tree.is_executable(ie.file_id):
+                os.chmod(fullpath, 0755)
+        elif ie.kind == "directory":
+            os.mkdir(fullpath)
+        elif ie.kind == "symlink":
+            try:
+                os.symlink(ie.symlink_target, fullpath)
+            except OSError,e:
+                raise errors.BzrError(
+                    "Failed to create symlink %r -> %r, error: %s"
+                    % (fullpath, self.symlink_target, e))
+        else:
+            raise errors.BzrError("don't know how to export {%s} of kind %r" %
+               (ie.file_id, ie.kind))

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,13 +12,14 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 import os
 
 import bzrlib
 from bzrlib import (
+    bzrdir,
     errors,
     lockdir,
     osutils,
@@ -28,9 +29,9 @@ from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir, BzrDirMetaFormat1
 from bzrlib.commit import Commit, NullCommitReporter
 from bzrlib.config import BranchConfig
-from bzrlib.errors import (PointlessCommit, BzrError, SigningFailed, 
+from bzrlib.errors import (PointlessCommit, BzrError, SigningFailed,
                            LockContention)
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import SymlinkFeature, TestCaseWithTransport
 from bzrlib.workingtree import WorkingTree
 
 
@@ -70,6 +71,9 @@ class CapturingReporter(NullCommitReporter):
     def renamed(self, change, old_path, new_path):
         self.calls.append(('renamed', change, old_path, new_path))
 
+    def is_verbose(self):
+        return True
+
 
 class TestCommit(TestCaseWithTransport):
 
@@ -92,14 +96,19 @@ class TestCommit(TestCaseWithTransport):
         eq(rev.message, 'add hello')
 
         tree1 = b.repository.revision_tree(rh[0])
+        tree1.lock_read()
         text = tree1.get_file_text(file_id)
-        eq(text, 'hello world')
+        tree1.unlock()
+        self.assertEqual('hello world', text)
 
         tree2 = b.repository.revision_tree(rh[1])
-        eq(tree2.get_file_text(file_id), 'version 2')
+        tree2.lock_read()
+        text = tree2.get_file_text(file_id)
+        tree2.unlock()
+        self.assertEqual('version 2', text)
 
-    def test_delete_commit(self):
-        """Test a commit with a deleted file"""
+    def test_missing_commit(self):
+        """Test a commit with a missing file"""
         wt = self.make_branch_and_tree('.')
         b = wt.branch
         file('hello', 'w').write('hello world')
@@ -111,6 +120,26 @@ class TestCommit(TestCaseWithTransport):
 
         tree = b.repository.revision_tree('rev2')
         self.assertFalse(tree.has_id('hello-id'))
+
+    def test_partial_commit_move(self):
+        """Test a partial commit where a file was renamed but not committed.
+
+        https://bugs.launchpad.net/bzr/+bug/83039
+
+        If not handled properly, commit will try to snapshot
+        dialog.py with olive/ as a parent, while
+        olive/ has not been snapshotted yet.
+        """
+        wt = self.make_branch_and_tree('.')
+        b = wt.branch
+        self.build_tree(['annotate/', 'annotate/foo.py',
+                         'olive/', 'olive/dialog.py'
+                        ])
+        wt.add(['annotate', 'olive', 'annotate/foo.py', 'olive/dialog.py'])
+        wt.commit(message='add files')
+        wt.rename_one("olive/dialog.py", "aaa")
+        self.build_tree_contents([('annotate/foo.py', 'modified\n')])
+        wt.commit('renamed hello', specific_files=["annotate"])
 
     def test_pointless_commit(self):
         """Commit refuses unless there are changes or it's forced."""
@@ -125,7 +154,7 @@ class TestCommit(TestCaseWithTransport):
                           message='fails',
                           allow_pointless=False)
         self.assertEquals(b.revno(), 1)
-        
+
     def test_commit_empty(self):
         """Commiting an empty tree works."""
         wt = self.make_branch_and_tree('.')
@@ -148,7 +177,7 @@ class TestCommit(TestCaseWithTransport):
               ['hello-id', 'buongia-id'])
         wt.commit(message='add files',
                  rev_id='test@rev-1')
-        
+
         os.remove('hello')
         file('buongia', 'w').write('new text')
         wt.commit(message='update text',
@@ -165,11 +194,15 @@ class TestCommit(TestCaseWithTransport):
         eq(b.revno(), 3)
 
         tree2 = b.repository.revision_tree('test@rev-2')
+        tree2.lock_read()
+        self.addCleanup(tree2.unlock)
         self.assertTrue(tree2.has_filename('hello'))
         self.assertEquals(tree2.get_file_text('hello-id'), 'hello')
         self.assertEquals(tree2.get_file_text('buongia-id'), 'new text')
-        
+
         tree3 = b.repository.revision_tree('test@rev-3')
+        tree3.lock_read()
+        self.addCleanup(tree3.unlock)
         self.assertFalse(tree3.has_filename('hello'))
         self.assertEquals(tree3.get_file_text('buongia-id'), 'new text')
 
@@ -186,6 +219,8 @@ class TestCommit(TestCaseWithTransport):
 
         eq = self.assertEquals
         tree1 = b.repository.revision_tree('test@rev-1')
+        tree1.lock_read()
+        self.addCleanup(tree1.unlock)
         eq(tree1.id2path('hello-id'), 'hello')
         eq(tree1.get_file_text('hello-id'), 'contents of hello\n')
         self.assertFalse(tree1.has_filename('fruity'))
@@ -194,6 +229,8 @@ class TestCommit(TestCaseWithTransport):
         eq(ie.revision, 'test@rev-1')
 
         tree2 = b.repository.revision_tree('test@rev-2')
+        tree2.lock_read()
+        self.addCleanup(tree2.unlock)
         eq(tree2.id2path('hello-id'), 'fruity')
         eq(tree2.get_file_text('hello-id'), 'contents of hello\n')
         self.check_inventory_shape(tree2.inventory, ['fruity'])
@@ -427,14 +464,10 @@ class TestCommit(TestCaseWithTransport):
         bound = master.sprout('bound')
         wt = bound.open_workingtree()
         wt.branch.set_bound_location(os.path.realpath('master'))
-
-        orig_default = lockdir._DEFAULT_TIMEOUT_SECONDS
         master_branch.lock_write()
         try:
-            lockdir._DEFAULT_TIMEOUT_SECONDS = 1
             self.assertRaises(LockContention, wt.commit, 'silly')
         finally:
-            lockdir._DEFAULT_TIMEOUT_SECONDS = orig_default
             master_branch.unlock()
 
     def test_commit_bound_merge(self):
@@ -468,7 +501,7 @@ class TestCommit(TestCaseWithTransport):
         bound_tree.commit(message='commit of merge in bound tree')
 
     def test_commit_reporting_after_merge(self):
-        # when doing a commit of a merge, the reporter needs to still 
+        # when doing a commit of a merge, the reporter needs to still
         # be called for each item that is added/removed/deleted.
         this_tree = self.make_branch_and_tree('this')
         # we need a bunch of files and dirs, to perform one action on each.
@@ -517,21 +550,21 @@ class TestCommit(TestCaseWithTransport):
         this_tree.merge_from_branch(other_tree.branch)
         reporter = CapturingReporter()
         this_tree.commit('do the commit', reporter=reporter)
-        self.assertEqual([
-            ('change', 'unchanged', ''),
-            ('change', 'unchanged', 'dirtoleave'),
-            ('change', 'unchanged', 'filetoleave'),
+        expected = set([
             ('change', 'modified', 'filetomodify'),
             ('change', 'added', 'newdir'),
             ('change', 'added', 'newfile'),
             ('renamed', 'renamed', 'dirtorename', 'renameddir'),
+            ('renamed', 'renamed', 'filetorename', 'renamedfile'),
             ('renamed', 'renamed', 'dirtoreparent', 'renameddir/reparenteddir'),
             ('renamed', 'renamed', 'filetoreparent', 'renameddir/reparentedfile'),
-            ('renamed', 'renamed', 'filetorename', 'renamedfile'),
             ('deleted', 'dirtoremove'),
             ('deleted', 'filetoremove'),
-            ],
-            reporter.calls)
+            ])
+        result = set(reporter.calls)
+        missing = expected - result
+        new = result - expected
+        self.assertEqual((set(), set()), (missing, new))
 
     def test_commit_removals_respects_filespec(self):
         """Commit respects the specified_files for removals."""
@@ -581,8 +614,7 @@ class TestCommit(TestCaseWithTransport):
             basis.unlock()
 
     def test_commit_kind_changes(self):
-        if not osutils.has_symlinks():
-            raise tests.TestSkipped('Test requires symlink support')
+        self.requireFeature(SymlinkFeature)
         tree = self.make_branch_and_tree('.')
         os.symlink('target', 'name')
         tree.add('name', 'a-file-id')
@@ -628,11 +660,11 @@ class TestCommit(TestCaseWithTransport):
     def test_commit_unversioned_specified(self):
         """Commit should raise if specified files isn't in basis or worktree"""
         tree = self.make_branch_and_tree('.')
-        self.assertRaises(errors.PathsNotVersionedError, tree.commit, 
+        self.assertRaises(errors.PathsNotVersionedError, tree.commit,
                           'message', specific_files=['bogus'])
 
     class Callback(object):
-        
+
         def __init__(self, message, testcase):
             self.called = False
             self.message = message
@@ -666,7 +698,7 @@ class TestCommit(TestCaseWithTransport):
         """Callback should not be invoked for pointless commit"""
         tree = self.make_branch_and_tree('.')
         cb = self.Callback(u'commit 2', self)
-        self.assertRaises(PointlessCommit, tree.commit, message_callback=cb, 
+        self.assertRaises(PointlessCommit, tree.commit, message_callback=cb,
                           allow_pointless=False)
         self.assertFalse(cb.called)
 
@@ -695,3 +727,75 @@ class TestCommit(TestCaseWithTransport):
         self.assertEqual(['bar', 'baz'], err.files)
         self.assertEqual('Selected-file commit of merges is not supported'
                          ' yet: files bar, baz', str(err))
+
+    def test_commit_ordering(self):
+        """Test of corner-case commit ordering error"""
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a/', 'a/z/', 'a/c/', 'a/z/x', 'a/z/y'])
+        tree.add(['a/', 'a/z/', 'a/c/', 'a/z/x', 'a/z/y'])
+        tree.commit('setup')
+        self.build_tree(['a/c/d/'])
+        tree.add('a/c/d')
+        tree.rename_one('a/z/x', 'a/c/d/x')
+        tree.commit('test', specific_files=['a/z/y'])
+
+    def test_commit_no_author(self):
+        """The default kwarg author in MutableTree.commit should not add
+        the 'author' revision property.
+        """
+        tree = self.make_branch_and_tree('foo')
+        rev_id = tree.commit('commit 1')
+        rev = tree.branch.repository.get_revision(rev_id)
+        self.assertFalse('author' in rev.properties)
+        self.assertFalse('authors' in rev.properties)
+
+    def test_commit_author(self):
+        """Passing a non-empty author kwarg to MutableTree.commit should add
+        the 'author' revision property.
+        """
+        tree = self.make_branch_and_tree('foo')
+        rev_id = self.callDeprecated(['The parameter author was '
+                'deprecated in version 1.13. Use authors instead'],
+                tree.commit, 'commit 1', author='John Doe <jdoe@example.com>')
+        rev = tree.branch.repository.get_revision(rev_id)
+        self.assertEqual('John Doe <jdoe@example.com>',
+                         rev.properties['authors'])
+        self.assertFalse('author' in rev.properties)
+
+    def test_commit_empty_authors_list(self):
+        """Passing an empty list to authors shouldn't add the property."""
+        tree = self.make_branch_and_tree('foo')
+        rev_id = tree.commit('commit 1', authors=[])
+        rev = tree.branch.repository.get_revision(rev_id)
+        self.assertFalse('author' in rev.properties)
+        self.assertFalse('authors' in rev.properties)
+
+    def test_multiple_authors(self):
+        tree = self.make_branch_and_tree('foo')
+        rev_id = tree.commit('commit 1',
+                authors=['John Doe <jdoe@example.com>',
+                         'Jane Rey <jrey@example.com>'])
+        rev = tree.branch.repository.get_revision(rev_id)
+        self.assertEqual('John Doe <jdoe@example.com>\n'
+                'Jane Rey <jrey@example.com>', rev.properties['authors'])
+        self.assertFalse('author' in rev.properties)
+
+    def test_author_and_authors_incompatible(self):
+        tree = self.make_branch_and_tree('foo')
+        self.assertRaises(AssertionError, tree.commit, 'commit 1',
+                authors=['John Doe <jdoe@example.com>',
+                         'Jane Rey <jrey@example.com>'],
+                author="Jack Me <jme@example.com>")
+
+    def test_author_with_newline_rejected(self):
+        tree = self.make_branch_and_tree('foo')
+        self.assertRaises(AssertionError, tree.commit, 'commit 1',
+                authors=['John\nDoe <jdoe@example.com>'])
+
+    def test_commit_with_checkout_and_branch_sharing_repo(self):
+        repo = self.make_repository('repo', shared=True)
+        # make_branch_and_tree ignores shared repos
+        branch = bzrdir.BzrDir.create_branch_convenience('repo/branch')
+        tree2 = branch.create_checkout('repo/tree2')
+        tree2.commit('message', rev_id='rev1')
+        self.assertTrue(tree2.branch.repository.has_revision('rev1'))

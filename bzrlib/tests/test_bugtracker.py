@@ -12,11 +12,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 from bzrlib import bugtracker, errors, urlutils
-from bzrlib.tests import TestCaseWithMemoryTransport
+from bzrlib.tests import TestCase, TestCaseWithMemoryTransport
 
 
 class TestGetBugURL(TestCaseWithMemoryTransport):
@@ -81,6 +81,12 @@ class TestBuiltinTrackers(TestCaseWithMemoryTransport):
         self.assertEqual('http://bugs.debian.org/1234',
                          tracker.get_bug_url('1234'))
 
+    def test_gnome_registered(self):
+        branch = self.make_branch('some_branch')
+        tracker = bugtracker.tracker_registry.get_tracker('gnome', branch)
+        self.assertEqual('http://bugzilla.gnome.org/show_bug.cgi?id=1234',
+                         tracker.get_bug_url('1234'))
+
     def test_trac_registered(self):
         """The Trac bug tracker should be registered by default and generate
         Trac bug page URLs when the appropriate configuration is present.
@@ -104,19 +110,36 @@ class TestBuiltinTrackers(TestCaseWithMemoryTransport):
         self.assertEqual('http://bugs.com/show_bug.cgi?id=1234',
                          tracker.get_bug_url('1234'))
 
+    def test_generic_registered(self):
+        branch = self.make_branch('some_branch')
+        config = branch.get_config()
+        config.set_user_option('bugtracker_foo_url', 'http://bugs.com/{id}/view.html')
+        tracker = bugtracker.tracker_registry.get_tracker('foo', branch)
+        self.assertEqual('http://bugs.com/1234/view.html',
+                         tracker.get_bug_url('1234'))
+
+    def test_generic_incorrect_url(self):
+        branch = self.make_branch('some_branch')
+        config = branch.get_config()
+        config.set_user_option('bugtracker_foo_url', 'http://bugs.com/view.html')
+        tracker = bugtracker.tracker_registry.get_tracker('foo', branch)
+        self.assertRaises(errors.InvalidBugTrackerURL, tracker.get_bug_url, '1234')
+
 
 class TestUniqueIntegerBugTracker(TestCaseWithMemoryTransport):
 
-    def test_joins_id_to_base_url(self):
+    def test_appends_id_to_base_url(self):
         """The URL of a bug is the base URL joined to the identifier."""
-        tracker = bugtracker.UniqueIntegerBugTracker('xxx', 'http://bugs.com')
-        self.assertEqual('http://bugs.com/1234', tracker.get_bug_url('1234'))
+        tracker = bugtracker.UniqueIntegerBugTracker('xxx',
+                'http://bugs.com/foo')
+        self.assertEqual('http://bugs.com/foo1234', tracker.get_bug_url('1234'))
 
     def test_returns_tracker_if_abbreviation_matches(self):
         """The get() method should return an instance of the tracker if the
         given abbreviation matches the tracker's abbreviated name.
         """
-        tracker = bugtracker.UniqueIntegerBugTracker('xxx', 'http://bugs.com')
+        tracker = bugtracker.UniqueIntegerBugTracker('xxx',
+                'http://bugs.com/')
         branch = self.make_branch('some_branch')
         self.assertIs(tracker, tracker.get('xxx', branch))
 
@@ -124,7 +147,8 @@ class TestUniqueIntegerBugTracker(TestCaseWithMemoryTransport):
         """The get() method should return None if the given abbreviated name
         doesn't match the tracker's abbreviation.
         """
-        tracker = bugtracker.UniqueIntegerBugTracker('xxx', 'http://bugs.com')
+        tracker = bugtracker.UniqueIntegerBugTracker('xxx',
+                'http://bugs.com/')
         branch = self.make_branch('some_branch')
         self.assertIs(None, tracker.get('yyy', branch))
 
@@ -132,18 +156,21 @@ class TestUniqueIntegerBugTracker(TestCaseWithMemoryTransport):
         """A UniqueIntegerBugTracker shouldn't consult the branch for tracker
         information.
         """
-        tracker = bugtracker.UniqueIntegerBugTracker('xxx', 'http://bugs.com')
+        tracker = bugtracker.UniqueIntegerBugTracker('xxx',
+                'http://bugs.com/')
         self.assertIs(tracker, tracker.get('xxx', None))
         self.assertIs(None, tracker.get('yyy', None))
 
     def test_check_bug_id_only_accepts_integers(self):
         """A UniqueIntegerBugTracker accepts integers as bug IDs."""
-        tracker = bugtracker.UniqueIntegerBugTracker('xxx', 'http://bugs.com')
+        tracker = bugtracker.UniqueIntegerBugTracker('xxx',
+                'http://bugs.com/')
         tracker.check_bug_id('1234')
 
     def test_check_bug_id_doesnt_accept_non_integers(self):
         """A UniqueIntegerBugTracker rejects non-integers as bug IDs."""
-        tracker = bugtracker.UniqueIntegerBugTracker('xxx', 'http://bugs.com')
+        tracker = bugtracker.UniqueIntegerBugTracker('xxx',
+                'http://bugs.com/')
         self.assertRaises(
             errors.MalformedBugIdentifier, tracker.check_bug_id, 'red')
 
@@ -183,3 +210,22 @@ class TestURLParametrizedIntegerBugTracker(TestCaseWithMemoryTransport):
         """
         self.assertRaises(
             errors.MalformedBugIdentifier, self.tracker.get_bug_url, 'bad')
+
+
+class TestPropertyEncoding(TestCase):
+    """Tests for how the bug URLs are encoded as revision properties."""
+
+    def test_encoding_one(self):
+        self.assertEqual(
+            'http://example.com/bugs/1 fixed',
+            bugtracker.encode_fixes_bug_urls(['http://example.com/bugs/1']))
+
+    def test_encoding_zero(self):
+        self.assertEqual('', bugtracker.encode_fixes_bug_urls([]))
+
+    def test_encoding_two(self):
+        self.assertEqual(
+            'http://example.com/bugs/1 fixed\n'
+            'http://example.com/bugs/2 fixed',
+            bugtracker.encode_fixes_bug_urls(
+                ['http://example.com/bugs/1', 'http://example.com/bugs/2']))

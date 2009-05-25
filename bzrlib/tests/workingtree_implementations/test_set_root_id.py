@@ -12,26 +12,15 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for WorkingTree.set_root_id"""
 
 from bzrlib import inventory
-from bzrlib.symbol_versioning import zero_twelve
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 
 
 class TestSetRootId(TestCaseWithWorkingTree):
-
-    def test_set_None(self):
-        # setting the root_id to None is equivalent to setting it
-        # to inventory.ROOT_ID
-        tree = self.make_branch_and_tree('a-tree')
-        self.callDeprecated([
-            'WorkingTree.set_root_id with fileid=None was deprecated in version'
-            ' 0.12.'],
-            tree.set_root_id, None)
-        self.assertEqual(inventory.ROOT_ID, tree.get_root_id())
 
     def test_set_and_read_unicode(self):
         tree = self.make_branch_and_tree('a-tree')
@@ -48,7 +37,7 @@ class TestSetRootId(TestCaseWithWorkingTree):
             self.assertEqual(old_id, reference_tree.get_root_id())
         finally:
             tree.unlock()
-        # having unlocked the tree, the value should have been 
+        # having unlocked the tree, the value should have been
         # preserved into the next lock, which is an implicit read
         # lock around the get_root_id call.
         self.assertEqual(root_id, tree.get_root_id())

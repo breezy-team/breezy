@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,22 +12,24 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Black-box tests for bzr export.
 """
 
+from StringIO import StringIO
 import os
 import stat
 import sys
 import tarfile
 import zipfile
 
-from bzrlib.export import (
-    zip_exporter,
+
+from bzrlib import (
+    export,
+    tests,
     )
-from bzrlib.tests import TestSkipped
 from bzrlib.tests.blackbox import ExternalBase
 
 
@@ -37,25 +39,42 @@ class TestExport(ExternalBase):
         tree = self.make_branch_and_tree('tar')
         self.build_tree(['tar/a'])
         tree.add('a')
+        self.build_tree_contents([('tar/.bzrrules', '')])
+        tree.add('.bzrrules')
+        self.build_tree(['tar/.bzr-adir/', 'tar/.bzr-adir/afile'])
+        tree.add(['.bzr-adir/', '.bzr-adir/afile'])
 
         os.chdir('tar')
         self.run_bzr('ignore something')
         tree.commit('1')
 
         self.failUnless(tree.has_filename('.bzrignore'))
+        self.failUnless(tree.has_filename('.bzrrules'))
+        self.failUnless(tree.has_filename('.bzr-adir'))
+        self.failUnless(tree.has_filename('.bzr-adir/afile'))
         self.run_bzr('export test.tar.gz')
         ball = tarfile.open('test.tar.gz')
         # Make sure the tarball contains 'a', but does not contain
         # '.bzrignore'.
         self.assertEqual(['test/a'], sorted(ball.getnames()))
 
+        if sys.version_info < (2, 5, 2) and sys.platform == 'darwin':
+            raise tests.KnownFailure('python %r has a tar related bug, upgrade'
+                                     % sys.version_info)
+        out, err = self.run_bzr('export --format=tgz --root=test -')
+        ball = tarfile.open('', fileobj=StringIO(out))
+        self.assertEqual(['test/a'], sorted(ball.getnames()))
+
     def test_tar_export_unicode(self):
         tree = self.make_branch_and_tree('tar')
-        fname = u'\xe5.txt'
+        # FIXME: using fname = u'\xe5.txt' below triggers a bug revealed since
+        # bzr.dev revno 4216 but more related to OSX/working trees/unicode than
+        # export itself --vila 20090406
+        fname = u'\N{Euro Sign}.txt'
         try:
             self.build_tree(['tar/' + fname])
         except UnicodeError:
-            raise TestSkipped('Unable to represent path %r' % (fname,))
+            raise tests.TestSkipped('Unable to represent path %r' % (fname,))
         tree.add([fname])
         tree.commit('first')
 
@@ -70,12 +89,19 @@ class TestExport(ExternalBase):
         tree = self.make_branch_and_tree('zip')
         self.build_tree(['zip/a'])
         tree.add('a')
+        self.build_tree_contents([('zip/.bzrrules', '')])
+        tree.add('.bzrrules')
+        self.build_tree(['zip/.bzr-adir/', 'zip/.bzr-adir/afile'])
+        tree.add(['.bzr-adir/', '.bzr-adir/afile'])
 
         os.chdir('zip')
         self.run_bzr('ignore something')
         tree.commit('1')
 
         self.failUnless(tree.has_filename('.bzrignore'))
+        self.failUnless(tree.has_filename('.bzrrules'))
+        self.failUnless(tree.has_filename('.bzr-adir'))
+        self.failUnless(tree.has_filename('.bzr-adir/afile'))
         self.run_bzr('export test.zip')
 
         zfile = zipfile.ZipFile('test.zip')
@@ -85,11 +111,11 @@ class TestExport(ExternalBase):
 
     def test_zip_export_unicode(self):
         tree = self.make_branch_and_tree('zip')
-        fname = u'\xe5.txt'
+        fname = u'\N{Euro Sign}.txt'
         try:
             self.build_tree(['zip/' + fname])
         except UnicodeError:
-            raise TestSkipped('Unable to represent path %r' % (fname,))
+            raise tests.TestSkipped('Unable to represent path %r' % (fname,))
         tree.add([fname])
         tree.commit('first')
 
@@ -116,7 +142,7 @@ class TestExport(ExternalBase):
         self.assertEqual(['test/a', 'test/b/', 'test/b/c', 'test/d/'], names)
 
         file_attr = stat.S_IFREG
-        dir_attr = stat.S_IFDIR | zip_exporter.ZIP_DIRECTORY_BIT
+        dir_attr = stat.S_IFDIR | export.zip_exporter.ZIP_DIRECTORY_BIT
 
         a_info = zfile.getinfo(names[0])
         self.assertEqual(file_attr, a_info.external_attr)
@@ -134,12 +160,19 @@ class TestExport(ExternalBase):
         tree = self.make_branch_and_tree('dir')
         self.build_tree(['dir/a'])
         tree.add('a')
+        self.build_tree_contents([('dir/.bzrrules', '')])
+        tree.add('.bzrrules')
+        self.build_tree(['dir/.bzr-adir/', 'dir/.bzr-adir/afile'])
+        tree.add(['.bzr-adir/', '.bzr-adir/afile'])
 
         os.chdir('dir')
         self.run_bzr('ignore something')
         tree.commit('1')
 
         self.failUnless(tree.has_filename('.bzrignore'))
+        self.failUnless(tree.has_filename('.bzrrules'))
+        self.failUnless(tree.has_filename('.bzr-adir'))
+        self.failUnless(tree.has_filename('.bzr-adir/afile'))
         self.run_bzr('export direxport')
 
         files = sorted(os.listdir('direxport'))
@@ -148,6 +181,7 @@ class TestExport(ExternalBase):
         self.assertEqual(['a'], files)
 
     def example_branch(self):
+        """Create a branch a 'branch' containing hello and goodbye."""
         tree = self.make_branch_and_tree('branch')
         self.build_tree_contents([('branch/hello', 'foo')])
         tree.add('hello')
@@ -157,7 +191,7 @@ class TestExport(ExternalBase):
         tree.add('goodbye')
         tree.commit('setup')
         return tree
-        
+
     def test_basic_directory_export(self):
         self.example_branch()
         os.chdir('branch')
@@ -232,7 +266,7 @@ class TestExport(ExternalBase):
             self.assertEqual('foo', zf.read('pizza/hello'))
         finally:
             zf.close()
-        
+
         self.run_bzr('export ../first-zip --format=zip -r 1')
         zf = zipfile.ZipFile('../first-zip')
         try:
@@ -251,3 +285,11 @@ class TestExport(ExternalBase):
         self.run_bzr('export first -r 1 branch')
         self.assertEqual(['hello'], sorted(os.listdir('first')))
         self.check_file_contents('first/hello', 'foo')
+
+    def test_export_partial_tree(self):
+        tree = self.example_branch()
+        self.build_tree(['branch/subdir/', 'branch/subdir/foo.txt'])
+        tree.smart_add(['branch'])
+        tree.commit('more setup')
+        out, err = self.run_bzr('export exported branch/subdir')
+        self.assertEqual(['foo.txt'], os.listdir('exported'))

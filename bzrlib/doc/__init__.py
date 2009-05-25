@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Documentation for bzrlib.
 
@@ -20,7 +20,17 @@ See bzrlib.doc.api for api documentation and in the future bzrlib.doc.man
 for man page generation.
 """
 
-    
-def test_suite():
-    import bzrlib.doc.api
-    return bzrlib.doc.api.test_suite()
+
+def load_tests(basic_tests, module, loader):
+    suite = loader.suiteClass()
+    # add the tests for this module (obviously none so far)
+    suite.addTests(basic_tests)
+
+    testmod_names = [
+        'bzrlib.doc.api',
+        ]
+
+    # add the tests for the sub modules
+    suite.addTests(loader.loadTestsFromModuleNames(testmod_names))
+
+    return suite

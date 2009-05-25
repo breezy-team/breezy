@@ -1,0 +1,175 @@
+LCA Merge
+=========
+
+by Aaron Bentley
+
+Essential characteristics
+-------------------------
+
+In the general case (no criss-cross), it is a three-way merge.  When
+there is a criss-cross at the tree level, but not for the particular
+file, it is still a three-way merge.  When there's a file-level
+criss-cross, it's superior to a three-way merge.
+
+Algorithm
+---------
+
+First, we compare the files we are trying to merge, and find the lines
+that differ.  Next, we try to determine why they differ; this is
+essential to the merge operation, because it affects how we resolve the
+differences.  In this merger, there are three possible outcomes:
+
+1. The line was added in this version: "new-this"
+2. The line was deleted in the other version: "killed-other"
+3. The line was preserved as part of merge resolution in this version,
+   but deleted in the other version: "conflicted-this"
+
+Option 3 is new, but I believe it is essential.  When each side has made
+a conflicting merge resolution, we should let the user decide how to
+combine the two resolutions, i.e. we should emit a conflict.  We cannot
+silently drop the line, or silently keep the line, which can happen if
+we choose options 1 or 2.  If we choose options 1 or 2, there's also a
+possibility that a conflict will be produced, but no guarantee.  We need
+a guarantee, which is why we need a new possible outcome.
+
+To decide whether a line is "new-this", "killed-other" or
+"conflicted-this", we compare this version against the versions from
+each "least common ancestor" (LCA), in graph terminology.  For each LCA
+version, if the line is not present in the LCA version, we add it to the
+"new" set.  If the line is present in the LCA version, we add it to the
+"killed" set.
+
+When we are done going through each LCA version, each unique line will
+be in at least one of the sets.  If it is only in the "new" set, it's
+handled as "new-this".  If it is only in the "killed" set, it's handled
+as "killed-other".  If it is in both sets, it's handled as
+"conflicted-this".
+
+The logic here is a bit tricky: first, we know that the line is present
+in some, but not all, LCAs.  We can assume that all LCAs were produced
+by merges of the same sets of revisions.  That means that in those LCAs,
+there were different merge resolutions.  Since THIS and OTHER disagree
+about whether the line is present, those differences have propagated
+into THIS and OTHER.  Therefore, we should declare that the lines are in
+conflict, and let the user handle the issue.
+
+LCA merge and Three-way merge
+-----------------------------
+
+Now, in the common case, there's a single LCA, and LCA merge behaves as
+a three-way merge.  Since there's only one LCA, we cannot get the
+"conflicted-this" outcome, only "new-this" or "killed-other.  Let's look
+at the typical description of three-way merges:
+
++-----+------+-------+------------+
+|THIS | BASE | OTHER | OUT        |
++-----+------+-------+------------+
+|A    | A    | A     | A          |
++-----+------+-------+------------+
+|A    | B    | A     | A          |
++-----+------+-------+------------+
+|A    | B    | B     | A          |
++-----+------+-------+------------+
+|A    | A    | B     | B          |
++-----+------+-------+------------+
+|A    | B    | C     |\*conflict\*|
++-----+------+-------+------------+
+
+Now, let's assume that BASE is a common ancestor, as is typically the
+case.  In fact, for best-case merges, BASE is the sole LCA.
+
+We always pick the version that represents a change from BASE, if there
+is one.  For the AAAA line, there is no change, so the output is
+rightfully BASE/THIS/OTHER.  For ABAA, the THIS and OTHER are changes
+from BASE, and they are the same change so they both win.  (This case is
+sometimes called convergence.)  For ABBA, THIS is a change from BASE, so
+THIS wins.  For AABB, OTHER is a change from BASE, so OTHER wins.  For
+ABC*, THIS and OTHER are both changes to BASE, but they are different
+changes, so they can't both win cleanly.  Instead, we have a conflict.
+
+Now in three-way merging, we typically talk about regions of text.  In
+weave/knit/newness/lca merge, we also have regions.  Each contiguous
+group of "unchanged" lines is a region, and the areas between them are
+also regions.
+
+Let's assign a to THIS and b to OTHER.  "unchanged" regions represent
+the AAAA or ABAA cases; it doesn't matter which, because the outcome is
+the same regardless.  Regions which consist of only "new-a" or
+"killed-a" represent the ABBA case.  Regions which consist of only
+"new-b" or "killed-b" represent the AABB case.  Regions which have
+(new-a or killed-a) AND (new-b or killed-b) are the ABC* case-- both
+sides have made changes, and they are different changes, so a conflict
+must be emitted.
+
+This is what I mean when I say that it is a three-way merge in the
+common case; if there is only one LCA, then it is merely an alternative
+implementation of three-way.  (One that happens to automatically do
+``--reprocess``, ftw).
+
+Exception to three-way behavior
+-------------------------------
+There is a special case of three-way merge which LCA merge handles differently
+from our default "merge3" algorithm:
+BASE has content X, THIS deletes the content, and OTHER changes X to Y.  In
+this case, LCA merge emits Y in its output and does not indicate a conflict.
+merge3 would output Y, but would also indicate a conflict.  (This is also the
+behavior in the inverse case where OTHER has nothing and THIS has Y.)
+
+This behavior is due the way LCA determines basic conflicts; they
+can only be emitted when THIS and OTHER each have unique lines between common
+lines.  If THIS does not have unique lines in this position, conflicts will not
+be emitted, even if its (lack of) content is unique.
+
+This behavior difference is shared with "weave" merge.  I hope that a future
+revision of LCA merge will handle this case as merge3 would.
+
+Why a new name
+--------------
+
+1. It was time.  Although knit / annotate merge and newness merge have
+   tried to emulate the behavior of the original weave merge algorithm,
+   ``--merge-type=weave`` hasn't been based on weaves for a long time.
+2. Behavior differences.  This algorithm should behave like a three-way
+   merge in the common case, while its predecessors did not.  It also has
+   explicit support for handling conflicting merge resolutions, so it
+   should behave better in criss-cross merge scenarios.
+
+Performance
+-----------
+
+Unlike the current "weave" merge implementation, lca merge does not
+perform any whole-history operations.  LCA selection should scale with
+the number of uncommon revisions.  Text comparison time should scale
+mO(n\ :sup:`2`\ ), where m is the number of LCAs, and n is the number of lines
+in the file.  The current weave merge compares each uncommon ancestor,
+potentially several times, so it is >= kO(n\ :sup:`2`\ ), where k is the
+number of uncommon ancestors.  So "lca" should beat "weave" both in history
+analysis time and in text comparison time.
+
+Possible flaws
+==============
+
+1. Inaccurate LCA selection.  Our current LCA algorithm uses
+   ``Graph.heads()``, which is known to be flawed.  It may occasionally give
+   bad results.  This risk is mitigated by the fact that the per-file graphs
+   tend to be simpler than the revision graph.  And since we're already using
+   this LCA algorithm, this is not an additional risk.  I hope that John Meinel
+   will soon have a fixed version of ``Graph.heads`` for us.
+2. False matches.  Weaves have a concept of line identity, but knits and
+   later formats do not.  So a line may appear to be common to two files, when
+   in fact it was introduced separately into each for entirely different
+   reasons.  This risk is the same for three-way merging.  It is mitigated by
+   using Patience sequence matching, which a longest-common-subsequence match.
+
+Acknowledgements
+================
+
+I think this could be a great merge algorithm, and a candidate to make
+our default, but this work would not have been possible without the work
+of others, especially:
+
+- Martin Pool's weave merge and knit/annotate merge algorithms.
+- Bram Cohen's discussions of merge algorithms
+- Andrew Tridgell's dissection of BitKeeper merge
+- Nathaniel Smith's analysis of why criss-cross histories necessarily
+  produce poor three-way merges.

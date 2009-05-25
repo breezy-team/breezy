@@ -14,64 +14,45 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """BzrDir implementation tests for bzr.
 
 These test the conformance of all the bzrdir variations to the expected API.
-Specific tests for individual formats are in the tests/test_bzrdir.py file 
+Specific tests for individual formats are in the tests/test_bzrdir.py file
 rather than in tests/branch_implementations/*.py.
 """
 
 from bzrlib.bzrdir import BzrDirFormat
 from bzrlib.tests import (
-                          adapt_modules,
                           default_transport,
+                          multiply_tests,
                           TestCaseWithTransport,
-                          TestLoader,
-                          TestScenarioApplier,
-                          TestSuite,
                           )
 from bzrlib.transport.memory import MemoryServer
 
 
-class BzrDirTestProviderAdapter(TestScenarioApplier):
-    """A tool to generate a suite testing multiple bzrdir formats at once.
+def make_scenarios(vfs_factory, transport_server, transport_readonly_server,
+    formats, name_suffix=''):
+    """Transform the input to a list of scenarios.
 
-    This is done by copying the test once for each transport and injecting
-    the transport_server, transport_readonly_server, and bzrdir_format
-    classes into each copy. Each copy is also given a new id() to make it
-    easy to identify.
+    :param formats: A list of bzrdir_format objects.
+    :param vfs_server: A factory to create a Transport Server which has
+        all the VFS methods working, and is writable.
     """
-
-    def __init__(self, vfs_factory, transport_server, transport_readonly_server,
-        formats):
-        """Create an object to adapt tests.
-
-        :param vfs_server: A factory to create a Transport Server which has
-            all the VFS methods working, and is writable.
-        """
-        self._vfs_factory = vfs_factory
-        self._transport_server = transport_server
-        self._transport_readonly_server = transport_readonly_server
-        self.scenarios = self.formats_to_scenarios(formats)
-    
-    def formats_to_scenarios(self, formats):
-        """Transform the input formats to a list of scenarios.
-
-        :param formats: A list of bzrdir_format objects.
-        """
-        result = []
-        for format in formats:
-            scenario = (format.__class__.__name__, {
-                "vfs_transport_factory":self._vfs_factory,
-                "transport_server":self._transport_server,
-                "transport_readonly_server":self._transport_readonly_server,
-                "bzrdir_format":format,
-                })
-            result.append(scenario)
-        return result
+    result = []
+    for format in formats:
+        scenario_name = format.__class__.__name__
+        scenario_name += name_suffix
+        scenario = (scenario_name, {
+            "vfs_transport_factory": vfs_factory,
+            "transport_server": transport_server,
+            "transport_readonly_server": transport_readonly_server,
+            "bzrdir_format": format,
+            })
+        result.append(scenario)
+    return result
 
 
 class TestCaseWithBzrDir(TestCaseWithTransport):
@@ -86,42 +67,48 @@ class TestCaseWithBzrDir(TestCaseWithTransport):
         return self.bzrdir
 
     def make_bzrdir(self, relpath, format=None):
+        if format is None:
+            format = self.bzrdir_format
         return super(TestCaseWithBzrDir, self).make_bzrdir(
-            relpath, format=self.bzrdir_format)
+            relpath, format=format)
 
 
-def test_suite():
-    result = TestSuite()
+def load_tests(standard_tests, module, loader):
     test_bzrdir_implementations = [
         'bzrlib.tests.bzrdir_implementations.test_bzrdir',
+        'bzrlib.tests.bzrdir_implementations.test_push',
         ]
+    submod_tests = loader.loadTestsFromModuleNames(test_bzrdir_implementations)
     formats = BzrDirFormat.known_formats()
-    adapter = BzrDirTestProviderAdapter(
+    scenarios = make_scenarios(
         default_transport,
         None,
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
         formats)
-    loader = TestLoader()
-    adapt_modules(test_bzrdir_implementations, adapter, loader, result)
-
-    # This will always add the tests for smart server transport, regardless of
-    # the --transport option the user specified to 'bzr selftest'.
-    from bzrlib.smart.server import SmartTCPServer_for_testing, ReadonlySmartTCPServer_for_testing
+    # This will always add scenarios using the smart server.
+    from bzrlib.smart.server import (
+        ReadonlySmartTCPServer_for_testing,
+        ReadonlySmartTCPServer_for_testing_v2_only,
+        SmartTCPServer_for_testing,
+        SmartTCPServer_for_testing_v2_only,
+        )
     from bzrlib.remote import RemoteBzrDirFormat
-
-    # test the remote server behaviour using a MemoryTransport
-    smart_server_suite = TestSuite()
-    adapt_to_smart_server = BzrDirTestProviderAdapter(
+    # test the remote server behaviour when backed with a MemoryTransport
+    # Once for the current version
+    scenarios.extend(make_scenarios(
         MemoryServer,
         SmartTCPServer_for_testing,
         ReadonlySmartTCPServer_for_testing,
-        [(RemoteBzrDirFormat())])
-    adapt_modules(test_bzrdir_implementations,
-                  adapt_to_smart_server,
-                  TestLoader(),
-                  smart_server_suite)
-    result.addTests(smart_server_suite)
-
-    return result
+        [(RemoteBzrDirFormat())],
+        name_suffix='-default'))
+    # And once with < 1.6 - the 'v2' protocol.
+    scenarios.extend(make_scenarios(
+        MemoryServer,
+        SmartTCPServer_for_testing_v2_only,
+        ReadonlySmartTCPServer_for_testing_v2_only,
+        [(RemoteBzrDirFormat())],
+        name_suffix='-v2'))
+    # add the tests for the sub modules
+    return multiply_tests(submod_tests, scenarios, standard_tests)

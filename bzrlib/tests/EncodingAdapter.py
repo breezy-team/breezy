@@ -13,7 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Adapter for running test cases against multiple encodings."""
 
@@ -53,11 +53,11 @@ _russian_test = u'\u0422\u0435\u0441\u0442'
 
 # Kanji
 # It is a kanji sequence for nihonjin, or Japanese in English.
-# 
+#
 # '\u4eba' being person, 'u\65e5' sun and '\u672c' origin. Ie,
 # sun-origin-person, 'native from the land where the sun rises'. Note, I'm
 # not a fluent speaker, so this is just my crude breakdown.
-# 
+#
 # Wouter van Heyst
 _nihonjin = u'\u65e5\u672c\u4eba'
 
@@ -79,61 +79,60 @@ _something = u'\u0165ou\u010dk\xfd'
 _shalom = u'\u05e9\u05dc\u05d5\u05dd'
 
 
-class EncodingTestAdapter(object):
-    """A tool to generate a suite, testing multiple encodings for a single test.
-    
-    This is similar to bzrlib.transport.TransportTestProviderAdapter.
-    It is done by copying the test once for each encoding, and injecting
-    the encoding name, and the list of valid strings for that encoding.
-    Each copy is also given a new id() to make it easy to identify.
-    """
-
-    _encodings = [
+encoding_scenarios = [
         # Permutation 1 of utf-8
-        ('utf-8', 1, {'committer':_erik
-                  , 'message':_yellow_horse
-                  , 'filename':_shrimp_sandwich
-                  , 'directory':_nihonjin}),
+        ('utf-8,1', {
+            'info': {
+                'committer': _erik,
+                'message': _yellow_horse,
+                'filename': _shrimp_sandwich,
+                'directory': _nihonjin,
+                },
+            'encoding': 'utf-8',
+            }),
         # Permutation 2 of utf-8
-        ('utf-8', 2, {'committer':_alexander
-                  , 'message':u'Testing ' + _mu
-                  , 'filename':_shalom
-                  , 'directory':_juju}),
-        ('iso-8859-1', 0, {'committer':_erik
-                  , 'message':u'Testing ' + _mu
-                  , 'filename':_juju_alt
-                  , 'directory':_shrimp_sandwich}),
-        ('iso-8859-2', 0, {'committer':_someone
-                  , 'message':_yellow_horse
-                  , 'filename':_yellow
-                  , 'directory':_something}),
-        ('cp1251', 0, {'committer':_alexander
-                  , 'message':u'Testing ' + _mu
-                  , 'filename':_russian_test
-                  , 'directory':_russian_test + 'dir'}),
+        ('utf-8,2', {
+            'info': {
+                'committer': _alexander,
+                'message': u'Testing ' + _mu,
+                'filename': _shalom,
+                'directory': _juju,
+                },
+            'encoding': 'utf-8',
+            }),
+        ('iso-8859-1', {
+            'info': {
+                'committer': _erik,
+                'message': u'Testing ' + _mu,
+                'filename': _juju_alt,
+                'directory': _shrimp_sandwich,
+                },
+            'encoding': 'iso-8859-1',
+            }),
+        ('iso-8859-2', {
+            'info': {
+                'committer': _someone,
+                'message': _yellow_horse,
+                'filename': _yellow,
+                'directory': _something,
+                },
+            'encoding': 'iso-8859-2',
+            }),
+        ('cp1251', {
+            'info': {
+                'committer': _alexander,
+                'message': u'Testing ' + _mu,
+                'filename': _russian_test,
+                'directory': _russian_test + 'dir',
+                },
+            'encoding': 'cp1251',
+            }),
 # The iso-8859-1 tests run on a default windows cp437 installation
 # and it takes a long time to run an extra permutation of the tests
 # But just in case we want to add this back in:
-#        ('cp437', 0, {'committer':_erik
+#        ('cp437', {'committer':_erik
 #                  , 'message':u'Testing ' + _mu
 #                  , 'filename':'file_' + _omega
-#                  , 'directory':_epsilon + '_dir'}),
+#                  , 'directory':_epsilon + '_dir',
+#            'encoding': 'cp437'}),
     ]
-
-    def adapt(self, test):
-        result = TestSuite()
-        for encoding, count, info in self._encodings:
-            new_test = deepcopy(test)
-            new_test.encoding = encoding
-            new_test.info = info
-            def make_new_test_id():
-                if count:
-                    new_id = "%s(%s,%s)" % (new_test.id(), encoding, count)
-                else:
-                    new_id = "%s(%s)" % (new_test.id(), encoding)
-                return lambda: new_id
-            new_test.id = make_new_test_id()
-            result.addTest(new_test)
-        return result
-
-

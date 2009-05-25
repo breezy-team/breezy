@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Black-box tests for bzr help.
@@ -21,6 +21,7 @@
 
 import bzrlib
 from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.config import (ensure_config_dir_exists, config_filename)
 
 
 class TestHelp(ExternalBase):
@@ -57,7 +58,7 @@ class TestHelp(ExternalBase):
         out, err = self.run_bzr('help checkouts')
         self.assertContainsRe(out, 'checkout')
         self.assertContainsRe(out, 'lightweight')
-        
+
     def test_help_urlspec(self):
         """Smoke test for 'bzr help urlspec'"""
         out, err = self.run_bzr('help urlspec')
@@ -112,11 +113,26 @@ class TestHelp(ExternalBase):
         self.assertTrue('rocks' not in commands)
 
     def test_help_detail(self):
-        dash_h  = self.run_bzr('commit -h')[0]
-        help_x  = self.run_bzr('help commit')[0]
-        qmark_x = self.run_bzr('help commit')[0]
+        dash_h  = self.run_bzr('diff -h')[0]
+        help_x  = self.run_bzr('help diff')[0]
         self.assertEquals(dash_h, help_x)
-        self.assertEquals(dash_h, qmark_x)
+        self.assertContainsRe(help_x, "Purpose:")
+        self.assertContainsRe(help_x, "Usage:")
+        self.assertContainsRe(help_x, "Options:")
+        self.assertContainsRe(help_x, "Description:")
+        self.assertContainsRe(help_x, "Examples:")
+        self.assertContainsRe(help_x, "See also:")
+        self.assertContainsRe(help_x, "Aliases:")
+
+    def test_help_usage(self):
+        usage  = self.run_bzr('diff --usage')[0]
+        self.assertContainsRe(usage, "Purpose:")
+        self.assertContainsRe(usage, "Usage:")
+        self.assertContainsRe(usage, "Options:")
+        self.assertNotContainsRe(usage, "Description:")
+        self.assertNotContainsRe(usage, "Examples:")
+        self.assertContainsRe(usage, "See also:")
+        self.assertContainsRe(usage, "Aliases:")
 
     def test_help_help(self):
         help = self.run_bzr('help help')[0]
@@ -126,3 +142,19 @@ class TestHelp(ExternalBase):
             if '--long' in line:
                 self.assertContainsRe(line,
                     r'Show help on all commands\.')
+
+    def test_help_with_aliases(self):
+        original = self.run_bzr('help cat')[0]
+
+        ensure_config_dir_exists()
+        CONFIG=("[ALIASES]\n"
+        "c=cat\n"
+        "cat=cat\n")
+
+        open(config_filename(),'wb').write(CONFIG)
+
+        expected = original + "'bzr cat' is an alias for 'bzr cat'.\n"
+        self.assertEqual(expected, self.run_bzr('help cat')[0])
+
+        self.assertEqual("'bzr c' is an alias for 'bzr cat'.\n",
+                         self.run_bzr('help c')[0])

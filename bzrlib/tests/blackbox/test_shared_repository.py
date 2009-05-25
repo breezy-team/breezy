@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Black-box tests for repositories with shared branches"""
 
@@ -26,16 +26,29 @@ class TestSharedRepo(TestCaseInTempDir):
 
     def test_make_repository(self):
         out, err = self.run_bzr("init-repository a")
+        self.assertEqual(out,
+"""Shared repository with trees (format: pack-0.92)
+Location:
+  shared repository: a
+""")
+        self.assertEqual(err, "")
+        dir = BzrDir.open('a')
+        self.assertIs(dir.open_repository().is_shared(), True)
+        self.assertRaises(errors.NotBranchError, dir.open_branch)
+        self.assertRaises(errors.NoWorkingTree, dir.open_workingtree)
+
+    def test_make_repository_quiet(self):
+        out, err = self.run_bzr("init-repository a -q")
         self.assertEqual(out, "")
         self.assertEqual(err, "")
         dir = BzrDir.open('a')
         self.assertIs(dir.open_repository().is_shared(), True)
         self.assertRaises(errors.NotBranchError, dir.open_branch)
-        self.assertRaises(errors.NoWorkingTree, dir.open_workingtree)        
+        self.assertRaises(errors.NoWorkingTree, dir.open_workingtree)
 
     def test_init_repo_existing_dir(self):
         """Make repo in existing directory.
-        
+
         (Malone #38331)
         """
         out, err = self.run_bzr("init-repository .")
@@ -95,3 +108,15 @@ class TestSharedRepo(TestCaseInTempDir):
         self.run_bzr("init-repo --no-trees notrees")
         repo = BzrDir.open("notrees").open_repository()
         self.assertEqual(False, repo.make_working_trees())
+
+    def test_init_repo_smart_acceptance(self):
+        # The amount of hpss calls made on init-repo to a smart server should
+        # be fixed.
+        self.setup_smart_server_with_call_log()
+        self.run_bzr(['init-repo', self.get_url('repo')])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(16, self.hpss_calls)

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from bzrlib.lazy_import import lazy_import
 
@@ -23,6 +23,7 @@ import os
 from StringIO import StringIO
 
 from bzrlib import (
+    errors,
     patiencediff,
     trace,
     ui,
@@ -32,16 +33,31 @@ from bzrlib import bencode
 from bzrlib.tuned_gzip import GzipFile
 
 
+def topo_iter_keys(vf, keys=None):
+    if keys is None:
+        keys = vf.keys()
+    parents = vf.get_parent_map(keys)
+    return _topo_iter(parents, keys)
+
 def topo_iter(vf, versions=None):
-    seen = set()
-    descendants = {}
     if versions is None:
         versions = vf.versions()
+    parents = vf.get_parent_map(versions)
+    return _topo_iter(parents, versions)
+
+def _topo_iter(parents, versions):
+    seen = set()
+    descendants = {}
     def pending_parents(version):
-        return [v for v in vf.get_parents(version) if v in versions and
+        if parents[version] is None:
+            return []
+        return [v for v in parents[version] if v in versions and
                 v not in seen]
     for version_id in versions:
-        for parent_id in vf.get_parents(version_id):
+        if parents[version_id] is None:
+            # parentless
+            continue
+        for parent_id in parents[version_id]:
             descendants.setdefault(parent_id, []).append(version_id)
     cur = [v for v in versions if len(pending_parents(v)) == 0]
     while len(cur) > 0:
@@ -55,7 +71,6 @@ def topo_iter(vf, versions=None):
             yield version_id
             seen.add(version_id)
         cur = next
-    assert len(seen) == len(versions)
 
 
 class MultiParent(object):
@@ -106,7 +121,7 @@ class MultiParent(object):
                 if block is None:
                     continue
                 i, j, n = block
-                while j + n < cur_line:
+                while j + n <= cur_line:
                     block = cur_block[p] = next_block(p)
                     if block is None:
                         break
@@ -135,6 +150,13 @@ class MultiParent(object):
         if len(new_text.lines) > 0:
             diff.hunks.append(new_text)
         return diff
+
+    def get_matching_blocks(self, parent, parent_len):
+        for hunk in self.hunks:
+            if not isinstance(hunk, ParentText) or hunk.parent != parent:
+                continue
+            yield (hunk.parent_pos, hunk.child_pos, hunk.num_lines)
+        yield parent_len, self.num_lines(), 0
 
     def to_lines(self, parents=()):
         """Contruct a fulltext from this diff and its parents"""
@@ -186,7 +208,8 @@ class MultiParent(object):
             elif cur_line[0] == '\n':
                 hunks[-1].lines[-1] += '\n'
             else:
-                assert cur_line[0] == 'c', cur_line[0]
+                if not (cur_line[0] == 'c'):
+                    raise AssertionError(cur_line[0])
                 parent, parent_pos, child_pos, num_lines =\
                     [int(v) for v in cur_line.split(' ')[1:]]
                 hunks.append(ParentText(parent, parent_pos, child_pos,
@@ -267,7 +290,7 @@ class ParentText(object):
             ' %(num_lines)r)' % self.__dict__
 
     def __eq__(self, other):
-        if self.__class__ != other.__class__:
+        if self.__class__ is not other.__class__:
             return False
         return (self.__dict__ == other.__dict__)
 
@@ -293,7 +316,7 @@ class BaseVersionedFile(object):
         return version in self._parents
 
     def do_snapshot(self, version_id, parent_ids):
-        """Determine whether to perform a a snapshot for this version"""
+        """Determine whether to perform a snapshot for this version"""
         if self.snapshot_interval is None:
             return False
         if self.max_snapshots is not None and\
@@ -361,7 +384,8 @@ class BaseVersionedFile(object):
         :param single_parent: If true, omit all but one parent text, (but
             retain parent metadata).
         """
-        assert no_cache or not verify
+        if not (no_cache or not verify):
+            raise ValueError()
         revisions = set(vf.versions())
         total = len(revisions)
         pb = ui.ui_factory.nested_progress_bar()
@@ -373,7 +397,7 @@ class BaseVersionedFile(object):
                     if [p for p in parents if p not in self._parents] != []:
                         continue
                     lines = [a + ' ' + l for a, l in
-                             vf.annotate_iter(revision)]
+                             vf.annotate(revision)]
                     if snapshots is None:
                         force_snapshot = None
                     else:
@@ -385,7 +409,8 @@ class BaseVersionedFile(object):
                         self.clear_cache()
                         vf.clear_cache()
                         if verify:
-                            assert lines == self.get_line_list([revision])[0]
+                            if not (lines == self.get_line_list([revision])[0]):
+                                raise AssertionError()
                             self.clear_cache()
                     pb.update('Importing revisions',
                               (total - len(revisions)) + len(added), total)
@@ -483,8 +508,7 @@ class BaseVersionedFile(object):
             pass
         diff = self.get_diff(version_id)
         lines = []
-        reconstructor = _Reconstructor(self, self._lines,
-                                       self._parents)
+        reconstructor = _Reconstructor(self, self._lines, self._parents)
         reconstructor.reconstruct_version(lines, version_id)
         self._lines[version_id] = lines
         return lines
@@ -502,7 +526,10 @@ class MultiMemoryVersionedFile(BaseVersionedFile):
         self._parents[version_id] = parent_ids
 
     def get_diff(self, version_id):
-        return self._diffs[version_id]
+        try:
+            return self._diffs[version_id]
+        except KeyError:
+            raise errors.RevisionNotPresent(version_id, self)
 
     def destroy(self):
         self._diffs = {}
@@ -534,6 +561,9 @@ class MultiVersionedFile(BaseVersionedFile):
     def add_diff(self, diff, version_id, parent_ids):
         outfile = open(self._filename + '.mpknit', 'ab')
         try:
+            outfile.seek(0, 2)      # workaround for windows bug:
+                                    # .tell() for files opened in 'ab' mode
+                                    # before any write returns 0
             start = outfile.tell()
             try:
                 zipfile = GzipFile(None, mode='ab', fileobj=outfile)
@@ -594,6 +624,9 @@ class _Reconstructor(object):
         while len(pending_reqs) > 0:
             req_version_id, req_start, req_end = pending_reqs.pop()
             # lazily allocate cursors for versions
+            if req_version_id in self.lines:
+                lines.extend(self.lines[req_version_id][req_start:req_end])
+                continue
             try:
                 start, end, kind, data, iterator = self.cursor[req_version_id]
             except KeyError:

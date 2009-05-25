@@ -13,13 +13,17 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 import os
+import sys
 from StringIO import StringIO
 
-from bzrlib import merge_directive
+from bzrlib import (
+    branch as _mod_branch,
+    merge_directive,
+    )
 from bzrlib.bundle import serializer
 from bzrlib.bzrdir import BzrDir
 from bzrlib import tests
@@ -52,7 +56,7 @@ class TestSend(tests.TestCaseWithTransport):
         self.assertContainsRe(errmsg, 'No submit branch known or specified')
         os.chdir('../branch')
         stdout, stderr = self.run_bzr('send -o-')
-        self.assertEqual(stderr.count('Using saved location'), 1)
+        self.assertEqual(stderr.count('Using saved parent location'), 1)
         br = read_bundle(StringIO(stdout))
         self.assertRevisions(br, ['revision3'])
 
@@ -64,7 +68,7 @@ class TestSend(tests.TestCaseWithTransport):
         self.assertContainsRe(errmsg, 'No submit branch known or specified')
         os.chdir('../branch')
         stdout, stderr = self.run_bzr('bundle')
-        self.assertEqual(stderr.count('Using saved location'), 1)
+        self.assertEqual(stderr.count('Using saved parent location'), 1)
         br = read_bundle(StringIO(stdout))
         self.assertRevisions(br, ['revision3'])
 
@@ -90,7 +94,7 @@ class TestSend(tests.TestCaseWithTransport):
         br = read_bundle(StringIO(self.run_bzr('send -o-')[0]))
         self.assertRevisions(br, ['revision3'])
         err = self.run_bzr('send --remember -o-', retcode=3)[1]
-        self.assertContainsRe(err, 
+        self.assertContainsRe(err,
                               '--remember requires a branch to be specified.')
 
     def test_revision_branch_interaction(self):
@@ -114,9 +118,9 @@ class TestSend(tests.TestCaseWithTransport):
         # check output for consistency
         # win32 stdout converts LF to CRLF,
         # which would break patch-based bundles
-        self.make_trees()        
+        self.make_trees()
         os.chdir('branch')
-        stdout = self.run_bzr_subprocess('send', '-o-')[0]
+        stdout = self.run_bzr_subprocess('send -o-')[0]
         br = read_bundle(StringIO(stdout))
         self.assertRevisions(br, ['revision3'])
 
@@ -186,9 +190,35 @@ class TestSend(tests.TestCaseWithTransport):
         stdout = self.run_bzr('send -f branch --output -')[0]
         self.assertContainsRe(stdout, 'revision3')
 
-    def test_output_option_required(self):
+    def test_note_revisions(self):
         self.make_trees()
-        self.run_bzr_error(('File must be specified with --output',),
+        stderr = self.run_bzr('send -f branch --output file1')[1]
+        self.assertContainsRe(stderr, r'Bundling 1 revision\(s\).\n')
+
+    def test_mailto_option(self):
+        self.make_trees()
+        branch = _mod_branch.Branch.open('branch')
+        branch.get_config().set_user_option('mail_client', 'editor')
+        self.run_bzr_error(
+            ('No mail-to address \\(--mail-to\\) or output \\(-o\\) specified',
+            ), 'send -f branch')
+        branch.get_config().set_user_option('mail_client', 'bogus')
+        self.run_bzr('send -f branch -o-')
+        self.run_bzr_error(('Unknown mail client: bogus',),
+                           'send -f branch --mail-to jrandom@example.org')
+        branch.get_config().set_user_option('submit_to', 'jrandom@example.org')
+        self.run_bzr_error(('Unknown mail client: bogus',),
+                           'send -f branch')
+
+    def test_mailto_child_option(self):
+        """Make sure that child_submit_to is used."""
+        self.make_trees()
+        branch = _mod_branch.Branch.open('branch')
+        branch.get_config().set_user_option('mail_client', 'bogus')
+        parent = _mod_branch.Branch.open('parent')
+        parent.get_config().set_user_option('child_submit_to',
+                           'somebody@example.org')
+        self.run_bzr_error(('Unknown mail client: bogus',),
                            'send -f branch')
 
     def test_format(self):
@@ -207,3 +237,51 @@ class TestSend(tests.TestCaseWithTransport):
         self.assertIs(merge_directive.MergeDirective, md.__class__)
         self.run_bzr_error(['Bad value .* for option .format.'],
                             'send -f branch -o- --format=0.999')[0]
+
+    def test_format_child_option(self):
+        self.make_trees()
+        parent = _mod_branch.Branch.open('parent')
+        parent.get_config().set_user_option('child_submit_format', '4')
+        s = StringIO(self.run_bzr('send -f branch -o-')[0])
+        md = merge_directive.MergeDirective.from_lines(s.readlines())
+        self.assertIs(merge_directive.MergeDirective2, md.__class__)
+        parent.get_config().set_user_option('child_submit_format', '0.9')
+        s = StringIO(self.run_bzr('send -f branch -o-')[0])
+        md = merge_directive.MergeDirective.from_lines(s.readlines())
+        self.assertContainsRe(md.get_raw_bundle().splitlines()[0],
+            '# Bazaar revision bundle v0.9')
+        s = StringIO(self.run_bzr('bundle -f branch -o-')[0])
+        md = merge_directive.MergeDirective.from_lines(s.readlines())
+        self.assertContainsRe(md.get_raw_bundle().splitlines()[0],
+            '# Bazaar revision bundle v0.9')
+        self.assertIs(merge_directive.MergeDirective, md.__class__)
+        parent.get_config().set_user_option('child_submit_format', '0.999')
+        self.run_bzr_error(["No such send format '0.999'"],
+                            'send -f branch -o-')[0]
+
+    def test_message_option(self):
+        self.make_trees()
+        self.run_bzr('send', retcode=3)
+        md = self.send_directive(['--from', 'branch'])
+        self.assertIs(None, md.message)
+        md = self.send_directive(['--from', 'branch', '-m', 'my message'])
+        self.assertEqual('my message', md.message)
+
+    def test_omitted_revision(self):
+        self.make_trees()
+        md = self.send_directive(['-r-2..', '--from', 'branch'])
+        self.assertEqual('revision2', md.base_revision_id)
+        self.assertEqual('revision3', md.revision_id)
+        md = self.send_directive(['-r..3', '--from', 'branch',
+                                 'grandparent'])
+        self.assertEqual('revision1', md.base_revision_id)
+        self.assertEqual('revision3', md.revision_id)
+
+    def test_nonexistant_branch(self):
+        if sys.platform == "win32":
+            location = "C:/i/do/not/exist/"
+        else:
+            location = "/i/do/not/exist/"
+        out, err = self.run_bzr(["send", "--from", location], retcode=3)
+        self.assertEqual(out, '')
+        self.assertEqual(err, 'bzr: ERROR: Not a branch: "%s".\n' % location)

@@ -1,0 +1,232 @@
+#!/usr/bin/env python
+###############################################################################
+#
+#  bzr_access:
+#    Simple access control for shared bazaar repository accessed over ssh.
+#
+# Copyright (C) 2007 Balint Aradi
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+#
+###############################################################################
+"""
+Invocation: bzr_access <bzr_executable> <repo_collection> <user>
+
+The script extracts from the SSH_ORIGINAL_COMMAND environment variable the
+repository, which bazaar tries to access through the bzr+ssh protocol. The
+repository is assumed to be relative to <repo_collection>. Based
+on the configuration file <repo_collection>/bzr_access.conf it determines
+the access rights (denied, read-only, read-write) for the specified user.
+If the user has read-only or read-write access a bazaar smart server is
+started for it in read-only or in read-write mode, rsp., using the specified
+bzr executable.
+
+Config file: INI format, pretty much similar to the authfile of subversion.
+
+Groups can be defined in the [groups] section. The options in this block are
+the names of the groups to be defined, the corresponding values the lists of
+the users belonging to the given groups. (User names must be separated by
+commas.)
+
+Right now only one section is supported [/], defining the permissions for the
+repository. The options in those sections are user names or group references
+(group name with a leading '@'), the corresponding values are the 
+permissions: 'rw', 'r' and '' (without the quotes)
+for read-write, read-only and no access, respectively.
+
+Sample bzr_access.conf::
+
+   [groups]
+   admins = alpha
+   devels = beta, gamma, delta
+   
+   [/]
+   @admins = rw
+   @devels = r
+
+This allows you to set up a single SSH user, and customize the access based on
+ssh key. Your ``.ssh/authorized_key`` file should look something like this::
+
+   command="/path/to/bzr_access /path/to/bzr /path/to/repository <username>",no-port-forwarding,no-X11-forwarding,no-agent-forwarding ssh-<type> <key>
+"""
+
+import ConfigParser
+import os
+import re
+import subprocess
+import sys
+
+CONFIG_FILE = "bzr_access.conf"
+SCRIPT_NAME = os.path.basename(sys.argv[0])
+
+# Permission constants
+PERM_DENIED = 0
+PERM_READ = 1
+PERM_READWRITE = 2
+PERM_DICT = { "r": PERM_READ, "rw": PERM_READWRITE }
+
+# Exit codes
+EXIT_BAD_NR_ARG = 1
+EXIT_BZR_NOEXEC = 2
+EXIT_REPO_NOREAD = 3
+EXIT_BADENV = 4
+EXIT_BADDIR = 5
+EXIT_NOCONF = 6
+EXIT_NOACCESS = 7
+EXIT_BADUSERNAME = 8
+
+# pattern for the bzr command passed to ssh
+PAT_SSH_COMMAND = re.compile(r"""^bzr\s+
+                             serve\s+
+                             --inet\s+
+                             --directory=(?P<dir>\S+)\s+
+                             --allow-writes\s*$""", re.VERBOSE)
+
+# Command line for starting bzr
+BZR_OPTIONS = ['serve', '--inet', '--directory']
+BZR_READWRITE_FLAGS = ['--allow-writes']
+
+
+
+def error(msg, exit_code):
+    """Prints error message to stdout and exits with given error code."""
+    
+    print >>sys.stderr, "%s::error: %s" % (SCRIPT_NAME, msg)
+    sys.exit(exit_code)
+  
+
+
+class AccessManager(object):
+    """Manages the permissions, can be queried for a specific user and path."""
+    
+    def __init__(self, fp):
+        """:param fp: File like object, containing the configuration options.
+        """
+        # TODO: jam 20071211 Consider switching to bzrlib.util.configobj
+        self.config = ConfigParser.ConfigParser()
+        self.config.readfp(fp)
+        self.groups = {}
+        if self.config.has_section("groups"):
+            for group, users in self.config.items("groups"):
+                self.groups[group] = set([ s.strip() for s in users.split(",")])
+        
+
+    def permission(self, user):
+        """Determines the permission for a given user and a given path
+        :param user: user to look for.
+        :return: permission.
+        """
+        configSection = "/"
+        perm = PERM_DENIED
+        pathFound = self.config.has_section(configSection)
+        if (pathFound):
+            options = reversed(self.config.options(configSection))
+            for option in options:
+                value = PERM_DICT.get(self.config.get(configSection, option),
+                                      PERM_DENIED)
+                if self._is_relevant(option, user):
+                    perm = value
+        return perm
+
+      
+    def _is_relevant(self, option, user):
+        """Decides if a certain option is relevant for a given user.
+      
+        An option is relevant if it is identical with the user or with a
+        reference to a group including the user.
+      
+        :param option: Option to check.
+        :param user: User
+        :return: True if option is relevant for the user, False otherwise.
+        """
+        if option.startswith("@"):
+            result = (user in self.groups.get(option[1:], set()))
+        else:
+            result = (option == user)
+        return result
+
+
+
+def get_directory(command):
+    """Extracts the directory name from the command pass to ssh.
+    :param command: command to parse.
+    :return: Directory name or empty string, if directory was not found or if it
+    does not start with '/'.
+    """
+    match = PAT_SSH_COMMAND.match(command)
+    if not match:
+        return ""
+    directory = match.group("dir")
+    return os.path.normpath(directory)
+
+
+
+############################################################################
+# Main program
+############################################################################
+def main():
+    # Read arguments
+    if len(sys.argv) != 4:
+        error("Invalid number or arguments.", EXIT_BAD_NR_ARG)
+    (bzrExec, repoRoot, user) = sys.argv[1:4]
+    
+    # Sanity checks
+    if not os.access(bzrExec, os.X_OK):
+        error("bzr is not executable.", EXIT_BZR_NOEXEC)
+    if not os.access(repoRoot, os.R_OK):
+        error("Path to repository not readable.", EXIT_REPO_NOREAD)
+    
+    # Extract the repository path from the command passed to ssh.
+    if not os.environ.has_key("SSH_ORIGINAL_COMMAND"):
+        error("Environment variable SSH_ORIGINAL_COMMAND missing.", EXIT_BADENV)
+    directory = get_directory(os.environ["SSH_ORIGINAL_COMMAND"])
+    if len(directory) == 0:
+        error("Bad directory name.", EXIT_BADDIR)
+
+    # Control user name
+    if not user.isalnum():
+        error("Invalid user name", EXIT_BADUSERNAME)
+    
+    # Read in config file.
+    try:
+        fp = open(os.path.join(repoRoot, CONFIG_FILE), "r")
+        try:
+            accessMan = AccessManager(fp)
+        finally:
+            fp.close()
+    except IOError:
+        error("Can't read config file.", EXIT_NOCONF)
+    
+    # Determine permission and execute bzr with appropriate options
+    perm = accessMan.permission(user)
+    command = [bzrExec] + BZR_OPTIONS + [repoRoot]
+    if perm == PERM_READ:
+        # Nothing extra needed for readonly operations
+        pass
+    elif perm == PERM_READWRITE:
+        # Add the write flags
+        command.extend(BZR_READWRITE_FLAGS)
+    else:
+        error("Access denied.", EXIT_NOACCESS)
+    return subprocess.call(command)
+
+
+if __name__ == "__main__":
+  main()
+
+
+### Local Variables:
+### mode:python
+### End:

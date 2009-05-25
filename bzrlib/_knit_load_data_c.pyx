@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Pyrex extensions to knit parsing."""
 
@@ -86,7 +86,7 @@ cdef class KnitIndexReader:
 
     cdef int history_len
 
-    def __new__(self, kndx, fp):
+    def __init__(self, kndx, fp):
         self.kndx = kndx
         self.fp = fp
 
@@ -171,7 +171,7 @@ cdef class KnitIndexReader:
                 Py_INCREF(parent)
             PyList_Append(parents, parent)
             parent_str = next + 1
-        return parents
+        return tuple(parents)
 
     cdef int process_one_record(self, char *start, char *end) except -1:
         """Take a simple string and split it into an index record."""

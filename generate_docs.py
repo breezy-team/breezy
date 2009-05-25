@@ -14,7 +14,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """%(prog)s - generate information from built-in bzr help
 
@@ -83,7 +83,8 @@ Available OUTPUT_FORMAT:
         outfile = open(outfilename,"w")
 
     if options.show_filename and (outfilename != "-"):
-        print >>sys.stdout, outfilename
+        sys.stdout.write(outfilename)
+        sys.stdout.write('\n')
     
     infogen_mod.infogen(options, outfile)
 
@@ -93,7 +94,8 @@ def print_extended_help(option, opt, value, parser):
     Prints out the examples stored in the docstring. 
 
     """
-    print >>sys.stdout, __doc__ % {"prog":sys.argv[0]}
+    sys.stdout.write(__doc__ % {"prog":sys.argv[0]})
+    sys.stdout.write('\n')
     sys.exit(0)
 
 if __name__ == '__main__':

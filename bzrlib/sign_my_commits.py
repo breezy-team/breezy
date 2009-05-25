@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Command which looks for unsigned commits by the current user, and signs them.
 """
@@ -65,18 +65,25 @@ class cmd_sign_my_commits(Command):
         count = 0
         repo.lock_write()
         try:
-            for rev_id in repo.get_ancestry(branch.last_revision())[1:]:
-                if repo.has_signature_for_revision_id(rev_id):
-                    continue
-                rev = repo.get_revision(rev_id)
-                if rev.committer != committer:
-                    continue
-                # We have a revision without a signature who has a 
-                # matching committer, start signing
-                print rev_id
-                count += 1
-                if not dry_run:
-                    repo.sign_revision(rev_id, gpg_strategy)
+            repo.start_write_group()
+            try:
+                for rev_id in repo.get_ancestry(branch.last_revision())[1:]:
+                    if repo.has_signature_for_revision_id(rev_id):
+                        continue
+                    rev = repo.get_revision(rev_id)
+                    if rev.committer != committer:
+                        continue
+                    # We have a revision without a signature who has a
+                    # matching committer, start signing
+                    print rev_id
+                    count += 1
+                    if not dry_run:
+                        repo.sign_revision(rev_id, gpg_strategy)
+            except:
+                repo.abort_write_group()
+                raise
+            else:
+                repo.commit_write_group()
         finally:
             repo.unlock()
         print 'Signed %d revisions' % (count,)

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 from bzrlib.builtins import cmd_branch
@@ -24,7 +24,7 @@ class TestBranch(TestCaseWithConnectionHookedTransport):
     def setUp(self):
         super(TestBranch, self).setUp()
         self.make_branch_and_tree('branch')
-        self.install_hooks()
+        self.start_logging_connections()
 
     def test_branch_remote_local(self):
         cmd = cmd_branch()

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the 'checkout' CLI command."""
 
@@ -29,10 +29,11 @@ from bzrlib import (
     workingtree,
     )
 from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import HardlinkFeature
 
 
 class TestCheckout(ExternalBase):
-    
+
     def setUp(self):
         super(TestCheckout, self).setUp()
         tree = bzrdir.BzrDir.create_standalone_workingtree('branch')
@@ -103,6 +104,30 @@ class TestCheckout(ExternalBase):
         # with no diff
         out, err = self.run_bzr('diff')
 
+    def _test_checkout_existing_dir(self, lightweight):
+        source = self.make_branch_and_tree('source')
+        self.build_tree_contents([('source/file1', 'content1'),
+                                  ('source/file2', 'content2'),])
+        source.add(['file1', 'file2'])
+        source.commit('added files')
+        self.build_tree_contents([('target/', ''),
+                                  ('target/file1', 'content1'),
+                                  ('target/file2', 'content3'),])
+        cmd = ['checkout', 'source', 'target']
+        if lightweight:
+            cmd.append('--lightweight')
+        self.run_bzr('checkout source target')
+        # files with unique content should be moved
+        self.failUnlessExists('target/file2.moved')
+        # files with content matching tree should not be moved
+        self.failIfExists('target/file1.moved')
+
+    def test_checkout_existing_dir_heavy(self):
+        self._test_checkout_existing_dir(False)
+
+    def test_checkout_existing_dir_lightweight(self):
+        self._test_checkout_existing_dir(True)
+
     def test_checkout_in_branch_with_r(self):
         branch = _mod_branch.Branch.open('branch')
         branch.bzrdir.destroy_workingtree()
@@ -112,4 +137,21 @@ class TestCheckout(ExternalBase):
         self.assertEqual('1', tree.last_revision())
         branch.bzrdir.destroy_workingtree()
         self.run_bzr('checkout -r 0')
-        self.assertIs(None, tree.last_revision())
+        self.assertEqual('null:', tree.last_revision())
+
+    def test_checkout_files_from(self):
+        branch = _mod_branch.Branch.open('branch')
+        self.run_bzr(['checkout', 'branch', 'branch2', '--files-from',
+                      'branch'])
+
+    def test_checkout_hardlink(self):
+        self.requireFeature(HardlinkFeature)
+        source = self.make_branch_and_tree('source')
+        self.build_tree(['source/file1'])
+        source.add('file1')
+        source.commit('added file')
+        self.run_bzr(['checkout', 'source', 'target', '--files-from', 'source',
+                      '--hardlink'])
+        source_stat = os.stat('source/file1')
+        target_stat = os.stat('target/file1')
+        self.assertEqual(source_stat, target_stat)

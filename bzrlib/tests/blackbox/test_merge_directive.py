@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
 import smtplib
@@ -116,20 +116,25 @@ class TestMergeDirective(tests.TestCaseWithTransport):
         connect_calls = []
         def connect(self, host='localhost', port=0):
             connect_calls.append((self, host, port))
-        def starttls(self):
-            pass
+        def has_extn(self, extension):
+            return False
+        def ehlo(self):
+            return (200, 'Ok')
         old_sendmail = smtplib.SMTP.sendmail
         smtplib.SMTP.sendmail = sendmail
         old_connect = smtplib.SMTP.connect
         smtplib.SMTP.connect = connect
-        old_starttls = smtplib.SMTP.starttls
-        smtplib.SMTP.starttls = starttls
+        old_ehlo = smtplib.SMTP.ehlo
+        smtplib.SMTP.ehlo = ehlo
+        old_has_extn = smtplib.SMTP.has_extn
+        smtplib.SMTP.has_extn = has_extn
         try:
             result = self.run_bzr(*args, **kwargs)
         finally:
             smtplib.SMTP.sendmail = old_sendmail
             smtplib.SMTP.connect = old_connect
-            smtplib.SMTP.starttls = old_starttls
+            smtplib.SMTP.ehlo = old_ehlo
+            smtplib.SMTP.has_extn = old_has_extn
         return result + (connect_calls, sendmail_calls)
 
     def test_mail_default(self):

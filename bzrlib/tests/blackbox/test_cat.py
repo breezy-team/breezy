@@ -13,53 +13,59 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Black-box tests for bzr cat.
 """
 
 import os
+import sys
 
 from bzrlib.tests.blackbox import TestCaseWithTransport
 
 class TestCat(TestCaseWithTransport):
 
     def test_cat(self):
-
-        def bzr(*args, **kwargs):
-            return self.run_bzr_subprocess(*args, **kwargs)[0]
-
-        os.mkdir('branch')
+        tree = self.make_branch_and_tree('branch')
+        self.build_tree_contents([('branch/a', 'foo\n')])
+        tree.add('a')
         os.chdir('branch')
-        bzr('init')
-        open('a', 'wb').write('foo\n')
-        bzr('add', 'a')
-
         # 'bzr cat' without an option should cat the last revision
-        bzr('cat', 'a', retcode=3)
+        self.run_bzr(['cat', 'a'], retcode=3)
 
-        bzr('commit', '-m', '1')
-        open('a', 'wb').write('baz\n')
+        tree.commit(message='1')
+        self.build_tree_contents([('a', 'baz\n')])
 
-        self.assertEquals(bzr('cat', 'a'), 'foo\n')
+        # We use run_bzr_subprocess rather than run_bzr here so that we can
+        # test mangling of line-endings on Windows.
+        self.assertEquals(self.run_bzr_subprocess(['cat', 'a'])[0], 'foo\n')
 
-        bzr('commit', '-m', '2')
-        self.assertEquals(bzr('cat', 'a'), 'baz\n')
-        self.assertEquals(bzr('cat', 'a', '-r', '1'), 'foo\n')
-        self.assertEquals(bzr('cat', 'a', '-r', '-1'), 'baz\n')
+        tree.commit(message='2')
+        self.assertEquals(self.run_bzr_subprocess(['cat', 'a'])[0], 'baz\n')
+        self.assertEquals(self.run_bzr_subprocess(
+            ['cat', 'a', '-r', '1'])[0],
+            'foo\n')
+        self.assertEquals(self.run_bzr_subprocess(
+            ['cat', 'a', '-r', '-1'])[0],
+            'baz\n')
 
-        rev_id = bzr('revision-history').strip().split('\n')[-1]
+        rev_id = tree.branch.last_revision()
 
-        self.assertEquals(bzr('cat', 'a', '-r', 'revid:%s' % rev_id), 'baz\n')
-        
+        self.assertEquals(self.run_bzr_subprocess(
+            ['cat', 'a', '-r', 'revid:%s' % rev_id])[0],
+            'baz\n')
+
         os.chdir('..')
-        
-        self.assertEquals(bzr('cat', 'branch/a', '-r', 'revno:1:branch'),
-                          'foo\n')
-        bzr('cat', 'a', retcode=3)
-        bzr('cat', 'a', '-r', 'revno:1:branch-that-does-not-exist', retcode=3)
-        
+
+        self.assertEquals(self.run_bzr_subprocess(
+            ['cat', 'branch/a', '-r', 'revno:1:branch'])[0],
+            'foo\n')
+        self.run_bzr(['cat', 'a'], retcode=3)
+        self.run_bzr(
+                ['cat', 'a', '-r', 'revno:1:branch-that-does-not-exist'],
+                retcode=3)
+
     def test_cat_different_id(self):
         """'cat' works with old and new files"""
         tree = self.make_branch_and_tree('.')
@@ -68,17 +74,20 @@ class TestCat(TestCaseWithTransport):
         # a-rev-tree is special because it appears in both the revision
         # tree and the working tree
         self.build_tree_contents([('a-rev-tree', 'foo\n'),
-            ('c-rev', 'baz\n'), ('d-rev', 'bar\n')])
+            ('c-rev', 'baz\n'), ('d-rev', 'bar\n'), ('e-rev', 'qux\n')])
         tree.lock_write()
         try:
-            tree.add(['a-rev-tree', 'c-rev', 'd-rev'])
-            tree.commit('add test files')
-            # remove currently uses self._write_inventory - 
+            tree.add(['a-rev-tree', 'c-rev', 'd-rev', 'e-rev'])
+            tree.commit('add test files', rev_id='first')
+            # remove currently uses self._write_inventory -
             # work around that for now.
             tree.flush()
             tree.remove(['d-rev'])
             tree.rename_one('a-rev-tree', 'b-tree')
             tree.rename_one('c-rev', 'a-rev-tree')
+            tree.rename_one('e-rev', 'old-rev')
+            self.build_tree_contents([('e-rev', 'new\n')])
+            tree.add(['e-rev'])
         finally:
             # calling bzr as another process require free lock on win32
             tree.unlock()
@@ -89,16 +98,22 @@ class TestCat(TestCaseWithTransport):
                            'cat b-tree --name-from-revision')
 
         # get to the old file automatically
-        out, err = self.run_bzr('cat d-rev')
+        out, err = self.run_bzr_subprocess('cat d-rev')
         self.assertEqual('bar\n', out)
         self.assertEqual('', err)
 
-        out, err = self.run_bzr('cat a-rev-tree --name-from-revision')
+        out, err = \
+                self.run_bzr_subprocess('cat a-rev-tree --name-from-revision')
         self.assertEqual('foo\n', out)
         self.assertEqual('', err)
 
-        out, err = self.run_bzr('cat a-rev-tree')
+        out, err = self.run_bzr_subprocess('cat a-rev-tree')
         self.assertEqual('baz\n', out)
+        self.assertEqual('', err)
+
+        # the actual file-id for e-rev doesn't exist in the old tree
+        out, err = self.run_bzr_subprocess('cat e-rev -rrevid:first')
+        self.assertEqual('qux\n', out)
         self.assertEqual('', err)
 
     def test_remote_cat(self):
@@ -108,8 +123,52 @@ class TestCat(TestCaseWithTransport):
         wt.commit('Making sure there is a basis_tree available')
 
         url = self.get_readonly_url() + '/README'
-        out, err = self.run_bzr(['cat', url])
+        out, err = self.run_bzr_subprocess(['cat', url])
         self.assertEqual('contents of README\n', out)
+
+    def test_cat_filters(self):
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['README'])
+        wt.add('README')
+        wt.commit('Making sure there is a basis_tree available')
+        url = self.get_readonly_url() + '/README'
+
+        # Test unfiltered output
+        out, err = self.run_bzr_subprocess(['cat', url])
+        self.assertEqual('contents of README\n', out)
+
+        # Test --filters option is legal but has no impact if no filters
+        out, err = self.run_bzr_subprocess(['cat', '--filters', url])
+        self.assertEqual('contents of README\n', out)
+
+    def test_cat_filters_applied(self):
+        # Test filtering applied to output. This is tricky to do in a
+        # subprocess because we really need to patch in a plugin that
+        # registers the filters. Instead, we patch in a custom
+        # filter_stack and use run_bzr() ...
+        from cStringIO import StringIO
+        from bzrlib.commands import run_bzr
+        from bzrlib.tests.test_filters import _stack_2
+        from bzrlib.trace import mutter
+        from bzrlib.tree import Tree
+        wt = self.make_branch_and_tree('.')
+        self.build_tree_contents([
+            ('README', "junk\nline 1 of README\nline 2 of README\n"),
+            ])
+        wt.add('README')
+        wt.commit('Making sure there is a basis_tree available')
+        url = self.get_readonly_url() + '/README'
+        real_content_filter_stack = Tree._content_filter_stack
+        def _custom_content_filter_stack(tree, path=None, file_id=None):
+            return _stack_2
+        Tree._content_filter_stack = _custom_content_filter_stack
+        try:
+            out, err = self.run_bzr(['cat', url, '--filters'])
+            # The filter stack will remove the first line and swapcase the rest
+            self.assertEqual('LINE 1 OF readme\nLINE 2 OF readme\n', out)
+            self.assertEqual('', err)
+        finally:
+            Tree._content_filter_stack = real_content_filter_stack
 
     def test_cat_no_working_tree(self):
         wt = self.make_branch_and_tree('.')
@@ -119,6 +178,12 @@ class TestCat(TestCaseWithTransport):
         wt.branch.bzrdir.destroy_workingtree()
 
         url = self.get_readonly_url() + '/README'
-        out, err = self.run_bzr(['cat', url])
+        out, err = self.run_bzr_subprocess(['cat', url])
         self.assertEqual('contents of README\n', out)
-        
+
+    def test_cat_nonexistent_branch(self):
+        if sys.platform == "win32":
+            location = "C:/i/do/not/exist"
+        else:
+            location = "/i/do/not/exist"
+        self.run_bzr_error(['^bzr: ERROR: Not a branch'], ['cat', location])

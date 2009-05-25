@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Win32-specific helper functions
 
@@ -64,7 +64,21 @@ else:
     else:
         create_buffer = ctypes.create_unicode_buffer
         suffix = 'W'
+try:
+    import win32file
+    has_win32file = True
+except ImportError:
+    has_win32file = False
+try:
+    import win32api
+    has_win32api = True
+except ImportError:
+    has_win32api = False
 
+# pulling in win32com.shell is a bit of overhead, and normally we don't need
+# it as ctypes is preferred and common.  lazy_imports and "optional"
+# modules don't work well, so we do our own lazy thing...
+has_win32com_shell = None # Set to True or False once we know for sure...
 
 # Special Win32 API constants
 # Handles of std streams
@@ -74,12 +88,77 @@ WIN32_STDERR_HANDLE = -12
 
 # CSIDL constants (from MSDN 2003)
 CSIDL_APPDATA = 0x001A      # Application Data folder
+CSIDL_LOCAL_APPDATA = 0x001c# <user name>\Local Settings\Application Data (non roaming)
 CSIDL_PERSONAL = 0x0005     # My Documents folder
 
 # from winapi C headers
 MAX_PATH = 260
 UNLEN = 256
 MAX_COMPUTERNAME_LENGTH = 31
+
+
+def debug_memory_win32api(message='', short=True):
+    """Use trace.note() to dump the running memory info."""
+    from bzrlib import trace
+    if has_ctypes:
+        class PROCESS_MEMORY_COUNTERS_EX(ctypes.Structure):
+            """Used by GetProcessMemoryInfo"""
+            _fields_ = [('cb', ctypes.c_ulong),
+                        ('PageFaultCount', ctypes.c_ulong),
+                        ('PeakWorkingSetSize', ctypes.c_size_t),
+                        ('WorkingSetSize', ctypes.c_size_t),
+                        ('QuotaPeakPagedPoolUsage', ctypes.c_size_t),
+                        ('QuotaPagedPoolUsage', ctypes.c_size_t),
+                        ('QuotaPeakNonPagedPoolUsage', ctypes.c_size_t),
+                        ('QuotaNonPagedPoolUsage', ctypes.c_size_t),
+                        ('PagefileUsage', ctypes.c_size_t),
+                        ('PeakPagefileUsage', ctypes.c_size_t),
+                        ('PrivateUsage', ctypes.c_size_t),
+                       ]
+        cur_process = ctypes.windll.kernel32.GetCurrentProcess()
+        mem_struct = PROCESS_MEMORY_COUNTERS_EX()
+        ret = ctypes.windll.psapi.GetProcessMemoryInfo(cur_process,
+            ctypes.byref(mem_struct),
+            ctypes.sizeof(mem_struct))
+        if not ret:
+            trace.note('Failed to GetProcessMemoryInfo()')
+            return
+        info = {'PageFaultCount': mem_struct.PageFaultCount,
+                'PeakWorkingSetSize': mem_struct.PeakWorkingSetSize,
+                'WorkingSetSize': mem_struct.WorkingSetSize,
+                'QuotaPeakPagedPoolUsage': mem_struct.QuotaPeakPagedPoolUsage,
+                'QuotaPagedPoolUsage': mem_struct.QuotaPagedPoolUsage,
+                'QuotaPeakNonPagedPoolUsage': mem_struct.QuotaPeakNonPagedPoolUsage,
+                'QuotaNonPagedPoolUsage': mem_struct.QuotaNonPagedPoolUsage,
+                'PagefileUsage': mem_struct.PagefileUsage,
+                'PeakPagefileUsage': mem_struct.PeakPagefileUsage,
+                'PrivateUsage': mem_struct.PrivateUsage,
+               }
+    elif has_win32api:
+        import win32process
+        # win32process does not return PrivateUsage, because it doesn't use
+        # PROCESS_MEMORY_COUNTERS_EX (it uses the one without _EX).
+        proc = win32process.GetCurrentProcess()
+        info = win32process.GetProcessMemoryInfo(proc)
+    else:
+        trace.note('Cannot debug memory on win32 without ctypes'
+                   ' or win32process')
+        return
+    if short:
+        trace.note('WorkingSize %7dKB'
+                   '\tPeakWorking %7dKB\t%s',
+                   info['WorkingSetSize'] / 1024,
+                   info['PeakWorkingSetSize'] / 1024,
+                   message)
+        return
+    if message:
+        trace.note('%s', message)
+    trace.note('WorkingSize       %8d KB', info['WorkingSetSize'] / 1024)
+    trace.note('PeakWorking       %8d KB', info['PeakWorkingSetSize'] / 1024)
+    trace.note('PagefileUsage     %8d KB', info.get('PagefileUsage', 0) / 1024)
+    trace.note('PeakPagefileUsage %8d KB', info.get('PeakPagefileUsage', 0) / 1024)
+    trace.note('PrivateUsage      %8d KB', info.get('PrivateUsage', 0) / 1024)
+    trace.note('PageFaultCount    %8d', info.get('PageFaultCount', 0))
 
 
 def get_console_size(defaultx=80, defaulty=25):
@@ -109,13 +188,10 @@ def get_console_size(defaultx=80, defaulty=25):
         return (defaultx, defaulty)
 
 
-def get_appdata_location():
-    """Return Application Data location.
-    Return None if we cannot obtain location.
+def _get_sh_special_folder_path(csidl):
+    """Call SHGetSpecialFolderPathW if available, or return None.
 
-    Returned value can be unicode or plain sring.
-    To convert plain string to unicode use
-    s.decode(bzrlib.user_encoding)
+    Result is always unicode (or None).
     """
     if has_ctypes:
         try:
@@ -125,8 +201,45 @@ def get_appdata_location():
             pass
         else:
             buf = ctypes.create_unicode_buffer(MAX_PATH)
-            if SHGetSpecialFolderPath(None,buf,CSIDL_APPDATA,0):
+            if SHGetSpecialFolderPath(None,buf,csidl,0):
                 return buf.value
+
+    global has_win32com_shell
+    if has_win32com_shell is None:
+        try:
+            from win32com.shell import shell
+            has_win32com_shell = True
+        except ImportError:
+            has_win32com_shell = False
+    if has_win32com_shell:
+        # still need to bind the name locally, but this is fast.
+        from win32com.shell import shell
+        try:
+            return shell.SHGetSpecialFolderPath(0, csidl, 0)
+        except shell.error:
+            # possibly E_NOTIMPL meaning we can't load the function pointer,
+            # or E_FAIL meaning the function failed - regardless, just ignore it
+            pass
+    return None
+
+
+def get_appdata_location():
+    """Return Application Data location.
+    Return None if we cannot obtain location.
+
+    Windows defines two 'Application Data' folders per user - a 'roaming'
+    one that moves with the user as they logon to different machines, and
+    a 'local' one that stays local to the machine.  This returns the 'roaming'
+    directory, and thus is suitable for storing user-preferences, etc.
+
+    Returned value can be unicode or plain string.
+    To convert plain string to unicode use
+    s.decode(osutils.get_user_encoding())
+    (XXX - but see bug 262874, which asserts the correct encoding is 'mbcs')
+    """
+    appdata = _get_sh_special_folder_path(CSIDL_APPDATA)
+    if appdata:
+        return appdata
     # from env variable
     appdata = os.environ.get('APPDATA')
     if appdata:
@@ -142,26 +255,44 @@ def get_appdata_location():
     return None
 
 
+def get_local_appdata_location():
+    """Return Local Application Data location.
+    Return the same as get_appdata_location() if we cannot obtain location.
+
+    Windows defines two 'Application Data' folders per user - a 'roaming'
+    one that moves with the user as they logon to different machines, and
+    a 'local' one that stays local to the machine.  This returns the 'local'
+    directory, and thus is suitable for caches, temp files and other things
+    which don't need to move with the user.
+
+    Returned value can be unicode or plain string.
+    To convert plain string to unicode use
+    s.decode(bzrlib.user_encoding)
+    (XXX - but see bug 262874, which asserts the correct encoding is 'mbcs')
+    """
+    local = _get_sh_special_folder_path(CSIDL_LOCAL_APPDATA)
+    if local:
+        return local
+    # Vista supplies LOCALAPPDATA, but XP and earlier do not.
+    local = os.environ.get('LOCALAPPDATA')
+    if local:
+        return local
+    return get_appdata_location()
+
+
 def get_home_location():
     """Return user's home location.
     Assume on win32 it's the <My Documents> folder.
     If location cannot be obtained return system drive root,
     i.e. C:\
 
-    Returned value can be unicode or plain sring.
+    Returned value can be unicode or plain string.
     To convert plain string to unicode use
-    s.decode(bzrlib.user_encoding)
+    s.decode(osutils.get_user_encoding())
     """
-    if has_ctypes:
-        try:
-            SHGetSpecialFolderPath = \
-                ctypes.windll.shell32.SHGetSpecialFolderPathW
-        except AttributeError:
-            pass
-        else:
-            buf = ctypes.create_unicode_buffer(MAX_PATH)
-            if SHGetSpecialFolderPath(None,buf,CSIDL_PERSONAL,0):
-                return buf.value
+    home = _get_sh_special_folder_path(CSIDL_PERSONAL)
+    if home:
+        return home
     # try for HOME env variable
     home = os.path.expanduser('~')
     if home != '~':
@@ -178,9 +309,9 @@ def get_user_name():
     """Return user name as login name.
     If name cannot be obtained return None.
 
-    Returned value can be unicode or plain sring.
+    Returned value can be unicode or plain string.
     To convert plain string to unicode use
-    s.decode(bzrlib.user_encoding)
+    s.decode(osutils.get_user_encoding())
     """
     if has_ctypes:
         try:
@@ -197,35 +328,67 @@ def get_user_name():
     return os.environ.get('USERNAME', None)
 
 
+# 1 == ComputerNameDnsHostname, which returns "The DNS host name of the local
+# computer or the cluster associated with the local computer."
+_WIN32_ComputerNameDnsHostname = 1
+
 def get_host_name():
     """Return host machine name.
     If name cannot be obtained return None.
 
-    Returned value can be unicode or plain sring.
-    To convert plain string to unicode use
-    s.decode(bzrlib.user_encoding)
+    :return: A unicode string representing the host name. On win98, this may be
+        a plain string as win32 api doesn't support unicode.
     """
+    if has_win32api:
+        try:
+            return win32api.GetComputerNameEx(_WIN32_ComputerNameDnsHostname)
+        except (NotImplementedError, win32api.error):
+            # NotImplemented will happen on win9x...
+            pass
     if has_ctypes:
         try:
             kernel32 = ctypes.windll.kernel32
-            GetComputerName = getattr(kernel32, 'GetComputerName'+suffix)
         except AttributeError:
-            pass
+            pass # Missing the module we need
         else:
             buf = create_buffer(MAX_COMPUTERNAME_LENGTH+1)
             n = ctypes.c_int(MAX_COMPUTERNAME_LENGTH+1)
-            if GetComputerName(buf, ctypes.byref(n)):
+
+            # Try GetComputerNameEx which gives a proper Unicode hostname
+            GetComputerNameEx = getattr(kernel32, 'GetComputerNameEx'+suffix,
+                                        None)
+            if (GetComputerNameEx is not None
+                and GetComputerNameEx(_WIN32_ComputerNameDnsHostname,
+                                      buf, ctypes.byref(n))):
                 return buf.value
-    # otherwise try env variables
-    return os.environ.get('COMPUTERNAME', None)
+
+            # Try GetComputerName in case GetComputerNameEx wasn't found
+            # It returns the NETBIOS name, which isn't as good, but still ok.
+            # The first GetComputerNameEx might have changed 'n', so reset it
+            n = ctypes.c_int(MAX_COMPUTERNAME_LENGTH+1)
+            GetComputerName = getattr(kernel32, 'GetComputerName'+suffix,
+                                      None)
+            if (GetComputerName is not None
+                and GetComputerName(buf, ctypes.byref(n))):
+                return buf.value
+    # otherwise try env variables, which will be 'mbcs' encoded
+    # on Windows (Python doesn't expose the native win32 unicode environment)
+    # According to this:
+    # http://msdn.microsoft.com/en-us/library/aa246807.aspx
+    # environment variables should always be encoded in 'mbcs'.
+    try:
+        return os.environ['COMPUTERNAME'].decode("mbcs")
+    except KeyError:
+        return None
 
 
 def _ensure_unicode(s):
+    from bzrlib import osutils
     if s and type(s) != unicode:
-        import bzrlib
-        s = s.decode(bzrlib.user_encoding)
+        from bzrlib import osutils
+        s = s.decode(osutils.get_user_encoding())
     return s
-    
+
 
 def get_appdata_location_unicode():
     return _ensure_unicode(get_appdata_location())
@@ -245,7 +408,7 @@ def _ensure_with_dir(path):
         return u'./' + path, True
     else:
         return path, False
-    
+
 def _undo_ensure_with_dir(path, corrected):
     if corrected:
         return path[2:]
@@ -270,7 +433,6 @@ def glob_expand(file_list):
     import glob
     expanded_file_list = []
     for possible_glob in file_list:
-        
         # work around bugs in glob.glob()
         # - Python bug #1001604 ("glob doesn't return unicode with ...")
         # - failing expansion for */* with non-iso-8859-* chars
@@ -285,5 +447,72 @@ def glob_expand(file_list):
         else:
             glob_files = [_undo_ensure_with_dir(elem, corrected) for elem in glob_files]
             expanded_file_list += glob_files
-            
-    return [elem.replace(u'\\', u'/') for elem in expanded_file_list] 
+
+    return [elem.replace(u'\\', u'/') for elem in expanded_file_list]
+
+
+def get_app_path(appname):
+    """Look up in Windows registry for full path to application executable.
+    Typically, applications create subkey with their basename
+    in HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\
+
+    :param  appname:    name of application (if no filename extension
+                        is specified, .exe used)
+    :return:    full path to aplication executable from registry,
+                or appname itself if nothing found.
+    """
+    import _winreg
+    try:
+        hkey = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE,
+                               r'SOFTWARE\Microsoft\Windows'
+                               r'\CurrentVersion\App Paths')
+    except EnvironmentError:
+        return appname
+
+    basename = appname
+    if not os.path.splitext(basename)[1]:
+        basename = appname + '.exe'
+    try:
+        try:
+            fullpath = _winreg.QueryValue(hkey, basename)
+        except WindowsError:
+            fullpath = appname
+    finally:
+        _winreg.CloseKey(hkey)
+
+    return fullpath
+
+
+def set_file_attr_hidden(path):
+    """Set file attributes to hidden if possible"""
+    if has_win32file:
+        win32file.SetFileAttributes(path, win32file.FILE_ATTRIBUTE_HIDDEN)
+
+
+if has_ctypes and winver != 'Windows 98':
+    def get_unicode_argv():
+        LPCWSTR = ctypes.c_wchar_p
+        INT = ctypes.c_int
+        POINTER = ctypes.POINTER
+        prototype = ctypes.WINFUNCTYPE(LPCWSTR)
+        GetCommandLine = prototype(("GetCommandLineW",
+                                    ctypes.windll.kernel32))
+        prototype = ctypes.WINFUNCTYPE(POINTER(LPCWSTR), LPCWSTR, POINTER(INT))
+        CommandLineToArgv = prototype(("CommandLineToArgvW",
+                                       ctypes.windll.shell32))
+        c = INT(0)
+        pargv = CommandLineToArgv(GetCommandLine(), ctypes.byref(c))
+        # Skip the first argument, since we only care about parameters
+        argv = [pargv[i] for i in range(1, c.value)]
+        if getattr(sys, 'frozen', None) is None:
+            # Invoked via 'python.exe' which takes the form:
+            #   python.exe [PYTHON_OPTIONS] C:\Path\bzr [BZR_OPTIONS]
+            # we need to get only BZR_OPTIONS part,
+            # so let's using sys.argv[1:] as reference to get the tail
+            # of unicode argv
+            tail_len = len(sys.argv[1:])
+            ix = len(argv) - tail_len
+            argv = argv[ix:]
+        return argv
+else:
+    get_unicode_argv = None

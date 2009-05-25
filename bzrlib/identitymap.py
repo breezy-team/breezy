@@ -13,7 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """This module provides an IdentityMap."""
 
@@ -26,7 +26,7 @@ from bzrlib import (
 
 class IdentityMap(object):
     """An in memory map from object id to instance.
-    
+
     An IdentityMap maps from keys to single instances of objects in memory.
     We have explicit calls on the map for the root of each inheritance tree
     that is store in the map. Look for find_CLASS and add_CLASS methods.
@@ -60,10 +60,10 @@ class IdentityMap(object):
         """Return the key for a weaves id."""
         return "weave-" + id
 
-        
+
 class NullIdentityMap(object):
     """A pretend in memory map from object id to instance.
-    
+
     A NullIdentityMap is an Identity map that does not store anything in it.
     """
 

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 import os
@@ -20,10 +20,20 @@ import os
 from bzrlib import bzrdir
 from bzrlib.tests import TestCaseWithTransport, TestCase
 from bzrlib.branch import Branch
-from bzrlib.conflicts import (MissingParent, ContentsConflict, TextConflict,
-        PathConflict, DuplicateID, DuplicateEntry, ParentLoop, UnversionedParent,
-        ConflictList, 
-        restore)
+from bzrlib.conflicts import (
+    ConflictList,
+    ContentsConflict,
+    DuplicateID,
+    DuplicateEntry,
+    MissingParent,
+    NonDirectoryParent,
+    ParentLoop,
+    PathConflict,
+    TextConflict,
+    UnversionedParent,
+    resolve,
+    restore,
+    )
 from bzrlib.errors import NotConflicted
 
 
@@ -35,9 +45,9 @@ from bzrlib.errors import NotConflicted
 # u'\xe5' == a with circle
 # '\xc3\xae' == u'\xee' == i with hat
 # So these are u'pathg' and 'idg' only with a circle and a hat. (shappo?)
-example_conflicts = ConflictList([ 
+example_conflicts = ConflictList([
     MissingParent('Not deleting', u'p\xe5thg', '\xc3\xaedg'),
-    ContentsConflict(u'p\xe5tha', None, '\xc3\xaeda'), 
+    ContentsConflict(u'p\xe5tha', None, '\xc3\xaeda'),
     TextConflict(u'p\xe5tha'),
     PathConflict(u'p\xe5thb', u'p\xe5thc', '\xc3\xaedb'),
     DuplicateID('Unversioned existing file', u'p\xe5thc', u'p\xe5thc2',
@@ -47,6 +57,7 @@ example_conflicts = ConflictList([
     ParentLoop('Cancelled move', u'p\xe5the', u'p\xe5th2e',
                None, '\xc3\xaed2e'),
     UnversionedParent('Versioned directory', u'p\xe5thf', '\xc3\xaedf'),
+    NonDirectoryParent('Created directory', u'p\xe5thg', '\xc3\xaedg'),
 ])
 
 
@@ -74,7 +85,7 @@ class TestConflicts(TestCaseWithTransport):
         restore('hello.sploo')
         self.assertEqual(len(tree.conflicts()), 0)
         self.assertFileEqual('hello world2', 'hello')
-        assert not os.path.lexists('hello.sploo')
+        self.assertFalse(os.path.lexists('hello.sploo'))
         self.assertRaises(NotConflicted, restore, 'hello')
         self.assertRaises(NotConflicted, restore, 'hello.sploo')
 
@@ -114,6 +125,18 @@ class TestConflicts(TestCaseWithTransport):
         self.assertEqual((tree_conflicts, ConflictList()),
                          tree_conflicts.select_conflicts(tree, ['foo'],
                                                          ignore_misses=True))
+
+    def test_resolve_conflicts_recursive(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['dir/', 'dir/hello'])
+        tree.add(['dir', 'dir/hello'])
+        tree.set_conflicts(ConflictList([TextConflict('dir/hello')]))
+        resolve(tree, ['dir'], recursive=False, ignore_misses=True)
+        self.assertEqual(ConflictList([TextConflict('dir/hello')]),
+                         tree.conflicts())
+        resolve(tree, ['dir'], recursive=True, ignore_misses=True)
+        self.assertEqual(ConflictList([]),
+                         tree.conflicts())
 
 
 class TestConflictStanzas(TestCase):

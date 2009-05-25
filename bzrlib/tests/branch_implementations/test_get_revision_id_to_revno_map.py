@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for Branch.get_revision_id_to_revno_map()"""
 
@@ -28,11 +28,13 @@ class TestRevisionIdToDottedRevno(TestCaseWithBranch):
 
     def test_simple_revno(self):
         tree = self.create_tree_with_merge()
-        the_branch = tree.branch
+        # Re-open the branch so we make sure we start fresh.
+        # see bug #162486
+        the_branch = tree.bzrdir.open_branch()
 
         self.assertEqual({'rev-1':(1,), 'rev-2':(2,), 'rev-3':(3,),
                           'rev-1.1.1':(1,1,1)
-                         }, tree.branch.get_revision_id_to_revno_map())
+                         }, the_branch.get_revision_id_to_revno_map())
 
 
 class TestCaching(TestCaseWithBranch):

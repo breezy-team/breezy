@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for commands related to tags"""
 
@@ -32,7 +32,7 @@ class TestTagging(TestCaseWithTransport):
 
     # as of 0.14, the default format doesn't do tags so we need to use a
     # specific format
-    
+
     def make_branch_and_tree(self, relpath):
         format = bzrdir.format_registry.make_bzrdir('dirstate-with-subtree')
         return TestCaseWithTransport.make_branch_and_tree(self, relpath,
@@ -105,14 +105,98 @@ class TestTagging(TestCaseWithTransport):
         self.assertEquals(b3.tags.lookup_tag('tag1'), 'first-revid')
 
     def test_list_tags(self):
-        t = self.make_branch_and_tree('branch1')
-        b1 = t.branch
-        tagname = u'\u30d0zaar'
-        b1.tags.set_tag(tagname, 'revid-1')
+        tree1 = self.make_branch_and_tree('branch1')
+        tree1.commit(allow_pointless=True, message='revision 1',
+                rev_id='revid-1', timestamp=10)
+        tree1.commit(allow_pointless=True, message='revision 2',
+                rev_id='revid-2', timestamp=15)
+
+        b1 = tree1.branch
+        # note how the tag for revid-1 sorts after the one for revid-2
+        b1.tags.set_tag(u'tagA\u30d0', 'revid-2')
+        b1.tags.set_tag(u'tagB\u30d0', 'missing') # not present in repository
+        b1.tags.set_tag(u'tagC\u30d0', 'revid-1')
+
+        # lexicographical order
         out, err = self.run_bzr('tags -d branch1', encoding='utf-8')
         self.assertEquals(err, '')
-        self.assertContainsRe(out,
-            u'^\u30d0zaar  *revid-1\n'.encode('utf-8'))
+        self.assertContainsRe(out, (u'^tagA\u30d0  *2\ntagB\u30d0  *\\?\n' +
+            u'tagC\u30d0 *1\n').encode('utf-8'))
+
+        out, err = self.run_bzr('tags --show-ids -d branch1', encoding='utf-8')
+        self.assertEquals(err, '')
+        self.assertContainsRe(out, (u'^tagA\u30d0  *revid-2\n' +
+            u'tagB\u30d0  *missing\ntagC\u30d0 *revid-1\n').encode('utf-8'))
+
+        # chronological order
+        out, err = self.run_bzr('tags --sort=time -d branch1',
+                encoding='utf-8')
+        self.assertEquals(err, '')
+        self.assertContainsRe(out, (u'^tagC\u30d0  *1\ntagA\u30d0  *2\n' +
+            u'tagB\u30d0 *\\?\n').encode('utf-8'))
+
+        out, err = self.run_bzr('tags --sort=time --show-ids -d branch1',
+                encoding='utf-8')
+        self.assertEquals(err, '')
+        self.assertContainsRe(out, (u'^tagC\u30d0  *revid-1\n' +
+            u'tagA\u30d0  *revid-2\ntagB\u30d0 *missing\n').encode('utf-8'))
+
+        # now test dotted revnos
+        tree2 = tree1.bzrdir.sprout('branch2').open_workingtree()
+        tree1.commit(allow_pointless=True, message='revision 3 in branch1',
+                rev_id='revid-3a')
+        tree2.commit(allow_pointless=True, message='revision 3 in branch2',
+                rev_id='revid-3b')
+
+        b2 = tree2.branch
+        b2.tags.set_tag('tagD', 'revid-3b')
+        self.run_bzr('merge -d branch1 branch2')
+        tree1.commit('merge', rev_id='revid-4')
+
+        out, err = self.run_bzr('tags -d branch1', encoding='utf-8')
+        self.assertEquals(err, '')
+        self.assertContainsRe(out, r'tagD  *2\.1\.1\n')
+        out, err = self.run_bzr('tags -d branch2', encoding='utf-8')
+        self.assertEquals(err, '')
+        self.assertContainsRe(out, r'tagD  *3\n')
+
+    def test_list_tags_revision_filtering(self):
+        tree1 = self.make_branch_and_tree('.')
+        tree1.commit(allow_pointless=True, message='revision 1',
+                rev_id='revid-1')
+        tree1.commit(allow_pointless=True, message='revision 2',
+                rev_id='revid-2')
+        tree1.commit(allow_pointless=True, message='revision 3',
+                rev_id='revid-3')
+        tree1.commit(allow_pointless=True, message='revision 4',
+                rev_id='revid-4')
+        b1 = tree1.branch
+        b1.tags.set_tag(u'tag 1', 'revid-1')
+        b1.tags.set_tag(u'tag 2', 'revid-2')
+        b1.tags.set_tag(u'tag 3', 'revid-3')
+        b1.tags.set_tag(u'tag 4', 'revid-4')
+        self._check_tag_filter('', (1, 2, 3, 4))
+        self._check_tag_filter('-r ..', (1, 2, 3, 4))
+        self._check_tag_filter('-r ..2', (1, 2))
+        self._check_tag_filter('-r 2..', (2, 3, 4))
+        self._check_tag_filter('-r 2..3', (2, 3))
+        self._check_tag_filter('-r 3..2', ())
+        self.run_bzr_error(args="tags -r 123",
+            error_regexes=["bzr: ERROR: Requested revision: '123' "
+                "does not exist in branch:"])
+        self.run_bzr_error(args="tags -r ..123",
+            error_regexes=["bzr: ERROR: Requested revision: '123' "
+                "does not exist in branch:"])
+        self.run_bzr_error(args="tags -r 123.123",
+            error_regexes=["bzr: ERROR: Requested revision: '123.123' "
+                "does not exist in branch:"])
+
+    def _check_tag_filter(self, argstr, expected_revnos):
+        #upper bound of laziness
+        out, err = self.run_bzr('tags ' + argstr)
+        self.assertEquals(err, '')
+        self.assertContainsRe(out, "^" + ''.join(["tag %s +%s\n" % (
+            revno, revno) for revno in expected_revnos]) + "$")
 
     def test_conflicting_tags(self):
         # setup two empty branches with different tags

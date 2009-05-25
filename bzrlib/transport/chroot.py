@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Implementation of Transport that prevents access to locations above a set
 root.
@@ -33,7 +33,7 @@ from bzrlib.transport.memory import MemoryTransport
 
 class ChrootServer(Server):
     """User space 'chroot' facility.
-    
+
     The server's get_url returns the url for a chroot transport mapped to the
     backing transport. The url is of the form chroot-xxx:/// so parent
     directories of the backing transport are not visible. The chroot url will
@@ -45,7 +45,6 @@ class ChrootServer(Server):
         self.backing_transport = backing_transport
 
     def _factory(self, url):
-        assert url.startswith(self.scheme)
         return ChrootTransport(self, url)
 
     def get_url(self):
@@ -79,7 +78,8 @@ class ChrootTransport(Transport):
 
     def _safe_relpath(self, relpath):
         safe_relpath = self._combine_paths(self.base_path, relpath)
-        assert safe_relpath.startswith('/')
+        if not safe_relpath.startswith('/'):
+            raise ValueError(safe_relpath)
         return safe_relpath[1:]
 
     # Transport methods
@@ -88,6 +88,9 @@ class ChrootTransport(Transport):
 
     def append_file(self, relpath, f, mode=None):
         return self._call('append_file', relpath, f, mode)
+
+    def _can_roundtrip_unix_modebits(self):
+        return self.server.backing_transport._can_roundtrip_unix_modebits()
 
     def clone(self, relpath):
         return ChrootTransport(self.server, self.abspath(relpath))
@@ -104,7 +107,7 @@ class ChrootTransport(Transport):
         # state and thus the base cannot simply be handed out.
         # See the base class docstring for more details and
         # possible directions. For now we return the chrooted
-        # url. 
+        # url.
         return self.server.backing_transport.external_url()
 
     def get(self, relpath):
@@ -112,6 +115,9 @@ class ChrootTransport(Transport):
 
     def has(self, relpath):
         return self._call('has', relpath)
+
+    def is_readonly(self):
+        return self.server.backing_transport.is_readonly()
 
     def iter_files_recursive(self):
         backing_transport = self.server.backing_transport.clone(
@@ -132,6 +138,9 @@ class ChrootTransport(Transport):
 
     def mkdir(self, relpath, mode=None):
         return self._call('mkdir', relpath, mode)
+
+    def open_write_stream(self, relpath, mode=None):
+        return self._call('open_write_stream', relpath, mode)
 
     def put_file(self, relpath, f, mode=None):
         return self._call('put_file', relpath, f, mode)
