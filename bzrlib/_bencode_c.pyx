@@ -46,25 +46,6 @@ cdef extern from "_bencode_c.h":
     int snprintf(char* buffer, size_t nsize, char* fmt, ...)
 
 
-cdef enum:  # Codes for used characters
-    MINUS   = 0x2D      # ord(-)
-    CHAR_0  = 0x30      # ord(0)
-    CHAR_1  = 0x31      # ord(1)
-    CHAR_2  = 0x32      # ord(2)
-    CHAR_3  = 0x33      # ord(3)
-    CHAR_4  = 0x34      # ord(4)
-    CHAR_5  = 0x35      # ord(5)
-    CHAR_6  = 0x36      # ord(6)
-    CHAR_7  = 0x37      # ord(7)
-    CHAR_8  = 0x38      # ord(8)
-    CHAR_9  = 0x39      # ord(9)
-    COLON   = 0x3A      # ord(:)
-    SMALL_D = 0x64      # ord(d)
-    SMALL_E = 0x65      # ord(e)
-    SMALL_I = 0x69      # ord(i)
-    SMALL_L = 0x6c      # ord(l)
-
-
 cdef class Decoder:
     """Bencode decoder"""
 
@@ -118,15 +99,15 @@ cdef class Decoder:
 
         ch = self.tail[0]
 
-        if ch == SMALL_I:
+        if ch == c'i':
             self._update_tail(1)
             return self._decode_int()
-        elif CHAR_0 <= ch <= CHAR_9:
+        elif c'0' <= ch <= c'9':
             return self._decode_string()
-        elif ch == SMALL_L:
+        elif ch == c'l':
             self._update_tail(1)
             return self._decode_list()
-        elif ch == SMALL_D:
+        elif ch == c'd':
             self._update_tail(1)
             return self._decode_dict()
 
@@ -139,7 +120,7 @@ cdef class Decoder:
 
     cdef object _decode_int(self):
         cdef int result
-        result = self._decode_int_until(SMALL_E)
+        result = self._decode_int_until(c'e')
         if result != self._MAXINT:
             return result
         else:
@@ -160,13 +141,13 @@ cdef class Decoder:
             raise ValueError
 
         sign = 0
-        if MINUS == self.tail[0]:
+        if c'-' == self.tail[0]:
             sign = 1
 
         if n-sign == 0:
             raise ValueError    # ie / i-e
 
-        if self.tail[sign] == CHAR_0:   # special check for zero
+        if self.tail[sign] == c'0':   # special check for zero
             if sign:
                 raise ValueError    # i-0e
             if n > 1:
@@ -179,8 +160,8 @@ cdef class Decoder:
             result = 0
             for i from sign <= i < n:
                 digit = self.tail[i]
-                if CHAR_0 <= digit <= CHAR_9:
-                    result = result * 10 + (digit - CHAR_0)
+                if c'0' <= digit <= c'9':
+                    result = result * 10 + (digit - c'0')
                 else:
                     raise ValueError
             if sign:
@@ -203,7 +184,7 @@ cdef class Decoder:
     cdef object _decode_string(self):
         cdef int n
 
-        n = self._decode_int_until(COLON)
+        n = self._decode_int_until(c':')
         if n == 0:
             return ''
         if n == self._MAXINT:
@@ -220,7 +201,7 @@ cdef class Decoder:
         result = []
 
         while self.size > 0:
-            if self.tail[0] == SMALL_E:
+            if self.tail[0] == c'e':
                 self._update_tail(1)
                 if self._yield_tuples:
                     return tuple(result)
@@ -239,10 +220,10 @@ cdef class Decoder:
 
         while self.size > 0:
             ch = self.tail[0]
-            if ch == SMALL_E:
+            if ch == c'e':
                 self._update_tail(1)
                 return result
-            elif CHAR_0 <= ch <= CHAR_9:
+            elif c'0' <= ch <= c'9':
                 # keys should be strings only
                 key = self._decode_string()
                 if lastkey >= key:
@@ -387,19 +368,19 @@ cdef class Encoder:
 
     cdef int _encode_list(self, x) except 0:
         self._ensure_buffer(2)
-        self.tail[0] = SMALL_L
+        self.tail[0] = c'l'
         self._update_tail(1)
 
         for i in x:
             self.process(i)
 
-        self.tail[0] = SMALL_E
+        self.tail[0] = c'e'
         self._update_tail(1)
         return 1
 
     cdef int _encode_dict(self, x) except 0:
         self._ensure_buffer(2)
-        self.tail[0] = SMALL_D
+        self.tail[0] = c'd'
         self._update_tail(1)
 
         keys = x.keys()
@@ -410,7 +391,7 @@ cdef class Encoder:
             self._encode_string(k)
             self.process(x[k])
 
-        self.tail[0] = SMALL_E
+        self.tail[0] = c'e'
         self._update_tail(1)
         return 1
 
