@@ -4897,11 +4897,12 @@ class cmd_send(Command):
                         submit_branch)
 
             if mail_to is None or format is None:
-                submit_config = Branch.open(submit_branch).get_config()
+                submit_br = Branch.open(submit_branch)
+                submit_config = submit_br.get_config()
                 if mail_to is None:
                     mail_to = submit_config.get_user_option("child_submit_to")
                 if format is None:
-                    format = submit_config.get_user_option("child_submit_format")
+                    format = submit_br.get_child_submit_format()
 
             stored_public_branch = branch.get_public_branch()
             if public_branch is None:

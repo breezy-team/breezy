@@ -625,6 +625,18 @@ class TestBranchPushLocations(TestCaseWithBranch):
         self.assertEqual('foo', branch.get_push_location())
 
 
+class TestChildSubmitFormats(TestCaseWithBranch):
+
+    def test_get_child_submit_format_default(self):
+        self.assertEqual(None, self.get_branch().get_child_submit_format())
+
+    def test_get_child_submit_format(self):
+        branch = self.get_branch()
+        branch.get_config().set_user_option('child_submit_format', '10')
+        branch = self.get_branch()
+        self.assertEqual('10', branch.get_child_submit_format())
+
+
 class TestFormat(TestCaseWithBranch):
     """Tests for the format itself."""
 
