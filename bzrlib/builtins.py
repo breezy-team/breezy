@@ -4573,9 +4573,7 @@ class cmd_serve(Command):
             and port is an integer TCP/IP port.
         """
         host = None
-        if port is None:
-            port = None
-        else:
+        if port is not None:
             if ':' in port:
                 host, port = port.split(':')
             port = int(port)

@@ -33,7 +33,6 @@ from bzrlib.smart import medium
 """)
 
 
-
 class SmartTCPServer(object):
     """Listens on a TCP socket and accepts connections from smart clients.
 
