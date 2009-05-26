@@ -27,7 +27,8 @@ cdef extern from "Python.h":
     int PyDict_CheckExact(object o)
     int PyBool_Check(object o)
     object PyString_FromStringAndSize(char *v, Py_ssize_t len)
-    int PyString_AsStringAndSize(object o, char **buffer, Py_ssize_t *length) except -1
+    char *PyString_AS_STRING(object o) except NULL
+    Py_ssize_t PyString_GET_SIZE(object o) except -1
     long PyInt_GetMax()
     object PyLong_FromString(char *str, char **pend, int base)
 
@@ -61,19 +62,11 @@ cdef class Decoder:
         """Initialize decoder engine.
         @param  s:  Python string.
         """
-        cdef Py_ssize_t k
-        cdef char *pstr
-
         if not PyString_CheckExact(s):
             raise TypeError("String required")
 
-        PyString_AsStringAndSize(s, &pstr, &k)
-
-        if pstr == NULL:
-            raise ValueError
-
-        self.tail = pstr
-        self.size = <int>k
+        self.tail = PyString_AS_STRING(s)
+        self.size = PyString_GET_SIZE(s)
         self._yield_tuples = int(yield_tuples)
 
         self._MAXINT = PyInt_GetMax()
@@ -335,30 +328,20 @@ cdef class Encoder:
         return self._append_string(''.join(('i', str(x), 'e')))
 
     cdef int _append_string(self, s) except 0:
-        cdef Py_ssize_t k
-        cdef int n
-        cdef char *pstr
-
-        PyString_AsStringAndSize(s, &pstr, &k)
-        k = (<int>k + 1)
-        self._ensure_buffer(<int>k)
-        n = snprintf(self.tail, k, '%s', pstr)
-        if n < 0:
-            raise MemoryError('string %s too big to append' % s)
-        self._update_tail(n)
+        self._ensure_buffer(PyString_GET_SIZE(s))
+        memcpy(self.tail, PyString_AS_STRING(s), PyString_GET_SIZE(s))
+        self._update_tail(PyString_GET_SIZE(s))
         return 1
 
     cdef int _encode_string(self, x) except 0:
-        cdef Py_ssize_t k
         cdef int n
-        cdef char *pstr
-
-        PyString_AsStringAndSize(x, &pstr, &k)
-        self._ensure_buffer(<int>k+32)
-        n = snprintf(self.tail, k+32, '%d:%s', <int>k, pstr)
+        self._ensure_buffer(PyString_GET_SIZE(x) + 32)
+        n = snprintf(self.tail, 32, '%d:', PyString_GET_SIZE(x))
         if n < 0:
             raise MemoryError('string %s too big to encode' % x)
-        self._update_tail(n)
+        memcpy(<void *>self.tail+n, PyString_AS_STRING(x), 
+               PyString_GET_SIZE(x))
+        self._update_tail(n+PyString_GET_SIZE(x))
         return 1
 
     cdef int _encode_list(self, x) except 0:
