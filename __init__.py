@@ -241,7 +241,6 @@ register_lazy_transport("git+ssh://", 'bzrlib.plugins.git.remote',
 foreign_vcs_registry.register_lazy("git", 
     "bzrlib.plugins.git.mapping", "foreign_git", "Stupid content tracker")
 
-plugin_cmds.register_lazy("cmd_git_serve", [], "bzrlib.plugins.git.commands")
 plugin_cmds.register_lazy("cmd_git_import", [], "bzrlib.plugins.git.commands")
 plugin_cmds.register_lazy("cmd_git_object", ["git-objects", "git-cat"], 
     "bzrlib.plugins.git.commands")
@@ -255,6 +254,18 @@ def update_stanza(rev, stanza):
 rio_hooks = getattr(RioVersionInfoBuilder, "hooks", None)
 if rio_hooks is not None:
     rio_hooks.install_named_hook('revision', update_stanza, None)
+
+
+try:
+    from bzrlib.transport import transport_server_registry
+except ImportError:
+    pass
+else:
+    transport_server_registry.register_lazy('git',
+        'bzrlib.plugins.git.server', 
+        'serve_git',
+        'Git Smart server protocol over TCP. (default port: 9418)')
+
 
 def get_rich_root_format(stacked=False):
     if stacked:

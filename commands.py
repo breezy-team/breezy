@@ -33,36 +33,6 @@ from bzrlib.plugins.git import (
     lazy_check_versions,
     )
 
-class cmd_git_serve(Command):
-    """Provide access to a Bazaar branch using the git protocol.
-
-    This command is experimental and doesn't do much yet.
-    """
-    takes_options = [
-        Option('directory',
-               short_name='d',
-               help='serve contents of directory',
-               type=unicode)
-    ]
-
-    def run(self, directory=None):
-        lazy_check_versions()
-        from dulwich.server import TCPGitServer
-        from bzrlib.plugins.git.server import BzrBackend
-        from bzrlib.trace import warning
-        import os
-
-        warning("server support in bzr-git is experimental.")
-
-        if directory is None:
-            directory = os.getcwd()
-
-        backend = BzrBackend(directory)
-
-        server = TCPGitServer(backend, 'localhost')
-        server.serve_forever()
-
-
 class cmd_git_import(Command):
     """Import all branches from a git repository.
 
