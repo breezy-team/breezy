@@ -4540,11 +4540,15 @@ class cmd_serve(Command):
     takes_options = [
         Option('inet',
                help='Serve on stdin/out for use from inetd or sshd.'),
+        RegistryOption('protocol', 
+               help="Protocol to serve.", 
+               lazy_registry=('bzrlib.transport', 'transport_server_registry'),
+               value_switches=True),
         Option('port',
                help='Listen for connections on nominated port of the form '
                     '[hostname:]portnumber.  Passing 0 as the port number will '
-                    'result in a dynamically allocated port.  The default port is '
-                    '4155.',
+                    'result in a dynamically allocated port.  The default port '
+                    'depends on the protocol.',
                type=str),
         Option('directory',
                help='Serve contents of this directory.',
@@ -4556,28 +4560,10 @@ class cmd_serve(Command):
                 ),
         ]
 
-    def run_smart_server(self, smart_server):
-        """Run 'smart_server' forever, with no UI output at all."""
-        # For the duration of this server, no UI output is permitted. note
-        # that this may cause problems with blackbox tests. This should be
-        # changed with care though, as we dont want to use bandwidth sending
-        # progress over stderr to smart server clients!
-        from bzrlib import lockdir
-        old_factory = ui.ui_factory
-        old_lockdir_timeout = lockdir._DEFAULT_TIMEOUT_SECONDS
-        try:
-            ui.ui_factory = ui.SilentUIFactory()
-            lockdir._DEFAULT_TIMEOUT_SECONDS = 0
-            smart_server.serve()
-        finally:
-            ui.ui_factory = old_factory
-            lockdir._DEFAULT_TIMEOUT_SECONDS = old_lockdir_timeout
-
     def get_host_and_port(self, port):
         """Return the host and port to run the smart server on.
 
-        If 'port' is None, the default host (`medium.BZR_DEFAULT_INTERFACE`)
-        and port (`medium.BZR_DEFAULT_PORT`) will be used.
+        If 'port' is None, None will be returned for the host and port.
 
         If 'port' has a colon in it, the string before the colon will be
         interpreted as the host.
@@ -4586,52 +4572,26 @@ class cmd_serve(Command):
         :return: A tuple of (host, port), where 'host' is a host name or IP,
             and port is an integer TCP/IP port.
         """
-        from bzrlib.smart import medium
-        host = medium.BZR_DEFAULT_INTERFACE
-        if port is None:
-            port = medium.BZR_DEFAULT_PORT
-        else:
+        host = None
+        if port is not None:
             if ':' in port:
                 host, port = port.split(':')
             port = int(port)
         return host, port
 
-    def get_smart_server(self, transport, inet, port):
-        """Construct a smart server.
-
-        :param transport: The base transport from which branches will be
-            served.
-        :param inet: If True, serve over stdin and stdout. Used for running
-            from inet.
-        :param port: The port to listen on. By default, it's `
-            medium.BZR_DEFAULT_PORT`. See `get_host_and_port` for more
-            information.
-        :return: A smart server.
-        """
-        from bzrlib.smart import medium, server
-        if inet:
-            smart_server = medium.SmartServerPipeStreamMedium(
-                sys.stdin, sys.stdout, transport)
-        else:
-            host, port = self.get_host_and_port(port)
-            smart_server = server.SmartTCPServer(
-                transport, host=host, port=port)
-            note('listening on port: %s' % smart_server.port)
-        return smart_server
-
-    def run(self, port=None, inet=False, directory=None, allow_writes=False):
-        from bzrlib.transport import get_transport
-        from bzrlib.transport.chroot import ChrootServer
+    def run(self, port=None, inet=False, directory=None, allow_writes=False,
+            protocol=None):
+        from bzrlib.transport import get_transport, transport_server_registry
         if directory is None:
             directory = os.getcwd()
+        if protocol is None:
+            protocol = transport_server_registry.get()
+        host, port = self.get_host_and_port(port)
         url = urlutils.local_path_to_url(directory)
         if not allow_writes:
             url = 'readonly+' + url
-        chroot_server = ChrootServer(get_transport(url))
-        chroot_server.setUp()
-        t = get_transport(chroot_server.get_url())
-        smart_server = self.get_smart_server(t, inet, port)
-        self.run_smart_server(smart_server)
+        transport = get_transport(url)
+        protocol(transport, host, port, inet)
 
 
 class cmd_join(Command):
