@@ -3518,7 +3518,6 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_xml',
                    'bzrlib.tests.tree_implementations',
                    'bzrlib.tests.workingtree_implementations',
-                   'bzrlib.util.tests.test_bencode',
                    ]
 
     loader = TestUtil.TestLoader()

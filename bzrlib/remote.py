@@ -20,6 +20,7 @@
 import bz2
 
 from bzrlib import (
+    bencode,
     branch,
     bzrdir,
     config,
@@ -45,7 +46,6 @@ from bzrlib.lockable_files import LockableFiles
 from bzrlib.smart import client, vfs, repository as smart_repo
 from bzrlib.revision import ensure_null, NULL_REVISION
 from bzrlib.trace import mutter, note, warning
-from bzrlib.util import bencode
 
 
 class _RpcHelper(object):

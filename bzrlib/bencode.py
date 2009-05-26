@@ -19,4 +19,4 @@
 try:
     from bzrlib._bencode_c import bdecode, bencode, Bencached
 except ImportError:
-    from bzrlib.util.bencode import bdecode, bencode, Bencached
+    from bzrlib._bencode_py import bdecode, bencode, Bencached

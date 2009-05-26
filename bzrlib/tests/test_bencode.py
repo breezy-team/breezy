@@ -19,7 +19,7 @@
 from bzrlib.tests import TestCase, Feature
 
 from bzrlib import bencode as bencode_default
-from bzrlib.util import bencode as bencode_py
+from bzrlib import _bencode_py as bencode_py
 try:
     from bzrlib import _bencode_c as bencode_c
 except ImportError:
