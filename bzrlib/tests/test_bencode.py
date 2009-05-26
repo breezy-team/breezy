@@ -157,6 +157,13 @@ class TestBencodeEncode(TestCase):
                             [['Alice', 'Bob'], [2, 3]])
                         ])
 
+    def test_list_as_tuple(self):
+        self._run_check([('le', ()),
+                         ('li1ei2ei3ee', (1, 2, 3)),
+                         ('ll5:Alice3:Bobeli2ei3eee',
+                            (('Alice', 'Bob'), (2, 3)))
+                        ])
+
     def test_dict(self):
         self._run_check([('de', {}),
                          ('d3:agei25e4:eyes4:bluee',

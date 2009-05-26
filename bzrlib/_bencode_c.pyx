@@ -74,15 +74,16 @@ cdef enum:  # Codes for used characters
 cdef class Decoder:
     """Bencode decoder"""
 
-    cdef readonly object __s
+    cdef readonly object _text
     cdef readonly char *tail
     cdef readonly int   size
 
     cdef readonly long   _MAXINT
     cdef readonly int    _MAXN
     cdef readonly object _longint
+    cdef readonly int    _yield_tuples
 
-    def __init__(self, s):
+    def __init__(self, s, yield_tuples=0):
         """Initialize decoder engine.
         @param  s:  Python string.
         """
@@ -97,16 +98,17 @@ cdef class Decoder:
         if pstr == NULL:
             raise ValueError
 
-        self.__s = s
+        self._text = s
         self.tail = pstr
         self.size = <int>k
+        self._yield_tuples = int(yield_tuples)
 
         self._MAXINT = PyInt_GetMax()
         self._MAXN = len(str(self._MAXINT))
         self._longint = long(0)
 
     def __repr__(self):
-        return 'Decoder(%s)' % repr(self.__s)
+        return 'Decoder(%s)' % repr(self._text)
 
     def decode(self):
         result = self.decode_object()
@@ -226,7 +228,10 @@ cdef class Decoder:
         while self.size > 0:
             if self.tail[0] == SMALL_E:
                 self._update_tail(1)
-                return result
+                if self._yield_tuples:
+                    return tuple(result)
+                else:
+                    return result
             else:
                 result.append(self.decode_object())
 
@@ -261,6 +266,11 @@ cdef class Decoder:
 def bdecode(object s):
     """Decode string x to Python object"""
     return Decoder(s).decode()
+
+
+def bdecode_as_tuple(object s):
+    """Decode string x to Python object, using tuples rather than lists."""
+    return Decoder(s, True).decode()
 
 
 class Bencached(object):
