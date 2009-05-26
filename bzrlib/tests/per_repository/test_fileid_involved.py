@@ -20,6 +20,7 @@ import time
 
 from bzrlib import (
     revision as _mod_revision,
+    tests,
     )
 from bzrlib.errors import IllegalPath, NonAsciiRevisionId
 from bzrlib.tests import TestSkipped
@@ -297,7 +298,7 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
         self.branch = main_branch
 
     def test_fileid_involved_full_compare2(self):
-        # this tests that fileids_alteted_by_revision_ids returns
+        # this tests that fileids_altered_by_revision_ids returns
         # more information than compare_tree can, because it
         # sees each change rather than the aggregate delta.
         self.branch.lock_read()
@@ -351,6 +352,37 @@ class FileIdInvolvedWGhosts(TestCaseWithRepository):
             {'a-file-id':set(['ghost-id'])},
             repo.fileids_altered_by_revision_ids(['B-id']))
 
+    def test_file_ids_uses_fallbacks(self):
+        builder = self.make_branch_builder('source',
+                                           format=self.bzrdir_format)
+        builder.start_series()
+        repo = builder.get_branch().repository
+        if not repo._format.supports_external_lookups:
+            raise tests.TestNotApplicable('format does not support stacking')
+        builder.build_snapshot('A-id', None, [
+            ('add', ('', 'root-id', 'directory', None)),
+            ('add', ('file', 'file-id', 'file', 'contents\n'))])
+        builder.build_snapshot('B-id', ['A-id'], [
+            ('modify', ('file-id', 'new-content\n'))])
+        builder.build_snapshot('C-id', ['B-id'], [
+            ('modify', ('file-id', 'yet more content\n'))])
+        builder.finish_series()
+        source_b = builder.get_branch()
+        source_b.lock_read()
+        self.addCleanup(source_b.unlock)
+        base = self.make_branch('base')
+        base.pull(source_b, stop_revision='B-id')
+        stacked = self.make_branch('stacked')
+        stacked.set_stacked_on_url('../base')
+        stacked.pull(source_b, stop_revision='C-id')
+
+        stacked.lock_read()
+        self.addCleanup(stacked.unlock)
+        repo = stacked.repository
+        keys = {'file-id': set(['A-id'])}
+        if stacked.repository.supports_rich_root():
+            keys['root-id'] = set(['A-id'])
+        self.assertEqual(keys, repo.fileids_altered_by_revision_ids(['A-id']))
 
 
 def set_executability(wt, path, executable=True):
