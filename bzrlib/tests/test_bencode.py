@@ -63,13 +63,10 @@ class TestBencodeDecode(tests.TestCase):
         for expected, source in pairs:
             self._check(expected, source)
 
-    def _check_error(self, x):
-        self.assertRaises(ValueError, self.bencode.bdecode, x)
-
-    def _run_check_error(self, bads):
-        """Run _check_error for each x in bads list"""
+    def _run_check_error(self, exc, bads):
+        """Check that bdecoding each string raises a particular exception."""
         for x in bads:
-            self._check_error(x)
+            self.assertRaises(exc, self.bencode.bdecode, x)
 
     def test_int(self):
         self._run_check([(0, 'i0e'),
@@ -82,9 +79,9 @@ class TestBencodeDecode(tests.TestCase):
                          (-12345678901234567890L, 'i-12345678901234567890e')])
 
     def test_malformed_int(self):
-        self._run_check_error(['ie', 'i-e',
+        self._run_check_error(ValueError, ['ie', 'i-e', 'i-010e',
                                'i-0e', 'i00e', 'i01e', 'i-03e',
-                               'i', 'i123',
+                               'i', 'i123', 
                                'i341foo382e'])
 
     def test_string(self):
@@ -92,10 +89,14 @@ class TestBencodeDecode(tests.TestCase):
                          ('abc', '3:abc'),
                          ('1234567890', '10:1234567890')])
 
+    def test_large_string(self):
+        self.assertRaises(ValueError, self.bencode.bdecode, "2147483639:foo")
+
     def test_malformed_string(self):
-        self._run_check_error(['10:x', '10:', '10',
+        self._run_check_error(ValueError, ['10:x', '10:', '10',
                                '01:x', '00:',
-                               '35208734823ljdahflajhdf'])
+                               '35208734823ljdahflajhdf',
+                               '432432432432432:foo'])
 
     def test_list(self):
         self._run_check([
@@ -108,7 +109,8 @@ class TestBencodeDecode(tests.TestCase):
                         ])
 
     def test_malformed_list(self):
-        self._run_check_error(['l', 'l01:ae', 'l0:', 'li1e', 'l-3:e'])
+        self._run_check_error(ValueError, [
+            'l', 'l01:ae', 'l0:', 'li1e', 'l-3:e'])
 
     def test_dict(self):
         self._run_check([({}, 'de'),
@@ -119,28 +121,26 @@ class TestBencodeDecode(tests.TestCase):
                             'd8:spam.mp3d6:author5:Alice6:lengthi100000eee')])
 
     def test_malformed_dict(self):
-        self._run_check_error(['d', 'defoobar',
+        self._run_check_error(ValueError, ['d', 'defoobar',
                                'd3:fooe', 'di1e0:e',
                                'd1:b0:1:a0:e',
                                'd1:a0:1:a0:e',
-                               'd0:0:', 'd0:'])
+                               'd0:0:', 'd0:',
+                               'd432432432432432432:e', ])
 
     def test_empty_string(self):
         self.assertRaises(ValueError, self.bencode.bdecode, '')
 
     def test_junk(self):
-        self._run_check_error(['i6easd', '2:abfdjslhfld',
+        self._run_check_error(ValueError, ['i6easd', '2:abfdjslhfld',
                                '0:0:', 'leanfdldjfh'])
 
     def test_unknown_object(self):
         self.assertRaises(ValueError, self.bencode.bdecode, 'relwjhrlewjh')
 
     def test_unsupported_type(self):
-        self.assertRaises(TypeError, self.bencode.bdecode, float(1.5))
-        self.assertRaises(TypeError, self.bencode.bdecode, None)
-        self.assertRaises(TypeError, self.bencode.bdecode, lambda x: x)
-        self.assertRaises(TypeError, self.bencode.bdecode, object)
-        self.assertRaises(TypeError, self.bencode.bdecode, u"ie")
+        self._run_check_error(TypeError, [
+            float(1.5), None, lambda x: x, object, u"ie"])
 
     def test_decoder_type_error(self):
         self.assertRaises(TypeError, self.bencode.bdecode, 1)
@@ -156,9 +156,6 @@ class TestBencodeEncode(tests.TestCase):
     def _run_check(self, pairs):
         for expected, source in pairs:
             self._check(expected, source)
-
-    def _check_error(self, x):
-        self.assertRaises(TypeError, self.bencode.bencode, x)
 
     def test_int(self):
         self._run_check([('i4e', 4),
@@ -201,8 +198,9 @@ class TestBencodeEncode(tests.TestCase):
         self._check('i3e', self.bencode.Bencached(self.bencode.bencode(3)))
 
     def test_invalid_dict(self):
-        self._check_error({1: 'foo'})
+        self.assertRaises(TypeError, self.bencode.bencode, {1:"foo"})
 
     def test_bool(self):
         self._run_check([('i1e', True),
                          ('i0e', False)])
+

@@ -49,7 +49,6 @@ cdef extern from "_bencode_c.h":
 cdef class Decoder:
     """Bencode decoder"""
 
-    cdef readonly object _text
     cdef readonly char *tail
     cdef readonly int   size
 
@@ -73,7 +72,6 @@ cdef class Decoder:
         if pstr == NULL:
             raise ValueError
 
-        self._text = s
         self.tail = pstr
         self.size = <int>k
         self._yield_tuples = int(yield_tuples)
@@ -81,9 +79,6 @@ cdef class Decoder:
         self._MAXINT = PyInt_GetMax()
         self._MAXN = len(str(self._MAXINT))
         self._longint = long(0)
-
-    def __repr__(self):
-        return 'Decoder(%s)' % repr(self._text)
 
     def decode(self):
         result = self.decode_object()
