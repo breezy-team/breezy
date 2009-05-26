@@ -736,52 +736,21 @@ class CHKInventoryRepository(KnitPackRepository):
         # make it raise to trap naughty direct users.
         raise NotImplementedError(self._iter_inventory_xmls)
 
-    def _find_revision_outside_set(self, revision_ids):
-        revision_set = frozenset(revision_ids)
-        for revid in revision_ids:
-            parent_ids = self.get_parent_map([revid]).get(revid, ())
-            for parent in parent_ids:
-                if parent in revision_set:
-                    # Parent is not outside the set
-                    continue
-                if parent not in self.get_parent_map([parent]):
-                    # Parent is a ghost
-                    continue
-                return parent
-        return _mod_revision.NULL_REVISION
+    def _find_parent_ids_of_revisions(self, revision_ids):
+        # TODO: we probably want to make this a helper that other code can get
+        #       at
+        parent_map = self.get_parent_map(revision_ids)
+        parents = set()
+        map(parents.update, parent_map.itervalues())
+        parents.difference_update(revision_ids)
+        parents.discard(_mod_revision.NULL_REVISION)
+        return parents
 
-    def _find_file_keys_to_fetch(self, revision_ids, pb):
-        rich_root = self.supports_rich_root()
-        revision_outside_set = self._find_revision_outside_set(revision_ids)
-        if revision_outside_set == _mod_revision.NULL_REVISION:
-            uninteresting_root_keys = set()
-        else:
-            uninteresting_inv = self.get_inventory(revision_outside_set)
-            uninteresting_root_keys = set([uninteresting_inv.id_to_entry.key()])
-        interesting_root_keys = set()
-        for idx, inv in enumerate(self.iter_inventories(revision_ids)):
-            interesting_root_keys.add(inv.id_to_entry.key())
-        revision_ids = frozenset(revision_ids)
-        file_id_revisions = {}
-        bytes_to_info = inventory.CHKInventory._bytes_to_utf8name_key
-        for record, items in chk_map.iter_interesting_nodes(self.chk_bytes,
-                    interesting_root_keys, uninteresting_root_keys,
-                    pb=pb):
-            # This is cheating a bit to use the last grabbed 'inv', but it
-            # works
-            for name, bytes in items:
-                (name_utf8, file_id, revision_id) = bytes_to_info(bytes)
-                if not rich_root and name_utf8 == '':
-                    continue
-                if revision_id in revision_ids:
-                    # Would we rather build this up into file_id => revision
-                    # maps?
-                    try:
-                        file_id_revisions[file_id].add(revision_id)
-                    except KeyError:
-                        file_id_revisions[file_id] = set([revision_id])
-        for file_id, revisions in file_id_revisions.iteritems():
-            yield ('file', file_id, revisions)
+    def _find_present_inventory_ids(self, revision_ids):
+        keys = [(r,) for r in revision_ids]
+        parent_map = self.inventories.get_parent_map(keys)
+        present_inventory_ids = set(k[-1] for k in parent_map)
+        return present_inventory_ids
 
     def fileids_altered_by_revision_ids(self, revision_ids, _inv_weave=None):
         """Find the file ids and versions affected by revisions.
@@ -793,29 +762,39 @@ class CHKInventoryRepository(KnitPackRepository):
             revision_ids. Each altered file-ids has the exact revision_ids that
             altered it listed explicitly.
         """
-        rich_roots = self.supports_rich_root()
-        result = {}
+        rich_root = self.supports_rich_root()
+        bytes_to_info = inventory.CHKInventory._bytes_to_utf8name_key
+        file_id_revisions = {}
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            total = len(revision_ids)
-            # TODO: This could probably be implemented in terms of
-            #       'iter_inventory_deltas'. Since we only include items where
-            #       'entry.revision == inv.revision_id', then we know that all
-            #       the entries which are identical to another inventory are
-            #       *not* going to match. Note that revision_ids may be a set,
-            #       so doesn't have a great iteration order.
-            for pos, inv in enumerate(self.iter_inventories(revision_ids)):
-                pb.update("Finding text references", pos, total)
-                for entry in inv.iter_just_entries():
-                    if entry.revision != inv.revision_id:
+            parent_ids = self._find_parent_ids_of_revisions(revision_ids)
+            present_parent_inv_ids = self._find_present_inventory_ids(parent_ids)
+            uninteresting_root_keys = set()
+            interesting_root_keys = set()
+            inventories_to_read = set(present_parent_inv_ids)
+            inventories_to_read.update(revision_ids)
+            for inv in self.iter_inventories(inventories_to_read):
+                entry_chk_root_key = inv.id_to_entry.key()
+                if inv.revision_id in present_parent_inv_ids:
+                    uninteresting_root_keys.add(entry_chk_root_key)
+                else:
+                    interesting_root_keys.add(entry_chk_root_key)
+
+            chk_bytes = self.chk_bytes
+            for record, items in chk_map.iter_interesting_nodes(chk_bytes,
+                        interesting_root_keys, uninteresting_root_keys,
+                        pb=pb):
+                for name, bytes in items:
+                    (name_utf8, file_id, revision_id) = bytes_to_info(bytes)
+                    if not rich_root and name_utf8 == '':
                         continue
-                    if not rich_roots and entry.file_id == inv.root_id:
-                        continue
-                    alterations = result.setdefault(entry.file_id, set([]))
-                    alterations.add(entry.revision)
-            return result
+                    try:
+                        file_id_revisions[file_id].add(revision_id)
+                    except KeyError:
+                        file_id_revisions[file_id] = set([revision_id])
         finally:
             pb.finished()
+        return file_id_revisions
 
     def find_text_key_references(self):
         """Find the text key references within the repository.

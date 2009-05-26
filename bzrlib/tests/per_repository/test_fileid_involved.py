@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,7 +16,11 @@
 
 import os
 import sys
+import time
 
+from bzrlib import (
+    revision as _mod_revision,
+    )
 from bzrlib.errors import IllegalPath, NonAsciiRevisionId
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.per_repository.test_repository import TestCaseWithRepository
@@ -49,11 +53,11 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         super(TestFileIdInvolved, self).setUp()
         # create three branches, and merge it
         #
-        #           /-->J ------>K                (branch2)
-        #          /              \
-        #  A ---> B --->C ---->D->G               (main)
-        #  \           /      /
-        #   \---> E---/----> F                 (branch1)
+        #          ,-->J------>K                (branch2)
+        #         /             \
+        #  A --->B --->C---->D-->G              (main)
+        #  \          /     /
+        #   '--->E---+---->F                    (branch1)
 
         # A changes:
         # B changes: 'a-file-id-2006-01-01-abcd'
@@ -137,8 +141,6 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         self.branch = main_branch
 
     def test_fileids_altered_between_two_revs(self):
-        def foo(old, new):
-            print set(self.branch.repository.get_ancestry(new)).difference(set(self.branch.repository.get_ancestry(old)))
         self.branch.lock_read()
         self.addCleanup(self.branch.unlock)
         self.branch.repository.fileids_altered_by_revision_ids(["rev-J","rev-K"])
@@ -313,6 +315,42 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
         l2 = self.compare_tree_fileids(self.branch, old_rev, new_rev)
         self.assertNotEqual(l2, l1)
         self.assertSubset(l2, l1)
+
+
+class FileIdInvolvedWGhosts(TestCaseWithRepository):
+
+    def create_branch_with_ghost_text(self):
+        builder = self.make_branch_builder('ghost')
+        builder.build_snapshot('A-id', None, [
+            ('add', ('', 'root-id', 'directory', None)),
+            ('add', ('a', 'a-file-id', 'file', 'some content\n'))])
+        b = builder.get_branch()
+        old_rt = b.repository.revision_tree('A-id')
+        new_inv = old_rt.inventory._get_mutable_inventory()
+        new_inv.revision_id = 'B-id'
+        new_inv['a-file-id'].revision = 'ghost-id'
+        new_rev = _mod_revision.Revision('B-id',
+            timestamp=time.time(),
+            timezone=0,
+            message='Committing against a ghost',
+            committer='Joe Foo <joe@foo.com>',
+            properties={},
+            parent_ids=('A-id', 'ghost-id'),
+            )
+        b.lock_write()
+        self.addCleanup(b.unlock)
+        b.repository.start_write_group()
+        b.repository.add_revision('B-id', new_rev, new_inv)
+        b.repository.commit_write_group()
+        return b
+
+    def test_file_ids_include_ghosts(self):
+        b = self.create_branch_with_ghost_text()
+        repo = b.repository
+        self.assertEqual(
+            {'a-file-id':set(['ghost-id'])},
+            repo.fileids_altered_by_revision_ids(['B-id']))
+
 
 
 def set_executability(wt, path, executable=True):
