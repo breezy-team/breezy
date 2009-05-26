@@ -16,30 +16,44 @@
 
 """Tests for bencode structured encoding"""
 
-from bzrlib.tests import TestCase, Feature
+from bzrlib import tests
 
-from bzrlib import bencode as bencode_default
-from bzrlib import _bencode_py as bencode_py
-try:
-    from bzrlib import _bencode_c as bencode_c
-except ImportError:
-    bencode_c = None
+def load_tests(standard_tests, module, loader):
+    # parameterize all tests in this module
+    suite = loader.suiteClass()
+    import bzrlib._bencode_py as py_module
+    scenarios = [('python', {'bencode': py_module})]
+    if CompiledBencodeFeature.available():
+        import bzrlib._bencode_c as c_module
+        scenarios.append(('C', {'bencode': c_module}))
+    else:
+        # the compiled module isn't available, so we add a failing test
+        class FailWithoutFeature(tests.TestCase):
+            def test_fail(self):
+                self.requireFeature(CompiledBencodeFeature)
+        suite.addTest(loader.loadTestsFromTestCase(FailWithoutFeature))
+    tests.multiply_tests(standard_tests, scenarios, suite)
+    return suite
 
 
-class _BencodeCFeature(Feature):
+class _CompiledBencodeFeature(tests.Feature):
 
     def _probe(self):
-        return bencode_c is not None
+        try:
+            import bzrlib._bencode_c
+        except ImportError:
+            return False
+        return True
 
     def feature_name(self):
         return 'bzrlib._bencode_c'
 
-BencodeCFeature = _BencodeCFeature()
+CompiledBencodeFeature = _CompiledBencodeFeature()
 
 
-class TestBencodeDecode(TestCase):
+class TestBencodeDecode(tests.TestCase):
 
-    bencode = bencode_default
+    bencode = None
 
     def _check(self, expected, source):
         self.assertEquals(expected, self.bencode.bdecode(source))
@@ -121,10 +135,16 @@ class TestBencodeDecode(TestCase):
     def test_unknown_object(self):
         self._check_error('relwjhrlewjh')
 
+    def test_unsupported_type(self):
+        self._check_error(float(1.5))
+        self._check_error(None)
+        self._check_error(lambda x: x)
+        self._check_error(object)
 
-class TestBencodeEncode(TestCase):
 
-    bencode = bencode_default
+class TestBencodeEncode(tests.TestCase):
+
+    bencode = None
 
     def _check(self, expected, source):
         self.assertEquals(expected, self.bencode.bencode(source))
@@ -184,42 +204,18 @@ class TestBencodeEncode(TestCase):
                          ('i0e', False)])
 
 
-class TestBencodePyDecode(TestBencodeDecode):
-    bencode = bencode_py
+class TestBencodeC(tests.TestCase):
 
-
-class TestBencodePyEncode(TestBencodeEncode):
-    bencode = bencode_py
-
-
-class TestBencodeCDecode(TestBencodeDecode):
-    _test_needs_features = [BencodeCFeature]
-    bencode = bencode_c
-
-
-class TestBencodeCEncode(TestBencodeEncode):
-    _test_needs_features = [BencodeCFeature]
-    bencode = bencode_c
-
-    def test_unsupported_type(self):
-        self._check_error(float(1.5))
-        self._check_error(None)
-        self._check_error(lambda x: x)
-        self._check_error(object)
-
-
-class TestBencodeC(TestCase):
-
-    _test_needs_features = [BencodeCFeature]
+    bencode = None
 
     def test_decoder_repr(self):
-        self.assertEquals("Decoder('123')", repr(bencode_c.Decoder('123')))
+        self.assertEquals("Decoder('123')", repr(self.bencode.Decoder('123')))
 
     def test_decoder_type_error(self):
-        self.assertRaises(TypeError, bencode_c.Decoder, 1)
+        self.assertRaises(TypeError, self.bencode.Decoder, 1)
 
     def test_encoder_buffer_overflow(self):
-        e = bencode_c.Encoder(256)
+        e = self.bencode.Encoder(256)
         shouldbe = []
         for i in '1234567890':
             s = i * 124
@@ -230,7 +226,7 @@ class TestBencodeC(TestCase):
         self.assertEquals(''.join(shouldbe), str(e))
 
     def test_encoder_buffer_overflow2(self):
-        e = bencode_c.Encoder(4)
+        e = self.bencode.Encoder(4)
         e.process('1234567890')
         self.assertEquals(64, e.maxsize)
         self.assertEquals('10:1234567890', str(e))
