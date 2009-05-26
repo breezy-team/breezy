@@ -860,10 +860,10 @@ class RemoteRepository(_RpcHelper):
             self._unstacked_provider.enable_cache(cache_misses=True)
             if self._real_repository is not None:
                 self._real_repository.lock_read()
+            for repo in self._fallback_repositories:
+                repo.lock_read()
         else:
             self._lock_count += 1
-        for repo in self._fallback_repositories:
-            repo.lock_read()
 
     def _remote_lock_write(self, token):
         path = self.bzrdir._path_for_remote_call(self._client)
@@ -901,13 +901,13 @@ class RemoteRepository(_RpcHelper):
             self._lock_count = 1
             cache_misses = self._real_repository is None
             self._unstacked_provider.enable_cache(cache_misses=cache_misses)
+            for repo in self._fallback_repositories:
+                # Writes don't affect fallback repos
+                repo.lock_read()
         elif self._lock_mode == 'r':
             raise errors.ReadOnlyError(self)
         else:
             self._lock_count += 1
-        for repo in self._fallback_repositories:
-            # Writes don't affect fallback repos
-            repo.lock_read()
         return self._lock_token or None
 
     def leave_lock_in_place(self):
@@ -1015,6 +1015,10 @@ class RemoteRepository(_RpcHelper):
                 self._lock_token = None
                 if not self._leave_lock:
                     self._unlock(old_token)
+        # Fallbacks are always 'lock_read()' so we don't pay attention to
+        # self._leave_lock
+        for repo in self._fallback_repositories:
+            repo.unlock()
 
     def break_lock(self):
         # should hand off to the network
@@ -1092,6 +1096,11 @@ class RemoteRepository(_RpcHelper):
             fallback_locations = [repo.bzrdir.root_transport.base for repo in
                 self._real_repository._fallback_repositories]
             if repository.bzrdir.root_transport.base not in fallback_locations:
+                if self.is_locked():
+                    # The _real_repository will unlock its fallback repository
+                    # when its lock_count transitions back to unlocked.
+                    # So we need to keep the lock counters in sync.
+                    repository.lock_read()
                 self._real_repository.add_fallback_repository(repository)
 
     def add_inventory(self, revid, inv, parents):

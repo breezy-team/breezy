@@ -1240,19 +1240,19 @@ class Repository(object):
         """
         locked = self.is_locked()
         result = self.control_files.lock_write(token=token)
-        for repo in self._fallback_repositories:
-            # Writes don't affect fallback repos
-            repo.lock_read()
         if not locked:
+            for repo in self._fallback_repositories:
+                # Writes don't affect fallback repos
+                repo.lock_read()
             self._refresh_data()
         return result
 
     def lock_read(self):
         locked = self.is_locked()
         self.control_files.lock_read()
-        for repo in self._fallback_repositories:
-            repo.lock_read()
         if not locked:
+            for repo in self._fallback_repositories:
+                repo.lock_read()
             self._refresh_data()
 
     def get_physical_lock_status(self):
@@ -1577,8 +1577,8 @@ class Repository(object):
         self.control_files.unlock()
         if self.control_files._lock_count == 0:
             self._inventory_entry_cache.clear()
-        for repo in self._fallback_repositories:
-            repo.unlock()
+            for repo in self._fallback_repositories:
+                repo.unlock()
 
     @needs_read_lock
     def clone(self, a_bzrdir, revision_id=None):
