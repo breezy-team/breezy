@@ -4805,6 +4805,170 @@ class cmd_merge_directive(Command):
             s.send_email(message)
 
 
+class cmd_send(Command):
+    """Mail or create a merge-directive for submitting changes.
+
+    A merge directive provides many things needed for requesting merges:
+
+    * A machine-readable description of the merge to perform
+
+    * An optional patch that is a preview of the changes requested
+
+    * An optional bundle of revision data, so that the changes can be applied
+      directly from the merge directive, without retrieving data from a
+      branch.
+
+    If --no-bundle is specified, then public_branch is needed (and must be
+    up-to-date), so that the receiver can perform the merge using the
+    public_branch.  The public_branch is always included if known, so that
+    people can check it later.
+
+    The submit branch defaults to the parent, but can be overridden.  Both
+    submit branch and public branch will be remembered if supplied.
+
+    If a public_branch is known for the submit_branch, that public submit
+    branch is used in the merge instructions.  This means that a local mirror
+    can be used as your actual submit branch, once you have set public_branch
+    for that mirror.
+
+    Mail is sent using your preferred mail program.  This should be transparent
+    on Windows (it uses MAPI).  On Linux, it requires the xdg-email utility.
+    If the preferred client can't be found (or used), your editor will be used.
+
+    To use a specific mail program, set the mail_client configuration option.
+    (For Thunderbird 1.5, this works around some bugs.)  Supported values for
+    specific clients are "claws", "evolution", "kmail", "mutt", and
+    "thunderbird"; generic options are "default", "editor", "emacsclient",
+    "mapi", and "xdg-email".  Plugins may also add supported clients.
+
+    If mail is being sent, a to address is required.  This can be supplied
+    either on the commandline, by setting the submit_to configuration
+    option in the branch itself or the child_submit_to configuration option
+    in the submit branch.
+
+    Two formats are currently supported: "4" uses revision bundle format 4 and
+    merge directive format 2.  It is significantly faster and smaller than
+    older formats.  It is compatible with Bazaar 0.19 and later.  It is the
+    default.  "0.9" uses revision bundle format 0.9 and merge directive
+    format 1.  It is compatible with Bazaar 0.12 - 0.18.
+
+    The merge directives created by bzr send may be applied using bzr merge or
+    bzr pull by specifying a file containing a merge directive as the location.
+    """
+
+    encoding_type = 'exact'
+
+    _see_also = ['merge', 'pull']
+
+    takes_args = ['submit_branch?', 'public_branch?']
+
+    takes_options = [
+        Option('no-bundle',
+               help='Do not include a bundle in the merge directive.'),
+        Option('no-patch', help='Do not include a preview patch in the merge'
+               ' directive.'),
+        Option('remember',
+               help='Remember submit and public branch.'),
+        Option('from',
+               help='Branch to generate the submission from, '
+               'rather than the one containing the working directory.',
+               short_name='f',
+               type=unicode),
+        Option('output', short_name='o',
+               help='Write merge directive to this file; '
+                    'use - for stdout.',
+               type=unicode),
+        Option('mail-to', help='Mail the request to this address.',
+               type=unicode),
+        'revision',
+        'message',
+        Option('body', help='Body for the email.', type=unicode),
+        RegistryOption('format',
+                       help='Use the specified output format.', 
+                       lazy_registry=('bzrlib.send', 'format_registry'))
+        ]
+
+    def run(self, submit_branch=None, public_branch=None, no_bundle=False,
+            no_patch=False, revision=None, remember=False, output=None,
+            format=None, mail_to=None, message=None, body=None, **kwargs):
+        from bzrlib.send import send
+        return send(submit_branch, revision, public_branch, remember,
+                         format, no_bundle, no_patch, output,
+                         kwargs.get('from', '.'), mail_to, message, body,
+                         self.outf)
+
+
+class cmd_bundle_revisions(Command):
+
+    """Create a merge-directive for submitting changes.
+
+    A merge directive provides many things needed for requesting merges:
+
+    * A machine-readable description of the merge to perform
+
+    * An optional patch that is a preview of the changes requested
+
+    * An optional bundle of revision data, so that the changes can be applied
+      directly from the merge directive, without retrieving data from a
+      branch.
+
+    If --no-bundle is specified, then public_branch is needed (and must be
+    up-to-date), so that the receiver can perform the merge using the
+    public_branch.  The public_branch is always included if known, so that
+    people can check it later.
+
+    The submit branch defaults to the parent, but can be overridden.  Both
+    submit branch and public branch will be remembered if supplied.
+
+    If a public_branch is known for the submit_branch, that public submit
+    branch is used in the merge instructions.  This means that a local mirror
+    can be used as your actual submit branch, once you have set public_branch
+    for that mirror.
+
+    Two formats are currently supported: "4" uses revision bundle format 4 and
+    merge directive format 2.  It is significantly faster and smaller than
+    older formats.  It is compatible with Bazaar 0.19 and later.  It is the
+    default.  "0.9" uses revision bundle format 0.9 and merge directive
+    format 1.  It is compatible with Bazaar 0.12 - 0.18.
+    """
+
+    takes_options = [
+        Option('no-bundle',
+               help='Do not include a bundle in the merge directive.'),
+        Option('no-patch', help='Do not include a preview patch in the merge'
+               ' directive.'),
+        Option('remember',
+               help='Remember submit and public branch.'),
+        Option('from',
+               help='Branch to generate the submission from, '
+               'rather than the one containing the working directory.',
+               short_name='f',
+               type=unicode),
+        Option('output', short_name='o', help='Write directive to this file.',
+               type=unicode),
+        'revision',
+        RegistryOption('format',
+                       help='Use the specified output format.',
+                       lazy_registry=('bzrlib.send', 'format_registry')),
+        ]
+    aliases = ['bundle']
+
+    _see_also = ['send', 'merge']
+
+    hidden = True
+
+    def run(self, submit_branch=None, public_branch=None, no_bundle=False,
+            no_patch=False, revision=None, remember=False, output=None,
+            format=None, **kwargs):
+        if output is None:
+            output = '-'
+        from bzrlib.send import send
+        return send(submit_branch, revision, public_branch, remember,
+                         format, no_bundle, no_patch, output,
+                         kwargs.get('from', '.'), None, None, None,
+                         self.outf)
+
+
 class cmd_tag(Command):
     """Create, remove or modify a tag naming a revision.
 
@@ -5436,7 +5600,6 @@ from bzrlib.bundle.commands import (
     cmd_bundle_info,
     )
 from bzrlib.foreign import cmd_dpush
-from bzrlib.send import cmd_bundle_revisions, cmd_send
 from bzrlib.sign_my_commits import cmd_sign_my_commits
 from bzrlib.weave_commands import cmd_versionedfile_list, \
         cmd_weave_plan_merge, cmd_weave_merge_text
