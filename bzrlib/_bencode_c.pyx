@@ -42,7 +42,7 @@ cdef extern from "stdlib.h":
 cdef extern from "string.h":
     void *memcpy(void *dest, void *src, size_t count)
 
-cdef extern from "_bencode_c.h":
+cdef extern from "python-compat.h":
     int snprintf(char* buffer, size_t nsize, char* fmt, ...)
 
 
