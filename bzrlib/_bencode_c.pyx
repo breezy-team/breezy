@@ -66,7 +66,7 @@ cdef class Decoder:
         cdef char *pstr
 
         if not PyString_CheckExact(s):
-            raise TypeError
+            raise TypeError("String required")
 
         PyString_AsStringAndSize(s, &pstr, &k)
 
@@ -110,8 +110,8 @@ cdef class Decoder:
         elif ch == c'd':
             self._update_tail(1)
             return self._decode_dict()
-
-        raise ValueError('unknown object')
+        else:
+            raise ValueError('unknown object type identifier %r' % ch)
 
     cdef void _update_tail(self, int n):
         """Update tail pointer and resulting size by n characters"""
@@ -411,7 +411,7 @@ cdef class Encoder:
         elif isinstance(x, Bencached):
             self._append_string(x.bencoded)
         else:
-            raise TypeError('unsupported type')
+            raise TypeError('unsupported type %r' % x)
 
 
 def bencode(x):

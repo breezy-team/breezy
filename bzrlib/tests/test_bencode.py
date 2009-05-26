@@ -126,20 +126,24 @@ class TestBencodeDecode(tests.TestCase):
                                'd0:0:', 'd0:'])
 
     def test_empty_string(self):
-        self._check_error('')
+        self.assertRaises(ValueError, self.bencode.bdecode, '')
 
     def test_junk(self):
         self._run_check_error(['i6easd', '2:abfdjslhfld',
                                '0:0:', 'leanfdldjfh'])
 
     def test_unknown_object(self):
-        self._check_error('relwjhrlewjh')
+        self.assertRaises(ValueError, self.bencode.bdecode, 'relwjhrlewjh')
 
     def test_unsupported_type(self):
-        self._check_error(float(1.5))
-        self._check_error(None)
-        self._check_error(lambda x: x)
-        self._check_error(object)
+        self.assertRaises(TypeError, self.bencode.bdecode, float(1.5))
+        self.assertRaises(TypeError, self.bencode.bdecode, None)
+        self.assertRaises(TypeError, self.bencode.bdecode, lambda x: x)
+        self.assertRaises(TypeError, self.bencode.bdecode, object)
+        self.assertRaises(TypeError, self.bencode.bdecode, u"ie")
+
+    def test_decoder_type_error(self):
+        self.assertRaises(TypeError, self.bencode.bdecode, 1)
 
 
 class TestBencodeEncode(tests.TestCase):
@@ -202,31 +206,3 @@ class TestBencodeEncode(tests.TestCase):
     def test_bool(self):
         self._run_check([('i1e', True),
                          ('i0e', False)])
-
-
-class TestBencodeC(tests.TestCase):
-
-    bencode = None
-
-    def test_decoder_repr(self):
-        self.assertEquals("Decoder('123')", repr(self.bencode.Decoder('123')))
-
-    def test_decoder_type_error(self):
-        self.assertRaises(TypeError, self.bencode.Decoder, 1)
-
-    def test_encoder_buffer_overflow(self):
-        e = self.bencode.Encoder(256)
-        shouldbe = []
-        for i in '1234567890':
-            s = i * 124
-            e.process(s)
-            shouldbe.extend(('124:', s))
-        self.assertEquals(1280, len(str(e)))
-        self.assertEquals(2048, e.maxsize)
-        self.assertEquals(''.join(shouldbe), str(e))
-
-    def test_encoder_buffer_overflow2(self):
-        e = self.bencode.Encoder(4)
-        e.process('1234567890')
-        self.assertEquals(64, e.maxsize)
-        self.assertEquals('10:1234567890', str(e))
