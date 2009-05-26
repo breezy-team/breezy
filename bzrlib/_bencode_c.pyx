@@ -19,7 +19,6 @@
 
 cdef extern from "Python.h":
     ctypedef int  Py_ssize_t
-    object Py_BuildValue(char *format, ...)
     int PyInt_CheckExact(object o)
     int PyLong_CheckExact(object o)
     int PyString_CheckExact(object o)
@@ -28,7 +27,7 @@ cdef extern from "Python.h":
     int PyDict_CheckExact(object o)
     int PyBool_Check(object o)
     object PyString_FromStringAndSize(char *v, Py_ssize_t len)
-    int PyString_AsStringAndSize(object o, char **buffer, Py_ssize_t *length)
+    int PyString_AsStringAndSize(object o, char **buffer, Py_ssize_t *length) except -1
     long PyInt_GetMax()
     object PyLong_FromString(char *str, char **pend, int base)
 
@@ -45,11 +44,6 @@ cdef extern from "string.h":
 
 cdef extern from "_bencode_c.h":
     int snprintf(char* buffer, size_t nsize, char* fmt, ...)
-
-
-class NotEnoughMemory(Exception):
-    """Memory allocation error"""
-    pass
 
 
 cdef enum:  # Codes for used characters
@@ -197,7 +191,7 @@ cdef class Decoder:
             result = self._MAXINT
             longstr = <char*>malloc(n+1)
             if NULL == longstr:
-                raise NotEnoughMemory
+                raise MemoryError 
             memcpy(longstr, self.tail, n)
             longstr[n] = 0
             self._longint = PyLong_FromString(longstr, NULL, 10)
@@ -304,8 +298,8 @@ cdef class Encoder:
 
         p = <char*>malloc(maxsize)
         if p == NULL:
-            raise NotEnoughMemory('Not enough memory to allocate buffer '
-                                  'for encoder')
+            raise MemoryError('Not enough memory to allocate buffer '
+                              'for encoder')
         self.buffer = p
         self.maxsize = maxsize
         self.tail = p
@@ -337,7 +331,7 @@ cdef class Encoder:
             new_size = new_size * 2
         new_buffer = <char*>realloc(self.buffer, <size_t>new_size)
         if new_buffer == NULL:
-            raise NotEnoughMemory('Cannot realloc buffer for encoder')
+            raise MemoryError('Cannot realloc buffer for encoder')
 
         self.buffer = new_buffer
         self.maxsize = new_size
@@ -357,7 +351,7 @@ cdef class Encoder:
         self._ensure_buffer(32)
         n = snprintf(self.tail, 32, "i%de", x)
         if n < 0:
-            raise NotEnoughMemory('int %d too big to encode' % x)
+            raise MemoryError('int %d too big to encode' % x)
         self._update_tail(n)
         return 1
 
@@ -374,7 +368,7 @@ cdef class Encoder:
         self._ensure_buffer(<int>k)
         n = snprintf(self.tail, k, '%s', pstr)
         if n < 0:
-            raise NotEnoughMemory('string %s too big to append' % s)
+            raise MemoryError('string %s too big to append' % s)
         self._update_tail(n)
         return 1
 
@@ -387,7 +381,7 @@ cdef class Encoder:
         self._ensure_buffer(<int>k+32)
         n = snprintf(self.tail, k+32, '%d:%s', <int>k, pstr)
         if n < 0:
-            raise NotEnoughMemory('string %s too big to encode' % x)
+            raise MemoryError('string %s too big to encode' % x)
         self._update_tail(n)
         return 1
 
