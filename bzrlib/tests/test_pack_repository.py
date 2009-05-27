@@ -789,12 +789,12 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
             # can only stack on repositories that have compatible internal
             # metadata
             if getattr(repo._format, 'supports_tree_reference', False):
+                matching_format_name = 'pack-0.92-subtree'
+            else:
                 if repo._format.supports_chks:
                     matching_format_name = 'development6-rich-root'
                 else:
-                    matching_format_name = 'pack-0.92-subtree'
-            else:
-                matching_format_name = 'rich-root-pack'
+                    matching_format_name = 'rich-root-pack'
             mismatching_format_name = 'pack-0.92'
         else:
             # We don't have a non-rich-root CHK format.
@@ -820,15 +820,14 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
         if getattr(repo._format, 'supports_tree_reference', False):
             # can only stack on repositories that have compatible internal
             # metadata
-            if repo._format.supports_chks:
-                # No CHK subtree formats in bzr.dev, so this doesn't execute.
-                matching_format_name = 'development6-subtree'
-            else:
-                matching_format_name = 'pack-0.92-subtree'
+            matching_format_name = 'pack-0.92-subtree'
             mismatching_format_name = 'rich-root-pack'
         else:
             if repo.supports_rich_root():
-                matching_format_name = 'rich-root-pack'
+                if repo._format.supports_chks:
+                    matching_format_name = 'development6-rich-root'
+                else:
+                    matching_format_name = 'rich-root-pack'
                 mismatching_format_name = 'pack-0.92-subtree'
             else:
                 raise TestNotApplicable('No formats use non-v5 serializer'
