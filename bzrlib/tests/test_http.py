@@ -175,10 +175,10 @@ def load_tests(standard_tests, module, loader):
             act_transport_scenarios.append(
                 ('pycurl', dict(_transport=HTTPS_pycurl_transport,)))
 
-    tpact_scenarios = tests.multiply_scenarios(act_transport_scenarios,
-                                               protocol_scenarios)
-    tpact_scenarios = tests.multiply_scenarios(tpact_scenarios,
-                                               activity_scenarios)
+    tpact_scenarios = tests.multiply_scenarios(
+        tests.multiply_scenarios(act_transport_scenarios,
+                                 protocol_scenarios),
+        activity_scenarios)
     tests.multiply_tests(tpact_tests, tpact_scenarios, result)
 
     # No parametrization for the remaining tests
