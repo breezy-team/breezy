@@ -144,7 +144,7 @@ class cmd_git_object(Command):
         try:
             if sha1 is not None:
                 try:
-                    obj = object_store[sha1]
+                    obj = object_store[str(sha1)]
                 except KeyError:
                     raise BzrCommandError("Object not found: %s" % sha1)
                 if pretty:
