@@ -315,18 +315,45 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
             text_keys, 'unordered', True))
         repo.add_revision('A-id', b.repository.get_revision('A-id'),
                           b.repository.get_inventory('A-id'))
+        get_missing = repo.get_missing_parent_inventories
         if repo._format.supports_external_lookups:
             self.assertEqual(set([('inventories', 'ghost-parent-id')]),
-                repo.get_missing_parent_inventories(check_for_missing_texts=False))
-            self.assertEqual(set(),
-                repo.get_missing_parent_inventories(check_for_missing_texts=True))
-            self.assertEqual(set(), repo.get_missing_parent_inventories())
+                get_missing(check_for_missing_texts=False))
+            self.assertEqual(set(), get_missing(check_for_missing_texts=True))
+            self.assertEqual(set(), get_missing())
         else:
-            self.assertEqual(set(),
-                repo.get_missing_parent_inventories(check_for_missing_texts=False))
-            self.assertEqual(set(),
-                repo.get_missing_parent_inventories(check_for_missing_texts=True))
-            self.assertEqual(set(), repo.get_missing_parent_inventories())
+            # If we don't support external lookups, we always return empty
+            self.assertEqual(set(), get_missing(check_for_missing_texts=False))
+            self.assertEqual(set(), get_missing(check_for_missing_texts=True))
+            self.assertEqual(set(), get_missing())
+
+    def test_insert_stream_passes_resume_info(self):
+        repo = self.make_repository('test-repo')
+        if not repo._format.supports_external_lookups:
+            raise TestNotApplicable('only valid in resumable repos')
+        # log calls to get_missing_parent_inventories, so that we can assert it
+        # is called with the correct parameters
+        call_log = []
+        orig = repo.get_missing_parent_inventories
+        def get_missing(check_for_missing_texts=True):
+            call_log.append(check_for_missing_texts)
+            return orig(check_for_missing_texts=check_for_missing_texts)
+        repo.get_missing_parent_inventories = get_missing
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        sink = repo._get_sink()
+        sink.insert_stream((), repo._format, [])
+        self.assertEqual([False], call_log)
+        del call_log[:]
+        repo.start_write_group()
+        # We need to insert something, or suspend_write_group won't actually
+        # create a token
+        repo.texts.insert_record_stream([versionedfile.FulltextContentFactory(
+            ('file-id', 'rev-id'), (), None, 'lines\n')])
+        tokens = repo.suspend_write_group()
+        self.assertNotEqual([], tokens)
+        sink.insert_stream((), repo._format, tokens)
+        self.assertEqual([True], call_log)
 
 
 class TestResumeableWriteGroup(TestCaseWithRepository):

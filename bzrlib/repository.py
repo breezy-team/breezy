@@ -4010,18 +4010,20 @@ class StreamSink(object):
         try:
             if resume_tokens:
                 self.target_repo.resume_write_group(resume_tokens)
+                is_resume = True
             else:
                 self.target_repo.start_write_group()
+                is_resume = False
             try:
                 # locked_insert_stream performs a commit|suspend.
-                return self._locked_insert_stream(stream, src_format)
+                return self._locked_insert_stream(stream, src_format, is_resume)
             except:
                 self.target_repo.abort_write_group(suppress_errors=True)
                 raise
         finally:
             self.target_repo.unlock()
 
-    def _locked_insert_stream(self, stream, src_format):
+    def _locked_insert_stream(self, stream, src_format, is_resume):
         to_serializer = self.target_repo._format._serializer
         src_serializer = src_format._serializer
         new_pack = None
@@ -4077,7 +4079,8 @@ class StreamSink(object):
         if new_pack is not None:
             new_pack._write_data('', flush=True)
         # Find all the new revisions (including ones from resume_tokens)
-        missing_keys = self.target_repo.get_missing_parent_inventories()
+        missing_keys = self.target_repo.get_missing_parent_inventories(
+            check_for_missing_texts=is_resume)
         try:
             for prefix, versioned_file in (
                 ('texts', self.target_repo.texts),
