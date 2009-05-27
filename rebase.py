@@ -546,11 +546,11 @@ def complete_revert(wt, newparents):
 
 class ReplaySnapshotError(BzrError):
     """Raised when replaying a snapshot failed."""
-    _fmt = """Replaying the snapshot failed: %(message)s."""
+    _fmt = """Replaying the snapshot failed: %(msg)s."""
 
-    def __init__(self, message):
+    def __init__(self, msg):
         BzrError.__init__(self)
-        self.message = message
+        self.msg = msg
 
 
 class ReplayParentsInconsistent(BzrError):
