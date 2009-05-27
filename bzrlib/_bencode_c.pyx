@@ -118,14 +118,11 @@ cdef class Decoder:
         return i
 
     cdef object _decode_int(self):
-        cdef char longstr[32], *tail
         cdef int i
         i = self._read_digits(c'e')
-        if i > sizeof(longstr)-1:
-            raise ValueError("long data too big")
-        memcpy(longstr, self.tail, i)
-        longstr[i] = c'\0'
-        ret = PyInt_FromString(longstr, NULL, 10)
+        self.tail[i] = 0;
+        ret = PyInt_FromString(self.tail, NULL, 10)
+        self.tail[i] = c'e';
         self._update_tail(i+1)
         return ret
 

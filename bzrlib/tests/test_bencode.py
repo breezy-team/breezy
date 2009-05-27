@@ -67,6 +67,7 @@ class TestBencodeDecode(tests.TestCase):
         self._check(4, 'i4e')
         self._check(123456789, 'i123456789e')
         self._check(-10, 'i-10e')
+        self._check(int('1' * 1000), 'i' + ('1' * 1000) + 'e')
 
     def test_long(self):
         self._check(12345678901234567890L, 'i12345678901234567890e')
@@ -100,6 +101,7 @@ class TestBencodeDecode(tests.TestCase):
         self._run_check_error(ValueError, '00:')
         self._run_check_error(ValueError, '35208734823ljdahflajhdf')
         self._run_check_error(ValueError, '432432432432432:foo')
+        self._run_check_error(ValueError, 'i' + ('1' * 1000) + ':')
 
     def test_list(self):
         self._check([], 'le')
