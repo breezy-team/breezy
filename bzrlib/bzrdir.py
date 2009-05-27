@@ -2699,7 +2699,7 @@ class ConvertBzrDir4To5(Converter):
         del ie.text_id
 
     def get_parent_map(self, revision_ids):
-        """See graph._StackedParentsProvider.get_parent_map"""
+        """See graph.StackedParentsProvider.get_parent_map"""
         return dict((revision_id, self.revisions[revision_id])
                     for revision_id in revision_ids
                      if revision_id in self.revisions)

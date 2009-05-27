@@ -2379,7 +2379,7 @@ class Repository(object):
         return self.control_files.get_transaction()
 
     def get_parent_map(self, revision_ids):
-        """See graph._StackedParentsProvider.get_parent_map"""
+        """See graph.StackedParentsProvider.get_parent_map"""
         # revisions index works in keys; this just works in revisions
         # therefore wrap and unwrap
         query_keys = []
@@ -2408,7 +2408,7 @@ class Repository(object):
         parents_provider = self._make_parents_provider()
         if (other_repository is not None and
             not self.has_same_location(other_repository)):
-            parents_provider = graph._StackedParentsProvider(
+            parents_provider = graph.StackedParentsProvider(
                 [parents_provider, other_repository._make_parents_provider()])
         return graph.Graph(parents_provider)
 
