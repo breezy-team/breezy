@@ -29,7 +29,7 @@ cdef extern from "Python.h":
     object PyString_FromStringAndSize(char *v, Py_ssize_t len)
     char *PyString_AS_STRING(object o) except NULL
     Py_ssize_t PyString_GET_SIZE(object o) except -1
-    object PyLong_FromString(char *str, char **pend, int base)
+    object PyInt_FromString(char *str, char **pend, int base)
 
 cdef extern from "stddef.h":
     ctypedef unsigned int size_t
@@ -42,7 +42,6 @@ cdef extern from "stdlib.h":
 
 cdef extern from "string.h":
     void *memcpy(void *dest, void *src, size_t count)
-    char *strndup(char *src, size_t count)
 
 cdef extern from "python-compat.h":
     int snprintf(char* buffer, size_t nsize, char* fmt, ...)
@@ -100,8 +99,8 @@ cdef class Decoder:
         self.size = self.size - n
         self.tail = &self.tail[n]
 
-    cdef char *_read_digits(self, char stop_char) except NULL:
-        cdef char *ret
+    cdef int _read_digits(self, char stop_char) except -1:
+        cdef int i
         i = 0
         while ((self.tail[i] >= c'0' and self.tail[i] <= c'9') or 
                self.tail[i] == c'-') and i < self.size:
@@ -113,32 +112,28 @@ cdef class Decoder:
         if (self.tail[0] == c'0' or 
                 (self.tail[0] == c'-' and self.tail[1] == c'0')):
             if i == 1:
-                self._update_tail(i+1)
-                return strndup("0", 1)
+                return i
             else:
                 raise ValueError # leading zeroes are not allowed
-        ret = <char*>strndup(self.tail, i)
-        if NULL == ret:
-            raise MemoryError 
+        return i
+
+    cdef object _decode_int(self):
+        cdef char longstr[32], *tail
+        cdef int i
+        i = self._read_digits(c'e')
+        if i > sizeof(longstr)-1:
+            raise ValueError("long data too big")
+        memcpy(longstr, self.tail, i)
+        longstr[i] = c'\0'
+        ret = PyInt_FromString(longstr, NULL, 10)
         self._update_tail(i+1)
         return ret
 
-    cdef object _decode_int(self):
-        cdef char *longstr, *tail
-        longstr = self._read_digits(c'e')
-        result = PyLong_FromString(longstr, &tail, 10)
-        free(longstr)
-        return result
-
     cdef object _decode_string(self):
-        cdef char *longstr, *tail
-        cdef int n
-        longstr = self._read_digits(c':')
-        # long int
-        n = strtol(longstr, &tail, 10)
-        if tail[0] != c'\0':
-            raise ValueError("Tail invalid: %s" % longstr)
-        free(longstr)
+        cdef int n, i
+        i = self._read_digits(c':')
+        n = strtol(self.tail, NULL, 10)
+        self._update_tail(i+1)
         if n == 0:
             return ''
         if n > self.size:
