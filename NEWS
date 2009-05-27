@@ -26,6 +26,11 @@ Improvements
 Bug Fixes
 *********
 
+* Clarify the rules for locking and fallback repositories. Fix bugs in how
+  ``RemoteRepository`` was handling fallbacks along with the
+  ``_real_repository``. (Andrew Bennetts, John Arbash Meinel, #375496)
+
+
 Documentation
 *************
 
