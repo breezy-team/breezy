@@ -23,7 +23,7 @@ fi
 for DISTRO in $UBUNTU_RELEASES; do
     PPAVERSION="$VERSION~${DISTRO}1"
     (
-        echo "Updating ccontrol for $DISTRO"
+        echo "Updating control for $DISTRO"
         cd "$PACKAGE-$DISTRO" &&
             sed -i -e "s/$NEW_VERSION~/$NEXT_VERSION~/;s/$OLD_VERSION~/$NEW_VERSION~/" control &&
             bzr commit -m "New upstream release: $PPAVERSION, update control"
