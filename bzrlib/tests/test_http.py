@@ -143,7 +143,7 @@ def load_tests(standard_tests, module, loader):
                                              auth_scheme_scenarios)
     tests.multiply_tests(tpa_tests, tpa_scenarios, result)
 
-    # activity: activity on all http versions on all implementations
+    # activity: on all http[s] versions on all implementations
     tpact_tests, remaining_tests = tests.split_suite_by_condition(
         remaining_tests, tests.condition_isinstance((
                 TestActivity,
@@ -151,11 +151,34 @@ def load_tests(standard_tests, module, loader):
     activity_scenarios = [
         ('http', dict(_activity_server=ActivityHTTPServer)),
         ]
+    act_transport_scenarios = [
+        ('urllib', dict(_transport=_urllib.HttpTransport_urllib,)),
+        ]
     if tests.HTTPSServerFeature.available():
         activity_scenarios.append(
             ('https', dict(_activity_server=ActivityHTTPSServer)))
-    tpact_scenarios = tests.multiply_scenarios(tp_scenarios,
-        activity_scenarios)
+        if pycurl_present:
+            from bzrlib.tests import (
+                ssl_certs,
+                )
+            # FIXME: Until we have a better way to handle self-signed
+            # certificates (like allowing them in a test specific
+            # authentication.conf for example), we need some specialized pycurl
+            # transport for tests.
+            class HTTPS_pycurl_transport(PyCurlTransport):
+
+                def __init__(self, base, _from_transport=None):
+                    super(HTTPS_pycurl_transport, self).__init__(
+                        base, _from_transport)
+                    self.cabundle = str(ssl_certs.build_path('ca.crt'))
+
+            act_transport_scenarios.append(
+                ('pycurl', dict(_transport=HTTPS_pycurl_transport,)))
+
+    tpact_scenarios = tests.multiply_scenarios(act_transport_scenarios,
+                                               protocol_scenarios)
+    tpact_scenarios = tests.multiply_scenarios(tpact_scenarios,
+                                               activity_scenarios)
     tests.multiply_tests(tpact_tests, tpact_scenarios, result)
 
     # No parametrization for the remaining tests
