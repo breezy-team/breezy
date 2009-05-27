@@ -149,15 +149,18 @@ def load_tests(standard_tests, module, loader):
                 TestActivity,
                 )))
     activity_scenarios = [
-        ('http', dict(_activity_server=ActivityHTTPServer)),
-        ]
-    act_transport_scenarios = [
-        ('urllib', dict(_transport=_urllib.HttpTransport_urllib,)),
+        ('urllib,http', dict(_activity_server=ActivityHTTPServer,
+                             _transport=_urllib.HttpTransport_urllib,)),
         ]
     if tests.HTTPSServerFeature.available():
         activity_scenarios.append(
-            ('https', dict(_activity_server=ActivityHTTPSServer)))
-        if pycurl_present:
+            ('urllib,https', dict(_activity_server=ActivityHTTPSServer,
+                                  _transport=_urllib.HttpTransport_urllib,)),)
+    if pycurl_present:
+        activity_scenarios.append(
+            ('pycurl,http', dict(_activity_server=ActivityHTTPServer,
+                                 _transport=PyCurlTransport,)),)
+        if tests.HTTPSServerFeature.available():
             from bzrlib.tests import (
                 ssl_certs,
                 )
@@ -172,13 +175,12 @@ def load_tests(standard_tests, module, loader):
                         base, _from_transport)
                     self.cabundle = str(ssl_certs.build_path('ca.crt'))
 
-            act_transport_scenarios.append(
-                ('pycurl', dict(_transport=HTTPS_pycurl_transport,)))
+            activity_scenarios.append(
+                ('pycurl,https', dict(_activity_server=ActivityHTTPSServer,
+                                      _transport=HTTPS_pycurl_transport,)),)
 
-    tpact_scenarios = tests.multiply_scenarios(
-        tests.multiply_scenarios(act_transport_scenarios,
-                                 protocol_scenarios),
-        activity_scenarios)
+    tpact_scenarios = tests.multiply_scenarios(activity_scenarios,
+                                               protocol_scenarios)
     tests.multiply_tests(tpact_tests, tpact_scenarios, result)
 
     # No parametrization for the remaining tests
