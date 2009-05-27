@@ -1564,6 +1564,9 @@ class DirStateRevisionTree(Tree):
         self._repo_supports_tree_reference = getattr(
             repository._format, "supports_tree_reference",
             False)
+        # Simple cache of last dirstate lookup
+        self._last_entry_lookup = None
+        self._last_entry = None
 
     def __repr__(self):
         return "<%s of %s in %s>" % \
@@ -1636,8 +1639,13 @@ class DirStateRevisionTree(Tree):
             raise errors.BzrError('must supply file_id or path')
         if path is not None:
             path = path.encode('utf8')
-        parent_index = self._get_parent_index()
-        return self._dirstate._get_entry(parent_index, fileid_utf8=file_id, path_utf8=path)
+        cache_key = file_id or ("path:%s" % path)
+        if self._last_entry_lookup != cache_key:
+            parent_index = self._get_parent_index()
+            self._last_entry = self._dirstate._get_entry(parent_index,
+                fileid_utf8=file_id, path_utf8=path)
+            self._last_entry_lookup = cache_key
+        return self._last_entry
 
     def _generate_inventory(self):
         """Create and set self.inventory from the dirstate object.
