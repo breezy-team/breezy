@@ -1452,7 +1452,8 @@ class Repository(object):
         unstacked_inventories = self.inventories._index
         present_inventories = unstacked_inventories.get_parent_map(
             key[-1:] for key in parents)
-        if len(parents.difference(present_inventories)) == 0:
+        parents.difference_update(present_inventories)
+        if len(parents) == 0:
             # No missing parent inventories.
             return set()
         # Ok, now we have a list of missing inventories.  But these only matter
