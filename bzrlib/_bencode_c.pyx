@@ -104,7 +104,7 @@ cdef class Decoder:
         i = 0
         while ((self.tail[i] >= c'0' and self.tail[i] <= c'9') or 
                self.tail[i] == c'-') and i < self.size:
-            i += 1
+            i = i + 1
 
         if self.tail[i] != stop_char:
             raise ValueError("Stop character %c not found: %c" % 
@@ -297,7 +297,7 @@ cdef class Encoder:
         n = snprintf(self.tail, 32, '%d:', PyString_GET_SIZE(x))
         if n < 0:
             raise MemoryError('string %s too big to encode' % x)
-        memcpy(<void *>self.tail+n, PyString_AS_STRING(x), 
+        memcpy(<void *>(self.tail+n), PyString_AS_STRING(x),
                PyString_GET_SIZE(x))
         self._update_tail(n+PyString_GET_SIZE(x))
         return 1
