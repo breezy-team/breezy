@@ -1428,7 +1428,7 @@ class Repository(object):
     def suspend_write_group(self):
         raise errors.UnsuspendableWriteGroup(self)
 
-    def get_missing_parent_inventories(self):
+    def get_missing_parent_inventories(self, check_for_missing_texts=True):
         """Return the keys of missing inventory parents for revisions added in
         this write group.
 
@@ -1456,6 +1456,8 @@ class Repository(object):
         if len(parents) == 0:
             # No missing parent inventories.
             return set()
+        if not check_for_missing_texts:
+            return set(('inventories', rev_id) for (rev_id,) in parents)
         # Ok, now we have a list of missing inventories.  But these only matter
         # if the inventories that reference them are missing some texts they
         # appear to introduce.

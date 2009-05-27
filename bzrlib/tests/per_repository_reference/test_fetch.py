@@ -19,7 +19,7 @@ from bzrlib.smart import server
 from bzrlib.tests.per_repository import TestCaseWithRepository
 
 
-class TestDefaultStackingPolicy(TestCaseWithRepository):
+class TestFetch(TestCaseWithRepository):
 
     def make_source_branch(self):
         # It would be nice if there was a way to force this to be memory-only

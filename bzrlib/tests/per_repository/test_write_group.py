@@ -248,9 +248,9 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         inventory) in it must have all the texts in its inventory (even if not
         changed w.r.t. to the absent parent), otherwise it will report missing
         texts/parent inventory.
-        
+
         The core of this test is that a file was changed in rev-1, but in a
-        stacked repo that only has rev-2 
+        stacked repo that only has rev-2
         """
         # Make a trunk with one commit.
         trunk_repo = self.make_stackable_repo()
@@ -291,6 +291,42 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         self.assertEqual(
             set(), reopened_repo.get_missing_parent_inventories())
         reopened_repo.abort_write_group()
+
+    def test_get_missing_parent_inventories_check(self):
+        builder = self.make_branch_builder('test')
+        builder.build_snapshot('A-id', ['ghost-parent-id'], [
+            ('add', ('', 'root-id', 'directory', None)),
+            ('add', ('file', 'file-id', 'file', 'content\n'))],
+            allow_leftmost_as_ghost=True)
+        b = builder.get_branch()
+        b.lock_read()
+        self.addCleanup(b.unlock)
+        repo = self.make_repository('test-repo')
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        self.addCleanup(repo.abort_write_group)
+        # Now, add the objects manually
+        text_keys = [('file-id', 'A-id')]
+        if repo.supports_rich_root():
+            text_keys.append(('root-id', 'A-id'))
+        # Directly add the texts, inventory, and revision object for 'A-id'
+        repo.texts.insert_record_stream(b.repository.texts.get_record_stream(
+            text_keys, 'unordered', True))
+        repo.add_revision('A-id', b.repository.get_revision('A-id'),
+                          b.repository.get_inventory('A-id'))
+        if repo._format.supports_external_lookups:
+            self.assertEqual(set([('inventories', 'ghost-parent-id')]),
+                repo.get_missing_parent_inventories(check_for_missing_texts=False))
+            self.assertEqual(set(),
+                repo.get_missing_parent_inventories(check_for_missing_texts=True))
+            self.assertEqual(set(), repo.get_missing_parent_inventories())
+        else:
+            self.assertEqual(set(),
+                repo.get_missing_parent_inventories(check_for_missing_texts=False))
+            self.assertEqual(set(),
+                repo.get_missing_parent_inventories(check_for_missing_texts=True))
+            self.assertEqual(set(), repo.get_missing_parent_inventories())
 
 
 class TestResumeableWriteGroup(TestCaseWithRepository):

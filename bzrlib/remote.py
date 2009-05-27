@@ -670,9 +670,10 @@ class RemoteRepository(_RpcHelper):
         self._ensure_real()
         return self._real_repository.suspend_write_group()
 
-    def get_missing_parent_inventories(self):
+    def get_missing_parent_inventories(self, check_for_missing_texts=True):
         self._ensure_real()
-        return self._real_repository.get_missing_parent_inventories()
+        return self._real_repository.get_missing_parent_inventories(
+            check_for_missing_texts=check_for_missing_texts)
 
     def _ensure_real(self):
         """Ensure that there is a _real_repository set.
