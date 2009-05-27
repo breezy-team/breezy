@@ -2315,10 +2315,10 @@ class KnitPackRepository(KnitRepository):
         self._write_lock_count += 1
         if self._write_lock_count == 1:
             self._transaction = transactions.WriteTransaction()
+        if not locked:
             for repo in self._fallback_repositories:
                 # Writes don't affect fallback repos
                 repo.lock_read()
-        if not locked:
             self._refresh_data()
 
     def lock_read(self):
@@ -2327,10 +2327,9 @@ class KnitPackRepository(KnitRepository):
             self._write_lock_count += 1
         else:
             self.control_files.lock_read()
-            for repo in self._fallback_repositories:
-                # Writes don't affect fallback repos
-                repo.lock_read()
         if not locked:
+            for repo in self._fallback_repositories:
+                repo.lock_read()
             self._refresh_data()
 
     def leave_lock_in_place(self):
@@ -2376,10 +2375,10 @@ class KnitPackRepository(KnitRepository):
                 transaction = self._transaction
                 self._transaction = None
                 transaction.finish()
-                for repo in self._fallback_repositories:
-                    repo.unlock()
         else:
             self.control_files.unlock()
+
+        if not self.is_locked():
             for repo in self._fallback_repositories:
                 repo.unlock()
 

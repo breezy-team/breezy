@@ -1642,7 +1642,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
             fl = []
             for subf in os.listdir(dirabs):
-                if subf == '.bzr':
+                if self.bzrdir.is_control_filename(subf):
                     continue
                 if subf not in dir_entry.children:
                     try:
@@ -2374,7 +2374,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                     bzrdir_loc = bisect_left(cur_disk_dir_content,
                         ('.bzr', '.bzr'))
                     if (bzrdir_loc < len(cur_disk_dir_content)
-                        and cur_disk_dir_content[bzrdir_loc][0] == '.bzr'):
+                        and self.bzrdir.is_control_filename(
+                            cur_disk_dir_content[bzrdir_loc][0])):
                         # we dont yield the contents of, or, .bzr itself.
                         del cur_disk_dir_content[bzrdir_loc]
             if inv_finished:

@@ -34,7 +34,10 @@ from bzrlib.bzrdir import (
     format_registry,
     )
 from bzrlib.inventory import Inventory
-from bzrlib.revision import Revision
+from bzrlib.revision import (
+    NULL_REVISION,
+    Revision,
+    )
 from bzrlib.tests import (
     TestCase,
     TestCaseWithTransport,
@@ -101,27 +104,44 @@ class DummyForeignVcsBranch(branch.BzrBranch6,foreign.ForeignBranch):
         branch.BzrBranch6.__init__(self, _format, _control_files, a_bzrdir, 
             *args, **kwargs)
 
-    def dpull(self, source, stop_revision=None):
-        source.lock_read()
+
+class InterToDummyVcsBranch(branch.GenericInterBranch,
+                            foreign.InterToForeignBranch):
+
+    @staticmethod
+    def is_compatible(source, target):
+        return isinstance(target, DummyForeignVcsBranch)
+
+    def lossy_push(self, stop_revision=None):
+        result = branch.BranchPushResult()
+        result.source_branch = self.source
+        result.target_branch = self.target
+        result.old_revno, result.old_revid = self.target.last_revision_info()
+        self.source.lock_read()
         try:
             # This just handles simple cases, but that's good enough for tests
-            my_history = self.revision_history()
-            their_history = source.revision_history()
+            my_history = self.target.revision_history()
+            their_history = self.source.revision_history()
             if their_history[:min(len(my_history), len(their_history))] != my_history:
-                raise errors.DivergedBranches(self, source)
+                raise errors.DivergedBranches(self.target, self.source)
             todo = their_history[len(my_history):]
             revidmap = {}
             for revid in todo:
-                rev = source.repository.get_revision(revid)
-                tree = source.repository.revision_tree(revid)
+                rev = self.source.repository.get_revision(revid)
+                tree = self.source.repository.revision_tree(revid)
                 def get_file_with_stat(file_id, path=None):
                     return (tree.get_file(file_id), None)
                 tree.get_file_with_stat = get_file_with_stat
-                new_revid = self.mapping.revision_id_foreign_to_bzr(
-                    (str(rev.timestamp), str(rev.timezone), str(self.revno())))
-                parent_revno, parent_revid= self.last_revision_info()
-                builder = self.get_commit_builder([parent_revid], 
-                        self.get_config(), rev.timestamp,
+                new_revid = self.target.mapping.revision_id_foreign_to_bzr(
+                    (str(rev.timestamp), str(rev.timezone), 
+                        str(self.target.revno())))
+                parent_revno, parent_revid= self.target.last_revision_info()
+                if parent_revid == NULL_REVISION:
+                    parent_revids = []
+                else:
+                    parent_revids = [parent_revid]
+                builder = self.target.get_commit_builder(parent_revids, 
+                        self.target.get_config(), rev.timestamp,
                         rev.timezone, rev.committer, rev.properties,
                         new_revid)
                 try:
@@ -129,7 +149,7 @@ class DummyForeignVcsBranch(branch.BzrBranch6,foreign.ForeignBranch):
                         new_ie = ie.copy()
                         new_ie.revision = None
                         builder.record_entry_contents(new_ie, 
-                            [self.repository.get_inventory(parent_revid)],
+                            [self.target.repository.revision_tree(parent_revid).inventory],
                             path, tree, 
                             (ie.kind, ie.text_size, ie.executable, ie.text_sha1))
                     builder.finish_inventory()
@@ -137,12 +157,15 @@ class DummyForeignVcsBranch(branch.BzrBranch6,foreign.ForeignBranch):
                     builder.abort()
                     raise
                 revidmap[revid] = builder.commit(rev.message)
-                self.set_last_revision_info(parent_revno+1, revidmap[revid])
+                self.target.set_last_revision_info(parent_revno+1, 
+                    revidmap[revid])
                 trace.mutter('lossily pushed revision %s -> %s', 
                     revid, revidmap[revid])
         finally:
-            source.unlock()
-        return revidmap
+            self.source.unlock()
+        result.new_revno, result.new_revid = self.target.last_revision_info()
+        result.revidmap = revidmap
+        return result
 
 
 class DummyForeignVcsBranchFormat(branch.BzrBranchFormat6):
@@ -336,6 +359,7 @@ class DummyForeignVcsTests(TestCaseWithTransport):
 
     def setUp(self):
         BzrDirFormat.register_control_format(DummyForeignVcsDirFormat)
+        branch.InterBranch.register_optimiser(InterToDummyVcsBranch)
         self.addCleanup(self.unregister)
         super(DummyForeignVcsTests, self).setUp()
 
@@ -344,6 +368,7 @@ class DummyForeignVcsTests(TestCaseWithTransport):
             BzrDirFormat.unregister_control_format(DummyForeignVcsDirFormat)
         except ValueError:
             pass
+        branch.InterBranch.unregister_optimiser(InterToDummyVcsBranch)
 
     def test_create(self):
         """Test we can create dummies."""
@@ -360,3 +385,29 @@ class DummyForeignVcsTests(TestCaseWithTransport):
         dir = BzrDir.open("d")
         newdir = dir.sprout("e")
         self.assertNotEquals("A Dummy VCS Dir", newdir._format.get_format_string())
+
+    def test_lossy_push_empty(self):
+        source_tree = self.make_branch_and_tree("source")
+        target_tree = self.make_branch_and_tree("target", 
+            format=DummyForeignVcsDirFormat())
+        pushresult = source_tree.branch.lossy_push(target_tree.branch)
+        self.assertEquals(NULL_REVISION, pushresult.old_revid)
+        self.assertEquals(NULL_REVISION, pushresult.new_revid)
+        self.assertEquals({}, pushresult.revidmap)
+
+    def test_lossy_push_simple(self):
+        source_tree = self.make_branch_and_tree("source")
+        self.build_tree(['source/a', 'source/b'])
+        source_tree.add(['a', 'b'])
+        revid1 = source_tree.commit("msg")
+        target_tree = self.make_branch_and_tree("target", 
+            format=DummyForeignVcsDirFormat())
+        target_tree.branch.lock_write()
+        try:
+            pushresult = source_tree.branch.lossy_push(target_tree.branch)
+        finally:
+            target_tree.branch.unlock()
+        self.assertEquals(NULL_REVISION, pushresult.old_revid)
+        self.assertEquals({revid1:target_tree.branch.last_revision()}, 
+                           pushresult.revidmap)
+        self.assertEquals(pushresult.revidmap[revid1], pushresult.new_revid)

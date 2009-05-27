@@ -14,17 +14,17 @@ rules. See ``bzr help rules`` for general information on defining rules.
 To configure which files to filter, set ``eol`` to one of the values below.
 (If a value is not set, ``exact`` is the default.)
 
- ============== ============================== ======================
- Value          Checkout end-of-lines as       Commit end-of-lines as
- ============== ============================== ======================
- native         crlf on Windows, lf otherwise  lf
- -------------- ------------------------------ ----------------------
- lf             lf                             lf
- -------------- ------------------------------ ----------------------
- crlf           crlf                           lf
- -------------- ------------------------------ ----------------------
- exact          No conversion                  exactly as in file
- ============== ============================== ======================
+ ========== ===================================== ======================
+ Value      Checkout end-of-lines as              Commit end-of-lines as
+ ========== ===================================== ======================
+ ``native`` ``crlf`` on Windows, ``lf`` otherwise ``lf``
+ ---------- ------------------------------------- ----------------------
+ ``lf``     ``lf``                                ``lf``
+ ---------- ------------------------------------- ----------------------
+ ``crlf``   ``crlf``                              ``lf``
+ ---------- ------------------------------------- ----------------------
+ ``exact``  No conversion                         Exactly as in file
+ ========== ===================================== ======================
 
 Note: For safety reasons, no conversion is applied to any file where a null
 byte is detected in the file.
@@ -82,20 +82,21 @@ In the future, a ``binary = true`` rule may be added but it is not
 supported yet.)
 
 If you have an existing repository with text files already stored using
-Windows newline conventions (crlf), then you may want to keep using that
+Windows newline conventions (``crlf``), then you may want to keep using that
 convention in the repository. Forcing certain files to this convention
 may also help users who do not have rules configured. To do this, set
 ``eol`` to one of the values below.
 
- ========================= ============================== ======================
- Value                     Checkout end-of-lines as       Commit end-of-lines as
- ========================= ============================== ======================
- native-with-crlf-in-repo  crlf on Windows, lf otherwise  crlf
- ------------------------- ------------------------------ ----------------------
- lf-with-crlf-in-repo      lf                             crlf
- ------------------------- ------------------------------ ----------------------
- crlf-with-crlf-in-repo    crlf                           crlf
- ========================= ============================== ======================
+ ============================ ======================== ======================
+ Value                        Checkout end-of-lines as Commit end-of-lines as
+ ============================ ======================== ======================
+ ``native-with-crlf-in-repo`` ``crlf`` on Windows,     ``crlf``
+                              ``lf`` otherwise
+ ---------------------------- ------------------------ ----------------------
+ ``lf-with-crlf-in-repo``     ``lf``                   ``crlf``
+ ---------------------------- ------------------------ ----------------------
+ ``crlf-with-crlf-in-repo``   ``crlf``                 ``crlf``
+ ============================ ======================== ======================
 
 For users working on an existing project that uses Windows newline
 conventions in their Bazaar repository, this rule is suggested as a
@@ -104,7 +105,7 @@ starting point::
   [name *]
   eol = native-with-crlf-in-repo
 
-For new projects, it is recommended that end-of-lines be stored as lf
+For new projects, it is recommended that end-of-lines be stored as ``lf``
 and that users stick to the basic settings, i.e. ``native``, ``lf``,
 ``crlf`` and ``exact``.
 
