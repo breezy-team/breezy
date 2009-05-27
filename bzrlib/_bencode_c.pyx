@@ -180,6 +180,8 @@ cdef class Decoder:
             raise ValueError('too long string')
         if n > self.size:
             raise ValueError('stream underflow')
+        if n < 0:
+            raise ValueError('string size below zero: %d' % n)
 
         result = PyString_FromStringAndSize(self.tail, n)
         self._update_tail(n)
@@ -374,12 +376,12 @@ cdef class Encoder:
         return 1
 
     def process(self, object x):
-        if PyInt_CheckExact(x):
+        if PyString_CheckExact(x):
+            self._encode_string(x)
+        elif PyInt_CheckExact(x):
             self._encode_int(x)
         elif PyLong_CheckExact(x):
             self._encode_long(x)
-        elif PyString_CheckExact(x):
-            self._encode_string(x)
         elif PyList_CheckExact(x) or PyTuple_CheckExact(x):
             self._encode_list(x)
         elif PyDict_CheckExact(x):
