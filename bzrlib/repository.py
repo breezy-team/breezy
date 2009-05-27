@@ -969,6 +969,10 @@ class Repository(object):
         """
         if not self._format.supports_external_lookups:
             raise errors.UnstackableRepositoryFormat(self._format, self.base)
+        if self.is_locked():
+            # This repository will call fallback.unlock() when we transition to
+            # the unlocked state, so we make sure to increment the lock count
+            repository.lock_read()
         self._check_fallback_repository(repository)
         self._fallback_repositories.append(repository)
         self.texts.add_fallback_versioned_files(repository.texts)

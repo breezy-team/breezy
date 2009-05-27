@@ -97,6 +97,7 @@ def load_tests(standard_tests, module, loader):
         'bzrlib.tests.per_repository_reference.test_break_lock',
         'bzrlib.tests.per_repository_reference.test_check',
         'bzrlib.tests.per_repository_reference.test_default_stacking',
+        'bzrlib.tests.per_repository_reference.test_initialize',
         'bzrlib.tests.per_repository_reference.test_unlock',
         ]
     # Parameterize per_repository_reference test modules by format.

@@ -956,6 +956,7 @@ class RemoteRepository(_RpcHelper):
                 raise AssertionError(
                     "cannot cleanly remove existing _fallback_repositories")
         for fb in self._fallback_repositories:
+            assert fb.is_locked() == self.is_locked(), 'lock mismatch during _set_real'
             self._real_repository.add_fallback_repository(fb)
         if self._lock_mode == 'w':
             # if we are already locked, the real repository must be able to
@@ -1088,6 +1089,11 @@ class RemoteRepository(_RpcHelper):
         # We need to accumulate additional repositories here, to pass them in
         # on various RPC's.
         #
+        if self.is_locked():
+            # We will call fallback.unlock() when we transition to the unlocked
+            # state, so always add a lock here. If a caller passes us a locked
+            # repository, they are responsible for unlocking it later.
+            repository.lock_read()
         self._fallback_repositories.append(repository)
         # If self._real_repository was parameterised already (e.g. because a
         # _real_branch had its get_stacked_on_url method called), then the
@@ -1096,11 +1102,6 @@ class RemoteRepository(_RpcHelper):
             fallback_locations = [repo.bzrdir.root_transport.base for repo in
                 self._real_repository._fallback_repositories]
             if repository.bzrdir.root_transport.base not in fallback_locations:
-                if self.is_locked():
-                    # The _real_repository will unlock its fallback repository
-                    # when its lock_count transitions back to unlocked.
-                    # So we need to keep the lock counters in sync.
-                    repository.lock_read()
                 self._real_repository.add_fallback_repository(repository)
 
     def add_inventory(self, revid, inv, parents):
@@ -1980,7 +1981,7 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         except (errors.NotStacked, errors.UnstackableBranchFormat,
             errors.UnstackableRepositoryFormat), e:
             return
-        self._activate_fallback_location(fallback_url, None)
+        self._activate_fallback_location(fallback_url)
 
     def _get_config(self):
         return RemoteBranchConfig(self)

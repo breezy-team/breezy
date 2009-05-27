@@ -101,13 +101,9 @@ class Branch(object):
     def _open_hook(self):
         """Called by init to allow simpler extension of the base class."""
 
-    def _activate_fallback_location(self, url, lock_style):
+    def _activate_fallback_location(self, url):
         """Activate the branch/repository from url as a fallback repository."""
         repo = self._get_fallback_repository(url)
-        if lock_style == 'write':
-            repo.lock_write()
-        elif lock_style == 'read':
-            repo.lock_read()
         self.repository.add_fallback_repository(repo)
 
     def break_lock(self):
@@ -656,7 +652,7 @@ class Branch(object):
                 self.repository.fetch(source_repository, revision_id,
                     find_ghosts=True)
         else:
-            self._activate_fallback_location(url, 'write')
+            self._activate_fallback_location(url)
         # write this out after the repository is stacked to avoid setting a
         # stacked config that doesn't work.
         self._set_config_location('stacked_on_location', url)
@@ -2366,7 +2362,7 @@ class BzrBranch8(BzrBranch5):
                     raise AssertionError(
                         "'transform_fallback_location' hook %s returned "
                         "None, not a URL." % hook_name)
-            self._activate_fallback_location(url, None)
+            self._activate_fallback_location(url)
 
     def __init__(self, *args, **kwargs):
         self._ignore_fallbacks = kwargs.get('ignore_fallbacks', False)
