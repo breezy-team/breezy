@@ -12,7 +12,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
 
 """Pyrex implementation for bencode coder/decoder"""
 
@@ -30,7 +31,7 @@ cdef extern from "Python.h":
     char *PyString_AS_STRING(object o) except NULL
     Py_ssize_t PyString_GET_SIZE(object o) except -1
     long PyInt_GetMax()
-    object PyLong_FromString(char *str, char **pend, int base)
+    object PyLong_FromLong(unsigned long)
 
 cdef extern from "stddef.h":
     ctypedef unsigned int size_t
@@ -39,9 +40,12 @@ cdef extern from "stdlib.h":
     void free(void *memblock)
     void *malloc(size_t size)
     void *realloc(void *memblock, size_t size)
+    long int strtol(char *nptr, char **endptr, int base)
+
 
 cdef extern from "string.h":
     void *memcpy(void *dest, void *src, size_t count)
+    char *memchr(void *dest, int size, char c)
 
 cdef extern from "python-compat.h":
     int snprintf(char* buffer, size_t nsize, char* fmt, ...)
@@ -116,58 +120,16 @@ cdef class Decoder:
 
     cdef int _decode_int_until(self, char stop_char) except? -1:
         """Decode int from stream until stop_char encountered"""
-        cdef int result
-        cdef int i, n
-        cdef int sign
-        cdef char digit
-        cdef char *longstr
-
-        for n from 0 <= n < self.size:
-            if self.tail[n] == stop_char:
-                break
-        else:
+        cdef char *actual_tail, *expected_tail
+        cdef int n
+        expected_tail = memchr(self.tail, self.size, stop_char)
+        if expected_tail == NULL:
             raise ValueError
-
-        sign = 0
-        if c'-' == self.tail[0]:
-            sign = 1
-
-        if n-sign == 0:
-            raise ValueError    # ie / i-e
-
-        if self.tail[sign] == c'0':   # special check for zero
-            if sign:
-                raise ValueError    # i-0e
-            if n > 1:
-                raise ValueError    # i00e / i01e
-            self._update_tail(n+1)
-            return 0
-
-        if n-sign < self._MAXN:
-            # plain int
-            result = 0
-            for i from sign <= i < n:
-                digit = self.tail[i]
-                if c'0' <= digit <= c'9':
-                    result = result * 10 + (digit - c'0')
-                else:
-                    raise ValueError
-            if sign:
-                result = -result
-            self._update_tail(n+1)
-        else:
-            # long int
-            result = self._MAXINT
-            longstr = <char*>malloc(n+1)
-            if NULL == longstr:
-                raise MemoryError 
-            memcpy(longstr, self.tail, n)
-            longstr[n] = 0
-            self._longint = PyLong_FromString(longstr, NULL, 10)
-            free(longstr)
-            self._update_tail(n+1)
-
-        return result
+        ret = PyLong_FromLong(strtol(self.tail, &actual_tail, 10))
+        if actual_tail != expected_tail or actual_tail == self.tail:
+            raise ValueError
+        self._update_tail(actual_tail - self.tail)
+        return ret
 
     cdef object _decode_string(self):
         cdef int n
