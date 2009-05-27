@@ -680,29 +680,11 @@ class TestGraph(TestCaseWithMemoryTransport):
         # 1
         # |
         # 2
-        # |\
-        # 3 5
-        # | |
-        # 4 6
-        parents1 = _mod_graph.DictParentsProvider({'rev2':['rev1'],
-                                                   'rev3':['rev2'],
-                                                   'rev4':['rev3']})
-        parents2 = _mod_graph.DictParentsProvider({'rev2':['rev1'],
-                                                   'rev5':['rev2'],
-                                                   'rev6':['rev5']})
+        parents1 = _mod_graph.DictParentsProvider({'rev2': ['rev1']})
+        parents2 = _mod_graph.DictParentsProvider({'rev2': ['rev1']})
         stacked = _mod_graph._StackedParentsProvider([parents1, parents2])
-        self.assertEqual({'rev2':['rev1'],
-                          'rev3':['rev2'],
-                          'rev4':['rev3'],
-                          'rev5':['rev2'],
-                          'rev6':['rev5'],
-                         },
-                         stacked.get_parent_map(['rev2',
-                                                 'rev3',
-                                                 'rev4',
-                                                 'rev5',
-                                                 'rev6',
-                                                 ]))
+        self.assertEqual({'rev2': ['rev1']},
+                         stacked.get_parent_map(['rev2']))
 
     def test_iter_topo_order(self):
         graph = self.make_graph(ancestry_1)
