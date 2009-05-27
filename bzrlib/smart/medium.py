@@ -287,7 +287,13 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
     def _read_bytes(self, desired_count):
         # We ignore the desired_count because on sockets it's more efficient to
         # read large chunks (of _MAX_READ_SIZE bytes) at a time.
-        bytes = osutils.until_no_eintr(self.socket.recv, _MAX_READ_SIZE)
+        try:
+            bytes = osutils.until_no_eintr(self.socket.recv, _MAX_READ_SIZE)
+        except socket.error, e:
+            if e.args[0] in (errno.ECONNRESET, 10054):
+                # The connection was closed by the other side.
+                return ''
+            raise
         self._report_activity(len(bytes), 'read')
         return bytes
 
