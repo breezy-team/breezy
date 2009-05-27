@@ -409,10 +409,42 @@ class DirState(object):
         # during commit.
         self._last_block_index = None
         self._last_entry_index = None
+        # If True, use the per-entry field cache for faster serialisation.
+        # If False, disable it. If None, it is not used but may be enabled.
+        self._use_smart_saving = None
+        # The set of known changes
+        self._known_changes = set()
 
     def __repr__(self):
         return "%s(%r)" % \
             (self.__class__.__name__, self._filename)
+
+    def _mark_modified(self, entries=None, header_too=False):
+        """Mark this dirstate as modified.
+
+        :param entries: if non-None, mark just these entries as modified.
+        :param header_too: mark the header modified as well, not just the
+          dirblocks.
+        """
+        #trace.mutter_callsite(3, "modified entries: %s", entries)
+        if entries:
+            self._known_changes.update([e[0] for e in entries])
+            # We only enable save saving is it hasn't already been disabled
+            if self._use_smart_saving is not False:
+                self._use_smart_saving = True
+        else:
+            # We don't know exactly what changed so disable smart saving
+            self._use_smart_saving = False
+        self._dirblock_state = DirState.IN_MEMORY_MODIFIED
+        if header_too:
+            self._header_state = DirState.IN_MEMORY_MODIFIED
+
+    def _mark_unmodified(self):
+        """Mark this dirstate as unmodified."""
+        self._header_state = DirState.IN_MEMORY_UNMODIFIED
+        self._dirblock_state = DirState.IN_MEMORY_UNMODIFIED
+        self._use_smart_saving = None
+        self._known_changes = set()
 
     def add(self, path, file_id, kind, stat, fingerprint):
         """Add a path to be tracked.
@@ -545,7 +577,7 @@ class DirState(object):
         if kind == 'directory':
            # insert a new dirblock
            self._ensure_block(block_index, entry_index, utf8path)
-        self._dirblock_state = DirState.IN_MEMORY_MODIFIED
+        self._mark_modified()
         if self._id_index:
             self._id_index.setdefault(entry_key[2], set()).add(entry_key)
 
@@ -1017,8 +1049,7 @@ class DirState(object):
 
         self._ghosts = []
         self._parents = [parents[0]]
-        self._dirblock_state = DirState.IN_MEMORY_MODIFIED
-        self._header_state = DirState.IN_MEMORY_MODIFIED
+        self._mark_modified(header_too=True)
 
     def _empty_parent_info(self):
         return [DirState.NULL_PARENT_DETAILS] * (len(self._parents) -
@@ -1460,8 +1491,7 @@ class DirState(object):
         # Apply in-situ changes.
         self._update_basis_apply_changes(changes)
 
-        self._dirblock_state = DirState.IN_MEMORY_MODIFIED
-        self._header_state = DirState.IN_MEMORY_MODIFIED
+        self._mark_modified(header_too=True)
         self._id_index = None
         return
 
@@ -1594,7 +1624,7 @@ class DirState(object):
                 and stat_value.st_ctime < self._cutoff_time):
                 entry[1][0] = ('f', sha1, entry[1][0][2], entry[1][0][3],
                     packed_stat)
-                self._dirblock_state = DirState.IN_MEMORY_MODIFIED
+                self._mark_modified()
 
     def _sha_cutoff_time(self):
         """Return cutoff time.
@@ -2162,8 +2192,7 @@ class DirState(object):
                 self._state_file.writelines(self.get_lines())
                 self._state_file.truncate()
                 self._state_file.flush()
-                self._header_state = DirState.IN_MEMORY_UNMODIFIED
-                self._dirblock_state = DirState.IN_MEMORY_UNMODIFIED
+                self._mark_unmodified()
             finally:
                 if grabbed_write_lock:
                     self._lock_token = self._lock_token.restore_read_lock()
@@ -2185,8 +2214,7 @@ class DirState(object):
         """
         # our memory copy is now authoritative.
         self._dirblocks = dirblocks
-        self._header_state = DirState.IN_MEMORY_MODIFIED
-        self._dirblock_state = DirState.IN_MEMORY_MODIFIED
+        self._mark_modified(header_too=True)
         self._parents = list(parent_ids)
         self._id_index = None
         self._packed_stat_index = None
@@ -2212,7 +2240,7 @@ class DirState(object):
         self._make_absent(entry)
         self.update_minimal(('', '', new_id), 'd',
             path_utf8='', packed_stat=entry[1][0][4])
-        self._dirblock_state = DirState.IN_MEMORY_MODIFIED
+        self._mark_modified()
         if self._id_index is not None:
             self._id_index.setdefault(new_id, set()).add(entry[0])
 
@@ -2352,8 +2380,7 @@ class DirState(object):
         self._entries_to_current_state(new_entries)
         self._parents = [rev_id for rev_id, tree in trees]
         self._ghosts = list(ghosts)
-        self._header_state = DirState.IN_MEMORY_MODIFIED
-        self._dirblock_state = DirState.IN_MEMORY_MODIFIED
+        self._mark_modified(header_too=True)
         self._id_index = id_index
 
     def _sort_entries(self, entry_list):
@@ -2471,7 +2498,7 @@ class DirState(object):
                 # without seeing it in the new list.  so it must be gone.
                 self._make_absent(current_old)
                 current_old = advance(old_iterator)
-        self._dirblock_state = DirState.IN_MEMORY_MODIFIED
+        self._mark_modified()
         self._id_index = None
         self._packed_stat_index = None
 
@@ -2524,7 +2551,7 @@ class DirState(object):
             if update_tree_details[0][0] == 'a': # absent
                 raise AssertionError('bad row %r' % (update_tree_details,))
             update_tree_details[0] = DirState.NULL_PARENT_DETAILS
-        self._dirblock_state = DirState.IN_MEMORY_MODIFIED
+        self._mark_modified()
         return last_reference
 
     def update_minimal(self, key, minikind, executable=False, fingerprint='',
@@ -2650,7 +2677,7 @@ class DirState(object):
             if not present:
                 self._dirblocks.insert(block_index, (subdir_key[0], []))
 
-        self._dirblock_state = DirState.IN_MEMORY_MODIFIED
+        self._mark_modified()
 
     def _validate(self):
         """Check that invariants on the dirblock are correct.
@@ -2936,7 +2963,7 @@ def py_update_entry(state, entry, abspath, stat_value,
         else:
             entry[1][0] = ('l', '', stat_value.st_size,
                            False, DirState.NULLSTAT)
-    state._dirblock_state = DirState.IN_MEMORY_MODIFIED
+    state._mark_modified([entry])
     return link_or_sha1
 update_entry = py_update_entry
 
