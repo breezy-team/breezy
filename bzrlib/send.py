@@ -28,13 +28,6 @@ from bzrlib import (
 from bzrlib.branch import (
     Branch,
     )
-from bzrlib.commands import (
-    Command,
-    )
-from bzrlib.option import (
-    Option,
-    RegistryOption,
-    )
 from bzrlib.revision import (
     NULL_REVISION,
     )
