@@ -957,7 +957,6 @@ class RemoteRepository(_RpcHelper):
                 raise AssertionError(
                     "cannot cleanly remove existing _fallback_repositories")
         for fb in self._fallback_repositories:
-            assert fb.is_locked() == self.is_locked(), 'lock mismatch during _set_real'
             self._real_repository.add_fallback_repository(fb)
         if self._lock_mode == 'w':
             # if we are already locked, the real repository must be able to
