@@ -1184,30 +1184,6 @@ class DirState(object):
             entire_entry[tree_offset + 3] = DirState._to_yesno[tree_data[3]]
         return '\0'.join(entire_entry)
 
-    def _entry_to_line_smart(self, entry):
-        """Serialize entry to a NULL delimited line ready for _get_output_lines.
-
-        This implementation uses the line cache when it can.
-
-        :param entry: An entry_tuple as defined in the module docstring.
-        """
-        key = entry[0]
-        if key not in self._known_changes:
-            # The line cache is a tuple of 2 ordered lists: keys and lines.
-            # We keep track of successful matches and only search from there
-            # on next time.
-            index = self._line_cache_index
-            if self._line_cache[0][index] == key:
-                self._line_cache_index += 1
-                return self._line_cache[1][index]
-            try:
-                index = self._line_cache[0].index(key, index + 1)
-                self._line_cache_index = index + 1
-                return self._line_cache[1][index]
-            except ValueError:
-                pass
-        return self._entry_to_line(entry)
-
     def _fields_per_entry(self):
         """How many null separated fields should be in each entry row.
 
@@ -1721,11 +1697,7 @@ class DirState(object):
         lines = []
         lines.append(self._get_parents_line(self.get_parent_ids()))
         lines.append(self._get_ghosts_line(self._ghosts))
-        if self._use_smart_saving and self._line_cache:
-            self._line_cache_index = 0
-            lines.extend(map(self._entry_to_line_smart, self._iter_entries()))
-        else:
-            lines.extend(map(self._entry_to_line, self._iter_entries()))
+        lines.extend(self._get_entry_lines())
         return self._get_output_lines(lines)
 
     def _get_ghosts_line(self, ghost_ids):
@@ -1735,6 +1707,35 @@ class DirState(object):
     def _get_parents_line(self, parent_ids):
         """Create a line for the state file for parents information."""
         return '\0'.join([str(len(parent_ids))] + parent_ids)
+
+    def _get_entry_lines(self):
+        """Create lines for entries."""
+        if self._use_smart_saving and self._line_cache:
+            # We unroll this case for better performance ...
+            # The line cache is a tuple of 2 ordered lists: keys and lines.
+            # We keep track of successful matches and only search from there
+            # on next time.
+            entry_to_line = self._entry_to_line
+            known_changes = self._known_changes
+            index = 0
+            keys, serialised = self._line_cache
+            result = []
+            for entry in self._iter_entries():
+                key = entry[0]
+                if key in known_changes:
+                    result.append(entry_to_line(entry))
+                else:
+                    if keys[index] != key:
+                        try:
+                            index = keys.index(key, index + 1)
+                        except ValueError:
+                            result.append(entry_to_line(entry))
+                            continue
+                    result.append(serialised[index])
+                    index += 1
+            return result
+        else:
+            return map(self._entry_to_line, self._iter_entries())
 
     def _get_fields_to_entry(self):
         """Get a function which converts entry fields into a entry record.
