@@ -26,6 +26,9 @@ Improvements
 Bug Fixes
 *********
 
+ * Reconcile can now deal with text revisions that originated in revisions 
+   that are ghosts. (Jelmer Vernooij, #336749)
+
 Documentation
 *************
 
