@@ -414,6 +414,8 @@ class DirState(object):
         self._use_smart_saving = None
         # The set of known changes
         self._known_changes = set()
+        # The cache of serialised lines
+        self._line_cache = {}
 
     def __repr__(self):
         return "%s(%r)" % \
@@ -1181,6 +1183,21 @@ class DirState(object):
             entire_entry[tree_offset + 3] = DirState._to_yesno[tree_data[3]]
         return '\0'.join(entire_entry)
 
+    def _entry_to_line_smart(self, entry):
+        """Serialize entry to a NULL delimited line ready for _get_output_lines.
+
+        This implementation uses the line cache when it can.
+
+        :param entry: An entry_tuple as defined in the module docstring.
+        """
+        key = entry[0]
+        if key not in self._known_changes:
+            try:
+                return self._line_cache[key]
+            except KeyError:
+                pass
+        return self._entry_to_line(entry)
+
     def _fields_per_entry(self):
         """How many null separated fields should be in each entry row.
 
@@ -1688,14 +1705,16 @@ class DirState(object):
         """Serialise the entire dirstate to a sequence of lines."""
         if (self._header_state == DirState.IN_MEMORY_UNMODIFIED and
             self._dirblock_state == DirState.IN_MEMORY_UNMODIFIED):
-            # read whats on disk.
+            # read what's on disk.
             self._state_file.seek(0)
             return self._state_file.readlines()
         lines = []
         lines.append(self._get_parents_line(self.get_parent_ids()))
         lines.append(self._get_ghosts_line(self._ghosts))
-        # append the root line which is special cased
-        lines.extend(map(self._entry_to_line, self._iter_entries()))
+        if self._use_smart_saving and self._line_cache:
+            lines.extend(map(self._entry_to_line_smart, self._iter_entries()))
+        else:
+            lines.extend(map(self._entry_to_line, self._iter_entries()))
         return self._get_output_lines(lines)
 
     def _get_ghosts_line(self, ghost_ids):
@@ -2087,6 +2106,38 @@ class DirState(object):
         self._read_header_if_needed()
         if self._dirblock_state == DirState.NOT_IN_MEMORY:
             _read_dirblocks(self)
+            # While it's a small overhead, it's good to build the line cache
+            # now while we know that the dirstate is loaded and unmodified.
+            # It we leave it till later, it takes a while longer because the
+            # memory representation and file representation are no longer
+            # in sync.
+            self._build_line_cache()
+
+    def _build_line_cache(self):
+        """Build the line cache.
+
+        The line cache maps entry keys to serialised lines.
+        """
+        self._state_file.seek(0)
+        lines = self._state_file.readlines()
+        # There are 5 header lines: 3 in the prelude, a line for
+        # parents and a line for ghosts. There is also a trailing
+        # empty line. We skip over those.
+        # Each line starts with a null and ends with a null and
+        # newline. We don't keep those because the serialisation
+        # process adds them.
+        values = [l[1:-2] for l in lines[5:-1]]
+        if self._dirblock_state == DirState.IN_MEMORY_UNMODIFIED:
+            keys = []
+            for directory in self._dirblocks:
+                keys.extend([e[0] for e in directory[1]])
+        else:
+            # Be safe and calculate the keys from the lines
+            keys = []
+            for v in values:
+                fields = v.split('\0', 3)
+                keys.append((fields[0], fields[1], fields[2]))
+        self._line_cache = dict(zip(keys, values))
 
     def _read_header(self):
         """This reads in the metadata header, and the parent ids.
