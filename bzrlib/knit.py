@@ -3407,7 +3407,7 @@ class _KnitAnnotator(object):
         fulltext.)
 
         :return: A list of (key, index_memo) records, suitable for
-            passing to read_records_iter to start reading in the raw data fro/
+            passing to read_records_iter to start reading in the raw data from
             the pack file.
         """
         if key in self._annotated_lines:

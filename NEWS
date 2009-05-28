@@ -18,6 +18,11 @@ New Features
 Improvements
 ************
 
+* ``bzr branch`` in a shared repository is now faster for
+  development6-rich-root format. (Ian Clatworthy)
+
+* ``bzr branch --notree`` is now faster. (Ian Clatworthy)
+
 Bug Fixes
 *********
 
@@ -38,12 +43,18 @@ Testing
 
 bzr 1.15
 ########
-:1.15rc1: 2009-04-06
+:1.15rc1: 2009-05-16
+:1.15: 2009-05-22
 
 The smart server will no longer raise 'NoSuchRevision' when streaming content
 with a size mismatch in a reconstructed graph search. New command ``bzr
 dpush``. Plugins can now define their own annotation tie-breaker when two
 revisions introduce the exact same line.
+
+Changes from 1.15rc1 to 1.15final
+*********************************
+
+* No changes
 
 Compatibility Breaks
 ********************
@@ -64,6 +75,10 @@ New Features
 * New command ``bzr dpush`` that can push changes to foreign 
   branches (svn, git) without setting custom bzr-specific metadata.
   (Jelmer Vernooij)
+
+* ``bzr send`` will now check the ``child_submit_format`` setting in
+  the submit branch to determine what format to use, if none was 
+  specified on the command-line.  (Jelmer Vernooij)
 
 Improvements
 ************

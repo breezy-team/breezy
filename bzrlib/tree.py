@@ -202,9 +202,10 @@ class Tree(object):
             specific_file_ids=specific_file_ids)
 
     def iter_references(self):
-        for path, entry in self.iter_entries_by_dir():
-            if entry.kind == 'tree-reference':
-                yield path, entry.file_id
+        if self.supports_tree_reference():
+            for path, entry in self.iter_entries_by_dir():
+                if entry.kind == 'tree-reference':
+                    yield path, entry.file_id
 
     def kind(self, file_id):
         raise NotImplementedError("Tree subclass %s must implement kind"
