@@ -164,7 +164,14 @@ class SqliteGitShaMap(GitShaMap):
 
     @classmethod
     def from_repository(cls, repository):
-        return cls(os.path.join(repository._transport.local_abspath("."), "git.db"))
+        try:
+            transport = getattr(repository, "_transport", None)
+            if transport is not None:
+                return cls(os.path.join(transport.local_abspath("."), "git.db"))
+        except bzrlib.errors.NotLocalUrl:
+            pass
+        from bzrlib.config import config_dir
+        return cls(os.path.join(config_dir(), "remote-git.db"))
 
     def lookup_commit(self, revid):
         row = self.db.execute("select sha1 from commits where revid = ?", (revid,)).fetchone()
