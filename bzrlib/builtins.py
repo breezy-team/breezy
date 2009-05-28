@@ -4858,7 +4858,7 @@ class cmd_send(Command):
                          self.outf)
 
 
-class cmd_bundle_revisions(Command):
+class cmd_bundle_revisions(cmd_send):
     """Create a merge-directive for submitting changes.
 
     A merge directive provides many things needed for requesting merges:
