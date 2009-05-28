@@ -32,6 +32,17 @@ from bzrlib.errors import (
     )
 
 
+def get_cache_dir():
+    try:
+        from xdg.BaseDirectory import xdg_cache_home
+    except ImportError:
+        pass
+    else:
+        return os.path.join(xdg_cache_home, "bazaar", "git")
+    from bzrlib.config import config_dir
+    return os.path.join(config_dir(), "git")
+
+
 def check_pysqlite_version(sqlite3):
     """Check that sqlite library is compatible.
 
@@ -170,8 +181,7 @@ class SqliteGitShaMap(GitShaMap):
                 return cls(os.path.join(transport.local_abspath("."), "git.db"))
         except bzrlib.errors.NotLocalUrl:
             pass
-        from bzrlib.config import config_dir
-        return cls(os.path.join(config_dir(), "remote-git.db"))
+        return cls(os.path.join(get_cache_dir(), "remote.db"))
 
     def lookup_commit(self, revid):
         row = self.db.execute("select sha1 from commits where revid = ?", (revid,)).fetchone()
@@ -299,8 +309,7 @@ class TdbGitShaMap(GitShaMap):
                 return cls(os.path.join(transport.local_abspath("."), "git.tdb"))
         except bzrlib.errors.NotLocalUrl:
             pass
-        from bzrlib.config import config_dir
-        return cls(os.path.join(config_dir(), "remote-git.tdb"))
+        return cls(os.path.join(get_cache_dir(), "remote.tdb"))
 
     def lookup_commit(self, revid):
         return sha_to_hex(self.db["commit\0" + revid][:20])
