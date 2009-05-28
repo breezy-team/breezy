@@ -145,3 +145,24 @@ class TestIterReverseRevisionHistory(TestCaseWithRepository):
                                   repo, 'rev-2-4')
         self.assertRevHistoryList(['rev-2-5', 'rev-2-4', 'rev-2-3', 'rev-2-2',
                                    'rev-1-1'], repo, 'rev-2-5')
+
+    def test_ghost(self):
+        tree = self.make_branch_and_memory_tree('tree')
+        tree.lock_write()
+        try:
+            tree.add('')
+            tree.set_parent_ids(['spooky'], allow_leftmost_as_ghost=True)
+            tree.commit('1', rev_id='rev1')
+            tree.commit('2', rev_id='rev2')
+        finally:
+            tree.unlock()
+        iter = tree.branch.repository.iter_reverse_revision_history('rev2')
+        tree.branch.repository.lock_read()
+        try:
+            self.assertEquals('rev2', iter.next())
+            self.assertEquals('rev1', iter.next())
+            self.assertEquals('spooky', iter.next())
+            self.assertRaises(errors.RevisionNotPresent, iter.next)
+        finally:
+            tree.branch.repository.unlock()
+
