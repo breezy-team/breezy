@@ -43,8 +43,8 @@ class TestCommit(ExternalBase):
         self.build_tree(['hello.txt'])
         out,err = self.run_bzr('commit -m empty', retcode=3)
         self.assertEqual('', out)
-        self.assertContainsRe(err, 'bzr: ERROR: no changes to commit\.'
-                                  ' use --unchanged to commit anyhow\n')
+        self.assertContainsRe(err, 'bzr: ERROR: No changes to commit\.'
+                                  ' Use --unchanged to commit anyhow.\n')
 
     def test_commit_success(self):
         """Successful commit should not leave behind a bzr-commit-* file"""
@@ -395,7 +395,7 @@ class TestCommit(ExternalBase):
 
         # With no changes, it should just be 'no changes'
         # Make sure that commit is failing because there is nothing to do
-        self.run_bzr_error(['no changes to commit'],
+        self.run_bzr_error(['No changes to commit'],
                            'commit --strict -m no-changes',
                            working_dir='tree')
 

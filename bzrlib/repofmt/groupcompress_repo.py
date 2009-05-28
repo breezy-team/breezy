@@ -87,8 +87,8 @@ class GCPack(NewPack):
             # have a regular 2-list index giving parents and compression
             # source.
             index_builder_class(reference_lists=1),
-            # Texts: compression and per file graph, for all fileids - so two
-            # reference lists and two elements in the key tuple.
+            # Texts: per file graph, for all fileids - so one reference list
+            # and two elements in the key tuple.
             index_builder_class(reference_lists=1, key_elements=2),
             # Signatures: Just blobs to store, no compression, no parents
             # listing.

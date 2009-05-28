@@ -53,6 +53,11 @@ class TestNode(tests.TestCase):
     def test_not_a_prefix(self):
         self.assertCommonPrefix('b', 'begin', 'b')
 
+    def test_empty(self):
+        self.assertCommonPrefix('', '', 'end')
+        self.assertCommonPrefix('', 'begin', '')
+        self.assertCommonPrefix('', '', '')
+
 
 class TestCaseWithStore(tests.TestCaseWithTransport):
 

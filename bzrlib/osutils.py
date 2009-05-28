@@ -77,6 +77,15 @@ from bzrlib import symbol_versioning
 O_BINARY = getattr(os, 'O_BINARY', 0)
 
 
+def get_unicode_argv():
+    try:
+        user_encoding = get_user_encoding()
+        return [a.decode(user_encoding) for a in sys.argv[1:]]
+    except UnicodeDecodeError:
+        raise errors.BzrError(("Parameter '%r' is unsupported by the current "
+                                                            "encoding." % a))
+
+
 def make_readonly(filename):
     """Make a filename read-only."""
     mod = os.lstat(filename).st_mode
@@ -390,6 +399,11 @@ if sys.platform == 'win32':
     def rmtree(path, ignore_errors=False, onerror=_win32_delete_readonly):
         """Replacer for shutil.rmtree: could remove readonly dirs/files"""
         return shutil.rmtree(path, ignore_errors, onerror)
+
+    f = win32utils.get_unicode_argv     # special function or None
+    if f is not None:
+        get_unicode_argv = f
+
 elif sys.platform == 'darwin':
     getcwd = _mac_getcwd
 
@@ -851,6 +865,19 @@ def joinpath(p):
         if (f == '..') or (f is None) or (f == ''):
             raise errors.BzrError("sorry, %r not allowed in path" % f)
     return pathjoin(*p)
+
+
+def parent_directories(filename):
+    """Return the list of parent directories, deepest first.
+    
+    For example, parent_directories("a/b/c") -> ["a/b", "a"].
+    """
+    parents = []
+    parts = splitpath(dirname(filename))
+    while parts:
+        parents.append(joinpath(parts))
+        parts.pop()
+    return parents
 
 
 try:

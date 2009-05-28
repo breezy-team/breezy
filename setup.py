@@ -264,6 +264,7 @@ add_pyrex_extension('bzrlib._groupcompress_pyx',
                     extra_source=['bzrlib/diff-delta.c'])
 add_pyrex_extension('bzrlib._chunks_to_lines_pyx')
 add_pyrex_extension('bzrlib._knit_load_data_c')
+add_pyrex_extension('bzrlib._rio_pyx')
 add_pyrex_extension('bzrlib._chk_map_pyx', libraries=['z'])
 if sys.platform == 'win32':
     add_pyrex_extension('bzrlib._dirstate_helpers_c',
