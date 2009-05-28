@@ -20,10 +20,10 @@ from bzrlib import (
     debug,
     errors,
     revision,
-    symbol_versioning,
     trace,
     tsort,
     )
+from bzrlib.symbol_versioning import deprecated_function, deprecated_in
 
 STEP_UNIQUE_SEARCHER_EVERY = 5
 
@@ -64,6 +64,9 @@ class DictParentsProvider(object):
         ancestry = self.ancestry
         return dict((k, ancestry[k]) for k in keys if k in ancestry)
 
+@deprecated_function(deprecated_in((0, 1, 16)))
+def _StackedParentsProvider(*args, **kwargs):
+    return StackedParentsProvider(*args, **kwargs)
 
 class StackedParentsProvider(object):
     """A parents provider which stacks (or unions) multiple providers.
