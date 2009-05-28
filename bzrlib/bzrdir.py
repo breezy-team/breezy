@@ -3177,8 +3177,6 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
                     remote_repo.dont_leave_lock_in_place()
             else:
                 remote_repo.lock_write()
-            note('Final stack: %s', final_stack)
-            mutter('Aquiring fallback: %s', remote_repo)
             policy = UseExistingRepository(remote_repo, final_stack,
                 final_stack_pwd, require_stacking)
             policy.acquire_repository()
@@ -3477,7 +3475,6 @@ class RepositoryAcquisitionPolicy(object):
             stacked_repo = stacked_dir.open_branch().repository
         except errors.NotBranchError:
             stacked_repo = stacked_dir.open_repository()
-        mutter('stacking on %s', stacked_repo)
         try:
             repository.add_fallback_repository(stacked_repo)
         except errors.UnstackableRepositoryFormat:
