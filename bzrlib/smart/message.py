@@ -351,5 +351,9 @@ def _translate_error(error_tuple):
         raise errors.LockContention('(remote lock)')
     elif error_name == 'LockFailed':
         raise errors.LockFailed(*error_args[:2])
+    elif error_name == 'FileExists':
+        raise errors.FileExists(error_args[0])
+    elif error_name == 'NoSuchFile':
+        raise errors.NoSuchFile(error_args[0])
     else:
         raise errors.ErrorFromSmartServer(error_tuple)

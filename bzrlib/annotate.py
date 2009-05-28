@@ -313,6 +313,27 @@ def _get_matching_blocks(old, new):
     return matcher.get_matching_blocks()
 
 
+def _break_annotation_tie(annotated_lines):
+    """Chose an attribution between several possible ones.
+
+    :param annotated_lines: A list of tuples ((file_id, rev_id), line) where
+        the lines are identical but the revids different while no parent
+        relation exist between them
+
+     :return : The "winning" line. This must be one with a revid that
+         guarantees that further criss-cross merges will converge. Failing to
+         do so have performance implications.
+    """
+    # sort lexicographically so that we always get a stable result.
+
+    # TODO: while 'sort' is the easiest (and nearly the only possible solution)
+    # with the current implementation, chosing the oldest revision is known to
+    # provide better results (as in matching user expectations). The most
+    # common use case being manual cherry-pick from an already existing
+    # revision.
+    return sorted(annotated_lines)[0]
+
+
 def _find_matching_unannotated_lines(output_lines, plain_child_lines,
                                      child_lines, start_child, end_child,
                                      right_lines, start_right, end_right,
@@ -323,10 +344,11 @@ def _find_matching_unannotated_lines(output_lines, plain_child_lines,
     :param plain_child_lines: The unannotated new lines for the child text
     :param child_lines: Lines for the child text which have been annotated
         for the left parent
-    :param start_child: Position in plain_child_lines and child_lines to start the
-        match searching
-    :param end_child: Last position in plain_child_lines and child_lines to search
-        for a match
+
+    :param start_child: Position in plain_child_lines and child_lines to start
+        the match searching
+    :param end_child: Last position in plain_child_lines and child_lines to
+        search for a match
     :param right_lines: The annotated lines for the whole text for the right
         parent
     :param start_right: Position in right_lines to start the match
@@ -368,9 +390,11 @@ def _find_matching_unannotated_lines(output_lines, plain_child_lines,
                     if len(heads) == 1:
                         output_append((iter(heads).next(), left[1]))
                     else:
-                        # Both claim different origins, sort lexicographically
-                        # so that we always get a stable result.
-                        output_append(sorted([left, right])[0])
+                        # Both claim different origins, get a stable result.
+                        # If the result is not stable, there is a risk a
+                        # performance degradation as criss-cross merges will
+                        # flip-flop the attribution.
+                        output_append(_break_annotation_tie([left, right]))
         last_child_idx = child_idx + match_len
 
 
@@ -400,10 +424,9 @@ def _reannotate_annotated(right_parent_lines, new_lines, new_revision_id,
     matching_left_and_right = _get_matching_blocks(right_parent_lines,
                                                    annotated_lines)
     for right_idx, left_idx, match_len in matching_left_and_right:
-        # annotated lines from last_left_idx to left_idx did not match the lines from
-        # last_right_idx
-        # to right_idx, the raw lines should be compared to determine what annotations
-        # need to be updated
+        # annotated lines from last_left_idx to left_idx did not match the
+        # lines from last_right_idx to right_idx, the raw lines should be
+        # compared to determine what annotations need to be updated
         if last_right_idx == right_idx or last_left_idx == left_idx:
             # One of the sides is empty, so this is a pure insertion
             lines_extend(annotated_lines[last_left_idx:left_idx])

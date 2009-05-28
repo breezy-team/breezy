@@ -1290,16 +1290,18 @@ class LogFormatter(object):
     preferred_levels = 0
 
     def __init__(self, to_file, show_ids=False, show_timezone='original',
-                 delta_format=None, levels=None):
+                 delta_format=None, levels=None, show_advice=False):
         """Create a LogFormatter.
 
         :param to_file: the file to output to
         :param show_ids: if True, revision-ids are to be displayed
         :param show_timezone: the timezone to use
         :param delta_format: the level of delta information to display
-          or None to leave it u to the formatter to decide
+          or None to leave it to the formatter to decide
         :param levels: the number of levels to display; None or -1 to
           let the log formatter decide.
+        :param show_advice: whether to show advice at the end of the
+          log or not
         """
         self.to_file = to_file
         # 'exact' stream used to show diff, it should print content 'as is'
@@ -1312,6 +1314,7 @@ class LogFormatter(object):
             delta_format = 2 # long format
         self.delta_format = delta_format
         self.levels = levels
+        self._show_advice = show_advice
         self._merge_count = 0
 
     def get_levels(self):
@@ -1332,12 +1335,12 @@ class LogFormatter(object):
 
     def show_advice(self):
         """Output user advice, if any, when the log is completed."""
-        if self.levels == 1 and self._merge_count > 0:
+        if self._show_advice and self.levels == 1 and self._merge_count > 0:
             advice_sep = self.get_advice_separator()
             if advice_sep:
                 self.to_file.write(advice_sep)
             self.to_file.write(
-                "Use --levels 0 (or -n0) to see merged revisions.\n")
+                "Use --include-merges or -n0 to see merged revisions.\n")
 
     def get_advice_separator(self):
         """Get the text separating the log from the closing advice."""
@@ -1830,6 +1833,8 @@ def _get_info_for_log_files(revisionspec_list, file_list):
     info_list = []
     start_rev_info, end_rev_info = _get_revision_range(revisionspec_list, b,
         "log")
+    if relpaths in ([], [u'']):
+        return b, [], start_rev_info, end_rev_info
     if start_rev_info is None and end_rev_info is None:
         if tree is None:
             tree = b.basis_tree()

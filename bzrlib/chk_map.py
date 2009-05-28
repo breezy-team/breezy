@@ -559,6 +559,7 @@ class Node(object):
         """
         if key.startswith(prefix):
             return prefix
+        pos = -1
         # Is there a better way to do this?
         for pos, (left, right) in enumerate(zip(prefix, key)):
             if left != right:

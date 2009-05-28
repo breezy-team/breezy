@@ -55,6 +55,7 @@ from bzrlib import (
     debug,
     errors,
     hooks,
+    lock as _mod_lock,
     memorytree,
     osutils,
     progress,
@@ -133,6 +134,7 @@ class ExtendedTestResult(unittest._TextTestResult):
     def __init__(self, stream, descriptions, verbosity,
                  bench_history=None,
                  num_tests=None,
+                 strict=False,
                  ):
         """Construct new TestResult.
 
@@ -165,6 +167,22 @@ class ExtendedTestResult(unittest._TextTestResult):
         self.unsupported = {}
         self.count = 0
         self._overall_start_time = time.time()
+        self._strict = strict
+
+    def done(self):
+        if self._strict:
+            ok = self.wasStrictlySuccessful()
+        else:
+            ok = self.wasSuccessful()
+        if ok:
+            self.stream.write('tests passed\n')
+        else:
+            self.stream.write('tests failed\n')
+        if TestCase._first_thread_leaker_id:
+            self.stream.write(
+                '%s is leaking threads among %d leaking tests.\n' % (
+                TestCase._first_thread_leaker_id,
+                TestCase._leaking_threads_tests))
 
     def _extractBenchmarkTime(self, testCase):
         """Add a benchmark time for the current test case."""
@@ -196,9 +214,22 @@ class ExtendedTestResult(unittest._TextTestResult):
 
     def startTest(self, test):
         unittest.TestResult.startTest(self, test)
+        if self.count == 0:
+            self.startTests()
         self.report_test_start(test)
         test.number = self.count
         self._recordTestStartTime()
+
+    def startTests(self):
+        self.stream.write(
+            'testing: %s\n' % (osutils.realpath(sys.argv[0]),))
+        self.stream.write(
+            '   %s (%s python%s)\n' % (
+                    bzrlib.__path__[0],
+                    bzrlib.version_string,
+                    bzrlib._format_version_tuple(sys.version_info),
+                    ))
+        self.stream.write('\n')
 
     def _recordTestStartTime(self):
         """Record that a test has started."""
@@ -349,9 +380,10 @@ class TextTestResult(ExtendedTestResult):
                  bench_history=None,
                  num_tests=None,
                  pb=None,
+                 strict=None,
                  ):
         ExtendedTestResult.__init__(self, stream, descriptions, verbosity,
-            bench_history, num_tests)
+            bench_history, num_tests, strict)
         if pb is None:
             self.pb = self.ui.nested_progress_bar()
             self._supplied_pb = False
@@ -512,13 +544,15 @@ class TextTestRunner(object):
                  descriptions=0,
                  verbosity=1,
                  bench_history=None,
-                 list_only=False
+                 list_only=False,
+                 strict=False,
                  ):
         self.stream = unittest._WritelnDecorator(stream)
         self.descriptions = descriptions
         self.verbosity = verbosity
         self._bench_history = bench_history
         self.list_only = list_only
+        self._strict = strict
 
     def run(self, test):
         "Run the given test case or test suite."
@@ -532,6 +566,7 @@ class TextTestRunner(object):
                               self.verbosity,
                               bench_history=self._bench_history,
                               num_tests=test.countTestCases(),
+                              strict=self._strict,
                               )
         result.stop_early = self.stop_on_failure
         result.report_starting()
@@ -542,7 +577,7 @@ class TextTestRunner(object):
             for t in iter_suite_tests(test):
                 self.stream.writeln("%s" % (t.id()))
                 run += 1
-            actionTaken = "Listed"
+            return None
         else:
             try:
                 import testtools
@@ -716,12 +751,6 @@ class TestUIFactory(ui.CLIUIFactory):
         return password
 
 
-def _report_leaked_threads():
-    bzrlib.trace.warning('%s is leaking threads among %d leaking tests',
-                         TestCase._first_thread_leaker_id,
-                         TestCase._leaking_threads_tests)
-
-
 class TestCase(unittest.TestCase):
     """Base class for bzr unit tests.
 
@@ -753,7 +782,7 @@ class TestCase(unittest.TestCase):
     _gather_lsprof_in_benchmarks = False
     attrs_to_keep = ('id', '_testMethodName', '_testMethodDoc',
                      '_log_contents', '_log_file_name', '_benchtime',
-                     '_TestCase__testMethodName')
+                     '_TestCase__testMethodName', '_TestCase__testMethodDoc',)
 
     def __init__(self, methodName='testMethod'):
         super(TestCase, self).__init__(methodName)
@@ -770,6 +799,8 @@ class TestCase(unittest.TestCase):
         self._benchcalls = []
         self._benchtime = None
         self._clear_hooks()
+        # Track locks - needs to be called before _clear_debug_flags.
+        self._track_locks()
         self._clear_debug_flags()
         TestCase._active_threads = threading.activeCount()
         self.addCleanup(self._check_leaked_threads)
@@ -787,10 +818,6 @@ class TestCase(unittest.TestCase):
             TestCase._leaking_threads_tests += 1
             if TestCase._first_thread_leaker_id is None:
                 TestCase._first_thread_leaker_id = self.id()
-                # we're not specifically told when all tests are finished.
-                # This will do. We use a function to avoid keeping a reference
-                # to a TestCase object.
-                atexit.register(_report_leaked_threads)
 
     def _clear_debug_flags(self):
         """Prevent externally set debug flags affecting tests.
@@ -825,6 +852,55 @@ class TestCase(unittest.TestCase):
             ui.ui_factory = saved
         ui.ui_factory = ui.SilentUIFactory()
         self.addCleanup(_restore)
+
+    def _check_locks(self):
+        """Check that all lock take/release actions have been paired."""
+        # once we have fixed all the current lock problems, we can change the
+        # following code to always check for mismatched locks, but only do
+        # traceback showing with -Dlock (self._lock_check_thorough is True).
+        # For now, because the test suite will fail, we only assert that lock
+        # matching has occured with -Dlock.
+        # unhook:
+        acquired_locks = [lock for action, lock in self._lock_actions
+                          if action == 'acquired']
+        released_locks = [lock for action, lock in self._lock_actions
+                          if action == 'released']
+        broken_locks = [lock for action, lock in self._lock_actions
+                        if action == 'broken']
+        # trivially, given the tests for lock acquistion and release, if we
+        # have as many in each list, it should be ok. Some lock tests also
+        # break some locks on purpose and should be taken into account by
+        # considering that breaking a lock is just a dirty way of releasing it.
+        if len(acquired_locks) != (len(released_locks) + len(broken_locks)):
+            message = ('Different number of acquired and '
+                       'released or broken locks. (%s, %s + %s)' %
+                       (acquired_locks, released_locks, broken_locks))
+            if not self._lock_check_thorough:
+                # Rather than fail, just warn
+                print "Broken test %s: %s" % (self, message)
+                return
+            self.fail(message)
+
+    def _track_locks(self):
+        """Track lock activity during tests."""
+        self._lock_actions = []
+        self._lock_check_thorough = 'lock' not in debug.debug_flags
+        self.addCleanup(self._check_locks)
+        _mod_lock.Lock.hooks.install_named_hook('lock_acquired',
+                                                self._lock_acquired, None)
+        _mod_lock.Lock.hooks.install_named_hook('lock_released',
+                                                self._lock_released, None)
+        _mod_lock.Lock.hooks.install_named_hook('lock_broken',
+                                                self._lock_broken, None)
+
+    def _lock_acquired(self, result):
+        self._lock_actions.append(('acquired', result))
+
+    def _lock_released(self, result):
+        self._lock_actions.append(('released', result))
+
+    def _lock_broken(self, result):
+        self._lock_actions.append(('broken', result))
 
     def _ndiff_strings(self, a, b):
         """Return ndiff between two strings containing lines.
@@ -1307,7 +1383,7 @@ class TestCase(unittest.TestCase):
                 else:
                     result.addSuccess(self)
                 result.stopTest(self)
-                return
+                return result
         try:
             try:
                 result.startTest(self)
@@ -1326,14 +1402,16 @@ class TestCase(unittest.TestCase):
                                 "test setUp did not invoke "
                                 "bzrlib.tests.TestCase's setUp")
                     except KeyboardInterrupt:
+                        self._runCleanups()
                         raise
                     except TestSkipped, e:
                         self._do_skip(result, e.args[0])
                         self.tearDown()
-                        return
+                        return result
                     except:
                         result.addError(self, sys.exc_info())
-                        return
+                        self._runCleanups()
+                        return result
 
                     ok = False
                     try:
@@ -1348,6 +1426,7 @@ class TestCase(unittest.TestCase):
                             reason = e.args[0]
                         self._do_skip(result, reason)
                     except KeyboardInterrupt:
+                        self._runCleanups()
                         raise
                     except:
                         result.addError(self, sys.exc_info())
@@ -1359,32 +1438,34 @@ class TestCase(unittest.TestCase):
                                 "test tearDown did not invoke "
                                 "bzrlib.tests.TestCase's tearDown")
                     except KeyboardInterrupt:
+                        self._runCleanups()
                         raise
                     except:
                         result.addError(self, sys.exc_info())
+                        self._runCleanups()
                         ok = False
                     if ok: result.addSuccess(self)
                 finally:
                     result.stopTest(self)
-                return
+                return result
             except TestNotApplicable:
                 # Not moved from the result [yet].
+                self._runCleanups()
                 raise
             except KeyboardInterrupt:
+                self._runCleanups()
                 raise
         finally:
             saved_attrs = {}
-            absent_attr = object()
             for attr_name in self.attrs_to_keep:
-                attr = getattr(self, attr_name, absent_attr)
-                if attr is not absent_attr:
-                    saved_attrs[attr_name] = attr
+                if attr_name in self.__dict__:
+                    saved_attrs[attr_name] = self.__dict__[attr_name]
             self.__dict__ = saved_attrs
 
     def tearDown(self):
-        self._bzr_test_tearDown_run = True
         self._runCleanups()
         self._log_contents = ''
+        self._bzr_test_tearDown_run = True
         unittest.TestCase.tearDown(self)
 
     def time(self, callable, *args, **kwargs):
@@ -1567,6 +1648,7 @@ class TestCase(unittest.TestCase):
             stdin=stdin,
             working_dir=working_dir,
             )
+        self.assertIsInstance(error_regexes, (list, tuple))
         for regex in error_regexes:
             self.assertContainsRe(err, regex)
         return out, err
@@ -2130,8 +2212,8 @@ class TestCaseWithMemoryTransport(TestCase):
         return memorytree.MemoryTree.create_on_branch(b)
 
     def make_branch_builder(self, relpath, format=None):
-        return branchbuilder.BranchBuilder(self.get_transport(relpath),
-            format=format)
+        branch = self.make_branch(relpath, format=format)
+        return branchbuilder.BranchBuilder(branch=branch)
 
     def overrideEnvironmentForTesting(self):
         os.environ['HOME'] = self.test_home_dir
@@ -2617,7 +2699,8 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
               exclude_pattern=None,
               strict=False,
               runner_class=None,
-              suite_decorators=None):
+              suite_decorators=None,
+              stream=None):
     """Run a test suite for bzr selftest.
 
     :param runner_class: The class of runner to use. Must support the
@@ -2632,11 +2715,14 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
         verbosity = 1
     if runner_class is None:
         runner_class = TextTestRunner
-    runner = runner_class(stream=sys.stdout,
+    if stream is None:
+        stream = sys.stdout
+    runner = runner_class(stream=stream,
                             descriptions=0,
                             verbosity=verbosity,
                             bench_history=bench_history,
                             list_only=list_only,
+                            strict=strict,
                             )
     runner.stop_on_failure=stop_on_failure
     # built in decorator factories:
@@ -2653,6 +2739,9 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
     for decorator in decorators:
         suite = decorator(suite)
     result = runner.run(suite)
+    if list_only:
+        return True
+    result.done()
     if strict:
         return result.wasStrictlySuccessful()
     else:
@@ -3020,12 +3109,11 @@ class BZRTransformingResult(unittest.TestResult):
             # stringify the exception gives access to the remote traceback
             # We search the last line for 'prefix'
             lines = str(exc).split('\n')
-            if len(lines) > 1:
-                last = lines[-2] # -1 is empty, final \n
-            else:
-                last = lines[-1]
-            if last.startswith(prefix):
-                value = last[len(prefix):]
+            while lines and not lines[-1]:
+                lines.pop(-1)
+            if lines:
+                if lines[-1].startswith(prefix):
+                    value = lines[-1][len(prefix):]
         return value
 
 
@@ -3275,6 +3363,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test__chk_map',
                    'bzrlib.tests.test__dirstate_helpers',
                    'bzrlib.tests.test__groupcompress',
+                   'bzrlib.tests.test__rio',
                    'bzrlib.tests.test__walkdirs_win32',
                    'bzrlib.tests.test_ancestry',
                    'bzrlib.tests.test_annotate',
@@ -3326,7 +3415,6 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_help',
                    'bzrlib.tests.test_hooks',
                    'bzrlib.tests.test_http',
-                   'bzrlib.tests.test_http_implementations',
                    'bzrlib.tests.test_http_response',
                    'bzrlib.tests.test_https_ca_bundle',
                    'bzrlib.tests.test_identitymap',
@@ -3907,8 +3995,6 @@ try:
     from subunit import TestProtocolClient
     class SubUnitBzrRunner(TextTestRunner):
         def run(self, test):
-            # undo out claim for testing which looks like a test start to subunit
-            self.stream.write("success: %s\n" % (osutils.realpath(sys.argv[0]),))
             result = TestProtocolClient(self.stream)
             test.run(result)
             return result

@@ -71,7 +71,9 @@ class TestParent(TestCaseWithTransport):
             #       paths as well? Nobody has complained about it.
             pass
         else:
+            b.lock_write()
             b._set_parent_location('/local/abs/path')
+            b.unlock()
             self.assertEqual('file:///local/abs/path', b.get_parent())
 
     def test_get_invalid_parent(self):
@@ -83,7 +85,9 @@ class TestParent(TestCaseWithTransport):
         # Force the relative path to be something invalid
         # This should attempt to go outside the filesystem
         path = ('../'*(n_dirs+5)) + 'foo'
+        b.lock_write()
         b._set_parent_location(path)
+        b.unlock()
 
         # With an invalid branch parent, just return None
         self.assertRaises(bzrlib.errors.InaccessibleParent, b.get_parent)

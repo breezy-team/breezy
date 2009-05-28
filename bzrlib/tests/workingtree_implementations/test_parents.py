@@ -237,12 +237,20 @@ class TestSetParents(TestParents):
         # The link points to a file whose name is an omega
         # U+03A9 GREEK CAPITAL LETTER OMEGA
         # UTF-8: ce a9  UTF-16BE: 03a9  Decimal: &#937;
-        os.symlink(u'\u03a9','tree1/link_name')
-        tree.add(['link_name'],['link-id'])
+        target = u'\u03a9'
+        link_name = u'\N{Euro Sign}link'
+        os.symlink(target, 'tree1/' + link_name)
+        tree.add([link_name],['link-id'])
 
         revision1 = tree.commit('added a link to a Unicode target')
         revision2 = tree.commit('this revision will be discarded')
         tree.set_parent_ids([revision1])
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        # Check that the symlink target is safely round-tripped in the trees.
+        self.assertEqual(target, tree.get_symlink_target('link-id'))
+        basis = tree.basis_tree()
+        self.assertEqual(target, basis.get_symlink_target('link-id'))
 
 
 class TestAddParent(TestParents):

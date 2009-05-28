@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Repostory formats using CHK inventories and groupcompress compression."""
+"""Repository formats using CHK inventories and groupcompress compression."""
 
 import time
 
@@ -87,8 +87,8 @@ class GCPack(NewPack):
             # have a regular 2-list index giving parents and compression
             # source.
             index_builder_class(reference_lists=1),
-            # Texts: compression and per file graph, for all fileids - so two
-            # reference lists and two elements in the key tuple.
+            # Texts: per file graph, for all fileids - so one reference list
+            # and two elements in the key tuple.
             index_builder_class(reference_lists=1, key_elements=2),
             # Signatures: Just blobs to store, no compression, no parents
             # listing.
@@ -972,7 +972,7 @@ class RepositoryFormatCHK1(RepositoryFormatPack):
     # multiple in-a-row (and sharing strings). Topological is better
     # for remote, because we access less data.
     _fetch_order = 'unordered'
-    _fetch_uses_deltas = True # essentially ignored by the groupcompress code.
+    _fetch_uses_deltas = False # essentially ignored by the groupcompress code.
     fast_deltas = True
 
     def _get_matching_bzrdir(self):

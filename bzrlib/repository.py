@@ -1424,6 +1424,58 @@ class Repository(object):
     def suspend_write_group(self):
         raise errors.UnsuspendableWriteGroup(self)
 
+    def get_missing_parent_inventories(self):
+        """Return the keys of missing inventory parents for revisions added in
+        this write group.
+
+        A revision is not complete if the inventory delta for that revision
+        cannot be calculated.  Therefore if the parent inventories of a
+        revision are not present, the revision is incomplete, and e.g. cannot
+        be streamed by a smart server.  This method finds missing inventory
+        parents for revisions added in this write group.
+        """
+        if not self._format.supports_external_lookups:
+            # This is only an issue for stacked repositories
+            return set()
+        if not self.is_in_write_group():
+            raise AssertionError('not in a write group')
+                
+        # XXX: We assume that every added revision already has its
+        # corresponding inventory, so we only check for parent inventories that
+        # might be missing, rather than all inventories.
+        parents = set(self.revisions._index.get_missing_parents())
+        parents.discard(_mod_revision.NULL_REVISION)
+        unstacked_inventories = self.inventories._index
+        present_inventories = unstacked_inventories.get_parent_map(
+            key[-1:] for key in parents)
+        if len(parents.difference(present_inventories)) == 0:
+            # No missing parent inventories.
+            return set()
+        # Ok, now we have a list of missing inventories.  But these only matter
+        # if the inventories that reference them are missing some texts they
+        # appear to introduce.
+        # XXX: Texts referenced by all added inventories need to be present,
+        # but at the moment we're only checking for texts referenced by
+        # inventories at the graph's edge.
+        key_deps = self.revisions._index._key_dependencies
+        key_deps.add_keys(present_inventories)
+        referrers = frozenset(r[0] for r in key_deps.get_referrers())
+        file_ids = self.fileids_altered_by_revision_ids(referrers)
+        missing_texts = set()
+        for file_id, version_ids in file_ids.iteritems():
+            missing_texts.update(
+                (file_id, version_id) for version_id in version_ids)
+        present_texts = self.texts.get_parent_map(missing_texts)
+        missing_texts.difference_update(present_texts)
+        if not missing_texts:
+            # No texts are missing, so all revisions and their deltas are
+            # reconstructable.
+            return set()
+        # Alternatively the text versions could be returned as the missing
+        # keys, but this is likely to be less data.
+        missing_keys = set(('inventories', rev_id) for (rev_id,) in parents)
+        return missing_keys
+
     def refresh_data(self):
         """Re-read any data needed to to synchronise with disk.
 
@@ -3067,13 +3119,6 @@ class InterRepository(InterObject):
         """
         target_graph = self.target.get_graph()
         revision_ids = frozenset(revision_ids)
-        # Fast path for the case where all the revisions are already in the
-        # target repo.
-        # (Although this does incur an extra round trip for the
-        # fairly common case where the target doesn't already have the revision
-        # we're pushing.)
-        if set(target_graph.get_parent_map(revision_ids)) == revision_ids:
-            return graph.SearchResult(revision_ids, set(), 0, set())
         missing_revs = set()
         source_graph = self.source.get_graph()
         # ensure we don't pay silly lookup costs.
@@ -3365,7 +3410,7 @@ class InterPackRepo(InterSameDataRepository):
     @classmethod
     def _get_repo_format_to_test(self):
         from bzrlib.repofmt import pack_repo
-        return pack_repo.RepositoryFormatKnitPack1()
+        return pack_repo.RepositoryFormatKnitPack6RichRoot()
 
     @staticmethod
     def is_compatible(source, target):
@@ -3435,11 +3480,8 @@ class InterPackRepo(InterSameDataRepository):
             # nothing to do:
             return (0, [])
         else:
-            try:
-                revision_ids = self.search_missing_revision_ids(revision_id,
-                    find_ghosts=find_ghosts).get_keys()
-            except errors.NoSuchRevision:
-                raise errors.InstallFailed([revision_id])
+            revision_ids = self.search_missing_revision_ids(revision_id,
+                find_ghosts=find_ghosts).get_keys()
             if len(revision_ids) == 0:
                 return (0, [])
         return self._pack(self.source, self.target, revision_ids)
@@ -3542,7 +3584,7 @@ class InterDifferingSerializer(InterRepository):
         """Get the parent keys for a given root id."""
         root_id, rev_id = root_key
         # Include direct parents of the revision, but only if they used
-        # the same root_id.
+        # the same root_id and are heads.
         parent_keys = []
         for parent_id in parent_map[rev_id]:
             if parent_id == _mod_revision.NULL_REVISION:
@@ -3562,9 +3604,32 @@ class InterDifferingSerializer(InterRepository):
                 self._revision_id_to_root_id[parent_id] = None
             else:
                 parent_root_id = self._revision_id_to_root_id[parent_id]
-            if root_id == parent_root_id or parent_root_id is None:
-                parent_keys.append((root_id, parent_id))
-        return tuple(parent_keys)
+            if root_id == parent_root_id:
+                # With stacking we _might_ want to refer to a non-local
+                # revision, but this code path only applies when we have the
+                # full content available, so ghosts really are ghosts, not just
+                # the edge of local data.
+                parent_keys.append((parent_id,))
+            else:
+                # root_id may be in the parent anyway.
+                try:
+                    tree = self.source.revision_tree(parent_id)
+                except errors.NoSuchRevision:
+                    # ghost, can't refer to it.
+                    pass
+                else:
+                    try:
+                        parent_keys.append((tree.inventory[root_id].revision,))
+                    except errors.NoSuchId:
+                        # not in the tree
+                        pass
+        g = graph.Graph(self.source.revisions)
+        heads = g.heads(parent_keys)
+        selected_keys = []
+        for key in parent_keys:
+            if key in heads and key not in selected_keys:
+                selected_keys.append(key)
+        return tuple([(root_id,)+ key for key in selected_keys])
 
     def _new_root_data_stream(self, root_keys_to_create, parent_map):
         for root_key in root_keys_to_create:
@@ -3629,9 +3694,28 @@ class InterDifferingSerializer(InterRepository):
         to_texts.insert_record_stream(from_texts.get_record_stream(
             text_keys, self.target._format._fetch_order,
             not self.target._format._fetch_uses_deltas))
-        # insert deltas
+        # insert inventory deltas
         for delta in pending_deltas:
             self.target.add_inventory_by_delta(*delta)
+        if self.target._fallback_repositories:
+            # Make sure this stacked repository has all the parent inventories
+            # for the new revisions that we are about to insert.  We do this
+            # before adding the revisions so that no revision is added until
+            # all the inventories it may depend on are added.
+            parent_ids = set()
+            revision_ids = set()
+            for revision in pending_revisions:
+                revision_ids.add(revision.revision_id)
+                parent_ids.update(revision.parent_ids)
+            parent_ids.difference_update(revision_ids)
+            parent_ids.discard(_mod_revision.NULL_REVISION)
+            parent_map = self.source.get_parent_map(parent_ids)
+            for parent_tree in self.source.revision_trees(parent_ids):
+                basis_id, delta = self._get_delta_for_revision(tree, parent_ids, basis_id, cache)
+                current_revision_id = parent_tree.get_revision_id()
+                parents_parents = parent_map[current_revision_id]
+                self.target.add_inventory_by_delta(
+                    basis_id, delta, current_revision_id, parents_parents)
         # insert signatures and revisions
         for revision in pending_revisions:
             try:
@@ -3936,6 +4020,7 @@ class StreamSink(object):
     def _locked_insert_stream(self, stream, src_format):
         to_serializer = self.target_repo._format._serializer
         src_serializer = src_format._serializer
+        new_pack = None
         if to_serializer == src_serializer:
             # If serializers match and the target is a pack repository, set the
             # write cache size on the new pack.  This avoids poor performance
@@ -3982,8 +4067,14 @@ class StreamSink(object):
                 self.target_repo.signatures.insert_record_stream(substream)
             else:
                 raise AssertionError('kaboom! %s' % (substream_type,))
+        # Done inserting data, and the missing_keys calculations will try to
+        # read back from the inserted data, so flush the writes to the new pack
+        # (if this is pack format).
+        if new_pack is not None:
+            new_pack._write_data('', flush=True)
+        # Find all the new revisions (including ones from resume_tokens)
+        missing_keys = self.target_repo.get_missing_parent_inventories()
         try:
-            missing_keys = set()
             for prefix, versioned_file in (
                 ('texts', self.target_repo.texts),
                 ('inventories', self.target_repo.inventories),
