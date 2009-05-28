@@ -2371,7 +2371,74 @@ class KnitPackRepository(KnitRepository):
 
 
 class KnitPackStreamSource(StreamSource):
-    pass
+
+    def __init__(self, from_repository, to_format):
+        super(KnitPackStreamSource, self),__init__(from_repository, to_format)
+        self._text_keys = None
+        self._text_fetch_order = 'unordered'
+
+    def _find_parent_ids(self, revision_ids):
+        parent_map = self.from_repository.get_parent_map(revision_ids)
+        parents = set()
+        map(parents.update, parent_map.itervalues())
+        parents.discard(parent_map)
+        return parents
+
+    def _get_filtered_inv_stream(self, revision_ids):
+        parent_ids = self._find_parent_ids(revision_ids)
+        parent_keys = [(p,) for p in parent_ids]
+        parent_text_keys = set()
+        for record in self.from_repository.inventories.get_record_stream(
+            parent_keys, 'unordered', True):
+            # Ignore ghost parents
+            if record.storage_kind == 'absent':
+                continue
+            lines = osutils.chunks_to_lines(record.get_bytes_as('chunked'))
+        def _filtered_inv_stream():
+            id_roots_set = set()
+            p_id_roots_set = set()
+            source_vf = self.from_repository.inventories
+            stream = source_vf.get_record_stream(self._revision_keys,
+                                                 'unordered', False)
+            for record in stream:
+                bytes = record.get_bytes_as('fulltext')
+                chk_inv = inventory.CHKInventory.deserialise(None, bytes,
+                                                             record.key)
+                key = chk_inv.id_to_entry.key()
+                if key not in id_roots_set:
+                    self._chk_id_roots.append(key)
+                    id_roots_set.add(key)
+                p_id_map = chk_inv.parent_id_basename_to_file_id
+                if p_id_map is None:
+                    raise AssertionError('Parent id -> file_id map not set')
+                key = p_id_map.key()
+                if key not in p_id_roots_set:
+                    p_id_roots_set.add(key)
+                    self._chk_p_id_roots.append(key)
+                yield record
+            # We have finished processing all of the inventory records, we
+            # don't need these sets anymore
+            id_roots_set.clear()
+            p_id_roots_set.clear()
+        return ('inventories', _filtered_inv_stream())
+
+
+    def _get_text_stream(self):
+        # Note: We know we don't have to handle adding root keys, because both
+        # the source and target are the identical network name.
+        return ('texts', self.from_repository.texts.get_record_stream(
+                            self._text_keys, self._text_fetch_order, False))
+
+    def get_stream(self, search):
+        revision_ids = search.get_keys()
+        for stream_info in self._fetch_revision_texts(revision_ids):
+            yield stream_info
+        self._revision_keys = [(rev_id,) for rev_id in revision_ids]
+        yield self._get_filtered_inv_stream()
+        # The keys to exclude are part of the search recipe
+        _, _, exclude_keys, _ = search.get_recipe()
+        yield self._get_text_stream()
+
 
 
 class RepositoryFormatPack(MetaDirRepositoryFormat):

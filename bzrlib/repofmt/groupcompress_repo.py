@@ -48,6 +48,7 @@ from bzrlib.repofmt.pack_repo import (
     Pack,
     NewPack,
     KnitPackRepository,
+    KnitPackStreamSource,
     PackRootCommitBuilder,
     RepositoryPackCollection,
     RepositoryFormatPack,
@@ -850,7 +851,7 @@ class CHKInventoryRepository(KnitPackRepository):
         raise errors.UnsuspendableWriteGroup(self)
 
 
-class GroupCHKStreamSource(repository.StreamSource):
+class GroupCHKStreamSource(KnitPackStreamSource):
     """Used when both the source and target repo are GroupCHK repos."""
 
     def __init__(self, from_repository, to_format):
@@ -858,6 +859,7 @@ class GroupCHKStreamSource(repository.StreamSource):
         super(GroupCHKStreamSource, self).__init__(from_repository, to_format)
         self._revision_keys = None
         self._text_keys = None
+        self._text_fetch_order = 'groupcompress'
         self._chk_id_roots = None
         self._chk_p_id_roots = None
 
@@ -929,14 +931,6 @@ class GroupCHKStreamSource(repository.StreamSource):
                 if record is not None:
                     yield record
         yield 'chk_bytes', _get_parent_id_basename_to_file_id_pages()
-
-    def _get_text_stream(self):
-        # Note: We know we don't have to handle adding root keys, because both
-        # the source and target are GCCHK, and those always support rich-roots
-        # We may want to request as 'unordered', in case the source has done a
-        # 'split' packing
-        return ('texts', self.from_repository.texts.get_record_stream(
-                            self._text_keys, 'groupcompress', False))
 
     def get_stream(self, search):
         revision_ids = search.get_keys()
