@@ -860,6 +860,15 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
         self.assertRaises(errors.BzrError, osutils.splitpath, 'a/../b')
 
 
+class TestParentDirectories(tests.TestCaseInTempDir):
+    """Test osutils.parent_directories()"""
+
+    def test_parent_directories(self):
+        self.assertEqual([], osutils.parent_directories('a'))
+        self.assertEqual(['a'], osutils.parent_directories('a/b'))
+        self.assertEqual(['a/b', 'a'], osutils.parent_directories('a/b/c'))
+
+
 class TestMacFuncsDirs(tests.TestCaseInTempDir):
     """Test mac special functions that require directories."""
 

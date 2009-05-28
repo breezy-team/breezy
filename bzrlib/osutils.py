@@ -867,6 +867,19 @@ def joinpath(p):
     return pathjoin(*p)
 
 
+def parent_directories(filename):
+    """Return the list of parent directories, deepest first.
+    
+    For example, parent_directories("a/b/c") -> ["a/b", "a"].
+    """
+    parents = []
+    parts = splitpath(dirname(filename))
+    while parts:
+        parents.append(joinpath(parts))
+        parts.pop()
+    return parents
+
+
 try:
     from bzrlib._chunks_to_lines_pyx import chunks_to_lines
 except ImportError:

@@ -282,9 +282,9 @@ def update_workingtree_fileids(wt, target_tree):
 
 
 class cmd_dpush(Command):
-    """Push into a foreign VCS without any custom bzr metadata.
+    """Push into a different VCS without any custom bzr metadata.
 
-    This will afterwards rebase the local Bazaar branch on the remote
+    This will afterwards rebase the local branch on the remote
     branch unless the --no-rebase option is used, in which case 
     the two branches will be out of sync after the push. 
     """
@@ -329,10 +329,11 @@ class cmd_dpush(Command):
         target_branch.lock_write()
         try:
             try:
-                revid_map = source_branch.lossy_push(target_branch)
+                push_result = source_branch.lossy_push(target_branch)
             except errors.LossyPushToSameVCS:
-                raise BzrCommandError("%r is not a foreign branch, use regular "
-                                      "push." % target_branch)
+                raise BzrCommandError("%r and %r are in the same VCS, lossy "
+                    "push not necessary. Please use regular push." %
+                    (source_branch, target_branch))
             # We successfully created the target, remember it
             if source_branch.get_push_location() is None or remember:
                 source_branch.set_push_location(target_branch.base)
@@ -348,6 +349,7 @@ class cmd_dpush(Command):
                         update_workingtree_fileids(source_wt, target)
                     finally:
                         source_wt.unlock()
+            push_result.report(self.outf)
         finally:
             target_branch.unlock()
 
@@ -364,7 +366,8 @@ class InterToForeignBranch(InterBranch):
 
         :param target: Target branch
         :param stop_revision: Revision to push, defaults to last revision.
-        :return: Dictionary mapping revision ids from the target branch 
+        :return: BranchPushResult with an extra member revidmap: 
+            A dictionary mapping revision ids from the target branch 
             to new revision ids in the target branch, for each 
             revision that was pushed.
         """

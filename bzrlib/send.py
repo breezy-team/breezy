@@ -76,9 +76,18 @@ def send(submit_branch, revision, public_branch, remember, format,
                        'changes to submit.', remembered_submit_branch,
                        submit_branch)
 
-        if mail_to is None:
-            submit_config = Branch.open(submit_branch).get_config()
-            mail_to = submit_config.get_user_option("child_submit_to")
+        if mail_to is None or format is None:
+            submit_br = Branch.open(submit_branch)
+            submit_config = submit_br.get_config()
+            if mail_to is None:
+                mail_to = submit_config.get_user_option("child_submit_to")
+            if format is None:
+                formatname = submit_br.get_child_submit_format()
+                try:
+                    format = format_registry.get(formatname)
+                except KeyError:
+                    raise errors.BzrCommandError("No such send format '%s'." % 
+                                                 formatname)
 
         stored_public_branch = branch.get_public_branch()
         if public_branch is None:
