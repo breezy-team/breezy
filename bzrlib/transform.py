@@ -76,7 +76,7 @@ class _TransformResults(object):
 
 
 class TreeTransformBase(object):
-    """The base class for TreeTransform and TreeTransformBase"""
+    """The base class for TreeTransform and its kin."""
 
     def __init__(self, tree, pb=DummyProgress(),
                  case_sensitive=True):

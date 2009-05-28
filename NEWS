@@ -34,6 +34,10 @@ API Changes
 
 * Added osutils.parent_directories(). (Ian Clatworthy)
 
+* TreeTransformBase no longer assumes that limbo is provided via disk.
+  DiskTreeTransform now provides disk functionality.  (Aaron Bentley)
+
+
 Internals
 *********
 
