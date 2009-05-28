@@ -362,11 +362,14 @@ class DirState(object):
     HEADER_FORMAT_2 = '#bazaar dirstate flat format 2\n'
     HEADER_FORMAT_3 = '#bazaar dirstate flat format 3\n'
 
-    def __init__(self, path, sha1_provider):
+    def __init__(self, path, sha1_provider, worth_saving_limit=0):
         """Create a  DirState object.
 
         :param path: The path at which the dirstate file on disk should live.
         :param sha1_provider: an object meeting the SHA1Provider interface.
+        :param worth_saving_limit: when the exact number of changed entries
+            is known, only bother saving the dirstate if more than this
+            count of entries have changed. -1 means never save.
         """
         # _header_state and _dirblock_state represent the current state
         # of the dirstate metadata and the per-row data respectiely.
@@ -417,6 +420,8 @@ class DirState(object):
         # The cache of serialised lines. When built, this is a tuple of
         # 2 sorted lists that we "walk" while serialising.
         self._line_cache = None
+        # How many changed entries can we have without saving
+        self._worth_saving_limit = worth_saving_limit
 
     def __repr__(self):
         return "%s(%r)" % \
@@ -432,7 +437,7 @@ class DirState(object):
         #trace.mutter_callsite(3, "modified entries: %s", entries)
         if entries:
             self._known_changes.update([e[0] for e in entries])
-            # We only enable save saving is it hasn't already been disabled
+            # We only enable smart saving is it hasn't already been disabled
             if self._use_smart_saving is not False:
                 self._use_smart_saving = True
         else:
@@ -1710,7 +1715,9 @@ class DirState(object):
 
     def _get_entry_lines(self):
         """Create lines for entries."""
-        if self._use_smart_saving and self._line_cache:
+        if self._use_smart_saving:
+            # Build the line cache if it hasn't already been built
+            self._build_line_cache()
             # We unroll this case for better performance ...
             # The line cache is a tuple of 2 ordered lists: keys and lines.
             # We keep track of successful matches and only search from there
@@ -2095,17 +2102,21 @@ class DirState(object):
         return len(self._parents) - len(self._ghosts)
 
     @staticmethod
-    def on_file(path, sha1_provider=None):
+    def on_file(path, sha1_provider=None, worth_saving_limit=0):
         """Construct a DirState on the file at path "path".
 
         :param path: The path at which the dirstate file on disk should live.
         :param sha1_provider: an object meeting the SHA1Provider interface.
             If None, a DefaultSHA1Provider is used.
+        :param worth_saving_limit: when the exact number of changed entries
+            is known, only bother saving the dirstate if more than this
+            count of entries have changed. -1 means never save.
         :return: An unlocked DirState object, associated with the given path.
         """
         if sha1_provider is None:
             sha1_provider = DefaultSHA1Provider()
-        result = DirState(path, sha1_provider)
+        result = DirState(path, sha1_provider,
+            worth_saving_limit=worth_saving_limit)
         return result
 
     def _read_dirblocks_if_needed(self):
@@ -2118,12 +2129,6 @@ class DirState(object):
         self._read_header_if_needed()
         if self._dirblock_state == DirState.NOT_IN_MEMORY:
             _read_dirblocks(self)
-            # While it's a small overhead, it's good to build the line cache
-            # now while we know that the dirstate is loaded and unmodified.
-            # It we leave it till later, it takes a while longer because the
-            # memory representation and file representation are no longer
-            # in sync.
-            self._build_line_cache()
 
     def _build_line_cache(self):
         """Build the line cache.
@@ -2131,6 +2136,9 @@ class DirState(object):
         The line cache maps entry keys to serialised lines via
         a tuple of 2 sorted lists.
         """
+        if self._line_cache is not None:
+            # already built
+            return
         self._state_file.seek(0)
         lines = self._state_file.readlines()
         # There are 5 header lines: 3 in the prelude, a line for
@@ -2236,9 +2244,7 @@ class DirState(object):
             trace.mutter('Not saving DirState because '
                     '_changes_aborted is set.')
             return
-        if (self._header_state == DirState.IN_MEMORY_MODIFIED or
-            self._dirblock_state == DirState.IN_MEMORY_MODIFIED):
-
+        if self._worth_saving():
             grabbed_write_lock = False
             if self._lock_state != 'w':
                 grabbed_write_lock, new_lock = self._lock_token.temporary_write_lock()
@@ -2252,8 +2258,9 @@ class DirState(object):
                     # We couldn't grab a write lock, so we switch back to a read one
                     return
             try:
+                lines = self.get_lines()
                 self._state_file.seek(0)
-                self._state_file.writelines(self.get_lines())
+                self._state_file.writelines(lines)
                 self._state_file.truncate()
                 self._state_file.flush()
                 self._mark_unmodified()
@@ -2264,6 +2271,26 @@ class DirState(object):
                     # TODO: jam 20070315 We should validate the disk file has
                     #       not changed contents. Since restore_read_lock may
                     #       not be an atomic operation.
+
+    def _worth_saving(self):
+        """Is it worth saving the dirstate or not?"""
+        # Header changes are probably important enough to always save
+        if self._header_state == DirState.IN_MEMORY_MODIFIED:
+            return True
+        if (self._dirblock_state == DirState.IN_MEMORY_MODIFIED and
+            self._worth_saving_limit != -1):
+            # If we're using smart saving and only a small number of
+            # entries have changed, don't bother saving. John has
+            # suggested using a heuristic here based on the size of the
+            # changed files and/or tree. For now, we go with a configurable
+            # number of changes, keeping the calculation time
+            # as low overhead as possible. (This also keeps all existing
+            # tests passing as the default is 0, i.e. always save.)
+            if self._use_smart_saving:
+                return len(self._known_changes) > self._worth_saving_limit
+            else:
+                return True
+        return False
 
     def _set_data(self, parent_ids, dirblocks):
         """Set the full dirstate data in memory.
