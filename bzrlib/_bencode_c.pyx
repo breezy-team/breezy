@@ -210,6 +210,7 @@ class Bencached(object):
 
 cdef enum:
     INITSIZE = 1024     # initial size for encoder buffer
+    INT_BUF_SIZE = 32
 
 
 cdef class Encoder:
@@ -282,8 +283,8 @@ cdef class Encoder:
         @param  x:  value to encode
         """
         cdef int n
-        self._ensure_buffer(32)
-        n = snprintf(self.tail, 32, "i%de", x)
+        self._ensure_buffer(INT_BUF_SIZE)
+        n = snprintf(self.tail, INT_BUF_SIZE, "i%de", x)
         if n < 0:
             raise MemoryError('int %d too big to encode' % x)
         self._update_tail(n)
