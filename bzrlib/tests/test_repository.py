@@ -686,11 +686,11 @@ class TestDevelopment6(TestCaseWithTransport):
             inv.parent_id_basename_to_file_id._root_node.maximum_size)
 
 
-class TestDevelopment6FindRevisionOutsideSet(TestCaseWithTransport):
-    """Tests for _find_revision_outside_set."""
+class TestDevelopment6FindParentIdsOfRevisions(TestCaseWithTransport):
+    """Tests for _find_parent_ids_of_revisions."""
 
     def setUp(self):
-        super(TestDevelopment6FindRevisionOutsideSet, self).setUp()
+        super(TestDevelopment6FindParentIdsOfRevisions, self).setUp()
         self.builder = self.make_branch_builder('source',
             format='development6-rich-root')
         self.builder.start_series()
@@ -699,42 +699,42 @@ class TestDevelopment6FindRevisionOutsideSet(TestCaseWithTransport):
         self.repo = self.builder.get_branch().repository
         self.addCleanup(self.builder.finish_series)
 
-    def assertRevisionOutsideSet(self, expected_result, rev_set):
-        self.assertEqual(
-            expected_result, self.repo._find_revision_outside_set(rev_set))
+    def assertParentIds(self, expected_result, rev_set):
+        self.assertEqual(sorted(expected_result),
+            sorted(self.repo._find_parent_ids_of_revisions(rev_set)))
 
     def test_simple(self):
         self.builder.build_snapshot('revid1', None, [])
-        self.builder.build_snapshot('revid2', None, [])
+        self.builder.build_snapshot('revid2', ['revid1'], [])
         rev_set = ['revid2']
-        self.assertRevisionOutsideSet('revid1', rev_set)
+        self.assertParentIds(['revid1'], rev_set)
 
     def test_not_first_parent(self):
         self.builder.build_snapshot('revid1', None, [])
-        self.builder.build_snapshot('revid2', None, [])
-        self.builder.build_snapshot('revid3', None, [])
+        self.builder.build_snapshot('revid2', ['revid1'], [])
+        self.builder.build_snapshot('revid3', ['revid2'], [])
         rev_set = ['revid3', 'revid2']
-        self.assertRevisionOutsideSet('revid1', rev_set)
+        self.assertParentIds(['revid1'], rev_set)
 
     def test_not_null(self):
         rev_set = ['initial']
-        self.assertRevisionOutsideSet(_mod_revision.NULL_REVISION, rev_set)
+        self.assertParentIds([], rev_set)
 
     def test_not_null_set(self):
         self.builder.build_snapshot('revid1', None, [])
         rev_set = [_mod_revision.NULL_REVISION]
-        self.assertRevisionOutsideSet(_mod_revision.NULL_REVISION, rev_set)
+        self.assertParentIds([], rev_set)
 
     def test_ghost(self):
         self.builder.build_snapshot('revid1', None, [])
         rev_set = ['ghost', 'revid1']
-        self.assertRevisionOutsideSet('initial', rev_set)
+        self.assertParentIds(['initial'], rev_set)
 
     def test_ghost_parent(self):
         self.builder.build_snapshot('revid1', None, [])
         self.builder.build_snapshot('revid2', ['revid1', 'ghost'], [])
         rev_set = ['revid2', 'revid1']
-        self.assertRevisionOutsideSet('initial', rev_set)
+        self.assertParentIds(['ghost', 'initial'], rev_set)
 
     def test_righthand_parent(self):
         self.builder.build_snapshot('revid1', None, [])
@@ -742,7 +742,7 @@ class TestDevelopment6FindRevisionOutsideSet(TestCaseWithTransport):
         self.builder.build_snapshot('revid2b', ['revid1'], [])
         self.builder.build_snapshot('revid3', ['revid2a', 'revid2b'], [])
         rev_set = ['revid3', 'revid2a']
-        self.assertRevisionOutsideSet('revid2b', rev_set)
+        self.assertParentIds(['revid1', 'revid2b'], rev_set)
 
 
 class TestWithBrokenRepo(TestCaseWithTransport):
