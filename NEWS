@@ -26,6 +26,9 @@ Improvements
 Bug Fixes
 *********
 
+* Better message in ``bzr add`` output suggesting using ``bzr ignored`` to
+  see which files can also be added.  (Jason Spashett, #76616)
+
 Documentation
 *************
 

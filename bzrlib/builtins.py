@@ -610,8 +610,9 @@ class cmd_add(Command):
                 for glob, paths in ignored.items():
                     match_len += len(paths)
                 self.outf.write("ignored %d file(s).\n" % match_len)
-            self.outf.write("If you wish to add some of these files,"
-                            " please add them by name.\n")
+            self.outf.write("If you wish to add ignored files, "
+                            "please add them explicitly by name. "
+                            "(\"bzr ignored\" gives a list)\n")
 
 
 class cmd_mkdir(Command):
