@@ -355,10 +355,10 @@ class FileIdInvolvedWGhosts(TestCaseWithRepository):
     def test_file_ids_uses_fallbacks(self):
         builder = self.make_branch_builder('source',
                                            format=self.bzrdir_format)
-        builder.start_series()
         repo = builder.get_branch().repository
         if not repo._format.supports_external_lookups:
             raise tests.TestNotApplicable('format does not support stacking')
+        builder.start_series()
         builder.build_snapshot('A-id', None, [
             ('add', ('', 'root-id', 'directory', None)),
             ('add', ('file', 'file-id', 'file', 'contents\n'))])
