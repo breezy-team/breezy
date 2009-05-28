@@ -900,6 +900,66 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
         self.assertTrue(large_pack_name in pack_names)
 
 
+class TestKeyDependencies(TestCaseWithTransport):
+
+    def get_format(self):
+        return bzrdir.format_registry.make_bzrdir(self.format_name)
+
+    def create_source_and_target(self):
+        builder = self.make_branch_builder('source', format=self.get_format())
+        builder.start_series()
+        builder.build_snapshot('A-id', None, [
+            ('add', ('', 'root-id', 'directory', None))])
+        builder.build_snapshot('B-id', ['A-id', 'ghost-id'], [])
+        builder.finish_series()
+        repo = self.make_repository('target')
+        b = builder.get_branch()
+        b.lock_read()
+        self.addCleanup(b.unlock)
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        return b.repository, repo
+
+    def test_key_dependencies_cleared_on_abort(self):
+        source_repo, target_repo = self.create_source_and_target()
+        target_repo.start_write_group()
+        try:
+            stream = source_repo.revisions.get_record_stream([('B-id',)],
+                                                             'unordered', True)
+            target_repo.revisions.insert_record_stream(stream)
+            key_refs = target_repo.revisions._index._key_dependencies
+            self.assertEqual([('B-id',)], sorted(key_refs.get_referrers()))
+        finally:
+            target_repo.abort_write_group()
+        self.assertEqual([], sorted(key_refs.get_referrers()))
+
+    def test_key_dependencies_cleared_on_suspend(self):
+        source_repo, target_repo = self.create_source_and_target()
+        target_repo.start_write_group()
+        try:
+            stream = source_repo.revisions.get_record_stream([('B-id',)],
+                                                             'unordered', True)
+            target_repo.revisions.insert_record_stream(stream)
+            key_refs = target_repo.revisions._index._key_dependencies
+            self.assertEqual([('B-id',)], sorted(key_refs.get_referrers()))
+        finally:
+            target_repo.suspend_write_group()
+        self.assertEqual([], sorted(key_refs.get_referrers()))
+
+    def test_key_dependencies_cleared_on_commit(self):
+        source_repo, target_repo = self.create_source_and_target()
+        target_repo.start_write_group()
+        try:
+            stream = source_repo.revisions.get_record_stream([('B-id',)],
+                                                             'unordered', True)
+            target_repo.revisions.insert_record_stream(stream)
+            key_refs = target_repo.revisions._index._key_dependencies
+            self.assertEqual([('B-id',)], sorted(key_refs.get_referrers()))
+        finally:
+            target_repo.commit_write_group()
+        self.assertEqual([], sorted(key_refs.get_referrers()))
+
+
 class TestSmartServerAutopack(TestCaseWithTransport):
 
     def setUp(self):

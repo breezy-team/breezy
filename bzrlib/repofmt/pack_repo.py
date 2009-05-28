@@ -1829,14 +1829,11 @@ class RepositoryPackCollection(object):
     def reset(self):
         """Clear all cached data."""
         # cached revision data
-        self.repo._revision_knit = None
         self.revision_index.clear()
         # cached signature data
-        self.repo._signature_knit = None
         self.signature_index.clear()
         # cached file text data
         self.text_index.clear()
-        self.repo._text_knit = None
         # cached inventory data
         self.inventory_index.clear()
         # cached chk data
@@ -2055,7 +2052,6 @@ class RepositoryPackCollection(object):
                 except KeyError:
                     pass
         del self._resumed_packs[:]
-        self.repo._text_knit = None
 
     def _remove_resumed_pack_indices(self):
         for resumed_pack in self._resumed_packs:
@@ -2101,7 +2097,6 @@ class RepositoryPackCollection(object):
                 # when autopack takes no steps, the names list is still
                 # unsaved.
                 self._save_pack_names()
-        self.repo._text_knit = None
 
     def _suspend_write_group(self):
         tokens = [pack.name for pack in self._resumed_packs]
@@ -2115,7 +2110,6 @@ class RepositoryPackCollection(object):
             self._new_pack.abort()
             self._new_pack = None
         self._remove_resumed_pack_indices()
-        self.repo._text_knit = None
         return tokens
 
     def _resume_write_group(self, tokens):
@@ -2222,6 +2216,7 @@ class KnitPackRepository(KnitRepository):
                     % (self._format, self.bzrdir.transport.base))
 
     def _abort_write_group(self):
+        self.revisions._index._key_dependencies.refs.clear()
         self._pack_collection._abort_write_group()
 
     def _find_inconsistent_revision_parents(self):
@@ -2282,11 +2277,13 @@ class KnitPackRepository(KnitRepository):
         self._pack_collection._start_write_group()
 
     def _commit_write_group(self):
+        self.revisions._index._key_dependencies.refs.clear()
         return self._pack_collection._commit_write_group()
 
     def suspend_write_group(self):
         # XXX check self._write_group is self.get_transaction()?
         tokens = self._pack_collection._suspend_write_group()
+        self.revisions._index._key_dependencies.refs.clear()
         self._write_group = None
         return tokens
 
