@@ -75,7 +75,7 @@ class StackedParentsProvider(object):
         self._parent_providers = parent_providers
 
     def __repr__(self):
-        return "StackedParentsProvider(%r)" % self._parent_providers
+        return "%s(%r)" % (self.__class__.__name__, self._parent_providers)
 
     def get_parent_map(self, keys):
         """Get a mapping of keys => parents
