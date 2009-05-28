@@ -414,8 +414,9 @@ class DirState(object):
         self._use_smart_saving = None
         # The set of known changes
         self._known_changes = set()
-        # The cache of serialised lines
-        self._line_cache = {}
+        # The cache of serialised lines. When built, this is a tuple of
+        # 2 sorted lists that we "walk" while serialising.
+        self._line_cache = None
 
     def __repr__(self):
         return "%s(%r)" % \
@@ -1192,9 +1193,18 @@ class DirState(object):
         """
         key = entry[0]
         if key not in self._known_changes:
+            # The line cache is a tuple of 2 ordered lists: keys and lines.
+            # We keep track of successful matches and only search from there
+            # on next time.
+            index = self._line_cache_index
+            if self._line_cache[0][index] == key:
+                self._line_cache_index += 1
+                return self._line_cache[1][index]
             try:
-                return self._line_cache[key]
-            except KeyError:
+                index = self._line_cache[0].index(key, index + 1)
+                self._line_cache_index = index + 1
+                return self._line_cache[1][index]
+            except ValueError:
                 pass
         return self._entry_to_line(entry)
 
@@ -1712,6 +1722,7 @@ class DirState(object):
         lines.append(self._get_parents_line(self.get_parent_ids()))
         lines.append(self._get_ghosts_line(self._ghosts))
         if self._use_smart_saving and self._line_cache:
+            self._line_cache_index = 0
             lines.extend(map(self._entry_to_line_smart, self._iter_entries()))
         else:
             lines.extend(map(self._entry_to_line, self._iter_entries()))
@@ -2116,7 +2127,8 @@ class DirState(object):
     def _build_line_cache(self):
         """Build the line cache.
 
-        The line cache maps entry keys to serialised lines.
+        The line cache maps entry keys to serialised lines via
+        a tuple of 2 sorted lists.
         """
         self._state_file.seek(0)
         lines = self._state_file.readlines()
@@ -2137,7 +2149,7 @@ class DirState(object):
             for v in values:
                 fields = v.split('\0', 3)
                 keys.append((fields[0], fields[1], fields[2]))
-        self._line_cache = dict(zip(keys, values))
+        self._line_cache = (keys, values)
 
     def _read_header(self):
         """This reads in the metadata header, and the parent ids.
