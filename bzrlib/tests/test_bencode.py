@@ -110,6 +110,9 @@ class TestBencodeDecode(tests.TestCase):
         self._check(['asd', 'xy'], 'l3:asd2:xye')
         self._check([['Alice', 'Bob'], [2, 3]], 'll5:Alice3:Bobeli2ei3eee')
 
+    def test_list_deepnested(self):
+        self._run_check_error(RuntimeError, ("l" * 10000) + ("e" * 10000))
+
     def test_malformed_list(self):
         self._run_check_error(ValueError, 'l')
         self._run_check_error(ValueError, 'l01:ae')
@@ -123,6 +126,9 @@ class TestBencodeDecode(tests.TestCase):
         self._check({'age': 25, 'eyes': 'blue'}, 'd3:agei25e4:eyes4:bluee')
         self._check({'spam.mp3': {'author': 'Alice', 'length': 100000}},
                             'd8:spam.mp3d6:author5:Alice6:lengthi100000eee')
+
+    def test_dict_deepnested(self):
+        self._run_check_error(RuntimeError, ("d0:" * 10000) + 'i1e' + ("e" * 10000))
 
     def test_malformed_dict(self):
         self._run_check_error(ValueError, 'd')
@@ -189,12 +195,29 @@ class TestBencodeEncode(tests.TestCase):
         self._check('li1ei2ei3ee', (1, 2, 3))
         self._check('ll5:Alice3:Bobeli2ei3eee', (('Alice', 'Bob'), (2, 3)))
 
+    def test_list_deep_nested(self):
+        top = []
+        l = top
+        for i in range(10000):
+            l.append([])
+            l = l[0]
+        self.assertRaises(RuntimeError, self.bencode.bencode, 
+            top)
+
     def test_dict(self):
         self._check('de', {})
         self._check('d3:agei25e4:eyes4:bluee', {'age': 25, 'eyes': 'blue'})
         self._check('d8:spam.mp3d6:author5:Alice6:lengthi100000eee',
                             {'spam.mp3': {'author': 'Alice',
                                           'length': 100000}})
+
+    def test_dict_deep_nested(self):
+        d = top = {}
+        for i in range(10000):
+            d[''] = {}
+            d = d['']
+        self.assertRaises(RuntimeError, self.bencode.bencode, 
+            top)
 
     def test_bencached(self):
         self._check('i3e', self.bencode.Bencached(self.bencode.bencode(3)))

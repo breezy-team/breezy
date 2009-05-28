@@ -17,6 +17,9 @@
 """Pyrex implementation for bencode coder/decoder"""
 
 
+cdef extern from "stddef.h":
+    ctypedef unsigned int size_t
+
 cdef extern from "Python.h":
     ctypedef int  Py_ssize_t
     int PyInt_CheckExact(object o)
@@ -30,9 +33,9 @@ cdef extern from "Python.h":
     char *PyString_AS_STRING(object o) except NULL
     Py_ssize_t PyString_GET_SIZE(object o) except -1
     object PyInt_FromString(char *str, char **pend, int base)
-
-cdef extern from "stddef.h":
-    ctypedef unsigned int size_t
+    int Py_GetRecursionLimit()
+    int Py_EnterRecursiveCall(char *)
+    void Py_LeaveRecursiveCall()
 
 cdef extern from "stdlib.h":
     void free(void *memblock)
@@ -51,9 +54,9 @@ cdef class Decoder:
     """Bencode decoder"""
 
     cdef readonly char *tail
-    cdef readonly int   size
+    cdef readonly int size
 
-    cdef readonly int    _yield_tuples
+    cdef readonly int _yield_tuples
 
     def __init__(self, s, yield_tuples=0):
         """Initialize decoder engine.
@@ -78,21 +81,25 @@ cdef class Decoder:
         if 0 == self.size:
             raise ValueError('stream underflow')
 
-        ch = self.tail[0]
-
-        if ch == c'i':
-            self._update_tail(1)
-            return self._decode_int()
-        elif c'0' <= ch <= c'9':
-            return self._decode_string()
-        elif ch == c'l':
-            self._update_tail(1)
-            return self._decode_list()
-        elif ch == c'd':
-            self._update_tail(1)
-            return self._decode_dict()
-        else:
-            raise ValueError('unknown object type identifier %r' % ch)
+        if Py_EnterRecursiveCall("decode_object"):
+            raise RuntimeError("too deeply nested")
+        try:
+            ch = self.tail[0]
+            if ch == c'i':
+                self._update_tail(1)
+                return self._decode_int()
+            elif c'0' <= ch <= c'9':
+                return self._decode_string()
+            elif ch == c'l':
+                self._update_tail(1)
+                return self._decode_list()
+            elif ch == c'd':
+                self._update_tail(1)
+                return self._decode_dict()
+            else:
+                raise ValueError('unknown object type identifier %r' % ch)
+        finally:
+            Py_LeaveRecursiveCall()
 
     cdef void _update_tail(self, int n):
         """Update tail pointer and resulting size by n characters"""
@@ -206,9 +213,9 @@ cdef class Encoder:
     """Bencode encoder"""
 
     cdef readonly char *buffer
-    cdef readonly int   maxsize
+    cdef readonly int maxsize
     cdef readonly char *tail
-    cdef readonly int   size
+    cdef readonly int size
 
     def __init__(self, int maxsize=INITSIZE):
         """Initialize encoder engine
@@ -329,22 +336,27 @@ cdef class Encoder:
         return 1
 
     def process(self, object x):
-        if PyString_CheckExact(x):
-            self._encode_string(x)
-        elif PyInt_CheckExact(x):
-            self._encode_int(x)
-        elif PyLong_CheckExact(x):
-            self._encode_long(x)
-        elif PyList_CheckExact(x) or PyTuple_CheckExact(x):
-            self._encode_list(x)
-        elif PyDict_CheckExact(x):
-            self._encode_dict(x)
-        elif PyBool_Check(x):
-            self._encode_int(int(x))
-        elif isinstance(x, Bencached):
-            self._append_string(x.bencoded)
-        else:
-            raise TypeError('unsupported type %r' % x)
+        if Py_EnterRecursiveCall("encode"):
+            raise RuntimeError("too deeply nested")
+        try:
+            if PyString_CheckExact(x):
+                self._encode_string(x)
+            elif PyInt_CheckExact(x):
+                self._encode_int(x)
+            elif PyLong_CheckExact(x):
+                self._encode_long(x)
+            elif PyList_CheckExact(x) or PyTuple_CheckExact(x):
+                self._encode_list(x)
+            elif PyDict_CheckExact(x):
+                self._encode_dict(x)
+            elif PyBool_Check(x):
+                self._encode_int(int(x))
+            elif isinstance(x, Bencached):
+                self._append_string(x.bencoded)
+            else:
+                raise TypeError('unsupported type %r' % x)
+        finally:
+            Py_LeaveRecursiveCall()
 
 
 def bencode(x):
