@@ -55,8 +55,8 @@ cdef class Decoder:
 
     cdef readonly char *tail
     cdef readonly int size
-
     cdef readonly int _yield_tuples
+    cdef object text
 
     def __init__(self, s, yield_tuples=0):
         """Initialize decoder engine.
@@ -65,6 +65,7 @@ cdef class Decoder:
         if not PyString_CheckExact(s):
             raise TypeError("String required")
 
+        self.text = s
         self.tail = PyString_AS_STRING(s)
         self.size = PyString_GET_SIZE(s)
         self._yield_tuples = int(yield_tuples)
@@ -127,9 +128,11 @@ cdef class Decoder:
     cdef object _decode_int(self):
         cdef int i
         i = self._read_digits(c'e')
-        self.tail[i] = 0;
-        ret = PyInt_FromString(self.tail, NULL, 10)
-        self.tail[i] = c'e';
+        self.tail[i] = 0
+        try:
+            ret = PyInt_FromString(self.tail, NULL, 10)
+        finally:
+            self.tail[i] = c'e'
         self._update_tail(i+1)
         return ret
 
