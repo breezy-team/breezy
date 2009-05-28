@@ -73,6 +73,7 @@ from bzrlib.repository import (
     MetaDirRepositoryFormat,
     RepositoryFormat,
     RootCommitBuilder,
+    StreamSource,
     )
 import bzrlib.revision as _mod_revision
 from bzrlib.trace import (
@@ -2250,6 +2251,11 @@ class KnitPackRepository(KnitRepository):
             pb.finished()
         return result
 
+    def _get_source(self, to_format):
+        if to_format.network_name() == self._format.network_name():
+            return KnitPackStreamSource(self, to_format)
+        return super(KnitPackRepository, self)._get_source(to_format)
+
     def _make_parents_provider(self):
         return graph.CachingParentsProvider(self)
 
@@ -2362,6 +2368,10 @@ class KnitPackRepository(KnitRepository):
             self.control_files.unlock()
             for repo in self._fallback_repositories:
                 repo.unlock()
+
+
+class KnitPackStreamSource(StreamSource):
+    pass
 
 
 class RepositoryFormatPack(MetaDirRepositoryFormat):

@@ -31,7 +31,10 @@ from bzrlib.errors import (NotBranchError,
                            UnknownFormatError,
                            UnsupportedFormatError,
                            )
-from bzrlib import graph
+from bzrlib import (
+    graph,
+    tests,
+    )
 from bzrlib.branchbuilder import BranchBuilder
 from bzrlib.btree_index import BTreeBuilder, BTreeGraphIndex
 from bzrlib.index import GraphIndex, InMemoryGraphIndex
@@ -685,6 +688,82 @@ class TestDevelopment6(TestCaseWithTransport):
         self.assertEqual(65536,
             inv.parent_id_basename_to_file_id._root_node.maximum_size)
 
+    def test_stream_source_to_gc(self):
+        source = self.make_repository('source', format='development6-rich-root')
+        target = self.make_repository('target', format='development6-rich-root')
+        stream = source._get_source(target._format)
+        self.assertIsInstance(stream, groupcompress_repo.GroupCHKStreamSource)
+
+    def test_stream_source_to_non_gc(self):
+        source = self.make_repository('source', format='development6-rich-root')
+        target = self.make_repository('target', format='rich-root-pack')
+        stream = source._get_source(target._format)
+        # We don't want the child GroupCHKStreamSource
+        self.assertIs(type(stream), repository.StreamSource)
+
+
+class TestKnitPackStreamSource(tests.TestCaseWithMemoryTransport):
+
+    def test_source_to_exact_pack_092(self):
+        source = self.make_repository('source', format='pack-0.92')
+        target = self.make_repository('target', format='pack-0.92')
+        stream_source = source._get_source(target._format)
+        self.assertIsInstance(stream_source, pack_repo.KnitPackStreamSource)
+
+    def test_source_to_exact_pack_rich_root_pack(self):
+        source = self.make_repository('source', format='rich-root-pack')
+        target = self.make_repository('target', format='rich-root-pack')
+        stream_source = source._get_source(target._format)
+        self.assertIsInstance(stream_source, pack_repo.KnitPackStreamSource)
+
+    def test_source_to_exact_pack_19(self):
+        source = self.make_repository('source', format='1.9')
+        target = self.make_repository('target', format='1.9')
+        stream_source = source._get_source(target._format)
+        self.assertIsInstance(stream_source, pack_repo.KnitPackStreamSource)
+
+    def test_source_to_exact_pack_19_rich_root(self):
+        source = self.make_repository('source', format='1.9-rich-root')
+        target = self.make_repository('target', format='1.9-rich-root')
+        stream_source = source._get_source(target._format)
+        self.assertIsInstance(stream_source, pack_repo.KnitPackStreamSource)
+
+    def test_source_to_remote_exact_pack_19(self):
+        trans = self.make_smart_server('target')
+        trans.ensure_base()
+        source = self.make_repository('source', format='1.9')
+        target = self.make_repository('target', format='1.9')
+        target = repository.Repository.open(trans.base)
+        stream_source = source._get_source(target._format)
+        self.assertIsInstance(stream_source, pack_repo.KnitPackStreamSource)
+
+    def test_stream_source_to_non_exact(self):
+        source = self.make_repository('source', format='pack-0.92')
+        target = self.make_repository('target', format='1.9')
+        stream = source._get_source(target._format)
+        self.assertIs(type(stream), repository.StreamSource)
+
+    def test_stream_source_to_non_exact_rich_root(self):
+        source = self.make_repository('source', format='1.9')
+        target = self.make_repository('target', format='1.9-rich-root')
+        stream = source._get_source(target._format)
+        self.assertIs(type(stream), repository.StreamSource)
+
+    def test_source_to_remote_non_exact_pack_19(self):
+        trans = self.make_smart_server('target')
+        trans.ensure_base()
+        source = self.make_repository('source', format='1.9')
+        target = self.make_repository('target', format='1.6')
+        target = repository.Repository.open(trans.base)
+        stream_source = source._get_source(target._format)
+        self.assertIs(type(stream_source), repository.StreamSource)
+
+    def test_stream_source_to_knit(self):
+        source = self.make_repository('source', format='pack-0.92')
+        target = self.make_repository('target', format='dirstate')
+        stream = source._get_source(target._format)
+        self.assertIs(type(stream), repository.StreamSource)
+
 
 class TestDevelopment6FindRevisionOutsideSet(TestCaseWithTransport):
     """Tests for _find_revision_outside_set."""
@@ -1204,19 +1283,3 @@ class TestOptimisingPacker(TestCaseWithTransport):
         self.assertTrue(new_pack.inventory_index._optimize_for_size)
         self.assertTrue(new_pack.text_index._optimize_for_size)
         self.assertTrue(new_pack.signature_index._optimize_for_size)
-
-
-class TestGCCHKPackCollection(TestCaseWithTransport):
-
-    def test_stream_source_to_gc(self):
-        source = self.make_repository('source', format='development6-rich-root')
-        target = self.make_repository('target', format='development6-rich-root')
-        stream = source._get_source(target._format)
-        self.assertIsInstance(stream, groupcompress_repo.GroupCHKStreamSource)
-
-    def test_stream_source_to_non_gc(self):
-        source = self.make_repository('source', format='development6-rich-root')
-        target = self.make_repository('target', format='rich-root-pack')
-        stream = source._get_source(target._format)
-        # We don't want the child GroupCHKStreamSource
-        self.assertIs(type(stream), repository.StreamSource)
