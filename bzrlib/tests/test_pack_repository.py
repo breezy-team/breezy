@@ -673,7 +673,6 @@ class TestPackRepository(TestCaseWithTransport):
         repo = self.make_repository('repo', format=self.get_format())
         if repo.chk_bytes is None:
             raise TestNotApplicable('no chk_bytes for this repository')
-            expected_names.append(wg_tokens[0] + '.cix')
         token = repo.lock_write()
         self.addCleanup(repo.unlock)
         repo.start_write_group()

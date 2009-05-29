@@ -1227,8 +1227,8 @@ class TestGCCHKPackCollection(TestCaseWithTransport):
         # We have to build a fairly large tree, so that we are sure the chk
         # pages will have split into multiple pages.
         entries = [('add', ('', 'a-root-id', 'directory', None))]
-        for i in 'abcdefghijklmnopqrstuvwxzy123456789':
-            for j in 'abcdefghijklmnopqrstuvwxzy123456789':
+        for i in 'abcdefghijklmnopqrstuvwxyz123456789':
+            for j in 'abcdefghijklmnopqrstuvwxyz123456789':
                 fname = i + j
                 fid = fname + '-id'
                 content = 'content for %s\n' % (fname,)
