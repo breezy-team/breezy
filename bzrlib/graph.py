@@ -64,7 +64,7 @@ class DictParentsProvider(object):
         ancestry = self.ancestry
         return dict((k, ancestry[k]) for k in keys if k in ancestry)
 
-@deprecated_function(deprecated_in((0, 1, 16)))
+@deprecated_function(deprecated_in((1, 16, 0)))
 def _StackedParentsProvider(*args, **kwargs):
     return StackedParentsProvider(*args, **kwargs)
 
