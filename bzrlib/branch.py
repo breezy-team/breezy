@@ -928,6 +928,10 @@ class Branch(object):
             location = None
         return location
 
+    def get_child_submit_format(self):
+        """Return the preferred format of submissions to this branch."""
+        return self.get_config().get_user_option("child_submit_format")
+
     def get_submit_branch(self):
         """Return the submit location of the branch.
 

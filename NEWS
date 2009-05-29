@@ -1,6 +1,6 @@
-====================
+####################
 Bazaar Release Notes
-====================
+####################
 
 
 .. contents:: List of Releases
@@ -23,12 +23,18 @@ Improvements
 
 * ``bzr branch --notree`` is now faster. (Ian Clatworthy)
 
+* ``bzr diff`` is now faster on large trees. (Ian Clatworthy)
+
 * ``--development6-rich-root`` can now stack. (Modulo some smart-server
   bugs with stacking and non default formats.)
   (John Arbash Meinel, #373455)
 
+
 Bug Fixes
 *********
+
+* Better message in ``bzr add`` output suggesting using ``bzr ignored`` to
+  see which files can also be added.  (Jason Spashett, #76616)
 
 * Clarify the rules for locking and fallback repositories. Fix bugs in how
   ``RemoteRepository`` was handling fallbacks along with the
@@ -42,6 +48,10 @@ API Changes
 ***********
 
 * Added osutils.parent_directories(). (Ian Clatworthy)
+
+* TreeTransformBase no longer assumes that limbo is provided via disk.
+  DiskTreeTransform now provides disk functionality.  (Aaron Bentley)
+
 
 Internals
 *********
