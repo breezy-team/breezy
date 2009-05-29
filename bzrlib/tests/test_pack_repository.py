@@ -38,6 +38,10 @@ from bzrlib import (
     upgrade,
     workingtree,
     )
+from bzrlib.repofmt import (
+    pack_repo,
+    groupcompress_repo,
+    )
 from bzrlib.repofmt.groupcompress_repo import RepositoryFormatCHK1
 from bzrlib.smart import (
     client,
@@ -556,58 +560,43 @@ class TestPackRepository(TestCaseWithTransport):
             missing_ghost.get_inventory, 'ghost')
 
     def make_write_ready_repo(self):
-        repo = self.make_repository('.', format=self.get_format())
+        format = self.get_format()
+        if isinstance(format.repository_format, RepositoryFormatCHK1):
+            raise TestNotApplicable("No missing compression parents")
+        repo = self.make_repository('.', format=format)
         repo.lock_write()
+        self.addCleanup(repo.unlock)
         repo.start_write_group()
+        self.addCleanup(repo.abort_write_group)
         return repo
 
     def test_missing_inventories_compression_parent_prevents_commit(self):
         repo = self.make_write_ready_repo()
         key = ('junk',)
-        if not getattr(repo.inventories._index, '_missing_compression_parents',
-            None):
-            raise TestSkipped("No missing compression parents")
         repo.inventories._index._missing_compression_parents.add(key)
         self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
         self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
-        repo.abort_write_group()
-        repo.unlock()
 
     def test_missing_revisions_compression_parent_prevents_commit(self):
         repo = self.make_write_ready_repo()
         key = ('junk',)
-        if not getattr(repo.inventories._index, '_missing_compression_parents',
-            None):
-            raise TestSkipped("No missing compression parents")
         repo.revisions._index._missing_compression_parents.add(key)
         self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
         self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
-        repo.abort_write_group()
-        repo.unlock()
 
     def test_missing_signatures_compression_parent_prevents_commit(self):
         repo = self.make_write_ready_repo()
         key = ('junk',)
-        if not getattr(repo.inventories._index, '_missing_compression_parents',
-            None):
-            raise TestSkipped("No missing compression parents")
         repo.signatures._index._missing_compression_parents.add(key)
         self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
         self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
-        repo.abort_write_group()
-        repo.unlock()
 
     def test_missing_text_compression_parent_prevents_commit(self):
         repo = self.make_write_ready_repo()
         key = ('some', 'junk')
-        if not getattr(repo.inventories._index, '_missing_compression_parents',
-            None):
-            raise TestSkipped("No missing compression parents")
         repo.texts._index._missing_compression_parents.add(key)
         self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
         e = self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
-        repo.abort_write_group()
-        repo.unlock()
 
     def test_supports_external_lookups(self):
         repo = self.make_repository('.', format=self.get_format())

@@ -2371,18 +2371,29 @@ class KnitPackRepository(KnitRepository):
 
 
 class KnitPackStreamSource(StreamSource):
+    """A StreamSource used to transfer data between same-format KnitPack repos.
+
+    This source assumes:
+        1) Same serialization format for all objects
+        2) Same root information
+        3) XML format inventories
+        4) Atomic inserts (so we can stream inventory texts before text
+           content)
+        5) No chk_bytes
+    """
 
     def __init__(self, from_repository, to_format):
-        super(KnitPackStreamSource, self),__init__(from_repository, to_format)
+        super(KnitPackStreamSource, self).__init__(from_repository, to_format)
         self._text_keys = None
         self._text_fetch_order = 'unordered'
 
     def _find_parent_ids(self, revision_ids):
         parent_map = self.from_repository.get_parent_map(revision_ids)
-        parents = set()
-        map(parents.update, parent_map.itervalues())
-        parents.discard(parent_map)
-        return parents
+        parent_ids = set()
+        map(parent_ids.update, parent_map.itervalues())
+        parent_ids.difference_update(parent_map)
+        parent_ids.discard(_mod_revision.NULL_REVISION)
+        return parent_ids
 
     def _get_filtered_inv_stream(self, revision_ids):
         parent_ids = self._find_parent_ids(revision_ids)
@@ -2391,22 +2402,28 @@ class KnitPackStreamSource(StreamSource):
         parent_text_keys = set(find_text_keys(
             from_repo._inventory_xml_lines_for_keys(parent_ids)))
         content_text_keys = set()
-        factory = knit.KnitPlainFactory()
+        knit = KnitVersionedFiles(None, None)
+        factory = KnitPlainFactory()
         def find_text_keys_from_content(record):
-            raw_data = record.get_bytes_as(record.storage_kind)
-            # read the entire thing
-            content, _ = knit._parse_record(record.key[-1], raw_data)
-            if record.storage_kind == 'knit-delta-gz':
-                line_iterator = factory.get_linedelta_content(content)
-            elif record.storage_kind == 'knit-fulltext-gz':
-                line_iterator = factory.get_fulltext_content(content)
-            else:
+            if record.storage_kind not in ('knit-delta-gz', 'knit-ft-gz'):
                 raise ValueError("Unknown content storage kind for"
                     " inventory text: %s" % (record.storage_kind,))
-            content_text_keys.update(find_text_keys(line_iterator))
+            # It's a knit record, it has a _raw_record field (even if it was
+            # reconstituted from a network stream).
+            raw_data = record._raw_record
+            # read the entire thing
+            revision_id = record.key[-1]
+            content, _ = knit._parse_record(revision_id, raw_data)
+            if record.storage_kind == 'knit-delta-gz':
+                line_iterator = factory.get_linedelta_content(content)
+            elif record.storage_kind == 'knit-ft-gz':
+                line_iterator = factory.get_fulltext_content(content)
+            content_text_keys.update(find_text_keys(
+                [(line, revision_id) for line in line_iterator]))
+        revision_keys = [(r,) for r in revision_ids]
         def _filtered_inv_stream():
             source_vf = from_repo.inventories
-            stream = source_vf.get_record_stream(self._revision_keys,
+            stream = source_vf.get_record_stream(revision_keys,
                                                  'unordered', False)
             for record in stream:
                 if record.storage_kind == 'absent':
@@ -2427,7 +2444,7 @@ class KnitPackStreamSource(StreamSource):
         for stream_info in self._fetch_revision_texts(revision_ids):
             yield stream_info
         self._revision_keys = [(rev_id,) for rev_id in revision_ids]
-        yield self._get_filtered_inv_stream()
+        yield self._get_filtered_inv_stream(revision_ids)
         yield self._get_text_stream()
 
 

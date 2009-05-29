@@ -3819,7 +3819,7 @@ InterRepository.register_optimiser(InterDifferingSerializer)
 InterRepository.register_optimiser(InterSameDataRepository)
 InterRepository.register_optimiser(InterWeaveRepo)
 InterRepository.register_optimiser(InterKnitRepo)
-InterRepository.register_optimiser(InterPackRepo)
+# InterRepository.register_optimiser(InterPackRepo)
 
 
 class CopyConverter(object):
