@@ -18,12 +18,16 @@ New Features
 Improvements
 ************
 
-* ``bzr branch`` in a shared repository is now faster for
-  development6-rich-root format. (Ian Clatworthy)
+* Numerous operations are now faster for huge projects, i.e. those
+  with a large number of files and/or a large number of revisions,
+  particularly when the latest development format is used. These
+  operations include:
 
-* ``bzr branch --notree`` is now faster. (Ian Clatworthy)
+  * branch in a shared repo, branch --no-tree
+  * diff
+  * tags
 
-* ``bzr diff`` is now faster on large trees. (Ian Clatworthy)
+  (Ian Clatworthy)
 
 Bug Fixes
 *********
