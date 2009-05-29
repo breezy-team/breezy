@@ -4265,8 +4265,8 @@ class StreamSource(object):
                 continue
             # Ask for full texts always so that we don't need more round trips
             # after this stream.
-            stream = vf.get_record_stream(keys,
-                self.to_format._fetch_order, True)
+            stream = versionedfile.filter_absent(vf.get_record_stream(keys,
+                self.to_format._fetch_order, True))
             yield substream_kind, stream
 
     def inventory_fetch_order(self):
