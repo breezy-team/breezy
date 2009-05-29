@@ -46,10 +46,10 @@ class TestFetch(TestCaseWithRepository):
         return content, source_b
 
     def test_sprout_from_stacked_with_short_history(self):
-        # Now copy this data into a branch, and stack on it
+        content, source_b = self.make_source_branch()
+        # Split the generated content into a base branch, and a stacked branch
         # Use 'make_branch' which gives us a bzr:// branch when appropriate,
         # rather than creating a branch-on-disk
-        content, source_b = self.make_source_branch()
         stack_b = self.make_branch('stack-on')
         stack_b.pull(source_b, stop_revision='B-id')
         target_b = self.make_branch('target')
@@ -65,21 +65,12 @@ class TestFetch(TestCaseWithRepository):
         text_keys = [('a-id', 'A-id'), ('a-id', 'B-id'), ('a-id', 'C-id')]
         stream = final_b.repository.texts.get_record_stream(text_keys,
             'unordered', True)
-        records = []
-        for record in stream:
-            records.append(record.key)
-            if record.key == ('a-id', 'A-id'):
-                self.assertEqual(''.join(content[:-2]),
-                                 record.get_bytes_as('fulltext'))
-            elif record.key == ('a-id', 'B-id'):
-                self.assertEqual(''.join(content[:-1]),
-                                 record.get_bytes_as('fulltext'))
-            elif record.key == ('a-id', 'C-id'):
-                self.assertEqual(''.join(content),
-                                 record.get_bytes_as('fulltext'))
-            else:
-                self.fail('Unexpected record: %s' % (record.key,))
-        self.assertEqual(text_keys, sorted(records))
+        records = sorted([(r.key, r.get_bytes_as('fulltext')) for r in stream])
+        self.assertEqual([
+            (('a-id', 'A-id'), ''.join(content[:-2])),
+            (('a-id', 'B-id'), ''.join(content[:-1])),
+            (('a-id', 'C-id'), ''.join(content)),
+            ], records)
 
     def test_sprout_from_smart_stacked_with_short_history(self):
         content, source_b = self.make_source_branch()

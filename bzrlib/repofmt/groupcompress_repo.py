@@ -910,6 +910,8 @@ class GroupCHKStreamSource(repository.StreamSource):
             # actually present
             # TODO: Update Repository.iter_inventories() to add
             #       ignore_missing=True
+            present_ids = self.from_repository._find_present_inventory_ids(
+                            excluded_revision_ids)
             present_ids = self._find_present_inventories(excluded_revision_ids)
             uninteresting_root_keys = set()
             uninteresting_pid_root_keys = set()
@@ -958,10 +960,8 @@ class GroupCHKStreamSource(repository.StreamSource):
         # TODO: The keys to exclude might be part of the search recipe
         # For now, exclude all parents that are at the edge of ancestry, for
         # which we have inventories
-        parent_map = self.from_repository.get_parent_map(revision_ids)
-        parent_ids = set()
-        map(parent_ids.update, parent_map.itervalues())
-        parent_ids.difference_update(parent_map)
+        from_repo = self.from_repository
+        parent_ids = from_repo._find_parent_ids_of_revisions(revision_ids)
         for stream_info in self._get_filtered_chk_streams(parent_ids):
             yield stream_info
         yield self._get_text_stream()
