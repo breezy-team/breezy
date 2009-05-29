@@ -1,3 +1,9 @@
+bzr (1.15-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Fri, 29 May 2009 10:19:30 +0200
+
 bzr (1.15~rc1-1) unstable; urgency=low
 
   * New upstream release.
