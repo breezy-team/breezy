@@ -2403,17 +2403,9 @@ class KnitPackStreamSource(StreamSource):
         self._text_keys = None
         self._text_fetch_order = 'unordered'
 
-    def _find_parent_ids(self, revision_ids):
-        parent_map = self.from_repository.get_parent_map(revision_ids)
-        parent_ids = set()
-        map(parent_ids.update, parent_map.itervalues())
-        parent_ids.difference_update(parent_map)
-        parent_ids.discard(_mod_revision.NULL_REVISION)
-        return parent_ids
-
     def _get_filtered_inv_stream(self, revision_ids):
-        parent_ids = self._find_parent_ids(revision_ids)
         from_repo = self.from_repository
+        parent_ids = from_repo._find_parent_ids_of_revisions(revision_ids)
         parent_keys = [(p,) for p in parent_ids]
         find_text_keys = from_repo._find_text_key_references_from_xml_inventory_lines
         parent_text_keys = set(find_text_keys(

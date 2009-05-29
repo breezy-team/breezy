@@ -1936,18 +1936,28 @@ class Repository(object):
         seen = set(self._find_text_key_references_from_xml_inventory_lines(
                 line_iterator).iterkeys())
         # Note that revision_ids are revision keys.
-        parent_maps = self.revisions.get_parent_map(revision_ids)
-        parents = set()
-        map(parents.update, parent_maps.itervalues())
-        parents.difference_update(revision_ids)
+        parent_ids = self._find_parent_ids_of_revisions(revision_ids)
         parent_seen = set(self._find_text_key_references_from_xml_inventory_lines(
-            self._inventory_xml_lines_for_keys(parents)))
+            self._inventory_xml_lines_for_keys(parent_ids)))
         new_keys = seen - parent_seen
         result = {}
         setdefault = result.setdefault
         for key in new_keys:
             setdefault(key[0], set()).add(key[-1])
         return result
+
+    def _find_parent_ids_of_revisions(self, revision_ids):
+        """Find all parent ids that are mentioned in the revision graph.
+
+        :return: set of revisions that are parents of revision_ids which are
+            not part of revision_ids themselves
+        """
+        parent_map = self.get_parent_map(revision_ids)
+        parents = set()
+        map(parents.update, parent_map.itervalues())
+        parents.difference_update(revision_ids)
+        parents.discard(_mod_revision.NULL_REVISION)
+        return parents
 
     def fileids_altered_by_revision_ids(self, revision_ids, _inv_weave=None):
         """Find the file ids and versions affected by revisions.

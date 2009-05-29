@@ -737,16 +737,6 @@ class CHKInventoryRepository(KnitPackRepository):
         # make it raise to trap naughty direct users.
         raise NotImplementedError(self._iter_inventory_xmls)
 
-    def _find_parent_ids_of_revisions(self, revision_ids):
-        # TODO: we probably want to make this a helper that other code can get
-        #       at
-        parent_map = self.get_parent_map(revision_ids)
-        parents = set()
-        map(parents.update, parent_map.itervalues())
-        parents.difference_update(revision_ids)
-        parents.discard(_mod_revision.NULL_REVISION)
-        return parents
-
     def _find_present_inventory_ids(self, revision_ids):
         keys = [(r,) for r in revision_ids]
         parent_map = self.inventories.get_parent_map(keys)
@@ -895,12 +885,6 @@ class GroupCHKStreamSource(KnitPackStreamSource):
             p_id_roots_set.clear()
         return ('inventories', _filtered_inv_stream())
 
-    def _find_present_inventories(self, revision_ids):
-        revision_keys = [(r,) for r in revision_ids]
-        inventories = self.from_repository.inventories
-        present_inventories = inventories.get_parent_map(revision_keys)
-        return [p[-1] for p in present_inventories]
-
     def _get_filtered_chk_streams(self, excluded_revision_ids):
         self._text_keys = set()
         excluded_revision_ids.discard(_mod_revision.NULL_REVISION)
@@ -914,7 +898,6 @@ class GroupCHKStreamSource(KnitPackStreamSource):
             #       ignore_missing=True
             present_ids = self.from_repository._find_present_inventory_ids(
                             excluded_revision_ids)
-            present_ids = self._find_present_inventories(excluded_revision_ids)
             uninteresting_root_keys = set()
             uninteresting_pid_root_keys = set()
             for inv in self.from_repository.iter_inventories(present_ids):
