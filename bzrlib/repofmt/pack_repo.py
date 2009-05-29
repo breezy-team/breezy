@@ -2386,42 +2386,35 @@ class KnitPackStreamSource(StreamSource):
 
     def _get_filtered_inv_stream(self, revision_ids):
         parent_ids = self._find_parent_ids(revision_ids)
-        parent_keys = [(p,) for p in parent_ids]
-        parent_text_keys = set()
-        for record in self.from_repository.inventories.get_record_stream(
-            parent_keys, 'unordered', True):
-            # Ignore ghost parents
-            if record.storage_kind == 'absent':
-                continue
-            lines = osutils.chunks_to_lines(record.get_bytes_as('chunked'))
+        from_repo = self.from_repository
+        find_text_keys = from_repo._find_text_key_references_from_xml_inventory_lines
+        parent_text_keys = set(find_text_keys(
+            from_repo._inventory_xml_lines_for_keys(parent_ids)))
+        content_text_keys = set()
+        factory = knit.KnitPlainFactory()
+        def find_text_keys_from_content(record):
+            raw_data = record.get_bytes_as(record.storage_kind)
+            # read the entire thing
+            content, _ = knit._parse_record(record.key[-1], raw_data)
+            if record.storage_kind == 'knit-delta-gz':
+                line_iterator = factory.get_linedelta_content(content)
+            elif record.storage_kind == 'knit-fulltext-gz':
+                line_iterator = factory.get_fulltext_content(content)
+            else:
+                raise ValueError("Unknown content storage kind for"
+                    " inventory text: %s" % (record.storage_kind,))
+            content_text_keys.update(find_text_keys(line_iterator))
         def _filtered_inv_stream():
-            id_roots_set = set()
-            p_id_roots_set = set()
-            source_vf = self.from_repository.inventories
+            source_vf = from_repo.inventories
             stream = source_vf.get_record_stream(self._revision_keys,
                                                  'unordered', False)
             for record in stream:
-                bytes = record.get_bytes_as('fulltext')
-                chk_inv = inventory.CHKInventory.deserialise(None, bytes,
-                                                             record.key)
-                key = chk_inv.id_to_entry.key()
-                if key not in id_roots_set:
-                    self._chk_id_roots.append(key)
-                    id_roots_set.add(key)
-                p_id_map = chk_inv.parent_id_basename_to_file_id
-                if p_id_map is None:
-                    raise AssertionError('Parent id -> file_id map not set')
-                key = p_id_map.key()
-                if key not in p_id_roots_set:
-                    p_id_roots_set.add(key)
-                    self._chk_p_id_roots.append(key)
+                if record.storage_kind == 'absent':
+                    raise errors.NoSuchRevision(from_repo, record.key)
+                find_text_keys_from_content(record)
                 yield record
-            # We have finished processing all of the inventory records, we
-            # don't need these sets anymore
-            id_roots_set.clear()
-            p_id_roots_set.clear()
+            self._text_keys = content_text_keys - parent_text_keys
         return ('inventories', _filtered_inv_stream())
-
 
     def _get_text_stream(self):
         # Note: We know we don't have to handle adding root keys, because both
@@ -2435,8 +2428,6 @@ class KnitPackStreamSource(StreamSource):
             yield stream_info
         self._revision_keys = [(rev_id,) for rev_id in revision_ids]
         yield self._get_filtered_inv_stream()
-        # The keys to exclude are part of the search recipe
-        _, _, exclude_keys, _ = search.get_recipe()
         yield self._get_text_stream()
 
 
