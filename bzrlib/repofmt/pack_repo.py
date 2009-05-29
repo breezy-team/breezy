@@ -269,10 +269,11 @@ class ResumedPack(ExistingPack):
 
     def __init__(self, name, revision_index, inventory_index, text_index,
         signature_index, upload_transport, pack_transport, index_transport,
-        pack_collection):
+        pack_collection, chk_index=None):
         """Create a ResumedPack object."""
         ExistingPack.__init__(self, pack_transport, name, revision_index,
-            inventory_index, text_index, signature_index)
+            inventory_index, text_index, signature_index,
+            chk_index=chk_index)
         self.upload_transport = upload_transport
         self.index_transport = index_transport
         self.index_sizes = [None, None, None, None]
@@ -282,6 +283,9 @@ class ResumedPack(ExistingPack):
             ('text', text_index),
             ('signature', signature_index),
             ]
+        if chk_index is not None:
+            indices.append(('chk', chk_index))
+            self.index_sizes.append(None)
         for index_type, index in indices:
             offset = self.index_offset(index_type)
             self.index_sizes[offset] = index._size
@@ -302,6 +306,8 @@ class ResumedPack(ExistingPack):
         self.upload_transport.delete(self.file_name())
         indices = [self.revision_index, self.inventory_index, self.text_index,
             self.signature_index]
+        if self.chk_index is not None:
+            indices.append(self.chk_index)
         for index in indices:
             index._transport.delete(index._name)
 
@@ -309,7 +315,10 @@ class ResumedPack(ExistingPack):
         self._check_references()
         new_name = '../packs/' + self.file_name()
         self.upload_transport.rename(self.file_name(), new_name)
-        for index_type in ['revision', 'inventory', 'text', 'signature']:
+        index_types = ['revision', 'inventory', 'text', 'signature']
+        if self.chk_index is not None:
+            index_types.append('chk')
+        for index_type in index_types:
             old_name = self.index_name(index_type, self.name)
             new_name = '../indices/' + old_name
             self.upload_transport.rename(old_name, new_name)
@@ -317,6 +326,11 @@ class ResumedPack(ExistingPack):
         self._state = 'finished'
 
     def _get_external_refs(self, index):
+        """Return compression parents for this index that are not present.
+
+        This returns any compression parents that are referenced by this index,
+        which are not contained *in* this index. They may be present elsewhere.
+        """
         return index.external_references(1)
 
 
@@ -1353,6 +1367,7 @@ class RepositoryPackCollection(object):
     """
 
     pack_factory = NewPack
+    resumed_pack_factory = ResumedPack
 
     def __init__(self, repo, transport, index_transport, upload_transport,
                  pack_transport, index_builder_class, index_class,
@@ -1681,9 +1696,14 @@ class RepositoryPackCollection(object):
             inv_index = self._make_index(name, '.iix', resume=True)
             txt_index = self._make_index(name, '.tix', resume=True)
             sig_index = self._make_index(name, '.six', resume=True)
-            result = ResumedPack(name, rev_index, inv_index, txt_index,
-                sig_index, self._upload_transport, self._pack_transport,
-                self._index_transport, self)
+            if self.chk_index is not None:
+                chk_index = self._make_index(name, '.cix', resume=True)
+            else:
+                chk_index = None
+            result = self.resumed_pack_factory(name, rev_index, inv_index,
+                txt_index, sig_index, self._upload_transport,
+                self._pack_transport, self._index_transport, self,
+                chk_index=chk_index)
         except errors.NoSuchFile, e:
             raise errors.UnresumableWriteGroup(self.repo, [name], str(e))
         self.add_pack_to_memory(result)
@@ -1810,14 +1830,11 @@ class RepositoryPackCollection(object):
     def reset(self):
         """Clear all cached data."""
         # cached revision data
-        self.repo._revision_knit = None
         self.revision_index.clear()
         # cached signature data
-        self.repo._signature_knit = None
         self.signature_index.clear()
         # cached file text data
         self.text_index.clear()
-        self.repo._text_knit = None
         # cached inventory data
         self.inventory_index.clear()
         # cached chk data
@@ -2036,7 +2053,6 @@ class RepositoryPackCollection(object):
                 except KeyError:
                     pass
         del self._resumed_packs[:]
-        self.repo._text_knit = None
 
     def _remove_resumed_pack_indices(self):
         for resumed_pack in self._resumed_packs:
@@ -2082,7 +2098,6 @@ class RepositoryPackCollection(object):
                 # when autopack takes no steps, the names list is still
                 # unsaved.
                 self._save_pack_names()
-        self.repo._text_knit = None
 
     def _suspend_write_group(self):
         tokens = [pack.name for pack in self._resumed_packs]
@@ -2096,7 +2111,6 @@ class RepositoryPackCollection(object):
             self._new_pack.abort()
             self._new_pack = None
         self._remove_resumed_pack_indices()
-        self.repo._text_knit = None
         return tokens
 
     def _resume_write_group(self, tokens):
@@ -2203,6 +2217,7 @@ class KnitPackRepository(KnitRepository):
                     % (self._format, self.bzrdir.transport.base))
 
     def _abort_write_group(self):
+        self.revisions._index._key_dependencies.refs.clear()
         self._pack_collection._abort_write_group()
 
     def _find_inconsistent_revision_parents(self):
@@ -2268,11 +2283,13 @@ class KnitPackRepository(KnitRepository):
         self._pack_collection._start_write_group()
 
     def _commit_write_group(self):
+        self.revisions._index._key_dependencies.refs.clear()
         return self._pack_collection._commit_write_group()
 
     def suspend_write_group(self):
         # XXX check self._write_group is self.get_transaction()?
         tokens = self._pack_collection._suspend_write_group()
+        self.revisions._index._key_dependencies.refs.clear()
         self._write_group = None
         return tokens
 
@@ -2301,10 +2318,10 @@ class KnitPackRepository(KnitRepository):
         self._write_lock_count += 1
         if self._write_lock_count == 1:
             self._transaction = transactions.WriteTransaction()
+        if not locked:
             for repo in self._fallback_repositories:
                 # Writes don't affect fallback repos
                 repo.lock_read()
-        if not locked:
             self._refresh_data()
 
     def lock_read(self):
@@ -2313,10 +2330,9 @@ class KnitPackRepository(KnitRepository):
             self._write_lock_count += 1
         else:
             self.control_files.lock_read()
-            for repo in self._fallback_repositories:
-                # Writes don't affect fallback repos
-                repo.lock_read()
         if not locked:
+            for repo in self._fallback_repositories:
+                repo.lock_read()
             self._refresh_data()
 
     def leave_lock_in_place(self):
@@ -2362,10 +2378,10 @@ class KnitPackRepository(KnitRepository):
                 transaction = self._transaction
                 self._transaction = None
                 transaction.finish()
-                for repo in self._fallback_repositories:
-                    repo.unlock()
         else:
             self.control_files.unlock()
+
+        if not self.is_locked():
             for repo in self._fallback_repositories:
                 repo.unlock()
 

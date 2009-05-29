@@ -701,6 +701,71 @@ class TestDevelopment6(TestCaseWithTransport):
         # We don't want the child GroupCHKStreamSource
         self.assertIs(type(stream), repository.StreamSource)
 
+    def test_get_stream_for_missing_keys_includes_all_chk_refs(self):
+        source_builder = self.make_branch_builder('source',
+                            format='development6-rich-root')
+        # We have to build a fairly large tree, so that we are sure the chk
+        # pages will have split into multiple pages.
+        entries = [('add', ('', 'a-root-id', 'directory', None))]
+        for i in 'abcdefghijklmnopqrstuvwxyz123456789':
+            for j in 'abcdefghijklmnopqrstuvwxyz123456789':
+                fname = i + j
+                fid = fname + '-id'
+                content = 'content for %s\n' % (fname,)
+                entries.append(('add', (fname, fid, 'file', content)))
+        source_builder.start_series()
+        source_builder.build_snapshot('rev-1', None, entries)
+        # Now change a few of them, so we get a few new pages for the second
+        # revision
+        source_builder.build_snapshot('rev-2', ['rev-1'], [
+            ('modify', ('aa-id', 'new content for aa-id\n')),
+            ('modify', ('cc-id', 'new content for cc-id\n')),
+            ('modify', ('zz-id', 'new content for zz-id\n')),
+            ])
+        source_builder.finish_series()
+        source_branch = source_builder.get_branch()
+        source_branch.lock_read()
+        self.addCleanup(source_branch.unlock)
+        target = self.make_repository('target', format='development6-rich-root')
+        source = source_branch.repository._get_source(target._format)
+        self.assertIsInstance(source, groupcompress_repo.GroupCHKStreamSource)
+
+        # On a regular pass, getting the inventories and chk pages for rev-2
+        # would only get the newly created chk pages
+        search = graph.SearchResult(set(['rev-2']), set(['rev-1']), 1,
+                                    set(['rev-2']))
+        simple_chk_records = []
+        for vf_name, substream in source.get_stream(search):
+            if vf_name == 'chk_bytes':
+                for record in substream:
+                    simple_chk_records.append(record.key)
+            else:
+                for _ in substream:
+                    continue
+        # 3 pages, the root (InternalNode), + 2 pages which actually changed
+        self.assertEqual([('sha1:91481f539e802c76542ea5e4c83ad416bf219f73',),
+                          ('sha1:4ff91971043668583985aec83f4f0ab10a907d3f',),
+                          ('sha1:81e7324507c5ca132eedaf2d8414ee4bb2226187',),
+                          ('sha1:b101b7da280596c71a4540e9a1eeba8045985ee0',)],
+                         simple_chk_records)
+        # Now, when we do a similar call using 'get_stream_for_missing_keys'
+        # we should get a much larger set of pages.
+        missing = [('inventories', 'rev-2')]
+        full_chk_records = []
+        for vf_name, substream in source.get_stream_for_missing_keys(missing):
+            if vf_name == 'inventories':
+                for record in substream:
+                    self.assertEqual(('rev-2',), record.key)
+            elif vf_name == 'chk_bytes':
+                for record in substream:
+                    full_chk_records.append(record.key)
+            else:
+                self.fail('Should not be getting a stream of %s' % (vf_name,))
+        # We have 257 records now. This is because we have 1 root page, and 256
+        # leaf pages in a complete listing.
+        self.assertEqual(257, len(full_chk_records))
+        self.assertSubset(simple_chk_records, full_chk_records)
+
 
 class TestKnitPackStreamSource(tests.TestCaseWithMemoryTransport):
 
@@ -765,11 +830,11 @@ class TestKnitPackStreamSource(tests.TestCaseWithMemoryTransport):
         self.assertIs(type(stream), repository.StreamSource)
 
 
-class TestDevelopment6FindRevisionOutsideSet(TestCaseWithTransport):
-    """Tests for _find_revision_outside_set."""
+class TestDevelopment6FindParentIdsOfRevisions(TestCaseWithTransport):
+    """Tests for _find_parent_ids_of_revisions."""
 
     def setUp(self):
-        super(TestDevelopment6FindRevisionOutsideSet, self).setUp()
+        super(TestDevelopment6FindParentIdsOfRevisions, self).setUp()
         self.builder = self.make_branch_builder('source',
             format='development6-rich-root')
         self.builder.start_series()
@@ -778,42 +843,42 @@ class TestDevelopment6FindRevisionOutsideSet(TestCaseWithTransport):
         self.repo = self.builder.get_branch().repository
         self.addCleanup(self.builder.finish_series)
 
-    def assertRevisionOutsideSet(self, expected_result, rev_set):
-        self.assertEqual(
-            expected_result, self.repo._find_revision_outside_set(rev_set))
+    def assertParentIds(self, expected_result, rev_set):
+        self.assertEqual(sorted(expected_result),
+            sorted(self.repo._find_parent_ids_of_revisions(rev_set)))
 
     def test_simple(self):
         self.builder.build_snapshot('revid1', None, [])
-        self.builder.build_snapshot('revid2', None, [])
+        self.builder.build_snapshot('revid2', ['revid1'], [])
         rev_set = ['revid2']
-        self.assertRevisionOutsideSet('revid1', rev_set)
+        self.assertParentIds(['revid1'], rev_set)
 
     def test_not_first_parent(self):
         self.builder.build_snapshot('revid1', None, [])
-        self.builder.build_snapshot('revid2', None, [])
-        self.builder.build_snapshot('revid3', None, [])
+        self.builder.build_snapshot('revid2', ['revid1'], [])
+        self.builder.build_snapshot('revid3', ['revid2'], [])
         rev_set = ['revid3', 'revid2']
-        self.assertRevisionOutsideSet('revid1', rev_set)
+        self.assertParentIds(['revid1'], rev_set)
 
     def test_not_null(self):
         rev_set = ['initial']
-        self.assertRevisionOutsideSet(_mod_revision.NULL_REVISION, rev_set)
+        self.assertParentIds([], rev_set)
 
     def test_not_null_set(self):
         self.builder.build_snapshot('revid1', None, [])
         rev_set = [_mod_revision.NULL_REVISION]
-        self.assertRevisionOutsideSet(_mod_revision.NULL_REVISION, rev_set)
+        self.assertParentIds([], rev_set)
 
     def test_ghost(self):
         self.builder.build_snapshot('revid1', None, [])
         rev_set = ['ghost', 'revid1']
-        self.assertRevisionOutsideSet('initial', rev_set)
+        self.assertParentIds(['initial'], rev_set)
 
     def test_ghost_parent(self):
         self.builder.build_snapshot('revid1', None, [])
         self.builder.build_snapshot('revid2', ['revid1', 'ghost'], [])
         rev_set = ['revid2', 'revid1']
-        self.assertRevisionOutsideSet('initial', rev_set)
+        self.assertParentIds(['ghost', 'initial'], rev_set)
 
     def test_righthand_parent(self):
         self.builder.build_snapshot('revid1', None, [])
@@ -821,7 +886,7 @@ class TestDevelopment6FindRevisionOutsideSet(TestCaseWithTransport):
         self.builder.build_snapshot('revid2b', ['revid1'], [])
         self.builder.build_snapshot('revid3', ['revid2a', 'revid2b'], [])
         rev_set = ['revid3', 'revid2a']
-        self.assertRevisionOutsideSet('revid2b', rev_set)
+        self.assertParentIds(['revid1', 'revid2b'], rev_set)
 
 
 class TestWithBrokenRepo(TestCaseWithTransport):

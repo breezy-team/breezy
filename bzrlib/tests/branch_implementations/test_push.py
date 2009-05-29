@@ -436,3 +436,13 @@ class EmptyPushSmartEffortTests(TestCaseWithBranch):
         self.assertTrue(len(self.hpss_calls) <= 9, self.hpss_calls)
 
 
+class TestLossyPush(TestCaseWithBranch):
+
+    def setUp(self):
+        self.hook_calls = []
+        TestCaseWithBranch.setUp(self)
+
+    def test_lossy_push_raises_same_vcs(self):
+        target = self.make_branch('target')
+        source = self.make_branch('source')
+        self.assertRaises(errors.LossyPushToSameVCS, source.lossy_push, target)

@@ -609,7 +609,7 @@ class TestPackRepository(TestCaseWithTransport):
         Also requires that the exception is logged.
         """
         self.vfs_transport_factory = memory.MemoryServer
-        repo = self.make_repository('repo')
+        repo = self.make_repository('repo', format=self.get_format())
         token = repo.lock_write()
         self.addCleanup(repo.unlock)
         repo.start_write_group()
@@ -626,7 +626,7 @@ class TestPackRepository(TestCaseWithTransport):
 
     def test_abort_write_group_does_raise_when_not_suppressed(self):
         self.vfs_transport_factory = memory.MemoryServer
-        repo = self.make_repository('repo')
+        repo = self.make_repository('repo', format=self.get_format())
         token = repo.lock_write()
         self.addCleanup(repo.unlock)
         repo.start_write_group()
@@ -639,23 +639,51 @@ class TestPackRepository(TestCaseWithTransport):
 
     def test_suspend_write_group(self):
         self.vfs_transport_factory = memory.MemoryServer
-        repo = self.make_repository('repo')
+        repo = self.make_repository('repo', format=self.get_format())
         token = repo.lock_write()
         self.addCleanup(repo.unlock)
         repo.start_write_group()
         repo.texts.add_lines(('file-id', 'revid'), (), ['lines'])
         wg_tokens = repo.suspend_write_group()
         expected_pack_name = wg_tokens[0] + '.pack'
+        expected_names = [wg_tokens[0] + ext for ext in
+                            ('.rix', '.iix', '.tix', '.six')]
+        if repo.chk_bytes is not None:
+            expected_names.append(wg_tokens[0] + '.cix')
+        expected_names.append(expected_pack_name)
         upload_transport = repo._pack_collection._upload_transport
         limbo_files = upload_transport.list_dir('')
-        self.assertTrue(expected_pack_name in limbo_files, limbo_files)
+        self.assertEqual(sorted(expected_names), sorted(limbo_files))
         md5 = osutils.md5(upload_transport.get_bytes(expected_pack_name))
         self.assertEqual(wg_tokens[0], md5.hexdigest())
+
+    def test_resume_chk_bytes(self):
+        self.vfs_transport_factory = memory.MemoryServer
+        repo = self.make_repository('repo', format=self.get_format())
+        if repo.chk_bytes is None:
+            raise TestNotApplicable('no chk_bytes for this repository')
+        token = repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        text = 'a bit of text\n'
+        key = ('sha1:' + osutils.sha_string(text),)
+        repo.chk_bytes.add_lines(key, (), [text])
+        wg_tokens = repo.suspend_write_group()
+        same_repo = repo.bzrdir.open_repository()
+        same_repo.lock_write()
+        self.addCleanup(same_repo.unlock)
+        same_repo.resume_write_group(wg_tokens)
+        self.assertEqual([key], list(same_repo.chk_bytes.keys()))
+        self.assertEqual(
+            text, same_repo.chk_bytes.get_record_stream([key],
+                'unordered', True).next().get_bytes_as('fulltext'))
+        same_repo.abort_write_group()
+        self.assertEqual([], list(same_repo.chk_bytes.keys()))
 
     def test_resume_write_group_then_abort(self):
         # Create a repo, start a write group, insert some data, suspend.
         self.vfs_transport_factory = memory.MemoryServer
-        repo = self.make_repository('repo')
+        repo = self.make_repository('repo', format=self.get_format())
         token = repo.lock_write()
         self.addCleanup(repo.unlock)
         repo.start_write_group()
@@ -674,10 +702,38 @@ class TestPackRepository(TestCaseWithTransport):
         self.assertEqual(
             [], same_repo._pack_collection._pack_transport.list_dir(''))
 
+    def test_commit_resumed_write_group(self):
+        self.vfs_transport_factory = memory.MemoryServer
+        repo = self.make_repository('repo', format=self.get_format())
+        token = repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        text_key = ('file-id', 'revid')
+        repo.texts.add_lines(text_key, (), ['lines'])
+        wg_tokens = repo.suspend_write_group()
+        # Get a fresh repository object for the repo on the filesystem.
+        same_repo = repo.bzrdir.open_repository()
+        # Resume
+        same_repo.lock_write()
+        self.addCleanup(same_repo.unlock)
+        same_repo.resume_write_group(wg_tokens)
+        same_repo.commit_write_group()
+        expected_pack_name = wg_tokens[0] + '.pack'
+        expected_names = [wg_tokens[0] + ext for ext in
+                            ('.rix', '.iix', '.tix', '.six')]
+        if repo.chk_bytes is not None:
+            expected_names.append(wg_tokens[0] + '.cix')
+        self.assertEqual(
+            [], same_repo._pack_collection._upload_transport.list_dir(''))
+        index_names = repo._pack_collection._index_transport.list_dir('')
+        self.assertEqual(sorted(expected_names), sorted(index_names))
+        pack_names = repo._pack_collection._pack_transport.list_dir('')
+        self.assertEqual([expected_pack_name], pack_names)
+
     def test_resume_malformed_token(self):
         self.vfs_transport_factory = memory.MemoryServer
         # Make a repository with a suspended write group
-        repo = self.make_repository('repo')
+        repo = self.make_repository('repo', format=self.get_format())
         token = repo.lock_write()
         self.addCleanup(repo.unlock)
         repo.start_write_group()
@@ -685,7 +741,7 @@ class TestPackRepository(TestCaseWithTransport):
         repo.texts.add_lines(text_key, (), ['lines'])
         wg_tokens = repo.suspend_write_group()
         # Make a new repository
-        new_repo = self.make_repository('new_repo')
+        new_repo = self.make_repository('new_repo', format=self.get_format())
         token = new_repo.lock_write()
         self.addCleanup(new_repo.unlock)
         hacked_wg_token = (
@@ -721,12 +777,12 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
             # can only stack on repositories that have compatible internal
             # metadata
             if getattr(repo._format, 'supports_tree_reference', False):
+                matching_format_name = 'pack-0.92-subtree'
+            else:
                 if repo._format.supports_chks:
                     matching_format_name = 'development6-rich-root'
                 else:
-                    matching_format_name = 'pack-0.92-subtree'
-            else:
-                matching_format_name = 'rich-root-pack'
+                    matching_format_name = 'rich-root-pack'
             mismatching_format_name = 'pack-0.92'
         else:
             # We don't have a non-rich-root CHK format.
@@ -752,15 +808,14 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
         if getattr(repo._format, 'supports_tree_reference', False):
             # can only stack on repositories that have compatible internal
             # metadata
-            if repo._format.supports_chks:
-                # No CHK subtree formats in bzr.dev, so this doesn't execute.
-                matching_format_name = 'development6-subtree'
-            else:
-                matching_format_name = 'pack-0.92-subtree'
+            matching_format_name = 'pack-0.92-subtree'
             mismatching_format_name = 'rich-root-pack'
         else:
             if repo.supports_rich_root():
-                matching_format_name = 'rich-root-pack'
+                if repo._format.supports_chks:
+                    matching_format_name = 'development6-rich-root'
+                else:
+                    matching_format_name = 'rich-root-pack'
                 mismatching_format_name = 'pack-0.92-subtree'
             else:
                 raise TestNotApplicable('No formats use non-v5 serializer'
@@ -831,6 +886,66 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
         self.assertEqual(2, len(list(index.iter_all_entries())))
         pack_names = [node[1][0] for node in index.iter_all_entries()]
         self.assertTrue(large_pack_name in pack_names)
+
+
+class TestKeyDependencies(TestCaseWithTransport):
+
+    def get_format(self):
+        return bzrdir.format_registry.make_bzrdir(self.format_name)
+
+    def create_source_and_target(self):
+        builder = self.make_branch_builder('source', format=self.get_format())
+        builder.start_series()
+        builder.build_snapshot('A-id', None, [
+            ('add', ('', 'root-id', 'directory', None))])
+        builder.build_snapshot('B-id', ['A-id', 'ghost-id'], [])
+        builder.finish_series()
+        repo = self.make_repository('target')
+        b = builder.get_branch()
+        b.lock_read()
+        self.addCleanup(b.unlock)
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        return b.repository, repo
+
+    def test_key_dependencies_cleared_on_abort(self):
+        source_repo, target_repo = self.create_source_and_target()
+        target_repo.start_write_group()
+        try:
+            stream = source_repo.revisions.get_record_stream([('B-id',)],
+                                                             'unordered', True)
+            target_repo.revisions.insert_record_stream(stream)
+            key_refs = target_repo.revisions._index._key_dependencies
+            self.assertEqual([('B-id',)], sorted(key_refs.get_referrers()))
+        finally:
+            target_repo.abort_write_group()
+        self.assertEqual([], sorted(key_refs.get_referrers()))
+
+    def test_key_dependencies_cleared_on_suspend(self):
+        source_repo, target_repo = self.create_source_and_target()
+        target_repo.start_write_group()
+        try:
+            stream = source_repo.revisions.get_record_stream([('B-id',)],
+                                                             'unordered', True)
+            target_repo.revisions.insert_record_stream(stream)
+            key_refs = target_repo.revisions._index._key_dependencies
+            self.assertEqual([('B-id',)], sorted(key_refs.get_referrers()))
+        finally:
+            target_repo.suspend_write_group()
+        self.assertEqual([], sorted(key_refs.get_referrers()))
+
+    def test_key_dependencies_cleared_on_commit(self):
+        source_repo, target_repo = self.create_source_and_target()
+        target_repo.start_write_group()
+        try:
+            stream = source_repo.revisions.get_record_stream([('B-id',)],
+                                                             'unordered', True)
+            target_repo.revisions.insert_record_stream(stream)
+            key_refs = target_repo.revisions._index._key_dependencies
+            self.assertEqual([('B-id',)], sorted(key_refs.get_referrers()))
+        finally:
+            target_repo.commit_write_group()
+        self.assertEqual([], sorted(key_refs.get_referrers()))
 
 
 class TestSmartServerAutopack(TestCaseWithTransport):
@@ -920,7 +1035,7 @@ def load_tests(basic_tests, module, loader):
          dict(format_name='development6-rich-root',
               format_string='Bazaar development format - group compression '
                   'and chk inventory (needs bzr.dev from 1.14)\n',
-              format_supports_external_lookups=False,
+              format_supports_external_lookups=True,
               index_class=BTreeGraphIndex),
          ]
     # name of the scenario is the format name
