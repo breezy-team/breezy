@@ -33,6 +33,9 @@ API Changes
 ***********
 
 * Added osutils.parent_directories(). (Ian Clatworthy)
+* ``graph.StackedParentsProvider`` is now a public API, replacing
+  ``graph._StackedParentsProvider``. The api is now considered stable and ready
+  for external users. (Gary van der Merwe)
 
 Internals
 *********
