@@ -5053,9 +5053,16 @@ class cmd_tags(Command):
             tags.sort(key=lambda x: timestamps[x[1]])
         if not show_ids:
             # [ (tag, revid), ... ] -> [ (tag, dotted_revno), ... ]
-            revno_map = branch.get_revision_id_to_revno_map()
-            tags = [ (tag, '.'.join(map(str, revno_map.get(revid, ('?',)))))
-                        for tag, revid in tags ]
+            for index, (tag, revid) in enumerate(tags):
+                try:
+                    revno = branch.revision_id_to_dotted_revno(revid)
+                    if isinstance(revno, tuple):
+                        revno = '.'.join(map(str, revno))
+                except errors.NoSuchRevision:
+                    # Bad tag data/merges can lead to tagged revisions
+                    # which are not in this branch. Fail gracefully ...
+                    revno = '?'
+                tags[index] = (tag, revno)
         for tag, revspec in tags:
             self.outf.write('%-20s %s\n' % (tag, revspec))
 
