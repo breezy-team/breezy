@@ -2437,7 +2437,6 @@ class KnitPackStreamSource(StreamSource):
     def _get_text_stream(self):
         # Note: We know we don't have to handle adding root keys, because both
         # the source and target are the identical network name.
-            type(self._text_keys))
         text_stream = self.from_repository.texts.get_record_stream(
                         self._text_keys, self._text_fetch_order, False)
         return ('texts', text_stream)
