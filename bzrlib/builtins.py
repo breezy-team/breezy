@@ -5027,42 +5027,42 @@ class cmd_tags(Command):
         if not tags:
             return
 
-        if revision:
-            branch.lock_read()
-            try:
+        branch.lock_read()
+        try:
+            if revision:
                 graph = branch.repository.get_graph()
                 rev1, rev2 = _get_revision_range(revision, branch, self.name())
                 revid1, revid2 = rev1.rev_id, rev2.rev_id
                 # only show revisions between revid1 and revid2 (inclusive)
                 tags = [(tag, revid) for tag, revid in tags if
                     graph.is_between(revid, revid1, revid2)]
-            finally:
-                branch.unlock()
-        if sort == 'alpha':
-            tags.sort()
-        elif sort == 'time':
-            timestamps = {}
-            for tag, revid in tags:
-                try:
-                    revobj = branch.repository.get_revision(revid)
-                except errors.NoSuchRevision:
-                    timestamp = sys.maxint # place them at the end
-                else:
-                    timestamp = revobj.timestamp
-                timestamps[revid] = timestamp
-            tags.sort(key=lambda x: timestamps[x[1]])
-        if not show_ids:
-            # [ (tag, revid), ... ] -> [ (tag, dotted_revno), ... ]
-            for index, (tag, revid) in enumerate(tags):
-                try:
-                    revno = branch.revision_id_to_dotted_revno(revid)
-                    if isinstance(revno, tuple):
-                        revno = '.'.join(map(str, revno))
-                except errors.NoSuchRevision:
-                    # Bad tag data/merges can lead to tagged revisions
-                    # which are not in this branch. Fail gracefully ...
-                    revno = '?'
-                tags[index] = (tag, revno)
+            if sort == 'alpha':
+                tags.sort()
+            elif sort == 'time':
+                timestamps = {}
+                for tag, revid in tags:
+                    try:
+                        revobj = branch.repository.get_revision(revid)
+                    except errors.NoSuchRevision:
+                        timestamp = sys.maxint # place them at the end
+                    else:
+                        timestamp = revobj.timestamp
+                    timestamps[revid] = timestamp
+                tags.sort(key=lambda x: timestamps[x[1]])
+            if not show_ids:
+                # [ (tag, revid), ... ] -> [ (tag, dotted_revno), ... ]
+                for index, (tag, revid) in enumerate(tags):
+                    try:
+                        revno = branch.revision_id_to_dotted_revno(revid)
+                        if isinstance(revno, tuple):
+                            revno = '.'.join(map(str, revno))
+                    except errors.NoSuchRevision:
+                        # Bad tag data/merges can lead to tagged revisions
+                        # which are not in this branch. Fail gracefully ...
+                        revno = '?'
+                    tags[index] = (tag, revno)
+        finally:
+            branch.unlock()
         for tag, revspec in tags:
             self.outf.write('%-20s %s\n' % (tag, revspec))
 
