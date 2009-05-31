@@ -32,8 +32,8 @@
 * `Использование Bazaar с Launchpad 
   <ru/tutorials/using_bazaar_with_launchpad.html>`_
 
-* `Централизированный стиль работы 
-  <en/tutorials/centralized_workflow.html>`_ (англ.)
+* `Работа в централизованном стиле
+  <ru/tutorials/centralized_workflow.html>`_
 
 Ссылки в сети
 =============
