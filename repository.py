@@ -268,3 +268,6 @@ class GitRepositoryFormat(repository.RepositoryFormat):
 
     def check_conversion_target(self, target_repo_format):
         return target_repo_format.rich_root_data
+
+    def network_name(self):
+        return "git"

@@ -104,6 +104,9 @@ class GitBzrDirFormat(bzrdir.BzrDirFormat):
     def is_supported(self):
         return True
 
+    def network_name(self):
+        return "git"
+
 
 class LocalGitBzrDirFormat(GitBzrDirFormat):
     """The .git directory control format."""
@@ -265,6 +268,14 @@ else:
         'bzrlib.plugins.git.server', 
         'serve_git',
         'Git Smart server protocol over TCP. (default port: 9418)')
+
+
+from bzrlib.repository import network_format_registry as repository_network_format_registry
+repository_network_format_registry.register_lazy('git', 
+    'bzrlib.plugins.git.repository', 'GitRepositoryFormat')
+
+from bzrlib.bzrdir import network_format_registry as bzrdir_network_format_registry
+bzrdir_network_format_registry.register('git', GitBzrDirFormat)
 
 
 def get_rich_root_format(stacked=False):
