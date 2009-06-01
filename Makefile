@@ -106,7 +106,10 @@ non_txt_files := \
        doc/es/referencia-rapida/referencia-rapida.svg \
        doc/es/referencia-rapida/referencia-rapida.png \
        doc/es/referencia-rapida/referencia-rapida.pdf \
-       $(wildcard doc/es/guia-usuario/images/*.png)
+       $(wildcard doc/es/guia-usuario/images/*.png) \
+       doc/ru/quick-reference/quick-start-summary.svg \
+       doc/ru/quick-reference/quick-start-summary.png \
+       doc/ru/quick-reference/quick-start-summary.pdf
 htm_files := $(patsubst %.txt, %.html, $(txt_files)) 
 dev_txt_files := $(wildcard $(addsuffix /*.txt, doc/developers))
 dev_htm_files := $(patsubst %.txt, %.html, $(dev_txt_files)) 
