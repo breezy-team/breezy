@@ -2409,6 +2409,7 @@ class cmd_ls(Command):
                             continue
                     kindch = entry.kind_character()
                     outstring = fp + kindch
+                    bzrlib.ui.ui_factory.clear_term()
                     if verbose:
                         outstring = '%-8s %s' % (fc, outstring)
                         if show_ids and fid is not None:
