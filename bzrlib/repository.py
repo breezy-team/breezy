@@ -1919,26 +1919,25 @@ class Repository(object):
                     yield line, revid
 
     def _find_file_ids_from_xml_inventory_lines(self, line_iterator,
-        revision_ids):
+        revision_keys):
         """Helper routine for fileids_altered_by_revision_ids.
 
         This performs the translation of xml lines to revision ids.
 
         :param line_iterator: An iterator of lines, origin_version_id
-        :param revision_ids: The revision ids to filter for. This should be a
+        :param revision_keys: The revision ids to filter for. This should be a
             set or other type which supports efficient __contains__ lookups, as
-            the revision id from each parsed line will be looked up in the
-            revision_ids filter.
+            the revision key from each parsed line will be looked up in the
+            revision_keys filter.
         :return: a dictionary mapping altered file-ids to an iterable of
         revision_ids. Each altered file-ids has the exact revision_ids that
         altered it listed explicitly.
         """
         seen = set(self._find_text_key_references_from_xml_inventory_lines(
                 line_iterator).iterkeys())
-        # Note that revision_ids are revision keys.
-        parent_ids = self._find_parent_ids_of_revisions(revision_ids)
+        parent_keys = self._find_parent_keys_of_revisions(revision_keys)
         parent_seen = set(self._find_text_key_references_from_xml_inventory_lines(
-            self._inventory_xml_lines_for_keys(parent_ids)))
+            self._inventory_xml_lines_for_keys(parent_keys)))
         new_keys = seen - parent_seen
         result = {}
         setdefault = result.setdefault
@@ -1953,11 +1952,25 @@ class Repository(object):
             not part of revision_ids themselves
         """
         parent_map = self.get_parent_map(revision_ids)
-        parents = set()
-        map(parents.update, parent_map.itervalues())
-        parents.difference_update(revision_ids)
-        parents.discard(_mod_revision.NULL_REVISION)
-        return parents
+        parent_ids = set()
+        map(parent_ids.update, parent_map.itervalues())
+        parent_ids.difference_update(revision_ids)
+        parent_ids.discard(_mod_revision.NULL_REVISION)
+        return parent_ids
+
+    def _find_parent_keys_of_revisions(self, revision_keys):
+        """Similar to _find_parent_ids_of_revisions, but used with keys.
+
+        :param revision_keys: An iterable of revision_keys.
+        :return: The parents of all revision_keys that are not already in
+            revision_keys
+        """
+        parent_map = self.revisions.get_parent_map(revision_keys)
+        parent_keys = set()
+        map(parent_keys.update, parent_map.itervalues())
+        parent_keys.difference_update(revision_keys)
+        parent_keys.discard(_mod_revision.NULL_REVISION)
+        return parent_keys
 
     def fileids_altered_by_revision_ids(self, revision_ids, _inv_weave=None):
         """Find the file ids and versions affected by revisions.

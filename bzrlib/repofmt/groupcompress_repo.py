@@ -737,11 +737,10 @@ class CHKInventoryRepository(KnitPackRepository):
         # make it raise to trap naughty direct users.
         raise NotImplementedError(self._iter_inventory_xmls)
 
-    def _find_present_inventory_ids(self, revision_ids):
-        keys = [(r,) for r in revision_ids]
-        parent_map = self.inventories.get_parent_map(keys)
-        present_inventory_ids = set(k[-1] for k in parent_map)
-        return present_inventory_ids
+    def _find_present_inventory_keys(self, revision_keys):
+        parent_map = self.inventories.get_parent_map(revision_keys)
+        present_inventory_keys = set(k for k in parent_map)
+        return present_inventory_keys
 
     def fileids_altered_by_revision_ids(self, revision_ids, _inv_weave=None):
         """Find the file ids and versions affected by revisions.
@@ -758,12 +757,20 @@ class CHKInventoryRepository(KnitPackRepository):
         file_id_revisions = {}
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            parent_ids = self._find_parent_ids_of_revisions(revision_ids)
-            present_parent_inv_ids = self._find_present_inventory_ids(parent_ids)
+            revision_keys = [(r,) for r in revision_ids]
+            parent_keys = self._find_parent_keys_of_revisions(revision_keys)
+            # TODO: instead of using _find_present_inventory_keys, change the
+            #       code paths to allow missing inventories to be tolerated.
+            #       However, we only want to tolerate missing parent
+            #       inventories, not missing inventories for revision_ids
+            present_parent_inv_keys = self._find_present_inventory_keys(
+                                        parent_keys)
+            present_parent_inv_ids = set(
+                [k[-1] for k in present_parent_inv_keys])
             uninteresting_root_keys = set()
             interesting_root_keys = set()
-            inventories_to_read = set(present_parent_inv_ids)
-            inventories_to_read.update(revision_ids)
+            inventories_to_read = set(revision_ids)
+            inventories_to_read.update(present_parent_inv_ids)
             for inv in self.iter_inventories(inventories_to_read):
                 entry_chk_root_key = inv.id_to_entry.key()
                 if inv.revision_id in present_parent_inv_ids:
@@ -890,10 +897,10 @@ class GroupCHKStreamSource(KnitPackStreamSource):
             p_id_roots_set.clear()
         return ('inventories', _filtered_inv_stream())
 
-    def _get_filtered_chk_streams(self, excluded_revision_ids):
+    def _get_filtered_chk_streams(self, excluded_revision_keys):
         self._text_keys = set()
-        excluded_revision_ids.discard(_mod_revision.NULL_REVISION)
-        if not excluded_revision_ids:
+        excluded_revision_keys.discard(_mod_revision.NULL_REVISION)
+        if not excluded_revision_keys:
             uninteresting_root_keys = set()
             uninteresting_pid_root_keys = set()
         else:
@@ -901,8 +908,9 @@ class GroupCHKStreamSource(KnitPackStreamSource):
             # actually present
             # TODO: Update Repository.iter_inventories() to add
             #       ignore_missing=True
-            present_ids = self.from_repository._find_present_inventory_ids(
-                            excluded_revision_ids)
+            present_keys = self.from_repository._find_present_inventory_keys(
+                            excluded_revision_keys)
+            present_ids = [k[-1] for k in present_keys]
             uninteresting_root_keys = set()
             uninteresting_pid_root_keys = set()
             for inv in self.from_repository.iter_inventories(present_ids):
@@ -943,8 +951,9 @@ class GroupCHKStreamSource(KnitPackStreamSource):
         # For now, exclude all parents that are at the edge of ancestry, for
         # which we have inventories
         from_repo = self.from_repository
-        parent_ids = from_repo._find_parent_ids_of_revisions(revision_ids)
-        for stream_info in self._get_filtered_chk_streams(parent_ids):
+        parent_keys = from_repo._find_parent_keys_of_revisions(
+                        self._revision_keys)
+        for stream_info in self._get_filtered_chk_streams(parent_keys):
             yield stream_info
         yield self._get_text_stream()
 
@@ -968,8 +977,8 @@ class GroupCHKStreamSource(KnitPackStreamSource):
         # no unavailable texts when the ghost inventories are not filled in.
         yield self._get_inventory_stream(missing_inventory_keys,
                                          allow_absent=True)
-        # We use the empty set for excluded_revision_ids, to make it clear that
-        # we want to transmit all referenced chk pages.
+        # We use the empty set for excluded_revision_keys, to make it clear
+        # that we want to transmit all referenced chk pages.
         for stream_info in self._get_filtered_chk_streams(set()):
             yield stream_info
 
