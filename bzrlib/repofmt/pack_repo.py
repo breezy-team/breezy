@@ -2289,7 +2289,11 @@ class KnitPackRepository(KnitRepository):
 
     def _resume_write_group(self, tokens):
         self._start_write_group()
-        self._pack_collection._resume_write_group(tokens)
+        try:
+            self._pack_collection._resume_write_group(tokens)
+        except errors.UnresumableWriteGroup:
+            self._abort_write_group()
+            raise
         for pack in self._pack_collection._resumed_packs:
             self.revisions._index.scan_unvalidated_index(pack.revision_index)
 
