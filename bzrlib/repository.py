@@ -1150,6 +1150,41 @@ class Repository(object):
         # The old API returned a list, should this actually be a set?
         return parent_map.keys()
 
+    def _check_inventories(self, checker):
+        """Check the inventories found from the revision scan.
+        
+        This checks all data that is tree-shape and not file-content.
+        """
+        revbar = ui.ui_factory.nested_progress_bar()
+        revno = 0
+        count = len(checker.pending_keys)
+        current_keys = checker.pending_keys
+        checker.pending_keys = {}
+        keys = set()
+        for key in current_keys:
+            if key[0] != 'inventories':
+                checker._report_items.append('unknown key type %r' % key)
+            keys.add(key[1:])
+        # XXX: below is to-go code that accesses texts one at a time.
+        try:
+            while revno < len(checker.planned_revisions):
+                rev_id = checker.planned_revisions[revno]
+                revbar.update('checking revision', revno,
+                    len(checker.planned_revisions))
+                revno += 1
+                try:
+                    tree = self.revision_tree(rev_id)
+                except errors.NoSuchRevision:
+                    self._report_items.append(
+                        "Missing inventory for revision {%s}" % rev_id)
+                inv = tree.inventory
+                for path, ie in inv.iter_entries():
+                    checker._add_entry_to_text_key_references(inv, ie)
+                    file_id = ie.file_id
+                    ie.check(checker, rev_id, inv, tree)
+        finally:
+            revbar.finished()
+
     @staticmethod
     def create(a_bzrdir):
         """Construct the current default format repository in a_bzrdir."""

@@ -82,9 +82,9 @@ class Check(object):
         self.other_results = []
         # Plain text lines to include in the report
         self._report_items = []
-        # Sha1 expectations; may be large and need spilling to disk.
-        # key->(sha1, first-referer)
-        self.expected_sha1 = {}
+        # Keys we are looking for; may be large and need spilling to disk.
+        # key->(type(revision/inventory/text/signature/map), sha1, first-referer)
+        self.pending_keys = {}
         # Ancestors map for all of revisions being checked; while large helper
         # functions we call would create it anyway, so better to have once and
         # keep.
@@ -98,20 +98,10 @@ class Check(object):
         try:
             self.progress.update('check', 0, 4)
             if self.check_repo:
-                self.progress.update('checking revision graph', 0)
-                self.check_revision_graph()
-                self.progress.update('checking revisions', 1)
-                revbar = bzrlib.ui.ui_factory.nested_progress_bar()
-                revno = 0
-                try:
-                    while revno < len(self.planned_revisions):
-                        rev_id = self.planned_revisions[revno]
-                        revbar.update('checking revision', revno,
-                            len(self.planned_revisions))
-                        revno += 1
-                        self._check_revision_tree(rev_id)
-                finally:
-                    revbar.finished()
+                self.progress.update('checking revisions', 0)
+                self.check_revisions()
+                self.progress.update('checking inventories', 1)
+                self.repository._check_inventories(self)
                 self.progress.update('checking revision contents', 2)
                 # check_weaves is done after the revision scan so that
                 # revision index is known to be valid.
@@ -162,7 +152,7 @@ class Check(object):
             self.progress.finished()
             self.repository.unlock()
 
-    def check_revisions(self, revisions_iterator):
+    def _check_revisions(self, revisions_iterator):
         """Check revision objects by decorating a generator.
 
         :param revisions_iterator: An iterator of(revid, Revision-or-None).
@@ -172,11 +162,15 @@ class Check(object):
         for revid, revision in revisions_iterator:
             yield revid, revision
             self._check_one_rev(revid, revision)
+        # Flatten the revisions we found to guarantee consistent later
+        # iteration.
         self.planned_revisions = list(self.planned_revisions)
+        # TODO: extract digital signatures as items to callback on too.
 
-    def check_revision_graph(self):
+    def check_revisions(self):
+        """Scan revisions, checking data directly available as we go."""
         revision_iterator = self.repository._iter_revisions(None)
-        revision_iterator = self.check_revisions(revision_iterator)
+        revision_iterator = self._check_revisions(revision_iterator)
         # We read the all revisions here:
         # - doing this allows later code to depend on the revision index.
         # - we can fill out existence flags at this point
@@ -274,27 +268,26 @@ class Check(object):
                 self.ghosts.add(parent)
         
         self.ancestors[rev_id] = tuple(rev.parent_ids) or (NULL_REVISION,)
-        # If the revision has an inventory sha, we want to cross check it later.
-        if rev.inventory_sha1:
-            self.add_sha_check(rev_id, ('inventories', rev_id),
+        self.add_pending_item(rev_id, ('inventories', rev_id), 'inventory',
             rev.inventory_sha1)
         self.checked_rev_cnt += 1
 
-    def add_sha_check(self, referer, key, sha1):
+    def add_pending_item(self, referer, key, kind, sha1):
         """Add a reference to a sha1 to be cross checked against a key.
 
         :param referer: The referer that expects key to have sha1.
         :param key: A storage key e.g. ('texts', 'foo@bar-20040504-1234')
-        :param sha1: A hex sha1.
+        :param kind: revision/inventory/text/map/signature
+        :param sha1: A hex sha1 or None if no sha1 is known.
         """
-        existing = self.expected_sha1.get(key)
+        existing = self.pending_keys.get(key)
         if existing:
-            if sha1 != existing[0]:
+            if sha1 != existing[1]:
                 self._report_items.append('Multiple expected sha1s for %s. {%s}'
                     ' expects {%s}, {%s} expects {%s}', (
                     key, referer, sha1, existing[1], existing[0]))
         else:
-            self.expected_sha1[key] = (sha1, referer)
+            self.pending_keys[key] = (kind, sha1, referer)
 
     def check_weaves(self):
         """Check all the weaves we can get our hands on.
@@ -333,18 +326,6 @@ class Check(object):
             self.inconsistent_parents.append(
                 (revision_id, weave_id, weave_parents, correct_parents))
         self.unreferenced_versions.update(unused_versions)
-
-    def _check_revision_tree(self, rev_id):
-        try:
-            tree = self.repository.revision_tree(rev_id)
-        except errors.NoSuchRevision:
-            self._report_items.append(
-                "Missing inventory for revision {%s}" % rev_id)
-        inv = tree.inventory
-        for path, ie in inv.iter_entries():
-            self._add_entry_to_text_key_references(inv, ie)
-            file_id = ie.file_id
-            ie.check(self, rev_id, inv, tree)
 
     def _add_entry_to_text_key_references(self, inv, entry):
         if not self.rich_roots and entry == inv.root:
