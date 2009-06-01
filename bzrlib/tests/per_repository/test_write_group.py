@@ -534,8 +534,6 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         same_repo.resume_write_group(wg_tokens)
         same_repo.abort_write_group()
         same_repo = self.reopen_repo(repo)
-        # TODO: While this does raise UnresumableWriteGroup, it seems to hold
-        #       open a file handle which causes cleanup to fail.
         self.assertRaises(
             errors.UnresumableWriteGroup, same_repo.resume_write_group,
             wg_tokens)
