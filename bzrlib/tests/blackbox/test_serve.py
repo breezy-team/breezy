@@ -138,6 +138,18 @@ class TestBzrServe(TestCaseWithTransport):
         self.make_read_requests(branch)
         self.assertServerFinishesCleanly(process)
 
+    def test_bzr_serve_supports_protocol(self):
+        # Make a branch
+        self.make_branch('.')
+
+        process, url = self.start_server_port(['--allow-writes',
+                                               '--protocol=bzr'])
+
+        # Connect to the server
+        branch = Branch.open(url)
+        self.make_read_requests(branch)
+        self.assertServerFinishesCleanly(process)
+
     def test_bzr_connect_to_bzr_ssh(self):
         """User acceptance that get_transport of a bzr+ssh:// behaves correctly.
 

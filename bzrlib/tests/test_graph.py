@@ -1558,6 +1558,19 @@ class TestPendingAncestryResultGetKeys(TestCaseWithMemoryTransport):
         result = _mod_graph.PendingAncestryResult(['rev-2'], repo)
         self.assertEqual(set(['rev-1', 'rev-2']), set(result.get_keys()))
 
+    def test_get_keys_excludes_ghosts(self):
+        builder = self.make_branch_builder('b')
+        builder.start_series()
+        builder.build_snapshot('rev-1', None, [
+            ('add', ('', 'root-id', 'directory', ''))])
+        builder.build_snapshot('rev-2', ['rev-1', 'ghost'], [])
+        builder.finish_series()
+        repo = builder.get_branch().repository
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        result = _mod_graph.PendingAncestryResult(['rev-2'], repo)
+        self.assertEqual(sorted(['rev-1', 'rev-2']), sorted(result.get_keys()))
+
     def test_get_keys_excludes_null(self):
         # Make a 'graph' with an iter_ancestry that returns NULL_REVISION
         # somewhere other than the last element, which can happen in real

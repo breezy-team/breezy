@@ -101,13 +101,9 @@ class Branch(object):
     def _open_hook(self):
         """Called by init to allow simpler extension of the base class."""
 
-    def _activate_fallback_location(self, url, lock_style):
+    def _activate_fallback_location(self, url):
         """Activate the branch/repository from url as a fallback repository."""
         repo = self._get_fallback_repository(url)
-        if lock_style == 'write':
-            repo.lock_write()
-        elif lock_style == 'read':
-            repo.lock_read()
         self.repository.add_fallback_repository(repo)
 
     def break_lock(self):
@@ -656,7 +652,7 @@ class Branch(object):
                 self.repository.fetch(source_repository, revision_id,
                     find_ghosts=True)
         else:
-            self._activate_fallback_location(url, 'write')
+            self._activate_fallback_location(url)
         # write this out after the repository is stacked to avoid setting a
         # stacked config that doesn't work.
         self._set_config_location('stacked_on_location', url)
@@ -877,7 +873,8 @@ class Branch(object):
 
         :param target: Target branch
         :param stop_revision: Revision to push, defaults to last revision.
-        :return: Dictionary mapping revision ids from the target branch 
+        :return: BranchPushResult with an extra member revidmap: 
+            A dictionary mapping revision ids from the target branch 
             to new revision ids in the target branch, for each 
             revision that was pushed.
         """
@@ -930,6 +927,10 @@ class Branch(object):
         if location == '':
             location = None
         return location
+
+    def get_child_submit_format(self):
+        """Return the preferred format of submissions to this branch."""
+        return self.get_config().get_user_option("child_submit_format")
 
     def get_submit_branch(self):
         """Return the submit location of the branch.
@@ -2365,7 +2366,7 @@ class BzrBranch8(BzrBranch5):
                     raise AssertionError(
                         "'transform_fallback_location' hook %s returned "
                         "None, not a URL." % hook_name)
-            self._activate_fallback_location(url, None)
+            self._activate_fallback_location(url)
 
     def __init__(self, *args, **kwargs):
         self._ignore_fallbacks = kwargs.get('ignore_fallbacks', False)

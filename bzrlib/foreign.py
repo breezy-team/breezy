@@ -329,7 +329,7 @@ class cmd_dpush(Command):
         target_branch.lock_write()
         try:
             try:
-                revid_map = source_branch.lossy_push(target_branch)
+                push_result = source_branch.lossy_push(target_branch)
             except errors.LossyPushToSameVCS:
                 raise BzrCommandError("%r and %r are in the same VCS, lossy "
                     "push not necessary. Please use regular push." %
@@ -349,6 +349,7 @@ class cmd_dpush(Command):
                         update_workingtree_fileids(source_wt, target)
                     finally:
                         source_wt.unlock()
+            push_result.report(self.outf)
         finally:
             target_branch.unlock()
 
@@ -365,7 +366,8 @@ class InterToForeignBranch(InterBranch):
 
         :param target: Target branch
         :param stop_revision: Revision to push, defaults to last revision.
-        :return: Dictionary mapping revision ids from the target branch 
+        :return: BranchPushResult with an extra member revidmap: 
+            A dictionary mapping revision ids from the target branch 
             to new revision ids in the target branch, for each 
             revision that was pushed.
         """
