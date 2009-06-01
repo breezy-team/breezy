@@ -17,7 +17,7 @@
 Введение
 ########
 
-.. include:: ../../en/user-guide/introducing_bazaar.txt
+.. include:: introducing_bazaar.txt
 .. include:: ../../en/user-guide/core_concepts.txt
 .. include:: ../../en/user-guide/bazaar_workflows.txt
 

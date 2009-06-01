@@ -143,6 +143,9 @@ doc/en/user-guide/user-guide.$(PAPERSIZE).pdf: $(wildcard $(addsuffix /*.txt, do
 doc/developers/%.html: doc/developers/%.txt
 	$(rst2html) --stylesheet=../default.css $< $@
 
+doc/index.html: doc/index.txt
+	$(rst2html) --stylesheet=default.css $< $@
+
 doc/index%.html: doc/index%.txt
 	$(rst2html) --stylesheet=default.css $< $@
 
