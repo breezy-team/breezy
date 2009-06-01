@@ -849,7 +849,7 @@ class GroupCHKStreamSource(KnitPackStreamSource):
         self._chk_id_roots = None
         self._chk_p_id_roots = None
 
-    def _get_inventory_stream(self, inventory_keys):
+    def _get_inventory_stream(self, inventory_keys, allow_absent=False):
         """Get a stream of inventory texts.
 
         When this function returns, self._chk_id_roots and self._chk_p_id_roots
@@ -864,6 +864,11 @@ class GroupCHKStreamSource(KnitPackStreamSource):
             stream = source_vf.get_record_stream(inventory_keys,
                                                  'groupcompress', True)
             for record in stream:
+                if record.storage_kind == 'absent':
+                    if allow_absent:
+                        continue
+                    else:
+                        raise errors.NoSuchRevision(self, record.key)
                 bytes = record.get_bytes_as('fulltext')
                 chk_inv = inventory.CHKInventory.deserialise(None, bytes,
                                                              record.key)
@@ -958,7 +963,11 @@ class GroupCHKStreamSource(KnitPackStreamSource):
             raise AssertionError('Cannot call get_stream_for_missing_keys'
                 ' untill all of get_stream() has been consumed.')
         # Yield the inventory stream, so we can find the chk stream
-        yield self._get_inventory_stream(missing_inventory_keys)
+        # Some of the missing_keys will be missing because they are ghosts.
+        # As such, we can ignore them. The Sink is required to verify there are
+        # no unavailable texts when the ghost inventories are not filled in.
+        yield self._get_inventory_stream(missing_inventory_keys,
+                                         allow_absent=True)
         # We use the empty set for excluded_revision_ids, to make it clear that
         # we want to transmit all referenced chk pages.
         for stream_info in self._get_filtered_chk_streams(set()):
