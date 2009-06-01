@@ -179,7 +179,7 @@ class ForeignVcsRegistry(registry.Registry):
         :param revid: The bzr revision id
         :return: tuple with foreign revid and vcs mapping
         """
-        if not "-" in revid:
+        if not ":" in revid or not "-" in revid:
             raise errors.InvalidRevisionId(revid, None)
         try:
             foreign_vcs = self.get(revid.split("-")[0])
