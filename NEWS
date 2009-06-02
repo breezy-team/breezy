@@ -26,6 +26,11 @@ Improvements
 Bug Fixes
 *********
 
+* Translate errors received from a smart server in response to a
+  ``BzrDirFormat.initialize`` or ``BzrDirFormat.initialize_ex`` request.
+  This was causing tracebacks even for mundane errors like
+  ``PermissionDenied``.  (Andrew Bennetts, #381329)
+
 Documentation
 *************
 
