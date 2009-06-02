@@ -1089,24 +1089,14 @@ class Branch(object):
         source_revno, source_revision_id = self.last_revision_info()
         if revision_id is None:
             revno, revision_id = source_revno, source_revision_id
-        elif source_revision_id == revision_id:
-            # we know the revno without needing to walk all of history
-            revno = source_revno
         else:
-            # To figure out the revno for a random revision, we need to build
-            # the revision history, and count its length.
-            # We don't care about the order, just how long it is.
+            graph = self.repository.get_graph()
             try:
-                revno = len(list(self.repository.iter_reverse_revision_history(
-                    revision_id)))
-            except errors.RevisionNotPresent:
-                # One of the left hand side ancestors is a ghost
-                graph = self.repository.get_graph()
-                try:
-                    revno = graph.find_distance_to_null(revision_id, [])
-                except errors.GhostRevisionsHaveNoRevno:
-                    # Default to 1, if we can't find anything else
-                    revno = 1
+                revno = graph.find_distance_to_null(revision_id, 
+                    [(source_revision_id, source_revno)])
+            except errors.GhostRevisionsHaveNoRevno:
+                # Default to 1, if we can't find anything else
+                revno = 1
         destination.set_last_revision_info(revno, revision_id)
 
     @needs_read_lock
