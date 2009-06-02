@@ -18,7 +18,7 @@
 ########
 
 .. include:: introducing_bazaar.txt
-.. include:: ../../en/user-guide/core_concepts.txt
+.. include:: core_concepts.txt
 .. include:: ../../en/user-guide/bazaar_workflows.txt
 
 
@@ -31,7 +31,7 @@
 .. include:: ../../en/user-guide/configuring_bazaar.txt
 .. include:: ../../en/user-guide/using_aliases.txt
 .. include:: ../../en/user-guide/plugins.txt
-.. include:: ../../en/user-guide/zen.txt
+.. include:: zen.txt
 
 
 Личный контроль версий
@@ -51,7 +51,7 @@
 #################
 
 .. include:: ../../en/user-guide/partner_intro.txt
-.. include:: ../../en/user-guide/branching_a_project.txt
+.. include:: branching_a_project.txt
 .. include:: ../../en/user-guide/merging_changes.txt
 .. include:: ../../en/user-guide/resolving_conflicts.txt
 .. include:: ../../en/user-guide/annotating_changes.txt
@@ -62,7 +62,7 @@
 
 .. include:: ../../en/user-guide/central_intro.txt
 .. include:: ../../en/user-guide/publishing_a_branch.txt
-.. include:: ../../en/user-guide/using_checkouts.txt
+.. include:: using_checkouts.txt
 .. include:: ../../en/user-guide/working_offline_central.txt
 .. include:: ../../en/user-guide/reusing_a_checkout.txt
 
@@ -83,7 +83,7 @@
 .. include:: ../../en/user-guide/adv_merging.txt
 .. include:: ../../en/user-guide/shelving_changes.txt
 .. include:: ../../en/user-guide/filtered_views.txt
-.. include:: ../../en/user-guide/stacked.txt
+.. include:: stacked.txt
 .. include:: ../../en/user-guide/server.txt
 .. include:: ../../en/user-guide/hooks.txt
 .. include:: ../../en/user-guide/version_info.txt
@@ -111,7 +111,7 @@
 Приложения
 ##########
 
-.. include:: ../../en/user-guide/specifying_revisions.txt
+.. include:: specifying_revisions.txt
 .. include:: ../../en/user-guide/organizing_your_workspace.txt
 .. include:: ../../en/user-guide/shared_repository_layouts.txt
 .. include:: ../../en/user-guide/setting_up_email.txt
