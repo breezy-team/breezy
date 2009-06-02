@@ -1471,6 +1471,58 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             self.addCleanup(lambda:self.cleanup(files))
         return files
 
+    def test_add_lines(self):
+        f = self.get_versionedfiles()
+        if self.key_length == 1:
+            key0 = ('r0',)
+            key1 = ('r1',)
+            key2 = ('r2',)
+            keyf = ('foo',)
+        else:
+            key0 = ('fid', 'r0')
+            key1 = ('fid', 'r1')
+            key2 = ('fid', 'r2')
+            keyf = ('fid', 'foo')
+        f.add_lines(key0, [], ['a\n', 'b\n'])
+        if self.graph:
+            f.add_lines(key1, [key0], ['b\n', 'c\n'])
+        else:
+            f.add_lines(key1, [], ['b\n', 'c\n'])
+        keys = f.keys()
+        self.assertTrue(key0 in keys)
+        self.assertTrue(key1 in keys)
+        records = []
+        for record in f.get_record_stream([key0, key1], 'unordered', True):
+            records.append((record.key, record.get_bytes_as('fulltext')))
+        records.sort()
+        self.assertEqual([(key0, 'a\nb\n'), (key1, 'b\nc\n')], records)
+
+    def test_add_text(self):
+        f = self.get_versionedfiles()
+        if self.key_length == 1:
+            key0 = ('r0',)
+            key1 = ('r1',)
+            key2 = ('r2',)
+            keyf = ('foo',)
+        else:
+            key0 = ('fid', 'r0')
+            key1 = ('fid', 'r1')
+            key2 = ('fid', 'r2')
+            keyf = ('fid', 'foo')
+        f.add_text(key0, [], 'a\nb\n')
+        if self.graph:
+            f.add_text(key1, [key0], 'b\nc\n')
+        else:
+            f.add_text(key1, [], 'b\nc\n')
+        keys = f.keys()
+        self.assertTrue(key0 in keys)
+        self.assertTrue(key1 in keys)
+        records = []
+        for record in f.get_record_stream([key0, key1], 'unordered', True):
+            records.append((record.key, record.get_bytes_as('fulltext')))
+        records.sort()
+        self.assertEqual([(key0, 'a\nb\n'), (key1, 'b\nc\n')], records)
+
     def test_annotate(self):
         files = self.get_versionedfiles()
         self.get_diamond_files(files)

@@ -829,6 +829,14 @@ class VersionedFiles(object):
         """
         raise NotImplementedError(self.add_lines)
 
+    def add_text(self, key, parents, text, parent_texts=None,
+                 nostore_sha=None, random_id=False, check_content=True):
+        return self.add_lines(key, parents, osutils.split_lines(text),
+                              parent_texts=parent_texts,
+                              nostore_sha=nostore_sha,
+                              random_id=random_id,
+                              check_content=check_content)
+
     def add_mpdiffs(self, records):
         """Add mpdiffs to this VersionedFile.
 

@@ -745,7 +745,7 @@ class CommitBuilder(object):
                         entry.executable = True
                     else:
                         entry.executable = False
-                    if (carry_over_possible and 
+                    if (carry_over_possible and
                         parent_entry.executable == entry.executable):
                             # Check the file length, content hash after reading
                             # the file.
@@ -754,12 +754,12 @@ class CommitBuilder(object):
                         nostore_sha = None
                     file_obj, stat_value = tree.get_file_with_stat(file_id, change[1][1])
                     try:
-                        lines = file_obj.readlines()
+                        text = file_obj.read()
                     finally:
                         file_obj.close()
                     try:
                         entry.text_sha1, entry.text_size = self._add_text_to_weave(
-                            file_id, lines, heads, nostore_sha)
+                            file_id, text, heads, nostore_sha)
                         yield file_id, change[1][1], (entry.text_sha1, stat_value)
                     except errors.ExistingContent:
                         # No content change against a carry_over parent
@@ -818,15 +818,15 @@ class CommitBuilder(object):
             self._require_root_change(tree)
         self.basis_delta_revision = basis_revision_id
 
-    def _add_text_to_weave(self, file_id, new_lines, parents, nostore_sha):
+    def _add_text_to_weave(self, file_id, new_text, parents, nostore_sha):
         # Note: as we read the content directly from the tree, we know its not
         # been turned into unicode or badly split - but a broken tree
         # implementation could give us bad output from readlines() so this is
         # not a guarantee of safety. What would be better is always checking
         # the content during test suite execution. RBC 20070912
         parent_keys = tuple((file_id, parent) for parent in parents)
-        return self.repository.texts.add_lines(
-            (file_id, self._new_revision_id), parent_keys, new_lines,
+        return self.repository.texts.add_text(
+            (file_id, self._new_revision_id), parent_keys, new_text,
             nostore_sha=nostore_sha, random_id=self.random_revid,
             check_content=False)[0:2]
 
