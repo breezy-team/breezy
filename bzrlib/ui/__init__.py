@@ -227,7 +227,7 @@ class CLIUIFactory(UIFactory):
             prompt = prompt % kwargs
         prompt = prompt.encode(osutils.get_terminal_encoding(), 'replace')
         self.clear_term()
-        self.stdout.write(prompt)
+        self.stderr.write(prompt)
 
     def note(self, msg):
         """Write an already-formatted message."""

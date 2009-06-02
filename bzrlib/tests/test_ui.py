@@ -67,15 +67,17 @@ class UITests(TestCase):
         self.assertEqual('', stdout.getvalue())
 
     def test_text_factory_ascii_password(self):
-        ui = TestUIFactory(stdin='secret\n', stdout=StringIOWrapper())
+        ui = TestUIFactory(stdin='secret\n', stdout=StringIOWrapper(),
+                           stderr=StringIOWrapper())
         pb = ui.nested_progress_bar()
         try:
             self.assertEqual('secret',
                              self.apply_redirected(ui.stdin, ui.stdout,
-                                                   ui.stdout,
+                                                   ui.stderr,
                                                    ui.get_password))
             # ': ' is appended to prompt
-            self.assertEqual(': ', ui.stdout.getvalue())
+            self.assertEqual(': ', ui.stderr.getvalue())
+            self.assertEqual('', ui.stdout.readline())
             # stdin should be empty
             self.assertEqual('', ui.stdin.readline())
         finally:
@@ -88,21 +90,22 @@ class UITests(TestCase):
         it to utf8 to test that we transport the password correctly.
         """
         ui = TestUIFactory(stdin=u'baz\u1234'.encode('utf8'),
-                           stdout=StringIOWrapper())
-        ui.stdin.encoding = 'utf8'
-        ui.stdout.encoding = ui.stdin.encoding
+                           stdout=StringIOWrapper(),
+                           stderr=StringIOWrapper())
+        ui.stderr.encoding = ui.stdout.encoding = ui.stdin.encoding = 'utf8'
         pb = ui.nested_progress_bar()
         try:
-            password = self.apply_redirected(ui.stdin, ui.stdout, ui.stdout,
+            password = self.apply_redirected(ui.stdin, ui.stdout, ui.stderr,
                                              ui.get_password,
                                              u'Hello \u1234 %(user)s',
                                              user=u'some\u1234')
             # We use StringIO objects, we need to decode them
             self.assertEqual(u'baz\u1234', password.decode('utf8'))
             self.assertEqual(u'Hello \u1234 some\u1234: ',
-                             ui.stdout.getvalue().decode('utf8'))
-            # stdin should be empty
+                             ui.stderr.getvalue().decode('utf8'))
+            # stdin and stdout should be empty
             self.assertEqual('', ui.stdin.readline())
+            self.assertEqual('', ui.stdout.readline())
         finally:
             pb.finished()
 
@@ -193,6 +196,7 @@ class UITests(TestCase):
                                  "yes\nn\nnot an answer\n"
                                  "no\nfoo\n")
         factory.stdout = StringIO()
+        factory.stderr = StringIO()
         # there is no output from the base factory
         self.assertEqual(True, factory.get_boolean(""))
         self.assertEqual(True, factory.get_boolean(""))
@@ -223,8 +227,10 @@ class UITests(TestCase):
 
     def test_text_factory_prompt(self):
         # see <https://launchpad.net/bugs/365891>
-        factory = TextUIFactory(None, StringIO(), StringIO())
+        factory = TextUIFactory(None, StringIO(), StringIO(), StringIO())
         factory.prompt('foo %2e')
+        self.assertEqual('', factory.stdout.getvalue())
+        self.assertEqual('foo %2e', factory.stderr.getvalue())
 
     def test_text_factory_prompts_and_clears(self):
         # a get_boolean call should clear the pb before prompting
@@ -263,37 +269,41 @@ class UITests(TestCase):
         factory = SilentUIFactory()
         factory.stdin = StringIO("someuser\n\n")
         factory.stdout = StringIO()
-        self.assertEquals(None, 
+        factory.stderr = StringIO()
+        self.assertEquals(None,
             factory.get_username(u'Hello\u1234 %(host)s', host=u'some\u1234'))
         self.assertEquals("", factory.stdout.getvalue())
+        self.assertEquals("", factory.stderr.getvalue())
         self.assertEquals("someuser\n\n", factory.stdin.getvalue())
 
     def test_text_ui_getusername(self):
         factory = TextUIFactory(None, None, None)
         factory.stdin = StringIO("someuser\n\n")
         factory.stdout = StringIO()
+        factory.stderr = StringIO()
         factory.stdout.encoding = "utf8"
         # there is no output from the base factory
-        self.assertEqual("someuser", 
-            factory.get_username('Hello %(host)s', host='some'))
-        self.assertEquals("Hello some: ", factory.stdout.getvalue())
+        self.assertEqual("someuser",
+                         factory.get_username('Hello %(host)s', host='some'))
+        self.assertEquals("Hello some: ", factory.stderr.getvalue())
+        self.assertEquals('', factory.stdout.getvalue())
         self.assertEqual("", factory.get_username("Gebruiker"))
         # stdin should be empty
         self.assertEqual('', factory.stdin.readline())
 
     def test_text_ui_getusername_utf8(self):
         ui = TestUIFactory(stdin=u'someuser\u1234'.encode('utf8'),
-                           stdout=StringIOWrapper())
-        ui.stdin.encoding = "utf8"
-        ui.stdout.encoding = ui.stdin.encoding
+                           stdout=StringIOWrapper(), stderr=StringIOWrapper())
+        ui.stderr.encoding = ui.stdout.encoding = ui.stdin.encoding = "utf8"
         pb = ui.nested_progress_bar()
         try:
             # there is no output from the base factory
-            username = self.apply_redirected(ui.stdin, ui.stdout, ui.stdout,
+            username = self.apply_redirected(ui.stdin, ui.stdout, ui.stderr,
                 ui.get_username, u'Hello\u1234 %(host)s', host=u'some\u1234')
             self.assertEquals(u"someuser\u1234", username.decode('utf8'))
-            self.assertEquals(u"Hello\u1234 some\u1234: ", 
-                ui.stdout.getvalue().decode("utf8"))
+            self.assertEquals(u"Hello\u1234 some\u1234: ",
+                              ui.stderr.getvalue().decode("utf8"))
+            self.assertEquals('', ui.stdout.getvalue())
         finally:
             pb.finished()
 
