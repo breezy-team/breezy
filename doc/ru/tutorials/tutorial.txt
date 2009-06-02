@@ -147,14 +147,14 @@ email адрес. Bazaar достаточно умен, что бы автома
    ``C:\Documents and Settings\<пользователь>\Application Data\Bazaar\2.0\branch.conf``. Там же могут
    быть найдены ``locations.conf``, ``ignore`` и директория ``plugins``.
 
-Creating a branch
-=================
+Создаем ветку
+=============
 
-History is by default stored in the .bzr directory of the branch. In a
-future version of Bazaar, there will be a facility to store it in a
-separate repository, which may be remote.
+История по-умолчанию хранится на ветке в директории .bzr. В будущих версиях
+Bazaar будут средства для хранения истории в отдельном репозитории, который
+также сможет быть удаленным.
 
-We create a new branch by running ``bzr init`` in an existing directory::
+Мы создаем новую ветку выполнив ``bzr init`` в уже созданной директории::
 
     % mkdir tutorial
     % cd tutorial
@@ -168,9 +168,9 @@ We create a new branch by running ``bzr init`` in an existing directory::
     ./  ../  .bzr/
     %
 
-As with CVS, there are three classes of file: unknown, ignored, and
-versioned.  The **add** command makes a file versioned: that is, changes
-to it will be recorded by the system::
+Как и в CVS здесь три класса файлов: неизвестные, игнорируемые и под контролем
+версий. Команда **add** ставит файл под контроль версий, т.е. изменения в нем
+будут записываться системой::
 
     % echo 'hello world' > hello.txt
     % bzr status
@@ -182,38 +182,36 @@ to it will be recorded by the system::
     added:
       hello.txt
 
+Если вы добавили не тот файл просто сделайте ``bzr remove``, что бы сделать его
+опять неизвестным. Рабочая копия файла не будет удалена в этом случае, хотя она
+может быть удалена в других случаях [2]_.
 
-If you add the wrong file, simply use ``bzr remove`` to make it
-unversioned again.  This does not delete the working copy in this case,
-though it may in others [2]_.
+.. [2] ``bzr remove`` удалит рабочую копию если она находится под контролем
+   версий, но не имеет изменений с последней зафиксированной версии. Вы
+   можете оставить файл указав опцию ``--keep`` для ``bzr remove``, или
+   удалить с опцией ``--force``.
 
-.. [2] ``bzr remove`` will remove the working copy if it is currently
-   versioned, but has no changes from the last committed version.  You
-   can force the file to always be kept with the ``--keep`` option to
-   ``bzr remove``, or force it to always be deleted with ``--force``.
-
-Branch locations
+Размещение веток
 ================
 
-All history is stored in a branch, which is just an on-disk directory
-containing control files.  By default there is no separate repository or
-database as used in svn or svk. You can choose to create a repository if
-you want to (see the ``bzr init-repo`` command). You may wish to do this
-if you have very large branches, or many branches of a moderately sized
-project.
+Вся история хранится на ветке, которая является всего лишь директорией на диске
+содержащей файлы управления. По-умолчанию здесь нет отдельного репозитория, или
+базы данных как в svn, или svk. По желанию вы можете создать репозиторий (см.
+команду ``bzr init-repo``). Это можно сделать в случае очень больших веток, или
+большого количества веток для проекта среднего размера.
 
-You'll usually refer to branches on your computer's filesystem just by
-giving the name of the directory containing the branch.  bzr also supports
-accessing branches over http and sftp, for example::
+Мы обычно обращаемся к веткам на нашем компьютере просто передав имя директории
+содержащей ветку. bzr также поддерживает доступ к веткам через http и sftp,
+например::
 
     % bzr log http://bazaar-vcs.org/bzr/bzr.dev/
     % bzr log sftp://bazaar-vcs.org/bzr/bzr.dev/
 
-By installing bzr plugins you can also access branches using the rsync
-protocol.
+Установив для bzr плагины можно также осуществлять доступ к веткам с
+использованием rsync.
 
-See the `Publishing your branch`_ section for more about how to put your
-branch at a given location.
+Смотрите секцию `Публикация ветки`_ что бы получить больше информации о том как
+поместить свою ветку в нужное место.
 
 Reviewing changes
 =================
@@ -542,8 +540,8 @@ report an error.
 [**TODO**: explain conflict markers within files]
 
 
-Publishing your branch
-======================
+Публикация ветки
+================
 
 You don't need a special server to publish a bzr branch, just a normal web
 server.  Just mirror the files to your server, including the .bzr
