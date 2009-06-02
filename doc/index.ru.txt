@@ -27,7 +27,7 @@
 
 * `Базар за пять минут <ru/mini-tutorial/index.html>`_
 
-* `Большой учебник <en/tutorials/tutorial.html>`_ (англ.)
+* `Большой учебник <ru/tutorials/tutorial.html>`_
 
 * `Использование Bazaar с Launchpad 
   <ru/tutorials/using_bazaar_with_launchpad.html>`_
