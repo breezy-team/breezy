@@ -21,6 +21,7 @@ import dulwich as git
 from dulwich.objects import (
     Commit,
     Tag,
+    S_ISGITLINK,
     )
 from dulwich.object_store import (
     tree_lookup_path,
@@ -167,6 +168,11 @@ def import_git_blob(texts, mapping, path, hexsha, base_inv, parent_id,
     return ([(old_path, path, file_id, ie)], shamap)
 
 
+def import_git_submodule(texts, mapping, path, hexsha, base_inv, parent_id, 
+    revision_id, parent_invs, shagitmap, lookup_object):
+    raise NotImplementedError(import_git_submodule)
+
+
 def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id, 
     revision_id, parent_invs, shagitmap, lookup_object):
     """Import a git tree object into a bzr repository.
@@ -216,6 +222,13 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id,
             subinvdelta, grandchildmodes, subshamap = import_git_tree(texts, 
                     mapping, child_path, child_hexsha, base_inv, file_id, 
                     revision_id, parent_invs, shagitmap, lookup_object)
+            invdelta.extend(subinvdelta)
+            child_modes.update(grandchildmodes)
+            shamap.extend(subshamap)
+        elif S_ISGITLINK(mode): # submodule
+            subinvdelta, grandchildmodes, subshamap = import_git_submodule(
+                    texts, mapping, child_path, child_hexsha, base_inv,
+                    file_id, revision_id, parent_invs, shagitmap, lookup_object)
             invdelta.extend(subinvdelta)
             child_modes.update(grandchildmodes)
             shamap.extend(subshamap)
