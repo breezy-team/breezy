@@ -28,6 +28,12 @@ Improvements
   bugs with stacking and non default formats.)
   (John Arbash Meinel, #373455)
 
+* ``--development6-rich-root`` delays generating a delta index for the
+  first object inserted into a group. This has a beneficial impact on
+  ``bzr commit`` since each committed texts goes to its own group. For
+  committing a 90MB file, it drops peak memory by about 200MB, and speeds
+  up commit from 7s => 4s. (John Arbash Meinel)
+
 * Numerous operations are now faster for huge projects, i.e. those
   with a large number of files and/or a large number of revisions,
   particularly when the latest development format is used. These
