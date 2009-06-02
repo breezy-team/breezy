@@ -921,7 +921,7 @@ class KnitVersionedFiles(VersionedFiles):
         self._index._check_write_ok()
         self._check_add(key, None, random_id, check_content=False)
         if text.__class__ is not str:
-            raise errors.BzrBadParameterUnicode("lines")
+            raise errors.BzrBadParameterUnicode("text")
         if parents is None:
             # The caller might pass None if there is no graph data, but kndx
             # indexes can't directly store that, so we give them

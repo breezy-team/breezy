@@ -494,12 +494,12 @@ class CommitBuilder(object):
             ie.executable = content_summary[2]
             file_obj, stat_value = tree.get_file_with_stat(ie.file_id, path)
             try:
-                lines = file_obj.readlines()
+                text = file_obj.read()
             finally:
                 file_obj.close()
             try:
                 ie.text_sha1, ie.text_size = self._add_text_to_weave(
-                    ie.file_id, lines, heads, nostore_sha)
+                    ie.file_id, text, heads, nostore_sha)
                 # Let the caller know we generated a stat fingerprint.
                 fingerprint = (ie.text_sha1, stat_value)
             except errors.ExistingContent:
@@ -517,8 +517,7 @@ class CommitBuilder(object):
                 # carry over:
                 ie.revision = parent_entry.revision
                 return self._get_delta(ie, basis_inv, path), False, None
-            lines = []
-            self._add_text_to_weave(ie.file_id, lines, heads, None)
+            self._add_text_to_weave(ie.file_id, '', heads, None)
         elif kind == 'symlink':
             current_link_target = content_summary[3]
             if not store:
@@ -532,8 +531,7 @@ class CommitBuilder(object):
                 ie.symlink_target = parent_entry.symlink_target
                 return self._get_delta(ie, basis_inv, path), False, None
             ie.symlink_target = current_link_target
-            lines = []
-            self._add_text_to_weave(ie.file_id, lines, heads, None)
+            self._add_text_to_weave(ie.file_id, '', heads, None)
         elif kind == 'tree-reference':
             if not store:
                 if content_summary[3] != parent_entry.reference_revision:
@@ -544,8 +542,7 @@ class CommitBuilder(object):
                 ie.revision = parent_entry.revision
                 return self._get_delta(ie, basis_inv, path), False, None
             ie.reference_revision = content_summary[3]
-            lines = []
-            self._add_text_to_weave(ie.file_id, lines, heads, None)
+            self._add_text_to_weave(ie.file_id, '', heads, None)
         else:
             raise NotImplementedError('unknown kind')
         ie.revision = self._new_revision_id
@@ -774,7 +771,7 @@ class CommitBuilder(object):
                         parent_entry.symlink_target == entry.symlink_target):
                         carried_over = True
                     else:
-                        self._add_text_to_weave(change[0], [], heads, None)
+                        self._add_text_to_weave(change[0], '', heads, None)
                 elif kind == 'directory':
                     if carry_over_possible:
                         carried_over = True
@@ -782,7 +779,7 @@ class CommitBuilder(object):
                         # Nothing to set on the entry.
                         # XXX: split into the Root and nonRoot versions.
                         if change[1][1] != '' or self.repository.supports_rich_root():
-                            self._add_text_to_weave(change[0], [], heads, None)
+                            self._add_text_to_weave(change[0], '', heads, None)
                 elif kind == 'tree-reference':
                     if not self.repository._format.supports_tree_reference:
                         # This isn't quite sane as an error, but we shouldn't
@@ -797,7 +794,7 @@ class CommitBuilder(object):
                         parent_entry.reference_revision == reference_revision):
                         carried_over = True
                     else:
-                        self._add_text_to_weave(change[0], [], heads, None)
+                        self._add_text_to_weave(change[0], '', heads, None)
                 else:
                     raise AssertionError('unknown kind %r' % kind)
                 if not carried_over:
