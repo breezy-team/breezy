@@ -32,6 +32,9 @@ from bzrlib import (
     trace,
     ui,
     )
+from bzrlib.revision import (
+    NULL_REVISION,
+    )
 
 from bzrlib.plugins.git.errors import (
     GhostRevision,
@@ -184,6 +187,8 @@ class BazaarObjectStore(BaseObjectStore):
 
     def _lookup_revision_sha1(self, revid):
         """Return the SHA1 matching a Bazaar revision."""
+        if revid == NULL_REVISION:
+            return "0" * 40
         try:
             return self._idmap.lookup_commit(revid)
         except KeyError:
