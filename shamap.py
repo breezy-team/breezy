@@ -269,6 +269,7 @@ class SqliteGitShaMap(GitShaMap):
 
 
 TDB_MAP_VERSION = 2
+TDB_HASH_SIZE = 10000
 
 
 class TdbGitShaMap(GitShaMap):
@@ -289,7 +290,7 @@ class TdbGitShaMap(GitShaMap):
             self.db = {}
         else:
             if not mapdbs().has_key(path):
-                mapdbs()[path] = tdb.Tdb(path, 0, tdb.DEFAULT, 
+                mapdbs()[path] = tdb.Tdb(path, TDB_HASH_SIZE, tdb.DEFAULT, 
                                           os.O_RDWR|os.O_CREAT)
             self.db = mapdbs()[path]    
         if not "version" in self.db:
