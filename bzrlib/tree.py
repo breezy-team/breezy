@@ -202,9 +202,10 @@ class Tree(object):
             specific_file_ids=specific_file_ids)
 
     def iter_references(self):
-        for path, entry in self.iter_entries_by_dir():
-            if entry.kind == 'tree-reference':
-                yield path, entry.file_id
+        if self.supports_tree_reference():
+            for path, entry in self.iter_entries_by_dir():
+                if entry.kind == 'tree-reference':
+                    yield path, entry.file_id
 
     def kind(self, file_id):
         raise NotImplementedError("Tree subclass %s must implement kind"
@@ -261,6 +262,20 @@ class Tree(object):
         to which one is used.
         """
         raise NotImplementedError(self.get_file)
+
+    def get_file_with_stat(self, file_id, path=None):
+        """Get a file handle and stat object for file_id.
+
+        The default implementation returns (self.get_file, None) for backwards
+        compatibility.
+
+        :param file_id: The file id to read.
+        :param path: The path of the file, if it is known.
+        :return: A tuple (file_handle, stat_value_or_None). If the tree has
+            no stat facility, or need for a stat cache feedback during commit,
+            it may return None for the second element of the tuple.
+        """
+        return (self.get_file(file_id, path), None)
 
     def get_file_text(self, file_id, path=None):
         """Return the byte content of a file.

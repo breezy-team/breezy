@@ -20,7 +20,7 @@
 cdef extern from "python-compat.h":
     pass
 
-cdef extern from "malloc.h":
+cdef extern from "stdlib.h":
     void *malloc(int)
     void *realloc(void *, int)
     void free(void *)
