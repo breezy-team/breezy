@@ -1147,15 +1147,18 @@ class Branch(object):
 
         :return: A BranchCheckResult.
         """
+        ret = BranchCheckResult(self)
         mainline_parent_id = None
         last_revno, last_revision_id = self.last_revision_info()
+        real_rev_history = []
         try:
-            real_rev_history = list(
-                self.repository.iter_reverse_revision_history(last_revision_id))
+            for revid in self.repository.iter_reverse_revision_history(
+                last_revision_id):
+                real_rev_history.append(revid)
         except errors.RevisionNotPresent:
-            ret = BranchCheckResult(self)
             ret.ghosts_in_mainline = True
-            return ret
+        else:
+            ret.ghosts_in_mainline = False
         real_rev_history.reverse()
         if len(real_rev_history) != last_revno:
             raise errors.BzrCheckError('revno does not match len(mainline)'
@@ -1177,7 +1180,7 @@ class Branch(object):
                                         "parents of {%s}"
                                         % (mainline_parent_id, revision_id))
             mainline_parent_id = revision_id
-        return BranchCheckResult(self)
+        return ret
 
     def _get_checkout_format(self):
         """Return the most suitable metadir for a checkout of this branch.
