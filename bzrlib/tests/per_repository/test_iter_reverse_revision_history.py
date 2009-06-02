@@ -161,7 +161,6 @@ class TestIterReverseRevisionHistory(TestCaseWithRepository):
         try:
             self.assertEquals('rev2', iter.next())
             self.assertEquals('rev1', iter.next())
-            self.assertEquals('spooky', iter.next())
             self.assertRaises(errors.RevisionNotPresent, iter.next)
         finally:
             tree.branch.repository.unlock()
