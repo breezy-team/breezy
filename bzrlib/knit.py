@@ -909,18 +909,37 @@ class KnitVersionedFiles(VersionedFiles):
             # indexes can't directly store that, so we give them
             # an empty tuple instead.
             parents = ()
+        line_bytes = ''.join(lines)
         return self._add(key, lines, parents,
-            parent_texts, left_matching_blocks, nostore_sha, random_id)
+            parent_texts, left_matching_blocks, nostore_sha, random_id,
+            line_bytes=line_bytes)
+
+    def add_text(self, key, parents, text, parent_texts=None,
+        nostore_sha=None, random_id=False,
+        check_content=True):
+        """See VersionedFiles.add_text()."""
+        self._index._check_write_ok()
+        self._check_add(key, None, random_id, check_content=False)
+        if text.__class__ is not str:
+            raise errors.BzrBadParameterUnicode("lines")
+        if parents is None:
+            # The caller might pass None if there is no graph data, but kndx
+            # indexes can't directly store that, so we give them
+            # an empty tuple instead.
+            parents = ()
+        return self._add(key, None, parents,
+            parent_texts, None, nostore_sha, random_id,
+            line_bytes=text)
 
     def _add(self, key, lines, parents, parent_texts,
-        left_matching_blocks, nostore_sha, random_id):
+        left_matching_blocks, nostore_sha, random_id,
+        line_bytes):
         """Add a set of lines on top of version specified by parents.
 
         Any versions not present will be converted into ghosts.
         """
         # first thing, if the content is something we don't need to store, find
         # that out.
-        line_bytes = ''.join(lines)
         digest = sha_string(line_bytes)
         if nostore_sha == digest:
             raise errors.ExistingContent
@@ -947,13 +966,22 @@ class KnitVersionedFiles(VersionedFiles):
 
         text_length = len(line_bytes)
         options = []
-        if lines:
-            if lines[-1][-1] != '\n':
-                # copy the contents of lines.
+        no_eol = False
+        # Note: line_bytes is not modified to add a newline, that is tracked
+        #       via the no_eol flag. 'lines' *is* modified, because that is the
+        #       general values needed by the Content code.
+        if line_bytes and line_bytes[-1] != '\n':
+            options.append('no-eol')
+            no_eol = True
+            # Copy the existing list, or create a new one
+            if lines is None:
+                lines = osutils.split_lines(line_bytes)
+            else:
                 lines = lines[:]
-                options.append('no-eol')
-                lines[-1] = lines[-1] + '\n'
-                line_bytes += '\n'
+            # Replace the last line with one that ends in a final newline
+            lines[-1] = lines[-1] + '\n'
+        if lines is None:
+            lines = osutils.split_lines(line_bytes)
 
         for element in key[:-1]:
             if type(element) != str:
@@ -965,7 +993,7 @@ class KnitVersionedFiles(VersionedFiles):
         # Knit hunks are still last-element only
         version_id = key[-1]
         content = self._factory.make(lines, version_id)
-        if 'no-eol' in options:
+        if no_eol:
             # Hint to the content object that its text() call should strip the
             # EOL.
             content._should_strip_eol = True
@@ -986,8 +1014,11 @@ class KnitVersionedFiles(VersionedFiles):
             if self._factory.__class__ is KnitPlainFactory:
                 # Use the already joined bytes saving iteration time in
                 # _record_to_data.
+                dense_lines = [line_bytes]
+                if no_eol:
+                    dense_lines.append('\n')
                 size, bytes = self._record_to_data(key, digest,
-                    lines, [line_bytes])
+                    lines, dense_lines)
             else:
                 # get mixed annotation + content and feed it into the
                 # serialiser.
@@ -1920,21 +1951,16 @@ class KnitVersionedFiles(VersionedFiles):
             function spends less time resizing the final string.
         :return: (len, a StringIO instance with the raw data ready to read.)
         """
-        # Note: using a string copy here increases memory pressure with e.g.
-        # ISO's, but it is about 3 seconds faster on a 1.2Ghz intel machine
-        # when doing the initial commit of a mozilla tree. RBC 20070921
-        bytes = ''.join(chain(
-            ["version %s %d %s\n" % (key[-1],
-                                     len(lines),
-                                     digest)],
-            dense_lines or lines,
-            ["end %s\n" % key[-1]]))
-        if type(bytes) != str:
-            raise AssertionError(
-                'data must be plain bytes was %s' % type(bytes))
+        chunks = ["version %s %d %s\n" % (key[-1], len(lines), digest)]
+        chunks.extend(dense_lines or lines)
+        chunks.append("end %s\n" % key[-1])
+        for chunk in chunks:
+            if type(chunk) != str:
+                raise AssertionError(
+                    'data must be plain bytes was %s' % type(chunk))
         if lines and lines[-1][-1] != '\n':
             raise ValueError('corrupt lines value %r' % lines)
-        compressed_bytes = tuned_gzip.bytes_to_gzip(bytes)
+        compressed_bytes = tuned_gzip.chunks_to_gzip(chunks)
         return len(compressed_bytes), compressed_bytes
 
     def _split_header(self, line):
