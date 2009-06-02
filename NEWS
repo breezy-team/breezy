@@ -18,6 +18,11 @@ New Features
 Improvements
 ************
 
+
+* ``--development6-rich-root`` can now stack. (Modulo some smart-server
+  bugs with stacking and non default formats.)
+  (John Arbash Meinel, #373455)
+
 * Numerous operations are now faster for huge projects, i.e. those
   with a large number of files and/or a large number of revisions,
   particularly when the latest development format is used. These
@@ -30,10 +35,6 @@ Improvements
 
   (Ian Clatworthy)
 
-* ``--development6-rich-root`` can now stack. (Modulo some smart-server
-  bugs with stacking and non default formats.)
-  (John Arbash Meinel, #373455)
-
 
 Bug Fixes
 *********
@@ -44,6 +45,11 @@ Bug Fixes
 * Clarify the rules for locking and fallback repositories. Fix bugs in how
   ``RemoteRepository`` was handling fallbacks along with the
   ``_real_repository``. (Andrew Bennetts, John Arbash Meinel, #375496)
+
+* Fix a small bug with fetching revisions w/ ghosts into a new stacked
+  branch. Not often triggered, because it required ghosts to be part of
+  the fetched revisions, not in the stacked-on ancestry.
+  (John Arbash Meinel)
 
 
 Documentation
