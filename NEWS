@@ -1,5 +1,10 @@
 0.3.3	UNRELEASED
 
+ BUG FIXES
+
+  * Fix handling of not-executable files becoming executable without any 
+    other changes. (#382609)
+
 0.3.2	2009-05-20
 
  FEATURES

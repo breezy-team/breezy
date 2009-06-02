@@ -143,6 +143,25 @@ class RepositoryFetchTests:
         self.assertTrue(tree.has_filename("notexec"))
         self.assertEquals(False, tree.inventory[tree.path2id("notexec")].executable)
 
+    def test_becomes_executable(self):
+        self.make_git_repo("d")
+        os.chdir("d")
+        bb = GitBranchBuilder()
+        bb.set_file("foobar", "foo\nbar\n", False)
+        mark1 = bb.commit("Somebody <somebody@someorg.org>", "mymsg")
+        bb.set_file("foobar", "foo\nbar\n", True)
+        mark2 = bb.commit("Somebody <somebody@someorg.org>", "mymsg")
+        gitsha2 = bb.finish()[mark2]
+        os.chdir("..")
+        oldrepo = self.open_git_repo("d")
+        newrepo = self.clone_git_repo("d", "f")
+        revid = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha2)
+        tree = newrepo.revision_tree(revid)
+        self.assertTrue(tree.has_filename("foobar"))
+        ie = tree.inventory[tree.path2id("foobar")]
+        self.assertEquals(True, ie.executable)
+        self.assertEquals(revid, ie.revision)
+
     def test_non_ascii_characters(self):
         self.make_git_repo("d")
         os.chdir("d")
