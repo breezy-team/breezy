@@ -289,7 +289,7 @@ class TdbGitShaMap(GitShaMap):
             self.db = {}
         else:
             if not mapdbs().has_key(path):
-                mapdbs()[path] = tdb.open(path, 0, tdb.DEFAULT, 
+                mapdbs()[path] = tdb.Tdb(path, 0, tdb.DEFAULT, 
                                           os.O_RDWR|os.O_CREAT)
             self.db = mapdbs()[path]    
         if not "version" in self.db:
