@@ -3,85 +3,82 @@
 Использование стека веток
 =========================
 
-What is a stacked branch?
--------------------------
+Что такое ветка в стеке?
+------------------------
 
-A stacked branch is a branch that knows how to find revisions
-in another branch. Stacked branches store just the
-unique revisions, making them faster to create and more
-storage efficient. In these respects, stacked branches are
-similar to shared repositories. However, stacked branches have
-additional benefits:
+Ветка в стеке - это ветка которая знает как найти ревизии в другой ветке. Ветка
+в стеке хранит только уникальные ревизии, которые при этом быстрее создавать и
+они более эффективны по занимаемому месту. По этим показателям стек веток похож
+на разделяемые репозитории. Конечно стек веток имеет дополнительные
+преимущества:
 
-* The new branch can be in a completely different location to the
-  branch being stacked on.
+* Новая ветка может быть в абсолютно другом месте по сравнению с веткой на
+  которой она основана как стек.
 
-* Deleting the stacked branch really deletes the revisions (rather
-  than leaving them in a shared repository).
+* Удаление ветки в стеке на самом деле удаляет ревизии (а не оставляет их в
+  разделяемом репозитории).
 
-* Security is improved over shared repositories, because the stacked-on
-  repository can be physically readonly to developers committing to stacked 
-  branches.
+* Стек веток более безопасен чем разделяемые репозитории, т.к. репозиторий на
+  котором основан стек может иметь доступ только для чтения для разработчиков
+  которые фиксируют изменения на ветке в стеке.
 
-These benefits make stacked branches ideal for various scenarios
-including experimental branches and code hosting sites.
+Эти преимущества делают стек веток идеальным выбором для различных сценариев,
+включая экспериментальные ветки и сайты с хостингом кода.
 
 
-Creating a stacked branch
--------------------------
+Создание ветки в стеке
+----------------------
 
-To create a stacked branch, use the ``stacked`` option of the branch command.
-For example::
+Что бы создать ветку в стеке нужно использовать опцию ``stacked`` для команды
+``branch``. Например::
 
   bzr branch --stacked source-url my-dir
 
-This will create ``my-dir`` as a stacked branch with no local revisions.
-If it is defined, the public branch associated with ``source-url`` will be
-used as the *stacked-on* location. Otherwise, ``source-url`` will be the
-*stacked-on* location.
+Здесь мы создадим ``my-dir`` как ветку в стеке без локальных ревизий. Если
+определено открытая ветка связанная с ``source-url`` будет использована как
+*основа стека*. Иначе ``source-url`` будет *основой стека*.
 
 
-Creating a stacked checkout
----------------------------
+Создание рабочего директория в стеке
+------------------------------------
 
-Direct creation of a stacked checkout is expected to be supported soon.
-In the meantime, a two step process is required:
+Поддержка прямого создания рабочего директория в стеке скоро ожидается. Пока
+для этого требуется два шага:
 
-1. Create a stacked branch as shown above.
+1. Создать ветку в стеке, как описано выше.
 
-2. Convert the branch into a checkout using either the ``reconfigure``
-   or ``bind`` command.
+2. Конвертировать ветку в рабочий директорий используя либо команду
+   ``reconfigure``, либо команду ``bind``.
 
 
-Pushing a stacked branch
+Публикация ветки в стеке
 ------------------------
 
-Most changes on most projects build on an existing branch such as the
-*development trunk* or *current stable* branch. Creating a new
-branch stacked on one of these is easy to do using the ``push``
-command like this::
+Многие изменения в большинстве проектов создаются на основе готовых веток,
+таких как *основная линия разработки*, или *текущая стабильная*. Создание новой
+ветки в стеке основанной на таких ветках легко сделать с использованием команды
+``push``::
 
   bzr push --stacked-on reference-url my-url
 
-This creates a new branch at ``my-url`` that is stacked on ``reference-url``
-and only contains the revisions in the current branch that are not already
-in the branch at ``reference-url``.
+Эта команда создаст новую ветку ``my-url``, которая будет основана на
+``reference-url`` и содержать только ревизии из текущей ветки, которых еще нет
+на ветке ``reference-url``.
 
-If the local branch was created as a stacked branch, then you can
-use the ``--stacked`` option to ``push`` and the *stacked-on* location
-will be implicit. For example::
+Если локальная ветка была создана как ветка в стеке то мы можем использовать
+опцию ``--stacked`` для команды ``push`` и тогда ветка на которой будет основан
+стек будет задана неявно. Например::
 
   bzr branch --stacked source-url my-dir
   cd my-dir
-  (hack, hack, hack)
-  bzr commit -m "fix bug"
+  (меняем, меняем, меняем)
+  bzr commit -m "исправление ошибки"
   bzr push --stacked
 
 
-Limitations of stacked branches
--------------------------------
+Ограничения веток в стеке
+-------------------------
 
-The important thing to remember about a stacked branch is that the
-stacked-on branch needs to be available for almost all operations. This is
-not an issue when both branches are local or both branches are on the
-same server.
+Важная вещь которую надо запомнить в отношении веток в стеке - ветка на которой
+основан стек должна быть доступна практически для всех операций. Конечно это не
+проблема если обе ветки локальные, или находятся на одном сервере.
