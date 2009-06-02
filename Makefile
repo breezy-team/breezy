@@ -146,7 +146,7 @@ doc/developers/%.html: doc/developers/%.txt
 doc/index.html: doc/index.txt
 	$(rst2html) --stylesheet=default.css $< $@
 
-doc/index%.html: doc/index%.txt
+doc/index.%.html: doc/index.%.txt
 	$(rst2html) --stylesheet=default.css $< $@
 
 %.html: %.txt
