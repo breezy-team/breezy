@@ -741,6 +741,53 @@ class TestBzrDirOpenRepository(TestRemote):
         self.assertEqual(network_name, repo._format.network_name())
 
 
+class TestBzrDirFormatInitializeEx(TestRemote):
+
+    def test_success(self):
+        """Simple test for typical successful call."""
+        fmt = bzrdir.RemoteBzrDirFormat()
+        default_format_name = BzrDirFormat.get_default_format().network_name()
+        transport = self.get_transport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'BzrDirFormat.initialize_ex',
+                (default_format_name, 'path', 'False', 'False', 'False', '',
+                 '', '', '', 'False'),
+            'success',
+                ('.', 'no', 'no', 'yes', 'repo fmt', 'repo bzrdir fmt',
+                 'bzrdir fmt', 'False', '', '', 'repo lock token'))
+        # XXX: It would be better to call fmt.initialize_on_transport_ex, but
+        # it's currently hard to test that without supplying a real remote
+        # transport connected to a real server.
+        result = fmt._initialize_on_transport_ex_rpc(client, 'path',
+            transport, False, False, False, None, None, None, None, False)
+        client.finished_test()
+
+    def test_error(self):
+        """Error responses are translated, e.g. 'PermissionDenied' raises the
+        corresponding error from the client.
+        """
+        fmt = bzrdir.RemoteBzrDirFormat()
+        default_format_name = BzrDirFormat.get_default_format().network_name()
+        transport = self.get_transport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'BzrDirFormat.initialize_ex',
+                (default_format_name, 'path', 'False', 'False', 'False', '',
+                 '', '', '', 'False'),
+            'error',
+                ('PermissionDenied', 'path', 'extra info'))
+        # XXX: It would be better to call fmt.initialize_on_transport_ex, but
+        # it's currently hard to test that without supplying a real remote
+        # transport connected to a real server.
+        err = self.assertRaises(errors.PermissionDenied,
+            fmt._initialize_on_transport_ex_rpc, client, 'path', transport,
+            False, False, False, None, None, None, None, False)
+        self.assertEqual('path', err.path)
+        self.assertEqual(': extra info', err.extra)
+        client.finished_test()
+
+
 class OldSmartClient(object):
     """A fake smart client for test_old_version that just returns a version one
     response to the 'hello' (query version) command.
