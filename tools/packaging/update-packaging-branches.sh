@@ -14,7 +14,7 @@ for DISTRO in $UBUNTU_RELEASES; do
         bzr update $PACKAGE-$DISTRO
         if [ "$PACKAGE" = "bzr-svn" ] ; then
             cd $PACKAGE-$DISTRO
-            bzr merge http://bzr.debian.org/pkg-bazaar/bzr-svn/experimental/
+            bzr merge http://bzr.debian.org/pkg-bazaar/bzr-svn/unstable/
             cd ..
         fi
     else
