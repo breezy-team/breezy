@@ -17,6 +17,6 @@
 """Wrapper around the bencode pyrex and python implementation"""
 
 try:
-    from bzrlib._bencode_c import bdecode, bdecode_as_tuple, bencode, Bencached
+    from bzrlib._bencode_pyx import bdecode, bdecode_as_tuple, bencode, Bencached
 except ImportError:
-    from bzrlib._bencode_py import bdecode, bdecode_as_tuple, bencode, Bencached
+    from bzrlib.util._bencode_py import bdecode, bdecode_as_tuple, bencode, Bencached

@@ -21,10 +21,10 @@ from bzrlib import tests
 def load_tests(standard_tests, module, loader):
     # parameterize all tests in this module
     suite = loader.suiteClass()
-    import bzrlib._bencode_py as py_module
+    import bzrlib.util._bencode_py as py_module
     scenarios = [('python', {'bencode': py_module})]
     if CompiledBencodeFeature.available():
-        import bzrlib._bencode_c as c_module
+        import bzrlib._bencode_pyx as c_module
         scenarios.append(('C', {'bencode': c_module}))
     else:
         # the compiled module isn't available, so we add a failing test
@@ -40,13 +40,13 @@ class _CompiledBencodeFeature(tests.Feature):
 
     def _probe(self):
         try:
-            import bzrlib._bencode_c
+            import bzrlib._bencode_pyx
         except ImportError:
             return False
         return True
 
     def feature_name(self):
-        return 'bzrlib._bencode_c'
+        return 'bzrlib._bencode_pyx'
 
 CompiledBencodeFeature = _CompiledBencodeFeature()
 
