@@ -1461,7 +1461,8 @@ class TestAuthenticationConfig(tests.TestCase):
     """Test AuthenticationConfig behaviour"""
 
     def _check_default_password_prompt(self, expected_prompt_format, scheme,
-                              host=None, port=None, realm=None, path=None):
+                                       host=None, port=None, realm=None,
+                                       path=None):
         if host is None:
             host = 'bar.org'
         user, password = 'jim', 'precious'
@@ -1470,17 +1471,20 @@ class TestAuthenticationConfig(tests.TestCase):
             'user': user, 'realm': realm}
 
         stdout = tests.StringIOWrapper()
+        stderr = tests.StringIOWrapper()
         ui.ui_factory = tests.TestUIFactory(stdin=password + '\n',
-                                            stdout=stdout)
+                                            stdout=stdout, stderr=stderr)
         # We use an empty conf so that the user is always prompted
         conf = config.AuthenticationConfig()
         self.assertEquals(password,
                           conf.get_password(scheme, host, user, port=port,
                                             realm=realm, path=path))
-        self.assertEquals(stdout.getvalue(), expected_prompt)
+        self.assertEquals(expected_prompt, stderr.getvalue())
+        self.assertEquals('', stdout.getvalue())
 
     def _check_default_username_prompt(self, expected_prompt_format, scheme,
-                              host=None, port=None, realm=None, path=None):
+                                       host=None, port=None, realm=None,
+                                       path=None):
         if host is None:
             host = 'bar.org'
         username = 'jim'
@@ -1488,13 +1492,15 @@ class TestAuthenticationConfig(tests.TestCase):
             'scheme': scheme, 'host': host, 'port': port,
             'realm': realm}
         stdout = tests.StringIOWrapper()
+        stderr = tests.StringIOWrapper()
         ui.ui_factory = tests.TestUIFactory(stdin=username+ '\n',
-                                            stdout=stdout)
+                                            stdout=stdout, stderr=stderr)
         # We use an empty conf so that the user is always prompted
         conf = config.AuthenticationConfig()
         self.assertEquals(username, conf.get_user(scheme, host, port=port,
                           realm=realm, path=path, ask=True))
-        self.assertEquals(stdout.getvalue(), expected_prompt)
+        self.assertEquals(expected_prompt, stderr.getvalue())
+        self.assertEquals('', stdout.getvalue())
 
     def test_username_defaults_prompts(self):
         # HTTP prompts can't be tested here, see test_http.py

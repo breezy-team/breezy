@@ -436,6 +436,8 @@ def _stream_to_byte_stream(stream, src_format):
         for record in substream:
             if record.storage_kind in ('chunked', 'fulltext'):
                 serialised = record_to_fulltext_bytes(record)
+            elif record.storage_kind == 'absent':
+                raise ValueError("Absent factory for %s" % (record.key,))
             else:
                 serialised = record.get_bytes_as(record.storage_kind)
             if serialised:

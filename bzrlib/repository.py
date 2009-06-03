@@ -969,6 +969,10 @@ class Repository(object):
         """
         if not self._format.supports_external_lookups:
             raise errors.UnstackableRepositoryFormat(self._format, self.base)
+        if self.is_locked():
+            # This repository will call fallback.unlock() when we transition to
+            # the unlocked state, so we make sure to increment the lock count
+            repository.lock_read()
         self._check_fallback_repository(repository)
         self._fallback_repositories.append(repository)
         self.texts.add_fallback_versioned_files(repository.texts)
@@ -1240,19 +1244,19 @@ class Repository(object):
         """
         locked = self.is_locked()
         result = self.control_files.lock_write(token=token)
-        for repo in self._fallback_repositories:
-            # Writes don't affect fallback repos
-            repo.lock_read()
         if not locked:
+            for repo in self._fallback_repositories:
+                # Writes don't affect fallback repos
+                repo.lock_read()
             self._refresh_data()
         return result
 
     def lock_read(self):
         locked = self.is_locked()
         self.control_files.lock_read()
-        for repo in self._fallback_repositories:
-            repo.lock_read()
         if not locked:
+            for repo in self._fallback_repositories:
+                repo.lock_read()
             self._refresh_data()
 
     def get_physical_lock_status(self):
@@ -1424,7 +1428,7 @@ class Repository(object):
     def suspend_write_group(self):
         raise errors.UnsuspendableWriteGroup(self)
 
-    def get_missing_parent_inventories(self):
+    def get_missing_parent_inventories(self, check_for_missing_texts=True):
         """Return the keys of missing inventory parents for revisions added in
         this write group.
 
@@ -1439,7 +1443,7 @@ class Repository(object):
             return set()
         if not self.is_in_write_group():
             raise AssertionError('not in a write group')
-                
+
         # XXX: We assume that every added revision already has its
         # corresponding inventory, so we only check for parent inventories that
         # might be missing, rather than all inventories.
@@ -1448,9 +1452,12 @@ class Repository(object):
         unstacked_inventories = self.inventories._index
         present_inventories = unstacked_inventories.get_parent_map(
             key[-1:] for key in parents)
-        if len(parents.difference(present_inventories)) == 0:
+        parents.difference_update(present_inventories)
+        if len(parents) == 0:
             # No missing parent inventories.
             return set()
+        if not check_for_missing_texts:
+            return set(('inventories', rev_id) for (rev_id,) in parents)
         # Ok, now we have a list of missing inventories.  But these only matter
         # if the inventories that reference them are missing some texts they
         # appear to introduce.
@@ -1577,8 +1584,8 @@ class Repository(object):
         self.control_files.unlock()
         if self.control_files._lock_count == 0:
             self._inventory_entry_cache.clear()
-        for repo in self._fallback_repositories:
-            repo.unlock()
+            for repo in self._fallback_repositories:
+                repo.unlock()
 
     @needs_read_lock
     def clone(self, a_bzrdir, revision_id=None):
@@ -4001,18 +4008,20 @@ class StreamSink(object):
         try:
             if resume_tokens:
                 self.target_repo.resume_write_group(resume_tokens)
+                is_resume = True
             else:
                 self.target_repo.start_write_group()
+                is_resume = False
             try:
                 # locked_insert_stream performs a commit|suspend.
-                return self._locked_insert_stream(stream, src_format)
+                return self._locked_insert_stream(stream, src_format, is_resume)
             except:
                 self.target_repo.abort_write_group(suppress_errors=True)
                 raise
         finally:
             self.target_repo.unlock()
 
-    def _locked_insert_stream(self, stream, src_format):
+    def _locked_insert_stream(self, stream, src_format, is_resume):
         to_serializer = self.target_repo._format._serializer
         src_serializer = src_format._serializer
         new_pack = None
@@ -4068,14 +4077,18 @@ class StreamSink(object):
         if new_pack is not None:
             new_pack._write_data('', flush=True)
         # Find all the new revisions (including ones from resume_tokens)
-        missing_keys = self.target_repo.get_missing_parent_inventories()
+        missing_keys = self.target_repo.get_missing_parent_inventories(
+            check_for_missing_texts=is_resume)
         try:
             for prefix, versioned_file in (
                 ('texts', self.target_repo.texts),
                 ('inventories', self.target_repo.inventories),
                 ('revisions', self.target_repo.revisions),
                 ('signatures', self.target_repo.signatures),
+                ('chk_bytes', self.target_repo.chk_bytes),
                 ):
+                if versioned_file is None:
+                    continue
                 missing_keys.update((prefix,) + key for key in
                     versioned_file.get_missing_compression_parent_keys())
         except NotImplementedError:
@@ -4228,6 +4241,7 @@ class StreamSource(object):
         keys['texts'] = set()
         keys['revisions'] = set()
         keys['inventories'] = set()
+        keys['chk_bytes'] = set()
         keys['signatures'] = set()
         for key in missing_keys:
             keys[key[0]].add(key[1:])
@@ -4240,10 +4254,21 @@ class StreamSource(object):
                     keys['revisions'],))
         for substream_kind, keys in keys.iteritems():
             vf = getattr(self.from_repository, substream_kind)
+            if vf is None and keys:
+                    raise AssertionError(
+                        "cannot fill in keys for a versioned file we don't"
+                        " have: %s needs %s" % (substream_kind, keys))
+            if not keys:
+                # No need to stream something we don't have
+                continue
             # Ask for full texts always so that we don't need more round trips
             # after this stream.
-            stream = vf.get_record_stream(keys,
-                self.to_format._fetch_order, True)
+            # Some of the missing keys are genuinely ghosts, so filter absent
+            # records. The Sink is responsible for doing another check to
+            # ensure that ghosts don't introduce missing data for future
+            # fetches.
+            stream = versionedfile.filter_absent(vf.get_record_stream(keys,
+                self.to_format._fetch_order, True))
             yield substream_kind, stream
 
     def inventory_fetch_order(self):

@@ -221,6 +221,7 @@ clean-docs:
 # make bzr.exe for win32 with py2exe
 exe:
 	@echo *** Make bzr.exe
+	$(PYTHON) tools/win32/ostools.py remove bzrlib/*.pyd
 	$(PYTHON) setup.py build_ext -i -f $(PYTHON_BUILDFLAGS)
 	$(PYTHON) setup.py py2exe > py2exe.log
 	$(PYTHON) tools/win32/ostools.py copytodir tools/win32/start_bzr.bat win32_bzr.exe
