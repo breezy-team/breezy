@@ -29,27 +29,36 @@ from bzrlib.revision import (
     )
 from bzrlib.tests import TestCase
 
-_working_revision_bencode1 = ('d'
-    '9:committer54:Canonical.com Patch Queue Manager <pqm@pqm.ubuntu.com>'
-    '14:inventory-sha140:4a2c7fb50e077699242cf6eb16a61779c7b680a7'
-    '7:message35:(Jelmer) Move dpush to InterBranch.'
-    '10:parent-idsl'
+_working_revision_bencode1 = ('l'
+    'l6:formati10ee'
+    'l9:committer54:Canonical.com Patch Queue Manager <pqm@pqm.ubuntu.com>e'
+    'l8:timezonei3600ee'
+    'l10:propertiesd11:branch-nick6:+trunkee'
+    'l9:timestamp14:1242300770.844e'
+    'l11:revision-id50:pqm@pqm.ubuntu.com-20090514113250-jntkkpminfn3e0tze'
+    'l10:parent-ids'
+        'l'
         '50:pqm@pqm.ubuntu.com-20090514104039-kggemn7lrretzpvc'
-        '48:jelmer@samba.org-20090510012654-jp9ufxquekaokbeoe'
-    '10:propertiesd11:branch-nick6:+trunke'
-    '11:revision-id50:pqm@pqm.ubuntu.com-20090514113250-jntkkpminfn3e0tz'
-    '9:timestamp14:1242300770.8448:timezonei3600ee')
+        '48:jelmer@samba.org-20090510012654-jp9ufxquekaokbeo'
+        'ee'
+    'l14:inventory-sha140:4a2c7fb50e077699242cf6eb16a61779c7b680a7e'
+    'l7:message35:(Jelmer) Move dpush to InterBranch.e'
+    'e')
 
-_working_revision_bencode1_no_timestamp = ('d'
-    '9:committer54:Canonical.com Patch Queue Manager <pqm@pqm.ubuntu.com>'
-    '14:inventory-sha140:4a2c7fb50e077699242cf6eb16a61779c7b680a7'
-    '7:message35:(Jelmer) Move dpush to InterBranch.'
-    '10:parent-idsl'
+_working_revision_bencode1_no_timezone = ('l'
+    'l6:formati10ee'
+    'l9:committer54:Canonical.com Patch Queue Manager <pqm@pqm.ubuntu.com>e'
+    'l9:timestamp14:1242300770.844e'
+    'l10:propertiesd11:branch-nick6:+trunkee'
+    'l11:revision-id50:pqm@pqm.ubuntu.com-20090514113250-jntkkpminfn3e0tze'
+    'l10:parent-ids'
+        'l'
         '50:pqm@pqm.ubuntu.com-20090514104039-kggemn7lrretzpvc'
-        '48:jelmer@samba.org-20090510012654-jp9ufxquekaokbeoe'
-    '10:propertiesd11:branch-nick6:+trunke'
-    '11:revision-id50:pqm@pqm.ubuntu.com-20090514113250-jntkkpminfn3e0tz'
-    '9:timestamp14:1242300770.844e')
+        '48:jelmer@samba.org-20090510012654-jp9ufxquekaokbeo'
+        'ee'
+    'l14:inventory-sha140:4a2c7fb50e077699242cf6eb16a61779c7b680a7e'
+    'l7:message35:(Jelmer) Move dpush to InterBranch.e'
+    'e')
 
 
 class TestBEncodeSerializer1(TestCase):
@@ -57,25 +66,30 @@ class TestBEncodeSerializer1(TestCase):
 
     def test_unpack_revision(self):
         """Test unpacking a revision"""
-        inp = StringIO()
         rev = chk_bencode_serializer.read_revision_from_string(
                 _working_revision_bencode1)
         self.assertEquals(rev.committer,
            "Canonical.com Patch Queue Manager <pqm@pqm.ubuntu.com>")
         self.assertEquals(rev.inventory_sha1,
            "4a2c7fb50e077699242cf6eb16a61779c7b680a7")
-        self.assertEquals(["pqm@pqm.ubuntu.com-20090514104039-kggemn7lrretzpvc",
-            "jelmer@samba.org-20090510012654-jp9ufxquekaokbeo"],
+        self.assertEquals(("pqm@pqm.ubuntu.com-20090514104039-kggemn7lrretzpvc",
+            "jelmer@samba.org-20090510012654-jp9ufxquekaokbeo"),
             rev.parent_ids)
         self.assertEquals("(Jelmer) Move dpush to InterBranch.", rev.message)
-        self.assertEquals("pqm@pqm.ubuntu.com-20090514113250-jntkkpminfn3e0tz", 
+        self.assertEquals("pqm@pqm.ubuntu.com-20090514113250-jntkkpminfn3e0tz",
            rev.revision_id)
         self.assertEquals({"branch-nick": u"+trunk"}, rev.properties)
         self.assertEquals(3600, rev.timezone)
 
-    def test_unpack_revision_no_timestamp(self):
+    def test_written_form_matches(self):
         rev = chk_bencode_serializer.read_revision_from_string(
-            _working_revision_bencode1_no_timestamp)
+                _working_revision_bencode1)
+        as_str = chk_bencode_serializer.write_revision_to_string(rev)
+        self.assertEqualDiff(_working_revision_bencode1, as_str)
+
+    def test_unpack_revision_no_timezone(self):
+        rev = chk_bencode_serializer.read_revision_from_string(
+            _working_revision_bencode1_no_timezone)
         self.assertEquals(None, rev.timezone)
 
     def assertRoundTrips(self, serializer, orig_rev):

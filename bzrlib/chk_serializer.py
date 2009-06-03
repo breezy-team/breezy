@@ -30,49 +30,101 @@ from bzrlib import (
     xml6,
     )
 
+_decode_utf8 = cache_utf8.decode
+
+
+def _validate_properties(props):
+    decode = _decode_utf8
+    # TODO: we really want an 'isascii' check for key
+    unicode_props = dict((key, _decode_utf8(value))
+                         for key, value in props.iteritems())
+    return unicode_props
+
+
+def _is_format_10(value):
+    if value != 10:
+        raise ValueError('Format number was not recognized, expected 10 got %d'
+                         % (value,))
+    return 10
+
+
 class BEncodeRevisionSerializer1(object):
-    """Simple revision serializer based around bencode. 
-    
+    """Simple revision serializer based around bencode.
     """
+
+    # Maps {key:(Revision attribute, bencode_type, validator)}
+    # This tells us what kind we expect bdecode to create, what variable on
+    # Revision we should be using, and a function to call to validate/transform
+    # the type.
+    # TODO: add a 'validate_utf8' for things like revision_id and file_id
+    #       and a validator for parent-ids
+    _schema = {'format': (None, int, _is_format_10),
+               'committer': ('committer', str, _decode_utf8),
+               'timezone': ('timezone', int, None),
+               'timestamp': ('timestamp', str, float),
+               'revision-id': ('revision_id', str, None),
+               'parent-ids': ('parent_ids', list, tuple),
+               'inventory-sha1': ('inventory_sha1', str, None),
+               'message': ('message', str, _decode_utf8),
+               'properties': ('properties', dict, _validate_properties),
+    }
 
     def write_revision_to_string(self, rev):
         encode_utf8 = cache_utf8.encode
-        ret = {
-            "revision-id": rev.revision_id,
-            "timestamp": "%.3f" % rev.timestamp,
-            "parent-ids": rev.parent_ids,
-            "inventory-sha1": rev.inventory_sha1,
-            "committer": encode_utf8(rev.committer),
-            "message": encode_utf8(rev.message),
-            }
+        # Use a list of tuples rather than a dict
+        # This lets us control the ordering, so that we are able to create
+        # smaller deltas
+        ret = [
+            ("format", 10),
+            ("committer", encode_utf8(rev.committer)),
+        ]
+        if rev.timezone is not None:
+            ret.append(("timezone", rev.timezone))
+        # For bzr revisions, the most common property is just 'branch-nick'
+        # which changes infrequently.
         revprops = {}
         for key, value in rev.properties.iteritems():
             revprops[key] = encode_utf8(value)
-        ret["properties"] = revprops
-        if rev.timezone is not None:
-            ret["timezone"] = rev.timezone
+        ret.append(('properties', revprops))
+        ret.extend([
+            ("timestamp", "%.3f" % rev.timestamp),
+            ("revision-id", rev.revision_id),
+            ("parent-ids", rev.parent_ids),
+            ("inventory-sha1", rev.inventory_sha1),
+            ("message", encode_utf8(rev.message)),
+        ])
         return bencode.bencode(ret)
 
     def write_revision(self, rev, f):
         f.write(self.write_revision_to_string(rev))
 
     def read_revision_from_string(self, text):
+        # TODO: consider writing a Revision decoder, rather than using the
+        #       generic bencode decoder
         decode_utf8 = cache_utf8.decode
         ret = bencode.bdecode(text)
-        rev = _mod_revision.Revision(
-            committer=decode_utf8(ret["committer"]),
-            revision_id=ret["revision-id"],
-            parent_ids=ret["parent-ids"],
-            inventory_sha1=ret["inventory-sha1"],
-            timestamp=float(ret["timestamp"]),
-            message=decode_utf8(ret["message"]),
-            properties={})
-        if "timezone" in ret:
-            rev.timezone = ret["timezone"]
-        else:
+        if not isinstance(ret, list):
+            raise ValueError("invalid revision text")
+        schema = dict(self._schema)
+        bits = {}
+        for key, value in ret:
+            # The entry must be present in allowed keys, but only present a
+            # single time
+            var_name, expected_type, validator = schema.pop(key)
+            if value.__class__ is not expected_type:
+                raise ValueError('key %s did not conform to the expected type'
+                                 ' %s, but was %s'
+                                 % (key, expected_type, type(value)))
+            if validator is not None:
+                value = validator(value)
+            if var_name is not None:
+                bits[var_name] = value
+        if schema.keys() not in ([], ['timezone']):
+            raise ValueError('Revision text was missing expected keys %s,'
+                             ' text %r' % (schema.keys(), text))
+        rev = _mod_revision.Revision(**bits)
+        if "timezone" not in bits:
             rev.timezone = None
-        for key, value in ret["properties"].iteritems():
-            rev.properties[key] = decode_utf8(value)
         return rev
 
     def read_revision(self, f):
