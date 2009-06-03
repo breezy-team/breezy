@@ -62,6 +62,10 @@ Bug Fixes
   succeeded from the user's perspective, no output is written to stderr 
   or stdout.  (Maritza Mendez, #363837)
 
+* Translate errors received from a smart server in response to a
+  ``BzrDirFormat.initialize`` or ``BzrDirFormat.initialize_ex`` request.
+  This was causing tracebacks even for mundane errors like
+  ``PermissionDenied``.  (Andrew Bennetts, #381329)
 
 Documentation
 *************

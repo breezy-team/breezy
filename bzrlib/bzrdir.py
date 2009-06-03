@@ -3049,7 +3049,10 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
             return local_dir_format.initialize_on_transport(transport)
         client = _SmartClient(client_medium)
         path = client.remote_path_from_transport(transport)
-        response = client.call('BzrDirFormat.initialize', path)
+        try:
+            response = client.call('BzrDirFormat.initialize', path)
+        except errors.ErrorFromSmartServer, err:
+            remote._translate_error(err, path=path)
         if response[0] != 'ok':
             raise errors.SmartProtocolError('unexpected response code %s' % (response,))
         format = RemoteBzrDirFormat()
@@ -3115,6 +3118,13 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
                 stack_on_pwd=stack_on_pwd, repo_format_name=repo_format_name,
                 make_working_trees=make_working_trees, shared_repo=shared_repo,
                 vfs_only=True)
+        return self._initialize_on_transport_ex_rpc(client, path, transport,
+            use_existing_dir, create_prefix, force_new_repo, stacked_on,
+            stack_on_pwd, repo_format_name, make_working_trees, shared_repo)
+
+    def _initialize_on_transport_ex_rpc(self, client, path, transport,
+        use_existing_dir, create_prefix, force_new_repo, stacked_on,
+        stack_on_pwd, repo_format_name, make_working_trees, shared_repo):
         args = []
         args.append(self._serialize_NoneTrueFalse(use_existing_dir))
         args.append(self._serialize_NoneTrueFalse(create_prefix))
@@ -3147,6 +3157,8 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
                 stack_on_pwd=stack_on_pwd, repo_format_name=repo_format_name,
                 make_working_trees=make_working_trees, shared_repo=shared_repo,
                 vfs_only=True)
+        except errors.ErrorFromSmartServer, err:
+            remote._translate_error(err, path=path)
         repo_path = response[0]
         bzrdir_name = response[6]
         require_stacking = response[7]
