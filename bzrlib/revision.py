@@ -111,8 +111,13 @@ class Revision(object):
 
     def get_summary(self):
         """Get the first line of the log message for this revision.
+
+        Return an empty string if message is None.
         """
-        return self.message.lstrip().split('\n', 1)[0]
+        if self.message:
+            return self.message.lstrip().split('\n', 1)[0]
+        else:
+            return ''
 
     @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((1, 13, 0)))
     def get_apparent_author(self):
