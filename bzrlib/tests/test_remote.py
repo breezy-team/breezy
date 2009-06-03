@@ -787,6 +787,14 @@ class TestBzrDirFormatInitializeEx(TestRemote):
         self.assertEqual(': extra info', err.extra)
         client.finished_test()
 
+    def test_error_from_real_server(self):
+        """Integration test for error translation."""
+        transport = self.make_smart_server('foo')
+        transport = transport.clone('no-such-path')
+        fmt = bzrdir.RemoteBzrDirFormat()
+        err = self.assertRaises(errors.NoSuchFile,
+            fmt.initialize_on_transport_ex, transport, create_prefix=False)
+
 
 class OldSmartClient(object):
     """A fake smart client for test_old_version that just returns a version one
