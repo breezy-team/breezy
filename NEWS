@@ -56,6 +56,12 @@ Bug Fixes
   the fetched revisions, not in the stacked-on ancestry.
   (John Arbash Meinel)
 
+* The ''bzr diff'' now catches OSError from osutils.rmtree and logs a
+  helpful message to the trace file, unless the temp directory really was
+  removed (which would be very strange).  Since the diff operation has
+  succeeded from the user's perspective, no output is written to stderr 
+  or stdout.  (Maritza Mendez, #363837)
+
 * Translate errors received from a smart server in response to a
   ``BzrDirFormat.initialize`` or ``BzrDirFormat.initialize_ex`` request.
   This was causing tracebacks even for mundane errors like
