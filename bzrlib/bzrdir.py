@@ -2411,9 +2411,9 @@ class BzrDirMetaFormat1(BzrDirFormat):
                     # stack_on is inaccessible, JFDI.
                     # TODO: bad monkey, hard-coded formats...
                     if self.repository_format.rich_root_data:
-                        new_repo_format = pack_repo.RepositoryFormatKnitPack6RichRoot()
+                        new_repo_format = pack_repo.RepositoryFormatKnitPack5RichRoot()
                     else:
-                        new_repo_format = pack_repo.RepositoryFormatKnitPack6()
+                        new_repo_format = pack_repo.RepositoryFormatKnitPack5()
             else:
                 # If the target already supports stacking, then we know the
                 # project is already able to use stacking, so auto-upgrade
@@ -2426,7 +2426,7 @@ class BzrDirMetaFormat1(BzrDirFormat):
             if new_repo_format is not None:
                 self.repository_format = new_repo_format
                 note('Source repository format does not support stacking,'
-                     ' using format:\n  \'%s\'',
+                     ' using format:\n  %s',
                      new_repo_format.get_format_description())
 
         if not self.get_branch_format().supports_stacking():
@@ -2445,7 +2445,7 @@ class BzrDirMetaFormat1(BzrDirFormat):
                 # Does support stacking, use its format.
                 self.set_branch_format(new_branch_format)
                 note('Source branch format does not support stacking,'
-                     ' using format:\n  \'%s\'',
+                     ' using format:\n  %s',
                      new_branch_format.get_format_description())
 
     def get_converter(self, format=None):
