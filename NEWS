@@ -59,6 +59,9 @@ Bug Fixes
 * Reconcile can now deal with text revisions that originated in revisions 
   that are ghosts. (Jelmer Vernooij, #336749)
 
+* Support cloning of branches with ghosts in the left hand side history.
+  (Jelmer Vernooij, #248540)
+
 * The ''bzr diff'' now catches OSError from osutils.rmtree and logs a
   helpful message to the trace file, unless the temp directory really was
   removed (which would be very strange).  Since the diff operation has
