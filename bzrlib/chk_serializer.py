@@ -33,11 +33,10 @@ from bzrlib import (
 _decode_utf8 = cache_utf8.decode
 
 
-def _validate_properties(props):
-    decode = _decode_utf8
+def _validate_properties(props, _decode=_decode_utf8):
     # TODO: we really want an 'isascii' check for key
-    unicode_props = dict((key, _decode_utf8(value))
-                         for key, value in props.iteritems())
+    unicode_props = dict([(key, _decode(value))
+                          for key, value in props.iteritems()])
     return unicode_props
 
 
@@ -101,30 +100,30 @@ class BEncodeRevisionSerializer1(object):
     def read_revision_from_string(self, text):
         # TODO: consider writing a Revision decoder, rather than using the
         #       generic bencode decoder
-        decode_utf8 = cache_utf8.decode
         ret = bencode.bdecode(text)
         if not isinstance(ret, list):
             raise ValueError("invalid revision text")
         schema = dict(self._schema)
-        bits = {}
+        schema_pop = schema.pop
+        # timezone is allowed to be missing, but should be set
+        bits = {'timezone': None}
         for key, value in ret:
-            # The entry must be present in allowed keys, but only present a
-            # single time
-            var_name, expected_type, validator = schema.pop(key)
+            # Will raise KeyError if not a valid part of the schema, or an
+            # entry is given 2 times.
+            var_name, expected_type, validator = schema_pop(key)
             if value.__class__ is not expected_type:
                 raise ValueError('key %s did not conform to the expected type'
                                  ' %s, but was %s'
                                  % (key, expected_type, type(value)))
             if validator is not None:
                 value = validator(value)
-            if var_name is not None:
-                bits[var_name] = value
-        if schema.keys() not in ([], ['timezone']):
-            raise ValueError('Revision text was missing expected keys %s,'
-                             ' text %r' % (schema.keys(), text))
+            bits[var_name] = value
+        if schema:
+            if schema.keys() != ['timezone']:
+                raise ValueError('Revision text was missing expected keys %s.'
+                                 ' text %r' % (schema.keys(), text))
+        del bits[None]  # Get rid of bits that don't get mapped
         rev = _mod_revision.Revision(**bits)
-        if "timezone" not in bits:
-            rev.timezone = None
         return rev
 
     def read_revision(self, f):
