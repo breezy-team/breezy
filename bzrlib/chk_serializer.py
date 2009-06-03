@@ -16,14 +16,72 @@
 
 """Serializer object for CHK based inventory storage."""
 
+from cStringIO import (
+    StringIO,
+    )
+
 from bzrlib import (
+    bencode,
+    cache_utf8,
     inventory,
+    osutils,
+    revision as _mod_revision,
     xml5,
     xml6,
     )
 
+class BEncodeRevisionSerializer1(object):
+    """Simple revision serializer based around bencode. 
+    
+    It tries to group entries together that are less likely
+    to change often, to make it easier to do compression.
+    """
 
-class CHKSerializerSubtree(xml6.Serializer_v6):
+    def write_revision_to_string(self, rev):
+        encode_utf8 = cache_utf8.encode
+        ret = {
+            "revision-id": rev.revision_id,
+            "timestamp": "%.3f" % rev.timestamp,
+            "parent-ids": rev.parent_ids,
+            "inventory-sha1": rev.inventory_sha1,
+            "committer": encode_utf8(rev.committer),
+            "message": encode_utf8(rev.message),
+            }
+        revprops = {}
+        for key, value in rev.properties.iteritems():
+            revprops[key] = encode_utf8(value)
+        ret["properties"] = revprops
+        if rev.timezone is not None:
+            ret["timezone"] = str(rev.timezone)
+        return bencode.bencode(ret)
+
+    def write_revision(self, rev, f):
+        f.write(self.write_revision_to_string(rev))
+
+    def read_revision_from_string(self, text):
+        decode_utf8 = cache_utf8.decode
+        ret = bencode.bdecode(text)
+        rev = _mod_revision.Revision(
+            committer=decode_utf8(ret["committer"]),
+            revision_id=ret["revision-id"],
+            parent_ids=ret["parent-ids"],
+            inventory_sha1=ret["inventory-sha1"],
+            timestamp=float(ret["timestamp"]),
+            message=decode_utf8(ret["message"]),
+            properties={})
+        if "timezone" in ret:
+            rev.timezone = int(ret["timezone"])
+        else:
+            rev.timezone = None
+        for key, value in ret["properties"].iteritems():
+            rev.properties[key] = decode_utf8(value)
+        return rev
+
+    def read_revision(self, f):
+        return self.read_revision_from_string(f.read())
+
+
+class CHKSerializerSubtree(BEncodeRevisionSerializer1, xml6.Serializer_v6):
     """A CHKInventory based serializer that supports tree references"""
 
     supported_kinds = set(['file', 'directory', 'symlink', 'tree-reference'])
@@ -64,3 +122,12 @@ class CHKSerializer(xml5.Serializer_v5):
 
 
 chk_serializer_255_bigpage = CHKSerializer(65536, 'hash-255-way')
+
+
+class CHKBEncodeSerializer(BEncodeRevisionSerializer1, CHKSerializer):
+    """A CHKInventory and BEncode based serializer with 'plain' behaviour."""
+
+    format_num = '10'
+
+
+chk_bencode_serializer = CHKBEncodeSerializer(65536, 'hash-255-way')
