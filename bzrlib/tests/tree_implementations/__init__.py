@@ -365,6 +365,7 @@ def load_tests(standard_tests, module, loader):
     submod_tests = loader.loadTestsFromModuleNames([
         'bzrlib.tests.tree_implementations.test_annotate_iter',
         'bzrlib.tests.tree_implementations.test_get_file_mtime',
+        'bzrlib.tests.tree_implementations.test_get_file_with_stat',
         'bzrlib.tests.tree_implementations.test_get_root_id',
         'bzrlib.tests.tree_implementations.test_get_symlink_target',
         'bzrlib.tests.tree_implementations.test_inv',
