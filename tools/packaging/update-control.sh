@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 
 if [ -z "$UBUNTU_RELEASES" ]; then
     echo "Configure the distro platforms that you want to"
