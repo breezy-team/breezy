@@ -56,6 +56,9 @@ Bug Fixes
   the fetched revisions, not in the stacked-on ancestry.
   (John Arbash Meinel)
 
+* Reconcile can now deal with text revisions that originated in revisions 
+  that are ghosts. (Jelmer Vernooij, #336749)
+
 * Support cloning of branches with ghosts in the left hand side history.
   (Jelmer Vernooij, #248540)
 
