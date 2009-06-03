@@ -610,8 +610,9 @@ class cmd_add(Command):
                 for glob, paths in ignored.items():
                     match_len += len(paths)
                 self.outf.write("ignored %d file(s).\n" % match_len)
-            self.outf.write("If you wish to add some of these files,"
-                            " please add them by name.\n")
+            self.outf.write("If you wish to add ignored files, "
+                            "please add them explicitly by name. "
+                            "(\"bzr ignored\" gives a list)\n")
 
 
 class cmd_mkdir(Command):
@@ -2408,6 +2409,7 @@ class cmd_ls(Command):
                             continue
                     kindch = entry.kind_character()
                     outstring = fp + kindch
+                    ui.ui_factory.clear_term()
                     if verbose:
                         outstring = '%-8s %s' % (fc, outstring)
                         if show_ids and fid is not None:
@@ -4843,136 +4845,22 @@ class cmd_send(Command):
         'revision',
         'message',
         Option('body', help='Body for the email.', type=unicode),
-        RegistryOption.from_kwargs('format',
-        'Use the specified output format.',
-        **{'4': 'Bundle format 4, Merge Directive 2 (default)',
-           '0.9': 'Bundle format 0.9, Merge Directive 1',})
+        RegistryOption('format',
+                       help='Use the specified output format.', 
+                       lazy_registry=('bzrlib.send', 'format_registry'))
         ]
 
     def run(self, submit_branch=None, public_branch=None, no_bundle=False,
             no_patch=False, revision=None, remember=False, output=None,
             format=None, mail_to=None, message=None, body=None, **kwargs):
-        return self._run(submit_branch, revision, public_branch, remember,
+        from bzrlib.send import send
+        return send(submit_branch, revision, public_branch, remember,
                          format, no_bundle, no_patch, output,
-                         kwargs.get('from', '.'), mail_to, message, body)
-
-    def _run(self, submit_branch, revision, public_branch, remember, format,
-             no_bundle, no_patch, output, from_, mail_to, message, body):
-        from bzrlib.revision import NULL_REVISION
-        tree, branch = bzrdir.BzrDir.open_containing_tree_or_branch(from_)[:2]
-        # we may need to write data into branch's repository to calculate
-        # the data to send.
-        branch.lock_write()
-        try:
-            if output is None:
-                config = branch.get_config()
-                if mail_to is None:
-                    mail_to = config.get_user_option('submit_to')
-                mail_client = config.get_mail_client()
-                if (not getattr(mail_client, 'supports_body', False)
-                    and body is not None):
-                    raise errors.BzrCommandError(
-                        'Mail client "%s" does not support specifying body' %
-                        mail_client.__class__.__name__)
-            if remember and submit_branch is None:
-                raise errors.BzrCommandError(
-                    '--remember requires a branch to be specified.')
-            stored_submit_branch = branch.get_submit_branch()
-            remembered_submit_branch = None
-            if submit_branch is None:
-                submit_branch = stored_submit_branch
-                remembered_submit_branch = "submit"
-            else:
-                if stored_submit_branch is None or remember:
-                    branch.set_submit_branch(submit_branch)
-            if submit_branch is None:
-                submit_branch = branch.get_parent()
-                remembered_submit_branch = "parent"
-            if submit_branch is None:
-                raise errors.BzrCommandError('No submit branch known or'
-                                             ' specified')
-            if remembered_submit_branch is not None:
-                note('Using saved %s location "%s" to determine what '
-                        'changes to submit.', remembered_submit_branch,
-                        submit_branch)
-
-            if mail_to is None or format is None:
-                submit_config = Branch.open(submit_branch).get_config()
-                if mail_to is None:
-                    mail_to = submit_config.get_user_option("child_submit_to")
-                if format is None:
-                    format = submit_config.get_user_option("child_submit_format")
-
-            stored_public_branch = branch.get_public_branch()
-            if public_branch is None:
-                public_branch = stored_public_branch
-            elif stored_public_branch is None or remember:
-                branch.set_public_branch(public_branch)
-            if no_bundle and public_branch is None:
-                raise errors.BzrCommandError('No public branch specified or'
-                                             ' known')
-            base_revision_id = None
-            revision_id = None
-            if revision is not None:
-                if len(revision) > 2:
-                    raise errors.BzrCommandError('bzr send takes '
-                        'at most two one revision identifiers')
-                revision_id = revision[-1].as_revision_id(branch)
-                if len(revision) == 2:
-                    base_revision_id = revision[0].as_revision_id(branch)
-            if revision_id is None:
-                revision_id = branch.last_revision()
-            if revision_id == NULL_REVISION:
-                raise errors.BzrCommandError('No revisions to submit.')
-            if format is None:
-                format = '4'
-            if format == '4':
-                directive = merge_directive.MergeDirective2.from_objects(
-                    branch.repository, revision_id, time.time(),
-                    osutils.local_time_offset(), submit_branch,
-                    public_branch=public_branch, include_patch=not no_patch,
-                    include_bundle=not no_bundle, message=message,
-                    base_revision_id=base_revision_id)
-            elif format == '0.9':
-                if not no_bundle:
-                    if not no_patch:
-                        patch_type = 'bundle'
-                    else:
-                        raise errors.BzrCommandError('Format 0.9 does not'
-                            ' permit bundle with no patch')
-                else:
-                    if not no_patch:
-                        patch_type = 'diff'
-                    else:
-                        patch_type = None
-                directive = merge_directive.MergeDirective.from_objects(
-                    branch.repository, revision_id, time.time(),
-                    osutils.local_time_offset(), submit_branch,
-                    public_branch=public_branch, patch_type=patch_type,
-                    message=message)
-            else:
-                raise errors.BzrCommandError("No such send format '%s'." % 
-                                             format)
-
-            if output is None:
-                directive.compose_merge_request(mail_client, mail_to, body,
-                                                branch, tree)
-            else:
-                if output == '-':
-                    outfile = self.outf
-                else:
-                    outfile = open(output, 'wb')
-                try:
-                    outfile.writelines(directive.to_lines())
-                finally:
-                    if outfile is not self.outf:
-                        outfile.close()
-        finally:
-            branch.unlock()
+                         kwargs.get('from', '.'), mail_to, message, body,
+                         self.outf)
 
 
 class cmd_bundle_revisions(cmd_send):
-
     """Create a merge-directive for submitting changes.
 
     A merge directive provides many things needed for requesting merges:
@@ -5020,10 +4908,9 @@ class cmd_bundle_revisions(cmd_send):
         Option('output', short_name='o', help='Write directive to this file.',
                type=unicode),
         'revision',
-        RegistryOption.from_kwargs('format',
-        'Use the specified output format.',
-        **{'4': 'Bundle format 4, Merge Directive 2 (default)',
-           '0.9': 'Bundle format 0.9, Merge Directive 1',})
+        RegistryOption('format',
+                       help='Use the specified output format.',
+                       lazy_registry=('bzrlib.send', 'format_registry')),
         ]
     aliases = ['bundle']
 
@@ -5036,9 +4923,11 @@ class cmd_bundle_revisions(cmd_send):
             format=None, **kwargs):
         if output is None:
             output = '-'
-        return self._run(submit_branch, revision, public_branch, remember,
+        from bzrlib.send import send
+        return send(submit_branch, revision, public_branch, remember,
                          format, no_bundle, no_patch, output,
-                         kwargs.get('from', '.'), None, None, None)
+                         kwargs.get('from', '.'), None, None, None,
+                         self.outf)
 
 
 class cmd_tag(Command):
@@ -5139,35 +5028,42 @@ class cmd_tags(Command):
         if not tags:
             return
 
-        if revision:
-            branch.lock_read()
-            try:
+        branch.lock_read()
+        try:
+            if revision:
                 graph = branch.repository.get_graph()
                 rev1, rev2 = _get_revision_range(revision, branch, self.name())
                 revid1, revid2 = rev1.rev_id, rev2.rev_id
                 # only show revisions between revid1 and revid2 (inclusive)
                 tags = [(tag, revid) for tag, revid in tags if
                     graph.is_between(revid, revid1, revid2)]
-            finally:
-                branch.unlock()
-        if sort == 'alpha':
-            tags.sort()
-        elif sort == 'time':
-            timestamps = {}
-            for tag, revid in tags:
-                try:
-                    revobj = branch.repository.get_revision(revid)
-                except errors.NoSuchRevision:
-                    timestamp = sys.maxint # place them at the end
-                else:
-                    timestamp = revobj.timestamp
-                timestamps[revid] = timestamp
-            tags.sort(key=lambda x: timestamps[x[1]])
-        if not show_ids:
-            # [ (tag, revid), ... ] -> [ (tag, dotted_revno), ... ]
-            revno_map = branch.get_revision_id_to_revno_map()
-            tags = [ (tag, '.'.join(map(str, revno_map.get(revid, ('?',)))))
-                        for tag, revid in tags ]
+            if sort == 'alpha':
+                tags.sort()
+            elif sort == 'time':
+                timestamps = {}
+                for tag, revid in tags:
+                    try:
+                        revobj = branch.repository.get_revision(revid)
+                    except errors.NoSuchRevision:
+                        timestamp = sys.maxint # place them at the end
+                    else:
+                        timestamp = revobj.timestamp
+                    timestamps[revid] = timestamp
+                tags.sort(key=lambda x: timestamps[x[1]])
+            if not show_ids:
+                # [ (tag, revid), ... ] -> [ (tag, dotted_revno), ... ]
+                for index, (tag, revid) in enumerate(tags):
+                    try:
+                        revno = branch.revision_id_to_dotted_revno(revid)
+                        if isinstance(revno, tuple):
+                            revno = '.'.join(map(str, revno))
+                    except errors.NoSuchRevision:
+                        # Bad tag data/merges can lead to tagged revisions
+                        # which are not in this branch. Fail gracefully ...
+                        revno = '?'
+                    tags[index] = (tag, revno)
+        finally:
+            branch.unlock()
         for tag, revspec in tags:
             self.outf.write('%-20s %s\n' % (tag, revspec))
 
