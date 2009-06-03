@@ -23,6 +23,7 @@ from bzrlib import (
     graph,
     remote,
     repository,
+    tests,
     )
 from bzrlib.inventory import ROOT_ID
 from bzrlib.tests import TestSkipped
@@ -145,7 +146,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
             ])
 
     def test_fetch_to_rich_root_set_parent_1_parent(self):
-        # 1 parent rev -> 1 parent 
+        # 1 parent rev -> 1 parent
         self.do_test_fetch_to_rich_root_sets_parents_correctly(
             ((ROOT_ID, 'base'),),
             [('base', None, [('add', ('', ROOT_ID, 'directory', ''))]),
@@ -299,6 +300,55 @@ class TestFetchSameRepository(TestCaseWithRepository):
         revision_id = tree.commit('test')
         repo.fetch(tree.branch.repository)
         repo.fetch(tree.branch.repository)
+
+    def make_simple_branch_with_ghost(self):
+        builder = self.make_branch_builder('source')
+        builder.start_series()
+        builder.build_snapshot('A-id', None, [
+            ('add', ('', 'root-id', 'directory', None)),
+            ('add', ('file', 'file-id', 'file', 'content\n'))])
+        builder.build_snapshot('B-id', ['A-id', 'ghost-id'], [])
+        builder.finish_series()
+        source_b = builder.get_branch()
+        source_b.lock_read()
+        self.addCleanup(source_b.unlock)
+        return source_b
+
+    def test_fetch_with_ghost(self):
+        source_b = self.make_simple_branch_with_ghost()
+        target = self.make_repository('target')
+        target.lock_write()
+        self.addCleanup(target.unlock)
+        target.fetch(source_b.repository, revision_id='B-id')
+
+    def test_fetch_into_smart_with_ghost(self):
+        trans = self.make_smart_server('target')
+        source_b = self.make_simple_branch_with_ghost()
+        target = self.make_repository('target')
+        # Re-open the repository over the smart protocol
+        target = repository.Repository.open(trans.base)
+        target.lock_write()
+        self.addCleanup(target.unlock)
+        try:
+            target.fetch(source_b.repository, revision_id='B-id')
+        except errors.TokenLockingNotSupported:
+            # The code inside fetch() that tries to lock and then fails, also
+            # causes weird problems with 'lock_not_held' later on...
+            target.lock_read()
+            raise tests.KnownFailure('some repositories fail to fetch'
+                ' via the smart server because of locking issues.')
+
+    def test_fetch_from_smart_with_ghost(self):
+        trans = self.make_smart_server('source')
+        source_b = self.make_simple_branch_with_ghost()
+        target = self.make_repository('target')
+        target.lock_write()
+        self.addCleanup(target.unlock)
+        # Re-open the repository over the smart protocol
+        source = repository.Repository.open(trans.base)
+        source.lock_read()
+        self.addCleanup(source.unlock)
+        target.fetch(source, revision_id='B-id')
 
 
 class TestSource(TestCaseWithRepository):
