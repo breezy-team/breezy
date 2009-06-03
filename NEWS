@@ -56,6 +56,9 @@ Bug Fixes
   the fetched revisions, not in the stacked-on ancestry.
   (John Arbash Meinel)
 
+* Reconcile can now deal with text revisions that originated in revisions 
+  that are ghosts. (Jelmer Vernooij, #336749)
+
 * The ''bzr diff'' now catches OSError from osutils.rmtree and logs a
   helpful message to the trace file, unless the temp directory really was
   removed (which would be very strange).  Since the diff operation has
