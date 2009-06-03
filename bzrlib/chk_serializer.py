@@ -30,12 +30,10 @@ from bzrlib import (
     xml6,
     )
 
-_decode_utf8 = cache_utf8.decode
 
-
-def _validate_properties(props, _decode=_decode_utf8):
+def _validate_properties(props, _decode=cache_utf8._utf8_decode):
     # TODO: we really want an 'isascii' check for key
-    unicode_props = dict([(key, _decode(value))
+    unicode_props = dict([(key, _decode(value)[0])
                           for key, value in props.iteritems()])
     return unicode_props
 
@@ -58,24 +56,24 @@ class BEncodeRevisionSerializer1(object):
     # TODO: add a 'validate_utf8' for things like revision_id and file_id
     #       and a validator for parent-ids
     _schema = {'format': (None, int, _is_format_10),
-               'committer': ('committer', str, _decode_utf8),
+               'committer': ('committer', str, cache_utf8.decode),
                'timezone': ('timezone', int, None),
                'timestamp': ('timestamp', str, float),
                'revision-id': ('revision_id', str, None),
                'parent-ids': ('parent_ids', list, tuple),
                'inventory-sha1': ('inventory_sha1', str, None),
-               'message': ('message', str, _decode_utf8),
+               'message': ('message', str, cache_utf8.decode),
                'properties': ('properties', dict, _validate_properties),
     }
 
     def write_revision_to_string(self, rev):
-        encode_utf8 = cache_utf8.encode
+        encode_utf8 = cache_utf8._utf8_encode
         # Use a list of tuples rather than a dict
         # This lets us control the ordering, so that we are able to create
         # smaller deltas
         ret = [
             ("format", 10),
-            ("committer", encode_utf8(rev.committer)),
+            ("committer", encode_utf8(rev.committer)[0]),
         ]
         if rev.timezone is not None:
             ret.append(("timezone", rev.timezone))
@@ -83,14 +81,14 @@ class BEncodeRevisionSerializer1(object):
         # which changes infrequently.
         revprops = {}
         for key, value in rev.properties.iteritems():
-            revprops[key] = encode_utf8(value)
+            revprops[key] = encode_utf8(value)[0]
         ret.append(('properties', revprops))
         ret.extend([
             ("timestamp", "%.3f" % rev.timestamp),
             ("revision-id", rev.revision_id),
             ("parent-ids", rev.parent_ids),
             ("inventory-sha1", rev.inventory_sha1),
-            ("message", encode_utf8(rev.message)),
+            ("message", encode_utf8(rev.message)[0]),
         ])
         return bencode.bencode(ret)
 
