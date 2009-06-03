@@ -109,7 +109,7 @@ release packages is as simple as::
   cd ~/dev/bzr/releases/packaging
   export VERSION="1.6~beta3-1~bazaar1"
   export PACKAGE="bzr"
-  export UBUNTU_RELEASES="dapper gutsy hardy intrepid jaunty"
+  export UBUNTU_RELEASES="dapper hardy intrepid jaunty karmic"
   ~/dev/bzr/bzr.dev/tools/packaging/update-packaging-branches.sh
   ~/dev/bzr/bzr.dev/tools/packaging/update-changelogs.sh
   ~/dev/bzr/bzr.dev/tools/packaging/update-control.sh 1.5 1.6 1.7
@@ -148,7 +148,7 @@ Long Form
 
 #. Export the distroreleases that you will be packaging for::
 
-      export UBUNTU_RELEASES="dapper gutsy hardy intrepid jaunty"
+      export UBUNTU_RELEASES="dapper hardy intrepid jaunty karmic"
 
 #. Export the program you are packaging::
 
