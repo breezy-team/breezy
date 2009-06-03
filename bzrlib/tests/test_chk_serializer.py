@@ -29,9 +29,27 @@ from bzrlib.revision import (
     )
 from bzrlib.tests import TestCase
 
-_working_revision_bencode1 = 'd9:committer54:Canonical.com Patch Queue Manager <pqm@pqm.ubuntu.com>14:inventory-sha140:4a2c7fb50e077699242cf6eb16a61779c7b680a77:message35:(Jelmer) Move dpush to InterBranch.10:parent-idsl50:pqm@pqm.ubuntu.com-20090514104039-kggemn7lrretzpvc48:jelmer@samba.org-20090510012654-jp9ufxquekaokbeoe10:propertiesd11:branch-nick6:+trunke11:revision-id50:pqm@pqm.ubuntu.com-20090514113250-jntkkpminfn3e0tz9:timestamp14:1242300770.8448:timezone4:3600e'
+_working_revision_bencode1 = ('d'
+    '9:committer54:Canonical.com Patch Queue Manager <pqm@pqm.ubuntu.com>'
+    '14:inventory-sha140:4a2c7fb50e077699242cf6eb16a61779c7b680a7'
+    '7:message35:(Jelmer) Move dpush to InterBranch.'
+    '10:parent-idsl'
+        '50:pqm@pqm.ubuntu.com-20090514104039-kggemn7lrretzpvc'
+        '48:jelmer@samba.org-20090510012654-jp9ufxquekaokbeoe'
+    '10:propertiesd11:branch-nick6:+trunke'
+    '11:revision-id50:pqm@pqm.ubuntu.com-20090514113250-jntkkpminfn3e0tz'
+    '9:timestamp14:1242300770.8448:timezonei3600ee')
 
-_working_revision_bencode1_no_timestamp = 'd9:committer54:Canonical.com Patch Queue Manager <pqm@pqm.ubuntu.com>14:inventory-sha140:4a2c7fb50e077699242cf6eb16a61779c7b680a77:message35:(Jelmer) Move dpush to InterBranch.10:parent-idsl50:pqm@pqm.ubuntu.com-20090514104039-kggemn7lrretzpvc48:jelmer@samba.org-20090510012654-jp9ufxquekaokbeoe10:propertiesd11:branch-nick6:+trunke11:revision-id50:pqm@pqm.ubuntu.com-20090514113250-jntkkpminfn3e0tz9:timestamp14:1242300770.844e'
+_working_revision_bencode1_no_timestamp = ('d'
+    '9:committer54:Canonical.com Patch Queue Manager <pqm@pqm.ubuntu.com>'
+    '14:inventory-sha140:4a2c7fb50e077699242cf6eb16a61779c7b680a7'
+    '7:message35:(Jelmer) Move dpush to InterBranch.'
+    '10:parent-idsl'
+        '50:pqm@pqm.ubuntu.com-20090514104039-kggemn7lrretzpvc'
+        '48:jelmer@samba.org-20090510012654-jp9ufxquekaokbeoe'
+    '10:propertiesd11:branch-nick6:+trunke'
+    '11:revision-id50:pqm@pqm.ubuntu.com-20090514113250-jntkkpminfn3e0tz'
+    '9:timestamp14:1242300770.844e')
 
 
 class TestBEncodeSerializer1(TestCase):
@@ -42,19 +60,18 @@ class TestBEncodeSerializer1(TestCase):
         inp = StringIO()
         rev = chk_bencode_serializer.read_revision_from_string(
                 _working_revision_bencode1)
-        eq = self.assertEqual
-        eq(rev.committer,
+        self.assertEquals(rev.committer,
            "Canonical.com Patch Queue Manager <pqm@pqm.ubuntu.com>")
-        eq(rev.inventory_sha1,
+        self.assertEquals(rev.inventory_sha1,
            "4a2c7fb50e077699242cf6eb16a61779c7b680a7")
-        eq(["pqm@pqm.ubuntu.com-20090514104039-kggemn7lrretzpvc",
+        self.assertEquals(["pqm@pqm.ubuntu.com-20090514104039-kggemn7lrretzpvc",
             "jelmer@samba.org-20090510012654-jp9ufxquekaokbeo"],
             rev.parent_ids)
-        eq("(Jelmer) Move dpush to InterBranch.", rev.message)
-        eq("pqm@pqm.ubuntu.com-20090514113250-jntkkpminfn3e0tz", 
+        self.assertEquals("(Jelmer) Move dpush to InterBranch.", rev.message)
+        self.assertEquals("pqm@pqm.ubuntu.com-20090514113250-jntkkpminfn3e0tz", 
            rev.revision_id)
-        eq({"branch-nick": u"+trunk"}, rev.properties)
-        eq(3600, rev.timezone)
+        self.assertEquals({"branch-nick": u"+trunk"}, rev.properties)
+        self.assertEquals(3600, rev.timezone)
 
     def test_unpack_revision_no_timestamp(self):
         rev = chk_bencode_serializer.read_revision_from_string(

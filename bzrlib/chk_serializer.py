@@ -33,8 +33,6 @@ from bzrlib import (
 class BEncodeRevisionSerializer1(object):
     """Simple revision serializer based around bencode. 
     
-    It tries to group entries together that are less likely
-    to change often, to make it easier to do compression.
     """
 
     def write_revision_to_string(self, rev):
@@ -52,7 +50,7 @@ class BEncodeRevisionSerializer1(object):
             revprops[key] = encode_utf8(value)
         ret["properties"] = revprops
         if rev.timezone is not None:
-            ret["timezone"] = str(rev.timezone)
+            ret["timezone"] = rev.timezone
         return bencode.bencode(ret)
 
     def write_revision(self, rev, f):
@@ -70,7 +68,7 @@ class BEncodeRevisionSerializer1(object):
             message=decode_utf8(ret["message"]),
             properties={})
         if "timezone" in ret:
-            rev.timezone = int(ret["timezone"])
+            rev.timezone = ret["timezone"]
         else:
             rev.timezone = None
         for key, value in ret["properties"].iteritems():
