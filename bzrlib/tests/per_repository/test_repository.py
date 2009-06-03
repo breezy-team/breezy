@@ -1046,6 +1046,10 @@ class TestRepositoryLocking(TestCaseWithRepository):
             repo.unlock()
         # We should be unable to relock the repo.
         self.assertRaises(errors.LockContention, repo.lock_write)
+        # Cleanup
+        repo.lock_write(token)
+        repo.dont_leave_lock_in_place()
+        repo.unlock()
 
     def test_dont_leave_lock_in_place(self):
         repo = self.make_repository('r')

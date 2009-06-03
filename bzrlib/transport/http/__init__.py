@@ -171,7 +171,6 @@ class HttpTransportBase(ConnectedTransport):
             self._medium = SmartClientHTTPMedium(self)
         return self._medium
 
-
     def _degrade_range_hint(self, relpath, ranges, exc_info):
         if self._range_hint == 'multi':
             self._range_hint = 'single'

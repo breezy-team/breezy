@@ -79,11 +79,17 @@ def _set_branch_location(control, to_branch, force=False):
             # synchronise the local branch with the new remote branch
             # and bind to it
             possible_transports = []
-            if not force and _any_local_commits(b, possible_transports):
+            try:
+                if not force and _any_local_commits(b, possible_transports):
+                    raise errors.BzrCommandError(
+                        'Cannot switch as local commits found in the checkout. '
+                        'Commit these to the bound branch or use --force to '
+                        'throw them away.')
+            except errors.BoundBranchConnectionFailure, e:
                 raise errors.BzrCommandError(
-                    'Cannot switch as local commits found in the checkout. '
-                    'Commit these to the bound branch or use --force to '
-                    'throw them away.')
+                        'Unable to connect to current master branch %(target)s: '
+                        '%(error)s To switch anyway, use --force.' %
+                        e.__dict__)
             b.set_bound_location(None)
             b.pull(to_branch, overwrite=True,
                 possible_transports=possible_transports)

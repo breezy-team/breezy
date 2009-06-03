@@ -18,15 +18,16 @@
 
 import os
 
-from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
+from bzrlib.tests.tree_implementations import TestCaseWithTree
 
 
-class TestGetFileWithStat(TestCaseWithWorkingTree):
+class TestGetFileWithStat(TestCaseWithTree):
 
     def test_get_file_with_stat_id_only(self):
-        tree = self.make_branch_and_tree('.')
+        work_tree = self.make_branch_and_tree('.')
         self.build_tree(['foo'])
-        tree.add(['foo'], ['foo-id'])
+        work_tree.add(['foo'], ['foo-id'])
+        tree = self._convert_tree(work_tree)
         tree.lock_read()
         self.addCleanup(tree.unlock)
         file_obj, statvalue = tree.get_file_with_stat('foo-id')
@@ -36,9 +37,10 @@ class TestGetFileWithStat(TestCaseWithWorkingTree):
         self.assertEqual(["contents of foo\n"], file_obj.readlines())
 
     def test_get_file_with_stat_id_and_path(self):
-        tree = self.make_branch_and_tree('.')
+        work_tree = self.make_branch_and_tree('.')
         self.build_tree(['foo'])
-        tree.add(['foo'], ['foo-id'])
+        work_tree.add(['foo'], ['foo-id'])
+        tree = self._convert_tree(work_tree)
         tree.lock_read()
         self.addCleanup(tree.unlock)
         file_obj, statvalue = tree.get_file_with_stat('foo-id', 'foo')

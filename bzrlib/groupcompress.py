@@ -31,13 +31,13 @@ from bzrlib import (
     diff,
     errors,
     graph as _mod_graph,
+    knit,
     osutils,
     pack,
     patiencediff,
     trace,
     )
 from bzrlib.graph import Graph
-from bzrlib.knit import _DirectPackAccess
 from bzrlib.btree_index import BTreeBuilder
 from bzrlib.lru_cache import LRUSizeCache
 from bzrlib.tsort import topo_sort
@@ -298,6 +298,66 @@ class GroupCompressBlock(object):
                   self._z_content,
                  ]
         return ''.join(chunks)
+
+    def _dump(self, include_text=False):
+        """Take this block, and spit out a human-readable structure.
+
+        :param include_text: Inserts also include text bits, chose whether you
+            want this displayed in the dump or not.
+        :return: A dump of the given block. The layout is something like:
+            [('f', length), ('d', delta_length, text_length, [delta_info])]
+            delta_info := [('i', num_bytes, text), ('c', offset, num_bytes),
+            ...]
+        """
+        self._ensure_content()
+        result = []
+        pos = 0
+        while pos < self._content_length:
+            kind = self._content[pos]
+            pos += 1
+            if kind not in ('f', 'd'):
+                raise ValueError('invalid kind character: %r' % (kind,))
+            content_len, len_len = decode_base128_int(
+                                self._content[pos:pos + 5])
+            pos += len_len
+            if content_len + pos > self._content_length:
+                raise ValueError('invalid content_len %d for record @ pos %d'
+                                 % (content_len, pos - len_len - 1))
+            if kind == 'f': # Fulltext
+                result.append(('f', content_len))
+            elif kind == 'd': # Delta
+                delta_content = self._content[pos:pos+content_len]
+                delta_info = []
+                # The first entry in a delta is the decompressed length
+                decomp_len, delta_pos = decode_base128_int(delta_content)
+                result.append(('d', content_len, decomp_len, delta_info))
+                measured_len = 0
+                while delta_pos < content_len:
+                    c = ord(delta_content[delta_pos])
+                    delta_pos += 1
+                    if c & 0x80: # Copy
+                        (offset, length,
+                         delta_pos) = decode_copy_instruction(delta_content, c,
+                                                              delta_pos)
+                        delta_info.append(('c', offset, length))
+                        measured_len += length
+                    else: # Insert
+                        if include_text:
+                            txt = delta_content[delta_pos:delta_pos+c]
+                        else:
+                            txt = ''
+                        delta_info.append(('i', c, txt))
+                        measured_len += c
+                        delta_pos += c
+                if delta_pos != content_len:
+                    raise ValueError('Delta consumed a bad number of bytes:'
+                                     ' %d != %d' % (delta_pos, content_len))
+                if measured_len != decomp_len:
+                    raise ValueError('Delta claimed fulltext was %d bytes, but'
+                                     ' extraction resulted in %d bytes'
+                                     % (decomp_len, measured_len))
+            pos += content_len
+        return result
 
 
 class _LazyGroupCompressFactory(object):
@@ -743,6 +803,7 @@ class PythonGroupCompressor(_CommonGroupCompressor):
         # Before insertion
         start = self.endpoint
         chunk_start = len(self.chunks)
+        self._last = (chunk_start, self.endpoint)
         self._delta_index.extend_lines(out_lines, index_lines)
         self.endpoint = self._delta_index.endpoint
         self.input_bytes += input_len
@@ -850,7 +911,7 @@ def make_pack_factory(graph, delta, keylength):
         writer.begin()
         index = _GCGraphIndex(graph_index, lambda:True, parents=parents,
             add_callback=graph_index.add_nodes)
-        access = _DirectPackAccess({})
+        access = knit._DirectPackAccess({})
         access.set_writer(writer, graph_index, (transport, 'newpack'))
         result = GroupCompressVersionedFiles(index, access, delta)
         result.stream = stream
@@ -957,15 +1018,19 @@ class GroupCompressVersionedFiles(VersionedFiles):
         else:
             keys = [key]
             parent_map = {key:()}
+        # So we used Graph(self) to load the parent_map, but now that we have
+        # it, we can just query the parent map directly, so create a new Graph
+        # object
+        graph = _mod_graph.Graph(_mod_graph.DictParentsProvider(parent_map))
         head_cache = _mod_graph.FrozenHeadsCache(graph)
         parent_cache = {}
         reannotate = annotate.reannotate
         for record in self.get_record_stream(keys, 'topological', True):
             key = record.key
-            chunks = osutils.chunks_to_lines(record.get_bytes_as('chunked'))
+            lines = osutils.chunks_to_lines(record.get_bytes_as('chunked'))
             parent_lines = [parent_cache[parent] for parent in parent_map[key]]
             parent_cache[key] = list(
-                reannotate(parent_lines, chunks, key, None, head_cache))
+                reannotate(parent_lines, lines, key, None, head_cache))
         return parent_cache[key]
 
     def check(self, progress_bar=None):
@@ -1482,7 +1547,7 @@ class _GCGraphIndex(object):
     """Mapper from GroupCompressVersionedFiles needs into GraphIndex storage."""
 
     def __init__(self, graph_index, is_locked, parents=True,
-        add_callback=None):
+        add_callback=None, track_external_parent_refs=False):
         """Construct a _GCGraphIndex on a graph_index.
 
         :param graph_index: An implementation of bzrlib.index.GraphIndex.
@@ -1493,12 +1558,19 @@ class _GCGraphIndex(object):
         :param add_callback: If not None, allow additions to the index and call
             this callback with a list of added GraphIndex nodes:
             [(node, value, node_refs), ...]
+        :param track_external_parent_refs: As keys are added, keep track of the
+            keys they reference, so that we can query get_missing_parents(),
+            etc.
         """
         self._add_callback = add_callback
         self._graph_index = graph_index
         self._parents = parents
         self.has_graph = parents
         self._is_locked = is_locked
+        if track_external_parent_refs:
+            self._key_dependencies = knit._KeyRefs()
+        else:
+            self._key_dependencies = None
 
     def add_records(self, records, random_id=False):
         """Add multiple records to the index.
@@ -1549,6 +1621,11 @@ class _GCGraphIndex(object):
                 for key, (value, node_refs) in keys.iteritems():
                     result.append((key, value))
             records = result
+        key_dependencies = self._key_dependencies
+        if key_dependencies is not None and self._parents:
+            for key, value, refs in records:
+                parents = refs[0]
+                key_dependencies.add_references(key, parents)
         self._add_callback(records)
 
     def _check_read(self):
@@ -1603,6 +1680,14 @@ class _GCGraphIndex(object):
                 result[node[1]] = None
         return result
 
+    def get_missing_parents(self):
+        """Return the keys of missing parents."""
+        # Copied from _KnitGraphIndex.get_missing_parents
+        # We may have false positives, so filter those out.
+        self._key_dependencies.add_keys(
+            self.get_parent_map(self._key_dependencies.get_unsatisfied_refs()))
+        return frozenset(self._key_dependencies.get_unsatisfied_refs())
+
     def get_build_details(self, keys):
         """Get the various build details for keys.
 
@@ -1654,12 +1739,30 @@ class _GCGraphIndex(object):
         delta_end = int(bits[3])
         return node[0], start, stop, basis_end, delta_end
 
+    def scan_unvalidated_index(self, graph_index):
+        """Inform this _GCGraphIndex that there is an unvalidated index.
+
+        This allows this _GCGraphIndex to keep track of any missing
+        compression parents we may want to have filled in to make those
+        indices valid.
+
+        :param graph_index: A GraphIndex
+        """
+        if self._key_dependencies is not None:
+            # Add parent refs from graph_index (and discard parent refs that
+            # the graph_index has).
+            add_refs = self._key_dependencies.add_references
+            for node in graph_index.iter_all_entries():
+                add_refs(node[1], node[3][0])
+
+
 
 from bzrlib._groupcompress_py import (
     apply_delta,
     apply_delta_to_source,
     encode_base128_int,
     decode_base128_int,
+    decode_copy_instruction,
     LinesDeltaIndex,
     )
 try:

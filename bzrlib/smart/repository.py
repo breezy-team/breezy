@@ -71,18 +71,34 @@ class SmartServerRepositoryRequest(SmartServerRequest):
         # is expected)
         return None
 
-    def recreate_search(self, repository, search_bytes):
+    def recreate_search(self, repository, search_bytes, discard_excess=False):
+        """Recreate a search from its serialised form.
+
+        :param discard_excess: If True, and the search refers to data we don't
+            have, just silently accept that fact - the verb calling
+            recreate_search trusts that clients will look for missing things
+            they expected and get it from elsewhere.
+        """
         lines = search_bytes.split('\n')
         if lines[0] == 'ancestry-of':
             heads = lines[1:]
             search_result = graph.PendingAncestryResult(heads, repository)
             return search_result, None
         elif lines[0] == 'search':
-            return self.recreate_search_from_recipe(repository, lines[1:])
+            return self.recreate_search_from_recipe(repository, lines[1:],
+                discard_excess=discard_excess)
         else:
             return (None, FailedSmartServerResponse(('BadSearch',)))
 
-    def recreate_search_from_recipe(self, repository, lines):
+    def recreate_search_from_recipe(self, repository, lines,
+        discard_excess=False):
+        """Recreate a specific revision search (vs a from-tip search).
+
+        :param discard_excess: If True, and the search refers to data we don't
+            have, just silently accept that fact - the verb calling
+            recreate_search trusts that clients will look for missing things
+            they expected and get it from elsewhere.
+        """
         start_keys = set(lines[0].split(' '))
         exclude_keys = set(lines[1].split(' '))
         revision_count = int(lines[2])
@@ -97,7 +113,8 @@ class SmartServerRepositoryRequest(SmartServerRequest):
                     break
                 search.stop_searching_any(exclude_keys.intersection(next_revs))
             search_result = search.get_result()
-            if search_result.get_recipe()[3] != revision_count:
+            if (not discard_excess and
+                search_result.get_recipe()[3] != revision_count):
                 # we got back a different amount of data than expected, this
                 # gets reported as NoSuchRevision, because less revisions
                 # indicates missing revisions, and more should never happen as
@@ -379,7 +396,8 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
         repository = self._repository
         repository.lock_read()
         try:
-            search_result, error = self.recreate_search(repository, body_bytes)
+            search_result, error = self.recreate_search(repository, body_bytes,
+                discard_excess=True)
             if error is not None:
                 repository.unlock()
                 return error
@@ -418,6 +436,8 @@ def _stream_to_byte_stream(stream, src_format):
         for record in substream:
             if record.storage_kind in ('chunked', 'fulltext'):
                 serialised = record_to_fulltext_bytes(record)
+            elif record.storage_kind == 'absent':
+                raise ValueError("Absent factory for %s" % (record.key,))
             else:
                 serialised = record.get_bytes_as(record.storage_kind)
             if serialised:

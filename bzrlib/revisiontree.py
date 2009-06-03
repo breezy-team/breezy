@@ -45,7 +45,8 @@ class RevisionTree(tree.Tree):
         self._rules_searcher = None
 
     def supports_tree_reference(self):
-        return True
+        return getattr(self._repository._format, "supports_tree_reference",
+            False)
 
     def get_parent_ids(self):
         """See Tree.get_parent_ids.
@@ -125,7 +126,8 @@ class RevisionTree(tree.Tree):
 
     def get_symlink_target(self, file_id):
         ie = self._inventory[file_id]
-        return ie.symlink_target;
+        # Inventories store symlink targets in unicode
+        return ie.symlink_target
 
     def get_reference_revision(self, file_id, path=None):
         return self.inventory[file_id].reference_revision
