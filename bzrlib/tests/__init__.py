@@ -3370,6 +3370,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_api',
                    'bzrlib.tests.test_atomicfile',
                    'bzrlib.tests.test_bad_files',
+                   'bzrlib.tests.test_bencode',
                    'bzrlib.tests.test_bisect_multi',
                    'bzrlib.tests.test_branch',
                    'bzrlib.tests.test_branchbuilder',
@@ -3517,7 +3518,6 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_xml',
                    'bzrlib.tests.tree_implementations',
                    'bzrlib.tests.workingtree_implementations',
-                   'bzrlib.util.tests.test_bencode',
                    ]
 
     loader = TestUtil.TestLoader()

@@ -26,6 +26,7 @@ import tempfile
 import threading
 
 from bzrlib import (
+    bencode,
     errors,
     graph,
     osutils,
@@ -39,7 +40,6 @@ from bzrlib.smart.request import (
     )
 from bzrlib.repository import _strip_NULL_ghosts, network_format_registry
 from bzrlib import revision as _mod_revision
-from bzrlib.util import bencode
 from bzrlib.versionedfile import NetworkRecordStream, record_to_fulltext_bytes
 
 
