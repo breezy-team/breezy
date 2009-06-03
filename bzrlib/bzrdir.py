@@ -3525,6 +3525,93 @@ class CreateRepository(RepositoryAcquisitionPolicy):
                                              require_stacking)
         self._bzrdir = bzrdir
 
+    def _ensure_stackable_formats(self, stack_on):
+        """Both repository and branch formats should support stacking."""
+        # Stacking is desired. requested by the target, but does the place it
+        # points at support stacking? If it doesn't then we should
+        # not implicitly upgrade. We check this here.
+        format = self._bzrdir._format
+        new_repo_format = None
+        new_branch_format = None
+
+        # a bit of state for get_target_branch so that we don't try to open it
+        # 2 times, for both repo *and* branch
+        target = [None, False, None] # target_branch, checked, upgrade anyway
+        def get_target_branch():
+            if target[1]:
+                # We've checked, don't check again
+                return target
+            try:
+                target_dir = BzrDir.open(stack_on,
+                    possible_transports=[self._bzrdir.root_transport])
+            except errors.NotBranchError:
+                # Nothing there, don't change formats
+                target[:] = [None, True, False]
+                return target
+            except errors.JailBreak:
+                # JailBreak, JFDI and upgrade anyway
+                target[:] = [None, True, True]
+                return target
+            try:
+                target_branch = target_dir.open_branch()
+            except errors.NotBranchError:
+                # No branch, don't upgrade formats
+                target[:] = [None, True, False]
+                return target
+            target[:] = [target_branch, True, False]
+            return target
+
+        if not (format.repository_format.supports_external_lookups):
+            # We need to upgrade the Repository.
+            target_branch, _, do_upgrade = get_target_branch()
+            if target_branch is None:
+                # We don't have a target branch, should we upgrade anyway?
+                if do_upgrade:
+                    # stack_on is inaccessible, JFDI.
+                    # TODO: bad monkey, hard-coded formats...
+                    if format.repository_format.rich_root_data:
+                        new_repo_format = pack_repo.RepositoryFormatKnitPack6RichRoot()
+                    else:
+                        new_repo_format = pack_repo.RepositoryFormatKnitPack6()
+            else:
+                # If the target already supports stacking, then we know the
+                # project is already able to use stacking, so auto-upgrade
+                # for them
+                new_repo_format = target_branch.repository._format
+                if not new_repo_format.supports_external_lookups:
+                    # target doesn't, source doesn't, so don't auto upgrade
+                    # repo
+                    new_repo_format = None
+            if new_repo_format is not None:
+                format.repository_format = new_repo_format
+                note('Source repository format does not support stacking,'
+                     ' using format: \'%s\'',
+                     new_repo_format.get_format_description())
+
+        if not format.get_branch_format().supports_stacking():
+            # We just checked the repo, now lets check if we need to
+            # upgrade the branch format
+            target_branch, _, do_upgrade = get_target_branch()
+            if target_branch is None:
+                if do_upgrade:
+                    # TODO: bad monkey, hard-coded formats...
+                    new_branch_format = branch.BzrBranchFormat7()
+            else:
+                new_branch_format = target_branch._format
+                if not new_branch_format.supports_stacking():
+                    new_branch_format = None
+            if new_branch_format is not None:
+                # Does support stacking, use its format.
+                format.set_branch_format(new_branch_format)
+                note('Source branch format does not support stacking,'
+                     ' using format: \'%s\'',
+                     new_branch_format.get_format_description())
+
+        if not self._require_stacking:
+            # We have picked up automatic stacking somewhere.
+            note('Using default stacking branch %s at %s', self._stack_on,
+                self._stack_on_pwd)
+
     def acquire_repository(self, make_working_trees=None, shared=False):
         """Implementation of RepositoryAcquisitionPolicy.acquire_repository
 
@@ -3532,58 +3619,7 @@ class CreateRepository(RepositoryAcquisitionPolicy):
         """
         stack_on = self._get_full_stack_on()
         if stack_on:
-            # Stacking is desired. requested by the target, but does the place it
-            # points at support stacking? If it doesn't then we should
-            # not implicitly upgrade. We check this here.
-            format = self._bzrdir._format
-            if not (format.repository_format.supports_external_lookups
-                and format.get_branch_format().supports_stacking()):
-                # May need to upgrade - but only do if the target also
-                # supports stacking. Note that this currently wastes
-                # network round trips to check - but we only do this
-                # when the source can't stack so it will fade away
-                # as people do upgrade.
-                branch_format = None
-                repo_format = None
-                try:
-                    target_dir = BzrDir.open(stack_on,
-                        possible_transports=[self._bzrdir.root_transport])
-                except errors.NotBranchError:
-                    # Nothing there, don't change formats
-                    pass
-                except errors.JailBreak:
-                    # stack_on is inaccessible, JFDI.
-                    if format.repository_format.rich_root_data:
-                        repo_format = pack_repo.RepositoryFormatKnitPack6RichRoot()
-                    else:
-                        repo_format = pack_repo.RepositoryFormatKnitPack6()
-                    branch_format = branch.BzrBranchFormat7()
-                else:
-                    try:
-                        target_branch = target_dir.open_branch()
-                    except errors.NotBranchError:
-                        # No branch, don't change formats
-                        pass
-                    else:
-                        branch_format = target_branch._format
-                        repo_format = target_branch.repository._format
-                        if not (branch_format.supports_stacking()
-                            and repo_format.supports_external_lookups):
-                            # Doesn't stack itself, don't force an upgrade
-                            branch_format = None
-                            repo_format = None
-                if branch_format and repo_format:
-                    # Does support stacking, use its format.
-                    format.repository_format = repo_format
-                    format.set_branch_format(branch_format)
-                    note('Source format does not support stacking, '
-                        'using format: \'%s\'\n  %s\n',
-                        branch_format.get_format_description(),
-                        repo_format.get_format_description())
-            if not self._require_stacking:
-                # We have picked up automatic stacking somewhere.
-                note('Using default stacking branch %s at %s', self._stack_on,
-                    self._stack_on_pwd)
+            self._ensure_stackable_formats(stack_on)
         repository = self._bzrdir.create_repository(shared=shared)
         self._add_fallback(repository,
                            possible_transports=[self._bzrdir.transport])
