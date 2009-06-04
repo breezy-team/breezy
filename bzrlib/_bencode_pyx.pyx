@@ -37,6 +37,8 @@ cdef extern from "Python.h":
     int Py_EnterRecursiveCall(char *)
     void Py_LeaveRecursiveCall()
 
+    int PyList_Append(object, object) except -1
+
 cdef extern from "stdlib.h":
     void free(void *memblock)
     void *malloc(size_t size)
@@ -175,7 +177,7 @@ cdef class Decoder(Coder):
                 else:
                     return result
             else:
-                result.append(self._decode_object())
+                PyList_Append(result, self._decode_object())
 
         raise ValueError('malformed list')
 
