@@ -816,16 +816,10 @@ class CommitBuilder(object):
         self.basis_delta_revision = basis_revision_id
 
     def _add_text_to_weave(self, file_id, new_text, parents, nostore_sha):
-        # Note: as we read the content directly from the tree, we know its not
-        # been turned into unicode or badly split - but a broken tree
-        # implementation could give us bad output from readlines() so this is
-        # not a guarantee of safety. What would be better is always checking
-        # the content during test suite execution. RBC 20070912
-        parent_keys = tuple((file_id, parent) for parent in parents)
-        return self.repository.texts.add_text(
+        parent_keys = tuple([(file_id, parent) for parent in parents])
+        return self.repository.texts._add_text(
             (file_id, self._new_revision_id), parent_keys, new_text,
-            nostore_sha=nostore_sha, random_id=self.random_revid,
-            check_content=False)[0:2]
+            nostore_sha=nostore_sha, random_id=self.random_revid)[0:2]
 
 
 class RootCommitBuilder(CommitBuilder):

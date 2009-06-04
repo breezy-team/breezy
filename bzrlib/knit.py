@@ -914,9 +914,7 @@ class KnitVersionedFiles(VersionedFiles):
             parent_texts, left_matching_blocks, nostore_sha, random_id,
             line_bytes=line_bytes)
 
-    def add_text(self, key, parents, text, parent_texts=None,
-        nostore_sha=None, random_id=False,
-        check_content=True):
+    def _add_text(self, key, parents, text, nostore_sha=None, random_id=False):
         """See VersionedFiles.add_text()."""
         self._index._check_write_ok()
         self._check_add(key, None, random_id, check_content=False)
@@ -928,7 +926,7 @@ class KnitVersionedFiles(VersionedFiles):
             # an empty tuple instead.
             parents = ()
         return self._add(key, None, parents,
-            parent_texts, None, nostore_sha, random_id,
+            None, None, nostore_sha, random_id,
             line_bytes=text)
 
     def _add(self, key, lines, parents, parent_texts,

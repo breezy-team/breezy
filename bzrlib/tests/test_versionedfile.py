@@ -1497,7 +1497,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         records.sort()
         self.assertEqual([(key0, 'a\nb\n'), (key1, 'b\nc\n')], records)
 
-    def test_add_text(self):
+    def test__add_text(self):
         f = self.get_versionedfiles()
         if self.key_length == 1:
             key0 = ('r0',)
@@ -1509,11 +1509,11 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             key1 = ('fid', 'r1')
             key2 = ('fid', 'r2')
             keyf = ('fid', 'foo')
-        f.add_text(key0, [], 'a\nb\n')
+        f._add_text(key0, [], 'a\nb\n')
         if self.graph:
-            f.add_text(key1, [key0], 'b\nc\n')
+            f._add_text(key1, [key0], 'b\nc\n')
         else:
-            f.add_text(key1, [], 'b\nc\n')
+            f._add_text(key1, [], 'b\nc\n')
         keys = f.keys()
         self.assertTrue(key0 in keys)
         self.assertTrue(key1 in keys)
@@ -1584,8 +1584,8 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
                 sha, _, _ = vf.add_lines(self.get_simple_key(version), [],
                                          lines)
             else:
-                sha, _, _ = vf.add_text(self.get_simple_key(version), [],
-                                        ''.join(lines))
+                sha, _, _ = vf._add_text(self.get_simple_key(version), [],
+                                         ''.join(lines))
             shas.append(sha)
         # we now have a copy of all the lines in the vf.
         for sha, (version, lines) in zip(
@@ -1595,7 +1595,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
                 vf.add_lines, new_key, [], lines,
                 nostore_sha=sha)
             self.assertRaises(errors.ExistingContent,
-                vf.add_text, new_key, [], ''.join(lines),
+                vf._add_text, new_key, [], ''.join(lines),
                 nostore_sha=sha)
             # and no new version should have been added.
             record = vf.get_record_stream([new_key], 'unordered', True).next()
@@ -1604,7 +1604,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
     def test_add_lines_nostoresha(self):
         self._add_content_nostoresha(add_lines=True)
 
-    def test_add_text_nostoresha(self):
+    def test__add_text_nostoresha(self):
         self._add_content_nostoresha(add_lines=False)
 
     def test_add_lines_return(self):

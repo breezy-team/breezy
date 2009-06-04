@@ -992,9 +992,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
                                                nostore_sha=nostore_sha))[0]
         return sha1, length, None
 
-    def add_text(self, key, parents, text, parent_texts=None,
-        nostore_sha=None, random_id=False,
-        check_content=True):
+    def _add_text(self, key, parents, text, nostore_sha=None, random_id=False):
         """See VersionedFiles.add_text()."""
         self._index._check_write_ok()
         self._check_add(key, None, random_id, check_content=False)
