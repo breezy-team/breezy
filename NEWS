@@ -24,6 +24,9 @@ New Features
   but using a Revision serializer using bencode rather than XML.
   (Jelmer Vernooij, John Arbash Meinel)
 
+* mail_client=claws now supports --body (and message body hooks).  Also uses
+  configured from address.  (Barry Warsaw)
+
 
 Improvements
 ************
@@ -66,6 +69,22 @@ Bug Fixes
   the fetched revisions, not in the stacked-on ancestry.
   (John Arbash Meinel)
 
+* Reconcile can now deal with text revisions that originated in revisions 
+  that are ghosts. (Jelmer Vernooij, #336749)
+
+* Support cloning of branches with ghosts in the left hand side history.
+  (Jelmer Vernooij, #248540)
+
+* The ''bzr diff'' now catches OSError from osutils.rmtree and logs a
+  helpful message to the trace file, unless the temp directory really was
+  removed (which would be very strange).  Since the diff operation has
+  succeeded from the user's perspective, no output is written to stderr 
+  or stdout.  (Maritza Mendez, #363837)
+
+* Translate errors received from a smart server in response to a
+  ``BzrDirFormat.initialize`` or ``BzrDirFormat.initialize_ex`` request.
+  This was causing tracebacks even for mundane errors like
+  ``PermissionDenied``.  (Andrew Bennetts, #381329)
 
 Documentation
 *************
@@ -84,6 +103,8 @@ Internals
 
 Testing
 *******
+
+* The number of cores is now correctly detected on OSX. (John Szakmeister)
 
 
 bzr 1.15

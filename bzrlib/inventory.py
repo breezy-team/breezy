@@ -747,8 +747,13 @@ class CommonInventory(object):
             [parent.name for parent in
              self._iter_file_id_parents(file_id)][:-1]))
 
-    def iter_entries(self, from_dir=None):
-        """Return (path, entry) pairs, in order by name."""
+    def iter_entries(self, from_dir=None, recursive=True):
+        """Return (path, entry) pairs, in order by name.
+        
+        :param from_dir: if None, start from the root,
+          otherwise start from this directory (either file-id or entry)
+        :param recursive: recurse into directories or not
+        """
         if from_dir is None:
             if self.root is None:
                 return
@@ -761,6 +766,10 @@ class CommonInventory(object):
         # 440ms/663ms (inline/total) to 116ms/116ms
         children = from_dir.children.items()
         children.sort()
+        if not recursive:
+            for name, ie in children:
+                yield name, ie
+            return
         children = collections.deque(children)
         stack = [(u'', children)]
         while stack:
