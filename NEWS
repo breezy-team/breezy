@@ -20,6 +20,9 @@ Compatibility Breaks
 New Features
 ************
 
+* The number of cores is also detected on Solaris and win32. (Vincent Ladeuil)
+
+
 Improvements
 ************
 

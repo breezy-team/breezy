@@ -38,6 +38,7 @@ import shutil
 from shutil import (
     rmtree,
     )
+import subprocess
 import tempfile
 from tempfile import (
     mkdtemp,
@@ -1826,3 +1827,47 @@ else:
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, settings)
         return ch
+
+
+if sys.platform == 'linux2':
+    def _local_concurrency():
+        concurrency = None
+        prefix = 'processor'
+        for line in file('/proc/cpuinfo', 'rb'):
+            if line.startswith(prefix):
+                concurrency = int(line[line.find(':')+1:]) + 1
+        return concurrency
+elif sys.platform == 'darwin':
+    def _local_concurrency():
+        return subprocess.Popen(['sysctl', '-n', 'hw.availcpu'],
+                                stdout=subprocess.PIPE).communicate()[0]
+elif sys.platform == 'sunos5':
+    def _local_concurrency():
+        return subprocess.Popen(['psrinfo', '-p',],
+                                stdout=subprocess.PIPE).communicate()[0]
+elif sys.platform == "win32":
+    def _local_concurrency():
+        # FIXME: If NUMBER_OF_CORES is available somewhow, it will be more
+        # precise
+        return os.environ.get('NUMBER_OF_PROCESSORS')
+else:
+    def _local_concurrency():
+        # Who knows ?
+        return None
+
+
+def local_concurrency():
+    """Return how many processes can be run concurrently.
+
+    Rely on platform specific implementations and default to 1 (one) if
+    anything goes wrong.
+    """
+    try:
+        concurrency = _local_concurrency()
+    except (OSError, IOError):
+        concurrency = None
+    try:
+        concurrency = int(concurrency)
+    except (TypeError, ValueError):
+        concurrency = 1
+    return concurrency
