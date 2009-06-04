@@ -101,7 +101,11 @@ class TestBencodeDecode(tests.TestCase):
         self._run_check_error(ValueError, '00:')
         self._run_check_error(ValueError, '35208734823ljdahflajhdf')
         self._run_check_error(ValueError, '432432432432432:foo')
-        self._run_check_error(ValueError, 'i' + ('1' * 1000) + ':')
+        self._run_check_error(ValueError, ' 1:x') # leading whitespace
+        self._run_check_error(ValueError, '-1:x') # negative
+        self._run_check_error(ValueError, '1 x') # space vs colon
+        self._run_check_error(ValueError, '1x') # missing colon
+        self._run_check_error(ValueError, ('1' * 1000) + ':')
 
     def test_list(self):
         self._check([], 'le')

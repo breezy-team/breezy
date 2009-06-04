@@ -98,14 +98,14 @@ cdef class Decoder:
             raise RuntimeError("too deeply nested")
         try:
             ch = self.tail[0]
-            if ch == c'i':
-                D_UPDATE_TAIL(self, 1)
-                return self._decode_int()
-            elif c'0' <= ch <= c'9':
+            if c'0' <= ch <= c'9':
                 return self._decode_string()
             elif ch == c'l':
                 D_UPDATE_TAIL(self, 1)
                 return self._decode_list()
+            elif ch == c'i':
+                D_UPDATE_TAIL(self, 1)
+                return self._decode_int()
             elif ch == c'd':
                 D_UPDATE_TAIL(self, 1)
                 return self._decode_dict()
@@ -144,10 +144,20 @@ cdef class Decoder:
         return ret
 
     cdef object _decode_string(self):
-        cdef int n, i
-        i = self._read_digits(c':')
-        n = strtol(self.tail, NULL, 10)
-        D_UPDATE_TAIL(self, i+1)
+        cdef int n
+        cdef char *next_tail
+        # strtol allows leading whitespace, negatives, and leading zeros
+        # however, all callers have already checked that '0' <= tail[0] <= '9'
+        # or they wouldn't have called _decode_string
+        # strtol will stop at trailing whitespace, etc
+        n = strtol(self.tail, &next_tail, 10)
+        if next_tail == NULL or next_tail[0] != c':':
+            raise ValueError('string len not terminated by ":"')
+        # strtol allows leading zeros, so validate that we don't have that
+        if (self.tail[0] == c'0'
+            and (n != 0 or (next_tail - self.tail != 1))):
+            raise ValueError('leading zeros are not allowed')
+        D_UPDATE_TAIL(self, next_tail - self.tail + 1)
         if n == 0:
             return ''
         if n > self.size:
@@ -170,6 +180,9 @@ cdef class Decoder:
                 else:
                     return result
             else:
+                # As a quick shortcut, check to see if the next object is a
+                # string, since we know that won't be creating recursion
+                # if self.tail[0] >= c'0' and self.tail[0] <= c'9':
                 PyList_Append(result, self._decode_object())
 
         raise ValueError('malformed list')
@@ -187,6 +200,8 @@ cdef class Decoder:
                 return result
             else:
                 # keys should be strings only
+                if self.tail[0] < c'0' or self.tail[0] > c'9':
+                    raise ValueError('key was not a simple string.')
                 key = self._decode_string()
                 if lastkey >= key:
                     raise ValueError('dict keys disordered')
