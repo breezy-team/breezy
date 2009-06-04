@@ -20,6 +20,9 @@ Compatibility Breaks
 New Features
 ************
 
+* mail_client=claws now supports --body (and message body hooks).  Also uses
+  configured from address.  (Barry Warsaw)
+
 Improvements
 ************
 

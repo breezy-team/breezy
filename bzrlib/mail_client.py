@@ -155,7 +155,7 @@ class BodyExternalMailClient(MailClient):
                       extension, **kwargs)
 
     def _compose(self, prompt, to, subject, attach_path, mime_subtype,
-                extension, body=None):
+                 extension, body=None, from_=None):
         """Invoke a mail client as a commandline process.
 
         Overridden by MAPIClient.
@@ -166,6 +166,8 @@ class BodyExternalMailClient(MailClient):
             "text", but the precise subtype can be specified here
         :param extension: A file extension (including period) associated with
             the attachment type.
+        :param body: Optional body text.
+        :param from_: Optional From: header.
         """
         for name in self._get_client_commands():
             cmdline = [self._encode_path(name, 'executable')]
@@ -173,6 +175,8 @@ class BodyExternalMailClient(MailClient):
                 kwargs = {'body': body}
             else:
                 kwargs = {}
+            if from_ is not None:
+                kwargs['from_'] = from_
             cmdline.extend(self._get_compose_commandline(to, subject,
                                                          attach_path,
                                                          **kwargs))
@@ -331,25 +335,45 @@ mail_client_registry.register('kmail', KMail,
 class Claws(ExternalMailClient):
     """Claws mail client."""
 
+    supports_body = True
+
     _client_commands = ['claws-mail']
 
-    def _get_compose_commandline(self, to, subject, attach_path):
+    def _get_compose_commandline(self, to, subject, attach_path, body=None,
+                                 from_=None):
         """See ExternalMailClient._get_compose_commandline"""
-        compose_url = ['mailto:']
-        if to is not None:
-            compose_url.append(self._encode_safe(to))
-        compose_url.append('?')
+        compose_url = []
+        if from_ is not None:
+            compose_url.append('from=' + urllib.quote(from_))
         if subject is not None:
             # Don't use urllib.quote_plus because Claws doesn't seem
             # to recognise spaces encoded as "+".
             compose_url.append(
-                'subject=%s' % urllib.quote(self._encode_safe(subject)))
+                'subject=' + urllib.quote(self._encode_safe(subject)))
+        if body is not None:
+            compose_url.append(
+                'body=' + urllib.quote(self._encode_safe(body)))
+        # to must be supplied for the claws-mail --compose syntax to work.
+        if to is None:
+            raise errors.NoMailAddressSpecified()
+        compose_url = 'mailto:%s?%s' % (
+            self._encode_safe(to), '&'.join(compose_url))
         # Collect command-line options.
-        message_options = ['--compose', ''.join(compose_url)]
+        message_options = ['--compose', compose_url]
         if attach_path is not None:
             message_options.extend(
                 ['--attach', self._encode_path(attach_path, 'attachment')])
         return message_options
+
+    def _compose(self, prompt, to, subject, attach_path, mime_subtype,
+                 extension, body=None, from_=None):
+        """See ExternalMailClient._compose"""
+        if from_ is None:
+            from_ = self.config.get_user_option('email')
+        super(Claws, self)._compose(prompt, to, subject, attach_path,
+                                    mime_subtype, extension, body, from_)
+
+
 mail_client_registry.register('claws', Claws,
                               help=Claws.__doc__)
 
