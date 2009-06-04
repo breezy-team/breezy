@@ -51,21 +51,19 @@ cdef extern from "string.h":
 cdef extern from "python-compat.h":
     int snprintf(char* buffer, size_t nsize, char* fmt, ...)
 
-cdef class Coder:
-    """Base class for both Decoder and Encoder"""
+cdef class Decoder
+cdef class Encoder
+
+cdef extern from "_bencode_pyx.h":
+    void D_UPDATE_TAIL(Decoder, int n)
+    void E_UPDATE_TAIL(Encoder, int n)
+
+
+cdef class Decoder:
+    """Bencode decoder"""
 
     cdef readonly char *tail
     cdef readonly int size
-
-cdef extern from "_bencode_pyx.h":
-    void UPDATE_TAIL(Coder, int n)
-    int MAX_INT_AS_STR
-
-
-
-cdef class Decoder(Coder):
-    """Bencode decoder"""
-
     cdef readonly int _yield_tuples
     cdef object text
 
@@ -101,30 +99,25 @@ cdef class Decoder(Coder):
         try:
             ch = self.tail[0]
             if ch == c'i':
-                UPDATE_TAIL(self, 1)
+                D_UPDATE_TAIL(self, 1)
                 return self._decode_int()
             elif c'0' <= ch <= c'9':
                 return self._decode_string()
             elif ch == c'l':
-                UPDATE_TAIL(self, 1)
+                D_UPDATE_TAIL(self, 1)
                 return self._decode_list()
             elif ch == c'd':
-                UPDATE_TAIL(self, 1)
+                D_UPDATE_TAIL(self, 1)
                 return self._decode_dict()
             else:
                 raise ValueError('unknown object type identifier %r' % ch)
         finally:
             Py_LeaveRecursiveCall()
 
-    cdef void _update_tail(self, int n):
-        """Update tail pointer and resulting size by n characters"""
-        self.size = self.size - n
-        self.tail = self.tail + n
-
     cdef int _read_digits(self, char stop_char) except -1:
         cdef int i
         i = 0
-        while ((self.tail[i] >= c'0' and self.tail[i] <= c'9') or 
+        while ((self.tail[i] >= c'0' and self.tail[i] <= c'9') or
                self.tail[i] == c'-') and i < self.size:
             i = i + 1
 
@@ -147,14 +140,14 @@ cdef class Decoder(Coder):
             ret = PyInt_FromString(self.tail, NULL, 10)
         finally:
             self.tail[i] = c'e'
-        UPDATE_TAIL(self, i+1)
+        D_UPDATE_TAIL(self, i+1)
         return ret
 
     cdef object _decode_string(self):
         cdef int n, i
         i = self._read_digits(c':')
         n = strtol(self.tail, NULL, 10)
-        UPDATE_TAIL(self, i+1)
+        D_UPDATE_TAIL(self, i+1)
         if n == 0:
             return ''
         if n > self.size:
@@ -163,7 +156,7 @@ cdef class Decoder(Coder):
             raise ValueError('string size below zero: %d' % n)
 
         result = PyString_FromStringAndSize(self.tail, n)
-        UPDATE_TAIL(self, n)
+        D_UPDATE_TAIL(self, n)
         return result
 
     cdef object _decode_list(self):
@@ -171,7 +164,7 @@ cdef class Decoder(Coder):
 
         while self.size > 0:
             if self.tail[0] == c'e':
-                UPDATE_TAIL(self, 1)
+                D_UPDATE_TAIL(self, 1)
                 if self._yield_tuples:
                     return tuple(result)
                 else:
@@ -190,7 +183,7 @@ cdef class Decoder(Coder):
         while self.size > 0:
             ch = self.tail[0]
             if ch == c'e':
-                UPDATE_TAIL(self, 1)
+                D_UPDATE_TAIL(self, 1)
                 return result
             else:
                 # keys should be strings only
@@ -227,9 +220,11 @@ cdef enum:
     INT_BUF_SIZE = 32
 
 
-cdef class Encoder(Coder):
+cdef class Encoder:
     """Bencode encoder"""
 
+    cdef readonly char *tail
+    cdef readonly int size
     cdef readonly char *buffer
     cdef readonly int maxsize
 
@@ -285,11 +280,6 @@ cdef class Encoder(Coder):
         self.tail = &new_buffer[self.size]
         return 1
 
-    cdef void _update_tail(self, int n):
-        """Update tail pointer and resulting size by n characters"""
-        self.size = self.size + n
-        self.tail = &self.tail[n]
-
     cdef int _encode_int(self, int x) except 0:
         """Encode int to bencode string iNNNe
         @param  x:  value to encode
@@ -299,45 +289,49 @@ cdef class Encoder(Coder):
         n = snprintf(self.tail, INT_BUF_SIZE, "i%de", x)
         if n < 0:
             raise MemoryError('int %d too big to encode' % x)
-        UPDATE_TAIL(self, n)
+        E_UPDATE_TAIL(self, n)
         return 1
 
     cdef int _encode_long(self, x) except 0:
         return self._append_string(''.join(('i', str(x), 'e')))
 
     cdef int _append_string(self, s) except 0:
-        self._ensure_buffer(PyString_GET_SIZE(s))
-        memcpy(self.tail, PyString_AS_STRING(s), PyString_GET_SIZE(s))
-        UPDATE_TAIL(self, PyString_GET_SIZE(s))
+        cdef Py_ssize_t n
+        n = PyString_GET_SIZE(s)
+        self._ensure_buffer(n)
+        memcpy(self.tail, PyString_AS_STRING(s), n)
+        E_UPDATE_TAIL(self, n)
         return 1
 
     cdef int _encode_string(self, x) except 0:
         cdef int n
-        self._ensure_buffer(PyString_GET_SIZE(x) + INT_BUF_SIZE)
-        n = snprintf(self.tail, INT_BUF_SIZE, '%d:', PyString_GET_SIZE(x))
+        cdef Py_ssize_t x_len
+        x_len = PyString_GET_SIZE(x)
+        self._ensure_buffer(x_len + INT_BUF_SIZE)
+        n = snprintf(self.tail, INT_BUF_SIZE, '%d:', x_len)
         if n < 0:
             raise MemoryError('string %s too big to encode' % x)
-        memcpy(<void *>(self.tail+n), PyString_AS_STRING(x),
-               PyString_GET_SIZE(x))
-        UPDATE_TAIL(self, n+PyString_GET_SIZE(x))
+        memcpy(<void *>(self.tail+n), PyString_AS_STRING(x), x_len)
+        E_UPDATE_TAIL(self, n + x_len)
         return 1
 
     cdef int _encode_list(self, x) except 0:
-        self._ensure_buffer(2)
+        self._ensure_buffer(1)
         self.tail[0] = c'l'
-        UPDATE_TAIL(self, 1)
+        E_UPDATE_TAIL(self, 1)
 
         for i in x:
             self.process(i)
 
+        self._ensure_buffer(1)
         self.tail[0] = c'e'
-        UPDATE_TAIL(self, 1)
+        E_UPDATE_TAIL(self, 1)
         return 1
 
     cdef int _encode_dict(self, x) except 0:
-        self._ensure_buffer(2)
+        self._ensure_buffer(1)
         self.tail[0] = c'd'
-        UPDATE_TAIL(self, 1)
+        E_UPDATE_TAIL(self, 1)
 
         keys = x.keys()
         keys.sort()
@@ -347,8 +341,9 @@ cdef class Encoder(Coder):
             self._encode_string(k)
             self.process(x[k])
 
+        self._ensure_buffer(1)
         self.tail[0] = c'e'
-        UPDATE_TAIL(self, 1)
+        E_UPDATE_TAIL(self, 1)
         return 1
 
     def process(self, object x):
