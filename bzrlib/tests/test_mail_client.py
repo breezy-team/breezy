@@ -233,6 +233,15 @@ class TestClaws(tests.TestCase):
                           claws._get_compose_commandline,
                           None, None, 'file%')
 
+    def test_with_body(self):
+        claws = mail_client.Claws(None)
+        cmdline = claws._get_compose_commandline(
+            u'jrandom@example.org', None, None, 'This is some body text')
+        self.assertEqual(
+            ['--compose',
+             'mailto:jrandom@example.org?body=This%20is%20some%20body%20text'],
+            cmdline)
+
 
 class TestEditor(tests.TestCase):
 
