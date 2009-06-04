@@ -33,9 +33,10 @@ from bzrlib import (
 
 def _validate_properties(props, _decode=cache_utf8._utf8_decode):
     # TODO: we really want an 'isascii' check for key
-    unicode_props = dict([(key, _decode(value)[0])
-                          for key, value in props.iteritems()])
-    return unicode_props
+    # Cast the utf8 properties into Unicode 'in place'
+    for key, value in props.iteritems():
+        props[key] = _decode(value)[0]
+    return props
 
 
 def _is_format_10(value):
@@ -106,14 +107,13 @@ class BEncodeRevisionSerializer1(object):
         ret = bencode.bdecode(text)
         if not isinstance(ret, list):
             raise ValueError("invalid revision text")
-        schema = dict(self._schema)
-        schema_pop = schema.pop
+        schema = self._schema
         # timezone is allowed to be missing, but should be set
         bits = {'timezone': None}
         for key, value in ret:
             # Will raise KeyError if not a valid part of the schema, or an
             # entry is given 2 times.
-            var_name, expected_type, validator = schema_pop(key)
+            var_name, expected_type, validator = schema[key]
             if value.__class__ is not expected_type:
                 raise ValueError('key %s did not conform to the expected type'
                                  ' %s, but was %s'
@@ -121,11 +121,12 @@ class BEncodeRevisionSerializer1(object):
             if validator is not None:
                 value = validator(value)
             bits[var_name] = value
-        if schema:
-            if schema.keys() != ['timezone']:
-                raise ValueError('Revision text was missing expected keys %s.'
-                                 ' text %r' % (schema.keys(), text))
-        del bits[None]  # Get rid of bits that don't get mapped
+        if len(bits) != len(schema):
+            missing = [key for key, (var_name, _, _) in schema.iteritems()
+                       if var_name not in bits]
+            raise ValueError('Revision text was missing expected keys %s.'
+                             ' text %r' % (missing, text))
+        del bits[None]  # Get rid of 'format' since it doesn't get mapped
         rev = _mod_revision.Revision(**bits)
         return rev
 
