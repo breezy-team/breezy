@@ -72,8 +72,8 @@ class TestBEncodeSerializer1(TestCase):
            "Canonical.com Patch Queue Manager <pqm@pqm.ubuntu.com>")
         self.assertEquals(rev.inventory_sha1,
            "4a2c7fb50e077699242cf6eb16a61779c7b680a7")
-        self.assertEquals(("pqm@pqm.ubuntu.com-20090514104039-kggemn7lrretzpvc",
-            "jelmer@samba.org-20090510012654-jp9ufxquekaokbeo"),
+        self.assertEquals(["pqm@pqm.ubuntu.com-20090514104039-kggemn7lrretzpvc",
+            "jelmer@samba.org-20090510012654-jp9ufxquekaokbeo"],
             rev.parent_ids)
         self.assertEquals("(Jelmer) Move dpush to InterBranch.", rev.message)
         self.assertEquals("pqm@pqm.ubuntu.com-20090514113250-jntkkpminfn3e0tz",

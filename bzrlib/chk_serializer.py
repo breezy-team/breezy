@@ -61,7 +61,7 @@ class BEncodeRevisionSerializer1(object):
                'timezone': ('timezone', int, None),
                'timestamp': ('timestamp', str, float),
                'revision-id': ('revision_id', str, None),
-               'parent-ids': ('parent_ids', list, tuple),
+               'parent-ids': ('parent_ids', list, None),
                'inventory-sha1': ('inventory_sha1', str, None),
                'message': ('message', str, cache_utf8.decode),
                'properties': ('properties', dict, _validate_properties),
