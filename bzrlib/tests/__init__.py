@@ -3063,14 +3063,15 @@ def local_concurrency():
         content = file('/proc/cpuinfo', 'rb').read()
         concurrency = cpucount(content)
         return concurrency
-    except Exception, e:
+    except IOError:
         pass
 
     try:
-       output = Popen(['sysctl', '-n', 'hw.availcpu'], stdout=PIPE).communicate()[0]
+       output = Popen(['sysctl', '-n', 'hw.availcpu'],
+                      stdout=PIPE).communicate()[0]
        concurrency = int(output)
        return concurrency
-    except Exception, e:
+    except (OSError, IOError):
         concurrency = 1
 
     return concurrency
