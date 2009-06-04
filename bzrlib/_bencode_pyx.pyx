@@ -80,18 +80,21 @@ cdef class Decoder(Coder):
         self._yield_tuples = int(yield_tuples)
 
     def decode(self):
-        result = self.decode_object()
+        result = self._decode_object()
         if self.size != 0:
             raise ValueError('junk in stream')
         return result
 
     def decode_object(self):
+        return self._decode_object()
+
+    cdef object _decode_object(self):
         cdef char ch
 
         if 0 == self.size:
             raise ValueError('stream underflow')
 
-        if Py_EnterRecursiveCall("decode_object"):
+        if Py_EnterRecursiveCall("_decode_object"):
             raise RuntimeError("too deeply nested")
         try:
             ch = self.tail[0]
@@ -172,7 +175,7 @@ cdef class Decoder(Coder):
                 else:
                     return result
             else:
-                result.append(self.decode_object())
+                result.append(self._decode_object())
 
         raise ValueError('malformed list')
 
@@ -194,7 +197,7 @@ cdef class Decoder(Coder):
                     raise ValueError('dict keys disordered')
                 else:
                     lastkey = key
-                value = self.decode_object()
+                value = self._decode_object()
                 result[key] = value
 
         raise ValueError('malformed dict')
