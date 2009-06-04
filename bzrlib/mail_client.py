@@ -506,6 +506,8 @@ class DefaultMail(MailClient):
     """Default mail handling.  Tries XDGEmail (or MAPIClient on Windows),
     falls back to Editor"""
 
+    supports_body = True
+
     def _mail_client(self):
         """Determine the preferred mail client for this platform"""
         if osutils.supports_mapi():
