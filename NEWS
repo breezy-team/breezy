@@ -91,6 +91,8 @@ Internals
 Testing
 *******
 
+* The number of cores is now correctly detected on OSX. (John Szakmeister)
+
 
 bzr 1.15
 ########
