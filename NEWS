@@ -20,6 +20,11 @@ Compatibility Breaks
 New Features
 ************
 
+* ``--development7-rich-root`` is a new dev format, similar to ``--dev6``
+  but using a Revision serializer using bencode rather than XML.
+  (Jelmer Vernooij, John Arbash Meinel)
+
+
 Improvements
 ************
 
@@ -39,6 +44,11 @@ Improvements
   * tags (70X faster)
 
   (Ian Clatworthy)
+
+* Pyrex version of ``bencode`` support. This provides optimized support
+  for both encoding and decoding, and is now found at ``bzrlib.bencode``,
+  rather than ``bzrlib.utils.bencode``.
+  (Alexander Belchenko, Jelmer Vernooij, John Arbash Meinel)
 
 
 Bug Fixes
