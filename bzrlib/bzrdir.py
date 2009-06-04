@@ -2358,7 +2358,7 @@ class BzrDirMetaFormat1(BzrDirFormat):
     def set_branch_format(self, format):
         self._branch_format = format
 
-    def require_stacking(self, stack_on=None, possible_transports=[]):
+    def require_stacking(self, stack_on=None, possible_transports=None):
         """We have a request to stack, try to ensure the formats support it.
 
         :param stack_on: If supplied, it is the URL to a branch that we want to
