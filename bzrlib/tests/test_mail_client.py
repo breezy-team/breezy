@@ -191,9 +191,10 @@ class TestClaws(tests.TestCase):
     def test_commandline(self):
         claws = mail_client.Claws(None)
         commandline = claws._get_compose_commandline(
-            None, None, 'file%')
+            'jrandom@example.org', None, 'file%')
         self.assertEqual(
-            ['--compose', 'mailto:?', '--attach', 'file%'], commandline)
+            ['--compose', 'mailto:jrandom@example.org?', '--attach', 'file%'],
+            commandline)
         commandline = claws._get_compose_commandline(
             'jrandom@example.org', 'Hi there!', None)
         self.assertEqual(
@@ -216,6 +217,21 @@ class TestClaws(tests.TestCase):
         for item in cmdline:
             self.assertFalse(isinstance(item, unicode),
                 'Command-line item %r is unicode!' % item)
+
+    def test_with_from(self):
+        claws = mail_client.Claws(None)
+        cmdline = claws._get_compose_commandline(
+            u'jrandom@example.org', None, None, None, u'qrandom@example.com')
+        self.assertEqual(
+            ['--compose',
+             'mailto:jrandom@example.org?from=qrandom%40example.com'],
+            cmdline)
+
+    def test_to_required(self):
+        claws = mail_client.Claws(None)
+        self.assertRaises(errors.NoMailAddressSpecified,
+                          claws._get_compose_commandline,
+                          None, None, 'file%')
 
 
 class TestEditor(tests.TestCase):
