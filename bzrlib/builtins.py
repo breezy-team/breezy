@@ -480,17 +480,29 @@ class cmd_revno(Command):
 
     @display_command
     def run(self, tree=False, location=u'.'):
-        if tree:
+        try:
             wt = WorkingTree.open_containing(location)[0]
-            revid = wt.last_revision()
-            try:
-                revno_t = wt.branch.revision_id_to_dotted_revno(revid)
-            except errors.NoSuchRevision:
-                revno_t = ('???',)
-            revno = ".".join(str(n) for n in revno_t)
-        else:
-            branch = Branch.open_containing(location)[0]
-            revno = branch.revno()
+            b = wt.branch
+            wt.lock_read()
+        except (errors.NoWorkingTree, errors.NotLocalUrl):
+            wt = None
+            b = Branch.open(location)[0]
+            b.lock_read()
+        try:
+            if tree:
+                revid = wt.last_revision()
+                try:
+                    revno_t = wt.branch.revision_id_to_dotted_revno(revid)
+                except errors.NoSuchRevision:
+                    revno_t = ('???',)
+                revno = ".".join(str(n) for n in revno_t)
+            else:
+                revno = b.revno()
+        finally:
+            if wt is None:
+                b.unlock()
+            else:
+                wt.unlock()
         self.outf.write(str(revno) + '\n')
 
 
@@ -543,7 +555,7 @@ class cmd_revision_info(Command):
                     revno = '.'.join(str(i) for i in dotted_revno)
                 except errors.NoSuchRevision:
                     revno = '???'
-                print '%4s %s' % (revno, revision_id)
+                self.outf.write('%4s %s\n' % (revno, revision_id))
         finally:
             if wt is None:
                 b.unlock()
