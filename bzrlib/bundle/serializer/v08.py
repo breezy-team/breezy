@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,7 +19,10 @@
 
 import os
 
-from bzrlib import errors
+from bzrlib import (
+    errors,
+    ui,
+    )
 from bzrlib.bundle.serializer import (BundleSerializer,
                                       _get_bundle_header,
                                      )
@@ -27,9 +30,7 @@ from bzrlib.bundle.serializer import binary_diff
 from bzrlib.bundle.bundle_data import (RevisionInfo, BundleInfo, BundleTree)
 from bzrlib.diff import internal_diff
 from bzrlib.osutils import pathjoin
-from bzrlib.progress import DummyProgress
 from bzrlib.revision import NULL_REVISION
-import bzrlib.ui
 from bzrlib.testament import StrictTestament
 from bzrlib.timestamp import (
     format_highres_date,
@@ -119,12 +120,11 @@ class BundleSerializerV08(BundleSerializer):
         source.lock_read()
         try:
             self._write_main_header()
-            pb = DummyProgress()
+            pb = ui.ui_factory.nested_progress_bar()
             try:
                 self._write_revisions(pb)
             finally:
-                pass
-                #pb.finished()
+                pb.finished()
         finally:
             source.unlock()
 
