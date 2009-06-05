@@ -2753,7 +2753,7 @@ parallel_registry = registry.Registry()
 
 
 def fork_decorator(suite):
-    concurrency = local_concurrency()
+    concurrency = osutils.local_concurrency()
     if concurrency == 1:
         return suite
     from testtools import ConcurrentTestSuite
@@ -2762,7 +2762,7 @@ parallel_registry.register('fork', fork_decorator)
 
 
 def subprocess_decorator(suite):
-    concurrency = local_concurrency()
+    concurrency = osutils.local_concurrency()
     if concurrency == 1:
         return suite
     from testtools import ConcurrentTestSuite
@@ -2954,7 +2954,7 @@ def fork_for_tests(suite):
     :return: An iterable of TestCase-like objects which can each have
         run(result) called on them to feed tests to result.
     """
-    concurrency = local_concurrency()
+    concurrency = osutils.local_concurrency()
     result = []
     from subunit import TestProtocolClient, ProtocolTestCase
     class TestInOtherProcess(ProtocolTestCase):
@@ -3003,7 +3003,7 @@ def reinvoke_for_tests(suite):
     :return: An iterable of TestCase-like objects which can each have
         run(result) called on them to feed tests to result.
     """
-    concurrency = local_concurrency()
+    concurrency = osutils.local_concurrency()
     result = []
     from subunit import TestProtocolClient, ProtocolTestCase
     class TestInSubprocess(ProtocolTestCase):
@@ -3047,34 +3047,6 @@ def reinvoke_for_tests(suite):
             os.unlink(test_list_file_name)
             raise
     return result
-
-
-def cpucount(content):
-    lines = content.splitlines()
-    prefix = 'processor'
-    for line in lines:
-        if line.startswith(prefix):
-            concurrency = int(line[line.find(':')+1:]) + 1
-    return concurrency
-
-
-def local_concurrency():
-    try:
-        content = file('/proc/cpuinfo', 'rb').read()
-        concurrency = cpucount(content)
-        return concurrency
-    except IOError:
-        pass
-
-    try:
-       output = Popen(['sysctl', '-n', 'hw.availcpu'],
-                      stdout=PIPE).communicate()[0]
-       concurrency = int(output)
-       return concurrency
-    except (OSError, IOError):
-        concurrency = 1
-
-    return concurrency
 
 
 class BZRTransformingResult(unittest.TestResult):
