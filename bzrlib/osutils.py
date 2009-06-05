@@ -1847,8 +1847,7 @@ elif sys.platform == 'sunos5':
                                 stdout=subprocess.PIPE).communicate()[0]
 elif sys.platform == "win32":
     def _local_concurrency():
-        # FIXME: If NUMBER_OF_CORES is available somewhow, it will be more
-        # precise
+        # This appears to return the number of cores.
         return os.environ.get('NUMBER_OF_PROCESSORS')
 else:
     def _local_concurrency():
@@ -1856,12 +1855,18 @@ else:
         return None
 
 
-def local_concurrency():
+_cached_local_concurrency = None
+
+def local_concurrency(use_cache=True):
     """Return how many processes can be run concurrently.
 
     Rely on platform specific implementations and default to 1 (one) if
     anything goes wrong.
     """
+    global _cached_local_concurrency
+    if _cached_local_concurrency is not None and use_cache:
+        return _cached_local_concurrency
+
     try:
         concurrency = _local_concurrency()
     except (OSError, IOError):
@@ -1870,4 +1875,6 @@ def local_concurrency():
         concurrency = int(concurrency)
     except (TypeError, ValueError):
         concurrency = 1
+    if use_cache:
+        _cached_concurrency = concurrency
     return concurrency
