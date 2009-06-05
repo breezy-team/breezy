@@ -36,11 +36,13 @@ from bzrlib import (
     )
 from bzrlib.trace import mutter
 from bzrlib.symbol_versioning import (
+    deprecated_function,
     deprecated_in,
     deprecated_method,
     )
 
 
+# XXX: deprecated; can be removed when the ProgressBar factory is removed
 def _supports_progress(f):
     """Detect if we can use pretty progress bars on the output stream f.
 
@@ -140,6 +142,7 @@ class ProgressTask(object):
         self.ui_factory.clear_term()
 
 
+@deprecated_function(deprecated_in((1, 16, 0)))
 def ProgressBar(to_file=None, **kwargs):
     """Abstract factory"""
     if to_file is None:
