@@ -98,6 +98,19 @@ class CHKMap(object):
         else:
             self._root_node = self._node_key(root_key)
 
+    def apply_insert_delta(self, delta):
+        """Apply a delta that only inserts items.
+
+        :param delta: An iterable of old_key, new_key, new_value tuples.
+            all old_key entries must be None, and all new_key entries must not
+            be None.
+        """
+        for old, new, value in delta:
+            assert old is None
+            assert new is not None
+            self.map(new, value)
+        return self._save()
+
     def apply_delta(self, delta):
         """Apply a delta to the map.
 
@@ -1165,6 +1178,7 @@ class InternalNode(Node):
         :return: An iterable of (prefix, node) tuples. prefix is a byte
             prefix for reaching node.
         """
+        import pdb; pdb.set_trace()
         if offset >= self._node_width:
             for node in self._items.values():
                 for result in node._split(offset):

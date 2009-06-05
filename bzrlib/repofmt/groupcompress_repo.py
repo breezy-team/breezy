@@ -674,6 +674,54 @@ class CHKInventoryRepository(KnitPackRepository):
         return self._inventory_add_lines(revision_id, parents,
             inv_lines, check_content=False)
 
+    def _get_null_inventory(self):
+        serializer = self._format._serializer
+        null_inv = inventory.CHKInventory(serializer.search_key_name)
+        search_key_func = chk_map.search_key_registry.get(
+                            serializer.search_key_name)
+        null_inv.id_to_entry = chk_map.CHKMap(self.chk_bytes,
+            None, search_key_func)
+        null_inv.id_to_entry._root_node.set_maximum_size(
+            serializer.maximum_size)
+        null_inv.parent_id_basename_to_file_id = chk_map.CHKMap(
+            self.chk_bytes, None, search_key_func)
+        null_inv.parent_id_basename_to_file_id._root_node.set_maximum_size(
+            serializer.maximum_size)
+        null_inv.parent_id_basename_to_file_id._root_node._key_width = 2
+        null_inv.root_id = None
+        return null_inv
+
+    def _apply_delta_to_null_inv(self, new_inv, delta, new_revision_id):
+        """This will mutate new_inv directly.
+
+        This is a simplified form of create_by_apply_delta which knows that all
+        the old values must be None, so everything is a create.
+        """
+        new_inv.revision_id = new_revision_id
+        entry_to_bytes = new_inv._entry_to_bytes
+        assert new_inv.parent_id_basename_to_file_id is not None
+        id_to_entry_delta = []
+        parent_id_basename_delta = []
+        for old_path, new_path, file_id, entry in delta:
+            assert old_path is None
+            assert new_path is not None
+            # file id changes
+            if new_path == '':
+                new_inv.root_id = file_id
+                parent_id_basename_key = '', ''
+            else:
+                utf8_entry_name = entry.name.encode('utf-8')
+                parent_id_basename_key = (entry.parent_id, utf8_entry_name)
+            new_value = entry_to_bytes(entry)
+            # Update caches. It's worth doing this whether
+            # we're propagating the old caches or not.
+            ## result._path_to_fileid_cache[new_path] = file_id
+            id_to_entry_delta.append((None, (file_id,), new_value))
+            parent_id_basename_delta.append(
+                (None, parent_id_basename_key, file_id))
+        new_inv.id_to_entry.apply_insert_delta(id_to_entry_delta)
+        new_inv.parent_id_basename_to_file_id.apply_insert_delta(parent_id_basename_delta)
+
     def add_inventory_by_delta(self, basis_revision_id, delta, new_revision_id,
                                parents, basis_inv=None, propagate_caches=False):
         """Add a new inventory expressed as a delta against another revision.
@@ -699,24 +747,30 @@ class CHKInventoryRepository(KnitPackRepository):
             repository format specific) of the serialized inventory, and the
             resulting inventory.
         """
-        if basis_revision_id == _mod_revision.NULL_REVISION:
-            return KnitPackRepository.add_inventory_by_delta(self,
-                basis_revision_id, delta, new_revision_id, parents)
         if not self.is_in_write_group():
             raise AssertionError("%r not in write group" % (self,))
         _mod_revision.check_not_reserved_id(new_revision_id)
-        basis_tree = self.revision_tree(basis_revision_id)
-        basis_tree.lock_read()
-        try:
-            if basis_inv is None:
+        basis_tree = None
+        if basis_inv is None:
+            if basis_revision_id == _mod_revision.NULL_REVISION:
+                new_inv = self._get_null_inventory()
+                self._apply_delta_to_null_inv(new_inv, delta, new_revision_id)
+                inv_lines = new_inv.to_lines()
+                return self._inventory_add_lines(new_revision_id, parents,
+                    inv_lines, check_content=False), new_inv
+            else:
+                basis_tree = self.revision_tree(basis_revision_id)
+                basis_tree.lock_read()
                 basis_inv = basis_tree.inventory
+        try:
             result = basis_inv.create_by_apply_delta(delta, new_revision_id,
                 propagate_caches=propagate_caches)
             inv_lines = result.to_lines()
             return self._inventory_add_lines(new_revision_id, parents,
                 inv_lines, check_content=False), result
         finally:
-            basis_tree.unlock()
+            if basis_tree is not None:
+                basis_tree.unlock()
 
     def _iter_inventories(self, revision_ids):
         """Iterate over many inventory objects."""
