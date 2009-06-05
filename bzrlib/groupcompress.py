@@ -754,6 +754,14 @@ class _CommonGroupCompressor(object):
 
         After calling this, the compressor should no longer be used
         """
+        # TODO: this causes us to 'bloat' to 2x the size of content in the
+        #       group. This has an impact for 'commit' of large objects.
+        #       One possibility is to use self._content_chunks, and be lazy and
+        #       only fill out self._content as a full string when we actually
+        #       need it. That would at least drop the peak memory consumption
+        #       for 'commit' down to ~1x the size of the largest file, at a
+        #       cost of increased complexity within this code. 2x is still <<
+        #       3x the size of the largest file, so we are doing ok.
         content = ''.join(self.chunks)
         self.chunks = None
         self._delta_index = None
