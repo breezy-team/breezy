@@ -474,11 +474,19 @@ class cmd_revno(Command):
 
     _see_also = ['info']
     takes_args = ['location?']
+    takes_options = [
+        Option('tree', help='Show revno of working tree'),
+        ]
 
     @display_command
-    def run(self, location=u'.'):
-        self.outf.write(str(Branch.open_containing(location)[0].revno()))
-        self.outf.write('\n')
+    def run(self, tree=False, location=u'.'):
+        branch = Branch.open_containing(location)[0]
+        if tree:
+            revid = WorkingTree.open_containing(location)[0]._last_revision()
+            revno = branch.revision_id_to_dotted_revno(revid)[0]
+        else:
+            revno = branch.revno()
+        self.outf.write(str(revno) + '\n')
 
 
 class cmd_revision_info(Command):
