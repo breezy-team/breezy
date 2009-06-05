@@ -183,7 +183,7 @@ class BundleSerializerV08(BundleSerializer):
 
         i_max = len(self.revision_ids)
         for i, rev_id in enumerate(self.revision_ids):
-            pb.update("Generating revsion data", i, i_max)
+            pb.update("Generating revision data", i, i_max)
             rev = self.source.get_revision(rev_id)
             if rev_id == last_rev_id:
                 rev_tree = last_rev_tree
