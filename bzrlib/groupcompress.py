@@ -324,7 +324,11 @@ class GroupCompressBlock(object):
                 raise ValueError('invalid content_len %d for record @ pos %d'
                                  % (content_len, pos - len_len - 1))
             if kind == 'f': # Fulltext
-                result.append(('f', content_len))
+                if include_text:
+                    text = self._content[pos:pos+content_len]
+                    result.append(('f', content_len, text))
+                else:
+                    result.append(('f', content_len))
             elif kind == 'd': # Delta
                 delta_content = self._content[pos:pos+content_len]
                 delta_info = []
@@ -339,7 +343,11 @@ class GroupCompressBlock(object):
                         (offset, length,
                          delta_pos) = decode_copy_instruction(delta_content, c,
                                                               delta_pos)
-                        delta_info.append(('c', offset, length))
+                        if include_text:
+                            text = self._content[offset:offset+length]
+                            delta_info.append(('c', offset, length, text))
+                        else:
+                            delta_info.append(('c', offset, length))
                         measured_len += length
                     else: # Insert
                         if include_text:

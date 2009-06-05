@@ -22,6 +22,7 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
     annotate,
+    bencode,
     bzrdir,
     delta,
     errors,
@@ -30,7 +31,6 @@ from bzrlib import (
     osutils,
     revision as _mod_revision,
     )
-from bzrlib.util import bencode
 """)
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ReusingTransform, NotVersionedError, CantMoveRoot,
