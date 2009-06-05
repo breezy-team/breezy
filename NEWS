@@ -106,9 +106,11 @@ API Changes
 * TreeTransformBase no longer assumes that limbo is provided via disk.
   DiskTreeTransform now provides disk functionality.  (Aaron Bentley)
 
-
 Internals
 *********
+
+* Remove ``weave.py`` script for accessing internals of old weave-format
+  repositories.  (Martin Pool)
 
 Testing
 *******
