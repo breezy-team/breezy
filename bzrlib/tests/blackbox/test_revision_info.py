@@ -86,3 +86,17 @@ class TestRevisionInfo(ExternalBase):
 
         wt.commit('Commit one', rev_id='a@r-0-1')
         self.check_output('   1 a@r-0-1\n', 'revision-info -d branch')
+
+    def test_revision_info_tree(self):
+        # Make branch and checkout
+        wt = self.make_branch_and_tree('branch')
+        wt.commit('Commit one', rev_id='a@r-0-1')
+
+        # Make checkout and move the branch forward
+        self.run_bzr('checkout --lightweight branch checkout')
+        wt.commit('Commit two', rev_id='a@r-0-2')
+
+        # Make sure the checkout gives the right answer for branch and
+        # tree
+        self.check_output('   2 a@r-0-2\n', 'revision-info -d checkout')
+        self.check_output('   1 a@r-0-1\n', 'revision-info --tree -d checkout')
