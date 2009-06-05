@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005 Canonical Ltd
+# Copyright (C) 2004, 2005, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -93,7 +93,7 @@ class TestRevisionInfo(ExternalBase):
         wt.commit('Commit one', rev_id='a@r-0-1')
 
         # Make checkout and move the branch forward
-        self.run_bzr('checkout --lightweight branch checkout')
+        wt.branch.create_checkout('checkout', lightweight=True)
         wt.commit('Commit two', rev_id='a@r-0-2')
 
         # Make sure the checkout gives the right answer for branch and

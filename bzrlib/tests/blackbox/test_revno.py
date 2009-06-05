@@ -22,9 +22,9 @@
 import os
 
 from bzrlib.branch import Branch
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests import TestCaseWithTransport
 
-class TestRevno(TestCaseInTempDir):
+class TestRevno(TestCaseWithTransport):
 
     def test_revno(self):
 
@@ -52,14 +52,13 @@ class TestRevno(TestCaseInTempDir):
 
     def test_revno_tree(self):
         # Make branch and checkout
-        os.mkdir('branch')
-        self.run_bzr('init branch')
-        self.run_bzr('checkout --lightweight branch checkout')
+        wt = self.make_branch_and_tree('branch')
+        checkout = wt.branch.create_checkout('checkout', lightweight=True)
 
         # Get the checkout out of date
         self.build_tree(['branch/file'])
-        self.run_bzr('add branch/file')
-        self.run_bzr('commit -m mkfile branch')
+        wt.add(['file'])
+        wt.commit('mkfile')
 
         # Make sure revno says we're on 1
         out,err = self.run_bzr('revno checkout')
