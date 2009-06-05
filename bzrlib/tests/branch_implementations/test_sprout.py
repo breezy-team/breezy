@@ -155,6 +155,14 @@ class TestSprout(TestCaseWithBranch):
         self.assertEqual(target,
                          tree.basis_tree().get_symlink_target('link-id'))
 
+    def test_sprout_with_ghost_in_mainline(self):
+        tree = self.make_branch_and_tree('tree1')
+        tree.set_parent_ids(["spooky"], allow_leftmost_as_ghost=True)
+        tree.add('')
+        tree.commit('msg1', rev_id='rev1')
+        tree.commit('msg2', rev_id='rev2')
+        tree.bzrdir.sprout('target', revision_id='rev1')
+
     def assertBranchHookBranchIsStacked(self, pre_change_params):
         # Just calling will either succeed or fail.
         pre_change_params.branch.get_stacked_on_url()

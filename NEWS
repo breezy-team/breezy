@@ -20,6 +20,14 @@ Compatibility Breaks
 New Features
 ************
 
+* ``--development7-rich-root`` is a new dev format, similar to ``--dev6``
+  but using a Revision serializer using bencode rather than XML.
+  (Jelmer Vernooij, John Arbash Meinel)
+
+* mail_client=claws now supports --body (and message body hooks).  Also uses
+  configured from address.  (Barry Warsaw)
+
+
 Improvements
 ************
 
@@ -27,6 +35,12 @@ Improvements
 * ``--development6-rich-root`` can now stack. (Modulo some smart-server
   bugs with stacking and non default formats.)
   (John Arbash Meinel, #373455)
+
+* ``--development6-rich-root`` delays generating a delta index for the
+  first object inserted into a group. This has a beneficial impact on
+  ``bzr commit`` since each committed texts goes to its own group. For
+  committing a 90MB file, it drops peak memory by about 200MB, and speeds
+  up commit from 7s => 4s. (John Arbash Meinel)
 
 * Numerous operations are now faster for huge projects, i.e. those
   with a large number of files and/or a large number of revisions,
@@ -39,6 +53,11 @@ Improvements
   * tags (70X faster)
 
   (Ian Clatworthy)
+
+* Pyrex version of ``bencode`` support. This provides optimized support
+  for both encoding and decoding, and is now found at ``bzrlib.bencode``,
+  rather than ``bzrlib.utils.bencode``.
+  (Alexander Belchenko, Jelmer Vernooij, John Arbash Meinel)
 
 
 Bug Fixes
@@ -56,6 +75,22 @@ Bug Fixes
   the fetched revisions, not in the stacked-on ancestry.
   (John Arbash Meinel)
 
+* Reconcile can now deal with text revisions that originated in revisions 
+  that are ghosts. (Jelmer Vernooij, #336749)
+
+* Support cloning of branches with ghosts in the left hand side history.
+  (Jelmer Vernooij, #248540)
+
+* The ''bzr diff'' now catches OSError from osutils.rmtree and logs a
+  helpful message to the trace file, unless the temp directory really was
+  removed (which would be very strange).  Since the diff operation has
+  succeeded from the user's perspective, no output is written to stderr 
+  or stdout.  (Maritza Mendez, #363837)
+
+* Translate errors received from a smart server in response to a
+  ``BzrDirFormat.initialize`` or ``BzrDirFormat.initialize_ex`` request.
+  This was causing tracebacks even for mundane errors like
+  ``PermissionDenied``.  (Andrew Bennetts, #381329)
 
 Documentation
 *************
@@ -74,6 +109,10 @@ Internals
 
 Testing
 *******
+
+* The number of cores is now correctly detected on OSX. (John Szakmeister)
+
+* The number of cores is also detected on Solaris and win32. (Vincent Ladeuil)
 
 
 bzr 1.15

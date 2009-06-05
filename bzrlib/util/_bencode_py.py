@@ -86,6 +86,8 @@ class BDecoder(object):
         return (r, f + 1)
 
     def bdecode(self, x):
+        if type(x) != str:
+            raise TypeError
         try:
             r, l = self.decode_func[x[0]](x, 0)
         except (IndexError, KeyError):

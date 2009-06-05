@@ -324,7 +324,11 @@ class GroupCompressBlock(object):
                 raise ValueError('invalid content_len %d for record @ pos %d'
                                  % (content_len, pos - len_len - 1))
             if kind == 'f': # Fulltext
-                result.append(('f', content_len))
+                if include_text:
+                    text = self._content[pos:pos+content_len]
+                    result.append(('f', content_len, text))
+                else:
+                    result.append(('f', content_len))
             elif kind == 'd': # Delta
                 delta_content = self._content[pos:pos+content_len]
                 delta_info = []
@@ -339,7 +343,11 @@ class GroupCompressBlock(object):
                         (offset, length,
                          delta_pos) = decode_copy_instruction(delta_content, c,
                                                               delta_pos)
-                        delta_info.append(('c', offset, length))
+                        if include_text:
+                            text = self._content[offset:offset+length]
+                            delta_info.append(('c', offset, length, text))
+                        else:
+                            delta_info.append(('c', offset, length))
                         measured_len += length
                     else: # Insert
                         if include_text:
@@ -746,6 +754,14 @@ class _CommonGroupCompressor(object):
 
         After calling this, the compressor should no longer be used
         """
+        # TODO: this causes us to 'bloat' to 2x the size of content in the
+        #       group. This has an impact for 'commit' of large objects.
+        #       One possibility is to use self._content_chunks, and be lazy and
+        #       only fill out self._content as a full string when we actually
+        #       need it. That would at least drop the peak memory consumption
+        #       for 'commit' down to ~1x the size of the largest file, at a
+        #       cost of increased complexity within this code. 2x is still <<
+        #       3x the size of the largest file, so we are doing ok.
         content = ''.join(self.chunks)
         self.chunks = None
         self._delta_index = None

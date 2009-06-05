@@ -2236,13 +2236,11 @@ class Repository(object):
         while True:
             if next_id in (None, _mod_revision.NULL_REVISION):
                 return
+            try:
+                parents = graph.get_parent_map([next_id])[next_id]
+            except KeyError:
+                raise errors.RevisionNotPresent(next_id, self)
             yield next_id
-            # Note: The following line may raise KeyError in the event of
-            # truncated history. We decided not to have a try:except:raise
-            # RevisionNotPresent here until we see a use for it, because of the
-            # cost in an inner loop that is by its very nature O(history).
-            # Robert Collins 20080326
-            parents = graph.get_parent_map([next_id])[next_id]
             if len(parents) == 0:
                 return
             else:
@@ -3051,6 +3049,13 @@ format_registry.register_lazy(
         ' (needs bzr.dev from 1.14)\n',
     'bzrlib.repofmt.groupcompress_repo',
     'RepositoryFormatCHK1',
+    )
+
+format_registry.register_lazy(
+    'Bazaar development format - chk repository with bencode revision '
+        'serialization (needs bzr.dev from 1.15)\n',
+    'bzrlib.repofmt.groupcompress_repo',
+    'RepositoryFormatCHK2',
     )
 
 

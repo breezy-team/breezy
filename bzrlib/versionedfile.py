@@ -47,7 +47,7 @@ from bzrlib.inter import InterObject
 from bzrlib.registry import Registry
 from bzrlib.symbol_versioning import *
 from bzrlib.textmerge import TextMerge
-from bzrlib.util import bencode
+from bzrlib import bencode
 
 
 adapter_registry = Registry()
