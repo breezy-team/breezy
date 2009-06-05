@@ -955,13 +955,40 @@ class InternalNode(Node):
         # prefix is the key in self._items to use, key_filter is the key_filter
         # entries that would match this node
         keys = {}
+        shortcut = False
         if key_filter is None:
+            # yielding all nodes, yield whatever we have, and queue up a read
+            # for whatever we are missing
+            shortcut = True
             for prefix, node in self._items.iteritems():
-                if type(node) == tuple:
+                if type(node) is tuple:
                     keys[node] = (prefix, None)
                 else:
                     yield node, None
-        else:
+        elif len(key_filter) == 1:
+            # We are looking for a single item
+            # Sometimes it is a set, sometimes it is a list
+            key = list(key_filter)[0]
+            search_key = self._search_prefix_filter(key)
+            if len(search_key) == self._node_width:
+                # This item will match exactly, so just do a dict lookup, and
+                # see what we can return
+                shortcut = True
+                try:
+                    node = self._items[search_key]
+                except KeyError:
+                    # A given key can only match 1 child node, if it isn't
+                    # there, then we can just return nothing
+                    return
+                else:
+                    if type(node) is tuple:
+                        keys[node] = (search_key, [key])
+                    else:
+                        # This is loaded, and the only thing that can match,
+                        # return
+                        yield node, [key]
+                        return
+        if not shortcut:
             # XXX defaultdict ?
             prefix_to_keys = {}
             length_filters = {}
@@ -971,6 +998,8 @@ class InternalNode(Node):
                                     len(search_key), set())
                 length_filter.add(search_key)
                 prefix_to_keys.setdefault(search_key, []).append(key)
+            if len(length_filters) > 1:
+                import pdb; pdb.set_trace()
             length_filters = length_filters.items()
             for prefix, node in self._items.iteritems():
                 node_key_filter = []
