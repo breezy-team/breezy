@@ -1,17 +1,16 @@
 Путь Bazaar
 ===========
 
-Grokking Bazaar
----------------
+Глубокое понимание Bazaar
+-------------------------
 
-While Bazaar is similar to other VCS tools in many ways, there are
-some important differences that are not necessarily obvious at first
-glance.  This section attempts
-to explain some of the things users need to know in order to "grok" Bazaar,
-i.e. to deeply understand it.
+Хотя Bazaar во многом похож на другие инструменты контроля версий, есть 
+некоторые важные различия, которые не всегда очевидны на первый взгляд. Этот
+раздел пытается объяснить некоторые вещи, который пользователь должен знать
+чтобы разбираться в Bazaar, т.е. глубоко его понимать.
 
-Note: It isn't necessary to fully understand this section to use Bazaar.
-You may wish to skim this section now and come back to it at a later time.
+Заметьте: чтобы использовать Bazaar совсем необязательно полностью понимать 
+этот раздел. Вы можете просмотреть этот раздел сейчас и вернуться к нему позже. 
 
 Понимание номеров ревизий
 -------------------------
@@ -202,15 +201,15 @@ revision will have the same revision numbers. For example, if Alice and Bob's
 branches agree on revision 10, they will agree on all revisions before
 that.
 
-Summary
--------
+Резюме
+------
 
-In general, if you follow the advice given earlier - organise
-your work in branches and use merge to collaborate - you'll find Bazaar
-generally does what you expect.
+Обычно, если вы следовали ранее полученным советам - организовать вашу работу
+в ветках и использовать объединение для сотрудничества - вы обнаружите что 
+чаще всего Bazaar делает то что вы ожидаете.
 
-In coming chapters, we examine various ways of using Bazaar beginning with
-the simplest: using Bazaar for personal projects.
+В следующих главах, мы проверим различный способы использования Bazaar, начиная 
+с самого простого: использование Bazaar для личных проектов.
 
 ..
    vim: ft=rst tw=74 ai
