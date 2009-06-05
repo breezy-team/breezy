@@ -244,6 +244,7 @@ class DummyProgress(_BaseProgressBar):
 
 class DotsProgressBar(_BaseProgressBar):
 
+    @deprecated_function(deprecated_in((1, 16, 0)))
     def __init__(self, **kwargs):
         _BaseProgressBar.__init__(self, **kwargs)
         self.last_msg = None
@@ -292,6 +293,7 @@ class TTYProgressBar(_BaseProgressBar):
     """
     SPIN_CHARS = r'/-\|'
 
+    @deprecated_function(deprecated_in((1, 16, 0)))
     def __init__(self, **kwargs):
         from bzrlib.osutils import terminal_width
         _BaseProgressBar.__init__(self, **kwargs)

@@ -18,12 +18,6 @@ import os
 from StringIO import StringIO
 
 from bzrlib import errors
-from bzrlib.progress import (
-        DummyProgress,
-        ChildProgress,
-        TTYProgressBar,
-        DotsProgressBar,
-        )
 from bzrlib.tests import TestCase
 from bzrlib.symbol_versioning import (
     deprecated_in,

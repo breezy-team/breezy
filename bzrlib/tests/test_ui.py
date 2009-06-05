@@ -25,11 +25,6 @@ import time
 
 import bzrlib
 import bzrlib.errors as errors
-from bzrlib.progress import (
-    DotsProgressBar,
-    ProgressTask,
-    TTYProgressBar,
-    )
 from bzrlib.symbol_versioning import (
     deprecated_in,
     )

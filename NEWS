@@ -100,8 +100,8 @@ API Changes
 
 * Added osutils.parent_directories(). (Ian Clatworthy)
 
-* ``bzrlib.progress.ProgressBar``, ``ChildProgress`` and
-  ``child_progress`` are now deprecated; use
+* ``bzrlib.progress.ProgressBar``, ``ChildProgress``, ``DotsProgressBar``,
+  ``TTYProgressBar`` and ``child_progress`` are now deprecated; use
   ``ui_factory.nested_progress_bar`` instead.  (Martin Pool)
 
 * TreeTransformBase no longer assumes that limbo is provided via disk.
