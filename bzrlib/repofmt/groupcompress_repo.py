@@ -1066,6 +1066,6 @@ class RepositoryFormatCHK2(RepositoryFormatCHK1):
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
         return ('Bazaar development format - chk repository with bencode '
-                'revision serialization (needs bzr.dev from 1.15)\n')
+                'revision serialization (needs bzr.dev from 1.16)\n')
 
 

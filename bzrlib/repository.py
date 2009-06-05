@@ -3062,7 +3062,7 @@ format_registry.register_lazy(
 
 format_registry.register_lazy(
     'Bazaar development format - chk repository with bencode revision '
-        'serialization (needs bzr.dev from 1.15)\n',
+        'serialization (needs bzr.dev from 1.16)\n',
     'bzrlib.repofmt.groupcompress_repo',
     'RepositoryFormatCHK2',
     )
