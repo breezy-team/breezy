@@ -1,0 +1,7 @@
+set SVN_DEV=${buildout:directory}/${svn-dev:destination}
+set SVN_BDB=${buildout:directory}/${svn-db4:destination}
+set SVN_LIBINTL=${buildout:directory}/${svn-libintl:destination}
+set TBZR=${buildout:directory}/tbzr/trunk
+set TORTOISE_OVERLAYS_MSI_WIN32=${buildout:directory}/${tortoise-overlays:destination}/
+
+
