@@ -511,14 +511,23 @@ class cmd_revision_info(Command):
         if len(revs) == 0:
             revs.append(RevisionSpec.from_string('-1'))
 
+        revinfos = []
+        maxlen = 0
         for rev in revs:
             revision_id = rev.as_revision_id(b)
             try:
-                revno = '%4d' % (b.revision_id_to_revno(revision_id))
+                revno_tuple = b.revision_id_to_dotted_revno(revision_id)
             except errors.NoSuchRevision:
-                dotted_map = b.get_revision_id_to_revno_map()
-                revno = '.'.join(str(i) for i in dotted_map[revision_id])
-            print '%s %s' % (revno, revision_id)
+                revno_tuple = ()
+            if revno_tuple:
+                revno = ".".join(str(n) for n in revno_tuple)
+            else:
+                revno = "???"
+            maxlen = max(maxlen, len(revno))
+            revinfos.append([revno, revision_id])
+
+        for ri in revinfos:
+            print '%*s %s' % (maxlen, ri[0], ri[1])
 
 
 class cmd_add(Command):
