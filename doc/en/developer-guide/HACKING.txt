@@ -12,7 +12,7 @@ the Bazaar mailing list.  To propose a correction or addition to this
 document, send a merge request or new text to the mailing list.
 
 The current version of this document is available in the file 
-``doc/developers/HACKING.txt`` in the source tree, or at
+``doc/en/developer-guide/HACKING.txt`` in the source tree, or at
 http://doc.bazaar-vcs.org/bzr.dev/en/developer-guide/HACKING.html
 
 See also:
@@ -209,35 +209,6 @@ nowhere, so reviewing sooner rather than later is strongly encouraged.
 
 
 
-Sending patches for review
-==========================
-
-If you'd like to propose a change, please post to the
-bazaar@lists.canonical.com list with a bundle, patch, or link to a
-branch. Put ``[PATCH]`` or ``[MERGE]`` in the subject so Bundle Buggy
-can pick it out, and explain the change in the email message text.
-Remember to update the NEWS file as part of your change if it makes any
-changes visible to users or plugin developers. Please include a diff
-against mainline if you're giving a link to a branch.
-
-You can generate a merge request like this::
-
-  bzr send -o bug-1234.patch
-  
-A ``.patch`` extension is recommended instead of .bundle as many mail clients
-will send the latter as a binary file.
-
-``bzr send`` can also send mail directly if you prefer; see the help.
-
-Please do **NOT** put [PATCH] or [MERGE] in the subject line if you don't
-want it to be merged. If you want comments from developers rather than
-to be merged, you can put ``[RFC]`` in the subject line.
-
-If this change addresses a bug, please put the bug number in the subject
-line too, in the form ``[#1]`` so that Bundle Buggy can recognize it.
-
-If the change is intended for a particular release mark that in the
-subject too, e.g. ``[1.6]``.
 
 
 Review cover letters
@@ -332,9 +303,102 @@ Checklist for reviewers
 * (your ideas here...)
 
 
-Bundle Buggy and review outcomes
-================================
+Reviews on Launchpad
+====================
 
+From May 2009 on, we prefer people to propose code reviews through
+Launchpad.  
+
+ * <https://launchpad.net/+tour/code-review>
+
+ * <https://help.launchpad.net/Code/Review>
+
+Anyone can propose or comment on a merge propsal just by creating a
+Launchpad account.
+
+There are two ways to create a new merge proposal: through the web
+interface or by email.
+
+
+Proposing a merge through the web
+---------------------------------
+
+To create the propsal through the web: push your branch to Launchpad, eg::
+
+  bzr push lp:~mbp/bzr/doc
+
+then go to the branch's web page, which in this case would be
+<https://code.launchpad.net/~mbp/bzr/doc>.  You can automate that by just
+running ::
+ 
+  bzr lp-open
+
+You can then click "Propose for merging into another branch", and enter a
+cover letter into the web form.  Typically you'll want to merge into
+``~bzr/bzr/trunk`` which will be the default; you might also want to
+nominate merging into a release branch for a bug fix.  There is the option
+to specify a specific reviewer or type of review, and you shouldn't
+normally change those.
+
+Submitting the form takes you to the new page about the merge proposal
+containing the diff of the changes, comments by interested people, and
+controls to comment or vote on the change.
+
+Proposing a merge by mail
+-------------------------
+
+To propose a merge by mail, send a bundle to ``merge@code.launchpad.net``.
+
+You can generate a merge request like this::
+
+  bzr send -o bug-1234.diff
+  
+``bzr send`` can also send mail directly if you prefer; see the help.
+
+Reviewing changes
+-----------------
+
+From <https://code.launchpad.net/bzr/+activereviews> you can see all
+currently active reviews, and choose one to comment on.  This page also
+shows proposals that are now approved and should be merged by someone with
+PQM access.
+
+
+Reviews through Bundle Buggy
+============================
+
+The Bundle Buggy tool used up to May 2009 is still available as a review
+mechanism.
+
+Sending patches for review
+--------------------------
+
+If you'd like to propose a change, please post to the
+bazaar@lists.canonical.com list with a bundle, patch, or link to a
+branch. Put ``[PATCH]`` or ``[MERGE]`` in the subject so Bundle Buggy
+can pick it out, and explain the change in the email message text.
+Remember to update the NEWS file as part of your change if it makes any
+changes visible to users or plugin developers. Please include a diff
+against mainline if you're giving a link to a branch.
+
+You can generate a merge request like this::
+
+  bzr send -o bug-1234.patch
+  
+A ``.patch`` extension is recommended instead of .bundle as many mail clients
+will send the latter as a binary file.
+
+``bzr send`` can also send mail directly if you prefer; see the help.
+
+Please do **NOT** put [PATCH] or [MERGE] in the subject line if you don't
+want it to be merged. If you want comments from developers rather than
+to be merged, you can put ``[RFC]`` in the subject line.
+
+If this change addresses a bug, please put the bug number in the subject
+line too, in the form ``[#1]`` so that Bundle Buggy can recognize it.
+
+If the change is intended for a particular release mark that in the
+subject too, e.g. ``[1.6]``.
 Anyone can "vote" on the mailing list by expressing an opinion. Core
 developers can also vote using Bundle Buggy. Here are the voting codes and
 their explanations.
@@ -385,7 +449,8 @@ should be a self-contained one-sentence summary.
 We use 4 space indents for blocks, and never use tab characters.  (In vim,
 ``set expandtab``.)
 
-No trailing white space is allowed.
+Trailing white space should be avoided, but is allowed.
+You should however not make lots of unrelated white space changes.
 
 Unix style newlines (LF) are used.
 
@@ -699,7 +764,7 @@ Test coverage
 =============
 
 All code should be exercised by the test suite.  See `Guide to Testing
-Bazaar <testing.html>`_ for detailed information about writing tests.
+Bazaar <../../developers/testing.html>`_ for detailed information about writing tests.
 
 
 Core Topics
@@ -823,6 +888,39 @@ structured data, we should make it so.
 The policy about how output is presented in the text-mode client
 should be only in the command-line tool.
 
+
+Progress and Activity Indications
+---------------------------------
+
+bzrlib has a way for code to display to the user that stuff is happening
+during a long operation.  There are two particular types: *activity* which
+means that IO is happening on a Transport, and *progress* which means that
+higher-level application work is occurring.  Both are drawn together by
+the `ui_factory`.
+
+Transport objects are responsible for calling `report_transport_activity`
+when they do IO.
+
+Progress uses a model/view pattern: application code acts on a
+`ProgressTask` object, which notifies the UI when it needs to be
+displayed.  Progress tasks form a stack.  To create a new progress task on
+top of the stack, call `bzrlib.ui.ui_factory.nested_progress_bar()`, then
+call `update()` on the returned ProgressTask.  It can be updated with just
+a text description, with a numeric count, or with a numeric count and
+expected total count.  If an expected total count is provided the view
+can show the progress moving along towards the expected total.
+
+The user should call `finish` on the `ProgressTask` when the logical
+operation has finished, so it can be removed from the stack.
+
+Progress tasks have a complex relatioship with generators: it's a very
+good place to use them, but because python2.4 does not allow ``finally``
+blocks in generators it's hard to clean them up properly.  In this case
+it's probably better to have the code calling the generator allocate a
+progress task for its use and then call `finalize` when it's done, which
+will close it if it was not already closed.  The generator should also
+finish the progress task when it exits, because it may otherwise be a long
+time until the finally block runs.
 
 
 Displaying help

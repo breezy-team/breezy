@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 # TODO: Check ancestries are correct for every revision: includes
 # every committed so far, and in a reasonable order.
@@ -63,6 +63,8 @@ class Check(object):
         self.checked_weaves = set()
         self.unreferenced_versions = set()
         self.inconsistent_parents = []
+        self.rich_roots = repository.supports_rich_root()
+        self.text_key_references = {}
 
     def check(self):
         self.repository.lock_read()
@@ -209,7 +211,8 @@ class Check(object):
         self.inventory_weave.check(progress_bar=self.progress)
         self.progress.update('checking text storage', 1, 2)
         self.repository.texts.check(progress_bar=self.progress)
-        weave_checker = self.repository._get_versioned_file_checker()
+        weave_checker = self.repository._get_versioned_file_checker(
+            text_key_references=self.text_key_references)
         result = weave_checker.check_file_version_parents(
             self.repository.texts, progress_bar=self.progress)
         self.checked_weaves = weave_checker.file_ids
@@ -228,23 +231,30 @@ class Check(object):
     def _check_revision_tree(self, rev_id):
         tree = self.repository.revision_tree(rev_id)
         inv = tree.inventory
-        seen_ids = {}
-        for file_id in inv:
+        seen_ids = set()
+        seen_names = set()
+        for path, ie in inv.iter_entries():
+            self._add_entry_to_text_key_references(inv, ie)
+            file_id = ie.file_id
             if file_id in seen_ids:
                 raise BzrCheckError('duplicated file_id {%s} '
                                     'in inventory for revision {%s}'
                                     % (file_id, rev_id))
-            seen_ids[file_id] = True
-        for file_id in inv:
-            ie = inv[file_id]
+            seen_ids.add(file_id)
             ie.check(self, rev_id, inv, tree)
-        seen_names = {}
-        for path, ie in inv.iter_entries():
             if path in seen_names:
                 raise BzrCheckError('duplicated path %s '
                                     'in inventory for revision {%s}'
                                     % (path, rev_id))
-            seen_names[path] = True
+            seen_names.add(path)
+
+    def _add_entry_to_text_key_references(self, inv, entry):
+        if not self.rich_roots and entry == inv.root:
+            return
+        key = (entry.file_id, entry.revision)
+        self.text_key_references.setdefault(key, False)
+        if entry.revision == inv.revision_id:
+            self.text_key_references[key] = True
 
 
 @deprecated_function(deprecated_in((1,6,0)))

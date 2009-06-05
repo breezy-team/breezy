@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """The 'medium' layer for the smart servers and clients.
 
@@ -43,7 +43,7 @@ from bzrlib import (
     ui,
     urlutils,
     )
-from bzrlib.smart import client, protocol
+from bzrlib.smart import client, protocol, request, vfs
 from bzrlib.transport import ssh
 """)
 
@@ -381,7 +381,7 @@ class SmartClientMediumRequest(object):
     def accept_bytes(self, bytes):
         """Accept bytes for inclusion in this request.
 
-        This method may not be be called after finished_writing() has been
+        This method may not be called after finished_writing() has been
         called.  It depends upon the Medium whether or not the bytes will be
         immediately transmitted. Message based Mediums will tend to buffer the
         bytes until finished_writing() is called.
@@ -509,7 +509,8 @@ class _DebugCounter(object):
         """
         medium_repr = repr(medium)
         # Add this medium to the WeakKeyDictionary
-        self.counts[medium] = [0, medium_repr]
+        self.counts[medium] = dict(count=0, vfs_count=0,
+                                   medium_repr=medium_repr)
         # Weakref callbacks are fired in reverse order of their association
         # with the referenced object.  So we add a weakref *after* adding to
         # the WeakKeyDict so that we can report the value from it before the
@@ -519,17 +520,23 @@ class _DebugCounter(object):
     def increment_call_count(self, params):
         # Increment the count in the WeakKeyDictionary
         value = self.counts[params.medium]
-        value[0] += 1
+        value['count'] += 1
+        request_method = request.request_handlers.get(params.method)
+        if issubclass(request_method, vfs.VfsRequest):
+            value['vfs_count'] += 1
 
     def done(self, ref):
         value = self.counts[ref]
-        count, medium_repr = value
+        count, vfs_count, medium_repr = (
+            value['count'], value['vfs_count'], value['medium_repr'])
         # In case this callback is invoked for the same ref twice (by the
         # weakref callback and by the atexit function), set the call count back
         # to 0 so this item won't be reported twice.
-        value[0] = 0
+        value['count'] = 0
+        value['vfs_count'] = 0
         if count != 0:
-            trace.note('HPSS calls: %d %s', count, medium_repr)
+            trace.note('HPSS calls: %d (%d vfs) %s',
+                       count, vfs_count, medium_repr)
 
     def flush_all(self):
         for ref in list(self.counts.keys()):
@@ -727,22 +734,31 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         :param vendor: An optional override for the ssh vendor to use. See
             bzrlib.transport.ssh for details on ssh vendors.
         """
-        SmartClientStreamMedium.__init__(self, base)
         self._connected = False
         self._host = host
         self._password = password
         self._port = port
         self._username = username
+        # SmartClientStreamMedium stores the repr of this object in its
+        # _DebugCounter so we have to store all the values used in our repr
+        # method before calling the super init.
+        SmartClientStreamMedium.__init__(self, base)
         self._read_from = None
         self._ssh_connection = None
         self._vendor = vendor
         self._write_to = None
         self._bzr_remote_path = bzr_remote_path
-        if self._bzr_remote_path is None:
-            symbol_versioning.warn(
-                'bzr_remote_path is required as of bzr 0.92',
-                DeprecationWarning, stacklevel=2)
-            self._bzr_remote_path = os.environ.get('BZR_REMOTE_PATH', 'bzr')
+        # for the benefit of progress making a short description of this
+        # transport
+        self._scheme = 'bzr+ssh'
+
+    def __repr__(self):
+        return "%s(connected=%r, username=%r, host=%r, port=%r)" % (
+            self.__class__.__name__,
+            self._connected,
+            self._username,
+            self._host,
+            self._port)
 
     def _accept_bytes(self, bytes):
         """See SmartClientStreamMedium.accept_bytes."""

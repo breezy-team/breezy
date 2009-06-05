@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the Branch facility that are not interface  tests.
 
@@ -151,7 +151,7 @@ class SampleBranchFormat(BranchFormat):
     def is_supported(self):
         return False
 
-    def open(self, transport, _found=False):
+    def open(self, transport, _found=False, ignore_fallbacks=False):
         return "opened branch."
 
 
@@ -228,6 +228,7 @@ class TestBranch67(object):
         branch = self.make_branch('a', format=self.get_format_name())
         self.failUnlessExists('a/.bzr/branch/last-revision')
         self.failIfExists('a/.bzr/branch/revision-history')
+        self.failIfExists('a/.bzr/branch/references')
 
     def test_config(self):
         """Ensure that all configuration data is stored in the branch"""
@@ -334,7 +335,7 @@ class TestBranch7(TestBranch67, TestCaseWithTransport):
         return _mod_branch.BzrBranch7
 
     def get_format_name(self):
-        return "development"
+        return "1.9"
 
     def get_format_name_subtree(self):
         return "development-subtree"
@@ -377,6 +378,67 @@ class TestBranch7(TestBranch67, TestCaseWithTransport):
         revid = target.commit('foo')
         self.assertTrue(branch.repository.has_revision(revid))
 
+
+class BzrBranch8(TestCaseWithTransport):
+
+    def make_branch(self, location, format=None):
+        if format is None:
+            format = bzrdir.format_registry.make_bzrdir('1.9')
+            format.set_branch_format(_mod_branch.BzrBranchFormat8())
+        return TestCaseWithTransport.make_branch(self, location, format=format)
+
+    def create_branch_with_reference(self):
+        branch = self.make_branch('branch')
+        branch._set_all_reference_info({'file-id': ('path', 'location')})
+        return branch
+
+    @staticmethod
+    def instrument_branch(branch, gets):
+        old_get = branch._transport.get
+        def get(*args, **kwargs):
+            gets.append((args, kwargs))
+            return old_get(*args, **kwargs)
+        branch._transport.get = get
+
+    def test_reference_info_caching_read_locked(self):
+        gets = []
+        branch = self.create_branch_with_reference()
+        branch.lock_read()
+        self.addCleanup(branch.unlock)
+        self.instrument_branch(branch, gets)
+        branch.get_reference_info('file-id')
+        branch.get_reference_info('file-id')
+        self.assertEqual(1, len(gets))
+
+    def test_reference_info_caching_read_unlocked(self):
+        gets = []
+        branch = self.create_branch_with_reference()
+        self.instrument_branch(branch, gets)
+        branch.get_reference_info('file-id')
+        branch.get_reference_info('file-id')
+        self.assertEqual(2, len(gets))
+
+    def test_reference_info_caching_write_locked(self):
+        gets = []
+        branch = self.make_branch('branch')
+        branch.lock_write()
+        self.instrument_branch(branch, gets)
+        self.addCleanup(branch.unlock)
+        branch._set_all_reference_info({'file-id': ('path2', 'location2')})
+        path, location = branch.get_reference_info('file-id')
+        self.assertEqual(0, len(gets))
+        self.assertEqual('path2', path)
+        self.assertEqual('location2', location)
+
+    def test_reference_info_caches_cleared(self):
+        branch = self.make_branch('branch')
+        branch.lock_write()
+        branch.set_reference_info('file-id', 'path2', 'location2')
+        branch.unlock()
+        doppelganger = Branch.open('branch')
+        doppelganger.set_reference_info('file-id', 'path3', 'location3')
+        self.assertEqual(('path3', 'location3'),
+                         branch.get_reference_info('file-id'))
 
 class TestBranchReference(TestCaseWithTransport):
     """Tests for the branch reference facility."""
@@ -424,7 +486,8 @@ class TestHooks(TestCase):
     def test_installed_hooks_are_BranchHooks(self):
         """The installed hooks object should be a BranchHooks."""
         # the installed hooks are saved in self._preserved_hooks.
-        self.assertIsInstance(self._preserved_hooks[_mod_branch.Branch], BranchHooks)
+        self.assertIsInstance(self._preserved_hooks[_mod_branch.Branch][1],
+            BranchHooks)
 
 
 class TestPullResult(TestCase):
@@ -470,6 +533,7 @@ class TestRunWithWriteLockedTarget(TestCase):
     """Tests for _run_with_write_locked_target."""
 
     def setUp(self):
+        TestCase.setUp(self)
         self._calls = []
 
     def func_that_returns_ok(self):

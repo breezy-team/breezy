@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Exceptions for bzr, and reporting of them.
 """
@@ -1003,14 +1003,15 @@ class UnlockableTransport(LockError):
 
 class LockContention(LockError):
 
-    _fmt = 'Could not acquire lock "%(lock)s"'
+    _fmt = 'Could not acquire lock "%(lock)s": %(msg)s'
     # TODO: show full url for lock, combining the transport and relative
     # bits?
 
     internal_error = False
 
-    def __init__(self, lock):
+    def __init__(self, lock, msg=''):
         self.lock = lock
+        self.msg = msg
 
 
 class LockBroken(LockError):
@@ -1172,7 +1173,8 @@ class AppendRevisionsOnlyViolation(BzrError):
 class DivergedBranches(BzrError):
 
     _fmt = ("These branches have diverged."
-            " Use the merge command to reconcile them.")
+            " Use the missing command to see how.\n"
+            "Use the merge command to reconcile them.")
 
     def __init__(self, branch1, branch2):
         self.branch1 = branch1
@@ -1224,15 +1226,6 @@ class NotAncestor(BzrError):
     def __init__(self, rev_id, not_ancestor_id):
         BzrError.__init__(self, rev_id=rev_id,
             not_ancestor_id=not_ancestor_id)
-
-
-class InstallFailed(BzrError):
-
-    def __init__(self, revisions):
-        revision_str = ", ".join(str(r) for r in revisions)
-        msg = "Could not install revisions:\n%s" % revision_str
-        BzrError.__init__(self, msg)
-        self.revisions = revisions
 
 
 class AmbiguousBase(BzrError):
@@ -2308,15 +2301,6 @@ class NoSmartMedium(InternalBzrError):
         self.transport = transport
 
 
-class NoSmartServer(NotBranchError):
-
-    _fmt = "No smart server available at %(url)s"
-
-    @symbol_versioning.deprecated_method(symbol_versioning.one_four)
-    def __init__(self, url):
-        self.url = url
-
-
 class UnknownSSH(BzrError):
 
     _fmt = "Unrecognised value for BZR_SSH environment variable: %(vendor)s"
@@ -2503,7 +2487,8 @@ class TagAlreadyExists(BzrError):
 
 class MalformedBugIdentifier(BzrError):
 
-    _fmt = "Did not understand bug identifier %(bug_id)s: %(reason)s"
+    _fmt = ('Did not understand bug identifier %(bug_id)s: %(reason)s. '
+            'See "bzr help bugs" for more information on this feature.')
 
     def __init__(self, bug_id, reason):
         self.bug_id = bug_id
@@ -2528,6 +2513,22 @@ class UnknownBugTrackerAbbreviation(BzrError):
     def __init__(self, abbreviation, branch):
         self.abbreviation = abbreviation
         self.branch = branch
+
+
+class InvalidLineInBugsProperty(BzrError):
+
+    _fmt = ("Invalid line in bugs property: '%(line)s'")
+
+    def __init__(self, line):
+        self.line = line
+
+
+class InvalidBugStatus(BzrError):
+
+    _fmt = ("Invalid bug status: '%(status)s'")
+
+    def __init__(self, status):
+        self.status = status
 
 
 class UnexpectedSmartServerResponse(BzrError):
@@ -2841,11 +2842,6 @@ class NoPluginAvailable(BzrError):
     pass
 
 
-class NotATerminal(BzrError):
-
-    _fmt = 'Unable to ask for a password without real terminal.'
-
-
 class UnableEncodePath(BzrError):
 
     _fmt = ('Unable to encode %(kind)s path %(path)r in '
@@ -2956,6 +2952,14 @@ class InvalidShelfId(BzrError):
         BzrError.__init__(self, invalid_id=invalid_id)
 
 
+class JailBreak(BzrError):
+
+    _fmt = "An attempt to access a url outside the server jail was made: '%(url)s'."
+
+    def __init__(self, url):
+        BzrError.__init__(self, url=url)
+
+
 class UserAbort(BzrError):
 
     _fmt = 'The user aborted the operation.'
@@ -3021,3 +3025,15 @@ class UnsuspendableWriteGroup(BzrError):
 
     def __init__(self, repository):
         self.repository = repository
+
+
+class LossyPushToSameVCS(BzrError):
+
+    _fmt = ("Lossy push not possible between %(source_branch)r and "
+            "%(target_branch)r that are in the same VCS.")
+
+    internal_error = True
+
+    def __init__(self, source_branch, target_branch):
+        self.source_branch = source_branch
+        self.target_branch = target_branch

@@ -147,7 +147,7 @@ record).
 
 Although records are in principle addressable by name, this specification
 alone doesn't provide for efficient access to a particular record given
-its name.  It is intended that seperate indexes will be maintained to
+its name.  It is intended that separate indexes will be maintained to
 provide this.
 
 It is acceptable to have records with no explicit name, if the expected

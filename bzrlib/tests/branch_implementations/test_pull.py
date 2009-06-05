@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for branch.pull behaviour."""
 
@@ -69,6 +69,32 @@ class TestPull(TestCaseWithBranch):
         checkout.branch.pull(other.branch)
         self.assertEqual([rev1, rev2], checkout.branch.revision_history())
         self.assertEqual([rev1, rev2], master_tree.branch.revision_history())
+
+    def test_pull_local_updates_checkout_only(self):
+        """Pulling --local into a checkout updates the checkout and not the
+        master branch"""
+        master_tree = self.make_branch_and_tree('master')
+        rev1 = master_tree.commit('master')
+        checkout = master_tree.branch.create_checkout('checkout')
+
+        other = master_tree.branch.bzrdir.sprout('other').open_workingtree()
+        rev2 = other.commit('other commit')
+        # now pull local, which should update checkout but not master.
+        checkout.branch.pull(other.branch, local = True)
+        self.assertEqual([rev1, rev2], checkout.branch.revision_history())
+        self.assertEqual([rev1], master_tree.branch.revision_history())
+
+    def test_pull_local_raises_LocalRequiresBoundBranch_on_unbound(self):
+        """Pulling --local into a branch that is not bound should fail."""
+        master_tree = self.make_branch_and_tree('branch')
+        rev1 = master_tree.commit('master')
+
+        other = master_tree.branch.bzrdir.sprout('other').open_workingtree()
+        rev2 = other.commit('other commit')
+        # now pull --local, which should raise LocalRequiresBoundBranch error.
+        self.assertRaises(errors.LocalRequiresBoundBranch,
+                          master_tree.branch.pull, other.branch, local = True)
+        self.assertEqual([rev1], master_tree.branch.revision_history())
 
     def test_pull_raises_specific_error_on_master_connection_error(self):
         master_tree = self.make_branch_and_tree('master')

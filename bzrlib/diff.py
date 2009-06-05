@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import difflib
 import os
@@ -41,9 +41,8 @@ from bzrlib import (
 """)
 
 from bzrlib.symbol_versioning import (
-        deprecated_function,
-        one_three
-        )
+    deprecated_function,
+    )
 from bzrlib.trace import mutter, note, warning
 
 
@@ -368,7 +367,7 @@ def _get_trees_to_diff(path_list, revision_specs, old_url, new_url,
             if view_files:
                 specific_files = view_files
                 view_str = views.view_display_str(view_files)
-                note("*** ignoring files outside view: %s" % view_str)
+                note("*** Ignoring files outside view. View is %s" % view_str)
 
     # Get extra trees that ought to be searched for file-ids
     extra_trees = None
@@ -440,13 +439,6 @@ def _patch_header_date(tree, file_id, path):
     mtime = tree.get_file_mtime(file_id, path)
     return timestamp.format_patch_date(mtime)
 
-
-@deprecated_function(one_three)
-def get_prop_change(meta_modified):
-    if meta_modified:
-        return " (properties changed)"
-    else:
-        return  ""
 
 def get_executable_change(old_is_x, new_is_x):
     descr = { True:"+x", False:"-x", None:"??" }
@@ -628,9 +620,11 @@ class DiffText(DiffPath):
             return self.CANNOT_DIFF
         from_label = '%s%s\t%s' % (self.old_label, old_path, old_date)
         to_label = '%s%s\t%s' % (self.new_label, new_path, new_date)
-        return self.diff_text(from_file_id, to_file_id, from_label, to_label)
+        return self.diff_text(from_file_id, to_file_id, from_label, to_label,
+            old_path, new_path)
 
-    def diff_text(self, from_file_id, to_file_id, from_label, to_label):
+    def diff_text(self, from_file_id, to_file_id, from_label, to_label,
+        from_path=None, to_path=None):
         """Diff the content of given files in two trees
 
         :param from_file_id: The id of the file in the from tree.  If None,
@@ -638,15 +632,17 @@ class DiffText(DiffPath):
         :param to_file_id: The id of the file in the to tree.  This may refer
             to a different file from from_file_id.  If None,
             the file is not present in the to tree.
+        :param from_path: The path in the from tree or None if unknown.
+        :param to_path: The path in the to tree or None if unknown.
         """
-        def _get_text(tree, file_id):
+        def _get_text(tree, file_id, path):
             if file_id is not None:
-                return tree.get_file(file_id).readlines()
+                return tree.get_file(file_id, path).readlines()
             else:
                 return []
         try:
-            from_text = _get_text(self.old_tree, from_file_id)
-            to_text = _get_text(self.new_tree, to_file_id)
+            from_text = _get_text(self.old_tree, from_file_id, from_path)
+            to_text = _get_text(self.new_tree, to_file_id, to_path)
             self.text_differ(from_label, from_text, to_label, to_text,
                              self.to_file)
         except errors.BinaryFile:
@@ -739,7 +735,12 @@ class DiffFromTool(DiffPath):
         return old_disk_path, new_disk_path
 
     def finish(self):
-        osutils.rmtree(self._root)
+        try:
+            osutils.rmtree(self._root)
+        except OSError, e:
+            if e.errno != errno.ENOENT:
+                mutter("The temporary directory \"%s\" was not "
+                        "cleanly removed: %s." % (self._root, e))
 
     def diff(self, file_id, old_path, new_path, old_kind, new_kind):
         if (old_kind, new_kind) != ('file', 'file'):
@@ -890,7 +891,7 @@ class DiffTree(object):
                 self.to_file.write("=== modified %s '%s'%s\n" % (kind[0],
                                    newpath_encoded, prop_str))
             if changed_content:
-                self.diff(file_id, oldpath, newpath)
+                self._diff(file_id, oldpath, newpath, kind[0], kind[1])
                 has_changes = 1
             if renamed:
                 has_changes = 1
@@ -911,7 +912,10 @@ class DiffTree(object):
             new_kind = self.new_tree.kind(file_id)
         except (errors.NoSuchId, errors.NoSuchFile):
             new_kind = None
+        self._diff(file_id, old_path, new_path, old_kind, new_kind)
 
+
+    def _diff(self, file_id, old_path, new_path, old_kind, new_kind):
         result = DiffPath._diff_many(self.differs, file_id, old_path,
                                        new_path, old_kind, new_kind)
         if result is DiffPath.CANNOT_DIFF:

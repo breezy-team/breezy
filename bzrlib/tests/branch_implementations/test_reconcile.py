@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for branch implementations - test reconcile() functionality"""
 
@@ -70,3 +70,13 @@ class TestBranchReconcile(TestCaseWithBranch):
         a_branch = self.make_branch('a_branch')
         a_branch.reconcile(thorough=False)
         a_branch.reconcile(thorough=True)
+
+    def test_reconcile_handles_ghosts_in_revhistory(self):
+        tree = self.make_branch_and_tree('test')
+        tree.set_parent_ids(["spooky"], allow_leftmost_as_ghost=True)
+        r1 = tree.commit('one')
+        r2 = tree.commit('two')
+        tree.branch.set_last_revision_info(2, r2)
+
+        reconciler = tree.branch.reconcile()
+        self.assertEquals([r1, r2], tree.branch.revision_history())

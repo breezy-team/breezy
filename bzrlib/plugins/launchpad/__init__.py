@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Launchpad.net integration plugin for Bazaar."""
 
@@ -20,6 +20,9 @@
 # variable $BZR_LP_XMLRPL_URL
 
 # see http://bazaar-vcs.org/Specs/BranchRegistrationTool
+
+# Since we are a built-in plugin we share the bzrlib version
+from bzrlib import version_info
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -226,6 +229,7 @@ class cmd_launchpad_login(Command):
                 self.outf.write('No Launchpad user ID configured.\n')
                 return 1
         else:
+            name = name.lower()
             if check_account:
                 account.check_lp_login(name)
             account.set_lp_login(name)
@@ -275,15 +279,21 @@ features to communicate with Launchpad:
       is then used by the 'lp:' transport to download your branches using
       bzr+ssh://.
 
+    * The 'lp:' transport uses Launchpad as a directory service: for example
+      'lp:bzr' and 'lp:python' refer to the main branches of the relevant
+      projects and may be branched, logged, etc. You can also use the 'lp:'
+      transport to refer to specific branches, e.g. lp:~bzr/bzr/trunk.
+
+    * The 'lp:' bug tracker alias can expand launchpad bug numbers to their
+      URLs for use with 'bzr commit --fixes', e.g. 'bzr commit --fixes lp:12345'
+      will record a revision property that marks that revision as fixing
+      Launchpad bug 12345. When you push that branch to Launchpad it will
+      automatically be linked to the bug report.
+
     * The register-branch command tells Launchpad about the url of a
       public branch.  Launchpad will then mirror the branch, display
       its contents and allow it to be attached to bugs and other
       objects.
-
-    * The 'lp:' transport uses Launchpad as a directory service: for example
-      'lp:bzr' and 'lp:python' refer to the main branches of the relevant
-      projects and may be branched, logged, etc. You can also use the 'lp:'
-      transport to refer to specific branches, e.g. lp:///~bzr/bzr/trunk.
 
 For more information see http://help.launchpad.net/
 """

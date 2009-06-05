@@ -12,13 +12,18 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Server-side bzrdir related request implmentations."""
 
 
 from bzrlib import branch, errors, repository
-from bzrlib.bzrdir import BzrDir, BzrDirFormat, BzrDirMetaFormat1
+from bzrlib.bzrdir import (
+    BzrDir,
+    BzrDirFormat,
+    BzrDirMetaFormat1,
+    network_format_registry,
+    )
 from bzrlib.smart.request import (
     FailedSmartServerResponse,
     SmartServerRequest,
@@ -92,11 +97,25 @@ class SmartServerRequestBzrDir(SmartServerRequest):
 class SmartServerBzrDirRequestCloningMetaDir(SmartServerRequestBzrDir):
 
     def do_bzrdir_request(self, require_stacking):
-        """Get the format that should be used when cloning from this dir."""
+        """Get the format that should be used when cloning from this dir.
+
+        New in 1.13.
+        
+        :return: on success, a 3-tuple of network names for (control,
+            repository, branch) directories, where '' signifies "not present".
+            If this BzrDir contains a branch reference then this will fail with
+            BranchReference; clients should resolve branch references before
+            calling this RPC.
+        """
         try:
             branch_ref = self._bzrdir.get_branch_reference()
         except errors.NotBranchError:
             branch_ref = None
+        if branch_ref is not None:
+            # The server shouldn't try to resolve references, and it quite
+            # possibly can't reach them anyway.  The client needs to resolve
+            # the branch reference to determine the cloning_metadir.
+            return FailedSmartServerResponse(('BranchReference',))
         if require_stacking == "True":
             require_stacking = True
         else:
@@ -104,16 +123,11 @@ class SmartServerBzrDirRequestCloningMetaDir(SmartServerRequestBzrDir):
         control_format = self._bzrdir.cloning_metadir(
             require_stacking=require_stacking)
         control_name = control_format.network_name()
-        # XXX: There should be a method that tells us that the format does/does not
-        # have subformats.
+        # XXX: There should be a method that tells us that the format does/does
+        # not have subformats.
         if isinstance(control_format, BzrDirMetaFormat1):
-            if branch_ref is not None:
-                # If there's a branch reference, the client will have to resolve
-                # the branch reference to figure out the cloning metadir
-                branch_name = ('ref', branch_ref)
-            else:
-                branch_name = ('branch',
-                    control_format.get_branch_format().network_name())
+            branch_name = ('branch',
+                control_format.get_branch_format().network_name())
             repository_name = control_format.repository_format.network_name()
         else:
             # Only MetaDir has delegated formats today.
@@ -166,7 +180,7 @@ class SmartServerRequestCreateRepository(SmartServerRequestBzrDir):
 
         This operates precisely like 'bzrdir.create_repository'.
 
-        If a bzrdir is not present, an exception is propogated
+        If a bzrdir is not present, an exception is propagated
         rather than 'no branch' because these are different conditions (and
         this method should only be called after establishing that a bzr dir
         exists anyway).
@@ -223,7 +237,7 @@ class SmartServerRequestFindRepositoryV1(SmartServerRequestFindRepository):
 
         This operates precisely like 'bzrdir.find_repository'.
 
-        If a bzrdir is not present, an exception is propogated
+        If a bzrdir is not present, an exception is propagated
         rather than 'no branch' because these are different conditions.
 
         This is the initial version of this method introduced with the smart
@@ -246,7 +260,7 @@ class SmartServerRequestFindRepositoryV2(SmartServerRequestFindRepository):
 
         This operates precisely like 'bzrdir.find_repository'.
 
-        If a bzrdir is not present, an exception is propogated
+        If a bzrdir is not present, an exception is propagated
         rather than 'no branch' because these are different conditions.
 
         This is the second edition of this method introduced in bzr 1.3, which
@@ -288,6 +302,21 @@ class SmartServerRequestFindRepositoryV3(SmartServerRequestFindRepository):
             return FailedSmartServerResponse(('norepository', ))
 
 
+class SmartServerBzrDirRequestConfigFile(SmartServerRequestBzrDir):
+
+    def do_bzrdir_request(self):
+        """Get the configuration bytes for a config file in bzrdir.
+        
+        The body is not utf8 decoded - it is the literal bytestream from disk.
+        """
+        config = self._bzrdir._get_config()
+        if config is None:
+            content = ''
+        else:
+            content = config._get_config_file().read()
+        return SuccessfulSmartServerResponse((), content)
+
+
 class SmartServerRequestInitializeBzrDir(SmartServerRequest):
 
     def do(self, path):
@@ -299,6 +328,90 @@ class SmartServerRequestInitializeBzrDir(SmartServerRequest):
         target_transport = self.transport_from_client_path(path)
         BzrDirFormat.get_default_format().initialize_on_transport(target_transport)
         return SuccessfulSmartServerResponse(('ok', ))
+
+
+class SmartServerRequestBzrDirInitializeEx(SmartServerRequestBzrDir):
+
+    def parse_NoneTrueFalse(self, arg):
+        if not arg:
+            return None
+        if arg == 'False':
+            return False
+        if arg == 'True':
+            return True
+        raise AssertionError("invalid arg %r" % arg)
+
+    def parse_NoneString(self, arg):
+        return arg or None
+
+    def _serialize_NoneTrueFalse(self, arg):
+        if arg is False:
+            return 'False'
+        if not arg:
+            return ''
+        return 'True'
+
+    def do(self, bzrdir_network_name, path, use_existing_dir, create_prefix,
+        force_new_repo, stacked_on, stack_on_pwd, repo_format_name,
+        make_working_trees, shared_repo):
+        """Initialize a bzrdir at path as per BzrDirFormat.initialize_ex
+
+        :return: return SuccessfulSmartServerResponse((repo_path, rich_root,
+            tree_ref, external_lookup, repo_network_name,
+            repo_bzrdir_network_name, bzrdir_format_network_name,
+            NoneTrueFalse(stacking), final_stack, final_stack_pwd,
+            repo_lock_token))
+        """
+        target_transport = self.transport_from_client_path(path)
+        format = network_format_registry.get(bzrdir_network_name)
+        use_existing_dir = self.parse_NoneTrueFalse(use_existing_dir)
+        create_prefix = self.parse_NoneTrueFalse(create_prefix)
+        force_new_repo = self.parse_NoneTrueFalse(force_new_repo)
+        stacked_on = self.parse_NoneString(stacked_on)
+        stack_on_pwd = self.parse_NoneString(stack_on_pwd)
+        make_working_trees = self.parse_NoneTrueFalse(make_working_trees)
+        shared_repo = self.parse_NoneTrueFalse(shared_repo)
+        if stack_on_pwd == '.':
+            stack_on_pwd = target_transport.base
+        repo_format_name = self.parse_NoneString(repo_format_name)
+        repo, bzrdir, stacking, repository_policy = \
+            format.initialize_on_transport_ex(target_transport,
+            use_existing_dir=use_existing_dir, create_prefix=create_prefix,
+            force_new_repo=force_new_repo, stacked_on=stacked_on,
+            stack_on_pwd=stack_on_pwd, repo_format_name=repo_format_name,
+            make_working_trees=make_working_trees, shared_repo=shared_repo)
+        if repo is None:
+            repo_path = ''
+            repo_name = ''
+            rich_root = tree_ref = external_lookup = ''
+            repo_bzrdir_name = ''
+            final_stack = None
+            final_stack_pwd = None
+            repo_lock_token = ''
+        else:
+            repo_path = self._repo_relpath(bzrdir.root_transport, repo)
+            if repo_path == '':
+                repo_path = '.'
+            rich_root, tree_ref, external_lookup = self._format_to_capabilities(
+                repo._format)
+            repo_name = repo._format.network_name()
+            repo_bzrdir_name = repo.bzrdir._format.network_name()
+            final_stack = repository_policy._stack_on
+            final_stack_pwd = repository_policy._stack_on_pwd
+            # It is returned locked, but we need to do the lock to get the lock
+            # token.
+            repo.unlock()
+            repo_lock_token = repo.lock_write() or ''
+            if repo_lock_token:
+                repo.leave_lock_in_place()
+            repo.unlock()
+        final_stack = final_stack or ''
+        final_stack_pwd = final_stack_pwd or ''
+        return SuccessfulSmartServerResponse((repo_path, rich_root, tree_ref,
+            external_lookup, repo_name, repo_bzrdir_name,
+            bzrdir._format.network_name(),
+            self._serialize_NoneTrueFalse(stacking), final_stack,
+            final_stack_pwd, repo_lock_token))
 
 
 class SmartServerRequestOpenBranch(SmartServerRequestBzrDir):
@@ -322,7 +435,8 @@ class SmartServerRequestOpenBranchV2(SmartServerRequestBzrDir):
         try:
             reference_url = self._bzrdir.get_branch_reference()
             if reference_url is None:
-                format = self._bzrdir.open_branch()._format.network_name()
+                br = self._bzrdir.open_branch(ignore_fallbacks=True)
+                format = br._format.network_name()
                 return SuccessfulSmartServerResponse(('branch', format))
             else:
                 return SuccessfulSmartServerResponse(('ref', reference_url))

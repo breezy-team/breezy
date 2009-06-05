@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Test that we can use smart_add on all Tree implementations."""
 
@@ -174,6 +174,16 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
         for path in not_added:
             self.assertEqual(None, wt.path2id(path.rstrip('/')),
                     'Accidentally added path: %s' % (path,))
+
+    def test_add_file_in_unknown_dir(self):
+        # Test that parent directory addition is implicit
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['dir/', 'dir/subdir/', 'dir/subdir/foo'])
+        tree.smart_add(['dir/subdir/foo'])
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertEqual(['', 'dir', 'dir/subdir', 'dir/subdir/foo'],
+            [path for path, ie in tree.iter_entries_by_dir()])
 
     def test_custom_ids(self):
         sio = StringIO()

@@ -14,7 +14,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Branch implementation tests for bzr.
@@ -130,6 +130,38 @@ class TestCaseWithBranch(TestCaseWithBzrDir):
         return tree
 
 
+def branch_scenarios():
+    """ """
+    # Generate a list of branch formats and their associated bzrdir formats to
+    # use.
+    combinations = [(format, format._matchingbzrdir) for format in
+         BranchFormat._formats.values() + _legacy_formats]
+    scenarios = make_scenarios(
+        # None here will cause the default vfs transport server to be used.
+        None,
+        # None here will cause a readonly decorator to be created
+        # by the TestCaseWithTransport.get_readonly_transport method.
+        None,
+        combinations)
+    # Add RemoteBranch tests, which need a special server.
+    remote_branch_format = RemoteBranchFormat()
+    scenarios.extend(make_scenarios(
+        SmartTCPServer_for_testing,
+        ReadonlySmartTCPServer_for_testing,
+        [(remote_branch_format, remote_branch_format._matchingbzrdir)],
+        MemoryServer,
+        name_suffix='-default'))
+    # Also add tests for RemoteBranch with HPSS protocol v2 (i.e. bzr <1.6)
+    # server.
+    scenarios.extend(make_scenarios(
+        SmartTCPServer_for_testing_v2_only,
+        ReadonlySmartTCPServer_for_testing_v2_only,
+        [(remote_branch_format, remote_branch_format._matchingbzrdir)],
+        MemoryServer,
+        name_suffix='-v2'))
+    return scenarios
+
+
 def load_tests(standard_tests, module, loader):
     test_branch_implementations = [
         'bzrlib.tests.branch_implementations.test_bound_sftp',
@@ -161,32 +193,4 @@ def load_tests(standard_tests, module, loader):
         'bzrlib.tests.branch_implementations.test_update',
         ]
     sub_tests = loader.loadTestsFromModuleNames(test_branch_implementations)
-    # Generate a list of branch formats and their associated bzrdir formats to
-    # use.
-    combinations = [(format, format._matchingbzrdir) for format in
-         BranchFormat._formats.values() + _legacy_formats]
-    scenarios = make_scenarios(
-        # None here will cause the default vfs transport server to be used.
-        None,
-        # None here will cause a readonly decorator to be created
-        # by the TestCaseWithTransport.get_readonly_transport method.
-        None,
-        combinations)
-    # Add RemoteBranch tests, which need a special server.
-    remote_branch_format = RemoteBranchFormat()
-    scenarios.extend(make_scenarios(
-        SmartTCPServer_for_testing,
-        ReadonlySmartTCPServer_for_testing,
-        [(remote_branch_format, remote_branch_format._matchingbzrdir)],
-        MemoryServer,
-        name_suffix='-default'))
-    # Also add tests for RemoteBranch with HPSS protocol v2 (i.e. bzr <1.6)
-    # server.
-    scenarios.extend(make_scenarios(
-        SmartTCPServer_for_testing_v2_only,
-        ReadonlySmartTCPServer_for_testing_v2_only,
-        [(remote_branch_format, remote_branch_format._matchingbzrdir)],
-        MemoryServer,
-        name_suffix='-v2'))
-    # add the tests for the sub modules
-    return tests.multiply_tests(sub_tests, scenarios, standard_tests)
+    return tests.multiply_tests(sub_tests, branch_scenarios(), standard_tests)

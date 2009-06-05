@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """UI tests for bzr ignore."""
 
@@ -124,7 +124,9 @@ class TestCommands(ExternalBase):
         out, err = self.run_bzr('ignore a')
         self.assertEqual(out,
                          "Warning: the following files are version controlled"\
-                         " and match your ignore pattern:\na\n")
+                         " and match your ignore pattern:\na\n"\
+                         "These files will continue to be version controlled"\
+                         " unless you 'bzr remove' them.\n")
 
         # test a single unversioned file
         out, err = self.run_bzr('ignore b')
@@ -135,7 +137,9 @@ class TestCommands(ExternalBase):
         out, err = self.run_bzr('ignore *')
         self.assertEqual(out,
                          "Warning: the following files are version controlled"\
-                         " and match your ignore pattern:\n.bzrignore\na\nb\n")
+                         " and match your ignore pattern:\n.bzrignore\na\nb\n"\
+                         "These files will continue to be version controlled"\
+                         " unless you 'bzr remove' them.\n")
 
     def test_ignored_versioned_file_matching_new_pattern(self):
         tree = self.make_branch_and_tree('.')
@@ -148,4 +152,6 @@ class TestCommands(ExternalBase):
         out, err = self.run_bzr('ignore b')
         self.assertEqual(out,
                          "Warning: the following files are version controlled"\
-                         " and match your ignore pattern:\nb\n")
+                         " and match your ignore pattern:\nb\n"\
+                         "These files will continue to be version controlled"\
+                         " unless you 'bzr remove' them.\n")

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Tests of the bzr serve command."""
@@ -132,6 +132,18 @@ class TestBzrServe(TestCaseWithTransport):
         self.make_branch('.')
 
         process, url = self.start_server_port(['--allow-writes'])
+
+        # Connect to the server
+        branch = Branch.open(url)
+        self.make_read_requests(branch)
+        self.assertServerFinishesCleanly(process)
+
+    def test_bzr_serve_supports_protocol(self):
+        # Make a branch
+        self.make_branch('.')
+
+        process, url = self.start_server_port(['--allow-writes',
+                                               '--protocol=bzr'])
 
         # Connect to the server
         branch = Branch.open(url)
