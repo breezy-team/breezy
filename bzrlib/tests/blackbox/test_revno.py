@@ -70,3 +70,42 @@ class TestRevno(TestCaseWithTransport):
         self.assertEqual('', err)
         self.assertEqual('0\n', out)
 
+    def test_dotted_revno_tree(self):
+        builder = self.make_branch_builder('branch')
+        builder.start_series()
+        builder.build_snapshot('A-id', None, [
+            ('add', ('', 'root-id', 'directory', None)),
+            ('add', ('file', 'file-id', 'file', 'content\n'))])
+        builder.build_snapshot('B-id', ['A-id'], [])
+        builder.build_snapshot('C-id', ['A-id', 'B-id'], [])
+        builder.finish_series()
+        b = builder.get_branch()
+        co_b = b.create_checkout('checkout_b', lightweight=True,
+                                 revision_id='B-id')
+        out, err = self.run_bzr('revno checkout_b')
+        self.assertEqual('', err)
+        self.assertEqual('2\n', out)
+        out, err = self.run_bzr('revno --tree checkout_b')
+        self.assertEqual('', err)
+        self.assertEqual('1.1.1\n', out)
+
+    def test_stale_revno_tree(self):
+        builder = self.make_branch_builder('branch')
+        builder.start_series()
+        builder.build_snapshot('A-id', None, [
+            ('add', ('', 'root-id', 'directory', None)),
+            ('add', ('file', 'file-id', 'file', 'content\n'))])
+        builder.build_snapshot('B-id', ['A-id'], [])
+        builder.build_snapshot('C-id', ['A-id'], [])
+        builder.finish_series()
+        b = builder.get_branch()
+        # The branch is now at "C-id", but the checkout is still at "B-id"
+        # which is no longer in the history
+        co_b = b.create_checkout('checkout_b', lightweight=True,
+                                 revision_id='B-id')
+        out, err = self.run_bzr('revno checkout_b')
+        self.assertEqual('', err)
+        self.assertEqual('2\n', out)
+        out, err = self.run_bzr('revno --tree checkout_b')
+        self.assertEqual('', err)
+        self.assertEqual('???\n', out)

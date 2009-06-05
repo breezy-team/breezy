@@ -480,15 +480,16 @@ class cmd_revno(Command):
 
     @display_command
     def run(self, tree=False, location=u'.'):
-        branch = Branch.open_containing(location)[0]
         if tree:
-            revid = WorkingTree.open_containing(location)[0]._last_revision()
+            wt = WorkingTree.open_containing(location)[0]
+            revid = wt.last_revision()
             try:
-                revno_t = branch.revision_id_to_dotted_revno(revid)
+                revno_t = wt.branch.revision_id_to_dotted_revno(revid)
             except errors.NoSuchRevision:
                 revno_t = ('???',)
             revno = ".".join(str(n) for n in revno_t)
         else:
+            branch = Branch.open_containing(location)[0]
             revno = branch.revno()
         self.outf.write(str(revno) + '\n')
 
