@@ -212,6 +212,7 @@ class _BaseProgressBar(object):
         self.to_messages_file.write(fmt_string % args)
         self.to_messages_file.write('\n')
 
+    @deprecated_function(deprecated_in((1, 16, 0)))
     def child_progress(self, **kwargs):
         return ChildProgress(**kwargs)
 
@@ -267,8 +268,6 @@ class DotsProgressBar(_BaseProgressBar):
 
     def child_update(self, message, current, total):
         self.tick()
-
-
 
 
 class TTYProgressBar(_BaseProgressBar):
@@ -457,6 +456,7 @@ class TTYProgressBar(_BaseProgressBar):
 class ChildProgress(_BaseProgressBar):
     """A progress indicator that pushes its data to the parent"""
 
+    @deprecated_function(deprecated_in((1, 16, 0)))
     def __init__(self, _stack, **kwargs):
         _BaseProgressBar.__init__(self, _stack=_stack, **kwargs)
         self.parent = _stack.top()
