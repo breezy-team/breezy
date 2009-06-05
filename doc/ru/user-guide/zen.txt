@@ -1,5 +1,5 @@
-Bazaar Zen
-==========
+Путь Bazaar
+===========
 
 Grokking Bazaar
 ---------------
