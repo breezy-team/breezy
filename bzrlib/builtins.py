@@ -513,18 +513,22 @@ class cmd_revision_info(Command):
 
         revinfos = []
         maxlen = 0
-        for rev in revs:
-            revision_id = rev.as_revision_id(b)
-            try:
-                revno_tuple = b.revision_id_to_dotted_revno(revision_id)
-            except errors.NoSuchRevision:
-                revno_tuple = ()
-            if revno_tuple:
-                revno = ".".join(str(n) for n in revno_tuple)
-            else:
-                revno = "???"
-            maxlen = max(maxlen, len(revno))
-            revinfos.append([revno, revision_id])
+        b.lock_read()
+        try:
+            for rev in revs:
+                revision_id = rev.as_revision_id(b)
+                try:
+                    revno_tuple = b.revision_id_to_dotted_revno(revision_id)
+                except errors.NoSuchRevision:
+                    revno_tuple = ()
+                if revno_tuple:
+                    revno = ".".join(str(n) for n in revno_tuple)
+                else:
+                    revno = "???"
+                maxlen = max(maxlen, len(revno))
+                revinfos.append([revno, revision_id])
+        finally:
+            b.unlock()
 
         for ri in revinfos:
             print '%*s %s' % (maxlen, ri[0], ri[1])
