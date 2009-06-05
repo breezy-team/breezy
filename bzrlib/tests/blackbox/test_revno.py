@@ -50,4 +50,24 @@ class TestRevno(TestCaseInTempDir):
         self.assertEquals(int(bzr('revno a')), 2)
         self.assertEquals(int(bzr('revno a/baz')), 2)
 
+    def test_revno_tree(self):
+        # Make branch and checkout
+        os.mkdir('branch')
+        self.run_bzr('init branch')
+        self.run_bzr('checkout --lightweight branch checkout')
+
+        # Get the checkout out of date
+        self.build_tree(['branch/file'])
+        self.run_bzr('add branch/file')
+        self.run_bzr('commit -m mkfile branch')
+
+        # Make sure revno says we're on 1
+        out,err = self.run_bzr('revno checkout')
+        self.assertEqual('', err)
+        self.assertEqual('1\n', out)
+
+        # Make sure --tree knows it's still on 0
+        out,err = self.run_bzr('revno --tree checkout')
+        self.assertEqual('', err)
+        self.assertEqual('0\n', out)
 
