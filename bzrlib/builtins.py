@@ -483,7 +483,10 @@ class cmd_revno(Command):
         branch = Branch.open_containing(location)[0]
         if tree:
             revid = WorkingTree.open_containing(location)[0]._last_revision()
-            revno_t = branch.revision_id_to_dotted_revno(revid)
+            try:
+                revno_t = branch.revision_id_to_dotted_revno(revid)
+            except errors.NoSuchRevision:
+                revno_t = ('???',)
             revno = ".".join(str(n) for n in revno_t)
         else:
             revno = branch.revno()
