@@ -23,6 +23,10 @@ New Features
 * mail_client=claws now supports --body (and message body hooks).  Also uses
   configured from address.  (Barry Warsaw)
 
+* ``bzr revno`` and ``bzr revision-info`` now have a ``--tree`` option to
+  show revision info for the working tree instead of the branch.
+  (Matthew Fuller)
+
 Improvements
 ************
 
