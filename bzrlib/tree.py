@@ -693,7 +693,6 @@ class Tree(object):
                 for path in path_names:
                     yield searcher.get_items(path)
 
-    @needs_read_lock
     def _get_rules_searcher(self, default_searcher):
         """Get the RulesSearcher for this tree given the default one."""
         searcher = default_searcher

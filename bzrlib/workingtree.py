@@ -2539,7 +2539,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         """
         return
 
-    @needs_read_lock
     def _get_rules_searcher(self, default_searcher):
         """See Tree._get_rules_searcher."""
         if self._rules_searcher is None:
