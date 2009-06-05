@@ -728,9 +728,11 @@ class TestUIFactory(ui.CLIUIFactory):
     def finished(self):
         """See progress.ProgressBar.finished()."""
 
-    def note(self, fmt_string, *args, **kwargs):
+    def note(self, fmt_string, *args):
         """See progress.ProgressBar.note()."""
-        self.stdout.write((fmt_string + "\n") % args)
+        if args:
+            fmt_string = fmt_string % args
+        self.stdout.write(fmt_string + "\n")
 
     def progress_bar(self):
         return self
