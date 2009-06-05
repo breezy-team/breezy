@@ -514,31 +514,41 @@ class cmd_revision_info(Command):
     def run(self, revision=None, directory=u'.', tree=False,
             revision_info_list=[]):
 
-        revs = []
-        if revision is not None:
-            revs.extend(revision)
-        if revision_info_list is not None:
-            for rev in revision_info_list:
-                revs.append(RevisionSpec.from_string(rev))
+        try:
+            wt = WorkingTree.open_containing(directory)[0]
+            b = wt.branch
+            wt.lock_read()
+        except (errors.NoWorkingTree, errors.NotLocalUrl):
+            wt = None
+            b = Branch.open_containing(directory)[0]
+            b.lock_read()
+        try:
+            revision_ids = []
+            if revision is not None:
+                revision_ids.extend(rev.as_revision_id(b) for rev in revision)
+            if revision_info_list is not None:
+                for rev_str in revision_info_list:
+                    rev_spec = RevisionSpec.from_string(rev_str)
+                    revision_ids.append(rev_spec.as_revision_id(b))
+            # No arguments supplied, default to the last revision
+            if len(revision_ids) == 0:
+                if tree:
+                    revision_ids.append(wt.last_revision())
+                else:
+                    revision_ids.append(b.last_revision())
 
-        b = Branch.open_containing(directory)[0]
-
-        if len(revs) == 0:
-            if tree:
-                wt = WorkingTree.open_containing(directory)[0]
-                revs.append(RevisionSpec.from_string('revid:' + \
-                    wt._last_revision()))
+            for revision_id in revision_ids:
+                try:
+                    dotted_revno = b.revision_id_to_dotted_revno(revision_id)
+                    revno = '.'.join(str(i) for i in dotted_revno)
+                except errors.NoSuchRevision:
+                    revno = '???'
+                print '%4s %s' % (revno, revision_id)
+        finally:
+            if wt is None:
+                b.unlock()
             else:
-                revs.append(RevisionSpec.from_string('-1'))
-
-        for rev in revs:
-            revision_id = rev.as_revision_id(b)
-            try:
-                revno = '%4d' % (b.revision_id_to_revno(revision_id))
-            except errors.NoSuchRevision:
-                dotted_map = b.get_revision_id_to_revno_map()
-                revno = '.'.join(str(i) for i in dotted_map[revision_id])
-            print '%s %s' % (revno, revision_id)
+                wt.unlock()
 
 
 class cmd_add(Command):
