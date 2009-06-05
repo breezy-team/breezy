@@ -166,75 +166,6 @@ def ProgressBar(to_file=None, **kwargs):
         return _progress_bar_types[requested_bar_type](to_file=to_file, **kwargs)
 
 
-class ProgressBarStack(object):
-    """A stack of progress bars.
-
-    This class is deprecated: instead, ask the ui factory for a new progress
-    task and finish it when it's done.
-    """
-
-    @deprecated_method(deprecated_in((1, 12, 0)))
-    def __init__(self,
-                 to_file=None,
-                 show_pct=False,
-                 show_spinner=True,
-                 show_eta=False,
-                 show_bar=True,
-                 show_count=True,
-                 to_messages_file=None,
-                 klass=None):
-        """Setup the stack with the parameters the progress bars should have."""
-        if to_file is None:
-            to_file = sys.stderr
-        if to_messages_file is None:
-            to_messages_file = sys.stdout
-        self._to_file = to_file
-        self._show_pct = show_pct
-        self._show_spinner = show_spinner
-        self._show_eta = show_eta
-        self._show_bar = show_bar
-        self._show_count = show_count
-        self._to_messages_file = to_messages_file
-        self._stack = []
-        self._klass = klass or ProgressBar
-
-    def top(self):
-        if len(self._stack) != 0:
-            return self._stack[-1]
-        else:
-            return None
-
-    def bottom(self):
-        if len(self._stack) != 0:
-            return self._stack[0]
-        else:
-            return None
-
-    def get_nested(self):
-        """Return a nested progress bar."""
-        if len(self._stack) == 0:
-            func = self._klass
-        else:
-            func = self.top().child_progress
-        new_bar = func(to_file=self._to_file,
-                       show_pct=self._show_pct,
-                       show_spinner=self._show_spinner,
-                       show_eta=self._show_eta,
-                       show_bar=self._show_bar,
-                       show_count=self._show_count,
-                       to_messages_file=self._to_messages_file,
-                       _stack=self)
-        self._stack.append(new_bar)
-        return new_bar
-
-    def return_pb(self, bar):
-        """Return bar after its been used."""
-        if bar is not self._stack[-1]:
-            warnings.warn("%r is not currently active" % (bar,))
-        else:
-            self._stack.pop()
-
-
 class _BaseProgressBar(object):
 
     def __init__(self,
@@ -361,7 +292,6 @@ class TTYProgressBar(_BaseProgressBar):
     The output file should be in line-buffered or unbuffered mode.
     """
     SPIN_CHARS = r'/-\|'
-
 
     def __init__(self, **kwargs):
         from bzrlib.osutils import terminal_width

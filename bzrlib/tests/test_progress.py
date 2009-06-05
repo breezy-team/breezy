@@ -23,7 +23,6 @@ from bzrlib.progress import (
         ChildProgress,
         TTYProgressBar,
         DotsProgressBar,
-        ProgressBarStack,
         InstrumentedProgress,
         )
 from bzrlib.tests import TestCase
@@ -104,27 +103,6 @@ class TestProgress(TestCase):
         top.update('lala', 2, 2)
         child.update('baubles', 4, 4)
 
-    def test_stacking(self):
-        self.check_stack(TTYProgressBar, ChildProgress)
-        self.check_stack(DotsProgressBar, ChildProgress)
-        self.check_stack(DummyProgress, DummyProgress)
-
-    def check_stack(self, parent_class, child_class):
-        stack = self.applyDeprecated(
-            deprecated_in((1, 12, 0)),
-            ProgressBarStack,
-            klass=parent_class, to_file=StringIO())
-        parent = stack.get_nested()
-        try:
-            self.assertIs(parent.__class__, parent_class)
-            child = stack.get_nested()
-            try:
-                self.assertIs(child.__class__, child_class)
-            finally:
-                child.finished()
-        finally:
-            parent.finished()
-
     def test_throttling(self):
         pb = InstrumentedProgress(to_file=StringIO())
         # instantaneous updates should be squelched
@@ -189,123 +167,3 @@ class TestProgress(TestCase):
             pb.update('x', count+100, 200)
 
         self.assertEqual(pb._max_last_updates, len(pb.last_updates))
-
-
-class TestProgressTypes(TestCase):
-    """Test that the right ProgressBar gets instantiated at the right time."""
-
-    def get_nested(self, outf, term, env_progress=None):
-        """Setup so that ProgressBar thinks we are in the supplied terminal."""
-        orig_term = os.environ.get('TERM')
-        orig_progress = os.environ.get('BZR_PROGRESS_BAR')
-        os.environ['TERM'] = term
-        if env_progress is not None:
-            os.environ['BZR_PROGRESS_BAR'] = env_progress
-        elif orig_progress is not None:
-            del os.environ['BZR_PROGRESS_BAR']
-
-        def reset():
-            if orig_term is None:
-                del os.environ['TERM']
-            else:
-                os.environ['TERM'] = orig_term
-            # We may have never created BZR_PROGRESS_BAR
-            # So we can't just delete like we can 'TERM' (which is always set)
-            if orig_progress is None:
-                if 'BZR_PROGRESS_BAR' in os.environ:
-                    del os.environ['BZR_PROGRESS_BAR']
-            else:
-                os.environ['BZR_PROGRESS_BAR'] = orig_progress
-
-        self.addCleanup(reset)
-
-        stack = self.applyDeprecated(
-            deprecated_in((1, 12, 0)),
-            ProgressBarStack,
-            to_file=outf)
-        pb = stack.get_nested()
-        pb.start_time -= 1 # Make sure it is ready to write
-        pb.width = 20 # And it is of reasonable size
-        return pb
-
-    def test_tty_progress(self):
-        # Make sure the ProgressBarStack thinks it is
-        # writing out to a terminal, and thus uses a TTYProgressBar
-        out = _TTYStringIO()
-        pb = self.get_nested(out, 'xterm')
-        self.assertIsInstance(pb, TTYProgressBar)
-        try:
-            pb.update('foo', 1, 2)
-            pb.update('bar', 2, 2)
-        finally:
-            pb.finished()
-
-        self.assertEqual('\r/ [====   ] foo 1/2'
-                         '\r- [=======] bar 2/2'
-                         '\r                   \r',
-                         out.getvalue())
-
-    def test_noninteractive_progress(self):
-        out = _NonTTYStringIO()
-        pb = self.get_nested(out, 'xterm')
-        self.assertIsInstance(pb, DummyProgress)
-        try:
-            pb.update('foo', 1, 2)
-            pb.update('bar', 2, 2)
-        finally:
-            pb.finished()
-        self.assertEqual('', out.getvalue())
-
-    def test_dots_progress(self):
-        # make sure we get the right progress bar when not on a terminal
-        out = _NonTTYStringIO()
-        pb = self.get_nested(out, 'xterm', 'dots')
-        self.assertIsInstance(pb, DotsProgressBar)
-        try:
-            pb.update('foo', 1, 2)
-            pb.update('bar', 2, 2)
-        finally:
-            pb.finished()
-        self.assertEqual('foo: .'
-                         '\nbar: .'
-                         '\n',
-                         out.getvalue())
-
-    def test_no_isatty_progress(self):
-        # Make sure ProgressBarStack handles a plain StringIO()
-        import cStringIO
-        out = cStringIO.StringIO()
-        pb = self.get_nested(out, 'xterm')
-        pb.finished()
-        self.assertIsInstance(pb, DummyProgress)
-
-    def test_dumb_progress(self):
-        # using a terminal that can't do cursor movement
-        out = _TTYStringIO()
-        pb = self.get_nested(out, 'dumb')
-        pb.finished()
-        self.assertIsInstance(pb, DummyProgress)
-
-    def test_progress_env_tty(self):
-        # The environ variable BZR_PROGRESS_BAR controls what type of
-        # progress bar we will get, even if it wouldn't usually be that type
-        import cStringIO
-
-        # Usually, this would be a DotsProgressBar
-        out = cStringIO.StringIO()
-        pb = self.get_nested(out, 'dumb', 'tty')
-        pb.finished()
-        # Even though we are not a tty, the env_var will override
-        self.assertIsInstance(pb, TTYProgressBar)
-
-    def test_progress_env_none(self):
-        # Even though we are in a valid tty, no progress
-        out = _TTYStringIO()
-        pb = self.get_nested(out, 'xterm', 'none')
-        pb.finished()
-        self.assertIsInstance(pb, DummyProgress)
-
-    def test_progress_env_invalid(self):
-        out = _TTYStringIO()
-        self.assertRaises(errors.InvalidProgressBarType, self.get_nested,
-            out, 'xterm', 'nonexistant')

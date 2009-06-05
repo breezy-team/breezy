@@ -27,7 +27,6 @@ import bzrlib
 import bzrlib.errors as errors
 from bzrlib.progress import (
     DotsProgressBar,
-    ProgressBarStack,
     ProgressTask,
     TTYProgressBar,
     )
@@ -161,33 +160,6 @@ class UITests(TestCase):
         warnings, _ = self.callCatchWarnings(pb1.finished)
         if len(warnings) != 1:
             self.fail("unexpected warnings: %r" % (warnings,))
-        pb2.finished()
-        pb1.finished()
-
-    def test_progress_stack(self):
-        # test the progress bar stack which the default text factory
-        # uses.
-        stderr = StringIO()
-        stdout = StringIO()
-        # make a stack, which accepts parameters like a pb.
-        stack = self.applyDeprecated(
-            deprecated_in((1, 12, 0)),
-            ProgressBarStack,
-            to_file=stderr, to_messages_file=stdout)
-        # but is not one
-        self.assertFalse(getattr(stack, 'note', False))
-        pb1 = stack.get_nested()
-        pb2 = stack.get_nested()
-        warnings, _ = self.callCatchWarnings(pb1.finished)
-        self.assertEqual(len(warnings), 1)
-        pb2.finished()
-        pb1.finished()
-        # the text ui factory never actually removes the stack once its setup.
-        # we need to be able to nest again correctly from here.
-        pb1 = stack.get_nested()
-        pb2 = stack.get_nested()
-        warnings, _ = self.callCatchWarnings(pb1.finished)
-        self.assertEqual(len(warnings), 1)
         pb2.finished()
         pb1.finished()
 
