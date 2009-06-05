@@ -692,9 +692,6 @@ class SFTPTransport(ConnectedTransport):
         # paramiko seems to generate detailless errors.
         self._translate_error(e, path, raise_generic=False)
         if getattr(e, 'args', None) is not None:
-            # 29.993  Raising exception with args ('Directory not empty:
-            # "/srv/bazaar.launchpad.net/push-branches/00/00/94/67/.bzr/branch/lock/xrdlfxf6nl.tmp":
-            # [Errno 39] Directory not empty',)
             if (e.args == ('No such file or directory',) or
                 e.args == ('No such file',)):
                 raise NoSuchFile(path, str(e) + more_info)
@@ -704,6 +701,9 @@ class SFTPTransport(ConnectedTransport):
             # strange but true, for the paramiko server.
             if (e.args == ('Failure',)):
                 raise failure_exc(path, str(e) + more_info)
+            # Can be something like args = ('Directory not empty:
+            # '/srv/bazaar.launchpad.net/blah...: '
+            # [Errno 39] Directory not empty',)
             if (e.args[0].startswith('Directory not empty: ')
                 or getattr(e, 'errno', None) == errno.ENOTEMPTY):
                 raise errors.DirectoryNotEmpty(path, str(e))
