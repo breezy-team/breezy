@@ -1841,6 +1841,10 @@ elif sys.platform == 'darwin':
     def _local_concurrency():
         return subprocess.Popen(['sysctl', '-n', 'hw.availcpu'],
                                 stdout=subprocess.PIPE).communicate()[0]
+elif sys.platform[0:7] == 'freebsd':
+    def _local_concurrency():
+        return subprocess.Popen(['sysctl', '-n', 'hw.ncpu'],
+                                stdout=subprocess.PIPE).communicate()[0]
 elif sys.platform == 'sunos5':
     def _local_concurrency():
         return subprocess.Popen(['psrinfo', '-p',],

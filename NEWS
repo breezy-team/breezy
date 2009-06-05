@@ -114,6 +114,8 @@ Testing
 
 * The number of cores is also detected on Solaris and win32. (Vincent Ladeuil)
 
+* The number of cores is also detected on FreeBSD. (Matthew Fuller)
+
 
 bzr 1.15
 ########
