@@ -23,7 +23,6 @@ from bzrlib.progress import (
         ChildProgress,
         TTYProgressBar,
         DotsProgressBar,
-        InstrumentedProgress,
         )
 from bzrlib.tests import TestCase
 from bzrlib.symbol_versioning import (
