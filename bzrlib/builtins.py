@@ -502,10 +502,12 @@ class cmd_revision_info(Command):
             short_name='d',
             type=unicode,
             ),
+        Option('tree', help='Show revno of working tree'),
         ]
 
     @display_command
-    def run(self, revision=None, directory=u'.', revision_info_list=[]):
+    def run(self, revision=None, directory=u'.', tree=False,
+            revision_info_list=[]):
 
         revs = []
         if revision is not None:
@@ -517,7 +519,12 @@ class cmd_revision_info(Command):
         b = Branch.open_containing(directory)[0]
 
         if len(revs) == 0:
-            revs.append(RevisionSpec.from_string('-1'))
+            if tree:
+                wt = WorkingTree.open_containing(directory)[0]
+                revs.append(RevisionSpec.from_string('revid:' + \
+                    wt._last_revision()))
+            else:
+                revs.append(RevisionSpec.from_string('-1'))
 
         for rev in revs:
             revision_id = rev.as_revision_id(b)
