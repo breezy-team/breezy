@@ -75,6 +75,9 @@ Bug Fixes
   the fetched revisions, not in the stacked-on ancestry.
   (John Arbash Meinel)
 
+* Fix problem of "directory not empty" when contending for a lock over
+  sftp.  (Martin Pool, #340352)
+
 * Reconcile can now deal with text revisions that originated in revisions 
   that are ghosts. (Jelmer Vernooij, #336749)
 
