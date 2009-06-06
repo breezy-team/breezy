@@ -105,10 +105,30 @@ class CHKMap(object):
             all old_key entries must be None, and all new_key entries must not
             be None.
         """
+        self._ensure_root()
+        node = LeafNode(search_key_func=self._search_key_func)
+        node.set_maximum_size(self._root_node._maximum_size)
+        node._key_width = self._root_node._key_width
         for old, new, value in delta:
             assert old is None
             assert new is not None
-            self.map(new, value)
+            node._items[new] = value
+        node._len = len(node._items)
+        node._compute_search_prefix()
+        node._compute_serialised_prefix()
+        if (node._len > 1
+            and node._current_size() > node._maximum_size):
+            prefix, node_details = node._split()
+            if len(node_details) == 1:
+                self._root_node = node_details[0][1]
+            else:
+                first_node = node_details[0][1]
+                self._root_node = InternalNode(prefix,
+                                    search_key_func=self._search_key_func)
+                self._root_node.set_maximum_size(first_node.maximum_size)
+                self._root_node._key_width = first_node._key_width
+                for split, node in node_details:
+                    self._root_node.add_node(split, node)
         return self._save()
 
     def apply_delta(self, delta):
