@@ -513,6 +513,9 @@ class InterToGitBranch(branch.InterBranch):
         return (not isinstance(source, GitBranch) and 
                 isinstance(target, GitBranch))
 
+    def update_revisions(self, *args, **kwargs):
+        raise NoPushSupport()
+
     def push(self, overwrite=True, stop_revision=None, 
              _override_hook_source_branch=None):
         raise NoPushSupport()
