@@ -691,17 +691,20 @@ class CHKInventoryRepository(KnitPackRepository):
         null_inv.root_id = None
         return null_inv
 
-    def _apply_delta_to_null_inv(self, new_inv, delta, new_revision_id):
+    def _create_inv_from_null(self, new_inv, delta, new_revision_id):
         """This will mutate new_inv directly.
 
         This is a simplified form of create_by_apply_delta which knows that all
         the old values must be None, so everything is a create.
         """
+        serializer = self._format._serializer
+        new_inv = inventory.CHKInventory(serializer.search_key_name)
         new_inv.revision_id = new_revision_id
+
         entry_to_bytes = new_inv._entry_to_bytes
         assert new_inv.parent_id_basename_to_file_id is not None
-        id_to_entry_delta = []
-        parent_id_basename_delta = []
+        id_to_entry_dict = {}
+        parent_id_basename_dict = {}
         for old_path, new_path, file_id, entry in delta:
             assert old_path is None
             assert new_path is not None
@@ -713,14 +716,26 @@ class CHKInventoryRepository(KnitPackRepository):
                 utf8_entry_name = entry.name.encode('utf-8')
                 parent_id_basename_key = (entry.parent_id, utf8_entry_name)
             new_value = entry_to_bytes(entry)
-            # Update caches. It's worth doing this whether
-            # we're propagating the old caches or not.
-            ## result._path_to_fileid_cache[new_path] = file_id
-            id_to_entry_delta.append((None, (file_id,), new_value))
-            parent_id_basename_delta.append(
-                (None, parent_id_basename_key, file_id))
-        new_inv.id_to_entry.apply_insert_delta(id_to_entry_delta)
-        new_inv.parent_id_basename_to_file_id.apply_insert_delta(parent_id_basename_delta)
+            # Create Caches?
+            ## new_inv._path_to_fileid_cache[new_path] = file_id
+            id_to_entry_dict[(file_id,)] = new_value
+            parent_id_basename_dict[parent_id_basename_key] = file_id
+
+        search_key_func = chk_map.search_key_registry.get(
+                            serializer.search_key_name)
+        maximum_size = serializer.maximum_size
+        root_key = CHKMap.from_dict(self.chk_bytes, id_to_entry_dict,
+                                    maximum_size=maximum_size, key_width=1,
+                                    search_key_func=search_key_func)
+        new_inv.id_to_entry = chk_map.CHKMap(self.chk_bytes, root_key,
+                                             search_key_func)
+        root_key = CHKMap.from_dict(self.chk_bytes, parent_id_basename_key,
+                                    maximum_size=maximum_size, key_width=2,
+                                    search_key_func=search_key_func)
+        new_inv.parent_id_basename_key = chk_map.CHKMap(self.chk_bytes,
+                                                        root_key,
+                                                        search_key_func)
+        return new_inv
 
     def add_inventory_by_delta(self, basis_revision_id, delta, new_revision_id,
                                parents, basis_inv=None, propagate_caches=False):
@@ -753,8 +768,7 @@ class CHKInventoryRepository(KnitPackRepository):
         basis_tree = None
         if basis_inv is None:
             if basis_revision_id == _mod_revision.NULL_REVISION:
-                new_inv = self._get_null_inventory()
-                self._apply_delta_to_null_inv(new_inv, delta, new_revision_id)
+                new_inv = self._create_inv_from_null(delta, new_revision_id)
                 inv_lines = new_inv.to_lines()
                 return self._inventory_add_lines(new_revision_id, parents,
                     inv_lines, check_content=False), new_inv

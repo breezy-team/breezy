@@ -98,39 +98,6 @@ class CHKMap(object):
         else:
             self._root_node = self._node_key(root_key)
 
-    def apply_insert_delta(self, delta):
-        """Apply a delta that only inserts items.
-
-        :param delta: An iterable of old_key, new_key, new_value tuples.
-            all old_key entries must be None, and all new_key entries must not
-            be None.
-        """
-        self._ensure_root()
-        node = LeafNode(search_key_func=self._search_key_func)
-        node.set_maximum_size(self._root_node._maximum_size)
-        node._key_width = self._root_node._key_width
-        for old, new, value in delta:
-            assert old is None
-            assert new is not None
-            node._items[new] = value
-        node._len = len(node._items)
-        node._compute_search_prefix()
-        node._compute_serialised_prefix()
-        if (node._len > 1
-            and node._current_size() > node._maximum_size):
-            prefix, node_details = node._split()
-            if len(node_details) == 1:
-                self._root_node = node_details[0][1]
-            else:
-                first_node = node_details[0][1]
-                self._root_node = InternalNode(prefix,
-                                    search_key_func=self._search_key_func)
-                self._root_node.set_maximum_size(first_node.maximum_size)
-                self._root_node._key_width = first_node._key_width
-                for split, node in node_details:
-                    self._root_node.add_node(split, node)
-        return self._save()
-
     def apply_delta(self, delta):
         """Apply a delta to the map.
 
@@ -242,7 +209,32 @@ class CHKMap(object):
         delta = []
         for key, value in initial_value.items():
             delta.append((None, key, value))
-        return result.apply_delta(delta)
+        root_key = result.apply_delta(delta)
+        node = LeafNode(search_key_func=search_key_func)
+        node.set_maximum_size(maximum_size)
+        node._key_width = key_width
+        node._items = dict(initial_value)
+        node._raw_size = sum([node._key_value_len(key, value)
+                              for key,value in initial_value.iteritems()])
+        node._len = len(node._items)
+        node._compute_search_prefix()
+        node._compute_serialised_prefix()
+        if (node._len > 1
+            and maximum_size
+            and node._current_size() > maximum_size):
+            prefix, node_details = node._split(store)
+            assert len(node_details) != 1
+            node = InternalNode(prefix, search_key_func=search_key_func)
+            node.set_maximum_size(maximum_size)
+            node._key_width = key_width
+            for split, subnode in node_details:
+                node.add_node(split, subnode)
+        keys = list(node.serialise(store))
+        if root_key != keys[-1]:
+            result2 = CHKMap(store, keys[-1], search_key_func=search_key_func)
+            import pdb; pdb.set_trace()
+            raise ValueError('Failed to serialize via leaf splitting.')
+        return root_key
 
     def iter_changes(self, basis):
         """Iterate over the changes between basis and self.
@@ -797,7 +789,19 @@ class LeafNode(Node):
                 result[prefix] = node
             else:
                 node = result[prefix]
-            node.map(store, key, value)
+            sub_prefix, node_details = node.map(store, key, value)
+            if len(node_details) > 1:
+                if prefix != sub_prefix:
+                    # This node has been split and is now found via a different
+                    # path
+                    result.pop(prefix)
+                new_node = InternalNode(sub_prefix,
+                    search_key_func=self._search_key_func)
+                new_node.set_maximum_size(self._maximum_size)
+                new_node._key_width = self._key_width
+                for split, node in node_details:
+                    new_node.add_node(split, node)
+                result[prefix] = new_node
         return common_prefix, result.items()
 
     def map(self, store, key, value):
@@ -846,6 +850,7 @@ class LeafNode(Node):
         self._key = ("sha1:" + sha1,)
         bytes = ''.join(lines)
         if len(bytes) != self._current_size():
+            import pdb; pdb.set_trace()
             raise AssertionError('Invalid _current_size')
         _page_cache.add(self._key, bytes)
         return [self._key]
@@ -1263,7 +1268,6 @@ class InternalNode(Node):
         :return: An iterable of (prefix, node) tuples. prefix is a byte
             prefix for reaching node.
         """
-        import pdb; pdb.set_trace()
         if offset >= self._node_width:
             for node in self._items.values():
                 for result in node._split(offset):
