@@ -1370,11 +1370,12 @@ class TestKnownGraph(tests.TestCase):
 
     def test_children_ancestry1(self):
         graph = self.make_known_graph(ancestry_1)
-        self.assertEqual(['rev1'], graph._nodes[NULL_REVISION].children)
-        self.assertEqual(['rev2a', 'rev2b'], sorted(graph._nodes['rev1'].children))
-        self.assertEqual(['rev3'], sorted(graph._nodes['rev2a'].children))
-        self.assertEqual(['rev4'], sorted(graph._nodes['rev3'].children))
-        self.assertEqual(['rev4'], sorted(graph._nodes['rev2b'].children))
+        self.assertEqual(['rev1'], graph._nodes[NULL_REVISION].child_keys)
+        self.assertEqual(['rev2a', 'rev2b'],
+                         sorted(graph._nodes['rev1'].child_keys))
+        self.assertEqual(['rev3'], sorted(graph._nodes['rev2a'].child_keys))
+        self.assertEqual(['rev4'], sorted(graph._nodes['rev3'].child_keys))
+        self.assertEqual(['rev4'], sorted(graph._nodes['rev2b'].child_keys))
 
     def test_dominators_ancestry_1(self):
         graph = self.make_known_graph(ancestry_1)

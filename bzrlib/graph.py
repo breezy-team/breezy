@@ -1173,13 +1173,13 @@ class FrozenHeadsCache(object):
 class _KnownGraphNode(object):
     """Represents a single object in the known graph."""
 
-    __slots__ = ('key', 'parent_keys', 'children', 'linear_dominator',
+    __slots__ = ('key', 'parent_keys', 'child_keys', 'linear_dominator',
                  'dominator_distance', 'gdfo', 'ancestor_of', 'was_walked')
 
     def __init__(self, key, parent_keys):
         self.key = key
         self.parent_keys = parent_keys
-        self.children = []
+        self.child_keys = []
         self.linear_dominator = None
         self.dominator_distance = 0
         # Greatest distance from origin
@@ -1192,11 +1192,11 @@ class _KnownGraphNode(object):
     def __repr__(self):
         return '%s(%s  gdfo:%s par:%s child:%s dom:%s %s)' % (
             self.__class__.__name__, self.key, self.gdfo,
-            self.parent_keys, self.children,
+            self.parent_keys, self.child_keys,
             self.linear_dominator, self.dominator_distance)
 
 
-_counters = [0, 0, 0, 0, 0]
+_counters = [0, 0, 0, 0, 0, 0]
 class KnownGraph(object):
     """This is a class which assumes we already know the full graph."""
 
@@ -1213,7 +1213,7 @@ class KnownGraph(object):
 
         After this has finished, self._nodes will have an entry for every entry
         in parent_map. Ghosts will have a parent_keys = None, all nodes found
-        will also have .children populated with all known children.
+        will also have .child_keys populated with all known child_keys.
         """
         nodes = self._nodes
         for key, parent_keys in parent_map.iteritems():
@@ -1230,7 +1230,7 @@ class KnownGraph(object):
                 except KeyError:
                     parent_node = _KnownGraphNode(parent_key, None)
                     nodes[parent_key] = parent_node
-                parent_node.children.append(key)
+                parent_node.child_keys.append(key)
         self._find_linear_dominators()
         self._find_gdfo()
 
@@ -1251,7 +1251,7 @@ class KnownGraph(object):
                 node.dominator_distance = 0
                 return None
             parent_node = self._nodes[node.parent_keys[0]]
-            if len(parent_node.children) > 1:
+            if len(parent_node.child_keys) > 1:
                 # The parent has multiple children, so *this* node is the
                 # dominator
                 node.linear_dominator = node.key
@@ -1315,7 +1315,7 @@ class KnownGraph(object):
                 continue
             next_gdfo = gdfo + 1
             assert next_gdfo <= max_gdfo
-            for child_key in next.children:
+            for child_key in next.child_keys:
                 child_node = self._nodes[child_key]
                 if child_node.gdfo is None or child_node.gdfo < next_gdfo:
                     # Only enque children when all of their parents have been
@@ -1377,71 +1377,94 @@ class KnownGraph(object):
     def _heads_from_candidate_nodes(self, candidate_nodes):
         queue = []
         to_cleanup = []
+        to_cleanup_append = to_cleanup.append
         for node in candidate_nodes.itervalues():
             assert node.ancestor_of is None
             node.ancestor_of = (node.key,)
             queue.append((-node.gdfo, node))
-            to_cleanup.append(node)
+            to_cleanup_append(node)
         heapq.heapify(queue)
         # These are nodes that we determined are 'common' that we are no longer
         # walking
-        stop_nodes = {}
         # Now we walk nodes until all nodes that are being walked are 'common'
         num_candidates = len(candidate_nodes)
         counters = _counters
+        nodes = self._nodes
+        heappop = heapq.heappop
+        heappush = heapq.heappush
         while queue and len(candidate_nodes) > 1:
             counters[0] += 1
-            _, next = heapq.heappop(queue)
-            assert not next.was_walked
-            assert next.ancestor_of is not None
-            next.was_walked = True
-            if len(next.ancestor_of) == num_candidates:
+            _, next = heappop(queue)
+            # assert not next.was_walked
+            # assert next.ancestor_of is not None
+            # next.was_walked = True
+            next_ancestor_of = next.ancestor_of
+            if len(next_ancestor_of) == num_candidates:
                 # This node is now considered 'common'
-                stop_nodes[next.key] = next
+                # Make sure all parent nodes are marked as such
+                for parent_key in node.parent_keys:
+                    parent_node = nodes[parent_key]
+                    if parent_node.ancestor_of is not None:
+                        parent_node.ancestor_of = next_ancestor_of
                 continue
             if next.parent_keys is None:
                 # This is a ghost
-                stop_nodes[next.key] = next
                 continue
             # Now project the current nodes ancestor list to the parent nodes,
             # and queue them up to be walked
             def queue_parents():
-                for parent_key in next.parent_keys:
+                # Note: using linear_dominator speeds things up quite a bit
+                #       enough that we actually start to be slightly faster
+                #       than the default heads() implementation
+                if next.linear_dominator != next.key:
+                    # We are at the tip of a long linear region
+                    # We know that there is nothing between here and the tail
+                    # that is interesting, so skip to the end
+                    counters[5] += 1
+                    parent_keys = [next.linear_dominator]
+                else:
+                    parent_keys = next.parent_keys
+                for parent_key in parent_keys:
                     counters[1] += 1
                     if parent_key in candidate_nodes:
                         candidate_nodes.pop(parent_key)
-                    parent_node = self._nodes[parent_key]
-                    assert not parent_node.was_walked
-                    if parent_node.ancestor_of is None:
+                        if len(candidate_nodes) <= 1:
+                            break
+                    parent_node = nodes[parent_key]
+                    # assert not parent_node.was_walked
+                    ancestor_of = parent_node.ancestor_of
+                    if ancestor_of is None:
                         counters[2] += 1
                         # This node hasn't been walked yet
-                        parent_node.ancestor_of = node.ancestor_of
+                        parent_node.ancestor_of = next_ancestor_of
                         # Enqueue this node
-                        heapq.heappush(queue, (-parent_node.gdfo, parent_node))
-                        to_cleanup.append(parent_node)
+                        heappush(queue, (-parent_node.gdfo, parent_node))
+                        to_cleanup_append(parent_node)
                     else:
                         counters[3] += 1
                         # Combine to get the full set of parents
                         def combine_parents():
-                            all_ancestors = set(parent_node.ancestor_of)
-                            all_ancestors.update(node.ancestor_of)
-                            return tuple(sorted(all_ancestors))
+                            all_ancestors = set(ancestor_of)
+                            all_ancestors.update(next_ancestor_of)
+                            return tuple(all_ancestors)
                         parent_node.ancestor_of = combine_parents()
                         # This would otherwise require popping the item out of the
                         # queue, because we think we are done processing it.
-                        # As is, we'll just let the queue clean itself up later.
+                        # As is, we'll just let the queue clean itself up
+                        # later.
                         # if len(parent_node.ancestor_of) == num_candidates:
-                        #     # This is now a common node
-                        #     stop_nodes[parent_node.key] = parent_node
-                        # This node should already be enqueued by whoever walked it
-                        # earlier
+                        #     This is now a common node
+                        # stop_nodes[parent_node.key] = parent_node
+                        #
+                        # This node should already be enqueued by whoever
+                        # walked it earlier
             queue_parents()
         # import pdb; pdb.set_trace()
         def cleanup():
             for node in to_cleanup:
                 counters[4] += 1
                 node.ancestor_of = None
-                node.was_walked = False
+                # node.was_walked = False
         cleanup()
         return set(candidate_nodes)
 

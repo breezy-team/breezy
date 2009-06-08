@@ -1,12 +1,15 @@
+#!/usr/bin/env python
 import random
+import os
 import time
 import sys
 import optparse
-from bzrlib import branch, graph, ui, trace
+from bzrlib import branch, commands, graph, ui, trace
 from bzrlib.ui import text
 
 p = optparse.OptionParser()
-p.add_option('--one')
+p.add_option('--max-combinations', default=500, type=int)
+p.add_option('--lsprof', default=None, type=str)
 opts, args = p.parse_args(sys.argv[1:])
 trace.enable_default_logging()
 ui.ui_factory = text.TextUIFactory()
@@ -26,13 +29,15 @@ finally:
 print 'Found %d nodes' % (len(parent_map),)
 
 def all_heads_comp(g, combinations):
+    h = []
     pb = ui.ui_factory.nested_progress_bar()
     try:
         for idx, combo in enumerate(combinations):
             pb.update('proc', idx, len(combinations))
-            g.heads(combo)
+            h.append(g.heads(combo))
     finally:
         pb.finished()
+    return h
 combinations = []
 # parents = parent_map.keys()
 # for p1 in parents:
@@ -47,17 +52,24 @@ combinations = []
 for revision_id, parent_ids in parent_map.iteritems():
     if parent_ids is not None and len(parent_ids) > 1:
         combinations.append(parent_ids)
-if len(combinations) > 500:
-    combinations = random.sample(combinations, 500)
+if len(combinations) > opts.max_combinations:
+    combinations = random.sample(combinations, opts.max_combinations)
 
 print '      %d combinations' % (len(combinations),)
 t1 = time.clock()
 known_g = graph.KnownGraph(parent_map)
-all_heads_comp(known_g, combinations)
+if opts.lsprof is not None:
+    h_known = commands.apply_lsprofiled(opts.lsprof,
+        all_heads_comp, known_g, combinations)
+else:
+    h_known = all_heads_comp(known_g, combinations)
 t2 = time.clock()
 print "Known: %.3fs" % (t2-t1,)
 print "  %s" % (graph._counters,)
 simple_g = graph.Graph(graph.DictParentsProvider(parent_map))
-all_heads_comp(simple_g, combinations)
+h_simple = all_heads_comp(simple_g, combinations)
 t3 = time.clock()
 print "Orig: %.3fs" % (t3-t2,)
+if h_simple != h_known:
+    import pdb; pdb.set_trace()
+print 'ratio: %.3fs' % ((t2-t1) / (t3-t2))
