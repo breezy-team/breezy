@@ -1174,7 +1174,7 @@ class _KnownGraphNode(object):
     """Represents a single object in the known graph."""
 
     __slots__ = ('key', 'parent_keys', 'child_keys', 'linear_dominator',
-                 'dominator_distance', 'gdfo', 'ancestor_of', 'was_walked')
+                 'dominator_distance', 'gdfo', 'ancestor_of')
 
     def __init__(self, key, parent_keys):
         self.key = key
@@ -1187,7 +1187,6 @@ class _KnownGraphNode(object):
         # This will become a tuple of known heads that have this node as an
         # ancestor
         self.ancestor_of = None
-        self.was_walked = False
 
     def __repr__(self):
         return '%s(%s  gdfo:%s par:%s child:%s dom:%s %s)' % (
@@ -1399,9 +1398,7 @@ class KnownGraph(object):
         while queue and len(candidate_nodes) > 1:
             counters[0] += 1
             _, next = heappop(queue)
-            # assert not next.was_walked
             # assert next.ancestor_of is not None
-            # next.was_walked = True
             next_ancestor_of = next.ancestor_of
             if len(next_ancestor_of) == num_candidates:
                 # This node is now considered 'common'
@@ -1434,7 +1431,6 @@ class KnownGraph(object):
                     if len(candidate_nodes) <= 1:
                         break
                 parent_node = nodes[parent_key]
-                # assert not parent_node.was_walked
                 ancestor_of = parent_node.ancestor_of
                 if ancestor_of is None:
                     counters[2] += 1
@@ -1449,22 +1445,10 @@ class KnownGraph(object):
                     all_ancestors = set(ancestor_of)
                     all_ancestors.update(next_ancestor_of)
                     parent_node.ancestor_of = tuple(sorted(all_ancestors))
-                    # This would otherwise require popping the item out of the
-                    # queue, because we think we are done processing it.
-                    # As is, we'll just let the queue clean itself up
-                    # later.
-                    # if len(parent_node.ancestor_of) == num_candidates:
-                    #     This is now a common node
-                    # stop_nodes[parent_node.key] = parent_node
-                    #
-                    # This node should already be enqueued by whoever
-                    # walked it earlier
-        # import pdb; pdb.set_trace()
         def cleanup():
             for node in to_cleanup:
                 counters[4] += 1
                 node.ancestor_of = None
-                # node.was_walked = False
         cleanup()
         return set(candidate_nodes)
 
