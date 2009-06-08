@@ -13,11 +13,11 @@ set ORIGINAL_DIRECTORY=%CD%
 
 set TORTOISE_OVERLAYS_MSI_WIN32_CMD=%PYTHON% %ROOT%/ostools.py basename ${settings:tortoise-overlays-win32-url}
 FOR /f "tokens=1 delims= " %%G IN ('%TORTOISE_OVERLAYS_MSI_WIN32_CMD%') DO set BASENAME=%%G
-set TORTOISE_OVERLAYS_MSI_WIN32=${buildout:directory}/build/tortoise-overlays/%BASENAME%
+set TORTOISE_OVERLAYS_MSI_WIN32=${buildout:directory}/tortoise-overlays/%BASENAME%
 
 set TORTOISE_OVERLAYS_MSI_X64_CMD=%PYTHON% %ROOT%/ostools.py basename ${settings:tortoise-overlays-x64-url}
 FOR /f "tokens=1 delims= " %%G IN ('%TORTOISE_OVERLAYS_MSI_X64_CMD%') DO set BASENAME=%%G
-set TORTOISE_OVERLAYS_MSI_X64=${buildout:directory}/build/tortoise-overlays/%BASENAME%
+set TORTOISE_OVERLAYS_MSI_X64=${buildout:directory}/tortoise-overlays/%BASENAME%
 
 FOR /f "tokens=1 delims= " %%G IN ('cygpath %PYTHON%') DO set CYG_PYTHON=%%G
 
@@ -51,25 +51,7 @@ cd %ROOT%/bzr-rebase/latest
 @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
 
 cd %RELEASE%
-make copy-docs PYTHON=%CYG_PYTHON%
-@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
-
-%PYTHON% setup.py build_ext -i
-@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
-
-%PYTHON% setup.py py2exe
-@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
-
-%PYTHON% %ROOT%/ostools.py copytodir %ROOT%/start_bzr.bat win32_bzr.exe
-@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
-
-%PYTHON% %ROOT%/ostools.py copytodir %ROOT%/bazaar.url win32_bzr.exe
-@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
-
-%PYTHON% tools/win32/run_script.py cog.py -d -o tools/win32/bzr.iss tools/win32/bzr.iss.cog
-@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
-
-iscc /Q tools/win32/bzr.iss
+make installer PYTHON=%CYG_PYTHON%
 @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
 
 :End
