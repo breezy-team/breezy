@@ -63,6 +63,9 @@ Improvements
 Bug Fixes
 *********
 
+* Better message in ``bzr split`` error suggesting a rich root format.
+  (Neil Martinsen-Burrell, #220067)
+
 * Better message in ``bzr add`` output suggesting using ``bzr ignored`` to
   see which files can also be added.  (Jason Spashett, #76616)
 

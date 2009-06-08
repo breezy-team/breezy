@@ -4665,7 +4665,7 @@ class cmd_split(Command):
         try:
             containing_tree.extract(sub_id)
         except errors.RootNotRich:
-            raise errors.UpgradeRequired(containing_tree.branch.base)
+            raise errors.RichRootUpgradeRequired(containing_tree.branch.base)
 
 
 class cmd_merge_directive(Command):
