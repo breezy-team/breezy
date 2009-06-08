@@ -56,7 +56,7 @@ class cmd_register_branch(Command):
     launchpad.net.  Registration allows the branch to be associated with
     bugs or specifications.
 
-    Before using this command you must register the product to which the
+    Before using this command you must register the project to which the
     branch belongs, and create an account for yourself on launchpad.net.
 
     arguments:
@@ -69,13 +69,13 @@ class cmd_register_branch(Command):
                     otherwise error.
 
     example:
-        bzr register-branch http://foo.com/bzr/fooproduct.mine \\
-                --product fooproduct
+        bzr register-branch http://foo.com/bzr/fooproject.mine \\
+                --project fooproject
     """
     takes_args = ['public_url?']
     takes_options = [
-         Option('product',
-                'Launchpad product short name to associate with the branch.',
+         Option('project',
+                'Launchpad project short name to associate with the branch.',
                 unicode),
          Option('branch-name',
                 'Short name for the branch; '
@@ -100,7 +100,7 @@ class cmd_register_branch(Command):
 
     def run(self,
             public_url=None,
-            product='',
+            project='',
             branch_name='',
             branch_title='',
             branch_description='',
@@ -124,7 +124,7 @@ class cmd_register_branch(Command):
                                          branch_name=branch_name,
                                          branch_title=branch_title,
                                          branch_description=branch_description,
-                                         product_name=product,
+                                         product_name=project,
                                          author_email=author,
                                          )
         linko = BranchBugLinkRequest(branch_url=public_url,

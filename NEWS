@@ -63,6 +63,10 @@ Improvements
 Bug Fixes
 *********
 
+* ``bzr register-branch`` from the Launchpad plugin now refers to "project"
+  instead of "product" which is the correct Launchpad terminology.  
+  (Neil Martinsen-Burrell, #238764)
+
 * Better message in ``bzr add`` output suggesting using ``bzr ignored`` to
   see which files can also be added.  (Jason Spashett, #76616)
 
