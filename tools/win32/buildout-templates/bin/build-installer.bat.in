@@ -51,7 +51,7 @@ cd %ROOT%/bzr-rebase/latest
 @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
 
 cd %RELEASE%
-make docs PYTHON=%CYG_PYTHON%
+make copy-docs PYTHON=%CYG_PYTHON%
 @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
 
 %PYTHON% setup.py build_ext -i
