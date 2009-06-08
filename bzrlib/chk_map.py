@@ -203,13 +203,35 @@ class CHKMap(object):
             multiple pages.
         :return: The root chk of the resulting CHKMap.
         """
-        result = CHKMap(store, None, search_key_func=search_key_func)
+        root_key = klass._create_via_map(store, initial_value,
+            maximum_size=maximum_size, key_width=key_width,
+            search_key_func=search_key_func)
+        alt_root_key = klass._create_directly(store, initial_value,
+            maximum_size=maximum_size, key_width=key_width,
+            search_key_func=search_key_func)
+        if root_key != alt_root_key:
+            result1 = klass(store, root_key, search_key_func=search_key_func)
+            result2 = klass(store, alt_root_key,
+                            search_key_func=search_key_func)
+            import pdb; pdb.set_trace()
+            raise ValueError('Failed to serialize via leaf splitting.')
+        return root_key
+
+    @classmethod
+    def _create_via_map(klass, store, initial_value, maximum_size=0,
+                        key_width=1, search_key_func=None):
+        result = klass(store, None, search_key_func=search_key_func)
         result._root_node.set_maximum_size(maximum_size)
         result._root_node._key_width = key_width
         delta = []
         for key, value in initial_value.items():
             delta.append((None, key, value))
         root_key = result.apply_delta(delta)
+        return root_key
+
+    @classmethod
+    def _create_directly(klass, store, initial_value, maximum_size=0,
+                         key_width=1, search_key_func=None):
         node = LeafNode(search_key_func=search_key_func)
         node.set_maximum_size(maximum_size)
         node._key_width = key_width
@@ -230,11 +252,7 @@ class CHKMap(object):
             for split, subnode in node_details:
                 node.add_node(split, subnode)
         keys = list(node.serialise(store))
-        if root_key != keys[-1]:
-            result2 = CHKMap(store, keys[-1], search_key_func=search_key_func)
-            import pdb; pdb.set_trace()
-            raise ValueError('Failed to serialize via leaf splitting.')
-        return root_key
+        return keys[-1]
 
     def iter_changes(self, basis):
         """Iterate over the changes between basis and self.
