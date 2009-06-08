@@ -1416,51 +1416,49 @@ class KnownGraph(object):
                 continue
             # Now project the current nodes ancestor list to the parent nodes,
             # and queue them up to be walked
-            def queue_parents():
-                # Note: using linear_dominator speeds things up quite a bit
-                #       enough that we actually start to be slightly faster
-                #       than the default heads() implementation
-                if next.linear_dominator != next.key:
-                    # We are at the tip of a long linear region
-                    # We know that there is nothing between here and the tail
-                    # that is interesting, so skip to the end
-                    counters[5] += 1
-                    parent_keys = [next.linear_dominator]
-                else:
-                    parent_keys = next.parent_keys
-                for parent_key in parent_keys:
-                    counters[1] += 1
-                    if parent_key in candidate_nodes:
-                        candidate_nodes.pop(parent_key)
-                        if len(candidate_nodes) <= 1:
-                            break
-                    parent_node = nodes[parent_key]
-                    # assert not parent_node.was_walked
-                    ancestor_of = parent_node.ancestor_of
-                    if ancestor_of is None:
-                        counters[2] += 1
-                        # This node hasn't been walked yet
-                        parent_node.ancestor_of = next_ancestor_of
-                        # Enqueue this node
-                        heappush(queue, (-parent_node.gdfo, parent_node))
-                        to_cleanup_append(parent_node)
-                    else:
-                        counters[3] += 1
-                        # Combine to get the full set of parents
-                        if ancestor_of != next_ancestor_of:
-                            parent_node.ancestor_of = combine_parents(
-                                ancestor_of, next_ancestor_of)
-                        # This would otherwise require popping the item out of the
-                        # queue, because we think we are done processing it.
-                        # As is, we'll just let the queue clean itself up
-                        # later.
-                        # if len(parent_node.ancestor_of) == num_candidates:
-                        #     This is now a common node
-                        # stop_nodes[parent_node.key] = parent_node
-                        #
-                        # This node should already be enqueued by whoever
-                        # walked it earlier
-            queue_parents()
+            # Note: using linear_dominator speeds things up quite a bit
+            #       enough that we actually start to be slightly faster
+            #       than the default heads() implementation
+            if next.linear_dominator != next.key:
+                # We are at the tip of a long linear region
+                # We know that there is nothing between here and the tail
+                # that is interesting, so skip to the end
+                counters[5] += 1
+                parent_keys = [next.linear_dominator]
+            else:
+                parent_keys = next.parent_keys
+            for parent_key in parent_keys:
+                counters[1] += 1
+                if parent_key in candidate_nodes:
+                    candidate_nodes.pop(parent_key)
+                    if len(candidate_nodes) <= 1:
+                        break
+                parent_node = nodes[parent_key]
+                # assert not parent_node.was_walked
+                ancestor_of = parent_node.ancestor_of
+                if ancestor_of is None:
+                    counters[2] += 1
+                    # This node hasn't been walked yet
+                    parent_node.ancestor_of = next_ancestor_of
+                    # Enqueue this node
+                    heappush(queue, (-parent_node.gdfo, parent_node))
+                    to_cleanup_append(parent_node)
+                elif ancestor_of != next_ancestor_of:
+                    counters[3] += 1
+                    # Combine to get the full set of parents
+                    all_ancestors = set(ancestor_of)
+                    all_ancestors.update(next_ancestor_of)
+                    parent_node.ancestor_of = tuple(sorted(all_ancestors))
+                    # This would otherwise require popping the item out of the
+                    # queue, because we think we are done processing it.
+                    # As is, we'll just let the queue clean itself up
+                    # later.
+                    # if len(parent_node.ancestor_of) == num_candidates:
+                    #     This is now a common node
+                    # stop_nodes[parent_node.key] = parent_node
+                    #
+                    # This node should already be enqueued by whoever
+                    # walked it earlier
         # import pdb; pdb.set_trace()
         def cleanup():
             for node in to_cleanup:
