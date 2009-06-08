@@ -1391,10 +1391,6 @@ class KnownGraph(object):
         nodes = self._nodes
         heappop = heapq.heappop
         heappush = heapq.heappush
-        def combine_parents(one, two):
-            all_ancestors = set(one)
-            all_ancestors.update(two)
-            return tuple(sorted(all_ancestors))
         while queue and len(candidate_nodes) > 1:
             counters[0] += 1
             _, next = heappop(queue)
@@ -1405,6 +1401,10 @@ class KnownGraph(object):
                 # Make sure all parent nodes are marked as such
                 for parent_key in node.parent_keys:
                     parent_node = nodes[parent_key]
+                    if parent_node.ancestor_of is not None:
+                        parent_node.ancestor_of = next_ancestor_of
+                if node.linear_dominator != node.key:
+                    parent_node = nodes[node.linear_dominator]
                     if parent_node.ancestor_of is not None:
                         parent_node.ancestor_of = next_ancestor_of
                 continue
