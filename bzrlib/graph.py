@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,7 +15,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import heapq
-import sys
 import time
 
 from bzrlib import (
@@ -1227,7 +1226,7 @@ class KnownGraph(object):
                     parent_node = _KnownGraphNode(parent_key, None)
                     nodes[parent_key] = parent_node
                 parent_node.children.append(key)
-        # self._find_linear_dominators()
+        self._find_linear_dominators()
         self._find_gdfo()
 
     def _find_linear_dominators(self):
@@ -1296,8 +1295,6 @@ class KnownGraph(object):
         for node in tails:
             node.gdfo = 1
             heapq.heappush(todo, (1, node))
-        tstart = time.time()
-        tnext = tstart + 0.2
         processed = 0
         skipped = 0
         max_gdfo = len(self._nodes) + 1
@@ -1327,13 +1324,6 @@ class KnownGraph(object):
                     else:
                         child_node.gdfo = next_gdfo
                         heapq.heappush(todo, (next_gdfo, child_node))
-            tnow = time.time()
-            if tnow > tnext:
-                sys.stderr.write('todo: %8d %8d %8d %8d\r'
-                                 % (len(todo), processed, skipped, next_gdfo))
-                tnext = tnow + 0.2
-        sys.stderr.write('todo: %8d %8d %8d %8d\n'
-                         % (len(todo), processed, skipped, next_gdfo))
 
     def heads(self, keys):
         """Return the heads from amongst keys.
