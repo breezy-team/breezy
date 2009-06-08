@@ -49,10 +49,10 @@ cd %ROOT%/bzr-rebase/latest
 @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
 
 cd %RELEASE%
-%PYTHON% setup.py build_ext -i -f
+%PYTHON% setup.py build_ext -i
 @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
 
-%PYTHON% setup.py py2exe > py2exe.log
+%PYTHON% setup.py py2exe
 @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
 
 %PYTHON% %ROOT%/ostools.py copytodir %ROOT%/start_bzr.bat win32_bzr.exe
