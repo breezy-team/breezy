@@ -47,7 +47,6 @@ from bzrlib import (
                     bzrdir,
                     generate_ids,
                     osutils,
-                    rename_map,
                     urlutils,
                     )
 from bzrlib.config import ConfigObj
@@ -1129,7 +1128,6 @@ class DistributionBranch(object):
                     upstream_tarball)
             uuencoded = standard_b64encode(delta)
             revprops["deb-pristine-delta"] = uuencoded
-        rename_map.RenameMap.guess_renames(self.tree)
         revid = self.upstream_tree.commit("Import upstream version %s" \
                 % (str(version.upstream_version),),
                 revprops=revprops)
@@ -1255,7 +1253,6 @@ class DistributionBranch(object):
             revprops['deb-thanks'] = "\n".join(thanks)
         if bugs:
             revprops['bugs'] = "\n".join(bugs)
-        rename_map.RenameMap.guess_renames(self.tree)
         self._mark_native_config(native)
         self.tree.commit(message, revprops=revprops)
         self.tag_version(version)
