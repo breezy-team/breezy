@@ -106,6 +106,15 @@ def main(argv=None):
 
         return 0
 
+    if cmd == "basename":
+        if len(argv) == 0:
+            print "Usage:  ostools.py basename [PATH | URL]"
+            return 1
+        
+        for path in argv:
+            print os.path.basename(path)
+        return 0
+
     print "Usage error"
     print __doc__
     return 1

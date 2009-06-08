@@ -1,7 +1,72 @@
+@echo off
+setlocal
+
 set SVN_DEV=${buildout:directory}/${svn-dev:destination}
 set SVN_BDB=${buildout:directory}/${svn-db4:destination}
 set SVN_LIBINTL=${buildout:directory}/${svn-libintl:destination}
 set TBZR=${buildout:directory}/tbzr/trunk
-set TORTOISE_OVERLAYS_MSI_WIN32=${buildout:directory}/${tortoise-overlays:destination}/
+set ROOT=${buildout:directory}
+set RELEASE=%ROOT%\release\bzr.${settings:bzr-latest}
+set PYTHON=${buildout:executable}
+set BUILD_ERROR=0
+set ORIGINAL_DIRECTORY=%CD%
 
+set TORTOISE_OVERLAYS_MSI_WIN32_CMD=%PYTHON% %ROOT%/ostools.py basename ${settings:tortoise-overlays-win32-url}
+FOR /f "tokens=1 delims= " %%G IN ('%TORTOISE_OVERLAYS_MSI_WIN32_CMD%') DO set BASENAME=%%G
+set TORTOISE_OVERLAYS_MSI_WIN32=${buildout:directory}/build/tortoise-overlays/%BASENAME%
 
+set TORTOISE_OVERLAYS_MSI_X64_CMD=%PYTHON% %ROOT%/ostools.py basename ${settings:tortoise-overlays-x64-url}
+FOR /f "tokens=1 delims= " %%G IN ('%TORTOISE_OVERLAYS_MSI_X64_CMD%') DO set BASENAME=%%G
+set TORTOISE_OVERLAYS_MSI_X64=${buildout:directory}/build/tortoise-overlays/%BASENAME%
+
+%PYTHON% %ROOT%/ostools.py remove %RELEASE%
+@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
+md %RELEASE%
+@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
+bzr co %ROOT%/bzr/latest %RELEASE%
+@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
+cd %ROOT%/subvertpy/latest
+%PYTHON% setup.py install -O1 --install-lib=%RELEASE%
+@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
+cd %ROOT%/bzrtools/latest
+%PYTHON% setup.py install -O1 --install-lib=%RELEASE%
+@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
+cd %ROOT%/qbzr/latest
+%PYTHON% setup.py install -O1 --install-lib=%RELEASE%
+@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
+cd %ROOT%/bzr-svn/latest
+%PYTHON% setup.py install -O1 --install-lib=%RELEASE%
+@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
+cd %ROOT%/bzr-rebase/latest
+%PYTHON% setup.py install -O1 --install-lib=%RELEASE%
+@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
+cd %RELEASE%
+%PYTHON% setup.py build_ext -i -f
+@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
+%PYTHON% setup.py py2exe > py2exe.log
+@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
+%PYTHON% %ROOT%/ostools.py copytodir %ROOT%/start_bzr.bat win32_bzr.exe
+@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
+%PYTHON% %ROOT%/ostools.py copytodir %ROOT%/bazaar.url win32_bzr.exe
+@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
+%PYTHON% %ROOT%/run_script.py cog.py -d -o %ROOT%/bzr.iss %ROOT%/bzr.iss.cog
+@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
+iscc /Q %ROOT%/bzr.iss
+@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
+:End
+cd %ORIGINAL_DIRECTORY%
+exit /b %BUILD_ERROR%
