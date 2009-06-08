@@ -245,7 +245,8 @@ class CHKMap(object):
             and maximum_size
             and node._current_size() > maximum_size):
             prefix, node_details = node._split(store)
-            assert len(node_details) != 1
+            if len(node_details) == 1:
+                raise AssertionError('Failed to split using node._split')
             node = InternalNode(prefix, search_key_func=search_key_func)
             node.set_maximum_size(maximum_size)
             node._key_width = key_width

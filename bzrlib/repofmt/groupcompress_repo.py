@@ -705,8 +705,13 @@ class CHKInventoryRepository(KnitPackRepository):
         id_to_entry_dict = {}
         parent_id_basename_dict = {}
         for old_path, new_path, file_id, entry in delta:
-            assert old_path is None
-            assert new_path is not None
+            if old_path is not None:
+                raise ValueError('Invalid delta, somebody tried to delete %r'
+                                 ' from the NULL_REVISION'
+                                 % ((old_path, file_id),))
+            if new_path is None:
+                raise ValueError('Invalid delta, delta from NULL_REVISION has'
+                                 ' no new_path %r' % (file_id,))
             # file id changes
             if new_path == '':
                 new_inv.root_id = file_id
