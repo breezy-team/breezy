@@ -203,18 +203,18 @@ class CHKMap(object):
             multiple pages.
         :return: The root chk of the resulting CHKMap.
         """
-        root_key = klass._create_via_map(store, initial_value,
+        # root_key = klass._create_via_map(store, initial_value,
+        #     maximum_size=maximum_size, key_width=key_width,
+        #     search_key_func=search_key_func)
+        root_key = klass._create_directly(store, initial_value,
             maximum_size=maximum_size, key_width=key_width,
             search_key_func=search_key_func)
-        alt_root_key = klass._create_directly(store, initial_value,
-            maximum_size=maximum_size, key_width=key_width,
-            search_key_func=search_key_func)
-        if root_key != alt_root_key:
-            result1 = klass(store, root_key, search_key_func=search_key_func)
-            result2 = klass(store, alt_root_key,
-                            search_key_func=search_key_func)
-            import pdb; pdb.set_trace()
-            raise ValueError('Failed to serialize via leaf splitting.')
+        # if root_key != alt_root_key:
+        #     result1 = klass(store, root_key, search_key_func=search_key_func)
+        #     result2 = klass(store, alt_root_key,
+        #                     search_key_func=search_key_func)
+        #     import pdb; pdb.set_trace()
+        #     raise ValueError('Failed to serialize via leaf splitting.')
         return root_key
 
     @classmethod
@@ -868,7 +868,6 @@ class LeafNode(Node):
         self._key = ("sha1:" + sha1,)
         bytes = ''.join(lines)
         if len(bytes) != self._current_size():
-            import pdb; pdb.set_trace()
             raise AssertionError('Invalid _current_size')
         _page_cache.add(self._key, bytes)
         return [self._key]
