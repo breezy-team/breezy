@@ -19,6 +19,8 @@ set TORTOISE_OVERLAYS_MSI_X64_CMD=%PYTHON% %ROOT%/ostools.py basename ${settings
 FOR /f "tokens=1 delims= " %%G IN ('%TORTOISE_OVERLAYS_MSI_X64_CMD%') DO set BASENAME=%%G
 set TORTOISE_OVERLAYS_MSI_X64=${buildout:directory}/build/tortoise-overlays/%BASENAME%
 
+FOR /f "tokens=1 delims= " %%G IN ('cygpath %PYTHON%') DO set CYG_PYTHON=%%G
+
 %PYTHON% %ROOT%/ostools.py remove %RELEASE%
 @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
 
@@ -49,6 +51,9 @@ cd %ROOT%/bzr-rebase/latest
 @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
 
 cd %RELEASE%
+make docs PYTHON=%CYG_PYTHON%
+@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
 %PYTHON% setup.py build_ext -i
 @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
 
