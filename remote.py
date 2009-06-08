@@ -94,6 +94,9 @@ class GitSmartTransport(Transport):
         (self._host, self._port) = urllib.splitnport(hostport, None)
         self._client = _client
 
+    def external_url(self):
+        return self.base
+
     def has(self, relpath):
         return False
 
