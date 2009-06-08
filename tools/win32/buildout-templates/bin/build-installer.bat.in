@@ -61,10 +61,10 @@ cd %RELEASE%
 %PYTHON% %ROOT%/ostools.py copytodir %ROOT%/bazaar.url win32_bzr.exe
 @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
 
-%PYTHON% %ROOT%/run_script.py cog.py -d -o %ROOT%/bzr.iss %ROOT%/bzr.iss.cog
+%PYTHON% tools/win32/run_script.py cog.py -d -o tools/win32/bzr.iss tools/win32/bzr.iss.cog
 @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
 
-iscc /Q %ROOT%/bzr.iss
+iscc /Q tools/win32/bzr.iss
 @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
 
 :End
