@@ -271,16 +271,13 @@ class Mutt(BodyExternalMailClient):
             message_options.extend(['-a',
                 self._encode_path(attach_path, 'attachment')])
         if body is not None:
-            # mkstemp() is used instead of NamedTemporaryFile, so that
-            # the file won't be deleted when the object gets garbage
-            # collected, which may be before mutt can read it.
-            fd, temp_file = tempfile.mkstemp(prefix="mutt-body-",
-                                             suffix=".txt")
-            try:
-                os.write(fd, body)
-            finally:
-                os.close(fd)
-            message_options.extend(['-i', temp_file])
+            # Store the temp file object in self, so that it does not get
+            # garbage collected and delete the file before mutt can read it.
+            self._temp_file = tempfile.NamedTemporaryFile(
+                prefix="mutt-body-", suffix=".txt")
+            self._temp_file.write(body)
+            self._temp_file.flush()
+            message_options.extend(['-i', self._temp_file.name])
         if to is not None:
             message_options.extend(['--', self._encode_safe(to)])
         return message_options
