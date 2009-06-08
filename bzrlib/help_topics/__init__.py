@@ -732,6 +732,8 @@ topic_registry.register('debug-flags', _load_from_file,
                         'Options to show or record debug information')
 topic_registry.register('log-formats', _load_from_file,
                         'Details on the logging formats available')
+topic_registry.register('diverged-branches', _load_from_file,
+                        'How to fix diverged branches')
 
 
 # Register concept topics.

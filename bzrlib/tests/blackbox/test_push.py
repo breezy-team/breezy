@@ -88,7 +88,7 @@ class TestPush(ExternalBase):
         out = self.run_bzr('push ../branch_b', retcode=3)
         self.assertEquals(out,
                 ('','bzr: ERROR: These branches have diverged.  '
-                    'Try using "merge" and then "push".\n'))
+                    'See "bzr help diverged-branches" for more information.\n'))
         self.assertEquals(abspath(branch_a.get_push_location()),
                           abspath(branch_b.bzrdir.root_transport.base))
 

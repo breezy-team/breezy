@@ -63,6 +63,11 @@ Improvements
 Bug Fixes
 *********
 
+* Add documentation about diverged branches and how to fix them in the
+  centralized workflow with local commits.  Mention ``bzr help
+  diverged-branches`` when a push fails because the branches have
+  diverged.  (Neil Martinsen-Burrell, #269477)
+
 * Better message in ``bzr add`` output suggesting using ``bzr ignored`` to
   see which files can also be added.  (Jason Spashett, #76616)
 
