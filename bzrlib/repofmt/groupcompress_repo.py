@@ -691,7 +691,7 @@ class CHKInventoryRepository(KnitPackRepository):
         null_inv.root_id = None
         return null_inv
 
-    def _create_inv_from_null(self, new_inv, delta, new_revision_id):
+    def _create_inv_from_null(self, delta, new_revision_id):
         """This will mutate new_inv directly.
 
         This is a simplified form of create_by_apply_delta which knows that all
@@ -702,7 +702,6 @@ class CHKInventoryRepository(KnitPackRepository):
         new_inv.revision_id = new_revision_id
 
         entry_to_bytes = new_inv._entry_to_bytes
-        assert new_inv.parent_id_basename_to_file_id is not None
         id_to_entry_dict = {}
         parent_id_basename_dict = {}
         for old_path, new_path, file_id, entry in delta:
@@ -724,17 +723,17 @@ class CHKInventoryRepository(KnitPackRepository):
         search_key_func = chk_map.search_key_registry.get(
                             serializer.search_key_name)
         maximum_size = serializer.maximum_size
-        root_key = CHKMap.from_dict(self.chk_bytes, id_to_entry_dict,
-                                    maximum_size=maximum_size, key_width=1,
-                                    search_key_func=search_key_func)
+        root_key = chk_map.CHKMap.from_dict(self.chk_bytes, id_to_entry_dict,
+                   maximum_size=maximum_size, key_width=1,
+                   search_key_func=search_key_func)
         new_inv.id_to_entry = chk_map.CHKMap(self.chk_bytes, root_key,
                                              search_key_func)
-        root_key = CHKMap.from_dict(self.chk_bytes, parent_id_basename_key,
-                                    maximum_size=maximum_size, key_width=2,
-                                    search_key_func=search_key_func)
-        new_inv.parent_id_basename_key = chk_map.CHKMap(self.chk_bytes,
-                                                        root_key,
-                                                        search_key_func)
+        root_key = chk_map.CHKMap.from_dict(self.chk_bytes,
+                   parent_id_basename_dict,
+                   maximum_size=maximum_size, key_width=1,
+                   search_key_func=search_key_func)
+        new_inv.parent_id_basename_to_file_id = chk_map.CHKMap(self.chk_bytes,
+                                                    root_key, search_key_func)
         return new_inv
 
     def add_inventory_by_delta(self, basis_revision_id, delta, new_revision_id,
