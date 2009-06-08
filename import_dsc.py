@@ -775,7 +775,7 @@ class DistributionBranch(object):
         Looks in all the lesser branches for the given version/md5 pair
         in a branch that has not diverged from this.
 
-        If it is present in a lower branch that has not diverged this
+        If it is present in another branch that has not diverged this
         method will return the greatest branch that it is present in,
         otherwise it will return None. If it returns a branch then it
         indicates that a pull should be done from that branch, rather
@@ -805,6 +805,18 @@ class DistributionBranch(object):
                             return branch
                     finally:
                         branch.branch.unlock()
+            for branch in self.get_greater_branches():
+                if branch.has_version(version, md5=md5):
+                    # Check that they haven't diverged
+                    branch.branch.lock_read()
+                    try:
+                        graph = branch.branch.repository.get_graph(
+                                self.branch.repository)
+                        if len(graph.heads([branch.branch.last_revision(),
+                                    self.branch.last_revision()])) == 1:
+                            return branch
+                    finally:
+                        branch.branch.unlock()
             return None
         finally:
             self.branch.unlock()
@@ -812,7 +824,7 @@ class DistributionBranch(object):
     def branch_to_pull_upstream_from(self, version, md5):
         """Checks whether this upstream is a pull from a lesser branch.
 
-        Looks in all the lesser upstream branches for the given
+        Looks in all the other upstream branches for the given
         version/md5 pair in a branch that has not diverged from this.
         If it is present in a lower branch this method will return the
         greatest branch that it is present in that has not diverged,
@@ -834,6 +846,19 @@ class DistributionBranch(object):
         up_branch.lock_read()
         try:
             for branch in reversed(self.get_lesser_branches()):
+                if branch.has_upstream_version(version, md5=md5):
+                    # Check for divergenge.
+                    other_up_branch = branch.upstream_branch
+                    other_up_branch.lock_read()
+                    try:
+                        graph = other_up_branch.repository.get_graph(
+                                up_branch.repository)
+                        if len(graph.heads([other_up_branch.last_revision(),
+                                    up_branch.last_revision()])) == 1:
+                            return branch
+                    finally:
+                        other_up_branch.unlock()
+            for branch in self.get_greater_branches():
                 if branch.has_upstream_version(version, md5=md5):
                     # Check for divergenge.
                     other_up_branch = branch.upstream_branch
@@ -1334,9 +1359,9 @@ class DistributionBranch(object):
         dsc_filename = os.path.abspath(dsc_filename)
         proc = Popen("dpkg-source -su -x %s" % (dsc_filename,), shell=True,
                 cwd=tempdir, stdout=PIPE, stderr=PIPE)
-        ret = proc.wait()
-        assert ret == 0, "dpkg-source -x failed, output:\n%s\n%s" % \
-                    (proc.stdout.read(), proc.stderr.read())
+        (stdout, stderr) = proc.communicate()
+        assert proc.returncode == 0, "dpkg-source -x failed, output:\n%s\n%s" % \
+                    (stdout, stderr)
         return tempdir
 
     def _do_import_package(self, version, versions, debian_part, md5,
@@ -1619,11 +1644,9 @@ class DistributionBranch(object):
                        dest_filename]
             print command
             proc = Popen(command, stdin=PIPE, cwd=dest)
-            proc.stdin.write(delta)
-            proc.stdin.close()
-            ret = proc.wait()
-            if ret != 0:
-                raise PristineTarError("Generating tar from delta failed")
+            (stdout, stderr) = proc.communicate(delta)
+            if proc.returncode != 0:
+                raise PristineTarError("Generating tar from delta failed: %s" % stderr)
         finally:
             shutil.rmtree(tmpdir)
 
@@ -1637,9 +1660,9 @@ class DistributionBranch(object):
             command = ["/usr/bin/pristine-tar", "gendelta", tarball_path, "-"]
             info(" ".join(command))
             proc = Popen(command, stdout=PIPE, cwd=dest)
-            ret = proc.wait()
-            if ret != 0:
-                raise PristineTarError("Generating delta from tar failed")
-            return proc.stdout.read()
+            (stdout, stderr) = proc.communicate()
+            if proc.returncode != 0:
+                raise PristineTarError("Generating delta from tar failed: %s" % stderr)
+            return stdout
         finally:
             shutil.rmtree(tmpdir)
