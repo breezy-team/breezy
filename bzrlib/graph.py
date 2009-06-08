@@ -1392,6 +1392,10 @@ class KnownGraph(object):
         nodes = self._nodes
         heappop = heapq.heappop
         heappush = heapq.heappush
+        def combine_parents(one, two):
+            all_ancestors = set(one)
+            all_ancestors.update(two)
+            return tuple(sorted(all_ancestors))
         while queue and len(candidate_nodes) > 1:
             counters[0] += 1
             _, next = heappop(queue)
@@ -1443,11 +1447,9 @@ class KnownGraph(object):
                     else:
                         counters[3] += 1
                         # Combine to get the full set of parents
-                        def combine_parents():
-                            all_ancestors = set(ancestor_of)
-                            all_ancestors.update(next_ancestor_of)
-                            return tuple(all_ancestors)
-                        parent_node.ancestor_of = combine_parents()
+                        if ancestor_of != next_ancestor_of:
+                            parent_node.ancestor_of = combine_parents(
+                                ancestor_of, next_ancestor_of)
                         # This would otherwise require popping the item out of the
                         # queue, because we think we are done processing it.
                         # As is, we'll just let the queue clean itself up
