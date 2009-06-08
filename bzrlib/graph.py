@@ -1392,7 +1392,7 @@ class KnownGraph(object):
         heappop = heapq.heappop
         heappush = heapq.heappush
         while queue and len(candidate_nodes) > 1:
-            counters[0] += 1
+            # counters[0] += 1
             _, next = heappop(queue)
             # assert next.ancestor_of is not None
             next_ancestor_of = next.ancestor_of
@@ -1420,12 +1420,12 @@ class KnownGraph(object):
                 # We are at the tip of a long linear region
                 # We know that there is nothing between here and the tail
                 # that is interesting, so skip to the end
-                counters[5] += 1
+                # counters[5] += 1
                 parent_keys = [next.linear_dominator]
             else:
                 parent_keys = next.parent_keys
             for parent_key in parent_keys:
-                counters[1] += 1
+                # counters[1] += 1
                 if parent_key in candidate_nodes:
                     candidate_nodes.pop(parent_key)
                     if len(candidate_nodes) <= 1:
@@ -1433,21 +1433,21 @@ class KnownGraph(object):
                 parent_node = nodes[parent_key]
                 ancestor_of = parent_node.ancestor_of
                 if ancestor_of is None:
-                    counters[2] += 1
+                    # counters[2] += 1
                     # This node hasn't been walked yet
                     parent_node.ancestor_of = next_ancestor_of
                     # Enqueue this node
                     heappush(queue, (-parent_node.gdfo, parent_node))
                     to_cleanup_append(parent_node)
                 elif ancestor_of != next_ancestor_of:
-                    counters[3] += 1
+                    # counters[3] += 1
                     # Combine to get the full set of parents
                     all_ancestors = set(ancestor_of)
                     all_ancestors.update(next_ancestor_of)
                     parent_node.ancestor_of = tuple(sorted(all_ancestors))
         def cleanup():
             for node in to_cleanup:
-                counters[4] += 1
+                # counters[4] += 1
                 node.ancestor_of = None
         cleanup()
         return set(candidate_nodes)
