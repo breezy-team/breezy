@@ -63,8 +63,14 @@ Improvements
 Bug Fixes
 *********
 
+* Bazaar can now pass attachment files to the mutt email client.
+  (Edwin Grubbs, #384158)
+
 * Better message in ``bzr add`` output suggesting using ``bzr ignored`` to
   see which files can also be added.  (Jason Spashett, #76616)
+
+* ``bzr serve`` on Windows no longer displays a traceback simply because a
+  TCP client disconnected. (Andrew Bennetts)
 
 * Clarify the rules for locking and fallback repositories. Fix bugs in how
   ``RemoteRepository`` was handling fallbacks along with the
@@ -103,6 +109,10 @@ API Changes
 
 * Added osutils.parent_directories(). (Ian Clatworthy)
 
+* ``bzrlib.progress.ProgressBar``, ``ChildProgress``, ``DotsProgressBar``,
+  ``TTYProgressBar`` and ``child_progress`` are now deprecated; use
+  ``ui_factory.nested_progress_bar`` instead.  (Martin Pool)
+
 * ``graph.StackedParentsProvider`` is now a public API, replacing
   ``graph._StackedParentsProvider``. The api is now considered stable and ready
   for external users. (Gary van der Merwe)
@@ -110,9 +120,11 @@ API Changes
 * TreeTransformBase no longer assumes that limbo is provided via disk.
   DiskTreeTransform now provides disk functionality.  (Aaron Bentley)
 
-
 Internals
 *********
+
+* Remove ``weave.py`` script for accessing internals of old weave-format
+  repositories.  (Martin Pool)
 
 Testing
 *******
