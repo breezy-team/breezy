@@ -17,33 +17,30 @@
 
 """Black-box tests for bzr push."""
 
-import os
 import re
 
 from bzrlib import (
+    branch,
+    bzrdir,
     errors,
+    osutils,
+    tests,
     transport,
+    uncommit,
     urlutils,
+    workingtree
     )
-from bzrlib.branch import Branch
-from bzrlib.bzrdir import BzrDirMetaFormat1
-from bzrlib.osutils import abspath
-from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1
-from bzrlib.smart import client, server
-from bzrlib.tests.blackbox import ExternalBase
-from bzrlib.tests.http_server import HttpServer
-from bzrlib.transport.memory import MemoryServer, MemoryTransport
-from bzrlib.uncommit import uncommit
-from bzrlib.urlutils import local_path_from_url
-from bzrlib.workingtree import WorkingTree
+from bzrlib.repofmt import knitrepo
+from bzrlib.tests import http_server
+from bzrlib.transport import memory
 
 
-class TestPush(ExternalBase):
+class TestPush(tests.TestCaseWithTransport):
 
     def test_push_error_on_vfs_http(self):
         """ pushing a branch to a HTTP server fails cleanly. """
         # the trunk is published on a web server
-        self.transport_readonly_server = HttpServer
+        self.transport_readonly_server = http_server.HttpServer
         self.make_branch('source')
         public_url = self.get_readonly_url('target')
         self.run_bzr_error(['http does not support mkdir'],
@@ -72,41 +69,42 @@ class TestPush(ExternalBase):
         self.assertEqual(None, branch_b.get_push_location())
 
         # test push for failure without push location set
-        os.chdir('branch_a')
-        out = self.run_bzr('push', retcode=3)
+        out = self.run_bzr('push', working_dir='branch_a', retcode=3)
         self.assertEquals(out,
                 ('','bzr: ERROR: No push location known or specified.\n'))
 
         # test not remembered if cannot actually push
-        self.run_bzr('push ../path/which/doesnt/exist', retcode=3)
-        out = self.run_bzr('push', retcode=3)
+        self.run_bzr('push path/which/doesnt/exist',
+                     working_dir='branch_a', retcode=3)
+        out = self.run_bzr('push', working_dir='branch_a', retcode=3)
         self.assertEquals(
                 ('', 'bzr: ERROR: No push location known or specified.\n'),
                 out)
 
         # test implicit --remember when no push location set, push fails
-        out = self.run_bzr('push ../branch_b', retcode=3)
+        out = self.run_bzr('push ../branch_b',
+                           working_dir='branch_a', retcode=3)
         self.assertEquals(out,
                 ('','bzr: ERROR: These branches have diverged.  '
                     'Try using "merge" and then "push".\n'))
-        self.assertEquals(abspath(branch_a.get_push_location()),
-                          abspath(branch_b.bzrdir.root_transport.base))
+        self.assertEquals(osutils.abspath(branch_a.get_push_location()),
+                          osutils.abspath(branch_b.bzrdir.root_transport.base))
 
         # test implicit --remember after resolving previous failure
-        uncommit(branch=branch_b, tree=tree_b)
+        uncommit.uncommit(branch=branch_b, tree=tree_b)
         transport.delete('branch_b/c')
-        out, err = self.run_bzr('push')
+        out, err = self.run_bzr('push', working_dir='branch_a')
         path = branch_a.get_push_location()
         self.assertEquals(out,
                           'Using saved push location: %s\n'
-                          % local_path_from_url(path))
+                          % urlutils.local_path_from_url(path))
         self.assertEqual(err,
                          'All changes applied successfully.\n'
                          'Pushed up to revision 2.\n')
         self.assertEqual(path,
                          branch_b.bzrdir.root_transport.base)
         # test explicit --remember
-        self.run_bzr('push ../branch_c --remember')
+        self.run_bzr('push ../branch_c --remember', working_dir='branch_a')
         self.assertEquals(branch_a.get_push_location(),
                           branch_c.bzrdir.root_transport.base)
 
@@ -116,7 +114,7 @@ class TestPush(ExternalBase):
         out, err = self.run_bzr('push pushed-location')
         self.assertEqual('', out)
         self.assertEqual('Created new branch.\n', err)
-        b2 = Branch.open('pushed-location')
+        b2 = branch.Branch.open('pushed-location')
         self.assertEndsWith(b2.base, 'pushed-location/')
 
     def test_push_new_branch_revision_count(self):
@@ -127,23 +125,21 @@ class TestPush(ExternalBase):
         self.build_tree(['tree/file'])
         t.add('file')
         t.commit('commit 1')
-        os.chdir('tree')
-        out, err = self.run_bzr('push pushed-to')
-        os.chdir('..')
+        out, err = self.run_bzr('push -d tree pushed-to')
         self.assertEqual('', out)
         self.assertEqual('Created new branch.\n', err)
 
     def test_push_only_pushes_history(self):
         # Knit branches should only push the history for the current revision.
-        format = BzrDirMetaFormat1()
-        format.repository_format = RepositoryFormatKnit1()
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = knitrepo.RepositoryFormatKnit1()
         shared_repo = self.make_repository('repo', format=format, shared=True)
         shared_repo.set_make_working_trees(True)
 
         def make_shared_tree(path):
             shared_repo.bzrdir.root_transport.mkdir(path)
             shared_repo.bzrdir.create_branch_convenience('repo/' + path)
-            return WorkingTree.open('repo/' + path)
+            return workingtree.WorkingTree.open('repo/' + path)
         tree_a = make_shared_tree('a')
         self.build_tree(['repo/a/file'])
         tree_a.add('file')
@@ -164,9 +160,8 @@ class TestPush(ExternalBase):
 
         # Now that we have a repository with shared files, make sure
         # that things aren't copied out by a 'push'
-        os.chdir('repo/b')
-        self.run_bzr('push ../../push-b')
-        pushed_tree = WorkingTree.open('../../push-b')
+        self.run_bzr('push ../../push-b', working_dir='repo/b')
+        pushed_tree = workingtree.WorkingTree.open('push-b')
         pushed_repo = pushed_tree.branch.repository
         self.assertFalse(pushed_repo.has_revision('a-1'))
         self.assertFalse(pushed_repo.has_revision('a-2'))
@@ -174,11 +169,10 @@ class TestPush(ExternalBase):
 
     def test_push_funky_id(self):
         t = self.make_branch_and_tree('tree')
-        os.chdir('tree')
-        self.build_tree(['filename'])
+        self.build_tree(['tree/filename'])
         t.add('filename', 'funky-chars<>%&;"\'')
         t.commit('commit filename')
-        self.run_bzr('push ../new-tree')
+        self.run_bzr('push -d tree new-tree')
 
     def test_push_dash_d(self):
         t = self.make_branch_and_tree('from')
@@ -218,7 +212,7 @@ class TestPush(ExternalBase):
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(14, self.hpss_calls)
-        remote = Branch.open('public')
+        remote = branch.Branch.open('public')
         self.assertEndsWith(remote.get_stacked_on_url(), '/parent')
 
     def create_simple_tree(self):
@@ -237,7 +231,7 @@ class TestPush(ExternalBase):
                            working_dir='tree')
         self.run_bzr('push ../new/tree --create-prefix',
                      working_dir='tree')
-        new_tree = WorkingTree.open('new/tree')
+        new_tree = workingtree.WorkingTree.open('new/tree')
         self.assertEqual(tree.last_revision(), new_tree.last_revision())
         self.failUnlessExists('new/tree/a')
 
@@ -257,7 +251,7 @@ class TestPush(ExternalBase):
         self.run_bzr('push --use-existing-dir ../target',
                      working_dir='tree')
 
-        new_tree = WorkingTree.open('target')
+        new_tree = workingtree.WorkingTree.open('target')
         self.assertEqual(tree.last_revision(), new_tree.last_revision())
         # The push should have created target/a
         self.failUnlessExists('target/a')
@@ -273,8 +267,9 @@ class TestPush(ExternalBase):
         # Pushing onto an existing bzrdir will create a repository and
         # branch as needed, but will only create a working tree if there was
         # no BzrDir before.
-        self.assertRaises(errors.NoWorkingTree, WorkingTree.open, 'repo')
-        new_branch = Branch.open('repo')
+        self.assertRaises(errors.NoWorkingTree,
+                          workingtree.WorkingTree.open, 'repo')
+        new_branch = branch.Branch.open('repo')
         self.assertEqual(tree.last_revision(), new_branch.last_revision())
 
     def test_push_onto_just_bzrdir(self):
@@ -299,7 +294,7 @@ class TestPush(ExternalBase):
 
         self.run_bzr('push -r1 ../to', working_dir='from')
 
-        tree_to = WorkingTree.open('to')
+        tree_to = workingtree.WorkingTree.open('to')
         repo_to = tree_to.branch.repository
         self.assertTrue(repo_to.has_revision('from-1'))
         self.assertFalse(repo_to.has_revision('from-2'))
@@ -326,7 +321,7 @@ class TestPush(ExternalBase):
 
     def assertPublished(self, branch_revid, stacked_on):
         """Assert that the branch 'published' has been published correctly."""
-        published_branch = Branch.open('published')
+        published_branch = branch.Branch.open('published')
         # The published branch refers to the mainline
         self.assertEqual(stacked_on, published_branch.get_stacked_on_url())
         # and the branch's work was pushed
@@ -354,13 +349,14 @@ class TestPush(ExternalBase):
         self.assertEqual('', out)
         self.assertEqual('Created new stacked branch referring to %s.\n' %
             trunk_tree.branch.base, err)
-        self.assertPublished(branch_tree.last_revision(), trunk_tree.branch.base)
+        self.assertPublished(branch_tree.last_revision(),
+                             trunk_tree.branch.base)
 
     def test_push_new_branch_stacked_uses_parent_public(self):
         """Pushing a new branch with --stacked creates a stacked branch."""
         trunk_tree, branch_tree = self.create_trunk_and_feature_branch()
         # the trunk is published on a web server
-        self.transport_readonly_server = HttpServer
+        self.transport_readonly_server = http_server.HttpServer
         trunk_public = self.make_branch('public_trunk', format='1.9')
         trunk_public.pull(trunk_tree.branch)
         trunk_public_url = self.get_readonly_url('public_trunk')
@@ -398,17 +394,16 @@ class TestPush(ExternalBase):
         self.make_bzrdir('.').get_config().set_default_stack_on('stack_on')
         self.make_branch('from', format='pack-0.92')
         out, err = self.run_bzr('push -d from to')
-        branch = Branch.open('to')
-        self.assertEqual('../stack_on', branch.get_stacked_on_url())
+        b = branch.Branch.open('to')
+        self.assertEqual('../stack_on', b.get_stacked_on_url())
 
     def test_push_does_not_change_format_with_default_if_target_cannot(self):
         self.make_branch('stack_on', format='pack-0.92')
         self.make_bzrdir('.').get_config().set_default_stack_on('stack_on')
         self.make_branch('from', format='pack-0.92')
         out, err = self.run_bzr('push -d from to')
-        branch = Branch.open('to')
-        self.assertRaises(errors.UnstackableBranchFormat,
-            branch.get_stacked_on_url)
+        b = branch.Branch.open('to')
+        self.assertRaises(errors.UnstackableBranchFormat, b.get_stacked_on_url)
 
     def test_push_doesnt_create_broken_branch(self):
         """Pushing a new standalone branch works even when there's a default
@@ -456,11 +451,10 @@ class TestPush(ExternalBase):
         self.assertNotContainsRe(out, 'rev1')
 
 
-class RedirectingMemoryTransport(MemoryTransport):
+class RedirectingMemoryTransport(memory.MemoryTransport):
 
     def mkdir(self, relpath, mode=None):
         from bzrlib.trace import mutter
-        mutter('cwd: %r, rel: %r, abs: %r' % (self._cwd, relpath, abspath))
         if self._cwd == '/source/':
             raise errors.RedirectRequested(self.abspath(relpath),
                                            self.abspath('../target'),
@@ -478,7 +472,7 @@ class RedirectingMemoryTransport(MemoryTransport):
         return transport.get_transport(target)
 
 
-class RedirectingMemoryServer(MemoryServer):
+class RedirectingMemoryServer(memory.MemoryServer):
 
     def setUp(self):
         self._dirs = {'/': None}
@@ -498,10 +492,10 @@ class RedirectingMemoryServer(MemoryServer):
         transport.unregister_transport(self._scheme, self._memory_factory)
 
 
-class TestPushRedirect(ExternalBase):
+class TestPushRedirect(tests.TestCaseWithTransport):
 
     def setUp(self):
-        ExternalBase.setUp(self)
+        tests.TestCaseWithTransport.setUp(self)
         self.memory_server = RedirectingMemoryServer()
         self.memory_server.setUp()
         self.addCleanup(self.memory_server.tearDown)
@@ -521,8 +515,8 @@ class TestPushRedirect(ExternalBase):
         destination_url = self.memory_server.get_url() + 'source'
         self.run_bzr(['push', '-d', 'tree', destination_url])
 
-        local_revision = Branch.open('tree').last_revision()
-        remote_revision = Branch.open(
+        local_revision = branch.Branch.open('tree').last_revision()
+        remote_revision = branch.Branch.open(
             self.memory_server.get_url() + 'target').last_revision()
         self.assertEqual(remote_revision, local_revision)
 
