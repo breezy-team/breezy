@@ -63,6 +63,9 @@ Improvements
 Bug Fixes
 *********
 
+* Bazaar can now pass attachment files to the mutt email client.
+  (Edwin Grubbs, #384158)
+
 * Better message in ``bzr add`` output suggesting using ``bzr ignored`` to
   see which files can also be added.  (Jason Spashett, #76616)
 
