@@ -55,8 +55,8 @@ Improvements
   (Ian Clatworthy)
 
 * Pyrex version of ``bencode`` support. This provides optimized support
-  for both encoding and decoding, and is now found at ``bzrlib.bencode``,
-  rather than ``bzrlib.utils.bencode``.
+  for both encoding and decoding, and is now found at ``bzrlib.bencode``.
+  ``bzrlib.utils.bencode`` is now deprecated.
   (Alexander Belchenko, Jelmer Vernooij, John Arbash Meinel)
 
 
