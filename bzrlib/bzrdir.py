@@ -1306,7 +1306,8 @@ class BzrDir(object):
             tree              - a lightweight checkout
         """
         try:
-            br = self.open_branch()
+            # XXX: Is unsupported=True needed here as well?
+            br = self.open_branch(ignore_fallbacks=True)
         except errors.NotBranchError:
             pass
         else:
