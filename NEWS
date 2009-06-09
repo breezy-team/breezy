@@ -66,6 +66,9 @@ Bug Fixes
 * Better message in ``bzr add`` output suggesting using ``bzr ignored`` to
   see which files can also be added.  (Jason Spashett, #76616)
 
+* ``bzr serve`` on Windows no longer displays a traceback simply because a
+  TCP client disconnected. (Andrew Bennetts)
+
 * Clarify the rules for locking and fallback repositories. Fix bugs in how
   ``RemoteRepository`` was handling fallbacks along with the
   ``_real_repository``. (Andrew Bennetts, John Arbash Meinel, #375496)
