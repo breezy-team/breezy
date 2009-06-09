@@ -28,6 +28,7 @@ from bzrlib.xml_serializer import (
     Element,
     SubElement,
     XMLSerializer,
+    escape_invalid_chars,
     )
 from bzrlib.inventory import ROOT_ID, Inventory, InventoryEntry
 from bzrlib.revision import Revision
@@ -345,7 +346,7 @@ class Serializer_v8(XMLSerializer):
             root.set('timezone', str(rev.timezone))
         root.text = '\n'
         msg = SubElement(root, 'message')
-        msg.text = rev.message
+        msg.text = escape_invalid_chars(rev.message)[0]
         msg.tail = '\n'
         if rev.parent_ids:
             pelts = SubElement(root, 'parents')
