@@ -285,17 +285,8 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
         self._push_back(protocol.unused_data)
 
     def _read_bytes(self, desired_count):
-        # We ignore the desired_count because on sockets it's more efficient to
-        # read large chunks (of _MAX_READ_SIZE bytes) at a time.
-        try:
-            bytes = osutils.until_no_eintr(self.socket.recv, _MAX_READ_SIZE)
-        except socket.error, e:
-            if e.args[0] in (errno.ECONNRESET, 10054):
-                # The connection was closed by the other side.
-                return ''
-            raise
-        self._report_activity(len(bytes), 'read')
-        return bytes
+        return _read_bytes_from_socket(
+            self.socket.recv, desired_count, self._report_activity)
 
     def terminate_due_to_error(self):
         # TODO: This should log to a server log file, but no such thing
@@ -890,19 +881,8 @@ class SmartTCPClientMedium(SmartClientStreamMedium):
         """See SmartClientMedium.read_bytes."""
         if not self._connected:
             raise errors.MediumNotConnected(self)
-        # We ignore the desired_count because on sockets it's more efficient to
-        # read large chunks (of _MAX_READ_SIZE bytes) at a time.
-        try:
-            bytes = osutils.until_no_eintr(self._socket.recv, _MAX_READ_SIZE)
-        except socket.error, e:
-            if len(e.args) and e.args[0] == errno.ECONNRESET:
-                # Callers expect an empty string in that case
-                return ''
-            else:
-                raise
-        else:
-            self._report_activity(len(bytes), 'read')
-            return bytes
+        return _read_bytes_from_socket(
+            self._socket.recv, count, self._report_activity)
 
 
 class SmartClientStreamMediumRequest(SmartClientMediumRequest):
@@ -943,4 +923,21 @@ class SmartClientStreamMediumRequest(SmartClientMediumRequest):
         This invokes self._medium._flush to ensure all bytes are transmitted.
         """
         self._medium._flush()
+
+
+def _read_bytes_from_socket(sock, desired_count, report_activity):
+    # We ignore the desired_count because on sockets it's more efficient to
+    # read large chunks (of _MAX_READ_SIZE bytes) at a time.
+    try:
+        bytes = osutils.until_no_eintr(sock, _MAX_READ_SIZE)
+    except socket.error, e:
+        if len(e.args) and e.args[0] in (errno.ECONNRESET, 10054):
+            # The connection was closed by the other side.  Callers expect an
+            # empty string to signal end-of-stream.
+            bytes = ''
+        else:
+            raise
+    else:
+        report_activity(len(bytes), 'read')
+    return bytes
 
