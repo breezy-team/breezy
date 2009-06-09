@@ -113,6 +113,10 @@ API Changes
   ``TTYProgressBar`` and ``child_progress`` are now deprecated; use
   ``ui_factory.nested_progress_bar`` instead.  (Martin Pool)
 
+* ``graph.StackedParentsProvider`` is now a public API, replacing
+  ``graph._StackedParentsProvider``. The api is now considered stable and ready
+  for external users. (Gary van der Merwe)
+
 * TreeTransformBase no longer assumes that limbo is provided via disk.
   DiskTreeTransform now provides disk functionality.  (Aaron Bentley)
 
