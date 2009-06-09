@@ -253,12 +253,16 @@ def import_archive(tree, archive_file, file_ids_from=None):
         if tt.tree_file_id(trans_id) is None:
             found = False
             for other_tree in file_ids_from:
-                if other_tree.has_filename(relative_path):
-                    file_id = other_tree.path2id(relative_path)
-                    if file_id is not None:
-                        tt.version_file(file_id, trans_id)
-                        found = True
-                        break
+                other_tree.lock_read()
+                try:
+                    if other_tree.has_filename(relative_path):
+                        file_id = other_tree.path2id(relative_path)
+                        if file_id is not None:
+                            tt.version_file(file_id, trans_id)
+                            found = True
+                            break
+                finally:
+                    other_tree.unlock()
             if not found:
                 name = basename(member.name.rstrip('/'))
                 file_id = generate_ids.gen_file_id(name)
@@ -273,12 +277,16 @@ def import_archive(tree, archive_file, file_ids_from=None):
         if tt.tree_file_id(trans_id) is None:
             found = False
             for other_tree in file_ids_from:
-                if other_tree.has_filename(relative_path):
-                    file_id = other_tree.path2id(relative_path)
-                    if file_id is not None:
-                        tt.version_file(file_id, trans_id)
-                        found = True
-                        break
+                other_tree.lock_read()
+                try:
+                    if other_tree.has_filename(relative_path):
+                        file_id = other_tree.path2id(relative_path)
+                        if file_id is not None:
+                            tt.version_file(file_id, trans_id)
+                            found = True
+                            break
+                finally:
+                    other_tree.unlock()
             if not found:
                 tt.version_file(trans_id, trans_id)
         added.add(relative_path)
@@ -720,6 +728,8 @@ class DistributionBranch(object):
         tag_name = self.upstream_tag_name(version)
         self.upstream_branch.tags.set_tag(tag_name,
                 self.upstream_branch.last_revision())
+        self.branch.tags.set_tag(tag_name,
+                self.upstream_branch.last_revision())
 
     def _default_config_for_tree(self, tree):
         # FIXME: shouldn't go to configobj directly
@@ -799,7 +809,8 @@ class DistributionBranch(object):
                     try:
                         graph = branch.branch.repository.get_graph(
                                 self.branch.repository)
-                        if len(graph.heads([branch.branch.last_revision(),
+                        other_revid = branch.revid_of_version(version)
+                        if len(graph.heads([other_revid,
                                     self.branch.last_revision()])) == 1:
                             return branch
                     finally:
@@ -811,7 +822,8 @@ class DistributionBranch(object):
                     try:
                         graph = branch.branch.repository.get_graph(
                                 self.branch.repository)
-                        if len(graph.heads([branch.branch.last_revision(),
+                        other_revid = branch.revid_of_version(version)
+                        if len(graph.heads([other_revid,
                                     self.branch.last_revision()])) == 1:
                             return branch
                     finally:
@@ -852,7 +864,9 @@ class DistributionBranch(object):
                     try:
                         graph = other_up_branch.repository.get_graph(
                                 up_branch.repository)
-                        if len(graph.heads([other_up_branch.last_revision(),
+                        other_revid = branch.revid_of_upstream_version(
+                                version)
+                        if len(graph.heads([other_revid,
                                     up_branch.last_revision()])) == 1:
                             return branch
                     finally:
@@ -865,7 +879,9 @@ class DistributionBranch(object):
                     try:
                         graph = other_up_branch.repository.get_graph(
                                 up_branch.repository)
-                        if len(graph.heads([other_up_branch.last_revision(),
+                        other_revid = branch.revid_of_upstream_version(
+                                version)
+                        if len(graph.heads([other_revid,
                                     up_branch.last_revision()])) == 1:
                             return branch
                     finally:
@@ -964,6 +980,7 @@ class DistributionBranch(object):
                 stop_revision=pull_revision)
         self.tag_upstream_version(version)
         self.branch.fetch(self.upstream_branch, last_revision=pull_revision)
+        self.upstream_branch.tags.merge_to(self.branch.tags)
 
     def pull_version_from_branch(self, pull_branch, version, native=False):
         """Pull a version from a particular branch.
@@ -996,7 +1013,8 @@ class DistributionBranch(object):
             if pull_branch.has_upstream_version(version):
                 self.pull_upstream_from_branch(pull_branch, version)
             else:
-                assert False, "Can't find the needed upstream part"
+                assert False, ("Can't find the needed upstream part "
+                        "for version %s" % version)
         if (native and self.upstream_branch.last_revision() == NULL_REVISION
             and pull_branch.upstream_branch.last_revision() != NULL_REVISION):
             # in case the package wasn't native before then we pull
@@ -1080,7 +1098,7 @@ class DistributionBranch(object):
 
     def import_upstream(self, upstream_part, version, md5, upstream_parents,
             upstream_tarball=None, upstream_branch=None,
-            upstream_revision=None):
+            upstream_revision=None, timestamp=None, author=None):
         """Import an upstream part on to the upstream branch.
 
         This imports the upstream part of the code and places it on to
@@ -1091,6 +1109,8 @@ class DistributionBranch(object):
         :param version: the Version of the package that is being imported.
         :param md5: the md5 of the upstream part.
         :param upstream_parents: the parents to give the upstream revision
+        :param timestamp: a tuple of (timestamp, timezone) to use for
+            the commit, or None to use the current time.
         """
         # Should we just dump the upstream part on whatever is currently
         # there, or try and pull all of the other upstream versions
@@ -1128,9 +1148,15 @@ class DistributionBranch(object):
                     upstream_tarball)
             uuencoded = standard_b64encode(delta)
             revprops["deb-pristine-delta"] = uuencoded
+        if author is not None:
+            revprops['authors'] = author
+        timezone=None
+        if timestamp is not None:
+            timezone = timestamp[1]
+            timestamp = timestamp[0]
         revid = self.upstream_tree.commit("Import upstream version %s" \
                 % (str(version.upstream_version),),
-                revprops=revprops)
+                revprops=revprops, timestamp=timestamp, timezone=timezone)
         self.tag_upstream_version(version)
         return revid
 
@@ -1182,7 +1208,7 @@ class DistributionBranch(object):
                                 '.bzr-builddeb/default.conf'])
 
     def import_debian(self, debian_part, version, parents, md5,
-            native=False):
+            native=False, timestamp=None):
         """Import the debian part of a source package.
 
         :param debian_part: the path of a directory containing the unpacked
@@ -1192,6 +1218,9 @@ class DistributionBranch(object):
             parents of the imported revision.
         :param md5: the md5 sum reported by the .dsc for
             the .diff.gz part of this source package.
+        :param native: whether the package is native.
+        :param timestamp: a tuple of (timestamp, timezone) to use for
+            the commit, or None to use the current values.
         """
         mutter("Importing debian part for version %s from %s, with parents "
                 "%s" % (str(version), debian_part, str(parents)))
@@ -1253,8 +1282,13 @@ class DistributionBranch(object):
             revprops['deb-thanks'] = "\n".join(thanks)
         if bugs:
             revprops['bugs'] = "\n".join(bugs)
+        timezone = None
+        if timestamp is not None:
+            timezone = timestamp[1]
+            timestamp = timestamp[0]
         self._mark_native_config(native)
-        self.tree.commit(message, revprops=revprops)
+        self.tree.commit(message, revprops=revprops, timestamp=timestamp,
+                timezone=timezone)
         self.tag_version(version)
 
     def _get_dsc_part(self, dsc, end):
@@ -1302,7 +1336,7 @@ class DistributionBranch(object):
         assert not path.endswith(".orig.tar.gz")
         return (path, md5)
 
-    def upstream_parents(self, versions):
+    def upstream_parents(self, versions, version):
         """Get the parents for importing a new upstream.
 
         The upstream parents will be the last upstream version,
@@ -1326,12 +1360,16 @@ class DistributionBranch(object):
                 parents.append(revid)
                 self.upstream_branch.fetch(self.branch,
                         last_revision=revid)
-        if first_parent == NULL_REVISION:
-            pull_parents = self.get_parents(versions)
-            if len(pull_parents) > 0:
+        pull_parents = self.get_parents(versions)
+        if ((first_parent == NULL_REVISION and len(pull_parents) > 0)
+                or len(pull_parents) > 1):
+            if first_parent == NULL_REVISION:
                 pull_branch = pull_parents[0][0]
                 pull_version = pull_parents[0][1]
-                if not pull_branch.is_version_native(pull_version):
+            else:
+                pull_branch = pull_parents[1][0]
+                pull_version = pull_parents[1][1]
+            if not pull_branch.is_version_native(pull_version):
                     pull_revid = \
                         pull_branch.revid_of_upstream_version(pull_version)
                     mutter("Initialising upstream from %s, version %s" \
@@ -1362,8 +1400,13 @@ class DistributionBranch(object):
         return tempdir
 
     def _do_import_package(self, version, versions, debian_part, md5,
-            upstream_part, upstream_md5, upstream_tarball=None):
+            upstream_part, upstream_md5, upstream_tarball=None,
+            timestamp=None, author=None):
         pull_branch = self.branch_to_pull_version_from(version, md5)
+        if pull_branch is not None:
+            if (self.branch_to_pull_upstream_from(version, upstream_md5)
+                    is None):
+                pull_branch = None
         if pull_branch is not None:
             self.pull_version_from_branch(pull_branch, version)
         else:
@@ -1379,17 +1422,20 @@ class DistributionBranch(object):
                     imported_upstream = True
                     # Check whether we should pull first if this initialises
                     # from another branch:
-                    upstream_parents = self.upstream_parents(versions)
+                    upstream_parents = self.upstream_parents(versions,
+                            version)
                     new_revid = self.import_upstream(upstream_part, version,
                             upstream_md5, upstream_parents,
-                            upstream_tarball=upstream_tarball)
+                            upstream_tarball=upstream_tarball,
+                            timestamp=timestamp, author=author)
                     self._fetch_upstream_to_branch(new_revid)
             else:
                 mutter("We already have the needed upstream part")
             parents = self.get_parents_with_upstream(version, versions,
                     force_upstream_parent=imported_upstream)
             # Now we have the list of parents we need to import the .diff.gz
-            self.import_debian(debian_part, version, parents, md5)
+            self.import_debian(debian_part, version, parents, md5,
+                    timestamp=timestamp)
 
     def get_native_parents(self, version, versions):
         last_contained_version = self.last_contained_version(versions)
@@ -1430,14 +1476,15 @@ class DistributionBranch(object):
         return parents
 
 
-    def _import_native_package(self, version, versions, debian_part, md5):
+    def _import_native_package(self, version, versions, debian_part, md5,
+            timestamp=None):
         pull_branch = self.branch_to_pull_version_from(version, md5)
         if pull_branch is not None:
             self.pull_version_from_branch(pull_branch, version, native=True)
         else:
             parents = self.get_native_parents(version, versions)
             self.import_debian(debian_part, version, parents, md5,
-                    native=True)
+                    native=True, timestamp=timestamp)
 
     def _get_safe_versions_from_changelog(self, cl):
         versions = []
@@ -1448,11 +1495,13 @@ class DistributionBranch(object):
                 break
         return versions
 
-    def import_package(self, dsc_filename):
+    def import_package(self, dsc_filename, use_time_from_changelog=False):
         """Import a source package.
 
         :param dsc_filename: a path to a .dsc file for the version
             to be imported.
+        :param use_time_from_changelog: whether to use the current time or
+            the one from the last changelog entry.
         """
         base_path = osutils.dirname(dsc_filename)
         dsc = deb822.Dsc(open(dsc_filename).read())
@@ -1480,6 +1529,15 @@ class DistributionBranch(object):
                 (_, upstream_md5) = self.get_upstream_part(dsc)
                 (_, md5) = self.get_diff_part(dsc)
             cl = self.get_changelog_from_source(debian_part)
+            timestamp = None
+            author = None
+            if use_time_from_changelog and len(cl._blocks) > 0:
+                 raw_timestamp = cl.date
+                 import rfc822, time
+                 time_tuple = rfc822.parsedate_tz(raw_timestamp)
+                 if time_tuple is not None:
+                     timestamp = (time.mktime(time_tuple[:9]), time_tuple[9])
+                 author = cl.author
             versions = self._get_safe_versions_from_changelog(cl)
             assert not self.has_version(version), \
                 "Trying to import version %s again" % str(version)
@@ -1489,10 +1547,11 @@ class DistributionBranch(object):
             if not native:
                 self._do_import_package(version, versions, debian_part, md5,
                         upstream_part, upstream_md5,
-                        upstream_tarball=upstream_tarball)
+                        upstream_tarball=upstream_tarball,
+                        timestamp=timestamp, author=author)
             else:
                 self._import_native_package(version, versions, debian_part,
-                        md5)
+                        md5, timestamp=timestamp)
         finally:
             shutil.rmtree(tempdir)
 
