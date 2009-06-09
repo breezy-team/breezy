@@ -133,3 +133,20 @@ class TestSwitch(ExternalBase):
         self.run_bzr(['switch', 'branchb'], working_dir='heavyco/a')
         self.assertEqual(branchb_id, checkout.last_revision())
         self.assertEqual(tree2.branch.base, checkout.branch.get_bound_location())
+
+    def prepare_lightweight_switch(self):
+        branch = self.make_branch('branch')
+        branch.create_checkout('tree', lightweight=True)
+        os.rename('branch', 'branch1')
+
+    def test_switch_lightweight_after_branch_moved(self):
+        self.prepare_lightweight_switch()
+        self.run_bzr('switch --force ../branch1', working_dir='tree')
+        branch_location = WorkingTree.open('tree').branch.base
+        self.assertEndsWith(branch_location, 'branch1/')
+
+    def test_switch_lightweight_after_branch_moved_relative(self):
+        self.prepare_lightweight_switch()
+        self.run_bzr('switch --force branch1', working_dir='tree')
+        branch_location = WorkingTree.open('tree').branch.base
+        self.assertEndsWith(branch_location, 'branch1/')

@@ -143,19 +143,44 @@ def load_tests(standard_tests, module, loader):
                                              auth_scheme_scenarios)
     tests.multiply_tests(tpa_tests, tpa_scenarios, result)
 
-    # activity: activity on all http versions on all implementations
+    # activity: on all http[s] versions on all implementations
     tpact_tests, remaining_tests = tests.split_suite_by_condition(
         remaining_tests, tests.condition_isinstance((
                 TestActivity,
                 )))
     activity_scenarios = [
-        ('http', dict(_activity_server=ActivityHTTPServer)),
+        ('urllib,http', dict(_activity_server=ActivityHTTPServer,
+                             _transport=_urllib.HttpTransport_urllib,)),
         ]
     if tests.HTTPSServerFeature.available():
         activity_scenarios.append(
-            ('https', dict(_activity_server=ActivityHTTPSServer)))
-    tpact_scenarios = tests.multiply_scenarios(tp_scenarios,
-        activity_scenarios)
+            ('urllib,https', dict(_activity_server=ActivityHTTPSServer,
+                                  _transport=_urllib.HttpTransport_urllib,)),)
+    if pycurl_present:
+        activity_scenarios.append(
+            ('pycurl,http', dict(_activity_server=ActivityHTTPServer,
+                                 _transport=PyCurlTransport,)),)
+        if tests.HTTPSServerFeature.available():
+            from bzrlib.tests import (
+                ssl_certs,
+                )
+            # FIXME: Until we have a better way to handle self-signed
+            # certificates (like allowing them in a test specific
+            # authentication.conf for example), we need some specialized pycurl
+            # transport for tests.
+            class HTTPS_pycurl_transport(PyCurlTransport):
+
+                def __init__(self, base, _from_transport=None):
+                    super(HTTPS_pycurl_transport, self).__init__(
+                        base, _from_transport)
+                    self.cabundle = str(ssl_certs.build_path('ca.crt'))
+
+            activity_scenarios.append(
+                ('pycurl,https', dict(_activity_server=ActivityHTTPSServer,
+                                      _transport=HTTPS_pycurl_transport,)),)
+
+    tpact_scenarios = tests.multiply_scenarios(activity_scenarios,
+                                               protocol_scenarios)
     tests.multiply_tests(tpact_tests, tpact_scenarios, result)
 
     # No parametrization for the remaining tests
@@ -1544,15 +1569,18 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         self.server.add_user('joe', 'foo')
         t = self.get_user_transport(None, None)
         stdout = tests.StringIOWrapper()
-        ui.ui_factory = tests.TestUIFactory(stdin='joe\nfoo\n', stdout=stdout)
+        stderr = tests.StringIOWrapper()
+        ui.ui_factory = tests.TestUIFactory(stdin='joe\nfoo\n',
+                                            stdout=stdout, stderr=stderr)
         self.assertEqual('contents of a\n',t.get('a').read())
         # stdin should be empty
         self.assertEqual('', ui.ui_factory.stdin.readline())
-        stdout.seek(0)
+        stderr.seek(0)
         expected_prompt = self._expected_username_prompt(t._unqualified_scheme)
-        self.assertEquals(expected_prompt, stdout.read(len(expected_prompt)))
+        self.assertEquals(expected_prompt, stderr.read(len(expected_prompt)))
+        self.assertEquals('', stdout.getvalue())
         self._check_password_prompt(t._unqualified_scheme, 'joe',
-                                    stdout.readline())
+                                    stderr.readline())
 
     def test_prompt_for_password(self):
         if self._testing_pycurl():
@@ -1563,12 +1591,15 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         self.server.add_user('joe', 'foo')
         t = self.get_user_transport('joe', None)
         stdout = tests.StringIOWrapper()
-        ui.ui_factory = tests.TestUIFactory(stdin='foo\n', stdout=stdout)
-        self.assertEqual('contents of a\n',t.get('a').read())
+        stderr = tests.StringIOWrapper()
+        ui.ui_factory = tests.TestUIFactory(stdin='foo\n',
+                                            stdout=stdout, stderr=stderr)
+        self.assertEqual('contents of a\n', t.get('a').read())
         # stdin should be empty
         self.assertEqual('', ui.ui_factory.stdin.readline())
         self._check_password_prompt(t._unqualified_scheme, 'joe',
-                                    stdout.getvalue())
+                                    stderr.getvalue())
+        self.assertEquals('', stdout.getvalue())
         # And we shouldn't prompt again for a different request
         # against the same transport.
         self.assertEqual('contents of b\n',t.get('b').read())

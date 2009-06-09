@@ -67,5 +67,10 @@
     #include "arpa/inet.h"
 #endif
 
+#include <stdio.h>
+
+#ifdef _MSC_VER
+#define  snprintf  _snprintf
+#endif
 
 #endif /* _BZR_PYTHON_COMPAT_H */
