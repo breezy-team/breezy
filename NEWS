@@ -13,6 +13,7 @@ bzr 1.15
 ########
 :1.15rc1: 2009-05-16
 :1.15: 2009-05-22
+:1.15.1: 2009-06-09
 
 The smart server will no longer raise 'NoSuchRevision' when streaming content
 with a size mismatch in a reconstructed graph search. New command ``bzr
