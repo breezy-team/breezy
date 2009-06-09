@@ -119,25 +119,6 @@ class ForeignRevision(Revision):
         self.mapping = mapping
 
 
-def show_foreign_properties(rev):
-    """Custom log displayer for foreign revision identifiers.
-
-    :param rev: Revision object.
-    """
-    # Revision comes directly from a foreign repository
-    if isinstance(rev, ForeignRevision):
-        return rev.mapping.vcs.show_foreign_revid(rev.foreign_revid)
-
-    # Revision was once imported from a foreign repository
-    try:
-        foreign_revid, mapping = \
-            foreign_vcs_registry.parse_revision_id(rev.revision_id)
-    except errors.InvalidRevisionId:
-        return {}
-
-    return mapping.vcs.show_foreign_revid(foreign_revid)
-
-
 class ForeignVcs(object):
     """A foreign version control system."""
 
@@ -179,7 +160,7 @@ class ForeignVcsRegistry(registry.Registry):
         :param revid: The bzr revision id
         :return: tuple with foreign revid and vcs mapping
         """
-        if not "-" in revid:
+        if not ":" in revid or not "-" in revid:
             raise errors.InvalidRevisionId(revid, None)
         try:
             foreign_vcs = self.get(revid.split("-")[0])
