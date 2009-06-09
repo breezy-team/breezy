@@ -19,6 +19,7 @@
 
 
 from bzrlib import (
+    chk_serializer,
     serializer,
     xml4,
     xml5,
@@ -43,3 +44,5 @@ class TestSerializer(TestCase):
                       serializer.format_registry.get('7'))
         self.assertIs(xml8.serializer_v8,
                       serializer.format_registry.get('8'))
+        self.assertIs(chk_serializer.chk_serializer_255_bigpage,
+                      serializer.format_registry.get('9'))

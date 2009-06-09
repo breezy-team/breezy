@@ -30,8 +30,6 @@ from bzrlib import (
     errors,
     symbol_versioning,
     )
-from bzrlib.errors import InstallFailed
-from bzrlib.progress import ProgressPhase
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tsort import topo_sort
 from bzrlib.trace import mutter
@@ -137,17 +135,8 @@ class RepoFetcher(object):
             resume_tokens, missing_keys = self.sink.insert_stream(
                 stream, from_format, [])
             if self.to_repository._fallback_repositories:
-                # Find all the parent revisions referenced by the stream, but
-                # not present in the stream, and make sure we have their
-                # inventories.
-                revision_ids = search.get_keys()
-                parent_maps = self.to_repository.get_parent_map(revision_ids)
-                parents = set()
-                map(parents.update, parent_maps.itervalues())
-                parents.difference_update(revision_ids)
-                parents.discard(NULL_REVISION)
                 missing_keys.update(
-                    ('inventories', rev_id) for rev_id in parents)
+                    self._parent_inventories(search.get_keys()))
             if missing_keys:
                 pb.update("Missing keys")
                 stream = source.get_stream_for_missing_keys(missing_keys)
@@ -179,15 +168,21 @@ class RepoFetcher(object):
         if self._last_revision is NULL_REVISION:
             # explicit limit of no revisions needed
             return None
-        if (self._last_revision is not None and
-            self.to_repository.has_revision(self._last_revision)):
-            return None
-        try:
-            return self.to_repository.search_missing_revision_ids(
-                self.from_repository, self._last_revision,
-                find_ghosts=self.find_ghosts)
-        except errors.NoSuchRevision, e:
-            raise InstallFailed([self._last_revision])
+        return self.to_repository.search_missing_revision_ids(
+            self.from_repository, self._last_revision,
+            find_ghosts=self.find_ghosts)
+
+    def _parent_inventories(self, revision_ids):
+        # Find all the parent revisions referenced by the stream, but
+        # not present in the stream, and make sure we send their
+        # inventories.
+        parent_maps = self.to_repository.get_parent_map(revision_ids)
+        parents = set()
+        map(parents.update, parent_maps.itervalues())
+        parents.discard(NULL_REVISION)
+        parents.difference_update(revision_ids)
+        missing_keys = set(('inventories', rev_id) for rev_id in parents)
+        return missing_keys
 
 
 class Inter1and2Helper(object):

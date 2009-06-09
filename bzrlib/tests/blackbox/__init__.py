@@ -86,6 +86,7 @@ def load_tests(basic_tests, module, loader):
                      'bzrlib.tests.blackbox.test_push',
                      'bzrlib.tests.blackbox.test_reconcile',
                      'bzrlib.tests.blackbox.test_reconfigure',
+                     'bzrlib.tests.blackbox.test_reference',
                      'bzrlib.tests.blackbox.test_remerge',
                      'bzrlib.tests.blackbox.test_remove',
                      'bzrlib.tests.blackbox.test_re_sign',

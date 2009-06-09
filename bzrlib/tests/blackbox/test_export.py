@@ -60,7 +60,7 @@ class TestExport(ExternalBase):
 
         if sys.version_info < (2, 5, 2) and sys.platform == 'darwin':
             raise tests.KnownFailure('python %r has a tar related bug, upgrade'
-                                     % sys.version_info)
+                                     % (sys.version_info,))
         out, err = self.run_bzr('export --format=tgz --root=test -')
         ball = tarfile.open('', fileobj=StringIO(out))
         self.assertEqual(['test/a'], sorted(ball.getnames()))

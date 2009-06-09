@@ -84,12 +84,12 @@ endif
 # translate txt docs to html
 derived_txt_files := \
 	doc/en/user-reference/bzr_man.txt \
-	doc/en/developer-guide/HACKING.txt \
 	doc/en/release-notes/NEWS.txt
 txt_files := $(wildcard doc/en/tutorials/*.txt) \
 	$(derived_txt_files) \
 	doc/en/user-guide/index.txt \
 	doc/en/mini-tutorial/index.txt \
+	doc/en/developer-guide/HACKING.txt \
 	$(wildcard doc/es/guia-usario/*.txt) \
 	doc/es/mini-tutorial/index.txt \
 	doc/index.txt \
@@ -113,7 +113,32 @@ non_txt_files := \
        doc/ru/quick-reference/quick-start-summary.pdf \
        $(wildcard doc/ru/user-guide/images/*.png)
 htm_files := $(patsubst %.txt, %.html, $(txt_files)) 
-dev_txt_files := $(wildcard $(addsuffix /*.txt, doc/developers))
+
+# doc/developers/*.txt files that should *not* be individually
+# converted to HTML
+dev_txt_nohtml := \
+	doc/developers/add.txt \
+	doc/developers/annotate.txt \
+	doc/developers/bundle-creation.txt \
+	doc/developers/commit.txt \
+	doc/developers/diff.txt \
+	doc/developers/directory-fingerprints.txt \
+	doc/developers/gc.txt \
+	doc/developers/incremental-push-pull.txt \
+	doc/developers/initial-push-pull.txt \
+	doc/developers/merge-scaling.txt \
+	doc/developers/missing.txt \
+	doc/developers/performance-contributing.txt \
+	doc/developers/performance-roadmap-rationale.txt \
+	doc/developers/performance-use-case-analysis.txt \
+	doc/developers/planned-change-integration.txt \
+	doc/developers/planned-performance-changes.txt \
+	doc/developers/revert.txt \
+	doc/developers/status.txt \
+	doc/developers/uncommit.txt
+
+dev_txt_all := $(wildcard $(addsuffix /*.txt, doc/developers))
+dev_txt_files := $(filter-out $(dev_txt_nohtml), $(dev_txt_all))
 dev_htm_files := $(patsubst %.txt, %.html, $(dev_txt_files)) 
 
 doc/%/user-guide/index.html: $(wildcard $(addsuffix /*.txt, doc/%/user-guide)) 
@@ -168,9 +193,6 @@ MAN_DEPENDENCIES = bzrlib/builtins.py \
 doc/en/user-reference/bzr_man.txt: $(MAN_DEPENDENCIES)
 	$(PYTHON) generate_docs.py -o $@ rstx
 
-doc/en/developer-guide/HACKING.txt: doc/developers/HACKING.txt
-	$(PYTHON) tools/win32/ostools.py copytodir doc/developers/HACKING.txt doc/en/developer-guide
-
 doc/en/release-notes/NEWS.txt: NEWS
 	$(PYTHON) -c "import shutil; shutil.copyfile('$<', '$@')"
 
@@ -211,6 +233,7 @@ clean-docs:
 # make bzr.exe for win32 with py2exe
 exe:
 	@echo *** Make bzr.exe
+	$(PYTHON) tools/win32/ostools.py remove bzrlib/*.pyd
 	$(PYTHON) setup.py build_ext -i -f $(PYTHON_BUILDFLAGS)
 	$(PYTHON) setup.py py2exe > py2exe.log
 	$(PYTHON) tools/win32/ostools.py copytodir tools/win32/start_bzr.bat win32_bzr.exe

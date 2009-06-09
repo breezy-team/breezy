@@ -201,7 +201,7 @@ class TestPush(ExternalBase):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(19, self.hpss_calls)
+        self.assertLength(9, self.hpss_calls)
 
     def test_push_smart_stacked_streaming_acceptance(self):
         self.setup_smart_server_with_call_log()
@@ -217,7 +217,7 @@ class TestPush(ExternalBase):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(23, self.hpss_calls)
+        self.assertLength(14, self.hpss_calls)
         remote = Branch.open('public')
         self.assertEndsWith(remote.get_stacked_on_url(), '/parent')
 
@@ -306,7 +306,8 @@ class TestPush(ExternalBase):
         self.assertEqual(tree_to.branch.last_revision_info()[1], 'from-1')
 
         self.run_bzr_error(
-            "bzr: ERROR: bzr push --revision takes one value.\n",
+            ['bzr: ERROR: bzr push --revision '
+             'takes exactly one revision identifier\n'],
             'push -r0..2 ../to', working_dir='from')
 
     def create_trunk_and_feature_branch(self):

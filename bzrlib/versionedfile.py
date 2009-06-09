@@ -40,14 +40,14 @@ from bzrlib import (
     revision,
     ui,
     )
-from bzrlib.graph import DictParentsProvider, Graph, _StackedParentsProvider
+from bzrlib.graph import DictParentsProvider, Graph, StackedParentsProvider
 from bzrlib.transport.memory import MemoryTransport
 """)
 from bzrlib.inter import InterObject
 from bzrlib.registry import Registry
 from bzrlib.symbol_versioning import *
 from bzrlib.textmerge import TextMerge
-from bzrlib.util import bencode
+from bzrlib import bencode
 
 
 adapter_registry = Registry()
@@ -1333,7 +1333,7 @@ class _PlanMergeVersionedFile(VersionedFiles):
             result[revision.NULL_REVISION] = ()
         self._providers = self._providers[:1] + self.fallback_versionedfiles
         result.update(
-            _StackedParentsProvider(self._providers).get_parent_map(keys))
+            StackedParentsProvider(self._providers).get_parent_map(keys))
         for key, parents in result.iteritems():
             if parents == ():
                 result[key] = (revision.NULL_REVISION,)
@@ -1403,9 +1403,13 @@ class PlanWeaveMerge(TextMerge):
             elif state == 'conflicted-b':
                 ch_b = ch_a = True
                 lines_b.append(line)
+            elif state == 'killed-both':
+                # This counts as a change, even though there is no associated
+                # line
+                ch_b = ch_a = True
             else:
                 if state not in ('irrelevant', 'ghost-a', 'ghost-b',
-                        'killed-base', 'killed-both'):
+                        'killed-base'):
                     raise AssertionError(state)
         for struct in outstanding_struct():
             yield struct

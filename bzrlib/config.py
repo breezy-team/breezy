@@ -1132,7 +1132,7 @@ class AuthenticationConfig(object):
         config.update({name: values})
         self._save()
 
-    def get_user(self, scheme, host, port=None, realm=None, path=None, 
+    def get_user(self, scheme, host, port=None, realm=None, path=None,
                  prompt=None, ask=False, default=None):
         """Get a user from authentication file.
 
@@ -1148,6 +1148,8 @@ class AuthenticationConfig(object):
 
         :param ask: Ask the user if there is no explicitly configured username 
                     (optional)
+
+        :param default: The username returned if none is defined (optional).
 
         :return: The found user.
         """
@@ -1169,9 +1171,6 @@ class AuthenticationConfig(object):
                     prompt_host = host
                 user = ui.ui_factory.get_username(prompt, host=prompt_host)
             else:
-                if default is None:
-                    import getpass
-                    default = getpass.getuser()
                 user = default
         return user
 

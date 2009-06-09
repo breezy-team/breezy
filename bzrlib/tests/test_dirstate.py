@@ -44,8 +44,34 @@ from bzrlib.tests import test_osutils
 # set_path_id  setting id when state is in memory modified
 
 
+def load_tests(basic_tests, module, loader):
+    suite = loader.suiteClass()
+    dir_reader_tests, remaining_tests = tests.split_suite_by_condition(
+        basic_tests, tests.condition_isinstance(TestCaseWithDirState))
+    tests.multiply_tests(dir_reader_tests,
+                         test_osutils.dir_reader_scenarios(), suite)
+    suite.addTest(remaining_tests)
+    return suite
+
+
 class TestCaseWithDirState(tests.TestCaseWithTransport):
     """Helper functions for creating DirState objects with various content."""
+
+    # Set by load_tests
+    _dir_reader_class = None
+    _native_to_unicode = None # Not used yet
+
+    def setUp(self):
+        tests.TestCaseWithTransport.setUp(self)
+
+        # Save platform specific info and reset it
+        cur_dir_reader = osutils._selected_dir_reader
+
+        def restore():
+            osutils._selected_dir_reader = cur_dir_reader
+        self.addCleanup(restore)
+
+        osutils._selected_dir_reader = self._dir_reader_class()
 
     def create_empty_dirstate(self):
         """Return a locked but empty dirstate"""
@@ -1106,24 +1132,26 @@ class TestDirStateManipulations(TestCaseWithDirState):
         state._validate()
         self.assertEqual(expected_entries, list(state._iter_entries()))
 
-    def test_add_symlink_to_root_no_parents_all_data(self):
+    def _test_add_symlink_to_root_no_parents_all_data(self, link_name, target):
         # The most trivial addition of a symlink when there are no parents and
         # its in the root and all data about the file is supplied
         # bzr doesn't support fake symlinks on windows, yet.
         self.requireFeature(tests.SymlinkFeature)
-        os.symlink('target', 'a link')
-        stat = os.lstat('a link')
+        os.symlink(target, link_name)
+        stat = os.lstat(link_name)
         expected_entries = [
             (('', '', 'TREE_ROOT'), [
              ('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree
              ]),
-            (('', 'a link', 'a link id'), [
-             ('l', 'target', 6, False, dirstate.pack_stat(stat)), # current tree
+            (('', link_name.encode('UTF-8'), 'a link id'), [
+             ('l', target.encode('UTF-8'), stat[6],
+              False, dirstate.pack_stat(stat)), # current tree
              ]),
             ]
         state = dirstate.DirState.initialize('dirstate')
         try:
-            state.add('a link', 'a link id', 'symlink', stat, 'target')
+            state.add(link_name, 'a link id', 'symlink', stat,
+                      target.encode('UTF-8'))
             # having added it, it should be in the output of iter_entries.
             self.assertEqual(expected_entries, list(state._iter_entries()))
             # saving and reloading should not affect this.
@@ -1134,6 +1162,14 @@ class TestDirStateManipulations(TestCaseWithDirState):
         state.lock_read()
         self.addCleanup(state.unlock)
         self.assertEqual(expected_entries, list(state._iter_entries()))
+
+    def test_add_symlink_to_root_no_parents_all_data(self):
+        self._test_add_symlink_to_root_no_parents_all_data('a link', 'target')
+
+    def test_add_symlink_unicode_to_root_no_parents_all_data(self):
+        self.requireFeature(tests.UnicodeFilenameFeature)
+        self._test_add_symlink_to_root_no_parents_all_data(
+            u'\N{Euro Sign}link', u'targ\N{Euro Sign}et')
 
     def test_add_directory_and_child_no_parents_all_data(self):
         # after adding a directory, we should be able to add children to it.
@@ -2204,14 +2240,14 @@ class Test_InvEntryToDetails(tests.TestCase):
         self.assertIsInstance(tree_data, str)
 
     def test_unicode_symlink(self):
-        # In general, the code base doesn't support a target that contains
-        # non-ascii characters. So we just assert tha
-        inv_entry = inventory.InventoryLink('link-file-id', 'name',
+        inv_entry = inventory.InventoryLink('link-file-id',
+                                            u'nam\N{Euro Sign}e',
                                             'link-parent-id')
         inv_entry.revision = 'link-revision-id'
-        inv_entry.symlink_target = u'link-target'
-        details = self.assertDetails(('l', 'link-target', 0, False,
-                                      'link-revision-id'), inv_entry)
+        target = u'link-targ\N{Euro Sign}t'
+        inv_entry.symlink_target = target
+        self.assertDetails(('l', target.encode('UTF-8'), 0, False,
+                            'link-revision-id'), inv_entry)
 
 
 class TestSHA1Provider(tests.TestCaseInTempDir):

@@ -150,6 +150,7 @@ class TestRenameMap(TestCaseWithTransport):
         """When a directory has been moved, its children are preserved."""
         tree = self.make_branch_and_tree('tree')
         tree.lock_write()
+        self.addCleanup(tree.unlock)
         self.build_tree_contents([('tree/foo/', ''),
                                   ('tree/foo/bar', 'bar'),
                                   ('tree/foo/empty', '')])

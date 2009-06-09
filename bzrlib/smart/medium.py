@@ -43,7 +43,7 @@ from bzrlib import (
     ui,
     urlutils,
     )
-from bzrlib.smart import client, protocol
+from bzrlib.smart import client, protocol, request, vfs
 from bzrlib.transport import ssh
 """)
 
@@ -285,11 +285,8 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
         self._push_back(protocol.unused_data)
 
     def _read_bytes(self, desired_count):
-        # We ignore the desired_count because on sockets it's more efficient to
-        # read large chunks (of _MAX_READ_SIZE bytes) at a time.
-        bytes = osutils.until_no_eintr(self.socket.recv, _MAX_READ_SIZE)
-        self._report_activity(len(bytes), 'read')
-        return bytes
+        return _read_bytes_from_socket(
+            self.socket.recv, desired_count, self._report_activity)
 
     def terminate_due_to_error(self):
         # TODO: This should log to a server log file, but no such thing
@@ -509,7 +506,8 @@ class _DebugCounter(object):
         """
         medium_repr = repr(medium)
         # Add this medium to the WeakKeyDictionary
-        self.counts[medium] = [0, medium_repr]
+        self.counts[medium] = dict(count=0, vfs_count=0,
+                                   medium_repr=medium_repr)
         # Weakref callbacks are fired in reverse order of their association
         # with the referenced object.  So we add a weakref *after* adding to
         # the WeakKeyDict so that we can report the value from it before the
@@ -519,17 +517,23 @@ class _DebugCounter(object):
     def increment_call_count(self, params):
         # Increment the count in the WeakKeyDictionary
         value = self.counts[params.medium]
-        value[0] += 1
+        value['count'] += 1
+        request_method = request.request_handlers.get(params.method)
+        if issubclass(request_method, vfs.VfsRequest):
+            value['vfs_count'] += 1
 
     def done(self, ref):
         value = self.counts[ref]
-        count, medium_repr = value
+        count, vfs_count, medium_repr = (
+            value['count'], value['vfs_count'], value['medium_repr'])
         # In case this callback is invoked for the same ref twice (by the
         # weakref callback and by the atexit function), set the call count back
         # to 0 so this item won't be reported twice.
-        value[0] = 0
+        value['count'] = 0
+        value['vfs_count'] = 0
         if count != 0:
-            trace.note('HPSS calls: %d %s', count, medium_repr)
+            trace.note('HPSS calls: %d (%d vfs) %s',
+                       count, vfs_count, medium_repr)
 
     def flush_all(self):
         for ref in list(self.counts.keys()):
@@ -877,19 +881,8 @@ class SmartTCPClientMedium(SmartClientStreamMedium):
         """See SmartClientMedium.read_bytes."""
         if not self._connected:
             raise errors.MediumNotConnected(self)
-        # We ignore the desired_count because on sockets it's more efficient to
-        # read large chunks (of _MAX_READ_SIZE bytes) at a time.
-        try:
-            bytes = osutils.until_no_eintr(self._socket.recv, _MAX_READ_SIZE)
-        except socket.error, e:
-            if len(e.args) and e.args[0] == errno.ECONNRESET:
-                # Callers expect an empty string in that case
-                return ''
-            else:
-                raise
-        else:
-            self._report_activity(len(bytes), 'read')
-            return bytes
+        return _read_bytes_from_socket(
+            self._socket.recv, count, self._report_activity)
 
 
 class SmartClientStreamMediumRequest(SmartClientMediumRequest):
@@ -930,4 +923,21 @@ class SmartClientStreamMediumRequest(SmartClientMediumRequest):
         This invokes self._medium._flush to ensure all bytes are transmitted.
         """
         self._medium._flush()
+
+
+def _read_bytes_from_socket(sock, desired_count, report_activity):
+    # We ignore the desired_count because on sockets it's more efficient to
+    # read large chunks (of _MAX_READ_SIZE bytes) at a time.
+    try:
+        bytes = osutils.until_no_eintr(sock, _MAX_READ_SIZE)
+    except socket.error, e:
+        if len(e.args) and e.args[0] in (errno.ECONNRESET, 10054):
+            # The connection was closed by the other side.  Callers expect an
+            # empty string to signal end-of-stream.
+            bytes = ''
+        else:
+            raise
+    else:
+        report_activity(len(bytes), 'read')
+    return bytes
 

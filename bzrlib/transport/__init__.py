@@ -328,6 +328,31 @@ class Transport(object):
         """
         raise NotImplementedError(self.clone)
 
+    def create_prefix(self):
+        """Create all the directories leading down to self.base."""
+        cur_transport = self
+        needed = [cur_transport]
+        # Recurse upwards until we can create a directory successfully
+        while True:
+            new_transport = cur_transport.clone('..')
+            if new_transport.base == cur_transport.base:
+                raise errors.BzrCommandError(
+                    "Failed to create path prefix for %s."
+                    % cur_transport.base)
+            try:
+                new_transport.mkdir('.')
+            except errors.NoSuchFile:
+                needed.append(new_transport)
+                cur_transport = new_transport
+            except errors.FileExists:
+                break
+            else:
+                break
+        # Now we only need to create child directories
+        while needed:
+            cur_transport = needed.pop()
+            cur_transport.ensure_base()
+
     def ensure_base(self):
         """Ensure that the directory this transport references exists.
 
@@ -514,7 +539,6 @@ class Transport(object):
         physical local filesystem representation.
         """
         raise errors.NotLocalUrl(self.abspath(relpath))
-
 
     def has(self, relpath):
         """Does the file relpath exist?
@@ -1829,3 +1853,9 @@ register_lazy_transport('bzr+ssh://', 'bzrlib.transport.remote',
 register_transport_proto('ssh:')
 register_lazy_transport('ssh:', 'bzrlib.transport.remote',
                         'HintingSSHTransport')
+
+
+transport_server_registry = registry.Registry()
+transport_server_registry.register_lazy('bzr', 'bzrlib.smart.server', 
+    'serve_bzr', help="The Bazaar smart server protocol over TCP. (default port: 4155)")
+transport_server_registry.default_key = 'bzr'

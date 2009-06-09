@@ -38,6 +38,7 @@ import shutil
 from shutil import (
     rmtree,
     )
+import subprocess
 import tempfile
 from tempfile import (
     mkdtemp,
@@ -77,6 +78,15 @@ from bzrlib import symbol_versioning
 O_BINARY = getattr(os, 'O_BINARY', 0)
 
 
+def get_unicode_argv():
+    try:
+        user_encoding = get_user_encoding()
+        return [a.decode(user_encoding) for a in sys.argv[1:]]
+    except UnicodeDecodeError:
+        raise errors.BzrError(("Parameter '%r' is unsupported by the current "
+                                                            "encoding." % a))
+
+
 def make_readonly(filename):
     """Make a filename read-only."""
     mod = os.lstat(filename).st_mode
@@ -97,16 +107,22 @@ def minimum_path_selection(paths):
 
     :param paths: A container (and hence not None) of paths.
     :return: A set of paths sufficient to include everything in paths via
-        is_inside_any, drawn from the paths parameter.
+        is_inside, drawn from the paths parameter.
     """
-    search_paths = set()
-    paths = set(paths)
-    for path in paths:
-        other_paths = paths.difference([path])
-        if not is_inside_any(other_paths, path):
-            # this is a top level path, we must check it.
-            search_paths.add(path)
-    return search_paths
+    if len(paths) < 2:
+        return set(paths)
+
+    def sort_key(path):
+        return path.split('/')
+    sorted_paths = sorted(list(paths), key=sort_key)
+
+    search_paths = [sorted_paths[0]]
+    for path in sorted_paths[1:]:
+        if not is_inside(search_paths[-1], path):
+            # This path is unique, add it
+            search_paths.append(path)
+
+    return set(search_paths)
 
 
 _QUOTE_RE = None
@@ -384,6 +400,11 @@ if sys.platform == 'win32':
     def rmtree(path, ignore_errors=False, onerror=_win32_delete_readonly):
         """Replacer for shutil.rmtree: could remove readonly dirs/files"""
         return shutil.rmtree(path, ignore_errors, onerror)
+
+    f = win32utils.get_unicode_argv     # special function or None
+    if f is not None:
+        get_unicode_argv = f
+
 elif sys.platform == 'darwin':
     getcwd = _mac_getcwd
 
@@ -847,6 +868,19 @@ def joinpath(p):
     return pathjoin(*p)
 
 
+def parent_directories(filename):
+    """Return the list of parent directories, deepest first.
+    
+    For example, parent_directories("a/b/c") -> ["a/b", "a"].
+    """
+    parents = []
+    parts = splitpath(dirname(filename))
+    while parts:
+        parents.append(joinpath(parts))
+        parts.pop()
+    return parents
+
+
 try:
     from bzrlib._chunks_to_lines_pyx import chunks_to_lines
 except ImportError:
@@ -923,6 +957,20 @@ def has_hardlinks():
 def host_os_dereferences_symlinks():
     return (has_symlinks()
             and sys.platform not in ('cygwin', 'win32'))
+
+
+def readlink(abspath):
+    """Return a string representing the path to which the symbolic link points.
+
+    :param abspath: The link absolute unicode path.
+
+    This his guaranteed to return the symbolic link in unicode in all python
+    versions.
+    """
+    link = abspath.encode(_fs_enc)
+    target = os.readlink(link)
+    target = target.decode(_fs_enc)
+    return target
 
 
 def contains_whitespace(s):
@@ -1392,21 +1440,21 @@ def _walkdirs_utf8(top, prefix=""):
             #       for win98 anyway.
             try:
                 from bzrlib._walkdirs_win32 import Win32ReadDir
-            except ImportError:
-                _selected_dir_reader = UnicodeDirReader()
-            else:
                 _selected_dir_reader = Win32ReadDir()
-        elif fs_encoding not in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968'):
+            except ImportError:
+                pass
+        elif fs_encoding in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968'):
             # ANSI_X3.4-1968 is a form of ASCII
-            _selected_dir_reader = UnicodeDirReader()
-        else:
             try:
                 from bzrlib._readdir_pyx import UTF8DirReader
-            except ImportError:
-                # No optimised code path
-                _selected_dir_reader = UnicodeDirReader()
-            else:
                 _selected_dir_reader = UTF8DirReader()
+            except ImportError:
+                pass
+
+    if _selected_dir_reader is None:
+        # Fallback to the python version
+        _selected_dir_reader = UnicodeDirReader()
+
     # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-toppath
     # But we don't actually uses 1-3 in pending, so set them to None
     pending = [[_selected_dir_reader.top_prefix_to_starting_dir(top, prefix)]]
@@ -1742,12 +1790,12 @@ def until_no_eintr(f, *a, **kw):
 
 def re_compile_checked(re_string, flags=0, where=""):
     """Return a compiled re, or raise a sensible error.
-    
+
     This should only be used when compiling user-supplied REs.
 
     :param re_string: Text form of regular expression.
     :param flags: eg re.IGNORECASE
-    :param where: Message explaining to the user the context where 
+    :param where: Message explaining to the user the context where
         it occurred, eg 'log search filter'.
     """
     # from https://bugs.launchpad.net/bzr/+bug/251352
@@ -1779,3 +1827,58 @@ else:
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, settings)
         return ch
+
+
+if sys.platform == 'linux2':
+    def _local_concurrency():
+        concurrency = None
+        prefix = 'processor'
+        for line in file('/proc/cpuinfo', 'rb'):
+            if line.startswith(prefix):
+                concurrency = int(line[line.find(':')+1:]) + 1
+        return concurrency
+elif sys.platform == 'darwin':
+    def _local_concurrency():
+        return subprocess.Popen(['sysctl', '-n', 'hw.availcpu'],
+                                stdout=subprocess.PIPE).communicate()[0]
+elif sys.platform[0:7] == 'freebsd':
+    def _local_concurrency():
+        return subprocess.Popen(['sysctl', '-n', 'hw.ncpu'],
+                                stdout=subprocess.PIPE).communicate()[0]
+elif sys.platform == 'sunos5':
+    def _local_concurrency():
+        return subprocess.Popen(['psrinfo', '-p',],
+                                stdout=subprocess.PIPE).communicate()[0]
+elif sys.platform == "win32":
+    def _local_concurrency():
+        # This appears to return the number of cores.
+        return os.environ.get('NUMBER_OF_PROCESSORS')
+else:
+    def _local_concurrency():
+        # Who knows ?
+        return None
+
+
+_cached_local_concurrency = None
+
+def local_concurrency(use_cache=True):
+    """Return how many processes can be run concurrently.
+
+    Rely on platform specific implementations and default to 1 (one) if
+    anything goes wrong.
+    """
+    global _cached_local_concurrency
+    if _cached_local_concurrency is not None and use_cache:
+        return _cached_local_concurrency
+
+    try:
+        concurrency = _local_concurrency()
+    except (OSError, IOError):
+        concurrency = None
+    try:
+        concurrency = int(concurrency)
+    except (TypeError, ValueError):
+        concurrency = 1
+    if use_cache:
+        _cached_concurrency = concurrency
+    return concurrency
