@@ -52,7 +52,7 @@ combinations = []
 for revision_id, parent_ids in parent_map.iteritems():
     if parent_ids is not None and len(parent_ids) > 1:
         combinations.append(parent_ids)
-if len(combinations) > opts.max_combinations:
+if opts.max_combinations > 0 and len(combinations) > opts.max_combinations:
     combinations = random.sample(combinations, opts.max_combinations)
 
 print '      %d combinations' % (len(combinations),)
