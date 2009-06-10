@@ -154,7 +154,7 @@ MAN_DEPENDENCIES = bzrlib/builtins.py \
 		 $(wildcard $(addsuffix /*.txt, bzrlib/help_topics/en)) 
 
 doc/en/user-reference/bzr_man.txt: $(MAN_DEPENDENCIES)
-	$(PYTHON) tools/generate_docs.py -o $@ rstx
+	PYTHONPATH=.:$(PYTHONPATH) $(PYTHON) tools/generate_docs.py -o $@ rstx
 
 doc/en/developer-guide/HACKING.txt: doc/developers/HACKING.txt
 	$(PYTHON) tools/win32/ostools.py copytodir doc/developers/HACKING.txt doc/en/developer-guide
