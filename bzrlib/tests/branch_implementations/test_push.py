@@ -428,7 +428,7 @@ class EmptyPushSmartEffortTests(TestCaseWithBranch):
         cmd.outf = tests.StringIOWrapper()
         cmd.run(
             directory=self.get_url('empty'),
-            location=self.smart_server.get_url() + '/target')
+            location=self.smart_server.get_url() + 'target')
         # HPSS calls as of 2008/09/22:
         # [BzrDir.open, BzrDir.open_branch, BzrDir.find_repositoryV2,
         # Branch.get_stacked_on_url, get, get, Branch.lock_write,
