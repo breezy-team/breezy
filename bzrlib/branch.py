@@ -101,13 +101,9 @@ class Branch(object):
     def _open_hook(self):
         """Called by init to allow simpler extension of the base class."""
 
-    def _activate_fallback_location(self, url, lock_style):
+    def _activate_fallback_location(self, url):
         """Activate the branch/repository from url as a fallback repository."""
         repo = self._get_fallback_repository(url)
-        if lock_style == 'write':
-            repo.lock_write()
-        elif lock_style == 'read':
-            repo.lock_read()
         self.repository.add_fallback_repository(repo)
 
     def break_lock(self):
@@ -656,7 +652,7 @@ class Branch(object):
                 self.repository.fetch(source_repository, revision_id,
                     find_ghosts=True)
         else:
-            self._activate_fallback_location(url, 'write')
+            self._activate_fallback_location(url)
         # write this out after the repository is stacked to avoid setting a
         # stacked config that doesn't work.
         self._set_config_location('stacked_on_location', url)
@@ -867,6 +863,27 @@ class Branch(object):
         return InterBranch.get(self, target).push(overwrite, stop_revision,
             *args, **kwargs)
 
+    def lossy_push(self, target, stop_revision=None):
+        """Push deltas into another branch.
+
+        :note: This does not, like push, retain the revision ids from 
+            the source branch and will, rather than adding bzr-specific 
+            metadata, push only those semantics of the revision that can be 
+            natively represented by this branch' VCS.
+
+        :param target: Target branch
+        :param stop_revision: Revision to push, defaults to last revision.
+        :return: BranchPushResult with an extra member revidmap: 
+            A dictionary mapping revision ids from the target branch 
+            to new revision ids in the target branch, for each 
+            revision that was pushed.
+        """
+        inter = InterBranch.get(self, target)
+        lossy_push = getattr(inter, "lossy_push", None)
+        if lossy_push is None:
+            raise errors.LossyPushToSameVCS(self, target)
+        return lossy_push(stop_revision)
+
     def basis_tree(self):
         """Return `Tree` object for last revision."""
         return self.repository.revision_tree(self.last_revision())
@@ -910,6 +927,10 @@ class Branch(object):
         if location == '':
             location = None
         return location
+
+    def get_child_submit_format(self):
+        """Return the preferred format of submissions to this branch."""
+        return self.get_config().get_user_option("child_submit_format")
 
     def get_submit_branch(self):
         """Return the submit location of the branch.
@@ -1064,18 +1085,14 @@ class Branch(object):
         source_revno, source_revision_id = self.last_revision_info()
         if revision_id is None:
             revno, revision_id = source_revno, source_revision_id
-        elif source_revision_id == revision_id:
-            # we know the revno without needing to walk all of history
-            revno = source_revno
         else:
-            # To figure out the revno for a random revision, we need to build
-            # the revision history, and count its length.
-            # We don't care about the order, just how long it is.
-            # Alternatively, we could start at the current location, and count
-            # backwards. But there is no guarantee that we will find it since
-            # it may be a merged revision.
-            revno = len(list(self.repository.iter_reverse_revision_history(
-                                                                revision_id)))
+            graph = self.repository.get_graph()
+            try:
+                revno = graph.find_distance_to_null(revision_id, 
+                    [(source_revision_id, source_revno)])
+            except errors.GhostRevisionsHaveNoRevno:
+                # Default to 1, if we can't find anything else
+                revno = 1
         destination.set_last_revision_info(revno, revision_id)
 
     @needs_read_lock
@@ -1126,10 +1143,18 @@ class Branch(object):
 
         :return: A BranchCheckResult.
         """
+        ret = BranchCheckResult(self)
         mainline_parent_id = None
         last_revno, last_revision_id = self.last_revision_info()
-        real_rev_history = list(self.repository.iter_reverse_revision_history(
-                                last_revision_id))
+        real_rev_history = []
+        try:
+            for revid in self.repository.iter_reverse_revision_history(
+                last_revision_id):
+                real_rev_history.append(revid)
+        except errors.RevisionNotPresent:
+            ret.ghosts_in_mainline = True
+        else:
+            ret.ghosts_in_mainline = False
         real_rev_history.reverse()
         if len(real_rev_history) != last_revno:
             raise errors.BzrCheckError('revno does not match len(mainline)'
@@ -1151,7 +1176,7 @@ class Branch(object):
                                         "parents of {%s}"
                                         % (mainline_parent_id, revision_id))
             mainline_parent_id = revision_id
-        return BranchCheckResult(self)
+        return ret
 
     def _get_checkout_format(self):
         """Return the most suitable metadir for a checkout of this branch.
@@ -2345,7 +2370,7 @@ class BzrBranch8(BzrBranch5):
                     raise AssertionError(
                         "'transform_fallback_location' hook %s returned "
                         "None, not a URL." % hook_name)
-            self._activate_fallback_location(url, None)
+            self._activate_fallback_location(url)
 
     def __init__(self, *args, **kwargs):
         self._ignore_fallbacks = kwargs.get('ignore_fallbacks', False)
@@ -2759,6 +2784,7 @@ class BranchCheckResult(object):
 
     def __init__(self, branch):
         self.branch = branch
+        self.ghosts_in_mainline = False
 
     def report_results(self, verbose):
         """Report the check results via trace.note.
@@ -2769,6 +2795,8 @@ class BranchCheckResult(object):
         note('checked branch %s format %s',
              self.branch.base,
              self.branch._format)
+        if self.ghosts_in_mainline:
+            note('branch contains ghosts in mainline')
 
 
 class Converter5to6(object):

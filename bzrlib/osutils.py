@@ -38,6 +38,7 @@ import shutil
 from shutil import (
     rmtree,
     )
+import subprocess
 import tempfile
 from tempfile import (
     mkdtemp,
@@ -75,6 +76,15 @@ from bzrlib import symbol_versioning
 # they always open in binary mode, so it is okay to
 # OR with 0 on those platforms
 O_BINARY = getattr(os, 'O_BINARY', 0)
+
+
+def get_unicode_argv():
+    try:
+        user_encoding = get_user_encoding()
+        return [a.decode(user_encoding) for a in sys.argv[1:]]
+    except UnicodeDecodeError:
+        raise errors.BzrError(("Parameter '%r' is unsupported by the current "
+                                                            "encoding." % a))
 
 
 def make_readonly(filename):
@@ -390,6 +400,11 @@ if sys.platform == 'win32':
     def rmtree(path, ignore_errors=False, onerror=_win32_delete_readonly):
         """Replacer for shutil.rmtree: could remove readonly dirs/files"""
         return shutil.rmtree(path, ignore_errors, onerror)
+
+    f = win32utils.get_unicode_argv     # special function or None
+    if f is not None:
+        get_unicode_argv = f
+
 elif sys.platform == 'darwin':
     getcwd = _mac_getcwd
 
@@ -851,6 +866,19 @@ def joinpath(p):
         if (f == '..') or (f is None) or (f == ''):
             raise errors.BzrError("sorry, %r not allowed in path" % f)
     return pathjoin(*p)
+
+
+def parent_directories(filename):
+    """Return the list of parent directories, deepest first.
+    
+    For example, parent_directories("a/b/c") -> ["a/b", "a"].
+    """
+    parents = []
+    parts = splitpath(dirname(filename))
+    while parts:
+        parents.append(joinpath(parts))
+        parts.pop()
+    return parents
 
 
 try:
@@ -1799,3 +1827,58 @@ else:
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, settings)
         return ch
+
+
+if sys.platform == 'linux2':
+    def _local_concurrency():
+        concurrency = None
+        prefix = 'processor'
+        for line in file('/proc/cpuinfo', 'rb'):
+            if line.startswith(prefix):
+                concurrency = int(line[line.find(':')+1:]) + 1
+        return concurrency
+elif sys.platform == 'darwin':
+    def _local_concurrency():
+        return subprocess.Popen(['sysctl', '-n', 'hw.availcpu'],
+                                stdout=subprocess.PIPE).communicate()[0]
+elif sys.platform[0:7] == 'freebsd':
+    def _local_concurrency():
+        return subprocess.Popen(['sysctl', '-n', 'hw.ncpu'],
+                                stdout=subprocess.PIPE).communicate()[0]
+elif sys.platform == 'sunos5':
+    def _local_concurrency():
+        return subprocess.Popen(['psrinfo', '-p',],
+                                stdout=subprocess.PIPE).communicate()[0]
+elif sys.platform == "win32":
+    def _local_concurrency():
+        # This appears to return the number of cores.
+        return os.environ.get('NUMBER_OF_PROCESSORS')
+else:
+    def _local_concurrency():
+        # Who knows ?
+        return None
+
+
+_cached_local_concurrency = None
+
+def local_concurrency(use_cache=True):
+    """Return how many processes can be run concurrently.
+
+    Rely on platform specific implementations and default to 1 (one) if
+    anything goes wrong.
+    """
+    global _cached_local_concurrency
+    if _cached_local_concurrency is not None and use_cache:
+        return _cached_local_concurrency
+
+    try:
+        concurrency = _local_concurrency()
+    except (OSError, IOError):
+        concurrency = None
+    try:
+        concurrency = int(concurrency)
+    except (TypeError, ValueError):
+        concurrency = 1
+    if use_cache:
+        _cached_concurrency = concurrency
+    return concurrency

@@ -18,7 +18,10 @@
 """Foreign branch utilities."""
 
 
-from bzrlib.branch import Branch
+from bzrlib.branch import (
+    Branch,
+    InterBranch,
+    )
 from bzrlib.commands import Command, Option
 from bzrlib.repository import Repository
 from bzrlib.revision import Revision
@@ -116,25 +119,6 @@ class ForeignRevision(Revision):
         self.mapping = mapping
 
 
-def show_foreign_properties(rev):
-    """Custom log displayer for foreign revision identifiers.
-
-    :param rev: Revision object.
-    """
-    # Revision comes directly from a foreign repository
-    if isinstance(rev, ForeignRevision):
-        return rev.mapping.vcs.show_foreign_revid(rev.foreign_revid)
-
-    # Revision was once imported from a foreign repository
-    try:
-        foreign_revid, mapping = \
-            foreign_vcs_registry.parse_revision_id(rev.revision_id)
-    except errors.InvalidRevisionId:
-        return {}
-
-    return mapping.vcs.show_foreign_revid(foreign_revid)
-
-
 class ForeignVcs(object):
     """A foreign version control system."""
 
@@ -176,7 +160,7 @@ class ForeignVcsRegistry(registry.Registry):
         :param revid: The bzr revision id
         :return: tuple with foreign revid and vcs mapping
         """
-        if not "-" in revid:
+        if not ":" in revid or not "-" in revid:
             raise errors.InvalidRevisionId(revid, None)
         try:
             foreign_vcs = self.get(revid.split("-")[0])
@@ -253,22 +237,6 @@ class ForeignBranch(Branch):
         self.mapping = mapping
         super(ForeignBranch, self).__init__()
 
-    def dpull(self, source, stop_revision=None):
-        """Pull deltas from another branch.
-
-        :note: This does not, like pull, retain the revision ids from 
-            the source branch and will, rather than adding bzr-specific 
-            metadata, push only those semantics of the revision that can be 
-            natively represented by this branch' VCS.
-
-        :param source: Source branch
-        :param stop_revision: Revision to pull, defaults to last revision.
-        :return: Dictionary mapping revision ids from the source branch 
-            to new revision ids in the target branch, for each 
-            revision that was pull.
-        """
-        raise NotImplementedError(self.dpull)
-
 
 def update_workingtree_fileids(wt, target_tree):
     """Update the file ids in a working tree based on another tree.
@@ -295,12 +263,11 @@ def update_workingtree_fileids(wt, target_tree):
 
 
 class cmd_dpush(Command):
-    """Push diffs into a foreign version control system without any 
-    Bazaar-specific metadata.
+    """Push into a different VCS without any custom bzr metadata.
 
-    This will afterwards rebase the local Bazaar branch on the remote
+    This will afterwards rebase the local branch on the remote
     branch unless the --no-rebase option is used, in which case 
-    the two branches will be out of sync. 
+    the two branches will be out of sync after the push. 
     """
     hidden = True
     takes_args = ['location?']
@@ -340,13 +307,14 @@ class cmd_dpush(Command):
 
         bzrdir = BzrDir.open(location)
         target_branch = bzrdir.open_branch()
-        dpull = getattr(target_branch, "dpull", None)
-        if dpull is None:
-            raise BzrCommandError("%r is not a foreign branch, use "
-                                  "regular push." % target_branch)
         target_branch.lock_write()
         try:
-            revid_map = dpull(source_branch)
+            try:
+                push_result = source_branch.lossy_push(target_branch)
+            except errors.LossyPushToSameVCS:
+                raise BzrCommandError("%r and %r are in the same VCS, lossy "
+                    "push not necessary. Please use regular push." %
+                    (source_branch, target_branch))
             # We successfully created the target, remember it
             if source_branch.get_push_location() is None or remember:
                 source_branch.set_push_location(target_branch.base)
@@ -362,5 +330,26 @@ class cmd_dpush(Command):
                         update_workingtree_fileids(source_wt, target)
                     finally:
                         source_wt.unlock()
+            push_result.report(self.outf)
         finally:
             target_branch.unlock()
+
+
+class InterToForeignBranch(InterBranch):
+
+    def lossy_push(self, stop_revision=None):
+        """Push deltas into another branch.
+
+        :note: This does not, like push, retain the revision ids from 
+            the source branch and will, rather than adding bzr-specific 
+            metadata, push only those semantics of the revision that can be 
+            natively represented by this branch' VCS.
+
+        :param target: Target branch
+        :param stop_revision: Revision to push, defaults to last revision.
+        :return: BranchPushResult with an extra member revidmap: 
+            A dictionary mapping revision ids from the target branch 
+            to new revision ids in the target branch, for each 
+            revision that was pushed.
+        """
+        raise NotImplementedError(self.lossy_push)

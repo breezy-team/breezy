@@ -137,8 +137,13 @@ class BranchReconciler(object):
     def _reconcile_revision_history(self):
         repo = self.branch.repository
         last_revno, last_revision_id = self.branch.last_revision_info()
-        real_history = list(repo.iter_reverse_revision_history(
-                                last_revision_id))
+        real_history = []
+        try:
+            for revid in repo.iter_reverse_revision_history(
+                    last_revision_id):
+                real_history.append(revid)
+        except errors.RevisionNotPresent:
+            pass # Hit a ghost left hand parent
         real_history.reverse()
         if last_revno != len(real_history):
             self.fixed_history = True
