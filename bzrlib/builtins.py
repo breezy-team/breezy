@@ -1021,6 +1021,9 @@ class cmd_push(Command):
                 'for the commit history. Only the work not present in the '
                 'referenced branch is included in the branch created.',
             type=unicode),
+        Option('strict',
+               help='Refuse to push if there are uncommitted changes in'
+               ' the working tree.'),
         ]
     takes_args = ['location?']
     encoding_type = 'replace'
@@ -1028,13 +1031,20 @@ class cmd_push(Command):
     def run(self, location=None, remember=False, overwrite=False,
         create_prefix=False, verbose=False, revision=None,
         use_existing_dir=False, directory=None, stacked_on=None,
-        stacked=False):
+        stacked=False, strict=None):
         from bzrlib.push import _show_push_branch
 
-        # Get the source branch and revision_id
         if directory is None:
             directory = '.'
-        br_from = Branch.open_containing(directory)[0]
+        # Get the source branch
+        tree, br_from = bzrdir.BzrDir.open_tree_or_branch(directory)
+        if strict is None:
+            strict = br_from.get_config().get_user_option('push_strict')
+        if strict:
+            changes = tree.changes_from(tree.basis_tree())
+            if changes.has_changed():
+                raise errors.UncommittedChanges(tree)
+        # Get the tip's revision_id
         revision = _get_one_revision('push', revision)
         if revision is not None:
             revision_id = revision.in_history(br_from).rev_id
