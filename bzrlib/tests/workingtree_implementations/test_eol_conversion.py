@@ -102,8 +102,6 @@ class TestEolConversion(TestCaseWithWorkingTree):
             status_io = StringIO()
             status.show_tree_status(wt2, to_file=status_io)
             self.assertEqual('', status_io.getvalue())
-            # Also confirm commit does nothing
-            #wt2.commit("no-op", allow_pointless=False)
 
     def assertContent(self, wt, basis, expected_raw, expected_unix,
         expected_win, roundtrip_to=None):
