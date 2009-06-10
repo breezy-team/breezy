@@ -3552,12 +3552,10 @@ class _KnitAnnotator(object):
         """Create a heads provider for resolving ancestry issues."""
         if self._heads_provider is not None:
             return self._heads_provider
-        parent_provider = _mod_graph.DictParentsProvider(
-            self._revision_id_graph)
-        graph_obj = _mod_graph.Graph(parent_provider)
-        head_cache = _mod_graph.FrozenHeadsCache(graph_obj)
-        self._heads_provider = head_cache
-        return head_cache
+        # graph_obj = _mod_graph.Graph(parent_provider)
+        # head_cache = _mod_graph.FrozenHeadsCache(graph_obj)
+        self._heads_provider = _mod_graph.KnownGraph(self._revision_id_graph)
+        return self._heads_provider
 
     def annotate(self, key):
         """Return the annotated fulltext at the given key.
