@@ -29,7 +29,6 @@ from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDirMetaFormat1
 from bzrlib.osutils import abspath
 from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1
-from bzrlib.smart import client, server
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.tests.http_server import HttpServer
 from bzrlib.transport.memory import MemoryServer, MemoryTransport
