@@ -156,6 +156,9 @@ class TestFilterStackMaps(TestCase):
             # Test an unknown value
             prefs = (('foo','v3'),)
             self.assertEqual([], _get_filter_stack_for(prefs))
+            # Test a value of None is skipped
+            prefs = (('foo',None),('bar', 'v1'))
+            self.assertEqual(d_stack, _get_filter_stack_for(prefs))
         finally:
             # Restore the real registry
             filters._reset_registry(original_registry)
