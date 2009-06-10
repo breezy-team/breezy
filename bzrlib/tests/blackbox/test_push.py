@@ -221,6 +221,26 @@ class TestPush(ExternalBase):
         remote = Branch.open('public')
         self.assertEndsWith(remote.get_stacked_on_url(), '/parent')
 
+    def test_push_smart_with_default_stacking_url_path_segment(self):
+        self.setup_smart_server_with_call_log()
+        self.make_branch('stack-on', format='1.9')
+        self.make_bzrdir('.').get_config().set_default_stack_on('/stack-on')
+        self.make_branch('from', format='1.9')
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['push', '-d', 'from', self.get_url('to')])
+        branch = Branch.open(self.get_url('to'))
+        self.assertEqual('/stack-on', branch.get_stacked_on_url())
+
+    def test_push_smart_with_default_stacking_relative_path(self):
+        self.setup_smart_server_with_call_log()
+        self.make_branch('stack-on', format='1.9')
+        self.make_bzrdir('.').get_config().set_default_stack_on('stack-on')
+        self.make_branch('from', format='1.9')
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['push', '-d', 'from', self.get_url('to')])
+        branch = Branch.open(self.get_url('to'))
+        self.assertEqual('../stack-on', branch.get_stacked_on_url())
+
     def create_simple_tree(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a'])
