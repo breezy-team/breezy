@@ -1657,6 +1657,7 @@ def collapse_linear_regions(parent_map):
     return result
 
 
+_counters = [0, 0, 0, 0, 0]
 try:
     from bzrlib._known_graph_pyx import KnownGraph
 except ImportError:

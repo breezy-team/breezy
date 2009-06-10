@@ -4,7 +4,15 @@ import os
 import time
 import sys
 import optparse
-from bzrlib import branch, commands, graph, ui, trace
+from bzrlib import (
+    branch,
+    commands,
+    graph,
+    ui,
+    trace,
+    _known_graph_py,
+    _known_graph_pyx,
+    )
 from bzrlib.ui import text
 
 p = optparse.OptionParser()
@@ -58,7 +66,7 @@ if opts.max_combinations > 0 and len(combinations) > opts.max_combinations:
 
 print '      %d combinations' % (len(combinations),)
 t1 = time.clock()
-known_g = graph.KnownGraph(parent_map)
+known_g = _known_graph_py.KnownGraph(parent_map)
 if opts.lsprof is not None:
     h_known = commands.apply_lsprofiled(opts.lsprof,
         all_heads_comp, known_g, combinations)
@@ -66,6 +74,16 @@ else:
     h_known = all_heads_comp(known_g, combinations)
 t2 = time.clock()
 print "Known: %.3fs" % (t2-t1,)
+print "  %s" % (graph._counters,)
+t1 = time.clock()
+known_g = _known_graph_pyx.KnownGraph(parent_map)
+if opts.lsprof is not None:
+    h_known = commands.apply_lsprofiled(opts.lsprof,
+        all_heads_comp, known_g, combinations)
+else:
+    h_known = all_heads_comp(known_g, combinations)
+t2 = time.clock()
+print "Known (pyx): %.3fs" % (t2-t1,)
 print "  %s" % (graph._counters,)
 simple_g = graph.Graph(graph.DictParentsProvider(parent_map))
 graph._counters[1] = 0
