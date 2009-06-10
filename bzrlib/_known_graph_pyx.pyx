@@ -498,4 +498,5 @@ cdef class KnownGraph:
                             break
         for node in self._to_cleanup:
             node.ancestor_of = None
+        self._to_cleanup = []
         return PyFrozenSet_New(candidate_nodes)
