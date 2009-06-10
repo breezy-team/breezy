@@ -946,29 +946,36 @@ class cmd_pull(Command):
             if branch_to.get_parent() is None or remember:
                 branch_to.set_parent(branch_from.base)
 
-        if revision is not None:
-            revision_id = revision.as_revision_id(branch_from)
-
-        branch_to.lock_write()
+        if branch_from is not branch_to:
+            branch_from.lock_read()
         try:
-            if tree_to is not None:
-                view_info = _get_view_info_for_change_reporter(tree_to)
-                change_reporter = delta._ChangeReporter(
-                    unversioned_filter=tree_to.is_ignored, view_info=view_info)
-                result = tree_to.pull(branch_from, overwrite, revision_id,
-                                      change_reporter,
-                                      possible_transports=possible_transports,
-                                      local=local)
-            else:
-                result = branch_to.pull(branch_from, overwrite, revision_id,
-                                      local=local)
+            if revision is not None:
+                revision_id = revision.as_revision_id(branch_from)
 
-            result.report(self.outf)
-            if verbose and result.old_revid != result.new_revid:
-                log.show_branch_change(branch_to, self.outf, result.old_revno,
-                                       result.old_revid)
+            branch_to.lock_write()
+            try:
+                if tree_to is not None:
+                    view_info = _get_view_info_for_change_reporter(tree_to)
+                    change_reporter = delta._ChangeReporter(
+                        unversioned_filter=tree_to.is_ignored,
+                        view_info=view_info)
+                    result = tree_to.pull(
+                        branch_from, overwrite, revision_id, change_reporter,
+                        possible_transports=possible_transports, local=local)
+                else:
+                    result = branch_to.pull(
+                        branch_from, overwrite, revision_id, local=local)
+
+                result.report(self.outf)
+                if verbose and result.old_revid != result.new_revid:
+                    log.show_branch_change(
+                        branch_to, self.outf, result.old_revno,
+                        result.old_revid)
+            finally:
+                branch_to.unlock()
         finally:
-            branch_to.unlock()
+            if branch_from is not branch_to:
+                branch_from.unlock()
 
 
 class cmd_push(Command):

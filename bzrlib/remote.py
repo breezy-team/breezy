@@ -1919,11 +1919,6 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         # We intentionally don't call the parent class's __init__, because it
         # will try to assign to self.tags, which is a property in this subclass.
         # And the parent's __init__ doesn't do much anyway.
-        self._revision_id_to_revno_cache = None
-        self._partial_revision_id_to_revno_cache = {}
-        self._revision_history_cache = None
-        self._last_revision_info_cache = None
-        self._merge_sorted_revisions_cache = None
         self.bzrdir = remote_bzrdir
         if _client is not None:
             self._client = _client
@@ -1943,6 +1938,7 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         else:
             self._real_branch = None
         # Fill out expected attributes of branch for bzrlib API users.
+        self._clear_cached_state()
         self.base = self.bzrdir.root_transport.base
         self._control_files = None
         self._lock_mode = None
