@@ -104,6 +104,11 @@ Bug Fixes
 Documentation
 *************
 
+* Added directory structure and started translation of docs in Russian.
+  (Alexey Shtokalo, Alexander Iljin, Alexander Belchenko, Dmitry Vasiliev,
+  Volodymyr Kotulskyi)
+
+
 API Changes
 ***********
 
