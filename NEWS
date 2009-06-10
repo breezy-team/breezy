@@ -12,11 +12,35 @@ In Development
 Compatibility Breaks
 ********************
 
+* Display prompt on stderr (instead of stdout) when querying users so
+  that the output of commands can be safely redirected.
+  (Vincent Ladeuil, #376582)
+
+
 New Features
 ************
 
+* ``--development7-rich-root`` is a new dev format, similar to ``--dev6``
+  but using a Revision serializer using bencode rather than XML.
+  (Jelmer Vernooij, John Arbash Meinel)
+
+* mail_client=claws now supports --body (and message body hooks).  Also uses
+  configured from address.  (Barry Warsaw)
+
+
 Improvements
 ************
+
+
+* ``--development6-rich-root`` can now stack. (Modulo some smart-server
+  bugs with stacking and non default formats.)
+  (John Arbash Meinel, #373455)
+
+* ``--development6-rich-root`` delays generating a delta index for the
+  first object inserted into a group. This has a beneficial impact on
+  ``bzr commit`` since each committed texts goes to its own group. For
+  committing a 90MB file, it drops peak memory by about 200MB, and speeds
+  up commit from 7s => 4s. (John Arbash Meinel)
 
 * Numerous operations are now faster for huge projects, i.e. those
   with a large number of files and/or a large number of revisions,
@@ -30,21 +54,52 @@ Improvements
 
   (Ian Clatworthy)
 
-* ``--development6-rich-root`` can now stack. (Modulo some smart-server
-  bugs with stacking and non default formats.)
-  (John Arbash Meinel, #373455)
+* Pyrex version of ``bencode`` support. This provides optimized support
+  for both encoding and decoding, and is now found at ``bzrlib.bencode``.
+  ``bzrlib.utils.bencode`` is now deprecated.
+  (Alexander Belchenko, Jelmer Vernooij, John Arbash Meinel)
 
 
 Bug Fixes
 *********
 
+* Bazaar can now pass attachment files to the mutt email client.
+  (Edwin Grubbs, #384158)
+
 * Better message in ``bzr add`` output suggesting using ``bzr ignored`` to
   see which files can also be added.  (Jason Spashett, #76616)
+
+* ``bzr serve`` on Windows no longer displays a traceback simply because a
+  TCP client disconnected. (Andrew Bennetts)
 
 * Clarify the rules for locking and fallback repositories. Fix bugs in how
   ``RemoteRepository`` was handling fallbacks along with the
   ``_real_repository``. (Andrew Bennetts, John Arbash Meinel, #375496)
 
+* Fix a small bug with fetching revisions w/ ghosts into a new stacked
+  branch. Not often triggered, because it required ghosts to be part of
+  the fetched revisions, not in the stacked-on ancestry.
+  (John Arbash Meinel)
+
+* Fix problem of "directory not empty" when contending for a lock over
+  sftp.  (Martin Pool, #340352)
+
+* Reconcile can now deal with text revisions that originated in revisions 
+  that are ghosts. (Jelmer Vernooij, #336749)
+
+* Support cloning of branches with ghosts in the left hand side history.
+  (Jelmer Vernooij, #248540)
+
+* The ''bzr diff'' now catches OSError from osutils.rmtree and logs a
+  helpful message to the trace file, unless the temp directory really was
+  removed (which would be very strange).  Since the diff operation has
+  succeeded from the user's perspective, no output is written to stderr 
+  or stdout.  (Maritza Mendez, #363837)
+
+* Translate errors received from a smart server in response to a
+  ``BzrDirFormat.initialize`` or ``BzrDirFormat.initialize_ex`` request.
+  This was causing tracebacks even for mundane errors like
+  ``PermissionDenied``.  (Andrew Bennetts, #381329)
 
 Documentation
 *************
@@ -54,15 +109,31 @@ API Changes
 
 * Added osutils.parent_directories(). (Ian Clatworthy)
 
+* ``bzrlib.progress.ProgressBar``, ``ChildProgress``, ``DotsProgressBar``,
+  ``TTYProgressBar`` and ``child_progress`` are now deprecated; use
+  ``ui_factory.nested_progress_bar`` instead.  (Martin Pool)
+
+* ``graph.StackedParentsProvider`` is now a public API, replacing
+  ``graph._StackedParentsProvider``. The api is now considered stable and ready
+  for external users. (Gary van der Merwe)
+
 * TreeTransformBase no longer assumes that limbo is provided via disk.
   DiskTreeTransform now provides disk functionality.  (Aaron Bentley)
-
 
 Internals
 *********
 
+* Remove ``weave.py`` script for accessing internals of old weave-format
+  repositories.  (Martin Pool)
+
 Testing
 *******
+
+* The number of cores is now correctly detected on OSX. (John Szakmeister)
+
+* The number of cores is also detected on Solaris and win32. (Vincent Ladeuil)
+
+* The number of cores is also detected on FreeBSD. (Matthew Fuller)
 
 
 bzr 1.15

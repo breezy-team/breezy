@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2009 Canonical Ltd
+# Copyright (C) 2007,2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,25 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import os
-from StringIO import StringIO
+"""Wrapper around the bencode pyrex and python implementation"""
 
-from bzrlib import errors
-from bzrlib.tests import TestCase
-from bzrlib.symbol_versioning import (
-    deprecated_in,
-    )
-
-
-class _TTYStringIO(StringIO):
-    """A helper class which makes a StringIO look like a terminal"""
-
-    def isatty(self):
-        return True
-
-
-class _NonTTYStringIO(StringIO):
-    """Helper that implements isatty() but returns False"""
-
-    def isatty(self):
-        return False
+try:
+    from bzrlib._bencode_pyx import bdecode, bdecode_as_tuple, bencode, Bencached
+except ImportError:
+    from bzrlib.util._bencode_py import bdecode, bdecode_as_tuple, bencode, Bencached

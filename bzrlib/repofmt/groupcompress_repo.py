@@ -857,7 +857,7 @@ class GroupCHKStreamSource(repository.StreamSource):
         self._chk_id_roots = None
         self._chk_p_id_roots = None
 
-    def _get_inventory_stream(self, inventory_keys):
+    def _get_inventory_stream(self, inventory_keys, allow_absent=False):
         """Get a stream of inventory texts.
 
         When this function returns, self._chk_id_roots and self._chk_p_id_roots
@@ -872,6 +872,11 @@ class GroupCHKStreamSource(repository.StreamSource):
             stream = source_vf.get_record_stream(inventory_keys,
                                                  'groupcompress', True)
             for record in stream:
+                if record.storage_kind == 'absent':
+                    if allow_absent:
+                        continue
+                    else:
+                        raise errors.NoSuchRevision(self, record.key)
                 bytes = record.get_bytes_as('fulltext')
                 chk_inv = inventory.CHKInventory.deserialise(None, bytes,
                                                              record.key)
@@ -981,7 +986,11 @@ class GroupCHKStreamSource(repository.StreamSource):
             raise AssertionError('Cannot call get_stream_for_missing_keys'
                 ' untill all of get_stream() has been consumed.')
         # Yield the inventory stream, so we can find the chk stream
-        yield self._get_inventory_stream(missing_inventory_keys)
+        # Some of the missing_keys will be missing because they are ghosts.
+        # As such, we can ignore them. The Sink is required to verify there are
+        # no unavailable texts when the ghost inventories are not filled in.
+        yield self._get_inventory_stream(missing_inventory_keys,
+                                         allow_absent=True)
         # We use the empty set for excluded_revision_ids, to make it clear that
         # we want to transmit all referenced chk pages.
         for stream_info in self._get_filtered_chk_streams(set()):
@@ -1038,5 +1047,25 @@ class RepositoryFormatCHK1(RepositoryFormatPack):
         if not getattr(target_format, 'supports_tree_reference', False):
             raise errors.BadConversionTarget(
                 'Does not support nested trees', target_format)
+
+
+
+class RepositoryFormatCHK2(RepositoryFormatCHK1):
+    """A CHK repository that uses the bencode revision serializer."""
+
+    _serializer = chk_serializer.chk_bencode_serializer
+
+    def _get_matching_bzrdir(self):
+        return bzrdir.format_registry.make_bzrdir('development7-rich-root')
+
+    def _ignore_setting_bzrdir(self, format):
+        pass
+
+    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+
+    def get_format_string(self):
+        """See RepositoryFormat.get_format_string()."""
+        return ('Bazaar development format - chk repository with bencode '
+                'revision serialization (needs bzr.dev from 1.15)\n')
 
 

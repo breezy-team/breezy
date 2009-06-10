@@ -15,7 +15,13 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from bzrlib.smart import server
+from bzrlib import (
+    branch,
+    errors,
+    )
+from bzrlib.smart import (
+    server,
+    )
 from bzrlib.tests.per_repository import TestCaseWithRepository
 
 
@@ -99,3 +105,47 @@ class TestFetch(TestCaseWithRepository):
         final2_b = target_b.bzrdir.sprout('final2',
                                           revision_id='C-id').open_branch()
         self.assertEqual('C-id', final_b.last_revision())
+
+    def make_source_with_ghost_and_stacked_target(self):
+        builder = self.make_branch_builder('source')
+        builder.start_series()
+        builder.build_snapshot('A-id', None, [
+            ('add', ('', 'root-id', 'directory', None)),
+            ('add', ('file', 'file-id', 'file', 'content\n'))])
+        builder.build_snapshot('B-id', ['A-id', 'ghost-id'], [])
+        builder.finish_series()
+        source_b = builder.get_branch()
+        source_b.lock_read()
+        self.addCleanup(source_b.unlock)
+        base = self.make_branch('base')
+        base.pull(source_b, stop_revision='A-id')
+        stacked = self.make_branch('stacked')
+        stacked.set_stacked_on_url('../base')
+        return source_b, base, stacked
+
+    def test_fetch_with_ghost_stacked(self):
+        (source_b, base,
+         stacked) = self.make_source_with_ghost_and_stacked_target()
+        stacked.pull(source_b, stop_revision='B-id')
+
+    def test_fetch_into_smart_stacked_with_ghost(self):
+        (source_b, base,
+         stacked) = self.make_source_with_ghost_and_stacked_target()
+        # Now, create a smart server on 'stacked' and re-open to force the
+        # target to be a smart target
+        trans = self.make_smart_server('stacked')
+        stacked = branch.Branch.open(trans.base)
+        stacked.lock_write()
+        self.addCleanup(stacked.unlock)
+        stacked.pull(source_b, stop_revision='B-id')
+
+    def test_fetch_to_stacked_from_smart_with_ghost(self):
+        (source_b, base,
+         stacked) = self.make_source_with_ghost_and_stacked_target()
+        # Now, create a smart server on 'source' and re-open to force the
+        # target to be a smart target
+        trans = self.make_smart_server('source')
+        source_b = branch.Branch.open(trans.base)
+        source_b.lock_read()
+        self.addCleanup(source_b.unlock)
+        stacked.pull(source_b, stop_revision='B-id')

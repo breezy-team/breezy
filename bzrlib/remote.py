@@ -20,6 +20,7 @@
 import bz2
 
 from bzrlib import (
+    bencode,
     branch,
     bzrdir,
     config,
@@ -45,7 +46,6 @@ from bzrlib.lockable_files import LockableFiles
 from bzrlib.smart import client, vfs, repository as smart_repo
 from bzrlib.revision import ensure_null, NULL_REVISION
 from bzrlib.trace import mutter, note, warning
-from bzrlib.util import bencode
 
 
 class _RpcHelper(object):
@@ -1576,7 +1576,7 @@ class RemoteRepository(_RpcHelper):
             providers.insert(0, other)
         providers.extend(r._make_parents_provider() for r in
                          self._fallback_repositories)
-        return graph._StackedParentsProvider(providers)
+        return graph.StackedParentsProvider(providers)
 
     def _serialise_search_recipe(self, recipe):
         """Serialise a graph search recipe.
