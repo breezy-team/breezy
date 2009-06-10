@@ -33,7 +33,8 @@ def all_heads_comp(g, combinations):
     pb = ui.ui_factory.nested_progress_bar()
     try:
         for idx, combo in enumerate(combinations):
-            pb.update('proc', idx, len(combinations))
+            if idx & 0x1f == 0:
+                pb.update('proc', idx, len(combinations))
             h.append(g.heads(combo))
     finally:
         pb.finished()
@@ -67,9 +68,12 @@ t2 = time.clock()
 print "Known: %.3fs" % (t2-t1,)
 print "  %s" % (graph._counters,)
 simple_g = graph.Graph(graph.DictParentsProvider(parent_map))
+graph._counters[1] = 0
+graph._counters[2] = 0
 h_simple = all_heads_comp(simple_g, combinations)
 t3 = time.clock()
 print "Orig: %.3fs" % (t3-t2,)
+print "  %s" % (graph._counters,)
 if h_simple != h_known:
     import pdb; pdb.set_trace()
 print 'ratio: %.3fs' % ((t2-t1) / (t3-t2))

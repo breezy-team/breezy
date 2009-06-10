@@ -63,6 +63,8 @@ class DictParentsProvider(object):
     def get_parent_map(self, keys):
         """See _StackedParentsProvider.get_parent_map"""
         ancestry = self.ancestry
+        _counters[1] += len(keys)
+        _counters[2] += 1
         return dict((k, ancestry[k]) for k in keys if k in ancestry)
 
 
@@ -1345,6 +1347,7 @@ class KnownGraph(object):
             order if they need it.
         """
         candidate_nodes = dict((key, self._nodes[key]) for key in keys)
+        _counters[0] += len(candidate_nodes)
         if revision.NULL_REVISION in candidate_nodes:
             # NULL_REVISION is only a head if it is the only entry
             candidate_nodes.pop(revision.NULL_REVISION)
@@ -1400,10 +1403,12 @@ class KnownGraph(object):
                 # This node is now considered 'common'
                 # Make sure all parent nodes are marked as such
                 for parent_key in node.parent_keys:
+                    _counters[0] += 1
                     parent_node = nodes[parent_key]
                     if parent_node.ancestor_of is not None:
                         parent_node.ancestor_of = next_ancestor_of
                 if node.linear_dominator != node.key:
+                    _counters[0] += 1
                     parent_node = nodes[node.linear_dominator]
                     if parent_node.ancestor_of is not None:
                         parent_node.ancestor_of = next_ancestor_of
@@ -1430,6 +1435,7 @@ class KnownGraph(object):
                     candidate_nodes.pop(parent_key)
                     if len(candidate_nodes) <= 1:
                         break
+                _counters[0] += 1
                 parent_node = nodes[parent_key]
                 ancestor_of = parent_node.ancestor_of
                 if ancestor_of is None:
