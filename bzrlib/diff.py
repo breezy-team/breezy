@@ -171,6 +171,11 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
 
         if not diff_opts:
             diff_opts = []
+        if sys.platform == 'win32':
+            # Popen doesn't do the proper encoding for external commands
+            # Since we are dealing with an ANSI api, use mbcs encoding
+            old_filename = old_filename.encode('mbcs')
+            new_filename = old_filename.encode('mbcs')
         diffcmd = ['diff',
                    '--label', old_filename,
                    old_abspath,
