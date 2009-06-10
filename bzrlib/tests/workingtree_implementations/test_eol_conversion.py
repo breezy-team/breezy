@@ -17,8 +17,9 @@
 """Tests for eol conversion."""
 
 import sys
+from cStringIO import StringIO
 
-from bzrlib import rules
+from bzrlib import rules, status
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 from bzrlib.workingtree import WorkingTree
@@ -74,8 +75,11 @@ class TestEolConversion(TestCaseWithWorkingTree):
         return t, basis
 
     def assertNewContentForSetting(self, wt, eol, expected_unix,
-        expected_win=None):
-        """Clone a working tree and check the convenience content."""
+        expected_win, roundtrip):
+        """Clone a working tree and check the convenience content.
+        
+        If roundtrip is True, status and commit should see no changes.
+        """
         if expected_win is None:
             expected_win = expected_unix
         self.patch_rules_searcher(eol)
@@ -86,36 +90,48 @@ class TestEolConversion(TestCaseWithWorkingTree):
             self.assertEqual(expected_win, content)
         else:
             self.assertEqual(expected_unix, content)
+        # Confirm that status thinks nothing has changed if the text roundtrips
+        if roundtrip:
+            status_io = StringIO()
+            status.show_tree_status(wt2, to_file=status_io)
+            self.assertEqual('', status_io.getvalue())
+            # Also confirm commit does nothing
+            #wt2.commit("no-op", allow_pointless=False)
 
     def assertContent(self, wt, basis, expected_raw, expected_unix,
-        expected_win):
+        expected_win, roundtrip=True):
         """Check the committed content and content in cloned trees."""
         basis_content = basis.get_file('file1-id').read()
         self.assertEqual(expected_raw, basis_content)
-        self.assertNewContentForSetting(wt, None, expected_raw)
+        # No setting and exact should always roundtrip
+        self.assertNewContentForSetting(wt, None,
+            expected_raw, expected_raw, roundtrip=True)
+        self.assertNewContentForSetting(wt, 'exact',
+            expected_raw, expected_raw, roundtrip=True)
+        # Roundtriping is otherwise dependent on whether the original
+        # text is clean - mixed line ending will prevent it
         self.assertNewContentForSetting(wt, 'native',
-            expected_unix, expected_win)
+            expected_unix, expected_win, roundtrip)
         self.assertNewContentForSetting(wt, 'lf',
-            expected_unix, expected_unix)
+            expected_unix, expected_unix, roundtrip)
         self.assertNewContentForSetting(wt, 'crlf',
-            expected_win, expected_win)
+            expected_win, expected_win, roundtrip)
         self.assertNewContentForSetting(wt, 'native-with-crlf-in-repo',
-            expected_unix, expected_win)
+            expected_unix, expected_win, roundtrip)
         self.assertNewContentForSetting(wt, 'lf-with-crlf-in-repo',
-            expected_unix, expected_unix)
+            expected_unix, expected_unix, roundtrip)
         self.assertNewContentForSetting(wt, 'crlf-with-crlf-in-repo',
-            expected_win, expected_win)
-        self.assertNewContentForSetting(wt, 'exact', expected_raw)
+            expected_win, expected_win, roundtrip)
 
     def test_eol_no_rules(self):
         wt, basis = self.prepare_tree(_sample_text)
         self.assertContent(wt, basis, _sample_text,
-            _sample_text_on_unix, _sample_text_on_win)
+            _sample_text_on_unix, _sample_text_on_win, roundtrip=False)
 
     def test_eol_native(self):
         wt, basis = self.prepare_tree(_sample_text, eol='native')
         self.assertContent(wt, basis, _sample_text_on_unix,
-            _sample_text_on_unix, _sample_text_on_win)
+            _sample_text_on_unix, _sample_text_on_win, roundtrip=False)
 
     def test_eol_native_binary(self):
         wt, basis = self.prepare_tree(_sample_binary, eol='native')
@@ -125,7 +141,7 @@ class TestEolConversion(TestCaseWithWorkingTree):
     def test_eol_lf(self):
         wt, basis = self.prepare_tree(_sample_text, eol='lf')
         self.assertContent(wt, basis, _sample_text_on_unix,
-            _sample_text_on_unix, _sample_text_on_win)
+            _sample_text_on_unix, _sample_text_on_win, roundtrip=False)
 
     def test_eol_lf_binary(self):
         wt, basis = self.prepare_tree(_sample_binary, eol='lf')
@@ -135,7 +151,7 @@ class TestEolConversion(TestCaseWithWorkingTree):
     def test_eol_crlf(self):
         wt, basis = self.prepare_tree(_sample_text, eol='crlf')
         self.assertContent(wt, basis, _sample_text_on_unix,
-            _sample_text_on_unix, _sample_text_on_win)
+            _sample_text_on_unix, _sample_text_on_win, roundtrip=False)
 
     def test_eol_crlf_binary(self):
         wt, basis = self.prepare_tree(_sample_binary, eol='crlf')
@@ -146,7 +162,7 @@ class TestEolConversion(TestCaseWithWorkingTree):
         wt, basis = self.prepare_tree(_sample_text,
             eol='native-with-crlf-in-repo')
         self.assertContent(wt, basis, _sample_text_on_win,
-            _sample_text_on_unix, _sample_text_on_win)
+            _sample_text_on_unix, _sample_text_on_win, roundtrip=False)
 
     def test_eol_native_with_crlf_in_repo_binary(self):
         wt, basis = self.prepare_tree(_sample_binary,
@@ -157,7 +173,7 @@ class TestEolConversion(TestCaseWithWorkingTree):
     def test_eol_lf_with_crlf_in_repo(self):
         wt, basis = self.prepare_tree(_sample_text, eol='lf-with-crlf-in-repo')
         self.assertContent(wt, basis, _sample_text_on_win,
-            _sample_text_on_unix, _sample_text_on_win)
+            _sample_text_on_unix, _sample_text_on_win, roundtrip=False)
 
     def test_eol_lf_with_crlf_in_repo_binary(self):
         wt, basis = self.prepare_tree(_sample_binary, eol='lf-with-crlf-in-repo')
@@ -167,7 +183,7 @@ class TestEolConversion(TestCaseWithWorkingTree):
     def test_eol_crlf_with_crlf_in_repo(self):
         wt, basis = self.prepare_tree(_sample_text, eol='crlf-with-crlf-in-repo')
         self.assertContent(wt, basis, _sample_text_on_win,
-            _sample_text_on_unix, _sample_text_on_win)
+            _sample_text_on_unix, _sample_text_on_win, roundtrip=False)
 
     def test_eol_crlf_with_crlf_in_repo_binary(self):
         wt, basis = self.prepare_tree(_sample_binary, eol='crlf-with-crlf-in-repo')
@@ -177,7 +193,7 @@ class TestEolConversion(TestCaseWithWorkingTree):
     def test_eol_exact(self):
         wt, basis = self.prepare_tree(_sample_text, eol='exact')
         self.assertContent(wt, basis, _sample_text,
-            _sample_text_on_unix, _sample_text_on_win)
+            _sample_text_on_unix, _sample_text_on_win, roundtrip=False)
 
     def test_eol_exact_binary(self):
         wt, basis = self.prepare_tree(_sample_binary, eol='exact')
