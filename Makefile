@@ -120,7 +120,6 @@ dev_txt_nohtml := \
 	doc/developers/initial-push-pull.txt \
 	doc/developers/merge-scaling.txt \
 	doc/developers/missing.txt \
-	doc/developers/performance-contributing.txt \
 	doc/developers/performance-roadmap-rationale.txt \
 	doc/developers/performance-use-case-analysis.txt \
 	doc/developers/planned-change-integration.txt \
@@ -189,11 +188,13 @@ man1/bzr.1: $(MAN_DEPENDENCIES)
 	$(PYTHON) generate_docs.py -o $@ man
 
 # build a png of our performance task list
+# 
+# this is no longer built by default; you can build it if you want to look at it
 doc/developers/performance.png: doc/developers/performance.dot
 	@echo Generating $@
 	@dot -Tpng $< -o$@ || echo "Dot not installed; skipping generation of $@"
 
-derived_web_docs = $(htm_files) $(dev_htm_files) doc/developers/performance.png
+derived_web_docs = $(htm_files) $(dev_htm_files) 
 WEB_DOCS = $(derived_web_docs) $(non_txt_files)
 ALL_DOCS = $(derived_web_docs) $(MAN_PAGES)
 
