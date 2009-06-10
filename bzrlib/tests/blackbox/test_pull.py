@@ -377,7 +377,7 @@ class TestPull(ExternalBase):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(-1, self.hpss_calls) # XXX
+        self.assertLength(43, self.hpss_calls)
         remote = Branch.open('stacked')
         self.assertEndsWith(remote.get_stacked_on_url(), '/parent')
 
