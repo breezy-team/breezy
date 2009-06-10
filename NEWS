@@ -84,6 +84,9 @@ Bug Fixes
 * Fix problem of "directory not empty" when contending for a lock over
   sftp.  (Martin Pool, #340352)
 
+* Fix rule handling so that eol is optional, not mandatory.
+  (Ian Clatworthy, #379370)
+
 * Reconcile can now deal with text revisions that originated in revisions 
   that are ghosts. (Jelmer Vernooij, #336749)
 
