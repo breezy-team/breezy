@@ -30,18 +30,23 @@ cdef extern from "Python.h":
     int PyDict_SetItem(object d, object k, object v) except -1
     void Py_INCREF(object)
 
+
 import heapq
 
 from bzrlib import revision
+
+heappush = heapq.heappush
+heappop = heapq.heappop
 
 
 cdef class _KnownGraphNode:
     """Represents a single object in the known graph."""
 
     cdef object key
-    # Ideally, we could change this into fixed arrays, rather than get the
-    # extra allocations. Consider that 99% of all revisions will have <= 2
-    # parents, we may want to put in the effort
+    # 99% of all revisions have <= 2 parents, so we pre-allocate space for it,
+    # but allow the flexibility of having N parents
+    cdef _KnownGraphNode left_parent
+    cdef _KnownGraphNode right_parent
     cdef list parents
     cdef list children
     cdef _KnownGraphNode linear_dominator_node
@@ -51,16 +56,14 @@ cdef class _KnownGraphNode:
     cdef object ancestor_of
 
     def __init__(self, key, parents):
+        cdef _KnownGraphNode _parent_node
+        cdef int i
+
         self.key = key
-        if parents is None:
-            self.parents = parents
-        else:
-            if not isinstance(parents, list):
-                raise TypeError('parents must be a list')
-            for parent in parents:
-                if not isinstance(parent, _KnownGraphNode):
-                    raise TypeError('parents must be a list of _KnownGraphNode')
-        self.parents = parents
+        self.left_parent = None
+        self.right_parent = None
+        self.set_parents(parents)
+
         self.children = []
         # oldest ancestor, such that no parents between here and there have >1
         # child or >1 parent.
@@ -89,10 +92,26 @@ cdef class _KnownGraphNode:
             else:
                 return self.linear_dominator_node.key
 
+    cdef set_parents(self, list parents):
+        cdef int num_parents
+        self.parents = parents
+        if parents is None:
+            return
+        num_parents = len(self.parents)
+        if num_parents > 2:
+            # No special ops
+            return
+        if num_parents > 0:
+            self.left_parent = self.parents[0]
+        if num_parents > 1:
+            self.right_parent = self.parents[1]
+
     cdef clear_references(self):
         self.parents = None
         self.children = None
         self.linear_dominator_node = None
+        self.left_parent = None
+        self.right_parent = None
 
     def __repr__(self):
         parent_keys = []
@@ -116,6 +135,9 @@ cdef class KnownGraph:
     cdef public object _nodes
     cdef dict _known_heads
     cdef public int do_cache
+    # Nodes we've touched that we'll need to reset their info when heads() is
+    # done
+    cdef list _to_cleanup
 
     def __init__(self, parent_map, do_cache=True):
         """Create a new KnownGraph instance.
@@ -125,6 +147,7 @@ cdef class KnownGraph:
         self._nodes = {}
         # Maps {sorted(revision_id, revision_id): heads}
         self._known_heads = {}
+        self._to_cleanup = []
         self.do_cache = int(do_cache)
         self._initialize_nodes(parent_map)
         self._find_linear_dominators()
@@ -162,7 +185,7 @@ cdef class KnownGraph:
             if key in nodes:
                 node = nodes[key]
                 assert node.parents is None
-                node.parents = parent_nodes
+                node.set_parents(parent_nodes)
             else:
                 node = _KnownGraphNode(key, parent_nodes)
                 nodes[key] = node
@@ -378,19 +401,50 @@ cdef class KnownGraph:
             heads.append(<object>test_key)
         return dom_lookup_key, PyFrozenSet_New(heads)
 
+    cdef int _process_parent(self, _KnownGraphNode node,
+                             _KnownGraphNode parent_node,
+                             dict candidate_nodes,
+                             queue) except -1:
+        """Process the parent of a node, seeing if we need to walk it.
+
+        :return: 0 No extra work needed
+                 1 This was a candidate node, and now there is only 1 candidate
+                   left, so break out of the loop
+        """
+        cdef PyObject *maybe_candidate
+        maybe_candidate = PyDict_GetItem(candidate_nodes, parent_node.key)
+        if maybe_candidate != NULL:
+            candidate_nodes.pop(parent_node.key)
+            if len(candidate_nodes) <= 1:
+                return 1
+        if parent_node.ancestor_of is None:
+            # This node hasn't been walked yet, so just project node's ancestor
+            # info directly to parent_node, and enqueue it for later processing
+            parent_node.ancestor_of = node.ancestor_of
+            heappush(queue, (-parent_node.gdfo, parent_node))
+            self._to_cleanup.append(parent_node)
+        elif parent_node.ancestor_of != node.ancestor_of:
+            # Combine to get the full set of parents
+            # Rewrite using PySet_* functions, unfortunately you have to use
+            # PySet_Add since there is no PySet_Update... :(
+            all_ancestors = set(parent_node.ancestor_of)
+            all_ancestors.update(node.ancestor_of)
+            parent_node.ancestor_of = tuple(sorted(all_ancestors))
+        return 0
+
     cdef object _heads_from_candidate_nodes(self, dict candidate_nodes):
-        cdef list to_cleanup
         cdef _KnownGraphNode node
         cdef _KnownGraphNode parent_node
         cdef int num_candidates
+        cdef int num_parents
+        cdef list queue
 
         queue = []
-        to_cleanup = []
         for node in candidate_nodes.itervalues():
             assert node.ancestor_of is None
             node.ancestor_of = (node.key,)
             queue.append((-node.gdfo, node))
-            to_cleanup.append(node)
+            self._to_cleanup.append(node)
         heapq.heapify(queue)
         # These are nodes that we determined are 'common' that we are no longer
         # walking
@@ -423,25 +477,25 @@ cdef class KnownGraph:
                 # We are at the tip of a long linear region
                 # We know that there is nothing between here and the tail
                 # that is interesting, so skip to the end
-                parents = [node.linear_dominator_node]
+                if (self._process_parent(node, node.linear_dominator_node,
+                                         candidate_nodes, queue)):
+                    break
             else:
-                parents = node.parents
-            for parent_node in node.parents:
-                if parent_node.key in candidate_nodes:
-                    candidate_nodes.pop(parent_node.key)
-                    if len(candidate_nodes) <= 1:
-                        break
-                if parent_node.ancestor_of is None:
-                    # This node hasn't been walked yet
-                    parent_node.ancestor_of = node.ancestor_of
-                    # Enqueue this node
-                    heappush(queue, (-parent_node.gdfo, parent_node))
-                    to_cleanup.append(parent_node)
-                elif parent_node.ancestor_of != node.ancestor_of:
-                    # Combine to get the full set of parents
-                    all_ancestors = set(parent_node.ancestor_of)
-                    all_ancestors.update(node.ancestor_of)
-                    parent_node.ancestor_of = tuple(sorted(all_ancestors))
-        for node in to_cleanup:
+                num_parents = len(node.parents)
+                if num_parents > 2:
+                   for parent_node in node.parents:
+                       if (self._process_parent(node, parent_node,
+                                                candidate_nodes, queue)):
+                           break
+                else:
+                    if num_parents > 0:
+                        if (self._process_parent(node, node.left_parent,
+                                                 candidate_nodes, queue)):
+                            break
+                    if num_parents > 1:
+                        if (self._process_parent(node, node.right_parent,
+                                                 candidate_nodes, queue)):
+                            break
+        for node in self._to_cleanup:
             node.ancestor_of = None
         return PyFrozenSet_New(candidate_nodes)
