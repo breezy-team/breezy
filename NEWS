@@ -104,6 +104,9 @@ Bug Fixes
 Documentation
 *************
 
+* Minor clarifications to the help for End-Of-Line conversions.
+  (Ian Clatworthy)
+
 API Changes
 ***********
 
