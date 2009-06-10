@@ -25,6 +25,11 @@ cdef extern from "Python.h":
     ctypedef struct PyObject:
         pass
 
+    object PyFrozenSet_New(object)
+    PyObject * PyDict_GetItem(object d, object k)
+    int PyDict_SetItem(object d, object k, object v) except -1
+    void Py_INCREF(object)
+
 import heapq
 
 from bzrlib import revision
@@ -41,7 +46,7 @@ cdef class _KnownGraphNode:
     cdef list children
     cdef _KnownGraphNode linear_dominator_node
     cdef public long dominator_distance
-    cdef public long gdfo
+    cdef public object gdfo # Int
     # This could also be simplified
     cdef object ancestor_of
 
@@ -141,23 +146,26 @@ cdef class KnownGraph:
         cdef _KnownGraphNode node
         cdef _KnownGraphNode parent_node
         cdef list parent_nodes
+        cdef dict nodes
+
+        nodes = self._nodes
 
         for key, parent_keys in parent_map.iteritems():
             parent_nodes = []
             for parent_key in parent_keys:
                 try:
-                    parent_node = self._nodes[parent_key]
+                    parent_node = nodes[parent_key]
                 except KeyError:
                     parent_node = _KnownGraphNode(parent_key, None)
-                    self._nodes[parent_key] = parent_node
+                    nodes[parent_key] = parent_node
                 parent_nodes.append(parent_node)
-            if key in self._nodes:
-                node = self._nodes[key]
+            if key in nodes:
+                node = nodes[key]
                 assert node.parents is None
                 node.parents = parent_nodes
             else:
                 node = _KnownGraphNode(key, parent_nodes)
-                self._nodes[key] = node
+                nodes[key] = node
             for parent_node in parent_nodes:
                 parent_node.children.append(node)
 
@@ -288,68 +296,89 @@ cdef class KnownGraph:
         """
         cdef dict candidate_nodes
         cdef dict dom_to_node
+        cdef dict nodes
+        cdef _KnownGraphNode node
+        cdef PyObject *maybe_node
 
         candidate_nodes = {}
+        nodes = self._nodes
         for key in keys:
-            candidate_nodes[key] = self._nodes[key]
+            # node = nodes[key]
+            # candidate_nodes[key] = node
+            maybe_node = PyDict_GetItem(nodes, key)
+            if maybe_node == NULL:
+                raise KeyError('key %s not in nodes' % (key,))
+            PyDict_SetItem(candidate_nodes, key, <object>maybe_node)
         if revision.NULL_REVISION in candidate_nodes:
             # NULL_REVISION is only a head if it is the only entry
             candidate_nodes.pop(revision.NULL_REVISION)
             if not candidate_nodes:
                 return set([revision.NULL_REVISION])
+        heads_key = PyFrozenSet_New(candidate_nodes)
         if len(candidate_nodes) < 2:
-            return frozenset(candidate_nodes)
-        heads_key = frozenset(candidate_nodes)
+            return heads_key
         try:
             heads = self._known_heads[heads_key]
             return heads
         except KeyError:
             pass # compute it ourselves
-        ## dominator = None
-        ## # TODO: We could optimize for the len(candidate_nodes) > 2 by checking
-        ## #       for *any* pair-wise matching, and then eliminating one of the
-        ## #       nodes trivially. However, the fairly common case is just 2
-        ## #       keys, so we'll focus on that, first
-        ## for node in candidate_nodes.itervalues():
-        ##     if dominator is None:
-        ##         dominator = node.linear_dominator
-        ##     elif dominator != node.linear_dominator:
-        ##         break
-        ## else:
-        ##     # In 'time bzr annotate NEWS' this only catches *one* item, so it
-        ##     # probably isn't worth the optimization
-        ##     # All of these nodes have the same linear_dominator, which means
-        ##     # they are in a line, the head is just the one with the highest
-        ##     # distance
-        ##     def get_distance(key):
-        ##         return self._nodes[key].dominator_distance
-        ##     def get_linear_head():
-        ##         return max(candidate_nodes, key=get_distance)
-        ##     return set([get_linear_head()])
         # Check the linear dominators of these keys, to see if we already
         # know the heads answer
-        # dom_key = []
-        # for node in candidate_nodes.itervalues():
-        #     dom_key.append(node.linear_dominator.key)
-        # dom_key = frozenset(dom_key)
-        # if dom_key in self._known_heads:
-        #     dom_to_node = dict([(node.linear_dominator, key)
-        #                    for key, node in candidate_nodes.iteritems()])
-        #     # map back into the original keys
-        #     heads = self._known_heads[dom_key]
-        #     heads = frozenset([dom_to_node[key] for key in heads])
-        #     return heads
+        dom_lookup_key, heads = self._heads_from_dominators(
+                                    candidate_nodes.values())
+        if heads is not None:
+            return heads
         heads = self._heads_from_candidate_nodes(candidate_nodes)
-        # if self.do_cache:
-        #     self._known_heads[heads_key] = heads
-        #     # Cache the dominator heads
-        #     if dom_key is not None:
-        #         dom_heads = frozenset([candidate_nodes[key].linear_dominator
-        #                                for key in heads])
-        #         self._known_heads[dom_key] = dom_heads
+        if self.do_cache:
+            self._cache_heads(heads, heads_key, dom_lookup_key, candidate_nodes)
         return heads
 
-    def _heads_from_candidate_nodes(self, dict candidate_nodes):
+    cdef object _cache_heads(self, heads, heads_key, dom_lookup_key,
+                             candidate_nodes):
+        cdef list dom_heads
+        cdef PyObject *maybe_node
+        cdef _KnownGraphNode node
+
+        PyDict_SetItem(self._known_heads, heads_key, heads)
+        dom_heads = []
+        for key in heads:
+            maybe_node = PyDict_GetItem(candidate_nodes, key)
+            if maybe_node == NULL:
+                raise KeyError
+            node = <object>maybe_node
+            dom_heads.append(node.linear_dominator_node.key)
+        PyDict_SetItem(self._known_heads, dom_lookup_key,
+                       PyFrozenSet_New(dom_heads))
+
+    cdef object _heads_from_dominators(self, list candidates):
+        cdef PyObject *test_heads
+        cdef PyObject *test_key
+        cdef list heads, dom_list_key
+        cdef _KnownGraphNode node
+
+        dom_list_key = []
+        for node in candidates:
+            dom_list_key.append(node.linear_dominator_node.key)
+        dom_lookup_key = PyFrozenSet_New(dom_list_key)
+        test_heads = PyDict_GetItem(self._known_heads, dom_lookup_key)
+        if test_heads == NULL:
+            return dom_lookup_key, None
+        # We need to map back to the original keys
+        dom_heads = <object>test_heads
+        dom_to_key = {}
+        for node in candidates:
+            PyDict_SetItem(dom_to_key, node.linear_dominator_node.key,
+                                       node.key)
+        heads = []
+        for dom_key in dom_heads:
+            test_key = PyDict_GetItem(dom_to_key, dom_key)
+            if test_key == NULL:
+                # Should never happen
+                raise KeyError
+            heads.append(<object>test_key)
+        return dom_lookup_key, PyFrozenSet_New(heads)
+
+    cdef object _heads_from_candidate_nodes(self, dict candidate_nodes):
         cdef list to_cleanup
         cdef _KnownGraphNode node
         cdef _KnownGraphNode parent_node
@@ -367,10 +396,9 @@ cdef class KnownGraph:
         # walking
         # Now we walk nodes until all nodes that are being walked are 'common'
         num_candidates = len(candidate_nodes)
-        nodes = self._nodes
         heappop = heapq.heappop
         heappush = heapq.heappush
-        while queue and len(candidate_nodes) > 1:
+        while len(queue) > 0 and len(candidate_nodes) > 1:
             _, node = heappop(queue)
             if len(node.ancestor_of) == num_candidates:
                 # This node is now considered 'common'
@@ -416,4 +444,4 @@ cdef class KnownGraph:
                     parent_node.ancestor_of = tuple(sorted(all_ancestors))
         for node in to_cleanup:
             node.ancestor_of = None
-        return frozenset(candidate_nodes)
+        return PyFrozenSet_New(candidate_nodes)
