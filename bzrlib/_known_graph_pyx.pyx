@@ -28,6 +28,7 @@ cdef extern from "Python.h":
     object PyFrozenSet_New(object)
     PyObject * PyDict_GetItem(object d, object k)
     int PyDict_SetItem(object d, object k, object v) except -1
+    int PySet_Add(object s, object k) except -1
     void Py_INCREF(object)
 
 
@@ -428,7 +429,8 @@ cdef class KnownGraph:
             # Rewrite using PySet_* functions, unfortunately you have to use
             # PySet_Add since there is no PySet_Update... :(
             all_ancestors = set(parent_node.ancestor_of)
-            all_ancestors.update(node.ancestor_of)
+            for k in node.ancestor_of:
+                PySet_Add(all_ancestors, k)
             parent_node.ancestor_of = tuple(sorted(all_ancestors))
         return 0
 
