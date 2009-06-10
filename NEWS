@@ -20,6 +20,12 @@ with a size mismatch in a reconstructed graph search. New command ``bzr
 dpush``. Plugins can now define their own annotation tie-breaker when two
 revisions introduce the exact same line.
 
+Changes from 1.15.1 to 1.15.2
+*****************************
+
+* Use zdll on Windows to build ``_chk_map_pyx`` extension.
+  (Alexander Belchenko)
+
 Changes from 1.15final to 1.15.1
 *********************************
 
