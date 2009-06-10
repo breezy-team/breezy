@@ -136,24 +136,16 @@ class Branch(object):
 
         :param stop_index: The index which should be present.  When it is
             present, history extension will stop.
-        :param revision_id: The revision id which should be present.  When
+        :param stop_revision: The revision id which should be present.  When
             it is encountered, history extension will stop.
         """
-        repo = self.repository
         if len(self._partial_revision_history_cache) == 0:
-            iterator = repo.iter_reverse_revision_history(self.last_revision())
-        else:
-            start_revision = self._partial_revision_history_cache[-1]
-            iterator = repo.iter_reverse_revision_history(start_revision)
-            #skip the last revision in the list
-            next_revision = iterator.next()
-        for revision_id in iterator:
-            self._partial_revision_history_cache.append(revision_id)
-            if (stop_index is not None and
-                len(self._partial_revision_history_cache) > stop_index):
-                break
-            if revision_id == stop_revision:
-                break
+            self._partial_revision_history_cache = [self.last_revision()]
+        repository._iter_for_revno(
+            self.repository, self._partial_revision_history_cache,
+            stop_index=stop_index, stop_revision=stop_revision)
+        if self._partial_revision_history_cache[-1] == _mod_revision.NULL_REVISION:
+            self._partial_revision_history_cache.pop()
 
     @staticmethod
     def open(base, _unsupported=False, possible_transports=None):

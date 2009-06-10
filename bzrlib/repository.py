@@ -4412,3 +4412,37 @@ class StreamSource(object):
             yield versionedfile.FulltextContentFactory(
                 key, parent_keys, None, as_bytes)
 
+
+def _iter_for_revno(repo, partial_history_cache, stop_index=None,
+                    stop_revision=None):
+    """Extend the partial history to include a given index
+
+    If a stop_index is supplied, stop when that index has been reached.
+    If a stop_revision is supplied, stop when that revision is
+    encountered.  Otherwise, stop when the beginning of history is
+    reached.
+
+    :param stop_index: The index which should be present.  When it is
+        present, history extension will stop.
+    :param stop_revision: The revision id which should be present.  When
+        it is encountered, history extension will stop.
+    """
+    mutter('partial_history_cache: %r', partial_history_cache)
+    mutter('stop_index: %d', stop_index)
+    start_revision = partial_history_cache[-1]
+    iterator = repo.iter_reverse_revision_history(start_revision)
+    try:
+        #skip the last revision in the list
+        next_revision = iterator.next()
+        while True:
+            if (stop_index is not None and
+                len(partial_history_cache) > stop_index):
+                break
+            revision_id = iterator.next()
+            partial_history_cache.append(revision_id)
+            if revision_id == stop_revision:
+                break
+    except StopIteration:
+        # No more history
+        return
+
