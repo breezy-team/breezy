@@ -359,3 +359,25 @@ class TestPull(ExternalBase):
         self.assertContainsRe(out, r'\n {4}1 .*\n {6}setup\n')
         self.assertNotContainsRe(
             out, r'revno: 1\ncommitter: .*\nbranch nick: source')
+
+    def test_pull_smart_stacked_streaming_acceptance(self):
+        self.setup_smart_server_with_call_log()
+        parent = self.make_branch_and_tree('parent', format='1.9')
+        parent.commit(message='first commit')
+        local = parent.bzrdir.sprout('local').open_workingtree()
+        local.commit(message='local commit')
+        local.branch.create_clone_on_transport(
+            self.get_transport('stacked'), stacked_on=self.get_url('parent'))
+        empty = self.make_branch_and_tree('empty', format='1.9')
+        self.reset_smart_call_log()
+        self.run_bzr(['pull', '-r', '1', self.get_url('stacked')],
+            working_dir='empty')
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(-1, self.hpss_calls) # XXX
+        remote = Branch.open('stacked')
+        self.assertEndsWith(remote.get_stacked_on_url(), '/parent')
+
