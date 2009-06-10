@@ -401,7 +401,8 @@ def commit_rebase(wt, oldrev, newrevid):
         if [oldrev.committer] == authors:
             authors = None
     else:
-        authors.append(oldrev.committer)
+        if not oldrev.committer in authors:
+            authors.append(oldrev.committer)
     if 'author' in revprops:
         del revprops['author']
     if 'authors' in revprops:
