@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for LockDir"""
 
@@ -142,6 +142,7 @@ class TestLockDir(TestCaseWithTransport):
         lf1 = LockDir(t, 'test_lock')
         lf1.create()
         lf1.attempt_lock()
+        self.addCleanup(lf1.unlock)
         # lock is held, should get some info on it
         info1 = lf1.peek()
         self.assertEqual(set(info1.keys()),
@@ -161,6 +162,7 @@ class TestLockDir(TestCaseWithTransport):
         lf2 = LockDir(self.get_readonly_transport(), 'test_lock')
         self.assertEqual(lf2.peek(), None)
         lf1.attempt_lock()
+        self.addCleanup(lf1.unlock)
         info2 = lf2.peek()
         self.assertTrue(info2)
         self.assertEqual(info2['nonce'], lf1.nonce)
@@ -451,6 +453,7 @@ class TestLockDir(TestCaseWithTransport):
         lf1 = LockDir(t, 'test_lock')
         lf1.create()
         lf1.attempt_lock()
+        self.addCleanup(lf1.unlock)
         lf1.confirm()
 
     def test_41_confirm_not_held(self):
@@ -468,6 +471,9 @@ class TestLockDir(TestCaseWithTransport):
         lf1.attempt_lock()
         t.move('test_lock', 'lock_gone_now')
         self.assertRaises(LockBroken, lf1.confirm)
+        # Clean up
+        t.move('lock_gone_now', 'test_lock')
+        lf1.unlock()
 
     def test_43_break(self):
         """Break a lock whose caller has forgotten it"""
@@ -484,6 +490,7 @@ class TestLockDir(TestCaseWithTransport):
         lf2.force_break(holder_info)
         # now we should be able to take it
         lf2.attempt_lock()
+        self.addCleanup(lf2.unlock)
         lf2.confirm()
 
     def test_44_break_already_released(self):
@@ -501,6 +508,7 @@ class TestLockDir(TestCaseWithTransport):
         lf2.force_break(holder_info)
         # now we should be able to take it
         lf2.attempt_lock()
+        self.addCleanup(lf2.unlock)
         lf2.confirm()
 
     def test_45_break_mismatch(self):
@@ -621,9 +629,11 @@ class TestLockDir(TestCaseWithTransport):
     def test_lock_by_token(self):
         ld1 = self.get_lock()
         token = ld1.lock_write()
+        self.addCleanup(ld1.unlock)
         self.assertNotEqual(None, token)
         ld2 = self.get_lock()
         t2 = ld2.lock_write(token)
+        self.addCleanup(ld2.unlock)
         self.assertEqual(token, t2)
 
     def test_lock_with_buggy_rename(self):
@@ -654,29 +664,30 @@ class TestLockDir(TestCaseWithTransport):
         check_dir([])
         # when held, that's all we see
         ld1.attempt_lock()
+        self.addCleanup(ld1.unlock)
         check_dir(['held'])
         # second guy should fail
         self.assertRaises(errors.LockContention, ld2.attempt_lock)
         # no kibble
         check_dir(['held'])
 
+
+class TestLockDirHooks(TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestLockDirHooks, self).setUp()
+        self._calls = []
+
+    def get_lock(self):
+        return LockDir(self.get_transport(), 'test_lock')
+
     def record_hook(self, result):
         self._calls.append(result)
 
-    def reset_hooks(self):
-        self._old_hooks = lock.Lock.hooks
-        self.addCleanup(self.restore_hooks)
-        lock.Lock.hooks = lock.LockHooks()
-
-    def restore_hooks(self):
-        lock.Lock.hooks = self._old_hooks
-
     def test_LockDir_acquired_success(self):
         # the LockDir.lock_acquired hook fires when a lock is acquired.
-        self._calls = []
-        self.reset_hooks()
         LockDir.hooks.install_named_hook('lock_acquired',
-            self.record_hook, 'record_hook')
+                                         self.record_hook, 'record_hook')
         ld = self.get_lock()
         ld.create()
         self.assertEqual([], self._calls)
@@ -688,15 +699,13 @@ class TestLockDir(TestCaseWithTransport):
 
     def test_LockDir_acquired_fail(self):
         # the LockDir.lock_acquired hook does not fire on failure.
-        self._calls = []
-        self.reset_hooks()
         ld = self.get_lock()
         ld.create()
         ld2 = self.get_lock()
         ld2.attempt_lock()
         # install a lock hook now, when the disk lock is locked
         LockDir.hooks.install_named_hook('lock_acquired',
-            self.record_hook, 'record_hook')
+                                         self.record_hook, 'record_hook')
         self.assertRaises(errors.LockContention, ld.attempt_lock)
         self.assertEqual([], self._calls)
         ld2.unlock()
@@ -704,10 +713,8 @@ class TestLockDir(TestCaseWithTransport):
 
     def test_LockDir_released_success(self):
         # the LockDir.lock_released hook fires when a lock is acquired.
-        self._calls = []
-        self.reset_hooks()
         LockDir.hooks.install_named_hook('lock_released',
-            self.record_hook, 'record_hook')
+                                         self.record_hook, 'record_hook')
         ld = self.get_lock()
         ld.create()
         self.assertEqual([], self._calls)
@@ -719,14 +726,39 @@ class TestLockDir(TestCaseWithTransport):
 
     def test_LockDir_released_fail(self):
         # the LockDir.lock_released hook does not fire on failure.
-        self._calls = []
-        self.reset_hooks()
         ld = self.get_lock()
         ld.create()
         ld2 = self.get_lock()
         ld.attempt_lock()
         ld2.force_break(ld2.peek())
         LockDir.hooks.install_named_hook('lock_released',
-            self.record_hook, 'record_hook')
+                                         self.record_hook, 'record_hook')
         self.assertRaises(LockBroken, ld.unlock)
+        self.assertEqual([], self._calls)
+
+    def test_LockDir_broken_success(self):
+        # the LockDir.lock_broken hook fires when a lock is broken.
+        ld = self.get_lock()
+        ld.create()
+        ld2 = self.get_lock()
+        result = ld.attempt_lock()
+        LockDir.hooks.install_named_hook('lock_broken',
+                                         self.record_hook, 'record_hook')
+        ld2.force_break(ld2.peek())
+        lock_path = ld.transport.abspath(ld.path)
+        self.assertEqual([lock.LockResult(lock_path, result)], self._calls)
+
+    def test_LockDir_broken_failure(self):
+        # the LockDir.lock_broken hook does not fires when a lock is already
+        # released.
+        ld = self.get_lock()
+        ld.create()
+        ld2 = self.get_lock()
+        result = ld.attempt_lock()
+        holder_info = ld2.peek()
+        ld.unlock()
+        LockDir.hooks.install_named_hook('lock_broken',
+                                         self.record_hook, 'record_hook')
+        ld2.force_break(holder_info)
+        lock_path = ld.transport.abspath(ld.path)
         self.assertEqual([], self._calls)

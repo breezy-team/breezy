@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from bzrlib import (
     errors,
@@ -22,6 +22,7 @@ from bzrlib import (
     )
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCaseWithMemoryTransport
+from bzrlib.symbol_versioning import deprecated_in 
 
 
 # Ancestry 1:
@@ -661,10 +662,36 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertEqual((set(['e']), set(['f', 'g'])),
                          graph.find_difference('e', 'f'))
 
+
     def test_stacked_parents_provider(self):
         parents1 = _mod_graph.DictParentsProvider({'rev2': ['rev3']})
         parents2 = _mod_graph.DictParentsProvider({'rev1': ['rev4']})
-        stacked = _mod_graph._StackedParentsProvider([parents1, parents2])
+        stacked = _mod_graph.StackedParentsProvider([parents1, parents2])
+        self.assertEqual({'rev1':['rev4'], 'rev2':['rev3']},
+                         stacked.get_parent_map(['rev1', 'rev2']))
+        self.assertEqual({'rev2':['rev3'], 'rev1':['rev4']},
+                         stacked.get_parent_map(['rev2', 'rev1']))
+        self.assertEqual({'rev2':['rev3']},
+                         stacked.get_parent_map(['rev2', 'rev2']))
+        self.assertEqual({'rev1':['rev4']},
+                         stacked.get_parent_map(['rev1', 'rev1']))
+    
+    def test_stacked_parents_provider_overlapping(self):
+        # rev2 is availible in both providers.
+        # 1
+        # |
+        # 2
+        parents1 = _mod_graph.DictParentsProvider({'rev2': ['rev1']})
+        parents2 = _mod_graph.DictParentsProvider({'rev2': ['rev1']})
+        stacked = _mod_graph.StackedParentsProvider([parents1, parents2])
+        self.assertEqual({'rev2': ['rev1']},
+                         stacked.get_parent_map(['rev2']))
+
+    def test__stacked_parents_provider_deprecated(self):
+        parents1 = _mod_graph.DictParentsProvider({'rev2': ['rev3']})
+        parents2 = _mod_graph.DictParentsProvider({'rev1': ['rev4']})
+        stacked = self.applyDeprecated(deprecated_in((1, 16, 0)),
+                    _mod_graph._StackedParentsProvider, [parents1, parents2])
         self.assertEqual({'rev1':['rev4'], 'rev2':['rev3']},
                          stacked.get_parent_map(['rev1', 'rev2']))
         self.assertEqual({'rev2':['rev3'], 'rev1':['rev4']},
@@ -1385,6 +1412,12 @@ class TestFindMergeOrder(TestGraphBase):
 
 
 class TestCachingParentsProvider(tests.TestCase):
+    """These tests run with:
+
+    self.inst_pp, a recording parents provider with a graph of a->b, and b is a
+    ghost.
+    self.caching_pp, a CachingParentsProvider layered on inst_pp.
+    """
 
     def setUp(self):
         super(TestCachingParentsProvider, self).setUp()
@@ -1409,7 +1442,6 @@ class TestCachingParentsProvider(tests.TestCase):
         self.assertEqual({}, self.caching_pp.get_parent_map(['b']))
         # No new calls
         self.assertEqual(['b'], self.inst_pp.calls)
-        self.assertEqual({'b':None}, self.caching_pp._cache)
 
     def test_get_parent_map_mixed(self):
         """Anything that can be returned from cache, should be"""
@@ -1426,6 +1458,13 @@ class TestCachingParentsProvider(tests.TestCase):
         # Use sorted because we don't care about the order, just that each is
         # only present 1 time.
         self.assertEqual(['a', 'b'], sorted(self.inst_pp.calls))
+
+    def test_note_missing_key(self):
+        """After noting that a key is missing it is cached."""
+        self.caching_pp.note_missing_key('b')
+        self.assertEqual({}, self.caching_pp.get_parent_map(['b']))
+        self.assertEqual([], self.inst_pp.calls)
+        self.assertEqual(set(['b']), self.caching_pp.missing_keys)
 
 
 class TestCachingParentsProviderExtras(tests.TestCaseWithTransport):
@@ -1545,6 +1584,19 @@ class TestPendingAncestryResultGetKeys(TestCaseWithMemoryTransport):
         self.addCleanup(repo.unlock)
         result = _mod_graph.PendingAncestryResult(['rev-2'], repo)
         self.assertEqual(set(['rev-1', 'rev-2']), set(result.get_keys()))
+
+    def test_get_keys_excludes_ghosts(self):
+        builder = self.make_branch_builder('b')
+        builder.start_series()
+        builder.build_snapshot('rev-1', None, [
+            ('add', ('', 'root-id', 'directory', ''))])
+        builder.build_snapshot('rev-2', ['rev-1', 'ghost'], [])
+        builder.finish_series()
+        repo = builder.get_branch().repository
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        result = _mod_graph.PendingAncestryResult(['rev-2'], repo)
+        self.assertEqual(sorted(['rev-1', 'rev-2']), sorted(result.get_keys()))
 
     def test_get_keys_excludes_null(self):
         # Make a 'graph' with an iter_ancestry that returns NULL_REVISION

@@ -13,7 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 import os
@@ -237,6 +237,27 @@ class TestSend(tests.TestCaseWithTransport):
         self.assertIs(merge_directive.MergeDirective, md.__class__)
         self.run_bzr_error(['Bad value .* for option .format.'],
                             'send -f branch -o- --format=0.999')[0]
+
+    def test_format_child_option(self):
+        self.make_trees()
+        parent = _mod_branch.Branch.open('parent')
+        parent.get_config().set_user_option('child_submit_format', '4')
+        s = StringIO(self.run_bzr('send -f branch -o-')[0])
+        md = merge_directive.MergeDirective.from_lines(s.readlines())
+        self.assertIs(merge_directive.MergeDirective2, md.__class__)
+        parent.get_config().set_user_option('child_submit_format', '0.9')
+        s = StringIO(self.run_bzr('send -f branch -o-')[0])
+        md = merge_directive.MergeDirective.from_lines(s.readlines())
+        self.assertContainsRe(md.get_raw_bundle().splitlines()[0],
+            '# Bazaar revision bundle v0.9')
+        s = StringIO(self.run_bzr('bundle -f branch -o-')[0])
+        md = merge_directive.MergeDirective.from_lines(s.readlines())
+        self.assertContainsRe(md.get_raw_bundle().splitlines()[0],
+            '# Bazaar revision bundle v0.9')
+        self.assertIs(merge_directive.MergeDirective, md.__class__)
+        parent.get_config().set_user_option('child_submit_format', '0.999')
+        self.run_bzr_error(["No such send format '0.999'"],
+                            'send -f branch -o-')[0]
 
     def test_message_option(self):
         self.make_trees()

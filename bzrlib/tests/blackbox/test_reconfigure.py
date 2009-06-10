@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from bzrlib import (
     bzrdir,
@@ -57,6 +57,11 @@ class TestReconfigure(tests.TestCaseWithTransport):
         branch = self.make_branch('branch')
         checkout = branch.create_checkout('checkout', lightweight=True)
         self.run_bzr('reconfigure --checkout checkout')
+
+    def test_lightweight_checkout_to_tree(self):
+        branch = self.make_branch('branch')
+        checkout = branch.create_checkout('checkout', lightweight=True)
+        self.run_bzr('reconfigure --tree checkout')
 
     def test_no_args(self):
         branch = self.make_branch('branch')
@@ -127,3 +132,53 @@ class TestReconfigure(tests.TestCaseWithTransport):
             working_dir='repo/branch')
         self.failUnlessExists('repo/branch/foo')
         tree = workingtree.WorkingTree.open('repo/branch')
+
+    def test_shared_format_to_standalone(self, format=None):
+        repo = self.make_repository('repo', shared=True, format=format)
+        branch = bzrdir.BzrDir.create_branch_convenience('repo/tree')
+        self.assertNotEqual(branch.bzrdir.root_transport.base,
+            branch.repository.bzrdir.root_transport.base)
+        tree = workingtree.WorkingTree.open('repo/tree')
+        self.build_tree_contents([('repo/tree/file', 'foo\n')]);
+        tree.add(['file'])
+        tree.commit('added file')
+        self.run_bzr('reconfigure --standalone', working_dir='repo/tree')
+        tree = workingtree.WorkingTree.open('repo/tree')
+        self.build_tree_contents([('repo/tree/file', 'bar\n')]);
+        self.check_file_contents('repo/tree/file', 'bar\n')
+        self.run_bzr('revert', working_dir='repo/tree')
+        self.check_file_contents('repo/tree/file', 'foo\n')
+        self.assertEqual(tree.bzrdir.root_transport.base,
+            tree.branch.repository.bzrdir.root_transport.base)
+
+    def test_shared_knit_to_standalone(self):
+        self.test_shared_format_to_standalone('knit')
+
+    def test_shared_pack092_to_standalone(self):
+        self.test_shared_format_to_standalone('pack-0.92')
+
+    def test_shared_rich_root_pack_to_standalone(self):
+        self.test_shared_format_to_standalone('rich-root-pack')
+
+    def test_lightweight_format_checkout_to_tree(self, format=None):
+        branch = self.make_branch('branch', format=format)
+        checkout = branch.create_checkout('checkout', lightweight=True)
+        tree = workingtree.WorkingTree.open('checkout')
+        self.build_tree_contents([('checkout/file', 'foo\n')]);
+        tree.add(['file'])
+        tree.commit('added file')
+        self.run_bzr('reconfigure --tree', working_dir='checkout')
+        tree = workingtree.WorkingTree.open('checkout')
+        self.build_tree_contents([('checkout/file', 'bar\n')]);
+        self.check_file_contents('checkout/file', 'bar\n')
+        self.run_bzr('revert', working_dir='checkout')
+        self.check_file_contents('checkout/file', 'foo\n')
+
+    def test_lightweight_knit_checkout_to_tree(self, format=None):
+        self.test_lightweight_format_checkout_to_tree('knit')
+
+    def test_lightweight_pack092_checkout_to_tree(self, format=None):
+        self.test_lightweight_format_checkout_to_tree('pack-0.92')
+
+    def test_lightweight_rich_root_pack_checkout_to_tree(self, format=None):
+        self.test_lightweight_format_checkout_to_tree('rich-root-pack')

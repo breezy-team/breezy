@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for branch.push behaviour."""
 
@@ -436,3 +436,13 @@ class EmptyPushSmartEffortTests(TestCaseWithBranch):
         self.assertTrue(len(self.hpss_calls) <= 9, self.hpss_calls)
 
 
+class TestLossyPush(TestCaseWithBranch):
+
+    def setUp(self):
+        self.hook_calls = []
+        TestCaseWithBranch.setUp(self)
+
+    def test_lossy_push_raises_same_vcs(self):
+        target = self.make_branch('target')
+        source = self.make_branch('source')
+        self.assertRaises(errors.LossyPushToSameVCS, source.lossy_push, target)

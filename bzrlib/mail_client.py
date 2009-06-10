@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import errno
 import os
@@ -155,7 +155,7 @@ class BodyExternalMailClient(MailClient):
                       extension, **kwargs)
 
     def _compose(self, prompt, to, subject, attach_path, mime_subtype,
-                extension, body=None):
+                 extension, body=None, from_=None):
         """Invoke a mail client as a commandline process.
 
         Overridden by MAPIClient.
@@ -166,6 +166,8 @@ class BodyExternalMailClient(MailClient):
             "text", but the precise subtype can be specified here
         :param extension: A file extension (including period) associated with
             the attachment type.
+        :param body: Optional body text.
+        :param from_: Optional From: header.
         """
         for name in self._get_client_commands():
             cmdline = [self._encode_path(name, 'executable')]
@@ -173,6 +175,8 @@ class BodyExternalMailClient(MailClient):
                 kwargs = {'body': body}
             else:
                 kwargs = {}
+            if from_ is not None:
+                kwargs['from_'] = from_
             cmdline.extend(self._get_compose_commandline(to, subject,
                                                          attach_path,
                                                          **kwargs))
@@ -253,12 +257,12 @@ mail_client_registry.register('evolution', Evolution,
                               help=Evolution.__doc__)
 
 
-class Mutt(ExternalMailClient):
+class Mutt(BodyExternalMailClient):
     """Mutt mail client."""
 
     _client_commands = ['mutt']
 
-    def _get_compose_commandline(self, to, subject, attach_path):
+    def _get_compose_commandline(self, to, subject, attach_path, body=None):
         """See ExternalMailClient._get_compose_commandline"""
         message_options = []
         if subject is not None:
@@ -266,8 +270,16 @@ class Mutt(ExternalMailClient):
         if attach_path is not None:
             message_options.extend(['-a',
                 self._encode_path(attach_path, 'attachment')])
+        if body is not None:
+            # Store the temp file object in self, so that it does not get
+            # garbage collected and delete the file before mutt can read it.
+            self._temp_file = tempfile.NamedTemporaryFile(
+                prefix="mutt-body-", suffix=".txt")
+            self._temp_file.write(body)
+            self._temp_file.flush()
+            message_options.extend(['-i', self._temp_file.name])
         if to is not None:
-            message_options.append(self._encode_safe(to))
+            message_options.extend(['--', self._encode_safe(to)])
         return message_options
 mail_client_registry.register('mutt', Mutt,
                               help=Mutt.__doc__)
@@ -331,25 +343,45 @@ mail_client_registry.register('kmail', KMail,
 class Claws(ExternalMailClient):
     """Claws mail client."""
 
+    supports_body = True
+
     _client_commands = ['claws-mail']
 
-    def _get_compose_commandline(self, to, subject, attach_path):
+    def _get_compose_commandline(self, to, subject, attach_path, body=None,
+                                 from_=None):
         """See ExternalMailClient._get_compose_commandline"""
-        compose_url = ['mailto:']
-        if to is not None:
-            compose_url.append(self._encode_safe(to))
-        compose_url.append('?')
+        compose_url = []
+        if from_ is not None:
+            compose_url.append('from=' + urllib.quote(from_))
         if subject is not None:
             # Don't use urllib.quote_plus because Claws doesn't seem
             # to recognise spaces encoded as "+".
             compose_url.append(
-                'subject=%s' % urllib.quote(self._encode_safe(subject)))
+                'subject=' + urllib.quote(self._encode_safe(subject)))
+        if body is not None:
+            compose_url.append(
+                'body=' + urllib.quote(self._encode_safe(body)))
+        # to must be supplied for the claws-mail --compose syntax to work.
+        if to is None:
+            raise errors.NoMailAddressSpecified()
+        compose_url = 'mailto:%s?%s' % (
+            self._encode_safe(to), '&'.join(compose_url))
         # Collect command-line options.
-        message_options = ['--compose', ''.join(compose_url)]
+        message_options = ['--compose', compose_url]
         if attach_path is not None:
             message_options.extend(
                 ['--attach', self._encode_path(attach_path, 'attachment')])
         return message_options
+
+    def _compose(self, prompt, to, subject, attach_path, mime_subtype,
+                 extension, body=None, from_=None):
+        """See ExternalMailClient._compose"""
+        if from_ is None:
+            from_ = self.config.get_user_option('email')
+        super(Claws, self)._compose(prompt, to, subject, attach_path,
+                                    mime_subtype, extension, body, from_)
+
+
 mail_client_registry.register('claws', Claws,
                               help=Claws.__doc__)
 
@@ -485,7 +517,7 @@ class MAPIClient(BodyExternalMailClient):
     """Default Windows mail client launched using MAPI."""
 
     def _compose(self, prompt, to, subject, attach_path, mime_subtype,
-                 extension, body):
+                 extension, body=None):
         """See ExternalMailClient._compose.
 
         This implementation uses MAPI via the simplemapi ctypes wrapper
@@ -505,6 +537,8 @@ mail_client_registry.register('mapi', MAPIClient,
 class DefaultMail(MailClient):
     """Default mail handling.  Tries XDGEmail (or MAPIClient on Windows),
     falls back to Editor"""
+
+    supports_body = True
 
     def _mail_client(self):
         """Determine the preferred mail client for this platform"""

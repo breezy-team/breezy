@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for revision properties."""
 
@@ -72,7 +72,7 @@ class TestRevisionAttributes(TestCaseWithRepository):
         tree1.commit(message="quux", allow_pointless=True, committer="jaq",
                      revprops={'empty':'',
                                'value':'one',
-                               'unicode':'\xb5',
+                               'unicode':u'\xb5',
                                'multiline':'foo\nbar\n\n'
                               })
         self.assertTrue(len(tree1.branch.revision_history()) > 0)

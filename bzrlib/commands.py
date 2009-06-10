@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 # TODO: probably should say which arguments are candidates for glob
@@ -35,6 +35,7 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import codecs
 import errno
+import threading
 from warnings import warn
 
 import bzrlib
@@ -686,6 +687,7 @@ def apply_coveraged(dirname, the_callable, *args, **kwargs):
 
     tracer = trace.Trace(count=1, trace=0)
     sys.settrace(tracer.globaltrace)
+    threading.settrace(tracer.globaltrace)
 
     try:
         return exception_to_return_code(the_callable, *args, **kwargs)
@@ -954,7 +956,16 @@ def display_command(func):
     return ignore_pipe
 
 
-def main(argv):
+def main(argv=None):
+    """Main entry point of command-line interface.
+
+    :param argv: list of unicode command-line arguments similar to sys.argv.
+        argv[0] is script name usually, it will be ignored.
+        Don't pass here sys.argv because this list contains plain strings
+        and not unicode; pass None instead.
+
+    :return: exit code of bzr command.
+    """
     import bzrlib.ui
     bzrlib.ui.ui_factory = bzrlib.ui.make_ui_for_terminal(
         sys.stdin, sys.stdout, sys.stderr)
@@ -963,12 +974,20 @@ def main(argv):
     if bzrlib.version_info[3] == 'final':
         from bzrlib import symbol_versioning
         symbol_versioning.suppress_deprecation_warnings(override=False)
-    try:
-        user_encoding = osutils.get_user_encoding()
-        argv = [a.decode(user_encoding) for a in argv[1:]]
-    except UnicodeDecodeError:
-        raise errors.BzrError(("Parameter '%r' is unsupported by the current "
-                                                            "encoding." % a))
+    if argv is None:
+        argv = osutils.get_unicode_argv()
+    else:
+        new_argv = []
+        try:
+            # ensure all arguments are unicode strings
+            for a in argv[1:]:
+                if isinstance(a, unicode):
+                    new_argv.append(a)
+                else:
+                    new_argv.append(a.decode('ascii'))
+        except UnicodeDecodeError:
+            raise errors.BzrError("argv should be list of unicode strings.")
+        argv = new_argv
     ret = run_bzr_catch_errors(argv)
     trace.mutter("return code %d", ret)
     return ret

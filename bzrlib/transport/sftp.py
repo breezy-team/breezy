@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Implementation of Transport over SFTP, using paramiko."""
 
@@ -711,6 +711,12 @@ class SFTPTransport(ConnectedTransport):
             # strange but true, for the paramiko server.
             if (e.args == ('Failure',)):
                 raise failure_exc(path, str(e) + more_info)
+            # Can be something like args = ('Directory not empty:
+            # '/srv/bazaar.launchpad.net/blah...: '
+            # [Errno 39] Directory not empty',)
+            if (e.args[0].startswith('Directory not empty: ')
+                or getattr(e, 'errno', None) == errno.ENOTEMPTY):
+                raise errors.DirectoryNotEmpty(path, str(e))
             mutter('Raising exception with args %s', e.args)
         if getattr(e, 'errno', None) is not None:
             mutter('Raising exception with errno %s', e.errno)

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Wire-level encoding and decoding of requests and responses for the smart
 client and server.
@@ -29,7 +29,7 @@ from bzrlib import debug
 from bzrlib import errors
 from bzrlib.smart import message, request
 from bzrlib.trace import log_exception_quietly, mutter
-from bzrlib.util.bencode import bdecode_as_tuple, bencode
+from bzrlib.bencode import bdecode_as_tuple, bencode
 
 
 # Protocol version strings.  These are sent as prefixes of bzr requests and

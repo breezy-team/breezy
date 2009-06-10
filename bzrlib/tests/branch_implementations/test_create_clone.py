@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for branch.create_clone behaviour."""
 
@@ -24,6 +24,46 @@ from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
 
 
 class TestCreateClone(TestCaseWithBranch):
+
+    def test_create_clone_on_transport_missing_parent_dir(self):
+        tree = self.make_branch_and_tree('source')
+        tree.commit('a commit')
+        source = tree.branch
+        target_transport = self.get_transport('subdir').clone('target')
+        self.assertRaises(errors.NoSuchFile,
+            tree.branch.create_clone_on_transport, target_transport)
+        self.assertFalse(self.get_transport('.').has('subdir'))
+
+    def test_create_clone_on_transport_missing_parent_dir_create(self):
+        tree = self.make_branch_and_tree('source')
+        tree.commit('a commit')
+        source = tree.branch
+        target_transport = self.get_transport('subdir').clone('target')
+        result = tree.branch.create_clone_on_transport(target_transport,
+            create_prefix=True)
+        self.assertEqual(source.last_revision(), result.last_revision())
+        self.assertEqual(target_transport.base,
+            result.bzrdir.root_transport.base)
+
+    def test_create_clone_on_transport_use_existing_dir_false(self):
+        tree = self.make_branch_and_tree('source')
+        tree.commit('a commit')
+        source = tree.branch
+        target_transport = self.get_transport('target')
+        target_transport.create_prefix()
+        self.assertRaises(errors.FileExists,
+            tree.branch.create_clone_on_transport, target_transport)
+        self.assertFalse(target_transport.has(".bzr"))
+
+    def test_create_clone_on_transport_use_existing_dir_true(self):
+        tree = self.make_branch_and_tree('source')
+        tree.commit('a commit')
+        source = tree.branch
+        target_transport = self.get_transport('target')
+        target_transport.create_prefix()
+        result = tree.branch.create_clone_on_transport(target_transport,
+            use_existing_dir=True)
+        self.assertEqual(source.last_revision(), result.last_revision())
 
     def test_create_clone_on_transport_no_revision_id(self):
         tree = self.make_branch_and_tree('source')

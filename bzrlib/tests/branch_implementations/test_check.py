@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for branch implementations - test check() functionality"""
 
@@ -67,4 +67,11 @@ class TestBranchCheck(TestCaseWithBranch):
         result.report_results(verbose=True)
         result.report_results(verbose=False)
 
+    def test_check_detects_ghosts_in_mainline(self):
+        tree = self.make_branch_and_tree('test')
+        tree.set_parent_ids(['thisisaghost'], allow_leftmost_as_ghost=True)
+        r1 = tree.commit('one')
+        r2 = tree.commit('two')
+        result = tree.branch.check()
+        self.assertEquals(True, result.ghosts_in_mainline)
 

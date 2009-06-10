@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Transport decorator that logs transport operations to .bzr.log."""
 
@@ -128,7 +128,7 @@ class TransportLogDecorator(TransportDecorator):
         elapsed = time.time() - before
         if result_len and elapsed > 0:
             # this is the rate of higher-level data, not the raw network speed
-            mutter("      %9.03fs %8dkB/s" % (elapsed, result_len/elapsed/1024))
+            mutter("      %9.03fs %8dKB/s" % (elapsed, result_len/elapsed/1024))
         else:
             mutter("      %9.03fs" % (elapsed))
         return result

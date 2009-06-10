@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """MutableTree object.
 
@@ -231,20 +231,6 @@ class MutableTree(tree.Tree):
     def _gather_kinds(self, files, kinds):
         """Helper function for add - sets the entries of kinds."""
         raise NotImplementedError(self._gather_kinds)
-
-    def get_file_with_stat(self, file_id, path=None):
-        """Get a file handle and stat object for file_id.
-
-        The default implementation returns (self.get_file, None) for backwards
-        compatibility.
-
-        :param file_id: The file id to read.
-        :param path: The path of the file, if it is known.
-        :return: A tuple (file_handle, stat_value_or_None). If the tree has
-            no stat facility, or need for a stat cache feedback during commit,
-            it may return None for the second element of the tuple.
-        """
-        return (self.get_file(file_id, path), None)
 
     @needs_read_lock
     def last_revision(self):
@@ -552,7 +538,10 @@ class MutableTree(tree.Tree):
         # WorkingTree classes for optimised versions for specific format trees.
         basis = self.basis_tree()
         basis.lock_read()
-        inventory = basis.inventory
+        # TODO: Consider re-evaluating the need for this with CHKInventory
+        # we don't strictly need to mutate an inventory for this
+        # it only makes sense when apply_delta is cheaper than get_inventory()
+        inventory = basis.inventory._get_mutable_inventory()
         basis.unlock()
         inventory.apply_delta(delta)
         rev_tree = RevisionTree(self.branch.repository, inventory, new_revid)

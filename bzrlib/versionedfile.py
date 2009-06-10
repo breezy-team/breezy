@@ -15,7 +15,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Versioned text file storage api."""
 
@@ -31,6 +31,7 @@ import urllib
 
 from bzrlib import (
     errors,
+    groupcompress,
     index,
     knit,
     osutils,
@@ -39,14 +40,14 @@ from bzrlib import (
     revision,
     ui,
     )
-from bzrlib.graph import DictParentsProvider, Graph, _StackedParentsProvider
+from bzrlib.graph import DictParentsProvider, Graph, StackedParentsProvider
 from bzrlib.transport.memory import MemoryTransport
 """)
 from bzrlib.inter import InterObject
 from bzrlib.registry import Registry
 from bzrlib.symbol_versioning import *
 from bzrlib.textmerge import TextMerge
-from bzrlib.util import bencode
+from bzrlib import bencode
 
 
 adapter_registry = Registry()
@@ -794,7 +795,8 @@ class VersionedFiles(object):
         check_content=True):
         """Add a text to the store.
 
-        :param key: The key tuple of the text to add.
+        :param key: The key tuple of the text to add. If the last element is
+            None, a CHK string will be generated during the addition.
         :param parents: The parents key tuples of the text to add.
         :param lines: A list of lines. Each line must be a bytestring. And all
             of them except the last must be terminated with \n and contain no
@@ -1331,7 +1333,7 @@ class _PlanMergeVersionedFile(VersionedFiles):
             result[revision.NULL_REVISION] = ()
         self._providers = self._providers[:1] + self.fallback_versionedfiles
         result.update(
-            _StackedParentsProvider(self._providers).get_parent_map(keys))
+            StackedParentsProvider(self._providers).get_parent_map(keys))
         for key, parents in result.iteritems():
             if parents == ():
                 result[key] = (revision.NULL_REVISION,)
@@ -1401,9 +1403,13 @@ class PlanWeaveMerge(TextMerge):
             elif state == 'conflicted-b':
                 ch_b = ch_a = True
                 lines_b.append(line)
+            elif state == 'killed-both':
+                # This counts as a change, even though there is no associated
+                # line
+                ch_b = ch_a = True
             else:
                 if state not in ('irrelevant', 'ghost-a', 'ghost-b',
-                        'killed-base', 'killed-both'):
+                        'killed-base'):
                     raise AssertionError(state)
         for struct in outstanding_struct():
             yield struct
@@ -1517,6 +1523,7 @@ class NetworkRecordStream(object):
             'knit-annotated-delta-gz':knit.knit_network_to_record,
             'knit-delta-closure':knit.knit_delta_closure_to_records,
             'fulltext':fulltext_network_to_record,
+            'groupcompress-block':groupcompress.network_block_to_records,
             }
 
     def read(self):

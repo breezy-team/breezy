@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 from StringIO import StringIO
@@ -23,11 +23,13 @@ from bzrlib import (
     diff,
     errors,
     gpg,
+    hooks,
     registry,
     revision as _mod_revision,
     rio,
     testament,
     timestamp,
+    trace,
     )
 from bzrlib.bundle import (
     serializer as bundle_serializer,
@@ -35,7 +37,36 @@ from bzrlib.bundle import (
 from bzrlib.email_message import EmailMessage
 
 
+class MergeRequestBodyParams(object):
+    """Parameter object for the merge_request_body hook."""
+
+    def __init__(self, body, orig_body, directive, to, basename, subject,
+                 branch, tree=None):
+        self.body = body
+        self.orig_body = orig_body
+        self.directive = directive
+        self.branch = branch
+        self.tree = tree
+        self.to = to
+        self.basename = basename
+        self.subject = subject
+
+
+class MergeDirectiveHooks(hooks.Hooks):
+    """Hooks for MergeDirective classes."""
+
+    def __init__(self):
+        hooks.Hooks.__init__(self)
+        self.create_hook(hooks.HookPoint('merge_request_body',
+            "Called with a MergeRequestBodyParams when a body is needed for"
+            " a merge request.  Callbacks must return a body.  If more"
+            " than one callback is registered, the output of one callback is"
+            " provided to the next.", (1, 15, 0), False))
+
+
 class _BaseMergeDirective(object):
+
+    hooks = MergeDirectiveHooks()
 
     def __init__(self, revision_id, testament_sha1, time, timezone,
                  target_branch, patch=None, source_branch=None, message=None,
@@ -239,6 +270,37 @@ class _BaseMergeDirective(object):
                 source_branch = _mod_branch.Branch.open(self.source_branch)
                 target_repo.fetch(source_branch.repository, self.revision_id)
         return self.revision_id
+
+    def compose_merge_request(self, mail_client, to, body, branch, tree=None):
+        """Compose a request to merge this directive.
+
+        :param mail_client: The mail client to use for composing this request.
+        :param to: The address to compose the request to.
+        :param branch: The Branch that was used to produce this directive.
+        :param tree: The Tree (if any) for the Branch used to produce this
+            directive.
+        """
+        basename = self.get_disk_name(branch)
+        subject = '[MERGE] '
+        if self.message is not None:
+            subject += self.message
+        else:
+            revision = branch.repository.get_revision(self.revision_id)
+            subject += revision.get_summary()
+        if getattr(mail_client, 'supports_body', False):
+            orig_body = body
+            for hook in self.hooks['merge_request_body']:
+                params = MergeRequestBodyParams(body, orig_body, self,
+                                                to, basename, subject, branch,
+                                                tree)
+                body = hook(params)
+        elif len(self.hooks['merge_request_body']) > 0:
+            trace.warning('Cannot run merge_request_body hooks because mail'
+                          ' client %s does not support message bodies.',
+                        mail_client.__class__.__name__)
+        mail_client.compose_merge_request(to, subject,
+                                          ''.join(self.to_lines()),
+                                          basename, body)
 
 
 class MergeDirective(_BaseMergeDirective):
@@ -566,5 +628,8 @@ class MergeDirectiveFormatRegistry(registry.Registry):
 _format_registry = MergeDirectiveFormatRegistry()
 _format_registry.register(MergeDirective)
 _format_registry.register(MergeDirective2)
+# 0.19 never existed.  It got renamed to 0.90.  But by that point, there were
+# already merge directives in the wild that used 0.19. Registering with the old
+# format string to retain compatibility with those merge directives.
 _format_registry.register(MergeDirective2,
                           'Bazaar merge directive format 2 (Bazaar 0.19)')
