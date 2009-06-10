@@ -4427,8 +4427,6 @@ def _iter_for_revno(repo, partial_history_cache, stop_index=None,
     :param stop_revision: The revision id which should be present.  When
         it is encountered, history extension will stop.
     """
-    mutter('partial_history_cache: %r', partial_history_cache)
-    mutter('stop_index: %d', stop_index)
     start_revision = partial_history_cache[-1]
     iterator = repo.iter_reverse_revision_history(start_revision)
     try:

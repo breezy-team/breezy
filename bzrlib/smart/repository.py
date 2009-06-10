@@ -38,7 +38,11 @@ from bzrlib.smart.request import (
     SmartServerRequest,
     SuccessfulSmartServerResponse,
     )
-from bzrlib.repository import _strip_NULL_ghosts, network_format_registry
+from bzrlib.repository import (
+    _iter_for_revno,
+    network_format_registry,
+    _strip_NULL_ghosts,
+    )
 from bzrlib import revision as _mod_revision
 from bzrlib.versionedfile import NetworkRecordStream, record_to_fulltext_bytes
 
@@ -282,6 +286,37 @@ class SmartServerRepositoryGetRevisionGraph(SmartServerRepositoryReadLocked):
             lines.append(' '.join((revision, ) + tuple(parents)))
 
         return SuccessfulSmartServerResponse(('ok', ), '\n'.join(lines))
+
+
+class SmartServerRepositoryGetRevIdForRevno(SmartServerRepositoryReadLocked):
+
+    def do_readlocked_repository_request(self, repository, revno,
+            known_pair):
+        """Find the revid for a given revno, given a known revno/revid pair.
+        
+        New in 1.16.
+        """
+        known_revno, known_revid = known_pair
+        history = [known_revid]
+        distance_from_known = known_revno - revno
+        # XXX: handle distance_from_known < 0, etc
+        try:
+            _iter_for_revno(repository, history, stop_index=revno)
+        except errors.RevisionNotPresent, err:
+            # A stacked repository, or a left-hand ghost.  Either way, even
+            # though the named revision isn't in this repo, we know it's the
+            # next step in this left-hand history.  The client can probably
+            # find this revision in a fallback repository.
+            if history[-1] == err.revision_id:
+                raise AssertionError(
+                    'revision_id of RevisionNotPresent err already in history '
+                    'from _iter_for_revno.')
+            history.append(err.revision_id)
+        if len(history) < distance_from_known:
+            earliest_revno = known_revno - len(history)
+            return SuccessfulSmartServerResponse(
+                ('history-incomplete', earliest_revno, history[-1]))
+        return SuccessfulSmartServerResponse(('ok', history[-1],))
 
 
 class SmartServerRequestHasRevision(SmartServerRepositoryRequest):

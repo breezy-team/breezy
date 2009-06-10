@@ -2225,6 +2225,33 @@ class RemoteBranch(branch.Branch, _RpcHelper):
             raise NotImplementedError(self.dont_leave_lock_in_place)
         self._leave_lock = False
 
+    def get_rev_id(self, revno, history=None):
+        # XXX: we really want a bzrlib.repository.Repository method for this...
+        last_revision_info = self.last_revision_info()
+        result = last_revision_info
+        for repo in [self.repository] + self.repository._fallback_repositories:
+            # XXX: this assumes that the fallbacks are RemoteRepositories
+            # too...
+            ok, result = self._get_rev_id_rpc(repo, revno, result)
+            mutter('%r, %r', ok, result)
+            if ok:
+                return result
+        closest = result[1]
+        missing_parent = self.repository.get_parent_map([closest])[closest][0]
+        raise errors.RevisionNotPresent(missing_parent, self.repository)
+
+
+    def _get_rev_id_rpc(self, repo, revno, known_info):
+        repo_path = repo.bzrdir._path_for_remote_call(self._client)
+        response = self._call(
+            'Repository.get_rev_id_for_revno', repo_path, revno, known_info)
+        if response[0] == 'ok':
+            return True, response[1]
+        elif response[0] == 'history-incomplete':
+            return False, response[1:3]
+        else:
+            raise errors.UnexpectedSmartServerResponse(response)
+
     def _last_revision_info(self):
         response = self._call('Branch.last_revision_info', self._remote_path())
         if response[0] != 'ok':
