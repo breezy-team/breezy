@@ -1768,3 +1768,10 @@ class TestReadLink(tests.TestCaseInTempDir):
     def test_os_readlink_link_decoding(self):
         self.assertEquals(self.target.encode(osutils._fs_enc),
                           os.readlink(self.link.encode(osutils._fs_enc)))
+
+
+class TestConcurrency(tests.TestCase):
+
+    def test_local_concurrency(self):
+        concurrency = osutils.local_concurrency()
+        self.assertIsInstance(concurrency, int)

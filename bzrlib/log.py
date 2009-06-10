@@ -69,6 +69,7 @@ from bzrlib import (
     config,
     diff,
     errors,
+    foreign,
     repository as _mod_repository,
     revision as _mod_revision,
     revisionspec,
@@ -1383,10 +1384,38 @@ class LogFormatter(object):
 
         :return: a list of formatted lines (excluding trailing newlines)
         """
-        lines = []
+        lines = self._foreign_info_properties(revision)
         for key, handler in properties_handler_registry.iteritems():
-            for key, value in handler(revision).items():
-                lines.append(key + ': ' + value)
+            lines.extend(self._format_properties(handler(revision)))
+        return lines
+
+    def _foreign_info_properties(self, rev):
+        """Custom log displayer for foreign revision identifiers.
+
+        :param rev: Revision object.
+        """
+        # Revision comes directly from a foreign repository
+        if isinstance(rev, foreign.ForeignRevision):
+            return rev.mapping.vcs.show_foreign_revid(rev.foreign_revid)
+
+        # Imported foreign revision revision ids always contain :
+        if not ":" in rev.revision_id:
+            return []
+
+        # Revision was once imported from a foreign repository
+        try:
+            foreign_revid, mapping = \
+                foreign.foreign_vcs_registry.parse_revision_id(rev.revision_id)
+        except errors.InvalidRevisionId:
+            return []
+
+        return self._format_properties(
+            mapping.vcs.show_foreign_revid(foreign_revid))
+
+    def _format_properties(self, properties):
+        lines = []
+        for key, value in properties.items():
+            lines.append(key + ': ' + value)
         return lines
 
     def show_diff(self, to_file, diff, indent):
@@ -1933,9 +1962,6 @@ def _get_kind_for_file_id(tree, file_id):
 
 
 properties_handler_registry = registry.Registry()
-properties_handler_registry.register_lazy("foreign",
-                                          "bzrlib.foreign",
-                                          "show_foreign_properties")
 
 
 # adapters which revision ids to log are filtered. When log is called, the

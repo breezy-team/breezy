@@ -29,6 +29,7 @@ from cStringIO import StringIO
 import tarfile
 
 from bzrlib import (
+    bencode,
     bzrdir,
     errors,
     pack,
@@ -51,7 +52,6 @@ from bzrlib.tests import (
     split_suite_by_re,
     )
 from bzrlib.transport import chroot, get_transport
-from bzrlib.util import bencode
 
 
 def load_tests(standard_tests, module, loader):
