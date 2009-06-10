@@ -117,6 +117,9 @@ API Changes
   ``graph._StackedParentsProvider``. The api is now considered stable and ready
   for external users. (Gary van der Merwe)
 
+* ``bzrlib.user_encoding`` is deprecated in favor of
+  ``get_user_encoding``.  (Alexander Belchenko)
+
 * TreeTransformBase no longer assumes that limbo is provided via disk.
   DiskTreeTransform now provides disk functionality.  (Aaron Bentley)
 
