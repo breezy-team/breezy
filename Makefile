@@ -181,9 +181,6 @@ MAN_DEPENDENCIES = bzrlib/builtins.py \
 doc/en/user-reference/bzr_man.txt: $(MAN_DEPENDENCIES)
 	PYTHONPATH=.:$$PYTHONPATH $(PYTHON) tools/generate_docs.py -o $@ rstx
 
-doc/en/developer-guide/HACKING.txt: doc/developers/HACKING.txt
-	$(PYTHON) tools/win32/ostools.py copytodir doc/developers/HACKING.txt doc/en/developer-guide
-
 doc/en/release-notes/NEWS.txt: NEWS
 	$(PYTHON) -c "import shutil; shutil.copyfile('$<', '$@')"
 
