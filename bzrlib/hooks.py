@@ -222,8 +222,7 @@ class HookPoint(object):
         strings.append('Deprecated in: %s' % deprecated_string)
         strings.append('')
         strings.extend(textwrap.wrap(self.__doc__,
-            break_long_words=False,
-            break_on_hyphens=False))
+            break_long_words=False))
         strings.append('')
         return '\n'.join(strings)
 

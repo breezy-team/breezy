@@ -97,8 +97,7 @@ def _help_commands_to_text(topic):
         lines = textwrap.wrap(
             helpstring, subsequent_indent=indent,
             width=width,
-            break_long_words=False,
-            break_on_hyphens=False)
+            break_long_words=False)
         for line in lines:
             out.append(line + '\n')
     return ''.join(out)

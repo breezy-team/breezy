@@ -129,7 +129,7 @@ def format_command (params, cmd):
                 wrapped = textwrap.fill(l, initial_indent='',
                     subsequent_indent=30*' ',
                     break_long_words=False,
-                    break_on_hyphens=False)
+                    )
                 option_str = option_str + wrapped + '\n'       
 
     aliases_str = ""
