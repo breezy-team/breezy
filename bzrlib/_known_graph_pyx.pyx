@@ -44,10 +44,6 @@ cdef class _KnownGraphNode:
     """Represents a single object in the known graph."""
 
     cdef object key
-    # 99% of all revisions have <= 2 parents, so we pre-allocate space for it,
-    # but allow the flexibility of having N parents
-    cdef _KnownGraphNode left_parent
-    cdef _KnownGraphNode right_parent
     cdef list parents
     cdef list children
     cdef _KnownGraphNode linear_dominator_node
@@ -57,13 +53,10 @@ cdef class _KnownGraphNode:
     cdef object ancestor_of
 
     def __init__(self, key, parents):
-        cdef _KnownGraphNode _parent_node
         cdef int i
 
         self.key = key
-        self.left_parent = None
-        self.right_parent = None
-        self.set_parents(parents)
+        self.parents = parents
 
         self.children = []
         # oldest ancestor, such that no parents between here and there have >1
@@ -93,26 +86,10 @@ cdef class _KnownGraphNode:
             else:
                 return self.linear_dominator_node.key
 
-    cdef set_parents(self, list parents):
-        cdef int num_parents
-        self.parents = parents
-        if parents is None:
-            return
-        num_parents = len(self.parents)
-        if num_parents > 2:
-            # No special ops
-            return
-        if num_parents > 0:
-            self.left_parent = self.parents[0]
-        if num_parents > 1:
-            self.right_parent = self.parents[1]
-
     cdef clear_references(self):
         self.parents = None
         self.children = None
         self.linear_dominator_node = None
-        self.left_parent = None
-        self.right_parent = None
 
     def __repr__(self):
         parent_keys = []
@@ -186,7 +163,7 @@ cdef class KnownGraph:
             if key in nodes:
                 node = nodes[key]
                 assert node.parents is None
-                node.set_parents(parent_nodes)
+                node.parents = parent_nodes
             else:
                 node = _KnownGraphNode(key, parent_nodes)
                 nodes[key] = node
@@ -273,8 +250,6 @@ cdef class KnownGraph:
 
         tails = self._find_tails()
         todo = []
-        heappush = heapq.heappush
-        heappop = heapq.heappop
         for node in tails:
             node.gdfo = 1
             heappush(todo, (1, node))
@@ -324,6 +299,12 @@ cdef class KnownGraph:
         cdef _KnownGraphNode node
         cdef PyObject *maybe_node
 
+        heads_key = PyFrozenSet_New(keys)
+        try:
+            heads = self._known_heads[heads_key]
+            return heads
+        except KeyError:
+            pass # compute it ourselves
         candidate_nodes = {}
         nodes = self._nodes
         for key in keys:
@@ -338,14 +319,10 @@ cdef class KnownGraph:
             candidate_nodes.pop(revision.NULL_REVISION)
             if not candidate_nodes:
                 return set([revision.NULL_REVISION])
-        heads_key = PyFrozenSet_New(candidate_nodes)
+            # The keys changed, so recalculate heads_key
+            heads_key = PyFrozenSet_New(candidate_nodes)
         if len(candidate_nodes) < 2:
             return heads_key
-        try:
-            heads = self._known_heads[heads_key]
-            return heads
-        except KeyError:
-            pass # compute it ourselves
         # Check the linear dominators of these keys, to see if we already
         # know the heads answer
         dom_lookup_key, heads = self._heads_from_dominators(
@@ -452,8 +429,6 @@ cdef class KnownGraph:
         # walking
         # Now we walk nodes until all nodes that are being walked are 'common'
         num_candidates = len(candidate_nodes)
-        heappop = heapq.heappop
-        heappush = heapq.heappush
         while len(queue) > 0 and len(candidate_nodes) > 1:
             _, node = heappop(queue)
             if len(node.ancestor_of) == num_candidates:
@@ -472,9 +447,6 @@ cdef class KnownGraph:
                 continue
             # Now project the current nodes ancestor list to the parent nodes,
             # and queue them up to be walked
-            # Note: using linear_dominator speeds things up quite a bit
-            #       enough that we actually start to be slightly faster
-            #       than the default heads() implementation
             if node.linear_dominator_node is not node:
                 # We are at the tip of a long linear region
                 # We know that there is nothing between here and the tail
@@ -483,21 +455,10 @@ cdef class KnownGraph:
                                          candidate_nodes, queue)):
                     break
             else:
-                num_parents = len(node.parents)
-                if num_parents > 2:
-                   for parent_node in node.parents:
-                       if (self._process_parent(node, parent_node,
-                                                candidate_nodes, queue)):
-                           break
-                else:
-                    if num_parents > 0:
-                        if (self._process_parent(node, node.left_parent,
-                                                 candidate_nodes, queue)):
-                            break
-                    if num_parents > 1:
-                        if (self._process_parent(node, node.right_parent,
-                                                 candidate_nodes, queue)):
-                            break
+               for parent_node in node.parents:
+                   if (self._process_parent(node, parent_node,
+                                            candidate_nodes, queue)):
+                       break
         for node in self._to_cleanup:
             node.ancestor_of = None
         self._to_cleanup = []
