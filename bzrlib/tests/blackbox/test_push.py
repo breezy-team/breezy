@@ -541,57 +541,60 @@ class TestPushStrict(tests.TestCaseWithTransport):
         tree.commit('adding file', rev_id='from-1')
         return tree
 
-    def assertTreePushed(self, relpath):
-        tree_to = workingtree.WorkingTree.open(relpath)
+    def make_local_branch_and_tree_with_changes(self):
+        tree = self.make_local_branch_and_tree()
+        # Make some changes
+        self.build_tree_contents([('local/file', 'modified')])
+        return tree
+
+    def set_config_push_strict(self, tree, value):
+        # set config var (any of bazaar.conf, locations.conf, branch.conf
+        # should do)
+        conf = tree.branch.get_config()
+        conf.set_user_option('push_strict', value)
+
+    def assertPushFails(self, location, *args):
+        self.run_bzr_error(['Working tree ".*/local/"'
+                            ' has uncommitted changes.$',],
+                           ['push', '../' + location] + list(args),
+                           working_dir='local', retcode=3)
+
+    def assertPushSucceeds(self, location, *args):
+        self.run_bzr(['push', '../' + location] + list(args),
+                     working_dir='local')
+        tree_to = workingtree.WorkingTree.open(location)
         repo_to = tree_to.branch.repository
         self.assertTrue(repo_to.has_revision('from-1'))
         self.assertEqual(tree_to.branch.last_revision_info()[1], 'from-1')
 
     def test_push_default(self):
-        tree = self.make_local_branch_and_tree()
-        # Make some changes
-        self.build_tree_contents([('local/file', 'modified')])
-        # Push with some uncommitted changes works
-        self.run_bzr(['push', '../to'], working_dir='local')
-        self.assertTreePushed('to')
+        tree = self.make_local_branch_and_tree_with_changes()
+        self.assertPushSucceeds('to')
+
+    def test_push_no_strict_with_changes(self):
+        tree = self.make_local_branch_and_tree_with_changes()
+        self.assertPushSucceeds('to', '--no-strict')
 
     def test_push_strict_with_changes(self):
-        tree = self.make_local_branch_and_tree()
-        # Make some changes
-        self.build_tree_contents([('local/file', 'modified')])
-        # Push with some uncommitted changes fails
-        self.run_bzr_error(['Working tree ".*/local/"'
-                            ' has uncommitted changes.$',],
-                           ['push', '--strict', '../to'],
-                           working_dir='local', retcode=3)
+        tree = self.make_local_branch_and_tree_with_changes()
+        self.assertPushFails('to', '--strict')
 
     def test_push_strict_without_changes(self):
         tree = self.make_local_branch_and_tree()
-        self.run_bzr(['push', '--strict', '../to'], working_dir='local')
-        self.assertTreePushed('to')
+        self.assertPushSucceeds('to', '--strict')
 
-    def test_push_respect_config_var(self):
-        tree = self.make_local_branch_and_tree()
-        # Make some changes
-        self.build_tree_contents([('local/file', 'modified')])
-        # set config var (any of bazaar.conf, locations.conf, branch.conf
-        # should do)
-        conf = tree.branch.get_config()
-        conf.set_user_option('push_strict', 'true')
-        # Push --strict (inherited from config) with some uncommitted changes
-        # fails
-        self.run_bzr_error(['Working tree ".*/local/"'
-                            ' has uncommitted changes.$',],
-                           ['push', '../to'],
-                           working_dir='local', retcode=3)
+    def test_push_respect_config_var_strict(self):
+        tree = self.make_local_branch_and_tree_with_changes()
+        self.set_config_push_strict(tree, 'true')
+        # Push --strict (inherited from config) fails
+        self.assertPushFails('to')
 
-    def test_push_command_line_override_config(self):
-        tree = self.make_local_branch_and_tree()
-        # Make some changes
-        self.build_tree_contents([('local/file', 'modified')])
-        # set config var (any of bazaar.conf, locations.conf, branch.conf
-        # should do)
-        conf = tree.branch.get_config()
-        conf.set_user_option('push_strict', 'true')
-        self.run_bzr(['push', '--no-strict', '../to'], working_dir='local')
-        self.assertTreePushed('to')
+    def test_push_no_strict_command_line_override_config(self):
+        tree = self.make_local_branch_and_tree_with_changes()
+        self.set_config_push_strict(tree, 'true')
+        self.assertPushSucceeds('to', '--no-strict')
+
+    def test_push_strict_command_line_override_config(self):
+        tree = self.make_local_branch_and_tree_with_changes()
+        self.set_config_push_strict(tree, 'False')
+        self.assertPushFails('to', '--strict')
