@@ -126,3 +126,36 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         self.assertFileEqual("FOO TXT", 'target/file1.txt')
         changes = target.changes_from(source.basis_tree())
         self.assertFalse(changes.has_changed())
+
+    def test_branch_source_not_filtered_target_is(self):
+        # Create a source branch with content filtering
+        source, txt_fileid, bin_fileid = self.create_cf_tree(
+            txt_reader=None, txt_writer=None, dir='source')
+        if not source.supports_content_filtering():
+            return
+        self.assertFileEqual("Foo Txt", 'source/file1.txt')
+        basis = source.basis_tree()
+        basis.lock_read()
+        self.addCleanup(basis.unlock)
+        self.assertEqual("Foo Txt", basis.get_file_text(txt_fileid))
+
+        # Patch in a custom, symmetric content filter stack
+        self.real_content_filter_stack = WorkingTree._content_filter_stack
+        def restore_real_content_filter_stack():
+            WorkingTree._content_filter_stack = self.real_content_filter_stack
+        self.addCleanup(restore_real_content_filter_stack)
+        def _content_filter_stack(tree, path=None, file_id=None):
+            if path.endswith('.txt'):
+                return [ContentFilter(_swapcase, _swapcase)]
+            else:
+                return []
+        WorkingTree._content_filter_stack = _content_filter_stack
+
+        # Now branch it
+        self.run_bzr('branch source target')
+        target = WorkingTree.open('target')
+        # Even though the content in source and target are different
+        # due to different filters, iter_changes should be clean
+        self.assertFileEqual("fOO tXT", 'target/file1.txt')
+        changes = target.changes_from(source.basis_tree())
+        self.assertFalse(changes.has_changed())
