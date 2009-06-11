@@ -411,7 +411,14 @@ class SmartServerRequestBzrDirInitializeEx(SmartServerRequestBzrDir):
         # We want this to be relative to the bzrdir.
         if final_stack_pwd:
             final_stack_pwd = urlutils.relative_url(
-                target_transport.base, repository_policy._stack_on_pwd)
+                target_transport.base, final_stack_pwd)
+
+        # Can't meaningfully return a root path.
+        if final_stack.startswith('/'):
+            full_path = self._root_client_path + final_stack[1:]
+            final_stack = urlutils.relative_url(
+                target_transport.base, full_path)
+            final_stack_pwd = '.'
 
         return SuccessfulSmartServerResponse((repo_path, rich_root, tree_ref,
             external_lookup, repo_name, repo_bzrdir_name,

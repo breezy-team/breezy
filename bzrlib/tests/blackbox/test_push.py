@@ -227,7 +227,7 @@ class TestPush(tests.TestCaseWithTransport):
         self.reset_smart_call_log()
         out, err = self.run_bzr(['push', '-d', 'from', self.get_url('to')])
         b = branch.Branch.open(self.get_url('to'))
-        self.assertEqual('/stack-on', b.get_stacked_on_url())
+        self.assertEqual('/extra/stack-on', b.get_stacked_on_url())
 
     def test_push_smart_with_default_stacking_relative_path(self):
         # If the default stacked-on location is a relative path then branches
