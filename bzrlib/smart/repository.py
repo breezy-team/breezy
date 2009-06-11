@@ -291,7 +291,15 @@ class SmartServerRepositoryGetRevIdForRevno(SmartServerRepositoryReadLocked):
         
         New in 1.16.
         """
-        found_flag, result = repository.get_rev_id_for_revno(revno, known_pair)
+        try:
+            found_flag, result = repository.get_rev_id_for_revno(revno, known_pair)
+        except errors.RevisionNotPresent, err:
+            if err.revision_id != known_pair[1]:
+                raise AssertionError(
+                    'get_rev_id_for_revno raised RevisionNotPresent for '
+                    'non-initial revision: ' + err.revision_id)
+            return FailedSmartServerResponse(
+                ('nosuchrevision', err.revision_id))
         if found_flag:
             return SuccessfulSmartServerResponse(('ok', result))
         else:

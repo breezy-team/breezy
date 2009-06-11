@@ -2253,18 +2253,19 @@ class Repository(object):
         try:
             _iter_for_revno(self, partial_history, stop_index=revno)
         except errors.RevisionNotPresent, err:
-            # A stacked repository with no fallbacks, or a left-hand ghost.
-            # Either way, even though the named revision isn't in this repo, we
-            # know it's the next step in this left-hand history.
-            if partial_history[-1] == err.revision_id:
-                raise AssertionError(
-                    'revision_id of RevisionNotPresent err already in history '
-                    'from _iter_for_revno.')
+            if err.revision_id == known_revid:
+                # The start revision (known_revid) wasn't found.
+                raise
+            # This is a stacked repository with no fallbacks, or a there's a
+            # left-hand ghost.  Either way, even though the revision named in
+            # the error isn't in this repo, we know it's the next step in this
+            # left-hand history.
             partial_history.append(err.revision_id)
-        if len(partial_history) < distance_from_known:
-            earliest_revno = known_revno - len(partial_history)
+        if len(partial_history) <= distance_from_known:
+            # Didn't find enough history to get a revid for the revno.
+            earliest_revno = known_revno - len(partial_history) + 1
             return (False, (earliest_revno, partial_history[-1]))
-        if len(partial_history) > distance_from_known:
+        if len(partial_history) - 1 > distance_from_known:
             raise AssertionError('_iter_for_revno returned too much history')
         return (True, partial_history[-1])
 
