@@ -397,9 +397,7 @@ class SmartServerRequestBzrDirInitializeEx(SmartServerRequestBzrDir):
             repo_name = repo._format.network_name()
             repo_bzrdir_name = repo.bzrdir._format.network_name()
             final_stack = repository_policy._stack_on
-            # We want this to be relative to the bzrdir.
-            final_stack_pwd = urlutils.relative_url(
-                target_transport.base, repository_policy._stack_on_pwd)
+            final_stack_pwd = repository_policy._stack_on_pwd
             # It is returned locked, but we need to do the lock to get the lock
             # token.
             repo.unlock()
@@ -409,6 +407,12 @@ class SmartServerRequestBzrDirInitializeEx(SmartServerRequestBzrDir):
             repo.unlock()
         final_stack = final_stack or ''
         final_stack_pwd = final_stack_pwd or ''
+
+        # We want this to be relative to the bzrdir.
+        if final_stack_pwd:
+            final_stack_pwd = urlutils.relative_url(
+                target_transport.base, repository_policy._stack_on_pwd)
+
         return SuccessfulSmartServerResponse((repo_path, rich_root, tree_ref,
             external_lookup, repo_name, repo_bzrdir_name,
             bzrdir._format.network_name(),
