@@ -292,6 +292,13 @@ cdef class KnownGraph:
         cdef _KnownGraphNode child_node
         cdef _KnownGraphNode parent_node
 
+        # TODO: Look into rewriting this to not use a heap, but instead to just
+        #       walk all children until you get to one that is missing a parent
+        #       that avoids the heap overhead and finding the tails, at the
+        #       cost of generally hitting nodes more than 1 time (once in the
+        #       iter-dict, and then a second time when finding children,
+        #       possibly a third when there is more than one parent)
+
         tails = self._find_tails()
         todo = []
         for pos from 0 <= pos < PyList_GET_SIZE(tails):
