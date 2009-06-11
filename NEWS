@@ -6,8 +6,14 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
-In Development
-##############
+bzr 1.16rc1 2009-06-11
+######################
+
+This release has many improvements to the "brisbane-core" format, taking the
+shape of a new '--development7-rich-root' format which uses bencode rather
+than XML. Many operations are now much faster on huge projects. The usual bevy
+of bug fixes, tweaks and improvements.
+
 
 Compatibility Breaks
 ********************
@@ -69,6 +75,10 @@ Bug Fixes
 * Better message in ``bzr add`` output suggesting using ``bzr ignored`` to
   see which files can also be added.  (Jason Spashett, #76616)
 
+* ``bzr pull -r 123`` from a stacked branch on a smart server no longer fails.
+  Also, the ``Branch.revision_history()`` API now works in the same
+  situation.  (Andrew Bennetts, #380314)
+  
 * ``bzr serve`` on Windows no longer displays a traceback simply because a
   TCP client disconnected. (Andrew Bennetts)
 

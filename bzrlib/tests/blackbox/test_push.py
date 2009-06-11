@@ -215,6 +215,31 @@ class TestPush(tests.TestCaseWithTransport):
         remote = branch.Branch.open('public')
         self.assertEndsWith(remote.get_stacked_on_url(), '/parent')
 
+    def test_push_smart_with_default_stacking_url_path_segment(self):
+        # If the default stacked-on location is a path element then branches
+        # we push there over the smart server are stacked and their
+        # stacked_on_url is that exact path segment. Added to nail bug 385132.
+        self.setup_smart_server_with_call_log()
+        self.make_branch('stack-on', format='1.9')
+        self.make_bzrdir('.').get_config().set_default_stack_on(
+            '/stack-on')
+        self.make_branch('from', format='1.9')
+        out, err = self.run_bzr(['push', '-d', 'from', self.get_url('to')])
+        b = branch.Branch.open(self.get_url('to'))
+        self.assertEqual('/extra/stack-on', b.get_stacked_on_url())
+
+    def test_push_smart_with_default_stacking_relative_path(self):
+        # If the default stacked-on location is a relative path then branches
+        # we push there over the smart server are stacked and their
+        # stacked_on_url is a relative path. Added to nail bug 385132.
+        self.setup_smart_server_with_call_log()
+        self.make_branch('stack-on', format='1.9')
+        self.make_bzrdir('.').get_config().set_default_stack_on('stack-on')
+        self.make_branch('from', format='1.9')
+        out, err = self.run_bzr(['push', '-d', 'from', self.get_url('to')])
+        b = branch.Branch.open(self.get_url('to'))
+        self.assertEqual('../stack-on', b.get_stacked_on_url())
+
     def create_simple_tree(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a'])
