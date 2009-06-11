@@ -36,8 +36,11 @@ import heapq
 
 from bzrlib import revision
 
+# Define these as cdef objects, so we don't have to getattr them later
+cdef object heappush, heappop, heapify
 heappush = heapq.heappush
 heappop = heapq.heappop
+heapify = heapq.heapify
 
 
 cdef class _KnownGraphNode:
@@ -105,13 +108,17 @@ cdef class _KnownGraphNode:
 
 
 # TODO: slab allocate all _KnownGraphNode objects.
-#       We already know how many we are going to need...
+#       We already know how many we are going to need, except for a couple of
+#       ghosts that could be allocated on demand.
+#       Also, using generic 'list' and 'dict' objects causes pyrex to generate
+#       a PyObject_TypeCheck when walking every node. It isn't terribly
+#       expensive, but it is a bit wasteful.
 
 cdef class KnownGraph:
     """This is a class which assumes we already know the full graph."""
 
     cdef public object _nodes
-    cdef dict _known_heads
+    cdef object _known_heads
     cdef public int do_cache
     # Nodes we've touched that we'll need to reset their info when heads() is
     # done
@@ -147,7 +154,6 @@ cdef class KnownGraph:
         cdef _KnownGraphNode node
         cdef _KnownGraphNode parent_node
         cdef list parent_nodes
-        cdef dict nodes
 
         nodes = self._nodes
 
@@ -293,23 +299,18 @@ cdef class KnownGraph:
             information. Callers will need to filter their input to create
             order if they need it.
         """
-        cdef dict candidate_nodes
-        cdef dict dom_to_node
-        cdef dict nodes
-        cdef _KnownGraphNode node
         cdef PyObject *maybe_node
+        cdef PyObject *maybe_heads
 
         heads_key = PyFrozenSet_New(keys)
-        try:
-            heads = self._known_heads[heads_key]
-            return heads
-        except KeyError:
-            pass # compute it ourselves
+        maybe_heads = PyDict_GetItem(self._known_heads, heads_key)
+        if maybe_heads != NULL:
+            return <object>maybe_heads
+
+        # Not cached, compute it ourselves
         candidate_nodes = {}
         nodes = self._nodes
         for key in keys:
-            # node = nodes[key]
-            # candidate_nodes[key] = node
             maybe_node = PyDict_GetItem(nodes, key)
             if maybe_node == NULL:
                 raise KeyError('key %s not in nodes' % (key,))
@@ -352,8 +353,8 @@ cdef class KnownGraph:
                        PyFrozenSet_New(dom_heads))
 
     cdef object _heads_from_dominators(self, list candidates):
-        cdef PyObject *test_heads
-        cdef PyObject *test_key
+        cdef PyObject *maybe_heads
+        cdef PyObject *maybe_key
         cdef list heads, dom_list_key
         cdef _KnownGraphNode node
 
@@ -361,27 +362,27 @@ cdef class KnownGraph:
         for node in candidates:
             dom_list_key.append(node.linear_dominator_node.key)
         dom_lookup_key = PyFrozenSet_New(dom_list_key)
-        test_heads = PyDict_GetItem(self._known_heads, dom_lookup_key)
-        if test_heads == NULL:
+        maybe_heads = PyDict_GetItem(self._known_heads, dom_lookup_key)
+        if maybe_heads == NULL:
             return dom_lookup_key, None
         # We need to map back to the original keys
-        dom_heads = <object>test_heads
+        dom_heads = <object>maybe_heads
         dom_to_key = {}
         for node in candidates:
             PyDict_SetItem(dom_to_key, node.linear_dominator_node.key,
                                        node.key)
         heads = []
         for dom_key in dom_heads:
-            test_key = PyDict_GetItem(dom_to_key, dom_key)
-            if test_key == NULL:
+            maybe_key = PyDict_GetItem(dom_to_key, dom_key)
+            if maybe_key == NULL:
                 # Should never happen
                 raise KeyError
-            heads.append(<object>test_key)
+            heads.append(<object>maybe_key)
         return dom_lookup_key, PyFrozenSet_New(heads)
 
     cdef int _process_parent(self, _KnownGraphNode node,
                              _KnownGraphNode parent_node,
-                             dict candidate_nodes,
+                             candidate_nodes,
                              queue) except -1:
         """Process the parent of a node, seeing if we need to walk it.
 
@@ -411,7 +412,7 @@ cdef class KnownGraph:
             parent_node.ancestor_of = tuple(sorted(all_ancestors))
         return 0
 
-    cdef object _heads_from_candidate_nodes(self, dict candidate_nodes):
+    cdef object _heads_from_candidate_nodes(self, candidate_nodes):
         cdef _KnownGraphNode node
         cdef _KnownGraphNode parent_node
         cdef int num_candidates
@@ -424,7 +425,7 @@ cdef class KnownGraph:
             node.ancestor_of = (node.key,)
             queue.append((-node.gdfo, node))
             self._to_cleanup.append(node)
-        heapq.heapify(queue)
+        heapify(queue)
         # These are nodes that we determined are 'common' that we are no longer
         # walking
         # Now we walk nodes until all nodes that are being walked are 'common'

@@ -147,8 +147,6 @@ class KnownGraph(object):
                 node = next_node
 
     def _find_gdfo(self):
-        # TODO: Consider moving the tails search into the first-pass over the
-        #       data, inside _find_linear_dominators
         def find_tails():
             return [node for node in self._nodes.itervalues()
                        if not node.parent_keys]
@@ -219,27 +217,9 @@ class KnownGraph(object):
             return heads
         except KeyError:
             pass # compute it ourselves
-        ## dominator = None
-        ## # TODO: We could optimize for the len(candidate_nodes) > 2 by checking
-        ## #       for *any* pair-wise matching, and then eliminating one of the
-        ## #       nodes trivially. However, the fairly common case is just 2
-        ## #       keys, so we'll focus on that, first
-        ## for node in candidate_nodes.itervalues():
-        ##     if dominator is None:
-        ##         dominator = node.linear_dominator
-        ##     elif dominator != node.linear_dominator:
-        ##         break
-        ## else:
-        ##     # In 'time bzr annotate NEWS' this only catches *one* item, so it
-        ##     # probably isn't worth the optimization
-        ##     # All of these nodes have the same linear_dominator, which means
-        ##     # they are in a line, the head is just the one with the highest
-        ##     # distance
-        ##     def get_distance(key):
-        ##         return self._nodes[key].dominator_distance
-        ##     def get_linear_head():
-        ##         return max(candidate_nodes, key=get_distance)
-        ##     return set([get_linear_head()])
+        # We could do a check here to see if all nodes have the same
+        # 'linear_dominator'. However, in testing, this only was encountered 1
+        # during 'bzr annotate' so it is likely to not be particularly helpful
         dom_key = None
         # Check the linear dominators of these keys, to see if we already
         # know the heads answer
