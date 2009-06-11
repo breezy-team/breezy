@@ -3831,10 +3831,13 @@ format_registry.register_metadir('development7-rich-root',
 format_registry.register_metadir('2a',
     'bzrlib.repofmt.groupcompress_repo.RepositoryFormat2a',
     help='First format for bzr 2.0 series.\n'
-        'storage in packs, 255-way hashed CHK inventory, bencode revision, group compress, '
-        'rich roots. Supported by bzr 1.16 and later.',
+        'Uses group-compress storage.\n'
+        'Provides rich roots which are a one-way transition.\n'
+        # 'storage in packs, 255-way hashed CHK inventory, bencode revision, group compress, '
+        # 'rich roots. Supported by bzr 1.16 and later.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat6',
+    experimental=True,
     )
 
 # The following format should be an alias for the rich root equivalent 
