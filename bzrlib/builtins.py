@@ -1078,7 +1078,7 @@ class cmd_push(Command):
 
 
 class cmd_branch(Command):
-    """Create a new copy of a branch.
+    """Create a new branch that is a copy of an existing branch.
 
     If the TO_LOCATION is omitted, the last component of the FROM_LOCATION will
     be used.  In other words, "branch ../foo/bar" will attempt to create ./bar.
