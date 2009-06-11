@@ -259,11 +259,9 @@ cdef class KnownGraph:
         for node in tails:
             node.gdfo = 1
             heappush(todo, (1, node))
-        processed = 0
         max_gdfo = len(self._nodes) + 1
         while todo:
             gdfo, node = heappop(todo)
-            processed += 1
             if node.gdfo != -1 and gdfo < node.gdfo:
                 # This node was reached from a longer path, we assume it was
                 # enqued correctly with the longer gdfo, so don't continue
