@@ -224,7 +224,6 @@ class TestPush(tests.TestCaseWithTransport):
         self.make_bzrdir('.').get_config().set_default_stack_on(
             '/stack-on')
         self.make_branch('from', format='1.9')
-        self.reset_smart_call_log()
         out, err = self.run_bzr(['push', '-d', 'from', self.get_url('to')])
         b = branch.Branch.open(self.get_url('to'))
         self.assertEqual('/extra/stack-on', b.get_stacked_on_url())
@@ -237,7 +236,6 @@ class TestPush(tests.TestCaseWithTransport):
         self.make_branch('stack-on', format='1.9')
         self.make_bzrdir('.').get_config().set_default_stack_on('stack-on')
         self.make_branch('from', format='1.9')
-        self.reset_smart_call_log()
         out, err = self.run_bzr(['push', '-d', 'from', self.get_url('to')])
         b = branch.Branch.open(self.get_url('to'))
         self.assertEqual('../stack-on', b.get_stacked_on_url())
