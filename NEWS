@@ -6,8 +6,14 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
-In Development
-##############
+bzr 1.16rc1 2009-06-11
+######################
+
+This release has many improvements to the "brisbane-core" format, taking the
+shape of a new '--development7-rich-root' format which uses bencode rather
+than XML. Many operations are now much faster on huge projects. The usual bevy
+of bug fixes, tweaks and improvements.
+
 
 Compatibility Breaks
 ********************
