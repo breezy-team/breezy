@@ -361,6 +361,12 @@ class TestPull(ExternalBase):
             out, r'revno: 1\ncommitter: .*\nbranch nick: source')
 
     def test_pull_smart_stacked_streaming_acceptance(self):
+        """'bzr pull -r 123' works on stacked, smart branches, even when the
+        revision specified by the revno is only present in the fallback
+        repository.
+
+        See <https://launchpad.net/bugs/380314>
+        """
         self.setup_smart_server_with_call_log()
         parent = self.make_branch_and_tree('parent', format='1.9')
         parent.commit(message='first commit')
