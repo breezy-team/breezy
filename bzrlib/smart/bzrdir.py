@@ -415,9 +415,9 @@ class SmartServerRequestBzrDirInitializeEx(SmartServerRequestBzrDir):
 
         # Can't meaningfully return a root path.
         if final_stack.startswith('/'):
-            full_path = self._root_client_path + final_stack[1:]
+            client_path = self._root_client_path + final_stack[1:]
             final_stack = urlutils.relative_url(
-                target_transport.base, full_path)
+                self._root_client_path, client_path)
             final_stack_pwd = '.'
 
         return SuccessfulSmartServerResponse((repo_path, rich_root, tree_ref,
