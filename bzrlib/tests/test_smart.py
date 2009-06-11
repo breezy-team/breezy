@@ -381,7 +381,7 @@ class TestSmartServerRequestBzrDirInitializeEx(tests.TestCaseWithMemoryTransport
             'subdir/dir', 'False', 'False', 'False', '', '', '', '', 'False')
 
     def test_initialized_dir(self):
-        """Initializing an extant dirctory should fail like the bzrdir api."""
+        """Initializing an extant directory should fail like the bzrdir api."""
         backing = self.get_transport()
         name = self.make_bzrdir('reference')._format.network_name()
         request = smart.bzrdir.SmartServerRequestBzrDirInitializeEx(backing)
