@@ -9,12 +9,12 @@ Note: Content filtering is only supported in recently added formats,
 e.g. 1.14. Be sure that both the repository *and* the branch are
 in a recent format. (Just setting the format on the repository
 is not enough.) If content filtering does not appear to be working, use
-'bzr info' to confirm that the branch is using "Working Tree format 5"
+'bzr info -v' to confirm that the branch is using "Working tree format 5"
 or later.
 
 EOL conversion needs to be enabled for selected file patterns using
 rules. See ``bzr help rules`` for general information on defining rules.
-Currently, rules are only supported in BZR_HOME/bazaar.conf. (Branch
+Currently, rules are only supported in BZR_HOME/rules. (Branch
 specific rules will be supported in a future verison of Bazaar.)
 
 To configure which files to filter, set ``eol`` to one of the values below.
