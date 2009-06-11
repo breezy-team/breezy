@@ -17,6 +17,7 @@
 """Tests for content filtering conformance"""
 
 from bzrlib.filters import ContentFilter
+from bzrlib.workingtree import WorkingTree
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 
 
@@ -44,8 +45,8 @@ def _lowercase(chunks, context=None):
 
 class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
 
-    def create_cf_tree(self, txt_reader, txt_writer):
-        tree = self.make_branch_and_tree('.')
+    def create_cf_tree(self, txt_reader, txt_writer, dir='.'):
+        tree = self.make_branch_and_tree(dir)
         def _content_filter_stack(path=None, file_id=None):
             if path.endswith('.txt'):
                 return [ContentFilter(txt_reader, txt_writer)]
@@ -53,8 +54,8 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
                 return []
         tree._content_filter_stack = _content_filter_stack
         self.build_tree_contents([
-            ('file1.txt', 'Foo Txt'),
-            ('file2.bin', 'Foo Bin')])
+            (dir + '/file1.txt', 'Foo Txt'),
+            (dir + '/file2.bin', 'Foo Bin')])
         tree.add(['file1.txt', 'file2.bin'])
         tree.commit('commit raw content')
         txt_fileid = tree.path2id('file1.txt')
@@ -104,3 +105,24 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
             filtered=False).read())
         self.assertEqual('Foo Bin', tree.get_file(bin_fileid,
             filtered=False).read())
+
+    def test_branch_source_filtered_target_not(self):
+        # Create a source branch with content filtering
+        source, txt_fileid, bin_fileid = self.create_cf_tree(
+            txt_reader=_uppercase, txt_writer=_lowercase, dir='source')
+        if not source.supports_content_filtering():
+            return
+        self.assertFileEqual("Foo Txt", 'source/file1.txt')
+        basis = source.basis_tree()
+        basis.lock_read()
+        self.addCleanup(basis.unlock)
+        self.assertEqual("FOO TXT", basis.get_file_text(txt_fileid))
+
+        # Now branch it
+        self.run_bzr('branch source target')
+        target = WorkingTree.open('target')
+        # Even though the content in source and target are different
+        # due to different filters, iter_changes should be clean
+        self.assertFileEqual("FOO TXT", 'target/file1.txt')
+        changes = target.changes_from(source.basis_tree())
+        self.assertFalse(changes.has_changed())
