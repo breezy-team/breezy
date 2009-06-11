@@ -3249,6 +3249,8 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
                 repo_bzr = bzrdir
             final_stack = response[8] or None
             final_stack_pwd = response[9] or None
+            if final_stack_pwd:
+                final_stack_pwd = transport.abspath(final_stack_pwd)
             remote_repo = remote.RemoteRepository(repo_bzr, repo_format)
             if len(response) > 10:
                 # Updated server verb that locks remotely.

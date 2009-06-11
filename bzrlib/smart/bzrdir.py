@@ -17,7 +17,7 @@
 """Server-side bzrdir related request implmentations."""
 
 
-from bzrlib import branch, errors, repository
+from bzrlib import branch, errors, repository, urlutils
 from bzrlib.bzrdir import (
     BzrDir,
     BzrDirFormat,
@@ -397,7 +397,9 @@ class SmartServerRequestBzrDirInitializeEx(SmartServerRequestBzrDir):
             repo_name = repo._format.network_name()
             repo_bzrdir_name = repo.bzrdir._format.network_name()
             final_stack = repository_policy._stack_on
-            final_stack_pwd = repository_policy._stack_on_pwd
+            # We want this to be relative to the bzrdir.
+            final_stack_pwd = urlutils.relative_url(
+                target_transport.base, repository_policy._stack_on_pwd)
             # It is returned locked, but we need to do the lock to get the lock
             # token.
             repo.unlock()
