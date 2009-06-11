@@ -81,6 +81,9 @@ Bug Fixes
   the fetched revisions, not in the stacked-on ancestry.
   (John Arbash Meinel)
 
+* Fix status and commit to work with content filtered trees, addressing
+  numerous bad bugs with line-ending support. (Ian Clatworthy, #362030)
+
 * Fix problem of "directory not empty" when contending for a lock over
   sftp.  (Martin Pool, #340352)
 
