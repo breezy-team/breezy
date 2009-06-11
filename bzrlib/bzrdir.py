@@ -3835,9 +3835,8 @@ format_registry.register_metadir('2a',
         'rich roots. Supported by bzr 1.16 and later.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat6',
-    hidden=True,
-    experimental=True,
     )
+
 # The following format should be an alias for the rich root equivalent 
 # of the default format
 format_registry.register_metadir('default-rich-root',
