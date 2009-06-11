@@ -26,6 +26,8 @@ cdef extern from "Python.h":
         pass
 
     object PyFrozenSet_New(object)
+    object PyTuple_New(Py_ssize_t n)
+    void PyTuple_SET_ITEM(object t, Py_ssize_t o, object v)
     PyObject * PyTuple_GET_ITEM(object t, Py_ssize_t o)
     Py_ssize_t PyTuple_GET_SIZE(object t)
     PyObject * PyDict_GetItem(object d, object k)
@@ -64,11 +66,11 @@ cdef class _KnownGraphNode:
     # This could also be simplified
     cdef object ancestor_of
 
-    def __init__(self, key, parents):
+    def __init__(self, key):
         cdef int i
 
         self.key = key
-        self.parents = parents
+        self.parents = None
 
         self.children = []
         # oldest ancestor, such that no parents between here and there have >1
@@ -152,6 +154,18 @@ cdef class KnownGraph:
             child = <_KnownGraphNode>temp_node
             child.clear_references()
 
+    cdef _KnownGraphNode _get_or_create_node(self, key):
+        cdef PyObject *temp_node
+        cdef _KnownGraphNode node
+
+        temp_node = PyDict_GetItem(self._nodes, key)
+        if temp_node == NULL:
+            node = _KnownGraphNode(key)
+            PyDict_SetItem(self._nodes, key, node)
+        else:
+            node = <_KnownGraphNode>temp_node
+        return node
+
     def _initialize_nodes(self, parent_map):
         """Populate self._nodes.
 
@@ -160,7 +174,7 @@ cdef class KnownGraph:
         will also have .child_keys populated with all known child_keys.
         """
         cdef PyObject *temp_key, *temp_parent_keys, *temp_node
-        cdef Py_ssize_t pos
+        cdef Py_ssize_t pos, pos2, num_parent_keys
         cdef _KnownGraphNode node
         cdef _KnownGraphNode parent_node
 
@@ -172,36 +186,33 @@ cdef class KnownGraph:
         pos = 0
         while PyDict_Next(parent_map, &pos, &temp_key, &temp_parent_keys):
             key = <object>temp_key
-            temp_node = PyDict_GetItem(nodes, key)
-            if temp_node == NULL:
-                node = _KnownGraphNode(key, None)
-                PyDict_SetItem(nodes, key, node)
-            else:
-                node = <_KnownGraphNode>temp_node
-                assert node.parents is None
             parent_keys = <object>temp_parent_keys
-            parent_nodes = []
-            for parent_key in parent_keys:
-                temp_node = PyDict_GetItem(nodes, parent_key)
-                if temp_node == NULL:
-                    parent_node = _KnownGraphNode(parent_key, None)
-                    PyDict_SetItem(nodes, parent_key, parent_node)
-                else:
-                    parent_node = <_KnownGraphNode>temp_node
-                PyList_Append(parent_nodes, parent_node)
+            node = self._get_or_create_node(key)
+            assert node.parents is None
+            # We know how many parents, so we could pre allocate an exact sized
+            # tuple here
+            num_parent_keys = len(parent_keys)
+            parent_nodes = PyTuple_New(num_parent_keys)
+            # We use iter here, because parent_keys maybe be a list or tuple
+            for pos2 from 0 <= pos2 < num_parent_keys:
+                parent_key = parent_keys[pos2]
+                parent_node = self._get_or_create_node(parent_keys[pos2])
+                # PyTuple_SET_ITEM will steal a reference, so INCREF first
+                Py_INCREF(parent_node)
+                PyTuple_SET_ITEM(parent_nodes, pos2, parent_node)
                 PyList_Append(parent_node.children, node)
             node.parents = parent_nodes
 
     cdef _KnownGraphNode _check_is_linear(self, _KnownGraphNode node):
         """Check to see if a given node is part of a linear chain."""
         cdef _KnownGraphNode parent_node
-        if node.parents is None or len(node.parents) != 1:
+        if node.parents is None or PyTuple_GET_SIZE(node.parents) != 1:
             # This node is either a ghost, a tail, or has multiple parents
             # It its own dominator
             node.linear_dominator_node = node
             node.dominator_distance = 0
             return None
-        parent_node = <_KnownGraphNode>PyList_GET_ITEM(node.parents, 0)
+        parent_node = <_KnownGraphNode>PyTuple_GET_ITEM(node.parents, 0)
         if PyList_GET_SIZE(parent_node.children) > 1:
             # The parent has multiple children, so *this* node is the
             # dominator
@@ -270,7 +281,7 @@ cdef class KnownGraph:
         pos = 0
         while PyDict_Next(self._nodes, &pos, NULL, &temp_node):
             node = <_KnownGraphNode>temp_node
-            if node.parents is None or PyList_GET_SIZE(node.parents) == 0:
+            if node.parents is None or PyTuple_GET_SIZE(node.parents) == 0:
                 PyList_Append(tails, node)
         return tails
 
@@ -300,8 +311,8 @@ cdef class KnownGraph:
                 if child_node.gdfo < next_gdfo:
                     # Only enque children when all of their parents have been
                     # resolved
-                    for pos2 from 0 <= pos2 < PyList_GET_SIZE(child_node.parents):
-                        temp_node = PyList_GET_ITEM(child_node.parents, pos2)
+                    for pos2 from 0 <= pos2 < PyTuple_GET_SIZE(child_node.parents):
+                        temp_node = PyTuple_GET_ITEM(child_node.parents, pos2)
                         parent_node = <_KnownGraphNode>temp_node
                         # We know that 'this' parent is counted
                         if parent_node is not node:
@@ -469,8 +480,8 @@ cdef class KnownGraph:
             if PyTuple_GET_SIZE(node.ancestor_of) == num_candidates:
                 # This node is now considered 'common'
                 # Make sure all parent nodes are marked as such
-                for pos from 0 <= pos < PyList_GET_SIZE(node.parents):
-                    temp_node = PyList_GET_ITEM(node.parents, pos)
+                for pos from 0 <= pos < PyTuple_GET_SIZE(node.parents):
+                    temp_node = PyTuple_GET_ITEM(node.parents, pos)
                     parent_node = <_KnownGraphNode>temp_node
                     if parent_node.ancestor_of is not None:
                         parent_node.ancestor_of = node.ancestor_of
@@ -492,8 +503,8 @@ cdef class KnownGraph:
                                          candidate_nodes, queue)):
                     break
             else:
-               for pos from 0 <= pos < PyList_GET_SIZE(node.parents):
-                   temp_node = PyList_GET_ITEM(node.parents, pos)
+               for pos from 0 <= pos < PyTuple_GET_SIZE(node.parents):
+                   temp_node = PyTuple_GET_ITEM(node.parents, pos)
                    parent_node = <_KnownGraphNode>temp_node
                    if (self._process_parent(node, parent_node,
                                             candidate_nodes, queue)):
