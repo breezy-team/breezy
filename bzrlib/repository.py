@@ -3066,6 +3066,11 @@ format_registry.register_lazy(
     'bzrlib.repofmt.groupcompress_repo',
     'RepositoryFormatCHK2',
     )
+format_registry.register_lazy(
+    'Bazaar repository format 2a (needs bzr 1.16 or later)\n',
+    'bzrlib.repofmt.groupcompress_repo',
+    'RepositoryFormat2a',
+    )
 
 
 class InterRepository(InterObject):

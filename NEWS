@@ -20,6 +20,17 @@ Compatibility Breaks
 New Features
 ************
 
+* A new repository format ``2a`` is the first non-development release of
+  the brisbane-core (aka group-compress) project.  This format is
+  substantially smaller and faster for many operations on many trees.
+  This format is not yet the default, but it will become so before bzr
+  2.0.
+
+  This is a rich-root format, so this repository format can be used with
+  bzr-svn.  Bazaar branches in previous non-rich-root formats can be
+  converted (including by merge, push and pull) to format 2a, but not vice
+  versa.  We recommend upgrading previous development formats to 2a.
+
 * ``--development7-rich-root`` is a new dev format, similar to ``--dev6``
   but using a Revision serializer using bencode rather than XML.
   (Jelmer Vernooij, John Arbash Meinel)
