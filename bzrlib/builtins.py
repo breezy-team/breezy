@@ -1040,6 +1040,15 @@ class cmd_push(Command):
         tree, br_from = bzrdir.BzrDir.open_tree_or_branch(directory)
         if strict is None:
             strict = br_from.get_config().get_user_option('push_strict')
+            if strict is not None:
+                # FIXME: This should be better supported by config
+                # -- vila 20090611
+                bools = dict(yes=True, no=False, on=True, off=False,
+                             true=True, false=False)
+                try:
+                    strict = bools[strict.lower()]
+                except KeyError:
+                    strict = None
         if strict:
             changes = tree.changes_from(tree.basis_tree())
             if changes.has_changed():
