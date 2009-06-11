@@ -2234,6 +2234,40 @@ class Repository(object):
         """
         return self.get_revision(revision_id).inventory_sha1
 
+    def get_rev_id_for_revno(self, revno, known_pair):
+        """Return the revision id of a revno, given a later (revno, revid)
+        pair in the same history.
+
+        :return: if found (True, revid).  If the available history ran out
+            before reaching the revno, then this returns
+            (False, (closest_revno, closest_revid)).
+        """
+        known_revno, known_revid = known_pair
+        partial_history = [known_revid]
+        distance_from_known = known_revno - revno
+        if distance_from_known < 0:
+            raise ValueError(
+                'requested revno (%d) is later than given known revno (%d)'
+                % (revno, known_revno))
+        # XXX: handle distance_from_known < 0, etc
+        try:
+            _iter_for_revno(self, partial_history, stop_index=revno)
+        except errors.RevisionNotPresent, err:
+            # A stacked repository with no fallbacks, or a left-hand ghost.
+            # Either way, even though the named revision isn't in this repo, we
+            # know it's the next step in this left-hand history.
+            if partial_history[-1] == err.revision_id:
+                raise AssertionError(
+                    'revision_id of RevisionNotPresent err already in history '
+                    'from _iter_for_revno.')
+            partial_history.append(err.revision_id)
+        if len(partial_history) < distance_from_known:
+            earliest_revno = known_revno - len(partial_history)
+            return (False, (earliest_revno, partial_history[-1]))
+        if len(partial_history) > distance_from_known:
+            raise AssertionError('_iter_for_revno returned too much history')
+        return (True, partial_history[-1])
+
     def iter_reverse_revision_history(self, revision_id):
         """Iterate backwards through revision ids in the lefthand history
 
