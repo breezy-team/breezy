@@ -31,6 +31,9 @@ New Features
   converted (including by merge, push and pull) to format 2a, but not vice
   versa.  We recommend upgrading previous development formats to 2a.
 
+  Upgrading to this format can take considerable time because it expands
+  and more concisely repacks the full history.
+
 * ``--development7-rich-root`` is a new dev format, similar to ``--dev6``
   but using a Revision serializer using bencode rather than XML.
   (Jelmer Vernooij, John Arbash Meinel)
