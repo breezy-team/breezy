@@ -275,8 +275,6 @@ cdef class KnownGraph:
         return tails
 
     def _find_gdfo(self):
-        # TODO: Consider moving the tails search into the first-pass over the
-        #       data, inside _find_linear_dominators
         cdef PyObject *temp_node
         cdef Py_ssize_t pos, pos2
         cdef _KnownGraphNode node
@@ -291,7 +289,7 @@ cdef class KnownGraph:
             node.gdfo = 1
             heappush(todo, (1, node))
         max_gdfo = len(self._nodes) + 1
-        while todo:
+        while PyList_GET_SIZE(todo) > 0:
             temp_node = PyTuple_GET_ITEM(heappop(todo), 1)
             node = <_KnownGraphNode>temp_node
             next_gdfo = node.gdfo + 1
