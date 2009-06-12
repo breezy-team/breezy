@@ -26,6 +26,25 @@ Compatibility Breaks
 New Features
 ************
 
+* A new repository format ``2a`` has been added.  This is a beta release
+  of the the brisbane-core (aka group-compress) project.  This format now
+  suitable for wider testing by advanced users willing to deal with some
+  bugs.  We would appreciate test reports, either positive or negative.
+  Format 2a is substantially smaller and faster for many operations on
+  many trees.  This format or an updated version will become the default
+  in bzr 2.0.
+
+  This is a rich-root format, so this repository format can be used with
+  bzr-svn.  Bazaar branches in previous non-rich-root formats can be
+  converted (including by merge, push and pull) to format 2a, but not vice
+  versa.  We recommend upgrading previous development formats to 2a.
+
+  Upgrading to this format can take considerable time because it expands
+  and more concisely repacks the full history.
+
+  If you use stacked branches, you must upgrade the stacked branches
+  before the stacked-on branches.  (See <https://bugs.launchpad.net/bugs/374735>)
+
 * ``--development7-rich-root`` is a new dev format, similar to ``--dev6``
   but using a Revision serializer using bencode rather than XML.
   (Jelmer Vernooij, John Arbash Meinel)
@@ -99,6 +118,15 @@ Bug Fixes
 
 * Fix rule handling so that eol is optional, not mandatory.
   (Ian Clatworthy, #379370)
+
+* Pushing a new stacked branch to a 1.15 smart server was broken due to a
+  bug in the ``BzrDirFormat.initialize_ex`` smart verb.  This is fixed in
+  1.16, but required changes to the network protocol, so the
+  ``BzrDirFormat.initialize_ex`` verb has been removed and replaced with a
+  corrected ``BzrDirFormat.initialize_ex_1.16`` verb.  1.15 clients will
+  still work with a 1.16 server as they will fallback to slower (and
+  bug-free) methods.
+  (Jonathan Lange, Robert Collins, Andrew Bennetts, #385132)
 
 * Reconcile can now deal with text revisions that originated in revisions 
   that are ghosts. (Jelmer Vernooij, #336749)

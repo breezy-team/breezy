@@ -351,7 +351,7 @@ class TestSmartServerRequestInitializeBzrDir(tests.TestCaseWithMemoryTransport):
 
 
 class TestSmartServerRequestBzrDirInitializeEx(tests.TestCaseWithMemoryTransport):
-    """Basic tests for BzrDir.initialize_ex in the smart server.
+    """Basic tests for BzrDir.initialize_ex_1.16 in the smart server.
 
     The main unit tests in test_bzrdir exercise the API comprehensively.
     """
@@ -1560,7 +1560,7 @@ class TestHandlers(tests.TestCase):
             smart.bzrdir.SmartServerRequestFindRepositoryV2)
         self.assertHandlerEqual('BzrDirFormat.initialize',
             smart.bzrdir.SmartServerRequestInitializeBzrDir)
-        self.assertHandlerEqual('BzrDirFormat.initialize_ex',
+        self.assertHandlerEqual('BzrDirFormat.initialize_ex_1.16',
             smart.bzrdir.SmartServerRequestBzrDirInitializeEx)
         self.assertHandlerEqual('BzrDir.cloning_metadir',
             smart.bzrdir.SmartServerBzrDirRequestCloningMetaDir)
