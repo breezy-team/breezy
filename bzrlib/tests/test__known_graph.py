@@ -224,5 +224,8 @@ class TestKnownGraph(tests.TestCase):
         self.assertEqual(set(['rev2c', 'rev3a']),
                          graph.heads(['rev2c', 'rev3a']))
 
-
-
+    def test_heads_linear(self):
+        graph = self.make_known_graph(test_graph.racing_shortcuts)
+        self.assertEqual(set(['w']), graph.heads(['w', 's']))
+        self.assertEqual(set(['z']), graph.heads(['w', 's', 'z']))
+        self.assertEqual(set(['w', 'q']), graph.heads(['w', 's', 'q']))
