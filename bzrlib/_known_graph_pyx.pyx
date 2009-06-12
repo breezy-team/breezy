@@ -122,6 +122,29 @@ cdef class _KnownGraphNode:
             self.linear_dominator, self.dominator_distance)
 
 
+cdef _KnownGraphNode _get_list_node(lst, Py_ssize_t pos):
+    cdef PyObject *temp_node
+
+    temp_node = PyList_GET_ITEM(lst, pos)
+    return <_KnownGraphNode>temp_node
+
+
+cdef _KnownGraphNode _get_parent(parents, Py_ssize_t pos):
+    cdef PyObject *temp_node
+    cdef _KnownGraphNode node
+
+    temp_node = PyTuple_GET_ITEM(parents, pos)
+    return <_KnownGraphNode>temp_node
+
+
+cdef _KnownGraphNode _peek_node(queue):
+    cdef PyObject *temp_node
+    cdef _KnownGraphNode node
+
+    temp_node = PyTuple_GET_ITEM(<object>PyList_GET_ITEM(queue, 0), 1)
+    node = <_KnownGraphNode>temp_node
+    return node
+
 # TODO: slab allocate all _KnownGraphNode objects.
 #       We already know how many we are going to need, except for a couple of
 #       ghosts that could be allocated on demand.
@@ -217,7 +240,7 @@ cdef class KnownGraph:
             node.linear_dominator_node = node
             node.dominator_distance = 0
             return None
-        parent_node = <_KnownGraphNode>PyTuple_GET_ITEM(node.parents, 0)
+        parent_node = _get_parent(node.parents, 0)
         if PyList_GET_SIZE(parent_node.children) > 1:
             # The parent has multiple children, so *this* node is the
             # dominator
@@ -270,8 +293,7 @@ cdef class KnownGraph:
             dominator = node.linear_dominator_node
             num_elements = len(stack)
             for i from num_elements > i >= 0:
-                temp_node = PyList_GET_ITEM(stack, i)
-                next_node = <_KnownGraphNode>temp_node
+                next_node = _get_list_node(stack, i)
                 next_node.linear_dominator_node = dominator
                 next_node.dominator_distance = node.dominator_distance + 1
                 node = next_node
@@ -291,7 +313,6 @@ cdef class KnownGraph:
         return tails
 
     def _find_gdfo(self):
-        cdef PyObject *temp_node, *temp_tuple
         cdef Py_ssize_t pos, pos2
         cdef _KnownGraphNode node
         cdef _KnownGraphNode child_node
@@ -301,23 +322,18 @@ cdef class KnownGraph:
         tails = self._find_tails()
         todo = []
         for pos from 0 <= pos < PyList_GET_SIZE(tails):
-            temp_node = PyList_GET_ITEM(tails, pos)
-            node = <_KnownGraphNode>temp_node
+            node = _get_list_node(tails, pos)
             node.gdfo = 1
             PyList_Append(todo, (1, node))
         # No need to heapify, because all tails have priority=1
         max_gdfo = len(self._nodes) + 1
         while PyList_GET_SIZE(todo) > 0:
-            temp_tuple = PyList_GET_ITEM(todo, 0)
-            t = <object>temp_tuple
-            temp_node = PyTuple_GET_ITEM(t, 1)
-            node = <_KnownGraphNode>temp_node
+            node = _peek_node(todo)
             next_gdfo = node.gdfo + 1
             assert next_gdfo <= max_gdfo
             replace_node = 1
             for pos from 0 <= pos < PyList_GET_SIZE(node.children):
-                temp_node = PyList_GET_ITEM(node.children, pos)
-                child_node = <_KnownGraphNode>temp_node
+                child_node = _get_list_node(node.children, pos)
                 # We should never have numbered children before we numbered
                 # a parent
                 if child_node.gdfo != -1:
@@ -329,8 +345,7 @@ cdef class KnownGraph:
                 if PyTuple_GET_SIZE(child_node.parents) > 1:
                     missing_parent = 0
                     for pos2 from 0 <= pos2 < PyTuple_GET_SIZE(child_node.parents):
-                        temp_node = PyTuple_GET_ITEM(child_node.parents, pos2)
-                        parent_node = <_KnownGraphNode>temp_node
+                        parent_node = _get_parent(child_node.parents, pos2)
                         if parent_node.gdfo == -1:
                             missing_parent = 1
                             break
@@ -455,24 +470,24 @@ cdef class KnownGraph:
     cdef int _process_parent(self, _KnownGraphNode node,
                              _KnownGraphNode parent_node,
                              candidate_nodes,
-                             queue) except -1:
-        """Process the parent of a node, seeing if we need to walk it.
-
-        :return: 0 No extra work needed
-                 1 This was a candidate node, and now there is only 1 candidate
-                   left, so break out of the loop
-        """
+                             queue, int *replace_item) except -1:
+        """Process the parent of a node, seeing if we need to walk it."""
         cdef PyObject *maybe_candidate
         maybe_candidate = PyDict_GetItem(candidate_nodes, parent_node.key)
         if maybe_candidate != NULL:
             candidate_nodes.pop(parent_node.key)
-            if len(candidate_nodes) <= 1:
-                return 1
+            # We could pass up a flag that tells the caller to stop processing,
+            # but it doesn't help much, and makes the code uglier
+            return 0
         if parent_node.ancestor_of is None:
             # This node hasn't been walked yet, so just project node's ancestor
             # info directly to parent_node, and enqueue it for later processing
             parent_node.ancestor_of = node.ancestor_of
-            heappush(queue, (-parent_node.gdfo, parent_node))
+            if replace_item[0]:
+                heapreplace(queue, (-parent_node.gdfo, parent_node))
+                replace_item[0] = 0
+            else:
+                heappush(queue, (-parent_node.gdfo, parent_node))
             PyList_Append(self._to_cleanup, parent_node)
         elif parent_node.ancestor_of != node.ancestor_of:
             # Combine to get the full set of parents
@@ -488,7 +503,7 @@ cdef class KnownGraph:
         cdef _KnownGraphNode node
         cdef _KnownGraphNode parent_node
         cdef Py_ssize_t num_candidates
-        cdef int num_parents
+        cdef int num_parents, replace_item
         cdef Py_ssize_t pos
         cdef PyObject *temp_node
 
@@ -505,15 +520,23 @@ cdef class KnownGraph:
         # walking
         # Now we walk nodes until all nodes that are being walked are 'common'
         num_candidates = len(candidate_nodes)
+        replace_item = 0
         while PyList_GET_SIZE(queue) > 0 and PyDict_Size(candidate_nodes) > 1:
-            temp_node = PyTuple_GET_ITEM(heappop(queue), 1)
-            node = <_KnownGraphNode>temp_node
+            if replace_item:
+                # We still need to pop the smallest member out of the queue
+                # before we peek again
+                heappop(queue)
+                if PyList_GET_SIZE(queue) == 0:
+                    break
+            # peek at the smallest item. We don't pop, because we expect we'll
+            # need to push more things into the queue anyway
+            node = _peek_node(queue)
+            replace_item = 1
             if PyTuple_GET_SIZE(node.ancestor_of) == num_candidates:
                 # This node is now considered 'common'
                 # Make sure all parent nodes are marked as such
                 for pos from 0 <= pos < PyTuple_GET_SIZE(node.parents):
-                    temp_node = PyTuple_GET_ITEM(node.parents, pos)
-                    parent_node = <_KnownGraphNode>temp_node
+                    parent_node = _get_parent(node.parents, pos)
                     if parent_node.ancestor_of is not None:
                         parent_node.ancestor_of = node.ancestor_of
                 if node.linear_dominator_node is not node:
@@ -530,19 +553,15 @@ cdef class KnownGraph:
                 # We are at the tip of a long linear region
                 # We know that there is nothing between here and the tail
                 # that is interesting, so skip to the end
-                if (self._process_parent(node, node.linear_dominator_node,
-                                         candidate_nodes, queue)):
-                    break
+                self._process_parent(node, node.linear_dominator_node,
+                                     candidate_nodes, queue, &replace_item)
             else:
-               for pos from 0 <= pos < PyTuple_GET_SIZE(node.parents):
-                   temp_node = PyTuple_GET_ITEM(node.parents, pos)
-                   parent_node = <_KnownGraphNode>temp_node
-                   if (self._process_parent(node, parent_node,
-                                            candidate_nodes, queue)):
-                       break
+                for pos from 0 <= pos < PyTuple_GET_SIZE(node.parents):
+                    parent_node = _get_parent(node.parents, pos)
+                    self._process_parent(node, parent_node, candidate_nodes,
+                                         queue, &replace_item)
         for pos from 0 <= pos < PyList_GET_SIZE(self._to_cleanup):
-            temp_node = PyList_GET_ITEM(self._to_cleanup, pos)
-            node = <_KnownGraphNode>temp_node
+            node = _get_list_node(self._to_cleanup, pos)
             node.ancestor_of = None
         self._to_cleanup = []
         return PyFrozenSet_New(candidate_nodes)
