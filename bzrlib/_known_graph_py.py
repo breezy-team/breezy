@@ -186,6 +186,37 @@ class KnownGraph(object):
                         child_node.gdfo = next_gdfo
                         heappush(todo, (next_gdfo, child_node))
 
+    def _get_dominators_to_keys(self, candidate_nodes):
+        """Get the reverse mapping from dominators => candidate_nodes.
+
+        This might also exclude certain candidate_nodes if it is determined
+        that they share a dominator.
+        """
+        dom_to_key = {}
+        keys_to_remove = []
+        for node in candidate_nodes.values():
+            if node.linear_dominator in dom_to_key:
+                # This node already exists, resolve which node supersedes the
+                # other
+                other_node_key = dom_to_key[node.linear_dominator]
+                other_node = self._nodes[other_node_key]
+                # There should be no way that nodes sharing a dominator could
+                # 'tie' for gdfo
+                assert other_node.gdfo != node.gdfo
+                if other_node.gdfo > node.gdfo:
+                    # The other node has this node as an ancestor
+                    keys_to_remove.append(node.key)
+                    continue
+                else:
+                    # Replace the other node, and set this as the new key
+                    keys_to_remove.append(other_node.key)
+                    dom_to_key[node.linear_dominator] = node.key
+            else:
+                dom_to_key[node.linear_dominator] = node.key
+        for key in keys_to_remove:
+            candidate_nodes.pop(key)
+        return dom_to_key
+
     def heads(self, keys):
         """Return the heads from amongst keys.
 
@@ -217,32 +248,31 @@ class KnownGraph(object):
             return heads
         except KeyError:
             pass # compute it ourselves
-        # We could do a check here to see if all nodes have the same
-        # 'linear_dominator'. However, in testing, this only was encountered 1
-        # during 'bzr annotate' so it is likely to not be particularly helpful
-        dom_key = None
+        dom_to_key = self._get_dominators_to_keys(candidate_nodes)
+        if len(candidate_nodes) < 2:
+            # We shrunk candidate_nodes and determined a new head
+            return frozenset(candidate_nodes)
+        dom_heads_key = None
         # Check the linear dominators of these keys, to see if we already
         # know the heads answer
-        dom_key = frozenset([node.linear_dominator
-                             for node in candidate_nodes.itervalues()])
-        if dom_key in self._known_heads:
-            dom_to_node = dict([(node.linear_dominator, key)
-                           for key, node in candidate_nodes.iteritems()])
+        dom_heads_key = frozenset([node.linear_dominator
+                                   for node in candidate_nodes.itervalues()])
+        if dom_heads_key in self._known_heads:
             # map back into the original keys
-            heads = self._known_heads[dom_key]
-            heads = frozenset([dom_to_node[key] for key in heads])
+            heads = self._known_heads[dom_heads_key]
+            heads = frozenset([dom_to_key[key] for key in heads])
             return heads
-        heads = self._heads_from_candidate_nodes(candidate_nodes)
+        heads = self._heads_from_candidate_nodes(candidate_nodes, dom_to_key)
         if self.do_cache:
             self._known_heads[heads_key] = heads
             # Cache the dominator heads
-            if dom_key is not None:
+            if dom_heads_key is not None:
                 dom_heads = frozenset([candidate_nodes[key].linear_dominator
                                        for key in heads])
-                self._known_heads[dom_key] = dom_heads
+                self._known_heads[dom_heads_key] = dom_heads
         return heads
 
-    def _heads_from_candidate_nodes(self, candidate_nodes):
+    def _heads_from_candidate_nodes(self, candidate_nodes, dom_to_key):
         queue = []
         to_cleanup = []
         to_cleanup_append = to_cleanup.append
@@ -295,6 +325,13 @@ class KnownGraph(object):
                     candidate_nodes.pop(parent_key)
                     if len(candidate_nodes) <= 1:
                         break
+                if parent_key in dom_to_key:
+                    orig_key = dom_to_key[parent_key]
+                    if orig_key != node.key:
+                        if orig_key in candidate_nodes:
+                            candidate_nodes.pop(orig_key)
+                            if len(candidate_nodes) <= 1:
+                                break
                 parent_node = nodes[parent_key]
                 ancestor_of = parent_node.ancestor_of
                 if ancestor_of is None:

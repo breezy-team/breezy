@@ -229,3 +229,4 @@ class TestKnownGraph(tests.TestCase):
         self.assertEqual(set(['w']), graph.heads(['w', 's']))
         self.assertEqual(set(['z']), graph.heads(['w', 's', 'z']))
         self.assertEqual(set(['w', 'q']), graph.heads(['w', 's', 'q']))
+        self.assertEqual(set(['z']), graph.heads(['s', 'z']))
