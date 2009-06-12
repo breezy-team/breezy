@@ -31,14 +31,14 @@ cdef extern from "Python.h":
     PyObject * PyTuple_GET_ITEM(object t, Py_ssize_t o)
     Py_ssize_t PyTuple_GET_SIZE(object t)
     PyObject * PyDict_GetItem(object d, object k)
-    int PyDict_SetItem(object d, object k, object v) except -1
+    PyObject * PyDict_GetItem(object d, object k)
     Py_ssize_t PyDict_Size(object d) except -1
     int PyDict_CheckExact(object d)
     int PyDict_Next(object d, Py_ssize_t *pos, PyObject **k, PyObject **v)
     int PyList_Append(object l, object v) except -1
     PyObject * PyList_GET_ITEM(object l, Py_ssize_t o)
     Py_ssize_t PyList_GET_SIZE(object l)
-    int PyList_SetItem(object l, Py_ssize_t o, object v) except -1
+    int PyDict_SetItem(object d, object k, object v) except -1
     int PySet_Add(object s, object k) except -1
     void Py_INCREF(object)
 
@@ -48,16 +48,17 @@ import heapq
 from bzrlib import revision
 
 # Define these as cdef objects, so we don't have to getattr them later
-cdef object heappush, heappop, heapify
+cdef object heappush, heappop, heapify, heapreplace
 heappush = heapq.heappush
 heappop = heapq.heappop
 heapify = heapq.heapify
+heapreplace = heapq.heapreplace
 
 
 cdef class _KnownGraphNode:
     """Represents a single object in the known graph."""
 
-    cdef public object key
+    cdef object key
     cdef object parents
     cdef object children
     cdef _KnownGraphNode linear_dominator_node
@@ -105,12 +106,16 @@ cdef class _KnownGraphNode:
         self.linear_dominator_node = None
 
     def __repr__(self):
+        cdef _KnownGraphNode node
+
         parent_keys = []
-        for parent in self.parents:
-            parent_keys.append(parent.key)
+        if self.parents is not None:
+            for node in self.parents:
+                parent_keys.append(node.key)
         child_keys = []
-        for child in self.children:
-            child_keys.append(child.key)
+        if self.children is not None:
+            for node in self.children:
+                child_keys.append(node.key)
         return '%s(%s  gdfo:%s par:%s child:%s dom:%s %s)' % (
             self.__class__.__name__, self.key, self.gdfo,
             parent_keys, child_keys,
@@ -271,89 +276,78 @@ cdef class KnownGraph:
                 next_node.dominator_distance = node.dominator_distance + 1
                 node = next_node
 
-    def _find_gdfo(self):
+    cdef object _find_tails(self):
+        cdef object tails
         cdef PyObject *temp_node
+        cdef Py_ssize_t pos
+        cdef _KnownGraphNode node
+
+        tails = []
+        pos = 0
+        while PyDict_Next(self._nodes, &pos, NULL, &temp_node):
+            node = <_KnownGraphNode>temp_node
+            if node.parents is None or PyTuple_GET_SIZE(node.parents) == 0:
+                PyList_Append(tails, node)
+        return tails
+
+    def _find_gdfo(self):
+        cdef PyObject *temp_node, *temp_tuple
         cdef Py_ssize_t pos, pos2
         cdef _KnownGraphNode node
         cdef _KnownGraphNode child_node
         cdef _KnownGraphNode parent_node
+        cdef int replace_node, missing_parent
 
-        # TODO: Look into rewriting this to not use a heap, but instead to just
-        #       walk all children until you get to one that is missing a parent
-        #       that avoids the heap overhead and finding the tails, at the
-        #       cost of generally hitting nodes more than 1 time (once in the
-        #       iter-dict, and then a second time when finding children,
-        #       possibly a third when there is more than one parent)
-
-        pos = 0
-        nodes_to_number = []
-        nodes_to_number_pop = nodes_to_number.pop
-        nodes_to_number_extend = nodes_to_number.extend
-        while PyDict_Next(self._nodes, &pos, NULL, &temp_node):
+        tails = self._find_tails()
+        todo = []
+        for pos from 0 <= pos < PyList_GET_SIZE(tails):
+            temp_node = PyList_GET_ITEM(tails, pos)
             node = <_KnownGraphNode>temp_node
-            if node.gdfo != -1: # Already done
-                continue
-            # Special case this here, because for all children, we know this
-            # won't be true :)
-            if node.parents is None or PyTuple_GET_SIZE(node.parents) == 0:
-                node.gdfo = 1
-                # Start numbering from the children
-                nodes_to_number_extend(node.children)
-            else:
-                # We need to start numbering from this node
-                PyList_Append(nodes_to_number, node)
-            while PyList_GET_SIZE(nodes_to_number):
-                # There is no PyList_Pop, though there is a simple static
-                # 'listpop' function that is only exposed through python
-                # methods
-                temp_node = PyList_GET_ITEM(nodes_to_number,
-                                            PyList_GET_SIZE(nodes_to_number) - 1)
-                node = <_KnownGraphNode>temp_node
-                if node.gdfo != -1: # Already done
-                    # This can happen when you have complex history, and one
-                    # parent queues up a child, and the other parent then
-                    # queues it up again
-                    nodes_to_number_pop()
+            node.gdfo = 1
+            PyList_Append(todo, (1, node))
+        heapify(todo)
+        max_gdfo = len(self._nodes) + 1
+        while PyList_GET_SIZE(todo) > 0:
+            temp_tuple = PyList_GET_ITEM(todo, 0)
+            t = <object>temp_tuple
+            temp_node = PyTuple_GET_ITEM(t, 1)
+            node = <_KnownGraphNode>temp_node
+            next_gdfo = node.gdfo + 1
+            assert next_gdfo <= max_gdfo
+            replace_node = 1
+            for pos from 0 <= pos < PyList_GET_SIZE(node.children):
+                temp_node = PyList_GET_ITEM(node.children, pos)
+                child_node = <_KnownGraphNode>temp_node
+                # We should never have numbered children before we numbered
+                # a parent
+                if child_node.gdfo != -1:
+                    assert child_node.gdfo >= next_gdfo
                     continue
-                # Find the gdfo for this node based on all parent nodes
-                parent_gdfo = 0
-                for pos2 from 0 <= pos2 < PyTuple_GET_SIZE(node.parents):
-                    temp_node = PyTuple_GET_ITEM(node.parents, pos2)
-                    parent_node = <_KnownGraphNode>temp_node
-                    if parent_node.gdfo == -1:
-                        # One of this node's parents has not been numbered yet.
-                        # We will number this node when we get back here
-                        break
-                    if parent_gdfo < parent_node.gdfo:
-                        parent_gdfo = parent_node.gdfo
+                # Only enque children when all of their parents have been
+                # resolved. With a single parent, we can just take 'this' value
+                child_gdfo = next_gdfo
+                if PyTuple_GET_SIZE(child_node.parents) > 1:
+                    missing_parent = 0
+                    for pos2 from 0 <= pos2 < PyTuple_GET_SIZE(child_node.parents):
+                        temp_node = PyTuple_GET_ITEM(child_node.parents, pos2)
+                        parent_node = <_KnownGraphNode>temp_node
+                        if parent_node.gdfo == -1:
+                            missing_parent = 1
+                            break
+                        if parent_node.gdfo >= child_gdfo:
+                            child_gdfo = parent_node.gdfo + 1
+                    if missing_parent:
+                        # One of the parents is not numbered, so wait until we get
+                        # back here
+                        continue
+                child_node.gdfo = child_gdfo
+                if replace_node:
+                    heapreplace(todo, (child_gdfo, child_node))
+                    replace_node = 0
                 else:
-                    # All the parents were numbered, so it is safe to number
-                    # this child
-                    node.gdfo = parent_gdfo + 1
-                if node.gdfo == -1:
-                    # We could not number this node, yet, we assume we'll get
-                    # back to it when we number a different parent
-                    nodes_to_number_pop()
-                    continue
-                # This node was numbered. Let's number all the children we can
-                # There is no PyList_Extend either, and from the looks of it,
-                # listextend(list) is much more efficient because it can
-                # pre-allocated for all entries that will be added, and can do
-                # fast PySequence iteration.
-                if PyList_GET_SIZE(node.children) == 0:
-                    nodes_to_number_pop()
-                else:
-                    temp_node = PyList_GET_ITEM(node.children, 0)
-                    child_node = <_KnownGraphNode>temp_node
-                    # PyList_SetItem steals a reference 
-                    Py_INCREF(child_node)
-                    PyList_SetItem(nodes_to_number,
-                                   PyList_GET_SIZE(nodes_to_number) - 1,
-                                   child_node)
-                    for pos2 from 1 <= pos2 < PyList_GET_SIZE(node.children):
-                        temp_node = PyList_GET_ITEM(node.children, pos2)
-                        child_node = <_KnownGraphNode>temp_node
-                        PyList_Append(nodes_to_number, child_node)
+                    heappush(todo, (child_gdfo, child_node))
+            if replace_node:
+                heappop(todo)
 
     def heads(self, keys):
         """Return the heads from amongst keys.
