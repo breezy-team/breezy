@@ -31,14 +31,14 @@ cdef extern from "Python.h":
     PyObject * PyTuple_GET_ITEM(object t, Py_ssize_t o)
     Py_ssize_t PyTuple_GET_SIZE(object t)
     PyObject * PyDict_GetItem(object d, object k)
-    PyObject * PyDict_GetItem(object d, object k)
+    int PyDict_SetItem(object d, object k, object v) except -1
     Py_ssize_t PyDict_Size(object d) except -1
     int PyDict_CheckExact(object d)
     int PyDict_Next(object d, Py_ssize_t *pos, PyObject **k, PyObject **v)
     int PyList_Append(object l, object v) except -1
     PyObject * PyList_GET_ITEM(object l, Py_ssize_t o)
     Py_ssize_t PyList_GET_SIZE(object l)
-    int PyDict_SetItem(object d, object k, object v) except -1
+    int PyList_SetItem(object l, Py_ssize_t o, object v) except -1
     int PySet_Add(object s, object k) except -1
     void Py_INCREF(object)
 
@@ -306,11 +306,14 @@ cdef class KnownGraph:
                 # There is no PyList_Pop, though there is a simple static
                 # 'listpop' function that is only exposed through python
                 # methods
-                node = nodes_to_number_pop()
+                temp_node = PyList_GET_ITEM(nodes_to_number,
+                                            PyList_GET_SIZE(nodes_to_number) - 1)
+                node = <_KnownGraphNode>temp_node
                 if node.gdfo != -1: # Already done
                     # This can happen when you have complex history, and one
                     # parent queues up a child, and the other parent then
                     # queues it up again
+                    nodes_to_number_pop()
                     continue
                 # Find the gdfo for this node based on all parent nodes
                 parent_gdfo = 0
@@ -330,13 +333,27 @@ cdef class KnownGraph:
                 if node.gdfo == -1:
                     # We could not number this node, yet, we assume we'll get
                     # back to it when we number a different parent
+                    nodes_to_number_pop()
                     continue
                 # This node was numbered. Let's number all the children we can
                 # There is no PyList_Extend either, and from the looks of it,
                 # listextend(list) is much more efficient because it can
                 # pre-allocated for all entries that will be added, and can do
                 # fast PySequence iteration.
-                nodes_to_number_extend(node.children)
+                if PyList_GET_SIZE(node.children) == 0:
+                    nodes_to_number_pop()
+                else:
+                    temp_node = PyList_GET_ITEM(node.children, 0)
+                    child_node = <_KnownGraphNode>temp_node
+                    # PyList_SetItem steals a reference 
+                    Py_INCREF(child_node)
+                    PyList_SetItem(nodes_to_number,
+                                   PyList_GET_SIZE(nodes_to_number) - 1,
+                                   child_node)
+                    for pos2 from 1 <= pos2 < PyList_GET_SIZE(node.children):
+                        temp_node = PyList_GET_ITEM(node.children, pos2)
+                        child_node = <_KnownGraphNode>temp_node
+                        PyList_Append(nodes_to_number, child_node)
 
     def heads(self, keys):
         """Return the heads from amongst keys.
