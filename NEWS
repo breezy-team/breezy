@@ -6,13 +6,18 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
-bzr 1.16rc1 2009-06-11
-######################
+bzr 1.16rc1 "It's yesterday in California" 2009-06-11
+#####################################################
+:Codename: yesterday-in-california
 
-This release has many improvements to the "brisbane-core" format, taking the
-shape of a new '--development7-rich-root' format which uses bencode rather
-than XML. Many operations are now much faster on huge projects. The usual bevy
-of bug fixes, tweaks and improvements.
+This version of Bazaar contains the beta release of the new ``2a`` repository
+format, suitable for testing by fearless, advanced users. This format or an
+updated version of it will become the default format in Bazaar 2.0. Please
+read the NEWS entry before even thinking about upgrading to the new format.
+
+Also included are speedups for many operations on huge projects, a bug fix for
+pushing stacked new stacked branches to smart servers and the usual bevy of
+bug fixes and improvements.
 
 
 Compatibility Breaks
