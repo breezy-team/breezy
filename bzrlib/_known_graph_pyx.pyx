@@ -305,7 +305,7 @@ cdef class KnownGraph:
             node = <_KnownGraphNode>temp_node
             node.gdfo = 1
             PyList_Append(todo, (1, node))
-        heapify(todo)
+        # No need to heapify, because all tails have priority=1
         max_gdfo = len(self._nodes) + 1
         while PyList_GET_SIZE(todo) > 0:
             temp_tuple = PyList_GET_ITEM(todo, 0)
@@ -393,6 +393,10 @@ cdef class KnownGraph:
         # know the heads answer
         dom_lookup_key, heads = self._heads_from_dominators(candidate_nodes)
         if heads is not None:
+            if self.do_cache:
+                # This heads was not in the cache, or it would have been caught
+                # earlier, but the dom head *was*, so do the simple cache
+                PyDict_SetItem(self._known_heads, heads_key, heads)
             return heads
         heads = self._heads_from_candidate_nodes(candidate_nodes)
         if self.do_cache:
