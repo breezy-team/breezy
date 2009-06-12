@@ -3175,7 +3175,7 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
         if not do_vfs:
             client = _SmartClient(client_medium)
             path = client.remote_path_from_transport(transport)
-            if client_medium._is_remote_before((1, 15)):
+            if client_medium._is_remote_before((1, 16)):
                 do_vfs = True
         if do_vfs:
             # TODO: lookup the local format from a server hint.
@@ -3215,9 +3215,10 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
             self._network_name = \
             BzrDirFormat.get_default_format().network_name()
         try:
-            response = client.call('BzrDirFormat.initialize_ex',
+            response = client.call('BzrDirFormat.initialize_ex_1.16',
                 self.network_name(), path, *args)
         except errors.UnknownSmartMethod:
+            client._medium._remember_remote_is_before((1,16))
             local_dir_format = BzrDirMetaFormat1()
             self._supply_sub_formats_to(local_dir_format)
             return local_dir_format.initialize_on_transport_ex(transport,

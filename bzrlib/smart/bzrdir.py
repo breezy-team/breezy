@@ -354,7 +354,10 @@ class SmartServerRequestBzrDirInitializeEx(SmartServerRequestBzrDir):
     def do(self, bzrdir_network_name, path, use_existing_dir, create_prefix,
         force_new_repo, stacked_on, stack_on_pwd, repo_format_name,
         make_working_trees, shared_repo):
-        """Initialize a bzrdir at path as per BzrDirFormat.initialize_ex
+        """Initialize a bzrdir at path as per
+        BzrDirFormat.initialize_on_transport_ex.
+
+        New in 1.16.  (Replaces BzrDirFormat.initialize_ex verb from 1.15).
 
         :return: return SuccessfulSmartServerResponse((repo_path, rich_root,
             tree_ref, external_lookup, repo_network_name,

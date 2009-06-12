@@ -94,6 +94,15 @@ Bug Fixes
 * Fix rule handling so that eol is optional, not mandatory.
   (Ian Clatworthy, #379370)
 
+* Pushing a new stacked branch to a 1.15 smart server was broken due to a
+  bug in the ``BzrDirFormat.initialize_ex`` smart verb.  This is fixed in
+  1.16, but required changes to the network protocol, so the
+  ``BzrDirFormat.initialize_ex`` verb has been removed and replaced with a
+  corrected ``BzrDirFormat.initialize_ex_1.16`` verb.  1.15 clients will
+  still work with a 1.16 server as they will fallback to slower (and
+  bug-free) methods.
+  (Jonathan Lange, Robert Collins, Andrew Bennetts, #385132)
+
 * Reconcile can now deal with text revisions that originated in revisions 
   that are ghosts. (Jelmer Vernooij, #336749)
 
