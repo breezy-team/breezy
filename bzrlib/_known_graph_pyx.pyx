@@ -404,16 +404,18 @@ cdef class KnownGraph:
             heads_key = PyFrozenSet_New(candidate_nodes)
         if len(candidate_nodes) < 2:
             return heads_key
-        # Check the linear dominators of these keys, to see if we already
-        # know the heads answer
-        dom_lookup_key, heads = self._heads_from_dominators(candidate_nodes)
+        dom_to_node = self._get_dominators_to_nodes(candidate_nodes)
+        if PyDict_Size(candidate_nodes) < 2:
+            return frozenset(candidate_nodes)
+        dom_lookup_key, heads = self._heads_from_dominators(candidate_nodes,
+                                                            dom_to_node)
         if heads is not None:
             if self.do_cache:
                 # This heads was not in the cache, or it would have been caught
                 # earlier, but the dom head *was*, so do the simple cache
                 PyDict_SetItem(self._known_heads, heads_key, heads)
             return heads
-        heads = self._heads_from_candidate_nodes(candidate_nodes)
+        heads = self._heads_from_candidate_nodes(candidate_nodes, dom_to_node)
         if self.do_cache:
             self._cache_heads(heads, heads_key, dom_lookup_key, candidate_nodes)
         return heads
@@ -434,9 +436,44 @@ cdef class KnownGraph:
         PyDict_SetItem(self._known_heads, dom_lookup_key,
                        PyFrozenSet_New(dom_heads))
 
-    cdef object _heads_from_dominators(self, candidate_nodes):
+    cdef _get_dominators_to_nodes(self, candidate_nodes):
+        """Get the reverse mapping from dominator_key => candidate_nodes.
+
+        As a side effect, this can also remove potential candidate nodes if we
+        determine that they share a dominator.
+        """
+        cdef Py_ssize_t pos
+        cdef _KnownGraphNode node, other_node
+        cdef PyObject *temp_node
+        cdef PyObject *maybe_node
+
+        dom_to_node = {}
+        keys_to_remove = []
+        pos = 0
+        while PyDict_Next(candidate_nodes, &pos, NULL, &temp_node):
+            node = <_KnownGraphNode>temp_node
+            dom_key = node.linear_dominator_node.key
+            maybe_node = PyDict_GetItem(dom_to_node, dom_key)
+            if maybe_node == NULL:
+                PyDict_SetItem(dom_to_node, dom_key, node)
+            else:
+                other_node = <_KnownGraphNode>maybe_node
+                # These nodes share a dominator, one of them obviously
+                # supersedes the other, figure out which
+                if other_node.gdfo > node.gdfo:
+                    PyList_Append(keys_to_remove, node.key)
+                else:
+                    # This wins, replace the other
+                    PyList_Append(keys_to_remove, other_node.key)
+                    PyDict_SetItem(dom_to_node, dom_key, node)
+        for pos from 0 <= pos < PyList_GET_SIZE(keys_to_remove):
+            key = <object>PyList_GET_ITEM(keys_to_remove, pos)
+            candidate_nodes.pop(key)
+        return dom_to_node
+
+    cdef object _heads_from_dominators(self, candidate_nodes, dom_to_node):
         cdef PyObject *maybe_heads
-        cdef PyObject *maybe_key
+        cdef PyObject *maybe_node
         cdef _KnownGraphNode node
         cdef Py_ssize_t pos
         cdef PyObject *temp_node
@@ -452,33 +489,41 @@ cdef class KnownGraph:
             return dom_lookup_key, None
         # We need to map back from the dominator head to the original keys
         dom_heads = <object>maybe_heads
-        dom_to_key = {}
-        pos = 0
-        while PyDict_Next(candidate_nodes, &pos, NULL, &temp_node):
-            node = <_KnownGraphNode>temp_node
-            PyDict_SetItem(dom_to_key, node.linear_dominator_node.key,
-                                       node.key)
         heads = []
         for dom_key in dom_heads:
-            maybe_key = PyDict_GetItem(dom_to_key, dom_key)
-            if maybe_key == NULL:
+            maybe_node = PyDict_GetItem(dom_to_node, dom_key)
+            if maybe_node == NULL:
                 # Should never happen
                 raise KeyError
-            PyList_Append(heads, <object>maybe_key)
+            node = <_KnownGraphNode>maybe_node
+            PyList_Append(heads, node.key)
         return dom_lookup_key, PyFrozenSet_New(heads)
 
     cdef int _process_parent(self, _KnownGraphNode node,
                              _KnownGraphNode parent_node,
-                             candidate_nodes,
+                             candidate_nodes, dom_to_node,
                              queue, int *replace_item) except -1:
         """Process the parent of a node, seeing if we need to walk it."""
         cdef PyObject *maybe_candidate
+        cdef PyObject *maybe_node
+        cdef _KnownGraphNode dom_child_node
         maybe_candidate = PyDict_GetItem(candidate_nodes, parent_node.key)
         if maybe_candidate != NULL:
             candidate_nodes.pop(parent_node.key)
             # We could pass up a flag that tells the caller to stop processing,
             # but it doesn't help much, and makes the code uglier
             return 0
+        maybe_node = PyDict_GetItem(dom_to_node, parent_node.key)
+        if maybe_node != NULL:
+            # This is a dominator of a node
+            dom_child_node = <_KnownGraphNode>maybe_node
+            if dom_child_node is not node:
+                # It isn't a dominator of a node we are searching, so we should
+                # remove it from the search
+                maybe_candidate = PyDict_GetItem(candidate_nodes, dom_child_node.key)
+                if maybe_candidate != NULL:
+                    candidate_nodes.pop(dom_child_node.key)
+                    return 0
         if parent_node.ancestor_of is None:
             # This node hasn't been walked yet, so just project node's ancestor
             # info directly to parent_node, and enqueue it for later processing
@@ -499,7 +544,7 @@ cdef class KnownGraph:
             parent_node.ancestor_of = tuple(sorted(all_ancestors))
         return 0
 
-    cdef object _heads_from_candidate_nodes(self, candidate_nodes):
+    cdef object _heads_from_candidate_nodes(self, candidate_nodes, dom_to_node):
         cdef _KnownGraphNode node
         cdef _KnownGraphNode parent_node
         cdef Py_ssize_t num_candidates
@@ -554,12 +599,12 @@ cdef class KnownGraph:
                 # We know that there is nothing between here and the tail
                 # that is interesting, so skip to the end
                 self._process_parent(node, node.linear_dominator_node,
-                                     candidate_nodes, queue, &replace_item)
+                                     candidate_nodes, dom_to_node, queue, &replace_item)
             else:
                 for pos from 0 <= pos < PyTuple_GET_SIZE(node.parents):
                     parent_node = _get_parent(node.parents, pos)
                     self._process_parent(node, parent_node, candidate_nodes,
-                                         queue, &replace_item)
+                                         dom_to_node, queue, &replace_item)
         for pos from 0 <= pos < PyList_GET_SIZE(self._to_cleanup):
             node = _get_list_node(self._to_cleanup, pos)
             node.ancestor_of = None
