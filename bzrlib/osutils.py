@@ -934,6 +934,7 @@ def link_or_copy(src, dest):
 #   EACCES, OSX: EPERM) when invoked on a directory.
 def delete_any(path):
     """Delete a file or directory."""
+    make_writable(path) # Takes care of files or dirs that are readonly on win32
     if isdir(path): # Takes care of symlinks
         os.rmdir(path)
     else:
