@@ -2249,7 +2249,6 @@ class Repository(object):
             raise ValueError(
                 'requested revno (%d) is later than given known revno (%d)'
                 % (revno, known_revno))
-        # XXX: handle distance_from_known < 0, etc
         try:
             _iter_for_revno(
                 self, partial_history, stop_index=distance_from_known)
