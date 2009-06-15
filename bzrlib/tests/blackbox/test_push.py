@@ -86,7 +86,7 @@ class TestPush(tests.TestCaseWithTransport):
                            working_dir='branch_a', retcode=3)
         self.assertEquals(out,
                 ('','bzr: ERROR: These branches have diverged.  '
-                    'Try using "merge" and then "push".\n'))
+                 'See "bzr help diverged-branches" for more information.\n'))
         self.assertEquals(osutils.abspath(branch_a.get_push_location()),
                           osutils.abspath(branch_b.bzrdir.root_transport.base))
 
