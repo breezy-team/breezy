@@ -687,9 +687,15 @@ class RemoteRepository(_RpcHelper):
         if response[0] == 'ok':
             return True, response[1]
         elif response[0] == 'history-incomplete':
-            # XXX: Doesn't ask fallback repo...
-            #   Add a per_repository_reference test for get_rev_id_for_revno?
-            return False, response[1:3]
+            known_pair = response[1:3]
+            for fallback in self._fallback_repositories:
+                found, result = fallback.get_rev_id_for_revno(revno, known_pair)
+                if found:
+                    return True, result
+                else:
+                    known_pair = result
+            # Not found in any fallbacks
+            return False, known_pair
         else:
             raise errors.UnexpectedSmartServerResponse(response)
 
