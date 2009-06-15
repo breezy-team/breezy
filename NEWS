@@ -18,6 +18,13 @@ Internals
   rather than requiring all command names be known a-priori.
   (Robert Collins)
 
+* ``graph.KnownGraph`` has been added. This is a class that can give
+  answers to ``heads()`` very quickly. However, it has the assumption that
+  the whole graph has already been loaded. This is true during
+  ``annotate`` so it is used there with good success (as much as 2x faster
+  for files with long ancestry and 'cherrypicked' changes.)
+  (John Arbash Meinel)
+
 
 bzr 1.16rc1 "It's yesterday in California" 2009-06-11
 #####################################################
