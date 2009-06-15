@@ -4471,15 +4471,15 @@ def _iter_for_revno(repo, partial_history_cache, stop_index=None,
     iterator = repo.iter_reverse_revision_history(start_revision)
     try:
         #skip the last revision in the list
-        next_revision = iterator.next()
+        iterator.next()
         while True:
             if (stop_index is not None and
                 len(partial_history_cache) > stop_index):
                 break
+            if partial_history_cache[-1] == stop_revision:
+                break
             revision_id = iterator.next()
             partial_history_cache.append(revision_id)
-            if revision_id == stop_revision:
-                break
     except StopIteration:
         # No more history
         return
