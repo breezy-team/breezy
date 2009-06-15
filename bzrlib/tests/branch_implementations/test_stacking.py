@@ -422,6 +422,7 @@ class TestStacking(TestCaseWithBranch):
         branch.Branch.open(transport.base)
 
     def test_revision_history_of_stacked(self):
+        # See <https://launchpad.net/bugs/380314>.
         stack_on = self.make_branch_and_tree('stack-on')
         stack_on.commit('first commit', rev_id='rev1')
         try:

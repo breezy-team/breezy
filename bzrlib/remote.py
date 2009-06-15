@@ -1605,7 +1605,7 @@ class RemoteRepository(_RpcHelper):
             providers.insert(0, other)
         providers.extend(r._make_parents_provider() for r in
                          self._fallback_repositories)
-        return graph._StackedParentsProvider(providers)
+        return graph.StackedParentsProvider(providers)
 
     def _serialise_search_recipe(self, recipe):
         """Serialise a graph search recipe.

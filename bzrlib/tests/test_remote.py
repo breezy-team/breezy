@@ -750,7 +750,7 @@ class TestBzrDirFormatInitializeEx(TestRemote):
         transport = self.get_transport()
         client = FakeClient(transport.base)
         client.add_expected_call(
-            'BzrDirFormat.initialize_ex',
+            'BzrDirFormat.initialize_ex_1.16',
                 (default_format_name, 'path', 'False', 'False', 'False', '',
                  '', '', '', 'False'),
             'success',
@@ -772,7 +772,7 @@ class TestBzrDirFormatInitializeEx(TestRemote):
         transport = self.get_transport()
         client = FakeClient(transport.base)
         client.add_expected_call(
-            'BzrDirFormat.initialize_ex',
+            'BzrDirFormat.initialize_ex_1.16',
                 (default_format_name, 'path', 'False', 'False', 'False', '',
                  '', '', '', 'False'),
             'error',
