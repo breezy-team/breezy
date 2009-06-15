@@ -257,13 +257,19 @@ cdef class KnownGraph:
         return parent_node
 
     def _find_linear_dominators(self):
-        """For each node in the set, find any linear dominators.
-
+        """
         For any given node, the 'linear dominator' is an ancestor, such that
         all parents between this node and that one have a single parent, and a
         single child. So if A->B->C->D then B,C,D all have a linear dominator
-        of A. Because there are no interesting siblings, we can quickly skip to
-        the nearest dominator when doing comparisons.
+        of A.
+
+        There are two main benefits:
+        1) When walking the graph, we can jump to the nearest linear dominator,
+           rather than walking all of the nodes inbetween.
+        2) When caching heads() results, dominators give the "same" results as
+           their children. (If the dominator is a head, then the descendant is
+           a head, if the dominator is not a head, then the child isn't
+           either.)
         """
         cdef PyObject *temp_node
         cdef Py_ssize_t pos
