@@ -1,0 +1,17 @@
+=======================
+Tracking Bugs in Bazaar
+=======================
+
+This document describes the bug-tracking processes for developing Bazaar
+itself.
+
+See also:
+
+* `Bazaar Developer Documents <index.html>`_.
+
+* `The Bazaar Development Cycle <cycle.html>`_.
+
+* `The Bazaar User Guide <../en/user-guide/index.html>`_ -- for
+  information on integrating Bazaar with other bug trackers.
+
+.. vim: ft=rst
