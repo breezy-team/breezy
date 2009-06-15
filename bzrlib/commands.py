@@ -1056,6 +1056,8 @@ def display_command(func):
 
 def install_bzr_command_hooks():
     """Install the hooks to supply bzr's own commands."""
+    if _list_bzr_commands in Command.hooks["list_commands"]:
+        return
     Command.hooks.install_named_hook("list_commands", _list_bzr_commands,
         "bzr commands")
     Command.hooks.install_named_hook("get_command", _get_bzr_command,
@@ -1099,7 +1101,6 @@ def main(argv=None):
         except UnicodeDecodeError:
             raise errors.BzrError("argv should be list of unicode strings.")
         argv = new_argv
-    install_bzr_command_hooks()
     ret = run_bzr_catch_errors(argv)
     trace.mutter("return code %d", ret)
     return ret
@@ -1111,6 +1112,7 @@ def run_bzr_catch_errors(argv):
     This function assumed that that UI layer is setup, that symbol deprecations
     are already applied, and that unicode decoding has already been performed on argv.
     """
+    install_bzr_command_hooks()
     return exception_to_return_code(run_bzr, argv)
 
 
@@ -1120,6 +1122,7 @@ def run_bzr_catch_user_errors(argv):
     This is used for the test suite, and might be useful for other programs
     that want to wrap the commandline interface.
     """
+    install_bzr_command_hooks()
     try:
         return run_bzr(argv)
     except Exception, e:
