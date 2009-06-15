@@ -1560,12 +1560,65 @@ class TestInternalNode(TestCaseWithStore):
         child.map(None, ("baz",), "val")
         node.add_node("b", child)
 
-        key_filter = (('foo',), ('fob',), ('bar',), ('baz',))
+        # Note that 'ram' doesn't match anything, so it should be freely
+        # ignored
+        key_filter = (('foo',), ('fob',), ('bar',), ('baz',), ('ram',))
         for child, node_key_filter in node._iter_nodes(None,
                                                        key_filter=key_filter):
-            # each child could matches two key filters, so make sure they were
+            # each child could match two key filters, so make sure they were
             # both included.
             self.assertEqual(2, len(node_key_filter))
+
+    def make_fo_fa_node(self):
+        node = InternalNode('f')
+        child = LeafNode()
+        child.set_maximum_size(100)
+        child.map(None, ("foo",), "val")
+        child.map(None, ("fob",), "val")
+        node.add_node('fo', child)
+        child = LeafNode()
+        child.set_maximum_size(100)
+        child.map(None, ("far",), "val")
+        child.map(None, ("faz",), "val")
+        node.add_node("fa", child)
+        return node
+
+    def test__iter_nodes_single_entry(self):
+        node = self.make_fo_fa_node()
+        key_filter = [('foo',)]
+        nodes = list(node._iter_nodes(None, key_filter=key_filter))
+        self.assertEqual(1, len(nodes))
+        self.assertEqual(key_filter, nodes[0][1])
+
+    def test__iter_nodes_single_entry_misses(self):
+        node = self.make_fo_fa_node()
+        key_filter = [('bar',)]
+        nodes = list(node._iter_nodes(None, key_filter=key_filter))
+        self.assertEqual(0, len(nodes))
+
+    def test__iter_nodes_mixed_key_width(self):
+        node = self.make_fo_fa_node()
+        key_filter = [('foo', 'bar'), ('foo',), ('fo',), ('b',)]
+        nodes = list(node._iter_nodes(None, key_filter=key_filter))
+        self.assertEqual(1, len(nodes))
+        matches = key_filter[:]
+        matches.remove(('b',))
+        self.assertEqual(sorted(matches), sorted(nodes[0][1]))
+
+    def test__iter_nodes_match_all(self):
+        node = self.make_fo_fa_node()
+        key_filter = [('foo', 'bar'), ('foo',), ('fo',), ('f',)]
+        nodes = list(node._iter_nodes(None, key_filter=key_filter))
+        self.assertEqual(2, len(nodes))
+
+    def test__iter_nodes_fixed_widths_and_misses(self):
+        node = self.make_fo_fa_node()
+        # foo and faa should both match one child, baz should miss
+        key_filter = [('foo',), ('faa',), ('baz',)]
+        nodes = list(node._iter_nodes(None, key_filter=key_filter))
+        self.assertEqual(2, len(nodes))
+        for node, matches in nodes:
+            self.assertEqual(1, len(matches))
 
     def test_iteritems_empty_new(self):
         node = InternalNode()
