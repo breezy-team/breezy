@@ -2018,6 +2018,42 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
         self.assertEqual(('AnUnexpectedError',), e.error_tuple)
 
 
+class TestRepositoryGetRevIdForRevno(TestRemoteRepository):
+
+    def test_ok(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'Repository.get_rev_id_for_revno', ('quack/', 5, (42, 'rev-foo')),
+            'success', ('ok', 'rev-five'))
+        result = repo.get_rev_id_for_revno(5, (42, 'rev-foo'))
+        self.assertEqual((True, 'rev-five'), result)
+        client.finished_test()
+
+    def test_history_incomplete(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'Repository.get_rev_id_for_revno', ('quack/', 5, (42, 'rev-foo')),
+            'success', ('history-incomplete', 10, 'rev-ten'))
+        result = repo.get_rev_id_for_revno(5, (42, 'rev-foo'))
+        self.assertEqual((False, (10, 'rev-ten')), result)
+        client.finished_test()
+
+    def test_nosuchrevision(self):
+        # 'nosuchrevision' is returned when the known-revid is not found in the
+        # remote repo.  The client translates that response to NoSuchRevision.
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'Repository.get_rev_id_for_revno', ('quack/', 5, (42, 'rev-foo')),
+            'error', ('nosuchrevision', 'rev-foo'))
+        self.assertRaises(
+            errors.NoSuchRevision,
+            repo.get_rev_id_for_revno, 5, (42, 'rev-foo'))
+        client.finished_test()
+
+
 class TestRepositoryIsShared(TestRemoteRepository):
 
     def test_is_shared(self):

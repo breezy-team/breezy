@@ -687,6 +687,8 @@ class RemoteRepository(_RpcHelper):
         if response[0] == 'ok':
             return True, response[1]
         elif response[0] == 'history-incomplete':
+            # XXX: Doesn't ask fallback repo...
+            #   Add a per_repository_reference test for get_rev_id_for_revno?
             return False, response[1:3]
         else:
             raise errors.UnexpectedSmartServerResponse(response)
