@@ -53,7 +53,11 @@ from bzrlib.hooks import HookPoint, Hooks
 # Compatibility - Option used to be in commands.
 from bzrlib.option import Option
 from bzrlib import registry
-from bzrlib.symbol_versioning import deprecated_function, deprecated_in
+from bzrlib.symbol_versioning import (
+    deprecated_function,
+    deprecated_in,
+    suppress_deprecation_warnings,
+    )
 
 
 class CommandInfo(object):
@@ -147,10 +151,7 @@ def _scan_module_for_commands(module):
 
 
 def _list_bzr_commands(names):
-    """Return a list of all the registered commands.
-
-    This searches plugins and the core.
-    """
+    """Find commands from bzr's core and plugins."""
     # to eliminate duplicates
     names.update(builtin_command_names())
     names.update(plugin_command_names())
@@ -158,14 +159,13 @@ def _list_bzr_commands(names):
 
 
 def all_command_names():
-    """Return a list of all command names."""
+    """Return a set of all command names."""
     names = set()
     for hook in Command.hooks['list_commands']:
-        new_names = hook(names)
-        if new_names is None:
+        names = hook(names)
+        if names is None:
             raise AssertionError(
                 'hook %s returned None' % Command.hooks.get_hook_name(hook))
-        names = new_names
     return names
 
 
@@ -183,8 +183,8 @@ def plugin_command_names():
     return plugin_cmds.keys()
 
 
-@deprecated_function(deprecated_in((1, 16, 0)))
-def get_all_cmds():
+@deprecated_function(deprecated_in((1, 17, 0)))
+def get_all_cmds(plugins_override=False):
     """Return canonical name and class for most commands.
     
     NB: This does not return all commands since the introduction of
@@ -218,7 +218,7 @@ def _get_cmd_object(cmd_name, plugins_override=True):
     :param cmd_name: The name of the command.
     :param plugins_override: Allow plugins to override builtins.
     :return: A Command object instance
-    :raises: KeyError if no command is found.
+    :raises KeyError: If no command is found.
     """
     # We want only 'ascii' command names, but the user may have typed
     # in a Unicode name. In that case, they should just get a
@@ -228,11 +228,10 @@ def _get_cmd_object(cmd_name, plugins_override=True):
     # Get a command
     for hook in Command.hooks['get_command']:
         cmd = hook(cmd, cmd_name)
-        if cmd is not None and not plugins_override:
+        if cmd is not None and not plugins_override and not cmd.plugin_name():
             # We've found a non-plugin command, don't permit it to be
             # overridden.
-            if not cmd.plugin_name():
-                break
+            break
     if cmd is None:
         for hook in Command.hooks['get_missing_command']:
             cmd = hook(cmd_name)
@@ -696,19 +695,21 @@ class CommandHooks(Hooks):
             "Called when creating a single command. Called with "
             "(cmd_or_None, command_name). get_command should either return "
             "the cmd_or_None parameter, or a replacement Command object that "
-            "should be used for the command.", (1, 16), None))
+            "should be used for the command. Note that the Command.hooks "
+            "hooks are core infrastructure. Many users will prefer to use "
+            "bzrlib.commands.register_command or plugin_cmds.register_lazy.",
+            (1, 17), None))
         self.create_hook(HookPoint('get_missing_command',
             "Called when creating a single command if no command could be "
             "found. Called with (command_name). get_missing_command should "
             "either return None, or a Command object to be used for the "
-            "command.", (1, 16), None))
+            "command.", (1, 17), None))
         self.create_hook(HookPoint('list_commands',
-            "Called when enumerating commands. Called with a dict of "
-            "cmd_name: cmd_class tuples for all the commands found "
-            "so far. This dict is safe to mutate - to remove a command or "
-            "to replace it with another (eg plugin supplied) version. "
-            "list_commands should return the updated dict of commands.",
-            (1, 16), None))
+            "Called when enumerating commands. Called with a set of "
+            "cmd_name strings for all the commands found so far. This set "
+            " is safe to mutate - e.g. to remove a command. "
+            "list_commands should return the updated set of command names.",
+            (1, 17), None))
 
 Command.hooks = CommandHooks()
 
@@ -1083,7 +1084,7 @@ def main(argv=None):
 
     # Is this a final release version? If so, we should suppress warnings
     if bzrlib.version_info[3] == 'final':
-        symbol_versioning.suppress_deprecation_warnings(override=False)
+        suppress_deprecation_warnings(override=False)
     if argv is None:
         argv = osutils.get_unicode_argv()
     else:
