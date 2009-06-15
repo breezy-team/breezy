@@ -158,23 +158,27 @@ Now that the release is publicly available, tell people about it.
    ``Reply-To: bazaar@lists.canonical.com``, so that people who reply to
    the announcement don't spam other lists.
 
-   The announce mail will look something like this:
+   The announce mail will look something like this::
    
-    | Subject: bzr x.yy released!
-    | 
-    | <<Summary paragraph from news>>
-    |
-    | The Bazaar team is happy to announce availability of a new 
-    | release of the bzr adaptive version control system.
-    |
-    | Thanks to everyone who contributed patches, suggestions, and
-    | feedback.
-    | 
-    | Bazaar is now available for download from 
-    | http://bazaar-vcs.org/Download as a source tarball; packages 
-    | for various systems will be available soon.
-    | 
-    | <<NEWS section from this release back to the last major release>>
+      Subject: bzr x.yy released!
+      
+      <<Summary paragraph from news>>
+     
+      The Bazaar team is happy to announce availability of a new 
+      release of the bzr adaptive version control system.
+      Bazaar is part of the GNU project to develop a complete 
+      free software system.
+     
+      Thanks to everyone who contributed patches, suggestions, and
+      feedback.
+      
+      Bazaar is now available for download from 
+      http://bazaar-vcs.org/Download as a source tarball; packages 
+      for various systems will be available soon.
+      
+      <<NEWS section from this release back to the last major release>>
+
+   Feel free to tweak this to your taste.
 
 #. Make an announcement through <https://launchpad.net/bzr/+announce>
 
