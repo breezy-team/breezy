@@ -166,6 +166,8 @@ Now that the release is publicly available, tell people about it.
     |
     | The Bazaar team is happy to announce availability of a new 
     | release of the bzr adaptive version control system.
+    | Bazaar is part of the GNU project to develop a complete 
+    | free software system.
     |
     | Thanks to everyone who contributed patches, suggestions, and
     | feedback.
@@ -175,6 +177,8 @@ Now that the release is publicly available, tell people about it.
     | for various systems will be available soon.
     | 
     | <<NEWS section from this release back to the last major release>>
+
+   Feel free to tweak this to your taste.
 
 #. Make an announcement through <https://launchpad.net/bzr/+announce>
 
