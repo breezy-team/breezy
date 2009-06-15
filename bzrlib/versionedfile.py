@@ -876,7 +876,16 @@ class VersionedFiles(object):
         raise NotImplementedError(self.annotate)
 
     def check(self, progress_bar=None):
-        """Check this object for integrity."""
+        """Check this object for integrity.
+        
+        :param progress_bar: A progress bar to output as the check progresses.
+        :param keys: Specific keys within the VersionedFiles to check. When
+            this parameter is not None, check() becomes a generator as per
+            get_record_stream. The difference to get_record_stream is that
+            more or deeper checks will be performed.
+        :return: None, or if keys was supplied a generator as per
+            get_record_stream.
+        """
         raise NotImplementedError(self.check)
 
     @staticmethod
@@ -1092,10 +1101,15 @@ class ThunkedVersionedFiles(VersionedFiles):
             result.append((prefix + (origin,), line))
         return result
 
-    def check(self, progress_bar=None):
+    def check(self, progress_bar=None, keys=None):
         """See VersionedFiles.check()."""
+        # XXX: This is over-enthusiastic but as we only thunk for Weaves today
+        # this is tolerable. Ideally we'd pass keys down to check() and 
+        # have the older VersiondFile interface updated too.
         for prefix, vf in self._iter_all_components():
             vf.check()
+        if keys is not None:
+            return self.get_record_stream(keys, 'unordered', True)
 
     def get_parent_map(self, keys):
         """Get a map of the parents of keys.

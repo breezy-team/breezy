@@ -30,6 +30,7 @@ from bzrlib import (
     knit as _mod_knit,
     osutils,
     progress,
+    ui,
     )
 from bzrlib.errors import (
                            RevisionNotPresent,
@@ -1510,6 +1511,28 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         self.assertRaises(RevisionNotPresent,
             files.annotate, prefix + ('missing-key',))
 
+    def test_check_no_parameters(self):
+        files = self.get_versionedfiles()
+
+    def test_check_progressbar_parameter(self):
+        """A progress bar can be supplied because check can be a generator."""
+        pb = ui.ui_factory.nested_progress_bar()
+        self.addCleanup(pb.finished)
+        files = self.get_versionedfiles()
+        files.check(progress_bar=pb)
+
+    def test_check_with_keys_becomes_generator(self):
+        files = self.get_versionedfiles()
+        self.get_diamond_files(files)
+        keys = files.keys()
+        entries = files.check(keys=keys)
+        seen = set()
+        # Texts output should be fulltexts.
+        self.capture_stream(files, entries, seen.add,
+            files.get_parent_map(keys), require_fulltext=True)
+        # All texts should be output.
+        self.assertEqual(set(keys), seen)
+
     def test_construct(self):
         """Each parameterised test can be constructed on a transport."""
         files = self.get_versionedfiles()
@@ -1669,7 +1692,8 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
              'knit-delta-closure', 'knit-delta-closure-ref',
              'groupcompress-block', 'groupcompress-block-ref'])
 
-    def capture_stream(self, f, entries, on_seen, parents):
+    def capture_stream(self, f, entries, on_seen, parents,
+        require_fulltext=False):
         """Capture a stream for testing."""
         for factory in entries:
             on_seen(factory.key)
@@ -1680,6 +1704,8 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             self.assertEqual(parents[factory.key], factory.parents)
             self.assertIsInstance(factory.get_bytes_as(factory.storage_kind),
                 str)
+            if require_fulltext:
+                factory.get_bytes_as('fulltext')
 
     def test_get_record_stream_interface(self):
         """each item in a stream has to provide a regular interface."""
@@ -2547,8 +2573,8 @@ class VirtualVersionedFilesTests(TestCase):
         self.assertRaises(NotImplementedError,
                 self.texts.add_mpdiffs, [])
 
-    def test_check(self):
-        self.assertTrue(self.texts.check())
+    def test_check_noerrors(self):
+        self.texts.check()
 
     def test_insert_record_stream(self):
         self.assertRaises(NotImplementedError, self.texts.insert_record_stream,

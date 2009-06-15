@@ -1005,8 +1005,15 @@ class KnitVersionedFiles(VersionedFiles):
         """See VersionedFiles.annotate."""
         return self._factory.annotate(self, key)
 
-    def check(self, progress_bar=None):
+    def check(self, progress_bar=None, keys=None):
         """See VersionedFiles.check()."""
+        if keys is None:
+            return self._logical_check()
+        else:
+            # At the moment, check does not extra work over get_record_stream
+            return self.get_record_stream(keys, 'unordered', True)
+
+    def _logical_check(self):
         # This doesn't actually test extraction of everything, but that will
         # impact 'bzr check' substantially, and needs to be integrated with
         # care. However, it does check for the obvious problem of a delta with
