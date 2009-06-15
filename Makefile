@@ -93,7 +93,11 @@ txt_files := $(wildcard doc/en/tutorials/*.txt) \
 	$(wildcard doc/es/guia-usario/*.txt) \
 	doc/es/mini-tutorial/index.txt \
 	doc/index.txt \
-	doc/index.es.txt
+	doc/index.es.txt \
+	doc/index.ru.txt \
+	doc/ru/user-guide/index.txt \
+	doc/ru/mini-tutorial/index.txt \
+	$(wildcard doc/ru/tutorials/*.txt)
 non_txt_files := \
        doc/default.css \
        doc/en/quick-reference/quick-start-summary.svg \
@@ -103,7 +107,11 @@ non_txt_files := \
        doc/es/referencia-rapida/referencia-rapida.svg \
        doc/es/referencia-rapida/referencia-rapida.png \
        doc/es/referencia-rapida/referencia-rapida.pdf \
-       $(wildcard doc/es/guia-usuario/images/*.png)
+       $(wildcard doc/es/guia-usuario/images/*.png) \
+       doc/ru/quick-reference/quick-start-summary.svg \
+       doc/ru/quick-reference/quick-start-summary.png \
+       doc/ru/quick-reference/quick-start-summary.pdf \
+       $(wildcard doc/ru/user-guide/images/*.png)
 htm_files := $(patsubst %.txt, %.html, $(txt_files)) 
 
 # doc/developers/*.txt files that should *not* be individually
@@ -120,7 +128,6 @@ dev_txt_nohtml := \
 	doc/developers/initial-push-pull.txt \
 	doc/developers/merge-scaling.txt \
 	doc/developers/missing.txt \
-	doc/developers/performance-contributing.txt \
 	doc/developers/performance-roadmap-rationale.txt \
 	doc/developers/performance-use-case-analysis.txt \
 	doc/developers/planned-change-integration.txt \
@@ -133,12 +140,13 @@ dev_txt_all := $(wildcard $(addsuffix /*.txt, doc/developers))
 dev_txt_files := $(filter-out $(dev_txt_nohtml), $(dev_txt_all))
 dev_htm_files := $(patsubst %.txt, %.html, $(dev_txt_files)) 
 
-doc/en/user-guide/index.html: $(wildcard $(addsuffix /*.txt, doc/en/user-guide)) 
-	$(rst2html) --stylesheet=../../default.css doc/en/user-guide/index.txt $@
+doc/%/user-guide/index.html: $(wildcard $(addsuffix /*.txt, doc/%/user-guide)) 
+	$(rst2html) --stylesheet=../../default.css $(dir $@)index.txt $@
 
 # Set the paper size for PDF files.
 # Options:  'a4' (ISO A4 size), 'letter' (US Letter size)
 PAPERSIZE = a4
+# TODO: Add generation for Russian PDF
 PDF_DOCS := doc/en/user-guide/user-guide.$(PAPERSIZE).pdf
 
 # Copy and modify the RST sources, and convert SVG images to PDF
@@ -160,6 +168,9 @@ doc/developers/%.html: doc/developers/%.txt
 	$(rst2html) --stylesheet=../default.css $< $@
 
 doc/index.html: doc/index.txt
+	$(rst2html) --stylesheet=default.css $< $@
+
+doc/index.%.html: doc/index.%.txt
 	$(rst2html) --stylesheet=default.css $< $@
 
 %.html: %.txt
@@ -189,11 +200,13 @@ man1/bzr.1: $(MAN_DEPENDENCIES)
 	$(PYTHON) generate_docs.py -o $@ man
 
 # build a png of our performance task list
+# 
+# this is no longer built by default; you can build it if you want to look at it
 doc/developers/performance.png: doc/developers/performance.dot
 	@echo Generating $@
 	@dot -Tpng $< -o$@ || echo "Dot not installed; skipping generation of $@"
 
-derived_web_docs = $(htm_files) $(dev_htm_files) doc/developers/performance.png
+derived_web_docs = $(htm_files) $(dev_htm_files) 
 WEB_DOCS = $(derived_web_docs) $(non_txt_files)
 ALL_DOCS = $(derived_web_docs) $(MAN_PAGES)
 
@@ -212,8 +225,8 @@ pdf-docs: $(PDF_DOCS)
 clean-docs:
 	$(PYTHON) tools/win32/ostools.py remove $(ALL_DOCS) \
 	    $(HTMLDIR) $(derived_txt_files)
-	rm -f doc/en/user-guide/*.pdf
-	rm -rf doc/en/user-guide/latex_prepared
+	rm -f doc/*/user-guide/*.pdf
+	rm -rf doc/*/user-guide/latex_prepared
 
 
 ### Windows Support ###
@@ -221,6 +234,7 @@ clean-docs:
 # make bzr.exe for win32 with py2exe
 exe:
 	@echo *** Make bzr.exe
+	$(PYTHON) tools/win32/ostools.py remove bzrlib/*.pyd
 	$(PYTHON) setup.py build_ext -i -f $(PYTHON_BUILDFLAGS)
 	$(PYTHON) setup.py py2exe > py2exe.log
 	$(PYTHON) tools/win32/ostools.py copytodir tools/win32/start_bzr.bat win32_bzr.exe

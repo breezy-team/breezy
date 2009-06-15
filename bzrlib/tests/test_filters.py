@@ -148,7 +148,7 @@ class TestFilterStackMaps(TestCase):
             self.assertEqual(a_stack, _get_filter_stack_for(prefs))
             prefs = (('foo','v2'),)
             self.assertEqual(z_stack, _get_filter_stack_for(prefs))
-            prefs = (('foo','v1'),('bar','v1'))
+            prefs = (('foo','v1'), ('bar','v1'))
             self.assertEqual(a_stack + d_stack, _get_filter_stack_for(prefs))
             # Test an unknown preference
             prefs = (('baz','v1'),)
@@ -156,6 +156,9 @@ class TestFilterStackMaps(TestCase):
             # Test an unknown value
             prefs = (('foo','v3'),)
             self.assertEqual([], _get_filter_stack_for(prefs))
+            # Test a value of None is skipped
+            prefs = (('foo',None), ('bar', 'v1'))
+            self.assertEqual(d_stack, _get_filter_stack_for(prefs))
         finally:
             # Restore the real registry
             filters._reset_registry(original_registry)

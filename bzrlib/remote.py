@@ -20,6 +20,7 @@
 import bz2
 
 from bzrlib import (
+    bencode,
     branch,
     bzrdir,
     config,
@@ -45,7 +46,6 @@ from bzrlib.lockable_files import LockableFiles
 from bzrlib.smart import client, vfs, repository as smart_repo
 from bzrlib.revision import ensure_null, NULL_REVISION
 from bzrlib.trace import mutter, note, warning
-from bzrlib.util import bencode
 
 
 class _RpcHelper(object):
@@ -1576,7 +1576,7 @@ class RemoteRepository(_RpcHelper):
             providers.insert(0, other)
         providers.extend(r._make_parents_provider() for r in
                          self._fallback_repositories)
-        return graph._StackedParentsProvider(providers)
+        return graph.StackedParentsProvider(providers)
 
     def _serialise_search_recipe(self, recipe):
         """Serialise a graph search recipe.
@@ -1970,6 +1970,7 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         hooks = branch.Branch.hooks['open']
         for hook in hooks:
             hook(self)
+        self._is_stacked = False
         if setup_stacking:
             self._setup_stacking()
 
@@ -1981,6 +1982,7 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         except (errors.NotStacked, errors.UnstackableBranchFormat,
             errors.UnstackableRepositoryFormat), e:
             return
+        self._is_stacked = True
         self._activate_fallback_location(fallback_url)
 
     def _get_config(self):
@@ -2088,6 +2090,13 @@ class RemoteBranch(branch.Branch, _RpcHelper):
             raise errors.UnexpectedSmartServerResponse(response)
         return response[1]
 
+    def set_stacked_on_url(self, url):
+        branch.Branch.set_stacked_on_url(self, url)
+        if not url:
+            self._is_stacked = False
+        else:
+            self._is_stacked = True
+        
     def _vfs_get_tags_bytes(self):
         self._ensure_real()
         return self._real_branch._get_tags_bytes()
@@ -2230,6 +2239,9 @@ class RemoteBranch(branch.Branch, _RpcHelper):
 
     def _gen_revision_history(self):
         """See Branch._gen_revision_history()."""
+        if self._is_stacked:
+            self._ensure_real()
+            return self._real_branch._gen_revision_history()
         response_tuple, response_handler = self._call_expecting_body(
             'Branch.revision_history', self._remote_path())
         if response_tuple[0] != 'ok':

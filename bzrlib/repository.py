@@ -2245,13 +2245,11 @@ class Repository(object):
         while True:
             if next_id in (None, _mod_revision.NULL_REVISION):
                 return
+            try:
+                parents = graph.get_parent_map([next_id])[next_id]
+            except KeyError:
+                raise errors.RevisionNotPresent(next_id, self)
             yield next_id
-            # Note: The following line may raise KeyError in the event of
-            # truncated history. We decided not to have a try:except:raise
-            # RevisionNotPresent here until we see a use for it, because of the
-            # cost in an inner loop that is by its very nature O(history).
-            # Robert Collins 20080326
-            parents = graph.get_parent_map([next_id])[next_id]
             if len(parents) == 0:
                 return
             else:
@@ -2386,7 +2384,7 @@ class Repository(object):
         return self.control_files.get_transaction()
 
     def get_parent_map(self, revision_ids):
-        """See graph._StackedParentsProvider.get_parent_map"""
+        """See graph.StackedParentsProvider.get_parent_map"""
         # revisions index works in keys; this just works in revisions
         # therefore wrap and unwrap
         query_keys = []
@@ -2415,7 +2413,7 @@ class Repository(object):
         parents_provider = self._make_parents_provider()
         if (other_repository is not None and
             not self.has_same_location(other_repository)):
-            parents_provider = graph._StackedParentsProvider(
+            parents_provider = graph.StackedParentsProvider(
                 [parents_provider, other_repository._make_parents_provider()])
         return graph.Graph(parents_provider)
 
@@ -3060,6 +3058,18 @@ format_registry.register_lazy(
         ' (needs bzr.dev from 1.14)\n',
     'bzrlib.repofmt.groupcompress_repo',
     'RepositoryFormatCHK1',
+    )
+
+format_registry.register_lazy(
+    'Bazaar development format - chk repository with bencode revision '
+        'serialization (needs bzr.dev from 1.16)\n',
+    'bzrlib.repofmt.groupcompress_repo',
+    'RepositoryFormatCHK2',
+    )
+format_registry.register_lazy(
+    'Bazaar repository format 2a (needs bzr 1.16 or later)\n',
+    'bzrlib.repofmt.groupcompress_repo',
+    'RepositoryFormat2a',
     )
 
 
@@ -4265,8 +4275,12 @@ class StreamSource(object):
                 continue
             # Ask for full texts always so that we don't need more round trips
             # after this stream.
-            stream = vf.get_record_stream(keys,
-                self.to_format._fetch_order, True)
+            # Some of the missing keys are genuinely ghosts, so filter absent
+            # records. The Sink is responsible for doing another check to
+            # ensure that ghosts don't introduce missing data for future
+            # fetches.
+            stream = versionedfile.filter_absent(vf.get_record_stream(keys,
+                self.to_format._fetch_order, True))
             yield substream_kind, stream
 
     def inventory_fetch_order(self):

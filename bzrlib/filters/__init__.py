@@ -247,6 +247,8 @@ def _get_filter_stack_for(preferences):
         return stack
     stack = []
     for k, v in preferences:
+        if v is None:
+            continue
         try:
             stack_map_lookup = _filter_stacks_registry.get(k)
         except KeyError:

@@ -29,6 +29,7 @@ from cStringIO import StringIO
 import tarfile
 
 from bzrlib import (
+    bencode,
     bzrdir,
     errors,
     pack,
@@ -51,7 +52,6 @@ from bzrlib.tests import (
     split_suite_by_re,
     )
 from bzrlib.transport import chroot, get_transport
-from bzrlib.util import bencode
 
 
 def load_tests(standard_tests, module, loader):
@@ -351,7 +351,7 @@ class TestSmartServerRequestInitializeBzrDir(tests.TestCaseWithMemoryTransport):
 
 
 class TestSmartServerRequestBzrDirInitializeEx(tests.TestCaseWithMemoryTransport):
-    """Basic tests for BzrDir.initialize_ex in the smart server.
+    """Basic tests for BzrDir.initialize_ex_1.16 in the smart server.
 
     The main unit tests in test_bzrdir exercise the API comprehensively.
     """
@@ -381,7 +381,7 @@ class TestSmartServerRequestBzrDirInitializeEx(tests.TestCaseWithMemoryTransport
             'subdir/dir', 'False', 'False', 'False', '', '', '', '', 'False')
 
     def test_initialized_dir(self):
-        """Initializing an extant dirctory should fail like the bzrdir api."""
+        """Initializing an extant directory should fail like the bzrdir api."""
         backing = self.get_transport()
         name = self.make_bzrdir('reference')._format.network_name()
         request = smart.bzrdir.SmartServerRequestBzrDirInitializeEx(backing)
@@ -1560,7 +1560,7 @@ class TestHandlers(tests.TestCase):
             smart.bzrdir.SmartServerRequestFindRepositoryV2)
         self.assertHandlerEqual('BzrDirFormat.initialize',
             smart.bzrdir.SmartServerRequestInitializeBzrDir)
-        self.assertHandlerEqual('BzrDirFormat.initialize_ex',
+        self.assertHandlerEqual('BzrDirFormat.initialize_ex_1.16',
             smart.bzrdir.SmartServerRequestBzrDirInitializeEx)
         self.assertHandlerEqual('BzrDir.cloning_metadir',
             smart.bzrdir.SmartServerBzrDirRequestCloningMetaDir)

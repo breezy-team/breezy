@@ -48,8 +48,8 @@ from bzrlib.transport import (
     get_transport,
     )
 from bzrlib.transport.memory import MemoryServer
-from bzrlib.util import bencode
 from bzrlib import (
+    bencode,
     bzrdir,
     errors,
     inventory,

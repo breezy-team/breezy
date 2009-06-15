@@ -1078,7 +1078,7 @@ class cmd_push(Command):
 
 
 class cmd_branch(Command):
-    """Create a new copy of a branch.
+    """Create a new branch that is a copy of an existing branch.
 
     If the TO_LOCATION is omitted, the last component of the FROM_LOCATION will
     be used.  In other words, "branch ../foo/bar" will attempt to create ./bar.
@@ -1112,6 +1112,9 @@ class cmd_branch(Command):
 
         accelerator_tree, br_from = bzrdir.BzrDir.open_tree_or_branch(
             from_location)
+        if (accelerator_tree is not None and
+            accelerator_tree.supports_content_filtering()):
+            accelerator_tree = None
         revision = _get_one_revision('branch', revision)
         br_from.lock_read()
         try:
@@ -2409,6 +2412,7 @@ class cmd_ls(Command):
                             continue
                     kindch = entry.kind_character()
                     outstring = fp + kindch
+                    ui.ui_factory.clear_term()
                     if verbose:
                         outstring = '%-8s %s' % (fc, outstring)
                         if show_ids and fid is not None:
