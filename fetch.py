@@ -66,6 +66,7 @@ from bzrlib.plugins.git.mapping import (
     DEFAULT_FILE_MODE,
     inventory_to_tree_and_blobs,
     mode_is_executable,
+    squash_revision,
     text_to_blob,
     warn_unusual_mode,
     )
@@ -288,6 +289,7 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
             rev = mapping.import_commit(o)
             if repo.has_revision(rev.revision_id):
                 continue
+            squash_revision(repo, rev)
             root_trees[rev.revision_id] = o.tree
             revisions[rev.revision_id] = rev
             graph.append((rev.revision_id, rev.parent_ids))
@@ -340,7 +342,8 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
             for sha1, newobj, path in objs:
                 assert path is not None
                 oldobj = tree_lookup_path(lookup_object, root_trees[revid], path)
-                assert oldobj == newobj, "%r != %r in %s" % (oldobj, newobj, path)
+                if oldobj != newobj:
+                    raise AssertionError("%r != %r in %s" % (oldobj, newobj, path))
 
     target_git_object_retriever._idmap.commit()
 
