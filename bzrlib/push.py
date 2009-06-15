@@ -128,7 +128,8 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
                 remember)
         except errors.DivergedBranches:
             raise errors.BzrCommandError('These branches have diverged.'
-                                    '  Try using "merge" and then "push".')
+                                    '  See "bzr help diverged-branches"'
+                                    ' for more information.')
         except errors.NoRepositoryPresent:
             # we have a bzrdir but no branch or repository
             # XXX: Figure out what to do other than complain.
