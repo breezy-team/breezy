@@ -50,6 +50,8 @@ class BEncodeRevisionSerializer1(object):
     """Simple revision serializer based around bencode.
     """
 
+    squashes_xml_invalid_characters = False
+
     # Maps {key:(Revision attribute, bencode_type, validator)}
     # This tells us what kind we expect bdecode to create, what variable on
     # Revision we should be using, and a function to call to validate/transform
