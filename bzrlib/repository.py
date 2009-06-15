@@ -2251,7 +2251,8 @@ class Repository(object):
                 % (revno, known_revno))
         # XXX: handle distance_from_known < 0, etc
         try:
-            _iter_for_revno(self, partial_history, stop_index=revno)
+            _iter_for_revno(
+                self, partial_history, stop_index=distance_from_known)
         except errors.RevisionNotPresent, err:
             if err.revision_id == known_revid:
                 # The start revision (known_revid) wasn't found.

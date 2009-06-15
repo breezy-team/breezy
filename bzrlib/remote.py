@@ -673,17 +673,22 @@ class RemoteRepository(_RpcHelper):
         return self._real_repository.get_missing_parent_inventories(
             check_for_missing_texts=check_for_missing_texts)
 
+    def _get_rev_id_for_revno_vfs(self, revno, known_pair):
+        self._ensure_real()
+        return self._real_repository.get_rev_id_for_revno(
+            revno, known_pair)
+
     def get_rev_id_for_revno(self, revno, known_pair):
         """See Repository.get_rev_id_for_revno."""
         path = self.bzrdir._path_for_remote_call(self._client)
         try:
+            if self._client._medium._is_remote_before((1, 16)):
+                return self._get_rev_id_for_revno_vfs(revno, known_pair)
             response = self._call(
                 'Repository.get_rev_id_for_revno', path, revno, known_pair)
         except errors.UnknownSmartMethod:
-            self._client.medium._remember_remote_is_before((1, 16))
-            self._ensure_real()
-            return self._real_repository.get_rev_id_for_revno(
-                revno, known_pair)
+            self._client._medium._remember_remote_is_before((1, 16))
+            return self._get_rev_id_for_revno_vfs(revno, known_pair)
         if response[0] == 'ok':
             return True, response[1]
         elif response[0] == 'history-incomplete':
