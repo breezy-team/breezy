@@ -701,6 +701,10 @@ class CHKInventoryRepository(KnitPackRepository):
         finally:
             basis_tree.unlock()
 
+    def deserialise_inventory(self, revision_id, bytes):
+        return inventory.CHKInventory.deserialise(self.chk_bytes, bytes,
+            (revision_id,))
+
     def _iter_inventories(self, revision_ids):
         """Iterate over many inventory objects."""
         keys = [(revision_id,) for revision_id in revision_ids]
