@@ -2256,13 +2256,11 @@ class RemoteBranch(branch.Branch, _RpcHelper):
 
     def get_rev_id(self, revno, history=None):
         last_revision_info = self.last_revision_info()
-        result = last_revision_info
-        for repo in [self.repository] + self.repository._fallback_repositories:
-            ok, result = repo.get_rev_id_for_revno(revno, result)
-            if ok:
-                return result
-        closest = result[1]
-        missing_parent = self.repository.get_parent_map([closest])[closest][0]
+        ok, result = self.repository.get_rev_id_for_revno(
+            revno, last_revision_info)
+        if ok:
+            return result
+        missing_parent = result[1]
         raise errors.RevisionNotPresent(missing_parent, self.repository)
 
     def _last_revision_info(self):
