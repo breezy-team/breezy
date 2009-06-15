@@ -121,7 +121,7 @@ class CHKMap(object):
 
     def _ensure_root(self):
         """Ensure that the root node is an object not a key."""
-        if type(self._root_node) == tuple:
+        if type(self._root_node) is tuple:
             # Demand-load the root
             self._root_node = self._get_node(self._root_node)
 
@@ -135,7 +135,7 @@ class CHKMap(object):
         :param node: A tuple key or node object.
         :return: A node object.
         """
-        if type(node) == tuple:
+        if type(node) is tuple:
             bytes = self._read_bytes(node)
             return _deserialise(bytes, node,
                 search_key_func=self._search_key_func)
@@ -465,7 +465,7 @@ class CHKMap(object):
 
     def _node_key(self, node):
         """Get the key for a node whether it's a tuple or node."""
-        if type(node) == tuple:
+        if type(node) is tuple:
             return node
         else:
             return node._key
@@ -491,7 +491,7 @@ class CHKMap(object):
 
         :return: The key of the root node.
         """
-        if type(self._root_node) == tuple:
+        if type(self._root_node) is tuple:
             # Already saved.
             return self._root_node
         keys = list(self._root_node.serialise(self._store))
@@ -961,7 +961,7 @@ class InternalNode(Node):
             # for whatever we are missing
             shortcut = True
             for prefix, node in self._items.iteritems():
-                if type(node) is tuple:
+                if node.__class__ is tuple:
                     keys[node] = (prefix, None)
                 else:
                     yield node, None
@@ -1029,7 +1029,7 @@ class InternalNode(Node):
                         # We can ignore this one
                         continue
                     node_key_filter = prefix_to_keys[search_prefix]
-                    if type(node) == tuple:
+                    if node.__class__ is tuple:
                         keys[node] = (search_prefix, node_key_filter)
                     else:
                         yield node, node_key_filter
@@ -1044,7 +1044,7 @@ class InternalNode(Node):
                         if sub_prefix in length_filter:
                             node_key_filter.extend(prefix_to_keys[sub_prefix])
                     if node_key_filter: # this key matched something, yield it
-                        if type(node) == tuple:
+                        if node.__class__ is tuple:
                             keys[node] = (prefix, node_key_filter)
                         else:
                             yield node, node_key_filter
@@ -1182,7 +1182,7 @@ class InternalNode(Node):
         :return: An iterable of the keys inserted by this operation.
         """
         for node in self._items.itervalues():
-            if type(node) == tuple:
+            if type(node) is tuple:
                 # Never deserialised.
                 continue
             if node._key is not None:
@@ -1199,7 +1199,7 @@ class InternalNode(Node):
         lines.append('%s\n' % (self._search_prefix,))
         prefix_len = len(self._search_prefix)
         for prefix, node in sorted(self._items.items()):
-            if type(node) == tuple:
+            if type(node) is tuple:
                 key = node[0]
             else:
                 key = node._key[0]
@@ -1244,7 +1244,7 @@ class InternalNode(Node):
             raise AssertionError("unserialised nodes have no refs.")
         refs = []
         for value in self._items.itervalues():
-            if type(value) == tuple:
+            if type(value) is tuple:
                 refs.append(value)
             else:
                 refs.append(value.key())
