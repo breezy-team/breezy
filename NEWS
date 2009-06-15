@@ -9,6 +9,15 @@ Bazaar Release Notes
 In Development
 ##############
 
+Internals
+*********
+
+* Command lookup has had hooks added. ``bzrlib.Command.hooks`` has
+  three new hook points: ``get_command``, ``get_missing_command`` and
+  ``list_commands``, which allow just-in-time command name provision
+  rather than requiring all command names be known a-priori.
+  (Robert Collins)
+
 
 bzr 1.16rc1 "It's yesterday in California" 2009-06-11
 #####################################################
