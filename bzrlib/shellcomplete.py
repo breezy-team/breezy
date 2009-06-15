@@ -60,12 +60,14 @@ def shellcomplete_commands(outfile = None):
     import commands
     from inspect import getdoc
 
+    commands.install_bzr_command_hooks()
+
     if outfile is None:
         outfile = sys.stdout
 
     cmds = []
     for cmdname in commands.all_command_names():
-        cmd = commands.get_cmd_object(cmdname)))
+        cmd = commands.get_cmd_object(cmdname)
         cmds.append((cmdname, cmd))
         for alias in cmd.aliases:
             cmds.append((alias, cmd))
