@@ -61,7 +61,6 @@ cdef class _KnownGraphNode:
     cdef object parents
     cdef object children
     cdef _KnownGraphNode linear_dominator_node
-    cdef public long dominator_distance
     cdef public object gdfo # Int
     # This could also be simplified
     cdef object ancestor_of
@@ -76,7 +75,6 @@ cdef class _KnownGraphNode:
         # oldest ancestor, such that no parents between here and there have >1
         # child or >1 parent.
         self.linear_dominator_node = None
-        self.dominator_distance = 0
         # Greatest distance from origin
         self.gdfo = -1
         # This will become a tuple of known heads that have this node as an
@@ -115,10 +113,10 @@ cdef class _KnownGraphNode:
         if self.children is not None:
             for node in self.children:
                 child_keys.append(node.key)
-        return '%s(%s  gdfo:%s par:%s child:%s dom:%s %s)' % (
+        return '%s(%s  gdfo:%s par:%s child:%s %s)' % (
             self.__class__.__name__, self.key, self.gdfo,
             parent_keys, child_keys,
-            self.linear_dominator, self.dominator_distance)
+            self.linear_dominator)
 
 
 cdef _KnownGraphNode _get_list_node(lst, Py_ssize_t pos):
@@ -215,7 +213,6 @@ cdef class KnownGraph:
             key = <object>temp_key
             parent_keys = <object>temp_parent_keys
             node = self._get_or_create_node(key)
-            assert node.parents is None
             # We know how many parents, so we could pre allocate an exact sized
             # tuple here
             num_parent_keys = len(parent_keys)
@@ -237,19 +234,16 @@ cdef class KnownGraph:
             # This node is either a ghost, a tail, or has multiple parents
             # It its own dominator
             node.linear_dominator_node = node
-            node.dominator_distance = 0
             return None
         parent_node = _get_parent(node.parents, 0)
         if PyList_GET_SIZE(parent_node.children) > 1:
             # The parent has multiple children, so *this* node is the
             # dominator
             node.linear_dominator_node = node
-            node.dominator_distance = 0
             return None
         # The parent is already filled in, so add and continue
         if parent_node.linear_dominator_node is not None:
             node.linear_dominator_node = parent_node.linear_dominator_node
-            node.dominator_distance = parent_node.dominator_distance + 1
             return None
         # We don't know this node, or its parent node, so start walking to
         # next
@@ -294,13 +288,11 @@ cdef class KnownGraph:
                 next_node = self._check_is_linear(node)
             # The stack now contains the linear chain, and 'node' should have
             # been labeled
-            assert node.linear_dominator_node is not None
             dominator = node.linear_dominator_node
             num_elements = len(stack)
             for i from num_elements > i >= 0:
                 next_node = _get_list_node(stack, i)
                 next_node.linear_dominator_node = dominator
-                next_node.dominator_distance = node.dominator_distance + 1
                 node = next_node
 
     cdef object _find_tails(self):
@@ -331,18 +323,15 @@ cdef class KnownGraph:
             node.gdfo = 1
             PyList_Append(todo, (1, node))
         # No need to heapify, because all tails have priority=1
-        max_gdfo = len(self._nodes) + 1
         while PyList_GET_SIZE(todo) > 0:
             node = _peek_node(todo)
             next_gdfo = node.gdfo + 1
-            assert next_gdfo <= max_gdfo
             replace_node = 1
             for pos from 0 <= pos < PyList_GET_SIZE(node.children):
                 child_node = _get_list_node(node.children, pos)
                 # We should never have numbered children before we numbered
                 # a parent
                 if child_node.gdfo != -1:
-                    assert child_node.gdfo >= next_gdfo
                     continue
                 # Only enque children when all of their parents have been
                 # resolved. With a single parent, we can just take 'this' value
@@ -561,7 +550,6 @@ cdef class KnownGraph:
         pos = 0
         while PyDict_Next(candidate_nodes, &pos, NULL, &temp_node):
             node = <_KnownGraphNode>temp_node
-            assert node.ancestor_of is None
             node.ancestor_of = (node.key,)
             PyList_Append(queue, (-node.gdfo, node))
             PyList_Append(self._to_cleanup, node)
