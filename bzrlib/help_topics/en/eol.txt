@@ -14,8 +14,9 @@ or later.
 
 EOL conversion needs to be enabled for selected file patterns using
 rules. See ``bzr help rules`` for general information on defining rules.
-Currently, rules are only supported in BZR_HOME/rules. (Branch
-specific rules will be supported in a future verison of Bazaar.)
+Currently, rules are only supported in $BZR_HOME/.bazaar/rules (or
+%BZR_HOME%/bazaar/2.0/rules on Windows). Branch specific rules will be
+supported in a future verison of Bazaar.
 
 To configure which files to filter, set ``eol`` to one of the values below.
 (If a value is not set, ``exact`` is the default.)
