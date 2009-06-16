@@ -1153,37 +1153,115 @@ class Repository(object):
     def _check_inventories(self, checker):
         """Check the inventories found from the revision scan.
         
-        This checks all data that is tree-shape and not file-content.
+        This is responsible for verifying the sha1 of inventories and
+        creating a pending_keys set that covers data referenced by inventories.
         """
-        revbar = ui.ui_factory.nested_progress_bar()
+        bar = ui.ui_factory.nested_progress_bar()
+        try:
+            self._do_check_inventories(checker, bar)
+        finally:
+            bar.finished()
+
+    def _do_check_inventories(self, checker, bar):
+        """Helper for _check_inventories."""
         revno = 0
+        keys = {'chk_bytes':set(), 'inventories':set(), 'texts':set()}
+        kinds = ['chk_bytes', 'texts']
         count = len(checker.pending_keys)
+        bar.update("inventories", 0, 2)
         current_keys = checker.pending_keys
         checker.pending_keys = {}
-        keys = set()
+        # Accumulate current checks.
         for key in current_keys:
-            if key[0] != 'inventories':
-                checker._report_items.append('unknown key type %r' % key)
-            keys.add(key[1:])
-        # XXX: below is to-go code that accesses texts one at a time.
-        try:
-            while revno < len(checker.planned_revisions):
-                rev_id = checker.planned_revisions[revno]
-                revbar.update('checking revision', revno,
-                    len(checker.planned_revisions))
-                revno += 1
-                try:
-                    tree = self.revision_tree(rev_id)
-                except errors.NoSuchRevision:
-                    self._report_items.append(
-                        "Missing inventory for revision {%s}" % rev_id)
-                inv = tree.inventory
+            if key[0] != 'inventories' and key[0] not in kinds:
+                checker._report_items.append('unknown key type %r' % (key,))
+            keys[key[0]].add(key[1:])
+        if keys['inventories']:
+            # NB: output order *should* be roughly sorted - topo or
+            # inverse topo depending on repository - either way decent
+            # to just delta against. However, pre-CHK formats didn't
+            # try to optimise inventory layout on disk. As such the
+            # pre-CHK code path does not use inventory deltas.
+            last_object = None
+            for record in self.inventories.check(keys=keys['inventories']):
+                if record.storage_kind == 'absent':
+                    checker._report_items.append(
+                        'Missing inventory {%s}' % (record.key,))
+                else:
+                    last_object = self._check_record('inventories', record,
+                        checker, last_object,
+                        current_keys[('inventories',) + record.key])
+            del keys['inventories']
+        else:
+            return
+        bar.update("texts", 1)
+        while (checker.pending_keys or keys['chk_bytes']
+            or keys['texts']):
+            # Something to check.
+            current_keys = checker.pending_keys
+            checker.pending_keys = {}
+            # Accumulate current checks.
+            for key in current_keys:
+                if key[0] not in kinds:
+                    checker._report_items.append('unknown key type %r' % (key,))
+                keys[key[0]].add(key[1:])
+            # Check the outermost kind only - inventories || chk_bytes || texts
+            for kind in kinds:
+                if keys[kind]:
+                    last_object = None
+                    for record in getattr(self, kind).check(keys=keys[kind]):
+                        if record.storage_kind == 'absent':
+                            checker._report_items.append(
+                                'Missing inventory {%s}' % (record.key,))
+                        else:
+                            last_object = self._check_record(kind, record,
+                                checker, last_object, current_keys[(kind,) + record.key])
+                    keys[kind] = set()
+                    break
+
+    def _check_record(self, kind, record, checker, last_object, item_data):
+        """Check a single text from this repository."""
+        if kind == 'inventories':
+            rev_id = record.key[0]
+            inv = self.deserialise_inventory(rev_id,
+                record.get_bytes_as('fulltext'))
+            if last_object is not None:
+                delta = inv._make_delta(last_object)
+                for old_path, path, file_id, ie in delta:
+                    if ie is None:
+                        continue
+                    ie.check(checker, rev_id, inv)
+            else:
                 for path, ie in inv.iter_entries():
-                    checker._add_entry_to_text_key_references(inv, ie)
-                    file_id = ie.file_id
-                    ie.check(checker, rev_id, inv, tree)
-        finally:
-            revbar.finished()
+                    ie.check(checker, rev_id, inv)
+            if self._format.fast_deltas:
+                return inv
+        elif kind == 'chk_bytes':
+            # No code written to check chk_bytes for this repo format.
+            checker._report_items.append(
+                'unsupported key type chk_bytes for %s' % (record.key,))
+        elif kind == 'texts':
+            self._check_text(record, checker, item_data)
+        else:
+            checker._report_items.append(
+                'unknown key type %s for %s' % (kind, record.key))
+
+    def _check_text(self, record, checker, item_data):
+        """Check a single text."""
+        # Check it is extractable.
+        # TODO: check length.
+        if record.storage_kind == 'chunked':
+            chunks = record.get_bytes_as(record.storage_kind)
+            sha1 = osutils.sha_strings(chunks)
+            length = sum(map(len, chunks))
+        else:
+            content = record.get_bytes_as('fulltext')
+            sha1 = osutils.sha_string(content)
+            length = len(content)
+        if item_data and sha1 != item_data[1]:
+            checker._report_items.append(
+                'sha1 mismatch: %s has sha1 %s expected %s referenced by %s' %
+                (record.key, sha1, item_data[1], item_data[2]))
 
     @staticmethod
     def create(a_bzrdir):

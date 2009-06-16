@@ -71,8 +71,6 @@ class Check(object):
         self.missing_parent_links = {}
         self.missing_inventory_sha_cnt = 0
         self.missing_revision_cnt = 0
-        # maps (file-id, version) -> sha1; used by InventoryFile._check
-        self.checked_texts = {}
         self.checked_weaves = set()
         self.unreferenced_versions = set()
         self.inconsistent_parents = []
@@ -300,20 +298,18 @@ class Check(object):
             storebar.finished()
 
     def _check_weaves(self, storebar):
-        storebar.update('inventory', 0, 4)
-        # do not put in init, as it should be done with progess,
-        # and inside the lock.
-        inventory_weave = self.repository.inventories
-        inventory_weave.check(progress_bar=storebar)
-        storebar.update('text-deltas', 1)
-        self.repository.texts.check(progress_bar=storebar)
-        storebar.update('text-index', 2)
+        storebar.update('text-index', 0, 2)
         weave_checker = self.repository._get_versioned_file_checker(
-            text_key_references=self.text_key_references,
             ancestors=self.ancestors)
-        storebar.update('file-graph', 3)
-        result = weave_checker.check_file_version_parents(
-            self.repository.texts)
+        storebar.update('file-graph', 1)
+        if self.repository._format.fast_deltas:
+            # We haven't considered every fileid instance so far.
+            result = weave_checker.check_file_version_parents(
+                self.repository.texts)
+        else:
+            result = weave_checker.check_file_version_parents(
+                text_key_references=self.text_key_references,
+                self.repository.texts)
         self.checked_weaves = weave_checker.file_ids
         bad_parents, unused_versions = result
         bad_parents = bad_parents.items()
@@ -328,7 +324,7 @@ class Check(object):
         self.unreferenced_versions.update(unused_versions)
 
     def _add_entry_to_text_key_references(self, inv, entry):
-        if not self.rich_roots and entry == inv.root:
+        if not self.rich_roots and entry.name == '':
             return
         key = (entry.file_id, entry.revision)
         self.text_key_references.setdefault(key, False)
