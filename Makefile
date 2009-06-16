@@ -166,17 +166,10 @@ doc/index.html: doc/index.txt
 	$(rst2html) --stylesheet=../../default.css $< $@
 
 MAN_DEPENDENCIES = bzrlib/builtins.py \
-		 bzrlib/bundle/commands.py \
-		 bzrlib/conflicts.py \
-		 bzrlib/help_topics/__init__.py \
-		 bzrlib/bzrdir.py \
-		 bzrlib/sign_my_commits.py \
-		 bzrlib/bugtracker.py \
-		 tools/generate_docs.py \
-		 tools/doc_generate/__init__.py \
-		 tools/doc_generate/autodoc_man.py \
-		 tools/doc_generate/autodoc_rstx.py \
-		 $(wildcard $(addsuffix /*.txt, bzrlib/help_topics/en)) 
+	$(wildcard bzrlib/*.py) \
+	$(wildcard bzrlib/*/*.py) \
+	tools/generate_docs.py \
+	$(wildcard $(addsuffix /*.txt, bzrlib/help_topics/en)) 
 
 doc/en/user-reference/bzr_man.txt: $(MAN_DEPENDENCIES)
 	PYTHONPATH=.:$$PYTHONPATH $(PYTHON) tools/generate_docs.py -o $@ rstx
