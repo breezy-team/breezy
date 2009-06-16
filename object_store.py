@@ -164,7 +164,9 @@ class BazaarObjectStore(BaseObjectStore):
         :param fileid: fileid in the tree.
         :param revision: Revision of the tree.
         """
-        tree = directory_to_tree(inv[fileid], lambda ie: self._get_ie_sha1(ie, inv, unusual_modes))
+        tree = directory_to_tree(inv[fileid], 
+            lambda ie: self._get_ie_sha1(ie, inv, unusual_modes),
+            unusual_modes)
         self._check_expected_sha(expected_sha, tree)
         return tree
 

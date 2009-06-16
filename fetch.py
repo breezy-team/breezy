@@ -339,7 +339,10 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
         parent_invs_cache[rev.revision_id] = inv
         repo.add_revision(rev.revision_id, rev)
         if "verify" in debug.debug_flags:
-            objs = inventory_to_tree_and_blobs(inv, repo.texts, mapping)
+            new_unusual_modes = mapping.export_unusual_file_modes(rev)
+            if new_unusual_modes != unusual_modes:
+                raise AssertionError("unusual modes don't match: %r != %r" % (unusual_modes, new_unusual_modes))
+            objs = inventory_to_tree_and_blobs(inv, repo.texts, mapping, unusual_modes)
             for sha1, newobj, path in objs:
                 assert path is not None
                 oldobj = tree_lookup_path(lookup_object, root_trees[revid], path)

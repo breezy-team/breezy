@@ -74,8 +74,8 @@ def warn_escaped(commit, num_escaped):
 
 
 def warn_unusual_mode(commit, path, mode):
-    trace.warning("Unusual file mode %o for %s in %s. Will be unable to "
-                  "regenerate the SHA map.", mode, path, commit)
+    trace.mutter("Unusual file mode %o for %s in %s. Storing as revision property. ",
+                 mode, path, commit)
 
 
 def squash_revision(target_repo, rev):
@@ -136,11 +136,12 @@ class BzrGitMapping(foreign.VcsMapping):
 
     def import_unusual_file_modes(self, rev, unusual_file_modes):
         if unusual_file_modes:
-            rev.properties['file-modes'] = bencode.bencode(unusual_file_modes)
+            ret = [(name, unusual_file_modes[name]) for name in sorted(unusual_file_modes.keys())]
+            rev.properties['file-modes'] = bencode.bencode(ret)
 
     def export_unusual_file_modes(self, rev):
         try:
-            return bencode.bdecode(rev.properties['file-modes'])
+            return dict([(self.generate_file_id(path), mode) for (path, mode) in bencode.bdecode(rev.properties['file-modes'])])
         except KeyError:
             return {}
 
@@ -271,12 +272,16 @@ def entry_mode(entry):
         raise AssertionError
 
 
-def directory_to_tree(entry, lookup_ie_sha1):
+def directory_to_tree(entry, lookup_ie_sha1, unusual_modes):
     from dulwich.objects import Tree
     tree = Tree()
     for name in sorted(entry.children.keys()):
         ie = entry.children[name]
-        tree.add(entry_mode(ie), name.encode("utf-8"), lookup_ie_sha1(ie))
+        try:
+            mode = unusual_modes[ie.file_id]
+        except KeyError:
+            mode = entry_mode(ie)
+        tree.add(mode, name.encode("utf-8"), lookup_ie_sha1(ie))
     tree.serialize()
     return tree
 
@@ -290,7 +295,7 @@ def extract_unusual_modes(rev):
         return mapping.export_unusual_file_modes(rev)
 
 
-def inventory_to_tree_and_blobs(inventory, texts, mapping, cur=None):
+def inventory_to_tree_and_blobs(inventory, texts, mapping, unusual_modes, cur=None):
     """Convert a Bazaar tree to a Git tree.
 
     :return: Yields tuples with object sha1, object and path
@@ -310,7 +315,8 @@ def inventory_to_tree_and_blobs(inventory, texts, mapping, cur=None):
             tree.serialize()
             sha = tree.id
             yield sha, tree, cur.encode("utf-8")
-            t = (stat.S_IFDIR, urlutils.basename(cur).encode('UTF-8'), sha)
+            mode = unusual_modes.get(cur.encode("utf-8"), stat.S_IFDIR)
+            t = (mode, urlutils.basename(cur).encode('UTF-8'), sha)
             cur, tree = stack.pop()
             tree.add(*t)
 
@@ -328,13 +334,15 @@ def inventory_to_tree_and_blobs(inventory, texts, mapping, cur=None):
             sha = blob.id
             yield sha, blob, path.encode("utf-8")
             name = urlutils.basename(path).encode("utf-8")
-            tree.add(entry_mode(entry), name, sha)
+            mode = unusual_modes.get(path.encode("utf-8"), entry_mode(entry))
+            tree.add(mode, name, sha)
 
     while len(stack) > 1:
         tree.serialize()
         sha = tree.id
         yield sha, tree, cur.encode("utf-8")
-        t = (stat.S_IFDIR, urlutils.basename(cur).encode('UTF-8'), sha)
+        mode = unusual_modes.get(cur.encode('utf-8'), stat.S_IFDIR)
+        t = (mode, urlutils.basename(cur).encode('UTF-8'), sha)
         cur, tree = stack.pop()
         tree.add(*t)
 

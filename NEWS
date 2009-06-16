@@ -5,6 +5,14 @@
   * Fix handling of not-executable files becoming executable without any 
     other changes. (#382609)
 
+  * XML-invalid characters are now no longer squashed if not required by 
+    the target repository serializer format. The only non-XML based format 
+	at the moment is the "2a" development format supported since bzr 1.16.
+
+  * Unusual file modes that could be created in Git repositories using older
+    versions of Git are now stored in Bazaar revision properties. This means 
+	it's now possible to import the Git repository and the Linux kernel repository.
+
 0.3.2	2009-05-20
 
  FEATURES
