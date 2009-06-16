@@ -31,7 +31,6 @@ cdef extern from "Python.h":
     PyObject * PyTuple_GET_ITEM(object t, Py_ssize_t o)
     Py_ssize_t PyTuple_GET_SIZE(object t)
     PyObject * PyDict_GetItem(object d, object k)
-    PyObject * PyDict_GetItem(object d, object k)
     Py_ssize_t PyDict_Size(object d) except -1
     int PyDict_CheckExact(object d)
     int PyDict_Next(object d, Py_ssize_t *pos, PyObject **k, PyObject **v)
