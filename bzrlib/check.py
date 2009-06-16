@@ -98,9 +98,9 @@ class Check(object):
             if self.check_repo:
                 self.progress.update('checking revisions', 0)
                 self.check_revisions()
-                self.progress.update('checking inventories', 1)
+                self.progress.update('checking commit contents', 1)
                 self.repository._check_inventories(self)
-                self.progress.update('checking revision contents', 2)
+                self.progress.update('checking file graphs', 2)
                 # check_weaves is done after the revision scan so that
                 # revision index is known to be valid.
                 self.check_weaves()
