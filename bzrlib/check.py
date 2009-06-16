@@ -299,17 +299,17 @@ class Check(object):
 
     def _check_weaves(self, storebar):
         storebar.update('text-index', 0, 2)
-        weave_checker = self.repository._get_versioned_file_checker(
-            ancestors=self.ancestors)
-        storebar.update('file-graph', 1)
         if self.repository._format.fast_deltas:
             # We haven't considered every fileid instance so far.
-            result = weave_checker.check_file_version_parents(
-                self.repository.texts)
+            weave_checker = self.repository._get_versioned_file_checker(
+                ancestors=self.ancestors)
         else:
-            result = weave_checker.check_file_version_parents(
+            weave_checker = self.repository._get_versioned_file_checker(
                 text_key_references=self.text_key_references,
-                self.repository.texts)
+                ancestors=self.ancestors)
+        storebar.update('file-graph', 1)
+        result = weave_checker.check_file_version_parents(
+            self.repository.texts)
         self.checked_weaves = weave_checker.file_ids
         bad_parents, unused_versions = result
         bad_parents = bad_parents.items()
