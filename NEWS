@@ -17,6 +17,9 @@ Bug Fixes
   diverged-branches`` when a push fails because the branches have
   diverged.  (Neil Martinsen-Burrell, #269477)
 
+* Better message in ``bzr split`` error suggesting a rich root format.
+  (Neil Martinsen-Burrell, #220067)
+
 Internals
 *********
 
