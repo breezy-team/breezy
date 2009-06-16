@@ -2255,12 +2255,20 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         self._leave_lock = False
 
     def get_rev_id(self, revno, history=None):
+        if revno == 0:
+            return _mod_revision.NULL_REVISION
         last_revision_info = self.last_revision_info()
         ok, result = self.repository.get_rev_id_for_revno(
             revno, last_revision_info)
         if ok:
             return result
         missing_parent = result[1]
+        # Either the revision named by the server is missing, or its parent
+        # is.  Call get_parent_map to determine which, so that we report a
+        # useful error.
+        parent_map = self.repository.get_parent_map([missing_parent])
+        if missing_parent in parent_map:
+            missing_parent = parent_map[missing_parent]
         raise errors.RevisionNotPresent(missing_parent, self.repository)
 
     def _last_revision_info(self):

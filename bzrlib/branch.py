@@ -867,8 +867,8 @@ class Branch(object):
             raise errors.NoSuchRevision(self, revno)
         distance_from_last = last_revno - revno
         if len(self._partial_revision_history_cache) <= distance_from_last:
-            self._extend_partial_history(revno)
-        return self._partial_revision_history_cache[revno]
+            self._extend_partial_history(distance_from_last)
+        return self._partial_revision_history_cache[distance_from_last]
 
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
