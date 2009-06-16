@@ -329,6 +329,7 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
         if unusual_modes != {}:
             for path, mode in unusual_modes.iteritems():
                 warn_unusual_mode(rev.foreign_revid, path, mode)
+            mapping.import_unusual_file_modes(rev, unusual_modes)
         try:
             basis_id = rev.parent_ids[0]
         except IndexError:

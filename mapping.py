@@ -21,6 +21,7 @@
 import stat
 
 from bzrlib import (
+    bencode,
     errors,
     foreign,
     osutils,
@@ -78,6 +79,11 @@ def warn_unusual_mode(commit, path, mode):
 
 
 def squash_revision(target_repo, rev):
+    """Remove characters that can't be stored from a revision, if necessary.
+    
+    :param target_repo: Repository in which the revision will be stored
+    :param rev: Revision object, will be modified in-place
+    """
     if not getattr(target_repo._serializer, "squashes_xml_invalid_characters", True):
         return
     from bzrlib.xml_serializer import escape_invalid_chars
@@ -85,7 +91,8 @@ def squash_revision(target_repo, rev):
     if num_escaped:
         warn_escaped(rev.foreign_revid, num_escaped)
     if 'author' in rev.properties:
-        rev.properties['author'], num_escaped = escape_invalid_chars(rev.properties['author'])
+        rev.properties['author'], num_escaped = escape_invalid_chars(
+            rev.properties['author'])
         if num_escaped:
             warn_escaped(rev.foreign_revid, num_escaped)
     rev.committer, num_escaped = escape_invalid_chars(rev.committer)
@@ -127,6 +134,10 @@ class BzrGitMapping(foreign.VcsMapping):
             return ""
         return unescape_file_id(file_id)
 
+    def import_unusual_file_modes(self, rev, unusual_file_modes):
+        if unusual_file_modes:
+            rev.properties['file-modes'] = bencode.bencode(unusual_file_modes)
+
     def import_commit(self, commit):
         """Convert a git commit to a bzr revision.
 
@@ -164,6 +175,7 @@ class BzrGitMappingExperimental(BzrGitMappingv1):
 
 
 class GitMappingRegistry(VcsMappingRegistry):
+    """Registry with available git mappings."""
 
     def revision_id_bzr_to_foreign(self, bzr_revid):
         if not bzr_revid.startswith("git-"):
@@ -211,10 +223,14 @@ def symlink_to_blob(entry):
     blob._text = entry.symlink_target
     return blob
 
+
 def mode_is_executable(mode):
+    """Check if mode should be considered executable."""
     return bool(mode & 0111)
 
+
 def mode_kind(mode):
+    """Determine the Bazaar inventory kind based on Unix file mode."""
     entry_kind = (mode & 0700000) / 0100000
     if entry_kind == 0:
         return 'directory'
@@ -235,6 +251,7 @@ def mode_kind(mode):
 
 
 def entry_mode(entry):
+    """Determine the git file mode for an inventory entry."""
     if entry.kind == 'directory':
         return stat.S_IFDIR
     elif entry.kind == 'symlink':
