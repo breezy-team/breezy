@@ -933,8 +933,18 @@ def link_or_copy(src, dest):
 # - unlink raises different exceptions on different OSes (linux: EISDIR, win32:
 #   EACCES, OSX: EPERM) when invoked on a directory.
 def delete_any(path):
-    """Delete a file or directory."""
-    make_writable(path) # Takes care of files or dirs that are readonly on win32
+    """Delete a file or directory. Will delete even if readonly"""
+    try:
+       _delete_any(path) 
+    except (OSError, IOError), e:
+        if e.errno in (errno.EPERM, errno.EACCES):
+            try: # Seems it was readonly, try setting it writeable and try again
+                make_writable(path)
+            except (Error):
+                pass
+            _delete_any(path)
+
+def _delete_any(path):
     if isdir(path): # Takes care of symlinks
         os.rmdir(path)
     else:
