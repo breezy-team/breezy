@@ -49,6 +49,9 @@ Process
 * `EC2 resources <ec2.html>`_ |--| A team resource for 
   Windows packaging and testing, and Ubuntu testing.
 
+* `Tracking Bugs in Bazaar <bug-handling.html>`_ |--| How we use the bug 
+  tracker.
+
 Plans
 =====
 
