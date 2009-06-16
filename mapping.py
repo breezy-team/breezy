@@ -138,6 +138,12 @@ class BzrGitMapping(foreign.VcsMapping):
         if unusual_file_modes:
             rev.properties['file-modes'] = bencode.bencode(unusual_file_modes)
 
+    def export_unusual_file_modes(self, rev):
+        try:
+            return bencode.bdecode(rev.properties['file-modes'])
+        except KeyError:
+            return {}
+
     def import_commit(self, commit):
         """Convert a git commit to a bzr revision.
 
