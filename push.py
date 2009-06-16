@@ -29,6 +29,9 @@ from bzrlib.revision import (
 from bzrlib.plugins.git.errors import (
     NoPushSupport,
     )
+from bzrlib.plugins.git.mapping import (
+    extract_unusual_modes,
+    )
 from bzrlib.plugins.git.object_store import (
     BazaarObjectStore,
     )
@@ -89,11 +92,13 @@ class MissingObjectsIterator(object):
 
         """
         inv = self.source.get_inventory(revid)
+        rev = self.source.get_revision(revid)
+        unusual_modes = extract_unusual_modes(rev)
         todo = [inv.root]
         tree_sha = None
         while todo:
             ie = todo.pop()
-            (sha, object) = self._object_store._get_ie_object_or_sha1(ie, inv)
+            (sha, object) = self._object_store._get_ie_object_or_sha1(ie, inv, unusual_modes)
             if ie.parent_id is None:
                 tree_sha = sha
             if not self.need_sha(sha):
@@ -102,7 +107,7 @@ class MissingObjectsIterator(object):
             if ie.kind == "directory":
                 todo.extend(ie.children.values())
         assert tree_sha is not None
-        commit = self._object_store._get_commit(revid, tree_sha)
+        commit = self._object_store._get_commit(rev, tree_sha)
         self.queue(commit.id, commit, None)
         return commit.id
 

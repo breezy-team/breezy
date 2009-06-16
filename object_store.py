@@ -43,6 +43,7 @@ from bzrlib.plugins.git.errors import (
 from bzrlib.plugins.git.mapping import (
     default_mapping,
     directory_to_tree,
+    extract_unusual_modes,
     mapping_registry,
     revision_to_commit,
     )
@@ -98,8 +99,9 @@ class BazaarObjectStore(BaseObjectStore):
 
     def _update_sha_map_revision(self, revid):
         inv = self.repository.get_inventory(revid)
-        tree_sha = self._get_ie_sha1(inv.root, inv)
         rev = self.repository.get_revision(revid)
+        unusual_modes = extract_unusual_modes(rev)
+        tree_sha = self._get_ie_sha1(inv.root, inv, unusual_modes)
         commit_obj = revision_to_commit(rev, tree_sha,
                                         self._idmap.lookup_commit)
         try:
@@ -118,30 +120,30 @@ class BazaarObjectStore(BaseObjectStore):
         if expected_sha != object.id:
             raise AssertionError("Invalid sha for %r: %s" % (object, expected_sha))
 
-    def _get_ie_object(self, entry, inv):  
+    def _get_ie_object(self, entry, inv, unusual_modes):  
         if entry.kind == "directory":
-            return self._get_tree(entry.file_id, inv.revision_id, inv=inv)
+            return self._get_tree(entry.file_id, inv.revision_id, inv, unusual_modes)
         else:
             return self._get_blob(entry.file_id, entry.revision)
 
-    def _get_ie_object_or_sha1(self, entry, inv):
+    def _get_ie_object_or_sha1(self, entry, inv, unusual_modes):
         if entry.kind == "directory":
             try:
                 return self._idmap.lookup_tree(entry.file_id, inv.revision_id), None
             except KeyError:
-                ret = self._get_ie_object(entry, inv)
+                ret = self._get_ie_object(entry, inv, unusual_modes)
                 self._idmap.add_entry(ret.id, "tree", (entry.file_id, inv.revision_id))
                 return ret.id, ret
         else:
             try:
                 return self._idmap.lookup_blob(entry.file_id, entry.revision), None
             except KeyError:
-                ret = self._get_ie_object(entry, inv)
+                ret = self._get_ie_object(entry, inv, unusual_modes)
                 self._idmap.add_entry(ret.id, "blob", (entry.file_id, entry.revision))
                 return ret.id, ret
 
-    def _get_ie_sha1(self, entry, inv):
-        return self._get_ie_object_or_sha1(entry, inv)[0]
+    def _get_ie_sha1(self, entry, inv, unusual_modes):
+        return self._get_ie_object_or_sha1(entry, inv, unusual_modes)[0]
 
     def _get_blob(self, fileid, revision, expected_sha=None):
         """Return a Git Blob object from a fileid and revision stored in bzr.
@@ -156,20 +158,17 @@ class BazaarObjectStore(BaseObjectStore):
         self._check_expected_sha(expected_sha, blob)
         return blob
 
-    def _get_tree(self, fileid, revid, inv=None, expected_sha=None):
+    def _get_tree(self, fileid, revid, inv, unusual_modes, expected_sha=None):
         """Return a Git Tree object from a file id and a revision stored in bzr.
 
         :param fileid: fileid in the tree.
         :param revision: Revision of the tree.
         """
-        if inv is None:
-            inv = self.repository.get_inventory(revid)
-        tree = directory_to_tree(inv[fileid], lambda ie: self._get_ie_sha1(ie, inv))
+        tree = directory_to_tree(inv[fileid], lambda ie: self._get_ie_sha1(ie, inv, unusual_modes))
         self._check_expected_sha(expected_sha, tree)
         return tree
 
-    def _get_commit(self, revid, tree_sha, expected_sha=None):
-        rev = self.repository.get_revision(revid)
+    def _get_commit(self, rev, tree_sha, expected_sha=None):
         try:
             commit = revision_to_commit(rev, tree_sha, self._lookup_revision_sha1)
         except errors.NoSuchRevision, e:
@@ -226,16 +225,18 @@ class BazaarObjectStore(BaseObjectStore):
         # convert object to git object
         if type == "commit":
             try:
-                return self._get_commit(type_data[0], type_data[1], 
-                                        expected_sha=sha)
+                rev = self.repository.get_revision(type_data[0])
             except errors.NoSuchRevision:
                 trace.mutter('entry for %s %s in shamap: %r, but not found in repository', type, sha, type_data)
                 raise KeyError(sha)
+            return self._get_commit(rev, type_data[1], expected_sha=sha)
         elif type == "blob":
             return self._get_blob(type_data[0], type_data[1], expected_sha=sha)
         elif type == "tree":
+            inv = self.repository.get_inventory(type_data[1])
+            rev = self._get_unusual_modes(type_data[1])
             try:
-                return self._get_tree(type_data[0], type_data[1], 
+                return self._get_tree(type_data[0], type_data[1], inv, unusual_modes,
                                       expected_sha=sha)
             except errors.NoSuchRevision:
                 raise KeyError(sha)

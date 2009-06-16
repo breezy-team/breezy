@@ -281,6 +281,15 @@ def directory_to_tree(entry, lookup_ie_sha1):
     return tree
 
 
+def extract_unusual_modes(rev):
+    try:
+        foreign_revid, mapping = mapping_registry.parse_revision_id(rev.revision_id)
+    except errors.InvalidRevisionId:
+        return {}
+    else:
+        return mapping.export_unusual_file_modes(rev)
+
+
 def inventory_to_tree_and_blobs(inventory, texts, mapping, cur=None):
     """Convert a Bazaar tree to a Git tree.
 
