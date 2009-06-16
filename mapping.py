@@ -21,13 +21,16 @@
 import stat
 
 from bzrlib import (
-    bencode,
     errors,
     foreign,
     osutils,
     trace,
     urlutils,
     )
+try:
+    from bzrlib import bencode
+except ImportError:
+    from bzrlib.util import bencode
 from bzrlib.inventory import (
     ROOT_ID,
     )
