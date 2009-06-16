@@ -147,6 +147,28 @@ class KnownGraph(object):
                 node = next_node
 
     def _find_gdfo(self):
+        nodes = self._nodes
+        pending = []
+        known_parent_gdfos = dict.fromkeys(nodes.keys(), 0)
+
+        def update_childs(node):
+            for child_key in node.child_keys:
+                child = nodes[child_key]
+                known_parent_gdfos[child_key] += 1
+                if child.gdfo is None or node.gdfo + 1 > child.gdfo:
+                    child.gdfo = node.gdfo + 1
+                if known_parent_gdfos[child_key] == len(child.parent_keys):
+                    # We are the last parent updating that node, we can
+                    # continue from there
+                    update_childs(child)
+
+        for node in self._nodes.itervalues():
+            if not node.parent_keys:
+                node.gdfo = 1
+                known_parent_gdfos[node.key] = 0
+                update_childs(node)
+
+    def x_find_gdfo(self):
         def find_tails():
             return [node for node in self._nodes.itervalues()
                        if not node.parent_keys]
