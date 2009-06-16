@@ -26,6 +26,14 @@ Internals
   rather than requiring all command names be known a-priori.
   (Robert Collins)
 
+Improvements
+************
+
+* Resolving a revno to a revision id on a branch accessed via ``bzr://``
+  or ``bzr+ssh://`` is now much faster and involves no VFS operations.
+  This speeds up commands like ``bzr pull -r 123``.  (Andrew Bennetts)
+
+
 bzr 1.16rc1 "It's yesterday in California" 2009-06-11
 #####################################################
 :Codename: yesterday-in-california

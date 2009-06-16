@@ -26,6 +26,8 @@ class TestDottedRevnoToRevisionId(TestCaseWithBranch):
     def test_lookup_revision_id_by_dotted(self):
         tree = self.create_tree_with_merge()
         the_branch = tree.branch
+        the_branch.lock_read()
+        self.addCleanup(the_branch.unlock)
         self.assertEqual('null:', the_branch.dotted_revno_to_revision_id((0,)))
         self.assertEqual('rev-1', the_branch.dotted_revno_to_revision_id((1,)))
         self.assertEqual('rev-2', the_branch.dotted_revno_to_revision_id((2,)))

@@ -2234,6 +2234,41 @@ class Repository(object):
         """
         return self.get_revision(revision_id).inventory_sha1
 
+    def get_rev_id_for_revno(self, revno, known_pair):
+        """Return the revision id of a revno, given a later (revno, revid)
+        pair in the same history.
+
+        :return: if found (True, revid).  If the available history ran out
+            before reaching the revno, then this returns
+            (False, (closest_revno, closest_revid)).
+        """
+        known_revno, known_revid = known_pair
+        partial_history = [known_revid]
+        distance_from_known = known_revno - revno
+        if distance_from_known < 0:
+            raise ValueError(
+                'requested revno (%d) is later than given known revno (%d)'
+                % (revno, known_revno))
+        try:
+            _iter_for_revno(
+                self, partial_history, stop_index=distance_from_known)
+        except errors.RevisionNotPresent, err:
+            if err.revision_id == known_revid:
+                # The start revision (known_revid) wasn't found.
+                raise
+            # This is a stacked repository with no fallbacks, or a there's a
+            # left-hand ghost.  Either way, even though the revision named in
+            # the error isn't in this repo, we know it's the next step in this
+            # left-hand history.
+            partial_history.append(err.revision_id)
+        if len(partial_history) <= distance_from_known:
+            # Didn't find enough history to get a revid for the revno.
+            earliest_revno = known_revno - len(partial_history) + 1
+            return (False, (earliest_revno, partial_history[-1]))
+        if len(partial_history) - 1 > distance_from_known:
+            raise AssertionError('_iter_for_revno returned too much history')
+        return (True, partial_history[-1])
+
     def iter_reverse_revision_history(self, revision_id):
         """Iterate backwards through revision ids in the lefthand history
 
@@ -4416,4 +4451,36 @@ class StreamSource(object):
             parent_keys = parent_map.get(key, ())
             yield versionedfile.FulltextContentFactory(
                 key, parent_keys, None, as_bytes)
+
+
+def _iter_for_revno(repo, partial_history_cache, stop_index=None,
+                    stop_revision=None):
+    """Extend the partial history to include a given index
+
+    If a stop_index is supplied, stop when that index has been reached.
+    If a stop_revision is supplied, stop when that revision is
+    encountered.  Otherwise, stop when the beginning of history is
+    reached.
+
+    :param stop_index: The index which should be present.  When it is
+        present, history extension will stop.
+    :param stop_revision: The revision id which should be present.  When
+        it is encountered, history extension will stop.
+    """
+    start_revision = partial_history_cache[-1]
+    iterator = repo.iter_reverse_revision_history(start_revision)
+    try:
+        #skip the last revision in the list
+        iterator.next()
+        while True:
+            if (stop_index is not None and
+                len(partial_history_cache) > stop_index):
+                break
+            if partial_history_cache[-1] == stop_revision:
+                break
+            revision_id = iterator.next()
+            partial_history_cache.append(revision_id)
+    except StopIteration:
+        # No more history
+        return
 

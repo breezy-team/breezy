@@ -555,6 +555,9 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'Repository.unlock', 'bzrlib.smart.repository', 'SmartServerRepositoryUnlock')
 request_handlers.register_lazy(
+    'Repository.get_rev_id_for_revno', 'bzrlib.smart.repository',
+    'SmartServerRepositoryGetRevIdForRevno')
+request_handlers.register_lazy(
     'Repository.get_stream', 'bzrlib.smart.repository',
     'SmartServerRepositoryGetStream')
 request_handlers.register_lazy(
