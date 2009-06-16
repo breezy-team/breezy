@@ -1161,6 +1161,47 @@ class TestSmartServerRepositoryGetRevisionGraph(tests.TestCaseWithMemoryTranspor
             request.execute('', 'missingrevision'))
 
 
+class TestSmartServerRepositoryGetRevIdForRevno(tests.TestCaseWithMemoryTransport):
+
+    def test_revno_found(self):
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryGetRevIdForRevno(backing)
+        tree = self.make_branch_and_memory_tree('.')
+        tree.lock_write()
+        tree.add('')
+        rev1_id_utf8 = u'\xc8'.encode('utf-8')
+        rev2_id_utf8 = u'\xc9'.encode('utf-8')
+        tree.commit('1st commit', rev_id=rev1_id_utf8)
+        tree.commit('2nd commit', rev_id=rev2_id_utf8)
+        tree.unlock()
+
+        self.assertEqual(SmartServerResponse(('ok', rev1_id_utf8)),
+            request.execute('', 1, (2, rev2_id_utf8)))
+
+    def test_known_revid_missing(self):
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryGetRevIdForRevno(backing)
+        repo = self.make_repository('.')
+        self.assertEqual(
+            FailedSmartServerResponse(('nosuchrevision', 'ghost')),
+            request.execute('', 1, (2, 'ghost')))
+
+    def test_history_incomplete(self):
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryGetRevIdForRevno(backing)
+        parent = self.make_branch_and_memory_tree('parent', format='1.9')
+        r1 = parent.commit(message='first commit')
+        r2 = parent.commit(message='second commit')
+        local = self.make_branch_and_memory_tree('local', format='1.9')
+        local.branch.pull(parent.branch)
+        local.set_parent_ids([r2])
+        r3 = local.commit(message='local commit')
+        local.branch.create_clone_on_transport(
+            self.get_transport('stacked'), stacked_on=self.get_url('parent'))
+        self.assertEqual(
+            SmartServerResponse(('history-incomplete', 2, r2)),
+            request.execute('stacked', 1, (3, r3)))
+
 class TestSmartServerRepositoryGetStream(tests.TestCaseWithMemoryTransport):
 
     def make_two_commit_repo(self):
@@ -1576,6 +1617,8 @@ class TestHandlers(tests.TestCase):
             smart.repository.SmartServerRepositoryGatherStats)
         self.assertHandlerEqual('Repository.get_parent_map',
             smart.repository.SmartServerRepositoryGetParentMap)
+        self.assertHandlerEqual('Repository.get_rev_id_for_revno',
+            smart.repository.SmartServerRepositoryGetRevIdForRevno)
         self.assertHandlerEqual('Repository.get_revision_graph',
             smart.repository.SmartServerRepositoryGetRevisionGraph)
         self.assertHandlerEqual('Repository.get_stream',

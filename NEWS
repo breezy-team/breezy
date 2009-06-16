@@ -17,6 +17,9 @@ Bug Fixes
   diverged-branches`` when a push fails because the branches have
   diverged.  (Neil Martinsen-Burrell, #269477)
 
+* Better message in ``bzr split`` error suggesting a rich root format.
+  (Neil Martinsen-Burrell, #220067)
+
 Internals
 *********
 
@@ -32,6 +35,14 @@ Internals
   ``annotate`` so it is used there with good success (as much as 2x faster
   for files with long ancestry and 'cherrypicked' changes.)
   (John Arbash Meinel)
+
+
+Improvements
+************
+
+* Resolving a revno to a revision id on a branch accessed via ``bzr://``
+  or ``bzr+ssh://`` is now much faster and involves no VFS operations.
+  This speeds up commands like ``bzr pull -r 123``.  (Andrew Bennetts)
 
 
 bzr 1.16rc1 "It's yesterday in California" 2009-06-11
