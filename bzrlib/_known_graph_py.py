@@ -160,13 +160,15 @@ class KnownGraph(object):
                 if known_parent_gdfos[child_key] == len(child.parent_keys):
                     # We are the last parent updating that node, we can
                     # continue from there
-                    update_childs(child)
+                    pending.append(child)
 
         for node in self._nodes.itervalues():
             if not node.parent_keys:
                 node.gdfo = 1
                 known_parent_gdfos[node.key] = 0
                 update_childs(node)
+        while pending:
+            update_childs(pending.pop())
 
     def x_find_gdfo(self):
         def find_tails():
