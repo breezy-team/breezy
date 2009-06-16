@@ -54,7 +54,7 @@ class _KnitParentsProvider(object):
         return 'KnitParentsProvider(%r)' % self._knit
 
     def get_parent_map(self, keys):
-        """See graph._StackedParentsProvider.get_parent_map"""
+        """See graph.StackedParentsProvider.get_parent_map"""
         parent_map = {}
         for revision_id in keys:
             if revision_id is None:
@@ -85,7 +85,7 @@ class _KnitsParentsProvider(object):
         return 'KnitsParentsProvider(%r)' % self._knit
 
     def get_parent_map(self, keys):
-        """See graph._StackedParentsProvider.get_parent_map"""
+        """See graph.StackedParentsProvider.get_parent_map"""
         parent_map = self._knit.get_parent_map(
             [self._prefix + (key,) for key in keys])
         result = {}

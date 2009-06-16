@@ -20,10 +20,10 @@ from bzrlib import (
     debug,
     errors,
     revision,
-    symbol_versioning,
     trace,
     tsort,
     )
+from bzrlib.symbol_versioning import deprecated_function, deprecated_in
 
 STEP_UNIQUE_SEARCHER_EVERY = 5
 
@@ -60,18 +60,25 @@ class DictParentsProvider(object):
         return 'DictParentsProvider(%r)' % self.ancestry
 
     def get_parent_map(self, keys):
-        """See _StackedParentsProvider.get_parent_map"""
+        """See StackedParentsProvider.get_parent_map"""
         ancestry = self.ancestry
         return dict((k, ancestry[k]) for k in keys if k in ancestry)
 
+@deprecated_function(deprecated_in((1, 16, 0)))
+def _StackedParentsProvider(*args, **kwargs):
+    return StackedParentsProvider(*args, **kwargs)
 
-class _StackedParentsProvider(object):
-
+class StackedParentsProvider(object):
+    """A parents provider which stacks (or unions) multiple providers.
+    
+    The providers are queries in the order of the provided parent_providers.
+    """
+    
     def __init__(self, parent_providers):
         self._parent_providers = parent_providers
 
     def __repr__(self):
-        return "_StackedParentsProvider(%r)" % self._parent_providers
+        return "%s(%r)" % (self.__class__.__name__, self._parent_providers)
 
     def get_parent_map(self, keys):
         """Get a mapping of keys => parents
@@ -148,7 +155,7 @@ class CachingParentsProvider(object):
         return dict(self._cache)
 
     def get_parent_map(self, keys):
-        """See _StackedParentsProvider.get_parent_map."""
+        """See StackedParentsProvider.get_parent_map."""
         cache = self._cache
         if cache is None:
             cache = self._get_parent_map(keys)
@@ -1577,7 +1584,7 @@ class PendingAncestryResult(object):
     def _get_keys(self, graph):
         NULL_REVISION = revision.NULL_REVISION
         keys = [key for (key, parents) in graph.iter_ancestry(self.heads)
-                if key != NULL_REVISION]
+                if key != NULL_REVISION and parents is not None]
         return keys
 
     def is_empty(self):

@@ -578,8 +578,7 @@ class Test1To2Fetch(TestCaseWithTransport):
         self.repo.fetch(self.tree.branch.repository, 'second-id')
         root_id = self.tree.get_root_id()
         self.assertEqual(
-            ((root_id, 'left-parent'), (root_id, 'ghost-parent'),
-             (root_id, 'not-ghost-parent')),
+            ((root_id, 'left-parent'), (root_id, 'not-ghost-parent')),
             self.get_parents(root_id, 'second-id'))
 
     def make_two_commits(self, change_root, fetch_twice):

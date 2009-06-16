@@ -297,8 +297,6 @@ class DigestAuthRequestHandler(AuthRequestHandler):
 
     def authorized(self):
         tcs = self.server.test_case_server
-        if tcs.auth_scheme != 'digest':
-            return False
 
         auth_header = self.headers.get(tcs.auth_header_recv, None)
         if auth_header is None:
@@ -313,6 +311,24 @@ class DigestAuthRequestHandler(AuthRequestHandler):
 
     def send_header_auth_reqed(self):
         tcs = self.server.test_case_server
+        header = 'Digest realm="%s", ' % tcs.auth_realm
+        header += 'nonce="%s", algorithm="%s", qop="auth"' % (tcs.auth_nonce,
+                                                              'MD5')
+        self.send_header(tcs.auth_header_sent,header)
+
+
+class DigestAndBasicAuthRequestHandler(DigestAuthRequestHandler):
+    """Implements a digest and basic authentication of a request.
+
+    I.e. the server proposes both schemes and the client should choose the best
+    one it can handle, which, in that case, should be digest, the only scheme
+    accepted here.
+    """
+
+    def send_header_auth_reqed(self):
+        tcs = self.server.test_case_server
+        self.send_header(tcs.auth_header_sent,
+                         'Basic realm="%s"' % tcs.auth_realm)
         header = 'Digest realm="%s", ' % tcs.auth_realm
         header += 'nonce="%s", algorithm="%s", qop="auth"' % (tcs.auth_nonce,
                                                               'MD5')
@@ -410,6 +426,7 @@ class DigestAuthServer(AuthServer):
 
         return response_digest == auth['response']
 
+
 class HTTPAuthServer(AuthServer):
     """An HTTP server requiring authentication"""
 
@@ -447,6 +464,18 @@ class HTTPDigestAuthServer(DigestAuthServer, HTTPAuthServer):
         self.init_http_auth()
 
 
+class HTTPBasicAndDigestAuthServer(DigestAuthServer, HTTPAuthServer):
+    """An HTTP server requiring basic or digest authentication"""
+
+    def __init__(self, protocol_version=None):
+        DigestAuthServer.__init__(self, DigestAndBasicAuthRequestHandler,
+                                  'basicdigest',
+                                  protocol_version=protocol_version)
+        self.init_http_auth()
+        # We really accept Digest only
+        self.auth_scheme = 'digest'
+
+
 class ProxyBasicAuthServer(ProxyAuthServer):
     """A proxy server requiring basic authentication"""
 
@@ -463,5 +492,17 @@ class ProxyDigestAuthServer(DigestAuthServer, ProxyAuthServer):
         ProxyAuthServer.__init__(self, DigestAuthRequestHandler, 'digest',
                                  protocol_version=protocol_version)
         self.init_proxy_auth()
+
+
+class ProxyBasicAndDigestAuthServer(DigestAuthServer, ProxyAuthServer):
+    """An proxy server requiring basic or digest authentication"""
+
+    def __init__(self, protocol_version=None):
+        DigestAuthServer.__init__(self, DigestAndBasicAuthRequestHandler,
+                                  'basicdigest',
+                                  protocol_version=protocol_version)
+        self.init_proxy_auth()
+        # We really accept Digest only
+        self.auth_scheme = 'digest'
 
 

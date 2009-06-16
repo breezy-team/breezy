@@ -789,12 +789,16 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
     def test_minimum_path_selection(self):
         self.assertEqual(set(),
             osutils.minimum_path_selection([]))
+        self.assertEqual(set(['a']),
+            osutils.minimum_path_selection(['a']))
         self.assertEqual(set(['a', 'b']),
             osutils.minimum_path_selection(['a', 'b']))
         self.assertEqual(set(['a/', 'b']),
             osutils.minimum_path_selection(['a/', 'b']))
         self.assertEqual(set(['a/', 'b']),
             osutils.minimum_path_selection(['a/c', 'a/', 'b']))
+        self.assertEqual(set(['a-b', 'a', 'a0b']),
+            osutils.minimum_path_selection(['a-b', 'a/b', 'a0b', 'a']))
 
     def test_mkdtemp(self):
         tmpdir = osutils._win32_mkdtemp(dir='.')
@@ -854,6 +858,15 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
         check(['a', '.b'], 'a\\.b')
 
         self.assertRaises(errors.BzrError, osutils.splitpath, 'a/../b')
+
+
+class TestParentDirectories(tests.TestCaseInTempDir):
+    """Test osutils.parent_directories()"""
+
+    def test_parent_directories(self):
+        self.assertEqual([], osutils.parent_directories('a'))
+        self.assertEqual(['a'], osutils.parent_directories('a/b'))
+        self.assertEqual(['a/b', 'a'], osutils.parent_directories('a/b/c'))
 
 
 class TestMacFuncsDirs(tests.TestCaseInTempDir):
@@ -1747,3 +1760,10 @@ class TestReadLink(tests.TestCaseInTempDir):
     def test_os_readlink_link_decoding(self):
         self.assertEquals(self.target.encode(osutils._fs_enc),
                           os.readlink(self.link.encode(osutils._fs_enc)))
+
+
+class TestConcurrency(tests.TestCase):
+
+    def test_local_concurrency(self):
+        concurrency = osutils.local_concurrency()
+        self.assertIsInstance(concurrency, int)

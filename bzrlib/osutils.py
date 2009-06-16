@@ -38,6 +38,7 @@ import shutil
 from shutil import (
     rmtree,
     )
+import subprocess
 import tempfile
 from tempfile import (
     mkdtemp,
@@ -77,6 +78,15 @@ from bzrlib import symbol_versioning
 O_BINARY = getattr(os, 'O_BINARY', 0)
 
 
+def get_unicode_argv():
+    try:
+        user_encoding = get_user_encoding()
+        return [a.decode(user_encoding) for a in sys.argv[1:]]
+    except UnicodeDecodeError:
+        raise errors.BzrError(("Parameter '%r' is unsupported by the current "
+                                                            "encoding." % a))
+
+
 def make_readonly(filename):
     """Make a filename read-only."""
     mod = os.lstat(filename).st_mode
@@ -97,16 +107,22 @@ def minimum_path_selection(paths):
 
     :param paths: A container (and hence not None) of paths.
     :return: A set of paths sufficient to include everything in paths via
-        is_inside_any, drawn from the paths parameter.
+        is_inside, drawn from the paths parameter.
     """
-    search_paths = set()
-    paths = set(paths)
-    for path in paths:
-        other_paths = paths.difference([path])
-        if not is_inside_any(other_paths, path):
-            # this is a top level path, we must check it.
-            search_paths.add(path)
-    return search_paths
+    if len(paths) < 2:
+        return set(paths)
+
+    def sort_key(path):
+        return path.split('/')
+    sorted_paths = sorted(list(paths), key=sort_key)
+
+    search_paths = [sorted_paths[0]]
+    for path in sorted_paths[1:]:
+        if not is_inside(search_paths[-1], path):
+            # This path is unique, add it
+            search_paths.append(path)
+
+    return set(search_paths)
 
 
 _QUOTE_RE = None
@@ -384,6 +400,11 @@ if sys.platform == 'win32':
     def rmtree(path, ignore_errors=False, onerror=_win32_delete_readonly):
         """Replacer for shutil.rmtree: could remove readonly dirs/files"""
         return shutil.rmtree(path, ignore_errors, onerror)
+
+    f = win32utils.get_unicode_argv     # special function or None
+    if f is not None:
+        get_unicode_argv = f
+
 elif sys.platform == 'darwin':
     getcwd = _mac_getcwd
 
@@ -701,7 +722,7 @@ def format_local_date(t, offset=0, timezone='original', date_fmt=None,
                _format_date(t, offset, timezone, date_fmt, show_offset)
     date_str = time.strftime(date_fmt, tt)
     if not isinstance(date_str, unicode):
-        date_str = date_str.decode(bzrlib.user_encoding, 'replace')
+        date_str = date_str.decode(get_user_encoding(), 'replace')
     return date_str + offset_str
 
 def _format_date(t, offset, timezone, date_fmt, show_offset):
@@ -845,6 +866,19 @@ def joinpath(p):
         if (f == '..') or (f is None) or (f == ''):
             raise errors.BzrError("sorry, %r not allowed in path" % f)
     return pathjoin(*p)
+
+
+def parent_directories(filename):
+    """Return the list of parent directories, deepest first.
+    
+    For example, parent_directories("a/b/c") -> ["a/b", "a"].
+    """
+    parents = []
+    parts = splitpath(dirname(filename))
+    while parts:
+        parents.append(joinpath(parts))
+        parts.pop()
+    return parents
 
 
 try:
@@ -1756,12 +1790,12 @@ def until_no_eintr(f, *a, **kw):
 
 def re_compile_checked(re_string, flags=0, where=""):
     """Return a compiled re, or raise a sensible error.
-    
+
     This should only be used when compiling user-supplied REs.
 
     :param re_string: Text form of regular expression.
     :param flags: eg re.IGNORECASE
-    :param where: Message explaining to the user the context where 
+    :param where: Message explaining to the user the context where
         it occurred, eg 'log search filter'.
     """
     # from https://bugs.launchpad.net/bzr/+bug/251352
@@ -1793,3 +1827,58 @@ else:
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, settings)
         return ch
+
+
+if sys.platform == 'linux2':
+    def _local_concurrency():
+        concurrency = None
+        prefix = 'processor'
+        for line in file('/proc/cpuinfo', 'rb'):
+            if line.startswith(prefix):
+                concurrency = int(line[line.find(':')+1:]) + 1
+        return concurrency
+elif sys.platform == 'darwin':
+    def _local_concurrency():
+        return subprocess.Popen(['sysctl', '-n', 'hw.availcpu'],
+                                stdout=subprocess.PIPE).communicate()[0]
+elif sys.platform[0:7] == 'freebsd':
+    def _local_concurrency():
+        return subprocess.Popen(['sysctl', '-n', 'hw.ncpu'],
+                                stdout=subprocess.PIPE).communicate()[0]
+elif sys.platform == 'sunos5':
+    def _local_concurrency():
+        return subprocess.Popen(['psrinfo', '-p',],
+                                stdout=subprocess.PIPE).communicate()[0]
+elif sys.platform == "win32":
+    def _local_concurrency():
+        # This appears to return the number of cores.
+        return os.environ.get('NUMBER_OF_PROCESSORS')
+else:
+    def _local_concurrency():
+        # Who knows ?
+        return None
+
+
+_cached_local_concurrency = None
+
+def local_concurrency(use_cache=True):
+    """Return how many processes can be run concurrently.
+
+    Rely on platform specific implementations and default to 1 (one) if
+    anything goes wrong.
+    """
+    global _cached_local_concurrency
+    if _cached_local_concurrency is not None and use_cache:
+        return _cached_local_concurrency
+
+    try:
+        concurrency = _local_concurrency()
+    except (OSError, IOError):
+        concurrency = None
+    try:
+        concurrency = int(concurrency)
+    except (TypeError, ValueError):
+        concurrency = 1
+    if use_cache:
+        _cached_concurrency = concurrency
+    return concurrency

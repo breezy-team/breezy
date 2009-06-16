@@ -20,6 +20,7 @@
 import bz2
 
 from bzrlib import (
+    bencode,
     branch,
     bzrdir,
     config,
@@ -45,7 +46,6 @@ from bzrlib.lockable_files import LockableFiles
 from bzrlib.smart import client, vfs, repository as smart_repo
 from bzrlib.revision import ensure_null, NULL_REVISION
 from bzrlib.trace import mutter, note, warning
-from bzrlib.util import bencode
 
 
 class _RpcHelper(object):
@@ -670,9 +670,10 @@ class RemoteRepository(_RpcHelper):
         self._ensure_real()
         return self._real_repository.suspend_write_group()
 
-    def get_missing_parent_inventories(self):
+    def get_missing_parent_inventories(self, check_for_missing_texts=True):
         self._ensure_real()
-        return self._real_repository.get_missing_parent_inventories()
+        return self._real_repository.get_missing_parent_inventories(
+            check_for_missing_texts=check_for_missing_texts)
 
     def _ensure_real(self):
         """Ensure that there is a _real_repository set.
@@ -688,6 +689,10 @@ class RemoteRepository(_RpcHelper):
         invocation. If in doubt chat to the bzr network team.
         """
         if self._real_repository is None:
+            if 'hpss' in debug.debug_flags:
+                import traceback
+                warning('VFS Repository access triggered\n%s',
+                    ''.join(traceback.format_stack()))
             self._unstacked_provider.missing_keys.clear()
             self.bzrdir._ensure_real()
             self._set_real_repository(
@@ -856,10 +861,10 @@ class RemoteRepository(_RpcHelper):
             self._unstacked_provider.enable_cache(cache_misses=True)
             if self._real_repository is not None:
                 self._real_repository.lock_read()
+            for repo in self._fallback_repositories:
+                repo.lock_read()
         else:
             self._lock_count += 1
-        for repo in self._fallback_repositories:
-            repo.lock_read()
 
     def _remote_lock_write(self, token):
         path = self.bzrdir._path_for_remote_call(self._client)
@@ -897,13 +902,13 @@ class RemoteRepository(_RpcHelper):
             self._lock_count = 1
             cache_misses = self._real_repository is None
             self._unstacked_provider.enable_cache(cache_misses=cache_misses)
+            for repo in self._fallback_repositories:
+                # Writes don't affect fallback repos
+                repo.lock_read()
         elif self._lock_mode == 'r':
             raise errors.ReadOnlyError(self)
         else:
             self._lock_count += 1
-        for repo in self._fallback_repositories:
-            # Writes don't affect fallback repos
-            repo.lock_read()
         return self._lock_token or None
 
     def leave_lock_in_place(self):
@@ -1011,6 +1016,10 @@ class RemoteRepository(_RpcHelper):
                 self._lock_token = None
                 if not self._leave_lock:
                     self._unlock(old_token)
+        # Fallbacks are always 'lock_read()' so we don't pay attention to
+        # self._leave_lock
+        for repo in self._fallback_repositories:
+            repo.unlock()
 
     def break_lock(self):
         # should hand off to the network
@@ -1080,6 +1089,11 @@ class RemoteRepository(_RpcHelper):
         # We need to accumulate additional repositories here, to pass them in
         # on various RPC's.
         #
+        if self.is_locked():
+            # We will call fallback.unlock() when we transition to the unlocked
+            # state, so always add a lock here. If a caller passes us a locked
+            # repository, they are responsible for unlocking it later.
+            repository.lock_read()
         self._fallback_repositories.append(repository)
         # If self._real_repository was parameterised already (e.g. because a
         # _real_branch had its get_stacked_on_url method called), then the
@@ -1563,7 +1577,7 @@ class RemoteRepository(_RpcHelper):
             providers.insert(0, other)
         providers.extend(r._make_parents_provider() for r in
                          self._fallback_repositories)
-        return graph._StackedParentsProvider(providers)
+        return graph.StackedParentsProvider(providers)
 
     def _serialise_search_recipe(self, recipe):
         """Serialise a graph search recipe.
@@ -1957,6 +1971,7 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         hooks = branch.Branch.hooks['open']
         for hook in hooks:
             hook(self)
+        self._is_stacked = False
         if setup_stacking:
             self._setup_stacking()
 
@@ -1968,7 +1983,8 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         except (errors.NotStacked, errors.UnstackableBranchFormat,
             errors.UnstackableRepositoryFormat), e:
             return
-        self._activate_fallback_location(fallback_url, None)
+        self._is_stacked = True
+        self._activate_fallback_location(fallback_url)
 
     def _get_config(self):
         return RemoteBranchConfig(self)
@@ -2075,6 +2091,13 @@ class RemoteBranch(branch.Branch, _RpcHelper):
             raise errors.UnexpectedSmartServerResponse(response)
         return response[1]
 
+    def set_stacked_on_url(self, url):
+        branch.Branch.set_stacked_on_url(self, url)
+        if not url:
+            self._is_stacked = False
+        else:
+            self._is_stacked = True
+        
     def _vfs_get_tags_bytes(self):
         self._ensure_real()
         return self._real_branch._get_tags_bytes()
@@ -2217,6 +2240,9 @@ class RemoteBranch(branch.Branch, _RpcHelper):
 
     def _gen_revision_history(self):
         """See Branch._gen_revision_history()."""
+        if self._is_stacked:
+            self._ensure_real()
+            return self._real_branch._gen_revision_history()
         response_tuple, response_handler = self._call_expecting_body(
             'Branch.revision_history', self._remote_path())
         if response_tuple[0] != 'ok':

@@ -101,13 +101,9 @@ class Branch(object):
     def _open_hook(self):
         """Called by init to allow simpler extension of the base class."""
 
-    def _activate_fallback_location(self, url, lock_style):
+    def _activate_fallback_location(self, url):
         """Activate the branch/repository from url as a fallback repository."""
         repo = self._get_fallback_repository(url)
-        if lock_style == 'write':
-            repo.lock_write()
-        elif lock_style == 'read':
-            repo.lock_read()
         self.repository.add_fallback_repository(repo)
 
     def break_lock(self):
@@ -664,7 +660,7 @@ class Branch(object):
                 self.repository.fetch(source_repository, revision_id,
                     find_ghosts=True)
         else:
-            self._activate_fallback_location(url, 'write')
+            self._activate_fallback_location(url)
         # write this out after the repository is stacked to avoid setting a
         # stacked config that doesn't work.
         self._set_config_location('stacked_on_location', url)
@@ -853,15 +849,18 @@ class Branch(object):
             raise errors.NoSuchRevision(self, revno)
         return history[revno - 1]
 
+    @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
-             possible_transports=None, _override_hook_target=None):
+             possible_transports=None, *args, **kwargs):
         """Mirror source into this branch.
 
         This branch is considered to be 'local', having low latency.
 
         :returns: PullResult instance
         """
-        raise NotImplementedError(self.pull)
+        return InterBranch.get(source, self).pull(overwrite=overwrite,
+            stop_revision=stop_revision,
+            possible_transports=possible_transports, *args, **kwargs)
 
     def push(self, target, overwrite=False, stop_revision=None, *args,
         **kwargs):
@@ -871,6 +870,27 @@ class Branch(object):
         """
         return InterBranch.get(self, target).push(overwrite, stop_revision,
             *args, **kwargs)
+
+    def lossy_push(self, target, stop_revision=None):
+        """Push deltas into another branch.
+
+        :note: This does not, like push, retain the revision ids from 
+            the source branch and will, rather than adding bzr-specific 
+            metadata, push only those semantics of the revision that can be 
+            natively represented by this branch' VCS.
+
+        :param target: Target branch
+        :param stop_revision: Revision to push, defaults to last revision.
+        :return: BranchPushResult with an extra member revidmap: 
+            A dictionary mapping revision ids from the target branch 
+            to new revision ids in the target branch, for each 
+            revision that was pushed.
+        """
+        inter = InterBranch.get(self, target)
+        lossy_push = getattr(inter, "lossy_push", None)
+        if lossy_push is None:
+            raise errors.LossyPushToSameVCS(self, target)
+        return lossy_push(stop_revision)
 
     def basis_tree(self):
         """Return `Tree` object for last revision."""
@@ -915,6 +935,10 @@ class Branch(object):
         if location == '':
             location = None
         return location
+
+    def get_child_submit_format(self):
+        """Return the preferred format of submissions to this branch."""
+        return self.get_config().get_user_option("child_submit_format")
 
     def get_submit_branch(self):
         """Return the submit location of the branch.
@@ -1069,18 +1093,14 @@ class Branch(object):
         source_revno, source_revision_id = self.last_revision_info()
         if revision_id is None:
             revno, revision_id = source_revno, source_revision_id
-        elif source_revision_id == revision_id:
-            # we know the revno without needing to walk all of history
-            revno = source_revno
         else:
-            # To figure out the revno for a random revision, we need to build
-            # the revision history, and count its length.
-            # We don't care about the order, just how long it is.
-            # Alternatively, we could start at the current location, and count
-            # backwards. But there is no guarantee that we will find it since
-            # it may be a merged revision.
-            revno = len(list(self.repository.iter_reverse_revision_history(
-                                                                revision_id)))
+            graph = self.repository.get_graph()
+            try:
+                revno = graph.find_distance_to_null(revision_id, 
+                    [(source_revision_id, source_revno)])
+            except errors.GhostRevisionsHaveNoRevno:
+                # Default to 1, if we can't find anything else
+                revno = 1
         destination.set_last_revision_info(revno, revision_id)
 
     @needs_read_lock
@@ -2174,50 +2194,6 @@ class BzrBranch(Branch):
         """See Branch.basis_tree."""
         return self.repository.revision_tree(self.last_revision())
 
-    @needs_write_lock
-    def pull(self, source, overwrite=False, stop_revision=None,
-             _hook_master=None, run_hooks=True, possible_transports=None,
-             _override_hook_target=None):
-        """See Branch.pull.
-
-        :param _hook_master: Private parameter - set the branch to
-            be supplied as the master to pull hooks.
-        :param run_hooks: Private parameter - if false, this branch
-            is being called because it's the master of the primary branch,
-            so it should not run its hooks.
-        :param _override_hook_target: Private parameter - set the branch to be
-            supplied as the target_branch to pull hooks.
-        """
-        result = PullResult()
-        result.source_branch = source
-        if _override_hook_target is None:
-            result.target_branch = self
-        else:
-            result.target_branch = _override_hook_target
-        source.lock_read()
-        try:
-            # We assume that during 'pull' the local repository is closer than
-            # the remote one.
-            source.update_references(self)
-            graph = self.repository.get_graph(source.repository)
-            result.old_revno, result.old_revid = self.last_revision_info()
-            self.update_revisions(source, stop_revision, overwrite=overwrite,
-                                  graph=graph)
-            result.tag_conflicts = source.tags.merge_to(self.tags, overwrite)
-            result.new_revno, result.new_revid = self.last_revision_info()
-            if _hook_master:
-                result.master_branch = _hook_master
-                result.local_branch = result.target_branch
-            else:
-                result.master_branch = result.target_branch
-                result.local_branch = None
-            if run_hooks:
-                for hook in Branch.hooks['post_pull']:
-                    hook(result)
-        finally:
-            source.unlock()
-        return result
-
     def _get_parent_location(self):
         _locs = ['parent', 'pull', 'x-pull']
         for l in _locs:
@@ -2271,35 +2247,6 @@ class BzrBranch5(BzrBranch):
 
     It has support for a master_branch which is the data for bound branches.
     """
-
-    @needs_write_lock
-    def pull(self, source, overwrite=False, stop_revision=None,
-             run_hooks=True, possible_transports=None,
-             _override_hook_target=None):
-        """Pull from source into self, updating my master if any.
-
-        :param run_hooks: Private parameter - if false, this branch
-            is being called because it's the master of the primary branch,
-            so it should not run its hooks.
-        """
-        bound_location = self.get_bound_location()
-        master_branch = None
-        if bound_location and source.base != bound_location:
-            # not pulling from master, so we need to update master.
-            master_branch = self.get_master_branch(possible_transports)
-            master_branch.lock_write()
-        try:
-            if master_branch:
-                # pull from source into master.
-                master_branch.pull(source, overwrite, stop_revision,
-                    run_hooks=False)
-            return super(BzrBranch5, self).pull(source, overwrite,
-                stop_revision, _hook_master=master_branch,
-                run_hooks=run_hooks,
-                _override_hook_target=_override_hook_target)
-        finally:
-            if master_branch:
-                master_branch.unlock()
 
     def get_bound_location(self):
         try:
@@ -2412,7 +2359,7 @@ class BzrBranch8(BzrBranch5):
                     raise AssertionError(
                         "'transform_fallback_location' hook %s returned "
                         "None, not a URL." % hook_name)
-            self._activate_fallback_location(url, None)
+            self._activate_fallback_location(url)
 
     def __init__(self, *args, **kwargs):
         self._ignore_fallbacks = kwargs.get('ignore_fallbacks', False)
@@ -2940,6 +2887,16 @@ class InterBranch(InterObject):
         """Return a tuple with the Branch formats to use when testing."""
         raise NotImplementedError(self._get_branch_formats_to_test)
 
+    def pull(self, overwrite=False, stop_revision=None,
+             possible_transports=None, local=False):
+        """Mirror source into target branch.
+
+        The target branch is considered to be 'local', having low latency.
+
+        :returns: PullResult instance
+        """
+        raise NotImplementedError(self.pull)
+
     def update_revisions(self, stop_revision=None, overwrite=False,
                          graph=None):
         """Pull in new perfect-fit revisions.
@@ -3013,6 +2970,61 @@ class GenericInterBranch(InterBranch):
         finally:
             self.source.unlock()
 
+    def pull(self, overwrite=False, stop_revision=None,
+             possible_transports=None, _hook_master=None, run_hooks=True,
+             _override_hook_target=None, local=False):
+        """See Branch.pull.
+
+        :param _hook_master: Private parameter - set the branch to
+            be supplied as the master to pull hooks.
+        :param run_hooks: Private parameter - if false, this branch
+            is being called because it's the master of the primary branch,
+            so it should not run its hooks.
+        :param _override_hook_target: Private parameter - set the branch to be
+            supplied as the target_branch to pull hooks.
+        :param local: Only update the local branch, and not the bound branch.
+        """
+        # This type of branch can't be bound.
+        if local:
+            raise errors.LocalRequiresBoundBranch()
+        result = PullResult()
+        result.source_branch = self.source
+        if _override_hook_target is None:
+            result.target_branch = self.target
+        else:
+            result.target_branch = _override_hook_target
+        self.source.lock_read()
+        try:
+            # We assume that during 'pull' the target repository is closer than
+            # the source one.
+            self.source.update_references(self.target)
+            graph = self.target.repository.get_graph(self.source.repository)
+            # TODO: Branch formats should have a flag that indicates 
+            # that revno's are expensive, and pull() should honor that flag.
+            # -- JRV20090506
+            result.old_revno, result.old_revid = \
+                self.target.last_revision_info()
+            self.target.update_revisions(self.source, stop_revision,
+                overwrite=overwrite, graph=graph)
+            # TODO: The old revid should be specified when merging tags, 
+            # so a tags implementation that versions tags can only 
+            # pull in the most recent changes. -- JRV20090506
+            result.tag_conflicts = self.source.tags.merge_to(self.target.tags,
+                overwrite)
+            result.new_revno, result.new_revid = self.target.last_revision_info()
+            if _hook_master:
+                result.master_branch = _hook_master
+                result.local_branch = result.target_branch
+            else:
+                result.master_branch = result.target_branch
+                result.local_branch = None
+            if run_hooks:
+                for hook in Branch.hooks['post_pull']:
+                    hook(result)
+        finally:
+            self.source.unlock()
+        return result
+
     def push(self, overwrite=False, stop_revision=None,
              _override_hook_source_branch=None):
         """See InterBranch.push.
@@ -3034,6 +3046,7 @@ class GenericInterBranch(InterBranch):
                 _override_hook_source_branch=_override_hook_source_branch)
         finally:
             self.source.unlock()
+        return result
 
     def _push_with_bound_branches(self, overwrite, stop_revision,
             _override_hook_source_branch=None):
@@ -3085,4 +3098,42 @@ class GenericInterBranch(InterBranch):
         return True
 
 
+class InterToBranch5(GenericInterBranch):
+
+    @staticmethod
+    def _get_branch_formats_to_test():
+        return BranchFormat._default_format, BzrBranchFormat5()
+
+    def pull(self, overwrite=False, stop_revision=None,
+             possible_transports=None, run_hooks=True,
+             _override_hook_target=None, local=False):
+        """Pull from source into self, updating my master if any.
+
+        :param run_hooks: Private parameter - if false, this branch
+            is being called because it's the master of the primary branch,
+            so it should not run its hooks.
+        """
+        bound_location = self.target.get_bound_location()
+        if local and not bound_location:
+            raise errors.LocalRequiresBoundBranch()
+        master_branch = None
+        if not local and bound_location and self.source.base != bound_location:
+            # not pulling from master, so we need to update master.
+            master_branch = self.target.get_master_branch(possible_transports)
+            master_branch.lock_write()
+        try:
+            if master_branch:
+                # pull from source into master.
+                master_branch.pull(self.source, overwrite, stop_revision,
+                    run_hooks=False)
+            return super(InterToBranch5, self).pull(overwrite,
+                stop_revision, _hook_master=master_branch,
+                run_hooks=run_hooks,
+                _override_hook_target=_override_hook_target)
+        finally:
+            if master_branch:
+                master_branch.unlock()
+
+
 InterBranch.register_optimiser(GenericInterBranch)
+InterBranch.register_optimiser(InterToBranch5)

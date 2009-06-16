@@ -144,10 +144,9 @@ class TestCaseWithInterBranch(TestCaseWithTransport):
         return newbranch.bzrdir
 
 
-
-
 def load_tests(standard_tests, module, loader):
     submod_tests = loader.loadTestsFromModuleNames([
+        'bzrlib.tests.per_interbranch.test_pull',
         'bzrlib.tests.per_interbranch.test_push',
         'bzrlib.tests.per_interbranch.test_update_revisions',
         ])

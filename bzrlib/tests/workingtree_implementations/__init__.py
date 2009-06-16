@@ -73,7 +73,6 @@ def load_tests(standard_tests, module, loader):
         'eol_conversion',
         'executable',
         'flush',
-        'get_file_with_stat',
         'get_file_mtime',
         'get_parent_ids',
         'inv',

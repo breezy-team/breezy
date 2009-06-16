@@ -29,6 +29,7 @@ from cStringIO import StringIO
 import tarfile
 
 from bzrlib import (
+    bencode,
     bzrdir,
     errors,
     pack,
@@ -51,7 +52,6 @@ from bzrlib.tests import (
     split_suite_by_re,
     )
 from bzrlib.transport import chroot, get_transport
-from bzrlib.util import bencode
 
 
 def load_tests(standard_tests, module, loader):
@@ -351,7 +351,7 @@ class TestSmartServerRequestInitializeBzrDir(tests.TestCaseWithMemoryTransport):
 
 
 class TestSmartServerRequestBzrDirInitializeEx(tests.TestCaseWithMemoryTransport):
-    """Basic tests for BzrDir.initialize_ex in the smart server.
+    """Basic tests for BzrDir.initialize_ex_1.16 in the smart server.
 
     The main unit tests in test_bzrdir exercise the API comprehensively.
     """
@@ -381,7 +381,7 @@ class TestSmartServerRequestBzrDirInitializeEx(tests.TestCaseWithMemoryTransport
             'subdir/dir', 'False', 'False', 'False', '', '', '', '', 'False')
 
     def test_initialized_dir(self):
-        """Initializing an extant dirctory should fail like the bzrdir api."""
+        """Initializing an extant directory should fail like the bzrdir api."""
         backing = self.get_transport()
         name = self.make_bzrdir('reference')._format.network_name()
         request = smart.bzrdir.SmartServerRequestBzrDirInitializeEx(backing)
@@ -586,6 +586,8 @@ class TestSmartServerBranchRequestSetConfigOption(TestLockedBranch):
             '')
         self.assertEqual(SuccessfulSmartServerResponse(()), result)
         self.assertEqual('bar', config.get_option('foo'))
+        # Cleanup
+        branch.unlock()
 
     def test_value_name_section(self):
         branch = self.make_branch('.')
@@ -597,6 +599,8 @@ class TestSmartServerBranchRequestSetConfigOption(TestLockedBranch):
             'gam')
         self.assertEqual(SuccessfulSmartServerResponse(()), result)
         self.assertEqual('bar', config.get_option('foo', 'gam'))
+        # Cleanup
+        branch.unlock()
 
 
 class SetLastRevisionTestBase(TestLockedBranch):
@@ -915,17 +919,24 @@ class TestSmartServerBranchRequestLockWrite(tests.TestCaseWithMemoryTransport):
         # with a new branch object.
         new_branch = repository.bzrdir.open_branch()
         self.assertRaises(errors.LockContention, new_branch.lock_write)
+        # Cleanup
+        request = smart.branch.SmartServerBranchRequestUnlock(backing)
+        response = request.execute('', branch_nonce, repository_nonce)
 
     def test_lock_write_on_locked_branch(self):
         backing = self.get_transport()
         request = smart.branch.SmartServerBranchRequestLockWrite(backing)
         branch = self.make_branch('.')
-        branch.lock_write()
+        branch_token = branch.lock_write()
         branch.leave_lock_in_place()
         branch.unlock()
         response = request.execute('')
         self.assertEqual(
             SmartServerResponse(('LockContention',)), response)
+        # Cleanup
+        branch.lock_write(branch_token)
+        branch.dont_leave_lock_in_place()
+        branch.unlock()
 
     def test_lock_write_with_tokens_on_locked_branch(self):
         backing = self.get_transport()
@@ -941,6 +952,13 @@ class TestSmartServerBranchRequestLockWrite(tests.TestCaseWithMemoryTransport):
                                    branch_token, repo_token)
         self.assertEqual(
             SmartServerResponse(('ok', branch_token, repo_token)), response)
+        # Cleanup
+        branch.repository.lock_write(repo_token)
+        branch.repository.dont_leave_lock_in_place()
+        branch.repository.unlock()
+        branch.lock_write(branch_token)
+        branch.dont_leave_lock_in_place()
+        branch.unlock()
 
     def test_lock_write_with_mismatched_tokens_on_locked_branch(self):
         backing = self.get_transport()
@@ -956,17 +974,29 @@ class TestSmartServerBranchRequestLockWrite(tests.TestCaseWithMemoryTransport):
                                    branch_token+'xxx', repo_token)
         self.assertEqual(
             SmartServerResponse(('TokenMismatch',)), response)
+        # Cleanup
+        branch.repository.lock_write(repo_token)
+        branch.repository.dont_leave_lock_in_place()
+        branch.repository.unlock()
+        branch.lock_write(branch_token)
+        branch.dont_leave_lock_in_place()
+        branch.unlock()
 
     def test_lock_write_on_locked_repo(self):
         backing = self.get_transport()
         request = smart.branch.SmartServerBranchRequestLockWrite(backing)
         branch = self.make_branch('.', format='knit')
-        branch.repository.lock_write()
-        branch.repository.leave_lock_in_place()
-        branch.repository.unlock()
+        repo = branch.repository
+        repo_token = repo.lock_write()
+        repo.leave_lock_in_place()
+        repo.unlock()
         response = request.execute('')
         self.assertEqual(
             SmartServerResponse(('LockContention',)), response)
+        # Cleanup
+        repo.lock_write(repo_token)
+        repo.dont_leave_lock_in_place()
+        repo.unlock()
 
     def test_lock_write_on_readonly_transport(self):
         backing = self.get_readonly_transport()
@@ -1031,6 +1061,10 @@ class TestSmartServerBranchRequestUnlock(tests.TestCaseWithMemoryTransport):
             '', 'branch token', repo_token)
         self.assertEqual(
             SmartServerResponse(('TokenMismatch',)), response)
+        # Cleanup
+        branch.repository.lock_write(repo_token)
+        branch.repository.dont_leave_lock_in_place()
+        branch.repository.unlock()
 
 
 class TestSmartServerRepositoryRequest(tests.TestCaseWithMemoryTransport):
@@ -1282,17 +1316,24 @@ class TestSmartServerRepositoryLockWrite(tests.TestCaseWithMemoryTransport):
         # object.
         new_repo = repository.bzrdir.open_repository()
         self.assertRaises(errors.LockContention, new_repo.lock_write)
+        # Cleanup
+        request = smart.repository.SmartServerRepositoryUnlock(backing)
+        response = request.execute('', nonce)
 
     def test_lock_write_on_locked_repo(self):
         backing = self.get_transport()
         request = smart.repository.SmartServerRepositoryLockWrite(backing)
         repository = self.make_repository('.', format='knit')
-        repository.lock_write()
+        repo_token = repository.lock_write()
         repository.leave_lock_in_place()
         repository.unlock()
         response = request.execute('')
         self.assertEqual(
             SmartServerResponse(('LockContention',)), response)
+        # Cleanup
+        repository.lock_write(repo_token)
+        repository.dont_leave_lock_in_place()
+        repository.unlock()
 
     def test_lock_write_on_readonly_transport(self):
         backing = self.get_readonly_transport()
@@ -1519,7 +1560,7 @@ class TestHandlers(tests.TestCase):
             smart.bzrdir.SmartServerRequestFindRepositoryV2)
         self.assertHandlerEqual('BzrDirFormat.initialize',
             smart.bzrdir.SmartServerRequestInitializeBzrDir)
-        self.assertHandlerEqual('BzrDirFormat.initialize_ex',
+        self.assertHandlerEqual('BzrDirFormat.initialize_ex_1.16',
             smart.bzrdir.SmartServerRequestBzrDirInitializeEx)
         self.assertHandlerEqual('BzrDir.cloning_metadir',
             smart.bzrdir.SmartServerBzrDirRequestCloningMetaDir)

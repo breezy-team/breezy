@@ -741,6 +741,61 @@ class TestBzrDirOpenRepository(TestRemote):
         self.assertEqual(network_name, repo._format.network_name())
 
 
+class TestBzrDirFormatInitializeEx(TestRemote):
+
+    def test_success(self):
+        """Simple test for typical successful call."""
+        fmt = bzrdir.RemoteBzrDirFormat()
+        default_format_name = BzrDirFormat.get_default_format().network_name()
+        transport = self.get_transport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'BzrDirFormat.initialize_ex_1.16',
+                (default_format_name, 'path', 'False', 'False', 'False', '',
+                 '', '', '', 'False'),
+            'success',
+                ('.', 'no', 'no', 'yes', 'repo fmt', 'repo bzrdir fmt',
+                 'bzrdir fmt', 'False', '', '', 'repo lock token'))
+        # XXX: It would be better to call fmt.initialize_on_transport_ex, but
+        # it's currently hard to test that without supplying a real remote
+        # transport connected to a real server.
+        result = fmt._initialize_on_transport_ex_rpc(client, 'path',
+            transport, False, False, False, None, None, None, None, False)
+        client.finished_test()
+
+    def test_error(self):
+        """Error responses are translated, e.g. 'PermissionDenied' raises the
+        corresponding error from the client.
+        """
+        fmt = bzrdir.RemoteBzrDirFormat()
+        default_format_name = BzrDirFormat.get_default_format().network_name()
+        transport = self.get_transport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'BzrDirFormat.initialize_ex_1.16',
+                (default_format_name, 'path', 'False', 'False', 'False', '',
+                 '', '', '', 'False'),
+            'error',
+                ('PermissionDenied', 'path', 'extra info'))
+        # XXX: It would be better to call fmt.initialize_on_transport_ex, but
+        # it's currently hard to test that without supplying a real remote
+        # transport connected to a real server.
+        err = self.assertRaises(errors.PermissionDenied,
+            fmt._initialize_on_transport_ex_rpc, client, 'path', transport,
+            False, False, False, None, None, None, None, False)
+        self.assertEqual('path', err.path)
+        self.assertEqual(': extra info', err.extra)
+        client.finished_test()
+
+    def test_error_from_real_server(self):
+        """Integration test for error translation."""
+        transport = self.make_smart_server('foo')
+        transport = transport.clone('no-such-path')
+        fmt = bzrdir.RemoteBzrDirFormat()
+        err = self.assertRaises(errors.NoSuchFile,
+            fmt.initialize_on_transport_ex, transport, create_prefix=False)
+
+
 class OldSmartClient(object):
     """A fake smart client for test_old_version that just returns a version one
     response to the 'hello' (query version) command.
@@ -2599,6 +2654,21 @@ class TestStacking(tests.TestCaseWithTransport):
         # Getting unordered results should have made a streaming data request
         # from the backing branch, and one from the stacked on branch.
         self.assertLength(2, self.hpss_calls)
+
+    def test_stacked_pull_more_than_stacking_has_bug_360791(self):
+        # When pulling some fixed amount of content that is more than the
+        # source has (because some is coming from a fallback branch, no error
+        # should be received. This was reported as bug 360791.
+        # Need three branches: a trunk, a stacked branch, and a preexisting
+        # branch pulling content from stacked and trunk.
+        self.setup_smart_server_with_call_log()
+        trunk = self.make_branch_and_tree('trunk', format="1.9-rich-root")
+        r1 = trunk.commit('start')
+        stacked_branch = trunk.branch.create_clone_on_transport(
+            self.get_transport('stacked'), stacked_on=trunk.branch.base)
+        local = self.make_branch('local', format='1.9-rich-root')
+        local.repository.fetch(stacked_branch.repository,
+            stacked_branch.last_revision())
 
 
 class TestRemoteBranchEffort(tests.TestCaseWithTransport):

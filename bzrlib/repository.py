@@ -969,6 +969,10 @@ class Repository(object):
         """
         if not self._format.supports_external_lookups:
             raise errors.UnstackableRepositoryFormat(self._format, self.base)
+        if self.is_locked():
+            # This repository will call fallback.unlock() when we transition to
+            # the unlocked state, so we make sure to increment the lock count
+            repository.lock_read()
         self._check_fallback_repository(repository)
         self._fallback_repositories.append(repository)
         self.texts.add_fallback_versioned_files(repository.texts)
@@ -1353,19 +1357,19 @@ class Repository(object):
         """
         locked = self.is_locked()
         result = self.control_files.lock_write(token=token)
-        for repo in self._fallback_repositories:
-            # Writes don't affect fallback repos
-            repo.lock_read()
         if not locked:
+            for repo in self._fallback_repositories:
+                # Writes don't affect fallback repos
+                repo.lock_read()
             self._refresh_data()
         return result
 
     def lock_read(self):
         locked = self.is_locked()
         self.control_files.lock_read()
-        for repo in self._fallback_repositories:
-            repo.lock_read()
         if not locked:
+            for repo in self._fallback_repositories:
+                repo.lock_read()
             self._refresh_data()
 
     def get_physical_lock_status(self):
@@ -1537,7 +1541,7 @@ class Repository(object):
     def suspend_write_group(self):
         raise errors.UnsuspendableWriteGroup(self)
 
-    def get_missing_parent_inventories(self):
+    def get_missing_parent_inventories(self, check_for_missing_texts=True):
         """Return the keys of missing inventory parents for revisions added in
         this write group.
 
@@ -1552,7 +1556,7 @@ class Repository(object):
             return set()
         if not self.is_in_write_group():
             raise AssertionError('not in a write group')
-                
+
         # XXX: We assume that every added revision already has its
         # corresponding inventory, so we only check for parent inventories that
         # might be missing, rather than all inventories.
@@ -1562,6 +1566,33 @@ class Repository(object):
         present_inventories = unstacked_inventories.get_parent_map(
             key[-1:] for key in parents)
         parents.difference_update(present_inventories)
+        if len(parents) == 0:
+            # No missing parent inventories.
+            return set()
+        if not check_for_missing_texts:
+            return set(('inventories', rev_id) for (rev_id,) in parents)
+        # Ok, now we have a list of missing inventories.  But these only matter
+        # if the inventories that reference them are missing some texts they
+        # appear to introduce.
+        # XXX: Texts referenced by all added inventories need to be present,
+        # but at the moment we're only checking for texts referenced by
+        # inventories at the graph's edge.
+        key_deps = self.revisions._index._key_dependencies
+        key_deps.add_keys(present_inventories)
+        referrers = frozenset(r[0] for r in key_deps.get_referrers())
+        file_ids = self.fileids_altered_by_revision_ids(referrers)
+        missing_texts = set()
+        for file_id, version_ids in file_ids.iteritems():
+            missing_texts.update(
+                (file_id, version_id) for version_id in version_ids)
+        present_texts = self.texts.get_parent_map(missing_texts)
+        missing_texts.difference_update(present_texts)
+        if not missing_texts:
+            # No texts are missing, so all revisions and their deltas are
+            # reconstructable.
+            return set()
+        # Alternatively the text versions could be returned as the missing
+        # keys, but this is likely to be less data.
         missing_keys = set(('inventories', rev_id) for (rev_id,) in parents)
         return missing_keys
 
@@ -1666,8 +1697,8 @@ class Repository(object):
         self.control_files.unlock()
         if self.control_files._lock_count == 0:
             self._inventory_entry_cache.clear()
-        for repo in self._fallback_repositories:
-            repo.unlock()
+            for repo in self._fallback_repositories:
+                repo.unlock()
 
     @needs_read_lock
     def clone(self, a_bzrdir, revision_id=None):
@@ -2350,13 +2381,11 @@ class Repository(object):
         while True:
             if next_id in (None, _mod_revision.NULL_REVISION):
                 return
+            try:
+                parents = graph.get_parent_map([next_id])[next_id]
+            except KeyError:
+                raise errors.RevisionNotPresent(next_id, self)
             yield next_id
-            # Note: The following line may raise KeyError in the event of
-            # truncated history. We decided not to have a try:except:raise
-            # RevisionNotPresent here until we see a use for it, because of the
-            # cost in an inner loop that is by its very nature O(history).
-            # Robert Collins 20080326
-            parents = graph.get_parent_map([next_id])[next_id]
             if len(parents) == 0:
                 return
             else:
@@ -2491,7 +2520,7 @@ class Repository(object):
         return self.control_files.get_transaction()
 
     def get_parent_map(self, revision_ids):
-        """See graph._StackedParentsProvider.get_parent_map"""
+        """See graph.StackedParentsProvider.get_parent_map"""
         # revisions index works in keys; this just works in revisions
         # therefore wrap and unwrap
         query_keys = []
@@ -2520,7 +2549,7 @@ class Repository(object):
         parents_provider = self._make_parents_provider()
         if (other_repository is not None and
             not self.has_same_location(other_repository)):
-            parents_provider = graph._StackedParentsProvider(
+            parents_provider = graph.StackedParentsProvider(
                 [parents_provider, other_repository._make_parents_provider()])
         return graph.Graph(parents_provider)
 
@@ -3177,6 +3206,18 @@ format_registry.register_lazy(
     'RepositoryFormatCHK1',
     )
 
+format_registry.register_lazy(
+    'Bazaar development format - chk repository with bencode revision '
+        'serialization (needs bzr.dev from 1.16)\n',
+    'bzrlib.repofmt.groupcompress_repo',
+    'RepositoryFormatCHK2',
+    )
+format_registry.register_lazy(
+    'Bazaar repository format 2a (needs bzr 1.16 or later)\n',
+    'bzrlib.repofmt.groupcompress_repo',
+    'RepositoryFormat2a',
+    )
+
 
 class InterRepository(InterObject):
     """This class represents operations taking place between two repositories.
@@ -3703,7 +3744,7 @@ class InterDifferingSerializer(InterRepository):
         """Get the parent keys for a given root id."""
         root_id, rev_id = root_key
         # Include direct parents of the revision, but only if they used
-        # the same root_id.
+        # the same root_id and are heads.
         parent_keys = []
         for parent_id in parent_map[rev_id]:
             if parent_id == _mod_revision.NULL_REVISION:
@@ -3723,9 +3764,32 @@ class InterDifferingSerializer(InterRepository):
                 self._revision_id_to_root_id[parent_id] = None
             else:
                 parent_root_id = self._revision_id_to_root_id[parent_id]
-            if root_id == parent_root_id or parent_root_id is None:
-                parent_keys.append((root_id, parent_id))
-        return tuple(parent_keys)
+            if root_id == parent_root_id:
+                # With stacking we _might_ want to refer to a non-local
+                # revision, but this code path only applies when we have the
+                # full content available, so ghosts really are ghosts, not just
+                # the edge of local data.
+                parent_keys.append((parent_id,))
+            else:
+                # root_id may be in the parent anyway.
+                try:
+                    tree = self.source.revision_tree(parent_id)
+                except errors.NoSuchRevision:
+                    # ghost, can't refer to it.
+                    pass
+                else:
+                    try:
+                        parent_keys.append((tree.inventory[root_id].revision,))
+                    except errors.NoSuchId:
+                        # not in the tree
+                        pass
+        g = graph.Graph(self.source.revisions)
+        heads = g.heads(parent_keys)
+        selected_keys = []
+        for key in parent_keys:
+            if key in heads and key not in selected_keys:
+                selected_keys.append(key)
+        return tuple([(root_id,)+ key for key in selected_keys])
 
     def _new_root_data_stream(self, root_keys_to_create, parent_map):
         for root_key in root_keys_to_create:
@@ -4113,20 +4177,23 @@ class StreamSink(object):
         try:
             if resume_tokens:
                 self.target_repo.resume_write_group(resume_tokens)
+                is_resume = True
             else:
                 self.target_repo.start_write_group()
+                is_resume = False
             try:
                 # locked_insert_stream performs a commit|suspend.
-                return self._locked_insert_stream(stream, src_format)
+                return self._locked_insert_stream(stream, src_format, is_resume)
             except:
                 self.target_repo.abort_write_group(suppress_errors=True)
                 raise
         finally:
             self.target_repo.unlock()
 
-    def _locked_insert_stream(self, stream, src_format):
+    def _locked_insert_stream(self, stream, src_format, is_resume):
         to_serializer = self.target_repo._format._serializer
         src_serializer = src_format._serializer
+        new_pack = None
         if to_serializer == src_serializer:
             # If serializers match and the target is a pack repository, set the
             # write cache size on the new pack.  This avoids poor performance
@@ -4173,15 +4240,24 @@ class StreamSink(object):
                 self.target_repo.signatures.insert_record_stream(substream)
             else:
                 raise AssertionError('kaboom! %s' % (substream_type,))
+        # Done inserting data, and the missing_keys calculations will try to
+        # read back from the inserted data, so flush the writes to the new pack
+        # (if this is pack format).
+        if new_pack is not None:
+            new_pack._write_data('', flush=True)
         # Find all the new revisions (including ones from resume_tokens)
-        missing_keys = self.target_repo.get_missing_parent_inventories()
+        missing_keys = self.target_repo.get_missing_parent_inventories(
+            check_for_missing_texts=is_resume)
         try:
             for prefix, versioned_file in (
                 ('texts', self.target_repo.texts),
                 ('inventories', self.target_repo.inventories),
                 ('revisions', self.target_repo.revisions),
                 ('signatures', self.target_repo.signatures),
+                ('chk_bytes', self.target_repo.chk_bytes),
                 ):
+                if versioned_file is None:
+                    continue
                 missing_keys.update((prefix,) + key for key in
                     versioned_file.get_missing_compression_parent_keys())
         except NotImplementedError:
@@ -4334,6 +4410,7 @@ class StreamSource(object):
         keys['texts'] = set()
         keys['revisions'] = set()
         keys['inventories'] = set()
+        keys['chk_bytes'] = set()
         keys['signatures'] = set()
         for key in missing_keys:
             keys[key[0]].add(key[1:])
@@ -4346,10 +4423,21 @@ class StreamSource(object):
                     keys['revisions'],))
         for substream_kind, keys in keys.iteritems():
             vf = getattr(self.from_repository, substream_kind)
+            if vf is None and keys:
+                    raise AssertionError(
+                        "cannot fill in keys for a versioned file we don't"
+                        " have: %s needs %s" % (substream_kind, keys))
+            if not keys:
+                # No need to stream something we don't have
+                continue
             # Ask for full texts always so that we don't need more round trips
             # after this stream.
-            stream = vf.get_record_stream(keys,
-                self.to_format._fetch_order, True)
+            # Some of the missing keys are genuinely ghosts, so filter absent
+            # records. The Sink is responsible for doing another check to
+            # ensure that ghosts don't introduce missing data for future
+            # fetches.
+            stream = versionedfile.filter_absent(vf.get_record_stream(keys,
+                self.to_format._fetch_order, True))
             yield substream_kind, stream
 
     def inventory_fetch_order(self):
