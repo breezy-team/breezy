@@ -17,13 +17,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""tools/doc_generate/__init__.py - main program for bzr information generation stuff"""
 
 import sys
 
 
 def get_module(target):
-    mod_name = "doc_generate.autodoc_%s" % (target)
+    mod_name = "bzrlib.doc_generate.autodoc_%s" % (target)
     mod = __import__(mod_name)
     components = mod_name.split('.')
     for comp in components[1:]:

@@ -36,7 +36,7 @@ Run "%(prog)s --help" for the option reference.
 import sys
 from optparse import OptionParser
 
-import doc_generate
+from bzrlib import doc_generate
 
 def main(argv):
     parser = OptionParser(usage="""%prog [options] OUTPUT_FORMAT

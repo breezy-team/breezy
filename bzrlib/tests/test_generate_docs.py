@@ -39,19 +39,13 @@ class TestGenerateDocs(TestCase):
         self.options.bzr_name = 'bzr'
 
     def test_man_page(self):
-        try:
-            from tools.doc_generate import autodoc_man
-        except ImportError:
-            raise TestSkipped('The package "tools" is not available to test.')
+        from bzrlib.doc_generate import autodoc_man
 
         autodoc_man.infogen(self.options, self.sio)
         self.assertNotEqual('', self.sio.getvalue())
 
     def test_rstx_man(self):
-        try:
-            from tools.doc_generate import autodoc_rstx
-        except ImportError:
-            raise TestSkipped('The package "tools" is not available to test.')
+        from bzrlib.tools.doc_generate import autodoc_rstx
 
         autodoc_rstx.infogen(self.options, self.sio)
         self.assertNotEqual('', self.sio.getvalue())

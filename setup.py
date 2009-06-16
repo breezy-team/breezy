@@ -533,7 +533,7 @@ elif 'py2exe' in sys.argv:
                   ImaginaryModule cElementTree elementtree.ElementTree
                   Crypto.PublicKey._fastmath
                   medusa medusa.filesys medusa.ftp_server
-                  tools tools.doc_generate
+                  tools
                   resource validate""".split()
     dll_excludes = []
 
