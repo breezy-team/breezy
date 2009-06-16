@@ -682,12 +682,12 @@ class RemoteRepository(_RpcHelper):
         """See Repository.get_rev_id_for_revno."""
         path = self.bzrdir._path_for_remote_call(self._client)
         try:
-            if self._client._medium._is_remote_before((1, 16)):
+            if self._client._medium._is_remote_before((1, 17)):
                 return self._get_rev_id_for_revno_vfs(revno, known_pair)
             response = self._call(
                 'Repository.get_rev_id_for_revno', path, revno, known_pair)
         except errors.UnknownSmartMethod:
-            self._client._medium._remember_remote_is_before((1, 16))
+            self._client._medium._remember_remote_is_before((1, 17))
             return self._get_rev_id_for_revno_vfs(revno, known_pair)
         if response[0] == 'ok':
             return True, response[1]

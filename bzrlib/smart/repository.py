@@ -289,7 +289,7 @@ class SmartServerRepositoryGetRevIdForRevno(SmartServerRepositoryReadLocked):
             known_pair):
         """Find the revid for a given revno, given a known revno/revid pair.
         
-        New in 1.16.
+        New in 1.17.
         """
         try:
             found_flag, result = repository.get_rev_id_for_revno(revno, known_pair)
