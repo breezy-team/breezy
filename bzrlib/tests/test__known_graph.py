@@ -230,3 +230,14 @@ class TestKnownGraph(tests.TestCase):
         self.assertEqual(set(['z']), graph.heads(['w', 's', 'z']))
         self.assertEqual(set(['w', 'q']), graph.heads(['w', 's', 'q']))
         self.assertEqual(set(['z']), graph.heads(['s', 'z']))
+
+    def test_heads_with_ghost(self):
+        graph = self.make_known_graph(test_graph.with_ghost)
+        self.assertEqual(set(['e', 'g']), graph.heads(['e', 'g']))
+        self.assertEqual(set(['a', 'c']), graph.heads(['a', 'c']))
+        self.assertEqual(set(['a', 'g']), graph.heads(['a', 'g']))
+        self.assertEqual(set(['f', 'g']), graph.heads(['f', 'g']))
+        self.assertEqual(set(['c']), graph.heads(['c', 'g']))
+        self.assertEqual(set(['c']), graph.heads(['c', 'b', 'd', 'g']))
+        self.assertEqual(set(['a', 'c']), graph.heads(['a', 'c', 'e', 'g']))
+        self.assertEqual(set(['a', 'c']), graph.heads(['a', 'c', 'f']))

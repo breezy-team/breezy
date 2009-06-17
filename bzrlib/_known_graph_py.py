@@ -245,6 +245,65 @@ class KnownGraph(object):
         This is done by searching the ancestries of each key.  Any key that is
         reachable from another key is not returned; all the others are.
 
+        This operation scales with the relative depth between any two keys. It
+        uses gdfo to avoid walking all ancestry.
+
+        :param keys: An iterable of keys.
+        :return: A set of the heads. Note that as a set there is no ordering
+            information. Callers will need to filter their input to create
+            order if they need it.
+        """
+        candidate_nodes = dict((key, self._nodes[key]) for key in keys)
+        if revision.NULL_REVISION in candidate_nodes:
+            # NULL_REVISION is only a head if it is the only entry
+            candidate_nodes.pop(revision.NULL_REVISION)
+            if not candidate_nodes:
+                return frozenset([revision.NULL_REVISION])
+        if len(candidate_nodes) < 2:
+            # No or only one candidate
+            return frozenset(candidate_nodes)
+        heads_key = frozenset(candidate_nodes)
+        if heads_key != frozenset(keys):
+            # Mention duplicates
+            note('%s != %s', heads_key, frozenset(keys))
+        # Do we have a cached result ?
+        try:
+            heads = self._known_heads[heads_key]
+            return heads
+        except KeyError:
+            pass
+        # Let's compute the heads
+        seen = {}
+        pending = []
+        min_gdfo = None
+        for node in candidate_nodes.values():
+            if node.parent_keys: # protect against ghosts, jam, fixme ?
+                pending.extend(node.parent_keys)
+            if min_gdfo is None or node.gdfo < min_gdfo:
+                min_gdfo = node.gdfo
+        nodes = self._nodes
+        while pending:
+            node_key = pending.pop()
+            if node_key in seen:
+                # node already appears in some ancestry
+                continue
+            seen[node_key] = True
+            node = nodes[node_key]
+            if node.gdfo <= min_gdfo:
+                continue
+            if node.parent_keys: # protect against ghosts, jam, fixme ?
+                pending.extend(node.parent_keys)
+        heads = heads_key.difference(seen.keys())
+        if self.do_cache:
+            self._known_heads[heads_key] = heads
+        return heads
+
+    def xheads(self, keys):
+        """Return the heads from amongst keys.
+
+        This is done by searching the ancestries of each key.  Any key that is
+        reachable from another key is not returned; all the others are.
+
         This operation scales with the relative depth between any two keys. If
         any two keys are completely disconnected all ancestry of both sides
         will be retrieved.
