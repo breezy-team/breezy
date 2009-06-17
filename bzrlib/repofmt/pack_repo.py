@@ -1307,7 +1307,7 @@ class ReconcilePacker(Packer):
         # space (we only topo sort the revisions, which is smaller).
         topo_order = tsort.topo_sort(ancestors)
         rev_order = dict(zip(topo_order, range(len(topo_order))))
-        bad_texts.sort(key=lambda key:rev_order[key[0][1]])
+        bad_texts.sort(key=lambda key:rev_order.get(key[0][1], 0))
         transaction = repo.get_transaction()
         file_id_index = GraphIndexPrefixAdapter(
             self.new_pack.text_index,
@@ -2295,7 +2295,11 @@ class KnitPackRepository(KnitRepository):
 
     def _resume_write_group(self, tokens):
         self._start_write_group()
-        self._pack_collection._resume_write_group(tokens)
+        try:
+            self._pack_collection._resume_write_group(tokens)
+        except errors.UnresumableWriteGroup:
+            self._abort_write_group()
+            raise
         for pack in self._pack_collection._resumed_packs:
             self.revisions._index.scan_unvalidated_index(pack.revision_index)
 

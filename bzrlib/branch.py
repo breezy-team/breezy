@@ -91,6 +91,7 @@ class Branch(object):
         self._revision_history_cache = None
         self._revision_id_to_revno_cache = None
         self._partial_revision_id_to_revno_cache = {}
+        self._partial_revision_history_cache = []
         self._last_revision_info_cache = None
         self._merge_sorted_revisions_cache = None
         self._open_hook()
@@ -124,6 +125,27 @@ class Branch(object):
         if not self.repository._format.supports_external_lookups:
             raise errors.UnstackableRepositoryFormat(self.repository._format,
                 self.repository.base)
+
+    def _extend_partial_history(self, stop_index=None, stop_revision=None):
+        """Extend the partial history to include a given index
+
+        If a stop_index is supplied, stop when that index has been reached.
+        If a stop_revision is supplied, stop when that revision is
+        encountered.  Otherwise, stop when the beginning of history is
+        reached.
+
+        :param stop_index: The index which should be present.  When it is
+            present, history extension will stop.
+        :param stop_revision: The revision id which should be present.  When
+            it is encountered, history extension will stop.
+        """
+        if len(self._partial_revision_history_cache) == 0:
+            self._partial_revision_history_cache = [self.last_revision()]
+        repository._iter_for_revno(
+            self.repository, self._partial_revision_history_cache,
+            stop_index=stop_index, stop_revision=stop_revision)
+        if self._partial_revision_history_cache[-1] == _mod_revision.NULL_REVISION:
+            self._partial_revision_history_cache.pop()
 
     @staticmethod
     def open(base, _unsupported=False, possible_transports=None):
@@ -498,6 +520,16 @@ class Branch(object):
         """
         raise errors.UpgradeRequired(self.base)
 
+    def set_append_revisions_only(self, enabled):
+        if not self._format.supports_set_append_revisions_only():
+            raise errors.UpgradeRequired(self.base)
+        if enabled:
+            value = 'True'
+        else:
+            value = 'False'
+        self.get_config().set_user_option('append_revisions_only', value,
+            warn_masked=True)
+
     def set_reference_info(self, file_id, tree_path, branch_location):
         """Set the branch location to use for a tree reference."""
         raise errors.UnsupportedOperation(self.set_reference_info, self)
@@ -698,6 +730,8 @@ class Branch(object):
         self._revision_id_to_revno_cache = None
         self._last_revision_info_cache = None
         self._merge_sorted_revisions_cache = None
+        self._partial_revision_history_cache = []
+        self._partial_revision_id_to_revno_cache = {}
 
     def _gen_revision_history(self):
         """Return sequence of revision hashes on to this branch.
@@ -740,10 +774,6 @@ class Branch(object):
 
     def unbind(self):
         """Older format branches cannot bind or unbind."""
-        raise errors.UpgradeRequired(self.base)
-
-    def set_append_revisions_only(self, enabled):
-        """Older format branches are never restricted to append-only"""
         raise errors.UpgradeRequired(self.base)
 
     def last_revision(self):
@@ -831,15 +861,20 @@ class Branch(object):
         except ValueError:
             raise errors.NoSuchRevision(self, revision_id)
 
+    @needs_read_lock
     def get_rev_id(self, revno, history=None):
         """Find the revision id of the specified revno."""
         if revno == 0:
             return _mod_revision.NULL_REVISION
-        if history is None:
-            history = self.revision_history()
-        if revno <= 0 or revno > len(history):
+        last_revno, last_revid = self.last_revision_info()
+        if revno == last_revno:
+            return last_revid
+        if revno <= 0 or revno > last_revno:
             raise errors.NoSuchRevision(self, revno)
-        return history[revno - 1]
+        distance_from_last = last_revno - revno
+        if len(self._partial_revision_history_cache) <= distance_from_last:
+            self._extend_partial_history(distance_from_last)
+        return self._partial_revision_history_cache[distance_from_last]
 
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
@@ -1085,18 +1120,14 @@ class Branch(object):
         source_revno, source_revision_id = self.last_revision_info()
         if revision_id is None:
             revno, revision_id = source_revno, source_revision_id
-        elif source_revision_id == revision_id:
-            # we know the revno without needing to walk all of history
-            revno = source_revno
         else:
-            # To figure out the revno for a random revision, we need to build
-            # the revision history, and count its length.
-            # We don't care about the order, just how long it is.
-            # Alternatively, we could start at the current location, and count
-            # backwards. But there is no guarantee that we will find it since
-            # it may be a merged revision.
-            revno = len(list(self.repository.iter_reverse_revision_history(
-                                                                revision_id)))
+            graph = self.repository.get_graph()
+            try:
+                revno = graph.find_distance_to_null(revision_id, 
+                    [(source_revision_id, source_revno)])
+            except errors.GhostRevisionsHaveNoRevno:
+                # Default to 1, if we can't find anything else
+                revno = 1
         destination.set_last_revision_info(revno, revision_id)
 
     @needs_read_lock
@@ -1147,10 +1178,18 @@ class Branch(object):
 
         :return: A BranchCheckResult.
         """
+        ret = BranchCheckResult(self)
         mainline_parent_id = None
         last_revno, last_revision_id = self.last_revision_info()
-        real_rev_history = list(self.repository.iter_reverse_revision_history(
-                                last_revision_id))
+        real_rev_history = []
+        try:
+            for revid in self.repository.iter_reverse_revision_history(
+                last_revision_id):
+                real_rev_history.append(revid)
+        except errors.RevisionNotPresent:
+            ret.ghosts_in_mainline = True
+        else:
+            ret.ghosts_in_mainline = False
         real_rev_history.reverse()
         if len(real_rev_history) != last_revno:
             raise errors.BzrCheckError('revno does not match len(mainline)'
@@ -1172,7 +1211,7 @@ class Branch(object):
                                         "parents of {%s}"
                                         % (mainline_parent_id, revision_id))
             mainline_parent_id = revision_id
-        return BranchCheckResult(self)
+        return ret
 
     def _get_checkout_format(self):
         """Return the most suitable metadir for a checkout of this branch.
@@ -1345,6 +1384,8 @@ class BranchFormat(object):
     _formats = {}
     """The known formats."""
 
+    can_set_append_revisions_only = True
+
     def __eq__(self, other):
         return self.__class__ is other.__class__
 
@@ -1502,6 +1543,10 @@ class BranchFormat(object):
     @classmethod
     def set_default_format(klass, format):
         klass._default_format = format
+
+    def supports_set_append_revisions_only(self):
+        """True if this format supports set_append_revisions_only."""
+        return False
 
     def supports_stacking(self):
         """True if this format records a stacked-on branch."""
@@ -1790,6 +1835,8 @@ class BzrBranchFormat6(BranchFormatMetadir):
         """See bzrlib.branch.BranchFormat.make_tags()."""
         return BasicTags(branch)
 
+    def supports_set_append_revisions_only(self):
+        return True
 
 
 class BzrBranchFormat8(BranchFormatMetadir):
@@ -1824,6 +1871,9 @@ class BzrBranchFormat8(BranchFormatMetadir):
         """See bzrlib.branch.BranchFormat.make_tags()."""
         return BasicTags(branch)
 
+    def supports_set_append_revisions_only(self):
+        return True
+
     def supports_stacking(self):
         return True
 
@@ -1857,6 +1907,9 @@ class BzrBranchFormat7(BzrBranchFormat8):
     def get_format_description(self):
         """See BranchFormat.get_format_description()."""
         return "Branch format 7"
+
+    def supports_set_append_revisions_only(self):
+        return True
 
     supports_reference_locations = False
 
@@ -2372,13 +2425,11 @@ class BzrBranch8(BzrBranch5):
         self._ignore_fallbacks = kwargs.get('ignore_fallbacks', False)
         super(BzrBranch8, self).__init__(*args, **kwargs)
         self._last_revision_info_cache = None
-        self._partial_revision_history_cache = []
         self._reference_info = None
 
     def _clear_cached_state(self):
         super(BzrBranch8, self)._clear_cached_state()
         self._last_revision_info_cache = None
-        self._partial_revision_history_cache = []
         self._reference_info = None
 
     def _last_revision_info(self):
@@ -2439,35 +2490,6 @@ class BzrBranch8(BzrBranch5):
         last_revno, last_revision = self.last_revision_info()
         self._extend_partial_history(stop_index=last_revno-1)
         return list(reversed(self._partial_revision_history_cache))
-
-    def _extend_partial_history(self, stop_index=None, stop_revision=None):
-        """Extend the partial history to include a given index
-
-        If a stop_index is supplied, stop when that index has been reached.
-        If a stop_revision is supplied, stop when that revision is
-        encountered.  Otherwise, stop when the beginning of history is
-        reached.
-
-        :param stop_index: The index which should be present.  When it is
-            present, history extension will stop.
-        :param revision_id: The revision id which should be present.  When
-            it is encountered, history extension will stop.
-        """
-        repo = self.repository
-        if len(self._partial_revision_history_cache) == 0:
-            iterator = repo.iter_reverse_revision_history(self.last_revision())
-        else:
-            start_revision = self._partial_revision_history_cache[-1]
-            iterator = repo.iter_reverse_revision_history(start_revision)
-            #skip the last revision in the list
-            next_revision = iterator.next()
-        for revision_id in iterator:
-            self._partial_revision_history_cache.append(revision_id)
-            if (stop_index is not None and
-                len(self._partial_revision_history_cache) > stop_index):
-                break
-            if revision_id == stop_revision:
-                break
 
     def _write_revision_history(self, history):
         """Factored out of set_revision_history.
@@ -2616,14 +2638,6 @@ class BzrBranch8(BzrBranch5):
         if stacked_url is None:
             raise errors.NotStacked(self)
         return stacked_url
-
-    def set_append_revisions_only(self, enabled):
-        if enabled:
-            value = 'True'
-        else:
-            value = 'False'
-        self.get_config().set_user_option('append_revisions_only', value,
-            warn_masked=True)
 
     def _get_append_revisions_only(self):
         value = self.get_config().get_user_option('append_revisions_only')
@@ -2780,6 +2794,7 @@ class BranchCheckResult(object):
 
     def __init__(self, branch):
         self.branch = branch
+        self.ghosts_in_mainline = False
 
     def report_results(self, verbose):
         """Report the check results via trace.note.
@@ -2790,6 +2805,8 @@ class BranchCheckResult(object):
         note('checked branch %s format %s',
              self.branch.base,
              self.branch._format)
+        if self.ghosts_in_mainline:
+            note('branch contains ghosts in mainline')
 
 
 class Converter5to6(object):

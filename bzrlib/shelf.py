@@ -19,6 +19,7 @@ import errno
 import re
 
 from bzrlib import (
+    bencode,
     errors,
     merge,
     merge3,
@@ -28,7 +29,6 @@ from bzrlib import (
     ui,
     workingtree,
 )
-from bzrlib.util import bencode
 
 
 class ShelfCreator(object):

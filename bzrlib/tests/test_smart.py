@@ -29,6 +29,7 @@ from cStringIO import StringIO
 import tarfile
 
 from bzrlib import (
+    bencode,
     bzrdir,
     errors,
     pack,
@@ -51,7 +52,6 @@ from bzrlib.tests import (
     split_suite_by_re,
     )
 from bzrlib.transport import chroot, get_transport
-from bzrlib.util import bencode
 
 
 def load_tests(standard_tests, module, loader):
@@ -351,7 +351,7 @@ class TestSmartServerRequestInitializeBzrDir(tests.TestCaseWithMemoryTransport):
 
 
 class TestSmartServerRequestBzrDirInitializeEx(tests.TestCaseWithMemoryTransport):
-    """Basic tests for BzrDir.initialize_ex in the smart server.
+    """Basic tests for BzrDir.initialize_ex_1.16 in the smart server.
 
     The main unit tests in test_bzrdir exercise the API comprehensively.
     """
@@ -381,7 +381,7 @@ class TestSmartServerRequestBzrDirInitializeEx(tests.TestCaseWithMemoryTransport
             'subdir/dir', 'False', 'False', 'False', '', '', '', '', 'False')
 
     def test_initialized_dir(self):
-        """Initializing an extant dirctory should fail like the bzrdir api."""
+        """Initializing an extant directory should fail like the bzrdir api."""
         backing = self.get_transport()
         name = self.make_bzrdir('reference')._format.network_name()
         request = smart.bzrdir.SmartServerRequestBzrDirInitializeEx(backing)
@@ -1161,6 +1161,47 @@ class TestSmartServerRepositoryGetRevisionGraph(tests.TestCaseWithMemoryTranspor
             request.execute('', 'missingrevision'))
 
 
+class TestSmartServerRepositoryGetRevIdForRevno(tests.TestCaseWithMemoryTransport):
+
+    def test_revno_found(self):
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryGetRevIdForRevno(backing)
+        tree = self.make_branch_and_memory_tree('.')
+        tree.lock_write()
+        tree.add('')
+        rev1_id_utf8 = u'\xc8'.encode('utf-8')
+        rev2_id_utf8 = u'\xc9'.encode('utf-8')
+        tree.commit('1st commit', rev_id=rev1_id_utf8)
+        tree.commit('2nd commit', rev_id=rev2_id_utf8)
+        tree.unlock()
+
+        self.assertEqual(SmartServerResponse(('ok', rev1_id_utf8)),
+            request.execute('', 1, (2, rev2_id_utf8)))
+
+    def test_known_revid_missing(self):
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryGetRevIdForRevno(backing)
+        repo = self.make_repository('.')
+        self.assertEqual(
+            FailedSmartServerResponse(('nosuchrevision', 'ghost')),
+            request.execute('', 1, (2, 'ghost')))
+
+    def test_history_incomplete(self):
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryGetRevIdForRevno(backing)
+        parent = self.make_branch_and_memory_tree('parent', format='1.9')
+        r1 = parent.commit(message='first commit')
+        r2 = parent.commit(message='second commit')
+        local = self.make_branch_and_memory_tree('local', format='1.9')
+        local.branch.pull(parent.branch)
+        local.set_parent_ids([r2])
+        r3 = local.commit(message='local commit')
+        local.branch.create_clone_on_transport(
+            self.get_transport('stacked'), stacked_on=self.get_url('parent'))
+        self.assertEqual(
+            SmartServerResponse(('history-incomplete', 2, r2)),
+            request.execute('stacked', 1, (3, r3)))
+
 class TestSmartServerRepositoryGetStream(tests.TestCaseWithMemoryTransport):
 
     def make_two_commit_repo(self):
@@ -1560,7 +1601,7 @@ class TestHandlers(tests.TestCase):
             smart.bzrdir.SmartServerRequestFindRepositoryV2)
         self.assertHandlerEqual('BzrDirFormat.initialize',
             smart.bzrdir.SmartServerRequestInitializeBzrDir)
-        self.assertHandlerEqual('BzrDirFormat.initialize_ex',
+        self.assertHandlerEqual('BzrDirFormat.initialize_ex_1.16',
             smart.bzrdir.SmartServerRequestBzrDirInitializeEx)
         self.assertHandlerEqual('BzrDir.cloning_metadir',
             smart.bzrdir.SmartServerBzrDirRequestCloningMetaDir)
@@ -1576,6 +1617,8 @@ class TestHandlers(tests.TestCase):
             smart.repository.SmartServerRepositoryGatherStats)
         self.assertHandlerEqual('Repository.get_parent_map',
             smart.repository.SmartServerRepositoryGetParentMap)
+        self.assertHandlerEqual('Repository.get_rev_id_for_revno',
+            smart.repository.SmartServerRepositoryGetRevIdForRevno)
         self.assertHandlerEqual('Repository.get_revision_graph',
             smart.repository.SmartServerRepositoryGetRevisionGraph)
         self.assertHandlerEqual('Repository.get_stream',

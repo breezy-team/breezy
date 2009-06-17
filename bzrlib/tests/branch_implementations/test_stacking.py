@@ -421,6 +421,31 @@ class TestStacking(TestCaseWithBranch):
         # Ensure that opening the branch doesn't raise.
         branch.Branch.open(transport.base)
 
+    def test_revision_history_of_stacked(self):
+        # See <https://launchpad.net/bugs/380314>.
+        stack_on = self.make_branch_and_tree('stack-on')
+        stack_on.commit('first commit', rev_id='rev1')
+        try:
+            stacked_dir = stack_on.bzrdir.sprout(
+                self.get_url('stacked'), stacked=True)
+        except unstackable_format_errors, e:
+            raise TestNotApplicable('Format does not support stacking.')
+        try:
+            stacked = stacked_dir.open_workingtree()
+        except errors.NoWorkingTree:
+            stacked = stacked_dir.open_branch().create_checkout(
+                'stacked-checkout', lightweight=True)
+        stacked.commit('second commit', rev_id='rev2')
+        # Sanity check: stacked's repo should not contain rev1, otherwise this
+        # test isn't testing what it's supposed to.
+        repo = stacked.branch.repository.bzrdir.open_repository()
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        self.assertEqual({}, repo.get_parent_map(['rev1']))
+        # revision_history should work, even though the history is spread over
+        # multiple repositories.
+        self.assertLength(2, stacked.branch.revision_history())
+
 
 class TestStackingConnections(
     transport_util.TestCaseWithConnectionHookedTransport):

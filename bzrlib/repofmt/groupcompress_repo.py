@@ -1035,3 +1035,41 @@ class RepositoryFormatCHK1(RepositoryFormatPack):
                 'Does not support nested trees', target_format)
 
 
+
+class RepositoryFormatCHK2(RepositoryFormatCHK1):
+    """A CHK repository that uses the bencode revision serializer."""
+
+    _serializer = chk_serializer.chk_bencode_serializer
+
+    def _get_matching_bzrdir(self):
+        return bzrdir.format_registry.make_bzrdir('development7-rich-root')
+
+    def _ignore_setting_bzrdir(self, format):
+        pass
+
+    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+
+    def get_format_string(self):
+        """See RepositoryFormat.get_format_string()."""
+        return ('Bazaar development format - chk repository with bencode '
+                'revision serialization (needs bzr.dev from 1.16)\n')
+
+
+class RepositoryFormat2a(RepositoryFormatCHK2):
+    """A CHK repository that uses the bencode revision serializer.
+    
+    This is the same as RepositoryFormatCHK2 but with a public name.
+    """
+
+    _serializer = chk_serializer.chk_bencode_serializer
+
+    def _get_matching_bzrdir(self):
+        return bzrdir.format_registry.make_bzrdir('2a')
+
+    def _ignore_setting_bzrdir(self, format):
+        pass
+
+    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+
+    def get_format_string(self):
+        return ('Bazaar repository format 2a (needs bzr 1.16 or later)\n')

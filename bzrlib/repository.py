@@ -2257,6 +2257,41 @@ class Repository(object):
         """
         return self.get_revision(revision_id).inventory_sha1
 
+    def get_rev_id_for_revno(self, revno, known_pair):
+        """Return the revision id of a revno, given a later (revno, revid)
+        pair in the same history.
+
+        :return: if found (True, revid).  If the available history ran out
+            before reaching the revno, then this returns
+            (False, (closest_revno, closest_revid)).
+        """
+        known_revno, known_revid = known_pair
+        partial_history = [known_revid]
+        distance_from_known = known_revno - revno
+        if distance_from_known < 0:
+            raise ValueError(
+                'requested revno (%d) is later than given known revno (%d)'
+                % (revno, known_revno))
+        try:
+            _iter_for_revno(
+                self, partial_history, stop_index=distance_from_known)
+        except errors.RevisionNotPresent, err:
+            if err.revision_id == known_revid:
+                # The start revision (known_revid) wasn't found.
+                raise
+            # This is a stacked repository with no fallbacks, or a there's a
+            # left-hand ghost.  Either way, even though the revision named in
+            # the error isn't in this repo, we know it's the next step in this
+            # left-hand history.
+            partial_history.append(err.revision_id)
+        if len(partial_history) <= distance_from_known:
+            # Didn't find enough history to get a revid for the revno.
+            earliest_revno = known_revno - len(partial_history) + 1
+            return (False, (earliest_revno, partial_history[-1]))
+        if len(partial_history) - 1 > distance_from_known:
+            raise AssertionError('_iter_for_revno returned too much history')
+        return (True, partial_history[-1])
+
     def iter_reverse_revision_history(self, revision_id):
         """Iterate backwards through revision ids in the lefthand history
 
@@ -2268,13 +2303,11 @@ class Repository(object):
         while True:
             if next_id in (None, _mod_revision.NULL_REVISION):
                 return
+            try:
+                parents = graph.get_parent_map([next_id])[next_id]
+            except KeyError:
+                raise errors.RevisionNotPresent(next_id, self)
             yield next_id
-            # Note: The following line may raise KeyError in the event of
-            # truncated history. We decided not to have a try:except:raise
-            # RevisionNotPresent here until we see a use for it, because of the
-            # cost in an inner loop that is by its very nature O(history).
-            # Robert Collins 20080326
-            parents = graph.get_parent_map([next_id])[next_id]
             if len(parents) == 0:
                 return
             else:
@@ -2409,7 +2442,7 @@ class Repository(object):
         return self.control_files.get_transaction()
 
     def get_parent_map(self, revision_ids):
-        """See graph._StackedParentsProvider.get_parent_map"""
+        """See graph.StackedParentsProvider.get_parent_map"""
         # revisions index works in keys; this just works in revisions
         # therefore wrap and unwrap
         query_keys = []
@@ -2438,7 +2471,7 @@ class Repository(object):
         parents_provider = self._make_parents_provider()
         if (other_repository is not None and
             not self.has_same_location(other_repository)):
-            parents_provider = graph._StackedParentsProvider(
+            parents_provider = graph.StackedParentsProvider(
                 [parents_provider, other_repository._make_parents_provider()])
         return graph.Graph(parents_provider)
 
@@ -3083,6 +3116,18 @@ format_registry.register_lazy(
         ' (needs bzr.dev from 1.14)\n',
     'bzrlib.repofmt.groupcompress_repo',
     'RepositoryFormatCHK1',
+    )
+
+format_registry.register_lazy(
+    'Bazaar development format - chk repository with bencode revision '
+        'serialization (needs bzr.dev from 1.16)\n',
+    'bzrlib.repofmt.groupcompress_repo',
+    'RepositoryFormatCHK2',
+    )
+format_registry.register_lazy(
+    'Bazaar repository format 2a (needs bzr 1.16 or later)\n',
+    'bzrlib.repofmt.groupcompress_repo',
+    'RepositoryFormat2a',
     )
 
 
@@ -4290,4 +4335,36 @@ class StreamSource(object):
             parent_keys = parent_map.get(key, ())
             yield versionedfile.FulltextContentFactory(
                 key, parent_keys, None, as_bytes)
+
+
+def _iter_for_revno(repo, partial_history_cache, stop_index=None,
+                    stop_revision=None):
+    """Extend the partial history to include a given index
+
+    If a stop_index is supplied, stop when that index has been reached.
+    If a stop_revision is supplied, stop when that revision is
+    encountered.  Otherwise, stop when the beginning of history is
+    reached.
+
+    :param stop_index: The index which should be present.  When it is
+        present, history extension will stop.
+    :param stop_revision: The revision id which should be present.  When
+        it is encountered, history extension will stop.
+    """
+    start_revision = partial_history_cache[-1]
+    iterator = repo.iter_reverse_revision_history(start_revision)
+    try:
+        #skip the last revision in the list
+        iterator.next()
+        while True:
+            if (stop_index is not None and
+                len(partial_history_cache) > stop_index):
+                break
+            if partial_history_cache[-1] == stop_revision:
+                break
+            revision_id = iterator.next()
+            partial_history_cache.append(revision_id)
+    except StopIteration:
+        # No more history
+        return
 

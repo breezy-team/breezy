@@ -946,29 +946,36 @@ class cmd_pull(Command):
             if branch_to.get_parent() is None or remember:
                 branch_to.set_parent(branch_from.base)
 
-        if revision is not None:
-            revision_id = revision.as_revision_id(branch_from)
-
-        branch_to.lock_write()
+        if branch_from is not branch_to:
+            branch_from.lock_read()
         try:
-            if tree_to is not None:
-                view_info = _get_view_info_for_change_reporter(tree_to)
-                change_reporter = delta._ChangeReporter(
-                    unversioned_filter=tree_to.is_ignored, view_info=view_info)
-                result = tree_to.pull(branch_from, overwrite, revision_id,
-                                      change_reporter,
-                                      possible_transports=possible_transports,
-                                      local=local)
-            else:
-                result = branch_to.pull(branch_from, overwrite, revision_id,
-                                      local=local)
+            if revision is not None:
+                revision_id = revision.as_revision_id(branch_from)
 
-            result.report(self.outf)
-            if verbose and result.old_revid != result.new_revid:
-                log.show_branch_change(branch_to, self.outf, result.old_revno,
-                                       result.old_revid)
+            branch_to.lock_write()
+            try:
+                if tree_to is not None:
+                    view_info = _get_view_info_for_change_reporter(tree_to)
+                    change_reporter = delta._ChangeReporter(
+                        unversioned_filter=tree_to.is_ignored,
+                        view_info=view_info)
+                    result = tree_to.pull(
+                        branch_from, overwrite, revision_id, change_reporter,
+                        possible_transports=possible_transports, local=local)
+                else:
+                    result = branch_to.pull(
+                        branch_from, overwrite, revision_id, local=local)
+
+                result.report(self.outf)
+                if verbose and result.old_revid != result.new_revid:
+                    log.show_branch_change(
+                        branch_to, self.outf, result.old_revno,
+                        result.old_revid)
+            finally:
+                branch_to.unlock()
         finally:
-            branch_to.unlock()
+            if branch_from is not branch_to:
+                branch_from.unlock()
 
 
 class cmd_push(Command):
@@ -1021,6 +1028,9 @@ class cmd_push(Command):
                 'for the commit history. Only the work not present in the '
                 'referenced branch is included in the branch created.',
             type=unicode),
+        Option('strict',
+               help='Refuse to push if there are uncommitted changes in'
+               ' the working tree.'),
         ]
     takes_args = ['location?']
     encoding_type = 'replace'
@@ -1028,13 +1038,29 @@ class cmd_push(Command):
     def run(self, location=None, remember=False, overwrite=False,
         create_prefix=False, verbose=False, revision=None,
         use_existing_dir=False, directory=None, stacked_on=None,
-        stacked=False):
+        stacked=False, strict=None):
         from bzrlib.push import _show_push_branch
 
-        # Get the source branch and revision_id
         if directory is None:
             directory = '.'
-        br_from = Branch.open_containing(directory)[0]
+        # Get the source branch
+        tree, br_from = bzrdir.BzrDir.open_tree_or_branch(directory)
+        if strict is None:
+            strict = br_from.get_config().get_user_option('push_strict')
+            if strict is not None:
+                # FIXME: This should be better supported by config
+                # -- vila 20090611
+                bools = dict(yes=True, no=False, on=True, off=False,
+                             true=True, false=False)
+                try:
+                    strict = bools[strict.lower()]
+                except KeyError:
+                    strict = None
+        if strict:
+            changes = tree.changes_from(tree.basis_tree())
+            if changes.has_changed():
+                raise errors.UncommittedChanges(tree)
+        # Get the tip's revision_id
         revision = _get_one_revision('push', revision)
         if revision is not None:
             revision_id = revision.in_history(br_from).rev_id
@@ -1078,7 +1104,7 @@ class cmd_push(Command):
 
 
 class cmd_branch(Command):
-    """Create a new copy of a branch.
+    """Create a new branch that is a copy of an existing branch.
 
     If the TO_LOCATION is omitted, the last component of the FROM_LOCATION will
     be used.  In other words, "branch ../foo/bar" will attempt to create ./bar.
@@ -1112,6 +1138,9 @@ class cmd_branch(Command):
 
         accelerator_tree, br_from = bzrdir.BzrDir.open_tree_or_branch(
             from_location)
+        if (accelerator_tree is not None and
+            accelerator_tree.supports_content_filtering()):
+            accelerator_tree = None
         revision = _get_one_revision('branch', revision)
         br_from.lock_read()
         try:
@@ -1621,7 +1650,7 @@ class cmd_init(Command):
                 branch.set_append_revisions_only(True)
             except errors.UpgradeRequired:
                 raise errors.BzrCommandError('This branch format cannot be set'
-                    ' to append-revisions-only.  Try --experimental-branch6')
+                    ' to append-revisions-only.  Try --default.')
         if not is_quiet():
             from bzrlib.info import describe_layout, describe_format
             try:
@@ -2409,6 +2438,7 @@ class cmd_ls(Command):
                             continue
                     kindch = entry.kind_character()
                     outstring = fp + kindch
+                    ui.ui_factory.clear_term()
                     if verbose:
                         outstring = '%-8s %s' % (fc, outstring)
                         if show_ids and fid is not None:
@@ -4664,7 +4694,7 @@ class cmd_split(Command):
         try:
             containing_tree.extract(sub_id)
         except errors.RootNotRich:
-            raise errors.UpgradeRequired(containing_tree.branch.base)
+            raise errors.RichRootUpgradeRequired(containing_tree.branch.base)
 
 
 class cmd_merge_directive(Command):

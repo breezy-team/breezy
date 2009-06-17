@@ -360,18 +360,11 @@ class TestExternalDiff(DiffBase):
         # subprocess.py that we had to workaround).
         # However, if 'diff' may not be available
         self.make_example_branch()
-        orig_progress = os.environ.get('BZR_PROGRESS_BAR')
-        try:
-            os.environ['BZR_PROGRESS_BAR'] = 'none'
-            out, err = self.run_bzr_subprocess('diff -r 1 --diff-options -ub',
-                                               universal_newlines=True,
-                                               retcode=None)
-        finally:
-            if orig_progress is None:
-                del os.environ['BZR_PROGRESS_BAR']
-            else:
-                os.environ['BZR_PROGRESS_BAR'] = orig_progress
-
+        # this will be automatically restored by the base bzr test class
+        os.environ['BZR_PROGRESS_BAR'] = 'none'
+        out, err = self.run_bzr_subprocess('diff -r 1 --diff-options -ub',
+                                           universal_newlines=True,
+                                           retcode=None)
         if 'Diff is not installed on this machine' in err:
             raise TestSkipped("No external 'diff' is available")
         self.assertEqual('', err)

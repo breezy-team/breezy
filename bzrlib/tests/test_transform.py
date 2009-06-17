@@ -20,6 +20,7 @@ from StringIO import StringIO
 import sys
 
 from bzrlib import (
+    bencode,
     errors,
     generate_ids,
     osutils,
@@ -53,7 +54,6 @@ from bzrlib.transform import (TreeTransform, ROOT_PARENT, FinalPaths,
                               build_tree, get_backup_name,
                               _FileMover, resolve_checkout,
                               TransformPreview, create_from_tree)
-from bzrlib.util import bencode
 
 
 class TestTreeTransform(tests.TestCaseWithTransport):

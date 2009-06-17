@@ -211,8 +211,12 @@ class TestInventoryReads(TestInventory):
                      ('doc', 'directory', 'doc-id'),
                      ('src/hello.c', 'file', 'hello-id'),
                      ('src/bye.c', 'file', 'bye-id'),
+                     ('src/sub', 'directory', 'sub-id'),
+                     ('src/sub/a', 'file', 'a-id'),
                      ('Makefile', 'file', 'makefile-id')]:
             inv.add_path(*args)
+
+        # Test all entries
         self.assertEqual([
             ('', 'tree-root'),
             ('Makefile', 'makefile-id'),
@@ -220,7 +224,35 @@ class TestInventoryReads(TestInventory):
             ('src', 'src-id'),
             ('src/bye.c', 'bye-id'),
             ('src/hello.c', 'hello-id'),
+            ('src/sub', 'sub-id'),
+            ('src/sub/a', 'a-id'),
             ], [(path, ie.file_id) for path, ie in inv.iter_entries()])
+
+        # Test a subdirectory
+        self.assertEqual([
+            ('bye.c', 'bye-id'),
+            ('hello.c', 'hello-id'),
+            ('sub', 'sub-id'),
+            ('sub/a', 'a-id'),
+            ], [(path, ie.file_id) for path, ie in inv.iter_entries(
+            from_dir='src-id')])
+
+        # Test not recursing at the root level
+        self.assertEqual([
+            ('', 'tree-root'),
+            ('Makefile', 'makefile-id'),
+            ('doc', 'doc-id'),
+            ('src', 'src-id'),
+            ], [(path, ie.file_id) for path, ie in inv.iter_entries(
+            recursive=False)])
+
+        # Test not recursing at a subdirectory level
+        self.assertEqual([
+            ('bye.c', 'bye-id'),
+            ('hello.c', 'hello-id'),
+            ('sub', 'sub-id'),
+            ], [(path, ie.file_id) for path, ie in inv.iter_entries(
+            from_dir='src-id', recursive=False)])
 
     def test_iter_just_entries(self):
         inv = self.make_inventory('tree-root')
