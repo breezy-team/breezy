@@ -125,6 +125,34 @@ class RepositoryFetchTests:
         newrepo.fetch(oldrepo, revision_id=revid2)
         self.assertEquals(set([revid1, revid2]), set(newrepo.all_revision_ids()))
 
+    def test_dir_becomes_symlink(self):
+        self.make_git_repo("d")
+        os.chdir("d")
+        bb = GitBranchBuilder()
+        bb.set_file("mylink/somefile", "foo\nbar\n", False)
+        mark1 = bb.commit("Somebody <somebody@someorg.org>", "mymsg1")
+        bb.set_symlink("mylink", "target/")
+        mark2 = bb.commit("Somebody <somebody@someorg.org>", "mymsg2")
+        marks = bb.finish()
+        gitsha1 = marks[mark1]
+        gitsha2 = marks[mark2]
+        os.chdir("..")
+        oldrepo = self.open_git_repo("d")
+        newrepo = self.clone_git_repo("d", "f")
+        revid1 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha1)
+        revid2 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha2)
+        tree1 = newrepo.revision_tree(revid1)
+        tree2 = newrepo.revision_tree(revid2)
+        fileid = tree1.path2id("mylink")
+        ie1 = tree1.inventory[fileid]
+        ie2 = tree2.inventory[fileid]
+        self.assertEquals(revid1, ie1.revision)
+        self.assertEquals("directory", ie1.kind)
+        self.assertEquals(None, ie1.symlink_target)
+        self.assertEquals(revid2, ie2.revision)
+        self.assertEquals("symlink", ie2.kind)
+        self.assertEquals("target/", ie2.symlink_target)
+
     def test_changing_symlink(self):
         self.make_git_repo("d")
         os.chdir("d")
