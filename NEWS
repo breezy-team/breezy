@@ -57,6 +57,9 @@ Documentation
 API Changes
 ***********
 
+* Removed overspecific error class ``InvalidProgressBarType``.
+  (Martin Pool)
+
 * The method ``ProgressView._show_transport_activity`` is now
   ``show_transport_activity`` because it's part of the contract between
   this class and the UI.  (Martin Pool)

@@ -2172,15 +2172,6 @@ class LocalRequiresBoundBranch(BzrError):
     _fmt = "Cannot perform local-only commits on unbound branches."
 
 
-class InvalidProgressBarType(BzrError):
-
-    _fmt = ("Environment variable BZR_PROGRESS_BAR='%(bar_type)s"
-            " is not a supported type Select one of: %(valid_types)s")
-
-    def __init__(self, bar_type, valid_types):
-        BzrError.__init__(self, bar_type=bar_type, valid_types=valid_types)
-
-
 class UnsupportedOperation(BzrError):
 
     _fmt = ("The method %(mname)s is not supported on"
