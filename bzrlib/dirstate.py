@@ -367,9 +367,9 @@ class DirState(object):
 
         :param path: The path at which the dirstate file on disk should live.
         :param sha1_provider: an object meeting the SHA1Provider interface.
-        :param worth_saving_limit: when the exact number of changed entries
-            is known, only bother saving the dirstate if more than this
-            count of entries have changed. -1 means never save.
+        :param worth_saving_limit: when the exact number of hash changed
+            entries is known, only bother saving the dirstate if more than
+            this count of entries have changed. -1 means never save.
         """
         # _header_state and _dirblock_state represent the current state
         # of the dirstate metadata and the per-row data respectiely.
@@ -412,33 +412,32 @@ class DirState(object):
         # during commit.
         self._last_block_index = None
         self._last_entry_index = None
-        # If True, use the per-entry field cache for faster serialisation.
-        # If False, disable it. If None, it is not used but may be enabled.
-        self._use_smart_saving = None
-        # The set of known changes
-        self._known_changes = set()
-        # The cache of serialised lines. When built, this is a tuple of
-        # 2 sorted lists that we "walk" while serialising.
-        self._line_cache = None
-        # How many changed entries can we have without saving
+        # The set of known hash changes
+        self._known_hash_changes = set()
+        # How many hash changed entries can we have without saving
         self._worth_saving_limit = worth_saving_limit
+        # If True, consider the worth saving limit when deciding whether to
+        # save the dirstate or not. If False, ignore it. If None, it can be
+        # set True but isn't True yet.
+        self._use_smart_saving = None
 
     def __repr__(self):
         return "%s(%r)" % \
             (self.__class__.__name__, self._filename)
 
-    def _mark_modified(self, entries=None, header_too=False):
+    def _mark_modified(self, hash_changed_entries=None, header_too=False):
         """Mark this dirstate as modified.
 
-        :param entries: if non-None, mark just these entries as modified.
+        :param hash_changed_entries: if non-None, mark just these entries as
+          having their hash modified.
         :param header_too: mark the header modified as well, not just the
           dirblocks.
         """
-        #trace.mutter_callsite(3, "modified entries: %s", entries)
-        if entries:
-            self._known_changes.update([e[0] for e in entries])
+        #trace.mutter_callsite(3, "modified hash entries: %s", hash_changed_entries)
+        if hash_changed_entries:
+            self._known_hash_changes.update([e[0] for e in hash_changed_entries])
             # We only enable smart saving is it hasn't already been disabled
-            if self._use_smart_saving is not False:
+            if self._use_smart_saving is None:
                 self._use_smart_saving = True
         else:
             # We don't know exactly what changed so disable smart saving
@@ -452,7 +451,7 @@ class DirState(object):
         self._header_state = DirState.IN_MEMORY_UNMODIFIED
         self._dirblock_state = DirState.IN_MEMORY_UNMODIFIED
         self._use_smart_saving = None
-        self._known_changes = set()
+        self._known_hash_changes = set()
 
     def add(self, path, file_id, kind, stat, fingerprint):
         """Add a path to be tracked.
@@ -1715,34 +1714,7 @@ class DirState(object):
 
     def _get_entry_lines(self):
         """Create lines for entries."""
-        if self._use_smart_saving:
-            # Build the line cache if it hasn't already been built
-            self._build_line_cache()
-            # We unroll this case for better performance ...
-            # The line cache is a tuple of 2 ordered lists: keys and lines.
-            # We keep track of successful matches and only search from there
-            # on next time.
-            entry_to_line = self._entry_to_line
-            known_changes = self._known_changes
-            index = 0
-            keys, serialised = self._line_cache
-            result = []
-            for entry in self._iter_entries():
-                key = entry[0]
-                if key in known_changes:
-                    result.append(entry_to_line(entry))
-                else:
-                    if keys[index] != key:
-                        try:
-                            index = keys.index(key, index + 1)
-                        except ValueError:
-                            result.append(entry_to_line(entry))
-                            continue
-                    result.append(serialised[index])
-                    index += 1
-            return result
-        else:
-            return map(self._entry_to_line, self._iter_entries())
+        return map(self._entry_to_line, self._iter_entries())
 
     def _get_fields_to_entry(self):
         """Get a function which converts entry fields into a entry record.
@@ -2108,9 +2080,9 @@ class DirState(object):
         :param path: The path at which the dirstate file on disk should live.
         :param sha1_provider: an object meeting the SHA1Provider interface.
             If None, a DefaultSHA1Provider is used.
-        :param worth_saving_limit: when the exact number of changed entries
-            is known, only bother saving the dirstate if more than this
-            count of entries have changed. -1 means never save.
+        :param worth_saving_limit: when the exact number of hash changed
+            entries is known, only bother saving the dirstate if more than
+            this count of entries have changed. -1 means never save.
         :return: An unlocked DirState object, associated with the given path.
         """
         if sha1_provider is None:
@@ -2129,36 +2101,6 @@ class DirState(object):
         self._read_header_if_needed()
         if self._dirblock_state == DirState.NOT_IN_MEMORY:
             _read_dirblocks(self)
-
-    def _build_line_cache(self):
-        """Build the line cache.
-
-        The line cache maps entry keys to serialised lines via
-        a tuple of 2 sorted lists.
-        """
-        if self._line_cache is not None:
-            # already built
-            return
-        self._state_file.seek(0)
-        lines = self._state_file.readlines()
-        # There are 5 header lines: 3 in the prelude, a line for
-        # parents and a line for ghosts. There is also a trailing
-        # empty line. We skip over those.
-        # Each line starts with a null and ends with a null and
-        # newline. We don't keep those because the serialisation
-        # process adds them.
-        values = [l[1:-2] for l in lines[5:-1]]
-        if self._dirblock_state == DirState.IN_MEMORY_UNMODIFIED:
-            keys = []
-            for directory in self._dirblocks:
-                keys.extend([e[0] for e in directory[1]])
-        else:
-            # Be safe and calculate the keys from the lines
-            keys = []
-            for v in values:
-                fields = v.split('\0', 3)
-                keys.append((fields[0], fields[1], fields[2]))
-        self._line_cache = (keys, values)
 
     def _read_header(self):
         """This reads in the metadata header, and the parent ids.
@@ -2274,20 +2216,19 @@ class DirState(object):
 
     def _worth_saving(self):
         """Is it worth saving the dirstate or not?"""
-        # Header changes are probably important enough to always save
         if self._header_state == DirState.IN_MEMORY_MODIFIED:
             return True
         if (self._dirblock_state == DirState.IN_MEMORY_MODIFIED and
             self._worth_saving_limit != -1):
             # If we're using smart saving and only a small number of
-            # entries have changed, don't bother saving. John has
+            # entries have changed their hash, don't bother saving. John has
             # suggested using a heuristic here based on the size of the
             # changed files and/or tree. For now, we go with a configurable
             # number of changes, keeping the calculation time
             # as low overhead as possible. (This also keeps all existing
             # tests passing as the default is 0, i.e. always save.)
             if self._use_smart_saving:
-                return len(self._known_changes) > self._worth_saving_limit
+                return len(self._known_hash_changes) > self._worth_saving_limit
             else:
                 return True
         return False

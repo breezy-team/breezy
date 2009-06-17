@@ -264,7 +264,7 @@ class DirStateWorkingTree(WorkingTree3):
             return None
 
     def _worth_saving_limit(self):
-        """How many changes are ok before we must save the dirstate.
+        """How many hash changes are ok before we must save the dirstate.
 
         :return: an integer. -1 means never save.
         """

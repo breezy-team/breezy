@@ -40,6 +40,10 @@ Internals
 Improvements
 ************
 
+* ``bzr status [FILE]`` is now faster. On OpenOffice.org after changing a
+  file, the time improves from 1.6 to 1.1 seconds for full status and
+  1.0 to 0.5 seconds for status on the file. (Ian Clatworthy)
+
 * Resolving a revno to a revision id on a branch accessed via ``bzr://``
   or ``bzr+ssh://`` is now much faster and involves no VFS operations.
   This speeds up commands like ``bzr pull -r 123``.  (Andrew Bennetts)
