@@ -20,6 +20,9 @@ Bug Fixes
 * Better message in ``bzr split`` error suggesting a rich root format.
   (Neil Martinsen-Burrell, #220067)
 
+* ``Branch.set_append_revisions_only`` now works with branches on a smart
+  server. (Andrew Bennetts, #365865)
+
 Internals
 *********
 
