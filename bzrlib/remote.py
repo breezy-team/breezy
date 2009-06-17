@@ -1924,6 +1924,10 @@ class RemoteBranchFormat(branch.BranchFormat):
         self._ensure_real()
         return self._custom_format.supports_stacking()
 
+    def supports_set_append_revisions_only(self):
+        self._ensure_real()
+        return self._custom_format.supports_set_append_revisions_only()
+
 
 class RemoteBranch(branch.Branch, _RpcHelper):
     """Branch stored on a server accessed by HPSS RPC.
