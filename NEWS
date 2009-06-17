@@ -20,6 +20,10 @@ Bug Fixes
 * Better message in ``bzr split`` error suggesting a rich root format.
   (Neil Martinsen-Burrell, #220067)
 
+* Progress bars are now suppressed again when the environment variable
+  ``BZR_PROGRESS_BAR`` is set to ``none``.
+  (Martin Pool, #339385)
+
 Internals
 *********
 
@@ -49,6 +53,13 @@ Documentation
 
 * Minor clarifications to the help for End-Of-Line conversions.
   (Ian Clatworthy)
+
+API Changes
+***********
+
+* The method ``ProgressView._show_transport_activity`` is now
+  ``show_transport_activity`` because it's part of the contract between
+  this class and the UI.  (Martin Pool)
 
 
 bzr 1.16rc1 "It's yesterday in California" 2009-06-11
