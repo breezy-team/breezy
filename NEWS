@@ -51,6 +51,11 @@ Internals
   for files with long ancestry and 'cherrypicked' changes.)
   (John Arbash Meinel)
 
+* pack <=> pack fetching is now done via a ``PackStreamSource`` rather
+  than the ``Packer`` code. The user visible change is that we now
+  properly fetch the minimum number of texts for non-smart fetching.
+  (John Arbash Meinel)
+
 
 Improvements
 ************
