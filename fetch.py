@@ -108,8 +108,7 @@ def import_git_blob(texts, mapping, path, hexsha, base_inv, parent_id,
         base_sha = None
     else:
         try:
-            if base_sha is None:
-                base_sha = shagitmap.lookup_blob(file_id, base_ie.revision)
+            base_sha = shagitmap.lookup_blob(file_id, base_ie.revision)
         except KeyError:
             base_sha = None
         else:
@@ -214,8 +213,7 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id,
     else:
         # See if this has changed at all
         try:
-            if base_sha is None:
-                base_sha = shagitmap.lookup_tree(file_id, base_inv.revision_id)
+            base_sha = shagitmap.lookup_tree(file_id, base_inv.revision_id)
         except KeyError:
             pass
         else:
@@ -224,8 +222,8 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id,
                 return [], {}, []
         if base_ie.kind != "directory":
             ie.revision = revision_id
-            texts.add_lines((file_id, ie.revision), (), [])
-            invdelta.append((base_inv.id2path(file_id), path, file_id, ie))
+            texts.add_lines((ie.file_id, ie.revision), (), [])
+            invdelta.append((base_inv.id2path(ie.file_id), path, ie.file_id, ie))
     # Remember for next time
     existing_children = set()
     child_modes = {}
@@ -236,9 +234,9 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id,
         existing_children.add(basename)
         child_path = osutils.pathjoin(path, name)
         if stat.S_ISDIR(mode):
-            subinvdelta, grandchildmodes, subshamap = import_git_tree(texts, 
-                    mapping, child_path, child_hexsha, base_inv, file_id, 
-                    revision_id, parent_invs, shagitmap, lookup_object)
+            subinvdelta, grandchildmodes, subshamap = import_git_tree(
+                    texts, mapping, child_path, child_hexsha, base_inv, 
+                    file_id, revision_id, parent_invs, shagitmap, lookup_object)
             invdelta.extend(subinvdelta)
             child_modes.update(grandchildmodes)
             shamap.extend(subshamap)
