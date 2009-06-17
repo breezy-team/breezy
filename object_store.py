@@ -236,7 +236,8 @@ class BazaarObjectStore(BaseObjectStore):
             return self._get_blob(type_data[0], type_data[1], expected_sha=sha)
         elif type == "tree":
             inv = self.repository.get_inventory(type_data[1])
-            rev = self._get_unusual_modes(type_data[1])
+            rev = self.repository.get_revision(type_data[1])
+            unusual_modes = extract_unusual_modes(rev)
             try:
                 return self._get_tree(type_data[0], type_data[1], inv, unusual_modes,
                                       expected_sha=sha)
