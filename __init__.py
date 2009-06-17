@@ -39,7 +39,7 @@ else:
 __version__ = version_string
 
 MINIMUM_DULWICH_VERSION = (0, 3, 1)
-COMPATIBLE_BZR_VERSIONS = [(1, 14, 0), (1, 15, 0)]
+COMPATIBLE_BZR_VERSIONS = [(1, 14, 0), (1, 15, 0), (1, 16, 0), (1, 17, 0)]
 
 bzrlib.api.require_any_api(bzrlib, COMPATIBLE_BZR_VERSIONS)
 
