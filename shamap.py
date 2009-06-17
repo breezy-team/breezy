@@ -36,11 +36,13 @@ def get_cache_dir():
     try:
         from xdg.BaseDirectory import xdg_cache_home
     except ImportError:
-        pass
+        from bzrlib.config import config_dir
+        ret = os.path.join(config_dir(), "git")
     else:
-        return os.path.join(xdg_cache_home, "bazaar", "git")
-    from bzrlib.config import config_dir
-    return os.path.join(config_dir(), "git")
+        ret = os.path.join(xdg_cache_home, "bazaar", "git")
+    if not os.path.isdir(ret):
+        os.makedirs(ret)
+    return ret
 
 
 def check_pysqlite_version(sqlite3):
