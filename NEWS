@@ -9,6 +9,14 @@ Bazaar Release Notes
 In Development
 ##############
 
+New Features
+************
+
+* ``bzr push`` now checks if uncommitted changes are present in the working
+  tree if the ``--strict`` option is used.
+  (Vincent Ladeuil, #284038)
+
+
 Bug Fixes
 *********
 
@@ -104,7 +112,6 @@ New Features
 
 * mail_client=claws now supports --body (and message body hooks).  Also uses
   configured from address.  (Barry Warsaw)
-
 
 Improvements
 ************
