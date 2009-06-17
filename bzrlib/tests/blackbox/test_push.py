@@ -86,7 +86,7 @@ class TestPush(tests.TestCaseWithTransport):
                            working_dir='branch_a', retcode=3)
         self.assertEquals(out,
                 ('','bzr: ERROR: These branches have diverged.  '
-                    'Try using "merge" and then "push".\n'))
+                 'See "bzr help diverged-branches" for more information.\n'))
         self.assertEquals(osutils.abspath(branch_a.get_push_location()),
                           osutils.abspath(branch_b.bzrdir.root_transport.base))
 
@@ -214,6 +214,31 @@ class TestPush(tests.TestCaseWithTransport):
         self.assertLength(14, self.hpss_calls)
         remote = branch.Branch.open('public')
         self.assertEndsWith(remote.get_stacked_on_url(), '/parent')
+
+    def test_push_smart_with_default_stacking_url_path_segment(self):
+        # If the default stacked-on location is a path element then branches
+        # we push there over the smart server are stacked and their
+        # stacked_on_url is that exact path segment. Added to nail bug 385132.
+        self.setup_smart_server_with_call_log()
+        self.make_branch('stack-on', format='1.9')
+        self.make_bzrdir('.').get_config().set_default_stack_on(
+            '/stack-on')
+        self.make_branch('from', format='1.9')
+        out, err = self.run_bzr(['push', '-d', 'from', self.get_url('to')])
+        b = branch.Branch.open(self.get_url('to'))
+        self.assertEqual('/extra/stack-on', b.get_stacked_on_url())
+
+    def test_push_smart_with_default_stacking_relative_path(self):
+        # If the default stacked-on location is a relative path then branches
+        # we push there over the smart server are stacked and their
+        # stacked_on_url is a relative path. Added to nail bug 385132.
+        self.setup_smart_server_with_call_log()
+        self.make_branch('stack-on', format='1.9')
+        self.make_bzrdir('.').get_config().set_default_stack_on('stack-on')
+        self.make_branch('from', format='1.9')
+        out, err = self.run_bzr(['push', '-d', 'from', self.get_url('to')])
+        b = branch.Branch.open(self.get_url('to'))
+        self.assertEqual('../stack-on', b.get_stacked_on_url())
 
     def create_simple_tree(self):
         tree = self.make_branch_and_tree('tree')
@@ -530,3 +555,77 @@ class TestPushRedirect(tests.TestCaseWithTransport):
              % re.escape(destination_url)],
             ['push', '-d', 'tree', destination_url], retcode=3)
         self.assertEqual('', out)
+
+
+class TestPushStrict(tests.TestCaseWithTransport):
+
+    def make_local_branch_and_tree(self):
+        tree = self.make_branch_and_tree('local')
+        self.build_tree_contents([('local/file', 'initial')])
+        tree.add('file')
+        tree.commit('adding file', rev_id='from-1')
+        return tree
+
+    def make_local_branch_and_tree_with_changes(self):
+        tree = self.make_local_branch_and_tree()
+        # Make some changes
+        self.build_tree_contents([('local/file', 'modified')])
+        return tree
+
+    def set_config_push_strict(self, tree, value):
+        # set config var (any of bazaar.conf, locations.conf, branch.conf
+        # should do)
+        conf = tree.branch.get_config()
+        conf.set_user_option('push_strict', value)
+
+    def assertPushFails(self, location, *args):
+        self.run_bzr_error(['Working tree ".*/local/"'
+                            ' has uncommitted changes.$',],
+                           ['push', '../' + location] + list(args),
+                           working_dir='local', retcode=3)
+
+    def assertPushSucceeds(self, location, *args):
+        self.run_bzr(['push', '../' + location] + list(args),
+                     working_dir='local')
+        tree_to = workingtree.WorkingTree.open(location)
+        repo_to = tree_to.branch.repository
+        self.assertTrue(repo_to.has_revision('from-1'))
+        self.assertEqual(tree_to.branch.last_revision_info()[1], 'from-1')
+
+    def test_push_default(self):
+        tree = self.make_local_branch_and_tree_with_changes()
+        self.assertPushSucceeds('to')
+
+    def test_push_no_strict_with_changes(self):
+        tree = self.make_local_branch_and_tree_with_changes()
+        self.assertPushSucceeds('to', '--no-strict')
+
+    def test_push_strict_with_changes(self):
+        tree = self.make_local_branch_and_tree_with_changes()
+        self.assertPushFails('to', '--strict')
+
+    def test_push_strict_without_changes(self):
+        tree = self.make_local_branch_and_tree()
+        self.assertPushSucceeds('to', '--strict')
+
+    def test_push_respect_config_var_strict(self):
+        tree = self.make_local_branch_and_tree_with_changes()
+        self.set_config_push_strict(tree, 'true')
+        self.assertPushFails('to')
+
+    def test_push_bogus_config_var_ignored(self):
+        tree = self.make_local_branch_and_tree_with_changes()
+        self.set_config_push_strict(tree, "I don't want you to be strict")
+        self.assertPushSucceeds('to')
+
+    def test_push_no_strict_command_line_override_config(self):
+        tree = self.make_local_branch_and_tree_with_changes()
+        self.set_config_push_strict(tree, 'yES')
+        self.assertPushFails('to')
+        self.assertPushSucceeds('to', '--no-strict')
+
+    def test_push_strict_command_line_override_config(self):
+        tree = self.make_local_branch_and_tree_with_changes()
+        self.set_config_push_strict(tree, 'oFF')
+        self.assertPushFails('to', '--strict')
+        self.assertPushSucceeds('to')

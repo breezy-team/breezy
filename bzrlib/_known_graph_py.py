@@ -28,7 +28,7 @@ class _KnownGraphNode(object):
     """Represents a single object in the known graph."""
 
     __slots__ = ('key', 'parent_keys', 'child_keys', 'linear_dominator',
-                 'dominator_distance', 'gdfo', 'ancestor_of')
+                 'gdfo', 'ancestor_of')
 
     def __init__(self, key, parent_keys):
         self.key = key
@@ -37,7 +37,6 @@ class _KnownGraphNode(object):
         # oldest ancestor, such that no parents between here and there have >1
         # child or >1 parent.
         self.linear_dominator = None
-        self.dominator_distance = 0
         # Greatest distance from origin
         self.gdfo = None
         # This will become a tuple of known heads that have this node as an
@@ -45,10 +44,10 @@ class _KnownGraphNode(object):
         self.ancestor_of = None
 
     def __repr__(self):
-        return '%s(%s  gdfo:%s par:%s child:%s dom:%s %s)' % (
+        return '%s(%s  gdfo:%s par:%s child:%s %s)' % (
             self.__class__.__name__, self.key, self.gdfo,
             self.parent_keys, self.child_keys,
-            self.linear_dominator, self.dominator_distance)
+            self.linear_dominator)
 
 
 class KnownGraph(object):
@@ -78,7 +77,6 @@ class KnownGraph(object):
         for key, parent_keys in parent_map.iteritems():
             if key in nodes:
                 node = nodes[key]
-                assert node.parent_keys is None
                 node.parent_keys = parent_keys
             else:
                 node = _KnownGraphNode(key, parent_keys)
@@ -97,27 +95,31 @@ class KnownGraph(object):
         For any given node, the 'linear dominator' is an ancestor, such that
         all parents between this node and that one have a single parent, and a
         single child. So if A->B->C->D then B,C,D all have a linear dominator
-        of A. Because there are no interesting siblings, we can quickly skip to
-        the nearest dominator when doing comparisons.
+        of A.
+
+        There are two main benefits:
+        1) When walking the graph, we can jump to the nearest linear dominator,
+           rather than walking all of the nodes inbetween.
+        2) When caching heads() results, dominators give the "same" results as
+           their children. (If the dominator is a head, then the descendant is
+           a head, if the dominator is not a head, then the child isn't
+           either.)
         """
         def check_node(node):
             if node.parent_keys is None or len(node.parent_keys) != 1:
                 # This node is either a ghost, a tail, or has multiple parents
                 # It its own dominator
                 node.linear_dominator = node.key
-                node.dominator_distance = 0
                 return None
             parent_node = self._nodes[node.parent_keys[0]]
             if len(parent_node.child_keys) > 1:
                 # The parent has multiple children, so *this* node is the
                 # dominator
                 node.linear_dominator = node.key
-                node.dominator_distance = 0
                 return None
             # The parent is already filled in, so add and continue
             if parent_node.linear_dominator is not None:
                 node.linear_dominator = parent_node.linear_dominator
-                node.dominator_distance = parent_node.dominator_distance + 1
                 return None
             # We don't know this node, or its parent node, so start walking to
             # next
@@ -138,12 +140,10 @@ class KnownGraph(object):
                 next_node = check_node(node)
             # The stack now contains the linear chain, and 'node' should have
             # been labeled
-            assert node.linear_dominator is not None
             dominator = node.linear_dominator
             while stack:
                 next_node = stack.pop()
                 next_node.linear_dominator = dominator
-                next_node.dominator_distance = node.dominator_distance + 1
                 node = next_node
 
     def _find_gdfo(self):
@@ -183,7 +183,6 @@ class KnownGraph(object):
             node.gdfo = 1
             heappush(todo, (1, node))
         processed = 0
-        max_gdfo = len(self._nodes) + 1
         while todo:
             gdfo, next = heappop(todo)
             processed += 1
@@ -191,10 +190,8 @@ class KnownGraph(object):
                 # This node was reached from a longer path, we assume it was
                 # enqued correctly with the longer gdfo, so don't continue
                 # processing now
-                assert gdfo < next.gdfo
                 continue
             next_gdfo = gdfo + 1
-            assert next_gdfo <= max_gdfo
             for child_key in next.child_keys:
                 child_node = nodes[child_key]
                 if child_node.gdfo is None or child_node.gdfo < next_gdfo:
@@ -225,7 +222,6 @@ class KnownGraph(object):
                 other_node = dom_to_node[node.linear_dominator]
                 # There should be no way that nodes sharing a dominator could
                 # 'tie' for gdfo
-                assert other_node.gdfo != node.gdfo
                 if other_node.gdfo > node.gdfo:
                     # The other node has this node as an ancestor
                     keys_to_remove.append(node.key)
@@ -358,7 +354,6 @@ class KnownGraph(object):
         to_cleanup = []
         to_cleanup_append = to_cleanup.append
         for node in candidate_nodes.itervalues():
-            assert node.ancestor_of is None
             node.ancestor_of = (node.key,)
             queue.append((-node.gdfo, node))
             to_cleanup_append(node)
@@ -372,7 +367,6 @@ class KnownGraph(object):
         heappush = heapq.heappush
         while queue and len(candidate_nodes) > 1:
             _, node = heappop(queue)
-            # assert node.ancestor_of is not None
             next_ancestor_of = node.ancestor_of
             if len(next_ancestor_of) == num_candidates:
                 # This node is now considered 'common'

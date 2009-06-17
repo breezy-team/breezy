@@ -261,7 +261,6 @@ def add_pyrex_extension(module_name, libraries=None, extra_source=[]):
 
 add_pyrex_extension('bzrlib._bencode_pyx')
 add_pyrex_extension('bzrlib._btree_serializer_c')
-add_pyrex_extension('bzrlib._chk_map_pyx', libraries=['z'])
 add_pyrex_extension('bzrlib._chunks_to_lines_pyx')
 add_pyrex_extension('bzrlib._groupcompress_pyx',
                     extra_source=['bzrlib/diff-delta.c'])
@@ -272,6 +271,7 @@ if sys.platform == 'win32':
     add_pyrex_extension('bzrlib._dirstate_helpers_c',
                         libraries=['Ws2_32'])
     add_pyrex_extension('bzrlib._walkdirs_win32')
+    z_lib = 'zdll'
 else:
     if have_pyrex and pyrex_version == '0.9.4.1':
         # Pyrex 0.9.4.1 fails to compile this extension correctly
@@ -286,6 +286,8 @@ else:
     else:
         add_pyrex_extension('bzrlib._dirstate_helpers_c')
     add_pyrex_extension('bzrlib._readdir_pyx')
+    z_lib = 'z'
+add_pyrex_extension('bzrlib._chk_map_pyx', libraries=[z_lib])
 ext_modules.append(Extension('bzrlib._patiencediff_c', ['bzrlib/_patiencediff_c.c']))
 
 
