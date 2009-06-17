@@ -21,6 +21,7 @@ from bzrlib import (
     errors,
     graph as _mod_graph,
     osutils,
+    patiencediff,
     )
 
 
@@ -35,8 +36,8 @@ class Annotator(object):
         """Create a new Annotator from a VersionedFile."""
         self._vf = vf
         self._parent_map = {}
-        self._parent_lines_cache = {}
-        self._parent_annotations_cache = {}
+        self._lines_cache = {}
+        self._annotations_cache = {}
         self._heads_provider = None
 
     def _get_needed_texts(self, key):
@@ -52,26 +53,37 @@ class Annotator(object):
             self._heads_provider = _mod_graph.KnownGraph(self._parent_map)
         return self._heads_provider
 
+    def _reannotate_one_parent(self, annotations, lines, key, parent_key):
+        """Reannotate this text relative to its first parent."""
+        parent_lines = self._lines_cache[parent_key]
+        parent_annotations = self._annotations_cache[parent_key]
+        # PatienceSequenceMatcher should probably be part of Policy
+        matcher = patiencediff.PatienceSequenceMatcher(None,
+            parent_lines, lines)
+        matching_blocks = matcher.get_matching_blocks()
+
+        for parent_idx, lines_idx, match_len in matching_blocks:
+            # For all matching regions we copy across the parent annotations
+            annotations[lines_idx:lines_idx + match_len] = \
+                parent_annotations[parent_idx:parent_idx + match_len]
+
     def annotate(self, key):
         """Return annotated fulltext for the given key."""
         keys = self._get_needed_texts(key)
-        reannotate = annotate.reannotate
         heads_provider = self._get_heads_provider
         for record in self._vf.get_record_stream(keys, 'topological', True):
-            key = record.key
+            this_key = record.key
             lines = osutils.chunks_to_lines(record.get_bytes_as('chunked'))
-            parents = self._parent_map[key]
-            if parents is not None:
-                parent_lines = [self._parent_lines_cache[parent]
-                                for parent in parents]
-            else:
-                parent_lines = []
-            self._parent_lines_cache[key] = list(reannotate(
-                parent_lines, lines, key, None, heads_provider))
+            annotations = [(this_key,)]*len(lines)
+            self._lines_cache[this_key] = lines
+            self._annotations_cache[this_key] = annotations
+
+            parents = self._parent_map[this_key]
+            if not parents:
+                continue
+            self._reannotate_one_parent(annotations, lines, key, parents[0])
         try:
-            annotated = self._parent_lines_cache[key]
-        except KeyError, e:
+            annotations = self._annotations_cache[key]
+        except KeyError:
             raise errors.RevisionNotPresent(key, self._vf)
-        annotations = [(a,) for a,l in annotated]
-        lines = [l for a,l in annotated]
-        return annotations, lines
+        return annotations, self._lines_cache[key]
