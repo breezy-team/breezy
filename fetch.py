@@ -226,6 +226,10 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id,
             if base_sha == hexsha:
                 # If nothing has changed since the base revision, we're done
                 return [], {}, []
+        if base_ie.kind != "directory":
+            ie.revision = revision_id
+            texts.add_lines((file_id, ie.revision), (), [])
+            invdelta.append((base_inv.id2path(file_id), path, file_id, ie))
     # Remember for next time
     existing_children = set()
     child_modes = {}
