@@ -61,36 +61,109 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
 
     module = None # Set by load_tests
 
+    fa_key = ('f-id', 'a-id')
+    fb_key = ('f-id', 'b-id')
+    fc_key = ('f-id', 'c-id')
+    fd_key = ('f-id', 'd-id')
+
     def make_simple_text(self):
-        repo = self.make_repository('repo')
-        repo.lock_write()
-        self.addCleanup(repo.unlock)
-        vf = repo.texts
-        repo.start_write_group()
+        self.repo = self.make_repository('repo')
+        self.repo.lock_write()
+        self.addCleanup(self.repo.unlock)
+        vf = self.repo.texts
+        self.vf = vf
+        self.repo.start_write_group()
         try:
-            fa_key = ('f-id', 'a-id')
-            fb_key = ('f-id', 'b-id')
-            vf.add_lines(fa_key, (), ['simple\n', 'content\n'])
-            vf.add_lines(fb_key, (fa_key,), ['simple\n', 'new content\n'])
+            self.vf.add_lines(self.fa_key, [], ['simple\n', 'content\n'])
+            self.vf.add_lines(self.fb_key, [self.fa_key],
+                              ['simple\n', 'new content\n'])
         except:
-            repo.abort_write_group()
+            self.repo.abort_write_group()
             raise
         else:
-            repo.commit_write_group()
-        return vf
+            self.repo.commit_write_group()
+
+    def make_merge_text(self):
+        self.make_simple_text()
+        self.repo.start_write_group()
+        try:
+            self.vf.add_lines(self.fc_key, [self.fa_key],
+                              ['simple\n', 'from c\n', 'content\n'])
+            self.vf.add_lines(self.fd_key, [self.fb_key, self.fc_key],
+                              ['simple\n', 'from c\n', 'new content\n',
+                               'introduced in merge\n'])
+        except:
+            self.repo.abort_write_group()
+            raise
+        else:
+            self.repo.commit_write_group()
+
+    def make_common_merge_text(self):
+        """Both sides of the merge will have introduced a line."""
+        self.make_simple_text()
+        self.repo.start_write_group()
+        try:
+            self.vf.add_lines(self.fc_key, [self.fa_key],
+                              ['simple\n', 'new content\n'])
+            self.vf.add_lines(self.fd_key, [self.fb_key, self.fc_key],
+                              ['simple\n', 'new content\n'])
+        except:
+            self.repo.abort_write_group()
+            raise
+        else:
+            self.repo.commit_write_group()
+
+    def make_merge_and_restored_text(self):
+        self.make_simple_text()
+        self.repo.start_write_group()
+        try:
+            # c reverts back to 'a' for the new content line
+            self.vf.add_lines(self.fc_key, [self.fb_key],
+                              ['simple\n', 'content\n'])
+            # d merges 'a' and 'c', to find both claim last modified
+            self.vf.add_lines(self.fd_key, [self.fa_key, self.fc_key],
+                              ['simple\n', 'content\n'])
+        except:
+            self.repo.abort_write_group()
+            raise
+        else:
+            self.repo.commit_write_group()
+
+    def assertAnnotateEqual(self, expected_annotation, annotator, key):
+        annotation, lines = annotator.annotate(key)
+        self.assertEqual(expected_annotation, annotation)
+        record = self.vf.get_record_stream([key], 'unordered', True).next()
+        exp_text = record.get_bytes_as('fulltext')
+        self.assertEqualDiff(exp_text, ''.join(lines))
 
     def test_annotate_missing(self):
-        vf = self.make_simple_text()
-        ann = self.module.Annotator(vf)
+        self.make_simple_text()
+        ann = self.module.Annotator(self.vf)
         self.assertRaises(errors.RevisionNotPresent,
                           ann.annotate, ('not', 'present'))
 
     def test_annotate_simple(self):
-        vf = self.make_simple_text()
-        ann = self.module.Annotator(vf)
-        f_key = ('f-id', 'a-id')
-        self.assertEqual(([(f_key,)]*2, ['simple\n', 'content\n']),
-                         ann.annotate(f_key))
-        fb_key = ('f-id', 'b-id')
-        self.assertEqual(([(f_key,), (fb_key,)], ['simple\n', 'new content\n']),
-                         ann.annotate(fb_key))
+        self.make_simple_text()
+        ann = self.module.Annotator(self.vf)
+        self.assertAnnotateEqual([(self.fa_key,)]*2, ann, self.fa_key)
+        self.assertAnnotateEqual([(self.fa_key,), (self.fb_key,)],
+                                 ann, self.fb_key)
+
+    def test_annotate_merge_text(self):
+        self.make_merge_text()
+        ann = self.module.Annotator(self.vf)
+        self.assertAnnotateEqual([(self.fa_key,), (self.fc_key,),
+                                  (self.fb_key,), (self.fd_key,)],
+                                 ann, self.fd_key)
+
+    def test_annotate_common_merge_text(self):
+        self.make_common_merge_text()
+        ann = self.module.Annotator(self.vf)
+        self.assertAnnotateEqual([(self.fa_key,), (self.fb_key, self.fc_key)],
+                                 ann, self.fd_key)
+
+    def test_annotate_merge_and_restored(self):
+        self.make_merge_and_restored_text()
+        ann = self.module.Annotator(self.vf)
+        self.assertAnnotateEqual([(self.fa_key,), (self.fa_key, self.fc_key)],
+                                 ann, self.fd_key)

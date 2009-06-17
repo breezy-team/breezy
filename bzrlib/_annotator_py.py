@@ -53,19 +53,54 @@ class Annotator(object):
             self._heads_provider = _mod_graph.KnownGraph(self._parent_map)
         return self._heads_provider
 
-    def _reannotate_one_parent(self, annotations, lines, key, parent_key):
-        """Reannotate this text relative to its first parent."""
+    def _get_parent_annotations_and_matches(self, lines, parent_key):
         parent_lines = self._lines_cache[parent_key]
         parent_annotations = self._annotations_cache[parent_key]
         # PatienceSequenceMatcher should probably be part of Policy
         matcher = patiencediff.PatienceSequenceMatcher(None,
             parent_lines, lines)
         matching_blocks = matcher.get_matching_blocks()
+        return parent_annotations, matching_blocks
+
+    def _reannotate_one_parent(self, annotations, lines, key, parent_key):
+        """Reannotate this text relative to its first parent."""
+        parent_annotations, matching_blocks = self._get_parent_annotations_and_matches(
+            lines, parent_key)
 
         for parent_idx, lines_idx, match_len in matching_blocks:
             # For all matching regions we copy across the parent annotations
             annotations[lines_idx:lines_idx + match_len] = \
                 parent_annotations[parent_idx:parent_idx + match_len]
+
+    def _reannotate_other_parents(self, annotations, lines, key, parent_key):
+        """Reannotate this text relative to a second (or more) parent."""
+        parent_annotations, matching_blocks = self._get_parent_annotations_and_matches(
+            lines, parent_key)
+
+        simple_key_ann = (key,)
+        for parent_idx, lines_idx, match_len in matching_blocks:
+            # For lines which match this parent, we will now resolve whether
+            # this parent wins over the current annotation
+            for idx in xrange(match_len):
+                ann_idx = lines_idx + idx
+                ann = annotations[ann_idx]
+                par_ann = parent_annotations[parent_idx + idx]
+                if ann == par_ann:
+                    # Nothing to change
+                    continue
+                if ann == simple_key_ann:
+                    # Originally claimed 'this', but it was really in this
+                    # parent
+                    annotations[ann_idx] = par_ann
+                    continue
+                # Now we have a conflict, both sides claim to have introduced
+                # this line
+                new_ann = set(ann)
+                assert key not in new_ann
+                # new_ann.discard(key)
+                new_ann.update(par_ann)
+                new_ann = tuple(sorted(new_ann))
+                annotations[ann_idx] = new_ann
 
     def annotate(self, key):
         """Return annotated fulltext for the given key."""
@@ -82,6 +117,8 @@ class Annotator(object):
             if not parents:
                 continue
             self._reannotate_one_parent(annotations, lines, key, parents[0])
+            for parent in parents[1:]:
+                self._reannotate_other_parents(annotations, lines, key, parent)
         try:
             annotations = self._annotations_cache[key]
         except KeyError:
