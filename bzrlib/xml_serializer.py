@@ -52,6 +52,8 @@ from bzrlib import errors
 class XMLSerializer(Serializer):
     """Abstract XML object serialize/deserialize"""
 
+    squashes_xml_invalid_characters = True
+
     def read_inventory_from_string(self, xml_string, revision_id=None,
                                    entry_cache=None):
         """Read xml_string into an inventory object.
@@ -172,8 +174,10 @@ def escape_invalid_chars(message):
     """Escape the XML-invalid characters in a commit message.
 
     :param message: Commit message to escape
-    :param count: Number of characters that were escaped
+    :return: tuple with escaped message and number of characters escaped
     """
+    if message is None:
+        return None, 0
     # Python strings can include characters that can't be
     # represented in well-formed XML; escape characters that
     # aren't listed in the XML specification

@@ -69,7 +69,7 @@ def _pre_open_hook(transport):
             continue
         else:
             return
-    raise errors.BzrError('jail break: %r' % (abspath,))
+    raise errors.JailBreak(abspath)
 
 
 _install_hook()
@@ -176,6 +176,8 @@ class SmartServerRequest(object):
             return client_path
         if not client_path.startswith('/'):
             client_path = '/' + client_path
+        if client_path + '/' == self._root_client_path:
+            return '.'
         if client_path.startswith(self._root_client_path):
             path = client_path[len(self._root_client_path):]
             relpath = urlutils.joinpath('/', path)
@@ -490,6 +492,9 @@ request_handlers.register_lazy(
     'BzrDirFormat.initialize', 'bzrlib.smart.bzrdir',
     'SmartServerRequestInitializeBzrDir')
 request_handlers.register_lazy(
+    'BzrDirFormat.initialize_ex_1.16', 'bzrlib.smart.bzrdir',
+    'SmartServerRequestBzrDirInitializeEx')
+request_handlers.register_lazy(
     'BzrDir.open', 'bzrlib.smart.bzrdir', 'SmartServerRequestOpenBzrDir')
 request_handlers.register_lazy(
     'BzrDir.open_branch', 'bzrlib.smart.bzrdir',
@@ -549,6 +554,9 @@ request_handlers.register_lazy(
     'SmartServerRepositorySetMakeWorkingTrees')
 request_handlers.register_lazy(
     'Repository.unlock', 'bzrlib.smart.repository', 'SmartServerRepositoryUnlock')
+request_handlers.register_lazy(
+    'Repository.get_rev_id_for_revno', 'bzrlib.smart.repository',
+    'SmartServerRepositoryGetRevIdForRevno')
 request_handlers.register_lazy(
     'Repository.get_stream', 'bzrlib.smart.repository',
     'SmartServerRepositoryGetStream')

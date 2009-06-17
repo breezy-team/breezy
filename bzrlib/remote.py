@@ -20,6 +20,7 @@
 import bz2
 
 from bzrlib import (
+    bencode,
     branch,
     bzrdir,
     config,
@@ -27,11 +28,10 @@ from bzrlib import (
     errors,
     graph,
     lockdir,
-    pack,
     repository,
     revision,
+    revision as _mod_revision,
     symbol_versioning,
-    urlutils,
 )
 from bzrlib.branch import BranchReferenceFormat
 from bzrlib.bzrdir import BzrDir, RemoteBzrDirFormat
@@ -44,7 +44,6 @@ from bzrlib.lockable_files import LockableFiles
 from bzrlib.smart import client, vfs, repository as smart_repo
 from bzrlib.revision import ensure_null, NULL_REVISION
 from bzrlib.trace import mutter, note, warning
-from bzrlib.util import bencode
 
 
 class _RpcHelper(object):
@@ -491,6 +490,8 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
         # 1) get the network name to use.
         if self._custom_format:
             network_name = self._custom_format.network_name()
+        elif self._network_name:
+            network_name = self._network_name
         else:
             # Select the current bzrlib default and ask for that.
             reference_bzrdir_format = bzrdir.format_registry.get('default')()
@@ -602,6 +603,8 @@ class RemoteRepository(_RpcHelper):
         self._lock_token = None
         self._lock_count = 0
         self._leave_lock = False
+        # Cache of revision parents; misses are cached during read locks, and
+        # write locks when no _real_repository has been set.
         self._unstacked_provider = graph.CachingParentsProvider(
             get_parent_map=self._get_parent_map_rpc)
         self._unstacked_provider.disable_cache()
@@ -665,6 +668,42 @@ class RemoteRepository(_RpcHelper):
         self._ensure_real()
         return self._real_repository.suspend_write_group()
 
+    def get_missing_parent_inventories(self, check_for_missing_texts=True):
+        self._ensure_real()
+        return self._real_repository.get_missing_parent_inventories(
+            check_for_missing_texts=check_for_missing_texts)
+
+    def _get_rev_id_for_revno_vfs(self, revno, known_pair):
+        self._ensure_real()
+        return self._real_repository.get_rev_id_for_revno(
+            revno, known_pair)
+
+    def get_rev_id_for_revno(self, revno, known_pair):
+        """See Repository.get_rev_id_for_revno."""
+        path = self.bzrdir._path_for_remote_call(self._client)
+        try:
+            if self._client._medium._is_remote_before((1, 17)):
+                return self._get_rev_id_for_revno_vfs(revno, known_pair)
+            response = self._call(
+                'Repository.get_rev_id_for_revno', path, revno, known_pair)
+        except errors.UnknownSmartMethod:
+            self._client._medium._remember_remote_is_before((1, 17))
+            return self._get_rev_id_for_revno_vfs(revno, known_pair)
+        if response[0] == 'ok':
+            return True, response[1]
+        elif response[0] == 'history-incomplete':
+            known_pair = response[1:3]
+            for fallback in self._fallback_repositories:
+                found, result = fallback.get_rev_id_for_revno(revno, known_pair)
+                if found:
+                    return True, result
+                else:
+                    known_pair = result
+            # Not found in any fallbacks
+            return False, known_pair
+        else:
+            raise errors.UnexpectedSmartServerResponse(response)
+
     def _ensure_real(self):
         """Ensure that there is a _real_repository set.
 
@@ -679,6 +718,11 @@ class RemoteRepository(_RpcHelper):
         invocation. If in doubt chat to the bzr network team.
         """
         if self._real_repository is None:
+            if 'hpss' in debug.debug_flags:
+                import traceback
+                warning('VFS Repository access triggered\n%s',
+                    ''.join(traceback.format_stack()))
+            self._unstacked_provider.missing_keys.clear()
             self.bzrdir._ensure_real()
             self._set_real_repository(
                 self.bzrdir._real_bzrdir.open_repository())
@@ -744,30 +788,24 @@ class RemoteRepository(_RpcHelper):
         """Return a source for streaming from this repository."""
         return RemoteStreamSource(self, to_format)
 
+    @needs_read_lock
     def has_revision(self, revision_id):
-        """See Repository.has_revision()."""
-        if revision_id == NULL_REVISION:
-            # The null revision is always present.
-            return True
-        path = self.bzrdir._path_for_remote_call(self._client)
-        response = self._call('Repository.has_revision', path, revision_id)
-        if response[0] not in ('yes', 'no'):
-            raise errors.UnexpectedSmartServerResponse(response)
-        if response[0] == 'yes':
-            return True
-        for fallback_repo in self._fallback_repositories:
-            if fallback_repo.has_revision(revision_id):
-                return True
-        return False
+        """True if this repository has a copy of the revision."""
+        # Copy of bzrlib.repository.Repository.has_revision
+        return revision_id in self.has_revisions((revision_id,))
 
+    @needs_read_lock
     def has_revisions(self, revision_ids):
-        """See Repository.has_revisions()."""
-        # FIXME: This does many roundtrips, particularly when there are
-        # fallback repositories.  -- mbp 20080905
-        result = set()
-        for revision_id in revision_ids:
-            if self.has_revision(revision_id):
-                result.add(revision_id)
+        """Probe to find out the presence of multiple revisions.
+
+        :param revision_ids: An iterable of revision_ids.
+        :return: A set of the revision_ids that were present.
+        """
+        # Copy of bzrlib.repository.Repository.has_revisions
+        parent_map = self.get_parent_map(revision_ids)
+        result = set(parent_map)
+        if _mod_revision.NULL_REVISION in revision_ids:
+            result.add(_mod_revision.NULL_REVISION)
         return result
 
     def has_same_location(self, other):
@@ -852,10 +890,10 @@ class RemoteRepository(_RpcHelper):
             self._unstacked_provider.enable_cache(cache_misses=True)
             if self._real_repository is not None:
                 self._real_repository.lock_read()
+            for repo in self._fallback_repositories:
+                repo.lock_read()
         else:
             self._lock_count += 1
-        for repo in self._fallback_repositories:
-            repo.lock_read()
 
     def _remote_lock_write(self, token):
         path = self.bzrdir._path_for_remote_call(self._client)
@@ -891,14 +929,15 @@ class RemoteRepository(_RpcHelper):
                 self._leave_lock = False
             self._lock_mode = 'w'
             self._lock_count = 1
-            self._unstacked_provider.enable_cache(cache_misses=False)
+            cache_misses = self._real_repository is None
+            self._unstacked_provider.enable_cache(cache_misses=cache_misses)
+            for repo in self._fallback_repositories:
+                # Writes don't affect fallback repos
+                repo.lock_read()
         elif self._lock_mode == 'r':
             raise errors.ReadOnlyError(self)
         else:
             self._lock_count += 1
-        for repo in self._fallback_repositories:
-            # Writes don't affect fallback repos
-            repo.lock_read()
         return self._lock_token or None
 
     def leave_lock_in_place(self):
@@ -1006,6 +1045,10 @@ class RemoteRepository(_RpcHelper):
                 self._lock_token = None
                 if not self._leave_lock:
                     self._unlock(old_token)
+        # Fallbacks are always 'lock_read()' so we don't pay attention to
+        # self._leave_lock
+        for repo in self._fallback_repositories:
+            repo.unlock()
 
     def break_lock(self):
         # should hand off to the network
@@ -1075,6 +1118,11 @@ class RemoteRepository(_RpcHelper):
         # We need to accumulate additional repositories here, to pass them in
         # on various RPC's.
         #
+        if self.is_locked():
+            # We will call fallback.unlock() when we transition to the unlocked
+            # state, so always add a lock here. If a caller passes us a locked
+            # repository, they are responsible for unlocking it later.
+            repository.lock_read()
         self._fallback_repositories.append(repository)
         # If self._real_repository was parameterised already (e.g. because a
         # _real_branch had its get_stacked_on_url method called), then the
@@ -1557,7 +1605,7 @@ class RemoteRepository(_RpcHelper):
             providers.insert(0, other)
         providers.extend(r._make_parents_provider() for r in
                          self._fallback_repositories)
-        return graph._StackedParentsProvider(providers)
+        return graph.StackedParentsProvider(providers)
 
     def _serialise_search_recipe(self, recipe):
         """Serialise a graph search recipe.
@@ -1604,6 +1652,7 @@ class RemoteStreamSink(repository.StreamSink):
 
     def insert_stream(self, stream, src_format, resume_tokens):
         target = self.target_repo
+        target._unstacked_provider.missing_keys.clear()
         if target._lock_token:
             verb = 'Repository.insert_stream_locked'
             extra_args = (target._lock_token or '',)
@@ -1899,11 +1948,6 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         # We intentionally don't call the parent class's __init__, because it
         # will try to assign to self.tags, which is a property in this subclass.
         # And the parent's __init__ doesn't do much anyway.
-        self._revision_id_to_revno_cache = None
-        self._partial_revision_id_to_revno_cache = {}
-        self._revision_history_cache = None
-        self._last_revision_info_cache = None
-        self._merge_sorted_revisions_cache = None
         self.bzrdir = remote_bzrdir
         if _client is not None:
             self._client = _client
@@ -1923,6 +1967,7 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         else:
             self._real_branch = None
         # Fill out expected attributes of branch for bzrlib API users.
+        self._clear_cached_state()
         self.base = self.bzrdir.root_transport.base
         self._control_files = None
         self._lock_mode = None
@@ -1950,6 +1995,7 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         hooks = branch.Branch.hooks['open']
         for hook in hooks:
             hook(self)
+        self._is_stacked = False
         if setup_stacking:
             self._setup_stacking()
 
@@ -1961,7 +2007,8 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         except (errors.NotStacked, errors.UnstackableBranchFormat,
             errors.UnstackableRepositoryFormat), e:
             return
-        self._activate_fallback_location(fallback_url, None)
+        self._is_stacked = True
+        self._activate_fallback_location(fallback_url)
 
     def _get_config(self):
         return RemoteBranchConfig(self)
@@ -2068,6 +2115,13 @@ class RemoteBranch(branch.Branch, _RpcHelper):
             raise errors.UnexpectedSmartServerResponse(response)
         return response[1]
 
+    def set_stacked_on_url(self, url):
+        branch.Branch.set_stacked_on_url(self, url)
+        if not url:
+            self._is_stacked = False
+        else:
+            self._is_stacked = True
+        
     def _vfs_get_tags_bytes(self):
         self._ensure_real()
         return self._real_branch._get_tags_bytes()
@@ -2200,6 +2254,23 @@ class RemoteBranch(branch.Branch, _RpcHelper):
             raise NotImplementedError(self.dont_leave_lock_in_place)
         self._leave_lock = False
 
+    def get_rev_id(self, revno, history=None):
+        if revno == 0:
+            return _mod_revision.NULL_REVISION
+        last_revision_info = self.last_revision_info()
+        ok, result = self.repository.get_rev_id_for_revno(
+            revno, last_revision_info)
+        if ok:
+            return result
+        missing_parent = result[1]
+        # Either the revision named by the server is missing, or its parent
+        # is.  Call get_parent_map to determine which, so that we report a
+        # useful error.
+        parent_map = self.repository.get_parent_map([missing_parent])
+        if missing_parent in parent_map:
+            missing_parent = parent_map[missing_parent]
+        raise errors.RevisionNotPresent(missing_parent, self.repository)
+
     def _last_revision_info(self):
         response = self._call('Branch.last_revision_info', self._remote_path())
         if response[0] != 'ok':
@@ -2210,6 +2281,9 @@ class RemoteBranch(branch.Branch, _RpcHelper):
 
     def _gen_revision_history(self):
         """See Branch._gen_revision_history()."""
+        if self._is_stacked:
+            self._ensure_real()
+            return self._real_branch._gen_revision_history()
         response_tuple, response_handler = self._call_expecting_body(
             'Branch.revision_history', self._remote_path())
         if response_tuple[0] != 'ok':

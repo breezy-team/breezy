@@ -1173,7 +1173,8 @@ class AppendRevisionsOnlyViolation(BzrError):
 class DivergedBranches(BzrError):
 
     _fmt = ("These branches have diverged."
-            " Use the merge command to reconcile them.")
+            " Use the missing command to see how.\n"
+            "Use the merge command to reconcile them.")
 
     def __init__(self, branch1, branch2):
         self.branch1 = branch1
@@ -1225,15 +1226,6 @@ class NotAncestor(BzrError):
     def __init__(self, rev_id, not_ancestor_id):
         BzrError.__init__(self, rev_id=rev_id,
             not_ancestor_id=not_ancestor_id)
-
-
-class InstallFailed(BzrError):
-
-    def __init__(self, revisions):
-        revision_str = ", ".join(str(r) for r in revisions)
-        msg = "Could not install revisions:\n%s" % revision_str
-        BzrError.__init__(self, msg)
-        self.revisions = revisions
 
 
 class AmbiguousBase(BzrError):
@@ -2169,6 +2161,12 @@ class RepositoryUpgradeRequired(UpgradeRequired):
     _fmt = "To use this feature you must upgrade your repository at %(path)s."
 
 
+class RichRootUpgradeRequired(UpgradeRequired):
+
+    _fmt = ("To use this feature you must upgrade your branch at %(path)s to"
+           " a format which supports rich roots.")
+
+
 class LocalRequiresBoundBranch(BzrError):
 
     _fmt = "Cannot perform local-only commits on unbound branches."
@@ -2960,6 +2958,14 @@ class InvalidShelfId(BzrError):
         BzrError.__init__(self, invalid_id=invalid_id)
 
 
+class JailBreak(BzrError):
+
+    _fmt = "An attempt to access a url outside the server jail was made: '%(url)s'."
+
+    def __init__(self, url):
+        BzrError.__init__(self, url=url)
+
+
 class UserAbort(BzrError):
 
     _fmt = 'The user aborted the operation.'
@@ -3025,3 +3031,15 @@ class UnsuspendableWriteGroup(BzrError):
 
     def __init__(self, repository):
         self.repository = repository
+
+
+class LossyPushToSameVCS(BzrError):
+
+    _fmt = ("Lossy push not possible between %(source_branch)r and "
+            "%(target_branch)r that are in the same VCS.")
+
+    internal_error = True
+
+    def __init__(self, source_branch, target_branch):
+        self.source_branch = source_branch
+        self.target_branch = target_branch

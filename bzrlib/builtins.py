@@ -79,15 +79,26 @@ def tree_files(file_list, default_branch=u'.', canonicalize=True,
 
 
 def tree_files_for_add(file_list):
-    """Add handles files a bit differently so it a custom implementation."""
+    """
+    Return a tree and list of absolute paths from a file list.
+
+    Similar to tree_files, but add handles files a bit differently, so it a
+    custom implementation.  In particular, MutableTreeTree.smart_add expects
+    absolute paths, which it immediately converts to relative paths.
+    """
+    # FIXME Would be nice to just return the relative paths like
+    # internal_tree_files does, but there are a large number of unit tests
+    # that assume the current interface to mutabletree.smart_add
     if file_list:
-        tree = WorkingTree.open_containing(file_list[0])[0]
+        tree, relpath = WorkingTree.open_containing(file_list[0])
         if tree.supports_views():
             view_files = tree.views.lookup_view()
             if view_files:
                 for filename in file_list:
                     if not osutils.is_inside_any(view_files, filename):
                         raise errors.FileOutsideView(filename, view_files)
+        file_list = file_list[:]
+        file_list[0] = tree.abspath(relpath)
     else:
         tree = WorkingTree.open_containing(u'.')[0]
         if tree.supports_views():
@@ -599,8 +610,9 @@ class cmd_add(Command):
                 for glob, paths in ignored.items():
                     match_len += len(paths)
                 self.outf.write("ignored %d file(s).\n" % match_len)
-            self.outf.write("If you wish to add some of these files,"
-                            " please add them by name.\n")
+            self.outf.write("If you wish to add ignored files, "
+                            "please add them explicitly by name. "
+                            "(\"bzr ignored\" gives a list)\n")
 
 
 class cmd_mkdir(Command):
@@ -871,13 +883,18 @@ class cmd_pull(Command):
             short_name='d',
             type=unicode,
             ),
+        Option('local',
+            help="Perform a local pull in a bound "
+                 "branch.  Local pulls are not applied to "
+                 "the master branch."
+            ),
         ]
     takes_args = ['location?']
     encoding_type = 'replace'
 
     def run(self, location=None, remember=False, overwrite=False,
             revision=None, verbose=False,
-            directory=None):
+            directory=None, local=False):
         # FIXME: too much stuff is in the command class
         revision_id = None
         mergeable = None
@@ -889,6 +906,9 @@ class cmd_pull(Command):
         except errors.NoWorkingTree:
             tree_to = None
             branch_to = Branch.open_containing(directory)[0]
+        
+        if local and not branch_to.get_bound_location():
+            raise errors.LocalRequiresBoundBranch()
 
         possible_transports = []
         if location is not None:
@@ -926,27 +946,36 @@ class cmd_pull(Command):
             if branch_to.get_parent() is None or remember:
                 branch_to.set_parent(branch_from.base)
 
-        if revision is not None:
-            revision_id = revision.as_revision_id(branch_from)
-
-        branch_to.lock_write()
+        if branch_from is not branch_to:
+            branch_from.lock_read()
         try:
-            if tree_to is not None:
-                view_info = _get_view_info_for_change_reporter(tree_to)
-                change_reporter = delta._ChangeReporter(
-                    unversioned_filter=tree_to.is_ignored, view_info=view_info)
-                result = tree_to.pull(branch_from, overwrite, revision_id,
-                                      change_reporter,
-                                      possible_transports=possible_transports)
-            else:
-                result = branch_to.pull(branch_from, overwrite, revision_id)
+            if revision is not None:
+                revision_id = revision.as_revision_id(branch_from)
 
-            result.report(self.outf)
-            if verbose and result.old_revid != result.new_revid:
-                log.show_branch_change(branch_to, self.outf, result.old_revno,
-                                       result.old_revid)
+            branch_to.lock_write()
+            try:
+                if tree_to is not None:
+                    view_info = _get_view_info_for_change_reporter(tree_to)
+                    change_reporter = delta._ChangeReporter(
+                        unversioned_filter=tree_to.is_ignored,
+                        view_info=view_info)
+                    result = tree_to.pull(
+                        branch_from, overwrite, revision_id, change_reporter,
+                        possible_transports=possible_transports, local=local)
+                else:
+                    result = branch_to.pull(
+                        branch_from, overwrite, revision_id, local=local)
+
+                result.report(self.outf)
+                if verbose and result.old_revid != result.new_revid:
+                    log.show_branch_change(
+                        branch_to, self.outf, result.old_revno,
+                        result.old_revid)
+            finally:
+                branch_to.unlock()
         finally:
-            branch_to.unlock()
+            if branch_from is not branch_to:
+                branch_from.unlock()
 
 
 class cmd_push(Command):
@@ -1017,7 +1046,7 @@ class cmd_push(Command):
         if revision is not None:
             revision_id = revision.in_history(br_from).rev_id
         else:
-            revision_id = br_from.last_revision()
+            revision_id = None
 
         # Get the stacked_on branch, if any
         if stacked_on is not None:
@@ -1056,7 +1085,7 @@ class cmd_push(Command):
 
 
 class cmd_branch(Command):
-    """Create a new copy of a branch.
+    """Create a new branch that is a copy of an existing branch.
 
     If the TO_LOCATION is omitted, the last component of the FROM_LOCATION will
     be used.  In other words, "branch ../foo/bar" will attempt to create ./bar.
@@ -1090,6 +1119,9 @@ class cmd_branch(Command):
 
         accelerator_tree, br_from = bzrdir.BzrDir.open_tree_or_branch(
             from_location)
+        if (accelerator_tree is not None and
+            accelerator_tree.supports_content_filtering()):
+            accelerator_tree = None
         revision = _get_one_revision('branch', revision)
         br_from.lock_read()
         try:
@@ -1575,7 +1607,7 @@ class cmd_init(Command):
                     "\nYou may supply --create-prefix to create all"
                     " leading parent directories."
                     % location)
-            _create_prefix(to_transport)
+            to_transport.create_prefix()
 
         try:
             a_bzrdir = bzrdir.BzrDir.open_from_transport(to_transport)
@@ -2068,7 +2100,7 @@ class cmd_log(Command):
 
       When exploring non-mainline history on large projects with deep
       history, the performance of log can be greatly improved by installing
-      the revnocache plugin. This plugin buffers historical information
+      the historycache plugin. This plugin buffers historical information
       trading disk space for faster speed.
     """
     takes_args = ['file*']
@@ -2387,6 +2419,7 @@ class cmd_ls(Command):
                             continue
                     kindch = entry.kind_character()
                     outstring = fp + kindch
+                    ui.ui_factory.clear_term()
                     if verbose:
                         outstring = '%-8s %s' % (fc, outstring)
                         if show_ids and fid is not None:
@@ -2706,42 +2739,75 @@ class cmd_local_time_offset(Command):
 class cmd_commit(Command):
     """Commit changes into a new revision.
 
-    If no arguments are given, the entire tree is committed.
+    An explanatory message needs to be given for each commit. This is
+    often done by using the --message option (getting the message from the
+    command line) or by using the --file option (getting the message from
+    a file). If neither of these options is given, an editor is opened for
+    the user to enter the message. To see the changed files in the
+    boilerplate text loaded into the editor, use the --show-diff option.
 
-    If selected files are specified, only changes to those files are
-    committed.  If a directory is specified then the directory and everything
-    within it is committed.
+    By default, the entire tree is committed and the person doing the
+    commit is assumed to be the author. These defaults can be overridden
+    as explained below.
 
-    When excludes are given, they take precedence over selected files.
-    For example, too commit only changes within foo, but not changes within
-    foo/bar::
+    :Selective commits:
 
-      bzr commit foo -x foo/bar
+      If selected files are specified, only changes to those files are
+      committed.  If a directory is specified then the directory and
+      everything within it is committed.
+  
+      When excludes are given, they take precedence over selected files.
+      For example, to commit only changes within foo, but not changes
+      within foo/bar::
+  
+        bzr commit foo -x foo/bar
+  
+      A selective commit after a merge is not yet supported.
 
-    If author of the change is not the same person as the committer, you can
-    specify the author's name using the --author option. The name should be
-    in the same format as a committer-id, e.g. "John Doe <jdoe@example.com>".
-    If there is more than one author of the change you can specify the option
-    multiple times, once for each author.
+    :Custom authors:
 
-    A selected-file commit may fail in some cases where the committed
-    tree would be invalid. Consider::
+      If the author of the change is not the same person as the committer,
+      you can specify the author's name using the --author option. The
+      name should be in the same format as a committer-id, e.g.
+      "John Doe <jdoe@example.com>". If there is more than one author of
+      the change you can specify the option multiple times, once for each
+      author.
+  
+    :Checks:
 
-      bzr init foo
-      mkdir foo/bar
-      bzr add foo/bar
-      bzr commit foo -m "committing foo"
-      bzr mv foo/bar foo/baz
-      mkdir foo/bar
-      bzr add foo/bar
-      bzr commit foo/bar -m "committing bar but not baz"
+      A common mistake is to forget to add a new file or directory before
+      running the commit command. The --strict option checks for unknown
+      files and aborts the commit if any are found. More advanced pre-commit
+      checks can be implemented by defining hooks. See ``bzr help hooks``
+      for details.
 
-    In the example above, the last commit will fail by design. This gives
-    the user the opportunity to decide whether they want to commit the
-    rename at the same time, separately first, or not at all. (As a general
-    rule, when in doubt, Bazaar has a policy of Doing the Safe Thing.)
+    :Things to note:
 
-    Note: A selected-file commit after a merge is not yet supported.
+      If you accidentially commit the wrong changes or make a spelling
+      mistake in the commit message say, you can use the uncommit command
+      to undo it. See ``bzr help uncommit`` for details.
+
+      Hooks can also be configured to run after a commit. This allows you
+      to trigger updates to external systems like bug trackers. The --fixes
+      option can be used to record the association between a revision and
+      one or more bugs. See ``bzr help bugs`` for details.
+
+      A selective commit may fail in some cases where the committed
+      tree would be invalid. Consider::
+  
+        bzr init foo
+        mkdir foo/bar
+        bzr add foo/bar
+        bzr commit foo -m "committing foo"
+        bzr mv foo/bar foo/baz
+        mkdir foo/bar
+        bzr add foo/bar
+        bzr commit foo/bar -m "committing bar but not baz"
+  
+      In the example above, the last commit will fail by design. This gives
+      the user the opportunity to decide whether they want to commit the
+      rename at the same time, separately first, or not at all. (As a general
+      rule, when in doubt, Bazaar has a policy of Doing the Safe Thing.)
     """
     # TODO: Run hooks on tree to-be-committed, and after commit.
 
@@ -2752,7 +2818,7 @@ class cmd_commit(Command):
 
     # XXX: verbose currently does nothing
 
-    _see_also = ['bugs', 'uncommit']
+    _see_also = ['add', 'bugs', 'hooks', 'uncommit']
     takes_args = ['selected*']
     takes_options = [
             ListOption('exclude', type=str, short_name='x',
@@ -2879,8 +2945,8 @@ class cmd_commit(Command):
         except PointlessCommit:
             # FIXME: This should really happen before the file is read in;
             # perhaps prepare the commit; get the message; then actually commit
-            raise errors.BzrCommandError("no changes to commit."
-                              " use --unchanged to commit anyhow")
+            raise errors.BzrCommandError("No changes to commit."
+                              " Use --unchanged to commit anyhow.")
         except ConflictsInTree:
             raise errors.BzrCommandError('Conflicts detected in working '
                 'tree.  Use "bzr conflicts" to list, "bzr resolve FILE" to'
@@ -4486,11 +4552,15 @@ class cmd_serve(Command):
     takes_options = [
         Option('inet',
                help='Serve on stdin/out for use from inetd or sshd.'),
+        RegistryOption('protocol', 
+               help="Protocol to serve.", 
+               lazy_registry=('bzrlib.transport', 'transport_server_registry'),
+               value_switches=True),
         Option('port',
                help='Listen for connections on nominated port of the form '
                     '[hostname:]portnumber.  Passing 0 as the port number will '
-                    'result in a dynamically allocated port.  The default port is '
-                    '4155.',
+                    'result in a dynamically allocated port.  The default port '
+                    'depends on the protocol.',
                type=str),
         Option('directory',
                help='Serve contents of this directory.',
@@ -4502,28 +4572,10 @@ class cmd_serve(Command):
                 ),
         ]
 
-    def run_smart_server(self, smart_server):
-        """Run 'smart_server' forever, with no UI output at all."""
-        # For the duration of this server, no UI output is permitted. note
-        # that this may cause problems with blackbox tests. This should be
-        # changed with care though, as we dont want to use bandwidth sending
-        # progress over stderr to smart server clients!
-        from bzrlib import lockdir
-        old_factory = ui.ui_factory
-        old_lockdir_timeout = lockdir._DEFAULT_TIMEOUT_SECONDS
-        try:
-            ui.ui_factory = ui.SilentUIFactory()
-            lockdir._DEFAULT_TIMEOUT_SECONDS = 0
-            smart_server.serve()
-        finally:
-            ui.ui_factory = old_factory
-            lockdir._DEFAULT_TIMEOUT_SECONDS = old_lockdir_timeout
-
     def get_host_and_port(self, port):
         """Return the host and port to run the smart server on.
 
-        If 'port' is None, the default host (`medium.BZR_DEFAULT_INTERFACE`)
-        and port (`medium.BZR_DEFAULT_PORT`) will be used.
+        If 'port' is None, None will be returned for the host and port.
 
         If 'port' has a colon in it, the string before the colon will be
         interpreted as the host.
@@ -4532,52 +4584,26 @@ class cmd_serve(Command):
         :return: A tuple of (host, port), where 'host' is a host name or IP,
             and port is an integer TCP/IP port.
         """
-        from bzrlib.smart import medium
-        host = medium.BZR_DEFAULT_INTERFACE
-        if port is None:
-            port = medium.BZR_DEFAULT_PORT
-        else:
+        host = None
+        if port is not None:
             if ':' in port:
                 host, port = port.split(':')
             port = int(port)
         return host, port
 
-    def get_smart_server(self, transport, inet, port):
-        """Construct a smart server.
-
-        :param transport: The base transport from which branches will be
-            served.
-        :param inet: If True, serve over stdin and stdout. Used for running
-            from inet.
-        :param port: The port to listen on. By default, it's `
-            medium.BZR_DEFAULT_PORT`. See `get_host_and_port` for more
-            information.
-        :return: A smart server.
-        """
-        from bzrlib.smart import medium, server
-        if inet:
-            smart_server = medium.SmartServerPipeStreamMedium(
-                sys.stdin, sys.stdout, transport)
-        else:
-            host, port = self.get_host_and_port(port)
-            smart_server = server.SmartTCPServer(
-                transport, host=host, port=port)
-            note('listening on port: %s' % smart_server.port)
-        return smart_server
-
-    def run(self, port=None, inet=False, directory=None, allow_writes=False):
-        from bzrlib.transport import get_transport
-        from bzrlib.transport.chroot import ChrootServer
+    def run(self, port=None, inet=False, directory=None, allow_writes=False,
+            protocol=None):
+        from bzrlib.transport import get_transport, transport_server_registry
         if directory is None:
             directory = os.getcwd()
+        if protocol is None:
+            protocol = transport_server_registry.get()
+        host, port = self.get_host_and_port(port)
         url = urlutils.local_path_to_url(directory)
         if not allow_writes:
             url = 'readonly+' + url
-        chroot_server = ChrootServer(get_transport(url))
-        chroot_server.setUp()
-        t = get_transport(chroot_server.get_url())
-        smart_server = self.get_smart_server(t, inet, port)
-        self.run_smart_server(smart_server)
+        transport = get_transport(url)
+        protocol(transport, host, port, inet)
 
 
 class cmd_join(Command):
@@ -4649,7 +4675,7 @@ class cmd_split(Command):
         try:
             containing_tree.extract(sub_id)
         except errors.RootNotRich:
-            raise errors.UpgradeRequired(containing_tree.branch.base)
+            raise errors.RichRootUpgradeRequired(containing_tree.branch.base)
 
 
 class cmd_merge_directive(Command):
@@ -4829,135 +4855,22 @@ class cmd_send(Command):
         'revision',
         'message',
         Option('body', help='Body for the email.', type=unicode),
-        RegistryOption.from_kwargs('format',
-        'Use the specified output format.',
-        **{'4': 'Bundle format 4, Merge Directive 2 (default)',
-           '0.9': 'Bundle format 0.9, Merge Directive 1',})
+        RegistryOption('format',
+                       help='Use the specified output format.', 
+                       lazy_registry=('bzrlib.send', 'format_registry'))
         ]
 
     def run(self, submit_branch=None, public_branch=None, no_bundle=False,
             no_patch=False, revision=None, remember=False, output=None,
-            format='4', mail_to=None, message=None, body=None, **kwargs):
-        return self._run(submit_branch, revision, public_branch, remember,
+            format=None, mail_to=None, message=None, body=None, **kwargs):
+        from bzrlib.send import send
+        return send(submit_branch, revision, public_branch, remember,
                          format, no_bundle, no_patch, output,
-                         kwargs.get('from', '.'), mail_to, message, body)
-
-    def _run(self, submit_branch, revision, public_branch, remember, format,
-             no_bundle, no_patch, output, from_, mail_to, message, body):
-        from bzrlib.revision import NULL_REVISION
-        branch = Branch.open_containing(from_)[0]
-        if output is None:
-            outfile = cStringIO.StringIO()
-        elif output == '-':
-            outfile = self.outf
-        else:
-            outfile = open(output, 'wb')
-        # we may need to write data into branch's repository to calculate
-        # the data to send.
-        branch.lock_write()
-        try:
-            if output is None:
-                config = branch.get_config()
-                if mail_to is None:
-                    mail_to = config.get_user_option('submit_to')
-                mail_client = config.get_mail_client()
-                if (not getattr(mail_client, 'supports_body', False)
-                    and body is not None):
-                    raise errors.BzrCommandError(
-                        'Mail client "%s" does not support specifying body' %
-                        mail_client.__class__.__name__)
-            if remember and submit_branch is None:
-                raise errors.BzrCommandError(
-                    '--remember requires a branch to be specified.')
-            stored_submit_branch = branch.get_submit_branch()
-            remembered_submit_branch = None
-            if submit_branch is None:
-                submit_branch = stored_submit_branch
-                remembered_submit_branch = "submit"
-            else:
-                if stored_submit_branch is None or remember:
-                    branch.set_submit_branch(submit_branch)
-            if submit_branch is None:
-                submit_branch = branch.get_parent()
-                remembered_submit_branch = "parent"
-            if submit_branch is None:
-                raise errors.BzrCommandError('No submit branch known or'
-                                             ' specified')
-            if remembered_submit_branch is not None:
-                note('Using saved %s location "%s" to determine what '
-                        'changes to submit.', remembered_submit_branch,
-                        submit_branch)
-
-            if mail_to is None:
-                submit_config = Branch.open(submit_branch).get_config()
-                mail_to = submit_config.get_user_option("child_submit_to")
-
-            stored_public_branch = branch.get_public_branch()
-            if public_branch is None:
-                public_branch = stored_public_branch
-            elif stored_public_branch is None or remember:
-                branch.set_public_branch(public_branch)
-            if no_bundle and public_branch is None:
-                raise errors.BzrCommandError('No public branch specified or'
-                                             ' known')
-            base_revision_id = None
-            revision_id = None
-            if revision is not None:
-                if len(revision) > 2:
-                    raise errors.BzrCommandError('bzr send takes '
-                        'at most two one revision identifiers')
-                revision_id = revision[-1].as_revision_id(branch)
-                if len(revision) == 2:
-                    base_revision_id = revision[0].as_revision_id(branch)
-            if revision_id is None:
-                revision_id = branch.last_revision()
-            if revision_id == NULL_REVISION:
-                raise errors.BzrCommandError('No revisions to submit.')
-            if format == '4':
-                directive = merge_directive.MergeDirective2.from_objects(
-                    branch.repository, revision_id, time.time(),
-                    osutils.local_time_offset(), submit_branch,
-                    public_branch=public_branch, include_patch=not no_patch,
-                    include_bundle=not no_bundle, message=message,
-                    base_revision_id=base_revision_id)
-            elif format == '0.9':
-                if not no_bundle:
-                    if not no_patch:
-                        patch_type = 'bundle'
-                    else:
-                        raise errors.BzrCommandError('Format 0.9 does not'
-                            ' permit bundle with no patch')
-                else:
-                    if not no_patch:
-                        patch_type = 'diff'
-                    else:
-                        patch_type = None
-                directive = merge_directive.MergeDirective.from_objects(
-                    branch.repository, revision_id, time.time(),
-                    osutils.local_time_offset(), submit_branch,
-                    public_branch=public_branch, patch_type=patch_type,
-                    message=message)
-
-            outfile.writelines(directive.to_lines())
-            if output is None:
-                subject = '[MERGE] '
-                if message is not None:
-                    subject += message
-                else:
-                    revision = branch.repository.get_revision(revision_id)
-                    subject += revision.get_summary()
-                basename = directive.get_disk_name(branch)
-                mail_client.compose_merge_request(mail_to, subject,
-                                                  outfile.getvalue(),
-                                                  basename, body)
-        finally:
-            if output != '-':
-                outfile.close()
-            branch.unlock()
+                         kwargs.get('from', '.'), mail_to, message, body,
+                         self.outf)
 
 
 class cmd_bundle_revisions(cmd_send):
-
     """Create a merge-directive for submitting changes.
 
     A merge directive provides many things needed for requesting merges:
@@ -5005,10 +4918,9 @@ class cmd_bundle_revisions(cmd_send):
         Option('output', short_name='o', help='Write directive to this file.',
                type=unicode),
         'revision',
-        RegistryOption.from_kwargs('format',
-        'Use the specified output format.',
-        **{'4': 'Bundle format 4, Merge Directive 2 (default)',
-           '0.9': 'Bundle format 0.9, Merge Directive 1',})
+        RegistryOption('format',
+                       help='Use the specified output format.',
+                       lazy_registry=('bzrlib.send', 'format_registry')),
         ]
     aliases = ['bundle']
 
@@ -5018,12 +4930,14 @@ class cmd_bundle_revisions(cmd_send):
 
     def run(self, submit_branch=None, public_branch=None, no_bundle=False,
             no_patch=False, revision=None, remember=False, output=None,
-            format='4', **kwargs):
+            format=None, **kwargs):
         if output is None:
             output = '-'
-        return self._run(submit_branch, revision, public_branch, remember,
+        from bzrlib.send import send
+        return send(submit_branch, revision, public_branch, remember,
                          format, no_bundle, no_patch, output,
-                         kwargs.get('from', '.'), None, None, None)
+                         kwargs.get('from', '.'), None, None, None,
+                         self.outf)
 
 
 class cmd_tag(Command):
@@ -5124,35 +5038,42 @@ class cmd_tags(Command):
         if not tags:
             return
 
-        if revision:
-            branch.lock_read()
-            try:
+        branch.lock_read()
+        try:
+            if revision:
                 graph = branch.repository.get_graph()
                 rev1, rev2 = _get_revision_range(revision, branch, self.name())
                 revid1, revid2 = rev1.rev_id, rev2.rev_id
                 # only show revisions between revid1 and revid2 (inclusive)
                 tags = [(tag, revid) for tag, revid in tags if
                     graph.is_between(revid, revid1, revid2)]
-            finally:
-                branch.unlock()
-        if sort == 'alpha':
-            tags.sort()
-        elif sort == 'time':
-            timestamps = {}
-            for tag, revid in tags:
-                try:
-                    revobj = branch.repository.get_revision(revid)
-                except errors.NoSuchRevision:
-                    timestamp = sys.maxint # place them at the end
-                else:
-                    timestamp = revobj.timestamp
-                timestamps[revid] = timestamp
-            tags.sort(key=lambda x: timestamps[x[1]])
-        if not show_ids:
-            # [ (tag, revid), ... ] -> [ (tag, dotted_revno), ... ]
-            revno_map = branch.get_revision_id_to_revno_map()
-            tags = [ (tag, '.'.join(map(str, revno_map.get(revid, ('?',)))))
-                        for tag, revid in tags ]
+            if sort == 'alpha':
+                tags.sort()
+            elif sort == 'time':
+                timestamps = {}
+                for tag, revid in tags:
+                    try:
+                        revobj = branch.repository.get_revision(revid)
+                    except errors.NoSuchRevision:
+                        timestamp = sys.maxint # place them at the end
+                    else:
+                        timestamp = revobj.timestamp
+                    timestamps[revid] = timestamp
+                tags.sort(key=lambda x: timestamps[x[1]])
+            if not show_ids:
+                # [ (tag, revid), ... ] -> [ (tag, dotted_revno), ... ]
+                for index, (tag, revid) in enumerate(tags):
+                    try:
+                        revno = branch.revision_id_to_dotted_revno(revid)
+                        if isinstance(revno, tuple):
+                            revno = '.'.join(map(str, revno))
+                    except errors.NoSuchRevision:
+                        # Bad tag data/merges can lead to tagged revisions
+                        # which are not in this branch. Fail gracefully ...
+                        revno = '?'
+                    tags[index] = (tag, revno)
+        finally:
+            branch.unlock()
         for tag, revspec in tags:
             self.outf.write('%-20s %s\n' % (tag, revspec))
 
@@ -5257,24 +5178,40 @@ class cmd_switch(Command):
         from bzrlib import switch
         tree_location = '.'
         control_dir = bzrdir.BzrDir.open_containing(tree_location)[0]
-        branch = control_dir.open_branch()
+        try:
+            branch = control_dir.open_branch()
+            had_explicit_nick = branch.get_config().has_explicit_nickname()
+        except errors.NotBranchError:
+            had_explicit_nick = False
         try:
             to_branch = Branch.open(to_location)
         except errors.NotBranchError:
-            this_branch = control_dir.open_branch()
-            # This may be a heavy checkout, where we want the master branch
-            this_url = this_branch.get_bound_location()
-            # If not, use a local sibling
-            if this_url is None:
-                this_url = this_branch.base
+            this_url = self._get_branch_location(control_dir)
             to_branch = Branch.open(
                 urlutils.join(this_url, '..', to_location))
         switch.switch(control_dir, to_branch, force)
-        if branch.get_config().has_explicit_nickname():
+        if had_explicit_nick:
             branch = control_dir.open_branch() #get the new branch!
             branch.nick = to_branch.nick
         note('Switched to branch: %s',
             urlutils.unescape_for_display(to_branch.base, 'utf-8'))
+
+    def _get_branch_location(self, control_dir):
+        """Return location of branch for this control dir."""
+        try:
+            this_branch = control_dir.open_branch()
+            # This may be a heavy checkout, where we want the master branch
+            master_location = this_branch.get_bound_location()
+            if master_location is not None:
+                return master_location
+            # If not, use a local sibling
+            return this_branch.base
+        except errors.NotBranchError:
+            format = control_dir.find_branch_format()
+            if getattr(format, 'get_reference', None) is not None:
+                return format.get_reference(control_dir)
+            else:
+                return control_dir.root_transport.base
 
 
 class cmd_view(Command):
@@ -5583,26 +5520,51 @@ class cmd_clean_tree(Command):
                    dry_run=dry_run, no_prompt=force)
 
 
-def _create_prefix(cur_transport):
-    needed = [cur_transport]
-    # Recurse upwards until we can create a directory successfully
-    while True:
-        new_transport = cur_transport.clone('..')
-        if new_transport.base == cur_transport.base:
-            raise errors.BzrCommandError(
-                "Failed to create path prefix for %s."
-                % cur_transport.base)
-        try:
-            new_transport.mkdir('.')
-        except errors.NoSuchFile:
-            needed.append(new_transport)
-            cur_transport = new_transport
+class cmd_reference(Command):
+    """list, view and set branch locations for nested trees.
+
+    If no arguments are provided, lists the branch locations for nested trees.
+    If one argument is provided, display the branch location for that tree.
+    If two arguments are provided, set the branch location for that tree.
+    """
+
+    hidden = True
+
+    takes_args = ['path?', 'location?']
+
+    def run(self, path=None, location=None):
+        branchdir = '.'
+        if path is not None:
+            branchdir = path
+        tree, branch, relpath =(
+            bzrdir.BzrDir.open_containing_tree_or_branch(branchdir))
+        if path is not None:
+            path = relpath
+        if tree is None:
+            tree = branch.basis_tree()
+        if path is None:
+            info = branch._get_all_reference_info().iteritems()
+            self._display_reference_info(tree, branch, info)
         else:
-            break
-    # Now we only need to create child directories
-    while needed:
-        cur_transport = needed.pop()
-        cur_transport.ensure_base()
+            file_id = tree.path2id(path)
+            if file_id is None:
+                raise errors.NotVersionedError(path)
+            if location is None:
+                info = [(file_id, branch.get_reference_info(file_id))]
+                self._display_reference_info(tree, branch, info)
+            else:
+                branch.set_reference_info(file_id, path, location)
+
+    def _display_reference_info(self, tree, branch, info):
+        ref_list = []
+        for file_id, (path, location) in info:
+            try:
+                path = tree.id2path(file_id)
+            except errors.NoSuchId:
+                pass
+            ref_list.append((path, location))
+        for path, location in sorted(ref_list):
+            self.outf.write('%s %s\n' % (path, location))
 
 
 # these get imported and then picked up by the scan for cmd_*

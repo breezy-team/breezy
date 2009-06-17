@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1434,11 +1434,26 @@ class DirStateWorkingTreeFormat(WorkingTreeFormat3):
                 if basis_root_id is not None:
                     wt._set_root_id(basis_root_id)
                     wt.flush()
+                # If content filtering is supported, do not use the accelerator
+                # tree - the cost of transforming the content both ways and
+                # checking for changed content can outweight the gains it gives.
+                # Note: do NOT move this logic up higher - using the basis from
+                # the accelerator tree is still desirable because that can save
+                # a minute or more of processing on large trees!
+                # The original tree may not have the same content filters
+                # applied so we can't safely build the inventory delta from
+                # the source tree.
+                if wt.supports_content_filtering():
+                    accelerator_tree = None
+                    delta_from_tree = False
+                else:
+                    delta_from_tree = True
                 # delta_from_tree is safe even for DirStateRevisionTrees,
                 # because wt4.apply_inventory_delta does not mutate the input
                 # inventory entries.
                 transform.build_tree(basis, wt, accelerator_tree,
-                                     hardlink=hardlink, delta_from_tree=True)
+                                     hardlink=hardlink,
+                                     delta_from_tree=delta_from_tree)
             finally:
                 basis.unlock()
         finally:
@@ -2021,7 +2036,7 @@ class InterDirStateTree(InterTree):
         else:
             specific_files = set([''])
         # -- specific_files is now a utf8 path set --
-        search_specific_files = set()
+
         # -- get the state object and prepare it.
         state = self.target.current_dirstate()
         state._read_dirblocks_if_needed()
@@ -2051,11 +2066,7 @@ class InterDirStateTree(InterTree):
             if not all_versioned:
                 raise errors.PathsNotVersionedError(specific_files)
         # -- remove redundancy in supplied specific_files to prevent over-scanning --
-        for path in specific_files:
-            other_specific_files = specific_files.difference(set([path]))
-            if not osutils.is_inside_any(other_specific_files, path):
-                # this is a top level path, we must check it.
-                search_specific_files.add(path)
+        search_specific_files = osutils.minimum_path_selection(specific_files)
 
         use_filesystem_for_exec = (sys.platform != 'win32')
         iter_changes = self.target._iter_changes(include_unchanged,

@@ -72,7 +72,7 @@ class TestRevisionAttributes(TestCaseWithRepository):
         tree1.commit(message="quux", allow_pointless=True, committer="jaq",
                      revprops={'empty':'',
                                'value':'one',
-                               'unicode':'\xb5',
+                               'unicode':u'\xb5',
                                'multiline':'foo\nbar\n\n'
                               })
         self.assertTrue(len(tree1.branch.revision_history()) > 0)

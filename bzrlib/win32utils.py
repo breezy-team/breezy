@@ -267,7 +267,7 @@ def get_local_appdata_location():
 
     Returned value can be unicode or plain string.
     To convert plain string to unicode use
-    s.decode(bzrlib.user_encoding)
+    s.decode(osutils.get_user_encoding())
     (XXX - but see bug 262874, which asserts the correct encoding is 'mbcs')
     """
     local = _get_sh_special_folder_path(CSIDL_LOCAL_APPDATA)
@@ -433,7 +433,6 @@ def glob_expand(file_list):
     import glob
     expanded_file_list = []
     for possible_glob in file_list:
-
         # work around bugs in glob.glob()
         # - Python bug #1001604 ("glob doesn't return unicode with ...")
         # - failing expansion for */* with non-iso-8859-* chars
@@ -488,3 +487,32 @@ def set_file_attr_hidden(path):
     """Set file attributes to hidden if possible"""
     if has_win32file:
         win32file.SetFileAttributes(path, win32file.FILE_ATTRIBUTE_HIDDEN)
+
+
+if has_ctypes and winver != 'Windows 98':
+    def get_unicode_argv():
+        LPCWSTR = ctypes.c_wchar_p
+        INT = ctypes.c_int
+        POINTER = ctypes.POINTER
+        prototype = ctypes.WINFUNCTYPE(LPCWSTR)
+        GetCommandLine = prototype(("GetCommandLineW",
+                                    ctypes.windll.kernel32))
+        prototype = ctypes.WINFUNCTYPE(POINTER(LPCWSTR), LPCWSTR, POINTER(INT))
+        CommandLineToArgv = prototype(("CommandLineToArgvW",
+                                       ctypes.windll.shell32))
+        c = INT(0)
+        pargv = CommandLineToArgv(GetCommandLine(), ctypes.byref(c))
+        # Skip the first argument, since we only care about parameters
+        argv = [pargv[i] for i in range(1, c.value)]
+        if getattr(sys, 'frozen', None) is None:
+            # Invoked via 'python.exe' which takes the form:
+            #   python.exe [PYTHON_OPTIONS] C:\Path\bzr [BZR_OPTIONS]
+            # we need to get only BZR_OPTIONS part,
+            # so let's using sys.argv[1:] as reference to get the tail
+            # of unicode argv
+            tail_len = len(sys.argv[1:])
+            ix = len(argv) - tail_len
+            argv = argv[ix:]
+        return argv
+else:
+    get_unicode_argv = None

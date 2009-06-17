@@ -69,6 +69,7 @@ from bzrlib import (
     config,
     diff,
     errors,
+    foreign,
     repository as _mod_repository,
     revision as _mod_revision,
     revisionspec,
@@ -1366,14 +1367,42 @@ class LogFormatter(object):
         else:
             return ''
 
+    def show_foreign_info(self, rev, indent):
+        """Custom log displayer for foreign revision identifiers.
+
+        :param rev: Revision object.
+        """
+        # Revision comes directly from a foreign repository
+        if isinstance(rev, foreign.ForeignRevision):
+            self._write_properties(indent, rev.mapping.vcs.show_foreign_revid(
+                rev.foreign_revid))
+            return
+
+        # Imported foreign revision revision ids always contain :
+        if not ":" in rev.revision_id:
+            return
+
+        # Revision was once imported from a foreign repository
+        try:
+            foreign_revid, mapping = \
+                foreign.foreign_vcs_registry.parse_revision_id(rev.revision_id)
+        except errors.InvalidRevisionId:
+            return
+
+        self._write_properties(indent, 
+            mapping.vcs.show_foreign_revid(foreign_revid))
+
     def show_properties(self, revision, indent):
         """Displays the custom properties returned by each registered handler.
 
         If a registered handler raises an error it is propagated.
         """
         for key, handler in properties_handler_registry.iteritems():
-            for key, value in handler(revision).items():
-                self.to_file.write(indent + key + ': ' + value + '\n')
+            self._write_properties(indent, handler(revision))
+
+    def _write_properties(self, indent, properties):
+        for key, value in properties.items():
+            self.to_file.write(indent + key + ': ' + value + '\n')
 
     def show_diff(self, to_file, diff, indent):
         for l in diff.rstrip().split('\n'):
@@ -1403,6 +1432,7 @@ class LongLogFormatter(LogFormatter):
             to_file.write('\n')
             for parent_id in revision.rev.parent_ids:
                 to_file.write(indent + 'parent: %s\n' % (parent_id,))
+        self.show_foreign_info(revision.rev, indent)
         self.show_properties(revision.rev, indent)
 
         committer = revision.rev.committer
@@ -1485,6 +1515,7 @@ class ShortLogFormatter(LogFormatter):
                             self.show_timezone, date_fmt="%Y-%m-%d",
                             show_offset=False),
                 tags, self.merge_marker(revision)))
+        self.show_foreign_info(revision.rev, indent+offset)
         self.show_properties(revision.rev, indent+offset)
         if self.show_ids:
             to_file.write(indent + offset + 'revision-id:%s\n'
@@ -1901,9 +1932,6 @@ def _get_kind_for_file_id(tree, file_id):
 
 
 properties_handler_registry = registry.Registry()
-properties_handler_registry.register_lazy("foreign",
-                                          "bzrlib.foreign",
-                                          "show_foreign_properties")
 
 
 # adapters which revision ids to log are filtered. When log is called, the

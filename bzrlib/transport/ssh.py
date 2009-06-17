@@ -18,6 +18,7 @@
 """Foundation SSH support for SFTP and smart server."""
 
 import errno
+import getpass
 import os
 import socket
 import subprocess
@@ -461,8 +462,8 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
     # paramiko requires a username, but it might be none if nothing was
     # supplied.  If so, use the local username.
     if username is None:
-        username = auth.get_user('ssh', host, port=port)
-
+        username = auth.get_user('ssh', host, port=port,
+                                 default=getpass.getuser())
     if _use_ssh_agent:
         agent = paramiko.Agent()
         for key in agent.get_keys():

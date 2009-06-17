@@ -724,9 +724,6 @@ def parse_url(url):
     if host != "" and host[0] == '[' and host[-1] == ']': #IPv6
         host = host[1:-1]
 
-    if host == '':
-        raise errors.InvalidURL('Host empty in: %s' % url)
-
     host = urllib.unquote(host)
     path = urllib.unquote(path)
 

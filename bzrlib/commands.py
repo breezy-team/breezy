@@ -35,6 +35,7 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import codecs
 import errno
+import threading
 from warnings import warn
 
 import bzrlib
@@ -48,10 +49,15 @@ from bzrlib import (
     )
 """)
 
-from bzrlib import registry
-# Compatibility
 from bzrlib.hooks import HookPoint, Hooks
+# Compatibility - Option used to be in commands.
 from bzrlib.option import Option
+from bzrlib import registry
+from bzrlib.symbol_versioning import (
+    deprecated_function,
+    deprecated_in,
+    suppress_deprecation_warnings,
+    )
 
 
 class CommandInfo(object):
@@ -132,98 +138,176 @@ def _unsquish_command_name(cmd):
 
 def _builtin_commands():
     import bzrlib.builtins
+    return _scan_module_for_commands(bzrlib.builtins)
+
+
+def _scan_module_for_commands(module):
     r = {}
-    builtins = bzrlib.builtins.__dict__
-    for name in builtins:
+    for name, obj in module.__dict__.iteritems():
         if name.startswith("cmd_"):
             real_name = _unsquish_command_name(name)
-            r[real_name] = builtins[name]
+            r[real_name] = obj
     return r
 
 
+def _list_bzr_commands(names):
+    """Find commands from bzr's core and plugins."""
+    # to eliminate duplicates
+    names.update(builtin_command_names())
+    names.update(plugin_command_names())
+    return names
+
+
+def all_command_names():
+    """Return a set of all command names."""
+    names = set()
+    for hook in Command.hooks['list_commands']:
+        names = hook(names)
+        if names is None:
+            raise AssertionError(
+                'hook %s returned None' % Command.hooks.get_hook_name(hook))
+    return names
+
+
 def builtin_command_names():
-    """Return list of builtin command names."""
+    """Return list of builtin command names.
+    
+    Use of all_command_names() is encouraged rather than builtin_command_names
+    and/or plugin_command_names.
+    """
     return _builtin_commands().keys()
 
 
 def plugin_command_names():
+    """Returns command names from commands registered by plugins."""
     return plugin_cmds.keys()
 
 
-def _get_cmd_dict(plugins_override=True):
-    """Return name->class mapping for all commands."""
+@deprecated_function(deprecated_in((1, 17, 0)))
+def get_all_cmds(plugins_override=False):
+    """Return canonical name and class for most commands.
+    
+    NB: This does not return all commands since the introduction of
+    command hooks, and returning the class is not sufficient to 
+    get correctly setup commands, which is why it is deprecated.
+
+    Use 'all_command_names' + 'get_cmd_object' instead.
+    """
     d = _builtin_commands()
     if plugins_override:
         d.update(plugin_cmds.iteritems())
-    return d
-
-
-def get_all_cmds(plugins_override=True):
-    """Return canonical name and class for all registered commands."""
-    for k, v in _get_cmd_dict(plugins_override=plugins_override).iteritems():
+    for k, v in d.iteritems():
         yield k,v
 
 
 def get_cmd_object(cmd_name, plugins_override=True):
-    """Return the canonical name and command class for a command.
+    """Return the command object for a command.
 
     plugins_override
         If true, plugin commands can override builtins.
     """
     try:
-        cmd = _get_cmd_object(cmd_name, plugins_override)
-        # Allow plugins to extend commands
-        for hook in Command.hooks['extend_command']:
-            hook(cmd)
-        return cmd
+        return _get_cmd_object(cmd_name, plugins_override)
     except KeyError:
         raise errors.BzrCommandError('unknown command "%s"' % cmd_name)
 
 
 def _get_cmd_object(cmd_name, plugins_override=True):
-    """Worker for get_cmd_object which raises KeyError rather than BzrCommandError."""
-    from bzrlib.externalcommand import ExternalCommand
+    """Get a command object.
 
+    :param cmd_name: The name of the command.
+    :param plugins_override: Allow plugins to override builtins.
+    :return: A Command object instance
+    :raises KeyError: If no command is found.
+    """
     # We want only 'ascii' command names, but the user may have typed
     # in a Unicode name. In that case, they should just get a
     # 'command not found' error later.
     # In the future, we may actually support Unicode command names.
+    cmd = None
+    # Get a command
+    for hook in Command.hooks['get_command']:
+        cmd = hook(cmd, cmd_name)
+        if cmd is not None and not plugins_override and not cmd.plugin_name():
+            # We've found a non-plugin command, don't permit it to be
+            # overridden.
+            break
+    if cmd is None:
+        for hook in Command.hooks['get_missing_command']:
+            cmd = hook(cmd_name)
+            if cmd is not None:
+                break
+    if cmd is None:
+        # No command found.
+        raise KeyError
+    # Allow plugins to extend commands
+    for hook in Command.hooks['extend_command']:
+        hook(cmd)
+    return cmd
 
-    # first look up this command under the specified name
-    if plugins_override:
+
+def _try_plugin_provider(cmd_name):
+    """Probe for a plugin provider having cmd_name."""
+    try:
+        plugin_metadata, provider = probe_for_provider(cmd_name)
+        raise errors.CommandAvailableInPlugin(cmd_name,
+            plugin_metadata, provider)
+    except errors.NoPluginAvailable:
+        pass
+
+
+def probe_for_provider(cmd_name):
+    """Look for a provider for cmd_name.
+
+    :param cmd_name: The command name.
+    :return: plugin_metadata, provider for getting cmd_name.
+    :raises NoPluginAvailable: When no provider can supply the plugin.
+    """
+    # look for providers that provide this command but aren't installed
+    for provider in command_providers_registry:
         try:
-            return plugin_cmds.get(cmd_name)()
-        except KeyError:
+            return provider.plugin_for_command(cmd_name), provider
+        except errors.NoPluginAvailable:
             pass
-    cmds = _get_cmd_dict(plugins_override=False)
+    raise errors.NoPluginAvailable(cmd_name)
+
+
+def _get_bzr_command(cmd_or_None, cmd_name):
+    """Get a command from bzr's core."""
+    cmds = _builtin_commands()
     try:
         return cmds[cmd_name]()
     except KeyError:
         pass
-    if plugins_override:
-        for key in plugin_cmds.keys():
-            info = plugin_cmds.get_info(key)
-            if cmd_name in info.aliases:
-                return plugin_cmds.get(key)()
     # look for any command which claims this as an alias
     for real_cmd_name, cmd_class in cmds.iteritems():
         if cmd_name in cmd_class.aliases:
             return cmd_class()
+    return cmd_or_None
 
+
+def _get_external_command(cmd_or_None, cmd_name):
+    """Lookup a command that is a shell script."""
+    # Only do external command lookups when no command is found so far.
+    if cmd_or_None is not None:
+        return cmd_or_None
+    from bzrlib.externalcommand import ExternalCommand
     cmd_obj = ExternalCommand.find_command(cmd_name)
     if cmd_obj:
         return cmd_obj
 
-    # look for plugins that provide this command but aren't installed
-    for provider in command_providers_registry:
-        try:
-            plugin_metadata = provider.plugin_for_command(cmd_name)
-        except errors.NoPluginAvailable:
-            pass
-        else:
-            raise errors.CommandAvailableInPlugin(cmd_name,
-                                                  plugin_metadata, provider)
-    raise KeyError
+
+def _get_plugin_command(cmd_or_None, cmd_name):
+    """Get a command from bzr's plugins."""
+    try:
+        return plugin_cmds.get(cmd_name)()
+    except KeyError:
+        pass
+    for key in plugin_cmds.keys():
+        info = plugin_cmds.get_info(key)
+        if cmd_name in info.aliases:
+            return plugin_cmds.get(key)()
+    return cmd_or_None
 
 
 class Command(object):
@@ -607,6 +691,25 @@ class CommandHooks(Hooks):
             "Called after creating a command object to allow modifications "
             "such as adding or removing options, docs etc. Called with the "
             "new bzrlib.commands.Command object.", (1, 13), None))
+        self.create_hook(HookPoint('get_command',
+            "Called when creating a single command. Called with "
+            "(cmd_or_None, command_name). get_command should either return "
+            "the cmd_or_None parameter, or a replacement Command object that "
+            "should be used for the command. Note that the Command.hooks "
+            "hooks are core infrastructure. Many users will prefer to use "
+            "bzrlib.commands.register_command or plugin_cmds.register_lazy.",
+            (1, 17), None))
+        self.create_hook(HookPoint('get_missing_command',
+            "Called when creating a single command if no command could be "
+            "found. Called with (command_name). get_missing_command should "
+            "either return None, or a Command object to be used for the "
+            "command.", (1, 17), None))
+        self.create_hook(HookPoint('list_commands',
+            "Called when enumerating commands. Called with a set of "
+            "cmd_name strings for all the commands found so far. This set "
+            " is safe to mutate - e.g. to remove a command. "
+            "list_commands should return the updated set of command names.",
+            (1, 17), None))
 
 Command.hooks = CommandHooks()
 
@@ -682,6 +785,7 @@ def apply_coveraged(dirname, the_callable, *args, **kwargs):
 
     tracer = trace.Trace(count=1, trace=0)
     sys.settrace(tracer.globaltrace)
+    threading.settrace(tracer.globaltrace)
 
     try:
         return exception_to_return_code(the_callable, *args, **kwargs)
@@ -950,21 +1054,53 @@ def display_command(func):
     return ignore_pipe
 
 
-def main(argv):
+def install_bzr_command_hooks():
+    """Install the hooks to supply bzr's own commands."""
+    if _list_bzr_commands in Command.hooks["list_commands"]:
+        return
+    Command.hooks.install_named_hook("list_commands", _list_bzr_commands,
+        "bzr commands")
+    Command.hooks.install_named_hook("get_command", _get_bzr_command,
+        "bzr commands")
+    Command.hooks.install_named_hook("get_command", _get_plugin_command,
+        "bzr plugin commands")
+    Command.hooks.install_named_hook("get_command", _get_external_command,
+        "bzr external command lookup")
+    Command.hooks.install_named_hook("get_missing_command", _try_plugin_provider,
+        "bzr plugin-provider-db check")
+
+
+def main(argv=None):
+    """Main entry point of command-line interface.
+
+    :param argv: list of unicode command-line arguments similar to sys.argv.
+        argv[0] is script name usually, it will be ignored.
+        Don't pass here sys.argv because this list contains plain strings
+        and not unicode; pass None instead.
+
+    :return: exit code of bzr command.
+    """
     import bzrlib.ui
     bzrlib.ui.ui_factory = bzrlib.ui.make_ui_for_terminal(
         sys.stdin, sys.stdout, sys.stderr)
 
     # Is this a final release version? If so, we should suppress warnings
     if bzrlib.version_info[3] == 'final':
-        from bzrlib import symbol_versioning
-        symbol_versioning.suppress_deprecation_warnings(override=False)
-    try:
-        user_encoding = osutils.get_user_encoding()
-        argv = [a.decode(user_encoding) for a in argv[1:]]
-    except UnicodeDecodeError:
-        raise errors.BzrError(("Parameter '%r' is unsupported by the current "
-                                                            "encoding." % a))
+        suppress_deprecation_warnings(override=False)
+    if argv is None:
+        argv = osutils.get_unicode_argv()
+    else:
+        new_argv = []
+        try:
+            # ensure all arguments are unicode strings
+            for a in argv[1:]:
+                if isinstance(a, unicode):
+                    new_argv.append(a)
+                else:
+                    new_argv.append(a.decode('ascii'))
+        except UnicodeDecodeError:
+            raise errors.BzrError("argv should be list of unicode strings.")
+        argv = new_argv
     ret = run_bzr_catch_errors(argv)
     trace.mutter("return code %d", ret)
     return ret
@@ -976,6 +1112,7 @@ def run_bzr_catch_errors(argv):
     This function assumed that that UI layer is setup, that symbol deprecations
     are already applied, and that unicode decoding has already been performed on argv.
     """
+    install_bzr_command_hooks()
     return exception_to_return_code(run_bzr, argv)
 
 
@@ -985,6 +1122,7 @@ def run_bzr_catch_user_errors(argv):
     This is used for the test suite, and might be useful for other programs
     that want to wrap the commandline interface.
     """
+    install_bzr_command_hooks()
     try:
         return run_bzr(argv)
     except Exception, e:

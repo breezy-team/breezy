@@ -248,6 +248,38 @@ class LinesDeltaIndex(object):
                 ' got out of sync with the line counter.')
         self.endpoint = endpoint
 
+    def _flush_insert(self, start_linenum, end_linenum,
+                      new_lines, out_lines, index_lines):
+        """Add an 'insert' request to the data stream."""
+        bytes_to_insert = ''.join(new_lines[start_linenum:end_linenum])
+        insert_length = len(bytes_to_insert)
+        # Each insert instruction is at most 127 bytes long
+        for start_byte in xrange(0, insert_length, 127):
+            insert_count = min(insert_length - start_byte, 127)
+            out_lines.append(chr(insert_count))
+            # Don't index the 'insert' instruction
+            index_lines.append(False)
+            insert = bytes_to_insert[start_byte:start_byte+insert_count]
+            as_lines = osutils.split_lines(insert)
+            out_lines.extend(as_lines)
+            index_lines.extend([True]*len(as_lines))
+
+    def _flush_copy(self, old_start_linenum, num_lines,
+                    out_lines, index_lines):
+        if old_start_linenum == 0:
+            first_byte = 0
+        else:
+            first_byte = self.line_offsets[old_start_linenum - 1]
+        stop_byte = self.line_offsets[old_start_linenum + num_lines - 1]
+        num_bytes = stop_byte - first_byte
+        # The data stream allows >64kB in a copy, but to match the compiled
+        # code, we will also limit it to a 64kB copy
+        for start_byte in xrange(first_byte, stop_byte, 64*1024):
+            num_bytes = min(64*1024, stop_byte - start_byte)
+            copy_bytes = encode_copy_instruction(start_byte, num_bytes)
+            out_lines.append(copy_bytes)
+            index_lines.append(False)
+
     def make_delta(self, new_lines, bytes_length=None, soft=False):
         """Compute the delta for this content versus the original content."""
         if bytes_length is None:

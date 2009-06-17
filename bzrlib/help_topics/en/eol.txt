@@ -6,25 +6,32 @@ stores a canonical format but outputs a convenience format. See
 ``bzr help content-filters`` for general information about using these.
 
 Note: Content filtering is only supported in recently added formats,
-e.g. 1.14.
+e.g. 1.14. Be sure that both the repository *and* the branch are
+in a recent format. (Just setting the format on the repository
+is not enough.) If content filtering does not appear to be working, use
+'bzr info -v' to confirm that the branch is using "Working tree format 5"
+or later.
 
-EOL conversion needs to be enabled for selected branches and files using
+EOL conversion needs to be enabled for selected file patterns using
 rules. See ``bzr help rules`` for general information on defining rules.
+Currently, rules are only supported in $BZR_HOME/.bazaar/rules (or
+%BZR_HOME%/bazaar/2.0/rules on Windows). Branch specific rules will be
+supported in a future verison of Bazaar.
 
 To configure which files to filter, set ``eol`` to one of the values below.
 (If a value is not set, ``exact`` is the default.)
 
- ============== ============================== ======================
- Value          Checkout end-of-lines as       Commit end-of-lines as
- ============== ============================== ======================
- native         crlf on Windows, lf otherwise  lf
- -------------- ------------------------------ ----------------------
- lf             lf                             lf
- -------------- ------------------------------ ----------------------
- crlf           crlf                           lf
- -------------- ------------------------------ ----------------------
- exact          No conversion                  exactly as in file
- ============== ============================== ======================
+ ========== ===================================== ======================
+ Value      Checkout end-of-lines as              Commit end-of-lines as
+ ========== ===================================== ======================
+ ``native`` ``crlf`` on Windows, ``lf`` otherwise ``lf``
+ ---------- ------------------------------------- ----------------------
+ ``lf``     ``lf``                                ``lf``
+ ---------- ------------------------------------- ----------------------
+ ``crlf``   ``crlf``                              ``lf``
+ ---------- ------------------------------------- ----------------------
+ ``exact``  No conversion                         Exactly as in file
+ ========== ===================================== ======================
 
 Note: For safety reasons, no conversion is applied to any file where a null
 byte is detected in the file.
@@ -82,20 +89,21 @@ In the future, a ``binary = true`` rule may be added but it is not
 supported yet.)
 
 If you have an existing repository with text files already stored using
-Windows newline conventions (crlf), then you may want to keep using that
+Windows newline conventions (``crlf``), then you may want to keep using that
 convention in the repository. Forcing certain files to this convention
 may also help users who do not have rules configured. To do this, set
 ``eol`` to one of the values below.
 
- ========================= ============================== ======================
- Value                     Checkout end-of-lines as       Commit end-of-lines as
- ========================= ============================== ======================
- native-with-crlf-in-repo  crlf on Windows, lf otherwise  crlf
- ------------------------- ------------------------------ ----------------------
- lf-with-crlf-in-repo      lf                             crlf
- ------------------------- ------------------------------ ----------------------
- crlf-with-crlf-in-repo    crlf                           crlf
- ========================= ============================== ======================
+ ============================ ======================== ======================
+ Value                        Checkout end-of-lines as Commit end-of-lines as
+ ============================ ======================== ======================
+ ``native-with-crlf-in-repo`` ``crlf`` on Windows,     ``crlf``
+                              ``lf`` otherwise
+ ---------------------------- ------------------------ ----------------------
+ ``lf-with-crlf-in-repo``     ``lf``                   ``crlf``
+ ---------------------------- ------------------------ ----------------------
+ ``crlf-with-crlf-in-repo``   ``crlf``                 ``crlf``
+ ============================ ======================== ======================
 
 For users working on an existing project that uses Windows newline
 conventions in their Bazaar repository, this rule is suggested as a
@@ -104,7 +112,7 @@ starting point::
   [name *]
   eol = native-with-crlf-in-repo
 
-For new projects, it is recommended that end-of-lines be stored as lf
+For new projects, it is recommended that end-of-lines be stored as ``lf``
 and that users stick to the basic settings, i.e. ``native``, ``lf``,
 ``crlf`` and ``exact``.
 
