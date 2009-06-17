@@ -1716,7 +1716,7 @@ class CHKInventory(CommonInventory):
         :param maximum_size: The CHKMap node size limit.
         :param search_key_name: The identifier for the search key function
         """
-        result = CHKInventory(search_key_name)
+        result = klass(search_key_name)
         result.revision_id = inventory.revision_id
         result.root_id = inventory.root.file_id
 
@@ -1729,19 +1729,24 @@ class CHKInventory(CommonInventory):
             p_id_key = parent_id_basename_key(entry)
             parent_id_basename_dict[p_id_key] = entry.file_id
 
-        search_key_func = chk_map.search_key_registry.get(search_key_name)
+        result._populate_from_dicts(chk_store, id_to_entry_dict,
+            parent_id_basename_dict, maximum_size=maximum_size)
+        return result
+
+    def _populate_from_dicts(self, chk_store, id_to_entry_dict,
+                             parent_id_basename_dict, maximum_size):
+        search_key_func = chk_map.search_key_registry.get(self._search_key_name)
         root_key = chk_map.CHKMap.from_dict(chk_store, id_to_entry_dict,
                    maximum_size=maximum_size, key_width=1,
                    search_key_func=search_key_func)
-        result.id_to_entry = chk_map.CHKMap(chk_store, root_key,
-                                            search_key_func)
+        self.id_to_entry = chk_map.CHKMap(chk_store, root_key,
+                                          search_key_func)
         root_key = chk_map.CHKMap.from_dict(chk_store,
                    parent_id_basename_dict,
                    maximum_size=maximum_size, key_width=2,
                    search_key_func=search_key_func)
-        result.parent_id_basename_to_file_id = chk_map.CHKMap(chk_store,
-                                                     root_key, search_key_func)
-        return result
+        self.parent_id_basename_to_file_id = chk_map.CHKMap(chk_store,
+                                                    root_key, search_key_func)
 
     def _parent_id_basename_key(self, entry):
         """Create a key for a entry in a parent_id_basename_to_file_id index."""

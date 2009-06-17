@@ -674,7 +674,7 @@ class CHKInventoryRepository(KnitPackRepository):
         return self._inventory_add_lines(revision_id, parents,
             inv_lines, check_content=False)
 
-    def _create_inv_from_null(self, delta, new_revision_id):
+    def _create_inv_from_null(self, delta, revision_id):
         """This will mutate new_inv directly.
 
         This is a simplified form of create_by_apply_delta which knows that all
@@ -682,8 +682,7 @@ class CHKInventoryRepository(KnitPackRepository):
         """
         serializer = self._format._serializer
         new_inv = inventory.CHKInventory(serializer.search_key_name)
-        new_inv.revision_id = new_revision_id
-
+        new_inv.revision_id = revision_id
         entry_to_bytes = new_inv._entry_to_bytes
         id_to_entry_dict = {}
         parent_id_basename_dict = {}
@@ -707,20 +706,8 @@ class CHKInventoryRepository(KnitPackRepository):
             id_to_entry_dict[(file_id,)] = new_value
             parent_id_basename_dict[parent_id_basename_key] = file_id
 
-        search_key_func = chk_map.search_key_registry.get(
-                            serializer.search_key_name)
-        maximum_size = serializer.maximum_size
-        root_key = chk_map.CHKMap.from_dict(self.chk_bytes, id_to_entry_dict,
-                   maximum_size=maximum_size, key_width=1,
-                   search_key_func=search_key_func)
-        new_inv.id_to_entry = chk_map.CHKMap(self.chk_bytes, root_key,
-                                             search_key_func)
-        root_key = chk_map.CHKMap.from_dict(self.chk_bytes,
-                   parent_id_basename_dict,
-                   maximum_size=maximum_size, key_width=2,
-                   search_key_func=search_key_func)
-        new_inv.parent_id_basename_to_file_id = chk_map.CHKMap(self.chk_bytes,
-                                                    root_key, search_key_func)
+        new_inv._populate_from_dicts(self.chk_bytes, id_to_entry_dict,
+            parent_id_basename_dict, maximum_size=serializer.maximum_size)
         return new_inv
 
     def add_inventory_by_delta(self, basis_revision_id, delta, new_revision_id,
