@@ -90,6 +90,9 @@ class GitRepository(ForeignRepository):
     def make_working_trees(self):
         return True
 
+    def revision_graph_can_have_wrong_parents(self):
+        return False
+
     def dfetch(self, source, stop_revision):
         interrepo = repository.InterRepository.get(source, self)
         return interrepo.dfetch(stop_revision)
