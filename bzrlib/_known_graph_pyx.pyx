@@ -502,7 +502,7 @@ cdef class KnownGraph:
     cdef int _process_parent(self, _KnownGraphNode node,
                              _KnownGraphNode parent_node,
                              candidate_nodes, dom_to_node,
-                             queue, int *replace_item) except -1:
+                             queue, int *replace_item, min_gdfo) except -1:
         """Process the parent of a node, seeing if we need to walk it."""
         cdef PyObject *maybe_candidate
         cdef PyObject *maybe_node
@@ -524,6 +524,9 @@ cdef class KnownGraph:
                 if maybe_candidate != NULL:
                     candidate_nodes.pop(dom_child_node.key)
                     return 0
+        if parent_node.gdfo < min_gdfo:
+            # Do not enque this node, it is too old
+            return 0
         if parent_node.ancestor_of is None:
             # This node hasn't been walked yet, so just project node's ancestor
             # info directly to parent_node, and enqueue it for later processing
@@ -554,12 +557,17 @@ cdef class KnownGraph:
 
         queue = []
         pos = 0
+        min_gdfo = None
         while PyDict_Next(candidate_nodes, &pos, NULL, &temp_node):
             node = <_KnownGraphNode>temp_node
             assert node.ancestor_of is None
             node.ancestor_of = (node.key,)
             PyList_Append(queue, (-node.gdfo, node))
             PyList_Append(self._to_cleanup, node)
+            if min_gdfo is None:
+                min_gdfo = node.gdfo
+            elif node.gdfo < min_gdfo:
+                min_gdfo = node.gdfo
         heapify(queue)
         # These are nodes that we determined are 'common' that we are no longer
         # walking
@@ -599,12 +607,14 @@ cdef class KnownGraph:
                 # We know that there is nothing between here and the tail
                 # that is interesting, so skip to the end
                 self._process_parent(node, node.linear_dominator_node,
-                                     candidate_nodes, dom_to_node, queue, &replace_item)
+                                     candidate_nodes, dom_to_node, queue,
+                                     &replace_item, min_gdfo)
             else:
                 for pos from 0 <= pos < PyTuple_GET_SIZE(node.parents):
                     parent_node = _get_parent(node.parents, pos)
                     self._process_parent(node, parent_node, candidate_nodes,
-                                         dom_to_node, queue, &replace_item)
+                                         dom_to_node, queue, &replace_item,
+                                         min_gdfo)
         for pos from 0 <= pos < PyList_GET_SIZE(self._to_cleanup):
             node = _get_list_node(self._to_cleanup, pos)
             node.ancestor_of = None
