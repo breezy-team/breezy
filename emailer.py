@@ -268,9 +268,9 @@ class EmailSender(object):
         _subject = self.config.get_user_option('post_commit_subject')
         if _subject == None:
             _subject = ("Rev %d: %s in %s" % 
-                (fields['revision'],
-                 fields['message'],
-                 fields['url']))
+                (self.revno,
+                 self.revision.get_summary(),
+                 self.url()))
         return self.format(_subject)
 
     def diff_filename(self):
