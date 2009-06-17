@@ -100,7 +100,6 @@ def import_git_blob(texts, mapping, path, hexsha, base_inv, parent_id,
     # We just have to hope this is indeed utf-8:
     ie = cls(file_id, urlutils.basename(path).decode("utf-8"), parent_id)
     ie.executable = executable
-    ie.text_id = hexsha
     # See if this has changed at all
     try:
         base_ie = base_inv[file_id]
@@ -108,7 +107,6 @@ def import_git_blob(texts, mapping, path, hexsha, base_inv, parent_id,
         base_ie = None
         base_sha = None
     else:
-        base_sha = base_ie.text_id
         try:
             if base_sha is None:
                 base_sha = shagitmap.lookup_blob(file_id, base_ie.revision)
@@ -205,7 +203,6 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id,
     # We just have to hope this is indeed utf-8:
     ie = InventoryDirectory(file_id, urlutils.basename(path.decode("utf-8")), 
         parent_id)
-    ie.text_id = hexsha
     try:
         base_ie = base_inv[file_id]
     except NoSuchId:
@@ -215,7 +212,6 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id,
         texts.add_lines((file_id, ie.revision), (), [])
         invdelta.append((None, path, file_id, ie))
     else:
-        base_sha = base_ie.text_id
         # See if this has changed at all
         try:
             if base_sha is None:
