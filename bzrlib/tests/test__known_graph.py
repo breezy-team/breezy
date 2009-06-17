@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for the python and pyrex extensions of groupcompress"""
+"""Tests for the python and pyrex extensions of KnownGraph"""
 
 from bzrlib import (
     errors,
