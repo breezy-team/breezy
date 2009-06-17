@@ -674,23 +674,6 @@ class CHKInventoryRepository(KnitPackRepository):
         return self._inventory_add_lines(revision_id, parents,
             inv_lines, check_content=False)
 
-    def _get_null_inventory(self):
-        serializer = self._format._serializer
-        null_inv = inventory.CHKInventory(serializer.search_key_name)
-        search_key_func = chk_map.search_key_registry.get(
-                            serializer.search_key_name)
-        null_inv.id_to_entry = chk_map.CHKMap(self.chk_bytes,
-            None, search_key_func)
-        null_inv.id_to_entry._root_node.set_maximum_size(
-            serializer.maximum_size)
-        null_inv.parent_id_basename_to_file_id = chk_map.CHKMap(
-            self.chk_bytes, None, search_key_func)
-        null_inv.parent_id_basename_to_file_id._root_node.set_maximum_size(
-            serializer.maximum_size)
-        null_inv.parent_id_basename_to_file_id._root_node._key_width = 2
-        null_inv.root_id = None
-        return null_inv
-
     def _create_inv_from_null(self, delta, new_revision_id):
         """This will mutate new_inv directly.
 
@@ -712,16 +695,15 @@ class CHKInventoryRepository(KnitPackRepository):
             if new_path is None:
                 raise ValueError('Invalid delta, delta from NULL_REVISION has'
                                  ' no new_path %r' % (file_id,))
-            # file id changes
             if new_path == '':
                 new_inv.root_id = file_id
-                parent_id_basename_key = '', ''
+                parent_id_basename_key = ('', '')
             else:
                 utf8_entry_name = entry.name.encode('utf-8')
                 parent_id_basename_key = (entry.parent_id, utf8_entry_name)
             new_value = entry_to_bytes(entry)
-            # Create Caches?
-            ## new_inv._path_to_fileid_cache[new_path] = file_id
+            # Populate Caches?
+            # new_inv._path_to_fileid_cache[new_path] = file_id
             id_to_entry_dict[(file_id,)] = new_value
             parent_id_basename_dict[parent_id_basename_key] = file_id
 
@@ -735,7 +717,7 @@ class CHKInventoryRepository(KnitPackRepository):
                                              search_key_func)
         root_key = chk_map.CHKMap.from_dict(self.chk_bytes,
                    parent_id_basename_dict,
-                   maximum_size=maximum_size, key_width=1,
+                   maximum_size=maximum_size, key_width=2,
                    search_key_func=search_key_func)
         new_inv.parent_id_basename_to_file_id = chk_map.CHKMap(self.chk_bytes,
                                                     root_key, search_key_func)

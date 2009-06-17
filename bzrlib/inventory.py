@@ -1719,24 +1719,28 @@ class CHKInventory(CommonInventory):
         result = CHKInventory(search_key_name)
         result.revision_id = inventory.revision_id
         result.root_id = inventory.root.file_id
-        search_key_func = chk_map.search_key_registry.get(search_key_name)
-        result.id_to_entry = chk_map.CHKMap(chk_store, None, search_key_func)
-        result.id_to_entry._root_node.set_maximum_size(maximum_size)
-        file_id_delta = []
-        result.parent_id_basename_to_file_id = chk_map.CHKMap(chk_store,
-            None, search_key_func)
-        result.parent_id_basename_to_file_id._root_node.set_maximum_size(
-            maximum_size)
-        result.parent_id_basename_to_file_id._root_node._key_width = 2
-        parent_id_delta = []
+
+        entry_to_bytes = result._entry_to_bytes
+        parent_id_basename_key = result._parent_id_basename_key
+        id_to_entry_dict = {}
+        parent_id_basename_dict = {}
         for path, entry in inventory.iter_entries():
-            file_id_delta.append((None, (entry.file_id,),
-                result._entry_to_bytes(entry)))
-            parent_id_delta.append(
-                (None, result._parent_id_basename_key(entry),
-                 entry.file_id))
-        result.id_to_entry.apply_delta(file_id_delta)
-        result.parent_id_basename_to_file_id.apply_delta(parent_id_delta)
+            id_to_entry_dict[(entry.file_id,)] = entry_to_bytes(entry)
+            p_id_key = parent_id_basename_key(entry)
+            parent_id_basename_dict[p_id_key] = entry.file_id
+
+        search_key_func = chk_map.search_key_registry.get(search_key_name)
+        root_key = chk_map.CHKMap.from_dict(chk_store, id_to_entry_dict,
+                   maximum_size=maximum_size, key_width=1,
+                   search_key_func=search_key_func)
+        result.id_to_entry = chk_map.CHKMap(chk_store, root_key,
+                                            search_key_func)
+        root_key = chk_map.CHKMap.from_dict(chk_store,
+                   parent_id_basename_dict,
+                   maximum_size=maximum_size, key_width=2,
+                   search_key_func=search_key_func)
+        result.parent_id_basename_to_file_id = chk_map.CHKMap(chk_store,
+                                                     root_key, search_key_func)
         return result
 
     def _parent_id_basename_key(self, entry):
