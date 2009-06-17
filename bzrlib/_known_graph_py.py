@@ -273,7 +273,7 @@ class KnownGraph(object):
         except KeyError:
             pass
         # Let's compute the heads
-        seen = {}
+        seen = set()
         pending = []
         min_gdfo = None
         for node in candidate_nodes.values():
@@ -287,13 +287,13 @@ class KnownGraph(object):
             if node_key in seen:
                 # node already appears in some ancestry
                 continue
-            seen[node_key] = True
+            seen.add(node_key)
             node = nodes[node_key]
             if node.gdfo <= min_gdfo:
                 continue
             if node.parent_keys: # protect against ghosts, jam, fixme ?
                 pending.extend(node.parent_keys)
-        heads = heads_key.difference(seen.keys())
+        heads = heads_key.difference(seen)
         if self.do_cache:
             self._known_heads[heads_key] = heads
         return heads
