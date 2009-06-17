@@ -1924,6 +1924,10 @@ class RemoteBranchFormat(branch.BranchFormat):
         self._ensure_real()
         return self._custom_format.supports_stacking()
 
+    def supports_set_append_revisions_only(self):
+        self._ensure_real()
+        return self._custom_format.supports_set_append_revisions_only()
+
 
 class RemoteBranch(branch.Branch, _RpcHelper):
     """Branch stored on a server accessed by HPSS RPC.
@@ -2339,14 +2343,6 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         if response != ('ok',):
             raise errors.UnexpectedSmartServerResponse(response)
         self._run_post_change_branch_tip_hooks(old_revno, old_revid)
-
-    def set_append_revisions_only(self, enabled):
-        if enabled:
-            value = 'True'
-        else:
-            value = 'False'
-        self.get_config().set_user_option('append_revisions_only', value,
-            warn_masked=True)
 
     @needs_write_lock
     def set_revision_history(self, rev_history):

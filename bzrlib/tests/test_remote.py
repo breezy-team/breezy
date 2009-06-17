@@ -166,15 +166,10 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
             'False', config.get_user_option('append_revisions_only'))
 
     def test_remote_branch_set_append_revisions_only_upgrade_reqd(self):
-        raise KnownFailure(
-            'RemoteBranch.set_append_revisions_only never '
-            'raises UpgradeRequired.')
         branch = self.make_branch('branch', format='knit')
         config = branch.get_config()
-        branch.set_append_revisions_only(True)
         self.assertRaises(
-            errors.UpgradeRequired,
-            config.get_user_option, 'append_revisions_only')
+            errors.UpgradeRequired, branch.set_append_revisions_only, True)
 
 
 class FakeProtocol(object):

@@ -520,6 +520,16 @@ class Branch(object):
         """
         raise errors.UpgradeRequired(self.base)
 
+    def set_append_revisions_only(self, enabled):
+        if not self._format.supports_set_append_revisions_only():
+            raise errors.UpgradeRequired(self.base)
+        if enabled:
+            value = 'True'
+        else:
+            value = 'False'
+        self.get_config().set_user_option('append_revisions_only', value,
+            warn_masked=True)
+
     def set_reference_info(self, file_id, tree_path, branch_location):
         """Set the branch location to use for a tree reference."""
         raise errors.UnsupportedOperation(self.set_reference_info, self)
@@ -764,10 +774,6 @@ class Branch(object):
 
     def unbind(self):
         """Older format branches cannot bind or unbind."""
-        raise errors.UpgradeRequired(self.base)
-
-    def set_append_revisions_only(self, enabled):
-        """Older format branches are never restricted to append-only"""
         raise errors.UpgradeRequired(self.base)
 
     def last_revision(self):
@@ -1378,6 +1384,8 @@ class BranchFormat(object):
     _formats = {}
     """The known formats."""
 
+    can_set_append_revisions_only = True
+
     def __eq__(self, other):
         return self.__class__ is other.__class__
 
@@ -1535,6 +1543,10 @@ class BranchFormat(object):
     @classmethod
     def set_default_format(klass, format):
         klass._default_format = format
+
+    def supports_set_append_revisions_only(self):
+        """True if this format supports set_append_revisions_only."""
+        return False
 
     def supports_stacking(self):
         """True if this format records a stacked-on branch."""
@@ -1823,6 +1835,8 @@ class BzrBranchFormat6(BranchFormatMetadir):
         """See bzrlib.branch.BranchFormat.make_tags()."""
         return BasicTags(branch)
 
+    def supports_set_append_revisions_only(self):
+        return True
 
 
 class BzrBranchFormat8(BranchFormatMetadir):
@@ -1857,6 +1871,9 @@ class BzrBranchFormat8(BranchFormatMetadir):
         """See bzrlib.branch.BranchFormat.make_tags()."""
         return BasicTags(branch)
 
+    def supports_set_append_revisions_only(self):
+        return True
+
     def supports_stacking(self):
         return True
 
@@ -1890,6 +1907,9 @@ class BzrBranchFormat7(BzrBranchFormat8):
     def get_format_description(self):
         """See BranchFormat.get_format_description()."""
         return "Branch format 7"
+
+    def supports_set_append_revisions_only(self):
+        return True
 
     supports_reference_locations = False
 
@@ -2618,14 +2638,6 @@ class BzrBranch8(BzrBranch5):
         if stacked_url is None:
             raise errors.NotStacked(self)
         return stacked_url
-
-    def set_append_revisions_only(self, enabled):
-        if enabled:
-            value = 'True'
-        else:
-            value = 'False'
-        self.get_config().set_user_option('append_revisions_only', value,
-            warn_masked=True)
 
     def _get_append_revisions_only(self):
         value = self.get_config().get_user_option('append_revisions_only')
