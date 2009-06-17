@@ -61,25 +61,36 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
 
     module = None # Set by load_tests
 
-    def make_single_text(self):
+    def make_simple_text(self):
         repo = self.make_repository('repo')
         repo.lock_write()
         self.addCleanup(repo.unlock)
         vf = repo.texts
         repo.start_write_group()
-        vf.add_lines(('f-id', 'a-id'), (), ['simple\n', 'content\n'])
-        repo.commit_write_group()
+        try:
+            fa_key = ('f-id', 'a-id')
+            fb_key = ('f-id', 'b-id')
+            vf.add_lines(fa_key, (), ['simple\n', 'content\n'])
+            vf.add_lines(fb_key, (fa_key,), ['simple\n', 'new content\n'])
+        except:
+            repo.abort_write_group()
+            raise
+        else:
+            repo.commit_write_group()
         return vf
 
     def test_annotate_missing(self):
-        vf = self.make_single_text()
+        vf = self.make_simple_text()
         ann = self.module.Annotator(vf)
         self.assertRaises(errors.RevisionNotPresent,
                           ann.annotate, ('not', 'present'))
 
     def test_annotate_simple(self):
-        vf = self.make_single_text()
+        vf = self.make_simple_text()
         ann = self.module.Annotator(vf)
         f_key = ('f-id', 'a-id')
         self.assertEqual(([(f_key,)]*2, ['simple\n', 'content\n']),
                          ann.annotate(f_key))
+        fb_key = ('f-id', 'b-id')
+        self.assertEqual(([(f_key,), (fb_key,)], ['simple\n', 'new content\n']),
+                         ann.annotate(fb_key))
