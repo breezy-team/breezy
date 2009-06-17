@@ -1,3 +1,7 @@
+# If you feel the need to duplicate this file, you'll win the right to refactor
+# doc/*/quick-reference/Makefile and update TARGETS and OBJECTS usages in
+# doc/Makefile
+
 TARGETS=quick-start-summary.png quick-start-summary.pdf
 OBJECTS=quick-start-summary.svg Makefile
 

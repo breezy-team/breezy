@@ -108,9 +108,6 @@ class NullCommitReporter(object):
     def deleted(self, path):
         pass
 
-    def escaped(self, escape_count, message):
-        pass
-
     def missing(self, path):
         pass
 
@@ -152,9 +149,6 @@ class ReportCommitToLog(NullCommitReporter):
 
     def deleted(self, path):
         self._note('deleted %s', path)
-
-    def escaped(self, escape_count, message):
-        self._note("replaced %d control characters in message", escape_count)
 
     def missing(self, path):
         self._note('missing %s', path)
@@ -373,7 +367,6 @@ class Commit(object):
                 # Prompt the user for a commit message if none provided
                 message = message_callback(self)
                 self.message = message
-                self._escape_commit_message()
 
                 # Add revision data to the local branch
                 self.rev_id = self.builder.commit(self.message)
@@ -601,17 +594,6 @@ class Commit(object):
             return
         if self.master_locked:
             self.master_branch.unlock()
-
-    def _escape_commit_message(self):
-        """Replace xml-incompatible control characters."""
-        # FIXME: RBC 20060419 this should be done by the revision
-        # serialiser not by commit. Then we can also add an unescaper
-        # in the deserializer and start roundtripping revision messages
-        # precisely. See repository_implementations/test_repository.py
-        self.message, escape_count = xml_serializer.escape_invalid_chars(
-            self.message)
-        if escape_count:
-            self.reporter.escaped(escape_count, self.message)
 
     def _gather_parents(self):
         """Record the parents of a merge for merge detection."""

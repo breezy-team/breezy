@@ -118,6 +118,9 @@ cdef class DeltaIndex:
             self._index = NULL
         safe_free(<void **>&self._source_infos)
 
+    def _has_index(self):
+        return (self._index != NULL)
+
     def add_delta_source(self, delta, unadded_bytes):
         """Add a new delta to the source texts.
 
@@ -171,6 +174,9 @@ cdef class DeltaIndex:
         source_location = len(self._sources)
         if source_location >= self._max_num_sources:
             self._expand_sources()
+        if source_location != 0 and self._index == NULL:
+            # We were lazy about populating the index, create it now
+            self._populate_first_index()
         self._sources.append(source)
         c_source = PyString_AS_STRING(source)
         c_source_size = PyString_GET_SIZE(source)
@@ -179,11 +185,24 @@ cdef class DeltaIndex:
         src.size = c_source_size
 
         src.agg_offset = self._source_offset + unadded_bytes
-        index = create_delta_index(src, self._index)
         self._source_offset = src.agg_offset + src.size
-        if index != NULL:
-            free_delta_index(self._index)
-            self._index = index
+        # We delay creating the index on the first insert
+        if source_location != 0:
+            index = create_delta_index(src, self._index)
+            if index != NULL:
+                free_delta_index(self._index)
+                self._index = index
+
+    cdef _populate_first_index(self):
+        cdef delta_index *index
+        if len(self._sources) != 1 or self._index != NULL:
+            raise AssertionError('_populate_first_index should only be'
+                ' called when we have a single source and no index yet')
+
+        # We know that self._index is already NULL, so whatever
+        # create_delta_index returns is fine
+        self._index = create_delta_index(&self._source_infos[0], NULL)
+        assert self._index != NULL
 
     cdef _expand_sources(self):
         raise RuntimeError('if we move self._source_infos, then we need to'
@@ -201,7 +220,10 @@ cdef class DeltaIndex:
         cdef unsigned long delta_size
 
         if self._index == NULL:
-            return None
+            if len(self._sources) == 0:
+                return None
+            # We were just lazy about generating the index
+            self._populate_first_index()
 
         if not PyString_CheckExact(target_bytes):
             raise TypeError('target is not a str')
