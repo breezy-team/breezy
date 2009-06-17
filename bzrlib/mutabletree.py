@@ -232,20 +232,6 @@ class MutableTree(tree.Tree):
         """Helper function for add - sets the entries of kinds."""
         raise NotImplementedError(self._gather_kinds)
 
-    def get_file_with_stat(self, file_id, path=None):
-        """Get a file handle and stat object for file_id.
-
-        The default implementation returns (self.get_file, None) for backwards
-        compatibility.
-
-        :param file_id: The file id to read.
-        :param path: The path of the file, if it is known.
-        :return: A tuple (file_handle, stat_value_or_None). If the tree has
-            no stat facility, or need for a stat cache feedback during commit,
-            it may return None for the second element of the tuple.
-        """
-        return (self.get_file(file_id, path), None)
-
     @needs_read_lock
     def last_revision(self):
         """Return the revision id of the last commit performed in this tree.

@@ -45,7 +45,8 @@ class RevisionTree(tree.Tree):
         self._rules_searcher = None
 
     def supports_tree_reference(self):
-        return True
+        return getattr(self._repository._format, "supports_tree_reference",
+            False)
 
     def get_parent_ids(self):
         """See Tree.get_parent_ids.

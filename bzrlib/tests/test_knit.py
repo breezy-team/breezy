@@ -2059,7 +2059,6 @@ class TestStacking(KnitTests):
         # self.assertEqual([("annotate", key_basis)], basis.calls)
         self.assertEqual([('get_parent_map', set([key_basis])),
             ('get_parent_map', set([key_basis])),
-            ('get_parent_map', set([key_basis])),
             ('get_record_stream', [key_basis], 'unordered', True)],
             basis.calls)
 

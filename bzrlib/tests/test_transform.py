@@ -20,6 +20,7 @@ from StringIO import StringIO
 import sys
 
 from bzrlib import (
+    bencode,
     errors,
     generate_ids,
     osutils,
@@ -53,7 +54,6 @@ from bzrlib.transform import (TreeTransform, ROOT_PARENT, FinalPaths,
                               build_tree, get_backup_name,
                               _FileMover, resolve_checkout,
                               TransformPreview, create_from_tree)
-from bzrlib.util import bencode
 
 
 class TestTreeTransform(tests.TestCaseWithTransport):
@@ -2603,6 +2603,23 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.assertEqual(False, preview_tree.is_executable('baz-id',
                                                            'tree/foo'))
         self.assertEqual(False, preview_tree.is_executable('baz-id'))
+
+    def test_commit_preview_tree(self):
+        tree = self.make_branch_and_tree('tree')
+        rev_id = tree.commit('rev1')
+        tree.branch.lock_write()
+        self.addCleanup(tree.branch.unlock)
+        tt = TransformPreview(tree)
+        tt.new_file('file', tt.root, 'contents', 'file_id')
+        self.addCleanup(tt.finalize)
+        preview = tt.get_preview_tree()
+        preview.set_parent_ids([rev_id])
+        builder = tree.branch.get_commit_builder([rev_id])
+        list(builder.record_iter_changes(preview, rev_id, tt.iter_changes()))
+        builder.finish_inventory()
+        rev2_id = builder.commit('rev2')
+        rev2_tree = tree.branch.repository.revision_tree(rev2_id)
+        self.assertEqual('contents', rev2_tree.get_file_text('file_id'))
 
 
 class FakeSerializer(object):

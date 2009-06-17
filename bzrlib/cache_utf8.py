@@ -22,8 +22,8 @@
 import codecs
 
 
-_utf8_encode = codecs.getencoder("utf-8")
-_utf8_decode = codecs.getdecoder("utf-8")
+_utf8_encode = codecs.utf_8_encode
+_utf8_decode = codecs.utf_8_decode
 def _utf8_decode_with_None(bytestring, _utf8_decode=_utf8_decode):
     """wrap _utf8_decode to support None->None for optional strings.
 

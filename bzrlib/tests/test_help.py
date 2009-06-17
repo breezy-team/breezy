@@ -29,6 +29,13 @@ from bzrlib import (
     )
 
 
+class TestHelp(tests.TestCase):
+
+    def setUp(self):
+        tests.TestCase.setUp(self)
+        commands.install_bzr_command_hooks()
+
+
 class TestCommandHelp(tests.TestCase):
     """Tests for help on commands."""
 
@@ -274,7 +281,7 @@ class TestCommandHelp(tests.TestCase):
             '  Blah blah blah.\n\n')
 
 
-class TestRegisteredTopic(tests.TestCase):
+class TestRegisteredTopic(TestHelp):
     """Tests for the RegisteredTopic class."""
 
     def test_contruct(self):
@@ -313,7 +320,7 @@ class TestRegisteredTopic(tests.TestCase):
         self.assertEqual('baz', topic.get_help_topic())
 
 
-class TestTopicIndex(tests.TestCase):
+class TestTopicIndex(TestHelp):
     """Tests for the HelpTopicIndex class."""
 
     def test_default_constructable(self):
@@ -346,7 +353,7 @@ class TestTopicIndex(tests.TestCase):
         self.assertEqual('', index.prefix)
 
 
-class TestCommandIndex(tests.TestCase):
+class TestCommandIndex(TestHelp):
     """Tests for the HelpCommandIndex class."""
 
     def test_default_constructable(self):

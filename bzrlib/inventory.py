@@ -1556,11 +1556,9 @@ class CHKInventory(CommonInventory):
     def _get_mutable_inventory(self):
         """See CommonInventory._get_mutable_inventory."""
         entries = self.iter_entries()
-        if self.root_id is not None:
-            entries.next()
-        inv = Inventory(self.root_id, self.revision_id)
+        inv = Inventory(None, self.revision_id)
         for path, inv_entry in entries:
-            inv.add(inv_entry)
+            inv.add(inv_entry.copy())
         return inv
 
     def create_by_apply_delta(self, inventory_delta, new_revision_id,

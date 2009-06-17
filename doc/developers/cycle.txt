@@ -1,9 +1,32 @@
+============================
 The Bazaar Development Cycle
 ============================
 
 
+Overview
+--------
 
-General process
+Bazaar makes a release every four weeks, with one release candidate one
+week before the final release.  We may vary this schedule from time to
+time, amongst other things to respond to bugs reported in the release
+candidate or the final release.  Nevertheless, we value a regular release
+and we will normally slip only for serious bugs or regressions.
+
+See also:
+
+* `Bazaar Developer Document Catalog <index.html>`_
+
+* `Releasing Bazaar <releasing.html>`_ -- the process for actually making 
+  a release or release candidate.
+
+Longer-Term Planning
+--------------------
+
+Work spanning multiple releases is typically tracked in the bug tracker,
+and summarized in <http://bazaar-vcs.org/Roadmap>.
+
+
+General Process
 ---------------
 
 We normally have one person acting as the release manager, who 
@@ -93,13 +116,6 @@ When it's time to make the release candidate:
    <releasing.html>`_ as the first RC.
 
 
-See also
---------
-
-* `Bazaar Developer Document Catalog <index.html>`_
-
-* `Releasing Bazaar <releasing.html>`_ -- the process for actually making 
-  a release or release candidate.
 
 
 ..
