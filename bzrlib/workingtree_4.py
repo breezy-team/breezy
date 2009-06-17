@@ -1844,12 +1844,19 @@ class DirStateRevisionTree(Tree):
             return None
         return ie.executable
 
-    def list_files(self, include_root=False):
+    def list_files(self, include_root=False, from_dir=None, recursive=True):
         # We use a standard implementation, because DirStateRevisionTree is
         # dealing with one of the parents of the current state
         inv = self._get_inventory()
-        entries = inv.iter_entries()
-        if self.inventory.root is not None and not include_root:
+        if from_dir is None:
+            from_dir_id = None
+        else:
+            from_dir_id = inv.path2id(from_dir)
+            if from_dir_id is None:
+                # Directory not versioned
+                return
+        entries = inv.iter_entries(from_dir=from_dir_id, recursive=recursive)
+        if inv.root is not None and not include_root and from_dir is None:
             entries.next()
         for path, entry in entries:
             yield path, 'V', entry.kind, entry.file_id, entry
