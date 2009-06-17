@@ -935,10 +935,11 @@ def link_or_copy(src, dest):
 def delete_any(path):
     """Delete a file or directory. Will delete even if readonly"""
     try:
-       _delete_any(path) 
+       _delete_any(path)
     except (OSError, IOError), e:
         if e.errno in (errno.EPERM, errno.EACCES):
-            try: # Seems it was readonly, try setting it writeable and try again
+            # Seems it was readonly
+            try: # make writeable and try again
                 make_writable(path)
             except (Error):
                 pass
