@@ -391,7 +391,6 @@ if have_ctypes_win32:
     LOCK_NB = LOCKFILE_FAIL_IMMEDIATELY
     _LockFileEx = ctypes.windll.kernel32.LockFileEx
     _UnlockFileEx = ctypes.windll.kernel32.UnlockFileEx
-    _GetLastError = ctypes.windll.kernel32.GetLastError
 
     ### Define the OVERLAPPED structure.
     #   http://msdn2.microsoft.com/en-us/library/ms684342.aspx
@@ -440,8 +439,8 @@ if have_ctypes_win32:
                                  ctypes.byref(overlapped), # lpOverlapped
                                 )
             if result == 0:
+                last_err = ctypes.GetLastError()
                 self._clear_f()
-                last_err = _GetLastError()
                 if last_err in (ERROR_LOCK_VIOLATION,):
                     raise errors.LockContention(filename)
                 raise errors.LockContention(filename,
@@ -455,12 +454,12 @@ if have_ctypes_win32:
                                    0x00000000, # DWORD nNumberOfBytesToLockHigh
                                    ctypes.byref(overlapped), # lpOverlapped
                                   )
-            self._clear_f()
             if result == 0:
+                last_err = ctypes.GetLastError()
                 self._clear_f()
-                last_err = _GetLastError()
                 raise errors.LockContention(self.filename,
                     'Unknown unlocking error: %s' % (last_err,))
+            self._clear_f()
 
 
     class _ctypes_ReadLock(_ctypes_FileLock):

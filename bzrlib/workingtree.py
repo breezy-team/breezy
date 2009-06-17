@@ -446,12 +446,12 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     def get_file_with_stat(self, file_id, path=None, filtered=True,
         _fstat=os.fstat):
-        """See MutableTree.get_file_with_stat."""
+        """See Tree.get_file_with_stat."""
         if path is None:
             path = self.id2path(file_id)
         file_obj = self.get_file_byname(path, filtered=False)
         stat_value = _fstat(file_obj.fileno())
-        if self.supports_content_filtering() and filtered:
+        if filtered and self.supports_content_filtering():
             filters = self._content_filter_stack(path)
             file_obj = filtered_input_file(file_obj, filters)
         return (file_obj, stat_value)
@@ -462,7 +462,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def get_file_byname(self, filename, filtered=True):
         path = self.abspath(filename)
         f = file(path, 'rb')
-        if self.supports_content_filtering() and filtered:
+        if filtered and self.supports_content_filtering():
             filters = self._content_filter_stack(filename)
             return filtered_input_file(f, filters)
         else:

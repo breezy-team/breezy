@@ -91,6 +91,7 @@ class Branch(object):
         self._revision_history_cache = None
         self._revision_id_to_revno_cache = None
         self._partial_revision_id_to_revno_cache = {}
+        self._partial_revision_history_cache = []
         self._last_revision_info_cache = None
         self._merge_sorted_revisions_cache = None
         self._open_hook()
@@ -101,13 +102,9 @@ class Branch(object):
     def _open_hook(self):
         """Called by init to allow simpler extension of the base class."""
 
-    def _activate_fallback_location(self, url, lock_style):
+    def _activate_fallback_location(self, url):
         """Activate the branch/repository from url as a fallback repository."""
         repo = self._get_fallback_repository(url)
-        if lock_style == 'write':
-            repo.lock_write()
-        elif lock_style == 'read':
-            repo.lock_read()
         self.repository.add_fallback_repository(repo)
 
     def break_lock(self):
@@ -128,6 +125,27 @@ class Branch(object):
         if not self.repository._format.supports_external_lookups:
             raise errors.UnstackableRepositoryFormat(self.repository._format,
                 self.repository.base)
+
+    def _extend_partial_history(self, stop_index=None, stop_revision=None):
+        """Extend the partial history to include a given index
+
+        If a stop_index is supplied, stop when that index has been reached.
+        If a stop_revision is supplied, stop when that revision is
+        encountered.  Otherwise, stop when the beginning of history is
+        reached.
+
+        :param stop_index: The index which should be present.  When it is
+            present, history extension will stop.
+        :param stop_revision: The revision id which should be present.  When
+            it is encountered, history extension will stop.
+        """
+        if len(self._partial_revision_history_cache) == 0:
+            self._partial_revision_history_cache = [self.last_revision()]
+        repository._iter_for_revno(
+            self.repository, self._partial_revision_history_cache,
+            stop_index=stop_index, stop_revision=stop_revision)
+        if self._partial_revision_history_cache[-1] == _mod_revision.NULL_REVISION:
+            self._partial_revision_history_cache.pop()
 
     @staticmethod
     def open(base, _unsupported=False, possible_transports=None):
@@ -656,7 +674,7 @@ class Branch(object):
                 self.repository.fetch(source_repository, revision_id,
                     find_ghosts=True)
         else:
-            self._activate_fallback_location(url, 'write')
+            self._activate_fallback_location(url)
         # write this out after the repository is stacked to avoid setting a
         # stacked config that doesn't work.
         self._set_config_location('stacked_on_location', url)
@@ -702,6 +720,8 @@ class Branch(object):
         self._revision_id_to_revno_cache = None
         self._last_revision_info_cache = None
         self._merge_sorted_revisions_cache = None
+        self._partial_revision_history_cache = []
+        self._partial_revision_id_to_revno_cache = {}
 
     def _gen_revision_history(self):
         """Return sequence of revision hashes on to this branch.
@@ -835,15 +855,20 @@ class Branch(object):
         except ValueError:
             raise errors.NoSuchRevision(self, revision_id)
 
+    @needs_read_lock
     def get_rev_id(self, revno, history=None):
         """Find the revision id of the specified revno."""
         if revno == 0:
             return _mod_revision.NULL_REVISION
-        if history is None:
-            history = self.revision_history()
-        if revno <= 0 or revno > len(history):
+        last_revno, last_revid = self.last_revision_info()
+        if revno == last_revno:
+            return last_revid
+        if revno <= 0 or revno > last_revno:
             raise errors.NoSuchRevision(self, revno)
-        return history[revno - 1]
+        distance_from_last = last_revno - revno
+        if len(self._partial_revision_history_cache) <= distance_from_last:
+            self._extend_partial_history(distance_from_last)
+        return self._partial_revision_history_cache[distance_from_last]
 
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
@@ -931,6 +956,10 @@ class Branch(object):
         if location == '':
             location = None
         return location
+
+    def get_child_submit_format(self):
+        """Return the preferred format of submissions to this branch."""
+        return self.get_config().get_user_option("child_submit_format")
 
     def get_submit_branch(self):
         """Return the submit location of the branch.
@@ -1085,18 +1114,14 @@ class Branch(object):
         source_revno, source_revision_id = self.last_revision_info()
         if revision_id is None:
             revno, revision_id = source_revno, source_revision_id
-        elif source_revision_id == revision_id:
-            # we know the revno without needing to walk all of history
-            revno = source_revno
         else:
-            # To figure out the revno for a random revision, we need to build
-            # the revision history, and count its length.
-            # We don't care about the order, just how long it is.
-            # Alternatively, we could start at the current location, and count
-            # backwards. But there is no guarantee that we will find it since
-            # it may be a merged revision.
-            revno = len(list(self.repository.iter_reverse_revision_history(
-                                                                revision_id)))
+            graph = self.repository.get_graph()
+            try:
+                revno = graph.find_distance_to_null(revision_id, 
+                    [(source_revision_id, source_revno)])
+            except errors.GhostRevisionsHaveNoRevno:
+                # Default to 1, if we can't find anything else
+                revno = 1
         destination.set_last_revision_info(revno, revision_id)
 
     @needs_read_lock
@@ -1147,10 +1172,18 @@ class Branch(object):
 
         :return: A BranchCheckResult.
         """
+        ret = BranchCheckResult(self)
         mainline_parent_id = None
         last_revno, last_revision_id = self.last_revision_info()
-        real_rev_history = list(self.repository.iter_reverse_revision_history(
-                                last_revision_id))
+        real_rev_history = []
+        try:
+            for revid in self.repository.iter_reverse_revision_history(
+                last_revision_id):
+                real_rev_history.append(revid)
+        except errors.RevisionNotPresent:
+            ret.ghosts_in_mainline = True
+        else:
+            ret.ghosts_in_mainline = False
         real_rev_history.reverse()
         if len(real_rev_history) != last_revno:
             raise errors.BzrCheckError('revno does not match len(mainline)'
@@ -1172,7 +1205,7 @@ class Branch(object):
                                         "parents of {%s}"
                                         % (mainline_parent_id, revision_id))
             mainline_parent_id = revision_id
-        return BranchCheckResult(self)
+        return ret
 
     def _get_checkout_format(self):
         """Return the most suitable metadir for a checkout of this branch.
@@ -2366,19 +2399,17 @@ class BzrBranch8(BzrBranch5):
                     raise AssertionError(
                         "'transform_fallback_location' hook %s returned "
                         "None, not a URL." % hook_name)
-            self._activate_fallback_location(url, None)
+            self._activate_fallback_location(url)
 
     def __init__(self, *args, **kwargs):
         self._ignore_fallbacks = kwargs.get('ignore_fallbacks', False)
         super(BzrBranch8, self).__init__(*args, **kwargs)
         self._last_revision_info_cache = None
-        self._partial_revision_history_cache = []
         self._reference_info = None
 
     def _clear_cached_state(self):
         super(BzrBranch8, self)._clear_cached_state()
         self._last_revision_info_cache = None
-        self._partial_revision_history_cache = []
         self._reference_info = None
 
     def _last_revision_info(self):
@@ -2439,35 +2470,6 @@ class BzrBranch8(BzrBranch5):
         last_revno, last_revision = self.last_revision_info()
         self._extend_partial_history(stop_index=last_revno-1)
         return list(reversed(self._partial_revision_history_cache))
-
-    def _extend_partial_history(self, stop_index=None, stop_revision=None):
-        """Extend the partial history to include a given index
-
-        If a stop_index is supplied, stop when that index has been reached.
-        If a stop_revision is supplied, stop when that revision is
-        encountered.  Otherwise, stop when the beginning of history is
-        reached.
-
-        :param stop_index: The index which should be present.  When it is
-            present, history extension will stop.
-        :param revision_id: The revision id which should be present.  When
-            it is encountered, history extension will stop.
-        """
-        repo = self.repository
-        if len(self._partial_revision_history_cache) == 0:
-            iterator = repo.iter_reverse_revision_history(self.last_revision())
-        else:
-            start_revision = self._partial_revision_history_cache[-1]
-            iterator = repo.iter_reverse_revision_history(start_revision)
-            #skip the last revision in the list
-            next_revision = iterator.next()
-        for revision_id in iterator:
-            self._partial_revision_history_cache.append(revision_id)
-            if (stop_index is not None and
-                len(self._partial_revision_history_cache) > stop_index):
-                break
-            if revision_id == stop_revision:
-                break
 
     def _write_revision_history(self, history):
         """Factored out of set_revision_history.
@@ -2780,6 +2782,7 @@ class BranchCheckResult(object):
 
     def __init__(self, branch):
         self.branch = branch
+        self.ghosts_in_mainline = False
 
     def report_results(self, verbose):
         """Report the check results via trace.note.
@@ -2790,6 +2793,8 @@ class BranchCheckResult(object):
         note('checked branch %s format %s',
              self.branch.base,
              self.branch._format)
+        if self.ghosts_in_mainline:
+            note('branch contains ghosts in mainline')
 
 
 class Converter5to6(object):
