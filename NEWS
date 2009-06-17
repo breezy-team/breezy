@@ -44,7 +44,8 @@ Improvements
 ************
 
 ``bzr ls`` is now faster. On OpenOffice.org, the time drops from 2.4
-  seconds to 1.0 second. (Ian Clatworthy)
+  to 1.1 seconds. The improvement for ``bzr ls -r-1`` is more
+  substantial dropping from 54.3 to 1.1 seconds. (Ian Clatworthy)
 
 * Resolving a revno to a revision id on a branch accessed via ``bzr://``
   or ``bzr+ssh://`` is now much faster and involves no VFS operations.
