@@ -130,6 +130,7 @@ def import_git_blob(texts, mapping, path, hexsha, base_inv, parent_id,
     else:
         blob = lookup_object(hexsha)
         if ie.kind == "symlink":
+            ie.revision = None
             ie.symlink_target = blob.data
             ie.text_size = None
             ie.text_sha1 = None
@@ -148,7 +149,7 @@ def import_git_blob(texts, mapping, path, hexsha, base_inv, parent_id,
                 pie = pinv[file_id]
             except NoSuchId:
                 continue
-        if pie.text_sha1 == ie.text_sha1 and pie.executable == ie.executable:
+        if pie.text_sha1 == ie.text_sha1 and pie.executable == ie.executable and pie.symlink_target == ie.symlink_target:
             # found a revision in one of the parents to use
             ie.revision = pie.revision
             break

@@ -121,6 +121,13 @@ class GitBranchBuilder(object):
         self._write('\n')
         return self._counter
 
+    def set_symlink(self, path, content):
+        """Create or update symlink at a given path."""
+        mark = self._create_blob(content)
+        mode = '120000'
+        self.commit_info.append('M %s :%d %s\n'
+                % (mode, mark, self._encode_path(path)))
+
     def set_file(self, path, content, executable):
         """Create or update content at a given path."""
         mark = self._create_blob(content)
