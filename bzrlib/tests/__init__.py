@@ -728,9 +728,11 @@ class TestUIFactory(ui.CLIUIFactory):
     def finished(self):
         """See progress.ProgressBar.finished()."""
 
-    def note(self, fmt_string, *args, **kwargs):
+    def note(self, fmt_string, *args):
         """See progress.ProgressBar.note()."""
-        self.stdout.write((fmt_string + "\n") % args)
+        if args:
+            fmt_string = fmt_string % args
+        self.stdout.write(fmt_string + "\n")
 
     def progress_bar(self):
         return self
@@ -3345,6 +3347,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test__chk_map',
                    'bzrlib.tests.test__dirstate_helpers',
                    'bzrlib.tests.test__groupcompress',
+                   'bzrlib.tests.test__known_graph',
                    'bzrlib.tests.test__rio',
                    'bzrlib.tests.test__walkdirs_win32',
                    'bzrlib.tests.test_ancestry',

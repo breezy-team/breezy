@@ -1440,13 +1440,20 @@ class DirStateWorkingTreeFormat(WorkingTreeFormat3):
                 # Note: do NOT move this logic up higher - using the basis from
                 # the accelerator tree is still desirable because that can save
                 # a minute or more of processing on large trees!
+                # The original tree may not have the same content filters
+                # applied so we can't safely build the inventory delta from
+                # the source tree.
                 if wt.supports_content_filtering():
                     accelerator_tree = None
+                    delta_from_tree = False
+                else:
+                    delta_from_tree = True
                 # delta_from_tree is safe even for DirStateRevisionTrees,
                 # because wt4.apply_inventory_delta does not mutate the input
                 # inventory entries.
                 transform.build_tree(basis, wt, accelerator_tree,
-                                     hardlink=hardlink, delta_from_tree=True)
+                                     hardlink=hardlink,
+                                     delta_from_tree=delta_from_tree)
             finally:
                 basis.unlock()
         finally:
@@ -1837,12 +1844,19 @@ class DirStateRevisionTree(Tree):
             return None
         return ie.executable
 
-    def list_files(self, include_root=False):
+    def list_files(self, include_root=False, from_dir=None, recursive=True):
         # We use a standard implementation, because DirStateRevisionTree is
         # dealing with one of the parents of the current state
         inv = self._get_inventory()
-        entries = inv.iter_entries()
-        if self.inventory.root is not None and not include_root:
+        if from_dir is None:
+            from_dir_id = None
+        else:
+            from_dir_id = inv.path2id(from_dir)
+            if from_dir_id is None:
+                # Directory not versioned
+                return
+        entries = inv.iter_entries(from_dir=from_dir_id, recursive=recursive)
+        if inv.root is not None and not include_root and from_dir is None:
             entries.next()
         for path, entry in entries:
             yield path, 'V', entry.kind, entry.file_id, entry

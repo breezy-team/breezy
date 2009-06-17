@@ -28,6 +28,7 @@ from bzrlib import (
     osutils,
     remote,
     repository,
+    xml_serializer,
     )
 from bzrlib.branch import BzrBranchFormat6
 from bzrlib.delta import TreeDelta
@@ -527,16 +528,16 @@ class TestRepository(TestCaseWithRepository):
         tree = self.make_branch_and_tree('.')
         tree.commit(message, rev_id='a', allow_pointless=True)
         rev = tree.branch.repository.get_revision('a')
-        # we have to manually escape this as we dont try to
-        # roundtrip xml invalid characters at this point.
-        # when escaping is moved to the serialiser, this test
-        # can check against the literal message rather than
-        # this escaped version.
-        escaped_message, escape_count = re.subn(
-            u'[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
-            lambda match: match.group(0).encode('unicode_escape'),
-            message)
-        self.assertEqual(rev.message, escaped_message)
+        if tree.branch.repository._serializer.squashes_xml_invalid_characters:
+            # we have to manually escape this as we dont try to
+            # roundtrip xml invalid characters in the xml-based serializers.
+            escaped_message, escape_count = re.subn(
+                u'[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
+                lambda match: match.group(0).encode('unicode_escape'),
+                message)
+            self.assertEqual(rev.message, escaped_message)
+        else:
+            self.assertEqual(rev.message, message)
         # insist the class is unicode no matter what came in for
         # consistency.
         self.assertIsInstance(rev.message, unicode)

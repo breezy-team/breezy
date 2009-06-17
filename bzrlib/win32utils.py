@@ -267,7 +267,7 @@ def get_local_appdata_location():
 
     Returned value can be unicode or plain string.
     To convert plain string to unicode use
-    s.decode(bzrlib.user_encoding)
+    s.decode(osutils.get_user_encoding())
     (XXX - but see bug 262874, which asserts the correct encoding is 'mbcs')
     """
     local = _get_sh_special_folder_path(CSIDL_LOCAL_APPDATA)
