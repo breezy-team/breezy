@@ -59,7 +59,7 @@ class EmailSender(object):
         }        
         for name, value in fields.items():
             text = text.replace('$%s' % name, value)                 
-        return text.replace('\n', "\n")
+        return text.replace('\\n', '\n')
 
     def body(self):
         from bzrlib import log
