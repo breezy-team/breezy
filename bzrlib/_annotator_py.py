@@ -160,8 +160,16 @@ class Annotator(object):
         annotations = [this_annotation] * num_lines
         return this_annotation, annotations
 
-    def _cache_annotations(self, key, parent_keys, annotations):
+    def _record_annotation(self, key, parent_keys, annotations):
         self._annotations_cache[key] = annotations
+        for parent_key in parent_keys:
+            num = self._num_needed_children[parent_key]
+            num -= 1
+            if num == 0:
+                del self._text_cache[parent_key]
+                # Do we want to clean up _num_needed_children at this point as
+                # well?
+            self._num_needed_children[parent_key] = num
 
     def annotate(self, key):
         """Return annotated fulltext for the given key."""
@@ -176,7 +184,7 @@ class Annotator(object):
                 for parent in parent_keys[1:]:
                     self._update_from_other_parents(annotations, text,
                                                     this_annotation, parent)
-            self._cache_annotations(text_key, parent_keys, annotations)
+            self._record_annotation(text_key, parent_keys, annotations)
         try:
             annotations = self._annotations_cache[key]
         except KeyError:
