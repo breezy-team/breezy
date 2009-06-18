@@ -77,6 +77,9 @@ class Annotator(object):
         parent_annotations, matching_blocks = self._get_parent_annotations_and_matches(
             lines, parent_key)
 
+        last_ann = None
+        last_parent = None
+        last_res = None
         simple_key_ann = (key,)
         for parent_idx, lines_idx, match_len in matching_blocks:
             # For lines which match this parent, we will now resolve whether
@@ -95,12 +98,18 @@ class Annotator(object):
                     continue
                 # Now we have a conflict, both sides claim to have introduced
                 # this line
-                new_ann = set(ann)
-                assert key not in new_ann
-                # new_ann.discard(key)
-                new_ann.update(par_ann)
-                new_ann = tuple(sorted(new_ann))
-                annotations[ann_idx] = new_ann
+                if ann == last_ann and par_ann == last_parent:
+                    annotations[ann_idx] = last_res
+                else:
+                    new_ann = set(ann)
+                    assert key not in new_ann
+                    # new_ann.discard(key)
+                    new_ann.update(par_ann)
+                    new_ann = tuple(sorted(new_ann))
+                    annotations[ann_idx] = new_ann
+                    last_ann = ann
+                    last_parent = par_ann
+                    last_res = new_ann
 
     def annotate(self, key):
         """Return annotated fulltext for the given key."""
