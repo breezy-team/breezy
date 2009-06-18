@@ -6,13 +6,32 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
-bzr 1.16rc1 2009-06-11
-######################
+bzr 1.16 "It's yesterday in California" 2009-06-18
+##################################################
+:Codename: yesterday-in-california
+:1.16rc1: 2009-06-11
+:1.16: 2009-06-18
 
-This release has many improvements to the "brisbane-core" format, taking the
-shape of a new '--development7-rich-root' format which uses bencode rather
-than XML. Many operations are now much faster on huge projects. The usual bevy
-of bug fixes, tweaks and improvements.
+This version of Bazaar contains the beta release of the new ``2a`` repository
+format, suitable for testing by fearless, advanced users. This format or an
+updated version of it will become the default format in Bazaar 2.0. Please
+read the NEWS entry before even thinking about upgrading to the new format.
+
+Also included are speedups for many operations on huge projects, a bug fix for
+pushing stacked new stacked branches to smart servers and the usual bevy of
+bug fixes and improvements.
+
+
+Changes from 1.16rc1 to 1.16final
+*********************************
+
+* Fix the nested tree flag check so that upgrade from development formats to
+  2a can work correctly.
+  (Jelmer Vernooij, #388727)
+
+* Automatic format upgrades triggered by default stacking policies on a
+  1.16rc1 (or later) smart server work again.
+  (Andrew Bennetts, #388675)
 
 
 Compatibility Breaks
@@ -25,6 +44,25 @@ Compatibility Breaks
 
 New Features
 ************
+
+* A new repository format ``2a`` has been added.  This is a beta release
+  of the the brisbane-core (aka group-compress) project.  This format now
+  suitable for wider testing by advanced users willing to deal with some
+  bugs.  We would appreciate test reports, either positive or negative.
+  Format 2a is substantially smaller and faster for many operations on
+  many trees.  This format or an updated version will become the default
+  in bzr 2.0.
+
+  This is a rich-root format, so this repository format can be used with
+  bzr-svn.  Bazaar branches in previous non-rich-root formats can be
+  converted (including by merge, push and pull) to format 2a, but not vice
+  versa.  We recommend upgrading previous development formats to 2a.
+
+  Upgrading to this format can take considerable time because it expands
+  and more concisely repacks the full history.
+
+  If you use stacked branches, you must upgrade the stacked branches
+  before the stacked-on branches.  (See <https://bugs.launchpad.net/bugs/374735>)
 
 * ``--development7-rich-root`` is a new dev format, similar to ``--dev6``
   but using a Revision serializer using bencode rather than XML.
@@ -99,6 +137,15 @@ Bug Fixes
 
 * Fix rule handling so that eol is optional, not mandatory.
   (Ian Clatworthy, #379370)
+
+* Pushing a new stacked branch to a 1.15 smart server was broken due to a
+  bug in the ``BzrDirFormat.initialize_ex`` smart verb.  This is fixed in
+  1.16, but required changes to the network protocol, so the
+  ``BzrDirFormat.initialize_ex`` verb has been removed and replaced with a
+  corrected ``BzrDirFormat.initialize_ex_1.16`` verb.  1.15 clients will
+  still work with a 1.16 server as they will fallback to slower (and
+  bug-free) methods.
+  (Jonathan Lange, Robert Collins, Andrew Bennetts, #385132)
 
 * Reconcile can now deal with text revisions that originated in revisions 
   that are ghosts. (Jelmer Vernooij, #336749)

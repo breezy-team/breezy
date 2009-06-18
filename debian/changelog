@@ -1,4 +1,4 @@
-bzr (1.16~rc1-1) unstable; urgency=low
+bzr (1.16-1) unstable; urgency=low
 
   * New upstream release.
   * Add python-pyrex to build-deps to ensure C extensions are always build.
