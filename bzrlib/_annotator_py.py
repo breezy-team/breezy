@@ -40,7 +40,6 @@ class Annotator(object):
         # Map from key => number of nexts that will be built from this key
         self._num_needed_children = {}
         self._annotations_cache = {}
-        self._heads_provider = None
 
     def _get_needed_keys(self, key):
         graph = _mod_graph.Graph(self._vf)
