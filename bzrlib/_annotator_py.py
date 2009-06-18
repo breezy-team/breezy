@@ -157,12 +157,22 @@ class Annotator(object):
 
         This is meant as a compatibility thunk to how annotate() used to work.
         """
-        graph = _mod_graph.KnownGraph(self._parent_map)
-        heads = graph.heads
         annotations, lines = self.annotate(key)
         assert len(annotations) == len(lines)
         out = []
+        graph = _mod_graph.KnownGraph(self._parent_map)
+        heads = graph.heads
         for annotation, line in zip(annotations, lines):
             if len(annotation) == 1:
                 out.append((annotation[0], line))
+            else:
+                the_heads = heads(annotation)
+                if len(the_heads) == 1:
+                    for head in the_heads:
+                        break
+                    out.append((head, line))
+                else:
+                    # We need to resolve the ambiguity, for now just pick the
+                    # sorted smallest
+                    out.append((sorted(the_heads)[0], line))
         return out

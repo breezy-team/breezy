@@ -65,6 +65,8 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
     fb_key = ('f-id', 'b-id')
     fc_key = ('f-id', 'c-id')
     fd_key = ('f-id', 'd-id')
+    fe_key = ('f-id', 'e-id')
+    ff_key = ('f-id', 'f-id')
 
     def make_simple_text(self):
         self.repo = self.make_repository('repo')
@@ -106,6 +108,24 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
             self.vf.add_lines(self.fc_key, [self.fa_key],
                               ['simple\n', 'new content\n'])
             self.vf.add_lines(self.fd_key, [self.fb_key, self.fc_key],
+                              ['simple\n', 'new content\n'])
+        except:
+            self.repo.abort_write_group()
+            raise
+        else:
+            self.repo.commit_write_group()
+
+    def make_many_way_common_merge_text(self):
+        self.make_simple_text()
+        self.repo.start_write_group()
+        try:
+            self.vf.add_lines(self.fc_key, [self.fa_key],
+                              ['simple\n', 'new content\n'])
+            self.vf.add_lines(self.fd_key, [self.fb_key, self.fc_key],
+                              ['simple\n', 'new content\n'])
+            self.vf.add_lines(self.fe_key, [self.fa_key],
+                              ['simple\n', 'new content\n'])
+            self.vf.add_lines(self.ff_key, [self.fd_key, self.fe_key],
                               ['simple\n', 'new content\n'])
         except:
             self.repo.abort_write_group()
@@ -162,6 +182,13 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
         self.assertAnnotateEqual([(self.fa_key,), (self.fb_key, self.fc_key)],
                                  ann, self.fd_key)
 
+    def test_annotate_many_way_common_merge_text(self):
+        self.make_many_way_common_merge_text()
+        ann = self.module.Annotator(self.vf)
+        self.assertAnnotateEqual([(self.fa_key,),
+                                  (self.fb_key, self.fc_key, self.fe_key)],
+                                 ann, self.ff_key)
+
     def test_annotate_merge_and_restored(self):
         self.make_merge_and_restored_text()
         ann = self.module.Annotator(self.vf)
@@ -177,3 +204,28 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
         self.assertEqual([(self.fa_key, 'simple\n'),
                           (self.fb_key, 'new content\n'),
                          ], ann.annotate_flat(self.fb_key))
+
+    def test_annotate_flat_merge_and_restored_text(self):
+        self.make_merge_and_restored_text()
+        ann = self.module.Annotator(self.vf)
+        # fc is a simple dominator of fa
+        self.assertEqual([(self.fa_key, 'simple\n'),
+                          (self.fc_key, 'content\n'),
+                         ], ann.annotate_flat(self.fd_key))
+
+    def test_annotate_common_merge_text(self):
+        self.make_common_merge_text()
+        ann = self.module.Annotator(self.vf)
+        # there is no common point, so we just pick the lexicographical lowest
+        # and 'b-id' comes before 'c-id'
+        self.assertEqual([(self.fa_key, 'simple\n'),
+                          (self.fb_key, 'new content\n'),
+                         ], ann.annotate_flat(self.fd_key))
+
+    def test_annotate_many_way_common_merge_text(self):
+        self.make_many_way_common_merge_text()
+        ann = self.module.Annotator(self.vf)
+        self.assertAnnotateEqual([(self.fa_key, 'simple\n'),
+                                  (self.fb_key, 'new content\n')],
+                                 ann, self.ff_key)
+
