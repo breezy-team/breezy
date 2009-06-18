@@ -141,8 +141,10 @@ class Annotator(object):
         this_annotation = (key,)
         # Note: annotations will be mutated by calls to _update_from*
         annotations = [this_annotation] * num_lines
-        self._annotations_cache[key] = annotations
         return this_annotation, annotations
+
+    def _cache_annotations(self, key, parent_keys, annotations):
+        self._annotations_cache[key] = annotations
 
     def annotate(self, key):
         """Return annotated fulltext for the given key."""
@@ -152,12 +154,12 @@ class Annotator(object):
              annotations) = self._init_annotations(text_key, num_lines)
 
             parent_keys = self._parent_map[text_key]
-            if not parent_keys:
-                continue
-            self._update_from_one_parent(annotations, text, parent_keys[0])
-            for parent in parent_keys[1:]:
-                self._update_from_other_parents(annotations, text,
-                                                this_annotation, parent)
+            if parent_keys:
+                self._update_from_one_parent(annotations, text, parent_keys[0])
+                for parent in parent_keys[1:]:
+                    self._update_from_other_parents(annotations, text,
+                                                    this_annotation, parent)
+            self._cache_annotations(text_key, parent_keys, annotations)
         try:
             annotations = self._annotations_cache[key]
         except KeyError:
