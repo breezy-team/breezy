@@ -62,7 +62,7 @@ class Annotator(object):
         matching_blocks = matcher.get_matching_blocks()
         return parent_annotations, matching_blocks
 
-    def _reannotate_one_parent(self, annotations, lines, key, parent_key):
+    def _reannotate_one_parent(self, annotations, lines, parent_key):
         """Reannotate this text relative to its first parent."""
         parent_annotations, matching_blocks = self._get_parent_annotations_and_matches(
             lines, parent_key)
@@ -72,7 +72,8 @@ class Annotator(object):
             annotations[lines_idx:lines_idx + match_len] = \
                 parent_annotations[parent_idx:parent_idx + match_len]
 
-    def _reannotate_other_parents(self, annotations, lines, key, parent_key):
+    def _reannotate_other_parents(self, annotations, lines, this_annotation,
+                                  parent_key):
         """Reannotate this text relative to a second (or more) parent."""
         parent_annotations, matching_blocks = self._get_parent_annotations_and_matches(
             lines, parent_key)
@@ -80,7 +81,9 @@ class Annotator(object):
         last_ann = None
         last_parent = None
         last_res = None
-        simple_key_ann = (key,)
+        # TODO: consider making all annotations unique and then using 'is'
+        #       everywhere. Current results claim that isn't any faster,
+        #       because of the time spent deduping
         for parent_idx, lines_idx, match_len in matching_blocks:
             # For lines which match this parent, we will now resolve whether
             # this parent wins over the current annotation
@@ -91,19 +94,17 @@ class Annotator(object):
                 if ann == par_ann:
                     # Nothing to change
                     continue
-                if ann == simple_key_ann:
+                if ann == this_annotation:
                     # Originally claimed 'this', but it was really in this
                     # parent
                     annotations[ann_idx] = par_ann
                     continue
-                # Now we have a conflict, both sides claim to have introduced
-                # this line
+                # Resolve the fact that both sides have a different value for
+                # last modified
                 if ann == last_ann and par_ann == last_parent:
                     annotations[ann_idx] = last_res
                 else:
                     new_ann = set(ann)
-                    assert key not in new_ann
-                    # new_ann.discard(key)
                     new_ann.update(par_ann)
                     new_ann = tuple(sorted(new_ann))
                     annotations[ann_idx] = new_ann
@@ -118,16 +119,18 @@ class Annotator(object):
         for record in self._vf.get_record_stream(keys, 'topological', True):
             this_key = record.key
             lines = osutils.chunks_to_lines(record.get_bytes_as('chunked'))
-            annotations = [(this_key,)]*len(lines)
+            this_annotation = (this_key,)
+            annotations = [this_annotation]*len(lines)
             self._lines_cache[this_key] = lines
             self._annotations_cache[this_key] = annotations
 
             parents = self._parent_map[this_key]
             if not parents:
                 continue
-            self._reannotate_one_parent(annotations, lines, key, parents[0])
+            self._reannotate_one_parent(annotations, lines, parents[0])
             for parent in parents[1:]:
-                self._reannotate_other_parents(annotations, lines, key, parent)
+                self._reannotate_other_parents(annotations, lines,
+                                               this_annotation, parent)
         try:
             annotations = self._annotations_cache[key]
         except KeyError:
