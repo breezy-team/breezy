@@ -37,8 +37,29 @@ class Annotator(object):
         self._vf = vf
         self._parent_map = {}
         self._text_cache = {}
+        # Map from key => number of nexts that will be built from this key
+        self._num_needed_children = {}
         self._annotations_cache = {}
         self._heads_provider = None
+
+    def _get_needed_keys(self, key):
+        graph = _mod_graph.Graph(self._vf)
+        parent_map = {}
+        # We need 1 extra copy of the node we will be looking at when we are
+        # done
+        self._num_needed_children[key] = 1
+        for key, parent_keys in graph.iter_ancestry([key]):
+            if parent_keys is None:
+                continue
+            parent_map[key] = parent_keys
+            for parent_key in parent_keys:
+                if parent_key in self._num_needed_children:
+                    self._num_needed_children[parent_key] += 1
+                else:
+                    self._num_needed_children[parent_key] = 1
+        self._parent_map.update(parent_map)
+        keys = parent_map.keys()
+        return keys
 
     def _get_needed_texts(self, key):
         """Get the texts we need to properly annotate key.
@@ -49,11 +70,7 @@ class Annotator(object):
             matcher object we are using. Currently it is always 'lines' but
             future improvements may change this to a simple text string.
         """
-        graph = _mod_graph.Graph(self._vf)
-        parent_map = dict((k, v) for k, v in graph.iter_ancestry([key])
-                          if v is not None)
-        self._parent_map.update(parent_map)
-        keys = parent_map.keys()
+        keys = self._get_needed_keys(key)
         for record in self._vf.get_record_stream(keys, 'topological', True):
             this_key = record.key
             lines = osutils.chunks_to_lines(record.get_bytes_as('chunked'))
