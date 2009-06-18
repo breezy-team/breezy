@@ -25,6 +25,10 @@ Bug Fixes
   diverged-branches`` when a push fails because the branches have
   diverged.  (Neil Martinsen-Burrell, #269477)
 
+* Automatic format upgrades triggered by default stacking policies on a
+  1.16rc1 (or later) smart server work again.
+  (Andrew Bennetts, #388675)
+
 * Better message in ``bzr split`` error suggesting a rich root format.
   (Neil Martinsen-Burrell, #220067)
 
