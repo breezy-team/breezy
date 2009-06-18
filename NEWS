@@ -93,6 +93,10 @@ Improvements
 Bug Fixes
 *********
 
+* Fix the nested tree flag check so that upgrade from development formats to
+  2a can work correctly.
+  (Jelmer Vernooij, #388727)
+
 * Automatic format upgrades triggered by default stacking policies on a
   1.16rc1 (or later) smart server work again.
   (Andrew Bennetts, #388675)
