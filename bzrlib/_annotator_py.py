@@ -151,3 +151,18 @@ class Annotator(object):
         except KeyError:
             raise errors.RevisionNotPresent(key, self._vf)
         return annotations, self._text_cache[key]
+
+    def annotate_flat(self, key):
+        """Determine the single-best-revision to source for each line.
+
+        This is meant as a compatibility thunk to how annotate() used to work.
+        """
+        graph = _mod_graph.KnownGraph(self._parent_map)
+        heads = graph.heads
+        annotations, lines = self.annotate(key)
+        assert len(annotations) == len(lines)
+        out = []
+        for annotation, line in zip(annotations, lines):
+            if len(annotation) == 1:
+                out.append((annotation[0], line))
+        return out

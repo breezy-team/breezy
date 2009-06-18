@@ -167,3 +167,13 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
         ann = self.module.Annotator(self.vf)
         self.assertAnnotateEqual([(self.fa_key,), (self.fa_key, self.fc_key)],
                                  ann, self.fd_key)
+
+    def test_annotate_flat_simple(self):
+        self.make_simple_text()
+        ann = self.module.Annotator(self.vf)
+        self.assertEqual([(self.fa_key, 'simple\n'),
+                          (self.fa_key, 'content\n'),
+                         ], ann.annotate_flat(self.fa_key))
+        self.assertEqual([(self.fa_key, 'simple\n'),
+                          (self.fb_key, 'new content\n'),
+                         ], ann.annotate_flat(self.fb_key))
