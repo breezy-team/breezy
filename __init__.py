@@ -25,7 +25,7 @@ import bzrlib
 import bzrlib.api
 from bzrlib.commands import plugin_cmds
 
-version_info = (0, 5, 1, 'dev', 0)
+version_info = (0, 5, 1, 'final', 0)
 if version_info[3] == 'final':
     version_string = '%d.%d.%d' % version_info[:3]
 else:
@@ -33,7 +33,7 @@ else:
 __version__ = version_string
 __author__ = 'Jelmer Vernooij <jelmer@samba.org>'
 
-COMPATIBLE_BZR_VERSIONS = [(1, 14, 0), (1, 15, 0)]
+COMPATIBLE_BZR_VERSIONS = [(1, 14, 0), (1, 15, 0), (1, 16, 0)]
 
 bzrlib.api.require_any_api(bzrlib, COMPATIBLE_BZR_VERSIONS)
 

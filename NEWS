@@ -1,4 +1,8 @@
-0.5.1	UNRELEASED
+0.5.1	2009-06-18
+
+ BUG FIXES
+
+  * Mark as compatible with Bazaar 1.16.
 
 0.5.0	2009-05-20
 
