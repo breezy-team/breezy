@@ -310,6 +310,31 @@ cdef class KnownGraph:
         return tails
 
     def _find_gdfo(self):
+        cdef _KnownGraphNode node
+        cdef _KnownGraphNode child
+
+        nodes = self._nodes
+        pending = []
+        known_parent_gdfos = dict.fromkeys(nodes.keys(), 0)
+
+        for node in nodes.values():
+            if not node.parents:
+                node.gdfo = 1
+                known_parent_gdfos[node.key] = 0
+                pending.append(node)
+
+        while pending:
+            node = <_KnownGraphNode>pending.pop()
+            for child in node.children:
+                known_parent_gdfos[child.key] = known_parent_gdfos[child.key] + 1
+                if child.gdfo is None or node.gdfo + 1 > child.gdfo:
+                    child.gdfo = node.gdfo + 1
+                if known_parent_gdfos[child.key] == len(child.parents):
+                    # We are the last parent updating that node, we can
+                    # continue from there
+                    pending.append(child)
+
+    def x_find_gdfo(self):
         cdef Py_ssize_t pos, pos2
         cdef _KnownGraphNode node
         cdef _KnownGraphNode child_node

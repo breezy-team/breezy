@@ -151,7 +151,13 @@ class KnownGraph(object):
         pending = []
         known_parent_gdfos = dict.fromkeys(nodes.keys(), 0)
 
-        def update_childs(node):
+        for node in nodes.values():
+            if not node.parent_keys:
+                node.gdfo = 1
+                known_parent_gdfos[node.key] = 0
+                pending.append(node)
+        while pending:
+            node = pending.pop()
             for child_key in node.child_keys:
                 child = nodes[child_key]
                 known_parent_gdfos[child_key] += 1
@@ -161,14 +167,6 @@ class KnownGraph(object):
                     # We are the last parent updating that node, we can
                     # continue from there
                     pending.append(child)
-
-        for node in self._nodes.itervalues():
-            if not node.parent_keys:
-                node.gdfo = 1
-                known_parent_gdfos[node.key] = 0
-                update_childs(node)
-        while pending:
-            update_childs(pending.pop())
 
     def x_find_gdfo(self):
         def find_tails():
