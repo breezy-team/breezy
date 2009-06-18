@@ -22,6 +22,7 @@ opts, args = p.parse_args(sys.argv[1:])
 trace.enable_default_logging()
 ui.ui_factory = text.TextUIFactory()
 
+t1 = time.clock()
 if len(args) >= 1:
     b = branch.Branch.open(args[0])
 else:
@@ -33,8 +34,9 @@ try:
                          if p[1] is not None)
 finally:
     b.unlock()
+t2 = time.clock()
 
-print 'Found %d nodes' % (len(parent_map),)
+print 'Found %d nodes, loaded in %.3fs' % (len(parent_map), t2-t1)
 
 def all_heads_comp(g, combinations):
     h = []
@@ -84,14 +86,14 @@ else:
     h_known = all_heads_comp(known_g, combinations)
 t2 = time.clock()
 print "Known (pyx): %.3fs" % (t2-t1,)
-#print "  %s" % (graph._counters,)
+print "  %s" % (graph._counters,)
 simple_g = graph.Graph(graph.DictParentsProvider(parent_map))
 graph._counters[1] = 0
 graph._counters[2] = 0
 h_simple = all_heads_comp(simple_g, combinations)
 t3 = time.clock()
 print "Orig: %.3fs" % (t3-t2,)
-#print "  %s" % (graph._counters,)
+print "  %s" % (graph._counters,)
 if h_simple != h_known:
     import pdb; pdb.set_trace()
 print 'ratio: %.3fs' % ((t2-t1) / (t3-t2))

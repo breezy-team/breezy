@@ -364,6 +364,74 @@ cdef class KnownGraph:
         This is done by searching the ancestries of each key.  Any key that is
         reachable from another key is not returned; all the others are.
 
+        This operation scales with the relative depth between any two keys. It
+        uses gdfo to avoid walking all ancestry.
+
+        :param keys: An iterable of keys.
+        :return: A set of the heads. Note that as a set there is no ordering
+            information. Callers will need to filter their input to create
+            order if they need it.
+        """
+        cdef PyObject *maybe_node
+        cdef PyObject *maybe_heads
+        cdef PyObject *temp_node
+        cdef _KnownGraphNode node
+
+        heads_key = PyFrozenSet_New(keys)
+        maybe_heads = PyDict_GetItem(self._known_heads, heads_key)
+        if maybe_heads != NULL:
+            return <object>maybe_heads
+        # Not cached, compute it ourselves
+        candidate_nodes = {}
+        nodes = self._nodes
+        for key in keys:
+            maybe_node = PyDict_GetItem(nodes, key)
+            if maybe_node == NULL:
+                raise KeyError('key %s not in nodes' % (key,))
+            PyDict_SetItem(candidate_nodes, key, <object>maybe_node)
+        if revision.NULL_REVISION in candidate_nodes:
+            # NULL_REVISION is only a head if it is the only entry
+            candidate_nodes.pop(revision.NULL_REVISION)
+            if not candidate_nodes:
+                return set([revision.NULL_REVISION])
+            # The keys changed, so recalculate heads_key
+            heads_key = PyFrozenSet_New(candidate_nodes)
+        if len(candidate_nodes) < 2:
+            return heads_key
+
+        seen = set()
+        pending = []
+        cdef Py_ssize_t pos
+        pos = 0
+        min_gdfo = None
+        while PyDict_Next(candidate_nodes, &pos, NULL, &temp_node):
+            node = <_KnownGraphNode>temp_node
+            if node.parents is not None:
+                pending.extend(node.parents)
+            if min_gdfo is None or node.gdfo < min_gdfo:
+                min_gdfo = node.gdfo
+        nodes = self._nodes
+        while pending:
+            node = pending.pop()
+            if node.key in seen:
+                # node already appears in some ancestry
+                continue
+            seen.add(node.key)
+            if node.gdfo <= min_gdfo:
+                continue
+            if node.parents:
+                pending.extend(node.parents)
+        heads = heads_key.difference(seen)
+        if self.do_cache:
+            self._known_heads[heads_key] = heads
+        return heads
+
+    def xheads(self, keys):
+        """Return the heads from amongst keys.
+
+        This is done by searching the ancestries of each key.  Any key that is
+        reachable from another key is not returned; all the others are.
+
         This operation scales with the relative depth between any two keys. If
         any two keys are completely disconnected all ancestry of both sides
         will be retrieved.

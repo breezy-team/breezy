@@ -273,7 +273,7 @@ class KnownGraph(object):
         pending = []
         min_gdfo = None
         for node in candidate_nodes.values():
-            if node.parent_keys: # protect against ghosts, jam, fixme ?
+            if node.parent_keys:
                 pending.extend(node.parent_keys)
             if min_gdfo is None or node.gdfo < min_gdfo:
                 min_gdfo = node.gdfo
@@ -287,7 +287,7 @@ class KnownGraph(object):
             node = nodes[node_key]
             if node.gdfo <= min_gdfo:
                 continue
-            if node.parent_keys: # protect against ghosts, jam, fixme ?
+            if node.parent_keys:
                 pending.extend(node.parent_keys)
         heads = heads_key.difference(seen)
         if self.do_cache:
