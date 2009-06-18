@@ -58,6 +58,7 @@ class Annotator(object):
             this_key = record.key
             lines = osutils.chunks_to_lines(record.get_bytes_as('chunked'))
             num_lines = len(lines)
+            self._text_cache[this_key] = lines
             yield this_key, lines, num_lines
 
     def _get_parent_annotations_and_matches(self, text, parent_key):
@@ -129,21 +130,32 @@ class Annotator(object):
                     last_parent = par_ann
                     last_res = new_ann
 
+    def _init_annotations(self, key, num_lines):
+        """Build a new annotation list for this key.
+
+        :return: (this_annotation, annotations)
+            this_annotation: a tuple indicating this line was only introduced
+                             by revision key
+            annotations: A list of this_annotation keys
+        """
+        this_annotation = (key,)
+        # Note: annotations will be mutated by calls to _update_from*
+        annotations = [this_annotation] * num_lines
+        self._annotations_cache[key] = annotations
+        return this_annotation, annotations
+
     def annotate(self, key):
         """Return annotated fulltext for the given key."""
         keys = self._get_needed_texts(key)
         for text_key, text, num_lines in self._get_needed_texts(key):
-            self._text_cache[text_key] = text
-            this_annotation = (text_key,)
-            # Note: annotations will be mutated by calls to _update_from*
-            annotations = [this_annotation] * num_lines
-            self._annotations_cache[text_key] = annotations
+            (this_annotation,
+             annotations) = self._init_annotations(text_key, num_lines)
 
-            parents = self._parent_map[text_key]
-            if not parents:
+            parent_keys = self._parent_map[text_key]
+            if not parent_keys:
                 continue
-            self._update_from_one_parent(annotations, text, parents[0])
-            for parent in parents[1:]:
+            self._update_from_one_parent(annotations, text, parent_keys[0])
+            for parent in parent_keys[1:]:
                 self._update_from_other_parents(annotations, text,
                                                 this_annotation, parent)
         try:
