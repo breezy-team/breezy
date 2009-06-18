@@ -1470,6 +1470,19 @@ class CHKInventory(CommonInventory):
         self._path_to_fileid_cache = {}
         self._search_key_name = search_key_name
 
+    def __eq__(self, other):
+        """Compare two sets by comparing their contents."""
+        if not isinstance(other, CHKInventory):
+            return NotImplemented
+
+        this_key = self.id_to_entry.key()
+        other_key = other.id_to_entry.key()
+        this_pid_key = self.parent_id_basename_to_file_id.key()
+        other_pid_key = other.parent_id_basename_to_file_id.key()
+        if None in (this_key, this_pid_key, other_key, other_pid_key):
+            return False
+        return this_key == other_key and this_pid_key == other_pid_key
+
     def _entry_to_bytes(self, entry):
         """Serialise entry as a single bytestring.
 
