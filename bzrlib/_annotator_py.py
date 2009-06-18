@@ -36,17 +36,29 @@ class Annotator(object):
         """Create a new Annotator from a VersionedFile."""
         self._vf = vf
         self._parent_map = {}
-        self._lines_cache = {}
+        self._text_cache = {}
         self._annotations_cache = {}
         self._heads_provider = None
 
     def _get_needed_texts(self, key):
+        """Get the texts we need to properly annotate key.
+
+        :param key: A Key that is present in self._vf
+        :return: Yield (this_key, text, num_lines)
+            'text' is an opaque object that just has to work with whatever
+            matcher object we are using. Currently it is always 'lines' but
+            future improvements may change this to a simple text string.
+        """
         graph = _mod_graph.Graph(self._vf)
         parent_map = dict((k, v) for k, v in graph.iter_ancestry([key])
                           if v is not None)
         self._parent_map.update(parent_map)
         keys = parent_map.keys()
-        return keys
+        for record in self._vf.get_record_stream(keys, 'topological', True):
+            this_key = record.key
+            lines = osutils.chunks_to_lines(record.get_bytes_as('chunked'))
+            num_lines = len(lines)
+            yield this_key, lines, num_lines
 
     def _get_heads_provider(self):
         if self._heads_provider is None:
@@ -54,7 +66,7 @@ class Annotator(object):
         return self._heads_provider
 
     def _get_parent_annotations_and_matches(self, lines, parent_key):
-        parent_lines = self._lines_cache[parent_key]
+        parent_lines = self._text_cache[parent_key]
         parent_annotations = self._annotations_cache[parent_key]
         # PatienceSequenceMatcher should probably be part of Policy
         matcher = patiencediff.PatienceSequenceMatcher(None,
@@ -62,7 +74,7 @@ class Annotator(object):
         matching_blocks = matcher.get_matching_blocks()
         return parent_annotations, matching_blocks
 
-    def _reannotate_one_parent(self, annotations, lines, parent_key):
+    def _update_from_one_parent(self, annotations, lines, parent_key):
         """Reannotate this text relative to its first parent."""
         parent_annotations, matching_blocks = self._get_parent_annotations_and_matches(
             lines, parent_key)
@@ -72,8 +84,8 @@ class Annotator(object):
             annotations[lines_idx:lines_idx + match_len] = \
                 parent_annotations[parent_idx:parent_idx + match_len]
 
-    def _reannotate_other_parents(self, annotations, lines, this_annotation,
-                                  parent_key):
+    def _update_from_other_parents(self, annotations, lines, this_annotation,
+                                   parent_key):
         """Reannotate this text relative to a second (or more) parent."""
         parent_annotations, matching_blocks = self._get_parent_annotations_and_matches(
             lines, parent_key)
@@ -116,23 +128,22 @@ class Annotator(object):
         """Return annotated fulltext for the given key."""
         keys = self._get_needed_texts(key)
         heads_provider = self._get_heads_provider
-        for record in self._vf.get_record_stream(keys, 'topological', True):
-            this_key = record.key
-            lines = osutils.chunks_to_lines(record.get_bytes_as('chunked'))
-            this_annotation = (this_key,)
-            annotations = [this_annotation]*len(lines)
-            self._lines_cache[this_key] = lines
-            self._annotations_cache[this_key] = annotations
+        for text_key, text, num_lines in self._get_needed_texts(key):
+            self._text_cache[text_key] = text
+            this_annotation = (text_key,)
+            # Note: annotations will be mutated by calls to _update_from*
+            annotations = [this_annotation] * num_lines
+            self._annotations_cache[text_key] = annotations
 
-            parents = self._parent_map[this_key]
+            parents = self._parent_map[text_key]
             if not parents:
                 continue
-            self._reannotate_one_parent(annotations, lines, parents[0])
+            self._update_from_one_parent(annotations, text, parents[0])
             for parent in parents[1:]:
-                self._reannotate_other_parents(annotations, lines,
-                                               this_annotation, parent)
+                self._update_from_other_parents(annotations, text,
+                                                this_annotation, parent)
         try:
             annotations = self._annotations_cache[key]
         except KeyError:
             raise errors.RevisionNotPresent(key, self._vf)
-        return annotations, self._lines_cache[key]
+        return annotations, self._text_cache[key]

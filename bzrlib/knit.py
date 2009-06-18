@@ -3560,7 +3560,7 @@ class _KnitAnnotator(object):
 
         :param key: The key to annotate.
         """
-        if len(self._knit._fallback_vfs) > 0:
+        if True or len(self._knit._fallback_vfs) > 0:
             # stacked knits can't use the fast path at present.
             return self._simple_annotate(key)
         while True:
