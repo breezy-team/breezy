@@ -969,6 +969,12 @@ class TestWithBrokenRepo(TestCaseWithTransport):
         """
         broken_repo = self.make_broken_repository()
         empty_repo = self.make_repository('empty-repo')
+        # See bug https://bugs.launchpad.net/bzr/+bug/389141 for information
+        # about why this was turned into expectFailure
+        self.expectFailure('new Stream fetch fills in missing compression'
+           ' parents (bug #389141)',
+           self.assertRaises, (errors.RevisionNotPresent, errors.BzrCheckError),
+                              empty_repo.fetch, broken_repo)
         self.assertRaises((errors.RevisionNotPresent, errors.BzrCheckError),
                           empty_repo.fetch, broken_repo)
 
