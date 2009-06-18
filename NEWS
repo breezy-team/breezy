@@ -31,6 +31,9 @@ Bug Fixes
 * ``Branch.set_append_revisions_only`` now works with branches on a smart
   server. (Andrew Bennetts, #365865)
 
+* ``bzr ls DIR --from-root`` now shows only things in DIR, not everything.
+  (Ian Clatworthy)
+
 * Progress bars are now suppressed again when the environment variable
   ``BZR_PROGRESS_BAR`` is set to ``none``.
   (Martin Pool, #339385)
@@ -54,6 +57,10 @@ Internals
 
 Improvements
 ************
+
+``bzr ls`` is now faster. On OpenOffice.org, the time drops from 2.4
+  to 1.1 seconds. The improvement for ``bzr ls -r-1`` is more
+  substantial dropping from 54.3 to 1.1 seconds. (Ian Clatworthy)
 
 * Resolving a revno to a revision id on a branch accessed via ``bzr://``
   or ``bzr+ssh://`` is now much faster and involves no VFS operations.
