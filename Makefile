@@ -254,7 +254,10 @@ py-inst-24: docs
 py-inst-25: docs
 	python25 setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
 
-python-installer: py-inst-24 py-inst-25
+py-inst-26: docs
+	python26 setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
+
+python-installer: py-inst-24 py-inst-25 py-inst-26
 
 
 copy-docs: docs
