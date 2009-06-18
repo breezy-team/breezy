@@ -176,6 +176,4 @@ class Annotator(object):
                     # sorted smallest
                     head = sorted(the_heads)[0]
                 append((head, line))
-                last_ann = annotation
-                last_head = head
         return out
