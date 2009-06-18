@@ -93,6 +93,10 @@ Improvements
 Bug Fixes
 *********
 
+* Automatic format upgrades triggered by default stacking policies on a
+  1.16rc1 (or later) smart server work again.
+  (Andrew Bennetts, #388675)
+
 * Bazaar can now pass attachment files to the mutt email client.
   (Edwin Grubbs, #384158)
 

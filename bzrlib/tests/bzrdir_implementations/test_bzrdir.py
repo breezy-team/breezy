@@ -1275,6 +1275,9 @@ class TestBzrDir(TestCaseWithBzrDir):
         fallback_repo = repo._fallback_repositories[0]
         self.assertEqual(
             stack_on.base, fallback_repo.bzrdir.root_transport.base)
+        # The bzrdir creates a branch in stacking-capable format.
+        new_branch = control.create_branch()
+        self.assertTrue(new_branch._format.supports_stacking())
 
     def test_format_initialize_on_transport_ex_repo_fmt_name_None(self):
         t = self.get_transport('dir')
