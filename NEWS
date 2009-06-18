@@ -1,4 +1,6 @@
-0.3.3	UNRELEASED
+0.4.1	UNRELEASED
+
+0.4.0	2009-06-18
 
  BUG FIXES
 
@@ -12,6 +14,8 @@
   * Unusual file modes that could be created in Git repositories using older
     versions of Git are now stored in Bazaar revision properties. This means 
 	it's now possible to import the Git repository and the Linux kernel repository.
+
+  * Mark as compatible with bzr 1.16.
 
 0.3.2	2009-05-20
 
