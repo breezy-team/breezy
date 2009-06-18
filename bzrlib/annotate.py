@@ -444,3 +444,6 @@ def _reannotate_annotated(right_parent_lines, new_lines, new_revision_id,
         # If left and right agree on a range, just push that into the output
         lines_extend(annotated_lines[left_idx:left_idx + match_len])
     return lines
+
+
+from bzrlib._annotator_py import Annotator

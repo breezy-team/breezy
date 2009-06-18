@@ -17,7 +17,6 @@
 """Functionality for doing annotations in the 'optimal' way"""
 
 from bzrlib import (
-    annotate,
     errors,
     graph as _mod_graph,
     osutils,
