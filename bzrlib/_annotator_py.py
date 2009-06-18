@@ -60,17 +60,22 @@ class Annotator(object):
             num_lines = len(lines)
             yield this_key, lines, num_lines
 
-    def _get_heads_provider(self):
-        if self._heads_provider is None:
-            self._heads_provider = _mod_graph.KnownGraph(self._parent_map)
-        return self._heads_provider
+    def _get_parent_annotations_and_matches(self, text, parent_key):
+        """Get the list of annotations for the parent, and the matching lines.
 
-    def _get_parent_annotations_and_matches(self, lines, parent_key):
+        :param text: The opaque value given by _get_needed_texts
+        :param parent_key: The key for the parent text
+        :return: (parent_annotations, matching_blocks)
+            parent_annotations is a list as long as the number of lines in
+                parent
+            matching_blocks is a list of (parent_idx, text_idx, len) tuples
+                indicating which lines match between the two texts
+        """
         parent_lines = self._text_cache[parent_key]
         parent_annotations = self._annotations_cache[parent_key]
         # PatienceSequenceMatcher should probably be part of Policy
         matcher = patiencediff.PatienceSequenceMatcher(None,
-            parent_lines, lines)
+            parent_lines, text)
         matching_blocks = matcher.get_matching_blocks()
         return parent_annotations, matching_blocks
 
@@ -127,7 +132,6 @@ class Annotator(object):
     def annotate(self, key):
         """Return annotated fulltext for the given key."""
         keys = self._get_needed_texts(key)
-        heads_provider = self._get_heads_provider
         for text_key, text, num_lines in self._get_needed_texts(key):
             self._text_cache[text_key] = text
             this_annotation = (text_key,)
