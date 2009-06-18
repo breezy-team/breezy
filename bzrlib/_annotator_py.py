@@ -162,17 +162,20 @@ class Annotator(object):
         out = []
         graph = _mod_graph.KnownGraph(self._parent_map)
         heads = graph.heads
+        append = out.append
         for annotation, line in zip(annotations, lines):
             if len(annotation) == 1:
-                out.append((annotation[0], line))
+                append((annotation[0], line))
             else:
                 the_heads = heads(annotation)
                 if len(the_heads) == 1:
                     for head in the_heads:
                         break
-                    out.append((head, line))
                 else:
                     # We need to resolve the ambiguity, for now just pick the
                     # sorted smallest
-                    out.append((sorted(the_heads)[0], line))
+                    head = sorted(the_heads)[0]
+                append((head, line))
+                last_ann = annotation
+                last_head = head
         return out
