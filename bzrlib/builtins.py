@@ -2395,19 +2395,22 @@ class cmd_ls(Command):
 
         if path is None:
             fs_path = '.'
-            prefix = ''
         else:
             if from_root:
                 raise errors.BzrCommandError('cannot specify both --from-root'
                                              ' and PATH')
             fs_path = path
-            prefix = path
         tree, branch, relpath = bzrdir.BzrDir.open_containing_tree_or_branch(
             fs_path)
+
+        # Calculate the prefix to use
+        prefix = None
         if from_root:
-            relpath = u''
-        elif relpath:
-            relpath += '/'
+            if relpath:
+                prefix = relpath + '/'
+        elif fs_path != '.':
+            prefix = fs_path + '/'
+
         if revision is not None or tree is None:
             tree = _get_one_revision_tree('ls', revision, branch=branch)
 
@@ -2421,45 +2424,50 @@ class cmd_ls(Command):
 
         tree.lock_read()
         try:
-            for fp, fc, fkind, fid, entry in tree.list_files(include_root=False):
-                if fp.startswith(relpath):
-                    rp = fp[len(relpath):]
-                    fp = osutils.pathjoin(prefix, rp)
-                    if not recursive and '/' in rp:
+            for fp, fc, fkind, fid, entry in tree.list_files(include_root=False,
+                from_dir=relpath, recursive=recursive):
+                # Apply additional masking
+                if not all and not selection[fc]:
+                    continue
+                if kind is not None and fkind != kind:
+                    continue
+                if apply_view:
+                    try:
+                        if relpath:
+                            fullpath = osutils.pathjoin(relpath, fp)
+                        else:
+                            fullpath = fp
+                        views.check_path_in_view(tree, fullpath)
+                    except errors.FileOutsideView:
                         continue
-                    if not all and not selection[fc]:
-                        continue
-                    if kind is not None and fkind != kind:
-                        continue
-                    if apply_view:
-                        try:
-                            views.check_path_in_view(tree, fp)
-                        except errors.FileOutsideView:
-                            continue
-                    kindch = entry.kind_character()
-                    outstring = fp + kindch
-                    ui.ui_factory.clear_term()
-                    if verbose:
-                        outstring = '%-8s %s' % (fc, outstring)
-                        if show_ids and fid is not None:
-                            outstring = "%-50s %s" % (outstring, fid)
-                        self.outf.write(outstring + '\n')
-                    elif null:
-                        self.outf.write(fp + '\0')
-                        if show_ids:
-                            if fid is not None:
-                                self.outf.write(fid)
-                            self.outf.write('\0')
-                        self.outf.flush()
-                    else:
+
+                # Output the entry
+                if prefix:
+                    fp = osutils.pathjoin(prefix, fp)
+                kindch = entry.kind_character()
+                outstring = fp + kindch
+                ui.ui_factory.clear_term()
+                if verbose:
+                    outstring = '%-8s %s' % (fc, outstring)
+                    if show_ids and fid is not None:
+                        outstring = "%-50s %s" % (outstring, fid)
+                    self.outf.write(outstring + '\n')
+                elif null:
+                    self.outf.write(fp + '\0')
+                    if show_ids:
+                        if fid is not None:
+                            self.outf.write(fid)
+                        self.outf.write('\0')
+                    self.outf.flush()
+                else:
+                    if show_ids:
                         if fid is not None:
                             my_id = fid
                         else:
                             my_id = ''
-                        if show_ids:
-                            self.outf.write('%-50s %s\n' % (outstring, my_id))
-                        else:
-                            self.outf.write(outstring + '\n')
+                        self.outf.write('%-50s %s\n' % (outstring, my_id))
+                    else:
+                        self.outf.write(outstring + '\n')
         finally:
             tree.unlock()
 
