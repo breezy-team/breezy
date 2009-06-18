@@ -69,15 +69,23 @@ class KnownGraph(object):
     def _initialize_nodes(self, parent_map):
         """Populate self._nodes.
 
-        After this has finished, self._nodes will have an entry for every entry
-        in parent_map. Ghosts will have a parent_keys = None, all nodes found
-        will also have .child_keys populated with all known child_keys.
+        After this has finished:
+        - self._nodes will have an entry for every entry in parent_map.
+        - ghosts will have a parent_keys = None,
+        - all nodes found will also have .child_keys populated with all known
+          child_keys,
+        - self._tails will list all the nodes without parents.
         """
+        tails = self._tails = set()
         nodes = self._nodes
         for key, parent_keys in parent_map.iteritems():
             if key in nodes:
                 node = nodes[key]
                 node.parent_keys = parent_keys
+                if parent_keys:
+                    # This node has been added before being seen in parent_map
+                    # (see below)
+                    tails.remove(node)
             else:
                 node = _KnownGraphNode(key, parent_keys)
                 nodes[key] = node
@@ -87,6 +95,9 @@ class KnownGraph(object):
                 except KeyError:
                     parent_node = _KnownGraphNode(parent_key, None)
                     nodes[parent_key] = parent_node
+                    # Potentially a tail, if we're wrong we'll remove it later
+                    # (see above)
+                    tails.add(parent_node)
                 parent_node.child_keys.append(key)
 
     def _find_linear_dominators(self):
@@ -151,16 +162,19 @@ class KnownGraph(object):
         pending = []
         known_parent_gdfos = dict.fromkeys(nodes.keys(), 0)
 
-        for node in nodes.values():
-            if not node.parent_keys:
-                node.gdfo = 1
-                known_parent_gdfos[node.key] = 0
-                pending.append(node)
+        for node in self._tails:
+            node.gdfo = 1
+            known_parent_gdfos[node.key] = 0
+            pending.append(node)
+
         while pending:
             node = pending.pop()
             for child_key in node.child_keys:
                 child = nodes[child_key]
-                known_parent_gdfos[child_key] += 1
+                try:
+                    known_parent_gdfos[child_key] += 1
+                except KeyError:
+                    known_parent_gdfos[child_key] = 1
                 if child.gdfo is None or node.gdfo + 1 > child.gdfo:
                     child.gdfo = node.gdfo + 1
                 if known_parent_gdfos[child_key] == len(child.parent_keys):

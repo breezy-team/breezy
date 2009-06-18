@@ -150,6 +150,7 @@ cdef class KnownGraph:
     """This is a class which assumes we already know the full graph."""
 
     cdef public object _nodes
+    cdef public object _tails
     cdef object _known_heads
     cdef public int do_cache
     # Nodes we've touched that we'll need to reset their info when heads() is
@@ -179,7 +180,7 @@ cdef class KnownGraph:
             child = <_KnownGraphNode>temp_node
             child.clear_references()
 
-    cdef _KnownGraphNode _get_or_create_node(self, key):
+    cdef _KnownGraphNode _get_or_create_node(self, key, int *created):
         cdef PyObject *temp_node
         cdef _KnownGraphNode node
 
@@ -187,22 +188,29 @@ cdef class KnownGraph:
         if temp_node == NULL:
             node = _KnownGraphNode(key)
             PyDict_SetItem(self._nodes, key, node)
+            created[0] = 1 # True
         else:
             node = <_KnownGraphNode>temp_node
+            created[0] = 0 # False
         return node
 
     def _initialize_nodes(self, parent_map):
         """Populate self._nodes.
 
-        After this has finished, self._nodes will have an entry for every entry
-        in parent_map. Ghosts will have a parent_keys = None, all nodes found
-        will also have .child_keys populated with all known child_keys.
+        After this has finished:
+        - self._nodes will have an entry for every entry in parent_map.
+        - ghosts will have a parent_keys = None,
+        - all nodes found will also have .child_keys populated with all known
+          child_keys,
+        - self._tails will list all the nodes without parents.
         """
         cdef PyObject *temp_key, *temp_parent_keys, *temp_node
         cdef Py_ssize_t pos, pos2, num_parent_keys
         cdef _KnownGraphNode node
         cdef _KnownGraphNode parent_node
+        cdef int created
 
+        tails = self._tails = set()
         nodes = self._nodes
 
         if not PyDict_CheckExact(parent_map):
@@ -212,15 +220,23 @@ cdef class KnownGraph:
         while PyDict_Next(parent_map, &pos, &temp_key, &temp_parent_keys):
             key = <object>temp_key
             parent_keys = <object>temp_parent_keys
-            node = self._get_or_create_node(key)
+            num_parent_keys = len(parent_keys)
+            node = self._get_or_create_node(key, &created)
+            if not created and num_parent_keys != 0:
+                # This node has been added before being seen in parent_map (see
+                # below)
+                tails.remove(node)
             # We know how many parents, so we could pre allocate an exact sized
             # tuple here
-            num_parent_keys = len(parent_keys)
             parent_nodes = PyTuple_New(num_parent_keys)
             # We use iter here, because parent_keys maybe be a list or tuple
             for pos2 from 0 <= pos2 < num_parent_keys:
-                parent_key = parent_keys[pos2]
-                parent_node = self._get_or_create_node(parent_keys[pos2])
+                parent_node = self._get_or_create_node(parent_keys[pos2],
+                                                       &created)
+                if created:
+                    # Potentially a tail, if we're wrong we'll remove it later
+                    # (see above)
+                    tails.add(parent_node)
                 # PyTuple_SET_ITEM will steal a reference, so INCREF first
                 Py_INCREF(parent_node)
                 PyTuple_SET_ITEM(parent_nodes, pos2, parent_node)
@@ -315,18 +331,21 @@ cdef class KnownGraph:
 
         nodes = self._nodes
         pending = []
-        known_parent_gdfos = dict.fromkeys(nodes.keys(), 0)
+        known_parent_gdfos = {}
 
-        for node in nodes.values():
-            if not node.parents:
-                node.gdfo = 1
-                known_parent_gdfos[node.key] = 0
-                pending.append(node)
+        for node in self._tails:
+            node.gdfo = 1
+            known_parent_gdfos[node] = 0
+            pending.append(node)
 
         while pending:
             node = <_KnownGraphNode>pending.pop()
             for child in node.children:
-                known_parent_gdfos[child.key] = known_parent_gdfos[child.key] + 1
+                try:
+                    known_parents = known_parent_gdfos[child.key]
+                except KeyError:
+                    known_parents = 0
+                known_parent_gdfos[child.key] = known_parents + 1
                 if child.gdfo is None or node.gdfo + 1 > child.gdfo:
                     child.gdfo = node.gdfo + 1
                 if known_parent_gdfos[child.key] == len(child.parents):
