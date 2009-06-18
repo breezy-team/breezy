@@ -155,19 +155,6 @@ class Annotator(object):
                     last_parent = par_ann
                     last_res = new_ann
 
-    def _init_annotations(self, key, num_lines):
-        """Build a new annotation list for this key.
-
-        :return: (this_annotation, annotations)
-            this_annotation: a tuple indicating this line was only introduced
-                             by revision key
-            annotations: A list of this_annotation keys
-        """
-        this_annotation = (key,)
-        # Note: annotations will be mutated by calls to _update_from*
-        annotations = [this_annotation] * num_lines
-        return this_annotation, annotations
-
     def _record_annotation(self, key, parent_keys, annotations):
         self._annotations_cache[key] = annotations
         for parent_key in parent_keys:
@@ -180,22 +167,25 @@ class Annotator(object):
                 # well?
             self._num_needed_children[parent_key] = num
 
+    def _annotate_one(self, key, text, num_lines):
+        this_annotation = (key,)
+        # Note: annotations will be mutated by calls to _update_from*
+        annotations = [this_annotation] * num_lines
+        parent_keys = self._parent_map[key]
+        if parent_keys:
+            self._update_from_one_parent(annotations, text, parent_keys[0])
+            for parent in parent_keys[1:]:
+                self._update_from_other_parents(annotations, text,
+                                                this_annotation, parent)
+        self._record_annotation(key, parent_keys, annotations)
+
     def annotate(self, key):
         """Return annotated fulltext for the given key."""
         keys = self._get_needed_texts(key)
         pb = ui.ui_factory.nested_progress_bar()
         try:
             for text_key, text, num_lines in self._get_needed_texts(key, pb=pb):
-                (this_annotation,
-                 annotations) = self._init_annotations(text_key, num_lines)
-
-                parent_keys = self._parent_map[text_key]
-                if parent_keys:
-                    self._update_from_one_parent(annotations, text, parent_keys[0])
-                    for parent in parent_keys[1:]:
-                        self._update_from_other_parents(annotations, text,
-                                                        this_annotation, parent)
-                self._record_annotation(text_key, parent_keys, annotations)
+                self._annotate_one(text_key, text, num_lines)
         finally:
             pb.finished()
         try:
