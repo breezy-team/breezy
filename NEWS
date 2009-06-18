@@ -71,6 +71,9 @@ Improvements
   to 1.1 seconds. The improvement for ``bzr ls -r-1`` is more
   substantial dropping from 54.3 to 1.1 seconds. (Ian Clatworthy)
 
+* Initial commit performance in ``--2a`` repositories has been improved by
+  making it cheaper to build the initial CHKMap. (John Arbash Meinel)
+
 * Resolving a revno to a revision id on a branch accessed via ``bzr://``
   or ``bzr+ssh://`` is now much faster and involves no VFS operations.
   This speeds up commands like ``bzr pull -r 123``.  (Andrew Bennetts)
