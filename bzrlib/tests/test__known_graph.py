@@ -71,10 +71,6 @@ class TestKnownGraph(tests.TestCase):
     def make_known_graph(self, ancestry):
         return self.module.KnownGraph(ancestry, do_cache=self.do_cache)
 
-    def assertDominator(self, graph, rev, dominator):
-        node = graph._nodes[rev]
-        self.assertEqual(dominator, node.linear_dominator)
-
     def assertGDFO(self, graph, rev, gdfo):
         node = graph._nodes[rev]
         self.assertEqual(gdfo, node.gdfo)
@@ -87,29 +83,6 @@ class TestKnownGraph(tests.TestCase):
         self.assertEqual(['rev3'], sorted(graph._nodes['rev2a'].child_keys))
         self.assertEqual(['rev4'], sorted(graph._nodes['rev3'].child_keys))
         self.assertEqual(['rev4'], sorted(graph._nodes['rev2b'].child_keys))
-
-    def test_dominators_ancestry_1(self):
-        graph = self.make_known_graph(test_graph.ancestry_1)
-        self.assertDominator(graph, 'rev1', NULL_REVISION)
-        self.assertDominator(graph, 'rev2b', 'rev2b')
-        self.assertDominator(graph, 'rev2a', 'rev2a')
-        self.assertDominator(graph, 'rev3', 'rev2a')
-        self.assertDominator(graph, 'rev4', 'rev4')
-
-    def test_dominators_feature_branch(self):
-        graph = self.make_known_graph(test_graph.feature_branch)
-        self.assertDominator(graph, 'rev1', NULL_REVISION)
-        self.assertDominator(graph, 'rev2b', NULL_REVISION)
-        self.assertDominator(graph, 'rev3b', NULL_REVISION)
-
-    def test_dominators_extended_history_shortcut(self):
-        graph = self.make_known_graph(test_graph.extended_history_shortcut)
-        self.assertDominator(graph, 'a', NULL_REVISION)
-        self.assertDominator(graph, 'b', 'b')
-        self.assertDominator(graph, 'c', 'b')
-        self.assertDominator(graph, 'd', 'b')
-        self.assertDominator(graph, 'e', 'e')
-        self.assertDominator(graph, 'f', 'f')
 
     def test_gdfo_ancestry_1(self):
         graph = self.make_known_graph(test_graph.ancestry_1)
