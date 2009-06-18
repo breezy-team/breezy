@@ -22,6 +22,7 @@ from bzrlib import (
     graph as _mod_graph,
     osutils,
     patiencediff,
+    ui,
     )
 
 
@@ -60,7 +61,7 @@ class Annotator(object):
         keys = parent_map.keys()
         return keys
 
-    def _get_needed_texts(self, key):
+    def _get_needed_texts(self, key, pb=None):
         """Get the texts we need to properly annotate key.
 
         :param key: A Key that is present in self._vf
@@ -70,7 +71,12 @@ class Annotator(object):
             future improvements may change this to a simple text string.
         """
         keys = self._get_needed_keys(key)
-        for record in self._vf.get_record_stream(keys, 'topological', True):
+        if pb is not None:
+            pb.update('getting stream', 0, len(keys))
+        stream  = self._vf.get_record_stream(keys, 'topological', True)
+        for idx, record in enumerate(stream):
+            if pb is not None:
+                pb.update('extracting', 0, len(keys))
             this_key = record.key
             lines = osutils.chunks_to_lines(record.get_bytes_as('chunked'))
             num_lines = len(lines)
@@ -118,6 +124,9 @@ class Annotator(object):
         # TODO: consider making all annotations unique and then using 'is'
         #       everywhere. Current results claim that isn't any faster,
         #       because of the time spent deduping
+        #       deduping also saves a bit of memory. For NEWS it saves ~1MB,
+        #       but that is out of 200-300MB for extracting everything, so a
+        #       fairly trivial amount
         for parent_idx, lines_idx, match_len in matching_blocks:
             # For lines which match this parent, we will now resolve whether
             # this parent wins over the current annotation
@@ -166,6 +175,7 @@ class Annotator(object):
             num -= 1
             if num == 0:
                 del self._text_cache[parent_key]
+                del self._annotations_cache[parent_key]
                 # Do we want to clean up _num_needed_children at this point as
                 # well?
             self._num_needed_children[parent_key] = num
@@ -173,17 +183,21 @@ class Annotator(object):
     def annotate(self, key):
         """Return annotated fulltext for the given key."""
         keys = self._get_needed_texts(key)
-        for text_key, text, num_lines in self._get_needed_texts(key):
-            (this_annotation,
-             annotations) = self._init_annotations(text_key, num_lines)
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            for text_key, text, num_lines in self._get_needed_texts(key, pb=pb):
+                (this_annotation,
+                 annotations) = self._init_annotations(text_key, num_lines)
 
-            parent_keys = self._parent_map[text_key]
-            if parent_keys:
-                self._update_from_one_parent(annotations, text, parent_keys[0])
-                for parent in parent_keys[1:]:
-                    self._update_from_other_parents(annotations, text,
-                                                    this_annotation, parent)
-            self._record_annotation(text_key, parent_keys, annotations)
+                parent_keys = self._parent_map[text_key]
+                if parent_keys:
+                    self._update_from_one_parent(annotations, text, parent_keys[0])
+                    for parent in parent_keys[1:]:
+                        self._update_from_other_parents(annotations, text,
+                                                        this_annotation, parent)
+                self._record_annotation(text_key, parent_keys, annotations)
+        finally:
+            pb.finished()
         try:
             annotations = self._annotations_cache[key]
         except KeyError:

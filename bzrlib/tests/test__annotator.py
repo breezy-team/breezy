@@ -268,6 +268,7 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
                           self.ff_key: 1,
                          }, self.ann._num_needed_children)
         self.assertTrue(self.fa_key in self.ann._text_cache)
+        self.assertTrue(self.fa_key in self.ann._annotations_cache)
         self.ann._record_annotation(self.fd_key, [self.fb_key, self.fc_key], [])
         self.assertEqual({self.fa_key: 2,
                           self.fb_key: 0,
@@ -277,5 +278,8 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
                           self.ff_key: 1,
                          }, self.ann._num_needed_children)
         self.assertTrue(self.fa_key in self.ann._text_cache)
+        self.assertTrue(self.fa_key in self.ann._annotations_cache)
         self.assertFalse(self.fb_key in self.ann._text_cache)
+        self.assertFalse(self.fa_key in self.ann._annotations_cache)
         self.assertFalse(self.fc_key in self.ann._text_cache)
+        self.assertFalse(self.fa_key in self.ann._annotations_cache)
