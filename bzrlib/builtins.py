@@ -2410,7 +2410,7 @@ class cmd_ls(Command):
                 prefix = relpath + '/'
         elif fs_path != '.':
             prefix = fs_path + '/'
-	
+
         if revision is not None or tree is None:
             tree = _get_one_revision_tree('ls', revision, branch=branch)
 
