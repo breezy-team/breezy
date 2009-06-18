@@ -225,7 +225,7 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
     def test_annotate_many_way_common_merge_text(self):
         self.make_many_way_common_merge_text()
         ann = self.module.Annotator(self.vf)
-        self.assertAnnotateEqual([(self.fa_key, 'simple\n'),
-                                  (self.fb_key, 'new content\n')],
-                                 ann, self.ff_key)
+        self.assertEqual([(self.fa_key, 'simple\n'),
+                         (self.fb_key, 'new content\n')],
+                         ann.annotate_flat(self.ff_key))
 
