@@ -25,11 +25,18 @@ Bug Fixes
   diverged-branches`` when a push fails because the branches have
   diverged.  (Neil Martinsen-Burrell, #269477)
 
+* Automatic format upgrades triggered by default stacking policies on a
+  1.16rc1 (or later) smart server work again.
+  (Andrew Bennetts, #388675)
+
 * Better message in ``bzr split`` error suggesting a rich root format.
   (Neil Martinsen-Burrell, #220067)
 
 * ``Branch.set_append_revisions_only`` now works with branches on a smart
   server. (Andrew Bennetts, #365865)
+
+* ``bzr ls DIR --from-root`` now shows only things in DIR, not everything.
+  (Ian Clatworthy)
 
 * Progress bars are now suppressed again when the environment variable
   ``BZR_PROGRESS_BAR`` is set to ``none``.
@@ -51,9 +58,18 @@ Internals
   for files with long ancestry and 'cherrypicked' changes.)
   (John Arbash Meinel)
 
+* pack <=> pack fetching is now done via a ``PackStreamSource`` rather
+  than the ``Packer`` code. The user visible change is that we now
+  properly fetch the minimum number of texts for non-smart fetching.
+  (John Arbash Meinel)
+
 
 Improvements
 ************
+
+``bzr ls`` is now faster. On OpenOffice.org, the time drops from 2.4
+  to 1.1 seconds. The improvement for ``bzr ls -r-1`` is more
+  substantial dropping from 54.3 to 1.1 seconds. (Ian Clatworthy)
 
 * Initial commit performance in ``--2a`` repositories has been improved by
   making it cheaper to build the initial CHKMap. (John Arbash Meinel)

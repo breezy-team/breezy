@@ -2005,8 +2005,8 @@ class _ContentMapGenerator(object):
                 missing_keys.remove(record.key)
                 yield record
 
-        self._raw_record_map = self.vf._get_record_map_unparsed(self.keys,
-            allow_missing=True)
+        if self._raw_record_map is None:
+            raise AssertionError('_raw_record_map should have been filled')
         first = True
         for key in self.keys:
             if key in self.nonlocal_keys:
