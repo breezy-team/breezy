@@ -29,6 +29,7 @@ from cStringIO import StringIO
 import tarfile
 
 from bzrlib import (
+    bencode,
     bzrdir,
     errors,
     pack,
@@ -51,7 +52,6 @@ from bzrlib.tests import (
     split_suite_by_re,
     )
 from bzrlib.transport import chroot, get_transport
-from bzrlib.util import bencode
 
 
 def load_tests(standard_tests, module, loader):
@@ -381,7 +381,7 @@ class TestSmartServerRequestBzrDirInitializeEx(tests.TestCaseWithMemoryTransport
             'subdir/dir', 'False', 'False', 'False', '', '', '', '', 'False')
 
     def test_initialized_dir(self):
-        """Initializing an extant dirctory should fail like the bzrdir api."""
+        """Initializing an extant directory should fail like the bzrdir api."""
         backing = self.get_transport()
         name = self.make_bzrdir('reference')._format.network_name()
         request = smart.bzrdir.SmartServerRequestBzrDirInitializeEx(backing)

@@ -2882,6 +2882,8 @@ class _KnitGraphIndex(object):
 
     def get_missing_parents(self):
         """Return the keys of missing parents."""
+        # If updating this, you should also update
+        # groupcompress._GCGraphIndex.get_missing_parents
         # We may have false positives, so filter those out.
         self._key_dependencies.add_keys(
             self.get_parent_map(self._key_dependencies.get_unsatisfied_refs()))
@@ -3407,7 +3409,7 @@ class _KnitAnnotator(object):
         fulltext.)
 
         :return: A list of (key, index_memo) records, suitable for
-            passing to read_records_iter to start reading in the raw data fro/
+            passing to read_records_iter to start reading in the raw data from
             the pack file.
         """
         if key in self._annotated_lines:

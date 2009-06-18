@@ -272,6 +272,25 @@ class TestDeltaIndex(tests.TestCase):
         di = self._gc_module.DeltaIndex('test text\n')
         self.assertEqual('DeltaIndex(1, 10)', repr(di))
 
+    def test_first_add_source_doesnt_index_until_make_delta(self):
+        di = self._gc_module.DeltaIndex()
+        self.assertFalse(di._has_index())
+        di.add_source(_text1, 0)
+        self.assertFalse(di._has_index())
+        # However, asking to make a delta will trigger the index to be
+        # generated, and will generate a proper delta
+        delta = di.make_delta(_text2)
+        self.assertTrue(di._has_index())
+        self.assertEqual('N\x90/\x1fdiffer from\nagainst other text\n', delta)
+
+    def test_second_add_source_triggers_make_index(self):
+        di = self._gc_module.DeltaIndex()
+        self.assertFalse(di._has_index())
+        di.add_source(_text1, 0)
+        self.assertFalse(di._has_index())
+        di.add_source(_text2, 0)
+        self.assertTrue(di._has_index())
+
     def test_make_delta(self):
         di = self._gc_module.DeltaIndex(_text1)
         delta = di.make_delta(_text2)

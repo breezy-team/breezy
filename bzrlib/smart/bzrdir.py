@@ -17,7 +17,7 @@
 """Server-side bzrdir related request implmentations."""
 
 
-from bzrlib import branch, errors, repository
+from bzrlib import branch, errors, repository, urlutils
 from bzrlib.bzrdir import (
     BzrDir,
     BzrDirFormat,
@@ -407,6 +407,19 @@ class SmartServerRequestBzrDirInitializeEx(SmartServerRequestBzrDir):
             repo.unlock()
         final_stack = final_stack or ''
         final_stack_pwd = final_stack_pwd or ''
+
+        # We want this to be relative to the bzrdir.
+        if final_stack_pwd:
+            final_stack_pwd = urlutils.relative_url(
+                target_transport.base, final_stack_pwd)
+
+        # Can't meaningfully return a root path.
+        if final_stack.startswith('/'):
+            client_path = self._root_client_path + final_stack[1:]
+            final_stack = urlutils.relative_url(
+                self._root_client_path, client_path)
+            final_stack_pwd = '.'
+
         return SuccessfulSmartServerResponse((repo_path, rich_root, tree_ref,
             external_lookup, repo_name, repo_bzrdir_name,
             bzrdir._format.network_name(),
