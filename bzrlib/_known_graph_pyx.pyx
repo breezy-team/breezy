@@ -88,7 +88,7 @@ cdef class _KnownGraphNode:
                 child_keys.append(node.key)
         return '%s(%s  gdfo:%s par:%s child:%s)' % (
             self.__class__.__name__, self.key, self.gdfo,
-            parent_keys, child_keysr)
+            parent_keys, child_keys)
 
 
 # TODO: slab allocate all _KnownGraphNode objects.
@@ -144,8 +144,8 @@ cdef class KnownGraph:
         After this has finished:
         - self._nodes will have an entry for every entry in parent_map.
         - ghosts will have a parent_keys = None,
-        - all nodes found will also have .child_keys populated with all known
-          child_keys,
+        - all nodes found will also have child_keys populated with all known
+          child keys,
         - self._tails will list all the nodes without parents.
         """
         cdef PyObject *temp_key, *temp_parent_keys, *temp_node
