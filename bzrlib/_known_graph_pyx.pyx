@@ -264,7 +264,7 @@ cdef class KnownGraph:
         cdef PyObject *maybe_heads
         cdef PyObject *temp_node
         cdef _KnownGraphNode node
-        cdef Py_ssize_t pos
+        cdef Py_ssize_t pos, last_item
         cdef long min_gdfo
 
         heads_key = PyFrozenSet_New(keys)
@@ -291,7 +291,6 @@ cdef class KnownGraph:
 
         cleanup = []
         pending = []
-        pending_pop = pending.pop
         # we know a gdfo cannot be longer than a linear chain of all nodes
         min_gdfo = PyDict_Size(self._nodes) + 1
         # Build up nodes that need to be walked, note that starting nodes are
@@ -305,28 +304,26 @@ cdef class KnownGraph:
                 min_gdfo = node.gdfo
 
         # Now do all the real work
-        while PyList_GET_SIZE(pending) > 0:
-            node = _get_list_node(pending, PyList_GET_SIZE(pending) - 1)
+        last_item = PyList_GET_SIZE(pending) - 1
+        while last_item >= 0:
+            node = _get_list_node(pending, last_item)
+            last_item = last_item - 1
             if node.seen:
                 # node already appears in some ancestry
-                pending_pop()
                 continue
             PyList_Append(cleanup, node)
             node.seen = 1
             if node.gdfo <= min_gdfo:
-                pending_pop()
                 continue
             if node.parents is not None and PyTuple_GET_SIZE(node.parents) > 0:
                 for pos from 0 <= pos < PyTuple_GET_SIZE(node.parents):
                     parent_node = _get_parent(node.parents, pos)
-                    if pos == 0:
-                        Py_INCREF(parent_node)
-                        PyList_SetItem(pending, PyList_GET_SIZE(pending) - 1,
-                                        parent_node)
+                    last_item = last_item + 1
+                    if last_item < PyList_GET_SIZE(pending):
+                        Py_INCREF(parent_node) # SetItem steals a ref
+                        PyList_SetItem(pending, last_item, parent_node)
                     else:
                         PyList_Append(pending, parent_node)
-            else:
-                pending_pop()
         heads = []
         pos = 0
         while PyDict_Next(candidate_nodes, &pos, NULL, &temp_node):
