@@ -208,7 +208,8 @@ class BazaarObjectStore(BaseObjectStore):
 
         :param sha: SHA1 of the git object
         """
-        return self[sha].as_raw_string()
+        obj = self[sha]
+        return (obj.type, obj.as_raw_string())
 
     def __contains__(self, sha):
         # See if sha is in map
