@@ -150,7 +150,7 @@ cdef class KnownGraph:
             child = <_KnownGraphNode>temp_node
             child.clear_references()
 
-    cdef _KnownGraphNode _get_or_create_node(self, key, int *created):
+    cdef _KnownGraphNode _get_or_create_node(self, key):
         cdef PyObject *temp_node
         cdef _KnownGraphNode node
 
@@ -158,10 +158,8 @@ cdef class KnownGraph:
         if temp_node == NULL:
             node = _KnownGraphNode(key)
             PyDict_SetItem(self._nodes, key, node)
-            created[0] = 1 # True
         else:
             node = <_KnownGraphNode>temp_node
-            created[0] = 0 # False
         return node
 
     def _initialize_nodes(self, parent_map):
@@ -178,10 +176,6 @@ cdef class KnownGraph:
         cdef Py_ssize_t pos, pos2, num_parent_keys
         cdef _KnownGraphNode node
         cdef _KnownGraphNode parent_node
-        cdef int created
-
-        tails = self._tails = set()
-        nodes = self._nodes
 
         if not PyDict_CheckExact(parent_map):
             raise TypeError('parent_map should be a dict of {key:parent_keys}')
@@ -191,27 +185,24 @@ cdef class KnownGraph:
             key = <object>temp_key
             parent_keys = <object>temp_parent_keys
             num_parent_keys = len(parent_keys)
-            node = self._get_or_create_node(key, &created)
-            if not created and num_parent_keys != 0:
-                # This node has been added before being seen in parent_map (see
-                # below)
-                tails.remove(node)
+            node = self._get_or_create_node(key)
             # We know how many parents, so we could pre allocate an exact sized
             # tuple here
             parent_nodes = PyTuple_New(num_parent_keys)
             # We use iter here, because parent_keys maybe be a list or tuple
             for pos2 from 0 <= pos2 < num_parent_keys:
-                parent_node = self._get_or_create_node(parent_keys[pos2],
-                                                       &created)
-                if created:
-                    # Potentially a tail, if we're wrong we'll remove it later
-                    # (see above)
-                    tails.add(parent_node)
+                parent_node = self._get_or_create_node(parent_keys[pos2])
                 # PyTuple_SET_ITEM will steal a reference, so INCREF first
                 Py_INCREF(parent_node)
                 PyTuple_SET_ITEM(parent_nodes, pos2, parent_node)
                 PyList_Append(parent_node.children, node)
             node.parents = parent_nodes
+        self._tails = set()
+        pos = 0
+        while PyDict_Next(self._nodes, &pos, NULL, &temp_node):
+            node = <_KnownGraphNode>temp_node
+            if node.parents is None or PyTuple_GET_SIZE(node.parents) == 0:
+                self._tails.add(node)
 
     def _find_gdfo(self):
         cdef _KnownGraphNode node
@@ -279,9 +270,8 @@ cdef class KnownGraph:
             return <object>maybe_heads
         # Not cached, compute it ourselves
         candidate_nodes = {}
-        nodes = self._nodes
         for key in keys:
-            maybe_node = PyDict_GetItem(nodes, key)
+            maybe_node = PyDict_GetItem(self._nodes, key)
             if maybe_node == NULL:
                 raise KeyError('key %s not in nodes' % (key,))
             PyDict_SetItem(candidate_nodes, key, <object>maybe_node)
