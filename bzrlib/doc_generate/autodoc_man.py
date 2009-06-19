@@ -1,4 +1,4 @@
-# Copyright 2005 Canonical Ltd.
+# Copyright (C) 2005 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -123,7 +123,6 @@ def format_command (params, cmd):
                 if argname is not None:
                     l += ' ' + argname
                 if short_name:
-                    assert len(short_name) == 1
                     l += ', -' + short_name
                 l += (30 - len(l)) * ' ' + (help or '')
                 wrapped = textwrap.fill(l, initial_indent='',
