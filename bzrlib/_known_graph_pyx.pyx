@@ -59,6 +59,7 @@ cdef class _KnownGraphNode:
     cdef object parents
     cdef object children
     cdef public long gdfo
+    cdef int seen
 
     def __init__(self, key):
         cdef int i
@@ -69,6 +70,7 @@ cdef class _KnownGraphNode:
         self.children = []
         # Greatest distance from origin
         self.gdfo = -1
+        self.seen = 0
 
     property child_keys:
         def __get__(self):
@@ -311,7 +313,7 @@ cdef class KnownGraph:
         if PyDict_Size(candidate_nodes) < 2:
             return heads_key
 
-        seen = set()
+        cleanup = []
         pending = []
         pending_pop = pending.pop
         # we know a gdfo cannot be longer than a linear chain of all nodes
@@ -329,11 +331,12 @@ cdef class KnownGraph:
         # Now do all the real work
         while PyList_GET_SIZE(pending) > 0:
             node = _get_list_node(pending, PyList_GET_SIZE(pending) - 1)
-            if PySet_Contains(seen, node.key):
+            if node.seen:
                 # node already appears in some ancestry
                 pending_pop()
                 continue
-            PySet_Add(seen, node.key)
+            PyList_Append(cleanup, node)
+            node.seen = 1
             if node.gdfo <= min_gdfo:
                 pending_pop()
                 continue
@@ -348,7 +351,16 @@ cdef class KnownGraph:
                         PyList_Append(pending, parent_node)
             else:
                 pending_pop()
-        heads = heads_key.difference(seen)
+        heads = []
+        pos = 0
+        while PyDict_Next(candidate_nodes, &pos, NULL, &temp_node):
+            node = <_KnownGraphNode>temp_node
+            if not node.seen:
+                PyList_Append(heads, node.key)
+        heads = PyFrozenSet_New(heads)
+        for pos from 0 <= pos < PyList_GET_SIZE(cleanup):
+            node = _get_list_node(cleanup, pos)
+            node.seen = 0
         if self.do_cache:
             PyDict_SetItem(self._known_heads, heads_key, heads)
         return heads
