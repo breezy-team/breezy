@@ -31,6 +31,7 @@ cdef extern from "Python.h":
     PyObject * PyTuple_GET_ITEM(object t, Py_ssize_t o)
     Py_ssize_t PyTuple_GET_SIZE(object t)
     PyObject * PyDict_GetItem(object d, object k)
+    int PyDict_DelItem(object d, object k) except -1
     Py_ssize_t PyDict_Size(object d) except -1
     int PyDict_CheckExact(object d)
     int PyDict_Next(object d, Py_ssize_t *pos, PyObject **k, PyObject **v)
@@ -218,6 +219,7 @@ cdef class KnownGraph:
         cdef Py_ssize_t child_pos
         cdef int replace
         cdef Py_ssize_t pending_size
+        cdef long known_gdfo
 
         pending = []
         # Setting this as an attribute of _KnownGraphNode drops 774ms => 621ms,
@@ -243,7 +245,6 @@ cdef class KnownGraph:
                 else:
                     known_gdfo = <object>temp
                     known_gdfo = known_gdfo + 1
-                known_parent_gdfos[child.key] = known_gdfo
                 if child.gdfo is None or node.gdfo + 1 > child.gdfo:
                     child.gdfo = node.gdfo + 1
                 if known_gdfo == PyList_GET_SIZE(child.parents):
@@ -255,6 +256,14 @@ cdef class KnownGraph:
                     else:
                         PyList_Append(pending, child)
                         pending_size = pending_size + 1
+                    if temp != NULL:
+                        # We are done with this node, remove it from
+                        # known_parent_gdfos
+                        PyDict_DelItem(known_parent_gdfos, child.key)
+                else:
+                    # Not done with this child, so make sure to track the
+                    # number of known parents
+                    PyDict_SetItem(known_parent_gdfos, child.key, known_gdfo)
             if replace:
                 # We didn't add any children, so pop off the last node
                 pending.pop()
