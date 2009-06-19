@@ -219,7 +219,7 @@ cdef class KnownGraph:
         cdef PyObject *temp
         cdef Py_ssize_t child_pos
         cdef int replace
-        cdef Py_ssize_t pending_size
+        cdef Py_ssize_t last_item
         cdef long known_gdfo
         cdef long next_gdfo
 
@@ -233,12 +233,12 @@ cdef class KnownGraph:
             node.gdfo = 1
             PyList_Append(pending, node)
 
-        pending_size = PyList_GET_SIZE(pending)
-        while pending_size > 0:
+        last_item = PyList_GET_SIZE(pending) - 1
+        while last_item >= 0:
             # Avoid pop followed by push, instead, peek, and replace
             # timing shows this is 930ms => 770ms for OOo
-            node = _get_list_node(pending, pending_size - 1)
-            replace = 1
+            node = _get_list_node(pending, last_item)
+            last_item = last_item - 1
             next_gdfo = node.gdfo + 1
             for child_pos from 0 <= child_pos < PyList_GET_SIZE(node.children):
                 child = _get_list_node(node.children, child_pos)
@@ -252,13 +252,12 @@ cdef class KnownGraph:
                     child.gdfo = next_gdfo
                 if known_gdfo == PyTuple_GET_SIZE(child.parents):
                     # This child is populated, queue it to be walked
-                    if replace:
-                        replace = 0
+                    last_item = last_item + 1
+                    if last_item < PyList_GET_SIZE(pending):
                         Py_INCREF(child) # SetItem steals a ref
-                        PyList_SetItem(pending, pending_size - 1, child)
+                        PyList_SetItem(pending, last_item, child)
                     else:
                         PyList_Append(pending, child)
-                        pending_size = pending_size + 1
                     if temp != NULL:
                         # We are done with this node, remove it from
                         # known_parent_gdfos
@@ -267,10 +266,6 @@ cdef class KnownGraph:
                     # Not done with this child, so make sure to track the
                     # number of known parents
                     PyDict_SetItem(known_parent_gdfos, child.key, known_gdfo)
-            if replace:
-                # We didn't add any children, so pop off the last node
-                pending.pop()
-                pending_size = pending_size - 1
 
     def heads(self, keys):
         """Return the heads from amongst keys.
