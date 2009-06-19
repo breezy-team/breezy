@@ -58,6 +58,7 @@ from bzrlib.tests import (
     condition_isinstance,
     split_suite_by_condition,
     multiply_tests,
+    KnownFailure,
     )
 from bzrlib.transport import get_transport, http
 from bzrlib.transport.memory import MemoryTransport
@@ -152,6 +153,23 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
         self.assertTrue(r._format.supports_external_lookups)
         r = BzrDir.open_from_transport(t.clone('stackable')).open_repository()
         self.assertTrue(r._format.supports_external_lookups)
+
+    def test_remote_branch_set_append_revisions_only(self):
+        # Make a format 1.9 branch, which supports append_revisions_only
+        branch = self.make_branch('branch', format='1.9')
+        config = branch.get_config()
+        branch.set_append_revisions_only(True)
+        self.assertEqual(
+            'True', config.get_user_option('append_revisions_only'))
+        branch.set_append_revisions_only(False)
+        self.assertEqual(
+            'False', config.get_user_option('append_revisions_only'))
+
+    def test_remote_branch_set_append_revisions_only_upgrade_reqd(self):
+        branch = self.make_branch('branch', format='knit')
+        config = branch.get_config()
+        self.assertRaises(
+            errors.UpgradeRequired, branch.set_append_revisions_only, True)
 
 
 class FakeProtocol(object):
@@ -750,7 +768,7 @@ class TestBzrDirFormatInitializeEx(TestRemote):
         transport = self.get_transport()
         client = FakeClient(transport.base)
         client.add_expected_call(
-            'BzrDirFormat.initialize_ex',
+            'BzrDirFormat.initialize_ex_1.16',
                 (default_format_name, 'path', 'False', 'False', 'False', '',
                  '', '', '', 'False'),
             'success',
@@ -772,7 +790,7 @@ class TestBzrDirFormatInitializeEx(TestRemote):
         transport = self.get_transport()
         client = FakeClient(transport.base)
         client.add_expected_call(
-            'BzrDirFormat.initialize_ex',
+            'BzrDirFormat.initialize_ex_1.16',
                 (default_format_name, 'path', 'False', 'False', 'False', '',
                  '', '', '', 'False'),
             'error',
@@ -2016,6 +2034,65 @@ class TestRepositoryGetRevisionGraph(TestRemoteRepository):
         e = self.assertRaises(errors.UnknownErrorFromSmartServer,
             repo._get_revision_graph, revid)
         self.assertEqual(('AnUnexpectedError',), e.error_tuple)
+
+
+class TestRepositoryGetRevIdForRevno(TestRemoteRepository):
+
+    def test_ok(self):
+        repo, client = self.setup_fake_client_and_repository('quack')
+        client.add_expected_call(
+            'Repository.get_rev_id_for_revno', ('quack/', 5, (42, 'rev-foo')),
+            'success', ('ok', 'rev-five'))
+        result = repo.get_rev_id_for_revno(5, (42, 'rev-foo'))
+        self.assertEqual((True, 'rev-five'), result)
+        client.finished_test()
+
+    def test_history_incomplete(self):
+        repo, client = self.setup_fake_client_and_repository('quack')
+        client.add_expected_call(
+            'Repository.get_rev_id_for_revno', ('quack/', 5, (42, 'rev-foo')),
+            'success', ('history-incomplete', 10, 'rev-ten'))
+        result = repo.get_rev_id_for_revno(5, (42, 'rev-foo'))
+        self.assertEqual((False, (10, 'rev-ten')), result)
+        client.finished_test()
+
+    def test_history_incomplete_with_fallback(self):
+        """A 'history-incomplete' response causes the fallback repository to be
+        queried too, if one is set.
+        """
+        # Make a repo with a fallback repo, both using a FakeClient.
+        format = remote.response_tuple_to_repo_format(
+            ('yes', 'no', 'yes', 'fake-network-name'))
+        repo, client = self.setup_fake_client_and_repository('quack')
+        repo._format = format
+        fallback_repo, ignored = self.setup_fake_client_and_repository(
+            'fallback')
+        fallback_repo._client = client
+        repo.add_fallback_repository(fallback_repo)
+        # First the client should ask the primary repo
+        client.add_expected_call(
+            'Repository.get_rev_id_for_revno', ('quack/', 1, (42, 'rev-foo')),
+            'success', ('history-incomplete', 2, 'rev-two'))
+        # Then it should ask the fallback, using revno/revid from the
+        # history-incomplete response as the known revno/revid.
+        client.add_expected_call(
+            'Repository.get_rev_id_for_revno',('fallback/', 1, (2, 'rev-two')),
+            'success', ('ok', 'rev-one'))
+        result = repo.get_rev_id_for_revno(1, (42, 'rev-foo'))
+        self.assertEqual((True, 'rev-one'), result)
+        client.finished_test()
+
+    def test_nosuchrevision(self):
+        # 'nosuchrevision' is returned when the known-revid is not found in the
+        # remote repo.  The client translates that response to NoSuchRevision.
+        repo, client = self.setup_fake_client_and_repository('quack')
+        client.add_expected_call(
+            'Repository.get_rev_id_for_revno', ('quack/', 5, (42, 'rev-foo')),
+            'error', ('nosuchrevision', 'rev-foo'))
+        self.assertRaises(
+            errors.NoSuchRevision,
+            repo.get_rev_id_for_revno, 5, (42, 'rev-foo'))
+        client.finished_test()
 
 
 class TestRepositoryIsShared(TestRemoteRepository):

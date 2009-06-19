@@ -22,6 +22,7 @@ and produce non-empty output.
 
 from cStringIO import StringIO
 
+import bzrlib.commands
 from bzrlib.tests import TestCase, TestSkipped
 
 
@@ -37,6 +38,7 @@ class TestGenerateDocs(TestCase):
         self.sio = StringIO()
         self.options = Options()
         self.options.bzr_name = 'bzr'
+        bzrlib.commands.install_bzr_command_hooks()
 
     def test_man_page(self):
         from bzrlib.doc_generate import autodoc_man

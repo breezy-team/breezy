@@ -404,6 +404,12 @@ push_location
 If present, the location of the default branch for push.  This option
 is normally set by ``push --remember``.
 
+push_strict
+~~~~~~~~~~~
+
+If present, defines the ``--strict`` option default value for checking
+uncommitted changes before pushing.
+
 bound_location
 ~~~~~~~~~~~~~~
 

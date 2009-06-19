@@ -1246,6 +1246,39 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertTrue(repo.is_write_locked())
         repo.unlock()
 
+    def test_format_initialize_on_transport_ex_default_stack_on(self):
+        # When initialize_on_transport_ex uses a stacked-on branch because of
+        # a stacking policy on the target, the location of the fallback
+        # repository is the same as the external location of the stacked-on
+        # branch.
+        balloon = self.make_bzrdir('balloon')
+        if isinstance(balloon, bzrdir.BzrDirMetaFormat1):
+            stack_on = self.make_branch('stack-on', format='1.9')
+        else:
+            stack_on = self.make_branch('stack-on')
+        config = self.make_bzrdir('.').get_config()
+        try:
+            config.set_default_stack_on('stack-on')
+        except errors.BzrError:
+            raise TestNotApplicable('Only relevant for stackable formats.')
+        # Initialize a bzrdir subject to the policy.
+        t = self.get_transport('stacked')
+        repo_fmt = bzrdir.format_registry.make_bzrdir('1.9')
+        repo_name = repo_fmt.repository_format.network_name()
+        repo, control = self.assertInitializeEx(
+            t, need_meta=True, repo_format_name=repo_name, stacked_on=None)
+        if control is None:
+            # uninitialisable format
+            return
+        # There's one fallback repo, with a public location.
+        self.assertLength(1, repo._fallback_repositories)
+        fallback_repo = repo._fallback_repositories[0]
+        self.assertEqual(
+            stack_on.base, fallback_repo.bzrdir.root_transport.base)
+        # The bzrdir creates a branch in stacking-capable format.
+        new_branch = control.create_branch()
+        self.assertTrue(new_branch._format.supports_stacking())
+
     def test_format_initialize_on_transport_ex_repo_fmt_name_None(self):
         t = self.get_transport('dir')
         repo, control = self.assertInitializeEx(t)

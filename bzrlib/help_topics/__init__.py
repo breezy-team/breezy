@@ -490,7 +490,7 @@ repository (a shared repository). Branches can be copied and merged.
 Related commands::
 
   init    Change a directory into a versioned branch.
-  branch  Create a new copy of a branch.
+  branch  Create a new branch that is a copy of an existing branch.
   merge   Perform a three-way merge.
 """
 
@@ -733,6 +733,8 @@ topic_registry.register('debug-flags', _load_from_file,
                         'Options to show or record debug information')
 topic_registry.register('log-formats', _load_from_file,
                         'Details on the logging formats available')
+topic_registry.register('diverged-branches', _load_from_file,
+                        'How to fix diverged branches')
 
 
 # Register concept topics.

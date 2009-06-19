@@ -3062,19 +3062,17 @@ class ProcessEntryPython(object):
                     if source_minikind != 'f':
                         content_change = True
                     else:
-                        # If the size is the same, check the sha:
-                        if target_details[2] == source_details[2]:
-                            if link_or_sha1 is None:
-                                # Stat cache miss:
-                                statvalue, link_or_sha1 = \
-                                    self.state._sha1_provider.stat_and_sha1(
-                                    path_info[4])
-                                self.state._observed_sha1(entry, link_or_sha1,
-                                    statvalue)
-                            content_change = (link_or_sha1 != source_details[1])
-                        else:
-                            # Size changed, so must be different
-                            content_change = True
+                        # Check the sha. We can't just rely on the size as
+                        # content filtering may mean differ sizes actually
+                        # map to the same content
+                        if link_or_sha1 is None:
+                            # Stat cache miss:
+                            statvalue, link_or_sha1 = \
+                                self.state._sha1_provider.stat_and_sha1(
+                                path_info[4])
+                            self.state._observed_sha1(entry, link_or_sha1,
+                                statvalue)
+                        content_change = (link_or_sha1 != source_details[1])
                     # Target details is updated at update_entry time
                     if self.use_filesystem_for_exec:
                         # We don't need S_ISREG here, because we are sure
