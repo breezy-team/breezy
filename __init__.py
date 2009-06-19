@@ -33,7 +33,7 @@ else:
 __version__ = version_string
 __author__ = 'Jelmer Vernooij <jelmer@samba.org>'
 
-COMPATIBLE_BZR_VERSIONS = [(1, 14, 0), (1, 15, 0), (1, 16, 0)]
+COMPATIBLE_BZR_VERSIONS = [(1, 14, 0), (1, 15, 0), (1, 16, 0), (1, 17, 0)]
 
 bzrlib.api.require_any_api(bzrlib, COMPATIBLE_BZR_VERSIONS)
 
