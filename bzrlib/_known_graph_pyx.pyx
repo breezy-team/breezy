@@ -40,11 +40,17 @@ cdef extern from "Python.h":
     Py_ssize_t PyList_GET_SIZE(object l)
     int PyList_SetItem(object l, Py_ssize_t o, object l) except -1
     int PyDict_SetItem(object d, object k, object v) except -1
+
+    int PySet_Contains(object s, object k) except -1
     int PySet_Add(object s, object k) except -1
     void Py_INCREF(object)
 
 
 from bzrlib import revision
+
+cdef object NULL_REVISION
+NULL_REVISION = revision.NULL_REVISION
+
 
 cdef class _KnownGraphNode:
     """Represents a single object in the known graph."""
@@ -107,14 +113,6 @@ cdef _KnownGraphNode _get_parent(parents, Py_ssize_t pos):
     temp_node = PyTuple_GET_ITEM(parents, pos)
     return <_KnownGraphNode>temp_node
 
-
-cdef _KnownGraphNode _peek_node(queue):
-    cdef PyObject *temp_node
-    cdef _KnownGraphNode node
-
-    temp_node = PyTuple_GET_ITEM(<object>PyList_GET_ITEM(queue, 0), 1)
-    node = <_KnownGraphNode>temp_node
-    return node
 
 # TODO: slab allocate all _KnownGraphNode objects.
 #       We already know how many we are going to need, except for a couple of
@@ -247,7 +245,7 @@ cdef class KnownGraph:
                     known_gdfo = known_gdfo + 1
                 if child.gdfo is None or node.gdfo + 1 > child.gdfo:
                     child.gdfo = node.gdfo + 1
-                if known_gdfo == PyList_GET_SIZE(child.parents):
+                if known_gdfo == PyTuple_GET_SIZE(child.parents):
                     # This child is populated, queue it to be walked
                     if replace:
                         replace = 0
@@ -287,6 +285,8 @@ cdef class KnownGraph:
         cdef PyObject *maybe_heads
         cdef PyObject *temp_node
         cdef _KnownGraphNode node
+        cdef Py_ssize_t pos
+        cdef long min_gdfo
 
         heads_key = PyFrozenSet_New(keys)
         maybe_heads = PyDict_GetItem(self._known_heads, heads_key)
@@ -300,39 +300,55 @@ cdef class KnownGraph:
             if maybe_node == NULL:
                 raise KeyError('key %s not in nodes' % (key,))
             PyDict_SetItem(candidate_nodes, key, <object>maybe_node)
-        if revision.NULL_REVISION in candidate_nodes:
+        maybe_node = PyDict_GetItem(candidate_nodes, NULL_REVISION)
+        if maybe_node != NULL:
             # NULL_REVISION is only a head if it is the only entry
-            candidate_nodes.pop(revision.NULL_REVISION)
+            candidate_nodes.pop(NULL_REVISION)
             if not candidate_nodes:
-                return set([revision.NULL_REVISION])
+                return frozenset([NULL_REVISION])
             # The keys changed, so recalculate heads_key
             heads_key = PyFrozenSet_New(candidate_nodes)
-        if len(candidate_nodes) < 2:
+        if PyDict_Size(candidate_nodes) < 2:
             return heads_key
 
         seen = set()
         pending = []
-        cdef Py_ssize_t pos
+        pending_pop = pending.pop
+        # we know a gdfo cannot be longer than a linear chain of all nodes
+        min_gdfo = PyDict_Size(self._nodes) + 1
+        # Build up nodes that need to be walked, note that starting nodes are
+        # not added to seen()
         pos = 0
-        min_gdfo = None
         while PyDict_Next(candidate_nodes, &pos, NULL, &temp_node):
             node = <_KnownGraphNode>temp_node
             if node.parents is not None:
                 pending.extend(node.parents)
-            if min_gdfo is None or node.gdfo < min_gdfo:
+            if node.gdfo < min_gdfo:
                 min_gdfo = node.gdfo
-        nodes = self._nodes
-        while pending:
-            node = pending.pop()
-            if node.key in seen:
+
+        # Now do all the real work
+        while PyList_GET_SIZE(pending) > 0:
+            node = _get_list_node(pending, PyList_GET_SIZE(pending) - 1)
+            if PySet_Contains(seen, node.key):
                 # node already appears in some ancestry
+                pending_pop()
                 continue
-            seen.add(node.key)
+            PySet_Add(seen, node.key)
             if node.gdfo <= min_gdfo:
+                pending_pop()
                 continue
-            if node.parents:
-                pending.extend(node.parents)
+            if node.parents is not None and PyTuple_GET_SIZE(node.parents) > 0:
+                for pos from 0 <= pos < PyTuple_GET_SIZE(node.parents):
+                    parent_node = _get_parent(node.parents, pos)
+                    if pos == 0:
+                        Py_INCREF(parent_node)
+                        PyList_SetItem(pending, PyList_GET_SIZE(pending) - 1,
+                                        parent_node)
+                    else:
+                        PyList_Append(pending, parent_node)
+            else:
+                pending_pop()
         heads = heads_key.difference(seen)
         if self.do_cache:
-            self._known_heads[heads_key] = heads
+            PyDict_SetItem(self._known_heads, heads_key, heads)
         return heads
