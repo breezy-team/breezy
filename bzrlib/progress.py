@@ -186,6 +186,7 @@ def ProgressBar(to_file=None, **kwargs):
         return _progress_bar_types[requested_bar_type](to_file=to_file, **kwargs)
 
 
+# NOTE: This is also deprecated; you should provide a ProgressView instead.
 class _BaseProgressBar(object):
 
     def __init__(self,
@@ -473,6 +474,8 @@ class TTYProgressBar(_BaseProgressBar):
         #self.to_file.flush()
 
 
+
+# DEPRECATED
 class ChildProgress(_BaseProgressBar):
     """A progress indicator that pushes its data to the parent"""
 
