@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -46,6 +46,13 @@ class TestInit(ExternalBase):
         # old releases when desired.
         out, err = self.run_bzr('init --format=weave')
         self.assertEqual("""Created a standalone tree (format: weave)\n""",
+            out)
+        self.assertEqual('', err)
+
+    def test_init_format_2a(self):
+        """Smoke test for constructing a format 2a repoistory."""
+        out, err = self.run_bzr('init --format=2a')
+        self.assertEqual("""Created a standalone tree (format: 2a)\n""",
             out)
         self.assertEqual('', err)
 

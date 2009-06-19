@@ -1,4 +1,4 @@
-# Copyright 2006-2007 Canonical Ltd.
+# Copyright (C) 2006-2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,7 +22,6 @@ Written by the Bazaar community.
 
 import os
 import sys
-import textwrap
 import time
 
 import bzrlib

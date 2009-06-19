@@ -257,12 +257,12 @@ mail_client_registry.register('evolution', Evolution,
                               help=Evolution.__doc__)
 
 
-class Mutt(ExternalMailClient):
+class Mutt(BodyExternalMailClient):
     """Mutt mail client."""
 
     _client_commands = ['mutt']
 
-    def _get_compose_commandline(self, to, subject, attach_path):
+    def _get_compose_commandline(self, to, subject, attach_path, body=None):
         """See ExternalMailClient._get_compose_commandline"""
         message_options = []
         if subject is not None:
@@ -270,6 +270,14 @@ class Mutt(ExternalMailClient):
         if attach_path is not None:
             message_options.extend(['-a',
                 self._encode_path(attach_path, 'attachment')])
+        if body is not None:
+            # Store the temp file object in self, so that it does not get
+            # garbage collected and delete the file before mutt can read it.
+            self._temp_file = tempfile.NamedTemporaryFile(
+                prefix="mutt-body-", suffix=".txt")
+            self._temp_file.write(body)
+            self._temp_file.flush()
+            message_options.extend(['-i', self._temp_file.name])
         if to is not None:
             message_options.extend(['--', self._encode_safe(to)])
         return message_options

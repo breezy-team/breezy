@@ -1919,35 +1919,58 @@ class Repository(object):
                     yield line, revid
 
     def _find_file_ids_from_xml_inventory_lines(self, line_iterator,
-        revision_ids):
+        revision_keys):
         """Helper routine for fileids_altered_by_revision_ids.
 
         This performs the translation of xml lines to revision ids.
 
         :param line_iterator: An iterator of lines, origin_version_id
-        :param revision_ids: The revision ids to filter for. This should be a
+        :param revision_keys: The revision ids to filter for. This should be a
             set or other type which supports efficient __contains__ lookups, as
-            the revision id from each parsed line will be looked up in the
-            revision_ids filter.
+            the revision key from each parsed line will be looked up in the
+            revision_keys filter.
         :return: a dictionary mapping altered file-ids to an iterable of
         revision_ids. Each altered file-ids has the exact revision_ids that
         altered it listed explicitly.
         """
         seen = set(self._find_text_key_references_from_xml_inventory_lines(
                 line_iterator).iterkeys())
-        # Note that revision_ids are revision keys.
-        parent_maps = self.revisions.get_parent_map(revision_ids)
-        parents = set()
-        map(parents.update, parent_maps.itervalues())
-        parents.difference_update(revision_ids)
+        parent_keys = self._find_parent_keys_of_revisions(revision_keys)
         parent_seen = set(self._find_text_key_references_from_xml_inventory_lines(
-            self._inventory_xml_lines_for_keys(parents)))
+            self._inventory_xml_lines_for_keys(parent_keys)))
         new_keys = seen - parent_seen
         result = {}
         setdefault = result.setdefault
         for key in new_keys:
             setdefault(key[0], set()).add(key[-1])
         return result
+
+    def _find_parent_ids_of_revisions(self, revision_ids):
+        """Find all parent ids that are mentioned in the revision graph.
+
+        :return: set of revisions that are parents of revision_ids which are
+            not part of revision_ids themselves
+        """
+        parent_map = self.get_parent_map(revision_ids)
+        parent_ids = set()
+        map(parent_ids.update, parent_map.itervalues())
+        parent_ids.difference_update(revision_ids)
+        parent_ids.discard(_mod_revision.NULL_REVISION)
+        return parent_ids
+
+    def _find_parent_keys_of_revisions(self, revision_keys):
+        """Similar to _find_parent_ids_of_revisions, but used with keys.
+
+        :param revision_keys: An iterable of revision_keys.
+        :return: The parents of all revision_keys that are not already in
+            revision_keys
+        """
+        parent_map = self.revisions.get_parent_map(revision_keys)
+        parent_keys = set()
+        map(parent_keys.update, parent_map.itervalues())
+        parent_keys.difference_update(revision_keys)
+        parent_keys.discard(_mod_revision.NULL_REVISION)
+        return parent_keys
 
     def fileids_altered_by_revision_ids(self, revision_ids, _inv_weave=None):
         """Find the file ids and versions affected by revisions.
@@ -2234,6 +2257,41 @@ class Repository(object):
         """
         return self.get_revision(revision_id).inventory_sha1
 
+    def get_rev_id_for_revno(self, revno, known_pair):
+        """Return the revision id of a revno, given a later (revno, revid)
+        pair in the same history.
+
+        :return: if found (True, revid).  If the available history ran out
+            before reaching the revno, then this returns
+            (False, (closest_revno, closest_revid)).
+        """
+        known_revno, known_revid = known_pair
+        partial_history = [known_revid]
+        distance_from_known = known_revno - revno
+        if distance_from_known < 0:
+            raise ValueError(
+                'requested revno (%d) is later than given known revno (%d)'
+                % (revno, known_revno))
+        try:
+            _iter_for_revno(
+                self, partial_history, stop_index=distance_from_known)
+        except errors.RevisionNotPresent, err:
+            if err.revision_id == known_revid:
+                # The start revision (known_revid) wasn't found.
+                raise
+            # This is a stacked repository with no fallbacks, or a there's a
+            # left-hand ghost.  Either way, even though the revision named in
+            # the error isn't in this repo, we know it's the next step in this
+            # left-hand history.
+            partial_history.append(err.revision_id)
+        if len(partial_history) <= distance_from_known:
+            # Didn't find enough history to get a revid for the revno.
+            earliest_revno = known_revno - len(partial_history) + 1
+            return (False, (earliest_revno, partial_history[-1]))
+        if len(partial_history) - 1 > distance_from_known:
+            raise AssertionError('_iter_for_revno returned too much history')
+        return (True, partial_history[-1])
+
     def iter_reverse_revision_history(self, revision_id):
         """Iterate backwards through revision ids in the lefthand history
 
@@ -2384,7 +2442,7 @@ class Repository(object):
         return self.control_files.get_transaction()
 
     def get_parent_map(self, revision_ids):
-        """See graph._StackedParentsProvider.get_parent_map"""
+        """See graph.StackedParentsProvider.get_parent_map"""
         # revisions index works in keys; this just works in revisions
         # therefore wrap and unwrap
         query_keys = []
@@ -2413,7 +2471,7 @@ class Repository(object):
         parents_provider = self._make_parents_provider()
         if (other_repository is not None and
             not self.has_same_location(other_repository)):
-            parents_provider = graph._StackedParentsProvider(
+            parents_provider = graph.StackedParentsProvider(
                 [parents_provider, other_repository._make_parents_provider()])
         return graph.Graph(parents_provider)
 
@@ -3062,9 +3120,14 @@ format_registry.register_lazy(
 
 format_registry.register_lazy(
     'Bazaar development format - chk repository with bencode revision '
-        'serialization (needs bzr.dev from 1.15)\n',
+        'serialization (needs bzr.dev from 1.16)\n',
     'bzrlib.repofmt.groupcompress_repo',
     'RepositoryFormatCHK2',
+    )
+format_registry.register_lazy(
+    'Bazaar repository format 2a (needs bzr 1.16 or later)\n',
+    'bzrlib.repofmt.groupcompress_repo',
+    'RepositoryFormat2a',
     )
 
 
@@ -3413,144 +3476,6 @@ class InterKnitRepo(InterSameDataRepository):
         return self.source.revision_ids_to_search_result(result_set)
 
 
-class InterPackRepo(InterSameDataRepository):
-    """Optimised code paths between Pack based repositories."""
-
-    @classmethod
-    def _get_repo_format_to_test(self):
-        from bzrlib.repofmt import pack_repo
-        return pack_repo.RepositoryFormatKnitPack6RichRoot()
-
-    @staticmethod
-    def is_compatible(source, target):
-        """Be compatible with known Pack formats.
-
-        We don't test for the stores being of specific types because that
-        could lead to confusing results, and there is no need to be
-        overly general.
-
-        InterPackRepo does not support CHK based repositories.
-        """
-        from bzrlib.repofmt.pack_repo import RepositoryFormatPack
-        from bzrlib.repofmt.groupcompress_repo import RepositoryFormatCHK1
-        try:
-            are_packs = (isinstance(source._format, RepositoryFormatPack) and
-                isinstance(target._format, RepositoryFormatPack))
-            not_packs = (isinstance(source._format, RepositoryFormatCHK1) or
-                isinstance(target._format, RepositoryFormatCHK1))
-        except AttributeError:
-            return False
-        if not_packs or not are_packs:
-            return False
-        return InterRepository._same_model(source, target)
-
-    @needs_write_lock
-    def fetch(self, revision_id=None, pb=None, find_ghosts=False,
-            fetch_spec=None):
-        """See InterRepository.fetch()."""
-        if (len(self.source._fallback_repositories) > 0 or
-            len(self.target._fallback_repositories) > 0):
-            # The pack layer is not aware of fallback repositories, so when
-            # fetching from a stacked repository or into a stacked repository
-            # we use the generic fetch logic which uses the VersionedFiles
-            # attributes on repository.
-            from bzrlib.fetch import RepoFetcher
-            fetcher = RepoFetcher(self.target, self.source, revision_id,
-                    pb, find_ghosts, fetch_spec=fetch_spec)
-        if fetch_spec is not None:
-            if len(list(fetch_spec.heads)) != 1:
-                raise AssertionError(
-                    "InterPackRepo.fetch doesn't support "
-                    "fetching multiple heads yet.")
-            revision_id = list(fetch_spec.heads)[0]
-            fetch_spec = None
-        if revision_id is None:
-            # TODO:
-            # everything to do - use pack logic
-            # to fetch from all packs to one without
-            # inventory parsing etc, IFF nothing to be copied is in the target.
-            # till then:
-            source_revision_ids = frozenset(self.source.all_revision_ids())
-            revision_ids = source_revision_ids - \
-                frozenset(self.target.get_parent_map(source_revision_ids))
-            revision_keys = [(revid,) for revid in revision_ids]
-            index = self.target._pack_collection.revision_index.combined_index
-            present_revision_ids = set(item[1][0] for item in
-                index.iter_entries(revision_keys))
-            revision_ids = set(revision_ids) - present_revision_ids
-            # implementing the TODO will involve:
-            # - detecting when all of a pack is selected
-            # - avoiding as much as possible pre-selection, so the
-            # more-core routines such as create_pack_from_packs can filter in
-            # a just-in-time fashion. (though having a HEADS list on a
-            # repository might make this a lot easier, because we could
-            # sensibly detect 'new revisions' without doing a full index scan.
-        elif _mod_revision.is_null(revision_id):
-            # nothing to do:
-            return (0, [])
-        else:
-            revision_ids = self.search_missing_revision_ids(revision_id,
-                find_ghosts=find_ghosts).get_keys()
-            if len(revision_ids) == 0:
-                return (0, [])
-        return self._pack(self.source, self.target, revision_ids)
-
-    def _pack(self, source, target, revision_ids):
-        from bzrlib.repofmt.pack_repo import Packer
-        packs = source._pack_collection.all_packs()
-        pack = Packer(self.target._pack_collection, packs, '.fetch',
-            revision_ids).pack()
-        if pack is not None:
-            self.target._pack_collection._save_pack_names()
-            copied_revs = pack.get_revision_count()
-            # Trigger an autopack. This may duplicate effort as we've just done
-            # a pack creation, but for now it is simpler to think about as
-            # 'upload data, then repack if needed'.
-            self.target._pack_collection.autopack()
-            return (copied_revs, [])
-        else:
-            return (0, [])
-
-    @needs_read_lock
-    def search_missing_revision_ids(self, revision_id=None, find_ghosts=True):
-        """See InterRepository.missing_revision_ids().
-
-        :param find_ghosts: Find ghosts throughout the ancestry of
-            revision_id.
-        """
-        if not find_ghosts and revision_id is not None:
-            return self._walk_to_common_revisions([revision_id])
-        elif revision_id is not None:
-            # Find ghosts: search for revisions pointing from one repository to
-            # the other, and vice versa, anywhere in the history of revision_id.
-            graph = self.target.get_graph(other_repository=self.source)
-            searcher = graph._make_breadth_first_searcher([revision_id])
-            found_ids = set()
-            while True:
-                try:
-                    next_revs, ghosts = searcher.next_with_ghosts()
-                except StopIteration:
-                    break
-                if revision_id in ghosts:
-                    raise errors.NoSuchRevision(self.source, revision_id)
-                found_ids.update(next_revs)
-                found_ids.update(ghosts)
-            found_ids = frozenset(found_ids)
-            # Double query here: should be able to avoid this by changing the
-            # graph api further.
-            result_set = found_ids - frozenset(
-                self.target.get_parent_map(found_ids))
-        else:
-            source_ids = self.source.all_revision_ids()
-            # source_ids is the worst possible case we may need to pull.
-            # now we want to filter source_ids against what we actually
-            # have in target, but don't try to check for existence where we know
-            # we do not have a revision as that would be pointless.
-            target_ids = set(self.target.all_revision_ids())
-            result_set = set(source_ids).difference(target_ids)
-        return self.source.revision_ids_to_search_result(result_set)
-
-
 class InterDifferingSerializer(InterRepository):
 
     @classmethod
@@ -3831,7 +3756,6 @@ InterRepository.register_optimiser(InterDifferingSerializer)
 InterRepository.register_optimiser(InterSameDataRepository)
 InterRepository.register_optimiser(InterWeaveRepo)
 InterRepository.register_optimiser(InterKnitRepo)
-InterRepository.register_optimiser(InterPackRepo)
 
 
 class CopyConverter(object):
@@ -4411,4 +4335,36 @@ class StreamSource(object):
             parent_keys = parent_map.get(key, ())
             yield versionedfile.FulltextContentFactory(
                 key, parent_keys, None, as_bytes)
+
+
+def _iter_for_revno(repo, partial_history_cache, stop_index=None,
+                    stop_revision=None):
+    """Extend the partial history to include a given index
+
+    If a stop_index is supplied, stop when that index has been reached.
+    If a stop_revision is supplied, stop when that revision is
+    encountered.  Otherwise, stop when the beginning of history is
+    reached.
+
+    :param stop_index: The index which should be present.  When it is
+        present, history extension will stop.
+    :param stop_revision: The revision id which should be present.  When
+        it is encountered, history extension will stop.
+    """
+    start_revision = partial_history_cache[-1]
+    iterator = repo.iter_reverse_revision_history(start_revision)
+    try:
+        #skip the last revision in the list
+        iterator.next()
+        while True:
+            if (stop_index is not None and
+                len(partial_history_cache) > stop_index):
+                break
+            if partial_history_cache[-1] == stop_revision:
+                break
+            revision_id = iterator.next()
+            partial_history_cache.append(revision_id)
+    except StopIteration:
+        # No more history
+        return
 

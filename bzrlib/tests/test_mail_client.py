@@ -28,8 +28,10 @@ class TestMutt(tests.TestCase):
 
     def test_commandline(self):
         mutt = mail_client.Mutt(None)
-        commandline = mutt._get_compose_commandline(None, None, 'file%')
-        self.assertEqual(['-a', 'file%'], commandline)
+        commandline = mutt._get_compose_commandline(
+            None, None, 'file%', body="hello")
+        # The temporary filename is randomly generated, so it is not matched.
+        self.assertEqual(['-a', 'file%', '-i'], commandline[:-1])
         commandline = mutt._get_compose_commandline('jrandom@example.org',
                                                      'Hi there!', None)
         self.assertEqual(['-s', 'Hi there!', '--', 'jrandom@example.org'],
