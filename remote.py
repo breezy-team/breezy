@@ -100,7 +100,7 @@ class GitSmartTransport(Transport):
     def has(self, relpath):
         return False
 
-    def _get_client(self):
+    def _get_client(self, thin_packs):
         raise NotImplementedError(self._get_client)
 
     def _get_path(self):
@@ -110,7 +110,7 @@ class GitSmartTransport(Transport):
         if progress is None:
             def progress(text):
                 info("git: %s" % text)
-        client = self._get_client()
+        client = self._get_client(thin_packs=False)
         try:
             return client.fetch_pack(self._get_path(), determine_wants, 
                 graph_walker, pack_data, progress)
@@ -118,7 +118,7 @@ class GitSmartTransport(Transport):
             raise BzrError(e)
 
     def send_pack(self, get_changed_refs, generate_pack_contents):
-        client = self._get_client()
+        client = self._get_client(thin_packs=False)
         try:
             return client.send_pack(self._get_path(), get_changed_refs, 
                 generate_pack_contents)
@@ -145,12 +145,12 @@ class TCPGitSmartTransport(GitSmartTransport):
 
     _scheme = 'git'
 
-    def _get_client(self):
+    def _get_client(self, thin_packs):
         if self._client is not None:
             ret = self._client
             self._client = None
             return ret
-        return git.client.TCPGitClient(self._host, self._port, thin_packs=False,
+        return git.client.TCPGitClient(self._host, self._port, thin_packs=thin_packs,
             report_activity=self._report_activity)
 
 
@@ -163,13 +163,13 @@ class SSHGitSmartTransport(GitSmartTransport):
             return self._path[3:]
         return self._path
 
-    def _get_client(self):
+    def _get_client(self, thin_packs):
         if self._client is not None:
             ret = self._client
             self._client = None
             return ret
         return git.client.SSHGitClient(self._host, self._port, self._username,
-            thin_packs=False, report_activity=self._report_activity)
+            thin_packs=thin_packs, report_activity=self._report_activity)
 
 
 class RemoteGitDir(GitDir):
