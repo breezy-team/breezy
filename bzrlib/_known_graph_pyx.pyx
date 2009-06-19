@@ -134,6 +134,7 @@ cdef class KnownGraph:
 
         :param parent_map: A dictionary mapping key => parent_keys
         """
+        # tests at pre-allocating the node dict actually slowed things down
         self._nodes = {}
         # Maps {sorted(revision_id, revision_id): heads}
         self._known_heads = {}
