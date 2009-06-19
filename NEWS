@@ -81,6 +81,10 @@ Improvements
 Documentation
 *************
 
+* Avoid bad text wrapping in generated documentation.  Slightly better
+  formatting in the user reference.
+  (Martin Pool, #249908)
+
 * Minor clarifications to the help for End-Of-Line conversions.
   (Ian Clatworthy)
 
@@ -244,7 +248,6 @@ Documentation
 * Added directory structure and started translation of docs in Russian.
   (Alexey Shtokalo, Alexander Iljin, Alexander Belchenko, Dmitry Vasiliev,
   Volodymyr Kotulskyi)
-
 
 API Changes
 ***********
