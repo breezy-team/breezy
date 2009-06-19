@@ -238,36 +238,30 @@ class TestAnnotate(tests.TestCaseWithTransport):
         return builder
 
     def create_duplicate_lines_tree(self):
-        tree1 = self.make_branch_and_tree('tree1')
+        builder = self.make_branch_builder('branch')
+        builder.start_series()
+        self.addCleanup(builder.finish_series)
         base_text = ''.join(l for r, l in duplicate_base)
         a_text = ''.join(l for r, l in duplicate_A)
         b_text = ''.join(l for r, l in duplicate_B)
         c_text = ''.join(l for r, l in duplicate_C)
         d_text = ''.join(l for r, l in duplicate_D)
         e_text = ''.join(l for r, l in duplicate_E)
-        self.build_tree_contents([('tree1/file', base_text)])
-        tree1.add(['file'], ['file-id'])
-        tree1.commit('base', rev_id='rev-base')
-        tree2 = tree1.bzrdir.sprout('tree2').open_workingtree()
-
-        self.build_tree_contents([('tree1/file', a_text),
-                                  ('tree2/file', b_text)])
-        tree1.commit('A', rev_id='rev-A')
-        tree2.commit('B', rev_id='rev-B')
-
-        tree2.merge_from_branch(tree1.branch)
-        conflicts.resolve(tree2, None) # Resolve the conflicts
-        self.build_tree_contents([('tree2/file', d_text)])
-        tree2.commit('D', rev_id='rev-D')
-
-        self.build_tree_contents([('tree1/file', c_text)])
-        tree1.commit('C', rev_id='rev-C')
-
-        tree1.merge_from_branch(tree2.branch)
-        conflicts.resolve(tree1, None) # Resolve the conflicts
-        self.build_tree_contents([('tree1/file', e_text)])
-        tree1.commit('E', rev_id='rev-E')
-        return tree1
+        builder.build_snapshot('rev-base', None, [
+            ('add', ('', 'root-id', 'directory', None)),
+            ('add', ('file', 'file-id', 'file', base_text)),
+            ])
+        builder.build_snapshot('rev-A', ['rev-base'], [
+            ('modify', ('file-id', a_text))])
+        builder.build_snapshot('rev-B', ['rev-base'], [
+            ('modify', ('file-id', b_text))])
+        builder.build_snapshot('rev-C', ['rev-A'], [
+            ('modify', ('file-id', c_text))])
+        builder.build_snapshot('rev-D', ['rev-B', 'rev-A'], [
+            ('modify', ('file-id', d_text))])
+        builder.build_snapshot('rev-E', ['rev-C', 'rev-D'], [
+            ('modify', ('file-id', e_text))])
+        return builder
 
     def assertRepoAnnotate(self, expected, repo, file_id, revision_id):
         """Assert that the revision is properly annotated."""
@@ -280,8 +274,8 @@ class TestAnnotate(tests.TestCaseWithTransport):
 
     def test_annotate_duplicate_lines(self):
         # XXX: Should this be a per_repository test?
-        tree1 = self.create_duplicate_lines_tree()
-        repo = tree1.branch.repository
+        builder = self.create_duplicate_lines_tree()
+        repo = builder.get_branch().repository
         repo.lock_read()
         self.addCleanup(repo.unlock)
         self.assertRepoAnnotate(duplicate_base, repo, 'file-id', 'rev-base')
