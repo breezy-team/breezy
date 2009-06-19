@@ -33,13 +33,13 @@ class TestPush(TestCaseWithBzrDir):
         tree.commit('one', rev_id='r1')
         return tree
 
-    def test_push_new_branch(self):     
+    def test_push_new_branch(self):
         tree = self.create_simple_tree()
         dir = self.make_repository('dir').bzrdir
         result = dir.push_branch(tree.branch)
         self.assertEquals(tree.branch, result.source_branch)
         self.assertEquals(dir.open_branch().base, result.target_branch.base)
-        self.assertEquals(dir.open_branch().base, 
+        self.assertEquals(dir.open_branch().base,
             tree.branch.get_push_location())
 
     def test_push_new_empty(self):
@@ -47,7 +47,7 @@ class TestPush(TestCaseWithBzrDir):
         dir = self.make_repository('dir').bzrdir
         result = dir.push_branch(tree.branch)
         self.assertEquals(tree.branch.base, result.source_branch.base)
-        self.assertEquals(dir.open_branch().base, 
+        self.assertEquals(dir.open_branch().base,
             result.target_branch.base)
 
     def test_push_incremental(self):
@@ -58,7 +58,7 @@ class TestPush(TestCaseWithBzrDir):
         tree.add(['b'])
         tree.commit('two', rev_id='r2')
         result = dir.push_branch(tree.branch)
-        self.assertEquals(tree.last_revision(), 
+        self.assertEquals(tree.last_revision(),
             result.branch_push_result.new_revid)
         self.assertEquals(2, result.branch_push_result.new_revno)
         self.assertEquals(tree.branch.base, result.source_branch.base)
