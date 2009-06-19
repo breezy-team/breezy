@@ -19,11 +19,21 @@
 This tells the library how to display things to the user.  Through this
 layer different applications can choose the style of UI.
 
-At the moment this layer is almost trivial: the application can just
-choose the style of progress bar.
+Several levels are supported, and you can also register new factories such as
+for a GUI.
 
-Set the ui_factory member to define the behaviour.  The default
-displays no output.
+UIFactory
+    Abstract base class
+
+CLIUIFactory
+    Basic text output, and can read input from the user.
+
+TextUIFactory
+    Can also repaint the screen to draw progress bars.
+
+SilentUIFactory
+    Produces no output and cannot take any input; useful for programs using
+    bzrlib in batch mode or for programs such as loggerhead.
 """
 
 import os
