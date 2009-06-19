@@ -247,8 +247,7 @@ cdef class KnownGraph:
                 if child.gdfo is None or node.gdfo + 1 > child.gdfo:
                     child.gdfo = node.gdfo + 1
                 if known_gdfo == PyList_GET_SIZE(child.parents):
-                    # We are the last parent updating that node, we can
-                    # continue from there
+                    # This child is populated, queue it to be walked
                     if replace:
                         replace = 0
                         Py_INCREF(child) # SetItem steals a ref
@@ -257,8 +256,7 @@ cdef class KnownGraph:
                         PyList_Append(pending, child)
                         pending_size = pending_size + 1
             if replace:
-                # We didn't add any more children, so just pop off the last
-                # node
+                # We didn't add any children, so pop off the last node
                 pending.pop()
                 pending_size = pending_size - 1
 
