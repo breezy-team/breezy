@@ -51,7 +51,6 @@ cdef class _KnownGraphNode:
     cdef object key
     cdef object parents
     cdef object children
-    cdef long known_parent_gdfos
     cdef public long gdfo
 
     def __init__(self, key):
@@ -63,7 +62,6 @@ cdef class _KnownGraphNode:
         self.children = []
         # Greatest distance from origin
         self.gdfo = -1
-        self.known_parent_gdfos = 0
 
     property child_keys:
         def __get__(self):
@@ -222,6 +220,7 @@ cdef class KnownGraph:
         cdef Py_ssize_t pending_size
 
         pending = []
+        known_parent_gdfos = {}
 
         for node in self._tails:
             node.gdfo = 1
@@ -234,10 +233,16 @@ cdef class KnownGraph:
             replace = 1
             for child_pos from 0 <= child_pos < PyList_GET_SIZE(node.children):
                 child = _get_list_node(node.children, child_pos)
-                child.known_parent_gdfos = child.known_parent_gdfos + 1
+                temp = PyDict_GetItem(known_parent_gdfos, child.key)
+                if temp == NULL:
+                    known_gdfo = 1
+                else:
+                    known_gdfo = <object>temp
+                    known_gdfo = known_gdfo + 1
+                known_parent_gdfos[child.key] = known_gdfo
                 if child.gdfo is None or node.gdfo + 1 > child.gdfo:
                     child.gdfo = node.gdfo + 1
-                if child.known_parent_gdfos == PyList_GET_SIZE(child.parents):
+                if known_gdfo == PyList_GET_SIZE(child.parents):
                     # We are the last parent updating that node, we can
                     # continue from there
                     if replace:
