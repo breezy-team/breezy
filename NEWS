@@ -57,6 +57,10 @@ Documentation
 API Changes
 ***********
 
+* ProgressTasks now prefer to talk direct to their ProgressView not to the
+  UIFactory. 
+  (Martin Pool)
+
 * Removed overspecific error class ``InvalidProgressBarType``.
   (Martin Pool)
 

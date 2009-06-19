@@ -25,6 +25,9 @@ import time
 
 import bzrlib
 import bzrlib.errors as errors
+from bzrlib.progress import (
+    ProgressTask,
+    )
 from bzrlib.symbol_versioning import (
     deprecated_in,
     )
@@ -33,7 +36,10 @@ from bzrlib.tests import (
     TestUIFactory,
     StringIOWrapper,
     )
-from bzrlib.tests.test_progress import _TTYStringIO
+from bzrlib.tests.test_progress import (
+    _NonTTYStringIO,
+    _TTYStringIO,
+    )
 from bzrlib.ui import (
     CLIUIFactory,
     SilentUIFactory,
@@ -107,21 +113,34 @@ class UITests(TestCase):
     def test_progress_construction(self):
         """TextUIFactory constructs the right progress view.
         """
+        err = _TTYStringIO()
+        os.environ['TERM'] = 'xterm'
         os.environ['BZR_PROGRESS_BAR'] = 'none'
-        self.assertIsInstance(TextUIFactory()._progress_view,
+        self.assertIsInstance(TextUIFactory(stderr=err)._progress_view,
             NullProgressView)
 
         os.environ['BZR_PROGRESS_BAR'] = 'text'
-        self.assertIsInstance(TextUIFactory()._progress_view,
+        self.assertIsInstance(TextUIFactory(stderr=err)._progress_view,
             TextProgressView)
 
         os.environ['BZR_PROGRESS_BAR'] = 'text'
-        self.assertIsInstance(TextUIFactory()._progress_view,
+        self.assertIsInstance(TextUIFactory(stderr=err)._progress_view,
             TextProgressView)
 
         del os.environ['BZR_PROGRESS_BAR']
-        self.assertIsInstance(TextUIFactory()._progress_view,
+        self.assertIsInstance(TextUIFactory(stderr=err)._progress_view,
             TextProgressView)
+
+        # if not a tty, no progress bars
+        self.assertIsInstance(
+            TextUIFactory(stderr=_NonTTYStringIO())._progress_view,
+            NullProgressView)
+
+        # if a tty but dumb, no progress bars
+        os.environ['TERM'] = 'dumb'
+        self.assertIsInstance(
+            TextUIFactory(stderr=_TTYStringIO())._progress_view,
+            NullProgressView)
 
     def test_progress_note(self):
         stderr = StringIO()
@@ -142,14 +161,15 @@ class UITests(TestCase):
             pb.finished()
 
     def test_progress_note_clears(self):
-        stderr = StringIO()
-        stdout = StringIO()
-        # The PQM redirects the output to a file, so it
-        # defaults to creating a Dots progress bar. we
-        # need to force it to believe we are a TTY
+        stderr = _TTYStringIO()
+        stdout = _TTYStringIO()
+        # so that we get a TextProgressBar
+        os.environ['TERM'] = 'xterm'
         ui_factory = TextUIFactory(
             stdin=StringIO(''),
             stdout=stdout, stderr=stderr)
+        self.assertIsInstance(ui_factory._progress_view,
+            TextProgressView)
         pb = ui_factory.nested_progress_bar()
         try:
             # Create a progress update that isn't throttled
@@ -222,6 +242,7 @@ class UITests(TestCase):
     def test_text_factory_prompts_and_clears(self):
         # a get_boolean call should clear the pb before prompting
         out = _TTYStringIO()
+        os.environ['TERM'] = 'xterm'
         factory = TextUIFactory(stdin=StringIO("yada\ny\n"), stdout=out, stderr=out)
         pb = factory.nested_progress_bar()
         pb.show_bar = False
@@ -294,62 +315,4 @@ class UITests(TestCase):
         finally:
             pb.finished()
 
-
-class TestTextProgressView(TestCase):
-    """Tests for text display of progress bars.
-    """
-    # XXX: These might be a bit easier to write if the rendering and
-    # state-maintaining parts of TextProgressView were more separate, and if
-    # the progress task called back directly to its own view not to the ui
-    # factory. -- mbp 20090312
-    
-    def _make_factory(self):
-        out = StringIO()
-        uif = TextUIFactory(stderr=out)
-        uif._progress_view._width = 80
-        return out, uif
-
-    def test_render_progress_easy(self):
-        """Just one task and one quarter done"""
-        out, uif = self._make_factory()
-        task = uif.nested_progress_bar()
-        task.update('reticulating splines', 5, 20)
-        self.assertEqual(
-'\r[####/               ] reticulating splines 5/20                               \r'
-            , out.getvalue())
-
-    def test_render_progress_nested(self):
-        """Tasks proportionally contribute to overall progress"""
-        out, uif = self._make_factory()
-        task = uif.nested_progress_bar()
-        task.update('reticulating splines', 0, 2)
-        task2 = uif.nested_progress_bar()
-        task2.update('stage2', 1, 2)
-        # so we're in the first half of the main task, and half way through
-        # that
-        self.assertEqual(
-r'[####\               ] reticulating splines:stage2 1/2'
-            , uif._progress_view._render_line())
-        # if the nested task is complete, then we're all the way through the
-        # first half of the overall work
-        task2.update('stage2', 2, 2)
-        self.assertEqual(
-r'[#########|          ] reticulating splines:stage2 2/2'
-            , uif._progress_view._render_line())
-
-    def test_render_progress_sub_nested(self):
-        """Intermediate tasks don't mess up calculation."""
-        out, uif = self._make_factory()
-        task_a = uif.nested_progress_bar()
-        task_a.update('a', 0, 2)
-        task_b = uif.nested_progress_bar()
-        task_b.update('b')
-        task_c = uif.nested_progress_bar()
-        task_c.update('c', 1, 2)
-        # the top-level task is in its first half; the middle one has no
-        # progress indication, just a label; and the bottom one is half done,
-        # so the overall fraction is 1/4
-        self.assertEqual(
-            r'[####|               ] a:b:c 1/2'
-            , uif._progress_view._render_line())
 

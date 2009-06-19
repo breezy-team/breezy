@@ -72,8 +72,15 @@ class ProgressTask(object):
     will not necessarily respect all these fields.
     """
 
-    def __init__(self, parent_task=None, ui_factory=None):
+    def __init__(self, parent_task=None, ui_factory=None, progress_view=None):
         """Construct a new progress task.
+
+        :param parent_task: Enclosing ProgressTask or None.
+
+        :param progress_view: ProgressView to display this ProgressTask.
+
+        :param ui_factory: The UI factory that will display updates; 
+            deprecated in favor of passing progress_view directly.
 
         Normally you should not call this directly but rather through
         `ui_factory.nested_progress_bar`.
@@ -83,7 +90,9 @@ class ProgressTask(object):
         self.total_cnt = None
         self.current_cnt = None
         self.msg = ''
+        # TODO: deprecate passing ui_factory
         self.ui_factory = ui_factory
+        self.progress_view = progress_view
         self.show_pct = False
         self.show_spinner = True
         self.show_eta = False,
@@ -102,16 +111,23 @@ class ProgressTask(object):
         self.current_cnt = current_cnt
         if total_cnt:
             self.total_cnt = total_cnt
-        self.ui_factory._progress_updated(self)
+        if self.progress_view:
+            self.progress_view.show_progress(self)
+        else:
+            self.ui_factory._progress_updated(self)
 
     def tick(self):
         self.update(self.msg)
 
     def finished(self):
-        self.ui_factory._progress_finished(self)
+        if self.progress_view:
+            self.progress_view.task_finished(self)
+        else:
+            self.ui_factory._progress_finished(self)
 
     def make_sub_task(self):
-        return ProgressTask(self, self.ui_factory)
+        return ProgressTask(self, ui_factory=self.ui_factory,
+            progress_view=self.progress_view)
 
     def _overall_completion_fraction(self, child_fraction=0.0):
         """Return fractional completion of this task and its parents
@@ -140,7 +156,10 @@ class ProgressTask(object):
 
     def clear(self):
         # XXX: shouldn't be here; put it in mutter or the ui instead
-        self.ui_factory.clear_term()
+        if self.progress_view:
+            self.progress_view.clear()
+        else:
+            self.ui_factory.clear_term()
 
 
 @deprecated_function(deprecated_in((1, 16, 0)))
