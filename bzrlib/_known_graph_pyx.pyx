@@ -220,14 +220,9 @@ cdef class KnownGraph:
         cdef Py_ssize_t child_pos
         cdef int replace
         cdef Py_ssize_t last_item
-        cdef long known_gdfo
         cdef long next_gdfo
 
         pending = []
-        # Setting this as an attribute of _KnownGraphNode drops 774ms => 621ms,
-        # but adds a field that we won't use again. It avoids a dict lookup,
-        # and using PyInt rather than plain 'long'.
-        known_parent_gdfos = {}
 
         for node in self._tails:
             node.gdfo = 1
@@ -242,15 +237,10 @@ cdef class KnownGraph:
             next_gdfo = node.gdfo + 1
             for child_pos from 0 <= child_pos < PyList_GET_SIZE(node.children):
                 child = _get_list_node(node.children, child_pos)
-                temp = PyDict_GetItem(known_parent_gdfos, child.key)
-                if temp == NULL:
-                    known_gdfo = 1
-                else:
-                    known_gdfo = <object>temp
-                    known_gdfo = known_gdfo + 1
                 if next_gdfo > child.gdfo:
                     child.gdfo = next_gdfo
-                if known_gdfo == PyTuple_GET_SIZE(child.parents):
+                child.seen = child.seen + 1
+                if child.seen == PyTuple_GET_SIZE(child.parents):
                     # This child is populated, queue it to be walked
                     last_item = last_item + 1
                     if last_item < PyList_GET_SIZE(pending):
@@ -258,14 +248,9 @@ cdef class KnownGraph:
                         PyList_SetItem(pending, last_item, child)
                     else:
                         PyList_Append(pending, child)
-                    if temp != NULL:
-                        # We are done with this node, remove it from
-                        # known_parent_gdfos
-                        PyDict_DelItem(known_parent_gdfos, child.key)
-                else:
-                    # Not done with this child, so make sure to track the
-                    # number of known parents
-                    PyDict_SetItem(known_parent_gdfos, child.key, known_gdfo)
+                    # We have queued this node, we don't need to track it
+                    # anymore
+                    child.seen = 0
 
     def heads(self, keys):
         """Return the heads from amongst keys.
