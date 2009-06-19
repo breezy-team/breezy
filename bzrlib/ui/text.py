@@ -15,7 +15,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-
 """Text UI, write output to the console.
 """
 
@@ -71,7 +70,8 @@ class TextUIFactory(CLIUIFactory):
         self._progress_view.clear()
 
     def _make_progress_view(self):
-        if os.environ.get('BZR_PROGRESS_BAR') in ('text', None, ''):
+        if (os.environ.get('BZR_PROGRESS_BAR') in ('text', None, '')
+            and progress._supports_progress(self.stderr)):
             return TextProgressView(self.stderr)
         else:
             return NullProgressView()
