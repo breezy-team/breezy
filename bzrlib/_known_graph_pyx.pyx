@@ -26,23 +26,24 @@ cdef extern from "Python.h":
         pass
 
     object PyFrozenSet_New(object)
-    object PyTuple_New(Py_ssize_t n)
-    void PyTuple_SET_ITEM(object t, Py_ssize_t o, object v)
-    PyObject * PyTuple_GET_ITEM(object t, Py_ssize_t o)
-    Py_ssize_t PyTuple_GET_SIZE(object t)
-    PyObject * PyDict_GetItem(object d, object k)
-    int PyDict_DelItem(object d, object k) except -1
-    Py_ssize_t PyDict_Size(object d) except -1
-    int PyDict_CheckExact(object d)
-    int PyDict_Next(object d, Py_ssize_t *pos, PyObject **k, PyObject **v)
-    int PyList_Append(object l, object v) except -1
-    PyObject * PyList_GET_ITEM(object l, Py_ssize_t o)
-    Py_ssize_t PyList_GET_SIZE(object l)
-    int PyList_SetItem(object l, Py_ssize_t o, object l) except -1
-    int PyDict_SetItem(object d, object k, object v) except -1
 
-    int PySet_Contains(object s, object k) except -1
-    int PySet_Add(object s, object k) except -1
+    object PyTuple_New(Py_ssize_t n)
+    Py_ssize_t PyTuple_GET_SIZE(object t)
+    PyObject * PyTuple_GET_ITEM(object t, Py_ssize_t o)
+    void PyTuple_SET_ITEM(object t, Py_ssize_t o, object v)
+
+    Py_ssize_t PyList_GET_SIZE(object l)
+    PyObject * PyList_GET_ITEM(object l, Py_ssize_t o)
+    int PyList_SetItem(object l, Py_ssize_t o, object l) except -1
+    int PyList_Append(object l, object v) except -1
+
+    int PyDict_CheckExact(object d)
+    Py_ssize_t PyDict_Size(object d) except -1
+    PyObject * PyDict_GetItem(object d, object k)
+    int PyDict_SetItem(object d, object k, object v) except -1
+    int PyDict_DelItem(object d, object k) except -1
+    int PyDict_Next(object d, Py_ssize_t *pos, PyObject **k, PyObject **v)
+
     void Py_INCREF(object)
 
 
