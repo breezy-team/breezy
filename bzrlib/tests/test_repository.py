@@ -673,10 +673,14 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
         self.assertFalse(repo._format.supports_external_lookups)
 
 
-class TestDevelopment6(TestCaseWithTransport):
+class Test2alpha(TestCaseWithTransport):
+
+    def test_format_pack_compresses_True(self):
+        repo = self.make_repository('repo', format='2a')
+        self.assertTrue(repo._format.pack_compresses)
 
     def test_inventories_use_chk_map_with_parent_base_dict(self):
-        tree = self.make_branch_and_tree('repo', format="development6-rich-root")
+        tree = self.make_branch_and_tree('repo', format="2a")
         revid = tree.commit("foo")
         tree.lock_read()
         self.addCleanup(tree.unlock)
@@ -689,13 +693,13 @@ class TestDevelopment6(TestCaseWithTransport):
             inv.parent_id_basename_to_file_id._root_node.maximum_size)
 
     def test_stream_source_to_gc(self):
-        source = self.make_repository('source', format='development6-rich-root')
-        target = self.make_repository('target', format='development6-rich-root')
+        source = self.make_repository('source', format='2a')
+        target = self.make_repository('target', format='2a')
         stream = source._get_source(target._format)
         self.assertIsInstance(stream, groupcompress_repo.GroupCHKStreamSource)
 
     def test_stream_source_to_non_gc(self):
-        source = self.make_repository('source', format='development6-rich-root')
+        source = self.make_repository('source', format='2a')
         target = self.make_repository('target', format='rich-root-pack')
         stream = source._get_source(target._format)
         # We don't want the child GroupCHKStreamSource
@@ -703,7 +707,7 @@ class TestDevelopment6(TestCaseWithTransport):
 
     def test_get_stream_for_missing_keys_includes_all_chk_refs(self):
         source_builder = self.make_branch_builder('source',
-                            format='development6-rich-root')
+                            format='2a')
         # We have to build a fairly large tree, so that we are sure the chk
         # pages will have split into multiple pages.
         entries = [('add', ('', 'a-root-id', 'directory', None))]
@@ -726,7 +730,7 @@ class TestDevelopment6(TestCaseWithTransport):
         source_branch = source_builder.get_branch()
         source_branch.lock_read()
         self.addCleanup(source_branch.unlock)
-        target = self.make_repository('target', format='development6-rich-root')
+        target = self.make_repository('target', format='2a')
         source = source_branch.repository._get_source(target._format)
         self.assertIsInstance(source, groupcompress_repo.GroupCHKStreamSource)
 

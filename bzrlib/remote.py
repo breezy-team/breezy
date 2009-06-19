@@ -566,6 +566,11 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
         return self._creating_repo._real_repository._format.network_name()
 
     @property
+    def pack_compresses(self):
+        self._ensure_real()
+        return self._custom_format.pack_compresses
+
+    @property
     def _serializer(self):
         self._ensure_real()
         return self._custom_format._serializer

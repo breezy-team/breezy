@@ -63,6 +63,9 @@ Internals
   properly fetch the minimum number of texts for non-smart fetching.
   (John Arbash Meinel)
 
+* RepositoryFormat has a new attribute 'pack_compresses' which is True
+  when doing a pack operation changes the compression of content in the
+  repository. (Robert Collins)
 
 Improvements
 ************

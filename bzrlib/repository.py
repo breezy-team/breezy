@@ -2844,6 +2844,11 @@ class RepositoryFormat(object):
     # Does this format have < O(tree_size) delta generation. Used to hint what
     # code path for commit, amongst other things.
     fast_deltas = None
+    # Does doing a pack operation compress data? Useful for the pack UI command
+    # (so if there is one pack, the operation can still proceed because it may
+    # help), and for fetching when data won't have come from the same
+    # compressor.
+    pack_compresses = False
 
     def __str__(self):
         return "<%s>" % self.__class__.__name__

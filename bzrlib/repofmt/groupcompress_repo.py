@@ -1048,6 +1048,7 @@ class RepositoryFormatCHK1(RepositoryFormatPack):
     _fetch_order = 'unordered'
     _fetch_uses_deltas = False # essentially ignored by the groupcompress code.
     fast_deltas = True
+    pack_compresses = True
 
     def _get_matching_bzrdir(self):
         return bzrdir.format_registry.make_bzrdir('development6-rich-root')
