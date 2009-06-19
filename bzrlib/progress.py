@@ -42,12 +42,13 @@ from bzrlib.symbol_versioning import (
     )
 
 
-# XXX: deprecated; can be removed when the ProgressBar factory is removed
 def _supports_progress(f):
-    """Detect if we can use pretty progress bars on the output stream f.
+    """Detect if we can use pretty progress bars on file F.
 
     If this returns true we expect that a human may be looking at that
     output, and that we can repaint a line to update it.
+
+    This doesn't check the policy for whether we *should* use them.
     """
     isatty = getattr(f, 'isatty', None)
     if isatty is None:
