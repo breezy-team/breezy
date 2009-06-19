@@ -125,7 +125,6 @@ cdef class KnownGraph:
     """This is a class which assumes we already know the full graph."""
 
     cdef public object _nodes
-    cdef public object _tails
     cdef object _known_heads
     cdef public int do_cache
 
@@ -171,7 +170,6 @@ cdef class KnownGraph:
         - ghosts will have a parent_keys = None,
         - all nodes found will also have child_keys populated with all known
           child keys,
-        - self._tails will list all the nodes without parents.
         """
         cdef PyObject *temp_key, *temp_parent_keys, *temp_node
         cdef Py_ssize_t pos, pos2, num_parent_keys
@@ -198,27 +196,31 @@ cdef class KnownGraph:
                 PyTuple_SET_ITEM(parent_nodes, pos2, parent_node)
                 PyList_Append(parent_node.children, node)
             node.parents = parent_nodes
-        self._tails = set()
+
+    def _find_tails(self):
+        cdef PyObject *temp_node
+        cdef _KnownGraphNode node
+        cdef Py_ssize_t pos
+
+        tails = []
         pos = 0
         while PyDict_Next(self._nodes, &pos, NULL, &temp_node):
             node = <_KnownGraphNode>temp_node
             if node.parents is None or PyTuple_GET_SIZE(node.parents) == 0:
-                self._tails.add(node)
+                node.gdfo = 1
+                PyList_Append(tails, node)
+        return tails
 
     def _find_gdfo(self):
         cdef _KnownGraphNode node
         cdef _KnownGraphNode child
         cdef PyObject *temp
-        cdef Py_ssize_t child_pos
+        cdef Py_ssize_t pos
         cdef int replace
         cdef Py_ssize_t last_item
         cdef long next_gdfo
 
-        pending = []
-
-        for node in self._tails:
-            node.gdfo = 1
-            PyList_Append(pending, node)
+        pending = self._find_tails()
 
         last_item = PyList_GET_SIZE(pending) - 1
         while last_item >= 0:
@@ -227,8 +229,8 @@ cdef class KnownGraph:
             node = _get_list_node(pending, last_item)
             last_item = last_item - 1
             next_gdfo = node.gdfo + 1
-            for child_pos from 0 <= child_pos < PyList_GET_SIZE(node.children):
-                child = _get_list_node(node.children, child_pos)
+            for pos from 0 <= pos < PyList_GET_SIZE(node.children):
+                child = _get_list_node(node.children, pos)
                 if next_gdfo > child.gdfo:
                     child.gdfo = next_gdfo
                 child.seen = child.seen + 1
