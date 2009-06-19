@@ -19,6 +19,7 @@
 from dulwich.objects import (
     Blob,
     Tree,
+    hex_to_sha,
     )
 from dulwich.object_store import (
     BaseObjectStore,
@@ -117,8 +118,14 @@ class BazaarObjectStore(BaseObjectStore):
     def _check_expected_sha(self, expected_sha, object):
         if expected_sha is None:
             return
-        if expected_sha != object.id:
-            raise AssertionError("Invalid sha for %r: %s" % (object, expected_sha))
+        if len(expected_sha) == 40:
+            if expected_sha != object.sha().hexdigest():
+                raise AssertionError("Invalid sha for %r: %s" % (object, expected_sha))
+        elif len(expected_sha) == 20:
+            if expected_sha != object.sha().digest():
+                raise AssertionError("Invalid sha for %r: %s" % (object, sha_to_hex(expected_sha)))
+        else:
+            raise AssertionError("Unknown length %d for %r" % (len(expected_sha), expected_sha))
 
     def _get_ie_object(self, entry, inv, unusual_modes):  
         if entry.kind == "directory":
