@@ -214,7 +214,15 @@ class BazaarObjectStore(BaseObjectStore):
     def __contains__(self, sha):
         # See if sha is in map
         try:
-            self._lookup_git_sha(sha)
+            (type, type_data) = self._lookup_git_sha(sha)
+            if type == "commit":
+                return self.repository.has_revision(type_data[0])
+            elif type == "blob":
+                return self.repository.texts.has_version(type_data)
+            elif type == "tree":
+                return self.repository.has_revision(type_data[1])
+            else:
+                raise AssertionError("Unknown object type '%s'" % type)
         except KeyError:
             return False
         else:
