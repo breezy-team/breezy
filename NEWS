@@ -42,6 +42,13 @@ Bug Fixes
   ``BZR_PROGRESS_BAR`` is set to ``none``.
   (Martin Pool, #339385)
 
+* Stacking will no longer accept requests to stack on the same
+  branch/repository. Existing branches that incorrectly reference the same
+  repository in a stacking configuration will now raise
+  UnstackableLocationError when the branch is opened. This can be fixed by
+  removing the stacking location inside ``.bzr/branch``.
+  (Robert Collins, #376243)
+
 Internals
 *********
 
