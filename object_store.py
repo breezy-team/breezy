@@ -235,8 +235,12 @@ class BazaarObjectStore(BaseObjectStore):
         elif type == "blob":
             return self._get_blob(type_data[0], type_data[1], expected_sha=sha)
         elif type == "tree":
-            inv = self.repository.get_inventory(type_data[1])
-            rev = self.repository.get_revision(type_data[1])
+            try:
+                inv = self.repository.get_inventory(type_data[1])
+                rev = self.repository.get_revision(type_data[1])
+            except errors.NoSuchRevision:
+                trace.mutter('entry for %s %s in shamap: %r, but not found in repository', type, sha, type_data)
+                raise KeyError(sha)
             unusual_modes = extract_unusual_modes(rev)
             try:
                 return self._get_tree(type_data[0], type_data[1], inv, unusual_modes,
