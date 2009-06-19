@@ -758,7 +758,7 @@ class KnitPlainFactory(_KnitFactory):
 
     def annotate(self, knit, key):
         annotator = _KnitAnnotator(knit)
-        return annotator.annotate(key)
+        return annotator.annotate_flat(key)
 
 
 
@@ -3302,7 +3302,7 @@ def annotate_knit(knit, revision_id):
     recommended.
     """
     annotator = _KnitAnnotator(knit)
-    return iter(annotator.annotate(revision_id))
+    return iter(annotator.annotate_flat(revision_id))
 
 
 class _KnitAnnotator(annotate.Annotator):
@@ -3340,6 +3340,7 @@ class _KnitAnnotator(annotate.Annotator):
         records = []
         generation = 0
         kept_generation = 0
+        self._num_needed_children[key] = 1
         while pending:
             # get all pending nodes
             generation += 1
@@ -3376,11 +3377,14 @@ class _KnitAnnotator(annotate.Annotator):
             # If we have fallbacks, go to the generic path
             for v in super(_KnitAnnotator, self)._get_needed_texts(key, pb=pb):
                 yield v
+            return
         while True:
             try:
                 records = self._get_build_graph(key)
                 for key, text, num_lines in self._extract_texts(records):
+                    self._text_cache[key] = text
                     yield key, text, num_lines
+                return
             except errors.RetryWithNewPacks, e:
                 self._vf._access.reload_or_raise(e)
                 # The cached build_details are no longer valid
@@ -3400,7 +3404,7 @@ class _KnitAnnotator(annotate.Annotator):
         for (key, record,
              digest) in self._vf._read_records_iter(records):
             # parent_ids = [p for p in parent_ids if p not in self._ghosts]
-            details = self._all_build_details[keys]
+            details = self._all_build_details[key]
             (index_memo, compression_parent, parent_keys,
              record_details) = details
             assert parent_keys == self._parent_map[key]
@@ -3409,7 +3413,7 @@ class _KnitAnnotator(annotate.Annotator):
             #       the build order
             if compression_parent:
                 # This is a delta, do we have the parent fulltext?
-                if compression_parent not in self._fulltext_contents:
+                if compression_parent not in self._content_objects:
                     # Waiting for the parent
                     pending_deltas.setdefault(compression_parent, []).append(
                         (key, parent_keys, record, record_details))
@@ -3424,7 +3428,7 @@ class _KnitAnnotator(annotate.Annotator):
             else:
                 # No compression parent means we have a fulltext
                 content, delta = self._vf._factory.parse_record(
-                    rev_id, record, record_details, None)
+                    key, record, record_details, None)
             self._content_objects[key] = content
             to_process = [(key, parent_keys, content)]
             # Check for compression children that we can expand
@@ -3455,27 +3459,6 @@ class _KnitAnnotator(annotate.Annotator):
                         yield key, lines, len(lines)
                         if key in pending_annotation:
                             to_process.extend(pending_annotation.pop(key))
-
-    def annotate(self, key):
-        """Return the annotated fulltext at the given key.
-
-        :param key: The key to annotate.
-        """
-        if len(self._vf._fallback_vfs) > 0:
-            # stacked knits can't use the fast path at present.
-            return self._simple_annotate(key)
-        while True:
-            try:
-                records = self._get_build_graph(key)
-                if key in self._ghosts:
-                    raise errors.RevisionNotPresent(key, self._vf)
-                self._annotate_records(records)
-                return self._annotated_lines[key]
-            except errors.RetryWithNewPacks, e:
-                self._vf._access.reload_or_raise(e)
-                # The cached build_details are no longer valid
-                self._all_build_details.clear()
-
 
 try:
     from bzrlib._knit_load_data_c import _load_data_c as _load_data
