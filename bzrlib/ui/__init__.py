@@ -291,7 +291,8 @@ def make_ui_for_terminal(stdin, stdout, stderr):
         cls = CLIUIFactory
     # The following case also handles Win32 - on that platform $TERM is
     # typically never set, so the case None is treated as a smart terminal,
-    # not dumb.  https://bugs.launchpad.net/bugs/334808
+    # not dumb.  <https://bugs.launchpad.net/bugs/334808>  win32 files do have
+    # isatty methods that return true.
     elif os.environ.get('TERM') in ('dumb', ''):
         # e.g. emacs compile window
         cls = CLIUIFactory
