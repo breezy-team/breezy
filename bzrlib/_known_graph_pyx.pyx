@@ -50,7 +50,7 @@ cdef class _KnownGraphNode:
     cdef object key
     cdef object parents
     cdef object children
-    cdef public object gdfo # Int
+    cdef public long gdfo
 
     def __init__(self, key):
         cdef int i
