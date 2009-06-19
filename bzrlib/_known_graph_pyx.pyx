@@ -221,6 +221,7 @@ cdef class KnownGraph:
         cdef int replace
         cdef Py_ssize_t pending_size
         cdef long known_gdfo
+        cdef long next_gdfo
 
         pending = []
         # Setting this as an attribute of _KnownGraphNode drops 774ms => 621ms,
@@ -238,6 +239,7 @@ cdef class KnownGraph:
             # timing shows this is 930ms => 770ms for OOo
             node = _get_list_node(pending, pending_size - 1)
             replace = 1
+            next_gdfo = node.gdfo + 1
             for child_pos from 0 <= child_pos < PyList_GET_SIZE(node.children):
                 child = _get_list_node(node.children, child_pos)
                 temp = PyDict_GetItem(known_parent_gdfos, child.key)
@@ -246,8 +248,8 @@ cdef class KnownGraph:
                 else:
                     known_gdfo = <object>temp
                     known_gdfo = known_gdfo + 1
-                if child.gdfo is None or node.gdfo + 1 > child.gdfo:
-                    child.gdfo = node.gdfo + 1
+                if next_gdfo > child.gdfo:
+                    child.gdfo = next_gdfo
                 if known_gdfo == PyTuple_GET_SIZE(child.parents):
                     # This child is populated, queue it to be walked
                     if replace:
