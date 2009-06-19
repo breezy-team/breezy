@@ -106,7 +106,8 @@ def _simple_graph(parent_map):
 if opts.quick:
     if known_python['heads'] != known_pyrex['heads']:
         import pdb; pdb.set_trace()
-    print 'ratio: %.3fs' % (known_pyrex['elapsed'] / known_python['elapsed'])
+    print 'ratio: %.1f:1 faster' % (
+        known_python['elapsed'] / known_pyrex['elapsed'],)
 else:
     orig = combi_graph(_simple_graph, combinations)
     report('Orig', orig)
@@ -114,4 +115,5 @@ else:
     if orig['heads'] != known_pyrex['heads']:
         import pdb; pdb.set_trace()
 
-    print 'ratio: %.3fs' % (known_pyrex['elapsed'] / orig['elapsed'])
+    print 'ratio: %.1f:1 faster' % (
+        orig['elapsed'] / known_pyrex['elapsed'],)
