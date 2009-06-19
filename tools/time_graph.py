@@ -66,6 +66,9 @@ combinations = []
 for revision_id, parent_ids in parent_map.iteritems():
     if parent_ids is not None and len(parent_ids) > 1:
         combinations.append(parent_ids)
+# The largest portion of the graph that has to be walked for a heads() check
+# combinations = [('john@arbash-meinel.com-20090312021943-tu6tcog48aiujx4s',
+#                  'john@arbash-meinel.com-20090312130552-09xa2xsitf6rilzc')]
 if opts.max_combinations > 0 and len(combinations) > opts.max_combinations:
     combinations = random.sample(combinations, opts.max_combinations)
 
