@@ -1554,7 +1554,7 @@ class RepositoryPackCollection(object):
 
     def _already_packed(self):
         """Is the collection already packed?"""
-        return len(self._names) < 2
+        return not (self.repo._format.pack_compresses or (len(self._names) > 1))
 
     def pack(self):
         """Pack the pack collection totally."""

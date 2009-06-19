@@ -558,11 +558,6 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
     pack_factory = GCPack
     resumed_pack_factory = ResumedGCPack
 
-    def _already_packed(self):
-        """Is the collection already packed?"""
-        # Always repack GC repositories for now
-        return False
-
     def _execute_pack_operations(self, pack_operations,
                                  _packer_class=GCCHKPacker,
                                  reload_func=None):
