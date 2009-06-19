@@ -26,6 +26,7 @@ from dulwich.objects import (
 from dulwich.object_store import (
     tree_lookup_path,
     )
+import re
 import stat
 
 from bzrlib import (
@@ -404,16 +405,28 @@ class InterGitNonGitRepository(InterGitRepository):
         return self._refs
 
 
+_GIT_PROGRESS_RE = re.compile(r"(.*?): +(\d+)% \((\d+)/(\d+)\)")
+def report_git_progress(pb, text):
+    text = text.rstrip("\r\n")
+    g = _GIT_PROGRESS_RE.match(text)
+    if g is not None:
+        (text, pct, current, total) = g.groups()
+        pb.update(text, int(current), int(total))
+    else:
+        pb.update(text, 0, 0)
+
+
 class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
     """InterRepository that copies revisions from a remote Git into a non-Git 
     repository."""
 
     def fetch_objects(self, determine_wants, mapping, pb=None):
         def progress(text):
-            pb.update("git: %s" % text.rstrip("\r\n"), 0, 0)
+            report_git_progress(pb, text)
         store = BazaarObjectStore(self.target, mapping)
         self.target.lock_write()
         try:
+            # FIXME: This should be more efficient
             heads = self.target.get_graph().heads(self.target.all_revision_ids())
             graph_walker = store.get_graph_walker(
                     [store._lookup_revision_sha1(head) for head in heads])

@@ -1,5 +1,9 @@
 0.4.1	UNRELEASED
 
+ FEATURES
+
+  * Progress bars will now show results from the remote git server.
+
 0.4.0	2009-06-18
 
  BUG FIXES
