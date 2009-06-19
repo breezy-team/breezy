@@ -37,6 +37,7 @@ cdef extern from "Python.h":
     int PyList_Append(object l, object v) except -1
     PyObject * PyList_GET_ITEM(object l, Py_ssize_t o)
     Py_ssize_t PyList_GET_SIZE(object l)
+    int PyList_SetItem(object l, Py_ssize_t o, object l) except -1
     int PyDict_SetItem(object d, object k, object v) except -1
     int PySet_Add(object s, object k) except -1
     void Py_INCREF(object)
@@ -50,6 +51,7 @@ cdef class _KnownGraphNode:
     cdef object key
     cdef object parents
     cdef object children
+    cdef long known_parent_gdfos
     cdef public long gdfo
 
     def __init__(self, key):
@@ -61,6 +63,7 @@ cdef class _KnownGraphNode:
         self.children = []
         # Greatest distance from origin
         self.gdfo = -1
+        self.known_parent_gdfos = 0
 
     property child_keys:
         def __get__(self):
@@ -90,6 +93,29 @@ cdef class _KnownGraphNode:
             self.__class__.__name__, self.key, self.gdfo,
             parent_keys, child_keys)
 
+
+cdef _KnownGraphNode _get_list_node(lst, Py_ssize_t pos):
+    cdef PyObject *temp_node
+
+    temp_node = PyList_GET_ITEM(lst, pos)
+    return <_KnownGraphNode>temp_node
+
+
+cdef _KnownGraphNode _get_parent(parents, Py_ssize_t pos):
+    cdef PyObject *temp_node
+    cdef _KnownGraphNode node
+
+    temp_node = PyTuple_GET_ITEM(parents, pos)
+    return <_KnownGraphNode>temp_node
+
+
+cdef _KnownGraphNode _peek_node(queue):
+    cdef PyObject *temp_node
+    cdef _KnownGraphNode node
+
+    temp_node = PyTuple_GET_ITEM(<object>PyList_GET_ITEM(queue, 0), 1)
+    node = <_KnownGraphNode>temp_node
+    return node
 
 # TODO: slab allocate all _KnownGraphNode objects.
 #       We already know how many we are going to need, except for a couple of
@@ -190,30 +216,42 @@ cdef class KnownGraph:
     def _find_gdfo(self):
         cdef _KnownGraphNode node
         cdef _KnownGraphNode child
+        cdef PyObject *temp
+        cdef Py_ssize_t child_pos
+        cdef int replace
+        cdef Py_ssize_t pending_size
 
-        nodes = self._nodes
         pending = []
-        known_parent_gdfos = {}
 
         for node in self._tails:
             node.gdfo = 1
-            known_parent_gdfos[node] = 0
-            pending.append(node)
+            PyList_Append(pending, node)
 
-        while pending:
-            node = <_KnownGraphNode>pending.pop()
-            for child in node.children:
-                try:
-                    known_parents = known_parent_gdfos[child.key]
-                except KeyError:
-                    known_parents = 0
-                known_parent_gdfos[child.key] = known_parents + 1
+        pending_size = PyList_GET_SIZE(pending)
+        while pending_size > 0:
+            # Avoid pop followed by push, instead, peek, and replace
+            node = _get_list_node(pending, pending_size - 1)
+            replace = 1
+            for child_pos from 0 <= child_pos < PyList_GET_SIZE(node.children):
+                child = _get_list_node(node.children, child_pos)
+                child.known_parent_gdfos = child.known_parent_gdfos + 1
                 if child.gdfo is None or node.gdfo + 1 > child.gdfo:
                     child.gdfo = node.gdfo + 1
-                if known_parent_gdfos[child.key] == len(child.parents):
+                if child.known_parent_gdfos == PyList_GET_SIZE(child.parents):
                     # We are the last parent updating that node, we can
                     # continue from there
-                    pending.append(child)
+                    if replace:
+                        replace = 0
+                        Py_INCREF(child) # SetItem steals a ref
+                        PyList_SetItem(pending, pending_size - 1, child)
+                    else:
+                        PyList_Append(pending, child)
+                        pending_size = pending_size + 1
+            if replace:
+                # We didn't add any more children, so just pop off the last
+                # node
+                pending.pop()
+                pending_size = pending_size - 1
 
     def heads(self, keys):
         """Return the heads from amongst keys.
