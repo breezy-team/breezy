@@ -45,7 +45,7 @@ class TestGenerateDocs(TestCase):
         self.assertNotEqual('', self.sio.getvalue())
 
     def test_rstx_man(self):
-        from bzrlib.tools.doc_generate import autodoc_rstx
+        from bzrlib.doc_generate import autodoc_rstx
 
         autodoc_rstx.infogen(self.options, self.sio)
         self.assertNotEqual('', self.sio.getvalue())
