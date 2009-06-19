@@ -342,7 +342,9 @@ class TdbGitShaMap(GitShaMap):
         :return: (type, type_data) with type_data:
             revision: revid, tree sha
         """
-        data = self.db["git\0" + hex_to_sha(sha)].split("\0")
+        if len(sha) == 40:
+            sha = hex_to_sha(sha)
+        data = self.db["git\0" + sha].split("\0")
         return (data[0], (data[1], data[2]))
 
     def revids(self):
