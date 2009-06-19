@@ -77,6 +77,10 @@ class cmd_register_branch(Command):
          Option('project',
                 'Launchpad project short name to associate with the branch.',
                 unicode),
+         Option('product',
+                'Launchpad product short name to associate with the branch.', 
+                unicode,
+                hidden=True),
          Option('branch-name',
                 'Short name for the branch; '
                 'by default taken from the last component of the url.',
@@ -101,6 +105,7 @@ class cmd_register_branch(Command):
     def run(self,
             public_url=None,
             project='',
+            product=None,
             branch_name='',
             branch_title='',
             branch_description='',
@@ -119,6 +124,10 @@ class cmd_register_branch(Command):
             public_url = b.get_public_branch()
             if public_url is None:
                 raise NoPublicBranch(b)
+        if product is not None:
+            project = product
+            trace.note('--product is deprecated; please use --project.')
+
 
         rego = BranchRegistrationRequest(branch_url=public_url,
                                          branch_name=branch_name,
