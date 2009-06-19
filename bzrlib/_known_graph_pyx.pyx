@@ -220,6 +220,9 @@ cdef class KnownGraph:
         cdef Py_ssize_t pending_size
 
         pending = []
+        # Setting this as an attribute of _KnownGraphNode drops 774ms => 621ms,
+        # but adds a field that we won't use again. It avoids a dict lookup,
+        # and using PyInt rather than plain 'long'.
         known_parent_gdfos = {}
 
         for node in self._tails:
@@ -229,6 +232,7 @@ cdef class KnownGraph:
         pending_size = PyList_GET_SIZE(pending)
         while pending_size > 0:
             # Avoid pop followed by push, instead, peek, and replace
+            # timing shows this is 930ms => 770ms for OOo
             node = _get_list_node(pending, pending_size - 1)
             replace = 1
             for child_pos from 0 <= child_pos < PyList_GET_SIZE(node.children):
