@@ -102,16 +102,23 @@ class KnownGraph(object):
             node = pending.pop()
             for child_key in node.child_keys:
                 child = nodes[child_key]
-                try:
-                    known_parent_gdfos[child_key] += 1
-                except KeyError:
-                    known_parent_gdfos[child_key] = 1
+                if child_key in known_parent_gdfos:
+                    known_gdfo = known_parent_gdfos[child_key] + 1
+                    present = True
+                else:
+                    known_gdfo = 1
+                    present = False
                 if child.gdfo is None or node.gdfo + 1 > child.gdfo:
                     child.gdfo = node.gdfo + 1
-                if known_parent_gdfos[child_key] == len(child.parent_keys):
+                if known_gdfo == len(child.parent_keys):
                     # We are the last parent updating that node, we can
                     # continue from there
                     pending.append(child)
+                    if present:
+                        del known_parent_gdfos[child_key]
+                else:
+                    # Update known_parent_gdfos for a key we couldn't process
+                    known_parent_gdfos[child_key] = known_gdfo
 
     def heads(self, keys):
         """Return the heads from amongst keys.
