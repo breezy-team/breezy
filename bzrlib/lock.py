@@ -413,9 +413,9 @@ if have_ctypes_win32:
                 FILE_ATTRIBUTE_NORMAL, 0)
             if handle in (INVALID_HANDLE_VALUE, 0):
                 e = ctypes.WinError()
-                if e.errno == ERROR_ACCESS_DENIED:
+                if e.args[0] == ERROR_ACCESS_DENIED:
                     raise errors.LockFailed(filename, e)
-                if e.errno == ERROR_SHARING_VIOLATION:
+                if e.args[0] == ERROR_SHARING_VIOLATION:
                     raise errors.LockContention(filename, e)
                 raise e
             fd = msvcrt.open_osfhandle(handle, cflags)
