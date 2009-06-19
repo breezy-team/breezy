@@ -289,11 +289,14 @@ def make_ui_for_terminal(stdin, stdout, stderr):
         cls = CLIUIFactory
     elif not isatty():
         cls = CLIUIFactory
+    # The following case also handles Win32 - on that platform $TERM is
+    # typically never set, so the case None is treated as a smart terminal,
+    # not dumb.  https://bugs.launchpad.net/bugs/334808
     elif os.environ.get('TERM') in ('dumb', ''):
         # e.g. emacs compile window
         cls = CLIUIFactory
     # User may know better, otherwise default to TextUIFactory
-    if (   os.environ.get('BZR_USE_TEXT_UI', None) is not None
+    if (os.environ.get('BZR_USE_TEXT_UI', None) is not None
         or cls is None):
         from bzrlib.ui.text import TextUIFactory
         cls = TextUIFactory
