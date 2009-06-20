@@ -664,8 +664,6 @@ class KnitAnnotateFactory(_KnitFactory):
 
         see parse_fulltext which this inverts.
         """
-        # TODO: jam 20070209 We only do the caching thing to make sure that
-        #       the origin is a valid utf-8 line, eventually we could remove it
         return ['%s %s' % (o, t) for o, t in content._lines]
 
     def lower_line_delta(self, delta):
@@ -3321,6 +3319,9 @@ class _KnitAnnotator(annotate.Annotator):
         self._content_objects = {}
         # The number of children that depend on this fulltext content object
         self._num_compression_children = {}
+        # Delta records that need their compression parent before they can be
+        # expanded
+        self._pending_deltas = {}
 
         self._all_build_details = {}
 
@@ -3363,6 +3364,11 @@ class _KnitAnnotator(annotate.Annotator):
                             self._num_needed_children[parent_key] += 1
                         else:
                             self._num_needed_children[parent_key] = 1
+                if compression_parent:
+                    if compression_parent in self._num_compression_children:
+                        self._num_compression_children[compression_parent] += 1
+                    else:
+                        self._num_compression_children[compression_parent] = 1
 
             missing_versions = this_iteration.difference(build_details.keys())
             if missing_versions:
@@ -3382,13 +3388,49 @@ class _KnitAnnotator(annotate.Annotator):
             try:
                 records = self._get_build_graph(key)
                 for key, text, num_lines in self._extract_texts(records):
-                    self._text_cache[key] = text
                     yield key, text, num_lines
                 return
             except errors.RetryWithNewPacks, e:
                 self._vf._access.reload_or_raise(e)
                 # The cached build_details are no longer valid
                 self._all_build_details.clear()
+
+    def _expand_record(self, key, parent_keys, compression_parent, record,
+                       record_details):
+        if compression_parent:
+            if compression_parent not in self._content_objects:
+                # Waiting for the parent
+                self._pending_deltas.setdefault(compression_parent, []).append(
+                    (key, parent_keys, record, record_details))
+                return None
+            # We have the basis parent, so expand the delta
+            base_content = self._content_objects[compression_parent]
+            content, _ = self._vf._factory.parse_record(
+                key, record, record_details, None, copy_base_content=True)
+        else:
+            # Fulltext record
+            content, _ = self._vf._factory.parse_record(
+                key, record, record_details, None)
+        self._content_objects[key] = content
+        lines = content.text()
+        self._text_cache[key] = lines
+        return lines
+        # if key in pending_deltas:
+        #     children = pending_deltas.pop(key)
+        #     for key, parent_keys, record, record_details in children:
+        #         to_process.extend(self._expand_record(
+        #     sub_to_proc = self._expand_record(key
+        #     # Check for compression children that we can expand
+        #     if key in pending_deltas:
+        #         children = pending_deltas.pop(key)
+        #         for child_key, child_parent_keys, child_record, child_details in children:
+        #             child_content, child_delta = self._vf._factory.parse_record(
+        #                 child_key, child_record, child_details,
+        #                 content,
+        #                 # TODO: track when we can copy the base
+        #                 copy_base_content=True)
+        #             self._content_objects[child_key] = child_content
+        #             to_process.append((child_key, child_parent_keys, child_content))
 
     def _extract_texts(self, records):
         """Extract the various texts needed based on records"""
@@ -3401,64 +3443,27 @@ class _KnitAnnotator(annotate.Annotator):
         pending_annotation = {}
         # Children that are missing their compression parent
         pending_deltas = {}
-        for (key, record,
-             digest) in self._vf._read_records_iter(records):
-            # parent_ids = [p for p in parent_ids if p not in self._ghosts]
+        for (key, record, digest) in self._vf._read_records_iter(records):
+            # ghosts?
             details = self._all_build_details[key]
-            (index_memo, compression_parent, parent_keys,
-             record_details) = details
+            (_, compression_parent, parent_keys, record_details) = details
             assert parent_keys == self._parent_map[key]
-            # TODO: Remove the punning between compression parents, and
-            #       parent_ids, we should be able to do this without assuming
-            #       the build order
-            if compression_parent:
-                # This is a delta, do we have the parent fulltext?
-                if compression_parent not in self._content_objects:
-                    # Waiting for the parent
-                    pending_deltas.setdefault(compression_parent, []).append(
-                        (key, parent_keys, record, record_details))
-                    continue
-                # We can build this as a fulltext
-                parent_content = self._content_objects[compression_parent]
-                content, delta = self._vf._factory.parse_record(
-                    key, record, record_details,
-                    parent_content,
-                    # TODO: track when we can copy the base
-                    copy_base_content=True)
+            lines = self._expand_record(key, parent_keys, compression_parent,
+                                        record, record_details)
+            if lines is None:
+                # Pending delta should be queued up
+                continue
+            # At this point, we may be able to yield this content, if all
+            # parents are also finished
+            for parent_key in parent_keys:
+                if parent_key not in self._annotations_cache:
+                    # still waiting on a parent text
+                    pending_annotation.setdefault(parent_key,
+                        []).append((key, parent_keys, content))
+                    break
             else:
-                # No compression parent means we have a fulltext
-                content, delta = self._vf._factory.parse_record(
-                    key, record, record_details, None)
-            self._content_objects[key] = content
-            to_process = [(key, parent_keys, content)]
-            # Check for compression children that we can expand
-            if key in pending_deltas:
-                children = pending_deltas.pop(key)
-                for child_key, child_parent_keys, child_record, child_details in children:
-                    child_content, child_delta = self._vf._factory.parse_record(
-                        child_key, child_record, child_details,
-                        content,
-                        # TODO: track when we can copy the base
-                        copy_base_content=True)
-                    self._content_objects[child_key] = child_content
-                    to_process.append((child_key, child_parent_keys, child_content))
-            while to_process:
-                cur = to_process
-                to_process = []
-                for key, parent_keys, content in cur:
-                    # Check if all parents are present
-                    for parent_key in parent_keys:
-                        if parent_key not in self._annotations_cache:
-                            # still waiting on a parent text
-                            pending_annotation.setdefault(parent_key,
-                                []).append((key, parent_keys, content))
-                            break
-                    else:
-                        # All parents present
-                        lines = content.text()
-                        yield key, lines, len(lines)
-                        if key in pending_annotation:
-                            to_process.extend(pending_annotation.pop(key))
+                # All parents present
+                yield key, lines, len(lines)
 
 try:
     from bzrlib._knit_load_data_c import _load_data_c as _load_data

@@ -1313,6 +1313,48 @@ class LowLevelKnitIndexTests_c(LowLevelKnitIndexTests):
         return _KndxIndex(transport, mapper, lambda:None, allow_writes, lambda:True)
 
 
+class Test_KnitAnnotator(TestCaseWithMemoryTransport):
+
+    def make_annotator(self):
+        factory = knit.make_pack_factory(True, True, 1)
+        vf = factory(self.get_transport())
+        return knit._KnitAnnotator(vf)
+
+    def test__expand_fulltext(self):
+        ann = self.make_annotator()
+        rev_key = ('rev-id',)
+        res = ann._expand_record(rev_key, (('parent-id',),), None,
+                           ['line1\n', 'line2\n'], ('fulltext', True))
+        # The content object and text lines should be cached appropriately
+        self.assertEqual(['line1\n', 'line2'], res)
+        content_obj = ann._content_objects[rev_key]
+        self.assertEqual(['line1\n', 'line2\n'], content_obj._lines)
+        self.assertEqual(res, content_obj.text())
+        self.assertEqual(res, ann._text_cache[rev_key])
+
+    def test__expand_delta_no_parent(self):
+        # Parent isn't available yet, so we return nothing, but queue up this
+        # node for later processing
+        ann = self.make_annotator()
+        rev_key = ('rev-id',)
+        parent_key = ('parent-id',)
+        record = ['0,1,1\n', 'new-line\n']
+        details = ('line-delta', False)
+        res = ann._expand_record(rev_key, (parent_key,), parent_key,
+                                 record, details)
+        self.assertEqual(None, res)
+        self.assertTrue(parent_key in ann._pending_deltas)
+        pending = ann._pending_deltas[parent_key]
+        self.assertEqual(1, len(pending))
+        self.assertEqual((rev_key, (parent_key,), record, details), pending[0])
+
+    def test_record_delta_removes_basis(self):
+        ann = self.make_annotator()
+        ann._expand_record(('parent-id',), (), None,
+                           ['line1\n', 'line2\n'], ('fulltext', False))
+        ann._num_compression_children['parent-id'] = 2
+
+
 class KnitTests(TestCaseWithTransport):
     """Class containing knit test helper routines."""
 
