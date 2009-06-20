@@ -84,7 +84,7 @@ from bzrlib.plugins.git.repository import (
     )
 
 
-def import_git_blob(texts, mapping, path, hexsha, base_inv, parent_id, 
+def import_git_blob(texts, mapping, path, hexsha, base_inv, base_ie, parent_id, 
     revision_id, parent_invs, shagitmap, lookup_object, executable, symlink):
     """Import a git blob object into a bzr repository.
 
@@ -102,10 +102,7 @@ def import_git_blob(texts, mapping, path, hexsha, base_inv, parent_id,
     ie = cls(file_id, urlutils.basename(path).decode("utf-8"), parent_id)
     ie.executable = executable
     # See if this has changed at all
-    try:
-        base_ie = base_inv[file_id]
-    except NoSuchId:
-        base_ie = None
+    if base_ie is None:
         base_sha = None
     else:
         try:
@@ -171,7 +168,7 @@ def import_git_blob(texts, mapping, path, hexsha, base_inv, parent_id,
     return (invdelta, shamap)
 
 
-def import_git_submodule(texts, mapping, path, hexsha, base_inv, parent_id, 
+def import_git_submodule(texts, mapping, path, hexsha, base_inv, base_ie, parent_id, 
     revision_id, parent_invs, shagitmap, lookup_object):
     raise NotImplementedError(import_git_submodule)
 
@@ -187,7 +184,7 @@ def remove_disappeared_children(base_inv, base_children, existing_children):
     return ret
 
 
-def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id, 
+def import_git_tree(texts, mapping, path, hexsha, base_inv, base_ie, parent_id, 
     revision_id, parent_invs, shagitmap, lookup_object):
     """Import a git tree object into a bzr repository.
 
@@ -202,11 +199,8 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id,
     # We just have to hope this is indeed utf-8:
     ie = InventoryDirectory(file_id, urlutils.basename(path.decode("utf-8")), 
         parent_id)
-    try:
-        base_ie = base_inv[file_id]
-    except NoSuchId:
+    if base_ie is None:
         # Newly appeared here
-        base_ie = None
         ie.revision = revision_id
         texts.add_lines((file_id, ie.revision), (), [])
         invdelta.append((None, path, file_id, ie))
@@ -224,6 +218,10 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id,
             ie.revision = revision_id
             texts.add_lines((ie.file_id, ie.revision), (), [])
             invdelta.append((base_inv.id2path(ie.file_id), path, ie.file_id, ie))
+    if base_ie is not None and base_ie.kind == "directory":
+        base_children = base_ie.children
+    else:
+        base_children = {}
     # Remember for next time
     existing_children = set()
     child_modes = {}
@@ -236,21 +234,22 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id,
         if stat.S_ISDIR(mode):
             subinvdelta, grandchildmodes, subshamap = import_git_tree(
                     texts, mapping, child_path, child_hexsha, base_inv, 
-                    file_id, revision_id, parent_invs, shagitmap, lookup_object)
+                    base_children.get(name), file_id, revision_id, parent_invs, shagitmap,
+                    lookup_object)
             invdelta.extend(subinvdelta)
             child_modes.update(grandchildmodes)
             shamap.extend(subshamap)
         elif S_ISGITLINK(mode): # submodule
             subinvdelta, grandchildmodes, subshamap = import_git_submodule(
-                    texts, mapping, child_path, child_hexsha, base_inv,
+                    texts, mapping, child_path, child_hexsha, base_inv, base_ie.get(name),
                     file_id, revision_id, parent_invs, shagitmap, lookup_object)
             invdelta.extend(subinvdelta)
             child_modes.update(grandchildmodes)
             shamap.extend(subshamap)
         else:
             subinvdelta, subshamap = import_git_blob(texts, mapping, 
-                    child_path, child_hexsha, base_inv, file_id, revision_id, 
-                    parent_invs, shagitmap, lookup_object, 
+                    child_path, child_hexsha, base_inv, base_children.get(name), file_id,
+                    revision_id, parent_invs, shagitmap, lookup_object, 
                     mode_is_executable(mode), stat.S_ISLNK(mode))
             invdelta.extend(subinvdelta)
             shamap.extend(subshamap)
@@ -259,7 +258,7 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id,
             child_modes[child_path] = mode
     # Remove any children that have disappeared
     if base_ie is not None and base_ie.kind == "directory":
-        invdelta.extend(remove_disappeared_children(base_inv, base_ie.children,
+        invdelta.extend(remove_disappeared_children(base_inv, base_children,
                                                     existing_children))
     shamap.append((hexsha, "tree", (file_id, revision_id)))
     return invdelta, child_modes, shamap
@@ -330,10 +329,12 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
                 parent_invs_cache[parent_id] = parent_inv
         if parent_invs == []:
             base_inv = Inventory(root_id=None)
+            base_ie = None
         else:
             base_inv = parent_invs[0]
+            base_ie = base_inv.root
         inv_delta, unusual_modes, shamap = import_git_tree(repo.texts, 
-                mapping, "", root_trees[revid], base_inv, None, revid, 
+                mapping, "", root_trees[revid], base_inv, base_ie, None, revid, 
                 parent_invs, target_git_object_retriever._idmap, lookup_object)
         target_git_object_retriever._idmap.add_entries(shamap)
         if unusual_modes != {}:
