@@ -3405,6 +3405,9 @@ class _KnitAnnotator(annotate.Annotator):
                 return None
             # We have the basis parent, so expand the delta
             base_content = self._content_objects[compression_parent]
+            # TODO: track _num_compression_children, and when it goes to 1, we
+            #       can set 'copy_base_content = False' and remove base_content
+            #       from the cache (to be inserted as the new content)
             content, _ = self._vf._factory.parse_record(
                 key, record, record_details, None, copy_base_content=True)
         else:
@@ -3438,6 +3441,30 @@ class _KnitAnnotator(annotate.Annotator):
         # However, process what we can, and put off to the side things that
         # still need parents, cleaning them up when those parents are
         # processed.
+        # Basic data flow:
+        #   1) As 'records' are read, see if we can expand these records into
+        #      Content objects (and thus lines)
+        #   2) If a given line-delta is waiting on its compression parent, it
+        #      gets queued up into self._pending_deltas, otherwise we expand
+        #      it, and put it into self._text_cache and self._content_objects
+        #   3) If we expanded the text, we will then check to see if all
+        #      parents have also been processed. If so, this text gets yielded,
+        #      else this record gets set aside into pending_annotation
+        #   4) Further, if we expanded the text in (2), we will then check to
+        #      see if there are any children in self._pending_deltas waiting to
+        #      also be processed. If so, we go back to (2) for those
+        #   5) Further again, if we yielded the text, we can then check if that
+        #      'unlocks' any of the texts in pending_annotations, which should
+        #      then get yielded as well
+        # Note that both steps 4 and 5 are 'recursive' in that unlocking one
+        # compression child could unlock yet another, and yielding a fulltext
+        # will also 'unlock' the children that are waiting on that annotation.
+        # (Though also, unlocking 1 parent's fulltext, does not unlock a child
+        # if other parents are also waiting.)
+        # We want to yield content before expanding child content objects, so
+        # that we know when we can re-use the content lines, and the annotation
+        # code can know when it can stop caching fulltexts, as well.
+
         # Children that we want to annotate as soon as we get the parent text
         # Map from parent_key => [child_key]
         pending_annotation = {}
@@ -3455,15 +3482,31 @@ class _KnitAnnotator(annotate.Annotator):
                 continue
             # At this point, we may be able to yield this content, if all
             # parents are also finished
+            yield_this_text = True
             for parent_key in parent_keys:
                 if parent_key not in self._annotations_cache:
-                    # still waiting on a parent text
+                    # still waiting on at least one parent text, so queue it up
+                    # Note that if there are multiple parents, we need to wait
+                    # for all of them.
                     pending_annotation.setdefault(parent_key,
                         []).append((key, parent_keys, content))
+                    yield_this_text = False
                     break
-            else:
+            if yield_this_text:
                 # All parents present
                 yield key, lines, len(lines)
+            # Whether or not all parents were present, we want to check
+            # if there are any pending compression children that we can now
+            # expand, and have *them* queued up as potential nodes to yield for
+            # annotation
+            # TODO:
+            # if key in self._pending_deltas
+
+            # Now that we have expanded deltas, if we *did* yield this text,
+            # check to see if there are any child texts that are ready to be
+            # yielded as well
+            # TODO:
+            # if yield_this_text and key in pending_annotation:
 
 try:
     from bzrlib._knit_load_data_c import _load_data_c as _load_data
