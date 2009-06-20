@@ -236,21 +236,21 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, base_ie, parent_id,
         if stat.S_ISDIR(mode):
             subinvdelta, grandchildmodes, subshamap = import_git_tree(
                     texts, mapping, child_path, child_hexsha, base_inv, 
-                    base_children.get(name), file_id, revision_id, parent_invs, shagitmap,
+                    base_children.get(basename), file_id, revision_id, parent_invs, shagitmap,
                     lookup_object)
             invdelta.extend(subinvdelta)
             child_modes.update(grandchildmodes)
             shamap.extend(subshamap)
         elif S_ISGITLINK(mode): # submodule
             subinvdelta, grandchildmodes, subshamap = import_git_submodule(
-                    texts, mapping, child_path, child_hexsha, base_inv, base_ie.get(name),
+                    texts, mapping, child_path, child_hexsha, base_inv, base_ie.get(basename),
                     file_id, revision_id, parent_invs, shagitmap, lookup_object)
             invdelta.extend(subinvdelta)
             child_modes.update(grandchildmodes)
             shamap.extend(subshamap)
         else:
             subinvdelta, subshamap = import_git_blob(texts, mapping, 
-                    child_path, child_hexsha, base_inv, base_children.get(name), file_id,
+                    child_path, child_hexsha, base_inv, base_children.get(basename), file_id,
                     revision_id, parent_invs, shagitmap, lookup_object, 
                     mode_is_executable(mode), stat.S_ISLNK(mode))
             invdelta.extend(subinvdelta)
