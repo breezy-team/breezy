@@ -18,6 +18,7 @@
 
 from bzrlib import (
     errors,
+    knit,
     _annotator_py,
     tests,
     )
@@ -69,88 +70,52 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
     ff_key = ('f-id', 'f-id')
 
     def make_simple_text(self):
-        self.repo = self.make_repository('repo')
-        self.repo.lock_write()
-        self.addCleanup(self.repo.unlock)
-        vf = self.repo.texts
-        self.vf = vf
+        # TODO: all we really need is a VersionedFile instance, we'd like to
+        #       avoid creating all the intermediate stuff
+        factory = knit.make_pack_factory(True, True, 2)
+        self.vf = factory(self.get_transport())
         # This assumes nothing special happens during __init__, which may be
         # valid
         self.ann = self.module.Annotator(self.vf)
-        self.repo.start_write_group()
-        try:
-            self.vf.add_lines(self.fa_key, [], ['simple\n', 'content\n'])
-            self.vf.add_lines(self.fb_key, [self.fa_key],
-                              ['simple\n', 'new content\n'])
-        except:
-            self.repo.abort_write_group()
-            raise
-        else:
-            self.repo.commit_write_group()
+        self.vf.add_lines(self.fa_key, [], ['simple\n', 'content\n'])
+        self.vf.add_lines(self.fb_key, [self.fa_key],
+                          ['simple\n', 'new content\n'])
 
     def make_merge_text(self):
         self.make_simple_text()
-        self.repo.start_write_group()
-        try:
-            self.vf.add_lines(self.fc_key, [self.fa_key],
-                              ['simple\n', 'from c\n', 'content\n'])
-            self.vf.add_lines(self.fd_key, [self.fb_key, self.fc_key],
-                              ['simple\n', 'from c\n', 'new content\n',
-                               'introduced in merge\n'])
-        except:
-            self.repo.abort_write_group()
-            raise
-        else:
-            self.repo.commit_write_group()
+        self.vf.add_lines(self.fc_key, [self.fa_key],
+                          ['simple\n', 'from c\n', 'content\n'])
+        self.vf.add_lines(self.fd_key, [self.fb_key, self.fc_key],
+                          ['simple\n', 'from c\n', 'new content\n',
+                           'introduced in merge\n'])
 
     def make_common_merge_text(self):
         """Both sides of the merge will have introduced a line."""
         self.make_simple_text()
-        self.repo.start_write_group()
-        try:
-            self.vf.add_lines(self.fc_key, [self.fa_key],
-                              ['simple\n', 'new content\n'])
-            self.vf.add_lines(self.fd_key, [self.fb_key, self.fc_key],
-                              ['simple\n', 'new content\n'])
-        except:
-            self.repo.abort_write_group()
-            raise
-        else:
-            self.repo.commit_write_group()
+        self.vf.add_lines(self.fc_key, [self.fa_key],
+                          ['simple\n', 'new content\n'])
+        self.vf.add_lines(self.fd_key, [self.fb_key, self.fc_key],
+                          ['simple\n', 'new content\n'])
 
     def make_many_way_common_merge_text(self):
         self.make_simple_text()
-        self.repo.start_write_group()
-        try:
-            self.vf.add_lines(self.fc_key, [self.fa_key],
-                              ['simple\n', 'new content\n'])
-            self.vf.add_lines(self.fd_key, [self.fb_key, self.fc_key],
-                              ['simple\n', 'new content\n'])
-            self.vf.add_lines(self.fe_key, [self.fa_key],
-                              ['simple\n', 'new content\n'])
-            self.vf.add_lines(self.ff_key, [self.fd_key, self.fe_key],
-                              ['simple\n', 'new content\n'])
-        except:
-            self.repo.abort_write_group()
-            raise
-        else:
-            self.repo.commit_write_group()
+        self.vf.add_lines(self.fc_key, [self.fa_key],
+                          ['simple\n', 'new content\n'])
+        self.vf.add_lines(self.fd_key, [self.fb_key, self.fc_key],
+                          ['simple\n', 'new content\n'])
+        self.vf.add_lines(self.fe_key, [self.fa_key],
+                          ['simple\n', 'new content\n'])
+        self.vf.add_lines(self.ff_key, [self.fd_key, self.fe_key],
+                          ['simple\n', 'new content\n'])
 
     def make_merge_and_restored_text(self):
         self.make_simple_text()
-        self.repo.start_write_group()
-        try:
-            # c reverts back to 'a' for the new content line
-            self.vf.add_lines(self.fc_key, [self.fb_key],
-                              ['simple\n', 'content\n'])
-            # d merges 'a' and 'c', to find both claim last modified
-            self.vf.add_lines(self.fd_key, [self.fa_key, self.fc_key],
-                              ['simple\n', 'content\n'])
-        except:
-            self.repo.abort_write_group()
-            raise
-        else:
-            self.repo.commit_write_group()
+        # c reverts back to 'a' for the new content line
+        self.vf.add_lines(self.fc_key, [self.fb_key],
+                          ['simple\n', 'content\n'])
+        # d merges 'a' and 'c', to find both claim last modified
+        self.vf.add_lines(self.fd_key, [self.fa_key, self.fc_key],
+                          ['simple\n', 'content\n'])
 
     def assertAnnotateEqual(self, expected_annotation, annotator, key):
         annotation, lines = annotator.annotate(key)
