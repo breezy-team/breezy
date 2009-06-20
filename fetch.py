@@ -158,13 +158,14 @@ def import_git_blob(texts, mapping, path, hexsha, base_inv, base_ie, parent_id,
         shamap = [(hexsha, "blob", (ie.file_id, ie.revision))]
     else:
         shamap = []
-    if file_id in base_inv:
+    invdelta = []
+    if base_ie is not None: 
         old_path = base_inv.id2path(file_id)
+        if base_ie.kind == "directory":
+            invdelta.extend(remove_disappeared_children(old_path, base_ie.children, []))
     else:
         old_path = None
-    invdelta = [(old_path, path, file_id, ie)]
-    if base_ie is not None and base_ie.kind == "directory":
-        invdelta.extend(remove_disappeared_children(base_inv, base_ie.children, []))
+    invdelta.append((old_path, path, file_id, ie))
     return (invdelta, shamap)
 
 
@@ -173,14 +174,15 @@ def import_git_submodule(texts, mapping, path, hexsha, base_inv, base_ie, parent
     raise NotImplementedError(import_git_submodule)
 
 
-def remove_disappeared_children(base_inv, base_children, existing_children):
+def remove_disappeared_children(path, base_children, existing_children):
     ret = []
-    deletable = [v for k,v in base_children.iteritems() if k not in existing_children]
+    deletable = [(osutils.pathjoin(path, k), v) for k,v in base_children.iteritems() if k not in existing_children]
     while deletable:
-        ie = deletable.pop()
-        ret.append((base_inv.id2path(ie.file_id), None, ie.file_id, None))
+        (path, ie) = deletable.pop()
+        ret.append((path, None, ie.file_id, None))
         if ie.kind == "directory":
-            deletable.extend(ie.children.values())
+            for name, child_ie in ie.children.iteritems():
+                deletable.append((osutils.pathjoin(path, name), child_ie))
     return ret
 
 
@@ -258,8 +260,8 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, base_ie, parent_id,
             child_modes[child_path] = mode
     # Remove any children that have disappeared
     if base_ie is not None and base_ie.kind == "directory":
-        invdelta.extend(remove_disappeared_children(base_inv, base_children,
-                                                    existing_children))
+        invdelta.extend(remove_disappeared_children(base_inv.id2path(file_id), 
+            base_children, existing_children))
     shamap.append((hexsha, "tree", (file_id, revision_id)))
     return invdelta, child_modes, shamap
 
