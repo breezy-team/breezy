@@ -78,6 +78,9 @@ class cmd_git_import(Command):
         except NoRepositoryPresent:
             target_repo = target_bzrdir.create_repository(shared=True)
 
+        if not target_repo.supports_rich_root():
+            raise BzrCommandError("Target repository doesn't support rich roots")
+
         interrepo = InterRepository.get(source_repo, target_repo)
         mapping = source_repo.get_mapping()
         refs = interrepo.fetch_refs()
