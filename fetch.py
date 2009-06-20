@@ -166,7 +166,8 @@ def import_git_blob(texts, mapping, path, hexsha, base_inv, parent_id,
     else:
         old_path = None
     invdelta = [(old_path, path, file_id, ie)]
-    invdelta.extend(remove_disappeared_children(base_inv, base_ie, []))
+    if base_ie is not None and base_ie.kind == "directory":
+        invdelta.extend(remove_disappeared_children(base_inv, base_ie.children, []))
     return (invdelta, shamap)
 
 
@@ -175,11 +176,9 @@ def import_git_submodule(texts, mapping, path, hexsha, base_inv, parent_id,
     raise NotImplementedError(import_git_submodule)
 
 
-def remove_disappeared_children(base_inv, base_ie, existing_children):
-    if base_ie is None or base_ie.kind != 'directory':
-        return []
+def remove_disappeared_children(base_inv, base_children, existing_children):
     ret = []
-    deletable = [v for k,v in base_ie.children.iteritems() if k not in existing_children]
+    deletable = [v for k,v in base_children.iteritems() if k not in existing_children]
     while deletable:
         ie = deletable.pop()
         ret.append((base_inv.id2path(ie.file_id), None, ie.file_id, None))
@@ -259,7 +258,9 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, parent_id,
                         stat.S_IFLNK, DEFAULT_FILE_MODE|0111):
             child_modes[child_path] = mode
     # Remove any children that have disappeared
-    invdelta.extend(remove_disappeared_children(base_inv, base_ie, existing_children))
+    if base_ie is not None and base_ie.kind == "directory":
+        invdelta.extend(remove_disappeared_children(base_inv, base_ie.children,
+                                                    existing_children))
     shamap.append((hexsha, "tree", (file_id, revision_id)))
     return invdelta, child_modes, shamap
 
