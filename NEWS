@@ -42,6 +42,9 @@ Bug Fixes
   ``BZR_PROGRESS_BAR`` is set to ``none``.
   (Martin Pool, #339385)
 
+* Unshelve works correctly when multiple zero-length files are present on
+  the shelf. (Aaron Bentley, #363444)
+
 Internals
 *********
 
