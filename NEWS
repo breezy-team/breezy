@@ -63,6 +63,10 @@ Internals
   properly fetch the minimum number of texts for non-smart fetching.
   (John Arbash Meinel)
 
+* ``Repository.pack`` now takes an optional ``hint`` parameter
+  which will support doing partial packs for repositories that can do
+  that. (Robert Collins)
+
 * RepositoryFormat has a new attribute 'pack_compresses' which is True
   when doing a pack operation changes the compression of content in the
   repository. (Robert Collins)

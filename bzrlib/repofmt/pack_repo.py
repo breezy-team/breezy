@@ -1556,7 +1556,7 @@ class RepositoryPackCollection(object):
         """Is the collection already packed?"""
         return not (self.repo._format.pack_compresses or (len(self._names) > 1))
 
-    def pack(self):
+    def pack(self, hint=None):
         """Pack the pack collection totally."""
         self.ensure_loaded()
         total_packs = len(self._names)
@@ -2348,13 +2348,13 @@ class KnitPackRepository(KnitRepository):
         raise NotImplementedError(self.dont_leave_lock_in_place)
 
     @needs_write_lock
-    def pack(self):
+    def pack(self, hint=None):
         """Compress the data within the repository.
 
         This will pack all the data to a single pack. In future it may
         recompress deltas or do other such expensive operations.
         """
-        self._pack_collection.pack()
+        self._pack_collection.pack(hint=hint)
 
     @needs_write_lock
     def reconcile(self, other=None, thorough=False):

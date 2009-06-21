@@ -2427,7 +2427,7 @@ class Repository(object):
             keys = tsort.topo_sort(parent_map)
         return [None] + list(keys)
 
-    def pack(self):
+    def pack(self, hint=None):
         """Compress the data within the repository.
 
         This operation only makes sense for some repository types. For other
@@ -2436,6 +2436,13 @@ class Repository(object):
         This stub method does not require a lock, but subclasses should use
         @needs_write_lock as this is a long running call its reasonable to
         implicitly lock for the user.
+
+        :param hint: If not supplied, the whole repository is packed.
+            If supplied, the repository may use the hint parameter as a
+            hint for the parts of the repository to pack. A hint can be
+            obtained from the result of commit_write_group(). Out of
+            date hints are simply ignored, because concurrent operations
+            can obsolete them rapidly.
         """
 
     def get_transaction(self):
