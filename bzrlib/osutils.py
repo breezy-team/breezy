@@ -722,7 +722,7 @@ def format_local_date(t, offset=0, timezone='original', date_fmt=None,
                _format_date(t, offset, timezone, date_fmt, show_offset)
     date_str = time.strftime(date_fmt, tt)
     if not isinstance(date_str, unicode):
-        date_str = date_str.decode(bzrlib.user_encoding, 'replace')
+        date_str = date_str.decode(get_user_encoding(), 'replace')
     return date_str + offset_str
 
 def _format_date(t, offset, timezone, date_fmt, show_offset):
@@ -1840,6 +1840,10 @@ if sys.platform == 'linux2':
 elif sys.platform == 'darwin':
     def _local_concurrency():
         return subprocess.Popen(['sysctl', '-n', 'hw.availcpu'],
+                                stdout=subprocess.PIPE).communicate()[0]
+elif sys.platform[0:7] == 'freebsd':
+    def _local_concurrency():
+        return subprocess.Popen(['sysctl', '-n', 'hw.ncpu'],
                                 stdout=subprocess.PIPE).communicate()[0]
 elif sys.platform == 'sunos5':
     def _local_concurrency():

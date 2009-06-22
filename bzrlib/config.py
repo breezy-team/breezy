@@ -930,7 +930,6 @@ class TreeConfig(IniBasedConfig):
             return self._config.get_option(name, section, default)
         finally:
             self.branch.unlock()
-        return result
 
     def set_option(self, value, name, section=None):
         """Set a per-branch configuration option"""

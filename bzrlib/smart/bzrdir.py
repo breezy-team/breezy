@@ -17,7 +17,7 @@
 """Server-side bzrdir related request implmentations."""
 
 
-from bzrlib import branch, errors, repository
+from bzrlib import branch, errors, repository, urlutils
 from bzrlib.bzrdir import (
     BzrDir,
     BzrDirFormat,
@@ -354,7 +354,10 @@ class SmartServerRequestBzrDirInitializeEx(SmartServerRequestBzrDir):
     def do(self, bzrdir_network_name, path, use_existing_dir, create_prefix,
         force_new_repo, stacked_on, stack_on_pwd, repo_format_name,
         make_working_trees, shared_repo):
-        """Initialize a bzrdir at path as per BzrDirFormat.initialize_ex
+        """Initialize a bzrdir at path as per
+        BzrDirFormat.initialize_on_transport_ex.
+
+        New in 1.16.  (Replaces BzrDirFormat.initialize_ex verb from 1.15).
 
         :return: return SuccessfulSmartServerResponse((repo_path, rich_root,
             tree_ref, external_lookup, repo_network_name,
@@ -407,6 +410,19 @@ class SmartServerRequestBzrDirInitializeEx(SmartServerRequestBzrDir):
             repo.unlock()
         final_stack = final_stack or ''
         final_stack_pwd = final_stack_pwd or ''
+
+        # We want this to be relative to the bzrdir.
+        if final_stack_pwd:
+            final_stack_pwd = urlutils.relative_url(
+                target_transport.base, final_stack_pwd)
+
+        # Can't meaningfully return a root path.
+        if final_stack.startswith('/'):
+            client_path = self._root_client_path + final_stack[1:]
+            final_stack = urlutils.relative_url(
+                self._root_client_path, client_path)
+            final_stack_pwd = '.'
+
         return SuccessfulSmartServerResponse((repo_path, rich_root, tree_ref,
             external_lookup, repo_name, repo_bzrdir_name,
             bzrdir._format.network_name(),

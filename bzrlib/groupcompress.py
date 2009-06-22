@@ -1040,23 +1040,15 @@ class GroupCompressVersionedFiles(VersionedFiles):
         if not parent_map:
             raise errors.RevisionNotPresent(key, self)
         if parent_map[key] is not None:
-            search = graph._make_breadth_first_searcher([key])
-            keys = set()
-            while True:
-                try:
-                    present, ghosts = search.next_with_ghosts()
-                except StopIteration:
-                    break
-                keys.update(present)
-            parent_map = self.get_parent_map(keys)
+            parent_map = dict((k, v) for k, v in graph.iter_ancestry([key])
+                              if v is not None)
+            keys = parent_map.keys()
         else:
             keys = [key]
             parent_map = {key:()}
-        # So we used Graph(self) to load the parent_map, but now that we have
-        # it, we can just query the parent map directly, so create a new Graph
-        # object
-        graph = _mod_graph.Graph(_mod_graph.DictParentsProvider(parent_map))
-        head_cache = _mod_graph.FrozenHeadsCache(graph)
+        # We used Graph(self) to load the parent_map, but now that we have it,
+        # we can just query the parent map directly, so create a KnownGraph
+        heads_provider = _mod_graph.KnownGraph(parent_map)
         parent_cache = {}
         reannotate = annotate.reannotate
         for record in self.get_record_stream(keys, 'topological', True):
@@ -1064,7 +1056,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
             lines = osutils.chunks_to_lines(record.get_bytes_as('chunked'))
             parent_lines = [parent_cache[parent] for parent in parent_map[key]]
             parent_cache[key] = list(
-                reannotate(parent_lines, lines, key, None, head_cache))
+                reannotate(parent_lines, lines, key, None, heads_provider))
         return parent_cache[key]
 
     def check(self, progress_bar=None):

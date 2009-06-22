@@ -2358,7 +2358,8 @@ class BzrDirMetaFormat1(BzrDirFormat):
     def set_branch_format(self, format):
         self._branch_format = format
 
-    def require_stacking(self, stack_on=None, possible_transports=None):
+    def require_stacking(self, stack_on=None, possible_transports=None,
+            _skip_repo=False):
         """We have a request to stack, try to ensure the formats support it.
 
         :param stack_on: If supplied, it is the URL to a branch that we want to
@@ -2402,7 +2403,8 @@ class BzrDirMetaFormat1(BzrDirFormat):
             target[:] = [target_branch, True, False]
             return target
 
-        if not (self.repository_format.supports_external_lookups):
+        if (not _skip_repo and
+                 not self.repository_format.supports_external_lookups):
             # We need to upgrade the Repository.
             target_branch, _, do_upgrade = get_target_branch()
             if target_branch is None:
@@ -2768,7 +2770,7 @@ class ConvertBzrDir4To5(Converter):
         del ie.text_id
 
     def get_parent_map(self, revision_ids):
-        """See graph._StackedParentsProvider.get_parent_map"""
+        """See graph.StackedParentsProvider.get_parent_map"""
         return dict((revision_id, self.revisions[revision_id])
                     for revision_id in revision_ids
                      if revision_id in self.revisions)
@@ -3175,7 +3177,7 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
         if not do_vfs:
             client = _SmartClient(client_medium)
             path = client.remote_path_from_transport(transport)
-            if client_medium._is_remote_before((1, 15)):
+            if client_medium._is_remote_before((1, 16)):
                 do_vfs = True
         if do_vfs:
             # TODO: lookup the local format from a server hint.
@@ -3215,9 +3217,10 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
             self._network_name = \
             BzrDirFormat.get_default_format().network_name()
         try:
-            response = client.call('BzrDirFormat.initialize_ex',
+            response = client.call('BzrDirFormat.initialize_ex_1.16',
                 self.network_name(), path, *args)
         except errors.UnknownSmartMethod:
+            client._medium._remember_remote_is_before((1,16))
             local_dir_format = BzrDirMetaFormat1()
             self._supply_sub_formats_to(local_dir_format)
             return local_dir_format.initialize_on_transport_ex(transport,
@@ -3249,6 +3252,9 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
                 repo_bzr = bzrdir
             final_stack = response[8] or None
             final_stack_pwd = response[9] or None
+            if final_stack_pwd:
+                final_stack_pwd = urlutils.join(
+                    transport.base, final_stack_pwd)
             remote_repo = remote.RemoteRepository(repo_bzr, repo_format)
             if len(response) > 10:
                 # Updated server verb that locks remotely.
@@ -3264,6 +3270,10 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
         else:
             remote_repo = None
             policy = None
+        if require_stacking:
+            # The repo has already been created, but we need to make sure that
+            # we'll make a stackable branch.
+            bzrdir._format.require_stacking(_skip_repo=True)
         return remote_repo, bzrdir, require_stacking, policy
 
     def _open(self, transport):
@@ -3445,8 +3455,9 @@ class BzrDirFormatRegistry(registry.Registry):
             if info.native:
                 help = '(native) ' + help
             return ':%s:\n%s\n\n' % (key,
-                    textwrap.fill(help, initial_indent='    ',
-                    subsequent_indent='    '))
+                textwrap.fill(help, initial_indent='    ',
+                    subsequent_indent='    ',
+                    break_long_words=False))
         if default_realkey is not None:
             output += wrapped(default_realkey, '(default) %s' % default_help,
                               self.get_info('default'))
@@ -3825,6 +3836,18 @@ format_registry.register_metadir('development7-rich-root',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat6',
     hidden=True,
+    experimental=True,
+    )
+
+format_registry.register_metadir('2a',
+    'bzrlib.repofmt.groupcompress_repo.RepositoryFormat2a',
+    help='First format for bzr 2.0 series.\n'
+        'Uses group-compress storage.\n'
+        'Provides rich roots which are a one-way transition.\n',
+        # 'storage in packs, 255-way hashed CHK inventory, bencode revision, group compress, '
+        # 'rich roots. Supported by bzr 1.16 and later.',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat6',
     experimental=True,
     )
 
