@@ -1093,11 +1093,17 @@ class TestCase(unittest.TestCase):
                          osutils.realpath(path2),
                          "apparent paths:\na = %s\nb = %s\n," % (path1, path2))
 
-    def assertIsInstance(self, obj, kls):
-        """Fail if obj is not an instance of kls"""
+    def assertIsInstance(self, obj, kls, msg=None):
+        """Fail if obj is not an instance of kls
+        
+        :param msg: Supplementary message to show if the assertion fails.
+        """
         if not isinstance(obj, kls):
-            self.fail("%r is an instance of %s rather than %s" % (
-                obj, obj.__class__, kls))
+            m = "%r is an instance of %s rather than %s" % (
+                obj, obj.__class__, kls)
+            if msg:
+                m += ": " + msg
+            self.fail(m)
 
     def expectFailure(self, reason, assertion, *args, **kwargs):
         """Invoke a test, expecting it to fail for the given reason.
