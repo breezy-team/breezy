@@ -108,6 +108,7 @@ class GroupCompressBlock(object):
         self._z_content_length = None
         self._content_length = None
         self._content = None
+        self._content_chunks = None
 
     def __len__(self):
         # This is the maximum number of bytes this object will reference if
@@ -136,6 +137,10 @@ class GroupCompressBlock(object):
                 'requested num_bytes (%d) > content length (%d)'
                 % (num_bytes, self._content_length))
         # Expand the content if required
+        if self._content is None:
+            if self._content_chunks is not None:
+                self._content = ''.join(self._content_chunks)
+                self._content_chunks = None
         if self._content is None:
             if self._z_content is None:
                 raise AssertionError('No content to decompress')
@@ -273,22 +278,54 @@ class GroupCompressBlock(object):
             bytes = apply_delta_to_source(self._content, content_start, end)
         return bytes
 
+    def set_chunked_content(self, content_chunks):
+        """Set the content of this block to the given chunks."""
+        self._content_length = sum(map(len, content_chunks))
+        self._content_chunks = content_chunks
+        self._z_content = None
+        self._content = None
+
     def set_content(self, content):
         """Set the content of this block."""
         self._content_length = len(content)
         self._content = content
         self._z_content = None
 
+    def _create_z_content_using_lzma(self):
+        if self._content_chunks is not None:
+            self._content = ''.join(self._content_chunks)
+            self._content_chunks = None
+        if self._content is None:
+            raise AssertionError('Nothing to compress')
+        self._z_content = pylzma.compress(self._content)
+        self._z_content_length = len(self._z_content)
+
+    def _create_z_content_from_chunks(self):
+        compressor = zlib.compressobj(zlib.Z_DEFAULT_COMPRESSION)
+        compressed_chunks = []
+        for chunk in self._content_chunks:
+            z_bytes = compressor.compress(chunk)
+            if z_bytes:
+                compressed_chunks.append(z_bytes)
+        compressed_chunks.append(compressor.flush())
+        self._z_content = ''.join(compressed_chunks)
+        self._z_content_length = len(self._z_content)
+
+    def _create_z_content(self):
+        if self._z_content is not None:
+            return
+        if _USE_LZMA:
+            self._create_z_content_using_lzma()
+            return
+        if self._content_chunks is not None:
+            self._create_z_content_from_chunks()
+            return
+        self._z_content = zlib.compress(self._content)
+        self._z_content_length = len(self._z_content)
+
     def to_bytes(self):
         """Encode the information into a byte stream."""
-        compress = zlib.compress
-        if _USE_LZMA:
-            compress = pylzma.compress
-        if self._z_content is None:
-            if self._content is None:
-                raise AssertionError('Nothing to compress')
-            self._z_content = compress(self._content)
-            self._z_content_length = len(self._z_content)
+        self._create_z_content()
         if _USE_LZMA:
             header = self.GCB_LZ_HEADER
         else:

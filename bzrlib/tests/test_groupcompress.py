@@ -363,6 +363,14 @@ class TestGroupCompressBlock(tests.TestCase):
         raw_bytes = zlib.decompress(remaining_bytes)
         self.assertEqual(content, raw_bytes)
 
+        # we should get the same results if using the chunked version
+        gcb = groupcompress.GroupCompressBlock()
+        gcb.set_chunked_content(['this is some content\n'
+                                 'this content will be compressed\n'])
+        old_bytes = bytes
+        bytes = gcb.to_bytes()
+        self.assertEqual(old_bytes, bytes)
+
     def test_partial_decomp(self):
         content_chunks = []
         # We need a sufficient amount of data so that zlib.decompress has
