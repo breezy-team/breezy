@@ -1459,12 +1459,12 @@ class RepositoryPackCollection(object):
         in synchronisation with certain steps. Otherwise the names collection
         is not flushed.
 
-        :return: True if packing took place.
+        :return: Something evaluating true if packing took place.
         """
         while True:
             try:
                 return self._do_autopack()
-            except errors.RetryAutopack, e:
+            except errors.RetryAutopack:
                 # If we get a RetryAutopack exception, we should abort the
                 # current action, and retry.
                 pass
@@ -1474,7 +1474,7 @@ class RepositoryPackCollection(object):
         total_revisions = self.revision_index.combined_index.key_count()
         total_packs = len(self._names)
         if self._max_pack_count(total_revisions) >= total_packs:
-            return False
+            return None
         # determine which packs need changing
         pack_distribution = self.pack_distribution(total_revisions)
         existing_packs = []
@@ -1502,10 +1502,10 @@ class RepositoryPackCollection(object):
             'containing %d revisions. Packing %d files into %d affecting %d'
             ' revisions', self, total_packs, total_revisions, num_old_packs,
             num_new_packs, num_revs_affected)
-        self._execute_pack_operations(pack_operations,
+        result = self._execute_pack_operations(pack_operations,
                                       reload_func=self._restart_autopack)
         mutter('Auto-packing repository %s completed', self)
-        return True
+        return result
 
     def _execute_pack_operations(self, pack_operations, _packer_class=Packer,
                                  reload_func=None):
@@ -1513,7 +1513,7 @@ class RepositoryPackCollection(object):
 
         :param pack_operations: A list of [revision_count, packs_to_combine].
         :param _packer_class: The class of packer to use (default: Packer).
-        :return: None.
+        :return: The new pack names.
         """
         for revision_count, packs in pack_operations:
             # we may have no-ops from the setup logic
@@ -1535,10 +1535,11 @@ class RepositoryPackCollection(object):
                 self._remove_pack_from_memory(pack)
         # record the newly available packs and stop advertising the old
         # packs
-        self._save_pack_names(clear_obsolete_packs=True)
+        result = self._save_pack_names(clear_obsolete_packs=True)
         # Move the old packs out of the way now they are no longer referenced.
         for revision_count, packs in pack_operations:
             self._obsolete_packs(packs)
+        return result
 
     def _flush_new_pack(self):
         if self._new_pack is not None:
@@ -1938,6 +1939,7 @@ class RepositoryPackCollection(object):
 
         :param clear_obsolete_packs: If True, clear out the contents of the
             obsolete_packs directory.
+        :return: A list of the names saved that were not previously on disk.
         """
         self.lock_names()
         try:
@@ -1958,6 +1960,7 @@ class RepositoryPackCollection(object):
             self._unlock_names()
         # synchronise the memory packs list with what we just wrote:
         self._syncronize_pack_names_from_disk_nodes(disk_nodes)
+        return [new_node[0][0] for new_node in new_nodes]
 
     def reload_pack_names(self):
         """Sync our pack listing with what is present in the repository.
@@ -2097,7 +2100,7 @@ class RepositoryPackCollection(object):
             if not self.autopack():
                 # when autopack takes no steps, the names list is still
                 # unsaved.
-                self._save_pack_names()
+                return self._save_pack_names()
 
     def _suspend_write_group(self):
         tokens = [pack.name for pack in self._resumed_packs]

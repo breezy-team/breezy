@@ -1413,8 +1413,9 @@ class Repository(object):
             raise errors.BzrError('mismatched lock context %r and '
                 'write group %r.' %
                 (self.get_transaction(), self._write_group))
-        self._commit_write_group()
+        result = self._commit_write_group()
         self._write_group = None
+        return result
 
     def _commit_write_group(self):
         """Template method for per-repository write group cleanup.
