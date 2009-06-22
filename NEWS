@@ -102,9 +102,11 @@ API Changes
   this class and the UI.  (Martin Pool)
 
 
-bzr 1.16rc1 "It's yesterday in California" 2009-06-11
-#####################################################
+bzr 1.16 "It's yesterday in California" 2009-06-18
+##################################################
 :Codename: yesterday-in-california
+:1.16rc1: 2009-06-11
+:1.16: 2009-06-18
 
 This version of Bazaar contains the beta release of the new ``2a`` repository
 format, suitable for testing by fearless, advanced users. This format or an
@@ -114,6 +116,18 @@ read the NEWS entry before even thinking about upgrading to the new format.
 Also included are speedups for many operations on huge projects, a bug fix for
 pushing stacked new stacked branches to smart servers and the usual bevy of
 bug fixes and improvements.
+
+
+Changes from 1.16rc1 to 1.16final
+*********************************
+
+* Fix the nested tree flag check so that upgrade from development formats to
+  2a can work correctly.
+  (Jelmer Vernooij, #388727)
+
+* Automatic format upgrades triggered by default stacking policies on a
+  1.16rc1 (or later) smart server work again.
+  (Andrew Bennetts, #388675)
 
 
 Compatibility Breaks
