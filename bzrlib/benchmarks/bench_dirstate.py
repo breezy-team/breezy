@@ -207,64 +207,64 @@ class BenchmarkDirState(benchmarks.Benchmark):
 
     def test__read_dirblocks_20k_tree_0_parents_c(self):
         self.requireFeature(CompiledDirstateHelpersFeature)
-        from bzrlib._dirstate_helpers_pyx import _read_dirblocks_c
+        from bzrlib._dirstate_helpers_pyx import _read_dirblocks
         state = self.build_20k_dirstate()
         state.lock_read()
         try:
             self.assertEqual(dirstate.DirState.NOT_IN_MEMORY,
                              state._dirblock_state)
             state._read_header_if_needed()
-            self.time(_read_dirblocks_c, state)
+            self.time(_read_dirblocks, state)
         finally:
             state.unlock()
 
     def test__read_dirblocks_20k_tree_1_parent_py(self):
-        from bzrlib._dirstate_helpers_py import _read_dirblocks_py
+        from bzrlib._dirstate_helpers_py import _read_dirblocks
         state = self.build_20k_dirstate_with_parents(1)
         state.lock_read()
         try:
             self.assertEqual(dirstate.DirState.NOT_IN_MEMORY,
                              state._dirblock_state)
             state._read_header_if_needed()
-            self.time(_read_dirblocks_py, state)
+            self.time(_read_dirblocks, state)
         finally:
             state.unlock()
 
     def test__read_dirblocks_20k_tree_1_parent_c(self):
         self.requireFeature(CompiledDirstateHelpersFeature)
-        from bzrlib._dirstate_helpers_pyx import _read_dirblocks_c
+        from bzrlib._dirstate_helpers_pyx import _read_dirblocks
         state = self.build_20k_dirstate_with_parents(1)
         state.lock_read()
         try:
             self.assertEqual(dirstate.DirState.NOT_IN_MEMORY,
                              state._dirblock_state)
             state._read_header_if_needed()
-            self.time(_read_dirblocks_c, state)
+            self.time(_read_dirblocks, state)
         finally:
             state.unlock()
 
     def test__read_dirblocks_20k_tree_2_parents_py(self):
-        from bzrlib._dirstate_helpers_py import _read_dirblocks_py
+        from bzrlib._dirstate_helpers_py import _read_dirblocks
         state = self.build_20k_dirstate_with_parents(2)
         state.lock_read()
         try:
             self.assertEqual(dirstate.DirState.NOT_IN_MEMORY,
                              state._dirblock_state)
             state._read_header_if_needed()
-            self.time(_read_dirblocks_py, state)
+            self.time(_read_dirblocks, state)
         finally:
             state.unlock()
 
     def test__read_dirblocks_20k_tree_2_parents_c(self):
         self.requireFeature(CompiledDirstateHelpersFeature)
-        from bzrlib._dirstate_helpers_pyx import _read_dirblocks_c
+        from bzrlib._dirstate_helpers_pyx import _read_dirblocks
         state = self.build_20k_dirstate_with_parents(2)
         state.lock_read()
         try:
             self.assertEqual(dirstate.DirState.NOT_IN_MEMORY,
                              state._dirblock_state)
             state._read_header_if_needed()
-            self.time(_read_dirblocks_c, state)
+            self.time(_read_dirblocks, state)
         finally:
             state.unlock()
 
