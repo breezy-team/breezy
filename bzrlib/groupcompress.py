@@ -280,14 +280,12 @@ class GroupCompressBlock(object):
 
     def set_chunked_content(self, content_chunks, length):
         """Set the content of this block to the given chunks."""
-        # TODO: if we have *lots* of short lines, it is probably more efficient
-        #       to go ahead and join them up from the start
-        assert length == sum(map(len, content_chunks))
+        # If we have lots of short lines, it is may be more efficient to join
+        # the content ahead of time. If the content is <10MiB, we don't really
+        # care about the extra memory consumption, so we can just pack it and
+        # be done. However, timing showed 18s => 17.9s for repacking 1k revs of
+        # mysql, which is below the noise margin
         self._content_length = length
-        # if self._content_length < 10*1024*1024:
-        #     self._content_chunks = None
-        #     self._content = ''.join(content_chunks)
-        # else:
         self._content_chunks = content_chunks
         self._content = None
         self._z_content = None
@@ -309,11 +307,7 @@ class GroupCompressBlock(object):
 
     def _create_z_content_from_chunks(self):
         compressor = zlib.compressobj(zlib.Z_DEFAULT_COMPRESSION)
-        compressed_chunks = []
-        for chunk in self._content_chunks:
-            z_bytes = compressor.compress(chunk)
-            if z_bytes:
-                compressed_chunks.append(z_bytes)
+        compressed_chunks = map(compressor.compress, self._content_chunks)
         compressed_chunks.append(compressor.flush())
         self._z_content = ''.join(compressed_chunks)
         self._z_content_length = len(self._z_content)
