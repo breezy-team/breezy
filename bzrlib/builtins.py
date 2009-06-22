@@ -1044,7 +1044,8 @@ class cmd_push(Command):
         if directory is None:
             directory = '.'
         # Get the source branch
-        tree, br_from = bzrdir.BzrDir.open_tree_or_branch(directory)
+        (tree, br_from,
+         _unused) = bzrdir.BzrDir.open_containing_tree_or_branch(directory)
         if strict is None:
             strict = br_from.get_config().get_user_option('push_strict')
             if strict is not None:
