@@ -208,15 +208,6 @@ class SilentUIFactory(UIFactory):
     def __init__(self):
         UIFactory.__init__(self)
 
-    def get_password(self, prompt='', **kwargs):
-        return None
-
-    def get_username(self, prompt='', **kwargs):
-        return None
-
-    def prompt(self, prompt, **kwargs):
-        pass
-
     def note(self, msg):
         pass
 

@@ -55,27 +55,6 @@ from bzrlib.ui.text import (
 
 class UITests(TestCase):
 
-    def test_cli_factory_deprecated(self):
-        uif = self.applyDeprecated(deprecated_in((1, 17, 0)),
-            CLIUIFactory,
-            StringIO(), StringIO(), StringIO())
-        self.assertIsInstance(uif, UIFactory)
-
-    def test_silent_factory(self):
-        ui = SilentUIFactory()
-        stdout = StringIO()
-        self.assertRaises(
-            NotImplementedError,
-            self.apply_redirected,
-            None, stdout, stdout, ui.get_password)
-        self.assertEqual('', stdout.getvalue())
-        self.assertEqual(None,
-                         self.apply_redirected(None, stdout, stdout,
-                                               ui.get_password,
-                                               u'Hello\u1234 %(user)s',
-                                               user=u'some\u1234'))
-        self.assertEqual('', stdout.getvalue())
-
     def test_text_factory_ascii_password(self):
         ui = TestUIFactory(stdin='secret\n', stdout=StringIOWrapper(),
                            stderr=StringIOWrapper())
@@ -223,21 +202,6 @@ class UITests(TestCase):
         # stdin should be empty
         self.assertEqual('', factory.stdin.readline())
 
-    def test_silent_ui_getbool(self):
-        factory = SilentUIFactory()
-        self.assert_get_bool_acceptance_of_user_input(factory)
-
-    def test_silent_factory_prompts_silently(self):
-        factory = SilentUIFactory()
-        stdout = StringIO()
-        factory.stdin = StringIO("y\n")
-        self.assertEqual(True,
-                         self.apply_redirected(None, stdout, stdout,
-                                               factory.get_boolean, "foo"))
-        self.assertEqual("", stdout.getvalue())
-        # stdin should be empty
-        self.assertEqual('', factory.stdin.readline())
-
     def test_text_ui_getbool(self):
         factory = TextUIFactory(None, None, None)
         self.assert_get_bool_acceptance_of_user_input(factory)
@@ -283,17 +247,6 @@ class UITests(TestCase):
         finally:
             pb.finished()
 
-    def test_silent_ui_getusername(self):
-        factory = SilentUIFactory()
-        factory.stdin = StringIO("someuser\n\n")
-        factory.stdout = StringIO()
-        factory.stderr = StringIO()
-        self.assertEquals(None,
-            factory.get_username(u'Hello\u1234 %(host)s', host=u'some\u1234'))
-        self.assertEquals("", factory.stdout.getvalue())
-        self.assertEquals("", factory.stderr.getvalue())
-        self.assertEquals("someuser\n\n", factory.stdin.getvalue())
-
     def test_text_ui_getusername(self):
         factory = TextUIFactory(None, None, None)
         factory.stdin = StringIO("someuser\n\n")
@@ -326,3 +279,31 @@ class UITests(TestCase):
             pb.finished()
 
 
+class CLIUITests(TestCase):
+
+    def test_cli_factory_deprecated(self):
+        uif = self.applyDeprecated(deprecated_in((1, 17, 0)),
+            CLIUIFactory,
+            StringIO(), StringIO(), StringIO())
+        self.assertIsInstance(uif, UIFactory)
+
+
+class SilentUITests(TestCase):
+
+    def test_silent_factory(self):
+        ui = SilentUIFactory()
+        stdout = StringIO()
+        self.assertRaises(
+            NotImplementedError,
+            self.apply_redirected,
+            None, stdout, stdout, ui.get_password)
+        # and it didn't write anything out either
+        self.assertEqual('', stdout.getvalue())
+
+    def test_silent_ui_getbool(self):
+        factory = SilentUIFactory()
+        stdout = StringIO()
+        self.assertRaises(
+            NotImplementedError,
+            self.apply_redirected,
+            None, stdout, stdout, factory.get_boolean, "foo")
