@@ -21,8 +21,8 @@ Bug Fixes
   (Neil Martinsen-Burrell, #220067)
 
 * Progress bars are now suppressed again when the environment variable
-  ``BZR_PROGRESS_BAR`` is set to ``none``, or when stderr is directed to
-  a terminal.
+  ``BZR_PROGRESS_BAR`` is set to ``none``, or when stderr is not 
+  connected to a terminal.
   (Martin Pool, #339385, #387717)
 
 Internals
