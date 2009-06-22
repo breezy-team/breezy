@@ -246,7 +246,7 @@ class TestBisectPathMixin(object):
 
 
 class TestBisectPathLeft(tests.TestCase, TestBisectPathMixin):
-    """Run all Bisect Path tests against _bisect_path_left_py."""
+    """Run all Bisect Path tests against _bisect_path_left."""
 
     def get_bisect_path(self):
         from bzrlib._dirstate_helpers_py import _bisect_path_left
@@ -257,7 +257,7 @@ class TestBisectPathLeft(tests.TestCase, TestBisectPathMixin):
 
 
 class TestCompiledBisectPathLeft(TestBisectPathLeft):
-    """Run all Bisect Path tests against _bisect_path_right_c"""
+    """Run all Bisect Path tests against _bisect_path_lect"""
 
     _test_needs_features = [CompiledDirstateHelpersFeature]
 
@@ -267,7 +267,7 @@ class TestCompiledBisectPathLeft(TestBisectPathLeft):
 
 
 class TestBisectPathRight(tests.TestCase, TestBisectPathMixin):
-    """Run all Bisect Path tests against _bisect_path_right_py"""
+    """Run all Bisect Path tests against _bisect_path_right"""
 
     def get_bisect_path(self):
         from bzrlib._dirstate_helpers_py import _bisect_path_right
@@ -278,7 +278,7 @@ class TestBisectPathRight(tests.TestCase, TestBisectPathMixin):
 
 
 class TestCompiledBisectPathRight(TestBisectPathRight):
-    """Run all Bisect Path tests against _bisect_path_right_c"""
+    """Run all Bisect Path tests against _bisect_path_right"""
 
     _test_needs_features = [CompiledDirstateHelpersFeature]
 
