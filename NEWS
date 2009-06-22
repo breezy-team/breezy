@@ -18,7 +18,7 @@ New Features
 
 * ``bzr revno`` and ``bzr revision-info`` now have a ``--tree`` option to
   show revision info for the working tree instead of the branch.
-  (Matthew Fuller)
+  (Matthew Fuller, John Arbash Meinel)
 
 
 Bug Fixes
@@ -88,7 +88,7 @@ Improvements
 * ``revision-info`` now properly aligns the revnos/revids in the output
   and doesn't traceback when given revisions not in the current branch.
   Performance is also significantly improved when requesting multiple revs
-  at once.  (Matthew Fuller)
+  at once.  (Matthew Fuller, John Arbash Meinel)
 
 Documentation
 *************
