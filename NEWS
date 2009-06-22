@@ -43,9 +43,10 @@ Bug Fixes
   (Martin Pool, #339385)
 
 * Reduced memory consumption during ``bzr commit`` of large files. For
-  pre 2a formats, should be down to ~3x the size of a file, and for
-  ``--2a`` formats should be down to exactly 2x the size. Related to bug
-  #109114. (John Arbash Meinel)
+  pre 2a formats, should be down to ~3x the size of a file.
+  For ``--2a`` format repositories, it is down to the size of the file
+  content plus the size of the compressed text.  Related to bug #109114.
+  (John Arbash Meinel)
 
 * Unshelve works correctly when multiple zero-length files are present on
   the shelf. (Aaron Bentley, #363444)
