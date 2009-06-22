@@ -177,27 +177,20 @@ doc/index.%.html: doc/index.%.txt
 	$(rst2html) --stylesheet=../../default.css $< $@
 
 MAN_DEPENDENCIES = bzrlib/builtins.py \
-		 bzrlib/bundle/commands.py \
-		 bzrlib/conflicts.py \
-		 bzrlib/help_topics/__init__.py \
-		 bzrlib/bzrdir.py \
-		 bzrlib/sign_my_commits.py \
-		 bzrlib/bugtracker.py \
-		 generate_docs.py \
-		 tools/doc_generate/__init__.py \
-		 tools/doc_generate/autodoc_man.py \
-		 tools/doc_generate/autodoc_rstx.py \
-		 $(wildcard $(addsuffix /*.txt, bzrlib/help_topics/en)) 
+	$(wildcard bzrlib/*.py) \
+	$(wildcard bzrlib/*/*.py) \
+	tools/generate_docs.py \
+	$(wildcard $(addsuffix /*.txt, bzrlib/help_topics/en)) 
 
 doc/en/user-reference/bzr_man.txt: $(MAN_DEPENDENCIES)
-	$(PYTHON) generate_docs.py -o $@ rstx
+	PYTHONPATH=.:$$PYTHONPATH $(PYTHON) tools/generate_docs.py -o $@ rstx
 
 doc/en/release-notes/NEWS.txt: NEWS
 	$(PYTHON) -c "import shutil; shutil.copyfile('$<', '$@')"
 
 MAN_PAGES = man1/bzr.1
 man1/bzr.1: $(MAN_DEPENDENCIES)
-	$(PYTHON) generate_docs.py -o $@ man
+	PYTHONPATH=.:$$PYTHONPATH $(PYTHON) tools/generate_docs.py -o $@ man
 
 # build a png of our performance task list
 # 
@@ -254,7 +247,10 @@ py-inst-24: docs
 py-inst-25: docs
 	python25 setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
 
-python-installer: py-inst-24 py-inst-25
+py-inst-26: docs
+	python26 setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
+
+python-installer: py-inst-24 py-inst-25 py-inst-26
 
 
 copy-docs: docs

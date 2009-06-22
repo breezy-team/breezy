@@ -25,11 +25,25 @@ Bug Fixes
   diverged-branches`` when a push fails because the branches have
   diverged.  (Neil Martinsen-Burrell, #269477)
 
+* Automatic format upgrades triggered by default stacking policies on a
+  1.16rc1 (or later) smart server work again.
+  (Andrew Bennetts, #388675)
+
 * Better message in ``bzr split`` error suggesting a rich root format.
   (Neil Martinsen-Burrell, #220067)
 
 * ``Branch.set_append_revisions_only`` now works with branches on a smart
   server. (Andrew Bennetts, #365865)
+
+* ``bzr ls DIR --from-root`` now shows only things in DIR, not everything.
+  (Ian Clatworthy)
+
+* Progress bars are now suppressed again when the environment variable
+  ``BZR_PROGRESS_BAR`` is set to ``none``.
+  (Martin Pool, #339385)
+
+* Unshelve works correctly when multiple zero-length files are present on
+  the shelf. (Aaron Bentley, #363444)
 
 Internals
 *********
@@ -45,11 +59,23 @@ Internals
   the whole graph has already been loaded. This is true during
   ``annotate`` so it is used there with good success (as much as 2x faster
   for files with long ancestry and 'cherrypicked' changes.)
+  (John Arbash Meinel, Vincent Ladeuil)
+
+* pack <=> pack fetching is now done via a ``PackStreamSource`` rather
+  than the ``Packer`` code. The user visible change is that we now
+  properly fetch the minimum number of texts for non-smart fetching.
   (John Arbash Meinel)
 
 
 Improvements
 ************
+
+``bzr ls`` is now faster. On OpenOffice.org, the time drops from 2.4
+  to 1.1 seconds. The improvement for ``bzr ls -r-1`` is more
+  substantial dropping from 54.3 to 1.1 seconds. (Ian Clatworthy)
+
+* Initial commit performance in ``--2a`` repositories has been improved by
+  making it cheaper to build the initial CHKMap. (John Arbash Meinel)
 
 * Resolving a revno to a revision id on a branch accessed via ``bzr://``
   or ``bzr+ssh://`` is now much faster and involves no VFS operations.
@@ -58,8 +84,22 @@ Improvements
 Documentation
 *************
 
+* Avoid bad text wrapping in generated documentation.  Slightly better
+  formatting in the user reference.
+  (Martin Pool, #249908)
+
 * Minor clarifications to the help for End-Of-Line conversions.
   (Ian Clatworthy)
+
+API Changes
+***********
+
+* Removed overspecific error class ``InvalidProgressBarType``.
+  (Martin Pool)
+
+* The method ``ProgressView._show_transport_activity`` is now
+  ``show_transport_activity`` because it's part of the contract between
+  this class and the UI.  (Martin Pool)
 
 
 bzr 1.16rc1 "It's yesterday in California" 2009-06-11
@@ -211,7 +251,6 @@ Documentation
 * Added directory structure and started translation of docs in Russian.
   (Alexey Shtokalo, Alexander Iljin, Alexander Belchenko, Dmitry Vasiliev,
   Volodymyr Kotulskyi)
-
 
 API Changes
 ***********

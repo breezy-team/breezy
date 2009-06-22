@@ -39,6 +39,7 @@ from bzrlib.ui import (
     SilentUIFactory,
     )
 from bzrlib.ui.text import (
+    NullProgressView,
     TextProgressView,
     TextUIFactory,
     )
@@ -102,6 +103,25 @@ class UITests(TestCase):
             self.assertEqual('', ui.stdout.readline())
         finally:
             pb.finished()
+
+    def test_progress_construction(self):
+        """TextUIFactory constructs the right progress view.
+        """
+        os.environ['BZR_PROGRESS_BAR'] = 'none'
+        self.assertIsInstance(TextUIFactory()._progress_view,
+            NullProgressView)
+
+        os.environ['BZR_PROGRESS_BAR'] = 'text'
+        self.assertIsInstance(TextUIFactory()._progress_view,
+            TextProgressView)
+
+        os.environ['BZR_PROGRESS_BAR'] = 'text'
+        self.assertIsInstance(TextUIFactory()._progress_view,
+            TextProgressView)
+
+        del os.environ['BZR_PROGRESS_BAR']
+        self.assertIsInstance(TextUIFactory()._progress_view,
+            TextProgressView)
 
     def test_progress_note(self):
         stderr = StringIO()
