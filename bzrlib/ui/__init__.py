@@ -290,6 +290,7 @@ class SilentUIFactory(CLIUIFactory):
         pass
 
 
+@deprecated_function(deprecated_in((1, 17, 0)))
 def clear_decorator(func, *args, **kwargs):
     """Decorator that clears the term"""
     ui_factory.clear_term()
