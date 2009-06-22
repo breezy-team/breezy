@@ -83,6 +83,11 @@ Internals
   when doing a pack operation changes the compression of content in the
   repository. (Robert Collins)
 
+* ``StreamSink`` will call ``Repository.pack`` with the hint returned
+  by ``Repository.commit_write_group`` if the formats were different and
+  the repository can increase compression by doing a pack operation.
+  (Robert Collins, partial fix for #376748)
+
 Improvements
 ************
 

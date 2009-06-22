@@ -4047,7 +4047,10 @@ class StreamSink(object):
                 # missing keys can handle suspending a write group).
                 write_group_tokens = self.target_repo.suspend_write_group()
                 return write_group_tokens, missing_keys
-        self.target_repo.commit_write_group()
+        hint = self.target_repo.commit_write_group()
+        if (to_serializer != src_serializer and
+            self.target_repo._format.pack_compresses):
+            self.target_repo.pack(hint=hint)
         return [], set()
 
     def _extract_and_insert_inventories(self, substream, serializer):
