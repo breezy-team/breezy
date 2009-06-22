@@ -101,6 +101,16 @@ class TestRevisionInfo(ExternalBase):
         self.check_output('   2 a@r-0-2\n', 'revision-info -d checkout')
         self.check_output('   1 a@r-0-1\n', 'revision-info --tree -d checkout')
 
+    def test_revision_info_tree_no_working_tree(self):
+        # Make branch with no tree
+        b = self.make_branch('branch')
+
+        # Try getting the --tree revision-info
+        out,err = self.run_bzr('revision-info --tree -d branch', retcode=3)
+        self.assertEqual('', out)
+        self.assertEqual('bzr: ERROR: No WorkingTree exists for "branch".\n',
+            err)
+
     def test_revision_info_not_in_history(self):
         builder = self.make_branch_builder('branch')
         builder.start_series()
