@@ -692,6 +692,14 @@ class Test2a(TestCaseWithTransport):
         self.assertEqual(65536,
             inv.parent_id_basename_to_file_id._root_node.maximum_size)
 
+    def test_autopack_unchanged_chk_nodes(self):
+        # at 20 unchanged commits, chk pages are packed that are split into
+        # two groups such that the new pack being made doesn't have all its
+        # pages in the source packs (though they are in the repository).
+        tree = self.make_branch_and_tree('tree', format='2a')
+        for pos in range(20):
+            tree.commit(str(pos))
+
     def test_pack_with_hint(self):
         tree = self.make_branch_and_tree('tree', format='2a')
         # 1 commit to leave untouched
