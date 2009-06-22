@@ -43,6 +43,7 @@ from bzrlib.tests.test_progress import (
 from bzrlib.ui import (
     CLIUIFactory,
     SilentUIFactory,
+    make_ui_for_terminal,
     )
 from bzrlib.ui.text import (
     NullProgressView,
@@ -113,33 +114,35 @@ class UITests(TestCase):
     def test_progress_construction(self):
         """TextUIFactory constructs the right progress view.
         """
-        err = _TTYStringIO()
-        os.environ['TERM'] = 'xterm'
-        os.environ['BZR_PROGRESS_BAR'] = 'none'
-        self.assertIsInstance(TextUIFactory(stderr=err)._progress_view,
-            NullProgressView)
-
-        os.environ['BZR_PROGRESS_BAR'] = 'text'
-        self.assertIsInstance(TextUIFactory(stderr=err)._progress_view,
-            TextProgressView)
-
-        os.environ['BZR_PROGRESS_BAR'] = 'text'
-        self.assertIsInstance(TextUIFactory(stderr=err)._progress_view,
-            TextProgressView)
-
-        del os.environ['BZR_PROGRESS_BAR']
-        self.assertIsInstance(TextUIFactory(stderr=err)._progress_view,
-            TextProgressView)
+        for (term, pb, expected_pb_class) in (
+            # on an xterm, either use them or not as the user requests,
+            # otherwise default on
+            ('xterm', 'none', NullProgressView),
+            ('xterm', 'text', TextProgressView),
+            ('xterm', None, TextProgressView),
+            # on a dumb terminal, again if there's explicit configuration do
+            # it, otherwise default off
+            ('dumb', 'none', NullProgressView),
+            # FIXME: should actually be TextProgressView
+            ('dumb', 'text', NullProgressView),
+            ('dumb', None, NullProgressView),
+            ):
+            os.environ['TERM'] = term
+            if pb is None:
+                del os.environ['BZR_PROGRESS_BAR']
+            else:
+                os.environ['BZR_PROGRESS_BAR'] = pb
+            stdin = _TTYStringIO('')
+            stderr = _TTYStringIO()
+            stdout = _TTYStringIO()
+            uif = make_ui_for_terminal(stdin, stdout, stderr)
+            self.assertIsInstance(uif.make_progress_view(),
+                expected_pb_class,
+                "TERM=%s BZR_PROGRESS_BAR=%s uif=%r" % (term, pb, uif,))
 
         # if not a tty, no progress bars
         self.assertIsInstance(
             TextUIFactory(stderr=_NonTTYStringIO())._progress_view,
-            NullProgressView)
-
-        # if a tty but dumb, no progress bars
-        os.environ['TERM'] = 'dumb'
-        self.assertIsInstance(
-            TextUIFactory(stderr=_TTYStringIO())._progress_view,
             NullProgressView)
 
     def test_progress_note(self):
