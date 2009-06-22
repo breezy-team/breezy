@@ -50,7 +50,6 @@ def _supports_progress(f):
 
     This doesn't check the policy for whether we *should* use them.
     """
-    # XXX: This is a bit redundant with make_ui_for_terminal.
     isatty = getattr(f, 'isatty', None)
     if isatty is None:
         return False
