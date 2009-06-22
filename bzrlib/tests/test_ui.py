@@ -126,10 +126,18 @@ class UITests(TestCase):
                 expected_pb_class,
                 "TERM=%s BZR_PROGRESS_BAR=%s uif=%r" % (term, pb, uif,))
 
-        # if not a tty, no progress bars
-        self.assertIsInstance(
-            TextUIFactory(stderr=_NonTTYStringIO())._progress_view,
-            NullProgressView)
+    def test_text_ui_non_terminal(self):
+        """Even on non-ttys, make_ui_for_terminal gives a text ui."""
+        stdin = _NonTTYStringIO('')
+        stderr = _NonTTYStringIO()
+        stdout = _NonTTYStringIO()
+        for term_type in ['dumb', None, 'xterm']:
+            if term_type is None:
+                del os.environ['TERM']
+            else:
+                os.environ['TERM'] = term_type
+            uif = make_ui_for_terminal(stdin, stdout, stderr)
+            self.assertEqual(uif, TextUIFactory)
 
     def test_progress_note(self):
         stderr = StringIO()
