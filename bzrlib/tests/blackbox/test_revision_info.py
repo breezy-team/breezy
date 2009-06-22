@@ -102,8 +102,8 @@ class TestRevisionInfo(ExternalBase):
 
         # Make sure the checkout gives the right answer for branch and
         # tree
-        self.check_output('   2 a@r-0-2\n', 'revision-info -d checkout')
-        self.check_output('   1 a@r-0-1\n', 'revision-info --tree -d checkout')
+        self.check_output('2 a@r-0-2\n', 'revision-info -d checkout')
+        self.check_output('1 a@r-0-1\n', 'revision-info --tree -d checkout')
 
     def test_revision_info_tree_no_working_tree(self):
         # Make branch with no tree
@@ -123,6 +123,6 @@ class TestRevisionInfo(ExternalBase):
         builder.build_snapshot('B-id', ['A-id'], [])
         builder.build_snapshot('C-id', ['A-id'], [])
         builder.finish_series()
-        self.check_output('   1 A-id\n ??? B-id\n   2 C-id\n',
+        self.check_output('  1 A-id\n??? B-id\n  2 C-id\n',
                           'revision-info -d branch'
                           ' revid:A-id revid:B-id revid:C-id')
