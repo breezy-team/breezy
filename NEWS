@@ -23,6 +23,8 @@ Bug Fixes
 * The environment variable ``BZR_PROGRESS_BAR`` set to either ``text`` or ``none``
   always forces progress bars either on or off respectively.  Otherwise,
   they're turned on if ``TERM`` is not ``dumb`` and stderr is a terminal.
+  bzr always uses the 'text' user interface when run as a command, so
+  ``BZR_USE_TEXT_UI`` is no longer needed.
   (Martin Pool, #339385, #387717)
 
 Internals
