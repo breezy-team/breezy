@@ -486,7 +486,7 @@ class cmd_revno(Command):
             wt.lock_read()
         except (errors.NoWorkingTree, errors.NotLocalUrl):
             wt = None
-            b = Branch.open(location)[0]
+            b = Branch.open_containing(location)[0]
             b.lock_read()
         try:
             if tree:
