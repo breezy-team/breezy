@@ -3455,8 +3455,9 @@ class BzrDirFormatRegistry(registry.Registry):
             if info.native:
                 help = '(native) ' + help
             return ':%s:\n%s\n\n' % (key,
-                    textwrap.fill(help, initial_indent='    ',
-                    subsequent_indent='    '))
+                textwrap.fill(help, initial_indent='    ',
+                    subsequent_indent='    ',
+                    break_long_words=False))
         if default_realkey is not None:
             output += wrapped(default_realkey, '(default) %s' % default_help,
                               self.get_info('default'))

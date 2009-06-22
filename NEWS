@@ -42,9 +42,17 @@ Bug Fixes
   ``BZR_PROGRESS_BAR`` is set to ``none``.
   (Martin Pool, #339385)
 
+* Reduced memory consumption during ``bzr commit`` of large files. For
+  pre 2a formats, should be down to ~3x the size of a file, and for
+  ``--2a`` formats should be down to exactly 2x the size. Related to bug
+  #109114. (John Arbash Meinel)
+
 * Repositories using CHK pages (which includes the new 2a format) will no
   longer error during commit or push operations when an autopack operation
   is triggered. (Robert Collins, #365615)
+
+* Unshelve works correctly when multiple zero-length files are present on
+  the shelf. (Aaron Bentley, #363444)
 
 Internals
 *********
@@ -60,7 +68,7 @@ Internals
   the whole graph has already been loaded. This is true during
   ``annotate`` so it is used there with good success (as much as 2x faster
   for files with long ancestry and 'cherrypicked' changes.)
-  (John Arbash Meinel)
+  (John Arbash Meinel, Vincent Ladeuil)
 
 * ``GroupCompress`` repositories now take advantage of the pack hints
   parameter to permit cross-format fetching to incrementally pack the
@@ -89,6 +97,12 @@ Internals
   repository can increase compression by doing a pack operation.
   (Robert Collins, #376748)
 
+* ``VersionedFiles._add_text`` is a new api that lets us insert text into
+  the repository as a single string, rather than a list of lines. This can
+  improve memory overhead and performance of committing large files.
+  (Currently a private api, used only by commit). (John Arbash Meinel)
+
+
 Improvements
 ************
 
@@ -106,6 +120,10 @@ Improvements
 Documentation
 *************
 
+* Avoid bad text wrapping in generated documentation.  Slightly better
+  formatting in the user reference.
+  (Martin Pool, #249908)
+
 * Minor clarifications to the help for End-Of-Line conversions.
   (Ian Clatworthy)
 
@@ -120,9 +138,11 @@ API Changes
   this class and the UI.  (Martin Pool)
 
 
-bzr 1.16rc1 "It's yesterday in California" 2009-06-11
-#####################################################
+bzr 1.16 "It's yesterday in California" 2009-06-18
+##################################################
 :Codename: yesterday-in-california
+:1.16rc1: 2009-06-11
+:1.16: 2009-06-18
 
 This version of Bazaar contains the beta release of the new ``2a`` repository
 format, suitable for testing by fearless, advanced users. This format or an
@@ -132,6 +152,18 @@ read the NEWS entry before even thinking about upgrading to the new format.
 Also included are speedups for many operations on huge projects, a bug fix for
 pushing stacked new stacked branches to smart servers and the usual bevy of
 bug fixes and improvements.
+
+
+Changes from 1.16rc1 to 1.16final
+*********************************
+
+* Fix the nested tree flag check so that upgrade from development formats to
+  2a can work correctly.
+  (Jelmer Vernooij, #388727)
+
+* Automatic format upgrades triggered by default stacking policies on a
+  1.16rc1 (or later) smart server work again.
+  (Andrew Bennetts, #388675)
 
 
 Compatibility Breaks
@@ -269,7 +301,6 @@ Documentation
 * Added directory structure and started translation of docs in Russian.
   (Alexey Shtokalo, Alexander Iljin, Alexander Belchenko, Dmitry Vasiliev,
   Volodymyr Kotulskyi)
-
 
 API Changes
 ***********
