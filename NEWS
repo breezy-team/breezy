@@ -42,6 +42,9 @@ Bug Fixes
   ``BZR_PROGRESS_BAR`` is set to ``none``.
   (Martin Pool, #339385)
 
+* Unshelve works correctly when multiple zero-length files are present on
+  the shelf. (Aaron Bentley, #363444)
+
 Internals
 *********
 
@@ -56,7 +59,7 @@ Internals
   the whole graph has already been loaded. This is true during
   ``annotate`` so it is used there with good success (as much as 2x faster
   for files with long ancestry and 'cherrypicked' changes.)
-  (John Arbash Meinel)
+  (John Arbash Meinel, Vincent Ladeuil)
 
 * pack <=> pack fetching is now done via a ``PackStreamSource`` rather
   than the ``Packer`` code. The user visible change is that we now
