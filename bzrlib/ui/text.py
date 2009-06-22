@@ -33,7 +33,10 @@ from bzrlib import (
 
 """)
 
-from bzrlib.ui import CLIUIFactory
+from bzrlib.ui import (
+    CLIUIFactory,
+    NullProgressView,
+    )
 
 
 class TextUIFactory(CLIUIFactory):
@@ -56,7 +59,7 @@ class TextUIFactory(CLIUIFactory):
             symbol_versioning.warn(symbol_versioning.deprecated_in((1, 11, 0))
                 % "bar_type parameter")
         # paints progress, network activity, etc
-        self._progress_view = self._make_progress_view()
+        self._progress_view = self.make_progress_view()
         
     def clear_term(self):
         """Prepare the terminal for output.
@@ -69,9 +72,16 @@ class TextUIFactory(CLIUIFactory):
         # to clear it.  We might need to separately check for the case of
         self._progress_view.clear()
 
-    def _make_progress_view(self):
-        if (os.environ.get('BZR_PROGRESS_BAR') in ('text', None, '')
-            and progress._supports_progress(self.stderr)):
+    def make_progress_view(self):
+        """Construct and return a new ProgressView subclass for this UI.
+        """
+        # if the user specifically requests either text or no progress bars,
+        # always do that.  otherwise, guess based on $TERM and tty presence.
+        if os.environ.get('BZR_PROGRESS_BAR') == 'text':
+            return TextProgressView(self.stderr)
+        elif os.environ.get('BZR_PROGRESS_BAR') == 'none':
+            return NullProgressView()
+        elif progress._supports_progress(self.stderr):
             return TextProgressView(self.stderr)
         else:
             return NullProgressView()
@@ -104,19 +114,6 @@ class TextUIFactory(CLIUIFactory):
     def _progress_all_finished(self):
         self._progress_view.clear()
 
-
-class NullProgressView(object):
-    """Soak up and ignore progress information."""
-
-    def clear(self):
-        pass
-
-    def show_progress(self, task):
-        pass
-
-    def show_transport_activity(self, transport, direction, byte_count):
-        pass
-    
 
 class TextProgressView(object):
     """Display of progress bar and other information on a tty.

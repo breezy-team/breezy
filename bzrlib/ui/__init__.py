@@ -23,17 +23,16 @@ Several levels are supported, and you can also register new factories such as
 for a GUI.
 
 UIFactory
-    Abstract base class
-
-CLIUIFactory
-    Basic text output, and can read input from the user.
-
-TextUIFactory
-    Can also repaint the screen to draw progress bars.
+    Semi-abstract base class
 
 SilentUIFactory
     Produces no output and cannot take any input; useful for programs using
     bzrlib in batch mode or for programs such as loggerhead.
+
+TextUIFactory
+    Standard text command-line interface, with stdin, stdout, stderr.
+    May make more or less advanced use of them, eg in drawing progress bars,
+    depending on the detected capabilities of the terminal.
 """
 
 import os
@@ -131,6 +130,14 @@ class UIFactory(object):
         :return: True or False for y/yes or n/no.
         """
         raise NotImplementedError(self.get_boolean)
+
+    def make_progress_view(self):
+        """Construct a new ProgressView object for this UI.
+
+        Application code should normally not call this but instead
+        nested_progress_bar().
+        """
+        return NullProgressView()
 
     def recommend_upgrade(self,
         current_format_name,
@@ -302,3 +309,16 @@ def make_ui_for_terminal(stdin, stdout, stderr):
         from bzrlib.ui.text import TextUIFactory
         cls = TextUIFactory
     return cls(stdin=stdin, stdout=stdout, stderr=stderr)
+
+
+class NullProgressView(object):
+    """Soak up and ignore progress information."""
+
+    def clear(self):
+        pass
+
+    def show_progress(self, task):
+        pass
+
+    def show_transport_activity(self, transport, direction, byte_count):
+        pass
