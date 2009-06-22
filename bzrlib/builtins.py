@@ -545,6 +545,8 @@ class cmd_revision_info(Command):
             # No arguments supplied, default to the last revision
             if len(revision_ids) == 0:
                 if tree:
+                    if wt is None:
+                        raise errors.NoWorkingTree(directory)
                     revision_ids.append(wt.last_revision())
                 else:
                     revision_ids.append(b.last_revision())
