@@ -207,7 +207,7 @@ class BenchmarkDirState(benchmarks.Benchmark):
 
     def test__read_dirblocks_20k_tree_0_parents_c(self):
         self.requireFeature(CompiledDirstateHelpersFeature)
-        from bzrlib._dirstate_helpers_c import _read_dirblocks_c
+        from bzrlib._dirstate_helpers_pyx import _read_dirblocks_c
         state = self.build_20k_dirstate()
         state.lock_read()
         try:
@@ -232,7 +232,7 @@ class BenchmarkDirState(benchmarks.Benchmark):
 
     def test__read_dirblocks_20k_tree_1_parent_c(self):
         self.requireFeature(CompiledDirstateHelpersFeature)
-        from bzrlib._dirstate_helpers_c import _read_dirblocks_c
+        from bzrlib._dirstate_helpers_pyx import _read_dirblocks_c
         state = self.build_20k_dirstate_with_parents(1)
         state.lock_read()
         try:
@@ -257,7 +257,7 @@ class BenchmarkDirState(benchmarks.Benchmark):
 
     def test__read_dirblocks_20k_tree_2_parents_c(self):
         self.requireFeature(CompiledDirstateHelpersFeature)
-        from bzrlib._dirstate_helpers_c import _read_dirblocks_c
+        from bzrlib._dirstate_helpers_pyx import _read_dirblocks_c
         state = self.build_20k_dirstate_with_parents(2)
         state.lock_read()
         try:
@@ -338,7 +338,7 @@ class BenchmarkDirState(benchmarks.Benchmark):
 
     def test_bisect_dirblock_c(self):
         self.requireFeature(CompiledDirstateHelpersFeature)
-        from bzrlib._dirstate_helpers_c import bisect_dirblock_c
+        from bzrlib._dirstate_helpers_pyx import bisect_dirblock_c
         state = self.build_10k_dirstate_dirs()
         state.lock_read()
         try:
@@ -419,8 +419,8 @@ class BenchmarkDirState(benchmarks.Benchmark):
         self.compareAllPaths(cmp_by_dirs_py,
                              [(3, 1), (3, 1), (3, 1), (3, 2)])
 
-    def test_cmp_by_dirs_c(self):
+    def test_cmp_by_dirs_pyrex(self):
         self.requireFeature(CompiledDirstateHelpersFeature)
-        from bzrlib._dirstate_helpers_c import cmp_by_dirs_c
+        from bzrlib._dirstate_helpers_pyx import cmp_by_dirs_c
         self.compareAllPaths(cmp_by_dirs_c,
                              [(3, 1), (3, 1), (3, 1), (3, 2)])

@@ -54,7 +54,7 @@ cdef extern from "python-compat.h":
 cdef extern from *:
     ctypedef unsigned long size_t
 
-cdef extern from "_dirstate_helpers_c.h":
+cdef extern from "_dirstate_helpers_pyx.h":
     ctypedef int intptr_t
 
 

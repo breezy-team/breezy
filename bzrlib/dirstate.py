@@ -3580,7 +3580,7 @@ _process_entry = ProcessEntryPython
 
 # Try to load the compiled form if possible
 try:
-    from bzrlib._dirstate_helpers_c import (
+    from bzrlib._dirstate_helpers_pyc import (
         _read_dirblocks_c as _read_dirblocks,
         bisect_dirblock_c as bisect_dirblock,
         _bisect_path_left_c as _bisect_path_left,
