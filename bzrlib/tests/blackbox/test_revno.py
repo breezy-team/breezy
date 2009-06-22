@@ -70,6 +70,16 @@ class TestRevno(TestCaseWithTransport):
         self.assertEqual('', err)
         self.assertEqual('0\n', out)
 
+    def test_revno_tree_no_tree(self):
+        # Make treeless branch
+        b = self.make_branch('branch')
+
+        # Try getting it's --tree revno
+        out,err = self.run_bzr('revno --tree branch', retcode=3)
+        self.assertEqual('', out)
+        self.assertEqual('bzr: ERROR: No WorkingTree exists for "branch".\n',
+            err)
+
     def test_dotted_revno_tree(self):
         builder = self.make_branch_builder('branch')
         builder.start_series()
