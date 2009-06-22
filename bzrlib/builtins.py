@@ -490,6 +490,8 @@ class cmd_revno(Command):
             b.lock_read()
         try:
             if tree:
+                if wt is None:
+                    raise errors.NoWorkingTree(location)
                 revid = wt.last_revision()
                 try:
                     revno_t = wt.branch.revision_id_to_dotted_revno(revid)
