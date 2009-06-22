@@ -56,6 +56,10 @@ def _supports_progress(f):
         return False
     if not isatty():
         return False
+    # The following case also handles Win32 - on that platform $TERM is
+    # typically never set, so the case None is treated as a smart terminal,
+    # not dumb.  <https://bugs.launchpad.net/bugs/334808>  win32 files do have
+    # isatty methods that return true.
     if os.environ.get('TERM') == 'dumb':
         # e.g. emacs compile window
         return False

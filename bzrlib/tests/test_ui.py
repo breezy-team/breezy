@@ -43,6 +43,7 @@ from bzrlib.tests.test_progress import (
 from bzrlib.ui import (
     CLIUIFactory,
     SilentUIFactory,
+    UIFactory,
     make_ui_for_terminal,
     )
 from bzrlib.ui.text import (
@@ -54,12 +55,19 @@ from bzrlib.ui.text import (
 
 class UITests(TestCase):
 
+    def test_cli_factory_deprecated(self):
+        uif = self.applyDeprecated(deprecated_in((1, 17, 0)),
+            CLIUIFactory,
+            StringIO(), StringIO(), StringIO())
+        self.assertIsInstance(uif, UIFactory)
+
     def test_silent_factory(self):
         ui = SilentUIFactory()
         stdout = StringIO()
-        self.assertEqual(None,
-                         self.apply_redirected(None, stdout, stdout,
-                                               ui.get_password))
+        self.assertRaises(
+            NotImplementedError,
+            self.apply_redirected,
+            None, stdout, stdout, ui.get_password)
         self.assertEqual('', stdout.getvalue())
         self.assertEqual(None,
                          self.apply_redirected(None, stdout, stdout,
@@ -123,8 +131,7 @@ class UITests(TestCase):
             # on a dumb terminal, again if there's explicit configuration do
             # it, otherwise default off
             ('dumb', 'none', NullProgressView),
-            # FIXME: should actually be TextProgressView
-            ('dumb', 'text', NullProgressView),
+            ('dumb', 'text', TextProgressView),
             ('dumb', None, NullProgressView),
             ):
             os.environ['TERM'] = term
@@ -237,7 +244,7 @@ class UITests(TestCase):
 
     def test_text_factory_prompt(self):
         # see <https://launchpad.net/bugs/365891>
-        factory = TextUIFactory(None, StringIO(), StringIO(), StringIO())
+        factory = TextUIFactory(StringIO(), StringIO(), StringIO())
         factory.prompt('foo %2e')
         self.assertEqual('', factory.stdout.getvalue())
         self.assertEqual('foo %2e', factory.stderr.getvalue())

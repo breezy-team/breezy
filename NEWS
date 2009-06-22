@@ -58,6 +58,10 @@ Documentation
 API Changes
 ***********
 
+* ``CLIUIFactory`` is deprecated; use ``TextUIFactory`` instead if you
+  need to subclass or create a specific class, or better yet the existing
+  ``make_ui_for_terminal``.  (Martin Pool)
+
 * ProgressTasks now prefer to talk direct to their ProgressView not to the
   UIFactory. 
   (Martin Pool)

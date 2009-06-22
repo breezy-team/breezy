@@ -34,16 +34,15 @@ from bzrlib import (
 """)
 
 from bzrlib.ui import (
-    CLIUIFactory,
+    UIFactory,
     NullProgressView,
     )
 
 
-class TextUIFactory(CLIUIFactory):
+class TextUIFactory(UIFactory):
     """A UI factory for Text user interefaces."""
 
     def __init__(self,
-                 bar_type=None,
                  stdin=None,
                  stdout=None,
                  stderr=None):
@@ -53,11 +52,10 @@ class TextUIFactory(CLIUIFactory):
                          letting the bzrlib.progress.ProgressBar factory auto
                          select.   Deprecated.
         """
-        super(TextUIFactory, self).__init__(stdin=stdin,
-                stdout=stdout, stderr=stderr)
-        if bar_type:
-            symbol_versioning.warn(symbol_versioning.deprecated_in((1, 11, 0))
-                % "bar_type parameter")
+        super(TextUIFactory, self).__init__()
+        self.stdin = stdin
+        self.stdout = stdout
+        self.stderr = stderr
         # paints progress, network activity, etc
         self._progress_view = self.make_progress_view()
         
@@ -71,6 +69,66 @@ class TextUIFactory(CLIUIFactory):
         # bar _is_ going to the terminal, we shouldn't need
         # to clear it.  We might need to separately check for the case of
         self._progress_view.clear()
+
+    def get_boolean(self, prompt):
+        # FIXME: make a regexp and handle case variations as well.
+        while True:
+            self.prompt(prompt + "? [y/n]: ")
+            line = self.stdin.readline()
+            if line in ('y\n', 'yes\n'):
+                return True
+            if line in ('n\n', 'no\n'):
+                return False
+
+    def get_non_echoed_password(self):
+        isatty = getattr(self.stdin, 'isatty', None)
+        if isatty is not None and isatty():
+            # getpass() ensure the password is not echoed and other
+            # cross-platform niceties
+            password = getpass.getpass('')
+        else:
+            # echo doesn't make sense without a terminal
+            password = self.stdin.readline()
+            if not password:
+                password = None
+            elif password[-1] == '\n':
+                password = password[:-1]
+        return password
+
+    def get_password(self, prompt='', **kwargs):
+        """Prompt the user for a password.
+
+        :param prompt: The prompt to present the user
+        :param kwargs: Arguments which will be expanded into the prompt.
+                       This lets front ends display different things if
+                       they so choose.
+        :return: The password string, return None if the user
+                 canceled the request.
+        """
+        prompt += ': '
+        self.prompt(prompt, **kwargs)
+        # There's currently no way to say 'i decline to enter a password'
+        # as opposed to 'my password is empty' -- does it matter?
+        return self.get_non_echoed_password()
+
+    def get_username(self, prompt, **kwargs):
+        """Prompt the user for a username.
+
+        :param prompt: The prompt to present the user
+        :param kwargs: Arguments which will be expanded into the prompt.
+                       This lets front ends display different things if
+                       they so choose.
+        :return: The username string, return None if the user
+                 canceled the request.
+        """
+        prompt += ': '
+        self.prompt(prompt, **kwargs)
+        username = self.stdin.readline()
+        if not username:
+            username = None
+        elif username[-1] == '\n':
+            username = username[:-1]
+        return username
 
     def make_progress_view(self):
         """Construct and return a new ProgressView subclass for this UI.
@@ -90,6 +148,19 @@ class TextUIFactory(CLIUIFactory):
         """Write an already-formatted message, clearing the progress bar if necessary."""
         self.clear_term()
         self.stdout.write(msg + '\n')
+
+    def prompt(self, prompt, **kwargs):
+        """Emit prompt on the CLI.
+        
+        :param kwargs: Dictionary of arguments to insert into the prompt,
+            to allow UIs to reformat the prompt.
+        """
+        if kwargs:
+            # See <https://launchpad.net/bugs/365891>
+            prompt = prompt % kwargs
+        prompt = prompt.encode(osutils.get_terminal_encoding(), 'replace')
+        self.clear_term()
+        self.stderr.write(prompt)
 
     def report_transport_activity(self, transport, byte_count, direction):
         """Called by transports as they do IO.
@@ -265,5 +336,3 @@ class TextProgressView(object):
             self._bytes_since_update = 0
             self._last_transport_msg = msg
             self._repaint()
-
-

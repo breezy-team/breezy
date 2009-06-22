@@ -102,6 +102,7 @@ from bzrlib.tests.TestUtil import (
                           TestLoader,
                           )
 from bzrlib.tests.treeshape import build_tree_contents
+from bzrlib.ui.text import TextUIFactory
 import bzrlib.version_info_formats.format_custom
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat2
 
@@ -702,7 +703,7 @@ class StringIOWrapper(object):
             return setattr(self._cstring, name, val)
 
 
-class TestUIFactory(ui.CLIUIFactory):
+class TestUIFactory(TextUIFactory):
     """A UI Factory for testing.
 
     Hide the progress bar but emit note()s.
