@@ -1547,8 +1547,6 @@ class GroupCompressVersionedFiles(VersionedFiles):
 
         :return: An iterator over (line, key).
         """
-        if pb is None:
-            pb = progress.DummyProgress()
         keys = set(keys)
         total = len(keys)
         # we don't care about inclusions, the caller cares.
@@ -1558,13 +1556,15 @@ class GroupCompressVersionedFiles(VersionedFiles):
             'unordered', True)):
             # XXX: todo - optimise to use less than full texts.
             key = record.key
-            pb.update('Walking content', key_idx, total)
+            if pb is not None:
+                pb.update('Walking content', key_idx, total)
             if record.storage_kind == 'absent':
                 raise errors.RevisionNotPresent(key, self)
             lines = osutils.split_lines(record.get_bytes_as('fulltext'))
             for line in lines:
                 yield line, key
-        pb.update('Walking content', total, total)
+        if pb is not None:
+            pb.update('Walking content', total, total)
 
     def keys(self):
         """See VersionedFiles.keys."""
@@ -1694,7 +1694,7 @@ class _GCGraphIndex(object):
         if check_present:
             missing_keys = keys.difference(found_keys)
             if missing_keys:
-                raise RevisionNotPresent(missing_keys.pop(), self)
+                raise errors.RevisionNotPresent(missing_keys.pop(), self)
 
     def get_parent_map(self, keys):
         """Get a map of the parents of keys.

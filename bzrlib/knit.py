@@ -53,7 +53,7 @@ in the deltas to provide line annotation
 
 
 from cStringIO import StringIO
-from itertools import izip, chain
+from itertools import izip
 import operator
 import os
 import sys
@@ -686,7 +686,7 @@ class KnitAnnotateFactory(_KnitFactory):
         content = knit._get_content(key)
         # adjust for the fact that serialised annotations are only key suffixes
         # for this factory.
-        if type(key) == tuple:
+        if type(key) is tuple:
             prefix = key[:-1]
             origins = content.annotate()
             result = []
@@ -935,6 +935,16 @@ class KnitVersionedFiles(VersionedFiles):
         """Add a set of lines on top of version specified by parents.
 
         Any versions not present will be converted into ghosts.
+
+        :param lines: A list of strings where each one is a single line (has a
+            single newline at the end of the string) This is now optional
+            (callers can pass None). It is left in its location for backwards
+            compatibility. It should ''.join(lines) must == line_bytes
+        :param line_bytes: A single string containing the content
+
+        We pass both lines and line_bytes because different routes bring the
+        values to this function. And for memory efficiency, we don't want to
+        have to split/join on-demand.
         """
         # first thing, if the content is something we don't need to store, find
         # that out.
@@ -982,11 +992,11 @@ class KnitVersionedFiles(VersionedFiles):
             lines = osutils.split_lines(line_bytes)
 
         for element in key[:-1]:
-            if type(element) != str:
+            if type(element) is not str:
                 raise TypeError("key contains non-strings: %r" % (key,))
         if key[-1] is None:
             key = key[:-1] + ('sha1:' + digest,)
-        elif type(key[-1]) != str:
+        elif type(key[-1]) is not str:
                 raise TypeError("key contains non-strings: %r" % (key,))
         # Knit hunks are still last-element only
         version_id = key[-1]
@@ -1953,7 +1963,7 @@ class KnitVersionedFiles(VersionedFiles):
         chunks.extend(dense_lines or lines)
         chunks.append("end %s\n" % key[-1])
         for chunk in chunks:
-            if type(chunk) != str:
+            if type(chunk) is not str:
                 raise AssertionError(
                     'data must be plain bytes was %s' % type(chunk))
         if lines and lines[-1][-1] != '\n':
@@ -2399,7 +2409,7 @@ class _KndxIndex(object):
                     line = "\n%s %s %s %s %s :" % (
                         key[-1], ','.join(options), pos, size,
                         self._dictionary_compress(parents))
-                    if type(line) != str:
+                    if type(line) is not str:
                         raise AssertionError(
                             'data must be utf8 was %s' % type(line))
                     lines.append(line)
@@ -2594,7 +2604,7 @@ class _KndxIndex(object):
         result = set()
         # Identify all key prefixes.
         # XXX: A bit hacky, needs polish.
-        if type(self._mapper) == ConstantMapper:
+        if type(self._mapper) is ConstantMapper:
             prefixes = [()]
         else:
             relpaths = set()
@@ -2632,7 +2642,7 @@ class _KndxIndex(object):
                     del self._history
                 except NoSuchFile:
                     self._kndx_cache[prefix] = ({}, [])
-                    if type(self._mapper) == ConstantMapper:
+                    if type(self._mapper) is ConstantMapper:
                         # preserve behaviour for revisions.kndx etc.
                         self._init_index(path)
                     del self._cache
@@ -3118,7 +3128,7 @@ class _KnitKeyAccess(object):
             opaque index memo. For _KnitKeyAccess the memo is (key, pos,
             length), where the key is the record key.
         """
-        if type(raw_data) != str:
+        if type(raw_data) is not str:
             raise AssertionError(
                 'data must be plain bytes was %s' % type(raw_data))
         result = []
@@ -3207,7 +3217,7 @@ class _DirectPackAccess(object):
             length), where the index field is the write_index object supplied
             to the PackAccess object.
         """
-        if type(raw_data) != str:
+        if type(raw_data) is not str:
             raise AssertionError(
                 'data must be plain bytes was %s' % type(raw_data))
         result = []

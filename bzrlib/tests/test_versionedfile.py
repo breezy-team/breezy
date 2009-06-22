@@ -1471,18 +1471,19 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             self.addCleanup(lambda:self.cleanup(files))
         return files
 
+    def get_simple_key(self, suffix):
+        """Return a key for the object under test."""
+        if self.key_length == 1:
+            return (suffix,)
+        else:
+            return ('FileA',) + (suffix,)
+
     def test_add_lines(self):
         f = self.get_versionedfiles()
-        if self.key_length == 1:
-            key0 = ('r0',)
-            key1 = ('r1',)
-            key2 = ('r2',)
-            keyf = ('foo',)
-        else:
-            key0 = ('fid', 'r0')
-            key1 = ('fid', 'r1')
-            key2 = ('fid', 'r2')
-            keyf = ('fid', 'foo')
+        key0 = self.get_simple_key('r0')
+        key1 = self.get_simple_key('r1')
+        key2 = self.get_simple_key('r2')
+        keyf = self.get_simple_key('foo')
         f.add_lines(key0, [], ['a\n', 'b\n'])
         if self.graph:
             f.add_lines(key1, [key0], ['b\n', 'c\n'])
@@ -1499,16 +1500,10 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
 
     def test__add_text(self):
         f = self.get_versionedfiles()
-        if self.key_length == 1:
-            key0 = ('r0',)
-            key1 = ('r1',)
-            key2 = ('r2',)
-            keyf = ('foo',)
-        else:
-            key0 = ('fid', 'r0')
-            key1 = ('fid', 'r1')
-            key2 = ('fid', 'r2')
-            keyf = ('fid', 'foo')
+        key0 = self.get_simple_key('r0')
+        key1 = self.get_simple_key('r1')
+        key2 = self.get_simple_key('r2')
+        keyf = self.get_simple_key('foo')
         f._add_text(key0, [], 'a\nb\n')
         if self.graph:
             f._add_text(key1, [key0], 'b\nc\n')
@@ -1757,13 +1752,6 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         seen = set()
         self.capture_stream(files, entries, seen.add, parent_map)
         self.assertEqual(set(keys), seen)
-
-    def get_simple_key(self, suffix):
-        """Return a key for the object under test."""
-        if self.key_length == 1:
-            return (suffix,)
-        else:
-            return ('FileA',) + (suffix,)
 
     def get_keys_and_sort_order(self):
         """Get diamond test keys list, and their sort ordering."""
