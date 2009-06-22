@@ -20,9 +20,9 @@ Bug Fixes
 * Better message in ``bzr split`` error suggesting a rich root format.
   (Neil Martinsen-Burrell, #220067)
 
-* Progress bars are now suppressed again when the environment variable
-  ``BZR_PROGRESS_BAR`` is set to ``none``, or when stderr is not 
-  connected to a terminal.
+* The environment variable ``BZR_PROGRESS_BAR`` set to either ``text`` or ``none``
+  always forces progress bars either on or off respectively.  Otherwise,
+  they're turned on if ``TERM`` is not ``dumb`` and stderr is a terminal.
   (Martin Pool, #339385, #387717)
 
 Internals
