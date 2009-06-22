@@ -3688,6 +3688,7 @@ class InterDifferingSerializer(InterRepository):
         cache = lru_cache.LRUCache(100)
         cache[basis_id] = basis_tree
         del basis_tree # We don't want to hang on to it here
+        hints = []
         for offset in range(0, len(revision_ids), batch_size):
             self.target.start_write_group()
             try:
@@ -3699,7 +3700,11 @@ class InterDifferingSerializer(InterRepository):
                 self.target.abort_write_group()
                 raise
             else:
-                self.target.commit_write_group()
+                hint = self.target.commit_write_group()
+                if hint:
+                    hints.extend(hint)
+        if hints and self.target._format.pack_compresses:
+            self.target.pack(hint=hints)
         pb.update('Transferring revisions', len(revision_ids),
                   len(revision_ids))
 

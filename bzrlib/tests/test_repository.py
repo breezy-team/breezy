@@ -1379,7 +1379,7 @@ class TestOptimisingPacker(TestCaseWithTransport):
         self.assertTrue(new_pack.signature_index._optimize_for_size)
 
 
-class TestSinkPacks(TestCaseWithTransport):
+class TestCrossFormatPacks(TestCaseWithTransport):
 
     def log_pack(self, hint=None):
         self.calls.append(('pack', hint))
@@ -1411,16 +1411,49 @@ class TestSinkPacks(TestCaseWithTransport):
         else:
             self.assertLength(0, self.calls)
 
-    def test_format_hint_no(self):
+    def run_fetch(self, src_fmt, target_fmt, expect_pack_called):
+        self.expect_hint = expect_pack_called
+        self.calls = []
+        source_tree = self.make_branch_and_tree('src', format=src_fmt)
+        source_tree.lock_write()
+        self.addCleanup(source_tree.unlock)
+        tip = source_tree.commit('foo')
+        target = self.make_repository('target', format=target_fmt)
+        target.lock_write()
+        self.addCleanup(target.unlock)
+        source = source_tree.branch.repository
+        self.orig_pack = target.pack
+        target.pack = self.log_pack
+        target.fetch(source)
+        if expect_pack_called:
+            self.assertLength(1, self.calls)
+        else:
+            self.assertLength(0, self.calls)
+
+    def test_sink_format_hint_no(self):
         # When the target format says packing makes no difference, pack is not
         # called.
         self.run_stream('1.9', 'rich-root-pack', False)
 
-    def test_format_hint_yes(self):
+    def test_sink_format_hint_yes(self):
         # When the target format says packing makes a difference, pack is
         # called.
         self.run_stream('1.9', '2a', True)
 
-    def test_format_same_no(self):
+    def test_sink_format_same_no(self):
         # When the formats are the same, pack is not called.
         self.run_stream('2a', '2a', False)
+
+    def test_IDS_format_hint_no(self):
+        # When the target format says packing makes no difference, pack is not
+        # called.
+        self.run_fetch('1.9', 'rich-root-pack', False)
+
+    def test_IDS_format_hint_yes(self):
+        # When the target format says packing makes a difference, pack is
+        # called.
+        self.run_fetch('1.9', '2a', True)
+
+    def test_IDS_format_same_no(self):
+        # When the formats are the same, pack is not called.
+        self.run_fetch('2a', '2a', False)
