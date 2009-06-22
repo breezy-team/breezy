@@ -42,6 +42,11 @@ Bug Fixes
   ``BZR_PROGRESS_BAR`` is set to ``none``.
   (Martin Pool, #339385)
 
+* Reduced memory consumption during ``bzr commit`` of large files. For
+  pre 2a formats, should be down to ~3x the size of a file, and for
+  ``--2a`` formats should be down to exactly 2x the size. Related to bug
+  #109114. (John Arbash Meinel)
+
 * Unshelve works correctly when multiple zero-length files are present on
   the shelf. (Aaron Bentley, #363444)
 
@@ -65,6 +70,12 @@ Internals
   than the ``Packer`` code. The user visible change is that we now
   properly fetch the minimum number of texts for non-smart fetching.
   (John Arbash Meinel)
+
+* ``VersionedFiles._add_text`` is a new api that lets us insert text into
+  the repository as a single string, rather than a list of lines. This can
+  improve memory overhead and performance of committing large files.
+  (Currently a private api, used only by commit). (John Arbash Meinel)
+  
 
 
 Improvements
