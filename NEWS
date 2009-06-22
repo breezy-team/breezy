@@ -47,6 +47,11 @@ Improvements
 
   (Ian Clatworthy)
 
+* ``revivion-info`` now properly aligns the revnos/revids in the output
+  and doesn't traceback when given revisions not in the current branch.
+  Performance is also significantly improved when requesting multiple revs
+  at once.  (Matthew Fuller)
+
 
 Bug Fixes
 *********

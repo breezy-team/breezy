@@ -553,18 +553,24 @@ class cmd_revision_info(Command):
                 else:
                     revision_ids.append(b.last_revision())
 
+            revinfos = []
+            maxlen = 0
             for revision_id in revision_ids:
                 try:
                     dotted_revno = b.revision_id_to_dotted_revno(revision_id)
                     revno = '.'.join(str(i) for i in dotted_revno)
                 except errors.NoSuchRevision:
                     revno = '???'
-                self.outf.write('%4s %s\n' % (revno, revision_id))
+                maxlen = max(maxlen, len(revno))
+                revinfos.append([revno, revision_id])
         finally:
             if wt is None:
                 b.unlock()
             else:
                 wt.unlock()
+
+        for ri in revinfos:
+            self.outf.write('%*s %s\n' % (maxlen, ri[0], ri[1]))
 
 
 class cmd_add(Command):
