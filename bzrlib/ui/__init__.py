@@ -35,6 +35,23 @@ TextUIFactory
     depending on the detected capabilities of the terminal.
 """
 
+# Previously, there was CLIUIFactory for dumb terminals, and TextUIFactory for
+# those on smarter terminals.  However, there are actually a few independent
+# variables so simple subclassing doesn't make sense.  The user may or may not
+# want progress bars, but even if they want them off they may want a rich
+# interface in other ways.  And on the other hand input may be redirected from
+# a file so stdin is not a terminal, but we should still try to read input
+# from it and display progress bars etc.  Therefore if we're doing a text UI
+# at all, we just use TextUIFactory and it turns some features on or off
+# depending on the detected settings and capabilities.  
+#
+# We also use this factory for most blackbox tests, but typically with non-tty
+# streams and TERM=dumb.  For api tests, SilentUIFactory is probably
+# appropriate.
+#
+# GUIs may actually choose to subclass TextUIFactory, so unimplemented methods
+# fall back to working through the terminal.
+
 import os
 import sys
 import warnings
