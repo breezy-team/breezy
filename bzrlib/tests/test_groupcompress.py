@@ -366,7 +366,8 @@ class TestGroupCompressBlock(tests.TestCase):
         # we should get the same results if using the chunked version
         gcb = groupcompress.GroupCompressBlock()
         gcb.set_chunked_content(['this is some content\n'
-                                 'this content will be compressed\n'])
+                                 'this content will be compressed\n'],
+                                 len(content))
         old_bytes = bytes
         bytes = gcb.to_bytes()
         self.assertEqual(old_bytes, bytes)

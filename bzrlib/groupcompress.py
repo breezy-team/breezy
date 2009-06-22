@@ -278,12 +278,19 @@ class GroupCompressBlock(object):
             bytes = apply_delta_to_source(self._content, content_start, end)
         return bytes
 
-    def set_chunked_content(self, content_chunks):
+    def set_chunked_content(self, content_chunks, length):
         """Set the content of this block to the given chunks."""
-        self._content_length = sum(map(len, content_chunks))
+        # TODO: if we have *lots* of short lines, it is probably more efficient
+        #       to go ahead and join them up from the start
+        assert length == sum(map(len, content_chunks))
+        self._content_length = length
+        # if self._content_length < 10*1024*1024:
+        #     self._content_chunks = None
+        #     self._content = ''.join(content_chunks)
+        # else:
         self._content_chunks = content_chunks
-        self._z_content = None
         self._content = None
+        self._z_content = None
 
     def set_content(self, content):
         """Set the content of this block."""
@@ -799,10 +806,9 @@ class _CommonGroupCompressor(object):
         #       for 'commit' down to ~1x the size of the largest file, at a
         #       cost of increased complexity within this code. 2x is still <<
         #       3x the size of the largest file, so we are doing ok.
-        content = ''.join(self.chunks)
+        self._block.set_chunked_content(self.chunks, self.endpoint)
         self.chunks = None
         self._delta_index = None
-        self._block.set_content(content)
         return self._block
 
     def pop_last(self):
