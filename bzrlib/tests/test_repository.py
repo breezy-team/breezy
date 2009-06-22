@@ -673,7 +673,7 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
         self.assertFalse(repo._format.supports_external_lookups)
 
 
-class Test2alpha(TestCaseWithTransport):
+class Test2a(TestCaseWithTransport):
 
     def test_format_pack_compresses_True(self):
         repo = self.make_repository('repo', format='2a')
