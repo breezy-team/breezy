@@ -1562,22 +1562,19 @@ class RepositoryPackCollection(object):
         self.ensure_loaded()
         total_packs = len(self._names)
         if self._already_packed():
-            # This is arguably wrong because we might not be optimal, but for
-            # now lets leave it in. (e.g. reconcile -> one pack. But not
-            # optimal.
             return
         total_revisions = self.revision_index.combined_index.key_count()
         # XXX: the following may want to be a class, to pack with a given
         # policy.
         mutter('Packing repository %s, which has %d pack files, '
-            'containing %d revisions into 1 packs.', self, total_packs,
-            total_revisions)
+            'containing %d revisions with hint %r.', self, total_packs,
+            total_revisions, hint)
         # determine which packs need changing
-        pack_distribution = [1]
         pack_operations = [[0, []]]
         for pack in self.all_packs():
-            pack_operations[-1][0] += pack.get_revision_count()
-            pack_operations[-1][1].append(pack)
+            if not hint or pack.name in hint:
+                pack_operations[-1][0] += pack.get_revision_count()
+                pack_operations[-1][1].append(pack)
         self._execute_pack_operations(pack_operations, OptimisingPacker)
 
     def plan_autopack_combinations(self, existing_packs, pack_distribution):

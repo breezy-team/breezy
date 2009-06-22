@@ -692,6 +692,25 @@ class Test2alpha(TestCaseWithTransport):
         self.assertEqual(65536,
             inv.parent_id_basename_to_file_id._root_node.maximum_size)
 
+    def test_pack_with_hint(self):
+        tree = self.make_branch_and_tree('tree', format='2a')
+        # 1 commit to leave untouched
+        tree.commit('1')
+        to_keep = tree.branch.repository._pack_collection.names()
+        # 2 to combine
+        tree.commit('2')
+        tree.commit('3')
+        all = tree.branch.repository._pack_collection.names()
+        combine = list(set(all) - set(to_keep))
+        self.assertLength(3, all)
+        self.assertLength(2, combine)
+        tree.branch.repository.pack(hint=combine)
+        final = tree.branch.repository._pack_collection.names()
+        self.assertLength(2, final)
+        self.assertFalse(combine[0] in final)
+        self.assertFalse(combine[1] in final)
+        self.assertSubset(to_keep, final)
+
     def test_stream_source_to_gc(self):
         source = self.make_repository('source', format='2a')
         target = self.make_repository('target', format='2a')

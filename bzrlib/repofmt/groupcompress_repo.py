@@ -218,6 +218,7 @@ class GCCHKPacker(Packer):
             p_id_roots_set = set()
             stream = source_vf.get_record_stream(keys, 'groupcompress', True)
             for idx, record in enumerate(stream):
+                # Inventories should always be with revisions; assume success.
                 bytes = record.get_bytes_as('fulltext')
                 chk_inv = inventory.CHKInventory.deserialise(None, bytes,
                                                              record.key)
@@ -294,6 +295,11 @@ class GCCHKPacker(Packer):
                     stream = source_vf.get_record_stream(cur_keys,
                                                          'as-requested', True)
                     for record in stream:
+                        if record.storage_kind == 'absent':
+                            # An absent CHK record: we assume that the missing
+                            # record is in a different pack - e.g. a page not
+                            # altered by the commit we're packing.
+                            continue
                         bytes = record.get_bytes_as('fulltext')
                         # We don't care about search_key_func for this code,
                         # because we only care about external references.
