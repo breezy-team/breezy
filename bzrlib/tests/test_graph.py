@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@ from bzrlib import (
     )
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCaseWithMemoryTransport
+from bzrlib.symbol_versioning import deprecated_in
 
 
 # Ancestry 1:
@@ -661,10 +662,36 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertEqual((set(['e']), set(['f', 'g'])),
                          graph.find_difference('e', 'f'))
 
+
     def test_stacked_parents_provider(self):
         parents1 = _mod_graph.DictParentsProvider({'rev2': ['rev3']})
         parents2 = _mod_graph.DictParentsProvider({'rev1': ['rev4']})
-        stacked = _mod_graph._StackedParentsProvider([parents1, parents2])
+        stacked = _mod_graph.StackedParentsProvider([parents1, parents2])
+        self.assertEqual({'rev1':['rev4'], 'rev2':['rev3']},
+                         stacked.get_parent_map(['rev1', 'rev2']))
+        self.assertEqual({'rev2':['rev3'], 'rev1':['rev4']},
+                         stacked.get_parent_map(['rev2', 'rev1']))
+        self.assertEqual({'rev2':['rev3']},
+                         stacked.get_parent_map(['rev2', 'rev2']))
+        self.assertEqual({'rev1':['rev4']},
+                         stacked.get_parent_map(['rev1', 'rev1']))
+    
+    def test_stacked_parents_provider_overlapping(self):
+        # rev2 is availible in both providers.
+        # 1
+        # |
+        # 2
+        parents1 = _mod_graph.DictParentsProvider({'rev2': ['rev1']})
+        parents2 = _mod_graph.DictParentsProvider({'rev2': ['rev1']})
+        stacked = _mod_graph.StackedParentsProvider([parents1, parents2])
+        self.assertEqual({'rev2': ['rev1']},
+                         stacked.get_parent_map(['rev2']))
+
+    def test__stacked_parents_provider_deprecated(self):
+        parents1 = _mod_graph.DictParentsProvider({'rev2': ['rev3']})
+        parents2 = _mod_graph.DictParentsProvider({'rev1': ['rev4']})
+        stacked = self.applyDeprecated(deprecated_in((1, 16, 0)),
+                    _mod_graph._StackedParentsProvider, [parents1, parents2])
         self.assertEqual({'rev1':['rev4'], 'rev2':['rev3']},
                          stacked.get_parent_map(['rev1', 'rev2']))
         self.assertEqual({'rev2':['rev3'], 'rev1':['rev4']},

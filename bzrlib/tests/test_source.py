@@ -42,9 +42,9 @@ from bzrlib.tests import (
 
 # Files which are listed here will be skipped when testing for Copyright (or
 # GPL) statements.
-COPYRIGHT_EXCEPTIONS = ['bzrlib/lsprof.py']
+COPYRIGHT_EXCEPTIONS = ['bzrlib/lsprof.py', 'bzrlib/_bencode_py.py']
 
-LICENSE_EXCEPTIONS = ['bzrlib/lsprof.py']
+LICENSE_EXCEPTIONS = ['bzrlib/lsprof.py', 'bzrlib/_bencode_py.py']
 # Technically, 'bzrlib/lsprof.py' should be 'bzrlib/util/lsprof.py',
 # (we do not check bzrlib/util/, since that is code bundled from elsewhere)
 # but for compatibility with previous releases, we don't want to move it.

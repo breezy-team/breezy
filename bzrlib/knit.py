@@ -2005,8 +2005,8 @@ class _ContentMapGenerator(object):
                 missing_keys.remove(record.key)
                 yield record
 
-        self._raw_record_map = self.vf._get_record_map_unparsed(self.keys,
-            allow_missing=True)
+        if self._raw_record_map is None:
+            raise AssertionError('_raw_record_map should have been filled')
         first = True
         for key in self.keys:
             if key in self.nonlocal_keys:
@@ -3552,12 +3552,8 @@ class _KnitAnnotator(object):
         """Create a heads provider for resolving ancestry issues."""
         if self._heads_provider is not None:
             return self._heads_provider
-        parent_provider = _mod_graph.DictParentsProvider(
-            self._revision_id_graph)
-        graph_obj = _mod_graph.Graph(parent_provider)
-        head_cache = _mod_graph.FrozenHeadsCache(graph_obj)
-        self._heads_provider = head_cache
-        return head_cache
+        self._heads_provider = _mod_graph.KnownGraph(self._revision_id_graph)
+        return self._heads_provider
 
     def annotate(self, key):
         """Return the annotated fulltext at the given key.
@@ -3586,19 +3582,15 @@ class _KnitAnnotator(object):
         being able to produce line deltas.
         """
         # TODO: this code generates a parent maps of present ancestors; it
-        # could be split out into a separate method, and probably should use
-        # iter_ancestry instead. -- mbp and robertc 20080704
+        #       could be split out into a separate method
+        #       -- mbp and robertc 20080704
         graph = _mod_graph.Graph(self._knit)
-        head_cache = _mod_graph.FrozenHeadsCache(graph)
-        search = graph._make_breadth_first_searcher([key])
-        keys = set()
-        while True:
-            try:
-                present, ghosts = search.next_with_ghosts()
-            except StopIteration:
-                break
-            keys.update(present)
-        parent_map = self._knit.get_parent_map(keys)
+        parent_map = dict((k, v) for k, v in graph.iter_ancestry([key])
+                          if v is not None)
+        if not parent_map:
+            raise errors.RevisionNotPresent(key, self)
+        keys = parent_map.keys()
+        heads_provider = _mod_graph.KnownGraph(parent_map)
         parent_cache = {}
         reannotate = annotate.reannotate
         for record in self._knit.get_record_stream(keys, 'topological', True):
@@ -3610,7 +3602,7 @@ class _KnitAnnotator(object):
             else:
                 parent_lines = []
             parent_cache[key] = list(
-                reannotate(parent_lines, fulltext, key, None, head_cache))
+                reannotate(parent_lines, fulltext, key, None, heads_provider))
         try:
             return parent_cache[key]
         except KeyError, e:
