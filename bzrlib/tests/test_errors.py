@@ -242,6 +242,11 @@ class TestErrors(TestCaseWithTransport):
             "You will need to upgrade the branch to permit branch stacking.",
             str(error))
 
+    def test_unstackable_location(self):
+        error = errors.UnstackableLocationError('foo', 'bar')
+        self.assertEqualDiff("The branch 'foo' cannot be stacked on 'bar'.",
+            str(error))
+
     def test_unstackable_repository_format(self):
         format = u'foo'
         url = "/foo"

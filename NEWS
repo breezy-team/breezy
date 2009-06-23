@@ -52,6 +52,13 @@ Bug Fixes
   longer error during commit or push operations when an autopack operation
   is triggered. (Robert Collins, #365615)
 
+* Stacking will no longer accept requests to stack on the same
+  branch/repository. Existing branches that incorrectly reference the same
+  repository in a stacking configuration will now raise
+  UnstackableLocationError when the branch is opened. This can be fixed by
+  removing the stacking location inside ``.bzr/branch``.
+  (Robert Collins, #376243)
+
 * Unshelve works correctly when multiple zero-length files are present on
   the shelf. (Aaron Bentley, #363444)
 
