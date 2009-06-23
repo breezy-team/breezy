@@ -3413,11 +3413,11 @@ class _KnitAnnotator(annotate.Annotator):
             if num == 0:
                 base_content = self._content_objects.pop(compression_parent)
                 self._num_compression_children.pop(compression_parent)
-                copy_base_content = True
+                copy_base_content = False
             else:
                 self._num_compression_children[compression_parent] = num
                 base_content = self._content_objects[compression_parent]
-                copy_base_content = False
+                copy_base_content = True
             content, _ = self._vf._factory.parse_record(
                 key, record, record_details, base_content,
                 copy_base_content=True)
@@ -3425,6 +3425,8 @@ class _KnitAnnotator(annotate.Annotator):
             # Fulltext record
             content, _ = self._vf._factory.parse_record(
                 key, record, record_details, None)
+        # TODO: Only track the content when there are compression children.
+        #       Otherwise we only need the lines
         self._content_objects[key] = content
         lines = content.text()
         self._text_cache[key] = lines
