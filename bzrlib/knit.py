@@ -3426,7 +3426,10 @@ class _KnitAnnotator(annotate.Annotator):
         while True:
             try:
                 records = self._get_build_graph(key)
-                for key, text, num_lines in self._extract_texts(records):
+                for idx, (key, text, num_lines) in enumerate(
+                                                self._extract_texts(records)):
+                    if pb is not None:
+                        pb.update('annotating', idx, len(records))
                     yield key, text, num_lines
                 return
             except errors.RetryWithNewPacks, e:
