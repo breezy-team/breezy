@@ -16,6 +16,20 @@
 
 """Functionality for doing annotations in the 'optimal' way"""
 
+cdef extern from "python-compat.h":
+    pass
+
+cdef extern from "Python.h":
+    ctypedef int Py_ssize_t
+    ctypedef struct PyObject:
+        pass
+    int PyList_CheckExact(object)
+    PyObject *PyList_GET_ITEM(object, Py_ssize_t o)
+    Py_ssize_t PyList_GET_SIZE(object)
+    int PyList_SetItem(object, Py_ssize_t o, object) except -1
+    void Py_INCREF(object)
+
+
 from bzrlib import errors, graph as _mod_graph, osutils, patiencediff, ui
 
 
@@ -119,6 +133,35 @@ class Annotator:
         matching_blocks = matcher.get_matching_blocks()
         return parent_annotations, matching_blocks
 
+    def _pyx_update_from_one_parent(self, key, annotations, lines, parent_key):
+        """Reannotate this text relative to its first parent."""
+        cdef Py_ssize_t parent_idx, lines_idx, match_len, idx
+        cdef PyObject *temp
+
+        if not PyList_CheckExact(annotations):
+            raise TypeError('annotations must be a list')
+        parent_annotations, matching_blocks = self._get_parent_annotations_and_matches(
+            key, lines, parent_key)
+
+        if not PyList_CheckExact(parent_annotations):
+            raise TypeError('parent_annotations must be a list')
+        for parent_idx, lines_idx, match_len in matching_blocks:
+            if parent_idx + match_len > PyList_GET_SIZE(parent_annotations):
+                raise ValueError('Match length exceeds len of'
+                                 ' parent_annotations %s > %s'
+                                 % (parent_idx + match_len,
+                                    PyList_GET_SIZE(parent_annotations)))
+            if lines_idx + match_len > PyList_GET_SIZE(annotations):
+                raise ValueError('Match length exceeds len of'
+                                 ' annotations %s > %s'
+                                 % (lines_idx + match_len,
+                                    PyList_GET_SIZE(annotations)))
+            for idx from 0 <= idx < match_len:
+                temp = PyList_GET_ITEM(parent_annotations, parent_idx + idx)
+                ann = <object>temp
+                Py_INCREF(ann) # PyList_SetItem steals a ref
+                PyList_SetItem(annotations, lines_idx + idx, ann)
+
     def _update_from_one_parent(self, key, annotations, lines, parent_key):
         """Reannotate this text relative to its first parent."""
         parent_annotations, matching_blocks = self._get_parent_annotations_and_matches(
@@ -132,6 +175,7 @@ class Annotator:
     def _update_from_other_parents(self, key, annotations, lines,
                                    this_annotation, parent_key):
         """Reannotate this text relative to a second (or more) parent."""
+        cdef long parent_idx, lines_idx, match_len
         parent_annotations, matching_blocks = self._get_parent_annotations_and_matches(
             key, lines, parent_key)
 
