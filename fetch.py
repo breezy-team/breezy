@@ -204,7 +204,7 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, base_ie, parent_id,
     if base_ie is None:
         # Newly appeared here
         ie.revision = revision_id
-        texts.add_lines((file_id, ie.revision), (), [])
+        texts.insert_record_stream([FulltextContentFactory((file_id, ie.revision), (), [])])
         invdelta.append((None, path, file_id, ie))
     else:
         # See if this has changed at all
@@ -218,7 +218,7 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, base_ie, parent_id,
                 return [], {}, []
         if base_ie.kind != "directory":
             ie.revision = revision_id
-            texts.add_lines((ie.file_id, ie.revision), (), [])
+            texts.insert_record_stream([FulltextContentFactory((ie.file_id, ie.revision), (), None, [])])
             invdelta.append((base_inv.id2path(ie.file_id), path, ie.file_id, ie))
     if base_ie is not None and base_ie.kind == "directory":
         base_children = base_ie.children
