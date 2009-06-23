@@ -58,6 +58,8 @@ import operator
 import os
 import sys
 
+from time import clock
+
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
@@ -3425,7 +3427,9 @@ class _KnitAnnotator(annotate.Annotator):
             return
         while True:
             try:
+                t = clock()
                 records = self._get_build_graph(key)
+                annotate.update_counter('get build graph', clock() - t)
                 for idx, (key, text, num_lines) in enumerate(
                                                 self._extract_texts(records)):
                     if pb is not None:
@@ -3494,9 +3498,11 @@ class _KnitAnnotator(annotate.Annotator):
         """
         block_key = (key, parent_key)
         if block_key in self._matching_blocks:
+            annotate.update_counter('known blocks', 1)
             blocks = self._matching_blocks.pop(block_key)
             parent_annotations = self._annotations_cache[parent_key]
             return parent_annotations, blocks
+        annotate.update_counter('unknown blocks', 1)
         return annotate.Annotator._get_parent_annotations_and_matches(self,
             key, text, parent_key)
 
@@ -3510,9 +3516,11 @@ class _KnitAnnotator(annotate.Annotator):
             compression_parent = key
             children = self._pending_deltas.pop(key)
             for child_key, parent_keys, record, record_details in children:
+                t = clock()
                 lines = self._expand_record(child_key, parent_keys,
                                             compression_parent,
                                             record, record_details)
+                annotate.update_counter('expand_record', clock() - t)
                 assert lines is not None
                 if self._check_ready_for_annotations(child_key, parent_keys):
                     to_return.append(child_key)
@@ -3572,15 +3580,21 @@ class _KnitAnnotator(annotate.Annotator):
 
         # Children that are missing their compression parent
         pending_deltas = {}
+        t_read = clock()
         for (key, record, digest) in self._vf._read_records_iter(records):
+            annotate.update_counter('_read_records_iter', clock() - t_read)
+
             # ghosts?
             details = self._all_build_details[key]
             (_, compression_parent, parent_keys, record_details) = details
             assert parent_keys == self._parent_map[key]
+            t = clock()
             lines = self._expand_record(key, parent_keys, compression_parent,
                                         record, record_details)
+            annotate.update_counter('expand_record', clock() - t)
             if lines is None:
                 # Pending delta should be queued up
+                t_read = clock()
                 continue
             # At this point, we may be able to yield this content, if all
             # parents are also finished
@@ -3589,14 +3603,19 @@ class _KnitAnnotator(annotate.Annotator):
             if yield_this_text:
                 # All parents present
                 yield key, lines, len(lines)
+            t = clock()
             to_process = self._process_pending(key)
+            annotate.update_counter('_process_pending', clock() - t)
             while to_process:
                 this_process = to_process
                 to_process = []
                 for key in this_process:
                     lines = self._text_cache[key]
                     yield key, lines, len(lines)
+                    t = clock()
                     to_process.extend(self._process_pending(key))
+                    annotate.update_counter('_process_pending', clock() - t)
+            t_read = clock()
 
 try:
     from bzrlib._knit_load_data_c import _load_data_c as _load_data

@@ -57,6 +57,9 @@ _counters = counters
 cdef _update_counter(name, value):
     _counters[name] = value + _counters.setdefault(name, 0)
 
+def update_counter(name, value):
+    _update_counter(name, value)
+
 cdef object c
 c = time.clock
 
@@ -244,9 +247,11 @@ class Annotator:
         parent_lines = self._text_cache[parent_key]
         parent_annotations = self._annotations_cache[parent_key]
         # PatienceSequenceMatcher should probably be part of Policy
+        t = c()
         matcher = patiencediff.PatienceSequenceMatcher(None,
             parent_lines, text)
         matching_blocks = matcher.get_matching_blocks()
+        _update_counter('get_matching_blocks()', c() - t)
         return parent_annotations, matching_blocks
 
     def _pyx_update_from_one_parent(self, key, annotations, lines, parent_key):
@@ -349,10 +354,12 @@ class Annotator:
         if parent_keys:
             t1 = c()
             self._update_from_one_parent(key, annotations, text, parent_keys[0])
+            _update_counter('left parents', 1)
             t2 = c()
             for parent in parent_keys[1:]:
                 self._update_from_other_parents(key, annotations, text,
                                                 this_annotation, parent)
+                _update_counter('right parents', 1)
             t3 = c()
             _update_counter('update left', t2 - t1)
             _update_counter('update rest', t3 - t2)

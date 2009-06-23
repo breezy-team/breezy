@@ -447,6 +447,6 @@ def _reannotate_annotated(right_parent_lines, new_lines, new_revision_id,
 
 
 try:
-    from bzrlib._annotator_pyx import Annotator
+    from bzrlib._annotator_pyx import Annotator, update_counter
 except ImportError:
     from bzrlib._annotator_py import Annotator
