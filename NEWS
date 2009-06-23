@@ -54,6 +54,9 @@ Bug Fixes
 * Unshelve works correctly when multiple zero-length files are present on
   the shelf. (Aaron Bentley, #363444)
 
+* Progress bars no longer show the network transport scheme or direction.
+  (Martin Pool)
+
 Internals
 *********
 
