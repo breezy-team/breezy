@@ -131,7 +131,9 @@ class UITests(TestCase):
             stdout=stdout)
         pb = ui_factory.nested_progress_bar()
         try:
-            result = pb.note('t')
+            result = self.applyDeprecated(deprecated_in((1, 17, 0)),
+                pb.note,
+                't')
             self.assertEqual(None, result)
             self.assertEqual("t\n", stdout.getvalue())
             # Since there was no update() call, there should be no clear() call
@@ -154,7 +156,8 @@ class UITests(TestCase):
         try:
             # Create a progress update that isn't throttled
             pb.update('x', 1, 1)
-            result = pb.note('t')
+            result = self.applyDeprecated(deprecated_in((1, 17, 0)),
+                pb.note, 't')
             self.assertEqual(None, result)
             self.assertEqual("t\n", stdout.getvalue())
             # the exact contents will depend on the terminal width and we don't

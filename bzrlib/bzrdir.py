@@ -577,8 +577,7 @@ class BzrDir(object):
             # permissions as the .bzr directory (probably a bug in copy_tree)
             old_path = self.root_transport.abspath('.bzr')
             new_path = self.root_transport.abspath('backup.bzr')
-            pb.note('making backup of %s' % (old_path,))
-            pb.note('  to %s' % (new_path,))
+            ui.ui_factory.note('making backup of %s\n  to %s' % (old_path, new_path,))
             self.root_transport.copy_tree('.bzr', 'backup.bzr')
             return (old_path, new_path)
         finally:
@@ -2575,14 +2574,14 @@ class ConvertBzrDir4To5(Converter):
         """See Converter.convert()."""
         self.bzrdir = to_convert
         self.pb = pb
-        self.pb.note('starting upgrade from format 4 to 5')
+        ui.ui_factory.note('starting upgrade from format 4 to 5')
         if isinstance(self.bzrdir.transport, local.LocalTransport):
             self.bzrdir.get_workingtree_transport(None).delete('stat-cache')
         self._convert_to_weaves()
         return BzrDir.open(self.bzrdir.root_transport.base)
 
     def _convert_to_weaves(self):
-        self.pb.note('note: upgrade may be faster if all store files are ungzipped first')
+        ui.ui_factory.note('note: upgrade may be faster if all store files are ungzipped first')
         try:
             # TODO permissions
             stat = self.bzrdir.transport.stat('weaves')
@@ -2616,10 +2615,10 @@ class ConvertBzrDir4To5(Converter):
         self.pb.clear()
         self._write_all_weaves()
         self._write_all_revs()
-        self.pb.note('upgraded to weaves:')
-        self.pb.note('  %6d revisions and inventories', len(self.revisions))
-        self.pb.note('  %6d revisions not present', len(self.absent_revisions))
-        self.pb.note('  %6d texts', self.text_count)
+        ui.ui_factory.note('upgraded to weaves:')
+        ui.ui_factory.note('  %6d revisions and inventories' % len(self.revisions))
+        ui.ui_factory.note('  %6d revisions not present' % len(self.absent_revisions))
+        ui.ui_factory.note('  %6d texts' % self.text_count)
         self._cleanup_spare_files_after_format4()
         self.branch._transport.put_bytes(
             'branch-format',
@@ -2693,8 +2692,8 @@ class ConvertBzrDir4To5(Converter):
                        len(self.known_revisions))
         if not self.branch.repository.has_revision(rev_id):
             self.pb.clear()
-            self.pb.note('revision {%s} not present in branch; '
-                         'will be converted as a ghost',
+            ui.ui_factory.note('revision {%s} not present in branch; '
+                         'will be converted as a ghost' %
                          rev_id)
             self.absent_revisions.add(rev_id)
         else:
@@ -2827,7 +2826,7 @@ class ConvertBzrDir5To6(Converter):
         """See Converter.convert()."""
         self.bzrdir = to_convert
         self.pb = pb
-        self.pb.note('starting upgrade from format 5 to 6')
+        ui.ui_factory.note('starting upgrade from format 5 to 6')
         self._convert_to_prefixed()
         return BzrDir.open(self.bzrdir.root_transport.base)
 
@@ -2835,7 +2834,7 @@ class ConvertBzrDir5To6(Converter):
         from bzrlib.store import TransportStore
         self.bzrdir.transport.delete('branch-format')
         for store_name in ["weaves", "revision-store"]:
-            self.pb.note("adding prefixes to %s" % store_name)
+            ui.ui_factory.note("adding prefixes to %s" % store_name)
             store_transport = self.bzrdir.transport.clone(store_name)
             store = TransportStore(store_transport, prefixed=True)
             for urlfilename in store_transport.list_dir('.'):
@@ -2875,7 +2874,7 @@ class ConvertBzrDir6ToMeta(Converter):
         self.dir_mode = self.bzrdir._get_dir_mode()
         self.file_mode = self.bzrdir._get_file_mode()
 
-        self.pb.note('starting upgrade from format 6 to metadir')
+        ui.ui_factory.note('starting upgrade from format 6 to metadir')
         self.bzrdir.transport.put_bytes(
                 'branch-format',
                 "Converting to format 6",
@@ -2931,7 +2930,7 @@ class ConvertBzrDir6ToMeta(Converter):
         else:
             has_checkout = True
         if not has_checkout:
-            self.pb.note('No working tree.')
+            ui.ui_factory.note('No working tree.')
             # If some checkout files are there, we may as well get rid of them.
             for name, mandatory in checkout_files:
                 if name in bzrcontents:
@@ -3006,7 +3005,7 @@ class ConvertMetaToMeta(Converter):
         else:
             if not isinstance(repo._format, self.target_format.repository_format.__class__):
                 from bzrlib.repository import CopyConverter
-                self.pb.note('starting repository conversion')
+                ui.ui_factory.note('starting repository conversion')
                 converter = CopyConverter(self.target_format.repository_format)
                 converter.convert(repo, pb)
         try:

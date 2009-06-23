@@ -437,20 +437,20 @@ class TextTestResult(ExtendedTestResult):
         return self._shortened_test_description(test)
 
     def report_error(self, test, err):
-        self.pb.note('ERROR: %s\n    %s\n',
+        ui.ui_factory.note('ERROR: %s\n    %s\n' % (
             self._test_description(test),
             err[1],
-            )
+            ))
 
     def report_failure(self, test, err):
-        self.pb.note('FAIL: %s\n    %s\n',
+        ui.ui_factory.note('FAIL: %s\n    %s\n' % (
             self._test_description(test),
             err[1],
-            )
+            ))
 
     def report_known_failure(self, test, err):
-        self.pb.note('XFAIL: %s\n%s\n',
-            self._test_description(test), err[1])
+        ui.ui_factory.note('XFAIL: %s\n%s\n' % (
+            self._test_description(test), err[1]))
 
     def report_skip(self, test, reason):
         pass
@@ -709,6 +709,8 @@ class TestUIFactory(ui.CLIUIFactory):
     Redirect stdin.
     Allows get_password to be tested without real tty attached.
     """
+    # FIXME: Reduce divergence between this and the regular TextUIFactory or
+    # CannedInputUIFactory
 
     def __init__(self, stdout=None, stderr=None, stdin=None):
         if stdin is not None:
@@ -738,6 +740,7 @@ class TestUIFactory(ui.CLIUIFactory):
         return self
 
     def nested_progress_bar(self):
+        # FIXME: Return a regular progress model instead
         return self
 
     def update(self, message, count=None, total=None):

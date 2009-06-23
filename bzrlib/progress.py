@@ -129,9 +129,14 @@ class ProgressTask(object):
                 own_fraction = 0.0
             return self._parent_task._overall_completion_fraction(own_fraction)
 
+    @deprecated_method(deprecated_in((1, 17, 0)))
     def note(self, fmt_string, *args):
-        """Record a note without disrupting the progress bar."""
-        # XXX: shouldn't be here; put it in mutter or the ui instead
+        """Record a note without disrupting the progress bar.
+        
+        Deprecated: use ui_factory.note() instead or bzrlib.trace.  Note that
+        ui_factory.note takes just one string as the argument, not a format
+        string and arguments.
+        """
         if args:
             self.ui_factory.note(fmt_string % args)
         else:

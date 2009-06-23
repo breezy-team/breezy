@@ -131,6 +131,9 @@ Documentation
 API Changes
 ***********
 
+* ``ProgressTask.note`` is deprecated.
+  (Martin Pool)
+
 * Removed overspecific error class ``InvalidProgressBarType``.
   (Martin Pool)
 

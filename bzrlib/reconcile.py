@@ -90,26 +90,25 @@ class Reconciler(object):
             # Nothing to check here
             self.fixed_branch_history = None
             return
-        self.pb.note('Reconciling branch %s',
-                     self.branch.base)
+        ui.ui_factory.note('Reconciling branch %s' % self.branch.base)
         branch_reconciler = self.branch.reconcile(thorough=True)
         self.fixed_branch_history = branch_reconciler.fixed_history
 
     def _reconcile_repository(self):
         self.repo = self.bzrdir.find_repository()
-        self.pb.note('Reconciling repository %s',
-                     self.repo.bzrdir.root_transport.base)
+        ui.ui_factory.note('Reconciling repository %s' %
+            self.repo.bzrdir.root_transport.base)
         self.pb.update("Reconciling repository", 0, 1)
         repo_reconciler = self.repo.reconcile(thorough=True)
         self.inconsistent_parents = repo_reconciler.inconsistent_parents
         self.garbage_inventories = repo_reconciler.garbage_inventories
         if repo_reconciler.aborted:
-            self.pb.note(
+            ui.ui_factory.note(
                 'Reconcile aborted: revision index has inconsistent parents.')
-            self.pb.note(
+            ui.ui_factory.note(
                 'Run "bzr check" for more details.')
         else:
-            self.pb.note('Reconciliation complete.')
+            ui.ui_factory.note('Reconciliation complete.')
 
 
 class BranchReconciler(object):
@@ -151,13 +150,13 @@ class BranchReconciler(object):
             # set_revision_history, as this will regenerate it again.
             # Not really worth a whole BranchReconciler class just for this,
             # though.
-            self.pb.note('Fixing last revision info %s => %s',
-                         last_revno, len(real_history))
+            ui.ui_factory.note('Fixing last revision info %s => %s' % (
+                 last_revno, len(real_history)))
             self.branch.set_last_revision_info(len(real_history),
                                                last_revision_id)
         else:
             self.fixed_history = False
-            self.pb.note('revision_history ok.')
+            ui.ui_factory.note('revision_history ok.')
 
 
 class RepoReconciler(object):
@@ -238,11 +237,11 @@ class RepoReconciler(object):
         # (no garbage inventories or we are not doing a thorough check)
         if (not self.inconsistent_parents and
             (not self.garbage_inventories or not self.thorough)):
-            self.pb.note('Inventory ok.')
+            ui.ui_factory.note('Inventory ok.')
             return
         self.pb.update('Backing up inventory', 0, 0)
         self.repo._backup_inventory()
-        self.pb.note('Backup inventory created.')
+        ui.ui_factory.note('Backup inventory created.')
         new_inventories = self.repo._temp_inventories()
 
         # we have topological order of revisions and non ghost parents ready.
@@ -262,7 +261,7 @@ class RepoReconciler(object):
         self.pb.update('Writing weave')
         self.repo._activate_new_inventory()
         self.inventory = None
-        self.pb.note('Inventory regenerated.')
+        ui.ui_factory.note('Inventory regenerated.')
 
     def _new_inv_parents(self, revision_key):
         """Lookup ghost-filtered parents for revision_key."""
@@ -369,11 +368,11 @@ class KnitReconciler(RepoReconciler):
         self._check_garbage_inventories()
         self.pb.update('Checking unused inventories', 1, 3)
         if not self.garbage_inventories:
-            self.pb.note('Inventory ok.')
+            ui.ui_factory.note('Inventory ok.')
             return
         self.pb.update('Backing up inventory', 0, 0)
         self.repo._backup_inventory()
-        self.pb.note('Backup Inventory created')
+        ui.ui_factory.note('Backup Inventory created')
         # asking for '' should never return a non-empty weave
         new_inventories = self.repo._temp_inventories()
         # we have topological order of revisions and non ghost parents ready.
@@ -393,7 +392,7 @@ class KnitReconciler(RepoReconciler):
         self.pb.update('Writing weave')
         self.repo._activate_new_inventory()
         self.inventory = None
-        self.pb.note('Inventory regenerated.')
+        ui.ui_factory.note('Inventory regenerated.')
 
     def _fix_text_parents(self):
         """Fix bad versionedfile parent entries.
