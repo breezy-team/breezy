@@ -288,14 +288,14 @@ def _cmp_path_by_dirblock(path1, path2):
     if not PyString_CheckExact(path2):
         raise TypeError("'path2' must be a plain string, not %s: %r"
                         % (type(path2), path2))
-    return __cmp_path_by_dirblock(PyString_AsString(path1),
-                                 PyString_Size(path1),
-                                 PyString_AsString(path2),
-                                 PyString_Size(path2))
+    return _cmp_path_by_dirblock_intern(PyString_AsString(path1),
+                                        PyString_Size(path1),
+                                        PyString_AsString(path2),
+                                        PyString_Size(path2))
 
 
-cdef int __cmp_path_by_dirblock(char *path1, int path1_len,
-                               char *path2, int path2_len):
+cdef int _cmp_path_by_dirblock_intern(char *path1, int path1_len,
+                                      char *path2, int path2_len):
     """Compare two paths by what directory they are in.
 
     see ``_cmp_path_by_dirblock`` for details.
@@ -413,7 +413,8 @@ def _bisect_path_left(paths, path):
         cur = PyList_GetItem_object_void(paths, _mid)
         cur_cstr = PyString_AS_STRING_void(cur)
         cur_size = PyString_GET_SIZE_void(cur)
-        if __cmp_path_by_dirblock(cur_cstr, cur_size, path_cstr, path_size) < 0:
+        if _cmp_path_by_dirblock_intern(cur_cstr, cur_size,
+                                        path_cstr, path_size) < 0:
             _lo = _mid + 1
         else:
             _hi = _mid
@@ -465,7 +466,8 @@ def _bisect_path_right(paths, path):
         cur = PyList_GetItem_object_void(paths, _mid)
         cur_cstr = PyString_AS_STRING_void(cur)
         cur_size = PyString_GET_SIZE_void(cur)
-        if __cmp_path_by_dirblock(path_cstr, path_size, cur_cstr, cur_size) < 0:
+        if _cmp_path_by_dirblock_intern(path_cstr, path_size,
+                                        cur_cstr, cur_size) < 0:
             _hi = _mid
         else:
             _lo = _mid + 1
