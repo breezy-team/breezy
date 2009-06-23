@@ -212,6 +212,16 @@ class SilentUIFactory(UIFactory):
         pass
 
 
+class CannedInputUIFactory(SilentUIFactory):
+    """A silent UI that return canned input."""
+
+    def __init__(self, responses):
+        self.responses = responses
+
+    def get_boolean(self, prompt):
+        return responses.pop(0)
+
+
 @deprecated_function(deprecated_in((1, 17, 0)))
 def clear_decorator(func, *args, **kwargs):
     """Decorator that clears the term"""

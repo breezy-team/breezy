@@ -57,6 +57,9 @@ from bzrlib.tests.bzrdir_implementations import TestCaseWithBzrDir
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
 from bzrlib.transport.local import LocalTransport
+from bzrlib.ui import (
+    CannedInputUIFactory,
+    )
 from bzrlib.upgrade import upgrade
 from bzrlib.remote import RemoteBzrDir, RemoteRepository
 from bzrlib.repofmt import weaverepo
@@ -1760,16 +1763,6 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.failUnless(transport.has('.bzr'))
         self.assertRaises((errors.FileExists, errors.DirectoryNotEmpty),
             bd.retire_bzrdir, limit=0)
-
-
-class CannedInputUIFactory(SilentUIFactory):
-    """A silent UI that return canned input."""
-
-    def __init__(self, responses):
-        self.responses = responses
-
-    def get_boolean(self, prompt):
-        return responses.pop(0)
 
 
 class TestBreakLock(TestCaseWithBzrDir):
