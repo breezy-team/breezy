@@ -3404,6 +3404,7 @@ class _KnitAnnotator(annotate.Annotator):
                             self._num_needed_children[parent_key] += 1
                         else:
                             self._num_needed_children[parent_key] = 1
+                        annotate.update_counter('num children', 1)
                 if compression_parent:
                     if compression_parent in self._num_compression_children:
                         self._num_compression_children[compression_parent] += 1
@@ -3415,6 +3416,7 @@ class _KnitAnnotator(annotate.Annotator):
                 raise ValueError('i dont handle ghosts')
         # Generally we will want to read the records in reverse order, because
         # we find the parent nodes after the children
+        annotate.update_counter('num revs', len(records))
         records.reverse()
         return records
 

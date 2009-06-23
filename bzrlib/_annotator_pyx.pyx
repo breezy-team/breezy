@@ -210,6 +210,7 @@ class Annotator:
                     self._num_needed_children[parent_key] += 1
                 else:
                     self._num_needed_children[parent_key] = 1
+                _update_counter('num children', 1)
         self._parent_map.update(parent_map)
         # _heads_provider does some graph caching, so it is only valid while
         # self._parent_map hasn't changed
