@@ -3408,10 +3408,16 @@ class _KnitAnnotator(annotate.Annotator):
                     (key, parent_keys, record, record_details))
                 return None
             # We have the basis parent, so expand the delta
-            base_content = self._content_objects[compression_parent]
-            # TODO: track _num_compression_children, and when it goes to 1, we
-            #       can set 'copy_base_content = False' and remove base_content
-            #       from the cache (to be inserted as the new content)
+            num = self._num_compression_children[compression_parent]
+            num -= 1
+            if num == 0:
+                base_content = self._content_objects.pop(compression_parent)
+                self._num_compression_children.pop(compression_parent)
+                copy_base_content = True
+            else:
+                self._num_compression_children[compression_parent] = num
+                base_content = self._content_objects[compression_parent]
+                copy_base_content = False
             content, _ = self._vf._factory.parse_record(
                 key, record, record_details, base_content,
                 copy_base_content=True)

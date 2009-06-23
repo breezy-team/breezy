@@ -1348,6 +1348,26 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
         self.assertEqual(1, len(pending))
         self.assertEqual((rev_key, (parent_key,), record, details), pending[0])
 
+    def test__expand_record_tracks_num_children(self):
+        ann = self.make_annotator()
+        rev_key = ('rev-id',)
+        rev2_key = ('rev2-id',)
+        parent_key = ('parent-id',)
+        record = ['0,1,1\n', 'new-line\n']
+        details = ('line-delta', False)
+        ann._num_compression_children[parent_key] = 2
+        ann._expand_record(parent_key, (), None, ['line1\n', 'line2\n'],
+                           ('fulltext', False))
+        res = ann._expand_record(rev_key, (parent_key,), parent_key,
+                                 record, details)
+        self.assertEqual({parent_key: 1}, ann._num_compression_children)
+        # Expanding the second child should remove the content object, and the
+        # num_compression_children entry
+        res = ann._expand_record(rev2_key, (parent_key,), parent_key,
+                                 record, details)
+        self.assertFalse(parent_key in ann._content_objects)
+        self.assertEqual({}, ann._num_compression_children)
+
     def test__process_pending(self):
         ann = self.make_annotator()
         rev_key = ('rev-id',)
@@ -1356,6 +1376,7 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
         record = ['0,1,1\n', 'new-line\n']
         details = ('line-delta', False)
         p1_record = ['line1\n', 'line2\n']
+        ann._num_compression_children[p1_key] = 1
         res = ann._expand_record(rev_key, (p1_key,p2_key), p1_key,
                                  record, details)
         self.assertEqual(None, res)
