@@ -3422,39 +3422,30 @@ class _KnitAnnotator(annotate.Annotator):
         lines = content.text()
         self._text_cache[key] = lines
         return lines
-        # if key in pending_deltas:
-        #     children = pending_deltas.pop(key)
-        #     for key, parent_keys, record, record_details in children:
-        #         to_process.extend(self._expand_record(
-        #     sub_to_proc = self._expand_record(key
-        #     # Check for compression children that we can expand
-        #     if key in pending_deltas:
-        #         children = pending_deltas.pop(key)
-        #         for child_key, child_parent_keys, child_record, child_details in children:
-        #             child_content, child_delta = self._vf._factory.parse_record(
-        #                 child_key, child_record, child_details,
-        #                 content,
-        #                 # TODO: track when we can copy the base
-        #                 copy_base_content=True)
-        #             self._content_objects[child_key] = child_content
-        #             to_process.append((child_key, child_parent_keys, child_content))
 
     def _process_pending(self, key):
         """The content for 'key' was just processed.
 
         Determine if there is any more pending work to be processed.
         """
-        if key not in self._pending_deltas:
-            return []
-        compression_parent = key
-        children = self._pending_deltas.pop(key)
         to_return = []
-        for key, parent_keys, record, record_details in children:
-            lines = self._expand_record(key, parent_keys, compression_parent,
-                                        record, record_details)
-            assert lines is not None
-            if self._check_ready_for_annotations(key, parent_keys):
-                to_return.append(key)
+        if key in self._pending_deltas:
+            compression_parent = key
+            children = self._pending_deltas.pop(key)
+            for child_key, parent_keys, record, record_details in children:
+                lines = self._expand_record(child_key, parent_keys,
+                                            compression_parent,
+                                            record, record_details)
+                assert lines is not None
+                if self._check_ready_for_annotations(child_key, parent_keys):
+                    to_return.append(child_key)
+        # Also check any children that are waiting for this parent to be
+        # annotation ready
+        if key in self._pending_annotation:
+            children = self._pending_annotation.pop(key)
+            to_return.extend([c for c, p_keys in children
+                              if self._check_ready_for_annotations(c, p_keys)])
+        return to_return
 
     def _check_ready_for_annotations(self, key, parent_keys):
         """return true if this text is ready to be yielded.
@@ -3521,18 +3512,14 @@ class _KnitAnnotator(annotate.Annotator):
             if yield_this_text:
                 # All parents present
                 yield key, lines, len(lines)
-            # Whether or not all parents were present, we want to check
-            # if there are any pending compression children that we can now
-            # expand, and have *them* queued up as potential nodes to yield for
-            # annotation
-            # TODO:
-            # if key in self._pending_deltas
-
-            # Now that we have expanded deltas, if we *did* yield this text,
-            # check to see if there are any child texts that are ready to be
-            # yielded as well
-            # TODO:
-            # if yield_this_text and key in pending_annotation:
+            to_process = self._process_pending(key)
+            while to_process:
+                this_process = to_process
+                to_process = []
+                for key in this_process:
+                    lines = self._text_cache[key]
+                    yield key, lines, len(lines)
+                    to_process.extend(self._process_pending(key))
 
 try:
     from bzrlib._knit_load_data_c import _load_data_c as _load_data

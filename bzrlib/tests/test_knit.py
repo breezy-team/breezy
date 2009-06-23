@@ -1348,7 +1348,7 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
         self.assertEqual(1, len(pending))
         self.assertEqual((rev_key, (parent_key,), record, details), pending[0])
 
-    def test__expand_delta_right_parent_not_available(self):
+    def test__process_pending(self):
         ann = self.make_annotator()
         rev_key = ('rev-id',)
         p1_key = ('p1-id',)
@@ -1367,12 +1367,18 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
         self.assertEqual(p1_record, res)
         ann._annotations_cache[p1_key] = [(p1_key,)]*2
         res = ann._process_pending(p1_key)
+        self.assertEqual([], res)
         self.assertFalse(p1_key in ann._pending_deltas)
         self.assertTrue(p2_key in ann._pending_annotation)
         self.assertEqual({p2_key: [(rev_key, (p1_key, p2_key))]},
                          ann._pending_annotation)
         # Now fill in parent 2, and pending annotation should be satisfied
         res = ann._expand_record(p2_key, (), None, [], ('fulltext', False))
+        ann._annotations_cache[p2_key] = []
+        res = ann._process_pending(p2_key)
+        self.assertEqual([rev_key], res)
+        self.assertEqual({}, ann._pending_annotation)
+        self.assertEqual({}, ann._pending_deltas)
 
     def test_record_delta_removes_basis(self):
         ann = self.make_annotator()
