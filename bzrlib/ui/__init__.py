@@ -219,7 +219,7 @@ class CannedInputUIFactory(SilentUIFactory):
         self.responses = responses
 
     def get_boolean(self, prompt):
-        return responses.pop(0)
+        return self.responses.pop(0)
 
 
 @deprecated_function(deprecated_in((1, 17, 0)))

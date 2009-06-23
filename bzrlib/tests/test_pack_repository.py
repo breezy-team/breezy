@@ -484,8 +484,7 @@ class TestPackRepository(TestCaseWithTransport):
         def restoreFactory():
             ui.ui_factory = old_factory
         self.addCleanup(restoreFactory)
-        ui.ui_factory = ui.SilentUIFactory()
-        ui.ui_factory.stdin = StringIO("y\n")
+        ui.ui_factory = ui.CannedInputUIFactory([True])
 
     def test_break_lock_breaks_physical_lock(self):
         repo = self.make_repository('.', format=self.get_format())
