@@ -2938,7 +2938,6 @@ def py_update_entry(state, entry, abspath, stat_value,
                            False, DirState.NULLSTAT)
     state._dirblock_state = DirState.IN_MEMORY_MODIFIED
     return link_or_sha1
-update_entry = py_update_entry
 
 
 class ProcessEntryPython(object):
@@ -3575,25 +3574,30 @@ class ProcessEntryPython(object):
                         current_dir_info = dir_iterator.next()
                     except StopIteration:
                         current_dir_info = None
-_process_entry = ProcessEntryPython
 
 
 # Try to load the compiled form if possible
 try:
-    from bzrlib._dirstate_helpers_c import (
-        _read_dirblocks_c as _read_dirblocks,
-        bisect_dirblock_c as bisect_dirblock,
-        _bisect_path_left_c as _bisect_path_left,
-        _bisect_path_right_c as _bisect_path_right,
-        cmp_by_dirs_c as cmp_by_dirs,
+    from bzrlib._dirstate_helpers_pyx import (
+        _read_dirblocks,
+        bisect_dirblock,
+        _bisect_path_left,
+        _bisect_path_right,
+        cmp_by_dirs,
         ProcessEntryC as _process_entry,
         update_entry as update_entry,
         )
 except ImportError:
     from bzrlib._dirstate_helpers_py import (
-        _read_dirblocks_py as _read_dirblocks,
-        bisect_dirblock_py as bisect_dirblock,
-        _bisect_path_left_py as _bisect_path_left,
-        _bisect_path_right_py as _bisect_path_right,
-        cmp_by_dirs_py as cmp_by_dirs,
+        _read_dirblocks,
+        bisect_dirblock,
+        _bisect_path_left,
+        _bisect_path_right,
+        cmp_by_dirs,
         )
+    # FIXME: It would be nice to be able to track moved lines so that the
+    # corresponding python code can be moved to the _dirstate_helpers_py
+    # module. I don't want to break the history for this important piece of
+    # code so I left the code here -- vila 20090622
+    update_entry = py_update_entry
+    _process_entry = ProcessEntryPython
