@@ -29,6 +29,8 @@ cdef extern from "Python.h":
     int PyList_SetItem(object, Py_ssize_t o, object) except -1
     void Py_INCREF(object)
 
+    int Py_EQ
+    int PyObject_RichCompareBool(object, object, int opid) except -1
 
 from bzrlib import errors, graph as _mod_graph, osutils, patiencediff, ui
 
@@ -61,6 +63,31 @@ cdef class _NeededTextIterator:
         num_lines = len(lines)
         self.text_cache[record.key] = lines
         return record.key, lines, num_lines
+
+
+cdef int _check_annotations_are_lists(annotations,
+                                      parent_annotations) except -1:
+    if not PyList_CheckExact(annotations):
+        raise TypeError('annotations must be a list')
+    if not PyList_CheckExact(parent_annotations):
+        raise TypeError('parent_annotations must be a list')
+    return 0
+
+
+cdef int _check_match_ranges(parent_annotations, annotations,
+                         Py_ssize_t parent_idx, Py_ssize_t lines_idx,
+                         Py_ssize_t match_len) except -1:
+    if parent_idx + match_len > PyList_GET_SIZE(parent_annotations):
+        raise ValueError('Match length exceeds len of'
+                         ' parent_annotations %s > %s'
+                         % (parent_idx + match_len,
+                            PyList_GET_SIZE(parent_annotations)))
+    if lines_idx + match_len > PyList_GET_SIZE(annotations):
+        raise ValueError('Match length exceeds len of'
+                         ' annotations %s > %s'
+                         % (lines_idx + match_len,
+                            PyList_GET_SIZE(annotations)))
+    return 0
 
 
 class Annotator:
@@ -138,24 +165,13 @@ class Annotator:
         cdef Py_ssize_t parent_idx, lines_idx, match_len, idx
         cdef PyObject *temp
 
-        if not PyList_CheckExact(annotations):
-            raise TypeError('annotations must be a list')
         parent_annotations, matching_blocks = self._get_parent_annotations_and_matches(
             key, lines, parent_key)
+        _check_annotations_are_lists(annotations, parent_annotations)
 
-        if not PyList_CheckExact(parent_annotations):
-            raise TypeError('parent_annotations must be a list')
         for parent_idx, lines_idx, match_len in matching_blocks:
-            if parent_idx + match_len > PyList_GET_SIZE(parent_annotations):
-                raise ValueError('Match length exceeds len of'
-                                 ' parent_annotations %s > %s'
-                                 % (parent_idx + match_len,
-                                    PyList_GET_SIZE(parent_annotations)))
-            if lines_idx + match_len > PyList_GET_SIZE(annotations):
-                raise ValueError('Match length exceeds len of'
-                                 ' annotations %s > %s'
-                                 % (lines_idx + match_len,
-                                    PyList_GET_SIZE(annotations)))
+            _check_match_ranges(parent_annotations, annotations,
+                                parent_idx, lines_idx, match_len)
             for idx from 0 <= idx < match_len:
                 temp = PyList_GET_ITEM(parent_annotations, parent_idx + idx)
                 ann = <object>temp
@@ -175,47 +191,46 @@ class Annotator:
     def _update_from_other_parents(self, key, annotations, lines,
                                    this_annotation, parent_key):
         """Reannotate this text relative to a second (or more) parent."""
-        cdef long parent_idx, lines_idx, match_len
+        cdef long parent_idx, ann_idx, lines_idx, match_len, idx
+        cdef PyObject *temp
         parent_annotations, matching_blocks = self._get_parent_annotations_and_matches(
             key, lines, parent_key)
-
+        _check_annotations_are_lists(annotations, parent_annotations)
         last_ann = None
         last_parent = None
         last_res = None
-        # TODO: consider making all annotations unique and then using 'is'
-        #       everywhere. Current results claim that isn't any faster,
-        #       because of the time spent deduping
-        #       deduping also saves a bit of memory. For NEWS it saves ~1MB,
-        #       but that is out of 200-300MB for extracting everything, so a
-        #       fairly trivial amount
         for parent_idx, lines_idx, match_len in matching_blocks:
+            _check_match_ranges(parent_annotations, annotations,
+                                parent_idx, lines_idx, match_len)
             # For lines which match this parent, we will now resolve whether
             # this parent wins over the current annotation
-            ann_sub = annotations[lines_idx:lines_idx + match_len]
-            par_sub = parent_annotations[parent_idx:parent_idx + match_len]
-            if ann_sub == par_sub:
-                continue
-            for idx in xrange(match_len):
-                ann = ann_sub[idx]
-                par_ann = par_sub[idx]
+            for idx from 0 <= idx < match_len:
                 ann_idx = lines_idx + idx
-                if ann == par_ann:
+                temp = PyList_GET_ITEM(annotations, ann_idx)
+                ann = <object>temp
+                temp = PyList_GET_ITEM(parent_annotations, parent_idx + idx)
+                par_ann = <object>temp
+                if (PyObject_RichCompareBool(ann, par_ann, Py_EQ)):
                     # Nothing to change
                     continue
-                if ann == this_annotation:
+                if (PyObject_RichCompareBool(ann, this_annotation, Py_EQ)):
                     # Originally claimed 'this', but it was really in this
                     # parent
-                    annotations[ann_idx] = par_ann
+                    Py_INCREF(par_ann)
+                    PyList_SetItem(annotations, ann_idx, par_ann)
                     continue
                 # Resolve the fact that both sides have a different value for
                 # last modified
-                if ann == last_ann and par_ann == last_parent:
-                    annotations[ann_idx] = last_res
+                if (PyObject_RichCompareBool(ann, last_ann, Py_EQ)
+                    and PyObject_RichCompareBool(par_ann, last_parent, Py_EQ)):
+                    Py_INCREF(last_res)
+                    PyList_SetItem(annotations, ann_idx, last_res)
                 else:
                     new_ann = set(ann)
                     new_ann.update(par_ann)
                     new_ann = tuple(sorted(new_ann))
-                    annotations[ann_idx] = new_ann
+                    Py_INCREF(new_ann)
+                    PyList_SetItem(annotations, ann_idx, new_ann)
                     last_ann = ann
                     last_parent = par_ann
                     last_res = new_ann
