@@ -68,7 +68,6 @@ class Revision(object):
     def __eq__(self, other):
         if not isinstance(other, Revision):
             return False
-        # FIXME: rbc 20050930 parent_ids are not being compared
         return (
                 self.inventory_sha1 == other.inventory_sha1
                 and self.revision_id == other.revision_id
@@ -76,7 +75,8 @@ class Revision(object):
                 and self.message == other.message
                 and self.timezone == other.timezone
                 and self.committer == other.committer
-                and self.properties == other.properties)
+                and self.properties == other.properties
+                and self.parent_ids == other.parent_ids)
 
     def __ne__(self, other):
         return not self.__eq__(other)
