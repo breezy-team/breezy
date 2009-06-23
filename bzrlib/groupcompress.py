@@ -108,6 +108,7 @@ class GroupCompressBlock(object):
         self._z_content_length = None
         self._content_length = None
         self._content = None
+        self._content_chunks = None
 
     def __len__(self):
         # This is the maximum number of bytes this object will reference if
@@ -136,6 +137,10 @@ class GroupCompressBlock(object):
                 'requested num_bytes (%d) > content length (%d)'
                 % (num_bytes, self._content_length))
         # Expand the content if required
+        if self._content is None:
+            if self._content_chunks is not None:
+                self._content = ''.join(self._content_chunks)
+                self._content_chunks = None
         if self._content is None:
             if self._z_content is None:
                 raise AssertionError('No content to decompress')
@@ -273,22 +278,55 @@ class GroupCompressBlock(object):
             bytes = apply_delta_to_source(self._content, content_start, end)
         return bytes
 
+    def set_chunked_content(self, content_chunks, length):
+        """Set the content of this block to the given chunks."""
+        # If we have lots of short lines, it is may be more efficient to join
+        # the content ahead of time. If the content is <10MiB, we don't really
+        # care about the extra memory consumption, so we can just pack it and
+        # be done. However, timing showed 18s => 17.9s for repacking 1k revs of
+        # mysql, which is below the noise margin
+        self._content_length = length
+        self._content_chunks = content_chunks
+        self._content = None
+        self._z_content = None
+
     def set_content(self, content):
         """Set the content of this block."""
         self._content_length = len(content)
         self._content = content
         self._z_content = None
 
+    def _create_z_content_using_lzma(self):
+        if self._content_chunks is not None:
+            self._content = ''.join(self._content_chunks)
+            self._content_chunks = None
+        if self._content is None:
+            raise AssertionError('Nothing to compress')
+        self._z_content = pylzma.compress(self._content)
+        self._z_content_length = len(self._z_content)
+
+    def _create_z_content_from_chunks(self):
+        compressor = zlib.compressobj(zlib.Z_DEFAULT_COMPRESSION)
+        compressed_chunks = map(compressor.compress, self._content_chunks)
+        compressed_chunks.append(compressor.flush())
+        self._z_content = ''.join(compressed_chunks)
+        self._z_content_length = len(self._z_content)
+
+    def _create_z_content(self):
+        if self._z_content is not None:
+            return
+        if _USE_LZMA:
+            self._create_z_content_using_lzma()
+            return
+        if self._content_chunks is not None:
+            self._create_z_content_from_chunks()
+            return
+        self._z_content = zlib.compress(self._content)
+        self._z_content_length = len(self._z_content)
+
     def to_bytes(self):
         """Encode the information into a byte stream."""
-        compress = zlib.compress
-        if _USE_LZMA:
-            compress = pylzma.compress
-        if self._z_content is None:
-            if self._content is None:
-                raise AssertionError('Nothing to compress')
-            self._z_content = compress(self._content)
-            self._z_content_length = len(self._z_content)
+        self._create_z_content()
         if _USE_LZMA:
             header = self.GCB_LZ_HEADER
         else:
@@ -762,10 +800,9 @@ class _CommonGroupCompressor(object):
         #       for 'commit' down to ~1x the size of the largest file, at a
         #       cost of increased complexity within this code. 2x is still <<
         #       3x the size of the largest file, so we are doing ok.
-        content = ''.join(self.chunks)
+        self._block.set_chunked_content(self.chunks, self.endpoint)
         self.chunks = None
         self._delta_index = None
-        self._block.set_content(content)
         return self._block
 
     def pop_last(self):
