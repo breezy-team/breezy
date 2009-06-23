@@ -47,6 +47,18 @@ cdef extern from "Python.h":
 
 from bzrlib import errors, graph as _mod_graph, osutils, patiencediff, ui
 
+import time
+
+
+counters = {}
+cdef object _counters
+_counters = counters
+
+cdef _update_counter(name, value):
+    _counters[name] = value + _counters.setdefault(name, 0)
+
+cdef object c
+c = time.clock
 
 cdef class _NeededTextIterator:
 
@@ -271,8 +283,11 @@ class Annotator:
         cdef Py_ssize_t parent_idx, ann_idx, lines_idx, match_len, idx
         cdef Py_ssize_t pos
         cdef PyObject *temp
+        t1 = c()
         parent_annotations, matching_blocks = self._get_parent_annotations_and_matches(
             key, lines, parent_key)
+        t2 = c()
+        _update_counter('update other match', t2 - t1)
         _check_annotations_are_lists(annotations, parent_annotations)
         last_ann = None
         last_parent = None
@@ -311,6 +326,8 @@ class Annotator:
                     last_ann = ann
                     last_parent = par_ann
                     last_res = new_ann
+        t3 = c()
+        _update_counter('update other resolve', t3 - t2)
 
     def _record_annotation(self, key, parent_keys, annotations):
         self._annotations_cache[key] = annotations
@@ -330,10 +347,15 @@ class Annotator:
         annotations = [this_annotation] * num_lines
         parent_keys = self._parent_map[key]
         if parent_keys:
+            t1 = c()
             self._update_from_one_parent(key, annotations, text, parent_keys[0])
+            t2 = c()
             for parent in parent_keys[1:]:
                 self._update_from_other_parents(key, annotations, text,
                                                 this_annotation, parent)
+            t3 = c()
+            _update_counter('update left', t2 - t1)
+            _update_counter('update rest', t3 - t2)
         self._record_annotation(key, parent_keys, annotations)
 
     def annotate(self, key):
@@ -342,7 +364,9 @@ class Annotator:
         pb = ui.ui_factory.nested_progress_bar()
         try:
             for text_key, text, num_lines in self._get_needed_texts(key, pb=pb):
+                t = c()
                 self._annotate_one(text_key, text, num_lines)
+                _update_counter('annotate one', c() - t)
         finally:
             pb.finished()
         try:
@@ -361,22 +385,35 @@ class Annotator:
 
         This is meant as a compatibility thunk to how annotate() used to work.
         """
+        t_first = c()
         annotations, lines = self.annotate(key)
+        _update_counter('annotate time', c() - t_first)
         assert len(annotations) == len(lines)
         out = []
         heads = self._get_heads_provider().heads
         append = out.append
+        t_second = c()
         for annotation, line in zip(annotations, lines):
             if len(annotation) == 1:
+                _update_counter('one source', 1)
                 append((annotation[0], line))
             else:
+                _update_counter('multi source', 1)
+                t = c()
                 the_heads = heads(annotation)
+                _update_counter('heads time', c() - t)
                 if len(the_heads) == 1:
+                    _update_counter('one head', 1)
                     for head in the_heads:
                         break
                 else:
+                    _update_counter('multi heads', 1)
                     # We need to resolve the ambiguity, for now just pick the
                     # sorted smallest
                     head = sorted(the_heads)[0]
+                if head == annotation[0]:
+                    _update_counter('first ann', 1)
                 append((head, line))
+        _update_counter('resolve annotations', c() - t_second)
+        _update_counter('overall', c() - t_first)
         return out

@@ -4306,6 +4306,9 @@ class cmd_annotate(Command):
                 wt.unlock()
             else:
                 branch.unlock()
+        from bzrlib._annotator_pyx import counters
+        import pprint
+        note('%s', pprint.pformat(counters))
 
 
 class cmd_re_sign(Command):
