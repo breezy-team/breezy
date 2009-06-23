@@ -3382,6 +3382,7 @@ class _KnitAnnotator(annotate.Annotator):
         return records
 
     def _get_needed_texts(self, key, pb=None):
+        # if True or len(self._vf._fallback_vfs) > 0:
         if len(self._vf._fallback_vfs) > 0:
             # If we have fallbacks, go to the generic path
             for v in super(_KnitAnnotator, self)._get_needed_texts(key, pb=pb):
