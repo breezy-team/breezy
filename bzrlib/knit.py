@@ -915,7 +915,7 @@ class KnitVersionedFiles(VersionedFiles):
             line_bytes=line_bytes)
 
     def _add_text(self, key, parents, text, nostore_sha=None, random_id=False):
-        """See VersionedFiles.add_text()."""
+        """See VersionedFiles._add_text()."""
         self._index._check_write_ok()
         self._check_add(key, None, random_id, check_content=False)
         if text.__class__ is not str:
