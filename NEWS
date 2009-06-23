@@ -47,6 +47,10 @@ Bug Fixes
   ``--2a`` formats should be down to exactly 2x the size. Related to bug
   #109114. (John Arbash Meinel)
 
+* Repositories using CHK pages (which includes the new 2a format) will no
+  longer error during commit or push operations when an autopack operation
+  is triggered. (Robert Collins, #365615)
+
 * Unshelve works correctly when multiple zero-length files are present on
   the shelf. (Aaron Bentley, #363444)
 
@@ -66,16 +70,37 @@ Internals
   for files with long ancestry and 'cherrypicked' changes.)
   (John Arbash Meinel, Vincent Ladeuil)
 
+* ``GroupCompress`` repositories now take advantage of the pack hints
+  parameter to permit cross-format fetching to incrementally pack the
+  converted data. (Robert Collins)
+
 * pack <=> pack fetching is now done via a ``PackStreamSource`` rather
   than the ``Packer`` code. The user visible change is that we now
   properly fetch the minimum number of texts for non-smart fetching.
   (John Arbash Meinel)
 
+* ``Repository.commit_write_group`` now returns opaque data about what
+  was committed, for passing to the ``Repository.pack``. Repositories
+  without atomic commits will still return None. (Robert Collins)
+
+* ``Repository.pack`` now takes an optional ``hint`` parameter
+  which will support doing partial packs for repositories that can do
+  that. (Robert Collins)
+
+* RepositoryFormat has a new attribute 'pack_compresses' which is True
+  when doing a pack operation changes the compression of content in the
+  repository. (Robert Collins)
+
+* ``StreamSink`` and ``InterDifferingSerialiser`` will call
+  ``Repository.pack`` with the hint returned by
+  ``Repository.commit_write_group`` if the formats were different and the
+  repository can increase compression by doing a pack operation.
+  (Robert Collins, #376748)
+
 * ``VersionedFiles._add_text`` is a new api that lets us insert text into
   the repository as a single string, rather than a list of lines. This can
   improve memory overhead and performance of committing large files.
   (Currently a private api, used only by commit). (John Arbash Meinel)
-  
 
 
 Improvements
