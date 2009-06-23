@@ -137,7 +137,8 @@ class UITests(TestCase):
             else:
                 os.environ['TERM'] = term_type
             uif = make_ui_for_terminal(stdin, stdout, stderr)
-            self.assertEqual(uif, TextUIFactory)
+            self.assertIsInstance(uif, TextUIFactory,
+                'TERM=%r' % (term_type,))
 
     def test_progress_note(self):
         stderr = StringIO()
