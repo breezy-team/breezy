@@ -1372,6 +1372,26 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
         # they do not have compression children of their own.
         self.assertEqual({}, ann._content_objects)
 
+    def test__expand_delta_records_blocks(self):
+        ann = self.make_annotator()
+        rev_key = ('rev-id',)
+        parent_key = ('parent-id',)
+        record = ['0,1,1\n', 'new-line\n']
+        details = ('line-delta', True)
+        ann._num_compression_children[parent_key] = 2
+        ann._expand_record(parent_key, (), None,
+                           ['line1\n', 'line2\n', 'line3\n'],
+                           ('fulltext', False))
+        ann._expand_record(rev_key, (parent_key,), parent_key, record, details)
+        self.assertEqual({rev_key: [(1, 1, 1), (3, 3, 0)]},
+                         ann._left_matching_blocks)
+        rev2_key = ('rev2-id',)
+        record = ['0,1,1\n', 'new-line\n']
+        details = ('line-delta', False)
+        ann._expand_record(rev2_key, (parent_key,), parent_key, record, details)
+        self.assertEqual([(1, 1, 2), (3, 3, 0)],
+                         ann._left_matching_blocks[rev2_key])
+
     def test__process_pending(self):
         ann = self.make_annotator()
         rev_key = ('rev-id',)

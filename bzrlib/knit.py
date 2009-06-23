@@ -3399,8 +3399,14 @@ class _KnitAnnotator(annotate.Annotator):
                 # The cached build_details are no longer valid
                 self._all_build_details.clear()
 
+    def _cache_delta_blocks(self, key, compression_parent, delta, lines):
+        parent_lines = self._text_cache[compression_parent]
+        blocks = list(KnitContent.get_line_delta_blocks(delta, parent_lines, lines))
+        self._left_matching_blocks[key] = blocks
+
     def _expand_record(self, key, parent_keys, compression_parent, record,
                        record_details):
+        delta = None
         if compression_parent:
             if compression_parent not in self._content_objects:
                 # Waiting for the parent
@@ -3422,19 +3428,19 @@ class _KnitAnnotator(annotate.Annotator):
             # gives very bad results.
             # The alternative is to copy the lines into text cache, but then we
             # are copying anyway, so just do it here.
-            content, _ = self._vf._factory.parse_record(
+            content, delta = self._vf._factory.parse_record(
                 key, record, record_details, base_content,
                 copy_base_content=True)
         else:
             # Fulltext record
             content, _ = self._vf._factory.parse_record(
                 key, record, record_details, None)
-        # TODO: Only track the content when there are compression children.
-        #       Otherwise we only need the lines
         if self._num_compression_children.get(key, 0) > 0:
             self._content_objects[key] = content
         lines = content.text()
         self._text_cache[key] = lines
+        if delta is not None:
+            self._cache_delta_blocks(key, compression_parent, delta, lines)
         return lines
 
     def _process_pending(self, key):
