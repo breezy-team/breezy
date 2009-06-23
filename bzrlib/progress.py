@@ -138,7 +138,13 @@ class ProgressTask(object):
             self.ui_factory.note(fmt_string)
 
     def clear(self):
-        # XXX: shouldn't be here; put it in mutter or the ui instead
+        # TODO: deprecate this method; the model object shouldn't be concerned
+        # with whether it's shown or not.  Most callers use this because they
+        # want to write some different non-progress output to the screen, but
+        # they should probably instead use a stream that's synchronized with
+        # the progress output.  It may be there is a model-level use for
+        # saying "this task's not active at the moment" but I don't see it. --
+        # mbp 20090623
         self.ui_factory.clear_term()
 
 
