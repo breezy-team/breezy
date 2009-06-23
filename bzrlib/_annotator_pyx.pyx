@@ -26,7 +26,20 @@ cdef extern from "Python.h":
     int PyList_CheckExact(object)
     PyObject *PyList_GET_ITEM(object, Py_ssize_t o)
     Py_ssize_t PyList_GET_SIZE(object)
+    int PyList_Append(object, object) except -1
     int PyList_SetItem(object, Py_ssize_t o, object) except -1
+    int PyList_Sort(object) except -1
+
+    int PyTuple_CheckExact(object)
+    object PyTuple_New(Py_ssize_t len)
+    void PyTuple_SET_ITEM(object, Py_ssize_t pos, object)
+    int PyTuple_Resize(PyObject **, Py_ssize_t newlen)
+    PyObject *PyTuple_GET_ITEM(object, Py_ssize_t o)
+    Py_ssize_t PyTuple_GET_SIZE(object)
+
+    PyObject *PyDict_GetItem(object d, object k)
+    int PyDict_SetItem(object d, object k, object v) except -1
+
     void Py_INCREF(object)
 
     int Py_EQ
@@ -88,6 +101,70 @@ cdef int _check_match_ranges(parent_annotations, annotations,
                          % (lines_idx + match_len,
                             PyList_GET_SIZE(annotations)))
     return 0
+
+
+cdef object _combine_annotations(ann_one, ann_two, cache):
+    """Combine the annotations from both sides."""
+    cdef Py_ssize_t pos_one, pos_two, len_one, len_two
+    cdef Py_ssize_t out_pos
+    cdef PyObject *temp
+
+    cache_key = (ann_one, ann_two)
+    temp = PyDict_GetItem(cache, cache_key)
+    if temp != NULL:
+        return <object>temp
+
+    if not PyTuple_CheckExact(ann_one) or not PyTuple_CheckExact(ann_two):
+        raise TypeError('annotations must be tuples')
+    # We know that annotations are tuples, and that both sides are already
+    # sorted, so we can just walk and update a new list.
+    len_one = PyTuple_GET_SIZE(ann_one)
+    len_two = PyTuple_GET_SIZE(ann_two)
+    if len_one < 1 or len_two < 1:
+        raise ValueError('annotations cannot claim 0 references.')
+    pos_one = 0
+    pos_two = 0
+    out_pos = 0
+    temp = PyTuple_GET_ITEM(ann_one, pos_one); left = <object>temp
+    temp = PyTuple_GET_ITEM(ann_two, pos_two); right = <object>temp
+    new_ann = PyTuple_New(len_one + len_two)
+    while left is not None or right is not None:
+        if PyObject_RichCompareBool(left, right, Py_EQ):
+            # Append once, increment both
+            Py_INCREF(left)
+            PyTuple_SET_ITEM(new_ann, out_pos, left)
+            pos_one = pos_one + 1
+            pos_two = pos_two + 1
+            if pos_one >= len_one:
+                left = None
+            else:
+                temp = PyTuple_GET_ITEM(ann_one, pos_one); left = <object>temp
+            if pos_two >= len_two:
+                right = None
+            else:
+                temp = PyTuple_GET_ITEM(ann_two, pos_two); right = <object>temp
+        elif right is None or (left is not None and left < right):
+            Py_INCREF(left)
+            PyTuple_SET_ITEM(new_ann, out_pos, left)
+            pos_one = pos_one + 1
+            if pos_one >= len_one:
+                left = None
+            else:
+                temp = PyTuple_GET_ITEM(ann_one, pos_one); left = <object>temp
+        else: # right < left
+            Py_INCREF(right)
+            PyTuple_SET_ITEM(new_ann, out_pos, right)
+            pos_two = pos_two + 1
+            if pos_two >= len_two:
+                right = None
+            else:
+                temp = PyTuple_GET_ITEM(ann_two, pos_two); right = <object>temp
+        out_pos = out_pos + 1
+    if out_pos != len_one + len_two:
+        # PyTuple_Resize((<PyObject **>new_ann), out_pos)
+        new_ann = new_ann[0:out_pos]
+    PyDict_SetItem(cache, cache_key, new_ann)
+    return new_ann
 
 
 class Annotator:
@@ -191,7 +268,8 @@ class Annotator:
     def _update_from_other_parents(self, key, annotations, lines,
                                    this_annotation, parent_key):
         """Reannotate this text relative to a second (or more) parent."""
-        cdef long parent_idx, ann_idx, lines_idx, match_len, idx
+        cdef Py_ssize_t parent_idx, ann_idx, lines_idx, match_len, idx
+        cdef Py_ssize_t pos
         cdef PyObject *temp
         parent_annotations, matching_blocks = self._get_parent_annotations_and_matches(
             key, lines, parent_key)
@@ -199,6 +277,7 @@ class Annotator:
         last_ann = None
         last_parent = None
         last_res = None
+        cache = {}
         for parent_idx, lines_idx, match_len in matching_blocks:
             _check_match_ranges(parent_annotations, annotations,
                                 parent_idx, lines_idx, match_len)
@@ -226,9 +305,7 @@ class Annotator:
                     Py_INCREF(last_res)
                     PyList_SetItem(annotations, ann_idx, last_res)
                 else:
-                    new_ann = set(ann)
-                    new_ann.update(par_ann)
-                    new_ann = tuple(sorted(new_ann))
+                    new_ann = _combine_annotations(ann, par_ann, cache)
                     Py_INCREF(new_ann)
                     PyList_SetItem(annotations, ann_idx, new_ann)
                     last_ann = ann
