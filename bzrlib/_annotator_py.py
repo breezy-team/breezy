@@ -40,6 +40,7 @@ class Annotator(object):
         # Map from key => number of nexts that will be built from this key
         self._num_needed_children = {}
         self._annotations_cache = {}
+        self._heads_provider = None
 
     def _get_needed_keys(self, key):
         graph = _mod_graph.Graph(self._vf)
@@ -57,6 +58,9 @@ class Annotator(object):
                 else:
                     self._num_needed_children[parent_key] = 1
         self._parent_map.update(parent_map)
+        # _heads_provider does some graph caching, so it is only valid while
+        # self._parent_map hasn't changed
+        self._heads_provider = None
         keys = parent_map.keys()
         return keys
 
@@ -197,6 +201,11 @@ class Annotator(object):
             raise errors.RevisionNotPresent(key, self._vf)
         return annotations, self._text_cache[key]
 
+    def _get_heads_provider(self):
+        if self._heads_provider is None:
+            self._heads_provider = _mod_graph.KnownGraph(self._parent_map)
+        return self._heads_provider
+
     def annotate_flat(self, key):
         """Determine the single-best-revision to source for each line.
 
@@ -205,8 +214,7 @@ class Annotator(object):
         annotations, lines = self.annotate(key)
         assert len(annotations) == len(lines)
         out = []
-        graph = _mod_graph.KnownGraph(self._parent_map)
-        heads = graph.heads
+        heads = self._get_heads_provider().heads
         append = out.append
         for annotation, line in zip(annotations, lines):
             if len(annotation) == 1:

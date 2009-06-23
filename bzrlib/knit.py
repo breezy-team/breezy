@@ -3391,6 +3391,7 @@ class _KnitAnnotator(annotate.Annotator):
                 (index_memo, compression_parent, parent_keys,
                  record_details) = details
                 self._parent_map[key] = parent_keys
+                self._heads_provider = None
                 records.append((key, index_memo))
                 # Do we actually need to check _annotated_lines?
                 pending.update(p for p in parent_keys
