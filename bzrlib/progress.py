@@ -144,7 +144,10 @@ class ProgressTask(object):
 
 @deprecated_function(deprecated_in((1, 16, 0)))
 def ProgressBar(to_file=None, **kwargs):
-    """Abstract factory"""
+    """Construct a progress bar.
+
+    Deprecated; ask the ui_factory for a progress task instead.
+    """
     if to_file is None:
         to_file = sys.stderr
     requested_bar_type = os.environ.get('BZR_PROGRESS_BAR')

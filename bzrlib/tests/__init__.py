@@ -720,13 +720,13 @@ class TestUIFactory(ui.CLIUIFactory):
         super(TestUIFactory, self).__init__(stdin, stdout, stderr)
 
     def clear(self):
-        """See progress.ProgressBar.clear()."""
+        """See progress.ProgressTask.clear()."""
 
     def clear_term(self):
-        """See progress.ProgressBar.clear_term()."""
+        """See progress.ProgressTask.clear_term()."""
 
     def finished(self):
-        """See progress.ProgressBar.finished()."""
+        """See progress.ProgressTask.finished()."""
 
     def note(self, fmt_string, *args):
         """See progress.ProgressBar.note()."""
@@ -741,7 +741,7 @@ class TestUIFactory(ui.CLIUIFactory):
         return self
 
     def update(self, message, count=None, total=None):
-        """See progress.ProgressBar.update()."""
+        """See progress.ProgressTask.update()."""
 
     def get_non_echoed_password(self):
         """Get password from stdin without trying to handle the echo mode"""

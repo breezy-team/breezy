@@ -47,9 +47,8 @@ class TextUIFactory(CLIUIFactory):
                  stderr=None):
         """Create a TextUIFactory.
 
-        :param bar_type: The type of progress bar to create. It defaults to
-                         letting the bzrlib.progress.ProgressBar factory auto
-                         select.   Deprecated.
+        :param bar_type: The type of progress bar to create.  Deprecated
+            and ignored; a TextProgressView is always used.
         """
         super(TextUIFactory, self).__init__(stdin=stdin,
                 stdout=stdout, stderr=stderr)

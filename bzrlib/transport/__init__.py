@@ -846,7 +846,7 @@ class Transport(object):
         """Get a list of file-like objects, one for each entry in relpaths.
 
         :param relpaths: A list of relative paths.
-        :param pb:  An optional ProgressBar for indicating percent done.
+        :param pb:  An optional ProgressTask for indicating percent done.
         :return: A list or generator of file-like objects
         """
         # TODO: Consider having this actually buffer the requests,
@@ -1015,7 +1015,7 @@ class Transport(object):
         the supplied location.
 
         :param files: A set of (path, f) entries
-        :param pb:  An optional ProgressBar for indicating percent done.
+        :param pb:  An optional ProgressTask for indicating percent done.
         """
         return self._iterate_over(files, self.append_file, pb, 'append', expand=True)
 
