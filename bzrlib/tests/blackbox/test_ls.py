@@ -129,19 +129,11 @@ class TestLS(TestCaseWithTransport):
         self.ls_equals('b\n')
         self.ls_equals('b\0'
                   , '--null')
-        self.ls_equals('.bzrignore\n'
-                       'a\n'
-                       'subdir/\n'
-                       'subdir/b\n'
+        self.ls_equals('subdir/b\n'
                        , '--from-root')
-        self.ls_equals('.bzrignore\0'
-                       'a\0'
-                       'subdir\0'
-                       'subdir/b\0'
+        self.ls_equals('subdir/b\0'
                        , '--from-root --null')
-        self.ls_equals('.bzrignore\n'
-                       'a\n'
-                       'subdir/\n'
+        self.ls_equals('subdir/b\n'
                        , '--from-root', recursive=False)
 
     def test_ls_path(self):

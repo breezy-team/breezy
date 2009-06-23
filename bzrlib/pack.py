@@ -406,8 +406,11 @@ class ContainerPushParser(object):
         # the buffer.
         last_buffer_length = None
         cur_buffer_length = len(self._buffer)
-        while cur_buffer_length != last_buffer_length:
+        last_state_handler = None
+        while (cur_buffer_length != last_buffer_length
+               or last_state_handler != self._state_handler):
             last_buffer_length = cur_buffer_length
+            last_state_handler = self._state_handler
             self._state_handler()
             cur_buffer_length = len(self._buffer)
 

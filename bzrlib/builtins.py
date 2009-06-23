@@ -1044,7 +1044,8 @@ class cmd_push(Command):
         if directory is None:
             directory = '.'
         # Get the source branch
-        tree, br_from = bzrdir.BzrDir.open_tree_or_branch(directory)
+        (tree, br_from,
+         _unused) = bzrdir.BzrDir.open_containing_tree_or_branch(directory)
         if strict is None:
             strict = br_from.get_config().get_user_option('push_strict')
             if strict is not None:
@@ -2395,19 +2396,22 @@ class cmd_ls(Command):
 
         if path is None:
             fs_path = '.'
-            prefix = ''
         else:
             if from_root:
                 raise errors.BzrCommandError('cannot specify both --from-root'
                                              ' and PATH')
             fs_path = path
-            prefix = path
         tree, branch, relpath = bzrdir.BzrDir.open_containing_tree_or_branch(
             fs_path)
+
+        # Calculate the prefix to use
+        prefix = None
         if from_root:
-            relpath = u''
-        elif relpath:
-            relpath += '/'
+            if relpath:
+                prefix = relpath + '/'
+        elif fs_path != '.':
+            prefix = fs_path + '/'
+
         if revision is not None or tree is None:
             tree = _get_one_revision_tree('ls', revision, branch=branch)
 
@@ -2421,45 +2425,50 @@ class cmd_ls(Command):
 
         tree.lock_read()
         try:
-            for fp, fc, fkind, fid, entry in tree.list_files(include_root=False):
-                if fp.startswith(relpath):
-                    rp = fp[len(relpath):]
-                    fp = osutils.pathjoin(prefix, rp)
-                    if not recursive and '/' in rp:
+            for fp, fc, fkind, fid, entry in tree.list_files(include_root=False,
+                from_dir=relpath, recursive=recursive):
+                # Apply additional masking
+                if not all and not selection[fc]:
+                    continue
+                if kind is not None and fkind != kind:
+                    continue
+                if apply_view:
+                    try:
+                        if relpath:
+                            fullpath = osutils.pathjoin(relpath, fp)
+                        else:
+                            fullpath = fp
+                        views.check_path_in_view(tree, fullpath)
+                    except errors.FileOutsideView:
                         continue
-                    if not all and not selection[fc]:
-                        continue
-                    if kind is not None and fkind != kind:
-                        continue
-                    if apply_view:
-                        try:
-                            views.check_path_in_view(tree, fp)
-                        except errors.FileOutsideView:
-                            continue
-                    kindch = entry.kind_character()
-                    outstring = fp + kindch
-                    ui.ui_factory.clear_term()
-                    if verbose:
-                        outstring = '%-8s %s' % (fc, outstring)
-                        if show_ids and fid is not None:
-                            outstring = "%-50s %s" % (outstring, fid)
-                        self.outf.write(outstring + '\n')
-                    elif null:
-                        self.outf.write(fp + '\0')
-                        if show_ids:
-                            if fid is not None:
-                                self.outf.write(fid)
-                            self.outf.write('\0')
-                        self.outf.flush()
-                    else:
+
+                # Output the entry
+                if prefix:
+                    fp = osutils.pathjoin(prefix, fp)
+                kindch = entry.kind_character()
+                outstring = fp + kindch
+                ui.ui_factory.clear_term()
+                if verbose:
+                    outstring = '%-8s %s' % (fc, outstring)
+                    if show_ids and fid is not None:
+                        outstring = "%-50s %s" % (outstring, fid)
+                    self.outf.write(outstring + '\n')
+                elif null:
+                    self.outf.write(fp + '\0')
+                    if show_ids:
+                        if fid is not None:
+                            self.outf.write(fid)
+                        self.outf.write('\0')
+                    self.outf.flush()
+                else:
+                    if show_ids:
                         if fid is not None:
                             my_id = fid
                         else:
                             my_id = ''
-                        if show_ids:
-                            self.outf.write('%-50s %s\n' % (outstring, my_id))
-                        else:
-                            self.outf.write(outstring + '\n')
+                        self.outf.write('%-50s %s\n' % (outstring, my_id))
+                    else:
+                        self.outf.write(outstring + '\n')
         finally:
             tree.unlock()
 
@@ -2989,19 +2998,28 @@ class cmd_check(Command):
     The working tree and branch checks will only give output if a problem is
     detected. The output fields of the repository check are:
 
-        revisions: This is just the number of revisions checked.  It doesn't
-            indicate a problem.
-        versionedfiles: This is just the number of versionedfiles checked.  It
-            doesn't indicate a problem.
-        unreferenced ancestors: Texts that are ancestors of other texts, but
-            are not properly referenced by the revision ancestry.  This is a
-            subtle problem that Bazaar can work around.
-        unique file texts: This is the total number of unique file contents
-            seen in the checked revisions.  It does not indicate a problem.
-        repeated file texts: This is the total number of repeated texts seen
-            in the checked revisions.  Texts can be repeated when their file
-            entries are modified, but the file contents are not.  It does not
-            indicate a problem.
+    revisions
+        This is just the number of revisions checked.  It doesn't
+        indicate a problem.
+
+    versionedfiles
+        This is just the number of versionedfiles checked.  It
+        doesn't indicate a problem.
+
+    unreferenced ancestors
+        Texts that are ancestors of other texts, but
+        are not properly referenced by the revision ancestry.  This is a
+        subtle problem that Bazaar can work around.
+
+    unique file texts
+        This is the total number of unique file contents
+        seen in the checked revisions.  It does not indicate a problem.
+
+    repeated file texts
+        This is the total number of repeated texts seen
+        in the checked revisions.  Texts can be repeated when their file
+        entries are modified, but the file contents are not.  It does not
+        indicate a problem.
 
     If no restrictions are specified, all Bazaar data that is found at the given
     location will be checked.

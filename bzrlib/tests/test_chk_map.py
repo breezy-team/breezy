@@ -78,6 +78,11 @@ class TestCaseWithStore(tests.TestCaseWithTransport):
         root_key = CHKMap.from_dict(chk_bytes, a_dict,
             maximum_size=maximum_size, key_width=key_width,
             search_key_func=search_key_func)
+        root_key2 = CHKMap._create_via_map(chk_bytes, a_dict,
+            maximum_size=maximum_size, key_width=key_width,
+            search_key_func=search_key_func)
+        self.assertEqual(root_key, root_key2, "CHKMap.from_dict() did not"
+                         " match CHKMap._create_via_map")
         chkmap = CHKMap(chk_bytes, root_key, search_key_func=search_key_func)
         return chkmap
 

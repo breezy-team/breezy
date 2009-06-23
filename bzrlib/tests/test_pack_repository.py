@@ -38,6 +38,10 @@ from bzrlib import (
     upgrade,
     workingtree,
     )
+from bzrlib.repofmt import (
+    pack_repo,
+    groupcompress_repo,
+    )
 from bzrlib.repofmt.groupcompress_repo import RepositoryFormatCHK1
 from bzrlib.smart import (
     client,
@@ -233,6 +237,35 @@ class TestPackRepository(TestCaseWithTransport):
         self.assertEqual(2, len(list(index.iter_all_entries())))
         pack_names = [node[1][0] for node in index.iter_all_entries()]
         self.assertTrue(large_pack_name in pack_names)
+
+    def test_commit_write_group_returns_new_pack_names(self):
+        format = self.get_format()
+        tree = self.make_branch_and_tree('foo', format=format)
+        tree.commit('first post')
+        repo = tree.branch.repository
+        repo.lock_write()
+        try:
+            repo.start_write_group()
+            try:
+                inv = inventory.Inventory(revision_id="A")
+                inv.root.revision = "A"
+                repo.texts.add_lines((inv.root.file_id, "A"), [], [])
+                rev = _mod_revision.Revision(timestamp=0, timezone=None,
+                    committer="Foo Bar <foo@example.com>", message="Message",
+                    revision_id="A")
+                rev.parent_ids = ()
+                repo.add_revision("A", rev, inv=inv)
+            except:
+                repo.abort_write_group()
+                raise
+            else:
+                old_names = repo._pack_collection._names.keys()
+                result = repo.commit_write_group()
+                cur_names = repo._pack_collection._names.keys()
+                new_names = list(set(cur_names) - set(old_names))
+                self.assertEqual(new_names, result)
+        finally:
+            repo.unlock()
 
     def test_fail_obsolete_deletion(self):
         # failing to delete obsolete packs is not fatal
@@ -556,58 +589,43 @@ class TestPackRepository(TestCaseWithTransport):
             missing_ghost.get_inventory, 'ghost')
 
     def make_write_ready_repo(self):
-        repo = self.make_repository('.', format=self.get_format())
+        format = self.get_format()
+        if isinstance(format.repository_format, RepositoryFormatCHK1):
+            raise TestNotApplicable("No missing compression parents")
+        repo = self.make_repository('.', format=format)
         repo.lock_write()
+        self.addCleanup(repo.unlock)
         repo.start_write_group()
+        self.addCleanup(repo.abort_write_group)
         return repo
 
     def test_missing_inventories_compression_parent_prevents_commit(self):
         repo = self.make_write_ready_repo()
         key = ('junk',)
-        if not getattr(repo.inventories._index, '_missing_compression_parents',
-            None):
-            raise TestSkipped("No missing compression parents")
         repo.inventories._index._missing_compression_parents.add(key)
         self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
         self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
-        repo.abort_write_group()
-        repo.unlock()
 
     def test_missing_revisions_compression_parent_prevents_commit(self):
         repo = self.make_write_ready_repo()
         key = ('junk',)
-        if not getattr(repo.inventories._index, '_missing_compression_parents',
-            None):
-            raise TestSkipped("No missing compression parents")
         repo.revisions._index._missing_compression_parents.add(key)
         self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
         self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
-        repo.abort_write_group()
-        repo.unlock()
 
     def test_missing_signatures_compression_parent_prevents_commit(self):
         repo = self.make_write_ready_repo()
         key = ('junk',)
-        if not getattr(repo.inventories._index, '_missing_compression_parents',
-            None):
-            raise TestSkipped("No missing compression parents")
         repo.signatures._index._missing_compression_parents.add(key)
         self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
         self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
-        repo.abort_write_group()
-        repo.unlock()
 
     def test_missing_text_compression_parent_prevents_commit(self):
         repo = self.make_write_ready_repo()
         key = ('some', 'junk')
-        if not getattr(repo.inventories._index, '_missing_compression_parents',
-            None):
-            raise TestSkipped("No missing compression parents")
         repo.texts._index._missing_compression_parents.add(key)
         self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
         e = self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
-        repo.abort_write_group()
-        repo.unlock()
 
     def test_supports_external_lookups(self):
         repo = self.make_repository('.', format=self.get_format())

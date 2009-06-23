@@ -25,15 +25,42 @@ Bug Fixes
   diverged-branches`` when a push fails because the branches have
   diverged.  (Neil Martinsen-Burrell, #269477)
 
+* Automatic format upgrades triggered by default stacking policies on a
+  1.16rc1 (or later) smart server work again.
+  (Andrew Bennetts, #388675)
+
 * Better message in ``bzr split`` error suggesting a rich root format.
   (Neil Martinsen-Burrell, #220067)
 
 * ``Branch.set_append_revisions_only`` now works with branches on a smart
   server. (Andrew Bennetts, #365865)
 
+* ``bzr ls DIR --from-root`` now shows only things in DIR, not everything.
+  (Ian Clatworthy)
+
 * Progress bars are now suppressed again when the environment variable
   ``BZR_PROGRESS_BAR`` is set to ``none``.
   (Martin Pool, #339385)
+
+* Reduced memory consumption during ``bzr commit`` of large files. For
+  pre 2a formats, should be down to ~3x the size of a file.
+  For ``--2a`` format repositories, it is down to the size of the file
+  content plus the size of the compressed text.  Related to bug #109114.
+  (John Arbash Meinel)
+
+* Repositories using CHK pages (which includes the new 2a format) will no
+  longer error during commit or push operations when an autopack operation
+  is triggered. (Robert Collins, #365615)
+
+* Stacking will no longer accept requests to stack on the same
+  branch/repository. Existing branches that incorrectly reference the same
+  repository in a stacking configuration will now raise
+  UnstackableLocationError when the branch is opened. This can be fixed by
+  removing the stacking location inside ``.bzr/branch``.
+  (Robert Collins, #376243)
+
+* Unshelve works correctly when multiple zero-length files are present on
+  the shelf. (Aaron Bentley, #363444)
 
 Internals
 *********
@@ -49,11 +76,50 @@ Internals
   the whole graph has already been loaded. This is true during
   ``annotate`` so it is used there with good success (as much as 2x faster
   for files with long ancestry and 'cherrypicked' changes.)
+  (John Arbash Meinel, Vincent Ladeuil)
+
+* ``GroupCompress`` repositories now take advantage of the pack hints
+  parameter to permit cross-format fetching to incrementally pack the
+  converted data. (Robert Collins)
+
+* pack <=> pack fetching is now done via a ``PackStreamSource`` rather
+  than the ``Packer`` code. The user visible change is that we now
+  properly fetch the minimum number of texts for non-smart fetching.
   (John Arbash Meinel)
+
+* ``Repository.commit_write_group`` now returns opaque data about what
+  was committed, for passing to the ``Repository.pack``. Repositories
+  without atomic commits will still return None. (Robert Collins)
+
+* ``Repository.pack`` now takes an optional ``hint`` parameter
+  which will support doing partial packs for repositories that can do
+  that. (Robert Collins)
+
+* RepositoryFormat has a new attribute 'pack_compresses' which is True
+  when doing a pack operation changes the compression of content in the
+  repository. (Robert Collins)
+
+* ``StreamSink`` and ``InterDifferingSerialiser`` will call
+  ``Repository.pack`` with the hint returned by
+  ``Repository.commit_write_group`` if the formats were different and the
+  repository can increase compression by doing a pack operation.
+  (Robert Collins, #376748)
+
+* ``VersionedFiles._add_text`` is a new api that lets us insert text into
+  the repository as a single string, rather than a list of lines. This can
+  improve memory overhead and performance of committing large files.
+  (Currently a private api, used only by commit). (John Arbash Meinel)
 
 
 Improvements
 ************
+
+``bzr ls`` is now faster. On OpenOffice.org, the time drops from 2.4
+  to 1.1 seconds. The improvement for ``bzr ls -r-1`` is more
+  substantial dropping from 54.3 to 1.1 seconds. (Ian Clatworthy)
+
+* Initial commit performance in ``--2a`` repositories has been improved by
+  making it cheaper to build the initial CHKMap. (John Arbash Meinel)
 
 * Resolving a revno to a revision id on a branch accessed via ``bzr://``
   or ``bzr+ssh://`` is now much faster and involves no VFS operations.
@@ -61,6 +127,10 @@ Improvements
 
 Documentation
 *************
+
+* Avoid bad text wrapping in generated documentation.  Slightly better
+  formatting in the user reference.
+  (Martin Pool, #249908)
 
 * Minor clarifications to the help for End-Of-Line conversions.
   (Ian Clatworthy)
@@ -76,9 +146,11 @@ API Changes
   this class and the UI.  (Martin Pool)
 
 
-bzr 1.16rc1 "It's yesterday in California" 2009-06-11
-#####################################################
+bzr 1.16 "It's yesterday in California" 2009-06-18
+##################################################
 :Codename: yesterday-in-california
+:1.16rc1: 2009-06-11
+:1.16: 2009-06-18
 
 This version of Bazaar contains the beta release of the new ``2a`` repository
 format, suitable for testing by fearless, advanced users. This format or an
@@ -88,6 +160,18 @@ read the NEWS entry before even thinking about upgrading to the new format.
 Also included are speedups for many operations on huge projects, a bug fix for
 pushing stacked new stacked branches to smart servers and the usual bevy of
 bug fixes and improvements.
+
+
+Changes from 1.16rc1 to 1.16final
+*********************************
+
+* Fix the nested tree flag check so that upgrade from development formats to
+  2a can work correctly.
+  (Jelmer Vernooij, #388727)
+
+* Automatic format upgrades triggered by default stacking policies on a
+  1.16rc1 (or later) smart server work again.
+  (Andrew Bennetts, #388675)
 
 
 Compatibility Breaks
@@ -225,7 +309,6 @@ Documentation
 * Added directory structure and started translation of docs in Russian.
   (Alexey Shtokalo, Alexander Iljin, Alexander Belchenko, Dmitry Vasiliev,
   Volodymyr Kotulskyi)
-
 
 API Changes
 ***********
