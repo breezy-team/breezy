@@ -3413,11 +3413,13 @@ class _KnitAnnotator(annotate.Annotator):
             if num == 0:
                 base_content = self._content_objects.pop(compression_parent)
                 self._num_compression_children.pop(compression_parent)
-                copy_base_content = False
             else:
                 self._num_compression_children[compression_parent] = num
                 base_content = self._content_objects[compression_parent]
-                copy_base_content = True
+            # It is tempting to want to copy_base_content=False for the last
+            # child object. However, whenever noeol=False,
+            # self._text_cache[parent_key] is content._lines. So mutating it
+            # gives very bad results.
             content, _ = self._vf._factory.parse_record(
                 key, record, record_details, base_content,
                 copy_base_content=True)
