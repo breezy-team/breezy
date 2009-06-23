@@ -3322,6 +3322,9 @@ class _KnitAnnotator(annotate.Annotator):
         # Delta records that need their compression parent before they can be
         # expanded
         self._pending_deltas = {}
+        # Fulltext records that are waiting for their parents fulltexts before
+        # they can be yielded for annotation
+        self._pending_annotation = {}
 
         self._all_build_details = {}
 
@@ -3409,7 +3412,8 @@ class _KnitAnnotator(annotate.Annotator):
             #       can set 'copy_base_content = False' and remove base_content
             #       from the cache (to be inserted as the new content)
             content, _ = self._vf._factory.parse_record(
-                key, record, record_details, None, copy_base_content=True)
+                key, record, record_details, base_content,
+                copy_base_content=True)
         else:
             # Fulltext record
             content, _ = self._vf._factory.parse_record(
@@ -3434,6 +3438,39 @@ class _KnitAnnotator(annotate.Annotator):
         #                 copy_base_content=True)
         #             self._content_objects[child_key] = child_content
         #             to_process.append((child_key, child_parent_keys, child_content))
+
+    def _process_pending(self, key):
+        """The content for 'key' was just processed.
+
+        Determine if there is any more pending work to be processed.
+        """
+        if key not in self._pending_deltas:
+            return []
+        compression_parent = key
+        children = self._pending_deltas.pop(key)
+        to_return = []
+        for key, parent_keys, record, record_details in children:
+            lines = self._expand_record(key, parent_keys, compression_parent,
+                                        record, record_details)
+            assert lines is not None
+            if self._check_ready_for_annotations(key, parent_keys):
+                to_return.append(key)
+
+    def _check_ready_for_annotations(self, key, parent_keys):
+        """return true if this text is ready to be yielded.
+
+        Otherwise, this will return False, and queue the text into
+        self._pending_annotation
+        """
+        for parent_key in parent_keys:
+            if parent_key not in self._annotations_cache:
+                # still waiting on at least one parent text, so queue it up
+                # Note that if there are multiple parents, we need to wait
+                # for all of them.
+                self._pending_annotation.setdefault(parent_key,
+                    []).append((key, parent_keys))
+                return False
+        return True
 
     def _extract_texts(self, records):
         """Extract the various texts needed based on records"""
@@ -3465,9 +3502,6 @@ class _KnitAnnotator(annotate.Annotator):
         # that we know when we can re-use the content lines, and the annotation
         # code can know when it can stop caching fulltexts, as well.
 
-        # Children that we want to annotate as soon as we get the parent text
-        # Map from parent_key => [child_key]
-        pending_annotation = {}
         # Children that are missing their compression parent
         pending_deltas = {}
         for (key, record, digest) in self._vf._read_records_iter(records):
@@ -3482,16 +3516,8 @@ class _KnitAnnotator(annotate.Annotator):
                 continue
             # At this point, we may be able to yield this content, if all
             # parents are also finished
-            yield_this_text = True
-            for parent_key in parent_keys:
-                if parent_key not in self._annotations_cache:
-                    # still waiting on at least one parent text, so queue it up
-                    # Note that if there are multiple parents, we need to wait
-                    # for all of them.
-                    pending_annotation.setdefault(parent_key,
-                        []).append((key, parent_keys, content))
-                    yield_this_text = False
-                    break
+            yield_this_text = self._check_ready_for_annotations(key,
+                                                                parent_keys)
             if yield_this_text:
                 # All parents present
                 yield key, lines, len(lines)

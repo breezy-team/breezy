@@ -1332,7 +1332,7 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
         self.assertEqual(res, content_obj.text())
         self.assertEqual(res, ann._text_cache[rev_key])
 
-    def test__expand_delta_no_parent(self):
+    def test__expand_delta_comp_parent_not_available(self):
         # Parent isn't available yet, so we return nothing, but queue up this
         # node for later processing
         ann = self.make_annotator()
@@ -1347,6 +1347,32 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
         pending = ann._pending_deltas[parent_key]
         self.assertEqual(1, len(pending))
         self.assertEqual((rev_key, (parent_key,), record, details), pending[0])
+
+    def test__expand_delta_right_parent_not_available(self):
+        ann = self.make_annotator()
+        rev_key = ('rev-id',)
+        p1_key = ('p1-id',)
+        p2_key = ('p2-id',)
+        record = ['0,1,1\n', 'new-line\n']
+        details = ('line-delta', False)
+        p1_record = ['line1\n', 'line2\n']
+        res = ann._expand_record(rev_key, (p1_key,p2_key), p1_key,
+                                 record, details)
+        self.assertEqual(None, res)
+        # self.assertTrue(p1_key in ann._pending_deltas)
+        self.assertEqual({}, ann._pending_annotation)
+        # Now insert p1, and we should be able to expand the delta
+        res = ann._expand_record(p1_key, (), None, p1_record,
+                                 ('fulltext', False))
+        self.assertEqual(p1_record, res)
+        ann._annotations_cache[p1_key] = [(p1_key,)]*2
+        res = ann._process_pending(p1_key)
+        self.assertFalse(p1_key in ann._pending_deltas)
+        self.assertTrue(p2_key in ann._pending_annotation)
+        self.assertEqual({p2_key: [(rev_key, (p1_key, p2_key))]},
+                         ann._pending_annotation)
+        # Now fill in parent 2, and pending annotation should be satisfied
+        res = ann._expand_record(p2_key, (), None, [], ('fulltext', False))
 
     def test_record_delta_removes_basis(self):
         ann = self.make_annotator()
