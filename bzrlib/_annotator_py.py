@@ -129,10 +129,14 @@ class Annotator(object):
         for parent_idx, lines_idx, match_len in matching_blocks:
             # For lines which match this parent, we will now resolve whether
             # this parent wins over the current annotation
+            ann_sub = annotations[lines_idx:lines_idx + match_len]
+            par_sub = parent_annotations[parent_idx:parent_idx + match_len]
+            if ann_sub == par_sub:
+                continue
             for idx in xrange(match_len):
+                ann = ann_sub[idx]
+                par_ann = par_sub[idx]
                 ann_idx = lines_idx + idx
-                ann = annotations[ann_idx]
-                par_ann = parent_annotations[parent_idx + idx]
                 if ann == par_ann:
                     # Nothing to change
                     continue
