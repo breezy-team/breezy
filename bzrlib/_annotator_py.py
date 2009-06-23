@@ -82,7 +82,7 @@ class Annotator(object):
             self._text_cache[this_key] = lines
             yield this_key, lines, num_lines
 
-    def _get_parent_annotations_and_matches(self, text, parent_key):
+    def _get_parent_annotations_and_matches(self, key, text, parent_key):
         """Get the list of annotations for the parent, and the matching lines.
 
         :param text: The opaque value given by _get_needed_texts
@@ -101,21 +101,21 @@ class Annotator(object):
         matching_blocks = matcher.get_matching_blocks()
         return parent_annotations, matching_blocks
 
-    def _update_from_one_parent(self, annotations, lines, parent_key):
+    def _update_from_one_parent(self, key, annotations, lines, parent_key):
         """Reannotate this text relative to its first parent."""
         parent_annotations, matching_blocks = self._get_parent_annotations_and_matches(
-            lines, parent_key)
+            key, lines, parent_key)
 
         for parent_idx, lines_idx, match_len in matching_blocks:
             # For all matching regions we copy across the parent annotations
             annotations[lines_idx:lines_idx + match_len] = \
                 parent_annotations[parent_idx:parent_idx + match_len]
 
-    def _update_from_other_parents(self, annotations, lines, this_annotation,
-                                   parent_key):
+    def _update_from_other_parents(self, key, annotations, lines,
+                                   this_annotation, parent_key):
         """Reannotate this text relative to a second (or more) parent."""
         parent_annotations, matching_blocks = self._get_parent_annotations_and_matches(
-            lines, parent_key)
+            key, lines, parent_key)
 
         last_ann = None
         last_parent = None
@@ -172,9 +172,9 @@ class Annotator(object):
         annotations = [this_annotation] * num_lines
         parent_keys = self._parent_map[key]
         if parent_keys:
-            self._update_from_one_parent(annotations, text, parent_keys[0])
+            self._update_from_one_parent(key, annotations, text, parent_keys[0])
             for parent in parent_keys[1:]:
-                self._update_from_other_parents(annotations, text,
+                self._update_from_other_parents(key, annotations, text,
                                                 this_annotation, parent)
         self._record_annotation(key, parent_keys, annotations)
 

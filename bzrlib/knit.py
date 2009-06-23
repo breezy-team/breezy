@@ -3312,8 +3312,8 @@ class _KnitAnnotator(annotate.Annotator):
         # TODO: handle Nodes which cannot be extracted
         # self._ghosts = set()
 
-        # Map from revision_id => left_matching_blocks, should be 'use once'
-        self._left_matching_blocks = {}
+        # Map from (key, parent_key) => matching_blocks, should be 'use once'
+        self._matching_blocks = {}
 
         # KnitContent objects
         self._content_objects = {}
@@ -3402,7 +3402,7 @@ class _KnitAnnotator(annotate.Annotator):
     def _cache_delta_blocks(self, key, compression_parent, delta, lines):
         parent_lines = self._text_cache[compression_parent]
         blocks = list(KnitContent.get_line_delta_blocks(delta, parent_lines, lines))
-        self._left_matching_blocks[key] = blocks
+        self._matching_blocks[(key, compression_parent)] = blocks
 
     def _expand_record(self, key, parent_keys, compression_parent, record,
                        record_details):
@@ -3442,6 +3442,25 @@ class _KnitAnnotator(annotate.Annotator):
         if delta is not None:
             self._cache_delta_blocks(key, compression_parent, delta, lines)
         return lines
+
+    def _get_parent_annotations_and_matches(self, key, text, parent_key):
+        """Get the list of annotations for the parent, and the matching lines.
+
+        :param text: The opaque value given by _get_needed_texts
+        :param parent_key: The key for the parent text
+        :return: (parent_annotations, matching_blocks)
+            parent_annotations is a list as long as the number of lines in
+                parent
+            matching_blocks is a list of (parent_idx, text_idx, len) tuples
+                indicating which lines match between the two texts
+        """
+        block_key = (key, parent_key)
+        if block_key in self._matching_blocks:
+            blocks = self._matching_blocks.pop(block_key)
+            parent_annotations = self._annotations_cache[parent_key]
+            return parent_annotations, blocks
+        return super(_KnitAnnotator, self)._get_parent_annotations_and_matches(
+            key, text, parent_key)
 
     def _process_pending(self, key):
         """The content for 'key' was just processed.

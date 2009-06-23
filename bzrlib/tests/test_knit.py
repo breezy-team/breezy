@@ -1383,14 +1383,30 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
                            ['line1\n', 'line2\n', 'line3\n'],
                            ('fulltext', False))
         ann._expand_record(rev_key, (parent_key,), parent_key, record, details)
-        self.assertEqual({rev_key: [(1, 1, 1), (3, 3, 0)]},
-                         ann._left_matching_blocks)
+        self.assertEqual({(rev_key, parent_key): [(1, 1, 1), (3, 3, 0)]},
+                         ann._matching_blocks)
         rev2_key = ('rev2-id',)
         record = ['0,1,1\n', 'new-line\n']
         details = ('line-delta', False)
         ann._expand_record(rev2_key, (parent_key,), parent_key, record, details)
         self.assertEqual([(1, 1, 2), (3, 3, 0)],
-                         ann._left_matching_blocks[rev2_key])
+                         ann._matching_blocks[(rev2_key, parent_key)])
+
+    def test__get_parent_ann_uses_matching_blocks(self):
+        ann = self.make_annotator()
+        rev_key = ('rev-id',)
+        parent_key = ('parent-id',)
+        parent_ann = [(parent_key,)]*3
+        block_key = (rev_key, parent_key)
+        ann._annotations_cache[parent_key] = parent_ann
+        ann._matching_blocks[block_key] = [(0, 1, 1), (3, 3, 0)]
+        # We should not try to access any parent_lines content, because we know
+        # we already have the matching blocks
+        par_ann, blocks = ann._get_parent_annotations_and_matches(rev_key,
+                                        ['1\n', '2\n', '3\n'], parent_key)
+        self.assertEqual(parent_ann, par_ann)
+        self.assertEqual([(0, 1, 1), (3, 3, 0)], blocks)
+        self.assertEqual({}, ann._matching_blocks)
 
     def test__process_pending(self):
         ann = self.make_annotator()
