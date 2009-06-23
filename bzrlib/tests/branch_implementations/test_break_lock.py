@@ -22,7 +22,9 @@ import bzrlib
 import bzrlib.errors as errors
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestNotApplicable
 from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
-
+from bzrlib.ui import (
+    CannedInputUIFactory,
+    )
 
 class TestBreakLock(TestCaseWithBranch):
 
@@ -35,7 +37,6 @@ class TestBreakLock(TestCaseWithBranch):
         # ours
         self.old_factory = bzrlib.ui.ui_factory
         self.addCleanup(self.restoreFactory)
-        bzrlib.ui.ui_factory = bzrlib.ui.SilentUIFactory()
 
     def restoreFactory(self):
         bzrlib.ui.ui_factory = self.old_factory
@@ -59,7 +60,7 @@ class TestBreakLock(TestCaseWithBranch):
         other_instance = self.branch.repository.bzrdir.open_repository()
         if not other_instance.get_physical_lock_status():
             raise TestNotApplicable("Repository does not lock persistently.")
-        bzrlib.ui.ui_factory.stdin = StringIO("y\n")
+        bzrlib.ui.ui_factory = CannedInputUIFactory([True])
         try:
             self.unused_branch.break_lock()
         except NotImplementedError:
@@ -71,7 +72,7 @@ class TestBreakLock(TestCaseWithBranch):
     def test_locked(self):
         # break_lock when locked should unlock the branch and repo
         self.branch.lock_write()
-        bzrlib.ui.ui_factory.stdin = StringIO("y\ny\n")
+        bzrlib.ui.ui_factory = CannedInputUIFactory([True, True])
         try:
             self.unused_branch.break_lock()
         except NotImplementedError:
@@ -90,7 +91,7 @@ class TestBreakLock(TestCaseWithBranch):
             # this branch does not support binding.
             return
         master.lock_write()
-        bzrlib.ui.ui_factory.stdin = StringIO("y\ny\n")
+        bzrlib.ui.ui_factory = CannedInputUIFactory([True, True])
         try:
             self.unused_branch.break_lock()
         except NotImplementedError:
