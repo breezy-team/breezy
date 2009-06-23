@@ -3420,6 +3420,8 @@ class _KnitAnnotator(annotate.Annotator):
             # child object. However, whenever noeol=False,
             # self._text_cache[parent_key] is content._lines. So mutating it
             # gives very bad results.
+            # The alternative is to copy the lines into text cache, but then we
+            # are copying anyway, so just do it here.
             content, _ = self._vf._factory.parse_record(
                 key, record, record_details, base_content,
                 copy_base_content=True)
@@ -3429,7 +3431,8 @@ class _KnitAnnotator(annotate.Annotator):
                 key, record, record_details, None)
         # TODO: Only track the content when there are compression children.
         #       Otherwise we only need the lines
-        self._content_objects[key] = content
+        if self._num_compression_children.get(key, 0) > 0:
+            self._content_objects[key] = content
         lines = content.text()
         self._text_cache[key] = lines
         return lines

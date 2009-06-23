@@ -1323,6 +1323,7 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
     def test__expand_fulltext(self):
         ann = self.make_annotator()
         rev_key = ('rev-id',)
+        ann._num_compression_children[rev_key] = 1
         res = ann._expand_record(rev_key, (('parent-id',),), None,
                            ['line1\n', 'line2\n'], ('fulltext', True))
         # The content object and text lines should be cached appropriately
@@ -1367,6 +1368,9 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
                                  record, details)
         self.assertFalse(parent_key in ann._content_objects)
         self.assertEqual({}, ann._num_compression_children)
+        # We should not cache the content_objects for rev2 and rev, because
+        # they do not have compression children of their own.
+        self.assertEqual({}, ann._content_objects)
 
     def test__process_pending(self):
         ann = self.make_annotator()
