@@ -405,7 +405,8 @@ class InterGitNonGitRepository(InterGitRepository):
             else:
                 ret = [mapping.revision_id_bzr_to_foreign(revid)[0] for revid in interesting_heads if revid not in (None, NULL_REVISION)]
             return [rev for rev in ret if not self.target.has_revision(mapping.revision_id_foreign_to_bzr(rev))]
-        self.fetch_objects(determine_wants, mapping, pb)
+        pack_hint = self.fetch_objects(determine_wants, mapping, pb)
+        self.target.pack(hint=pack_hint)
         return self._refs
 
 
@@ -453,7 +454,7 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
                     import_git_objects(self.target, mapping, objects_iter, 
                             store, recorded_wants, pb)
                 finally:
-                    self.target.commit_write_group()
+                    return self.target.commit_write_group()
             finally:
                 if create_pb:
                     create_pb.finished()
@@ -488,7 +489,7 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
                             self.source._git.object_store, 
                             target_git_object_retriever, wants, pb)
                 finally:
-                    self.target.commit_write_group()
+                    return self.target.commit_write_group()
             finally:
                 self.target.unlock()
         finally:
