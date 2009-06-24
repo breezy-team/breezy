@@ -204,7 +204,7 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, base_ie, parent_id,
     if base_ie is None:
         # Newly appeared here
         ie.revision = revision_id
-        texts.insert_record_stream([FulltextContentFactory((file_id, ie.revision), (), [])])
+        texts.insert_record_stream([FulltextContentFactory((file_id, ie.revision), (), None, [])])
         invdelta.append((None, path, file_id, ie))
     else:
         # See if this has changed at all
