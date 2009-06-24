@@ -33,6 +33,8 @@ cdef extern from "Python.h":
     int PyTuple_CheckExact(object)
     object PyTuple_New(Py_ssize_t len)
     void PyTuple_SET_ITEM(object, Py_ssize_t pos, object)
+    void PyTuple_SET_ITEM_ptr "PyTuple_SET_ITEM" (object, Py_ssize_t,
+                                                  PyObject *)
     int PyTuple_Resize(PyObject **, Py_ssize_t newlen)
     PyObject *PyTuple_GET_ITEM(object, Py_ssize_t o)
     Py_ssize_t PyTuple_GET_SIZE(object)
@@ -41,9 +43,14 @@ cdef extern from "Python.h":
     int PyDict_SetItem(object d, object k, object v) except -1
 
     void Py_INCREF(object)
+    void Py_INCREF_ptr "Py_INCREF" (PyObject *)
 
     int Py_EQ
+    int Py_NE
+    int Py_LT
     int PyObject_RichCompareBool(object, object, int opid) except -1
+    int PyObject_RichCompareBool_ptr "PyObject_RichCompareBool" (
+        PyObject *, PyObject *, int opid)
 
 from bzrlib import errors, graph as _mod_graph, osutils, patiencediff, ui
 
@@ -118,11 +125,18 @@ cdef int _check_match_ranges(parent_annotations, annotations,
     return 0
 
 
+cdef PyObject *_next_tuple_entry(object tpl, Py_ssize_t *pos):
+    pos[0] = pos[0] + 1
+    if pos[0] >= PyTuple_GET_SIZE(tpl):
+        return NULL
+    return PyTuple_GET_ITEM(tpl, pos[0])
+
+
 cdef object _combine_annotations(ann_one, ann_two, cache):
     """Combine the annotations from both sides."""
     cdef Py_ssize_t pos_one, pos_two, len_one, len_two
     cdef Py_ssize_t out_pos
-    cdef PyObject *temp
+    cdef PyObject *temp, *left, *right
 
     cache_key = (ann_one, ann_two)
     temp = PyDict_GetItem(cache, cache_key)
@@ -133,49 +147,42 @@ cdef object _combine_annotations(ann_one, ann_two, cache):
         raise TypeError('annotations must be tuples')
     # We know that annotations are tuples, and that both sides are already
     # sorted, so we can just walk and update a new list.
-    len_one = PyTuple_GET_SIZE(ann_one)
-    len_two = PyTuple_GET_SIZE(ann_two)
-    if len_one < 1 or len_two < 1:
-        raise ValueError('annotations cannot claim 0 references.')
-    pos_one = 0
-    pos_two = 0
+    pos_one = -1
+    pos_two = -1
     out_pos = 0
-    temp = PyTuple_GET_ITEM(ann_one, pos_one); left = <object>temp
-    temp = PyTuple_GET_ITEM(ann_two, pos_two); right = <object>temp
-    new_ann = PyTuple_New(len_one + len_two)
-    while left is not None or right is not None:
-        if PyObject_RichCompareBool(left, right, Py_EQ):
-            # Append once, increment both
-            Py_INCREF(left)
-            PyTuple_SET_ITEM(new_ann, out_pos, left)
-            pos_one = pos_one + 1
-            pos_two = pos_two + 1
-            if pos_one >= len_one:
-                left = None
-            else:
-                temp = PyTuple_GET_ITEM(ann_one, pos_one); left = <object>temp
-            if pos_two >= len_two:
-                right = None
-            else:
-                temp = PyTuple_GET_ITEM(ann_two, pos_two); right = <object>temp
-        elif right is None or (left is not None and left < right):
-            Py_INCREF(left)
-            PyTuple_SET_ITEM(new_ann, out_pos, left)
-            pos_one = pos_one + 1
-            if pos_one >= len_one:
-                left = None
-            else:
-                temp = PyTuple_GET_ITEM(ann_one, pos_one); left = <object>temp
-        else: # right < left
-            Py_INCREF(right)
-            PyTuple_SET_ITEM(new_ann, out_pos, right)
-            pos_two = pos_two + 1
-            if pos_two >= len_two:
-                right = None
-            else:
-                temp = PyTuple_GET_ITEM(ann_two, pos_two); right = <object>temp
+    left = _next_tuple_entry(ann_one, &pos_one)
+    right = _next_tuple_entry(ann_two, &pos_two)
+    new_ann = PyTuple_New(PyTuple_GET_SIZE(ann_one)
+                          + PyTuple_GET_SIZE(ann_two))
+    while left != NULL and right != NULL:
+        if (PyObject_RichCompareBool_ptr(left, right, Py_EQ)):
+            # Identical values, step both
+            Py_INCREF_ptr(left)
+            PyTuple_SET_ITEM_ptr(new_ann, out_pos, left)
+            left = _next_tuple_entry(ann_one, &pos_one)
+            right = _next_tuple_entry(ann_two, &pos_two)
+        elif (PyObject_RichCompareBool_ptr(left, right, Py_LT)):
+            # left < right or right == NULL
+            Py_INCREF_ptr(left)
+            PyTuple_SET_ITEM_ptr(new_ann, out_pos, left)
+            left = _next_tuple_entry(ann_one, &pos_one)
+        else: # right < left or left == NULL
+            Py_INCREF_ptr(right)
+            PyTuple_SET_ITEM_ptr(new_ann, out_pos, right)
+            right = _next_tuple_entry(ann_two, &pos_two)
         out_pos = out_pos + 1
-    if out_pos != len_one + len_two:
+    while left != NULL:
+        Py_INCREF_ptr(left)
+        PyTuple_SET_ITEM_ptr(new_ann, out_pos, left)
+        left = _next_tuple_entry(ann_one, &pos_one)
+        out_pos = out_pos + 1
+    while right != NULL:
+        Py_INCREF_ptr(right)
+        PyTuple_SET_ITEM_ptr(new_ann, out_pos, right)
+        right = _next_tuple_entry(ann_two, &pos_two)
+        out_pos = out_pos + 1
+    if out_pos != PyTuple_GET_SIZE(new_ann):
+        # Timing _PyTuple_Resize was not significantly faster that slicing
         # PyTuple_Resize((<PyObject **>new_ann), out_pos)
         new_ann = new_ann[0:out_pos]
     PyDict_SetItem(cache, cache_key, new_ann)
@@ -326,7 +333,10 @@ class Annotator:
                     Py_INCREF(last_res)
                     PyList_SetItem(annotations, ann_idx, last_res)
                 else:
+                    _update_counter('combined annotations', 1)
+                    t = c()
                     new_ann = _combine_annotations(ann, par_ann, cache)
+                    _update_counter('combining annotations', c() - t)
                     Py_INCREF(new_ann)
                     PyList_SetItem(annotations, ann_idx, new_ann)
                     last_ann = ann
