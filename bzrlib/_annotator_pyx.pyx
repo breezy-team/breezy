@@ -23,6 +23,8 @@ cdef extern from "Python.h":
     ctypedef int Py_ssize_t
     ctypedef struct PyObject:
         pass
+    ctypedef struct PyListObject:
+        PyObject **ob_item
     int PyList_CheckExact(object)
     PyObject *PyList_GET_ITEM(object, Py_ssize_t o)
     Py_ssize_t PyList_GET_SIZE(object)
@@ -44,6 +46,7 @@ cdef extern from "Python.h":
 
     void Py_INCREF(object)
     void Py_INCREF_ptr "Py_INCREF" (PyObject *)
+    void Py_DECREF_ptr "Py_DECREF" (PyObject *)
 
     int Py_EQ
     int Py_LT
@@ -113,8 +116,8 @@ cdef int _check_annotations_are_lists(annotations,
 
 
 cdef int _check_match_ranges(parent_annotations, annotations,
-                         Py_ssize_t parent_idx, Py_ssize_t lines_idx,
-                         Py_ssize_t match_len) except -1:
+                             Py_ssize_t parent_idx, Py_ssize_t lines_idx,
+                             Py_ssize_t match_len) except -1:
     if parent_idx + match_len > PyList_GET_SIZE(parent_annotations):
         raise ValueError('Match length exceeds len of'
                          ' parent_annotations %s > %s'
@@ -195,6 +198,30 @@ cdef object _combine_annotations(ann_one, ann_two, cache):
     return new_ann
 
 
+cdef _apply_parent_annotations(annotations, parent_annotations,
+                               matching_blocks):
+    """Apply the annotations from parent_annotations into annotations.
+
+    matching_blocks defines the ranges that match.
+    """
+    cdef Py_ssize_t parent_idx, lines_idx, match_len, idx
+    cdef PyListObject *par_list, *ann_list
+    cdef PyObject **par_temp, **ann_temp
+
+    _check_annotations_are_lists(annotations, parent_annotations)
+    par_list = <PyListObject *>parent_annotations
+    ann_list = <PyListObject *>annotations
+    for parent_idx, lines_idx, match_len in matching_blocks:
+        _check_match_ranges(parent_annotations, annotations,
+                            parent_idx, lines_idx, match_len)
+        par_temp = par_list.ob_item + parent_idx
+        ann_temp = ann_list.ob_item + lines_idx
+        for idx from 0 <= idx < match_len:
+            Py_INCREF_ptr(par_temp[idx])
+            Py_DECREF_ptr(ann_temp[idx])
+            ann_temp[idx] = par_temp[idx]
+
+
 class Annotator:
     """Class that drives performing annotations."""
 
@@ -269,40 +296,25 @@ class Annotator:
         # _update_counter('get_matching_blocks()', c() - t)
         return parent_annotations, matching_blocks
 
-    def _pyx_update_from_one_parent(self, key, annotations, lines, parent_key):
-        """Reannotate this text relative to its first parent."""
-        cdef Py_ssize_t parent_idx, lines_idx, match_len, idx
-        cdef PyObject *temp
-
-        parent_annotations, matching_blocks = self._get_parent_annotations_and_matches(
-            key, lines, parent_key)
-        _check_annotations_are_lists(annotations, parent_annotations)
-
-        for parent_idx, lines_idx, match_len in matching_blocks:
-            _check_match_ranges(parent_annotations, annotations,
-                                parent_idx, lines_idx, match_len)
-            for idx from 0 <= idx < match_len:
-                temp = PyList_GET_ITEM(parent_annotations, parent_idx + idx)
-                ann = <object>temp
-                Py_INCREF(ann) # PyList_SetItem steals a ref
-                PyList_SetItem(annotations, lines_idx + idx, ann)
-
     def _update_from_one_parent(self, key, annotations, lines, parent_key):
         """Reannotate this text relative to its first parent."""
+        t1 = c()
         parent_annotations, matching_blocks = self._get_parent_annotations_and_matches(
             key, lines, parent_key)
+        t2 = c()
+        _update_counter('update left match', t2 - t1)
 
-        for parent_idx, lines_idx, match_len in matching_blocks:
-            # For all matching regions we copy across the parent annotations
-            annotations[lines_idx:lines_idx + match_len] = \
-                parent_annotations[parent_idx:parent_idx + match_len]
+        _apply_parent_annotations(annotations, parent_annotations,
+                                  matching_blocks)
+        t3 = c()
+        _update_counter('update left resolve', t3 - t2)
 
     def _update_from_other_parents(self, key, annotations, lines,
                                    this_annotation, parent_key):
         """Reannotate this text relative to a second (or more) parent."""
         cdef Py_ssize_t parent_idx, ann_idx, lines_idx, match_len, idx
         cdef Py_ssize_t pos
-        cdef PyObject *temp, *ann_temp, *par_temp
+        cdef PyObject *ann_temp, *par_temp
         t1 = c()
         parent_annotations, matching_blocks = self._get_parent_annotations_and_matches(
             key, lines, parent_key)
