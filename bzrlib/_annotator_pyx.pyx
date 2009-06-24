@@ -54,6 +54,7 @@ cdef extern from "Python.h":
     int PyObject_RichCompareBool_ptr "PyObject_RichCompareBool" (
         PyObject *, PyObject *, int opid)
 
+
 from bzrlib import errors, graph as _mod_graph, osutils, patiencediff, ui
 
 import time
@@ -211,6 +212,10 @@ cdef _apply_parent_annotations(annotations, parent_annotations,
     _check_annotations_are_lists(annotations, parent_annotations)
     par_list = <PyListObject *>parent_annotations
     ann_list = <PyListObject *>annotations
+    # For NEWS and bzrlib/builtins.py, over 99% of the lines are simply copied
+    # across from the parent entry. So this routine is heavily optimized for
+    # that. Would be interesting if we could use memcpy() but we have to incref
+    # and decref
     for parent_idx, lines_idx, match_len in matching_blocks:
         _check_match_ranges(parent_annotations, annotations,
                             parent_idx, lines_idx, match_len)
@@ -289,11 +294,11 @@ class Annotator:
         parent_lines = self._text_cache[parent_key]
         parent_annotations = self._annotations_cache[parent_key]
         # PatienceSequenceMatcher should probably be part of Policy
-        # t = c()
+        t = c()
         matcher = patiencediff.PatienceSequenceMatcher(None,
             parent_lines, text)
         matching_blocks = matcher.get_matching_blocks()
-        # _update_counter('get_matching_blocks()', c() - t)
+        _update_counter('get_matching_blocks()', c() - t)
         return parent_annotations, matching_blocks
 
     def _update_from_one_parent(self, key, annotations, lines, parent_key):
@@ -385,12 +390,10 @@ class Annotator:
         if parent_keys:
             t1 = c()
             self._update_from_one_parent(key, annotations, text, parent_keys[0])
-            _update_counter('left parents', 1)
             t2 = c()
             for parent in parent_keys[1:]:
                 self._update_from_other_parents(key, annotations, text,
                                                 this_annotation, parent)
-                _update_counter('right parents', 1)
             t3 = c()
             _update_counter('update left', t2 - t1)
             _update_counter('update rest', t3 - t2)
@@ -423,35 +426,30 @@ class Annotator:
 
         This is meant as a compatibility thunk to how annotate() used to work.
         """
+        cdef Py_ssize_t pos, num_lines
         t_first = c()
         annotations, lines = self.annotate(key)
         _update_counter('annotate time', c() - t_first)
         assert len(annotations) == len(lines)
+        num_lines = len(lines)
         out = []
         heads = self._get_heads_provider().heads
-        append = out.append
         t_second = c()
-        for annotation, line in zip(annotations, lines):
+        for pos from 0 <= pos < num_lines:
+            annotation = annotations[pos]
+            line = lines[pos]
             if len(annotation) == 1:
-                _update_counter('one source', 1)
-                append((annotation[0], line))
+                head = annotation[0]
             else:
-                _update_counter('multi source', 1)
-                t = c()
                 the_heads = heads(annotation)
-                _update_counter('heads time', c() - t)
                 if len(the_heads) == 1:
-                    _update_counter('one head', 1)
                     for head in the_heads:
                         break
                 else:
-                    _update_counter('multi heads', 1)
                     # We need to resolve the ambiguity, for now just pick the
                     # sorted smallest
                     head = sorted(the_heads)[0]
-                if head == annotation[0]:
-                    _update_counter('first ann', 1)
-                append((head, line))
+            PyList_Append(out, (head, line))
         _update_counter('resolve annotations', c() - t_second)
         _update_counter('overall', c() - t_first)
         return out
