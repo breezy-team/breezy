@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
 # Authors: Aaron Bentley
 #
 # This program is free software; you can redistribute it and/or modify
@@ -18,15 +18,15 @@
 
 import os
 import sys
-from StringIO import StringIO
+from cStringIO import StringIO
 
 from bzrlib import (
-    branch as _mod_branch,
+    branch,
+    bzrdir,
     merge_directive,
+    tests,
     )
 from bzrlib.bundle import serializer
-from bzrlib.bzrdir import BzrDir
-from bzrlib import tests
 
 
 def read_bundle(fileobj):
@@ -37,7 +37,8 @@ def read_bundle(fileobj):
 class TestSend(tests.TestCaseWithTransport):
 
     def make_trees(self):
-        grandparent_tree = BzrDir.create_standalone_workingtree('grandparent')
+        grandparent_tree = bzrdir.BzrDir.create_standalone_workingtree(
+            'grandparent')
         self.build_tree_contents([('grandparent/file1', 'grandparent')])
         grandparent_tree.add('file1')
         grandparent_tree.commit('initial commit', rev_id='revision1')
@@ -51,11 +52,10 @@ class TestSend(tests.TestCaseWithTransport):
     def test_uses_parent(self):
         """Parent location is used as a basis by default"""
         self.make_trees()
-        os.chdir('grandparent')
-        errmsg = self.run_bzr('send -o-', retcode=3)[1]
+        errmsg = self.run_bzr('send -o-', retcode=3,
+                              working_dir='grandparent')[1]
         self.assertContainsRe(errmsg, 'No submit branch known or specified')
-        os.chdir('../branch')
-        stdout, stderr = self.run_bzr('send -o-')
+        stdout, stderr = self.run_bzr('send -o-', working_dir='branch')
         self.assertEqual(stderr.count('Using saved parent location'), 1)
         br = read_bundle(StringIO(stdout))
         self.assertRevisions(br, ['revision3'])
@@ -63,18 +63,16 @@ class TestSend(tests.TestCaseWithTransport):
     def test_bundle(self):
         """Bundle works like send, except -o is not required"""
         self.make_trees()
-        os.chdir('grandparent')
-        errmsg = self.run_bzr('bundle', retcode=3)[1]
+        errmsg = self.run_bzr('bundle', retcode=3, working_dir='grandparent')[1]
         self.assertContainsRe(errmsg, 'No submit branch known or specified')
-        os.chdir('../branch')
-        stdout, stderr = self.run_bzr('bundle')
+        stdout, stderr = self.run_bzr('bundle', working_dir='branch')
         self.assertEqual(stderr.count('Using saved parent location'), 1)
         br = read_bundle(StringIO(stdout))
         self.assertRevisions(br, ['revision3'])
 
     def assertRevisions(self, bi, expected):
         self.assertEqual(set(r.revision_id for r in bi.revisions),
-            set(expected))
+                         set(expected))
 
     def test_uses_submit(self):
         """Submit location can be used and set"""
@@ -197,25 +195,25 @@ class TestSend(tests.TestCaseWithTransport):
 
     def test_mailto_option(self):
         self.make_trees()
-        branch = _mod_branch.Branch.open('branch')
-        branch.get_config().set_user_option('mail_client', 'editor')
+        b = branch.Branch.open('branch')
+        b.get_config().set_user_option('mail_client', 'editor')
         self.run_bzr_error(
             ('No mail-to address \\(--mail-to\\) or output \\(-o\\) specified',
             ), 'send -f branch')
-        branch.get_config().set_user_option('mail_client', 'bogus')
+        b.get_config().set_user_option('mail_client', 'bogus')
         self.run_bzr('send -f branch -o-')
         self.run_bzr_error(('Unknown mail client: bogus',),
                            'send -f branch --mail-to jrandom@example.org')
-        branch.get_config().set_user_option('submit_to', 'jrandom@example.org')
+        b.get_config().set_user_option('submit_to', 'jrandom@example.org')
         self.run_bzr_error(('Unknown mail client: bogus',),
                            'send -f branch')
 
     def test_mailto_child_option(self):
         """Make sure that child_submit_to is used."""
         self.make_trees()
-        branch = _mod_branch.Branch.open('branch')
-        branch.get_config().set_user_option('mail_client', 'bogus')
-        parent = _mod_branch.Branch.open('parent')
+        b = branch.Branch.open('branch')
+        b.get_config().set_user_option('mail_client', 'bogus')
+        parent = branch.Branch.open('parent')
         parent.get_config().set_user_option('child_submit_to',
                            'somebody@example.org')
         self.run_bzr_error(('Unknown mail client: bogus',),
@@ -240,7 +238,7 @@ class TestSend(tests.TestCaseWithTransport):
 
     def test_format_child_option(self):
         self.make_trees()
-        parent = _mod_branch.Branch.open('parent')
+        parent = branch.Branch.open('parent')
         parent.get_config().set_user_option('child_submit_format', '4')
         s = StringIO(self.run_bzr('send -f branch -o-')[0])
         md = merge_directive.MergeDirective.from_lines(s.readlines())
