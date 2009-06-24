@@ -46,7 +46,6 @@ cdef extern from "Python.h":
     void Py_INCREF_ptr "Py_INCREF" (PyObject *)
 
     int Py_EQ
-    int Py_NE
     int Py_LT
     int PyObject_RichCompareBool(object, object, int opid) except -1
     int PyObject_RichCompareBool_ptr "PyObject_RichCompareBool" (
@@ -144,7 +143,6 @@ cdef object _combine_annotations(ann_one, ann_two, cache):
         cache_key = (ann_two, ann_one)
     temp = PyDict_GetItem(cache, cache_key)
     if temp != NULL:
-        _update_counter('combine cache hit', 1)
         return <object>temp
 
     if not PyTuple_CheckExact(ann_one) or not PyTuple_CheckExact(ann_two):
@@ -222,7 +220,7 @@ class Annotator:
                     self._num_needed_children[parent_key] += 1
                 else:
                     self._num_needed_children[parent_key] = 1
-                _update_counter('num children', 1)
+                # _update_counter('num children', 1)
         self._parent_map.update(parent_map)
         # _heads_provider does some graph caching, so it is only valid while
         # self._parent_map hasn't changed
@@ -260,11 +258,11 @@ class Annotator:
         parent_lines = self._text_cache[parent_key]
         parent_annotations = self._annotations_cache[parent_key]
         # PatienceSequenceMatcher should probably be part of Policy
-        t = c()
+        # t = c()
         matcher = patiencediff.PatienceSequenceMatcher(None,
             parent_lines, text)
         matching_blocks = matcher.get_matching_blocks()
-        _update_counter('get_matching_blocks()', c() - t)
+        # _update_counter('get_matching_blocks()', c() - t)
         return parent_annotations, matching_blocks
 
     def _pyx_update_from_one_parent(self, key, annotations, lines, parent_key):
@@ -300,7 +298,7 @@ class Annotator:
         """Reannotate this text relative to a second (or more) parent."""
         cdef Py_ssize_t parent_idx, ann_idx, lines_idx, match_len, idx
         cdef Py_ssize_t pos
-        cdef PyObject *temp
+        cdef PyObject *temp, *ann_temp, *par_temp
         t1 = c()
         parent_annotations, matching_blocks = self._get_parent_annotations_and_matches(
             key, lines, parent_key)
@@ -318,14 +316,19 @@ class Annotator:
             # this parent wins over the current annotation
             for idx from 0 <= idx < match_len:
                 ann_idx = lines_idx + idx
-                temp = PyList_GET_ITEM(annotations, ann_idx)
-                ann = <object>temp
-                temp = PyList_GET_ITEM(parent_annotations, parent_idx + idx)
-                par_ann = <object>temp
-                if (PyObject_RichCompareBool(ann, par_ann, Py_EQ)):
-                    # Nothing to change
+                ann_temp = PyList_GET_ITEM(annotations, ann_idx)
+                par_temp = PyList_GET_ITEM(parent_annotations, parent_idx + idx)
+                if (ann_temp == par_temp):
+                    # This is parent, do nothing
+                    # Pointer comparison is fine here. Value comparison would
+                    # be ok, but it will be handled in the final if clause by
+                    # merging the two tuples into the same tuple
+                    # Avoiding the Py_INCREF by using pointer comparison drops
+                    # timing from 215ms => 125ms
                     continue
-                if (PyObject_RichCompareBool(ann, this_annotation, Py_EQ)):
+                par_ann = <object>par_temp
+                ann = <object>ann_temp
+                if (ann is this_annotation):
                     # Originally claimed 'this', but it was really in this
                     # parent
                     Py_INCREF(par_ann)
@@ -333,15 +336,11 @@ class Annotator:
                     continue
                 # Resolve the fact that both sides have a different value for
                 # last modified
-                if (PyObject_RichCompareBool(ann, last_ann, Py_EQ)
-                    and PyObject_RichCompareBool(par_ann, last_parent, Py_EQ)):
+                if (ann is last_ann and par_ann is last_parent):
                     Py_INCREF(last_res)
                     PyList_SetItem(annotations, ann_idx, last_res)
                 else:
-                    _update_counter('combined annotations', 1)
-                    t = c()
                     new_ann = _combine_annotations(ann, par_ann, cache)
-                    _update_counter('combining annotations', c() - t)
                     Py_INCREF(new_ann)
                     PyList_SetItem(annotations, ann_idx, new_ann)
                     last_ann = ann
