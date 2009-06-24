@@ -649,6 +649,21 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
             frozenset([('parent-1',), ('parent-2',)]),
             index.get_missing_parents())
 
+    def test_avoid_redundant_inserts(self):
+        """Should not insert a record that is already present."""
+        source = self.make_test_vf(True, dir='source')
+        source.add_lines(('a',), (), ['lines\n'])
+        target = self.make_test_vf(True, dir='target')
+        _add_records = target._index.add_records
+        added_nodes = []
+        def add_records(nodes, *args, **kwargs):
+            added_nodes.append(nodes)
+            return _add_records(nodes, *args, **kwargs)
+        target._index.add_records = add_records
+        for x in range(2):
+            target.insert_record_stream(source.get_record_stream(
+                [('a',)], 'unordered', False))
+        self.assertEqual(1, len(added_nodes))
 
 class TestLazyGroupCompress(tests.TestCaseWithTransport):
 

@@ -1413,6 +1413,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
         # XXX: TODO: remove this, it is just for safety checking for now
         inserted_keys = set()
         for record in stream:
+            # Avoid inserting records that are already present.
             if len(list(self._index._get_entries([record.key]))) > 0:
                 continue
             # Raise an error when a record is missing.
