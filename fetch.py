@@ -406,7 +406,8 @@ class InterGitNonGitRepository(InterGitRepository):
                 ret = [mapping.revision_id_bzr_to_foreign(revid)[0] for revid in interesting_heads if revid not in (None, NULL_REVISION)]
             return [rev for rev in ret if not self.target.has_revision(mapping.revision_id_foreign_to_bzr(rev))]
         pack_hint = self.fetch_objects(determine_wants, mapping, pb)
-        self.target.pack(hint=pack_hint)
+        if pack_hint is not None:
+            self.target.pack(hint=pack_hint)
         return self._refs
 
 
