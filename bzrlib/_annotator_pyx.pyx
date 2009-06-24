@@ -138,9 +138,13 @@ cdef object _combine_annotations(ann_one, ann_two, cache):
     cdef Py_ssize_t out_pos
     cdef PyObject *temp, *left, *right
 
-    cache_key = (ann_one, ann_two)
+    if (PyObject_RichCompareBool(ann_one, ann_two, Py_LT)):
+        cache_key = (ann_one, ann_two)
+    else:
+        cache_key = (ann_two, ann_one)
     temp = PyDict_GetItem(cache, cache_key)
     if temp != NULL:
+        _update_counter('combine cache hit', 1)
         return <object>temp
 
     if not PyTuple_CheckExact(ann_one) or not PyTuple_CheckExact(ann_two):
@@ -201,6 +205,7 @@ class Annotator:
         self._num_needed_children = {}
         self._annotations_cache = {}
         self._heads_provider = None
+        self._ann_tuple_cache = {}
 
     def _get_needed_keys(self, key):
         graph = _mod_graph.Graph(self._vf)
@@ -305,7 +310,7 @@ class Annotator:
         last_ann = None
         last_parent = None
         last_res = None
-        cache = {}
+        cache = self._ann_tuple_cache
         for parent_idx, lines_idx, match_len in matching_blocks:
             _check_match_ranges(parent_annotations, annotations,
                                 parent_idx, lines_idx, match_len)
