@@ -57,25 +57,6 @@ cdef extern from "Python.h":
 
 from bzrlib import errors, graph as _mod_graph, osutils, patiencediff, ui
 
-import time
-
-
-counters = {}
-cdef object _counters
-_counters = counters
-
-cdef _update_counter(name, value):
-    cdef PyObject* temp
-    temp = PyDict_GetItem(_counters, name)
-    if temp != NULL:
-        value = (<object>temp) + value
-    PyDict_SetItem(_counters, name, value)
-
-def update_counter(name, value):
-    _update_counter(name, value)
-
-cdef object c
-c = time.clock
 
 cdef class _NeededTextIterator:
 
@@ -256,7 +237,6 @@ class Annotator:
                     self._num_needed_children[parent_key] += 1
                 else:
                     self._num_needed_children[parent_key] = 1
-                # _update_counter('num children', 1)
         self._parent_map.update(parent_map)
         # _heads_provider does some graph caching, so it is only valid while
         # self._parent_map hasn't changed
@@ -294,25 +274,18 @@ class Annotator:
         parent_lines = self._text_cache[parent_key]
         parent_annotations = self._annotations_cache[parent_key]
         # PatienceSequenceMatcher should probably be part of Policy
-        t = c()
         matcher = patiencediff.PatienceSequenceMatcher(None,
             parent_lines, text)
         matching_blocks = matcher.get_matching_blocks()
-        _update_counter('get_matching_blocks()', c() - t)
         return parent_annotations, matching_blocks
 
     def _update_from_one_parent(self, key, annotations, lines, parent_key):
         """Reannotate this text relative to its first parent."""
-        t1 = c()
         parent_annotations, matching_blocks = self._get_parent_annotations_and_matches(
             key, lines, parent_key)
-        t2 = c()
-        _update_counter('update left match', t2 - t1)
 
         _apply_parent_annotations(annotations, parent_annotations,
                                   matching_blocks)
-        t3 = c()
-        _update_counter('update left resolve', t3 - t2)
 
     def _update_from_other_parents(self, key, annotations, lines,
                                    this_annotation, parent_key):
@@ -320,11 +293,8 @@ class Annotator:
         cdef Py_ssize_t parent_idx, ann_idx, lines_idx, match_len, idx
         cdef Py_ssize_t pos
         cdef PyObject *ann_temp, *par_temp
-        t1 = c()
         parent_annotations, matching_blocks = self._get_parent_annotations_and_matches(
             key, lines, parent_key)
-        t2 = c()
-        _update_counter('update other match', t2 - t1)
         _check_annotations_are_lists(annotations, parent_annotations)
         last_ann = None
         last_parent = None
@@ -367,8 +337,6 @@ class Annotator:
                     last_ann = ann
                     last_parent = par_ann
                     last_res = new_ann
-        t3 = c()
-        _update_counter('update other resolve', t3 - t2)
 
     def _record_annotation(self, key, parent_keys, annotations):
         self._annotations_cache[key] = annotations
@@ -388,15 +356,10 @@ class Annotator:
         annotations = [this_annotation] * num_lines
         parent_keys = self._parent_map[key]
         if parent_keys:
-            t1 = c()
             self._update_from_one_parent(key, annotations, text, parent_keys[0])
-            t2 = c()
             for parent in parent_keys[1:]:
                 self._update_from_other_parents(key, annotations, text,
                                                 this_annotation, parent)
-            t3 = c()
-            _update_counter('update left', t2 - t1)
-            _update_counter('update rest', t3 - t2)
         self._record_annotation(key, parent_keys, annotations)
 
     def annotate(self, key):
@@ -405,9 +368,7 @@ class Annotator:
         pb = ui.ui_factory.nested_progress_bar()
         try:
             for text_key, text, num_lines in self._get_needed_texts(key, pb=pb):
-                t = c()
                 self._annotate_one(text_key, text, num_lines)
-                _update_counter('annotate one', c() - t)
         finally:
             pb.finished()
         try:
@@ -427,14 +388,11 @@ class Annotator:
         This is meant as a compatibility thunk to how annotate() used to work.
         """
         cdef Py_ssize_t pos, num_lines
-        t_first = c()
         annotations, lines = self.annotate(key)
-        _update_counter('annotate time', c() - t_first)
         assert len(annotations) == len(lines)
         num_lines = len(lines)
         out = []
         heads = self._get_heads_provider().heads
-        t_second = c()
         for pos from 0 <= pos < num_lines:
             annotation = annotations[pos]
             line = lines[pos]
@@ -450,6 +408,4 @@ class Annotator:
                     # sorted smallest
                     head = sorted(the_heads)[0]
             PyList_Append(out, (head, line))
-        _update_counter('resolve annotations', c() - t_second)
-        _update_counter('overall', c() - t_first)
         return out
