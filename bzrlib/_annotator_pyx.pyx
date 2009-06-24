@@ -61,7 +61,11 @@ cdef object _counters
 _counters = counters
 
 cdef _update_counter(name, value):
-    _counters[name] = value + _counters.setdefault(name, 0)
+    cdef PyObject* temp
+    temp = PyDict_GetItem(_counters, name)
+    if temp != NULL:
+        value = (<object>temp) + value
+    PyDict_SetItem(_counters, name, value)
 
 def update_counter(name, value):
     _update_counter(name, value)
