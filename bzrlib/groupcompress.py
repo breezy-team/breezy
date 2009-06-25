@@ -1413,9 +1413,6 @@ class GroupCompressVersionedFiles(VersionedFiles):
         # XXX: TODO: remove this, it is just for safety checking for now
         inserted_keys = set()
         for record in stream:
-            # Avoid inserting records that are already present.
-            if len(list(self._index._get_entries([record.key]))) > 0:
-                continue
             # Raise an error when a record is missing.
             if record.storage_kind == 'absent':
                 raise errors.RevisionNotPresent(record.key, self)
@@ -1619,8 +1616,8 @@ class _GCGraphIndex(object):
             present_nodes = self._get_entries(keys)
             for (index, key, value, node_refs) in present_nodes:
                 if node_refs != keys[key][1]:
-                    raise errors.KnitCorrupt(self, "inconsistent details in add_records"
-                        ": %s %s" % ((value, node_refs), keys[key]))
+                    trace.warning("inconsistent details in skipped record: %s"
+                               " %s %s", (key, (value, node_refs), keys[key]))
                 del keys[key]
                 changed = True
         if changed:

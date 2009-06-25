@@ -25,6 +25,7 @@ from bzrlib import (
     index as _mod_index,
     osutils,
     tests,
+    trace,
     versionedfile,
     )
 from bzrlib.osutils import sha_string
@@ -649,21 +650,34 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
             frozenset([('parent-1',), ('parent-2',)]),
             index.get_missing_parents())
 
-    def test_avoid_redundant_inserts(self):
-        """Should not insert a record that is already present."""
-        source = self.make_test_vf(True, dir='source')
+    def make_source_with_b(self, a_parent, path):
+        source = self.make_test_vf(True, dir=path)
         source.add_lines(('a',), (), ['lines\n'])
+        if a_parent:
+            b_parents = (('a',),)
+        else:
+            b_parents = ()
+        source.add_lines(('b',), b_parents, ['lines\n'])
+        return source
+
+    def test_inconsistent_redundant_inserts_warn(self):
+        """Should not insert a record that is already present."""
         target = self.make_test_vf(True, dir='target')
-        _add_records = target._index.add_records
-        added_nodes = []
-        def add_records(nodes, *args, **kwargs):
-            added_nodes.append(nodes)
-            return _add_records(nodes, *args, **kwargs)
-        target._index.add_records = add_records
-        for x in range(2):
-            target.insert_record_stream(source.get_record_stream(
-                [('a',)], 'unordered', False))
-        self.assertEqual(1, len(added_nodes))
+        warnings = []
+        def warning(template, args):
+            warnings.append(template % args)
+        _trace_warning = trace.warning
+        trace.warning = warning
+        try:
+            for x in range(2):
+                source = self.make_source_with_b(x==1, 'source%s' % x)
+                target.insert_record_stream(source.get_record_stream(
+                    [('b',)], 'unordered', False))
+        finally:
+            trace.warning = _trace_warning
+        self.assertEqual(["inconsistent details in skipped record: ('b',)"
+                          " ('42 32 0 8', ((),)) ('74 32 0 8', ((('a',),),))"],
+                         warnings)
 
 class TestLazyGroupCompress(tests.TestCaseWithTransport):
 
