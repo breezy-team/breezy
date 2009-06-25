@@ -1921,6 +1921,20 @@ class TestInterestingNodeIterator(TestCaseWithStore):
             ('ddd',): 'initial ddd content',
         }, search_key_func=search_key_func)
 
+    def make_two_deep_map(self, search_key_func=None):
+        # Carefully chosen so that it creates a 2-deep map for both
+        # _search_key_plain and for _search_key_16
+        return self.get_map_key({
+            ('aaa',): 'initial aaa content',
+            ('abb',): 'initial abb content',
+            ('acc',): 'initial acc content',
+            ('ace',): 'initial ace content',
+            ('add',): 'initial add content',
+            ('adh',): 'initial adh content',
+            ('ccc',): 'initial ccc content',
+            ('ddd',): 'initial ddd content',
+        }, search_key_func=search_key_func)
+
     def test_root_only_map_plain(self):
         key = self.make_root_only_map()
         chkmap = CHKMap(self.get_chk_bytes(), key)
@@ -1991,6 +2005,51 @@ class TestInterestingNodeIterator(TestCaseWithStore):
             "      ('ddd',) 'initial ddd content'\n",
             chkmap._dump_tree())
 
+    def test_two_deep_map_plain(self):
+        key = self.make_two_deep_map()
+        chkmap = CHKMap(self.get_chk_bytes(), key)
+        self.assertEqualDiff(
+            "'' InternalNode\n"
+            "  'a' InternalNode\n"
+            "    'aa' LeafNode\n"
+            "      ('aaa',) 'initial aaa content'\n"
+            "    'ab' LeafNode\n"
+            "      ('abb',) 'initial abb content'\n"
+            "    'ac' LeafNode\n"
+            "      ('acc',) 'initial acc content'\n"
+            "      ('ace',) 'initial ace content'\n"
+            "    'ad' LeafNode\n"
+            "      ('add',) 'initial add content'\n"
+            "      ('adh',) 'initial adh content'\n"
+            "  'c' LeafNode\n"
+            "      ('ccc',) 'initial ccc content'\n"
+            "  'd' LeafNode\n"
+            "      ('ddd',) 'initial ddd content'\n",
+            chkmap._dump_tree())
+
+    def test_two_deep_map_16(self):
+        key = self.make_two_deep_map(search_key_func=chk_map._search_key_16)
+        chkmap = CHKMap(self.get_chk_bytes(), key,
+                        search_key_func=chk_map._search_key_16)
+        self.assertEqualDiff(
+            "'' InternalNode\n"
+            "  '2' LeafNode\n"
+            "      ('acc',) 'initial acc content'\n"
+            "      ('ccc',) 'initial ccc content'\n"
+            "  '4' LeafNode\n"
+            "      ('abb',) 'initial abb content'\n"
+            "  'C' LeafNode\n"
+            "      ('ace',) 'initial ace content'\n"
+            "  'F' InternalNode\n"
+            "    'F0' LeafNode\n"
+            "      ('aaa',) 'initial aaa content'\n"
+            "    'F4' LeafNode\n"
+            "      ('adh',) 'initial adh content'\n"
+            "    'FB' LeafNode\n"
+            "      ('ddd',) 'initial ddd content'\n"
+            "    'FD' LeafNode\n"
+            "      ('add',) 'initial add content'\n",
+            chkmap._dump_tree())
 
 
 class TestIterInterestingNodes(TestCaseWithStore):
