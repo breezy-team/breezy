@@ -2043,13 +2043,19 @@ class TestInternalNode(TestCaseWithStore):
 
 class TestInterestingNodeIterator(TestCaseWithExampleMaps):
 
+    def get_iterator(self, interesting_roots, uninteresting_roots,
+                     search_key_func=None):
+        if search_key_func is None:
+            search_key_func = chk_map._search_key_plain
+        return chk_map.InterestingNodeIterator(self.get_chk_bytes(),
+            interesting_roots, uninteresting_roots, search_key_func)
+
     def test__init__(self):
         c_map = self.make_root_only_map()
         key1 = c_map.key()
         c_map.map(('aaa',), 'new aaa content')
         key2 = c_map._save()
-        iterator = chk_map.InterestingNodeIterator(self.get_chk_bytes(),
-            [key2], [key1], chk_map._search_key_plain)
+        iterator = self.get_iterator([key2], [key1])
         self.assertEqual(set([key1]), iterator._all_uninteresting_chks)
         self.assertEqual([], iterator._uninteresting_queue)
         self.assertEqual([], iterator._interesting_queue)
@@ -2059,11 +2065,9 @@ class TestInterestingNodeIterator(TestCaseWithExampleMaps):
         key1 = c_map.key()
         c_map.map(('aaa',), 'new aaa content')
         key2 = c_map._save()
-        iterator = chk_map.InterestingNodeIterator(self.get_chk_bytes(),
-            [key2], [key1], search_key_func)
-        root_results = [(record.key, items) for record, items in
-                        iterator._read_all_roots()]
-        self.assertEqual([(key2, [])], root_results)
+        iterator = self.get_iterator([key2], [key1], search_key_func)
+        root_results = [record.key for record in iterator._read_all_roots()]
+        self.assertEqual([key2], root_results)
         # We should have queued up only items that aren't in the uninteresting
         # set
         search_key_aaa = search_key_func(('aaa',))
@@ -2078,6 +2082,88 @@ class TestInterestingNodeIterator(TestCaseWithExampleMaps):
 
     def test__read_all_roots_16(self):
         self.help__read_all_roots(search_key_func=chk_map._search_key_16)
+
+    def test__read_all_roots_skips_known_uninteresting(self):
+        c_map = self.make_one_deep_map(chk_map._search_key_plain)
+        key1 = c_map.key()
+        c_map2 = self.make_root_only_map(chk_map._search_key_plain)
+        key2 = c_map2.key()
+        iterator = self.get_iterator([key2], [key1], chk_map._search_key_plain)
+        root_results = [record.key for record in iterator._read_all_roots()]
+        # We should have no results. key2 is completely contained within key1,
+        # and we should have seen that in the first pass
+        self.assertEqual([], root_results)
+
+    def test__read_all_roots_prepares_queues(self):
+        c_map = self.make_one_deep_map(chk_map._search_key_plain)
+        key1 = c_map.key()
+        c_map._dump_tree() # load everything
+        key1_a = c_map._root_node._items['a'].key()
+        c_map.map(('abb',), 'new abb content')
+        key2 = c_map._save()
+        key2_a = c_map._root_node._items['a'].key()
+        iterator = self.get_iterator([key2], [key1], chk_map._search_key_plain)
+        root_results = [record.key for record in iterator._read_all_roots()]
+        self.assertEqual([key2], root_results)
+        # At this point, we should have queued up only the 'a' Leaf on both
+        # sides, both 'c' and 'd' are known to not have changed on both sides
+        self.assertEqual([('a', None, key2_a)], iterator._interesting_queue)
+        self.assertEqual([('a', None, key1_a)], iterator._uninteresting_queue)
+
+    def test__read_all_roots_multi_interesting_prepares_queues(self):
+        c_map = self.make_one_deep_map(chk_map._search_key_plain)
+        key1 = c_map.key()
+        c_map._dump_tree() # load everything
+        key1_a = c_map._root_node._items['a'].key()
+        key1_c = c_map._root_node._items['c'].key()
+        c_map.map(('abb',), 'new abb content')
+        key2 = c_map._save()
+        key2_a = c_map._root_node._items['a'].key()
+        key2_c = c_map._root_node._items['c'].key()
+        c_map = chk_map.CHKMap(self.get_chk_bytes(), key1,
+                               chk_map._search_key_plain)
+        c_map.map(('ccc',), 'new ccc content')
+        key3 = c_map._save()
+        key3_a = c_map._root_node._items['a'].key()
+        key3_c = c_map._root_node._items['c'].key()
+        iterator = self.get_iterator([key2, key3], [key1],
+                                     chk_map._search_key_plain)
+        root_results = [record.key for record in iterator._read_all_roots()]
+        self.assertEqual(sorted([key2, key3]), sorted(root_results))
+        # We should have queued up key2_a, and key3_c, but not key2_c or key3_c
+        self.assertEqual([('a', None, key2_a), ('c', None, key3_c)],
+                         iterator._interesting_queue)
+        # And we should have queued up both a and c for the uninteresting set
+        self.assertEqual([('a', None, key1_a), ('c', None, key1_c)],
+                         iterator._uninteresting_queue)
+
+    def test__read_all_roots_yields_extra_deep_records(self):
+        # This is a bit more controversial, and potentially a problem for
+        # stacking in very extreme circumstances. (it should be okay, because
+        # the keys should still be filtered properly, but closer investigation
+        # is needed.)
+
+        # We do this because potentially *any* root node could be present in
+        # one of the uninteresting nodes as a very deep search path. And we
+        # want to avoid buffering the root node indefinitely. (We only know the
+        # root node was found at '' which could map to any other path.)
+        # One potential is to buffer it based on the aggregate search path
+        # (what would the search key of all child keys come out as, etc.)
+        c_map = self.make_two_deep_map(chk_map._search_key_plain)
+        key1 = c_map.key()
+        c_map2 = self.get_map({
+            ('acc',): 'initial acc content',
+            ('ace',): 'initial ace content',
+        }, maximum_size=100)
+        self.assertEqualDiff(
+            "'' LeafNode\n"
+            "      ('acc',) 'initial acc content'\n"
+            "      ('ace',) 'initial ace content'\n",
+            c_map2._dump_tree())
+        key2 = c_map2.key()
+        iterator = self.get_iterator([key2], [key1], chk_map._search_key_plain)
+        root_results = [record.key for record in iterator._read_all_roots()]
+        self.assertEqual([key2], root_results)
 
 
 class TestIterInterestingNodes(TestCaseWithExampleMaps):

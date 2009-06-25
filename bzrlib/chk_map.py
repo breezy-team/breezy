@@ -1445,6 +1445,11 @@ class InterestingNodeIterator(object):
             yield record, node, prefix_refs, items
 
     def _read_all_roots(self):
+        """Read the root pages.
+
+        This is structured as a generator, so that the root records can be
+        yielded up to whoever needs them without any buffering.
+        """
         # This is the bootstrap phase
         if not self._uninteresting_root_keys:
             # TODO: when there are no _uninteresting_root_keys we can shortcut
@@ -1454,7 +1459,6 @@ class InterestingNodeIterator(object):
         # simultaneously, but that requires buffering the interesting nodes
         # until all uninteresting ones have been read
         uninteresting_chks_to_enqueue = []
-        uninteresting_items_to_enqueue = []
         for record, node, prefix_refs, items in \
             self._read_nodes_from_store(self._uninteresting_root_keys):
             # Uninteresting node
@@ -1464,7 +1468,6 @@ class InterestingNodeIterator(object):
             # Don't actually put them in the 'to-read' queue until we have
             # finished checking the interesting references
             uninteresting_chks_to_enqueue.extend(prefix_refs)
-            uninteresting_items_to_enqueue.extend(items)
         # filter out any root keys that are already known to be uninteresting
         interesting_keys = set(self._interesting_root_keys).difference(
                                 self._all_uninteresting_chks)
@@ -1501,10 +1504,18 @@ class InterestingNodeIterator(object):
                 # Key is a real key, we need search key
                 heapq.heappush(self._interesting_queue,
                                (self._search_key_func(key), key, value))
-            yield record, []
+            yield record
         # At this point, we have read all the uninteresting and interesting
         # items, so we can queue up the uninteresting stuff, knowing that we've
         # handled the interesting ones
+        if interesting_ref_intersection is None:
+            interesting_ref_intersection = []
+        for prefix, ref in uninteresting_chks_to_enqueue:
+            if ref in interesting_ref_intersection:
+                # This was referenced by *all* interesting roots, so we know
+                # that we don't need to walk it
+                continue
+            heapq.heappush(self._uninteresting_queue, (prefix, None, ref))
 
 def _find_children_info(store, interesting_keys, uninteresting_keys, pb):
     """Read the associated records, and determine what is interesting."""
