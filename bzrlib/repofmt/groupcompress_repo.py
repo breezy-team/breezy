@@ -648,6 +648,9 @@ class CHKInventoryRepository(KnitPackRepository):
                 add_callback=self._pack_collection.chk_index.add_callback,
                 parents=False, is_locked=self.is_locked),
             access=self._pack_collection.chk_index.data_access)
+        search_key_name = self._format._serializer.search_key_name
+        search_key_func = chk_map.search_key_registry.get(search_key_name)
+        self.chk_bytes._search_key_func = search_key_func
         # True when the repository object is 'write locked' (as opposed to the
         # physical lock only taken out around changes to the pack-names list.)
         # Another way to represent this would be a decorator around the control
