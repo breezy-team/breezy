@@ -94,6 +94,11 @@ Internals
   parameter to permit cross-format fetching to incrementally pack the
   converted data. (Robert Collins)
 
+* OS file locks are now taken out using ``CreateFile`` rather than
+  ``LockFileEx`` on Windows. The locking remains exclusive with
+  ``LockFileEx`` but now it also works on older versions of Windows (such
+  as Win98). (Martin <gzlist>)
+
 * pack <=> pack fetching is now done via a ``PackStreamSource`` rather
   than the ``Packer`` code. The user visible change is that we now
   properly fetch the minimum number of texts for non-smart fetching.
