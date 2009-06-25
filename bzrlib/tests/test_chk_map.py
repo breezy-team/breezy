@@ -59,7 +59,7 @@ class TestNode(tests.TestCase):
         self.assertCommonPrefix('', '', '')
 
 
-class TestCaseWithStore(tests.TestCaseWithTransport):
+class TestCaseWithStore(tests.TestCaseWithMemoryTransport):
 
     def get_chk_bytes(self):
         # The easiest way to get a CHK store is a development6 repository and
