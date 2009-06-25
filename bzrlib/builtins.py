@@ -1044,7 +1044,8 @@ class cmd_push(Command):
         if directory is None:
             directory = '.'
         # Get the source branch
-        tree, br_from = bzrdir.BzrDir.open_tree_or_branch(directory)
+        (tree, br_from,
+         _unused) = bzrdir.BzrDir.open_containing_tree_or_branch(directory)
         if strict is None:
             strict = br_from.get_config().get_user_option('push_strict')
             if strict is not None:
@@ -2997,19 +2998,28 @@ class cmd_check(Command):
     The working tree and branch checks will only give output if a problem is
     detected. The output fields of the repository check are:
 
-        revisions: This is just the number of revisions checked.  It doesn't
-            indicate a problem.
-        versionedfiles: This is just the number of versionedfiles checked.  It
-            doesn't indicate a problem.
-        unreferenced ancestors: Texts that are ancestors of other texts, but
-            are not properly referenced by the revision ancestry.  This is a
-            subtle problem that Bazaar can work around.
-        unique file texts: This is the total number of unique file contents
-            seen in the checked revisions.  It does not indicate a problem.
-        repeated file texts: This is the total number of repeated texts seen
-            in the checked revisions.  Texts can be repeated when their file
-            entries are modified, but the file contents are not.  It does not
-            indicate a problem.
+    revisions
+        This is just the number of revisions checked.  It doesn't
+        indicate a problem.
+
+    versionedfiles
+        This is just the number of versionedfiles checked.  It
+        doesn't indicate a problem.
+
+    unreferenced ancestors
+        Texts that are ancestors of other texts, but
+        are not properly referenced by the revision ancestry.  This is a
+        subtle problem that Bazaar can work around.
+
+    unique file texts
+        This is the total number of unique file contents
+        seen in the checked revisions.  It does not indicate a problem.
+
+    repeated file texts
+        This is the total number of repeated texts seen
+        in the checked revisions.  Texts can be repeated when their file
+        entries are modified, but the file contents are not.  It does not
+        indicate a problem.
 
     If no restrictions are specified, all Bazaar data that is found at the given
     location will be checked.

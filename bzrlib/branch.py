@@ -105,6 +105,8 @@ class Branch(object):
     def _activate_fallback_location(self, url):
         """Activate the branch/repository from url as a fallback repository."""
         repo = self._get_fallback_repository(url)
+        if repo.has_same_location(self.repository):
+            raise errors.UnstackableLocationError(self.base, url)
         self.repository.add_fallback_repository(repo)
 
     def break_lock(self):

@@ -1470,6 +1470,19 @@ class CHKInventory(CommonInventory):
         self._path_to_fileid_cache = {}
         self._search_key_name = search_key_name
 
+    def __eq__(self, other):
+        """Compare two sets by comparing their contents."""
+        if not isinstance(other, CHKInventory):
+            return NotImplemented
+
+        this_key = self.id_to_entry.key()
+        other_key = other.id_to_entry.key()
+        this_pid_key = self.parent_id_basename_to_file_id.key()
+        other_pid_key = other.parent_id_basename_to_file_id.key()
+        if None in (this_key, this_pid_key, other_key, other_pid_key):
+            return False
+        return this_key == other_key and this_pid_key == other_pid_key
+
     def _entry_to_bytes(self, entry):
         """Serialise entry as a single bytestring.
 
@@ -1716,28 +1729,37 @@ class CHKInventory(CommonInventory):
         :param maximum_size: The CHKMap node size limit.
         :param search_key_name: The identifier for the search key function
         """
-        result = CHKInventory(search_key_name)
+        result = klass(search_key_name)
         result.revision_id = inventory.revision_id
         result.root_id = inventory.root.file_id
-        search_key_func = chk_map.search_key_registry.get(search_key_name)
-        result.id_to_entry = chk_map.CHKMap(chk_store, None, search_key_func)
-        result.id_to_entry._root_node.set_maximum_size(maximum_size)
-        file_id_delta = []
-        result.parent_id_basename_to_file_id = chk_map.CHKMap(chk_store,
-            None, search_key_func)
-        result.parent_id_basename_to_file_id._root_node.set_maximum_size(
-            maximum_size)
-        result.parent_id_basename_to_file_id._root_node._key_width = 2
-        parent_id_delta = []
+
+        entry_to_bytes = result._entry_to_bytes
+        parent_id_basename_key = result._parent_id_basename_key
+        id_to_entry_dict = {}
+        parent_id_basename_dict = {}
         for path, entry in inventory.iter_entries():
-            file_id_delta.append((None, (entry.file_id,),
-                result._entry_to_bytes(entry)))
-            parent_id_delta.append(
-                (None, result._parent_id_basename_key(entry),
-                 entry.file_id))
-        result.id_to_entry.apply_delta(file_id_delta)
-        result.parent_id_basename_to_file_id.apply_delta(parent_id_delta)
+            id_to_entry_dict[(entry.file_id,)] = entry_to_bytes(entry)
+            p_id_key = parent_id_basename_key(entry)
+            parent_id_basename_dict[p_id_key] = entry.file_id
+
+        result._populate_from_dicts(chk_store, id_to_entry_dict,
+            parent_id_basename_dict, maximum_size=maximum_size)
         return result
+
+    def _populate_from_dicts(self, chk_store, id_to_entry_dict,
+                             parent_id_basename_dict, maximum_size):
+        search_key_func = chk_map.search_key_registry.get(self._search_key_name)
+        root_key = chk_map.CHKMap.from_dict(chk_store, id_to_entry_dict,
+                   maximum_size=maximum_size, key_width=1,
+                   search_key_func=search_key_func)
+        self.id_to_entry = chk_map.CHKMap(chk_store, root_key,
+                                          search_key_func)
+        root_key = chk_map.CHKMap.from_dict(chk_store,
+                   parent_id_basename_dict,
+                   maximum_size=maximum_size, key_width=2,
+                   search_key_func=search_key_func)
+        self.parent_id_basename_to_file_id = chk_map.CHKMap(chk_store,
+                                                    root_key, search_key_func)
 
     def _parent_id_basename_key(self, entry):
         """Create a key for a entry in a parent_id_basename_to_file_id index."""
