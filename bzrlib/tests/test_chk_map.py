@@ -2441,24 +2441,17 @@ class TestIterInterestingNodes(TestCaseWithExampleMaps):
         #      (a_key, []),
         #      (aac_key, [(('aac',), 'other')]),
         #     ], [target1, target2, target3], [basis])
-        print target1_map._dump_tree(True)
-        print target2_map._dump_tree(True)
-        print target3_map._dump_tree(True)
         self.assertIterInteresting(
             [(target1, []),
              (target2, []),
              (target3, []),
              (a_key, []),
-             (aaa_key, []), # XXX Bad monkey, duplicate with target1
-             (None, [(('aaa',), 'common')]),
              (None, [(('aaa',), 'common')]),
              (aac_key, []),
              (None, [(('aac',), 'other')]),
              (b_key, []),
              (None, [(('bbb',), 'new')]),
             ], [target1, target2, target3], [basis])
-
-        self.fail('got this far')
 
         self.assertIterInteresting(
             [(target2, []),

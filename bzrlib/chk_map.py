@@ -1480,16 +1480,17 @@ class InterestingNodeIterator(object):
         # know that we have perfect overlap with uninteresting, without queue
         # up any of them
         interesting_prefixes = set()
-        interesting_queued_refs = set()
+        # We are about to yield all of these, so we don't want them getting
+        # added a second time
+        self._all_uninteresting_chks.update(interesting_keys)
         for record, node, prefix_refs, items in \
             self._read_nodes_from_store(interesting_keys):
             # At this level, we now know all the uninteresting references
             # So we can go ahead and filter, and queue up whatever is remaining
             for prefix, ref in prefix_refs:
-                if ref in self._all_uninteresting_chks:
-                    continue
-                # Another root already added this
-                if ref in self._interesting_queued_refs:
+                if (ref in self._all_uninteresting_chks
+                    or ref in self._interesting_queued_refs):
+                    # Either in the uninteresting set, or added by another root
                     continue
                 self._interesting_queued_refs.add(ref)
                 interesting_prefixes.update(
@@ -1510,8 +1511,6 @@ class InterestingNodeIterator(object):
                     [search_prefix[:i+1] for i in xrange(len(search_prefix))])
                 interesting_prefixes.add(search_prefix)
                 interesting_prefixes.add(search_prefix[0])
-            if record is not None:
-                print 'yielding from root', record.key
             yield record
         # At this point, we have read all the uninteresting and interesting
         # items, so we can queue up the uninteresting stuff, knowing that we've
@@ -1526,7 +1525,6 @@ class InterestingNodeIterator(object):
     def _flush_interesting_queue(self):
         # TODO: this could really be done as a series of big batches of reading
         #       and pushing
-        import pdb; pdb.set_trace()
         while self._interesting_queue:
             prefix, key, value = heapq.heappop(self._interesting_queue)
             if key is not None:
@@ -1578,8 +1576,6 @@ class InterestingNodeIterator(object):
                 # Yield everything remaining in the interesting side
                 # we have processed all of the uninteresting stuff
                 for record, items in self._flush_interesting_queue():
-                    if record is not None:
-                        print 'yielding flush interesting', record.key
                     yield record, items
                 return
             # (prefix, key, value)
@@ -1603,8 +1599,6 @@ class InterestingNodeIterator(object):
                     #     continue
                     for record, node, prefix_refs, items in \
                             self._read_nodes_from_store([value]):
-                        print 'yielding as next in queue', record.key
-                        # import pdb; pdb.set_trace()
                         yield record, []
                         # This record has been yielded, mark it uninteresting
                         self._all_uninteresting_chks.add(record.key)
