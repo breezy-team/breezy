@@ -1886,6 +1886,113 @@ class TestInternalNode(TestCaseWithStore):
 # 1-4K get0
 
 
+class TestInterestingNodeIterator(TestCaseWithStore):
+
+    def get_chk_bytes(self):
+        if getattr(self, '_chk_bytes', None) is None:
+            self._chk_bytes = super(TestInterestingNodeIterator,
+                                    self).get_chk_bytes()
+        return self._chk_bytes
+
+    def get_map_key(self, a_dict, maximum_size=100, search_key_func=None):
+        c_map = self._get_map(a_dict, maximum_size=maximum_size,
+                              chk_bytes=self.get_chk_bytes(),
+                              search_key_func=search_key_func)
+        return c_map.key()
+
+    def make_root_only_map(self, search_key_func=None):
+        return self.get_map_key({
+            ('aaa',): 'initial aaa content',
+            ('abb',): 'initial abb content',
+        }, search_key_func=search_key_func)
+
+    def make_root_only_aaa_ddd_map(self, search_key_func=None):
+        return self.get_map_key({
+            ('aaa',): 'initial aaa content',
+            ('ddd',): 'initial ddd content',
+        }, search_key_func=search_key_func)
+
+    def make_one_deep_map(self, search_key_func=None):
+        # Same as root_only_map, except it forces an InternalNode at the root
+        return self.get_map_key({
+            ('aaa',): 'initial aaa content',
+            ('abb',): 'initial abb content',
+            ('ccc',): 'initial ccc content',
+            ('ddd',): 'initial ddd content',
+        }, search_key_func=search_key_func)
+
+    def test_root_only_map_plain(self):
+        key = self.make_root_only_map()
+        chkmap = CHKMap(self.get_chk_bytes(), key)
+        self.assertEqualDiff(
+            "'' LeafNode\n"
+            "      ('aaa',) 'initial aaa content'\n"
+            "      ('abb',) 'initial abb content'\n",
+            chkmap._dump_tree())
+
+    def test_root_only_map_16(self):
+        key = self.make_root_only_map(search_key_func=chk_map._search_key_16)
+        chkmap = CHKMap(self.get_chk_bytes(), key,
+                        search_key_func=chk_map._search_key_16)
+        self.assertEqualDiff(
+            "'' LeafNode\n"
+            "      ('aaa',) 'initial aaa content'\n"
+            "      ('abb',) 'initial abb content'\n",
+            chkmap._dump_tree())
+
+    def test_one_deep_map_plain(self):
+        key = self.make_one_deep_map()
+        chkmap = CHKMap(self.get_chk_bytes(), key)
+        self.assertEqualDiff(
+            "'' InternalNode\n"
+            "  'a' LeafNode\n"
+            "      ('aaa',) 'initial aaa content'\n"
+            "      ('abb',) 'initial abb content'\n"
+            "  'c' LeafNode\n"
+            "      ('ccc',) 'initial ccc content'\n"
+            "  'd' LeafNode\n"
+            "      ('ddd',) 'initial ddd content'\n",
+            chkmap._dump_tree())
+
+    def test_one_deep_map_16(self):
+        key = self.make_one_deep_map(search_key_func=chk_map._search_key_16)
+        chkmap = CHKMap(self.get_chk_bytes(), key,
+                        search_key_func=chk_map._search_key_16)
+        self.assertEqualDiff(
+            "'' InternalNode\n"
+            "  '2' LeafNode\n"
+            "      ('ccc',) 'initial ccc content'\n"
+            "  '4' LeafNode\n"
+            "      ('abb',) 'initial abb content'\n"
+            "  'F' LeafNode\n"
+            "      ('aaa',) 'initial aaa content'\n"
+            "      ('ddd',) 'initial ddd content'\n",
+            chkmap._dump_tree())
+
+    def test_root_only_aaa_ddd_plain(self):
+        key = self.make_root_only_aaa_ddd_map()
+        chkmap = CHKMap(self.get_chk_bytes(), key)
+        self.assertEqualDiff(
+            "'' LeafNode\n"
+            "      ('aaa',) 'initial aaa content'\n"
+            "      ('ddd',) 'initial ddd content'\n",
+            chkmap._dump_tree())
+
+    def test_one_deep_map_16(self):
+        key = self.make_root_only_aaa_ddd_map(
+                search_key_func=chk_map._search_key_16)
+        chkmap = CHKMap(self.get_chk_bytes(), key,
+                        search_key_func=chk_map._search_key_16)
+        # We use 'aaa' and 'ddd' because they happen to map to 'F' when using
+        # _search_key_16
+        self.assertEqualDiff(
+            "'' LeafNode\n"
+            "      ('aaa',) 'initial aaa content'\n"
+            "      ('ddd',) 'initial ddd content'\n",
+            chkmap._dump_tree())
+
+
+
 class TestIterInterestingNodes(TestCaseWithStore):
 
     def get_chk_bytes(self):
@@ -2188,12 +2295,6 @@ class TestIterInterestingNodes(TestCaseWithStore):
             right_map._dump_tree())
         # Keys from the right side target - none, the root is enough.
         # Test behaviour
-        self.expectFailure("we don't properly filter different depths",
-            self.assertIterInteresting,
-            [(left, []),
-             (right, []),
-             (l_d_key, [(('ddd',), 'change')]),
-            ], [left, right], [basis])
         self.assertIterInteresting(
             [(left, []),
              (right, []),

@@ -1398,107 +1398,112 @@ def _deserialise(bytes, key, search_key_func):
     return node
 
 
-def _find_children_info(store, interesting_keys, uninteresting_keys, pb):
-    """Read the associated records, and determine what is interesting."""
-    uninteresting_keys = set(uninteresting_keys)
-    chks_to_read = uninteresting_keys.union(interesting_keys)
-    next_uninteresting = set()
-    next_interesting = set()
-    next_interesting_intersection = None
-    uninteresting_items = set()
-    interesting_items = set()
-    interesting_to_yield = []
-    for record in store.get_record_stream(chks_to_read, 'unordered', True):
-        # records_read.add(record.key())
-        if pb is not None:
-            pb.tick()
-        bytes = record.get_bytes_as('fulltext')
-        # We don't care about search_key_func for this code, because we only
-        # care about external references.
-        node = _deserialise(bytes, record.key, search_key_func=None)
-        if record.key in uninteresting_keys:
-            if type(node) is InternalNode:
-                next_uninteresting.update(node.refs())
-            else:
-                # We know we are at a LeafNode, so we can pass None for the
-                # store
-                uninteresting_items.update(node.iteritems(None))
-        else:
-            interesting_to_yield.append(record.key)
-            if type(node) is InternalNode:
-                if next_interesting_intersection is None:
-                    next_interesting_intersection = set(node.refs())
-                else:
-                    next_interesting_intersection = \
-                        next_interesting_intersection.intersection(node.refs())
-                next_interesting.update(node.refs())
-            else:
-                interesting_items.update(node.iteritems(None))
-    return (next_uninteresting, uninteresting_items,
-            next_interesting, interesting_to_yield, interesting_items,
-            next_interesting_intersection)
+class InterestingNodeIterator(object):
+    """Determine the nodes and items that are 'interesting'
 
+    This is defined as being present in the interesting set, but not being
+    present in the uninteresting set.
+    """
 
-def _find_all_uninteresting(store, interesting_root_keys,
-                            uninteresting_root_keys, pb):
-    """Determine the full set of uninteresting keys."""
-    # What about duplicates between interesting_root_keys and
-    # uninteresting_root_keys?
-    if not uninteresting_root_keys:
-        # Shortcut case. We know there is nothing uninteresting to filter out
-        # So we just let the rest of the algorithm do the work
-        # We know there is nothing uninteresting, and we didn't have to read
-        # any interesting records yet.
-        return (set(), set(), set(interesting_root_keys), [], set())
-    all_uninteresting_chks = set(uninteresting_root_keys)
-    all_uninteresting_items = set()
+    def __init__(self, store, interesting_root_keys, uninteresting_root_keys,
+                 search_key_func, pb=None):
+        self._store = store
+        self._interesting_root_keys = interesting_root_keys
+        self._uninteresting_root_keys = uninteresting_root_keys
+        self._pb = pb
+        self._read_roots = False
+        self._all_uninteresting_chks = set(self._uninteresting_root_keys)
+        self._all_uninteresting_items = set()
+        self._search_key_func = search_key_func
 
-    # First step, find the direct children of both the interesting and
-    # uninteresting set
-    (uninteresting_keys, uninteresting_items,
-     interesting_keys, interesting_to_yield,
-     interesting_items, interesting_intersection,
-     ) = _find_children_info(store, interesting_root_keys,
-                                              uninteresting_root_keys,
-                                              pb=pb)
-    all_uninteresting_chks.update(uninteresting_keys)
-    all_uninteresting_items.update(uninteresting_items)
-    del uninteresting_items
-    # Do not examine in detail pages common to all interesting trees.
-    # Pages that are common to all interesting trees will have their
-    # older versions found via the uninteresting tree traversal. Some pages
-    # found via the interesting trees traversal will be uninteresting for
-    # other of the interesting trees, which is why we require the pages to be
-    # common for us to trim them.
-    if interesting_intersection is not None:
-        uninteresting_keys.difference_update(interesting_intersection)
+        # The set of uninteresting and interesting nodes, queued based on the
+        # search_key prefix
+        self._uninteresting_queue = []
+        self._interesting_queue = []
 
-    # Second, find the full set of uninteresting bits reachable by the
-    # uninteresting roots
-    chks_to_read = uninteresting_keys
-    while chks_to_read:
-        next_chks = set()
-        for record in store.get_record_stream(chks_to_read, 'unordered', False):
-            # TODO: Handle 'absent'
-            if pb is not None:
-                pb.tick()
+    def __iter__(self):
+        return self
+
+    def _read_nodes_from_store(self, keys):
+        stream = self._store.get_record_stream(self._uninteresting_root_keys,
+                                               'unordered', True)
+        for record in stream:
+            if self._pb is not None:
+                self._pb.tick()
+            if record.storage_kind == 'absent':
+                raise errors.NoSuchRevision(store, record.key)
             bytes = record.get_bytes_as('fulltext')
-            # We don't care about search_key_func for this code, because we
-            # only care about external references.
-            node = _deserialise(bytes, record.key, search_key_func=None)
+            node = _deserialise(bytes, record.key,
+                                search_key_func=self._search_key_func)
             if type(node) is InternalNode:
-                # uninteresting_prefix_chks.update(node._items.iteritems())
-                chks = node._items.values()
-                # TODO: We remove the entries that are already in
-                #       uninteresting_chks ?
-                next_chks.update(chks)
-                all_uninteresting_chks.update(chks)
+                # Note we don't have to do node.refs() because we know that
+                # there are no children that have been pushed into this node
+                prefix_refs = node._items.items()
+                items = []
             else:
-                all_uninteresting_items.update(node._items.iteritems())
-        chks_to_read = next_chks
-    return (all_uninteresting_chks, all_uninteresting_items,
-            interesting_keys, interesting_to_yield, interesting_items)
+                prefix_refs = []
+                items = node._items.items()
+            yield record, node, prefix_refs, items
 
+    def _read_all_roots(self):
+        # This is the bootstrap phase
+        if not self._uninteresting_root_keys:
+            # TODO: when there are no _uninteresting_root_keys we can shortcut
+            # a lot of the code
+            pass
+        # Read the uninteresting nodes first, we would like to read them
+        # simultaneously, but that requires buffering the interesting nodes
+        # until all uninteresting ones have been read
+        uninteresting_chks_to_enqueue = []
+        uninteresting_items_to_enqueue = []
+        for record, node, prefix_refs, items in \
+            self._read_nodes_from_store(self._uninteresting_root_keys):
+            # Uninteresting node
+            self._all_uninteresting_chks.update([k for _,k in prefix_refs])
+            self._all_uninteresting_items.update(items)
+            # Queue up the uninteresting references
+            # Don't actually put them in the 'to-read' queue until we have
+            # finished checking the interesting references
+            uninteresting_to_enqueue.extend(prefix_refs)
+            uninteresting_items_to_enqueue.extend(items)
+        interesting_keys = set(self._interesting_root_keys).difference(
+                                self._uninteresting_root_keys)
+        # These references are common to *all* interesting nodes, and thus we
+        # know that we have perfect overlap with uninteresting, without queue
+        # up any of them
+        interesting_ref_intersection = None
+        for record, node, prefix_refs, items in \
+            self._read_nodes_from_store(interesting_keys):
+            # At this level, we now know all the uninteresting references
+            # So we can go ahead and filter, and queue up whatever is remaining
+            if interesting_ref_intersection is None:
+                interesting_ref_intersection = set([r for _,r in prefix_refs])
+            else:
+                # TODO: is intersection_update better than
+                #       x = x.intersection(y) ?
+                #       We know that interesting_ref_intersection will hold at
+                #       most 255 items, and that will be compared against 255
+                #       new items, so it shouldn't ever 'blow out' like
+                #       'difference_update'
+                interesting_ref_intersection.intersection_update(
+                    [r for _,r in prefix_refs])
+            for prefix, ref in prefix_refs:
+                if ref in self._all_uninteresting_chks:
+                    continue
+                heapq.heappush(self._interesting_queue,
+                               (prefix, None, ref))
+            for item in items:
+                if item in self._all_uninteresting_items:
+                    continue
+                # We can't yield 'items' yet, because we haven't dug deep
+                # enough on the uninteresting set
+                # Key is a real key, we need search key
+                heapq.heappush(self._interesting_queue,
+                               (self._search_key_func(key), key, value))
+            yield record, []
+        # At this point, we have read all the uninteresting and interesting
+        # items, so we can queue up the uninteresting stuff, knowing that we've
+        # handled the interesting ones
 
 def iter_interesting_nodes(store, interesting_root_keys,
                            uninteresting_root_keys, pb=None):
