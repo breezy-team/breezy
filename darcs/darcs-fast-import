@@ -28,7 +28,7 @@ import os
 import time
 import shutil
 import optparse
-import popen2
+import subprocess
 
 class Handler:
 	def __init__(self):
@@ -122,12 +122,12 @@ class Handler:
 			self.read_next_line()
 		self.handle_data()
 		self.skip_optional_lf()
-		pout, pin = popen2.popen2("darcs tag --pipe")
+		sock = subprocess.Popen(["darcs", "tag", "--pipe"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 		buf = [self.date, self.ident, version]
-		pin.write("\n".join(buf))
-		pin.close()
-		self.log("Tagging %s:\n%s" % (version, pout.read()))
-		pout.close()
+		sock.stdin.write("\n".join(buf))
+		sock.stdin.close()
+		self.log("Tagging %s:\n%s" % (version, sock.stdout.read()))
+		sock.stdout.close()
 
 	def handle_commit(self):
 		if not self.prevfiles and self.options.import_marks:
@@ -202,12 +202,12 @@ class Handler:
 
 		for i in adds:
 			os.system("darcs add %s" % i)
-		pout, pin = popen2.popen2("darcs record --ignore-times -a --pipe")
+		sock = subprocess.Popen(["darcs", "record", "--ignore-times", "-a", "--pipe"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 		buf = [self.date, self.ident, self.short, self.long]
-		pin.write("\n".join(buf))
-		pin.close()
-		self.log("Recording :%s:\n%s" % (self.mark_num, pout.read()))
-		pout.close()
+		sock.stdin.write("\n".join(buf))
+		sock.stdin.close()
+		self.log("Recording :%s:\n%s" % (self.mark_num, sock.stdout.read()))
+		sock.stdout.close()
 
 		if self.options.export_marks:
 			# yeah, an xml parser would be better, but
