@@ -1,5 +1,9 @@
 VERSION         DESCRIPTION
 -----------------------------------------------------------------------------
+0.9           - fix handling of accents in tag names
+              - warning fixes for Python-2.6
+              - git-darcs: the add subcommand can now remember d-f-e
+                options
               - git-darcs: new list, find-darcs and find-git subcommands
 0.8           - revert the "not exporting unchanged files multiple
 		times" optimization, it causes corrupted results in some
