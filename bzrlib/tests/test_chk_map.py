@@ -2042,7 +2042,42 @@ class TestInternalNode(TestCaseWithStore):
 
 
 class TestInterestingNodeIterator(TestCaseWithExampleMaps):
-    pass
+
+    def test__init__(self):
+        c_map = self.make_root_only_map()
+        key1 = c_map.key()
+        c_map.map(('aaa',), 'new aaa content')
+        key2 = c_map._save()
+        iterator = chk_map.InterestingNodeIterator(self.get_chk_bytes(),
+            [key2], [key1], chk_map._search_key_plain)
+        self.assertEqual(set([key1]), iterator._all_uninteresting_chks)
+        self.assertEqual([], iterator._uninteresting_queue)
+        self.assertEqual([], iterator._interesting_queue)
+
+    def help__read_all_roots(self, search_key_func):
+        c_map = self.make_root_only_map(search_key_func=search_key_func)
+        key1 = c_map.key()
+        c_map.map(('aaa',), 'new aaa content')
+        key2 = c_map._save()
+        iterator = chk_map.InterestingNodeIterator(self.get_chk_bytes(),
+            [key2], [key1], search_key_func)
+        root_results = [(record.key, items) for record, items in
+                        iterator._read_all_roots()]
+        self.assertEqual([(key2, [])], root_results)
+        # We should have queued up only items that aren't in the uninteresting
+        # set
+        search_key_aaa = search_key_func(('aaa',))
+        self.assertEqual([(search_key_aaa, ('aaa',), 'new aaa content')],
+                         iterator._interesting_queue)
+        # And there are no uninteresting references, so that queue should be
+        # empty
+        self.assertEqual([], iterator._uninteresting_queue)
+
+    def test__read_all_roots_plain(self):
+        self.help__read_all_roots(search_key_func=chk_map._search_key_plain)
+
+    def test__read_all_roots_16(self):
+        self.help__read_all_roots(search_key_func=chk_map._search_key_16)
 
 
 class TestIterInterestingNodes(TestCaseWithExampleMaps):

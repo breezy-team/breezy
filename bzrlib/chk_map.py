@@ -1425,8 +1425,7 @@ class InterestingNodeIterator(object):
         return self
 
     def _read_nodes_from_store(self, keys):
-        stream = self._store.get_record_stream(self._uninteresting_root_keys,
-                                               'unordered', True)
+        stream = self._store.get_record_stream(keys, 'unordered', True)
         for record in stream:
             if self._pb is not None:
                 self._pb.tick()
@@ -1464,10 +1463,11 @@ class InterestingNodeIterator(object):
             # Queue up the uninteresting references
             # Don't actually put them in the 'to-read' queue until we have
             # finished checking the interesting references
-            uninteresting_to_enqueue.extend(prefix_refs)
+            uninteresting_chks_to_enqueue.extend(prefix_refs)
             uninteresting_items_to_enqueue.extend(items)
+        # filter out any root keys that are already known to be uninteresting
         interesting_keys = set(self._interesting_root_keys).difference(
-                                self._uninteresting_root_keys)
+                                self._all_uninteresting_chks)
         # These references are common to *all* interesting nodes, and thus we
         # know that we have perfect overlap with uninteresting, without queue
         # up any of them
@@ -1495,6 +1495,7 @@ class InterestingNodeIterator(object):
             for item in items:
                 if item in self._all_uninteresting_items:
                     continue
+                key, value = item
                 # We can't yield 'items' yet, because we haven't dug deep
                 # enough on the uninteresting set
                 # Key is a real key, we need search key
