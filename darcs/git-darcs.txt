@@ -36,7 +36,11 @@ The supported commands are the followings:
 
 add::
 	This can register a new darcs repo in the git one, so that you
-	can fetch from it. The syntax is `add nick path`.
+	can fetch from it. The syntax is `add nick path [dfe-options]`.
+	Add any options you want to be passed to darcs-fast-export,
+	like --encoding=utf-8, or --authors-file AUTHORMAP. Remember
+	that if AUTHORMAP is not absolute, it will be interpreted
+	relative to the git repository's root directory.
 
 push::
 	Transfers your changes created in the current branch back the
