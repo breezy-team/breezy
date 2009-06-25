@@ -20,6 +20,7 @@ from itertools import izip
 
 from bzrlib import (
     chk_map,
+    groupcompress,
     osutils,
     tests,
     )
@@ -64,12 +65,9 @@ class TestCaseWithStore(tests.TestCaseWithMemoryTransport):
     def get_chk_bytes(self):
         # The easiest way to get a CHK store is a development6 repository and
         # then work with the chk_bytes attribute directly.
-        repo = self.make_repository(".", format="development6-rich-root")
-        repo.lock_write()
-        self.addCleanup(repo.unlock)
-        repo.start_write_group()
-        self.addCleanup(repo.abort_write_group)
-        return repo.chk_bytes
+        factory = groupcompress.make_pack_factory(False, False, 1)
+        self.chk_bytes = factory(self.get_transport())
+        return self.chk_bytes
 
     def _get_map(self, a_dict, maximum_size=0, chk_bytes=None, key_width=1,
                  search_key_func=None):
