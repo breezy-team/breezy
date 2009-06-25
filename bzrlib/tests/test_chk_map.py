@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1894,8 +1894,8 @@ class TestIterInterestingNodes(TestCaseWithStore):
                                     self).get_chk_bytes()
         return self._chk_bytes
 
-    def get_map_key(self, a_dict):
-        c_map = self._get_map(a_dict, maximum_size=10,
+    def get_map_key(self, a_dict, maximum_size=10):
+        c_map = self._get_map(a_dict, maximum_size=maximum_size,
                               chk_bytes=self.get_chk_bytes())
         return c_map.key()
 
@@ -2154,7 +2154,16 @@ class TestIterInterestingNodes(TestCaseWithStore):
             ('abb',): 'right'
             })
         basis_map = CHKMap(self.get_chk_bytes(), basis)
-        basis_map._dump_tree()
+        self.assertEqualDiff(
+            "'' InternalNode\n"
+            "  'a' InternalNode\n"
+            "    'aa' LeafNode\n"
+            "      ('aaa',) 'left'\n"
+            "    'ab' LeafNode\n"
+            "      ('abb',) 'right'\n"
+            "  'c' LeafNode\n"
+            "      ('ccc',) 'common'\n",
+            basis_map._dump_tree())
         # Get left expected data
         left_map = CHKMap(self.get_chk_bytes(), left)
         self.assertEqualDiff(
@@ -2183,4 +2192,69 @@ class TestIterInterestingNodes(TestCaseWithStore):
             [(left, []),
              (right, []),
              (l_d_key, [(('ddd',), 'change')]),
+            ], [left, right], [basis])
+
+    def test_multiple_maps_similar(self):
+        # We want to have a depth=2 tree, with multiple entries in each leaf
+        # node
+        basis = self.get_map_key({
+            ('aaa',): 'unchanged',
+            ('abb',): 'will change left',
+            ('caa',): 'unchanged',
+            ('cbb',): 'will change right',
+            }, maximum_size=60)
+        left = self.get_map_key({
+            ('aaa',): 'unchanged',
+            ('abb',): 'changed left',
+            ('caa',): 'unchanged',
+            ('cbb',): 'will change right',
+            }, maximum_size=60)
+        right = self.get_map_key({
+            ('aaa',): 'unchanged',
+            ('abb',): 'will change left',
+            ('caa',): 'unchanged',
+            ('cbb',): 'changed right',
+            }, maximum_size=60)
+        basis_map = CHKMap(self.get_chk_bytes(), basis)
+        self.assertEqualDiff(
+            "'' InternalNode\n"
+            "  'a' LeafNode\n"
+            "      ('aaa',) 'unchanged'\n"
+            "      ('abb',) 'will change left'\n"
+            "  'c' LeafNode\n"
+            "      ('caa',) 'unchanged'\n"
+            "      ('cbb',) 'will change right'\n",
+            basis_map._dump_tree())
+        # Get left expected data
+        left_map = CHKMap(self.get_chk_bytes(), left)
+        self.assertEqualDiff(
+            "'' InternalNode\n"
+            "  'a' LeafNode\n"
+            "      ('aaa',) 'unchanged'\n"
+            "      ('abb',) 'changed left'\n"
+            "  'c' LeafNode\n"
+            "      ('caa',) 'unchanged'\n"
+            "      ('cbb',) 'will change right'\n",
+            left_map._dump_tree())
+        # Keys from left side target
+        l_a_key = left_map._root_node._items['a'].key()
+        l_c_key = left_map._root_node._items['c'].key()
+        # Get right expected data
+        right_map = CHKMap(self.get_chk_bytes(), right)
+        self.assertEqualDiff(
+            "'' InternalNode\n"
+            "  'a' LeafNode\n"
+            "      ('aaa',) 'unchanged'\n"
+            "      ('abb',) 'will change left'\n"
+            "  'c' LeafNode\n"
+            "      ('caa',) 'unchanged'\n"
+            "      ('cbb',) 'changed right'\n",
+            right_map._dump_tree())
+        r_a_key = right_map._root_node._items['a'].key()
+        r_c_key = right_map._root_node._items['c'].key()
+        self.assertIterInteresting(
+            [(left, []),
+             (right, []),
+             (l_a_key, [(('abb',), 'changed left')]),
+             (r_c_key, [(('cbb',), 'changed right')]),
             ], [left, right], [basis])

@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1465,7 +1465,7 @@ def _find_all_uninteresting(store, interesting_root_keys,
     all_uninteresting_items.update(uninteresting_items)
     del uninteresting_items
     # Do not examine in detail pages common to all interesting trees.
-    # Pages that are common to all interesting trees will have their 
+    # Pages that are common to all interesting trees will have their
     # older versions found via the uninteresting tree traversal. Some pages
     # found via the interesting trees traversal will be uninteresting for
     # other of the interesting trees, which is why we require the pages to be
