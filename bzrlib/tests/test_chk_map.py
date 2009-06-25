@@ -2042,20 +2042,13 @@ class TestInternalNode(TestCaseWithStore):
 
 
 class TestInterestingNodeIterator(TestCaseWithExampleMaps):
-
     pass
+
 
 class TestIterInterestingNodes(TestCaseWithExampleMaps):
 
-    def get_chk_bytes(self):
-        if getattr(self, '_chk_bytes', None) is None:
-            self._chk_bytes = super(TestIterInterestingNodes,
-                                    self).get_chk_bytes()
-        return self._chk_bytes
-
     def get_map_key(self, a_dict, maximum_size=10):
-        c_map = self._get_map(a_dict, maximum_size=maximum_size,
-                              chk_bytes=self.get_chk_bytes())
+        c_map = self.get_map(a_dict, maximum_size=maximum_size)
         return c_map.key()
 
     def assertIterInteresting(self, expected, interesting_keys,
