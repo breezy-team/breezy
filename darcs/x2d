@@ -89,7 +89,7 @@ if [ ! -f $dmark ]; then
 				darcs-fast-import --export-marks=$dmark $common_opts
 			;;
 		bzr)
-			(cd $origin; $pypath/bzrlib/plugins/fastimport/exporters/bzr-fast-export.py \
+			(cd $origin; bzr fast-export \
 				--export-marks=$fmark . ) | darcs-fast-import --export-marks=$dmark $common_opts
 			;;
 		hg)
@@ -108,7 +108,7 @@ else
 			# it produces less revision than the number we
 			# have in darcs
 			check_up_to_date "bzr log|grep -c revno:"
-			(cd $origin; $pypath/bzrlib/plugins/fastimport/exporters/bzr-fast-export.py \
+			(cd $origin; bzr fast-export \
 				--export-marks=$fmark --import-marks=$fmark . ) | \
 				darcs-fast-import --export-marks=$dmark --import-marks=$dmark $common_opts
 			;;

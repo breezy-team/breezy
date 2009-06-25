@@ -251,10 +251,10 @@ diff_importbzr()
 
 diff_bzr()
 {
-	cd $1.bzr/master
+	cd $1.bzr/trunk
 	bzr update
 	cd - >/dev/null
-	diff --exclude _darcs --exclude .bzr --exclude '*-darcs-backup*' -Nur $1.bzr/master $1
+	diff --exclude _darcs --exclude .bzr --exclude '*-darcs-backup*' -Nur $1.bzr/trunk $1
 	return $?
 }
 
