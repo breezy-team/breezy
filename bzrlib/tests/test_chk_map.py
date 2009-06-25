@@ -133,6 +133,7 @@ class TestCaseWithExampleMaps(TestCaseWithStore):
     def make_two_deep_map(self, search_key_func=None):
         # Carefully chosen so that it creates a 2-deep map for both
         # _search_key_plain and for _search_key_16
+        # Also so that things line up with make_one_deep_two_prefix_map
         return self.get_map({
             ('aaa',): 'initial aaa content',
             ('abb',): 'initial abb content',
@@ -140,8 +141,21 @@ class TestCaseWithExampleMaps(TestCaseWithStore):
             ('ace',): 'initial ace content',
             ('add',): 'initial add content',
             ('adh',): 'initial adh content',
+            ('adl',): 'initial adl content',
             ('ccc',): 'initial ccc content',
             ('ddd',): 'initial ddd content',
+        }, search_key_func=search_key_func)
+
+    def make_one_deep_two_prefix_map(self, search_key_func=None):
+        """Create a map with one internal node, but references are extra long.
+
+        Otherwise has similar content to make_two_deep_map.
+        """
+        return self.get_map({
+            ('aaa',): 'initial aaa content',
+            ('add',): 'initial add content',
+            ('adh',): 'initial adh content',
+            ('adl',): 'initial adl content',
         }, search_key_func=search_key_func)
 
 
@@ -224,6 +238,7 @@ class TestTestCaseWithExampleMaps(TestCaseWithExampleMaps):
             "    'ad' LeafNode\n"
             "      ('add',) 'initial add content'\n"
             "      ('adh',) 'initial adh content'\n"
+            "      ('adl',) 'initial adl content'\n"
             "  'c' LeafNode\n"
             "      ('ccc',) 'initial ccc content'\n"
             "  'd' LeafNode\n"
@@ -244,6 +259,8 @@ class TestTestCaseWithExampleMaps(TestCaseWithExampleMaps):
             "  'F' InternalNode\n"
             "    'F0' LeafNode\n"
             "      ('aaa',) 'initial aaa content'\n"
+            "    'F3' LeafNode\n"
+            "      ('adl',) 'initial adl content'\n"
             "    'F4' LeafNode\n"
             "      ('adh',) 'initial adh content'\n"
             "    'FB' LeafNode\n"
@@ -251,6 +268,34 @@ class TestTestCaseWithExampleMaps(TestCaseWithExampleMaps):
             "    'FD' LeafNode\n"
             "      ('add',) 'initial add content'\n",
             c_map._dump_tree())
+
+    def test_one_deep_two_prefix_map_plain(self):
+        c_map = self.make_one_deep_two_prefix_map()
+        self.assertEqualDiff(
+            "'' InternalNode\n"
+            "  'aa' LeafNode\n"
+            "      ('aaa',) 'initial aaa content'\n"
+            "  'ad' LeafNode\n"
+            "      ('add',) 'initial add content'\n"
+            "      ('adh',) 'initial adh content'\n"
+            "      ('adl',) 'initial adl content'\n",
+            c_map._dump_tree())
+
+    def test_one_deep_two_prefix_map_16(self):
+        c_map = self.make_one_deep_two_prefix_map(
+            search_key_func=chk_map._search_key_16)
+        self.assertEqualDiff(
+            "'' InternalNode\n"
+            "  'F0' LeafNode\n"
+            "      ('aaa',) 'initial aaa content'\n"
+            "  'F3' LeafNode\n"
+            "      ('adl',) 'initial adl content'\n"
+            "  'F4' LeafNode\n"
+            "      ('adh',) 'initial adh content'\n"
+            "  'FD' LeafNode\n"
+            "      ('add',) 'initial add content'\n",
+            c_map._dump_tree())
+
 
 class TestMap(TestCaseWithStore):
 
@@ -2110,9 +2155,6 @@ class TestInterestingNodeIterator(TestCaseWithExampleMaps):
         self.assertEqual([('a', None, key2_a)], iterator._interesting_queue)
         self.assertEqual([('a', None, key1_a)], iterator._uninteresting_queue)
 
-    def test__read_all_roots_with_interesting_leaf(self):
-        pass
-
     def test__read_all_roots_multi_interesting_prepares_queues(self):
         c_map = self.make_one_deep_map(chk_map._search_key_plain)
         key1 = c_map.key()
@@ -2140,8 +2182,27 @@ class TestInterestingNodeIterator(TestCaseWithExampleMaps):
         self.assertEqual([('a', None, key1_a), ('c', None, key1_c)],
                          iterator._uninteresting_queue)
 
-    def test__read_all_roots_multi_un_and_in(self):
-        pass
+    def test__read_all_roots_different_depths(self):
+        c_map = self.make_two_deep_map(chk_map._search_key_plain)
+        c_map._dump_tree() # load everything
+        key1 = c_map.key()
+        key1_a = c_map._root_node._items['a'].key()
+
+        c_map2 = self.make_one_deep_two_prefix_map(chk_map._search_key_plain)
+        c_map2._dump_tree()
+        key2 = c_map2.key()
+        key2_aa = c_map2._root_node._items['aa'].key()
+        key2_ad = c_map2._root_node._items['ad'].key()
+
+        iterator = self.get_iterator([key2], [key1], chk_map._search_key_plain)
+        root_results = [record.key for record in iterator._read_all_roots()]
+        self.assertEqual([key2], root_results)
+        c_map = self.make_two_deep_map()
+        # Only the 'a' subset should be queued up, since 'c' and 'd' cannot be
+        # present
+        self.assertEqual([('a', None, key1_a)], iterator._uninteresting_queue)
+        self.assertEqual([('aa', None, key2_aa), ('ad', None, key2_ad)],
+                         iterator._interesting_queue)
 
     def test__read_all_roots_yields_extra_deep_records(self):
         # This is a bit more controversial, and potentially a problem for

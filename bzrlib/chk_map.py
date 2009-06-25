@@ -1496,13 +1496,8 @@ class InterestingNodeIterator(object):
             for prefix, ref in prefix_refs:
                 if ref in self._all_uninteresting_chks:
                     continue
-                interesting_prefixes.add(prefix)
-                # TODO: I think this is the actual correct value to use
-                #       basically, anything that *could* point to something
-                #       with this prefix, however, we need to add tests that
-                #       can trigger this, to ensure proper coverage
-                # for i in xrange(len(prefix)):
-                #     interesting_prefixes.add(prefix[:i+1])
+                interesting_prefixes.update(
+                    [prefix[:i+1] for i in xrange(len(prefix))])
                 heapq.heappush(self._interesting_queue,
                                (prefix, None, ref))
             for item in items:
