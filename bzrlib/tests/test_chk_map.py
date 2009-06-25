@@ -2453,20 +2453,34 @@ class TestIterInterestingNodes(TestCaseWithExampleMaps):
              (None, [(('bbb',), 'new')]),
             ], [target1, target2, target3], [basis])
 
-        self.assertIterInteresting(
-            [(target2, []),
+        # self.assertIterInteresting(
+        #     [(target2, []),
+        #      (target3, []),
+        #      (b_key, [(('bbb',), 'new')]),
+        #      (a_key, []),
+        #      (aac_key, [(('aac',), 'other')]),
+        #     ], [target2, target3], [target1])
+        self.assertIterInteresting([
+             (target2, []),
              (target3, []),
-             (b_key, [(('bbb',), 'new')]),
              (a_key, []),
-             (aac_key, [(('aac',), 'other')]),
+             (aac_key, []),
+             (None, [(('aac',), 'other')]),
+             (b_key, []),
+             (None, [(('bbb',), 'new')]),
             ], [target2, target3], [target1])
 
         # This may be a case that we relax. A root node is a deep child of the
         # excluded set. The cost is buffering root nodes until we have
         # determined all possible exclusions. (Because a prefix of '', cannot
         # be excluded.)
-        self.assertIterInteresting(
-            [], [target1], [target3])
+        # self.assertIterInteresting(
+        #     [], [target1], [target3])
+
+        self.assertIterInteresting([
+             (target1, [])
+            ],
+            [target1], [target3])
 
     def test_multiple_maps(self):
         basis1 = self.get_map_key({('aaa',): 'common',
@@ -2514,13 +2528,23 @@ class TestIterInterestingNodes(TestCaseWithExampleMaps):
         b_key = target2_map._root_node._items['b'].key()
         # The key for the leaf bba node
         bba_key = target2_map._root_node._items['b']._items['bba'].key()
+        # self.assertIterInteresting(
+        #     [(target1, []),
+        #      (target2, []),
+        #      (a_key, []),
+        #      (b_key, []),
+        #      (aac_key, [(('aac',), 'target1')]),
+        #      (bba_key, [(('bba',), 'target2')]),
+        #     ], [target1, target2], [basis1, basis2])
         self.assertIterInteresting(
             [(target1, []),
              (target2, []),
              (a_key, []),
+             (aac_key, []),
+             (None, [(('aac',), 'target1')]),
              (b_key, []),
-             (aac_key, [(('aac',), 'target1')]),
-             (bba_key, [(('bba',), 'target2')]),
+             (bba_key, []),
+             (None, [(('bba',), 'target2')]),
             ], [target1, target2], [basis1, basis2])
 
     def test_multiple_maps_overlapping_common_new(self):
