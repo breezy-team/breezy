@@ -1412,6 +1412,11 @@ class InterestingNodeIterator(object):
         self._uninteresting_root_keys = uninteresting_root_keys
         self._pb = pb
         self._read_roots = False
+        # Note: It would be possible to be smarter about
+        #       all_uninteresting_chks. Instead of having one giant set, we
+        #       could have sets based on the possible prefixes that could reach
+        #       that key. However, there isn't much to be gained by splitting
+        #       it out, yet.
         self._all_uninteresting_chks = set(self._uninteresting_root_keys)
         self._all_uninteresting_items = set()
         self._search_key_func = search_key_func
@@ -1420,9 +1425,6 @@ class InterestingNodeIterator(object):
         # search_key prefix
         self._uninteresting_queue = []
         self._interesting_queue = []
-
-    def __iter__(self):
-        return self
 
     def _read_nodes_from_store(self, keys):
         stream = self._store.get_record_stream(keys, 'unordered', True)
@@ -1475,6 +1477,7 @@ class InterestingNodeIterator(object):
         # know that we have perfect overlap with uninteresting, without queue
         # up any of them
         interesting_ref_intersection = None
+        interesting_prefixes = set()
         for record, node, prefix_refs, items in \
             self._read_nodes_from_store(interesting_keys):
             # At this level, we now know all the uninteresting references
@@ -1493,6 +1496,13 @@ class InterestingNodeIterator(object):
             for prefix, ref in prefix_refs:
                 if ref in self._all_uninteresting_chks:
                     continue
+                interesting_prefixes.add(prefix)
+                # TODO: I think this is the actual correct value to use
+                #       basically, anything that *could* point to something
+                #       with this prefix, however, we need to add tests that
+                #       can trigger this, to ensure proper coverage
+                # for i in xrange(len(prefix)):
+                #     interesting_prefixes.add(prefix[:i+1])
                 heapq.heappush(self._interesting_queue,
                                (prefix, None, ref))
             for item in items:
@@ -1502,20 +1512,26 @@ class InterestingNodeIterator(object):
                 # We can't yield 'items' yet, because we haven't dug deep
                 # enough on the uninteresting set
                 # Key is a real key, we need search key
+                search_prefix = self._search_key_func(key)
                 heapq.heappush(self._interesting_queue,
-                               (self._search_key_func(key), key, value))
+                               (search_prefix, key, value))
+                interesting_prefixes.update(
+                    [search_prefix[:i+1] for i in xrange(len(search_prefix))])
+                interesting_prefixes.add(search_prefix)
+                interesting_prefixes.add(search_prefix[0])
             yield record
         # At this point, we have read all the uninteresting and interesting
         # items, so we can queue up the uninteresting stuff, knowing that we've
         # handled the interesting ones
-        if interesting_ref_intersection is None:
-            interesting_ref_intersection = []
         for prefix, ref in uninteresting_chks_to_enqueue:
-            if ref in interesting_ref_intersection:
-                # This was referenced by *all* interesting roots, so we know
-                # that we don't need to walk it
+            if prefix not in interesting_prefixes:
+                # Keys with this prefix was not interesting from any of the
+                # interesting roots.
                 continue
+            if ref in interesting_ref_intersection:
+                import pdb; pdb.set_trace()
             heapq.heappush(self._uninteresting_queue, (prefix, None, ref))
+
 
 def _find_children_info(store, interesting_keys, uninteresting_keys, pb):
     """Read the associated records, and determine what is interesting."""

@@ -2110,6 +2110,9 @@ class TestInterestingNodeIterator(TestCaseWithExampleMaps):
         self.assertEqual([('a', None, key2_a)], iterator._interesting_queue)
         self.assertEqual([('a', None, key1_a)], iterator._uninteresting_queue)
 
+    def test__read_all_roots_with_interesting_leaf(self):
+        pass
+
     def test__read_all_roots_multi_interesting_prepares_queues(self):
         c_map = self.make_one_deep_map(chk_map._search_key_plain)
         key1 = c_map.key()
@@ -2137,6 +2140,9 @@ class TestInterestingNodeIterator(TestCaseWithExampleMaps):
         self.assertEqual([('a', None, key1_a), ('c', None, key1_c)],
                          iterator._uninteresting_queue)
 
+    def test__read_all_roots_multi_un_and_in(self):
+        pass
+
     def test__read_all_roots_yields_extra_deep_records(self):
         # This is a bit more controversial, and potentially a problem for
         # stacking in very extreme circumstances. (it should be okay, because
@@ -2150,7 +2156,9 @@ class TestInterestingNodeIterator(TestCaseWithExampleMaps):
         # One potential is to buffer it based on the aggregate search path
         # (what would the search key of all child keys come out as, etc.)
         c_map = self.make_two_deep_map(chk_map._search_key_plain)
+        c_map._dump_tree() # load all keys
         key1 = c_map.key()
+        key1_a = c_map._root_node._items['a'].key()
         c_map2 = self.get_map({
             ('acc',): 'initial acc content',
             ('ace',): 'initial ace content',
@@ -2164,6 +2172,13 @@ class TestInterestingNodeIterator(TestCaseWithExampleMaps):
         iterator = self.get_iterator([key2], [key1], chk_map._search_key_plain)
         root_results = [record.key for record in iterator._read_all_roots()]
         self.assertEqual([key2], root_results)
+        # However, even though we have yielded the root node to be fetched,
+        # we should have enqued all of the chk pages to be walked, so that we
+        # can find the keys if they are present
+        self.assertEqual([('a', None, key1_a)], iterator._uninteresting_queue)
+        self.assertEqual([('acc', ('acc',), 'initial acc content'),
+                          ('ace', ('ace',), 'initial ace content'),
+                         ], iterator._interesting_queue)
 
 
 class TestIterInterestingNodes(TestCaseWithExampleMaps):
