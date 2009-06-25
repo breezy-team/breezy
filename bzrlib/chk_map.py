@@ -1476,23 +1476,11 @@ class InterestingNodeIterator(object):
         # These references are common to *all* interesting nodes, and thus we
         # know that we have perfect overlap with uninteresting, without queue
         # up any of them
-        interesting_ref_intersection = None
         interesting_prefixes = set()
         for record, node, prefix_refs, items in \
             self._read_nodes_from_store(interesting_keys):
             # At this level, we now know all the uninteresting references
             # So we can go ahead and filter, and queue up whatever is remaining
-            if interesting_ref_intersection is None:
-                interesting_ref_intersection = set([r for _,r in prefix_refs])
-            else:
-                # TODO: is intersection_update better than
-                #       x = x.intersection(y) ?
-                #       We know that interesting_ref_intersection will hold at
-                #       most 255 items, and that will be compared against 255
-                #       new items, so it shouldn't ever 'blow out' like
-                #       'difference_update'
-                interesting_ref_intersection.intersection_update(
-                    [r for _,r in prefix_refs])
             for prefix, ref in prefix_refs:
                 if ref in self._all_uninteresting_chks:
                     continue
@@ -1523,8 +1511,6 @@ class InterestingNodeIterator(object):
                 # Keys with this prefix was not interesting from any of the
                 # interesting roots.
                 continue
-            if ref in interesting_ref_intersection:
-                import pdb; pdb.set_trace()
             heapq.heappush(self._uninteresting_queue, (prefix, None, ref))
 
 
