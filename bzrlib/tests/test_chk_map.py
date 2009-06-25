@@ -2188,6 +2188,12 @@ class TestIterInterestingNodes(TestCaseWithStore):
             right_map._dump_tree())
         # Keys from the right side target - none, the root is enough.
         # Test behaviour
+        self.expectFailure("we don't properly filter different depths",
+            self.assertIterInteresting,
+            [(left, []),
+             (right, []),
+             (l_d_key, [(('ddd',), 'change')]),
+            ], [left, right], [basis])
         self.assertIterInteresting(
             [(left, []),
              (right, []),
