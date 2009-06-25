@@ -2118,3 +2118,69 @@ class TestIterInterestingNodes(TestCaseWithStore):
              (aac_key, [(('aac',), 'target1')]),
              (bba_key, [(('bba',), 'target2')]),
             ], [target1, target2], [basis1, basis2])
+
+    def test_multiple_maps_overlapping_common_new(self):
+        # Test that when a node found through the interesting_keys iteration
+        # for *some roots* and also via the uninteresting keys iteration, that
+        # it is still scanned for uninteresting refs and items, because its
+        # not truely new. This requires 2 levels of InternalNodes to expose,
+        # because of the way the bootstrap in _find_children_info works.
+        # This suggests that the code is probably amenable to/benefit from
+        # consolidation.
+        # How does this test work?
+        # 1) We need a second level InternalNode present in a basis tree.
+        # 2) We need a left side new tree that uses that InternalNode
+        # 3) We need a right side new tree that does not use that InternalNode
+        #    at all but that has an unchanged *value* that was reachable inside
+        #    that InternalNode
+        basis = self.get_map_key({
+            # InternalNode, unchanged in left:
+            ('aaa',): 'left',
+            ('abb',): 'right',
+            # Forces an internalNode at 'a'
+            ('ccc',): 'common',
+            })
+        left = self.get_map_key({
+            # All of basis unchanged
+            ('aaa',): 'left',
+            ('abb',): 'right',
+            ('ccc',): 'common',
+            # And a new top level node so the root key is different
+            ('ddd',): 'change',
+            })
+        right = self.get_map_key({
+            # A value that is unchanged from basis and thus should be filtered
+            # out.
+            ('abb',): 'right'
+            })
+        basis_map = CHKMap(self.get_chk_bytes(), basis)
+        basis_map._dump_tree()
+        # Get left expected data
+        left_map = CHKMap(self.get_chk_bytes(), left)
+        self.assertEqualDiff(
+            "'' InternalNode\n"
+            "  'a' InternalNode\n"
+            "    'aa' LeafNode\n"
+            "      ('aaa',) 'left'\n"
+            "    'ab' LeafNode\n"
+            "      ('abb',) 'right'\n"
+            "  'c' LeafNode\n"
+            "      ('ccc',) 'common'\n"
+            "  'd' LeafNode\n"
+            "      ('ddd',) 'change'\n",
+            left_map._dump_tree())
+        # Keys from left side target
+        l_d_key = left_map._root_node._items['d'].key()
+        # Get right expected data
+        right_map = CHKMap(self.get_chk_bytes(), right)
+        self.assertEqualDiff(
+            "'' LeafNode\n"
+            "      ('abb',) 'right'\n",
+            right_map._dump_tree())
+        # Keys from the right side target - none, the root is enough.
+        # Test behaviour
+        self.assertIterInteresting(
+            [(left, []),
+             (right, []),
+             (l_d_key, [(('ddd',), 'change')]),
+            ], [left, right], [basis])

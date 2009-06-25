@@ -1404,6 +1404,7 @@ def _find_children_info(store, interesting_keys, uninteresting_keys, pb):
     chks_to_read = uninteresting_keys.union(interesting_keys)
     next_uninteresting = set()
     next_interesting = set()
+    next_interesting_intersection = None
     uninteresting_items = set()
     interesting_items = set()
     interesting_to_yield = []
@@ -1425,11 +1426,17 @@ def _find_children_info(store, interesting_keys, uninteresting_keys, pb):
         else:
             interesting_to_yield.append(record.key)
             if type(node) is InternalNode:
+                if next_interesting_intersection is None:
+                    next_interesting_intersection = set(node.refs())
+                else:
+                    next_interesting_intersection = \
+                        next_interesting_intersection.intersection(node.refs())
                 next_interesting.update(node.refs())
             else:
                 interesting_items.update(node.iteritems(None))
     return (next_uninteresting, uninteresting_items,
-            next_interesting, interesting_to_yield, interesting_items)
+            next_interesting, interesting_to_yield, interesting_items,
+            next_interesting_intersection)
 
 
 def _find_all_uninteresting(store, interesting_root_keys,
@@ -1450,16 +1457,21 @@ def _find_all_uninteresting(store, interesting_root_keys,
     # uninteresting set
     (uninteresting_keys, uninteresting_items,
      interesting_keys, interesting_to_yield,
-     interesting_items) = _find_children_info(store, interesting_root_keys,
+     interesting_items, interesting_intersection,
+     ) = _find_children_info(store, interesting_root_keys,
                                               uninteresting_root_keys,
                                               pb=pb)
     all_uninteresting_chks.update(uninteresting_keys)
     all_uninteresting_items.update(uninteresting_items)
     del uninteresting_items
-    # Note: Exact matches between interesting and uninteresting do not need
-    #       to be search further. Non-exact matches need to be searched in case
-    #       there is a future exact-match
-    uninteresting_keys.difference_update(interesting_keys)
+    # Do not examine in detail pages common to all interesting trees.
+    # Pages that are common to all interesting trees will have their 
+    # older versions found via the uninteresting tree traversal. Some pages
+    # found via the interesting trees traversal will be uninteresting for
+    # other of the interesting trees, which is why we require the pages to be
+    # common for us to trim them.
+    if interesting_intersection is not None:
+        uninteresting_keys.difference_update(interesting_intersection)
 
     # Second, find the full set of uninteresting bits reachable by the
     # uninteresting roots
