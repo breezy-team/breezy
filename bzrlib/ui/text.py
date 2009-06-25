@@ -53,6 +53,8 @@ class TextUIFactory(UIFactory):
                          select.   Deprecated.
         """
         super(TextUIFactory, self).__init__()
+        # TODO: there's no good reason not to pass all three streams, maybe we
+        # should deprecate the default values...
         self.stdin = stdin
         self.stdout = stdout
         self.stderr = stderr
