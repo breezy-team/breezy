@@ -1617,6 +1617,7 @@ class InterestingNodeIterator(object):
                             heapq.heappush(self._interesting_queue,
                                            (prefix, key, value))
 
+
 def iter_interesting_nodes(store, interesting_root_keys,
                            uninteresting_root_keys, pb=None):
     """Given root keys, find interesting nodes.

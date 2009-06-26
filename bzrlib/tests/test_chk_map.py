@@ -158,6 +158,19 @@ class TestCaseWithExampleMaps(TestCaseWithStore):
             ('adl',): 'initial adl content',
         }, search_key_func=search_key_func)
 
+    def make_one_deep_one_prefix_map(self, search_key_func=None):
+        """Create a map with one internal node, but references are extra long.
+
+        Similar to make_one_deep_two_prefix_map, except the split is at the
+        first char, rather than the second.
+        """
+        return self.get_map({
+            ('add',): 'initial add content',
+            ('adh',): 'initial adh content',
+            ('adl',): 'initial adl content',
+            ('bbb',): 'initial bbb content',
+        }, search_key_func=search_key_func)
+
 
 class TestTestCaseWithExampleMaps(TestCaseWithExampleMaps):
     """Actual tests for the provided examples."""
@@ -294,6 +307,31 @@ class TestTestCaseWithExampleMaps(TestCaseWithExampleMaps):
             "      ('adh',) 'initial adh content'\n"
             "  'FD' LeafNode\n"
             "      ('add',) 'initial add content'\n",
+            c_map._dump_tree())
+
+    def test_one_deep_one_prefix_map_plain(self):
+        c_map = self.make_one_deep_one_prefix_map()
+        self.assertEqualDiff(
+            "'' InternalNode\n"
+            "  'a' LeafNode\n"
+            "      ('add',) 'initial add content'\n"
+            "      ('adh',) 'initial adh content'\n"
+            "      ('adl',) 'initial adl content'\n"
+            "  'b' LeafNode\n"
+            "      ('bbb',) 'initial bbb content'\n",
+            c_map._dump_tree())
+
+    def test_one_deep_one_prefix_map_16(self):
+        c_map = self.make_one_deep_one_prefix_map(
+            search_key_func=chk_map._search_key_16)
+        self.assertEqualDiff(
+            "'' InternalNode\n"
+            "  '4' LeafNode\n"
+            "      ('bbb',) 'initial bbb content'\n"
+            "  'F' LeafNode\n"
+            "      ('add',) 'initial add content'\n"
+            "      ('adh',) 'initial adh content'\n"
+            "      ('adl',) 'initial adl content'\n",
             c_map._dump_tree())
 
 
@@ -2251,6 +2289,38 @@ class TestInterestingNodeIterator(TestCaseWithExampleMaps):
         self.assertEqual([('2', None, key1_2), ('4', None, key1_4),
                           ('C', None, key1_C), ('F', None, key1_F),
                          ], sorted(iterator._interesting_queue))
+
+    def test__read_all_roots_mixed_depth(self):
+        c_map = self.make_one_deep_two_prefix_map(chk_map._search_key_plain)
+        c_map._dump_tree() # load everything
+        key1 = c_map.key()
+        key1_aa = c_map._root_node._items['aa'].key()
+        key1_ad = c_map._root_node._items['ad'].key()
+
+        c_map2 = self.make_one_deep_one_prefix_map(chk_map._search_key_plain)
+        c_map2._dump_tree()
+        key2 = c_map2.key()
+        key2_a = c_map2._root_node._items['a'].key()
+        key2_b = c_map2._root_node._items['b'].key()
+
+        iterator = self.get_iterator([key2], [key1], chk_map._search_key_plain)
+        root_results = [record.key for record in iterator._read_all_roots()]
+        self.assertEqual([key2], root_results)
+        # 'ad' matches exactly 'a' on the other side, so it should be removed,
+        # and neither side should have it queued for walking
+        self.assertEqual([], iterator._uninteresting_queue)
+        self.assertEqual([('b', None, key2_b)], iterator._interesting_queue)
+
+        iterator = self.get_iterator([key1], [key2], chk_map._search_key_plain)
+        root_results = [record.key for record in iterator._read_all_roots()]
+        self.assertEqual([key1], root_results)
+        # This is technically not the 'true minimal' set that we could use
+        # The reason is that 'a' was matched exactly to 'ad' (by sha sum).
+        # However, the code gets complicated in the case of more than one
+        # interesting key, so for now, we live with this
+        self.assertEqual([('a', key2_a)], iterator._uninteresting_queue)
+        # self.assertEqual([], iterator._uninteresting_queue)
+        self.assertEqual([('aa', None, key1_aa)], iterator._interesting_queue)
 
     def test__read_all_roots_yields_extra_deep_records(self):
         # This is slightly controversial, as we will yield a chk page that we
