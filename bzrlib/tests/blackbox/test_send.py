@@ -28,11 +28,6 @@ from bzrlib import (
 from bzrlib.bundle import serializer
 
 
-def read_bundle(fileobj):
-    md = merge_directive.MergeDirective.from_lines(fileobj.readlines())
-    return serializer.read_bundle(StringIO(md.get_raw_bundle()))
-
-
 class TestSend(tests.TestCaseWithTransport):
 
     def setUp(self):
@@ -60,13 +55,9 @@ class TestSend(tests.TestCaseWithTransport):
         out = StringIO(self.run_send(args, cmd=cmd, wd=wd)[0])
         return merge_directive.MergeDirective.from_lines(out.readlines())
 
-    def get_bundle(self, args, cmd=None, wd='branch'):
-        md = self.get_MD(args, cmd=cmd, wd=wd)
-        return serializer.read_bundle(StringIO(md.get_raw_bundle()))
-
     def assertBundleContains(self, revs, args, cmd=None, wd='branch'):
-        out = self.run_send(args, cmd=cmd, wd=wd)[0]
-        br = read_bundle(StringIO(out))
+        md = self.get_MD(args, cmd=cmd, wd=wd)
+        br = serializer.read_bundle(StringIO(md.get_raw_bundle()))
         self.assertEqual(set(revs), set(r.revision_id for r in br.revisions))
 
     def assertFormatIs(self, fmt_string, md):
