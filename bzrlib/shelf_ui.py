@@ -57,7 +57,7 @@ class Shelver(object):
 
     def __init__(self, work_tree, target_tree, diff_writer=None, auto=False,
                  auto_apply=False, file_list=None, message=None,
-                 destroy=False, reporter=None):
+                 destroy=False, manager=None, reporter=None):
         """Constructor.
 
         :param work_tree: The working tree to shelve changes from.
@@ -69,13 +69,16 @@ class Shelver(object):
         :param message: The message to associate with the shelved changes.
         :param destroy: Change the working tree without storing the shelved
             changes.
+        :param manager: The shelf manager to use.
         """
         self.work_tree = work_tree
         self.target_tree = target_tree
         self.diff_writer = diff_writer
         if self.diff_writer is None:
             self.diff_writer = sys.stdout
-        self.manager = work_tree.get_shelf_manager()
+        if manager is None:
+            manager = work_tree.get_shelf_manager()
+        self.manager = manager
         self.auto = auto
         self.auto_apply = auto_apply
         self.file_list = file_list
