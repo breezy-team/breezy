@@ -490,7 +490,7 @@ def get_app_path(appname):
         return path
     if type_id == REG_EXPAND_SZ and has_win32api:
         fullpath = win32api.ExpandEnvironmentStrings(path)
-        if fullpath[0] == '"':
+        if len(fullpath) > 1 and fullpath[0] == '"' and fullpath[-1] == '"':
             fullpath = fullpath[1:-1]   # remove quotes around value
         return fullpath
     return appname
