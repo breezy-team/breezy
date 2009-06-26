@@ -71,6 +71,9 @@ Internals
   rather than requiring all command names be known a-priori.
   (Robert Collins)
 
+* ``get_app_path`` from win32utils.py now supports REG_EXPAND_SZ data type
+  and can read path to wordpad.exe. (Alexander Belchenko, #392046)
+
 * ``graph.KnownGraph`` has been added. This is a class that can give
   answers to ``heads()`` very quickly. However, it has the assumption that
   the whole graph has already been loaded. This is true during
