@@ -19,6 +19,9 @@ The second bug, #390563, caused the smart server to raise AbsentContentFactory
 when streaming 2a stacked 2a-format branches. This particularly affected
 branches stored on Launchpad in the 2a format.
 
+Both of these bugs cause command failures only, neither of them cause data
+corruption or data loss. And, of course, both of these bugs are now fixed.
+
 Bug Fixes
 *********
 
