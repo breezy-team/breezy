@@ -25,6 +25,7 @@
 
 import sys
 import os
+import re
 import time
 import shutil
 import optparse
@@ -80,7 +81,21 @@ class Handler:
 		raise Exception(s)
 
 	def get_date(self, ts, tz):
-		s = time.strftime("%a %b %d %H:%M:%S %Y", time.gmtime(int(ts)))
+                # int(ts) is seconds since epoch. Since we're trying to
+                # capture both the absolute time of the commit and the
+                # localtime in the timezone of the committer, we need to turn
+                # the (seconds-since-epoch, committer-timezone-offset) pair
+                # that we get from the git-fast-export stream format into a
+                # localized-time-plus-timezone-marker string that darcs will
+                # accept. Therefore, we parse the timezone-offset (which
+                # looks like +0500 or +0000 or -0730 or something) and add it
+                # to seconds-since-epoch before calling gmtime().
+                mo = re.search(r'^([\+\-])(\d\d)(\d\d)$', tz)
+                offset = 60*60*int(mo.group(2)) + 60*int(mo.group(3))
+                if mo.group(1) == "-":
+                        offset = -offset
+                offset_time = int(ts) + offset
+		s = time.strftime("%a %b %d %H:%M:%S %Y", time.gmtime(offset_time))
 		items = s.split(' ')
 		return " ".join(items[:-1]) + " " + tz + " " + items[-1]
 
