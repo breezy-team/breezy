@@ -4886,24 +4886,29 @@ class cmd_send(Command):
                help='Write merge directive to this file; '
                     'use - for stdout.',
                type=unicode),
+        Option('strict',
+               help='Refuse to send if there are uncommitted changes in'
+               ' the working tree.'),
         Option('mail-to', help='Mail the request to this address.',
                type=unicode),
         'revision',
         'message',
         Option('body', help='Body for the email.', type=unicode),
         RegistryOption('format',
-                       help='Use the specified output format.', 
-                       lazy_registry=('bzrlib.send', 'format_registry'))
+                       help='Use the specified output format.',
+                       lazy_registry=('bzrlib.send', 'format_registry')),
         ]
 
     def run(self, submit_branch=None, public_branch=None, no_bundle=False,
             no_patch=False, revision=None, remember=False, output=None,
-            format=None, mail_to=None, message=None, body=None, **kwargs):
+            format=None, mail_to=None, message=None, body=None,
+            strict=None, **kwargs):
         from bzrlib.send import send
         return send(submit_branch, revision, public_branch, remember,
-                         format, no_bundle, no_patch, output,
-                         kwargs.get('from', '.'), mail_to, message, body,
-                         self.outf)
+                    format, no_bundle, no_patch, output,
+                    kwargs.get('from', '.'), mail_to, message, body,
+                    self.outf,
+                    strict=strict)
 
 
 class cmd_bundle_revisions(cmd_send):

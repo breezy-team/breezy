@@ -37,8 +37,8 @@ format_registry = registry.Registry()
 
 
 def send(submit_branch, revision, public_branch, remember, format,
-         no_bundle, no_patch, output, from_, mail_to, message, body, 
-         to_file):
+         no_bundle, no_patch, output, from_, mail_to, message, body,
+         to_file, strict=None):
     tree, branch = bzrdir.BzrDir.open_containing_tree_or_branch(from_)[:2]
     # we may need to write data into branch's repository to calculate
     # the data to send.
@@ -107,6 +107,21 @@ def send(submit_branch, revision, public_branch, remember, format,
             if len(revision) == 2:
                 base_revision_id = revision[0].as_revision_id(branch)
         if revision_id is None:
+            if strict is None:
+                strict = branch.get_config().get_user_option('send_strict')
+                if strict is not None:
+                    # FIXME: This should be better supported by config
+                    # -- vila 20090626
+                    bools = dict(yes=True, no=False, on=True, off=False,
+                                 true=True, false=False)
+                    try:
+                        strict = bools[strict.lower()]
+                    except KeyError:
+                        strict = None
+            if strict is None or strict: # Default to True
+                changes = tree.changes_from(tree.basis_tree())
+                if changes.has_changed() or len(tree.get_parent_ids()) > 1:
+                    raise errors.UncommittedChanges(tree)
             revision_id = branch.last_revision()
         if revision_id == NULL_REVISION:
             raise errors.BzrCommandError('No revisions to submit.')

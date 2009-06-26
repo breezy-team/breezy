@@ -28,7 +28,48 @@ from bzrlib import (
 from bzrlib.bundle import serializer
 
 
-class TestSend(tests.TestCaseWithTransport):
+def load_tests(standard_tests, module, loader):
+    """Multiply tests for the send command."""
+    result = loader.suiteClass()
+
+    # one for each king of change
+    changes_tests, remaining_tests = tests.split_suite_by_condition(
+        standard_tests, tests.condition_isinstance((
+                TestSendStrictWithChanges,
+                )))
+    changes_scenarios = [
+        ('uncommitted',
+         dict(_do_changes= TestSendStrictWithChanges.do_uncommitted_changes)),
+        ('pending_merges',
+         dict(_do_changes= TestSendStrictWithChanges.do_pending_merges)),
+        ]
+    tests.multiply_tests(changes_tests, changes_scenarios, result)
+    # No parametrization for the remaining tests
+    result.addTests(remaining_tests)
+
+    return result
+
+
+class TestSendBase(tests.TestCaseWithTransport):
+
+    def run_send(self, args, cmd=None, rc=0, wd='branch', err_re=None):
+        if cmd is None: cmd = ['send', '-o-']
+        if err_re is None: err_re = []
+        return self.run_bzr(cmd + args, retcode=rc,
+                            working_dir=wd,
+                            error_regexes=err_re)
+
+    def get_MD(self, args, cmd=None, wd='branch'):
+        out = StringIO(self.run_send(args, cmd=cmd, wd=wd)[0])
+        return merge_directive.MergeDirective.from_lines(out.readlines())
+
+    def assertBundleContains(self, revs, args, cmd=None, wd='branch'):
+        md = self.get_MD(args, cmd=cmd, wd=wd)
+        br = serializer.read_bundle(StringIO(md.get_raw_bundle()))
+        self.assertEqual(set(revs), set(r.revision_id for r in br.revisions))
+
+
+class TestSend(TestSendBase):
 
     def setUp(self):
         super(TestSend, self).setUp()
@@ -45,20 +86,6 @@ class TestSend(tests.TestCaseWithTransport):
         branch_tree = parent_tree.bzrdir.sprout('branch').open_workingtree()
         self.build_tree_contents([('branch/file1', 'branch')])
         branch_tree.commit('last commit', rev_id='rev3')
-
-    def run_send(self, args, cmd=None, rc=0, wd='branch'):
-        if cmd is None:
-            cmd = ['send', '-o-']
-        return self.run_bzr(cmd + args, retcode=rc, working_dir=wd)
-
-    def get_MD(self, args, cmd=None, wd='branch'):
-        out = StringIO(self.run_send(args, cmd=cmd, wd=wd)[0])
-        return merge_directive.MergeDirective.from_lines(out.readlines())
-
-    def assertBundleContains(self, revs, args, cmd=None, wd='branch'):
-        md = self.get_MD(args, cmd=cmd, wd=wd)
-        br = serializer.read_bundle(StringIO(md.get_raw_bundle()))
-        self.assertEqual(set(revs), set(r.revision_id for r in br.revisions))
 
     def assertFormatIs(self, fmt_string, md):
         self.assertEqual(fmt_string, md.get_raw_bundle().splitlines()[0])
@@ -254,3 +281,130 @@ class TestSend(tests.TestCaseWithTransport):
         out, err = self.run_bzr(["send", "--from", location], retcode=3)
         self.assertEqual(out, '')
         self.assertEqual(err, 'bzr: ERROR: Not a branch: "%s".\n' % location)
+
+
+class TestSendStrict(TestSendBase):
+
+    def make_parent_and_local_branches(self):
+        # Create a 'parent' branch as the base
+        self.parent_tree = bzrdir.BzrDir.create_standalone_workingtree('parent')
+        self.build_tree_contents([('parent/file', 'parent')])
+        self.parent_tree.add('file')
+        self.parent_tree.commit('first commit', rev_id='parent')
+        # Branch 'local' from parent and do a change
+        local_bzrdir = self.parent_tree.bzrdir.sprout('local')
+        self.local_tree = local_bzrdir.open_workingtree()
+        self.build_tree_contents([('local/file', 'local')])
+        self.local_tree.commit('second commit', rev_id='local')
+
+    def run_send(self, args, cmd=None, rc=0, wd='local', err_re=None):
+        if cmd is None: cmd = ['send', '../parent', '-o-']
+        if err_re is None: err_re = []
+        return super(TestSendStrict, self).run_send(
+            args, cmd=cmd, rc=rc, wd=wd, err_re=err_re)
+
+    def set_config_send_strict(self, value):
+        # set config var (any of bazaar.conf, locations.conf, branch.conf
+        # should do)
+        conf = self.local_tree.branch.get_config()
+        conf.set_user_option('send_strict', value)
+
+    def assertSendFails(self, args):
+        self.run_send(args, rc=3,
+                      err_re=['Working tree ".*/local/"'
+                              ' has uncommitted changes.$',])
+
+    def assertSendSucceeds(self, revs, args):
+        out, err = self.run_send(args)
+        self.assertEquals('Bundling 1 revision(s).\n', err)
+        md = merge_directive.MergeDirective.from_lines(
+                StringIO(out).readlines())
+        self.assertEqual('parent', md.base_revision_id)
+        br = serializer.read_bundle(StringIO(md.get_raw_bundle()))
+        self.assertEqual(set(revs), set(r.revision_id for r in br.revisions))
+
+
+class TestSendStrictWithoutChanges(TestSendStrict):
+
+    def setUp(self):
+        super(TestSendStrictWithoutChanges, self).setUp()
+        self.make_parent_and_local_branches()
+
+    def test_send_default(self):
+        self.assertSendSucceeds(['local'], [])
+
+    def test_send_strict(self):
+        self.assertSendSucceeds(['local'], ['--strict'])
+
+    def test_send_no_strict(self):
+        self.assertSendSucceeds(['local'], ['--no-strict'])
+
+    def test_send_config_var_strict(self):
+        self.set_config_send_strict('true')
+        self.assertSendSucceeds(['local'], [])
+
+    def test_send_config_var_no_strict(self):
+        self.set_config_send_strict('false')
+        self.assertSendSucceeds(['local'], [])
+
+
+class TestSendStrictWithChanges(TestSendStrict):
+
+    _do_changes = None # Set by load_tests
+
+    def setUp(self):
+        super(TestSendStrictWithChanges, self).setUp()
+        # FIXME: The following is a bit ugly, but I don't know how to bind the
+        # method properly, yet I want to define the method to call in
+        # load_tests(). -- vila 20090626
+        self._do_changes(self)
+
+    def do_uncommitted_changes(self):
+        self.make_parent_and_local_branches()
+        # Make a change without committing it
+        self.build_tree_contents([('local/file', 'modified')])
+
+    def do_pending_merges(self):
+        self.make_parent_and_local_branches()
+        # Create 'other' branch containing a new file
+        other_bzrdir = self.parent_tree.bzrdir.sprout('other')
+        other_tree = other_bzrdir.open_workingtree()
+        self.build_tree_contents([('other/other-file', 'other')])
+        other_tree.add('other-file')
+        other_tree.commit('other commit', rev_id='other')
+        # Merge and revert, leabing a pending merge
+        self.local_tree.merge_from_branch(other_tree.branch)
+        self.local_tree.revert(filenames=['other-file'], backups=False)
+
+    def test_send_default(self):
+        self.assertSendFails([])
+
+    def test_send_with_revision(self):
+        self.assertSendSucceeds(['local'], ['-r', 'revid:local'])
+
+    def test_send_no_strict(self):
+        self.assertSendSucceeds(['local'], ['--no-strict'])
+
+    def test_send_strict_with_changes(self):
+        self.assertSendFails(['--strict'])
+
+    def test_send_respect_config_var_strict(self):
+        self.set_config_send_strict('true')
+        self.assertSendFails([])
+        self.assertSendSucceeds(['local'], ['--no-strict'])
+
+
+    def test_send_bogus_config_var_ignored(self):
+        self.set_config_send_strict("I'm unsure")
+        self.assertSendFails([])
+
+
+    def test_send_no_strict_command_line_override_config(self):
+        self.set_config_send_strict('true')
+        self.assertSendFails([])
+        self.assertSendSucceeds(['local'], ['--no-strict'])
+
+    def test_push_strict_command_line_override_config(self):
+        self.set_config_send_strict('false')
+        self.assertSendSucceeds(['local'], [])
+        self.assertSendFails(['--strict'])

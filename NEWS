@@ -13,8 +13,15 @@ New Features
 ************
 
 * ``bzr push`` now checks if uncommitted changes are present in the working
-  tree if the ``--strict`` option is used.
+  tree if the ``--strict`` option is used. The ``push_strict`` option can
+  be declared in a configuration file.
   (Vincent Ladeuil, #284038)
+
+* ``bzr send`` now aborts if uncommitted changes (including pending merges)
+  are present in the working tree and no revision is speficied. The
+  ``--no-strict`` option can be used to force the sending. The
+  ``send_strict`` option can be declared in a configuration file.
+  (Vincent Ladeuil, #206577)
 
 
 Bug Fixes

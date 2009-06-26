@@ -421,3 +421,10 @@ bound
 
 If set to "True", the branch should act as a checkout, and push each commit to
 the bound_location.  This option is normally set by ``bind``/``unbind``.
+
+send_strict
+~~~~~~~~~~~
+
+If present, defines the ``--strict`` option default value for checking
+uncommitted changes before sending a merge directive.
+
