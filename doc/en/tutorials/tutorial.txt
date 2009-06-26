@@ -117,35 +117,35 @@ email address. Bazaar is smart enough to automatically generate an email
 address by looking up your username and hostname. If you don't like the
 guess that Bazaar makes, then three options exist:
 
- 1. Set an email address via ``bzr whoami``.  This is the simplest way.
+1. Set an email address via ``bzr whoami``.  This is the simplest way.
 
-    To set a global identity, use::
- 
-    % bzr whoami "Your Name <email@example.com>"
- 
-    If you'd like to use a different address for a specific branch, enter
-    the branch folder and use::
- 
-    % bzr whoami --branch "Your Name <email@example.com>"
- 
- #. Setting the email address in the ``~/.bazaar/bazaar.conf`` [1]_ by
-    adding the following lines.  Please note that  ``[DEFAULT]`` is case
-    sensitive::
+   To set a global identity, use::
 
-        [DEFAULT]
-        email=Your Name <email@isp.com>
+   % bzr whoami "Your Name <email@example.com>"
 
-    As above, you can override this settings on a branch by branch basis
-    by creating a branch section in ``~/.bazaar/locations.conf`` and
-    adding the following lines::
+   If you'd like to use a different address for a specific branch, enter
+   the branch folder and use::
 
-        [/the/path/to/the/branch]
-        email=Your Name <email@isp.com>
+   % bzr whoami --branch "Your Name <email@example.com>"
+
+#. Setting the email address in the ``~/.bazaar/bazaar.conf`` [1]_ by
+   adding the following lines.  Please note that  ``[DEFAULT]`` is case
+   sensitive::
+
+       [DEFAULT]
+       email=Your Name <email@isp.com>
+
+   As above, you can override this settings on a branch by branch basis
+   by creating a branch section in ``~/.bazaar/locations.conf`` and
+   adding the following lines::
+
+       [/the/path/to/the/branch]
+       email=Your Name <email@isp.com>
 
 
- #. Overriding the two previous options by setting the global environment
-    variable ``$BZR_EMAIL`` or ``$EMAIL`` (``$BZR_EMAIL`` will take
-    precedence) to your full email address.
+#. Overriding the two previous options by setting the global environment
+   variable ``$BZR_EMAIL`` or ``$EMAIL`` (``$BZR_EMAIL`` will take
+   precedence) to your full email address.
 
 .. [1] On Windows, the users configuration files can be found in the
    application data directory. So instead of ``~/.bazaar/branch.conf``
