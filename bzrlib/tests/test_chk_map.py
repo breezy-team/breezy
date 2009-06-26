@@ -2153,7 +2153,7 @@ class TestInterestingNodeIterator(TestCaseWithExampleMaps):
         # At this point, we should have queued up only the 'a' Leaf on both
         # sides, both 'c' and 'd' are known to not have changed on both sides
         self.assertEqual([('a', None, key2_a)], iterator._interesting_queue)
-        self.assertEqual([('a', None, key1_a)], iterator._uninteresting_queue)
+        self.assertEqual([('a', key1_a)], iterator._uninteresting_queue)
 
     def test__read_all_roots_multi_interesting_prepares_queues(self):
         c_map = self.make_one_deep_map(chk_map._search_key_plain)
@@ -2179,7 +2179,7 @@ class TestInterestingNodeIterator(TestCaseWithExampleMaps):
         self.assertEqual([('a', None, key2_a), ('c', None, key3_c)],
                          iterator._interesting_queue)
         # And we should have queued up both a and c for the uninteresting set
-        self.assertEqual([('a', None, key1_a), ('c', None, key1_c)],
+        self.assertEqual([('a', key1_a), ('c', key1_c)],
                          iterator._uninteresting_queue)
 
     def test__read_all_roots_different_depths(self):
@@ -2201,7 +2201,7 @@ class TestInterestingNodeIterator(TestCaseWithExampleMaps):
         self.assertEqual([key2], root_results)
         # Only the 'a' subset should be queued up, since 'c' and 'd' cannot be
         # present
-        self.assertEqual([('a', None, key1_a)], iterator._uninteresting_queue)
+        self.assertEqual([('a', key1_a)], iterator._uninteresting_queue)
         self.assertEqual([('aa', None, key2_aa), ('ad', None, key2_ad)],
                          iterator._interesting_queue)
 
@@ -2209,7 +2209,7 @@ class TestInterestingNodeIterator(TestCaseWithExampleMaps):
         root_results = [record.key for record in iterator._read_all_roots()]
         self.assertEqual([key1], root_results)
 
-        self.assertEqual([('aa', None, key2_aa), ('ad', None, key2_ad)],
+        self.assertEqual([('aa', key2_aa), ('ad', key2_ad)],
                          iterator._uninteresting_queue)
         self.assertEqual([('a', None, key1_a), ('c', None, key1_c),
                           ('d', None, key1_d),
@@ -2247,7 +2247,7 @@ class TestInterestingNodeIterator(TestCaseWithExampleMaps):
         # However, even though we have yielded the root node to be fetched,
         # we should have enqued all of the chk pages to be walked, so that we
         # can find the keys if they are present
-        self.assertEqual([('a', None, key1_a)], iterator._uninteresting_queue)
+        self.assertEqual([('a', key1_a)], iterator._uninteresting_queue)
         self.assertEqual([('acc', ('acc',), 'initial acc content'),
                           ('ace', ('ace',), 'initial ace content'),
                          ], iterator._interesting_queue)

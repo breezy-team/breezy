@@ -1524,7 +1524,7 @@ class InterestingNodeIterator(object):
             if not_interesting:
                 # This prefix is not part of the remaining 'interesting set'
                 continue
-            heapq.heappush(self._uninteresting_queue, (prefix, None, ref))
+            heapq.heappush(self._uninteresting_queue, (prefix, ref))
 
     def _flush_interesting_queue(self):
         # TODO: this could really be done as a series of big batches of reading
@@ -1556,18 +1556,13 @@ class InterestingNodeIterator(object):
                                        (prefix, None, ref))
 
     def _process_next_uninteresting(self):
-        prefix, key, value = heapq.heappop(self._uninteresting_queue)
-        # We don't queue up uininteresting items, just add them to the
-        # set
-        assert key is None
-        # Node
+        prefix, ref = heapq.heappop(self._uninteresting_queue)
         for record, node, prefix_refs, items in \
-                self._read_nodes_from_store([value]):
+                self._read_nodes_from_store([ref]):
             self._all_uninteresting_items.update(items)
             for prefix, ref in prefix_refs:
                 self._all_uninteresting_chks.add(ref)
-                heapq.heappush(self._uninteresting_queue,
-                               (prefix, None, ref))
+                heapq.heappush(self._uninteresting_queue, (prefix, ref))
 
     def _process_queues(self):
         # Finish processing all of the items in the queue, for simplicity, we
@@ -1582,7 +1577,7 @@ class InterestingNodeIterator(object):
                 for record, items in self._flush_interesting_queue():
                     yield record, items
                 return
-            # (prefix, key, value)
+            # (prefix, key?, value)
             next_interesting_prefix = self._interesting_queue[0][0]
             next_uninteresting_prefix = self._uninteresting_queue[0][0]
             if next_uninteresting_prefix <= next_interesting_prefix:
@@ -1598,7 +1593,7 @@ class InterestingNodeIterator(object):
                     if item not in self._all_uninteresting_items:
                         yield None, [item]
                 else:
-                    # Node
+                    # Node, value == ref
                     # if value in self._all_uninteresting_chks:
                     #     continue
                     for record, node, prefix_refs, items in \
