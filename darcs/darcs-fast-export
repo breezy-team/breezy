@@ -311,7 +311,7 @@ for i in patches:
 			print "M 644 inline %s" % j
 			print "data %s\n%s" % (len(buf), buf)
 	if message[:4] == "TAG ":
-		tag = re.sub('[^\xe9-\xf8\w.]+', '_', message[4:].strip().split('\n')[0]).strip('_')
+		tag = re.sub('[^\xe9-\xf8\w.\-]+', '_', message[4:].strip().split('\n')[0]).strip('_')
 		print "tag %s" % tag
 		print "from :%s" % markcount
 		print "tagger %s %s %s" % (get_author(i), date, get_zone_str())
