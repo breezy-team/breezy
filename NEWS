@@ -38,6 +38,9 @@ Bug Fixes
 * ``bzr ls DIR --from-root`` now shows only things in DIR, not everything.
   (Ian Clatworthy)
 
+* Fixed spurious "Source branch does not support stacking warning" when
+  pushing. (Andrew Bennetts, #388908)
+  
 * Progress bars are now suppressed again when the environment variable
   ``BZR_PROGRESS_BAR`` is set to ``none``.
   (Martin Pool, #339385)
