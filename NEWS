@@ -38,6 +38,9 @@ Bug Fixes
   1.16rc1 (or later) smart server work again.
   (Andrew Bennetts, #388675)
 
+* Avoid progress bar artifacts being left behind on the screen.
+  (Martin Pool, #321935)
+
 * Better message in ``bzr split`` error suggesting a rich root format.
   (Neil Martinsen-Burrell, #220067)
 
