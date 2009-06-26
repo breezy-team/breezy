@@ -459,9 +459,9 @@ You can delete files or directories by just deleting them from the working
 directory.  This is a bit different to CVS, which requires that you also
 do ``cvs remove``.
 
-    ``bzr remove`` makes the file un-versioned, but may or may not delete
-    the working copy [2]_.  This is useful when you add the wrong file,
-    or decide that a file should actually not be versioned. 
+``bzr remove`` makes the file un-versioned, but may or may not delete the
+working copy [2]_.  This is useful when you add the wrong file, or decide that
+a file should actually not be versioned. 
 
 ::
 
@@ -570,10 +570,9 @@ the following three methods:
   uses rsync to push the changes to the revision history and the working
   tree.
 
-You can also use copy the files around manually, by sending a tarball, or
-using rsync, or other related file transfer methods.  This is usually
-less safe than using ``push``, but may be faster or easier in some
-situations.
+* You can also use copy the files around manually, by sending a tarball, or
+  using rsync, or other related file transfer methods.  This is usually less
+  safe than using ``push``, but may be faster or easier in some situations.
 
 Moving changes between trees 
 ============================
