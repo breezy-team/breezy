@@ -9,6 +9,15 @@ Bazaar Release Notes
 In Development
 ##############
 
+Compatibility Breaks
+********************
+
+* ``bzr register-branch`` from the Launchpad plugin now refers to "project"
+  instead of "product" which is the correct Launchpad terminology.  The
+  --product option is deprecated and users should switch to using --project.
+  (Neil Martinsen-Burrell, #238764)
+
+
 New Features
 ************
 
