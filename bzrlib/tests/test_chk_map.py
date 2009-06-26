@@ -2215,6 +2215,43 @@ class TestInterestingNodeIterator(TestCaseWithExampleMaps):
                           ('d', None, key1_d),
                          ], iterator._interesting_queue)
 
+    def test__read_all_roots_different_depths_16(self):
+        c_map = self.make_two_deep_map(chk_map._search_key_16)
+        c_map._dump_tree() # load everything
+        key1 = c_map.key()
+        key1_2 = c_map._root_node._items['2'].key()
+        key1_4 = c_map._root_node._items['4'].key()
+        key1_C = c_map._root_node._items['C'].key()
+        key1_F = c_map._root_node._items['F'].key()
+
+        c_map2 = self.make_one_deep_two_prefix_map(chk_map._search_key_16)
+        c_map2._dump_tree()
+        key2 = c_map2.key()
+        key2_F0 = c_map2._root_node._items['F0'].key()
+        key2_F3 = c_map2._root_node._items['F3'].key()
+        key2_F4 = c_map2._root_node._items['F4'].key()
+        key2_FD = c_map2._root_node._items['FD'].key()
+
+        iterator = self.get_iterator([key2], [key1], chk_map._search_key_16)
+        root_results = [record.key for record in iterator._read_all_roots()]
+        self.assertEqual([key2], root_results)
+        # Only the subset of keys that may be present should be queued up.
+        self.assertEqual([('F', key1_F)], iterator._uninteresting_queue)
+        self.assertEqual([('F0', None, key2_F0), ('F3', None, key2_F3),
+                          ('F4', None, key2_F4), ('FD', None, key2_FD),
+                         ], sorted(iterator._interesting_queue))
+
+        iterator = self.get_iterator([key1], [key2], chk_map._search_key_16)
+        root_results = [record.key for record in iterator._read_all_roots()]
+        self.assertEqual([key1], root_results)
+
+        self.assertEqual([('F0', key2_F0), ('F3', key2_F3),
+                          ('F4', key2_F4), ('FD', key2_FD),
+                         ], sorted(iterator._uninteresting_queue))
+        self.assertEqual([('2', None, key1_2), ('4', None, key1_4),
+                          ('C', None, key1_C), ('F', None, key1_F),
+                         ], sorted(iterator._interesting_queue))
+
     def test__read_all_roots_yields_extra_deep_records(self):
         # This is a bit more controversial, and potentially a problem for
         # stacking in very extreme circumstances. (it should be okay, because
