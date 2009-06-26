@@ -313,8 +313,6 @@ class ResumedPack(ExistingPack):
 
     def finish(self):
         self._check_references()
-        new_name = '../packs/' + self.file_name()
-        self.upload_transport.rename(self.file_name(), new_name)
         index_types = ['revision', 'inventory', 'text', 'signature']
         if self.chk_index is not None:
             index_types.append('chk')
@@ -323,6 +321,8 @@ class ResumedPack(ExistingPack):
             new_name = '../indices/' + old_name
             self.upload_transport.rename(old_name, new_name)
             self._replace_index_with_readonly(index_type)
+        new_name = '../packs/' + self.file_name()
+        self.upload_transport.rename(self.file_name(), new_name)
         self._state = 'finished'
 
     def _get_external_refs(self, index):

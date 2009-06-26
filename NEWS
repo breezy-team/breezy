@@ -38,18 +38,29 @@ Bug Fixes
 * ``bzr ls DIR --from-root`` now shows only things in DIR, not everything.
   (Ian Clatworthy)
 
+* We now properly request a more minimal set of file texts when fetching
+  multiple revisions. (Robert Collins, John Arbash Meinel, #390563)
+
 * Progress bars are now suppressed again when the environment variable
   ``BZR_PROGRESS_BAR`` is set to ``none``.
   (Martin Pool, #339385)
 
 * Reduced memory consumption during ``bzr commit`` of large files. For
-  pre 2a formats, should be down to ~3x the size of a file, and for
-  ``--2a`` formats should be down to exactly 2x the size. Related to bug
-  #109114. (John Arbash Meinel)
+  pre 2a formats, should be down to ~3x the size of a file.
+  For ``--2a`` format repositories, it is down to the size of the file
+  content plus the size of the compressed text.  Related to bug #109114.
+  (John Arbash Meinel)
 
 * Repositories using CHK pages (which includes the new 2a format) will no
   longer error during commit or push operations when an autopack operation
   is triggered. (Robert Collins, #365615)
+
+* Stacking will no longer accept requests to stack on the same
+  branch/repository. Existing branches that incorrectly reference the same
+  repository in a stacking configuration will now raise
+  UnstackableLocationError when the branch is opened. This can be fixed by
+  removing the stacking location inside ``.bzr/branch``.
+  (Robert Collins, #376243)
 
 * Unshelve works correctly when multiple zero-length files are present on
   the shelf. (Aaron Bentley, #363444)
@@ -59,6 +70,14 @@ Bug Fixes
 
 Internals
 *********
+
+* ``chk_map.iter_interesting_nodes`` now properly uses the *intersection*
+  of referenced nodes rather than the *union* to determine what
+  uninteresting pages we still need to look at. Prior to this,
+  incrementally pushing to stacked branch would push the minimal data, but
+  fetching everything would request extra texts. There are some unhandled
+  cases wrt trees of different depths, but this fixes the common cases.
+  (Robert Collins, John Arbash Meinel, #390563)
 
 * Command lookup has had hooks added. ``bzrlib.Command.hooks`` has
   three new hook points: ``get_command``, ``get_missing_command`` and
@@ -76,6 +95,11 @@ Internals
 * ``GroupCompress`` repositories now take advantage of the pack hints
   parameter to permit cross-format fetching to incrementally pack the
   converted data. (Robert Collins)
+
+* OS file locks are now taken out using ``CreateFile`` rather than
+  ``LockFileEx`` on Windows. The locking remains exclusive with
+  ``LockFileEx`` but now it also works on older versions of Windows (such
+  as Win98). (Martin <gzlist>)
 
 * pack <=> pack fetching is now done via a ``PackStreamSource`` rather
   than the ``Packer`` code. The user visible change is that we now

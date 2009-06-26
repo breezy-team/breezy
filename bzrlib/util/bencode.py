@@ -19,6 +19,6 @@ from bzrlib import symbol_versioning
 dep_warning = symbol_versioning.deprecated_in((1, 16, 0)) % (
     'bzrlib.util.bencode',) + '\n  Use bzrlib.bencode instead'
 
-symbol_versioning.warn(dep_warning, DeprecationWarning)
+symbol_versioning.warn(dep_warning, DeprecationWarning, stacklevel=2)
 
 from bzrlib.bencode import *
