@@ -670,10 +670,14 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
         self.assertFalse(repo._format.supports_external_lookups)
 
 
-class TestDevelopment6(TestCaseWithTransport):
+class Test2a(TestCaseWithTransport):
+
+    def test_format_pack_compresses_True(self):
+        repo = self.make_repository('repo', format='2a')
+        self.assertTrue(repo._format.pack_compresses)
 
     def test_inventories_use_chk_map_with_parent_base_dict(self):
-        tree = self.make_branch_and_tree('repo', format="development6-rich-root")
+        tree = self.make_branch_and_tree('repo', format="2a")
         revid = tree.commit("foo")
         tree.lock_read()
         self.addCleanup(tree.unlock)
@@ -684,6 +688,33 @@ class TestDevelopment6(TestCaseWithTransport):
         self.assertEqual(65536, inv.id_to_entry._root_node.maximum_size)
         self.assertEqual(65536,
             inv.parent_id_basename_to_file_id._root_node.maximum_size)
+
+    def test_autopack_unchanged_chk_nodes(self):
+        # at 20 unchanged commits, chk pages are packed that are split into
+        # two groups such that the new pack being made doesn't have all its
+        # pages in the source packs (though they are in the repository).
+        tree = self.make_branch_and_tree('tree', format='2a')
+        for pos in range(20):
+            tree.commit(str(pos))
+
+    def test_pack_with_hint(self):
+        tree = self.make_branch_and_tree('tree', format='2a')
+        # 1 commit to leave untouched
+        tree.commit('1')
+        to_keep = tree.branch.repository._pack_collection.names()
+        # 2 to combine
+        tree.commit('2')
+        tree.commit('3')
+        all = tree.branch.repository._pack_collection.names()
+        combine = list(set(all) - set(to_keep))
+        self.assertLength(3, all)
+        self.assertLength(2, combine)
+        tree.branch.repository.pack(hint=combine)
+        final = tree.branch.repository._pack_collection.names()
+        self.assertLength(2, final)
+        self.assertFalse(combine[0] in final)
+        self.assertFalse(combine[1] in final)
+        self.assertSubset(to_keep, final)
 
 
 class TestDevelopment6FindParentIdsOfRevisions(TestCaseWithTransport):
@@ -1285,3 +1316,83 @@ class TestGCCHKPackCollection(TestCaseWithTransport):
         # leaf pages in a complete listing.
         self.assertEqual(257, len(full_chk_records))
         self.assertSubset(simple_chk_records, full_chk_records)
+
+
+class TestCrossFormatPacks(TestCaseWithTransport):
+
+    def log_pack(self, hint=None):
+        self.calls.append(('pack', hint))
+        self.orig_pack(hint=hint)
+        if self.expect_hint:
+            self.assertTrue(hint)
+
+    def run_stream(self, src_fmt, target_fmt, expect_pack_called):
+        self.expect_hint = expect_pack_called
+        self.calls = []
+        source_tree = self.make_branch_and_tree('src', format=src_fmt)
+        source_tree.lock_write()
+        self.addCleanup(source_tree.unlock)
+        tip = source_tree.commit('foo')
+        target = self.make_repository('target', format=target_fmt)
+        target.lock_write()
+        self.addCleanup(target.unlock)
+        source = source_tree.branch.repository._get_source(target._format)
+        self.orig_pack = target.pack
+        target.pack = self.log_pack
+        search = target.search_missing_revision_ids(
+            source_tree.branch.repository, tip)
+        stream = source.get_stream(search)
+        from_format = source_tree.branch.repository._format
+        sink = target._get_sink()
+        sink.insert_stream(stream, from_format, [])
+        if expect_pack_called:
+            self.assertLength(1, self.calls)
+        else:
+            self.assertLength(0, self.calls)
+
+    def run_fetch(self, src_fmt, target_fmt, expect_pack_called):
+        self.expect_hint = expect_pack_called
+        self.calls = []
+        source_tree = self.make_branch_and_tree('src', format=src_fmt)
+        source_tree.lock_write()
+        self.addCleanup(source_tree.unlock)
+        tip = source_tree.commit('foo')
+        target = self.make_repository('target', format=target_fmt)
+        target.lock_write()
+        self.addCleanup(target.unlock)
+        source = source_tree.branch.repository
+        self.orig_pack = target.pack
+        target.pack = self.log_pack
+        target.fetch(source)
+        if expect_pack_called:
+            self.assertLength(1, self.calls)
+        else:
+            self.assertLength(0, self.calls)
+
+    def test_sink_format_hint_no(self):
+        # When the target format says packing makes no difference, pack is not
+        # called.
+        self.run_stream('1.9', 'rich-root-pack', False)
+
+    def test_sink_format_hint_yes(self):
+        # When the target format says packing makes a difference, pack is
+        # called.
+        self.run_stream('1.9', '2a', True)
+
+    def test_sink_format_same_no(self):
+        # When the formats are the same, pack is not called.
+        self.run_stream('2a', '2a', False)
+
+    def test_IDS_format_hint_no(self):
+        # When the target format says packing makes no difference, pack is not
+        # called.
+        self.run_fetch('1.9', 'rich-root-pack', False)
+
+    def test_IDS_format_hint_yes(self):
+        # When the target format says packing makes a difference, pack is
+        # called.
+        self.run_fetch('1.9', '2a', True)
+
+    def test_IDS_format_same_no(self):
+        # When the formats are the same, pack is not called.
+        self.run_fetch('2a', '2a', False)

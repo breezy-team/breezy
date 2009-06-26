@@ -568,6 +568,11 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
         return self._creating_repo._real_repository._format.network_name()
 
     @property
+    def pack_compresses(self):
+        self._ensure_real()
+        return self._custom_format.pack_compresses
+
+    @property
     def _serializer(self):
         self._ensure_real()
         return self._custom_format._serializer
@@ -1462,13 +1467,13 @@ class RemoteRepository(_RpcHelper):
         return self._real_repository.inventories
 
     @needs_write_lock
-    def pack(self):
+    def pack(self, hint=None):
         """Compress the data within the repository.
 
         This is not currently implemented within the smart server.
         """
         self._ensure_real()
-        return self._real_repository.pack()
+        return self._real_repository.pack(hint=hint)
 
     @property
     def revisions(self):

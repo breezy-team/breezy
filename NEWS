@@ -6,6 +6,32 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
+* Repositories using CHK pages (which includes the new 2a format) will no
+  longer error during commit or push operations when an autopack operation
+  is triggered. (Robert Collins, #365615)
+
+* ``GroupCompress`` repositories now take advantage of the pack hints
+  parameter to permit cross-format fetching to incrementally pack the
+  converted data. (Robert Collins)
+
+* ``Repository.commit_write_group`` now returns opaque data about what
+  was committed, for passing to the ``Repository.pack``. Repositories
+  without atomic commits will still return None. (Robert Collins)
+
+* ``Repository.pack`` now takes an optional ``hint`` parameter
+  which will support doing partial packs for repositories that can do
+  that. (Robert Collins)
+
+* RepositoryFormat has a new attribute 'pack_compresses' which is True
+  when doing a pack operation changes the compression of content in the
+  repository. (Robert Collins)
+
+* ``StreamSink`` and ``InterDifferingSerialiser`` will call
+  ``Repository.pack`` with the hint returned by
+  ``Repository.commit_write_group`` if the formats were different and the
+  repository can increase compression by doing a pack operation.
+  (Robert Collins, #376748)
+
 bzr 1.16 "It's yesterday in California" 2009-06-18
 ##################################################
 :Codename: yesterday-in-california

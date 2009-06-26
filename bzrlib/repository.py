@@ -1413,8 +1413,9 @@ class Repository(object):
             raise errors.BzrError('mismatched lock context %r and '
                 'write group %r.' %
                 (self.get_transaction(), self._write_group))
-        self._commit_write_group()
+        result = self._commit_write_group()
         self._write_group = None
+        return result
 
     def _commit_write_group(self):
         """Template method for per-repository write group cleanup.
@@ -2369,7 +2370,7 @@ class Repository(object):
             keys = tsort.topo_sort(parent_map)
         return [None] + list(keys)
 
-    def pack(self):
+    def pack(self, hint=None):
         """Compress the data within the repository.
 
         This operation only makes sense for some repository types. For other
@@ -2378,6 +2379,13 @@ class Repository(object):
         This stub method does not require a lock, but subclasses should use
         @needs_write_lock as this is a long running call its reasonable to
         implicitly lock for the user.
+
+        :param hint: If not supplied, the whole repository is packed.
+            If supplied, the repository may use the hint parameter as a
+            hint for the parts of the repository to pack. A hint can be
+            obtained from the result of commit_write_group(). Out of
+            date hints are simply ignored, because concurrent operations
+            can obsolete them rapidly.
         """
 
     def get_transaction(self):
@@ -2786,6 +2794,11 @@ class RepositoryFormat(object):
     # Does this format have < O(tree_size) delta generation. Used to hint what
     # code path for commit, amongst other things.
     fast_deltas = None
+    # Does doing a pack operation compress data? Useful for the pack UI command
+    # (so if there is one pack, the operation can still proceed because it may
+    # help), and for fetching when data won't have come from the same
+    # compressor.
+    pack_compresses = False
 
     def __str__(self):
         return "<%s>" % self.__class__.__name__
@@ -3755,6 +3768,7 @@ class InterDifferingSerializer(InterRepository):
         cache = lru_cache.LRUCache(100)
         cache[basis_id] = basis_tree
         del basis_tree # We don't want to hang on to it here
+        hints = []
         for offset in range(0, len(revision_ids), batch_size):
             self.target.start_write_group()
             try:
@@ -3766,7 +3780,11 @@ class InterDifferingSerializer(InterRepository):
                 self.target.abort_write_group()
                 raise
             else:
-                self.target.commit_write_group()
+                hint = self.target.commit_write_group()
+                if hint:
+                    hints.extend(hint)
+        if hints and self.target._format.pack_compresses:
+            self.target.pack(hint=hints)
         pb.update('Transferring revisions', len(revision_ids),
                   len(revision_ids))
 
@@ -4115,7 +4133,10 @@ class StreamSink(object):
                 # missing keys can handle suspending a write group).
                 write_group_tokens = self.target_repo.suspend_write_group()
                 return write_group_tokens, missing_keys
-        self.target_repo.commit_write_group()
+        hint = self.target_repo.commit_write_group()
+        if (to_serializer != src_serializer and
+            self.target_repo._format.pack_compresses):
+            self.target_repo.pack(hint=hint)
         return [], set()
 
     def _extract_and_insert_inventories(self, substream, serializer):

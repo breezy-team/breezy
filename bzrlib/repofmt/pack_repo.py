@@ -1458,12 +1458,12 @@ class RepositoryPackCollection(object):
         in synchronisation with certain steps. Otherwise the names collection
         is not flushed.
 
-        :return: True if packing took place.
+        :return: Something evaluating true if packing took place.
         """
         while True:
             try:
                 return self._do_autopack()
-            except errors.RetryAutopack, e:
+            except errors.RetryAutopack:
                 # If we get a RetryAutopack exception, we should abort the
                 # current action, and retry.
                 pass
@@ -1473,7 +1473,7 @@ class RepositoryPackCollection(object):
         total_revisions = self.revision_index.combined_index.key_count()
         total_packs = len(self._names)
         if self._max_pack_count(total_revisions) >= total_packs:
-            return False
+            return None
         # determine which packs need changing
         pack_distribution = self.pack_distribution(total_revisions)
         existing_packs = []
@@ -1501,10 +1501,10 @@ class RepositoryPackCollection(object):
             'containing %d revisions. Packing %d files into %d affecting %d'
             ' revisions', self, total_packs, total_revisions, num_old_packs,
             num_new_packs, num_revs_affected)
-        self._execute_pack_operations(pack_operations,
+        result = self._execute_pack_operations(pack_operations,
                                       reload_func=self._restart_autopack)
         mutter('Auto-packing repository %s completed', self)
-        return True
+        return result
 
     def _execute_pack_operations(self, pack_operations, _packer_class=Packer,
                                  reload_func=None):
@@ -1512,7 +1512,7 @@ class RepositoryPackCollection(object):
 
         :param pack_operations: A list of [revision_count, packs_to_combine].
         :param _packer_class: The class of packer to use (default: Packer).
-        :return: None.
+        :return: The new pack names.
         """
         for revision_count, packs in pack_operations:
             # we may have no-ops from the setup logic
@@ -1534,10 +1534,11 @@ class RepositoryPackCollection(object):
                 self._remove_pack_from_memory(pack)
         # record the newly available packs and stop advertising the old
         # packs
-        self._save_pack_names(clear_obsolete_packs=True)
+        result = self._save_pack_names(clear_obsolete_packs=True)
         # Move the old packs out of the way now they are no longer referenced.
         for revision_count, packs in pack_operations:
             self._obsolete_packs(packs)
+        return result
 
     def _flush_new_pack(self):
         if self._new_pack is not None:
@@ -1553,29 +1554,26 @@ class RepositoryPackCollection(object):
 
     def _already_packed(self):
         """Is the collection already packed?"""
-        return len(self._names) < 2
+        return not (self.repo._format.pack_compresses or (len(self._names) > 1))
 
-    def pack(self):
+    def pack(self, hint=None):
         """Pack the pack collection totally."""
         self.ensure_loaded()
         total_packs = len(self._names)
         if self._already_packed():
-            # This is arguably wrong because we might not be optimal, but for
-            # now lets leave it in. (e.g. reconcile -> one pack. But not
-            # optimal.
             return
         total_revisions = self.revision_index.combined_index.key_count()
         # XXX: the following may want to be a class, to pack with a given
         # policy.
         mutter('Packing repository %s, which has %d pack files, '
-            'containing %d revisions into 1 packs.', self, total_packs,
-            total_revisions)
+            'containing %d revisions with hint %r.', self, total_packs,
+            total_revisions, hint)
         # determine which packs need changing
-        pack_distribution = [1]
         pack_operations = [[0, []]]
         for pack in self.all_packs():
-            pack_operations[-1][0] += pack.get_revision_count()
-            pack_operations[-1][1].append(pack)
+            if not hint or pack.name in hint:
+                pack_operations[-1][0] += pack.get_revision_count()
+                pack_operations[-1][1].append(pack)
         self._execute_pack_operations(pack_operations, OptimisingPacker)
 
     def plan_autopack_combinations(self, existing_packs, pack_distribution):
@@ -1937,6 +1935,7 @@ class RepositoryPackCollection(object):
 
         :param clear_obsolete_packs: If True, clear out the contents of the
             obsolete_packs directory.
+        :return: A list of the names saved that were not previously on disk.
         """
         self.lock_names()
         try:
@@ -1957,6 +1956,7 @@ class RepositoryPackCollection(object):
             self._unlock_names()
         # synchronise the memory packs list with what we just wrote:
         self._syncronize_pack_names_from_disk_nodes(disk_nodes)
+        return [new_node[0][0] for new_node in new_nodes]
 
     def reload_pack_names(self):
         """Sync our pack listing with what is present in the repository.
@@ -2096,7 +2096,7 @@ class RepositoryPackCollection(object):
             if not self.autopack():
                 # when autopack takes no steps, the names list is still
                 # unsaved.
-                self._save_pack_names()
+                return self._save_pack_names()
 
     def _suspend_write_group(self):
         tokens = [pack.name for pack in self._resumed_packs]
@@ -2342,13 +2342,13 @@ class KnitPackRepository(KnitRepository):
         raise NotImplementedError(self.dont_leave_lock_in_place)
 
     @needs_write_lock
-    def pack(self):
+    def pack(self, hint=None):
         """Compress the data within the repository.
 
         This will pack all the data to a single pack. In future it may
         recompress deltas or do other such expensive operations.
         """
-        self._pack_collection.pack()
+        self._pack_collection.pack(hint=hint)
 
     @needs_write_lock
     def reconcile(self, other=None, thorough=False):
