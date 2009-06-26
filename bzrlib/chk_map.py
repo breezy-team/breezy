@@ -1516,9 +1516,13 @@ class InterestingNodeIterator(object):
         # items, so we can queue up the uninteresting stuff, knowing that we've
         # handled the interesting ones
         for prefix, ref in uninteresting_chks_to_enqueue:
-            if prefix not in interesting_prefixes:
-                # Keys with this prefix was not interesting from any of the
-                # interesting roots.
+            not_interesting = True
+            for i in xrange(len(prefix), 0, -1):
+                if prefix[:i] in interesting_prefixes:
+                    not_interesting = False
+                    break
+            if not_interesting:
+                # This prefix is not part of the remaining 'interesting set'
                 continue
             heapq.heappush(self._uninteresting_queue, (prefix, None, ref))
 

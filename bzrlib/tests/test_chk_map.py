@@ -2187,6 +2187,8 @@ class TestInterestingNodeIterator(TestCaseWithExampleMaps):
         c_map._dump_tree() # load everything
         key1 = c_map.key()
         key1_a = c_map._root_node._items['a'].key()
+        key1_c = c_map._root_node._items['c'].key()
+        key1_d = c_map._root_node._items['d'].key()
 
         c_map2 = self.make_one_deep_two_prefix_map(chk_map._search_key_plain)
         c_map2._dump_tree()
@@ -2197,12 +2199,21 @@ class TestInterestingNodeIterator(TestCaseWithExampleMaps):
         iterator = self.get_iterator([key2], [key1], chk_map._search_key_plain)
         root_results = [record.key for record in iterator._read_all_roots()]
         self.assertEqual([key2], root_results)
-        c_map = self.make_two_deep_map()
         # Only the 'a' subset should be queued up, since 'c' and 'd' cannot be
         # present
         self.assertEqual([('a', None, key1_a)], iterator._uninteresting_queue)
         self.assertEqual([('aa', None, key2_aa), ('ad', None, key2_ad)],
                          iterator._interesting_queue)
+
+        iterator = self.get_iterator([key1], [key2], chk_map._search_key_plain)
+        root_results = [record.key for record in iterator._read_all_roots()]
+        self.assertEqual([key1], root_results)
+
+        self.assertEqual([('aa', None, key2_aa), ('ad', None, key2_ad)],
+                         iterator._uninteresting_queue)
+        self.assertEqual([('a', None, key1_a), ('c', None, key1_c),
+                          ('d', None, key1_d),
+                         ], iterator._interesting_queue)
 
     def test__read_all_roots_yields_extra_deep_records(self):
         # This is a bit more controversial, and potentially a problem for
