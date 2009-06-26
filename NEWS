@@ -50,9 +50,6 @@ Bug Fixes
 * ``bzr ls DIR --from-root`` now shows only things in DIR, not everything.
   (Ian Clatworthy)
 
-* We now properly request a more minimal set of file texts when fetching
-  multiple revisions. (Robert Collins, John Arbash Meinel, #390563)
-
 * Progress bars are now suppressed again when the environment variable
   ``BZR_PROGRESS_BAR`` is set to ``none``.
   (Martin Pool, #339385)
@@ -62,10 +59,6 @@ Bug Fixes
   For ``--2a`` format repositories, it is down to the size of the file
   content plus the size of the compressed text.  Related to bug #109114.
   (John Arbash Meinel)
-
-* Repositories using CHK pages (which includes the new 2a format) will no
-  longer error during commit or push operations when an autopack operation
-  is triggered. (Robert Collins, #365615)
 
 * Stacking will no longer accept requests to stack on the same
   branch/repository. Existing branches that incorrectly reference the same
@@ -80,16 +73,9 @@ Bug Fixes
 * Progress bars no longer show the network transport scheme or direction.
   (Martin Pool)
 
+
 Internals
 *********
-
-* ``chk_map.iter_interesting_nodes`` now properly uses the *intersection*
-  of referenced nodes rather than the *union* to determine what
-  uninteresting pages we still need to look at. Prior to this,
-  incrementally pushing to stacked branch would push the minimal data, but
-  fetching everything would request extra texts. There are some unhandled
-  cases wrt trees of different depths, but this fixes the common cases.
-  (Robert Collins, John Arbash Meinel, #390563)
 
 * Command lookup has had hooks added. ``bzrlib.Command.hooks`` has
   three new hook points: ``get_command``, ``get_missing_command`` and
@@ -104,10 +90,6 @@ Internals
   for files with long ancestry and 'cherrypicked' changes.)
   (John Arbash Meinel, Vincent Ladeuil)
 
-* ``GroupCompress`` repositories now take advantage of the pack hints
-  parameter to permit cross-format fetching to incrementally pack the
-  converted data. (Robert Collins)
-
 * OS file locks are now taken out using ``CreateFile`` rather than
   ``LockFileEx`` on Windows. The locking remains exclusive with
   ``LockFileEx`` but now it also works on older versions of Windows (such
@@ -118,23 +100,6 @@ Internals
   properly fetch the minimum number of texts for non-smart fetching.
   (John Arbash Meinel)
 
-* ``Repository.commit_write_group`` now returns opaque data about what
-  was committed, for passing to the ``Repository.pack``. Repositories
-  without atomic commits will still return None. (Robert Collins)
-
-* ``Repository.pack`` now takes an optional ``hint`` parameter
-  which will support doing partial packs for repositories that can do
-  that. (Robert Collins)
-
-* RepositoryFormat has a new attribute 'pack_compresses' which is True
-  when doing a pack operation changes the compression of content in the
-  repository. (Robert Collins)
-
-* ``StreamSink`` and ``InterDifferingSerialiser`` will call
-  ``Repository.pack`` with the hint returned by
-  ``Repository.commit_write_group`` if the formats were different and the
-  repository can increase compression by doing a pack operation.
-  (Robert Collins, #376748)
 
 * ``VersionedFiles._add_text`` is a new api that lets us insert text into
   the repository as a single string, rather than a list of lines. This can
@@ -175,6 +140,62 @@ API Changes
 * The method ``ProgressView._show_transport_activity`` is now
   ``show_transport_activity`` because it's part of the contract between
   this class and the UI.  (Martin Pool)
+
+
+bzr 1.16.1 2009-06-26
+#####################
+
+End user testing of the 2a format revealed two serious bugs. The first,
+#365615, caused bzr to raise AbsentContentFactory errors when autopacking.
+This meant that commits or pushes to 2a-format repositories failed
+intermittently.
+
+The second bug, #390563, caused the smart server to raise AbsentContentFactory
+when streaming 2a stacked 2a-format branches. This particularly affected
+branches stored on Launchpad in the 2a format.
+
+Both of these bugs cause command failures only, neither of them cause data
+corruption or data loss. And, of course, both of these bugs are now fixed.
+
+Bug Fixes
+*********
+
+* We now properly request a more minimal set of file texts when fetching
+  multiple revisions. (Robert Collins, John Arbash Meinel, #390563)
+
+* Repositories using CHK pages (which includes the new 2a format) will no
+  longer error during commit or push operations when an autopack operation
+  is triggered. (Robert Collins, #365615)
+
+* ``chk_map.iter_interesting_nodes`` now properly uses the *intersection*
+  of referenced nodes rather than the *union* to determine what
+  uninteresting pages we still need to look at. Prior to this,
+  incrementally pushing to stacked branch would push the minimal data, but
+  fetching everything would request extra texts. There are some unhandled
+  cases wrt trees of different depths, but this fixes the common cases.
+  (Robert Collins, John Arbash Meinel, #390563)
+
+* ``GroupCompress`` repositories now take advantage of the pack hints
+  parameter to permit cross-format fetching to incrementally pack the
+  converted data. (Robert Collins)
+
+* ``Repository.commit_write_group`` now returns opaque data about what
+  was committed, for passing to the ``Repository.pack``. Repositories
+  without atomic commits will still return None. (Robert Collins)
+
+* ``Repository.pack`` now takes an optional ``hint`` parameter
+  which will support doing partial packs for repositories that can do
+  that. (Robert Collins)
+
+* RepositoryFormat has a new attribute 'pack_compresses' which is True
+  when doing a pack operation changes the compression of content in the
+  repository. (Robert Collins)
+
+* ``StreamSink`` and ``InterDifferingSerialiser`` will call
+  ``Repository.pack`` with the hint returned by
+  ``Repository.commit_write_group`` if the formats were different and the
+  repository can increase compression by doing a pack operation.
+  (Robert Collins, #376748)
 
 
 bzr 1.16 "It's yesterday in California" 2009-06-18
