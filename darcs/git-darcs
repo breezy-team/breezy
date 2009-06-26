@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 #   git-darcs - bidirectional operation between a darcs repo and git
 #
