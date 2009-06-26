@@ -138,6 +138,7 @@ class TextProgressView(object):
         # true when there's output on the screen we may need to clear
         self._have_output = False
         # XXX: We could listen for SIGWINCH and update the terminal width...
+        # https://launchpad.net/bugs/316357
         self._width = osutils.terminal_width()
         self._last_transport_msg = ''
         self._spin_pos = 0
@@ -254,19 +255,10 @@ class TextProgressView(object):
             # guard against clock stepping backwards, and don't update too
             # often
             rate = self._bytes_since_update / (now - self._transport_update_time)
-            scheme = getattr(transport, '_scheme', None) or repr(transport)
-            if direction == 'read':
-                dir_char = '>'
-            elif direction == 'write':
-                dir_char = '<'
-            else:
-                dir_char = ' '
-            msg = ("%.7s %s %6dKB %5dKB/s" %
-                    (scheme, dir_char, self._total_byte_count>>10, int(rate)>>10,))
+            msg = ("%6dKB %5dKB/s" %
+                    (self._total_byte_count>>10, int(rate)>>10,))
             self._transport_update_time = now
             self._last_repaint = now
             self._bytes_since_update = 0
             self._last_transport_msg = msg
             self._repaint()
-
-
