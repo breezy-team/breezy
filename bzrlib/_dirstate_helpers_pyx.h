@@ -1,5 +1,5 @@
-#ifndef _DIRSTATE_HELPERS_C_H
-#define _DIRSTATE_HELPERS_C_H
+#ifndef _DIRSTATE_HELPERS_PYX_H
+#define _DIRSTATE_HELPERS_PYX_H
 
 /* for intptr_t */
 #ifdef _MSC_VER

@@ -475,6 +475,15 @@ class TestPush(tests.TestCaseWithTransport):
         # subsequent log is accurate
         self.assertNotContainsRe(out, 'rev1')
 
+    def test_push_from_subdir(self):
+        t = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/dir/', 'tree/dir/file'])
+        t.add('dir', 'dir/file')
+        t.commit('r1')
+        out, err = self.run_bzr('push ../../pushloc', working_dir='tree/dir')
+        self.assertEqual('', out)
+        self.assertEqual('Created new branch.\n', err)
+
 
 class RedirectingMemoryTransport(memory.MemoryTransport):
 
