@@ -6,9 +6,21 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
+* We now properly request a more minimal set of file texts when fetching
+  multiple revisions. (Robert Collins, John Arbash Meinel, #390563)
+
 * Repositories using CHK pages (which includes the new 2a format) will no
   longer error during commit or push operations when an autopack operation
   is triggered. (Robert Collins, #365615)
+
+
+* ``chk_map.iter_interesting_nodes`` now properly uses the *intersection*
+  of referenced nodes rather than the *union* to determine what
+  uninteresting pages we still need to look at. Prior to this,
+  incrementally pushing to stacked branch would push the minimal data, but
+  fetching everything would request extra texts. There are some unhandled
+  cases wrt trees of different depths, but this fixes the common cases.
+  (Robert Collins, John Arbash Meinel, #390563)
 
 * ``GroupCompress`` repositories now take advantage of the pack hints
   parameter to permit cross-format fetching to incrementally pack the
