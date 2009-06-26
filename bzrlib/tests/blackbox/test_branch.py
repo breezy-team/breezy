@@ -113,6 +113,27 @@ class TestBranch(ExternalBase):
         self.failIfExists('target/hello')
         self.failIfExists('target/goodbye')
 
+    def test_branch_into_existing_dir(self):
+        self.example_branch('a')
+        # exisitng dir with similar files
+        os.mkdir('b')
+        self.build_tree_contents([('b/hello', 'bar')])  # different content
+        self.build_tree_contents([('b/goodbye', 'baz')])# the same content
+        # without --use-exisitng-dir it fails
+        out,err = self.run_bzr('branch a b', retcode=3)
+        self.assertEqual('', out)
+        self.assertEqual('bzr: ERROR: Target directory "b" already exists.\n',
+            err)
+        # force operation
+        self.run_bzr('branch a b --use-existing-dir')
+        # check conflicts
+        self.failUnlessExists('b/hello.moved')
+        self.failIfExists('b/godbye.moved')
+        # we can't branch into branch
+        out,err = self.run_bzr('branch a b --use-existing-dir', retcode=3)
+        self.assertEqual('', out)
+        self.assertEqual('bzr: ERROR: Already a branch: "b".\n', err)
+
 
 class TestBranchStacked(ExternalBase):
     """Tests for branch --stacked"""
