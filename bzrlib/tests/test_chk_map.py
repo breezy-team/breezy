@@ -2253,17 +2253,14 @@ class TestInterestingNodeIterator(TestCaseWithExampleMaps):
                          ], sorted(iterator._interesting_queue))
 
     def test__read_all_roots_yields_extra_deep_records(self):
-        # This is a bit more controversial, and potentially a problem for
-        # stacking in very extreme circumstances. (it should be okay, because
-        # the keys should still be filtered properly, but closer investigation
-        # is needed.)
-
-        # We do this because potentially *any* root node could be present in
-        # one of the uninteresting nodes as a very deep search path. And we
-        # want to avoid buffering the root node indefinitely. (We only know the
-        # root node was found at '' which could map to any other path.)
-        # One potential is to buffer it based on the aggregate search path
-        # (what would the search key of all child keys come out as, etc.)
+        # This is slightly controversial, as we will yield a chk page that we
+        # might later on find out could be filtered out. (If a root node is
+        # referenced deeper in the uninteresting set.)
+        # However, even with stacking, we always have all chk pages that we
+        # will need. So as long as we filter out the referenced keys, we'll
+        # never run into problems.
+        # This allows us to yield a root node record immediately, without any
+        # buffering.
         c_map = self.make_two_deep_map(chk_map._search_key_plain)
         c_map._dump_tree() # load all keys
         key1 = c_map.key()
@@ -2518,13 +2515,9 @@ class TestIterInterestingNodes(TestCaseWithExampleMaps):
              (None, [(('bbb',), 'new')]),
             ], [target2, target3], [target1])
 
-        # This may be a case that we relax. A root node is a deep child of the
-        # excluded set. The cost is buffering root nodes until we have
-        # determined all possible exclusions. (Because a prefix of '', cannot
-        # be excluded.)
-        # self.assertIterInteresting(
-        #     [], [target1], [target3])
-
+        # Technically, target1 could be filtered out, but since it is a root
+        # node, we yield it immediately, rather than waiting to find out much
+        # later on.
         self.assertIterInteresting([
              (target1, [])
             ],
