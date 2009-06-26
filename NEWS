@@ -6,13 +6,28 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
+
+bzr 1.16.1 2009-06-26
+#####################
+
+End user testing of the 2a format revealed two serious bugs. The first,
+#365615, caused bzr to raise AbsentContentFactory errors when autopacking.
+This meant that commits or pushes to 2a-format repositories failed
+intermittently.
+
+The second bug, #390563, caused the smart server to raise AbsentContentFactory
+when streaming 2a stacked 2a-format branches. This particularly affected
+branches stored on Launchpad in the 2a format.
+
+Bug Fixes
+*********
+
 * We now properly request a more minimal set of file texts when fetching
   multiple revisions. (Robert Collins, John Arbash Meinel, #390563)
 
 * Repositories using CHK pages (which includes the new 2a format) will no
   longer error during commit or push operations when an autopack operation
   is triggered. (Robert Collins, #365615)
-
 
 * ``chk_map.iter_interesting_nodes`` now properly uses the *intersection*
   of referenced nodes rather than the *union* to determine what
@@ -43,6 +58,7 @@ Bazaar Release Notes
   ``Repository.commit_write_group`` if the formats were different and the
   repository can increase compression by doing a pack operation.
   (Robert Collins, #376748)
+
 
 bzr 1.16 "It's yesterday in California" 2009-06-18
 ##################################################
