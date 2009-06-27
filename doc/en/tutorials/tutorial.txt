@@ -570,9 +570,9 @@ the following three methods:
   uses rsync to push the changes to the revision history and the working
   tree.
 
-* You can also use copy the files around manually, by sending a tarball, or
-  using rsync, or other related file transfer methods.  This is usually less
-  safe than using ``push``, but may be faster or easier in some situations.
+* You can also copy the files around manually, by sending a tarball, or using
+  rsync, or other related file transfer methods.  This is usually less safe
+  than using ``push``, but may be faster or easier in some situations.
 
 Moving changes between trees 
 ============================
