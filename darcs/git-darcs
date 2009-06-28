@@ -222,7 +222,7 @@ find_git()
 		fi
 		for row in `sed -n -e "/:.* $patch.*/ s/[^ ]*/&/p" $darcs_map`
 		do
-			sed -n -e "/$row / {s/[^ ]* \(.*\)/\1/p}" $git_map
+			sed -n -e "/$row / {s/[^ ]* \(.*\)/$remote\t\1/p}" $git_map
 		done
 	done
 }
