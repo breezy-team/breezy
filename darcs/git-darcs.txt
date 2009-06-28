@@ -17,6 +17,9 @@ git repo to the darcs one.
 A typical workflow is:
 
 ----
+$ mkdir git-repo
+$ cd git-repo
+$ git init
 $ git darcs add upstream ../darcs-repo
 $ git darcs pull upstream
 
