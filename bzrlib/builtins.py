@@ -1044,7 +1044,8 @@ class cmd_push(Command):
         if directory is None:
             directory = '.'
         # Get the source branch
-        tree, br_from = bzrdir.BzrDir.open_tree_or_branch(directory)
+        (tree, br_from,
+         _unused) = bzrdir.BzrDir.open_containing_tree_or_branch(directory)
         if strict is None:
             strict = br_from.get_config().get_user_option('push_strict')
             if strict is not None:
@@ -3603,13 +3604,9 @@ class cmd_merge(Command):
                 if revision is not None and len(revision) > 0:
                     raise errors.BzrCommandError('Cannot use --uncommitted and'
                         ' --revision at the same time.')
-                location = self._select_branch_location(tree, location)[0]
-                other_tree, other_path = WorkingTree.open_containing(location)
-                merger = _mod_merge.Merger.from_uncommitted(tree, other_tree,
-                    pb)
+                merger = self.get_merger_from_uncommitted(tree, location, pb,
+                                                          cleanups)
                 allow_pending = False
-                if other_path != '':
-                    merger.interesting_files = [other_path]
 
             if merger is None:
                 merger, allow_pending = self._get_merger_from_branch(tree,
@@ -3727,6 +3724,22 @@ class cmd_merge(Command):
         else:
             allow_pending = True
         return merger, allow_pending
+
+    def get_merger_from_uncommitted(self, tree, location, pb, cleanups):
+        """Get a merger for uncommitted changes.
+
+        :param tree: The tree the merger should apply to.
+        :param location: The location containing uncommitted changes.
+        :param pb: The progress bar to use for showing progress.
+        :param cleanups: A list of operations to perform to clean up the
+            temporary directories, unfinalized objects, etc.
+        """
+        location = self._select_branch_location(tree, location)[0]
+        other_tree, other_path = WorkingTree.open_containing(location)
+        merger = _mod_merge.Merger.from_uncommitted(tree, other_tree, pb)
+        if other_path != '':
+            merger.interesting_files = [other_path]
+        return merger
 
     def _select_branch_location(self, tree, user_location, revision=None,
                                 index=None):

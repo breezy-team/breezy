@@ -314,7 +314,7 @@ class ResolveLaunchpadPathRequest(BaseRequest):
     def __init__(self, path):
         if not path:
             raise errors.InvalidURL(path=path,
-                                    extra="You must specify a product.")
+                                    extra="You must specify a project.")
         self.path = path
 
     def _request_params(self):

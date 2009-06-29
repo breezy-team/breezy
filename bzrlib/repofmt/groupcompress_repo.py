@@ -218,6 +218,7 @@ class GCCHKPacker(Packer):
             p_id_roots_set = set()
             stream = source_vf.get_record_stream(keys, 'groupcompress', True)
             for idx, record in enumerate(stream):
+                # Inventories should always be with revisions; assume success.
                 bytes = record.get_bytes_as('fulltext')
                 chk_inv = inventory.CHKInventory.deserialise(None, bytes,
                                                              record.key)
@@ -294,6 +295,11 @@ class GCCHKPacker(Packer):
                     stream = source_vf.get_record_stream(cur_keys,
                                                          'as-requested', True)
                     for record in stream:
+                        if record.storage_kind == 'absent':
+                            # An absent CHK record: we assume that the missing
+                            # record is in a different pack - e.g. a page not
+                            # altered by the commit we're packing.
+                            continue
                         bytes = record.get_bytes_as('fulltext')
                         # We don't care about search_key_func for this code,
                         # because we only care about external references.
@@ -557,11 +563,6 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
 
     pack_factory = GCPack
     resumed_pack_factory = ResumedGCPack
-
-    def _already_packed(self):
-        """Is the collection already packed?"""
-        # Always repack GC repositories for now
-        return False
 
     def _execute_pack_operations(self, pack_operations,
                                  _packer_class=GCCHKPacker,
@@ -1052,6 +1053,7 @@ class RepositoryFormatCHK1(RepositoryFormatPack):
     _fetch_order = 'unordered'
     _fetch_uses_deltas = False # essentially ignored by the groupcompress code.
     fast_deltas = True
+    pack_compresses = True
 
     def _get_matching_bzrdir(self):
         return bzrdir.format_registry.make_bzrdir('development6-rich-root')
@@ -1075,7 +1077,8 @@ class RepositoryFormatCHK1(RepositoryFormatPack):
         if not target_format.rich_root_data:
             raise errors.BadConversionTarget(
                 'Does not support rich root data.', target_format)
-        if not getattr(target_format, 'supports_tree_reference', False):
+        if (self.supports_tree_reference and 
+            not getattr(target_format, 'supports_tree_reference', False)):
             raise errors.BadConversionTarget(
                 'Does not support nested trees', target_format)
 
