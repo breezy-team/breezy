@@ -21,8 +21,9 @@ Compatibility Breaks
 New Features
 ************
 
-* ``bzr push`` now checks if uncommitted changes are present in the working
-  tree if the ``--strict`` option is used.
+* ``bzr push`` now aborts if uncommitted changes (including pending merges)
+  are present in the working tree (if one is present). The ``push_strict``
+  option can be declared in a configuration file.  option is used.
   (Vincent Ladeuil, #284038)
 
 

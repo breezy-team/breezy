@@ -1057,9 +1057,9 @@ class cmd_push(Command):
                     strict = bools[strict.lower()]
                 except KeyError:
                     strict = None
-        if strict:
+        if tree is not None and (strict is None or strict): # Default to True:
             changes = tree.changes_from(tree.basis_tree())
-            if changes.has_changed():
+            if changes.has_changed() or len(tree.get_parent_ids()) > 1:
                 raise errors.UncommittedChanges(tree)
         # Get the tip's revision_id
         revision = _get_one_revision('push', revision)

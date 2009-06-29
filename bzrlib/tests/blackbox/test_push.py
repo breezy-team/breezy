@@ -603,7 +603,7 @@ class TestPushStrict(tests.TestCaseWithTransport):
 
     def test_push_default(self):
         tree = self.make_local_branch_and_tree_with_changes()
-        self.assertPushSucceeds('to')
+        self.assertPushFails('to')
 
     def test_push_no_strict_with_changes(self):
         tree = self.make_local_branch_and_tree_with_changes()
@@ -625,7 +625,7 @@ class TestPushStrict(tests.TestCaseWithTransport):
     def test_push_bogus_config_var_ignored(self):
         tree = self.make_local_branch_and_tree_with_changes()
         self.set_config_push_strict(tree, "I don't want you to be strict")
-        self.assertPushSucceeds('to')
+        self.assertPushFails('to')
 
     def test_push_no_strict_command_line_override_config(self):
         tree = self.make_local_branch_and_tree_with_changes()
