@@ -39,9 +39,9 @@ def load_tests(standard_tests, module, loader):
                 )))
     changes_scenarios = [
         ('uncommitted',
-         dict(_do_changes= TestSendStrictWithChanges.do_uncommitted_changes)),
+         dict(_changes_type= '_uncommitted_changes')),
         ('pending_merges',
-         dict(_do_changes= TestSendStrictWithChanges.do_pending_merges)),
+         dict(_changes_type= '_pending_merges')),
         ]
     tests.multiply_tests(changes_tests, changes_scenarios, result)
     # No parametrization for the remaining tests
@@ -350,21 +350,18 @@ class TestSendStrictWithoutChanges(TestSendStrict):
 
 class TestSendStrictWithChanges(TestSendStrict):
 
-    _do_changes = None # Set by load_tests
+    _changes_type = None # Set by load_tests
 
     def setUp(self):
         super(TestSendStrictWithChanges, self).setUp()
-        # FIXME: The following is a bit ugly, but I don't know how to bind the
-        # method properly, yet I want to define the method to call in
-        # load_tests(). -- vila 20090626
-        self._do_changes(self)
+        getattr(self, self._changes_type)()
 
-    def do_uncommitted_changes(self):
+    def _uncommitted_changes(self):
         self.make_parent_and_local_branches()
         # Make a change without committing it
         self.build_tree_contents([('local/file', 'modified')])
 
-    def do_pending_merges(self):
+    def _pending_merges(self):
         self.make_parent_and_local_branches()
         # Create 'other' branch containing a new file
         other_bzrdir = self.parent_tree.bzrdir.sprout('other')
@@ -372,7 +369,7 @@ class TestSendStrictWithChanges(TestSendStrict):
         self.build_tree_contents([('other/other-file', 'other')])
         other_tree.add('other-file')
         other_tree.commit('other commit', rev_id='other')
-        # Merge and revert, leabing a pending merge
+        # Merge and revert, leaving a pending merge
         self.local_tree.merge_from_branch(other_tree.branch)
         self.local_tree.revert(filenames=['other-file'], backups=False)
 
