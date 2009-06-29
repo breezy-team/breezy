@@ -50,7 +50,7 @@ def load_tests(standard_tests, module, loader):
     return result
 
 
-class TestSendBase(tests.TestCaseWithTransport):
+class TestSendMixin(object):
 
     _default_command = ['send', '-o-']
     _default_wd = 'branch'
@@ -73,7 +73,7 @@ class TestSendBase(tests.TestCaseWithTransport):
         self.assertEqual(set(revs), set(r.revision_id for r in br.revisions))
 
 
-class TestSend(TestSendBase):
+class TestSend(tests.TestCaseWithTransport, TestSendMixin):
 
     def setUp(self):
         super(TestSend, self).setUp()
@@ -287,7 +287,7 @@ class TestSend(TestSendBase):
         self.assertEqual(err, 'bzr: ERROR: Not a branch: "%s".\n' % location)
 
 
-class TestSendStrict(TestSendBase):
+class TestSendStrictMixin(TestSendMixin):
 
     _default_command = ['send', '-o-', '../parent']
     _default_wd = 'local'
@@ -325,7 +325,8 @@ class TestSendStrict(TestSendBase):
         self.assertEqual(set(revs), set(r.revision_id for r in br.revisions))
 
 
-class TestSendStrictWithoutChanges(TestSendStrict):
+class TestSendStrictWithoutChanges(tests.TestCaseWithTransport,
+                                   TestSendStrictMixin):
 
     def setUp(self):
         super(TestSendStrictWithoutChanges, self).setUp()
@@ -349,7 +350,8 @@ class TestSendStrictWithoutChanges(TestSendStrict):
         self.assertSendSucceeds(['local'], [])
 
 
-class TestSendStrictWithChanges(TestSendStrict):
+class TestSendStrictWithChanges(tests.TestCaseWithTransport,
+                                   TestSendStrictMixin):
 
     _changes_type = None # Set by load_tests
 
