@@ -3398,7 +3398,6 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_gpg',
                    'bzrlib.tests.test_graph',
                    'bzrlib.tests.test_groupcompress',
-                   'bzrlib.tests.test_groupcompress_repo',
                    'bzrlib.tests.test_hashcache',
                    'bzrlib.tests.test_help',
                    'bzrlib.tests.test_hooks',
