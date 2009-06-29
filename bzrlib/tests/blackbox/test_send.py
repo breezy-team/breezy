@@ -52,8 +52,12 @@ def load_tests(standard_tests, module, loader):
 
 class TestSendBase(tests.TestCaseWithTransport):
 
-    def run_send(self, args, cmd=None, rc=0, wd='branch', err_re=None):
-        if cmd is None: cmd = ['send', '-o-']
+    _default_command = ['send', '-o-']
+    _default_wd = 'branch'
+
+    def run_send(self, args, cmd=None, rc=0, wd=None, err_re=None):
+        if cmd is None: cmd = self._default_command
+        if wd is None: wd = self._default_wd
         if err_re is None: err_re = []
         return self.run_bzr(cmd + args, retcode=rc,
                             working_dir=wd,
@@ -285,6 +289,9 @@ class TestSend(TestSendBase):
 
 class TestSendStrict(TestSendBase):
 
+    _default_command = ['send', '-o-', '../parent']
+    _default_wd = 'local'
+
     def make_parent_and_local_branches(self):
         # Create a 'parent' branch as the base
         self.parent_tree = bzrdir.BzrDir.create_standalone_workingtree('parent')
@@ -296,12 +303,6 @@ class TestSendStrict(TestSendBase):
         self.local_tree = local_bzrdir.open_workingtree()
         self.build_tree_contents([('local/file', 'local')])
         self.local_tree.commit('second commit', rev_id='local')
-
-    def run_send(self, args, cmd=None, rc=0, wd='local', err_re=None):
-        if cmd is None: cmd = ['send', '../parent', '-o-']
-        if err_re is None: err_re = []
-        return super(TestSendStrict, self).run_send(
-            args, cmd=cmd, rc=rc, wd=wd, err_re=err_re)
 
     def set_config_send_strict(self, value):
         # set config var (any of bazaar.conf, locations.conf, branch.conf
@@ -405,3 +406,8 @@ class TestSendStrictWithChanges(TestSendStrict):
         self.set_config_send_strict('false')
         self.assertSendSucceeds(['local'], [])
         self.assertSendFails(['--strict'])
+
+
+class TestBundleStrictWithoutChanges(TestSendStrictWithoutChanges):
+
+    _default_command = ['bundle-revisions', '../parent']

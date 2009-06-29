@@ -4958,6 +4958,9 @@ class cmd_bundle_revisions(cmd_send):
                type=unicode),
         Option('output', short_name='o', help='Write directive to this file.',
                type=unicode),
+        Option('strict',
+               help='Refuse to bundle revisions if there are'
+               ' uncommitted changes in the working tree.'),
         'revision',
         RegistryOption('format',
                        help='Use the specified output format.',
@@ -4971,14 +4974,14 @@ class cmd_bundle_revisions(cmd_send):
 
     def run(self, submit_branch=None, public_branch=None, no_bundle=False,
             no_patch=False, revision=None, remember=False, output=None,
-            format=None, **kwargs):
+            format=None, strict=None, **kwargs):
         if output is None:
             output = '-'
         from bzrlib.send import send
         return send(submit_branch, revision, public_branch, remember,
                          format, no_bundle, no_patch, output,
                          kwargs.get('from', '.'), None, None, None,
-                         self.outf)
+                         self.outf, strict=strict)
 
 
 class cmd_tag(Command):
