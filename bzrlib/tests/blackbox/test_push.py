@@ -46,9 +46,9 @@ def load_tests(standard_tests, module, loader):
                 )))
     changes_scenarios = [
         ('uncommitted',
-         dict(_do_changes= TestPushStrictWithChanges.do_uncommitted_changes)),
+         dict(_changes_type= '_uncommitted_changes')),
         ('pending_merges',
-         dict(_do_changes= TestPushStrictWithChanges.do_pending_merges)),
+         dict(_changes_type= '_pending_merges')),
         ]
     tests.multiply_tests(changes_tests, changes_scenarios, result)
     # No parametrization for the remaining tests
@@ -594,7 +594,9 @@ class TestPushStrict(tests.TestCaseWithTransport):
         self.tree = self.make_branch_and_tree('local')
         self.build_tree_contents([('local/file', 'initial')])
         self.tree.add('file')
-        self.tree.commit('adding file', rev_id='from-1')
+        self.tree.commit('adding file', rev_id='added')
+        self.build_tree_contents([('local/file', 'modified')])
+        self.tree.commit('modify file', rev_id='modified')
 
     def set_config_push_strict(self, value):
         # set config var (any of bazaar.conf, locations.conf, branch.conf
@@ -608,13 +610,15 @@ class TestPushStrict(tests.TestCaseWithTransport):
                            ['push', '../to'] + args,
                            working_dir='local', retcode=3)
 
-    def assertPushSucceeds(self, args):
+    def assertPushSucceeds(self, args, pushed_revid=None):
         self.run_bzr(['push', '../to'] + args,
                      working_dir='local')
+        if pushed_revid is None:
+            pushed_revid = 'modified'
         tree_to = workingtree.WorkingTree.open('to')
         repo_to = tree_to.branch.repository
-        self.assertTrue(repo_to.has_revision('from-1'))
-        self.assertEqual(tree_to.branch.last_revision_info()[1], 'from-1')
+        self.assertTrue(repo_to.has_revision(pushed_revid))
+        self.assertEqual(tree_to.branch.last_revision_info()[1], pushed_revid)
 
 
 
@@ -644,21 +648,18 @@ class TestPushStrictWithoutChanges(TestPushStrict):
 
 class TestPushStrictWithChanges(TestPushStrict):
 
-    _do_changes = None # Set by load_tests
+    _changes_type = None # Set by load_tests
 
     def setUp(self):
         super(TestPushStrictWithChanges, self).setUp()
-        # FIXME: The following is a bit ugly, but I don't know how to bind the
-        # method properly, yet I want to define the method to call in
-        # load_tests(). -- vila 20090626
-        self._do_changes(self)
+        getattr(self, self._changes_type)()
 
-    def do_uncommitted_changes(self):
+    def _uncommitted_changes(self):
         self.make_local_branch_and_tree()
         # Make a change without committing it
-        self.build_tree_contents([('local/file', 'modified')])
+        self.build_tree_contents([('local/file', 'in progress')])
 
-    def do_pending_merges(self):
+    def _pending_merges(self):
         self.make_local_branch_and_tree()
         # Create 'other' branch containing a new file
         other_bzrdir = self.tree.bzrdir.sprout('other')
@@ -673,7 +674,10 @@ class TestPushStrictWithChanges(TestPushStrict):
     def test_push_default(self):
         self.assertPushFails([])
 
-    def test_push_no_strict_with_changes(self):
+    def test_push_with_revision(self):
+        self.assertPushSucceeds(['-r', 'revid:added'], pushed_revid='added')
+
+    def test_push_no_strict(self):
         self.assertPushSucceeds(['--no-strict'])
 
     def test_push_strict_with_changes(self):

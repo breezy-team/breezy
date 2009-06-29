@@ -22,9 +22,9 @@ New Features
 ************
 
 * ``bzr push`` now aborts if uncommitted changes (including pending merges)
-  are present in the working tree (if one is present). The ``push_strict``
-  option can be declared in a configuration file.  option is used.
-  (Vincent Ladeuil, #284038)
+  are present in the working tree (if one is present) and no revision is
+  speficied. The ``push_strict`` option can be declared in a configuration
+  file.  option is used.  (Vincent Ladeuil, #284038, #322808, #65286)
 
 
 Bug Fixes

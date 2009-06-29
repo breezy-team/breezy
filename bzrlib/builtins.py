@@ -1057,16 +1057,17 @@ class cmd_push(Command):
                     strict = bools[strict.lower()]
                 except KeyError:
                     strict = None
-        if tree is not None and (strict is None or strict): # Default to True:
-            changes = tree.changes_from(tree.basis_tree())
-            if changes.has_changed() or len(tree.get_parent_ids()) > 1:
-                raise errors.UncommittedChanges(tree)
         # Get the tip's revision_id
         revision = _get_one_revision('push', revision)
         if revision is not None:
             revision_id = revision.in_history(br_from).rev_id
         else:
             revision_id = None
+        if (tree is not None and revision_id is None
+            and (strict is None or strict)): # Default to True:
+            changes = tree.changes_from(tree.basis_tree())
+            if changes.has_changed() or len(tree.get_parent_ids()) > 1:
+                raise errors.UncommittedChanges(tree)
 
         # Get the stacked_on branch, if any
         if stacked_on is not None:
