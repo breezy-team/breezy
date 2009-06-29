@@ -797,6 +797,14 @@ class Test2a(TestCaseWithTransport):
         self.assertEqual(257, len(full_chk_records))
         self.assertSubset(simple_chk_records, full_chk_records)
 
+    def test_inconsistency_fatal(self):
+        repo = self.make_repository('repo', format='2a')
+        self.assertTrue(repo.revisions._index._inconsistency_fatal)
+        self.assertFalse(repo.texts._index._inconsistency_fatal)
+        self.assertFalse(repo.inventories._index._inconsistency_fatal)
+        self.assertFalse(repo.signatures._index._inconsistency_fatal)
+        self.assertFalse(repo.chk_bytes._index._inconsistency_fatal)
+
 
 class TestKnitPackStreamSource(tests.TestCaseWithMemoryTransport):
 

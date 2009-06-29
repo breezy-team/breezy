@@ -622,7 +622,8 @@ class CHKInventoryRepository(KnitPackRepository):
         self.inventories = GroupCompressVersionedFiles(
             _GCGraphIndex(self._pack_collection.inventory_index.combined_index,
                 add_callback=self._pack_collection.inventory_index.add_callback,
-                parents=True, is_locked=self.is_locked),
+                parents=True, is_locked=self.is_locked,
+                inconsistency_fatal=False),
             access=self._pack_collection.inventory_index.data_access)
         self.revisions = GroupCompressVersionedFiles(
             _GCGraphIndex(self._pack_collection.revision_index.combined_index,
@@ -634,19 +635,22 @@ class CHKInventoryRepository(KnitPackRepository):
         self.signatures = GroupCompressVersionedFiles(
             _GCGraphIndex(self._pack_collection.signature_index.combined_index,
                 add_callback=self._pack_collection.signature_index.add_callback,
-                parents=False, is_locked=self.is_locked),
+                parents=False, is_locked=self.is_locked,
+                inconsistency_fatal=False),
             access=self._pack_collection.signature_index.data_access,
             delta=False)
         self.texts = GroupCompressVersionedFiles(
             _GCGraphIndex(self._pack_collection.text_index.combined_index,
                 add_callback=self._pack_collection.text_index.add_callback,
-                parents=True, is_locked=self.is_locked),
+                parents=True, is_locked=self.is_locked,
+                inconsistency_fatal=False),
             access=self._pack_collection.text_index.data_access)
         # No parents, individual CHK pages don't have specific ancestry
         self.chk_bytes = GroupCompressVersionedFiles(
             _GCGraphIndex(self._pack_collection.chk_index.combined_index,
                 add_callback=self._pack_collection.chk_index.add_callback,
-                parents=False, is_locked=self.is_locked),
+                parents=False, is_locked=self.is_locked,
+                inconsistency_fatal=False),
             access=self._pack_collection.chk_index.data_access)
         # True when the repository object is 'write locked' (as opposed to the
         # physical lock only taken out around changes to the pack-names list.)

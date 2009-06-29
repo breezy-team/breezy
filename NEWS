@@ -50,6 +50,9 @@ Bug Fixes
 * ``bzr ls DIR --from-root`` now shows only things in DIR, not everything.
   (Ian Clatworthy)
 
+* Fetch between repositories does not error if they have inconsistent data
+  that should be irrelevant to the fetch operation. (Aaron Bentley)
+
 * Progress bars are now suppressed again when the environment variable
   ``BZR_PROGRESS_BAR`` is set to ``none``.
   (Martin Pool, #339385)
