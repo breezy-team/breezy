@@ -2386,58 +2386,49 @@ class TestIterInterestingNodes(TestCaseWithExampleMaps):
         c_map = self.get_map(a_dict, maximum_size=maximum_size)
         return c_map.key()
 
-    def assertIterInteresting(self, expected, interesting_keys,
+    def assertIterInteresting(self, records, items, interesting_keys,
                               uninteresting_keys):
         """Check the result of iter_interesting_nodes.
 
-        :param expected: A list of (record_keys, interesting_chk_pages,
-                                    interesting key value pairs)
+        Note that we no longer care how many steps are taken, etc, just that
+        the right contents are returned.
+
+        :param records: A list of record keys that should be yielded
+        :param items: A list of items (key,value) that should be yielded.
         """
         store = self.get_chk_bytes()
         store._search_key_func = chk_map._search_key_plain
         iter_nodes = chk_map.iter_interesting_nodes(store, interesting_keys,
                                                     uninteresting_keys)
-        nodes = list(iter_nodes)
-        for count, (exp, act) in enumerate(izip(expected, nodes)):
-            exp_record, exp_items = exp
-            record, items = act
-            exp_tuple = (exp_record, sorted(exp_items))
-            if record is None:
-                act_tuple = (None, sorted(items))
-            else:
-                act_tuple = (record.key, sorted(items))
-            self.assertEqual(exp_tuple, act_tuple,
-                             'entry %d did not match expected' % count)
-        self.assertEqual(len(expected), len(nodes))
+        record_keys = []
+        all_items = []
+        for record, new_items in iter_nodes:
+            if record is not None:
+                record_keys.append(record.key)
+            if new_items:
+                all_items.extend(new_items)
+        self.assertEqual(sorted(records), sorted(record_keys))
+        self.assertEqual(sorted(items), sorted(all_items))
 
     def test_empty_to_one_keys(self):
         target = self.get_map_key({('a',): 'content'})
-        # self.assertIterInteresting(
-        #     [(target, [(('a',), 'content')]),
-        #     ], [target], [])
-        self.assertIterInteresting(
-            [(target, []),
-             (None, [(('a',), 'content')]),
-            ], [target], [])
+        self.assertIterInteresting([target],
+                                   [(('a',), 'content')],
+                                   [target], [])
 
     def test_none_to_one_key(self):
         basis = self.get_map_key({})
         target = self.get_map_key({('a',): 'content'})
-        # self.assertIterInteresting(
-        #     [(None, [(('a',), 'content')]),
-        #      (target, []),
-        #     ], [target], [basis])
-        self.assertIterInteresting(
-            [(target, []),
-             (None, [(('a',), 'content')]),
-            ], [target], [basis])
+        self.assertIterInteresting([target],
+                                   [(('a',), 'content')],
+                                   [target], [basis])
 
     def test_one_to_none_key(self):
         basis = self.get_map_key({('a',): 'content'})
         target = self.get_map_key({})
-        self.assertIterInteresting(
-            [(target, [])],
-            [target], [basis])
+        self.assertIterInteresting([target],
+                                   [],
+                                   [target], [basis])
 
     def test_common_pages(self):
         basis = self.get_map_key({('a',): 'content',
@@ -2460,15 +2451,9 @@ class TestIterInterestingNodes(TestCaseWithExampleMaps):
             target_map._dump_tree())
         b_key = target_map._root_node._items['b'].key()
         # This should return the root node, and the node for the 'b' key
-        # self.assertIterInteresting(
-        #     [(target, []),
-        #      (b_key, [(('b',), 'other content')])],
-        #     [target], [basis])
-        self.assertIterInteresting(
-            [(target, []),
-             (b_key, []),
-             (None, [(('b',), 'other content')]),
-            ], [target], [basis])
+        self.assertIterInteresting([target, b_key],
+                                   [(('b',), 'other content')],
+                                   [target], [basis])
 
     def test_common_sub_page(self):
         basis = self.get_map_key({('aaa',): 'common',
@@ -2494,17 +2479,9 @@ class TestIterInterestingNodes(TestCaseWithExampleMaps):
         # The key for the leaf aab node
         # aaa_key = target_map._root_node._items['a']._items['aaa'].key()
         aab_key = target_map._root_node._items['a']._items['aab'].key()
-        # self.assertIterInteresting(
-        #     [(target, []),
-        #      (a_key, []),
-        #      (aab_key, [(('aab',), 'new')])],
-        #     [target], [basis])
-        self.assertIterInteresting(
-            [(target, []),
-             (a_key, []),
-             (aab_key, []),
-             (None, [(('aab',), 'new')]),
-            ], [target], [basis])
+        self.assertIterInteresting([target, a_key, aab_key],
+                                   [(('aab',), 'new')],
+                                   [target], [basis])
 
     def test_common_leaf(self):
         basis = self.get_map_key({})
@@ -2547,50 +2524,22 @@ class TestIterInterestingNodes(TestCaseWithExampleMaps):
         b_key = target2_map._root_node._items['b'].key()
         a_key = target3_map._root_node._items['a'].key()
         aac_key = target3_map._root_node._items['a']._items['aac'].key()
-        # self.assertIterInteresting(
-        #     [(None, [(('aaa',), 'common')]),
-        #      (target1, []),
-        #      (target2, []),
-        #      (target3, []),
-        #      (b_key, [(('bbb',), 'new')]),
-        #      (a_key, []),
-        #      (aac_key, [(('aac',), 'other')]),
-        #     ], [target1, target2, target3], [basis])
         self.assertIterInteresting(
-            [(target1, []),
-             (target2, []),
-             (target3, []),
-             (a_key, []),
-             (None, [(('aaa',), 'common')]),
-             (aac_key, []),
-             (None, [(('aac',), 'other')]),
-             (b_key, []),
-             (None, [(('bbb',), 'new')]),
-            ], [target1, target2, target3], [basis])
+            [target1, target2, target3, a_key, aac_key, b_key],
+            [(('aaa',), 'common'), (('bbb',), 'new'), (('aac',), 'other')],
+            [target1, target2, target3], [basis])
 
-        # self.assertIterInteresting(
-        #     [(target2, []),
-        #      (target3, []),
-        #      (b_key, [(('bbb',), 'new')]),
-        #      (a_key, []),
-        #      (aac_key, [(('aac',), 'other')]),
-        #     ], [target2, target3], [target1])
-        self.assertIterInteresting([
-             (target2, []),
-             (target3, []),
-             (a_key, []),
-             (aac_key, []),
-             (None, [(('aac',), 'other')]),
-             (b_key, []),
-             (None, [(('bbb',), 'new')]),
-            ], [target2, target3], [target1])
+        self.assertIterInteresting(
+            [target2, target3, a_key, aac_key, b_key],
+            [(('bbb',), 'new'), (('aac',), 'other')],
+            [target2, target3], [target1])
 
         # Technically, target1 could be filtered out, but since it is a root
         # node, we yield it immediately, rather than waiting to find out much
         # later on.
-        self.assertIterInteresting([
-             (target1, [])
-            ],
+        self.assertIterInteresting(
+            [target1],
+            [],
             [target1], [target3])
 
     def test_multiple_maps(self):
@@ -2639,24 +2588,10 @@ class TestIterInterestingNodes(TestCaseWithExampleMaps):
         b_key = target2_map._root_node._items['b'].key()
         # The key for the leaf bba node
         bba_key = target2_map._root_node._items['b']._items['bba'].key()
-        # self.assertIterInteresting(
-        #     [(target1, []),
-        #      (target2, []),
-        #      (a_key, []),
-        #      (b_key, []),
-        #      (aac_key, [(('aac',), 'target1')]),
-        #      (bba_key, [(('bba',), 'target2')]),
-        #     ], [target1, target2], [basis1, basis2])
         self.assertIterInteresting(
-            [(target1, []),
-             (target2, []),
-             (a_key, []),
-             (aac_key, []),
-             (None, [(('aac',), 'target1')]),
-             (b_key, []),
-             (bba_key, []),
-             (None, [(('bba',), 'target2')]),
-            ], [target1, target2], [basis1, basis2])
+            [target1, target2, a_key, aac_key, b_key, bba_key],
+            [(('aac',), 'target1'), (('bba',), 'target2')],
+            [target1, target2], [basis1, basis2])
 
     def test_multiple_maps_overlapping_common_new(self):
         # Test that when a node found through the interesting_keys iteration
@@ -2728,11 +2663,9 @@ class TestIterInterestingNodes(TestCaseWithExampleMaps):
         # Keys from the right side target - none, the root is enough.
         # Test behaviour
         self.assertIterInteresting(
-            [(right, []),
-             (left, []),
-             (l_d_key, []),
-             (None, [(('ddd',), 'change')]),
-            ], [left, right], [basis])
+            [right, left, l_d_key],
+            [(('ddd',), 'change')],
+            [left, right], [basis])
 
     def test_multiple_maps_similar(self):
         # We want to have a depth=2 tree, with multiple entries in each leaf
@@ -2792,17 +2725,7 @@ class TestIterInterestingNodes(TestCaseWithExampleMaps):
             right_map._dump_tree())
         r_a_key = right_map._root_node._items['a'].key()
         r_c_key = right_map._root_node._items['c'].key()
-        # self.assertIterInteresting(
-        #     [(left, []),
-        #      (right, []),
-        #      (l_a_key, [(('abb',), 'changed left')]),
-        #      (r_c_key, [(('cbb',), 'changed right')]),
-        #     ], [left, right], [basis])
         self.assertIterInteresting(
-            [(left, []),
-             (right, []),
-             (l_a_key, []),
-             (None, [(('abb',), 'changed left')]),
-             (r_c_key, []),
-             (None, [(('cbb',), 'changed right')]),
-            ], [left, right], [basis])
+            [right, left, l_a_key, r_c_key],
+            [(('abb',), 'changed left'), (('cbb',), 'changed right')],
+            [left, right], [basis])
