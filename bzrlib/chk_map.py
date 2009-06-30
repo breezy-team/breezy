@@ -1419,6 +1419,7 @@ class InterestingNodeIterator(object):
         self._all_uninteresting_chks = set(self._uninteresting_root_keys)
         self._all_uninteresting_items = set()
         self._interesting_queued_refs = set()
+        # TODO: use this or delete it
         self._interesting_queued_items = set()
         self._search_key_func = search_key_func
 
@@ -1459,7 +1460,9 @@ class InterestingNodeIterator(object):
         if not self._uninteresting_root_keys:
             # TODO: when there are no _uninteresting_root_keys we can shortcut
             # a lot of the code
-            pass
+            self._interesting_queue = [('', None, key) for key
+                                       in self._interesting_root_keys]
+            return
         # Read the uninteresting nodes first, we would like to read them
         # simultaneously, but that requires buffering the interesting nodes
         # until all uninteresting ones have been read

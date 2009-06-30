@@ -2378,6 +2378,46 @@ class TestInterestingNodeIterator(TestCaseWithExampleMaps):
                                  ('d', None, key2_d)]),
                          sorted(iterator._interesting_queue))
 
+    def test__read_all_roots_no_uninteresting(self):
+        # This is the 'initial branch' case. With nothing in the uninteresting
+        # set, we can just queue up all root nodes into interesting queue, and
+        # then have them fast-path flushed via _flush_interesting_queue
+        c_map = self.make_two_deep_map()
+        key1 = c_map.key()
+        iterator = self.get_iterator([key1], [], chk_map._search_key_plain)
+        root_results = [record.key for record in iterator._read_all_roots()]
+        self.assertEqual([], root_results)
+        self.assertEqual([], iterator._uninteresting_queue)
+        self.assertEqual([('', None, key1)], iterator._interesting_queue)
+
+        c_map2 = self.make_one_deep_map()
+        key2 = c_map2.key()
+        iterator = self.get_iterator([key1, key2], [],
+                                     chk_map._search_key_plain)
+        root_results = [record.key for record in iterator._read_all_roots()]
+        self.assertEqual([], root_results)
+        self.assertEqual([], iterator._uninteresting_queue)
+        self.assertEqual(sorted([('', None, key1), ('', None, key2)]),
+                         sorted(iterator._interesting_queue))
+
+    def test__read_all_roots_no_uninteresting_16(self):
+        c_map = self.make_two_deep_map(chk_map._search_key_16)
+        key1 = c_map.key()
+        iterator = self.get_iterator([key1], [], chk_map._search_key_16)
+        root_results = [record.key for record in iterator._read_all_roots()]
+        self.assertEqual([], root_results)
+        self.assertEqual([], iterator._uninteresting_queue)
+        self.assertEqual([('', None, key1)], iterator._interesting_queue)
+
+        c_map2 = self.make_one_deep_map(chk_map._search_key_16)
+        key2 = c_map2.key()
+        iterator = self.get_iterator([key1, key2], [],
+                                     chk_map._search_key_16)
+        root_results = [record.key for record in iterator._read_all_roots()]
+        self.assertEqual([], root_results)
+        self.assertEqual([], iterator._uninteresting_queue)
+        self.assertEqual(sorted([('', None, key1), ('', None, key2)]),
+                         sorted(iterator._interesting_queue))
 
 
 class TestIterInterestingNodes(TestCaseWithExampleMaps):
