@@ -1537,32 +1537,38 @@ class InterestingNodeIterator(object):
         # and process them
         interesting = self._interesting_queue
         self._interesting_queue = []
-        while interesting:
-            cur_interesting = interesting
-            interesting = []
-            items = []
-            refs = []
-            for prefix, key, value in cur_interesting:
-                if key is not None:
-                    item = (key, value)
-                    if item not in self._all_uninteresting_items:
-                        items.append(item)
-                else:
-                    refs.append(value)
-            if items:
-                yield None, items
-            for record, node, prefix_refs, items in \
-                self._read_nodes_from_store(refs):
+        # First pass, flush all interesting items and convert to using direct refs
+        items = []
+        items_append = items.append
+        refs = set()
+        refs_add = refs.add
+        for prefix, key, value in interesting:
+            if key is not None:
+                item = (key, value)
+                if item not in self._all_uninteresting_items:
+                    items_append(item)
+            else:
+                refs_add(value)
+        if items:
+            yield None, items
+        refs = refs.difference(self._all_uninteresting_chks)
+
+        all_uninteresting_chks = self._all_uninteresting_chks
+        all_uninteresting_items = self._all_uninteresting_items
+        while refs:
+            all_uninteresting_chks.update(refs)
+            next_refs = set()
+            next_refs_update = next_refs.update
+            # Inlining _read_nodes_from_store improves 'bzr branch bzr.dev'
+            # from 1m54s to 1m51s. Consider it.
+            for record, _, prefix_refs, items in \
+                    self._read_nodes_from_store(refs):
                 items = [item for item in items
-                         if item not in self._all_uninteresting_items]
+                         if item not in all_uninteresting_items]
                 yield record, items
-                self._all_uninteresting_chks.add(record.key)
-                for prefix, ref in prefix_refs:
-                    if (ref in self._all_uninteresting_chks
-                        or ref in self._interesting_queued_refs):
-                        continue
-                    self._interesting_queued_refs.add(ref)
-                    interesting.append((prefix, None, ref))
+                next_refs_update([i[1] for i in prefix_refs])
+            next_refs = next_refs.difference(all_uninteresting_chks)
+            refs = next_refs
 
     def _process_next_uninteresting(self):
         # TODO: We really should be filtering uninteresting requests a bit more
