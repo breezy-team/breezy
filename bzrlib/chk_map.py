@@ -1430,7 +1430,8 @@ class InterestingNodeIterator(object):
         self._state = None
 
     def _read_nodes_from_store(self, keys):
-        # TODO: make use of _page_cache
+        # TODO: make use of _page_cache, or firmly decide not to because we
+        #       want to use 'record' objects.
         stream = self._store.get_record_stream(keys, 'unordered', True)
         for record in stream:
             if self._pb is not None:
@@ -1565,11 +1566,17 @@ class InterestingNodeIterator(object):
 
     def _process_next_uninteresting(self):
         # TODO: We really should be filtering uninteresting requests a bit more
+        #       Specifically, past the root level, we should be able to filter
+        #       out uninteresting nodes that are not referenced by interesting
+        #       items (we *do* currently filter out uninteresting nodes
+        #       referenced from the root.)
         prefix, ref = heapq.heappop(self._uninteresting_queue)
         for record, node, prefix_refs, items in \
                 self._read_nodes_from_store([ref]):
             self._all_uninteresting_items.update(items)
             for prefix, ref in prefix_refs:
+                # TODO: Get a test written that exercises this, and then
+                #       uncomment
                 # if ref in self._all_uninteresting_chks:
                 #     continue
                 self._all_uninteresting_chks.add(ref)

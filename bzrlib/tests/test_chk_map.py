@@ -2314,10 +2314,12 @@ class TestInterestingNodeIterator(TestCaseWithExampleMaps):
         iterator = self.get_iterator([key1], [key2], chk_map._search_key_plain)
         root_results = [record.key for record in iterator._read_all_roots()]
         self.assertEqual([key1], root_results)
-        # This is technically not the 'true minimal' set that we could use
-        # The reason is that 'a' was matched exactly to 'ad' (by sha sum).
-        # However, the code gets complicated in the case of more than one
-        # interesting key, so for now, we live with this
+        # Note: This is technically not the 'true minimal' set that we could
+        #       use The reason is that 'a' was matched exactly to 'ad' (by sha
+        #       sum).  However, the code gets complicated in the case of more
+        #       than one interesting key, so for now, we live with this
+        #       Consider revising, though benchmarking showing it to be a
+        #       real-world issue should be done
         self.assertEqual([('a', key2_a)], iterator._uninteresting_queue)
         # self.assertEqual([], iterator._uninteresting_queue)
         self.assertEqual([('aa', None, key1_aa)], iterator._interesting_queue)
