@@ -312,8 +312,8 @@ class TestSendStrictMixin(TestSendMixin):
 
     def assertSendFails(self, args):
         self.run_send(args, rc=3,
-                      err_re=['Working tree ".*/local/"'
-                              ' has uncommitted changes.$',])
+                      err_re=['Working tree ".*/local/" has uncommitted changes'
+                              ' \(See bzr status\)\.',])
 
     def assertSendSucceeds(self, revs, args):
         out, err = self.run_send(args)
