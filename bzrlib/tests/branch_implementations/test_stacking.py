@@ -78,6 +78,34 @@ class TestStacking(TestCaseWithBranch):
             return
         self.assertEqual('../target', branch.get_stacked_on_url())
 
+    def test_set_stacked_on_same_branch_raises(self):
+        # Stacking on the same branch silently raises and doesn't execute the
+        # change. Reported in bug 376243.
+        branch = self.make_branch('branch')
+        try:
+            self.assertRaises(errors.UnstackableLocationError,
+                branch.set_stacked_on_url, '../branch')
+        except unstackable_format_errors:
+            # if the set failed, so must the get
+            self.assertRaises(unstackable_format_errors, branch.get_stacked_on_url)
+            return
+        self.assertRaises(errors.NotStacked, branch.get_stacked_on_url)
+
+    def test_set_stacked_on_same_branch_after_being_stacked_raises(self):
+        # Stacking on the same branch silently raises and doesn't execute the
+        # change.
+        branch = self.make_branch('branch')
+        target = self.make_branch('target')
+        try:
+            branch.set_stacked_on_url('../target')
+        except unstackable_format_errors:
+            # if the set failed, so must the get
+            self.assertRaises(unstackable_format_errors, branch.get_stacked_on_url)
+            return
+        self.assertRaises(errors.UnstackableLocationError,
+            branch.set_stacked_on_url, '../branch')
+        self.assertEqual('../target', branch.get_stacked_on_url())
+
     def assertRevisionInRepository(self, repo_path, revid):
         """Check that a revision is in a repository, disregarding stacking."""
         repo = bzrdir.BzrDir.open(repo_path).open_repository()

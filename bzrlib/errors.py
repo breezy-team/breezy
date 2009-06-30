@@ -636,6 +636,16 @@ class UnstackableBranchFormat(BzrError):
         self.url = url
 
 
+class UnstackableLocationError(BzrError):
+
+    _fmt = "The branch '%(branch_url)s' cannot be stacked on '%(target_url)s'."
+
+    def __init__(self, branch_url, target_url):
+        BzrError.__init__(self)
+        self.branch_url = branch_url
+        self.target_url = target_url
+
+
 class UnstackableRepositoryFormat(BzrError):
 
     _fmt = ("The repository '%(url)s'(%(format)s) is not a stackable format. "
@@ -2768,7 +2778,8 @@ class NoBindLocation(BzrDirError):
 
 class UncommittedChanges(BzrError):
 
-    _fmt = 'Working tree "%(display_url)s" has uncommitted changes.'
+    _fmt = ('Working tree "%(display_url)s" has uncommitted changes'
+            ' (See bzr status).')
 
     def __init__(self, tree):
         import bzrlib.urlutils as urlutils
