@@ -240,6 +240,18 @@ class TestRmTree(tests.TestCaseInTempDir):
         self.failIfExists('dir')
 
 
+class TestDeleteAny(tests.TestCaseInTempDir):
+
+    def test_delete_any_readonly(self):
+        # from <https://bugs.launchpad.net/bzr/+bug/218206>
+        self.build_tree(['d/', 'f'])
+        osutils.make_readonly('d')
+        osutils.make_readonly('f')
+
+        osutils.delete_any('f')
+        osutils.delete_any('d')
+
+
 class TestKind(tests.TestCaseInTempDir):
 
     def test_file_kind(self):

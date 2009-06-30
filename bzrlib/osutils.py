@@ -927,13 +927,31 @@ def link_or_copy(src, dest):
         shutil.copyfile(src, dest)
 
 
-# Look Before You Leap (LBYL) is appropriate here instead of Easier to Ask for
-# Forgiveness than Permission (EAFP) because:
-# - root can damage a solaris file system by using unlink,
-# - unlink raises different exceptions on different OSes (linux: EISDIR, win32:
-#   EACCES, OSX: EPERM) when invoked on a directory.
 def delete_any(path):
-    """Delete a file or directory."""
+    """Delete a file, symlink or directory.  
+    
+    Will delete even if readonly.
+    """
+    try:
+       _delete_file_or_dir(path)
+    except (OSError, IOError), e:
+        if e.errno in (errno.EPERM, errno.EACCES):
+            # make writable and try again
+            try:
+                make_writable(path)
+            except (OSError, IOError):
+                pass
+            _delete_file_or_dir(path)
+        else:
+            raise
+
+
+def _delete_file_or_dir(path):
+    # Look Before You Leap (LBYL) is appropriate here instead of Easier to Ask for
+    # Forgiveness than Permission (EAFP) because:
+    # - root can damage a solaris file system by using unlink,
+    # - unlink raises different exceptions on different OSes (linux: EISDIR, win32:
+    #   EACCES, OSX: EPERM) when invoked on a directory.
     if isdir(path): # Takes care of symlinks
         os.rmdir(path)
     else:
