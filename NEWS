@@ -53,6 +53,10 @@ Bug Fixes
 * Fetch between repositories does not error if they have inconsistent data
   that should be irrelevant to the fetch operation. (Aaron Bentley)
 
+* Force deletion of readonly files during merge, update and other tree
+  transforms.
+  (Craig Hewetson, Martin Pool, #218206)
+
 * Progress bars are now suppressed again when the environment variable
   ``BZR_PROGRESS_BAR`` is set to ``none``.
   (Martin Pool, #339385)
