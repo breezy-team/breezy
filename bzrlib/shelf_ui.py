@@ -35,12 +35,29 @@ from bzrlib import (
 )
 
 
+class ShelfReporter(object):
+
+    def __init__(self):
+        self.delta_reporter = delta._ChangeReporter()
+
+    def no_changes(self):
+        trace.warning('No changes to shelve.')
+
+    def shelved_id(self, shelf_id):
+        trace.note('Changes shelved with id "%d".' % shelf_id)
+
+    def selected_changes(self, transform):
+        trace.note("Selected changes:")
+        changes = transform.iter_changes()
+        delta.report_changes(changes, self.delta_reporter)
+
+
 class Shelver(object):
     """Interactively shelve the changes in a working tree."""
 
     def __init__(self, work_tree, target_tree, diff_writer=None, auto=False,
                  auto_apply=False, file_list=None, message=None,
-                 destroy=False):
+                 destroy=False, manager=None, reporter=None):
         """Constructor.
 
         :param work_tree: The working tree to shelve changes from.
@@ -52,18 +69,24 @@ class Shelver(object):
         :param message: The message to associate with the shelved changes.
         :param destroy: Change the working tree without storing the shelved
             changes.
+        :param manager: The shelf manager to use.
         """
         self.work_tree = work_tree
         self.target_tree = target_tree
         self.diff_writer = diff_writer
         if self.diff_writer is None:
             self.diff_writer = sys.stdout
-        self.manager = work_tree.get_shelf_manager()
+        if manager is None:
+            manager = work_tree.get_shelf_manager()
+        self.manager = manager
         self.auto = auto
         self.auto_apply = auto_apply
         self.file_list = file_list
         self.message = message
         self.destroy = destroy
+        if reporter is None:
+            reporter = ShelfReporter()
+        self.reporter = reporter
 
     @classmethod
     def from_args(klass, diff_writer, revision=None, all=False, file_list=None,
@@ -127,10 +150,7 @@ class Shelver(object):
                         creator.shelve_modify_target(change[1])
                         changes_shelved += 1
             if changes_shelved > 0:
-                trace.note("Selected changes:")
-                changes = creator.work_transform.iter_changes()
-                reporter = delta._ChangeReporter()
-                delta.report_changes(changes, reporter)
+                self.reporter.selected_changes(creator.work_transform)
                 if (self.auto_apply or self.prompt_bool(
                     'Shelve %d change(s)?' % changes_shelved)):
                     if self.destroy:
@@ -139,9 +159,9 @@ class Shelver(object):
                     else:
                         shelf_id = self.manager.shelve_changes(creator,
                                                                self.message)
-                        trace.note('Changes shelved with id "%d".' % shelf_id)
+                        self.reporter.shelved_id(shelf_id)
             else:
-                trace.warning('No changes to shelve.')
+                self.reporter.no_changes()
         finally:
             shutil.rmtree(self.tempdir)
             creator.finalize()

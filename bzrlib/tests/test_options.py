@@ -324,8 +324,8 @@ class TestOptionDefinitions(TestCase):
 
     def get_builtin_command_options(self):
         g = []
-        for cmd_name, cmd_class in sorted(commands.get_all_cmds()):
-            cmd = cmd_class()
+        for cmd_name in sorted(commands.all_command_names()):
+            cmd = commands.get_cmd_object(cmd_name)
             for opt_name, opt in sorted(cmd.options().items()):
                 g.append((cmd_name, opt))
         return g
@@ -338,14 +338,15 @@ class TestOptionDefinitions(TestCase):
         g = dict(option.Option.OPTIONS.items())
         used_globals = {}
         msgs = []
-        for cmd_name, cmd_class in sorted(commands.get_all_cmds()):
-            for option_or_name in sorted(cmd_class.takes_options):
+        for cmd_name in sorted(commands.all_command_names()):
+            cmd = commands.get_cmd_object(cmd_name)
+            for option_or_name in sorted(cmd.takes_options):
                 if not isinstance(option_or_name, basestring):
                     self.assertIsInstance(option_or_name, option.Option)
                 elif not option_or_name in g:
                     msgs.append("apparent reference to undefined "
                         "global option %r from %r"
-                        % (option_or_name, cmd_class))
+                        % (option_or_name, cmd))
                 else:
                     used_globals.setdefault(option_or_name, []).append(cmd_name)
         unused_globals = set(g.keys()) - set(used_globals.keys())

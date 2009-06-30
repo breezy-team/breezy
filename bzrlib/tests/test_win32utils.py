@@ -164,6 +164,16 @@ class TestAppPaths(TestCase):
             self.assertEquals('iexplore.exe', b.lower())
             self.assertNotEquals('', d)
 
+    def test_wordpad(self):
+        # typical windows users should have wordpad in the system
+        # but there is problem: its path has the format REG_EXPAND_SZ
+        # so naive attempt to get the path is not working
+        for a in ('wordpad', 'wordpad.exe'):
+            p = get_app_path(a)
+            d, b = os.path.split(p)
+            self.assertEquals('wordpad.exe', b.lower())
+            self.assertNotEquals('', d)
+
     def test_not_existing(self):
         p = get_app_path('not-existing')
         self.assertEquals('not-existing', p)

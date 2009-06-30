@@ -656,7 +656,7 @@ class TestStatusEncodings(TestCaseWithTransport):
         self.stdout = sys.stdout
 
     def tearDown(self):
-        bzrlib.user_encoding = self.user_encoding
+        osutils._cached_user_encoding = self.user_encoding
         sys.stdout = self.stdout
         TestCaseWithTransport.tearDown(self)
 

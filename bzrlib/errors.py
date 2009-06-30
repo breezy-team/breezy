@@ -636,6 +636,16 @@ class UnstackableBranchFormat(BzrError):
         self.url = url
 
 
+class UnstackableLocationError(BzrError):
+
+    _fmt = "The branch '%(branch_url)s' cannot be stacked on '%(target_url)s'."
+
+    def __init__(self, branch_url, target_url):
+        BzrError.__init__(self)
+        self.branch_url = branch_url
+        self.target_url = target_url
+
+
 class UnstackableRepositoryFormat(BzrError):
 
     _fmt = ("The repository '%(url)s'(%(format)s) is not a stackable format. "
@@ -2161,18 +2171,15 @@ class RepositoryUpgradeRequired(UpgradeRequired):
     _fmt = "To use this feature you must upgrade your repository at %(path)s."
 
 
+class RichRootUpgradeRequired(UpgradeRequired):
+
+    _fmt = ("To use this feature you must upgrade your branch at %(path)s to"
+           " a format which supports rich roots.")
+
+
 class LocalRequiresBoundBranch(BzrError):
 
     _fmt = "Cannot perform local-only commits on unbound branches."
-
-
-class InvalidProgressBarType(BzrError):
-
-    _fmt = ("Environment variable BZR_PROGRESS_BAR='%(bar_type)s"
-            " is not a supported type Select one of: %(valid_types)s")
-
-    def __init__(self, bar_type, valid_types):
-        BzrError.__init__(self, bar_type=bar_type, valid_types=valid_types)
 
 
 class UnsupportedOperation(BzrError):
@@ -2771,7 +2778,8 @@ class NoBindLocation(BzrDirError):
 
 class UncommittedChanges(BzrError):
 
-    _fmt = 'Working tree "%(display_url)s" has uncommitted changes.'
+    _fmt = ('Working tree "%(display_url)s" has uncommitted changes'
+            ' (See bzr status).')
 
     def __init__(self, tree):
         import bzrlib.urlutils as urlutils

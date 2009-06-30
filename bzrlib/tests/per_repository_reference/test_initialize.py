@@ -52,8 +52,4 @@ class TestInitialize(TestCaseWithExternalReferenceRepository):
         trans = self.make_smart_server('stacked')
         repo = self.initialize_and_check_on_transport(base, trans)
         network_name = base.repository._format.network_name()
-        if network_name != repo._format.network_name():
-            raise tests.KnownFailure('Remote initialize_on_transport_ex()'
-                ' tries to "upgrade" the format because it doesn\'t have a'
-                ' branch format, and hard-codes the new repository format.')
         self.assertEqual(network_name, repo._format.network_name())

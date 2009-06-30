@@ -18,7 +18,6 @@
 """Tests for finding and reading the bzr config file[s]."""
 # import system imports here
 from cStringIO import StringIO
-import getpass
 import os
 import sys
 

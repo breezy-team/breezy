@@ -633,7 +633,7 @@ class TestPluginPaths(tests.TestCase):
         path = plugin.get_standard_plugins_path()
         self.assertEqual(plugin.get_default_plugin_path(), path[0])
         for directory in path:
-            self.assertNotContainsRe(r'\\/$', directory)
+            self.assertNotContainsRe(directory, r'\\/$')
         try:
             from distutils.sysconfig import get_python_lib
         except ImportError:

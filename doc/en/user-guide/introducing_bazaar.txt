@@ -123,7 +123,7 @@ additional information that helps you make the most of Bazaar once the core
 functionality is understood. This material can be read when required and in
 any order.
 
-If you are already familar with other version control tools,
+If you are already familiar with other version control tools,
 you may wish to get started quickly by reading the following documents:
 
  * `Bazaar in five minutes`_ - a mini-tutorial

@@ -54,7 +54,7 @@ cdef extern from "python-compat.h":
 cdef extern from *:
     ctypedef unsigned long size_t
 
-cdef extern from "_dirstate_helpers_c.h":
+cdef extern from "_dirstate_helpers_pyx.h":
     ctypedef int intptr_t
 
 
@@ -237,7 +237,7 @@ cdef int _cmp_by_dirs(char *path1, int size1, char *path2, int size2):
     return 0
 
 
-def cmp_by_dirs_c(path1, path2):
+def cmp_by_dirs(path1, path2):
     """Compare two paths directory by directory.
 
     This is equivalent to doing::
@@ -266,7 +266,7 @@ def cmp_by_dirs_c(path1, path2):
                         PyString_Size(path2))
 
 
-def _cmp_path_by_dirblock_c(path1, path2):
+def _cmp_path_by_dirblock(path1, path2):
     """Compare two paths based on what directory they are in.
 
     This generates a sort order, such that all children of a directory are
@@ -288,17 +288,17 @@ def _cmp_path_by_dirblock_c(path1, path2):
     if not PyString_CheckExact(path2):
         raise TypeError("'path2' must be a plain string, not %s: %r"
                         % (type(path2), path2))
-    return _cmp_path_by_dirblock(PyString_AsString(path1),
-                                 PyString_Size(path1),
-                                 PyString_AsString(path2),
-                                 PyString_Size(path2))
+    return _cmp_path_by_dirblock_intern(PyString_AsString(path1),
+                                        PyString_Size(path1),
+                                        PyString_AsString(path2),
+                                        PyString_Size(path2))
 
 
-cdef int _cmp_path_by_dirblock(char *path1, int path1_len,
-                               char *path2, int path2_len):
+cdef int _cmp_path_by_dirblock_intern(char *path1, int path1_len,
+                                      char *path2, int path2_len):
     """Compare two paths by what directory they are in.
 
-    see ``_cmp_path_by_dirblock_c`` for details.
+    see ``_cmp_path_by_dirblock`` for details.
     """
     cdef char *dirname1
     cdef int dirname1_len
@@ -368,7 +368,7 @@ cdef int _cmp_path_by_dirblock(char *path1, int path1_len,
     return 1
 
 
-def _bisect_path_left_c(paths, path):
+def _bisect_path_left(paths, path):
     """Return the index where to insert path into paths.
 
     This uses a path-wise comparison so we get::
@@ -413,14 +413,15 @@ def _bisect_path_left_c(paths, path):
         cur = PyList_GetItem_object_void(paths, _mid)
         cur_cstr = PyString_AS_STRING_void(cur)
         cur_size = PyString_GET_SIZE_void(cur)
-        if _cmp_path_by_dirblock(cur_cstr, cur_size, path_cstr, path_size) < 0:
+        if _cmp_path_by_dirblock_intern(cur_cstr, cur_size,
+                                        path_cstr, path_size) < 0:
             _lo = _mid + 1
         else:
             _hi = _mid
     return _lo
 
 
-def _bisect_path_right_c(paths, path):
+def _bisect_path_right(paths, path):
     """Return the index where to insert path into paths.
 
     This uses a path-wise comparison so we get::
@@ -465,14 +466,15 @@ def _bisect_path_right_c(paths, path):
         cur = PyList_GetItem_object_void(paths, _mid)
         cur_cstr = PyString_AS_STRING_void(cur)
         cur_size = PyString_GET_SIZE_void(cur)
-        if _cmp_path_by_dirblock(path_cstr, path_size, cur_cstr, cur_size) < 0:
+        if _cmp_path_by_dirblock_intern(path_cstr, path_size,
+                                        cur_cstr, cur_size) < 0:
             _hi = _mid
         else:
             _lo = _mid + 1
     return _lo
 
 
-def bisect_dirblock_c(dirblocks, dirname, lo=0, hi=None, cache=None):
+def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache=None):
     """Return the index where to insert dirname into the dirblocks.
 
     The return value idx is such that all directories blocks in dirblock[:idx]
@@ -744,7 +746,7 @@ cdef class Reader:
         self.state._split_root_dirblock_into_contents()
 
 
-def _read_dirblocks_c(state):
+def _read_dirblocks(state):
     """Read in the dirblocks for the given DirState object.
 
     This is tightly bound to the DirState internal representation. It should be
@@ -1140,19 +1142,17 @@ cdef class ProcessEntryC:
                     if source_minikind != c'f':
                         content_change = 1
                     else:
-                        # If the size is the same, check the sha:
-                        if target_details[2] == source_details[2]:
-                            if link_or_sha1 is None:
-                                # Stat cache miss:
-                                statvalue, link_or_sha1 = \
-                                    self.state._sha1_provider.stat_and_sha1(
-                                    path_info[4])
-                                self.state._observed_sha1(entry, link_or_sha1,
-                                    statvalue)
-                            content_change = (link_or_sha1 != source_details[1])
-                        else:
-                            # Size changed, so must be different
-                            content_change = 1
+                        # Check the sha. We can't just rely on the size as
+                        # content filtering may mean differ sizes actually
+                        # map to the same content
+                        if link_or_sha1 is None:
+                            # Stat cache miss:
+                            statvalue, link_or_sha1 = \
+                                self.state._sha1_provider.stat_and_sha1(
+                                path_info[4])
+                            self.state._observed_sha1(entry, link_or_sha1,
+                                statvalue)
+                        content_change = (link_or_sha1 != source_details[1])
                     # Target details is updated at update_entry time
                     if self.use_filesystem_for_exec:
                         # We don't need S_ISREG here, because we are sure
