@@ -1527,33 +1527,36 @@ class InterestingNodeIterator(object):
             heapq.heappush(self._uninteresting_queue, (prefix, ref))
 
     def _flush_interesting_queue(self):
-        # TODO: this could really be done as a series of big batches of reading
-        #       and pushing
-        while self._interesting_queue:
-            prefix, key, value = heapq.heappop(self._interesting_queue)
-            if key is not None:
-                # simple key, value
-                item = (key, value)
-                if item not in self._all_uninteresting_items:
-                    yield None, [item]
-            else:
-                if value in self._all_uninteresting_chks:
-                    continue
-                for record, node, prefix_refs, items in \
-                    self._read_nodes_from_store([value]):
-                    items = [item for item in items
-                             if item not in self._all_uninteresting_items]
-                    yield record, []
-                    self._all_uninteresting_chks.add(record.key)
-                    if items:
-                        yield None, items
-                    for prefix, ref in prefix_refs:
-                        if (ref in self._all_uninteresting_chks
-                            or ref in self._interesting_queued_refs):
-                            continue
-                        self._interesting_queued_refs.add(ref)
-                        heapq.heappush(self._interesting_queue,
-                                       (prefix, None, ref))
+        # No need to maintain the heap invariant anymore, just pull things out
+        # and process them
+        interesting = self._interesting_queue
+        self._interesting_queue = []
+        while interesting:
+            cur_interesting = interesting
+            interesting = []
+            items = []
+            refs = []
+            for prefix, key, value in cur_interesting:
+                if key is not None:
+                    item = (key, value)
+                    if item not in self._all_uninteresting_items:
+                        items.append(item)
+                else:
+                    refs.append(value)
+            if items:
+                yield None, items
+            for record, node, prefix_refs, items in \
+                self._read_nodes_from_store(refs):
+                items = [item for item in items
+                         if item not in self._all_uninteresting_items]
+                yield record, items
+                self._all_uninteresting_chks.add(record.key)
+                for prefix, ref in prefix_refs:
+                    if (ref in self._all_uninteresting_chks
+                        or ref in self._interesting_queued_refs):
+                        continue
+                    self._interesting_queued_refs.add(ref)
+                    interesting.append((prefix, None, ref))
 
     def _process_next_uninteresting(self):
         prefix, ref = heapq.heappop(self._uninteresting_queue)
@@ -1638,8 +1641,8 @@ def iter_interesting_nodes(store, interesting_root_keys,
                                        pb=pb)
     for record in iterator._read_all_roots():
         yield record, []
-    for record, item in iterator._process_queues():
-        yield record, item
+    for record, items in iterator._process_queues():
+        yield record, items
 
 
 try:
