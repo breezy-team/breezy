@@ -4069,11 +4069,16 @@ class StreamSink(object):
         The inventory is retrieved from the source, (deserializing it), and
         stored in the target (reserializing it in a different format).
         """
+        target_rich_root = self.target_repo._format.rich_root_data
+        target_tree_refs = self.target_repo._format.supports_tree_reference
         for record in substream:
             if record.storage_kind == 'inventory-delta':
-                # XXX: get_bytes_as('inventory-delta') would be better...
-                delta_bytes = record.get_bytes_as('inventory-delta-bytes')
-                basis_id, new_id, inv_delta = parse_delta(delta_bytes)
+                delta_tuple = record.get_bytes_as('inventory-delta')
+                basis_id, new_id, inv_delta, format_flags = delta_tuple
+                if format_flags[0] and not target_rich_root:
+                    raise errors.IncompatibleRevision(self.target_repo._format)
+                if format_flags[1] and not target_tree_refs:
+                    raise errors.IncompatibleRevision(self.target_repo._format)
                 self.target_repo.add_inventory_by_delta(
                     basis_revision_id, inv_delta, new_id, record.parents)
                 continue
@@ -4082,6 +4087,8 @@ class StreamSink(object):
             inv = serializer.read_inventory_from_string(bytes, revision_id)
             parents = [key[0] for key in record.parents]
             self.target_repo.add_inventory(revision_id, inv, parents)
+            # No need to keep holding this full inv in memory when the rest of
+            # the substream is likely to be all deltas.
             del inv
 
     def _extract_and_insert_revisions(self, substream, serializer):
@@ -4359,6 +4366,7 @@ class StreamSource(object):
         # method...
         inventories = self.from_repository.iter_inventories(
             revision_ids, 'topological')
+        # XXX: ideally these flags would be per-revision, not per-repo...
         flags = (from_repo.rich_root_data, from_repo.supports_tree_reference)
         for inv in inventories:
             key = (inv.revision_id,)

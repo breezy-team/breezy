@@ -171,7 +171,7 @@ class InventoryDeltaContentFactory(ContentFactory):
 
     def get_bytes_as(self, storage_kind):
         if storage_kind == self.storage_kind:
-            return self._basis_id, self.key, self._delta
+            return self._basis_id, self.key, self._delta, self._format_flags
         elif storage_kind == 'inventory-delta-bytes':
             serializer = inventory_delta.InventoryDeltaSerializer(
                 *self._format_flags)
