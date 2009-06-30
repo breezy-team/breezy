@@ -60,8 +60,8 @@ class TestRevisionInfo(ExternalBase):
         self.check_output(values['1.1.1'], 'revision-info 1.1.1')
         self.check_output(values['2'], 'revision-info 2')
         self.check_output(values['1']+values['2'], 'revision-info 1 2')
-        self.check_output('    '+values['1']+\
-                                 values['1.1.1']+\
+        self.check_output('    '+values['1']+
+                                 values['1.1.1']+
                           '    '+values['2'],
                           'revision-info 1 1.1.1 2')
         self.check_output(values['2']+values['1'], 'revision-info 2 1')
@@ -72,8 +72,8 @@ class TestRevisionInfo(ExternalBase):
         self.check_output(values['1.1.1'], 'revision-info --revision 1.1.1')
         self.check_output(values['2'], 'revision-info -r 2')
         self.check_output(values['1']+values['2'], 'revision-info -r 1..2')
-        self.check_output('    '+values['1']+\
-                                 values['1.1.1']+\
+        self.check_output('    '+values['1']+
+                                 values['1.1.1']+
                           '    '+values['2'],
                           'revision-info -r 1..1.1.1..2')
         self.check_output(values['2']+values['1'], 'revision-info -r 2..1')

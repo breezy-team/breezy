@@ -1,5 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
-# -*- coding: utf-8 -*-
+# Copyright (C) 2005, 2006, 2007, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,10 +20,9 @@
 
 import os
 
-from bzrlib.branch import Branch
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib import tests
 
-class TestRevno(TestCaseWithTransport):
+class TestRevno(tests.TestCaseWithTransport):
 
     def test_revno(self):
 

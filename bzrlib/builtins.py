@@ -480,31 +480,29 @@ class cmd_revno(Command):
 
     @display_command
     def run(self, tree=False, location=u'.'):
-        try:
-            wt = WorkingTree.open_containing(location)[0]
-            b = wt.branch
-            wt.lock_read()
-        except (errors.NoWorkingTree, errors.NotLocalUrl):
-            wt = None
-            b = Branch.open_containing(location)[0]
-            b.lock_read()
-        try:
-            if tree:
-                if wt is None:
-                    raise errors.NoWorkingTree(location)
+        if tree:
+            try:
+                wt = WorkingTree.open_containing(location)[0]
+                wt.lock_read()
+            except (errors.NoWorkingTree, errors.NotLocalUrl):
+                raise errors.NoWorkingTree(location)
+            try:
                 revid = wt.last_revision()
                 try:
                     revno_t = wt.branch.revision_id_to_dotted_revno(revid)
                 except errors.NoSuchRevision:
                     revno_t = ('???',)
                 revno = ".".join(str(n) for n in revno_t)
-            else:
-                revno = b.revno()
-        finally:
-            if wt is None:
-                b.unlock()
-            else:
+            finally:
                 wt.unlock()
+        else:
+            b = Branch.open_containing(location)[0]
+            b.lock_read()
+            try:
+                revno = b.revno()
+            finally:
+                b.unlock()
+
         self.outf.write(str(revno) + '\n')
 
 
