@@ -1470,12 +1470,14 @@ class InterestingNodeIterator(object):
         for record, node, prefix_refs, items in \
             self._read_nodes_from_store(self._uninteresting_root_keys):
             # Uninteresting node
-            self._all_uninteresting_chks.update([k for _,k in prefix_refs])
+            new_refs = [p_k for p_k in prefix_refs
+                             if p_k[1] not in self._all_uninteresting_chks]
+            self._all_uninteresting_chks.update([k for _,k in new_refs])
             self._all_uninteresting_items.update(items)
             # Queue up the uninteresting references
             # Don't actually put them in the 'to-read' queue until we have
             # finished checking the interesting references
-            uninteresting_chks_to_enqueue.extend(prefix_refs)
+            uninteresting_chks_to_enqueue.extend(new_refs)
         # filter out any root keys that are already known to be uninteresting
         interesting_keys = set(self._interesting_root_keys).difference(
                                 self._all_uninteresting_chks)
@@ -1562,11 +1564,14 @@ class InterestingNodeIterator(object):
                     interesting.append((prefix, None, ref))
 
     def _process_next_uninteresting(self):
+        # TODO: We really should be filtering uninteresting requests a bit more
         prefix, ref = heapq.heappop(self._uninteresting_queue)
         for record, node, prefix_refs, items in \
                 self._read_nodes_from_store([ref]):
             self._all_uninteresting_items.update(items)
             for prefix, ref in prefix_refs:
+                # if ref in self._all_uninteresting_chks:
+                #     continue
                 self._all_uninteresting_chks.add(ref)
                 heapq.heappush(self._uninteresting_queue, (prefix, ref))
 

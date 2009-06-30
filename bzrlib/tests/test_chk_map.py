@@ -2419,6 +2419,27 @@ class TestInterestingNodeIterator(TestCaseWithExampleMaps):
         self.assertEqual(sorted([('', None, key1), ('', None, key2)]),
                          sorted(iterator._interesting_queue))
 
+    def test__read_all_roots_multiple_uninteresting(self):
+        c_map = self.make_two_deep_map()
+        key1 = c_map.key()
+        c_map._dump_tree() # load everything
+        key1_a = c_map._root_node._items['a'].key()
+        c_map.map(('ccc',), 'new ccc value')
+        key2 = c_map._save()
+        key2_a = c_map._root_node._items['a'].key()
+        c_map.map(('add',), 'new add value')
+        key3 = c_map._save()
+        key3_a = c_map._root_node._items['a'].key()
+        iterator = self.get_iterator([key3], [key1, key2],
+                                     chk_map._search_key_plain)
+        root_results = [record.key for record in iterator._read_all_roots()]
+        self.assertEqual([key3], root_results)
+        # the 'a' keys should not be queued up 2 times, since they are
+        # identical
+        self.assertEqual([('a', key1_a)],
+                         iterator._uninteresting_queue)
+        self.assertEqual([('a', None, key3_a)], iterator._interesting_queue)
+
 
 class TestIterInterestingNodes(TestCaseWithExampleMaps):
 
