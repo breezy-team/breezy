@@ -4073,6 +4073,7 @@ class StreamSink(object):
         target_tree_refs = self.target_repo._format.supports_tree_reference
         for record in substream:
             if record.storage_kind == 'inventory-delta':
+                # Insert the delta directly
                 delta_tuple = record.get_bytes_as('inventory-delta')
                 basis_id, new_id, inv_delta, format_flags = delta_tuple
                 if format_flags[0] and not target_rich_root:
@@ -4082,6 +4083,8 @@ class StreamSink(object):
                 self.target_repo.add_inventory_by_delta(
                     basis_revision_id, inv_delta, new_id, record.parents)
                 continue
+            # It's not a delta, so it must be a fulltext in the source
+            # serializer's format.
             bytes = record.get_bytes_as('fulltext')
             revision_id = record.key[0]
             inv = serializer.read_inventory_from_string(bytes, revision_id)
