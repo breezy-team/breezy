@@ -31,6 +31,7 @@ from bzrlib import (
     gpg,
     graph,
     inventory,
+    inventory_delta,
     lazy_regex,
     lockable_files,
     lockdir,
@@ -2178,7 +2179,7 @@ class Repository(object):
         """Get Inventory object by revision id."""
         return self.iter_inventories([revision_id]).next()
 
-    def iter_inventories(self, revision_ids):
+    def iter_inventories(self, revision_ids, ordering='unordered'):
         """Get many inventories by revision_ids.
 
         This will buffer some or all of the texts used in constructing the
@@ -2186,21 +2187,23 @@ class Repository(object):
         time.
 
         :param revision_ids: The expected revision ids of the inventories.
+        :param ordering: optional ordering, e.g. 'topological'.
         :return: An iterator of inventories.
         """
         if ((None in revision_ids)
             or (_mod_revision.NULL_REVISION in revision_ids)):
             raise ValueError('cannot get null revision inventory')
-        return self._iter_inventories(revision_ids)
+        return self._iter_inventories(revision_ids, ordering)
 
-    def _iter_inventories(self, revision_ids):
+    def _iter_inventories(self, revision_ids, ordering):
         """single-document based inventory iteration."""
-        for text, revision_id in self._iter_inventory_xmls(revision_ids):
+        inv_xmls = self._iter_inventory_xmls(revision_ids, ordering)
+        for text, revision_id in inv_xmls:
             yield self.deserialise_inventory(revision_id, text)
 
-    def _iter_inventory_xmls(self, revision_ids):
+    def _iter_inventory_xmls(self, revision_ids, ordering='unordered'):
         keys = [(revision_id,) for revision_id in revision_ids]
-        stream = self.inventories.get_record_stream(keys, 'unordered', True)
+        stream = self.inventories.get_record_stream(keys, ordering, True)
         text_chunks = {}
         for record in stream:
             if record.storage_kind != 'absent':
@@ -3983,6 +3986,15 @@ class StreamSink(object):
                 pass
             else:
                 new_pack.set_write_cache_size(1024*1024)
+        # XXX: would be more convenient to pass the *target*'s feature flags to
+        # the deserializer, or none at all (the serialized records already have
+        # the feature flags embedded, why repeat myself?)... after all it's ok
+        # if the src and target's flags are different, so long as it's a
+        # compatible transition (i.e. inserting into a target with richer info
+        # that the source).
+        delta_deserializer = inventory_delta.InventoryDeltaSerializer(
+            src_format.rich_root_data,
+            src_format.supports_tree_reference)
         for substream_type, substream in stream:
             if substream_type == 'texts':
                 self.target_repo.texts.insert_record_stream(substream)
@@ -3992,7 +4004,8 @@ class StreamSink(object):
                         substream)
                 else:
                     self._extract_and_insert_inventories(
-                        substream, src_serializer)
+                        substream, src_serializer,
+                        delta_deserializer.parse_text_bytes)
             elif substream_type == 'chk_bytes':
                 # XXX: This doesn't support conversions, as it assumes the
                 #      conversion was done in the fetch code.
@@ -4049,18 +4062,27 @@ class StreamSink(object):
             self.target_repo.pack(hint=hint)
         return [], set()
 
-    def _extract_and_insert_inventories(self, substream, serializer):
+    def _extract_and_insert_inventories(self, substream, serializer,
+            parse_delta=None):
         """Generate a new inventory versionedfile in target, converting data.
 
         The inventory is retrieved from the source, (deserializing it), and
         stored in the target (reserializing it in a different format).
         """
         for record in substream:
+            if record.storage_kind == 'inventory-delta':
+                # XXX: get_bytes_as('inventory-delta') would be better...
+                delta_bytes = record.get_bytes_as('inventory-delta-bytes')
+                basis_id, new_id, inv_delta = parse_delta(delta_bytes)
+                self.target_repo.add_inventory_by_delta(
+                    basis_revision_id, inv_delta, new_id, record.parents)
+                continue
             bytes = record.get_bytes_as('fulltext')
             revision_id = record.key[0]
             inv = serializer.read_inventory_from_string(bytes, revision_id)
             parents = [key[0] for key in record.parents]
             self.target_repo.add_inventory(revision_id, inv, parents)
+            del inv
 
     def _extract_and_insert_revisions(self, substream, serializer):
         for record in substream:
@@ -4238,6 +4260,7 @@ class StreamSource(object):
             # target, or the Sink will properly convert it.
             return self._get_simple_inventory_stream(revision_ids)
         else:
+            # XXX: xxx
             # XXX: Hack to make not-chk->chk fetch: copy the inventories as
             #      inventories. Note that this should probably be done somehow
             #      as part of bzrlib.repository.StreamSink. Except JAM couldn't
@@ -4324,7 +4347,37 @@ class StreamSource(object):
         #      compatible serializations. The StreamSink code expects to be
         #      able to convert on the target, so we need to put
         #      bytes-on-the-wire that can be converted
-        yield ('inventories', self._stream_invs_as_fulltexts(revision_ids))
+        # XXX: choose between fulltexts (for compat) or deltas (for efficiency)
+        yield ('inventories', self._stream_invs_as_deltas(revision_ids))
+
+    def _stream_invs_as_deltas(self, revision_ids):
+        from_repo = self.from_repository
+        from_serializer = from_repo._format._serializer
+        revision_keys = [(rev_id,) for rev_id in revision_ids]
+        parent_map = from_repo.inventories.get_parent_map(revision_keys)
+        # XXX: possibly repos could implement a more efficient iter_inv_deltas
+        # method...
+        inventories = self.from_repository.iter_inventories(
+            revision_ids, 'topological')
+        flags = (from_repo.rich_root_data, from_repo.supports_tree_reference)
+        for inv in inventories:
+            key = (inv.revision_id,)
+            parents = parent_map.get(key, ())
+            if parents == ():
+                # no parent, stream as fulltext
+                as_bytes = from_serializer.write_inventory_to_string(inv)
+                yield versionedfile.FulltextContentFactory(
+                    key, parent_keys, None, as_bytes)
+            else:
+                # make as a delta against its left-most parent
+                # XXX: sometimes a non-left-hand parent would give smaller
+                # deltas.
+                assert not isinstance(parents[0], str)
+                parent_id = parents[0][0]
+                parent_inv = from_repo.get_inventory(parent_id)
+                delta = inv._make_delta(parent_inv)
+                yield versionedfile.InventoryDeltaContentFactory(
+                    key, parent_keys, None, delta, parent_id, flags)
 
     def _stream_invs_as_fulltexts(self, revision_ids):
         from_repo = self.from_repository

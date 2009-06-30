@@ -761,10 +761,10 @@ class CHKInventoryRepository(KnitPackRepository):
             if basis_tree is not None:
                 basis_tree.unlock()
 
-    def _iter_inventories(self, revision_ids):
+    def _iter_inventories(self, revision_ids, ordering):
         """Iterate over many inventory objects."""
         keys = [(revision_id,) for revision_id in revision_ids]
-        stream = self.inventories.get_record_stream(keys, 'unordered', True)
+        stream = self.inventories.get_record_stream(keys, ordering, True)
         texts = {}
         for record in stream:
             if record.storage_kind != 'absent':
@@ -774,7 +774,7 @@ class CHKInventoryRepository(KnitPackRepository):
         for key in keys:
             yield inventory.CHKInventory.deserialise(self.chk_bytes, texts[key], key)
 
-    def _iter_inventory_xmls(self, revision_ids):
+    def _iter_inventory_xmls(self, revision_ids, ordering):
         # Without a native 'xml' inventory, this method doesn't make sense, so
         # make it raise to trap naughty direct users.
         raise NotImplementedError(self._iter_inventory_xmls)

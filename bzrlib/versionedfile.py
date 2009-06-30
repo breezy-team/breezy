@@ -33,6 +33,7 @@ from bzrlib import (
     errors,
     groupcompress,
     index,
+    inventory_delta,
     knit,
     osutils,
     multiparent,
@@ -153,6 +154,29 @@ class FulltextContentFactory(ContentFactory):
             return self._text
         elif storage_kind == 'chunked':
             return [self._text]
+        raise errors.UnavailableRepresentation(self.key, storage_kind,
+            self.storage_kind)
+
+
+class InventoryDeltaContentFactory(ContentFactory):
+
+    def __init__(self, key, parents, sha1, delta, basis_id, format_flags):
+        self.sha1 = sha1
+        self.storage_kind = 'inventory-delta'
+        self.key = key
+        self.parents = parents
+        self._delta = delta
+        self._basis_id = basis_id
+        self._format_flags = format_flags
+
+    def get_bytes_as(self, storage_kind):
+        if storage_kind == self.storage_kind:
+            return self._basis_id, self.key, self._delta
+        elif storage_kind == 'inventory-delta-bytes':
+            serializer = inventory_delta.InventoryDeltaSerializer(
+                *self._format_flags)
+            return serializer.delta_to_lines(
+                self._basis_id, self.key, self.delta)
         raise errors.UnavailableRepresentation(self.key, storage_kind,
             self.storage_kind)
 
