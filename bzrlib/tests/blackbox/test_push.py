@@ -606,7 +606,7 @@ class TestPushStrict(tests.TestCaseWithTransport):
 
     def assertPushFails(self, args):
         self.run_bzr_error(['Working tree ".*/local/"'
-                            ' has uncommitted changes.$',],
+                            ' has uncommitted changes \(See bzr status\)\.',],
                            ['push', '../to'] + args,
                            working_dir='local', retcode=3)
 
