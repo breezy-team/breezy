@@ -2442,6 +2442,38 @@ class TestInterestingNodeIterator(TestCaseWithExampleMaps):
                          iterator._uninteresting_queue)
         self.assertEqual([('a', None, key3_a)], iterator._interesting_queue)
 
+    def test__process_next_uninteresting_batched_no_dupes(self):
+        c_map = self.make_two_deep_map()
+        key1 = c_map.key()
+        c_map._dump_tree() # load everything
+        key1_a = c_map._root_node._items['a'].key()
+        key1_aa = c_map._root_node._items['a']._items['aa'].key()
+        key1_ab = c_map._root_node._items['a']._items['ab'].key()
+        key1_ac = c_map._root_node._items['a']._items['ac'].key()
+        key1_ad = c_map._root_node._items['a']._items['ad'].key()
+        c_map.map(('aaa',), 'new aaa value')
+        key2 = c_map._save()
+        key2_a = c_map._root_node._items['a'].key()
+        key2_aa = c_map._root_node._items['a']._items['aa'].key()
+        c_map.map(('acc',), 'new acc content')
+        key3 = c_map._save()
+        key3_a = c_map._root_node._items['a'].key()
+        key3_ac = c_map._root_node._items['a']._items['ac'].key()
+        iterator = self.get_iterator([key3], [key1, key2],
+                                     chk_map._search_key_plain)
+        root_results = [record.key for record in iterator._read_all_roots()]
+        self.assertEqual([key3], root_results)
+        self.assertEqual(sorted([('a', key1_a), ('a', key2_a)]),
+                         sorted(iterator._uninteresting_queue))
+        self.assertEqual([('a', None, key3_a)], iterator._interesting_queue)
+        iterator._process_next_uninteresting()
+        # All of the uninteresting records should be brought in and queued up,
+        # but we should not have any duplicates
+        self.assertEqual(sorted([('aa', key1_aa), ('ab', key1_ab),
+                                 ('ac', key1_ac), ('ad', key1_ad),
+                                 ('aa', key2_aa),
+                                ]), sorted(iterator._uninteresting_queue))
+
 
 class TestIterInterestingNodes(TestCaseWithExampleMaps):
 
