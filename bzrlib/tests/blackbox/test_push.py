@@ -35,6 +35,28 @@ from bzrlib.tests import http_server
 from bzrlib.transport import memory
 
 
+def load_tests(standard_tests, module, loader):
+    """Multiply tests for the push command."""
+    result = loader.suiteClass()
+
+    # one for each king of change
+    changes_tests, remaining_tests = tests.split_suite_by_condition(
+        standard_tests, tests.condition_isinstance((
+                TestPushStrictWithChanges,
+                )))
+    changes_scenarios = [
+        ('uncommitted',
+         dict(_changes_type= '_uncommitted_changes')),
+        ('pending_merges',
+         dict(_changes_type= '_pending_merges')),
+        ]
+    tests.multiply_tests(changes_tests, changes_scenarios, result)
+    # No parametrization for the remaining tests
+    result.addTests(remaining_tests)
+
+    return result
+
+
 class TestPush(tests.TestCaseWithTransport):
 
     def test_push_error_on_vfs_http(self):
@@ -569,72 +591,112 @@ class TestPushRedirect(tests.TestCaseWithTransport):
 class TestPushStrict(tests.TestCaseWithTransport):
 
     def make_local_branch_and_tree(self):
-        tree = self.make_branch_and_tree('local')
+        self.tree = self.make_branch_and_tree('local')
         self.build_tree_contents([('local/file', 'initial')])
-        tree.add('file')
-        tree.commit('adding file', rev_id='from-1')
-        return tree
-
-    def make_local_branch_and_tree_with_changes(self):
-        tree = self.make_local_branch_and_tree()
-        # Make some changes
+        self.tree.add('file')
+        self.tree.commit('adding file', rev_id='added')
         self.build_tree_contents([('local/file', 'modified')])
-        return tree
+        self.tree.commit('modify file', rev_id='modified')
 
-    def set_config_push_strict(self, tree, value):
+    def set_config_push_strict(self, value):
         # set config var (any of bazaar.conf, locations.conf, branch.conf
         # should do)
-        conf = tree.branch.get_config()
+        conf = self.tree.branch.get_config()
         conf.set_user_option('push_strict', value)
 
-    def assertPushFails(self, location, *args):
+    def assertPushFails(self, args):
         self.run_bzr_error(['Working tree ".*/local/"'
-                            ' has uncommitted changes.$',],
-                           ['push', '../' + location] + list(args),
+                            ' has uncommitted changes \(See bzr status\)\.',],
+                           ['push', '../to'] + args,
                            working_dir='local', retcode=3)
 
-    def assertPushSucceeds(self, location, *args):
-        self.run_bzr(['push', '../' + location] + list(args),
+    def assertPushSucceeds(self, args, pushed_revid=None):
+        self.run_bzr(['push', '../to'] + args,
                      working_dir='local')
-        tree_to = workingtree.WorkingTree.open(location)
+        if pushed_revid is None:
+            pushed_revid = 'modified'
+        tree_to = workingtree.WorkingTree.open('to')
         repo_to = tree_to.branch.repository
-        self.assertTrue(repo_to.has_revision('from-1'))
-        self.assertEqual(tree_to.branch.last_revision_info()[1], 'from-1')
+        self.assertTrue(repo_to.has_revision(pushed_revid))
+        self.assertEqual(tree_to.branch.last_revision_info()[1], pushed_revid)
+
+
+
+class TestPushStrictWithoutChanges(TestPushStrict):
+
+    def setUp(self):
+        super(TestPushStrictWithoutChanges, self).setUp()
+        self.make_local_branch_and_tree()
 
     def test_push_default(self):
-        tree = self.make_local_branch_and_tree_with_changes()
-        self.assertPushSucceeds('to')
+        self.assertPushSucceeds([])
 
-    def test_push_no_strict_with_changes(self):
-        tree = self.make_local_branch_and_tree_with_changes()
-        self.assertPushSucceeds('to', '--no-strict')
+    def test_push_strict(self):
+        self.assertPushSucceeds(['--strict'])
+
+    def test_push_no_strict(self):
+        self.assertPushSucceeds(['--no-strict'])
+
+    def test_push_config_var_strict(self):
+        self.set_config_push_strict('true')
+        self.assertPushSucceeds([])
+
+    def test_push_config_var_no_strict(self):
+        self.set_config_push_strict('false')
+        self.assertPushSucceeds([])
+
+
+class TestPushStrictWithChanges(TestPushStrict):
+
+    _changes_type = None # Set by load_tests
+
+    def setUp(self):
+        super(TestPushStrictWithChanges, self).setUp()
+        getattr(self, self._changes_type)()
+
+    def _uncommitted_changes(self):
+        self.make_local_branch_and_tree()
+        # Make a change without committing it
+        self.build_tree_contents([('local/file', 'in progress')])
+
+    def _pending_merges(self):
+        self.make_local_branch_and_tree()
+        # Create 'other' branch containing a new file
+        other_bzrdir = self.tree.bzrdir.sprout('other')
+        other_tree = other_bzrdir.open_workingtree()
+        self.build_tree_contents([('other/other-file', 'other')])
+        other_tree.add('other-file')
+        other_tree.commit('other commit', rev_id='other')
+        # Merge and revert, leaving a pending merge
+        self.tree.merge_from_branch(other_tree.branch)
+        self.tree.revert(filenames=['other-file'], backups=False)
+
+    def test_push_default(self):
+        self.assertPushFails([])
+
+    def test_push_with_revision(self):
+        self.assertPushSucceeds(['-r', 'revid:added'], pushed_revid='added')
+
+    def test_push_no_strict(self):
+        self.assertPushSucceeds(['--no-strict'])
 
     def test_push_strict_with_changes(self):
-        tree = self.make_local_branch_and_tree_with_changes()
-        self.assertPushFails('to', '--strict')
-
-    def test_push_strict_without_changes(self):
-        tree = self.make_local_branch_and_tree()
-        self.assertPushSucceeds('to', '--strict')
+        self.assertPushFails(['--strict'])
 
     def test_push_respect_config_var_strict(self):
-        tree = self.make_local_branch_and_tree_with_changes()
-        self.set_config_push_strict(tree, 'true')
-        self.assertPushFails('to')
+        self.set_config_push_strict('true')
+        self.assertPushFails([])
 
     def test_push_bogus_config_var_ignored(self):
-        tree = self.make_local_branch_and_tree_with_changes()
-        self.set_config_push_strict(tree, "I don't want you to be strict")
-        self.assertPushSucceeds('to')
+        self.set_config_push_strict("I don't want you to be strict")
+        self.assertPushFails([])
 
     def test_push_no_strict_command_line_override_config(self):
-        tree = self.make_local_branch_and_tree_with_changes()
-        self.set_config_push_strict(tree, 'yES')
-        self.assertPushFails('to')
-        self.assertPushSucceeds('to', '--no-strict')
+        self.set_config_push_strict('yES')
+        self.assertPushFails([])
+        self.assertPushSucceeds(['--no-strict'])
 
     def test_push_strict_command_line_override_config(self):
-        tree = self.make_local_branch_and_tree_with_changes()
-        self.set_config_push_strict(tree, 'oFF')
-        self.assertPushFails('to', '--strict')
-        self.assertPushSucceeds('to')
+        self.set_config_push_strict('oFF')
+        self.assertPushFails(['--strict'])
+        self.assertPushSucceeds([])
