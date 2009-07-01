@@ -1188,11 +1188,17 @@ class cmd_branch(Command):
                 'branch for all operations.'),
         Option('standalone',
                help='Do not use a shared repository, even if available.'),
+        Option('use-existing-dir',
+               help='By default branch will fail if the target'
+                    ' directory exists, but does not already'
+                    ' have a control directory.  This flag will'
+                    ' allow branch to proceed.'),
         ]
     aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None,
-            hardlink=False, stacked=False, standalone=False, no_tree=False):
+            hardlink=False, stacked=False, standalone=False, no_tree=False,
+            use_existing_dir=False):
         from bzrlib.tag import _merge_tags_if_possible
 
         accelerator_tree, br_from = bzrdir.BzrDir.open_tree_or_branch(
@@ -1216,8 +1222,16 @@ class cmd_branch(Command):
             try:
                 to_transport.mkdir('.')
             except errors.FileExists:
-                raise errors.BzrCommandError('Target directory "%s" already'
-                                             ' exists.' % to_location)
+                if not use_existing_dir:
+                    raise errors.BzrCommandError('Target directory "%s" '
+                        'already exists.' % to_location)
+                else:
+                    try:
+                        bzrdir.BzrDir.open_from_transport(to_transport)
+                    except errors.NotBranchError:
+                        pass
+                    else:
+                        raise errors.AlreadyBranchError(to_location)
             except errors.NoSuchFile:
                 raise errors.BzrCommandError('Parent of "%s" does not exist.'
                                              % to_location)
