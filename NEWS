@@ -30,6 +30,12 @@ New Features
   show revision info for the working tree instead of the branch.
   (Matthew Fuller, John Arbash Meinel)
 
+* ``bzr send`` now aborts if uncommitted changes (including pending merges)
+  are present in the working tree and no revision is specified. The
+  configuration option ``send_strict`` can be used to set the default for this
+  behavior.
+  (Vincent Ladeuil, #206577)
+
 
 Bug Fixes
 *********
