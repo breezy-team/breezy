@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -159,7 +159,14 @@ class ContainerWriter(object):
 
 
 class ReadVFile(object):
-    """Adapt a readv result iterator to a file like protocol."""
+    """Adapt a readv result iterator to a file like protocol.
+    
+    The readv result must support the iterator protocol returning (offset,
+    data_bytes) pairs.
+    """
+
+    # XXX: This could be a generic transport class, as other code may want to
+    # gradually consume the readv result.
 
     def __init__(self, readv_result):
         self.readv_result = readv_result
@@ -169,7 +176,7 @@ class ReadVFile(object):
     def _next(self):
         if (self._string is None or
             self._string.tell() == self._string_length):
-            length, data = self.readv_result.next()
+            offset, data = self.readv_result.next()
             self._string_length = len(data)
             self._string = StringIO(data)
 
