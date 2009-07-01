@@ -57,9 +57,6 @@ from bzrlib.inventory import (
     entry_factory,
     )
 from bzrlib import registry
-from bzrlib.symbol_versioning import (
-        deprecated_method,
-        )
 from bzrlib.trace import (
     log_exception_quietly, note, mutter, mutter_callsite, warning)
 
@@ -788,8 +785,8 @@ class CommitBuilder(object):
                         # references.
                         raise errors.UnsupportedOperation(tree.add_reference,
                             self.repository)
-                    entry.reference_revision = \
-                        tree.get_reference_revision(change[0])
+                    reference_revision = tree.get_reference_revision(change[0])
+                    entry.reference_revision = reference_revision
                     if (carry_over_possible and
                         parent_entry.reference_revision == reference_revision):
                         carried_over = True
