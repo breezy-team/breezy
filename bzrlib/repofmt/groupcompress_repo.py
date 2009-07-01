@@ -30,7 +30,6 @@ from bzrlib import (
     osutils,
     pack,
     remote,
-    repository,
     revision as _mod_revision,
     trace,
     ui,
@@ -39,7 +38,6 @@ from bzrlib.btree_index import (
     BTreeGraphIndex,
     BTreeBuilder,
     )
-from bzrlib.index import GraphIndex, GraphIndexBuilder
 from bzrlib.groupcompress import (
     _GCGraphIndex,
     GroupCompressVersionedFiles,

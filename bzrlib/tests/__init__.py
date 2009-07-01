@@ -3007,7 +3007,7 @@ def reinvoke_for_tests(suite):
     """
     concurrency = osutils.local_concurrency()
     result = []
-    from subunit import TestProtocolClient, ProtocolTestCase
+    from subunit import ProtocolTestCase
     class TestInSubprocess(ProtocolTestCase):
         def __init__(self, process, name):
             ProtocolTestCase.__init__(self, process.stdout)
