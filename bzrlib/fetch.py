@@ -241,9 +241,12 @@ class Inter1and2Helper(object):
         """
         graph = self.source.get_graph()
         parent_map = graph.get_parent_map(revs)
+        mutter('in generate_root_texts: parent_map=%r', parent_map)
         rev_order = topo_sort(parent_map)
         rev_id_to_root_id, root_id_to_rev_ids = self._find_root_ids(
             revs, parent_map, graph)
+        mutter('in generate_root_texts: rev_id_to_root_id=%r',
+                rev_id_to_root_id)
         root_id_order = [(rev_id_to_root_id[rev_id], rev_id) for rev_id in
             rev_order]
         # Guaranteed stable, this groups all the file id operations together
@@ -255,17 +258,60 @@ class Inter1and2Helper(object):
         def yield_roots():
             for key in root_id_order:
                 root_id, rev_id = key
+                # Include direct parents of the revision, but only if they used
+                # the same root_id and are heads.
                 rev_parents = parent_map[rev_id]
-                # We drop revision parents with different file-ids, because
-                # that represents a rename of the root to a different location
-                # - its not actually a parent for us. (We could look for that
-                # file id in the revision tree at considerably more expense,
-                # but for now this is sufficient (and reconcile will catch and
-                # correct this anyway).
-                # When a parent revision is a ghost, we guess that its root id
-                # was unchanged (rather than trimming it from the parent list).
-                parent_keys = tuple((root_id, parent) for parent in rev_parents
-                    if parent != NULL_REVISION and
-                        rev_id_to_root_id.get(parent, root_id) == root_id)
+                mutter('in yield_roots: key=%s rev_parents=%r', key, rev_parents)
+                parent_ids = []
+                for parent_id in rev_parents:
+                    if parent_id == NULL_REVISION:
+                        continue
+                    if parent_id not in rev_id_to_root_id:
+                        # We probably didn't read this revision, go spend the
+                        # extra effort to actually check
+                        try:
+                            tree = self.source.revision_tree(parent_id)
+                        except errors.NoSuchRevision:
+                            # Ghost, fill out rev_id_to_root_id in case we
+                            # encounter this again.
+                            # But set parent_root_id to None since we don't
+                            # really know
+                            parent_root_id = None
+                        else:
+                            parent_root_id = tree.get_root_id()
+                        rev_id_to_root_id[parent_id] = None
+                    else:
+                        parent_root_id = rev_id_to_root_id[parent_id]
+                    if root_id == parent_root_id:
+                        # With stacking we _might_ want to refer to a non-local
+                        # revision, but this code path only applies when we
+                        # have the full content available, so ghosts really are
+                        # ghosts, not just the edge of local data.
+                        parent_ids.append(parent_id)
+                    else:
+                        # root_id may be in the parent anyway.
+                        try:
+                            tree = self.source.revision_tree(parent_id)
+                        except errors.NoSuchRevision:
+                            # ghost, can't refer to it.
+                            pass
+                        else:
+                            try:
+                                parent_ids.append(
+                                    tree.inventory[root_id].revision)
+                            except errors.NoSuchId:
+                                # not in the tree
+                                pass
+                # Drop non-head parents
+                heads = graph.heads(parent_ids)
+                selected_ids = []
+                for parent_id in parent_ids:
+                    if parent_id in heads and parent_id not in selected_ids:
+                        selected_ids.append(parent_id)
+                mutter('in yield_roots: heads=%r selected_ids=%r',
+                    heads, selected_ids)
+                parent_keys = [
+                    (root_id, parent_id) for parent_id in selected_ids]
+                mutter('in yield_roots: parent_keys=%r', parent_keys)
                 yield FulltextContentFactory(key, parent_keys, None, '')
         return [('texts', yield_roots())]

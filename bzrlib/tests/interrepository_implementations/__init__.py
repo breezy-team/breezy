@@ -59,7 +59,7 @@ def make_scenarios(transport_server, transport_readonly_server, formats):
             {"transport_server": transport_server,
              "transport_readonly_server": transport_readonly_server,
              "repository_format": repository_format,
-             "interrepo_class": interrepo_class,
+#             "interrepo_class": interrepo_class,
              "repository_format_to": repository_format_to,
              })
         result.append(scenario)
@@ -68,7 +68,9 @@ def make_scenarios(transport_server, transport_readonly_server, formats):
 
 def default_test_list():
     """Generate the default list of interrepo permutations to test."""
-    from bzrlib.repofmt import knitrepo, pack_repo, weaverepo
+    from bzrlib.repofmt import (
+        knitrepo, pack_repo, weaverepo, groupcompress_repo,
+        )
     result = []
     # test the default InterRepository between format 6 and the current
     # default format.
@@ -86,9 +88,6 @@ def default_test_list():
     # here. We want to test rich root upgrading.
     result.append((InterRepository,
                    weaverepo.RepositoryFormat5(),
-                   knitrepo.RepositoryFormatKnit3()))
-    result.append((InterRepository,
-                   knitrepo.RepositoryFormatKnit1(),
                    knitrepo.RepositoryFormatKnit3()))
     result.append((InterRepository,
                    knitrepo.RepositoryFormatKnit1(),
@@ -111,6 +110,9 @@ def default_test_list():
     result.append((InterDifferingSerializer,
                    pack_repo.RepositoryFormatKnitPack1(),
                    pack_repo.RepositoryFormatKnitPack6RichRoot()))
+#    result.append((InterRepository,
+#                   pack_repo.RepositoryFormatKnitPack6RichRoot(),
+#                   groupcompress_repo.RepositoryFormat2a()))
     return result
 
 

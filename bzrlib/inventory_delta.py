@@ -121,20 +121,31 @@ class InventoryDeltaSerializer(object):
 
     FORMAT_1 = 'bzr inventory delta v1 (bzr 1.14)'
 
-    def __init__(self, versioned_root, tree_references):
-        """Create an InventoryDeltaSerializer.
-
-        :param versioned_root: If True, any root entry that is seen is expected
-            to be versioned, and root entries can have any fileid.
-        :param tree_references: If True support tree-reference entries.
-        """
-        self._versioned_root = versioned_root
-        self._tree_references = tree_references
+    def __init__(self):
+        """Create an InventoryDeltaSerializer."""
+        self._versioned_root = None
+        self._tree_references = None
         self._entry_to_content = {
             'directory': _directory_content,
             'file': _file_content,
             'symlink': _link_content,
         }
+
+    def require_flags(self, versioned_root=None, tree_references=None):
+        """XXX
+
+        :param versioned_root: If True, any root entry that is seen is expected
+            to be versioned, and root entries can have any fileid.
+        :param tree_references: If True support tree-reference entries.
+        """
+        if versioned_root is not None and self._versioned_root is not None:
+            raise AssertionError(
+                "require_flags(versioned_root=...) already called.")
+        if tree_references is not None and self._tree_references is not None:
+            raise AssertionError(
+                "require_flags(tree_references=...) already called.")
+        self._versioned_root = versioned_root
+        self._tree_references = tree_references
         if tree_references:
             self._entry_to_content['tree-reference'] = _reference_content
 
@@ -150,6 +161,10 @@ class InventoryDeltaSerializer(object):
             takes.
         :return: The serialized delta as lines.
         """
+        if self._versioned_root is None or self._tree_references is None:
+            raise AssertionError(
+                "Cannot serialise unless versioned_root/tree_references flags "
+                "are both set.")
         lines = ['', '', '', '', '']
         to_line = self._delta_item_to_line
         for delta_item in delta_to_new:
@@ -223,7 +238,8 @@ class InventoryDeltaSerializer(object):
 
         :param bytes: The bytes to parse. This can be obtained by calling
             delta_to_lines and then doing ''.join(delta_lines).
-        :return: (parent_id, new_id, inventory_delta)
+        :return: (parent_id, new_id, versioned_root, tree_references,
+            inventory_delta)
         """
         lines = bytes.split('\n')[:-1] # discard the last empty line
         if not lines or lines[0] != 'format: %s' % InventoryDeltaSerializer.FORMAT_1:
@@ -240,11 +256,13 @@ class InventoryDeltaSerializer(object):
         if len(lines) < 5 or not lines[4].startswith('tree_references: '):
             raise errors.BzrError('missing tree_references: marker')
         delta_tree_references = self._deserialize_bool(lines[4][17:])
-        if delta_versioned_root != self._versioned_root:
+        if (self._versioned_root is not None and
+            delta_versioned_root != self._versioned_root):
             raise errors.BzrError(
                 "serialized versioned_root flag is wrong: %s" %
                 (delta_versioned_root,))
-        if delta_tree_references != self._tree_references:
+        if (self._tree_references is not None
+            and delta_tree_references != self._tree_references):
             raise errors.BzrError(
                 "serialized tree_references flag is wrong: %s" %
                 (delta_tree_references,))
@@ -266,7 +284,7 @@ class InventoryDeltaSerializer(object):
                     raise errors.BzrError("Versioned root found: %r" % line)
             elif last_modified[-1] == ':':
                     raise errors.BzrError('special revisionid found: %r' % line)
-            if not delta_tree_references and content.startswith('tree\x00'):
+            if delta_tree_references is False and content.startswith('tree\x00'):
                 raise errors.BzrError("Tree reference found: %r" % line)
             content_tuple = tuple(content.split('\x00'))
             entry = _parse_entry(
@@ -281,7 +299,8 @@ class InventoryDeltaSerializer(object):
                 newpath = newpath_utf8.decode('utf8')
             delta_item = (oldpath, newpath, file_id, entry)
             result.append(delta_item)
-        return delta_parent_id, delta_version_id, result
+        return (delta_parent_id, delta_version_id, delta_versioned_root,
+                delta_tree_references, result)
 
 
 def _parse_entry(utf8_path, file_id, parent_id, last_modified, content):

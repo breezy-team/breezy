@@ -135,6 +135,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
                 format='1.9-rich-root')
         repo.lock_write()
         self.addCleanup(repo.unlock)
+        #import pdb; pdb.set_trace()
         repo.fetch(source.repository)
         self.assertEqual(result,
             repo.texts.get_parent_map([(root_id, 'tip')])[(root_id, 'tip')])

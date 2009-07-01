@@ -2239,7 +2239,7 @@ class Repository(object):
     @needs_read_lock
     def get_inventory_xml(self, revision_id):
         """Get inventory XML as a file object."""
-        texts = self._iter_inventory_xmls([revision_id])
+        texts = self._iter_inventory_xmls([revision_id], 'unordered')
         try:
             text, revision_id = texts.next()
         except StopIteration:
@@ -3764,7 +3764,7 @@ class InterDifferingSerializer(InterRepository):
         return basis_id, basis_tree
 
 
-InterRepository.register_optimiser(InterDifferingSerializer)
+#InterRepository.register_optimiser(InterDifferingSerializer)
 InterRepository.register_optimiser(InterSameDataRepository)
 InterRepository.register_optimiser(InterWeaveRepo)
 InterRepository.register_optimiser(InterKnitRepo)
@@ -3992,9 +3992,7 @@ class StreamSink(object):
         # if the src and target's flags are different, so long as it's a
         # compatible transition (i.e. inserting into a target with richer info
         # that the source).
-        delta_deserializer = inventory_delta.InventoryDeltaSerializer(
-            src_format.rich_root_data,
-            src_format.supports_tree_reference)
+        delta_deserializer = inventory_delta.InventoryDeltaSerializer()
         for substream_type, substream in stream:
             if substream_type == 'texts':
                 self.target_repo.texts.insert_record_stream(substream)
@@ -4370,7 +4368,7 @@ class StreamSource(object):
         inventories = self.from_repository.iter_inventories(
             revision_ids, 'topological')
         # XXX: ideally these flags would be per-revision, not per-repo...
-        flags = (from_repo.rich_root_data, from_repo.supports_tree_reference)
+        flags = (from_repo._format.rich_root_data, from_repo._format.supports_tree_reference)
         for inv in inventories:
             key = (inv.revision_id,)
             parents = parent_map.get(key, ())
@@ -4378,7 +4376,7 @@ class StreamSource(object):
                 # no parent, stream as fulltext
                 as_bytes = from_serializer.write_inventory_to_string(inv)
                 yield versionedfile.FulltextContentFactory(
-                    key, parent_keys, None, as_bytes)
+                    key, parents, None, as_bytes)
             else:
                 # make as a delta against its left-most parent
                 # XXX: sometimes a non-left-hand parent would give smaller
@@ -4388,7 +4386,7 @@ class StreamSource(object):
                 parent_inv = from_repo.get_inventory(parent_id)
                 delta = inv._make_delta(parent_inv)
                 yield versionedfile.InventoryDeltaContentFactory(
-                    key, parent_keys, None, delta, parent_id, flags)
+                    key, parents, None, delta, parent_id, flags)
 
     def _stream_invs_as_fulltexts(self, revision_ids):
         from_repo = self.from_repository

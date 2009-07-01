@@ -276,7 +276,10 @@ class TestInterRepository(TestCaseWithInterRepository):
         to_repo = self.make_to_repository('to')
         to_repo.fetch(from_tree.branch.repository)
         recorded_inv_sha1 = to_repo.get_inventory_sha1('foo-id')
-        xml = to_repo.get_inventory_xml('foo-id')
+        try:
+            xml = to_repo.get_inventory_xml('foo-id')
+        except NotImplementedError:
+            raise TestNotApplicable('repo does not provide get_inventory_xml')
         computed_inv_sha1 = osutils.sha_string(xml)
         self.assertEqual(computed_inv_sha1, recorded_inv_sha1)
 
