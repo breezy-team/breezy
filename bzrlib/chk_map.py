@@ -1421,7 +1421,6 @@ class InterestingNodeIterator(object):
         # These are interesting items which were either read, or already in the
         # interesting queue (so don't add these refs again)
         self._processed_interesting_refs = set()
-        self._interesting_queued_refs = set()
         self._search_key_func = search_key_func
 
         # The uninteresting and interesting nodes to be searched
@@ -1471,6 +1470,7 @@ class InterestingNodeIterator(object):
         # until all uninteresting ones have been read
         uninteresting_chks_to_enqueue = []
         all_uninteresting_chks = self._all_uninteresting_chks
+        processed_interesting_refs = self._processed_interesting_refs
         for record, node, prefix_refs, items in \
                 self._read_nodes_from_store(self._uninteresting_root_keys):
             # Uninteresting node
@@ -1492,33 +1492,36 @@ class InterestingNodeIterator(object):
         interesting_prefixes = set()
         # We are about to yield all of these, so we don't want them getting
         # added a second time
-        self._processed_interesting_refs.update(interesting_keys)
+        processed_interesting_refs.update(interesting_keys)
         for record, node, prefix_refs, items in \
                 self._read_nodes_from_store(interesting_keys):
             # At this level, we now know all the uninteresting references
-            # So we can go ahead and filter, and queue up whatever is remaining
-            for prefix, ref in prefix_refs:
-                if (ref in all_uninteresting_chks
-                    or ref in self._processed_interesting_refs):
-                    # Either in the uninteresting set, or added by another root
-                    continue
-                self._processed_interesting_refs.add(ref)
-                interesting_prefixes.update(
-                    [prefix[:i+1] for i in xrange(len(prefix))])
-                self._interesting_queue.append(ref)
+            # So we filter and queue up whatever is remaining
+            prefix_refs = [p_r for p_r in prefix_refs
+                           if p_r[1] not in all_uninteresting_chks
+                              and p_r[1] not in processed_interesting_refs]
+            refs = [p_r[1] for p_r in prefix_refs]
+            interesting_prefixes.update([p_r[0] for p_r in prefix_refs])
+            self._interesting_queue.extend(refs)
             # TODO: We can potentially get multiple items here, however the
             #       current design allows for this, as callers will do the work
             #       to make the results unique. We might profile whether we
             #       gain anything by ensuring unique return values for items
-            for item in items:
-                if item in self._all_uninteresting_items:
-                    continue
-                self._interesting_item_queue.append(item)
-                # Key is a real key, we need search key
-                search_prefix = self._search_key_func(item[0])
-                interesting_prefixes.update(
-                    [search_prefix[:i+1] for i in xrange(len(search_prefix))])
+            interesting_items = [item for item in items
+                                 if item not in self._all_uninteresting_items]
+            self._interesting_item_queue.extend(interesting_items)
+            interesting_prefixes.update([self._search_key_func(item[0])
+                                         for item in interesting_items])
+            processed_interesting_refs.update(refs)
             yield record
+        # For interesting_prefixes we have the full length prefixes queued up.
+        # However, we also need possible prefixes. (If we have a known ref to
+        # 'ab', then we also need to include 'a'.) So expand the
+        # interesting_prefixes to include all shorter prefixes
+        for prefix in list(interesting_prefixes):
+            interesting_prefixes.update([prefix[:i]
+                                         for i in xrange(1, len(prefix))])
+
         # At this point, we have read all the uninteresting and interesting
         # items, so we can queue up the uninteresting stuff, knowing that we've
         # handled the interesting ones
