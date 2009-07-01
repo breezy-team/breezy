@@ -1427,6 +1427,9 @@ class InterestingNodeIterator(object):
         # The uninteresting and interesting nodes to be searched
         self._uninteresting_queue = []
         self._interesting_queue = []
+        # Holds the (key, value) items found when processing the root nodes,
+        # waiting for the uninteresting nodes to be walked
+        self._interesting_item_queue = []
         self._state = None
 
     def _read_nodes_from_store(self, keys):
@@ -1461,27 +1464,28 @@ class InterestingNodeIterator(object):
         if not self._uninteresting_root_keys:
             # TODO: when there are no _uninteresting_root_keys we can shortcut
             # a lot of the code
-            self._interesting_queue = [('', None, key) for key
-                                       in self._interesting_root_keys]
+            self._interesting_queue = list(self._interesting_root_keys)
             return
         # Read the uninteresting nodes first, we would like to read them
         # simultaneously, but that requires buffering the interesting nodes
         # until all uninteresting ones have been read
         uninteresting_chks_to_enqueue = []
+        all_uninteresting_chks = self._all_uninteresting_chks
         for record, node, prefix_refs, items in \
-            self._read_nodes_from_store(self._uninteresting_root_keys):
+                self._read_nodes_from_store(self._uninteresting_root_keys):
             # Uninteresting node
-            new_refs = [p_k for p_k in prefix_refs
-                             if p_k[1] not in self._all_uninteresting_chks]
-            self._all_uninteresting_chks.update([k for _,k in new_refs])
+            prefix_refs = [p_r for p_r in prefix_refs
+                                if p_r[1] not in all_uninteresting_chks]
+            new_refs = [p_r[1] for p_r in prefix_refs]
+            all_uninteresting_chks.update(new_refs)
             self._all_uninteresting_items.update(items)
             # Queue up the uninteresting references
             # Don't actually put them in the 'to-read' queue until we have
             # finished checking the interesting references
-            uninteresting_chks_to_enqueue.extend(new_refs)
+            uninteresting_chks_to_enqueue.extend(prefix_refs)
         # filter out any root keys that are already known to be uninteresting
         interesting_keys = set(self._interesting_root_keys).difference(
-                                self._all_uninteresting_chks)
+                                all_uninteresting_chks)
         # These references are common to *all* interesting nodes, and thus we
         # know that we have perfect overlap with uninteresting, without queue
         # up any of them
@@ -1490,35 +1494,30 @@ class InterestingNodeIterator(object):
         # added a second time
         self._processed_interesting_refs.update(interesting_keys)
         for record, node, prefix_refs, items in \
-            self._read_nodes_from_store(interesting_keys):
+                self._read_nodes_from_store(interesting_keys):
             # At this level, we now know all the uninteresting references
             # So we can go ahead and filter, and queue up whatever is remaining
             for prefix, ref in prefix_refs:
-                if (ref in self._all_uninteresting_chks
+                if (ref in all_uninteresting_chks
                     or ref in self._processed_interesting_refs):
                     # Either in the uninteresting set, or added by another root
                     continue
                 self._processed_interesting_refs.add(ref)
                 interesting_prefixes.update(
                     [prefix[:i+1] for i in xrange(len(prefix))])
-                self._interesting_queue.append((prefix, None, ref))
-                # heapq.heappush(self._interesting_queue,
-                #                (prefix, None, ref))
+                self._interesting_queue.append(ref)
+            # TODO: We can potentially get multiple items here, however the
+            #       current design allows for this, as callers will do the work
+            #       to make the results unique. We might profile whether we
+            #       gain anything by ensuring unique return values for items
             for item in items:
                 if item in self._all_uninteresting_items:
                     continue
-                key, value = item
-                # We can't yield 'items' yet, because we haven't dug deep
-                # enough on the uninteresting set
+                self._interesting_item_queue.append(item)
                 # Key is a real key, we need search key
-                search_prefix = self._search_key_func(key)
-                self._interesting_queue.append((search_prefix, key, value))
-                # heapq.heappush(self._interesting_queue,
-                #                (search_prefix, key, value))
+                search_prefix = self._search_key_func(item[0])
                 interesting_prefixes.update(
                     [search_prefix[:i+1] for i in xrange(len(search_prefix))])
-                interesting_prefixes.add(search_prefix)
-                interesting_prefixes.add(search_prefix[0])
             yield record
         # At this point, we have read all the uninteresting and interesting
         # items, so we can queue up the uninteresting stuff, knowing that we've
@@ -1532,38 +1531,23 @@ class InterestingNodeIterator(object):
             if not_interesting:
                 # This prefix is not part of the remaining 'interesting set'
                 continue
-            self._uninteresting_queue.append((prefix, ref))
+            self._uninteresting_queue.append(ref)
 
     def _flush_interesting_queue(self):
         # No need to maintain the heap invariant anymore, just pull things out
         # and process them
-        interesting = self._interesting_queue
+        refs = set(self._interesting_queue)
         self._interesting_queue = []
         # First pass, flush all interesting items and convert to using direct refs
-        items = []
-        items_append = items.append
-        refs = set()
-        refs_add = refs.add
-        for prefix, key, value in interesting:
-            if key is not None:
-                item = (key, value)
-                if item not in self._all_uninteresting_items:
-                    items_append(item)
-            else:
-                refs_add(value)
-        if items:
-            yield None, items
-        refs = refs.difference(self._all_uninteresting_chks)
-
         all_uninteresting_chks = self._all_uninteresting_chks
         processed_interesting_refs = self._processed_interesting_refs
         all_uninteresting_items = self._all_uninteresting_items
+        interesting_items = [item for item in self._interesting_item_queue
+                                   if item not in all_uninteresting_items]
+        if interesting_items:
+            yield None, interesting_items
+        refs = refs.difference(all_uninteresting_chks)
         while refs:
-            # TODO: add a test for this
-            #       The idea is that we saw an item in the queue (say during
-            #       the root load), and since then we have seen that we
-            #       shouldn't walk it after all.
-            # refs = refs.difference(all_uninteresting_chks)
             next_refs = set()
             next_refs_update = next_refs.update
             # Inlining _read_nodes_from_store improves 'bzr branch bzr.dev'
@@ -1588,16 +1572,14 @@ class InterestingNodeIterator(object):
         # For now, since we don't ever abort from loading uninteresting items,
         # just read the whole thing in at once, so that we get a single
         # request, instead of multiple
-        refs = [pr[1] for pr in self._uninteresting_queue]
+        refs = self._uninteresting_queue
         self._uninteresting_queue = []
         all_uninteresting_chks = self._all_uninteresting_chks
         for record, _, prefix_refs, items in self._read_nodes_from_store(refs):
             self._all_uninteresting_items.update(items)
-            prefix_refs = [pr for pr in prefix_refs
-                           if pr[1] not in all_uninteresting_chks]
-            self._uninteresting_queue.extend(prefix_refs)
-            all_uninteresting_chks.update([pr[1] for pr in prefix_refs])
-        # heapq.heapify(self._uninteresting_queue)
+            refs = [r for _,r in prefix_refs if r not in all_uninteresting_chks]
+            self._uninteresting_queue.extend(refs)
+            all_uninteresting_chks.update(refs)
 
     def _process_queues(self):
         # Finish processing all of the items in the queue, for simplicity, we
