@@ -1560,7 +1560,7 @@ class InterestingNodeIterator(object):
                 items = [item for item in items
                          if item not in all_uninteresting_items]
                 yield record, items
-                next_refs_update([i[1] for i in prefix_refs])
+                next_refs_update([p_r[1] for p_r in prefix_refs])
             next_refs = next_refs.difference(all_uninteresting_chks)
             next_refs = next_refs.difference(processed_interesting_refs)
             processed_interesting_refs.update(next_refs)
