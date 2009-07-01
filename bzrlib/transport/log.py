@@ -130,15 +130,16 @@ class TransportLogDecorator(TransportDecorator):
         else:
             shown_result = self._shorten(self._strip_tuple_parens(result))
         mutter("  --> %s" % shown_result)
-        # XXX: the time may be wrong when e.g. a generator object is returned from
-        # an http readv, if the object is returned before the bulk data
-        # is read.
-        elapsed = time.time() - before
-        if result_len and elapsed > 0:
-            # this is the rate of higher-level data, not the raw network speed
-            mutter("      %9.03fs %8dKB/s" % (elapsed, result_len/elapsed/1024))
-        else:
-            mutter("      %9.03fs" % (elapsed))
+        # The log decorator no longer shows the elapsed time or transfer rate
+        # because they're available in the log prefixes and the transport
+        # activity display respectively.
+        if False:
+            elapsed = time.time() - before
+            if result_len and elapsed > 0:
+                # this is the rate of higher-level data, not the raw network speed
+                mutter("      %9.03fs %8dKB/s" % (elapsed, result_len/elapsed/1024))
+            else:
+                mutter("      %9.03fs" % (elapsed))
         return return_result
 
     def _shorten(self, x):
