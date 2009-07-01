@@ -1411,15 +1411,14 @@ class InterestingNodeIterator(object):
         self._interesting_root_keys = interesting_root_keys
         self._uninteresting_root_keys = uninteresting_root_keys
         self._pb = pb
-        # Note: It would be possible to be smarter about
-        #       all_uninteresting_chks. Instead of having one giant set, we
-        #       could have sets based on the possible prefixes that could reach
-        #       that key. However, there isn't much to be gained by splitting
-        #       it out, yet.
+        # All uninteresting chks that we have seen. By the time they are added
+        # here, they should be either fully ignored, or queued up for
+        # processing
         self._all_uninteresting_chks = set(self._uninteresting_root_keys)
+        # All items that we have seen from the uninteresting_root_keys
         self._all_uninteresting_items = set()
         # These are interesting items which were either read, or already in the
-        # interesting queue (so don't add these refs again)
+        # interesting queue (so we don't need to walk them again)
         self._processed_interesting_refs = set()
         self._search_key_func = search_key_func
 
@@ -1432,8 +1431,11 @@ class InterestingNodeIterator(object):
         self._state = None
 
     def _read_nodes_from_store(self, keys):
-        # TODO: make use of _page_cache, or firmly decide not to because we
-        #       want to use 'record' objects.
+        # We chose not to use _page_cache, because we think in terms of records
+        # to be yielded. Also, we expect to touch each page only 1 time during
+        # this code. (We may want to evaluate saving the raw bytes into the
+        # page cache, which would allow a working tree update after the fetch
+        # to not have to read the bytes again.)
         stream = self._store.get_record_stream(keys, 'unordered', True)
         for record in stream:
             if self._pb is not None:
@@ -1453,24 +1455,9 @@ class InterestingNodeIterator(object):
                 items = node._items.items()
             yield record, node, prefix_refs, items
 
-    def _read_all_roots(self):
-        """Read the root pages.
-
-        This is structured as a generator, so that the root records can be
-        yielded up to whoever needs them without any buffering.
-        """
-        # This is the bootstrap phase
-        if not self._uninteresting_root_keys:
-            # TODO: when there are no _uninteresting_root_keys we can shortcut
-            # a lot of the code
-            self._interesting_queue = list(self._interesting_root_keys)
-            return
-        # Read the uninteresting nodes first, we would like to read them
-        # simultaneously, but that requires buffering the interesting nodes
-        # until all uninteresting ones have been read
+    def _read_uninteresting_roots(self):
         uninteresting_chks_to_enqueue = []
         all_uninteresting_chks = self._all_uninteresting_chks
-        processed_interesting_refs = self._processed_interesting_refs
         for record, node, prefix_refs, items in \
                 self._read_nodes_from_store(self._uninteresting_root_keys):
             # Uninteresting node
@@ -1483,22 +1470,53 @@ class InterestingNodeIterator(object):
             # Don't actually put them in the 'to-read' queue until we have
             # finished checking the interesting references
             uninteresting_chks_to_enqueue.extend(prefix_refs)
+        return uninteresting_chks_to_enqueue
+
+    def _enqueue_uninteresting(self, interesting_prefixes,
+                               uninteresting_chks_to_enqueue):
+        # At this point, we have read all the uninteresting and interesting
+        # items, so we can queue up the uninteresting stuff, knowing that we've
+        # handled the interesting ones
+        for prefix, ref in uninteresting_chks_to_enqueue:
+            not_interesting = True
+            for i in xrange(len(prefix), 0, -1):
+                if prefix[:i] in interesting_prefixes:
+                    not_interesting = False
+                    break
+            if not_interesting:
+                # This prefix is not part of the remaining 'interesting set'
+                continue
+            self._uninteresting_queue.append(ref)
+
+    def _read_all_roots(self):
+        """Read the root pages.
+
+        This is structured as a generator, so that the root records can be
+        yielded up to whoever needs them without any buffering.
+        """
+        # This is the bootstrap phase
+        if not self._uninteresting_root_keys:
+            # With no uninteresting_root_keys we can just shortcut and be ready
+            # for _flush_interesting_queue
+            self._interesting_queue = list(self._interesting_root_keys)
+            return
+        uninteresting_chks_to_enqueue = self._read_uninteresting_roots()
         # filter out any root keys that are already known to be uninteresting
         interesting_keys = set(self._interesting_root_keys).difference(
-                                all_uninteresting_chks)
-        # These references are common to *all* interesting nodes, and thus we
-        # know that we have perfect overlap with uninteresting, without queue
-        # up any of them
+                                self._all_uninteresting_chks)
+        # These are prefixes that are present in interesting_keys that we are
+        # thinking to yield
         interesting_prefixes = set()
         # We are about to yield all of these, so we don't want them getting
         # added a second time
+        processed_interesting_refs = self._processed_interesting_refs
         processed_interesting_refs.update(interesting_keys)
         for record, node, prefix_refs, items in \
                 self._read_nodes_from_store(interesting_keys):
             # At this level, we now know all the uninteresting references
             # So we filter and queue up whatever is remaining
             prefix_refs = [p_r for p_r in prefix_refs
-                           if p_r[1] not in all_uninteresting_chks
+                           if p_r[1] not in self._all_uninteresting_chks
                               and p_r[1] not in processed_interesting_refs]
             refs = [p_r[1] for p_r in prefix_refs]
             interesting_prefixes.update([p_r[0] for p_r in prefix_refs])
@@ -1521,20 +1539,8 @@ class InterestingNodeIterator(object):
         for prefix in list(interesting_prefixes):
             interesting_prefixes.update([prefix[:i]
                                          for i in xrange(1, len(prefix))])
-
-        # At this point, we have read all the uninteresting and interesting
-        # items, so we can queue up the uninteresting stuff, knowing that we've
-        # handled the interesting ones
-        for prefix, ref in uninteresting_chks_to_enqueue:
-            not_interesting = True
-            for i in xrange(len(prefix), 0, -1):
-                if prefix[:i] in interesting_prefixes:
-                    not_interesting = False
-                    break
-            if not_interesting:
-                # This prefix is not part of the remaining 'interesting set'
-                continue
-            self._uninteresting_queue.append(ref)
+        self._enqueue_uninteresting(interesting_prefixes,
+                                    uninteresting_chks_to_enqueue)
 
     def _flush_interesting_queue(self):
         # No need to maintain the heap invariant anymore, just pull things out
@@ -1547,6 +1553,7 @@ class InterestingNodeIterator(object):
         all_uninteresting_items = self._all_uninteresting_items
         interesting_items = [item for item in self._interesting_item_queue
                                    if item not in all_uninteresting_items]
+        self._interesting_item_queue = []
         if interesting_items:
             yield None, interesting_items
         refs = refs.difference(all_uninteresting_chks)
@@ -1555,26 +1562,19 @@ class InterestingNodeIterator(object):
             next_refs_update = next_refs.update
             # Inlining _read_nodes_from_store improves 'bzr branch bzr.dev'
             # from 1m54s to 1m51s. Consider it.
-            for record, _, prefix_refs, items in \
-                    self._read_nodes_from_store(refs):
+            for record, _, p_refs, items in self._read_nodes_from_store(refs):
                 items = [item for item in items
                          if item not in all_uninteresting_items]
                 yield record, items
-                next_refs_update([p_r[1] for p_r in prefix_refs])
+                next_refs_update([p_r[1] for p_r in p_refs])
             next_refs = next_refs.difference(all_uninteresting_chks)
             next_refs = next_refs.difference(processed_interesting_refs)
             processed_interesting_refs.update(next_refs)
             refs = next_refs
 
     def _process_next_uninteresting(self):
-        # TODO: We really should be filtering uninteresting requests a bit more
-        #       Specifically, past the root level, we should be able to filter
-        #       out uninteresting nodes that are not referenced by interesting
-        #       items (we *do* currently filter out uninteresting nodes
-        #       referenced from the root.)
-        # For now, since we don't ever abort from loading uninteresting items,
-        # just read the whole thing in at once, so that we get a single
-        # request, instead of multiple
+        # Since we don't filter uninteresting any further than during
+        # _read_all_roots, process the whole queue in a single pass.
         refs = self._uninteresting_queue
         self._uninteresting_queue = []
         all_uninteresting_chks = self._all_uninteresting_chks
@@ -1585,12 +1585,15 @@ class InterestingNodeIterator(object):
             all_uninteresting_chks.update(refs)
 
     def _process_queues(self):
-        # Finish processing all of the items in the queue, for simplicity, we
-        # just do things one node at a time
-        # TODO: We should be able to do a lot more 'in parallel'
         while self._uninteresting_queue:
             self._process_next_uninteresting()
         return self._flush_interesting_queue()
+
+    def process(self):
+        for record in self._read_all_roots():
+            yield record, []
+        for record, items in self._process_queues():
+            yield record, items
 
 
 def iter_interesting_nodes(store, interesting_root_keys,
@@ -1611,10 +1614,7 @@ def iter_interesting_nodes(store, interesting_root_keys,
                                        uninteresting_root_keys,
                                        search_key_func=store._search_key_func,
                                        pb=pb)
-    for record in iterator._read_all_roots():
-        yield record, []
-    for record, items in iterator._process_queues():
-        yield record, items
+    return iterator.process()
 
 
 try:
