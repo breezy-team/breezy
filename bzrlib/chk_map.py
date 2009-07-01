@@ -38,14 +38,12 @@ Densely packed upper nodes.
 """
 
 import heapq
-import time
 
 from bzrlib import lazy_import
 lazy_import.lazy_import(globals(), """
 from bzrlib import versionedfile
 """)
 from bzrlib import (
-    errors,
     lru_cache,
     osutils,
     registry,
