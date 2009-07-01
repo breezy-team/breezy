@@ -134,7 +134,6 @@ class TransportTraceDecorator(TransportDecorator):
         """See Transport.readv."""
         self._trace(('readv', relpath, offsets, adjust_for_latency,
             upper_limit))
-        import pdb;pdb.set_trace()
         return self._decorated.readv(relpath, offsets, adjust_for_latency,
             upper_limit)
 
