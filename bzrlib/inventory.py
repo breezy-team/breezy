@@ -27,11 +27,10 @@
 # created, but it's not for now.
 ROOT_ID = "TREE_ROOT"
 
-from copy import deepcopy
-
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import collections
+import copy
 import os
 import re
 import tarfile
@@ -43,7 +42,6 @@ from bzrlib import (
     generate_ids,
     osutils,
     symbol_versioning,
-    workingtree,
     )
 """)
 
@@ -1192,7 +1190,7 @@ class Inventory(CommonInventory):
 
     def _get_mutable_inventory(self):
         """See CommonInventory._get_mutable_inventory."""
-        return deepcopy(self)
+        return copy.deepcopy(self)
 
     def __iter__(self):
         """Iterate over all file-ids."""
