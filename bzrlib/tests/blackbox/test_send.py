@@ -39,11 +39,11 @@ def load_tests(standard_tests, module, loader):
                 )))
     changes_scenarios = [
         ('uncommitted',
-         dict(_changes_type= '_uncommitted_changes')),
+         dict(_changes_type='_uncommitted_changes')),
         ('pending_merges',
-         dict(_changes_type= '_pending_merges')),
+         dict(_changes_type='_pending_merges')),
         ('out-of-sync-trees',
-         dict(_changes_type= '_out_of_sync_trees')),
+         dict(_changes_type='_out_of_sync_trees')),
         ]
     tests.multiply_tests(changes_tests, changes_scenarios, result)
     # No parametrization for the remaining tests
@@ -363,7 +363,10 @@ class TestSendStrictWithChanges(tests.TestCaseWithTransport,
 
     def setUp(self):
         super(TestSendStrictWithChanges, self).setUp()
-        getattr(self, self._changes_type)()
+        # load tests set _changes_types to the name of the method we want to
+        # call now
+        do_changes_func = getattr(self, self._changes_type)
+        do_changes_func()
 
     def _uncommitted_changes(self):
         self.make_parent_and_local_branches()
