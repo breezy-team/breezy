@@ -132,6 +132,9 @@ Improvements
   to 1.1 seconds. The improvement for ``bzr ls -r-1`` is more
   substantial dropping from 54.3 to 1.1 seconds. (Ian Clatworthy)
 
+* Improve "Path(s) are not versioned" error reporting for some commands.
+  (Benoît PIERRE)
+
 * Initial commit performance in ``--2a`` repositories has been improved by
   making it cheaper to build the initial CHKMap. (John Arbash Meinel)
 

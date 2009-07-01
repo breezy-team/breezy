@@ -2049,13 +2049,13 @@ class InterDirStateTree(InterTree):
         state._read_dirblocks_if_needed()
         if require_versioned:
             # -- check all supplied paths are versioned in a search tree. --
-            all_versioned = True
+            not_versioned = []
             for path in specific_files:
                 path_entries = state._entries_for_path(path)
                 if not path_entries:
                     # this specified path is not present at all: error
-                    all_versioned = False
-                    break
+                    not_versioned.append(path)
+                    continue
                 found_versioned = False
                 # for each id at this path
                 for entry in path_entries:
@@ -2068,10 +2068,9 @@ class InterDirStateTree(InterTree):
                 if not found_versioned:
                     # none of the indexes was not 'absent' at all ids for this
                     # path.
-                    all_versioned = False
-                    break
-            if not all_versioned:
-                raise errors.PathsNotVersionedError(specific_files)
+                    not_versioned.append(path)
+            if len(not_versioned) > 0:
+                raise errors.PathsNotVersionedError(not_versioned)
         # -- remove redundancy in supplied specific_files to prevent over-scanning --
         search_specific_files = osutils.minimum_path_selection(specific_files)
 
