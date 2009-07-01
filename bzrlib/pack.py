@@ -169,8 +169,17 @@ class ReadVFile(object):
     # gradually consume the readv result.
 
     def __init__(self, readv_result):
+        """Construct a new ReadVFile wrapper.
+
+        :seealso: make_readv_reader
+
+        :param readv_result: the most recent readv result - list or generator
+        """
+        # we rely on its state as a generator to keep track of how much has
+        # been used.
+        if not getattr(readv_result, 'next'):
+            readv_result = iter(readv_result)
         self.readv_result = readv_result
-        # the most recent readv result block
         self._string = None
 
     def _next(self):
@@ -184,7 +193,9 @@ class ReadVFile(object):
         self._next()
         result = self._string.read(length)
         if len(result) < length:
-            raise errors.BzrError('request for too much data from a readv hunk.')
+            raise errors.BzrError('wanted %d bytes but next '
+                'hunk only contains %d: %r...' %
+                (length, len(result), result[:20]))
         return result
 
     def readline(self):
@@ -192,7 +203,8 @@ class ReadVFile(object):
         self._next()
         result = self._string.readline()
         if self._string.tell() == self._string_length and result[-1] != '\n':
-            raise errors.BzrError('short readline in the readvfile hunk.')
+            raise errors.BzrError('short readline in the readvfile hunk: %r'
+                % (readline, ))
         return result
 
 
