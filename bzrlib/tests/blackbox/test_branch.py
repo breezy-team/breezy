@@ -115,11 +115,11 @@ class TestBranch(ExternalBase):
 
     def test_branch_into_existing_dir(self):
         self.example_branch('a')
-        # exisitng dir with similar files
-        os.mkdir('b')
+        # existing dir with similar files but no .bzr dir
+        self.build_tree_contents([('b/',)])
         self.build_tree_contents([('b/hello', 'bar')])  # different content
-        self.build_tree_contents([('b/goodbye', 'baz')])# the same content
-        # without --use-exisitng-dir it fails
+        self.build_tree_contents([('b/goodbye', 'baz')])# same content
+        # fails without --use-existing-dir
         out,err = self.run_bzr('branch a b', retcode=3)
         self.assertEqual('', out)
         self.assertEqual('bzr: ERROR: Target directory "b" already exists.\n',

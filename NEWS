@@ -35,6 +35,10 @@ Bug Fixes
 * ``Branch.set_append_revisions_only`` now works with branches on a smart
   server. (Andrew Bennetts, #365865)
 
+* By default, ``bzr branch`` will fail if the target directory exists, but
+  does not already have a control directory.  The flag ``--use-existing-dir``
+  will allow operation to proceed.  (Alexander Belchenko, #307554)
+
 * ``bzr ls DIR --from-root`` now shows only things in DIR, not everything.
   (Ian Clatworthy)
 
