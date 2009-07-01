@@ -1030,7 +1030,7 @@ class cmd_push(Command):
             type=unicode),
         Option('strict',
                help='Refuse to push if there are uncommitted changes in'
-               ' the working tree.'),
+               ' the working tree, --no-strict disables the check.'),
         ]
     takes_args = ['location?']
     encoding_type = 'replace'
@@ -4902,7 +4902,7 @@ class cmd_send(Command):
                type=unicode),
         Option('strict',
                help='Refuse to send if there are uncommitted changes in'
-               ' the working tree.'),
+               ' the working tree, --no-strict disables the check.'),
         Option('mail-to', help='Mail the request to this address.',
                type=unicode),
         'revision',
@@ -4973,8 +4973,8 @@ class cmd_bundle_revisions(cmd_send):
         Option('output', short_name='o', help='Write directive to this file.',
                type=unicode),
         Option('strict',
-               help='Refuse to bundle revisions if there are'
-               ' uncommitted changes in the working tree.'),
+               help='Refuse to bundle revisions if there are uncommitted'
+               ' changes in the working tree, --no-strict disables the check.'),
         'revision',
         RegistryOption('format',
                        help='Use the specified output format.',

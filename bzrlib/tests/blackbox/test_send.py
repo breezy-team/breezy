@@ -42,6 +42,8 @@ def load_tests(standard_tests, module, loader):
          dict(_changes_type= '_uncommitted_changes')),
         ('pending_merges',
          dict(_changes_type= '_pending_merges')),
+        ('out-of-sync-trees',
+         dict(_changes_type= '_out_of_sync_trees')),
         ]
     tests.multiply_tests(changes_tests, changes_scenarios, result)
     # No parametrization for the remaining tests
@@ -289,9 +291,6 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
 
 class TestSendStrictMixin(TestSendMixin):
 
-    _default_command = ['send', '-o-', '../parent']
-    _default_wd = 'local'
-
     def make_parent_and_local_branches(self):
         # Create a 'parent' branch as the base
         self.parent_tree = bzrdir.BzrDir.create_standalone_workingtree('parent')
@@ -304,6 +303,12 @@ class TestSendStrictMixin(TestSendMixin):
         self.build_tree_contents([('local/file', 'local')])
         self.local_tree.commit('second commit', rev_id='local')
 
+    _default_command = ['send', '-o-', '../parent']
+    _default_wd = 'local'
+    _default_sent_revs = ['local']
+    _default_errors = ['Working tree ".*/local/" has uncommitted '
+                       'changes \(See bzr status\)\.',]
+
     def set_config_send_strict(self, value):
         # set config var (any of bazaar.conf, locations.conf, branch.conf
         # should do)
@@ -311,13 +316,14 @@ class TestSendStrictMixin(TestSendMixin):
         conf.set_user_option('send_strict', value)
 
     def assertSendFails(self, args):
-        self.run_send(args, rc=3,
-                      err_re=['Working tree ".*/local/" has uncommitted changes'
-                              ' \(See bzr status\)\.',])
+        self.run_send(args, rc=3, err_re=self._default_errors)
 
-    def assertSendSucceeds(self, revs, args):
+    def assertSendSucceeds(self, args, revs=None):
+        if revs is None:
+            revs = self._default_sent_revs
         out, err = self.run_send(args)
-        self.assertEquals('Bundling 1 revision(s).\n', err)
+        self.assertEquals(
+            'Bundling %d revision(s).\n' % len(revs), err)
         md = merge_directive.MergeDirective.from_lines(
                 StringIO(out).readlines())
         self.assertEqual('parent', md.base_revision_id)
@@ -333,21 +339,21 @@ class TestSendStrictWithoutChanges(tests.TestCaseWithTransport,
         self.make_parent_and_local_branches()
 
     def test_send_default(self):
-        self.assertSendSucceeds(['local'], [])
+        self.assertSendSucceeds([])
 
     def test_send_strict(self):
-        self.assertSendSucceeds(['local'], ['--strict'])
+        self.assertSendSucceeds(['--strict'])
 
     def test_send_no_strict(self):
-        self.assertSendSucceeds(['local'], ['--no-strict'])
+        self.assertSendSucceeds(['--no-strict'])
 
     def test_send_config_var_strict(self):
         self.set_config_send_strict('true')
-        self.assertSendSucceeds(['local'], [])
+        self.assertSendSucceeds([])
 
     def test_send_config_var_no_strict(self):
         self.set_config_send_strict('false')
-        self.assertSendSucceeds(['local'], [])
+        self.assertSendSucceeds([])
 
 
 class TestSendStrictWithChanges(tests.TestCaseWithTransport,
@@ -376,14 +382,26 @@ class TestSendStrictWithChanges(tests.TestCaseWithTransport,
         self.local_tree.merge_from_branch(other_tree.branch)
         self.local_tree.revert(filenames=['other-file'], backups=False)
 
+    def _out_of_sync_trees(self):
+        self.make_parent_and_local_branches()
+        self.run_bzr(['checkout', '--lightweight', 'local', 'checkout'])
+        # Make a change and commit it
+        self.build_tree_contents([('local/file', 'modified in local')])
+        self.local_tree.commit('modify file', rev_id='modified-in-local')
+        # Exercise commands from the checkout directory
+        self._default_wd = 'checkout'
+        self._default_errors = ["Working tree is out of date, please run"
+                                " 'bzr update'\.",]
+        self._default_sent_revs = ['modified-in-local', 'local']
+
     def test_send_default(self):
         self.assertSendFails([])
 
     def test_send_with_revision(self):
-        self.assertSendSucceeds(['local'], ['-r', 'revid:local'])
+        self.assertSendSucceeds(['-r', 'revid:local'], revs=['local'])
 
     def test_send_no_strict(self):
-        self.assertSendSucceeds(['local'], ['--no-strict'])
+        self.assertSendSucceeds(['--no-strict'])
 
     def test_send_strict_with_changes(self):
         self.assertSendFails(['--strict'])
@@ -391,7 +409,7 @@ class TestSendStrictWithChanges(tests.TestCaseWithTransport,
     def test_send_respect_config_var_strict(self):
         self.set_config_send_strict('true')
         self.assertSendFails([])
-        self.assertSendSucceeds(['local'], ['--no-strict'])
+        self.assertSendSucceeds(['--no-strict'])
 
 
     def test_send_bogus_config_var_ignored(self):
@@ -402,11 +420,11 @@ class TestSendStrictWithChanges(tests.TestCaseWithTransport,
     def test_send_no_strict_command_line_override_config(self):
         self.set_config_send_strict('true')
         self.assertSendFails([])
-        self.assertSendSucceeds(['local'], ['--no-strict'])
+        self.assertSendSucceeds(['--no-strict'])
 
     def test_push_strict_command_line_override_config(self):
         self.set_config_send_strict('false')
-        self.assertSendSucceeds(['local'], [])
+        self.assertSendSucceeds([])
         self.assertSendFails(['--strict'])
 
 

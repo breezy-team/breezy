@@ -118,17 +118,23 @@ def send(submit_branch, revision, public_branch, remember, format,
                         strict = bools[strict.lower()]
                     except KeyError:
                         strict = None
-            if strict is None or strict: # Default to True
+            if tree is not None and (strict is None or strict):
                 changes = tree.changes_from(tree.basis_tree())
                 if changes.has_changed() or len(tree.get_parent_ids()) > 1:
                     raise errors.UncommittedChanges(tree)
+                if tree.last_revision() != tree.branch.last_revision():
+                    # The tree has lost sync with its branch, there is little
+                    # chance that the user is aware of it but he can still force
+                    # the push with --no-strict
+                    raise errors.OutOfDateTree(tree)
+#                        tree, more='Use --no-strict to force the push.',)
             revision_id = branch.last_revision()
         if revision_id == NULL_REVISION:
             raise errors.BzrCommandError('No revisions to submit.')
         if format is None:
             # TODO: Query submit branch for its preferred format
             format = format_registry.get()
-        directive = format(branch, revision_id, submit_branch, 
+        directive = format(branch, revision_id, submit_branch,
             public_branch, no_patch, no_bundle, message, base_revision_id)
         if output is None:
             directive.compose_merge_request(mail_client, mail_to, body,
