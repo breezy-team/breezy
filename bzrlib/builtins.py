@@ -474,11 +474,36 @@ class cmd_revno(Command):
 
     _see_also = ['info']
     takes_args = ['location?']
+    takes_options = [
+        Option('tree', help='Show revno of working tree'),
+        ]
 
     @display_command
-    def run(self, location=u'.'):
-        self.outf.write(str(Branch.open_containing(location)[0].revno()))
-        self.outf.write('\n')
+    def run(self, tree=False, location=u'.'):
+        if tree:
+            try:
+                wt = WorkingTree.open_containing(location)[0]
+                wt.lock_read()
+            except (errors.NoWorkingTree, errors.NotLocalUrl):
+                raise errors.NoWorkingTree(location)
+            try:
+                revid = wt.last_revision()
+                try:
+                    revno_t = wt.branch.revision_id_to_dotted_revno(revid)
+                except errors.NoSuchRevision:
+                    revno_t = ('???',)
+                revno = ".".join(str(n) for n in revno_t)
+            finally:
+                wt.unlock()
+        else:
+            b = Branch.open_containing(location)[0]
+            b.lock_read()
+            try:
+                revno = b.revno()
+            finally:
+                b.unlock()
+
+        self.outf.write(str(revno) + '\n')
 
 
 class cmd_revision_info(Command):
@@ -494,31 +519,56 @@ class cmd_revision_info(Command):
             short_name='d',
             type=unicode,
             ),
+        Option('tree', help='Show revno of working tree'),
         ]
 
     @display_command
-    def run(self, revision=None, directory=u'.', revision_info_list=[]):
+    def run(self, revision=None, directory=u'.', tree=False,
+            revision_info_list=[]):
 
-        revs = []
-        if revision is not None:
-            revs.extend(revision)
-        if revision_info_list is not None:
-            for rev in revision_info_list:
-                revs.append(RevisionSpec.from_string(rev))
+        try:
+            wt = WorkingTree.open_containing(directory)[0]
+            b = wt.branch
+            wt.lock_read()
+        except (errors.NoWorkingTree, errors.NotLocalUrl):
+            wt = None
+            b = Branch.open_containing(directory)[0]
+            b.lock_read()
+        try:
+            revision_ids = []
+            if revision is not None:
+                revision_ids.extend(rev.as_revision_id(b) for rev in revision)
+            if revision_info_list is not None:
+                for rev_str in revision_info_list:
+                    rev_spec = RevisionSpec.from_string(rev_str)
+                    revision_ids.append(rev_spec.as_revision_id(b))
+            # No arguments supplied, default to the last revision
+            if len(revision_ids) == 0:
+                if tree:
+                    if wt is None:
+                        raise errors.NoWorkingTree(directory)
+                    revision_ids.append(wt.last_revision())
+                else:
+                    revision_ids.append(b.last_revision())
 
-        b = Branch.open_containing(directory)[0]
+            revinfos = []
+            maxlen = 0
+            for revision_id in revision_ids:
+                try:
+                    dotted_revno = b.revision_id_to_dotted_revno(revision_id)
+                    revno = '.'.join(str(i) for i in dotted_revno)
+                except errors.NoSuchRevision:
+                    revno = '???'
+                maxlen = max(maxlen, len(revno))
+                revinfos.append([revno, revision_id])
+        finally:
+            if wt is None:
+                b.unlock()
+            else:
+                wt.unlock()
 
-        if len(revs) == 0:
-            revs.append(RevisionSpec.from_string('-1'))
-
-        for rev in revs:
-            revision_id = rev.as_revision_id(b)
-            try:
-                revno = '%4d' % (b.revision_id_to_revno(revision_id))
-            except errors.NoSuchRevision:
-                dotted_map = b.get_revision_id_to_revno_map()
-                revno = '.'.join(str(i) for i in dotted_map[revision_id])
-            print '%s %s' % (revno, revision_id)
+        for ri in revinfos:
+            self.outf.write('%*s %s\n' % (maxlen, ri[0], ri[1]))
 
 
 class cmd_add(Command):
@@ -1067,7 +1117,14 @@ class cmd_push(Command):
             and (strict is None or strict)): # Default to True:
             changes = tree.changes_from(tree.basis_tree())
             if changes.has_changed() or len(tree.get_parent_ids()) > 1:
-                raise errors.UncommittedChanges(tree)
+                raise errors.UncommittedChanges(
+                    tree, more='Use --no-strict to force the push.')
+            if tree.last_revision() != tree.branch.last_revision():
+                # The tree has lost sync with its branch, there is little
+                # chance that the user is aware of it but he can still force
+                # the push with --no-strict
+                raise errors.OutOfDateTree(
+                    tree, more='Use --no-strict to force the push.')
 
         # Get the stacked_on branch, if any
         if stacked_on is not None:

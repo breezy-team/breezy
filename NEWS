@@ -26,6 +26,10 @@ New Features
   speified. The configuration option ``push_strict`` can be used to set the
   default for this behavior.  (Vincent Ladeuil, #284038, #322808, #65286)
 
+* ``bzr revno`` and ``bzr revision-info`` now have a ``--tree`` option to
+  show revision info for the working tree instead of the branch.
+  (Matthew Fuller, John Arbash Meinel)
+
 * ``bzr send`` now aborts if uncommitted changes (including pending merges)
   are present in the working tree and no revision is specified. The
   configuration option ``send_strict`` can be used to set the default for this
@@ -140,6 +144,11 @@ Improvements
 * Resolving a revno to a revision id on a branch accessed via ``bzr://``
   or ``bzr+ssh://`` is now much faster and involves no VFS operations.
   This speeds up commands like ``bzr pull -r 123``.  (Andrew Bennetts)
+
+* ``revision-info`` now properly aligns the revnos/revids in the output
+  and doesn't traceback when given revisions not in the current branch.
+  Performance is also significantly improved when requesting multiple revs
+  at once.  (Matthew Fuller, John Arbash Meinel)
 
 Documentation
 *************
