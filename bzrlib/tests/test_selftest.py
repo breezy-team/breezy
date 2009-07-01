@@ -2170,24 +2170,6 @@ class TestTestIdList(tests.TestCase):
         self.assertTrue(id_list.refers_to('mod.class'))
         self.assertTrue(id_list.refers_to('mod.class.meth'))
 
-    def test_test_suite(self):
-        # This test is slow, so we do a single test with one test in each
-        # category
-        test_list = [
-            # testmod_names
-            'bzrlib.tests.blackbox.test_branch.TestBranch.test_branch',
-            'bzrlib.tests.test_selftest.TestTestIdList.test_test_suite',
-            # transport implementations
-            'bzrlib.tests.test_transport_implementations.TransportTests'
-            '.test_abspath(LocalURLServer)',
-            # modules_to_doctest
-            'bzrlib.timestamp.format_highres_date',
-            # plugins can't be tested that way since selftest may be run with
-            # --no-plugins
-            ]
-        suite = tests.test_suite(test_list)
-        self.assertEquals(test_list, _test_ids(suite))
-
     def test_test_suite_matches_id_list_with_unknown(self):
         loader = TestUtil.TestLoader()
         suite = loader.loadTestsFromModuleName('bzrlib.tests.test_sampler')
@@ -2211,6 +2193,34 @@ class TestTestIdList(tests.TestCase):
         self.assertEquals([], not_found)
         self.assertEquals(['bzrlib.tests.test_sampler.DemoTest.test_nothing'],
                           duplicates)
+
+
+class TestTestSuite(tests.TestCase):
+
+    def test_test_suite(self):
+        # This test is slow, so we do a single test with one test in each
+        # category
+        test_list = [
+            # testmod_names
+            'bzrlib.tests.blackbox.test_branch.TestBranch.test_branch',
+            'bzrlib.tests.test_selftest.TestTestSuite.test_test_suite',
+            # transport implementations
+            'bzrlib.tests.test_transport_implementations.TransportTests'
+            '.test_abspath(LocalURLServer)',
+            # modules_to_doctest
+            'bzrlib.timestamp.format_highres_date',
+            # plugins can't be tested that way since selftest may be run with
+            # --no-plugins
+            ]
+        suite = tests.test_suite(test_list)
+        self.assertEquals(test_list, _test_ids(suite))
+
+    def test_test_suite_list_and_start(self):
+        test_list = ['bzrlib.tests.test_selftest.TestTestSuite.test_test_suite']
+        suite = tests.test_suite(test_list,
+                                 ['bzrlib.tests.test_selftest.TestTestSuite'])
+        # test_test_suite_list_and_start is not included 
+        self.assertEquals(test_list, _test_ids(suite))
 
 
 class TestLoadTestIdList(tests.TestCaseInTempDir):
