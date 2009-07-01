@@ -33,6 +33,9 @@ class TransportTraceDecorator(TransportDecorator):
     Not all operations are logged at this point, if you need an unlogged
     operation please add a test to the tests of this transport, for the logging
     of the operation you want logged.
+
+    See also TransportLogDecorator, that records a machine-readable log in 
+    memory for eg testing.
     """
 
     def __init__(self, url, _decorated=None, _from_transport=None):
@@ -126,9 +129,12 @@ class TransportTraceDecorator(TransportDecorator):
 
     def readv(self, relpath, offsets, adjust_for_latency=False,
         upper_limit=None):
+        # we override at the readv() level rather than _readv() so that any
+        # latency adjustments will be done by the underlying transport
         """See Transport.readv."""
         self._trace(('readv', relpath, offsets, adjust_for_latency,
             upper_limit))
+        import pdb;pdb.set_trace()
         return self._decorated.readv(relpath, offsets, adjust_for_latency,
             upper_limit)
 

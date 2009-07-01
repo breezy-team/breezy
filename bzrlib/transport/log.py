@@ -44,6 +44,9 @@ class TransportLogDecorator(TransportDecorator):
     and may be slow.
 
     Not all operations are logged yet.
+
+    See also TransportTraceDecorator, that records a machine-readable log in 
+    memory for eg testing.
     """
 
     def __init__(self, *args, **kw):
@@ -104,10 +107,15 @@ class TransportLogDecorator(TransportDecorator):
     def _show_result(self, before, methodname, result):
         result_len = None
         if isinstance(result, types.GeneratorType):
-            # eagerly pull in all the contents, so that we can measure how
-            # long it takes to get them.  this does make the behaviour a bit
-            # different, but we hope not noticably so
+            # We now consume everything from the generator so that we can show
+            # the results and the time it took to get them.  However, to keep
+            # compatibility with callers that may specifically expect a result
+            # (see <https://launchpad.net/bugs/340347>) we also return a new
+            # generator, reset to the starting position.
             result = list(result)
+            return_result = iter(result)
+        else:
+            return_result = result
         if isinstance(result, (cStringIO.OutputType, StringIO.StringIO)):
             val = repr(result.getvalue())
             result_len = len(val)
@@ -131,7 +139,7 @@ class TransportLogDecorator(TransportDecorator):
             mutter("      %9.03fs %8dKB/s" % (elapsed, result_len/elapsed/1024))
         else:
             mutter("      %9.03fs" % (elapsed))
-        return result
+        return return_result
 
     def _shorten(self, x):
         if len(x) > 70:
