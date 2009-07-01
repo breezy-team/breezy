@@ -16,25 +16,23 @@
 
 """Black-box tests for bzr handling non-ascii characters."""
 
-import sys
 import os
 
-from bzrlib import osutils, urlutils
-from bzrlib.tests import (
-    TestCaseWithTransport,
-    TestSkipped,
-    multiply_tests,
+from bzrlib import (
+    osutils,
+    tests,
+    urlutils,
     )
-from bzrlib.tests.EncodingAdapter import encoding_scenarios
-from bzrlib.trace import mutter, note
+from bzrlib.tests import EncodingAdapter
 
 
 def load_tests(standard_tests, module, loader):
-    return multiply_tests(standard_tests, encoding_scenarios,
-        loader.suiteClass())
+    return tests.multiply_tests(standard_tests,
+                                EncodingAdapter.encoding_scenarios,
+                                loader.suiteClass())
 
 
-class TestNonAscii(TestCaseWithTransport):
+class TestNonAscii(tests.TestCaseWithTransport):
     """Test that bzr handles files/committers/etc which are non-ascii."""
 
     def setUp(self):
@@ -57,7 +55,7 @@ class TestNonAscii(TestCaseWithTransport):
         super(TestNonAscii, self).tearDown()
 
     def run_bzr_decode(self, args, encoding=None, fail=False, retcode=None,
-                        working_dir=None):
+                       working_dir=None):
         """Run bzr and decode the output into a particular encoding.
 
         Returns a string containing the stdout output from bzr.
@@ -68,8 +66,9 @@ class TestNonAscii(TestCaseWithTransport):
         if encoding is None:
             encoding = osutils.get_user_encoding()
         try:
-            out = self.run_bzr(args, output_encoding=encoding, encoding=encoding,
-                retcode=retcode, working_dir=working_dir)[0]
+            out = self.run_bzr(args,
+                               output_encoding=encoding, encoding=encoding,
+                               retcode=retcode, working_dir=working_dir)[0]
             return out.decode(encoding)
         except UnicodeError, e:
             if not fail:
@@ -83,7 +82,7 @@ class TestNonAscii(TestCaseWithTransport):
                 self.fail("Expected UnicodeError not raised")
 
     def create_base(self):
-        fs_enc = sys.getfilesystemencoding()
+        fs_enc = osutils._fs_enc
         terminal_enc = osutils.get_terminal_encoding()
         fname = self.info['filename']
         dir_name = self.info['directory']
@@ -91,17 +90,16 @@ class TestNonAscii(TestCaseWithTransport):
             try:
                 thing.encode(fs_enc)
             except UnicodeEncodeError:
-                raise TestSkipped(('Unable to represent path %r'
-                                   ' in filesystem encoding "%s"')
-                                    % (thing, fs_enc))
+                raise tests.TestSkipped(
+                    'Unable to represent path %r in filesystem encoding "%s"'
+                    % (thing, fs_enc))
             try:
                 thing.encode(terminal_enc)
             except UnicodeEncodeError:
-                raise TestSkipped(('Unable to represent path %r'
-                                   ' in terminal encoding "%s"'
-                                   ' (even though it is valid in'
-                                   ' filesystem encoding "%s")')
-                                   % (thing, terminal_enc, fs_enc))
+                raise tests.TestSkipped(
+                    'Unable to represent path %r in terminal encoding "%s"'
+                    ' (even though it is valid in filesystem encoding "%s")'
+                    % (thing, terminal_enc, fs_enc))
 
         wt = self.make_branch_and_tree('.')
         self.build_tree_contents([('a', 'foo\n')])
