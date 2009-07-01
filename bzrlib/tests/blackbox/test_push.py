@@ -47,8 +47,10 @@ def load_tests(standard_tests, module, loader):
     changes_scenarios = [
         ('uncommitted',
          dict(_changes_type= '_uncommitted_changes')),
-        ('pending_merges',
+        ('pending-merges',
          dict(_changes_type= '_pending_merges')),
+        ('out-of-sync-trees',
+         dict(_changes_type= '_out_of_sync_trees')),
         ]
     tests.multiply_tests(changes_tests, changes_scenarios, result)
     # No parametrization for the remaining tests
@@ -588,7 +590,7 @@ class TestPushRedirect(tests.TestCaseWithTransport):
         self.assertEqual('', out)
 
 
-class TestPushStrict(tests.TestCaseWithTransport):
+class TestPushStrictMixin(object):
 
     def make_local_branch_and_tree(self):
         self.tree = self.make_branch_and_tree('local')
@@ -604,17 +606,21 @@ class TestPushStrict(tests.TestCaseWithTransport):
         conf = self.tree.branch.get_config()
         conf.set_user_option('push_strict', value)
 
+    _default_command = ['push', '../to']
+    _default_wd = 'local'
+    _default_errors = ['Working tree ".*/local/" has uncommitted '
+                       'changes \(See bzr status\)\.',]
+    _default_pushed_revid = 'modified'
+
     def assertPushFails(self, args):
-        self.run_bzr_error(['Working tree ".*/local/"'
-                            ' has uncommitted changes \(See bzr status\)\.',],
-                           ['push', '../to'] + args,
-                           working_dir='local', retcode=3)
+        self.run_bzr_error(self._default_errors, self._default_command + args,
+                           working_dir=self._default_wd, retcode=3)
 
     def assertPushSucceeds(self, args, pushed_revid=None):
-        self.run_bzr(['push', '../to'] + args,
-                     working_dir='local')
+        self.run_bzr(self._default_command + args,
+                     working_dir=self._default_wd)
         if pushed_revid is None:
-            pushed_revid = 'modified'
+            pushed_revid = self._default_pushed_revid
         tree_to = workingtree.WorkingTree.open('to')
         repo_to = tree_to.branch.repository
         self.assertTrue(repo_to.has_revision(pushed_revid))
@@ -622,7 +628,8 @@ class TestPushStrict(tests.TestCaseWithTransport):
 
 
 
-class TestPushStrictWithoutChanges(TestPushStrict):
+class TestPushStrictWithoutChanges(tests.TestCaseWithTransport,
+                                   TestPushStrictMixin):
 
     def setUp(self):
         super(TestPushStrictWithoutChanges, self).setUp()
@@ -646,7 +653,8 @@ class TestPushStrictWithoutChanges(TestPushStrict):
         self.assertPushSucceeds([])
 
 
-class TestPushStrictWithChanges(TestPushStrict):
+class TestPushStrictWithChanges(tests.TestCaseWithTransport,
+                                TestPushStrictMixin):
 
     _changes_type = None # Set by load_tests
 
@@ -670,6 +678,18 @@ class TestPushStrictWithChanges(TestPushStrict):
         # Merge and revert, leaving a pending merge
         self.tree.merge_from_branch(other_tree.branch)
         self.tree.revert(filenames=['other-file'], backups=False)
+
+    def _out_of_sync_trees(self):
+        self.make_local_branch_and_tree()
+        self.run_bzr(['checkout', '--lightweight', 'local', 'checkout'])
+        # Make a change and commit it
+        self.build_tree_contents([('local/file', 'modified in local')])
+        self.tree.commit('modify file', rev_id='modified-in-local')
+        # Exercise commands from the checkout directory
+        self._default_wd = 'checkout'
+        self._default_errors = ["Working tree is out of date, please run"
+                                " 'bzr update'\.",]
+        self._default_pushed_revid = 'modified-in-local'
 
     def test_push_default(self):
         self.assertPushFails([])
