@@ -1422,12 +1422,9 @@ class InterestingNodeIterator(object):
         # interesting queue (so don't add these refs again)
         self._processed_interesting_refs = set()
         self._interesting_queued_refs = set()
-        # TODO: use this or delete it
-        self._interesting_queued_items = set()
         self._search_key_func = search_key_func
 
-        # The set of uninteresting and interesting nodes, queued based on the
-        # search_key prefix
+        # The uninteresting and interesting nodes to be searched
         self._uninteresting_queue = []
         self._interesting_queue = []
         self._state = None
@@ -1504,8 +1501,9 @@ class InterestingNodeIterator(object):
                 self._processed_interesting_refs.add(ref)
                 interesting_prefixes.update(
                     [prefix[:i+1] for i in xrange(len(prefix))])
-                heapq.heappush(self._interesting_queue,
-                               (prefix, None, ref))
+                self._interesting_queue.append((prefix, None, ref))
+                # heapq.heappush(self._interesting_queue,
+                #                (prefix, None, ref))
             for item in items:
                 if item in self._all_uninteresting_items:
                     continue
@@ -1514,8 +1512,9 @@ class InterestingNodeIterator(object):
                 # enough on the uninteresting set
                 # Key is a real key, we need search key
                 search_prefix = self._search_key_func(key)
-                heapq.heappush(self._interesting_queue,
-                               (search_prefix, key, value))
+                self._interesting_queue.append((search_prefix, key, value))
+                # heapq.heappush(self._interesting_queue,
+                #                (search_prefix, key, value))
                 interesting_prefixes.update(
                     [search_prefix[:i+1] for i in xrange(len(search_prefix))])
                 interesting_prefixes.add(search_prefix)
@@ -1533,7 +1532,7 @@ class InterestingNodeIterator(object):
             if not_interesting:
                 # This prefix is not part of the remaining 'interesting set'
                 continue
-            heapq.heappush(self._uninteresting_queue, (prefix, ref))
+            self._uninteresting_queue.append((prefix, ref))
 
     def _flush_interesting_queue(self):
         # No need to maintain the heap invariant anymore, just pull things out
@@ -1598,70 +1597,15 @@ class InterestingNodeIterator(object):
                            if pr[1] not in all_uninteresting_chks]
             self._uninteresting_queue.extend(prefix_refs)
             all_uninteresting_chks.update([pr[1] for pr in prefix_refs])
-        heapq.heapify(self._uninteresting_queue)
+        # heapq.heapify(self._uninteresting_queue)
 
     def _process_queues(self):
         # Finish processing all of the items in the queue, for simplicity, we
         # just do things one node at a time
         # TODO: We should be able to do a lot more 'in parallel'
-        while self._interesting_queue:
-            # We have processed everything uninteresting, so now push
-            # everything out of the interesting queue
-            if not self._uninteresting_queue:
-                # Yield everything remaining in the interesting side
-                # we have processed all of the uninteresting stuff
-                for record, items in self._flush_interesting_queue():
-                    yield record, items
-                return
-            # (prefix, key?, value)
-            next_interesting_prefix = self._interesting_queue[0][0]
-            next_uninteresting_prefix = self._uninteresting_queue[0][0]
-            if next_uninteresting_prefix <= next_interesting_prefix:
-                # Process uninteresting first, even when there is a 'tie',
-                # because then we know what to cull from the interesting side
-                self._process_next_uninteresting()
-            else: # interesting comes before the current uninteresting
-                # The interesting prefix comes first, so process it, and yield
-                # what you can
-                prefix, key, value = heapq.heappop(self._interesting_queue)
-                if key is not None:
-                    item = (key, value)
-                    if item not in self._all_uninteresting_items:
-                        yield None, [item]
-                else:
-                    # Node => value == ref
-                    # if value in self._all_uninteresting_chks:
-                    #     continue
-                    for record, node, prefix_refs, items in \
-                            self._read_nodes_from_store([value]):
-                        yield record, []
-                        # This record has been yielded, mark it uninteresting
-                        assert record.key in self._processed_interesting_refs
-                        for prefix, ref in prefix_refs:
-                            if (ref in self._all_uninteresting_chks
-                                 or ref in self._processed_interesting_refs):
-                                continue
-                            heapq.heappush(self._interesting_queue,
-                                           (prefix, None, ref))
-                            self._processed_interesting_refs.add(ref)
-                        # TODO: do we know if these are truly interesting yet?
-                        #       Initial guess is that we do not.
-                        #       interesting may reference 'abc' from a Leaf at
-                        #       'a', while uninteresting may reference it from
-                        #       a leaf at 'ab', and unfortunately 'ab' comes
-                        #       before 'abc' but after 'a'.
-                        #       One possibility, check to see if the first
-                        #       uninteresting node has a prefix which is after
-                        #       the possible prefix for item. So if you had
-                        #       uninteresting at 'b' then you are sure you
-                        #       could just yield all items that begin with 'a'
-                        for item in items:
-                            if item in self._all_uninteresting_items:
-                                continue
-                            key, value = item
-                            search_key = self._search_key_func(key)
-                            heapq.heappush(self._interesting_queue,
-                                           (prefix, key, value))
+        while self._uninteresting_queue:
+            self._process_next_uninteresting()
+        return self._flush_interesting_queue()
 
 
 def iter_interesting_nodes(store, interesting_root_keys,
