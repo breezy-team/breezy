@@ -25,16 +25,21 @@ branch.
 
 import operator
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib import (
+    tsort,
+    versionedfile,
+    )
+""")
 import bzrlib
 from bzrlib import (
     errors,
     symbol_versioning,
     )
 from bzrlib.revision import NULL_REVISION
-from bzrlib.tsort import topo_sort
 from bzrlib.trace import mutter
 import bzrlib.ui
-from bzrlib.versionedfile import FulltextContentFactory
 
 
 class RepoFetcher(object):
@@ -241,7 +246,7 @@ class Inter1and2Helper(object):
         """
         graph = self.source.get_graph()
         parent_map = graph.get_parent_map(revs)
-        rev_order = topo_sort(parent_map)
+        rev_order = tsort.topo_sort(parent_map)
         rev_id_to_root_id, root_id_to_rev_ids = self._find_root_ids(
             revs, parent_map, graph)
         root_id_order = [(rev_id_to_root_id[rev_id], rev_id) for rev_id in
@@ -252,36 +257,40 @@ class Inter1and2Helper(object):
         # yet, and are unlikely to in non-rich-root environments anyway.
         root_id_order.sort(key=operator.itemgetter(0))
         # Create a record stream containing the roots to create.
-        def yield_roots():
-            for key in root_id_order:
-                root_id, rev_id = key
-                parent_keys = _parent_keys_for_root_version(
-                    root_id, rev_id, rev_id_to_root_id, parent_map, graph,
-                    self.source)
-                yield FulltextContentFactory(key, parent_keys, None, '')
-        return [('texts', yield_roots())]
+        new_roots_stream = _new_root_data_stream(
+            root_id_order, rev_id_to_root_id, parent_map, self.source)
+        return [('texts', new_roots_stream)]
+
+
+def _new_root_data_stream(
+    root_keys_to_create, rev_id_to_root_id_map, parent_map, repo):
+    for root_key in root_keys_to_create:
+        root_id, rev_id = root_key
+        parent_keys = _parent_keys_for_root_version(
+            root_id, rev_id, rev_id_to_root_id_map, parent_map, repo)
+        yield versionedfile.FulltextContentFactory(
+            root_key, parent_keys, None, '')
 
 
 def _parent_keys_for_root_version(
-    root_id, rev_id, rev_id_to_root_id_map, parent_map, graph, repo):
+    root_id, rev_id, rev_id_to_root_id_map, parent_map, repo):
     """Get the parent keys for a given root id."""
-    # Include direct parents of the revision, but only if they used
-    # the same root_id and are heads.
+    # Include direct parents of the revision, but only if they used the same
+    # root_id and are heads.
     rev_parents = parent_map[rev_id]
     parent_ids = []
     for parent_id in rev_parents:
         if parent_id == NULL_REVISION:
             continue
         if parent_id not in rev_id_to_root_id_map:
-            # We probably didn't read this revision, go spend the
-            # extra effort to actually check
+            # We probably didn't read this revision, go spend the extra effort
+            # to actually check
             try:
                 tree = repo.revision_tree(parent_id)
             except errors.NoSuchRevision:
-                # Ghost, fill out rev_id_to_root_id in case we
-                # encounter this again.
-                # But set parent_root_id to None since we don't
-                # really know
+                # Ghost, fill out rev_id_to_root_id in case we encounter this
+                # again.
+                # But set parent_root_id to None since we don't really know
                 parent_root_id = None
             else:
                 parent_root_id = tree.get_root_id()
@@ -289,10 +298,10 @@ def _parent_keys_for_root_version(
         else:
             parent_root_id = rev_id_to_root_id_map[parent_id]
         if root_id == parent_root_id:
-            # With stacking we _might_ want to refer to a non-local
-            # revision, but this code path only applies when we
-            # have the full content available, so ghosts really are
-            # ghosts, not just the edge of local data.
+            # With stacking we _might_ want to refer to a non-local revision,
+            # but this code path only applies when we have the full content
+            # available, so ghosts really are ghosts, not just the edge of
+            # local data.
             parent_ids.append(parent_id)
         else:
             # root_id may be in the parent anyway.
@@ -303,18 +312,15 @@ def _parent_keys_for_root_version(
                 pass
             else:
                 try:
-                    parent_ids.append(
-                        tree.inventory[root_id].revision)
+                    parent_ids.append(tree.inventory[root_id].revision)
                 except errors.NoSuchId:
                     # not in the tree
                     pass
     # Drop non-head parents
-    heads = graph.heads(parent_ids)
+    heads = repo.get_graph().heads(parent_ids)
     selected_ids = []
     for parent_id in parent_ids:
         if parent_id in heads and parent_id not in selected_ids:
             selected_ids.append(parent_id)
-        heads, selected_ids)
-    parent_keys = [
-        (root_id, parent_id) for parent_id in selected_ids]
+    parent_keys = [(root_id, parent_id) for parent_id in selected_ids]
     return parent_keys

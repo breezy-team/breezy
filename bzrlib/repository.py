@@ -3521,17 +3521,6 @@ class InterDifferingSerializer(InterRepository):
         deltas.sort()
         return deltas[0][1:]
 
-    def _new_root_data_stream(self, root_keys_to_create, parent_map):
-        from bzrlib.fetch import _parent_keys_for_root_version
-        g = graph.Graph(self.source.revisions)
-        for root_key in root_keys_to_create:
-            root_id, rev_id = root_key
-            parent_keys = _parent_keys_for_root_version(
-                root_id, rev_id, self._revision_id_to_root_id, parent_map, g,
-                self.source)
-            yield versionedfile.FulltextContentFactory(root_key,
-                parent_keys, None, '')
-
     def _fetch_batch(self, revision_ids, basis_id, cache):
         """Fetch across a few revisions.
 
@@ -3583,8 +3572,10 @@ class InterDifferingSerializer(InterRepository):
         from_texts = self.source.texts
         to_texts = self.target.texts
         if root_keys_to_create:
-            root_stream = self._new_root_data_stream(root_keys_to_create,
-                                                     parent_map)
+            from bzrlib.fetch import _new_root_data_stream
+            root_stream = _new_root_data_stream(
+                root_keys_to_create, self._revision_id_to_root_id, parent_map,
+                self.source)
             to_texts.insert_record_stream(root_stream)
         to_texts.insert_record_stream(from_texts.get_record_stream(
             text_keys, self.target._format._fetch_order,
