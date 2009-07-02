@@ -43,6 +43,42 @@ from bzrlib import (
 """)
 
 
+_valid_boolean_strings = dict(yes=True, no=False,
+                              y=True, n=False,
+                              on=True, off=False,
+                              true=True, false=False)
+_valid_boolean_strings['1'] = True
+_valid_boolean_strings['0'] = False
+
+
+def bool_from_string(s, accepted_values=None):
+    """Returns a boolean if the string can be interpreted as such.
+
+    Interpret case insensitive strings as booleans. The default values
+    includes: 'yes', 'no, 'y', 'n', 'true', 'false', '0', '1', 'on',
+    'off'. Alternative values can be provided with the 'accepted_values'
+    parameter.
+
+    :param s: A string that should be interpreted as a boolean. It should be of
+        type string or unicode.
+
+    :param accepted_values: An optional dict with accepted strings as keys and
+        True/False as values. The strings will be tested against a lowered
+        version of 's'.
+
+    :return: True or False for accepted strings, None otherwise.
+    """
+    if accepted_values is None:
+        accepted_values = _valid_boolean_strings
+    val = None
+    if type(s) in (str, unicode):
+        try:
+            val = accepted_values[s.lower()]
+        except KeyError:
+            pass
+    return val
+
+
 class UIFactory(object):
     """UI abstraction.
 
