@@ -131,7 +131,6 @@ class TransportTraceDecorator(TransportDecorator):
         upper_limit=None):
         # we override at the readv() level rather than _readv() so that any
         # latency adjustments will be done by the underlying transport
-        """See Transport.readv."""
         self._trace(('readv', relpath, offsets, adjust_for_latency,
             upper_limit))
         return self._decorated.readv(relpath, offsets, adjust_for_latency,
