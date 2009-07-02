@@ -18,7 +18,7 @@
 
 from operator import itemgetter
 
-from bzrlib import bzrdir, errors
+from bzrlib import bzrdir, errors, osutils
 from bzrlib.trace import error, note
 
 import branch_mapper
