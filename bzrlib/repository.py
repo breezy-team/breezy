@@ -4079,7 +4079,7 @@ class StreamSink(object):
                 if format_flags[1] and not target_tree_refs:
                     raise errors.IncompatibleRevision(self.target_repo._format)
                 self.target_repo.add_inventory_by_delta(
-                    basis_revision_id, inv_delta, new_id, record.parents)
+                    basis_id, inv_delta, new_id, record.parents)
                 continue
             # It's not a delta, so it must be a fulltext in the source
             # serializer's format.
