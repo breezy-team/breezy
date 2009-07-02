@@ -192,15 +192,16 @@ class CLIUIFactory(UIFactory):
         self.stdout = stdout or sys.stdout
         self.stderr = stderr or sys.stderr
 
+    _accepted_boolean_strings = dict(y=True, n=False, yes=True, no=False)
+
     def get_boolean(self, prompt):
         while True:
             self.prompt(prompt + "? [y/n]: ")
             line = self.stdin.readline()
-            line = line.lower()
-            if line in ('y\n', 'yes\n'):
-                return True
-            if line in ('n\n', 'no\n'):
-                return False
+            line = line.rstrip('\n')
+            val = bool_from_string(line, self._accepted_boolean_strings)
+            if val is not None:
+                return val
 
     def get_non_echoed_password(self):
         isatty = getattr(self.stdin, 'isatty', None)

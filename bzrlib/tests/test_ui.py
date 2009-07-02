@@ -174,21 +174,22 @@ class UITests(tests.TestCase):
         pb1.finished()
 
     def assert_get_bool_acceptance_of_user_input(self, factory):
-        factory.stdin = StringIO("y\nyes with garbage\n"
-                                 "yes\nn\nnot an answer\n"
-                                 "no\n"
-                                 "N\nY\n"
-                                 "foo\n"
-                                )
+        factory.stdin = StringIO("y\n" # True
+                                 "n\n" # False
+                                 "yes with garbage\nY\n" # True
+                                 "not an answer\nno\n" # False
+                                 "I'm sure!\nyes\n" # True
+                                 "NO\n" # False
+                                 "foo\n")
         factory.stdout = StringIO()
         factory.stderr = StringIO()
         # there is no output from the base factory
         self.assertEqual(True, factory.get_boolean(""))
-        self.assertEqual(True, factory.get_boolean(""))
-        self.assertEqual(False, factory.get_boolean(""))
-        self.assertEqual(False, factory.get_boolean(""))
         self.assertEqual(False, factory.get_boolean(""))
         self.assertEqual(True, factory.get_boolean(""))
+        self.assertEqual(False, factory.get_boolean(""))
+        self.assertEqual(True, factory.get_boolean(""))
+        self.assertEqual(False, factory.get_boolean(""))
         self.assertEqual("foo\n", factory.stdin.read())
         # stdin should be empty
         self.assertEqual('', factory.stdin.readline())
