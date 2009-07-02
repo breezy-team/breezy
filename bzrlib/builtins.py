@@ -450,18 +450,18 @@ class cmd_remove_tree(Command):
         except errors.NoWorkingTree:
             raise errors.BzrCommandError("No working tree to remove")
         except errors.NotLocalUrl:
-            raise errors.BzrCommandError("You cannot remove the working tree of a "
-                                         "remote path")
+            raise errors.BzrCommandError("You cannot remove the working tree"
+                                         " of a remote path")
         if not force:
-            changes = working.changes_from(working.basis_tree())
-            if changes.has_changed():
+            # XXX: What about pending merges ? -- vila 20090629
+            if working.has_changes(working.basis_tree()):
                 raise errors.UncommittedChanges(working)
 
         working_path = working.bzrdir.root_transport.base
         branch_path = working.branch.bzrdir.root_transport.base
         if working_path != branch_path:
-            raise errors.BzrCommandError("You cannot remove the working tree from "
-                                         "a lightweight checkout")
+            raise errors.BzrCommandError("You cannot remove the working tree"
+                                         " from a lightweight checkout")
 
         d.destroy_workingtree()
 
@@ -1115,8 +1115,8 @@ class cmd_push(Command):
             revision_id = None
         if (tree is not None and revision_id is None
             and (strict is None or strict)): # Default to True:
-            changes = tree.changes_from(tree.basis_tree())
-            if changes.has_changed() or len(tree.get_parent_ids()) > 1:
+            if (tree.has_changes(tree.basis_tree())
+                 or len(tree.get_parent_ids()) > 1):
                 raise errors.UncommittedChanges(
                     tree, more='Use --no-strict to force the push.')
             if tree.last_revision() != tree.branch.last_revision():
@@ -3642,8 +3642,7 @@ class cmd_merge(Command):
         except errors.NoSuchRevision:
             basis_tree = tree.basis_tree()
         if not force:
-            changes = tree.changes_from(basis_tree)
-            if changes.has_changed():
+            if tree.has_changes(basis_tree):
                 raise errors.UncommittedChanges(tree)
 
         view_info = _get_view_info_for_change_reporter(tree)
