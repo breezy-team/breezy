@@ -367,6 +367,15 @@ class TestIterChanges(TestCaseWithTwoTrees):
             tree1.unlock()
             tree2.unlock()
 
+    def do_has_changes(self, tree1, tree2, **extra_args):
+        tree1.lock_read()
+        tree2.lock_read()
+        try:
+            return tree1.has_changes(tree2)
+        finally:
+            tree1.unlock()
+            tree2.unlock()
+
     def mutable_trees_to_locked_test_trees(self, tree1, tree2):
         """Convert the working trees into test trees.
 
@@ -436,6 +445,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2 = self.get_tree_no_parents_no_content(tree2)
         tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         self.assertEqual([], self.do_iter_changes(tree1, tree2))
+        self.assertEquals(False, self.do_has_changes(tree1, tree2))
 
     def added(self, tree, file_id):
         path, entry = self.get_path_entry(tree, file_id)
@@ -519,6 +529,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
             self.added(tree2, 'c-id'),
             self.deleted(tree1, 'empty-root-id')])
         self.assertEqual(expected_results, self.do_iter_changes(tree1, tree2))
+        self.assertEquals(True, self.do_has_changes(tree1, tree2))
 
     def test_empty_specific_files(self):
         tree1 = self.make_branch_and_tree('1')
@@ -542,6 +553,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
             self.added(tree2, 'c-id'),
             self.deleted(tree1, 'empty-root-id')])
         self.assertEqual(expected_results, self.do_iter_changes(tree1, tree2))
+        self.assertEquals(True, self.do_has_changes(tree1, tree2))
 
     def test_empty_to_abc_content_a_only(self):
         tree1 = self.make_branch_and_tree('1')
@@ -593,6 +605,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         self.assertEqual(
             expected_results,
             self.do_iter_changes(tree1, tree2))
+        self.assertEquals(True, self.do_has_changes(tree1, tree2))
 
     def test_content_modification(self):
         tree1 = self.make_branch_and_tree('1')
@@ -605,6 +618,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
                            (root_id, root_id), ('a', 'a'),
                            ('file', 'file'), (False, False))],
                          self.do_iter_changes(tree1, tree2))
+        self.assertEquals(True, self.do_has_changes(tree1, tree2))
 
     def test_meta_modification(self):
         tree1 = self.make_branch_and_tree('1')
@@ -834,6 +848,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
             self.content_changed(tree2, 'c-id'),
             ])
         self.assertEqual(expected, self.do_iter_changes(tree1, tree2))
+        self.assertEquals(True, self.do_has_changes(tree1, tree2))
 
     def test_unversioned_paths_in_tree(self):
         tree1 = self.make_branch_and_tree('tree1')
@@ -1051,6 +1066,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         self.assertEqual(expected,
             self.do_iter_changes(tree1, tree2, include_unchanged=True,
                 want_unversioned=True))
+        self.assertEquals(True, self.do_has_changes(tree1, tree2))
 
     def test_versioned_symlinks_specific_files(self):
         self.requireFeature(tests.SymlinkFeature)
@@ -1072,17 +1088,20 @@ class TestIterChanges(TestCaseWithTwoTrees):
         self.assertEqual(expected, self.do_iter_changes(tree1, tree2,
             specific_files=['added', 'changed', 'fromdir', 'fromfile',
             'removed', 'unchanged', 'todir', 'tofile']))
+        self.assertEquals(True, self.do_has_changes(tree1, tree2))
 
     def test_tree_with_special_names(self):
         tree1, tree2, paths, path_ids = self.make_tree_with_special_names()
         expected = sorted(self.added(tree2, f_id) for f_id in path_ids)
         self.assertEqual(expected, self.do_iter_changes(tree1, tree2))
+        self.assertEquals(True, self.do_has_changes(tree1, tree2))
 
     def test_trees_with_special_names(self):
         tree1, tree2, paths, path_ids = self.make_trees_with_special_names()
         expected = sorted(self.content_changed(tree2, f_id) for f_id in path_ids
                           if f_id.endswith('_f-id'))
         self.assertEqual(expected, self.do_iter_changes(tree1, tree2))
+        self.assertEquals(True, self.do_has_changes(tree1, tree2))
 
     def test_trees_with_deleted_dir(self):
         tree1 = self.make_branch_and_tree('tree1')
@@ -1106,6 +1125,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
             self.deleted(tree1, 'e-id'),
             ])
         self.assertEqual(expected, self.do_iter_changes(tree1, tree2))
+        self.assertEquals(True, self.do_has_changes(tree1, tree2))
 
     def test_added_unicode(self):
         tree1 = self.make_branch_and_tree('tree1')
@@ -1134,6 +1154,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         self.assertEqual([self.added(tree2, added_id)],
                          self.do_iter_changes(tree1, tree2,
                                               specific_files=[u'\u03b1']))
+        self.assertEquals(True, self.do_has_changes(tree1, tree2))
 
     def test_deleted_unicode(self):
         tree1 = self.make_branch_and_tree('tree1')
@@ -1162,6 +1183,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         self.assertEqual([self.deleted(tree1, deleted_id)],
                          self.do_iter_changes(tree1, tree2,
                                               specific_files=[u'\u03b1']))
+        self.assertEquals(True, self.do_has_changes(tree1, tree2))
 
     def test_modified_unicode(self):
         tree1 = self.make_branch_and_tree('tree1')
@@ -1191,6 +1213,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         self.assertEqual([self.content_changed(tree1, mod_id)],
                          self.do_iter_changes(tree1, tree2,
                                               specific_files=[u'\u03b1']))
+        self.assertEquals(True, self.do_has_changes(tree1, tree2))
 
     def test_renamed_unicode(self):
         tree1 = self.make_branch_and_tree('tree1')
@@ -1221,6 +1244,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
         self.assertEqual([self.renamed(tree1, tree2, rename_id, False)],
                          self.do_iter_changes(tree1, tree2,
                                               specific_files=[u'\u03b1']))
+        self.assertEquals(True, self.do_has_changes(tree1, tree2))
 
     def test_unchanged_unicode(self):
         tree1 = self.make_branch_and_tree('tree1')
@@ -1309,6 +1333,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
                                               want_unversioned=True))
         self.assertEqual([], # Without want_unversioned we should get nothing
                          self.do_iter_changes(tree1, tree2))
+        self.assertEquals(False, self.do_has_changes(tree1, tree2))
 
         # We should also be able to select just a subset
         expected = sorted([
@@ -1389,6 +1414,7 @@ class TestIterChanges(TestCaseWithTwoTrees):
             ])
         self.assertEqual(expected,
                          self.do_iter_changes(tree1, tree2))
+        self.assertEquals(True, self.do_has_changes(tree1, tree2))
 
     def test_deleted_and_unknown(self):
         """Test a file marked removed, but still present on disk."""
