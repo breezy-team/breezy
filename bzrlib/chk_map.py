@@ -1409,29 +1409,29 @@ class CHKMapDifference(object):
     but it won't yield (key,value) pairs that are common.
     """
 
-    def __init__(self, store, interesting_root_keys, uninteresting_root_keys,
+    def __init__(self, store, new_root_keys, old_root_keys,
                  search_key_func, pb=None):
         self._store = store
-        self._interesting_root_keys = interesting_root_keys
-        self._uninteresting_root_keys = uninteresting_root_keys
+        self._new_root_keys = new_root_keys
+        self._old_root_keys = old_root_keys
         self._pb = pb
         # All uninteresting chks that we have seen. By the time they are added
         # here, they should be either fully ignored, or queued up for
         # processing
-        self._all_uninteresting_chks = set(self._uninteresting_root_keys)
-        # All items that we have seen from the uninteresting_root_keys
-        self._all_uninteresting_items = set()
+        self._all_old_chks = set(self._old_root_keys)
+        # All items that we have seen from the old_root_keys
+        self._all_old_items = set()
         # These are interesting items which were either read, or already in the
         # interesting queue (so we don't need to walk them again)
-        self._processed_interesting_refs = set()
+        self._processed_new_refs = set()
         self._search_key_func = search_key_func
 
         # The uninteresting and interesting nodes to be searched
-        self._uninteresting_queue = []
-        self._interesting_queue = []
+        self._old_queue = []
+        self._new_queue = []
         # Holds the (key, value) items found when processing the root nodes,
         # waiting for the uninteresting nodes to be walked
-        self._interesting_item_queue = []
+        self._new_item_queue = []
         self._state = None
 
     def _read_nodes_from_store(self, keys):
@@ -1459,38 +1459,38 @@ class CHKMapDifference(object):
                 items = node._items.items()
             yield record, node, prefix_refs, items
 
-    def _read_uninteresting_roots(self):
-        uninteresting_chks_to_enqueue = []
-        all_uninteresting_chks = self._all_uninteresting_chks
+    def _read_old_roots(self):
+        old_chks_to_enqueue = []
+        all_old_chks = self._all_old_chks
         for record, node, prefix_refs, items in \
-                self._read_nodes_from_store(self._uninteresting_root_keys):
+                self._read_nodes_from_store(self._old_root_keys):
             # Uninteresting node
             prefix_refs = [p_r for p_r in prefix_refs
-                                if p_r[1] not in all_uninteresting_chks]
+                                if p_r[1] not in all_old_chks]
             new_refs = [p_r[1] for p_r in prefix_refs]
-            all_uninteresting_chks.update(new_refs)
-            self._all_uninteresting_items.update(items)
+            all_old_chks.update(new_refs)
+            self._all_old_items.update(items)
             # Queue up the uninteresting references
             # Don't actually put them in the 'to-read' queue until we have
             # finished checking the interesting references
-            uninteresting_chks_to_enqueue.extend(prefix_refs)
-        return uninteresting_chks_to_enqueue
+            old_chks_to_enqueue.extend(prefix_refs)
+        return old_chks_to_enqueue
 
-    def _enqueue_uninteresting(self, interesting_prefixes,
-                               uninteresting_chks_to_enqueue):
+    def _enqueue_old(self, new_prefixes,
+                               old_chks_to_enqueue):
         # At this point, we have read all the uninteresting and interesting
         # items, so we can queue up the uninteresting stuff, knowing that we've
         # handled the interesting ones
-        for prefix, ref in uninteresting_chks_to_enqueue:
+        for prefix, ref in old_chks_to_enqueue:
             not_interesting = True
             for i in xrange(len(prefix), 0, -1):
-                if prefix[:i] in interesting_prefixes:
+                if prefix[:i] in new_prefixes:
                     not_interesting = False
                     break
             if not_interesting:
                 # This prefix is not part of the remaining 'interesting set'
                 continue
-            self._uninteresting_queue.append(ref)
+            self._old_queue.append(ref)
 
     def _read_all_roots(self):
         """Read the root pages.
@@ -1499,68 +1499,68 @@ class CHKMapDifference(object):
         yielded up to whoever needs them without any buffering.
         """
         # This is the bootstrap phase
-        if not self._uninteresting_root_keys:
-            # With no uninteresting_root_keys we can just shortcut and be ready
-            # for _flush_interesting_queue
-            self._interesting_queue = list(self._interesting_root_keys)
+        if not self._old_root_keys:
+            # With no old_root_keys we can just shortcut and be ready
+            # for _flush_new_queue
+            self._new_queue = list(self._new_root_keys)
             return
-        uninteresting_chks_to_enqueue = self._read_uninteresting_roots()
+        old_chks_to_enqueue = self._read_old_roots()
         # filter out any root keys that are already known to be uninteresting
-        interesting_keys = set(self._interesting_root_keys).difference(
-                                self._all_uninteresting_chks)
-        # These are prefixes that are present in interesting_keys that we are
+        new_keys = set(self._new_root_keys).difference(
+                                self._all_old_chks)
+        # These are prefixes that are present in new_keys that we are
         # thinking to yield
-        interesting_prefixes = set()
+        new_prefixes = set()
         # We are about to yield all of these, so we don't want them getting
         # added a second time
-        processed_interesting_refs = self._processed_interesting_refs
-        processed_interesting_refs.update(interesting_keys)
+        processed_new_refs = self._processed_new_refs
+        processed_new_refs.update(new_keys)
         for record, node, prefix_refs, items in \
-                self._read_nodes_from_store(interesting_keys):
+                self._read_nodes_from_store(new_keys):
             # At this level, we now know all the uninteresting references
             # So we filter and queue up whatever is remaining
             prefix_refs = [p_r for p_r in prefix_refs
-                           if p_r[1] not in self._all_uninteresting_chks
-                              and p_r[1] not in processed_interesting_refs]
+                           if p_r[1] not in self._all_old_chks
+                              and p_r[1] not in processed_new_refs]
             refs = [p_r[1] for p_r in prefix_refs]
-            interesting_prefixes.update([p_r[0] for p_r in prefix_refs])
-            self._interesting_queue.extend(refs)
+            new_prefixes.update([p_r[0] for p_r in prefix_refs])
+            self._new_queue.extend(refs)
             # TODO: We can potentially get multiple items here, however the
             #       current design allows for this, as callers will do the work
             #       to make the results unique. We might profile whether we
             #       gain anything by ensuring unique return values for items
-            interesting_items = [item for item in items
-                                 if item not in self._all_uninteresting_items]
-            self._interesting_item_queue.extend(interesting_items)
-            interesting_prefixes.update([self._search_key_func(item[0])
-                                         for item in interesting_items])
-            processed_interesting_refs.update(refs)
+            new_items = [item for item in items
+                                 if item not in self._all_old_items]
+            self._new_item_queue.extend(new_items)
+            new_prefixes.update([self._search_key_func(item[0])
+                                         for item in new_items])
+            processed_new_refs.update(refs)
             yield record
-        # For interesting_prefixes we have the full length prefixes queued up.
+        # For new_prefixes we have the full length prefixes queued up.
         # However, we also need possible prefixes. (If we have a known ref to
         # 'ab', then we also need to include 'a'.) So expand the
-        # interesting_prefixes to include all shorter prefixes
-        for prefix in list(interesting_prefixes):
-            interesting_prefixes.update([prefix[:i]
+        # new_prefixes to include all shorter prefixes
+        for prefix in list(new_prefixes):
+            new_prefixes.update([prefix[:i]
                                          for i in xrange(1, len(prefix))])
-        self._enqueue_uninteresting(interesting_prefixes,
-                                    uninteresting_chks_to_enqueue)
+        self._enqueue_old(new_prefixes,
+                                    old_chks_to_enqueue)
 
-    def _flush_interesting_queue(self):
+    def _flush_new_queue(self):
         # No need to maintain the heap invariant anymore, just pull things out
         # and process them
-        refs = set(self._interesting_queue)
-        self._interesting_queue = []
+        refs = set(self._new_queue)
+        self._new_queue = []
         # First pass, flush all interesting items and convert to using direct refs
-        all_uninteresting_chks = self._all_uninteresting_chks
-        processed_interesting_refs = self._processed_interesting_refs
-        all_uninteresting_items = self._all_uninteresting_items
-        interesting_items = [item for item in self._interesting_item_queue
-                                   if item not in all_uninteresting_items]
-        self._interesting_item_queue = []
-        if interesting_items:
-            yield None, interesting_items
-        refs = refs.difference(all_uninteresting_chks)
+        all_old_chks = self._all_old_chks
+        processed_new_refs = self._processed_new_refs
+        all_old_items = self._all_old_items
+        new_items = [item for item in self._new_item_queue
+                                   if item not in all_old_items]
+        self._new_item_queue = []
+        if new_items:
+            yield None, new_items
+        refs = refs.difference(all_old_chks)
         while refs:
             next_refs = set()
             next_refs_update = next_refs.update
@@ -1568,30 +1568,30 @@ class CHKMapDifference(object):
             # from 1m54s to 1m51s. Consider it.
             for record, _, p_refs, items in self._read_nodes_from_store(refs):
                 items = [item for item in items
-                         if item not in all_uninteresting_items]
+                         if item not in all_old_items]
                 yield record, items
                 next_refs_update([p_r[1] for p_r in p_refs])
-            next_refs = next_refs.difference(all_uninteresting_chks)
-            next_refs = next_refs.difference(processed_interesting_refs)
-            processed_interesting_refs.update(next_refs)
+            next_refs = next_refs.difference(all_old_chks)
+            next_refs = next_refs.difference(processed_new_refs)
+            processed_new_refs.update(next_refs)
             refs = next_refs
 
-    def _process_next_uninteresting(self):
+    def _process_next_old(self):
         # Since we don't filter uninteresting any further than during
         # _read_all_roots, process the whole queue in a single pass.
-        refs = self._uninteresting_queue
-        self._uninteresting_queue = []
-        all_uninteresting_chks = self._all_uninteresting_chks
+        refs = self._old_queue
+        self._old_queue = []
+        all_old_chks = self._all_old_chks
         for record, _, prefix_refs, items in self._read_nodes_from_store(refs):
-            self._all_uninteresting_items.update(items)
-            refs = [r for _,r in prefix_refs if r not in all_uninteresting_chks]
-            self._uninteresting_queue.extend(refs)
-            all_uninteresting_chks.update(refs)
+            self._all_old_items.update(items)
+            refs = [r for _,r in prefix_refs if r not in all_old_chks]
+            self._old_queue.extend(refs)
+            all_old_chks.update(refs)
 
     def _process_queues(self):
-        while self._uninteresting_queue:
-            self._process_next_uninteresting()
-        return self._flush_interesting_queue()
+        while self._old_queue:
+            self._process_next_old()
+        return self._flush_new_queue()
 
     def process(self):
         for record in self._read_all_roots():

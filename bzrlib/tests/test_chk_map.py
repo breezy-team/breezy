@@ -2126,12 +2126,12 @@ class TestInternalNode(TestCaseWithStore):
 
 class TestCHKMapDifference(TestCaseWithExampleMaps):
 
-    def get_difference(self, interesting_roots, uninteresting_roots,
+    def get_difference(self, new_roots, old_roots,
                        search_key_func=None):
         if search_key_func is None:
             search_key_func = chk_map._search_key_plain
         return chk_map.CHKMapDifference(self.get_chk_bytes(),
-            interesting_roots, uninteresting_roots, search_key_func)
+            new_roots, old_roots, search_key_func)
 
     def test__init__(self):
         c_map = self.make_root_only_map()
@@ -2139,9 +2139,9 @@ class TestCHKMapDifference(TestCaseWithExampleMaps):
         c_map.map(('aaa',), 'new aaa content')
         key2 = c_map._save()
         diff = self.get_difference([key2], [key1])
-        self.assertEqual(set([key1]), diff._all_uninteresting_chks)
-        self.assertEqual([], diff._uninteresting_queue)
-        self.assertEqual([], diff._interesting_queue)
+        self.assertEqual(set([key1]), diff._all_old_chks)
+        self.assertEqual([], diff._old_queue)
+        self.assertEqual([], diff._new_queue)
 
     def help__read_all_roots(self, search_key_func):
         c_map = self.make_root_only_map(search_key_func=search_key_func)
@@ -2151,14 +2151,14 @@ class TestCHKMapDifference(TestCaseWithExampleMaps):
         diff = self.get_difference([key2], [key1], search_key_func)
         root_results = [record.key for record in diff._read_all_roots()]
         self.assertEqual([key2], root_results)
-        # We should have queued up only items that aren't in the uninteresting
+        # We should have queued up only items that aren't in the old
         # set
         self.assertEqual([(('aaa',), 'new aaa content')],
-                         diff._interesting_item_queue)
-        self.assertEqual([], diff._interesting_queue)
-        # And there are no uninteresting references, so that queue should be
+                         diff._new_item_queue)
+        self.assertEqual([], diff._new_queue)
+        # And there are no old references, so that queue should be
         # empty
-        self.assertEqual([], diff._uninteresting_queue)
+        self.assertEqual([], diff._old_queue)
 
     def test__read_all_roots_plain(self):
         self.help__read_all_roots(search_key_func=chk_map._search_key_plain)
@@ -2166,7 +2166,7 @@ class TestCHKMapDifference(TestCaseWithExampleMaps):
     def test__read_all_roots_16(self):
         self.help__read_all_roots(search_key_func=chk_map._search_key_16)
 
-    def test__read_all_roots_skips_known_uninteresting(self):
+    def test__read_all_roots_skips_known_old(self):
         c_map = self.make_one_deep_map(chk_map._search_key_plain)
         key1 = c_map.key()
         c_map2 = self.make_root_only_map(chk_map._search_key_plain)
@@ -2190,11 +2190,11 @@ class TestCHKMapDifference(TestCaseWithExampleMaps):
         self.assertEqual([key2], root_results)
         # At this point, we should have queued up only the 'a' Leaf on both
         # sides, both 'c' and 'd' are known to not have changed on both sides
-        self.assertEqual([key2_a], diff._interesting_queue)
-        self.assertEqual([], diff._interesting_item_queue)
-        self.assertEqual([key1_a], diff._uninteresting_queue)
+        self.assertEqual([key2_a], diff._new_queue)
+        self.assertEqual([], diff._new_item_queue)
+        self.assertEqual([key1_a], diff._old_queue)
 
-    def test__read_all_roots_multi_interesting_prepares_queues(self):
+    def test__read_all_roots_multi_new_prepares_queues(self):
         c_map = self.make_one_deep_map(chk_map._search_key_plain)
         key1 = c_map.key()
         c_map._dump_tree() # load everything
@@ -2215,10 +2215,10 @@ class TestCHKMapDifference(TestCaseWithExampleMaps):
         root_results = [record.key for record in diff._read_all_roots()]
         self.assertEqual(sorted([key2, key3]), sorted(root_results))
         # We should have queued up key2_a, and key3_c, but not key2_c or key3_c
-        self.assertEqual([key2_a, key3_c], diff._interesting_queue)
-        self.assertEqual([], diff._interesting_item_queue)
-        # And we should have queued up both a and c for the uninteresting set
-        self.assertEqual([key1_a, key1_c], diff._uninteresting_queue)
+        self.assertEqual([key2_a, key3_c], diff._new_queue)
+        self.assertEqual([], diff._new_item_queue)
+        # And we should have queued up both a and c for the old set
+        self.assertEqual([key1_a, key1_c], diff._old_queue)
 
     def test__read_all_roots_different_depths(self):
         c_map = self.make_two_deep_map(chk_map._search_key_plain)
@@ -2239,17 +2239,17 @@ class TestCHKMapDifference(TestCaseWithExampleMaps):
         self.assertEqual([key2], root_results)
         # Only the 'a' subset should be queued up, since 'c' and 'd' cannot be
         # present
-        self.assertEqual([key1_a], diff._uninteresting_queue)
-        self.assertEqual([key2_aa, key2_ad], diff._interesting_queue)
-        self.assertEqual([], diff._interesting_item_queue)
+        self.assertEqual([key1_a], diff._old_queue)
+        self.assertEqual([key2_aa, key2_ad], diff._new_queue)
+        self.assertEqual([], diff._new_item_queue)
 
         diff = self.get_difference([key1], [key2], chk_map._search_key_plain)
         root_results = [record.key for record in diff._read_all_roots()]
         self.assertEqual([key1], root_results)
 
-        self.assertEqual([key2_aa, key2_ad], diff._uninteresting_queue)
-        self.assertEqual([key1_a, key1_c, key1_d], diff._interesting_queue)
-        self.assertEqual([], diff._interesting_item_queue)
+        self.assertEqual([key2_aa, key2_ad], diff._old_queue)
+        self.assertEqual([key1_a, key1_c, key1_d], diff._new_queue)
+        self.assertEqual([], diff._new_item_queue)
 
     def test__read_all_roots_different_depths_16(self):
         c_map = self.make_two_deep_map(chk_map._search_key_16)
@@ -2272,20 +2272,20 @@ class TestCHKMapDifference(TestCaseWithExampleMaps):
         root_results = [record.key for record in diff._read_all_roots()]
         self.assertEqual([key2], root_results)
         # Only the subset of keys that may be present should be queued up.
-        self.assertEqual([key1_F], diff._uninteresting_queue)
+        self.assertEqual([key1_F], diff._old_queue)
         self.assertEqual(sorted([key2_F0, key2_F3, key2_F4, key2_FD]),
-                         sorted(diff._interesting_queue))
-        self.assertEqual([], diff._interesting_item_queue)
+                         sorted(diff._new_queue))
+        self.assertEqual([], diff._new_item_queue)
 
         diff = self.get_difference([key1], [key2], chk_map._search_key_16)
         root_results = [record.key for record in diff._read_all_roots()]
         self.assertEqual([key1], root_results)
 
         self.assertEqual(sorted([key2_F0, key2_F3, key2_F4, key2_FD]),
-                         sorted(diff._uninteresting_queue))
+                         sorted(diff._old_queue))
         self.assertEqual(sorted([key1_2, key1_4, key1_C, key1_F]),
-                         sorted(diff._interesting_queue))
-        self.assertEqual([], diff._interesting_item_queue)
+                         sorted(diff._new_queue))
+        self.assertEqual([], diff._new_item_queue)
 
     def test__read_all_roots_mixed_depth(self):
         c_map = self.make_one_deep_two_prefix_map(chk_map._search_key_plain)
@@ -2305,9 +2305,9 @@ class TestCHKMapDifference(TestCaseWithExampleMaps):
         self.assertEqual([key2], root_results)
         # 'ad' matches exactly 'a' on the other side, so it should be removed,
         # and neither side should have it queued for walking
-        self.assertEqual([], diff._uninteresting_queue)
-        self.assertEqual([key2_b], diff._interesting_queue)
-        self.assertEqual([], diff._interesting_item_queue)
+        self.assertEqual([], diff._old_queue)
+        self.assertEqual([key2_b], diff._new_queue)
+        self.assertEqual([], diff._new_item_queue)
 
         diff = self.get_difference([key1], [key2], chk_map._search_key_plain)
         root_results = [record.key for record in diff._read_all_roots()]
@@ -2318,15 +2318,15 @@ class TestCHKMapDifference(TestCaseWithExampleMaps):
         #       than one interesting key, so for now, we live with this
         #       Consider revising, though benchmarking showing it to be a
         #       real-world issue should be done
-        self.assertEqual([key2_a], diff._uninteresting_queue)
-        # self.assertEqual([], diff._uninteresting_queue)
-        self.assertEqual([key1_aa], diff._interesting_queue)
-        self.assertEqual([], diff._interesting_item_queue)
+        self.assertEqual([key2_a], diff._old_queue)
+        # self.assertEqual([], diff._old_queue)
+        self.assertEqual([key1_aa], diff._new_queue)
+        self.assertEqual([], diff._new_item_queue)
 
     def test__read_all_roots_yields_extra_deep_records(self):
         # This is slightly controversial, as we will yield a chk page that we
         # might later on find out could be filtered out. (If a root node is
-        # referenced deeper in the uninteresting set.)
+        # referenced deeper in the old set.)
         # However, even with stacking, we always have all chk pages that we
         # will need. So as long as we filter out the referenced keys, we'll
         # never run into problems.
@@ -2352,10 +2352,10 @@ class TestCHKMapDifference(TestCaseWithExampleMaps):
         # However, even though we have yielded the root node to be fetched,
         # we should have enqued all of the chk pages to be walked, so that we
         # can find the keys if they are present
-        self.assertEqual([key1_a], diff._uninteresting_queue)
+        self.assertEqual([key1_a], diff._old_queue)
         self.assertEqual([(('acc',), 'initial acc content'),
                           (('ace',), 'initial ace content'),
-                         ], diff._interesting_item_queue)
+                         ], diff._new_item_queue)
 
     def test__read_all_roots_multiple_targets(self):
         c_map = self.make_root_only_map()
@@ -2372,44 +2372,44 @@ class TestCHKMapDifference(TestCaseWithExampleMaps):
                                      chk_map._search_key_plain)
         root_results = [record.key for record in diff._read_all_roots()]
         self.assertEqual(sorted([key2, key3]), sorted(root_results))
-        self.assertEqual([], diff._uninteresting_queue)
+        self.assertEqual([], diff._old_queue)
         # the key 'd' is interesting from key2 and key3, but should only be
         # entered into the queue 1 time
         self.assertEqual(sorted([key2_c, key3_c, key2_d]),
-                         sorted(diff._interesting_queue))
-        self.assertEqual([], diff._interesting_item_queue)
+                         sorted(diff._new_queue))
+        self.assertEqual([], diff._new_item_queue)
 
-    def test__read_all_roots_no_uninteresting(self):
-        # This is the 'initial branch' case. With nothing in the uninteresting
+    def test__read_all_roots_no_old(self):
+        # This is the 'initial branch' case. With nothing in the old
         # set, we can just queue up all root nodes into interesting queue, and
-        # then have them fast-path flushed via _flush_interesting_queue
+        # then have them fast-path flushed via _flush_new_queue
         c_map = self.make_two_deep_map()
         key1 = c_map.key()
         diff = self.get_difference([key1], [], chk_map._search_key_plain)
         root_results = [record.key for record in diff._read_all_roots()]
         self.assertEqual([], root_results)
-        self.assertEqual([], diff._uninteresting_queue)
-        self.assertEqual([key1], diff._interesting_queue)
-        self.assertEqual([], diff._interesting_item_queue)
+        self.assertEqual([], diff._old_queue)
+        self.assertEqual([key1], diff._new_queue)
+        self.assertEqual([], diff._new_item_queue)
 
         c_map2 = self.make_one_deep_map()
         key2 = c_map2.key()
         diff = self.get_difference([key1, key2], [], chk_map._search_key_plain)
         root_results = [record.key for record in diff._read_all_roots()]
         self.assertEqual([], root_results)
-        self.assertEqual([], diff._uninteresting_queue)
-        self.assertEqual(sorted([key1, key2]), sorted(diff._interesting_queue))
-        self.assertEqual([], diff._interesting_item_queue)
+        self.assertEqual([], diff._old_queue)
+        self.assertEqual(sorted([key1, key2]), sorted(diff._new_queue))
+        self.assertEqual([], diff._new_item_queue)
 
-    def test__read_all_roots_no_uninteresting_16(self):
+    def test__read_all_roots_no_old_16(self):
         c_map = self.make_two_deep_map(chk_map._search_key_16)
         key1 = c_map.key()
         diff = self.get_difference([key1], [], chk_map._search_key_16)
         root_results = [record.key for record in diff._read_all_roots()]
         self.assertEqual([], root_results)
-        self.assertEqual([], diff._uninteresting_queue)
-        self.assertEqual([key1], diff._interesting_queue)
-        self.assertEqual([], diff._interesting_item_queue)
+        self.assertEqual([], diff._old_queue)
+        self.assertEqual([key1], diff._new_queue)
+        self.assertEqual([], diff._new_item_queue)
 
         c_map2 = self.make_one_deep_map(chk_map._search_key_16)
         key2 = c_map2.key()
@@ -2417,12 +2417,12 @@ class TestCHKMapDifference(TestCaseWithExampleMaps):
                                    chk_map._search_key_16)
         root_results = [record.key for record in diff._read_all_roots()]
         self.assertEqual([], root_results)
-        self.assertEqual([], diff._uninteresting_queue)
+        self.assertEqual([], diff._old_queue)
         self.assertEqual(sorted([key1, key2]),
-                         sorted(diff._interesting_queue))
-        self.assertEqual([], diff._interesting_item_queue)
+                         sorted(diff._new_queue))
+        self.assertEqual([], diff._new_item_queue)
 
-    def test__read_all_roots_multiple_uninteresting(self):
+    def test__read_all_roots_multiple_old(self):
         c_map = self.make_two_deep_map()
         key1 = c_map.key()
         c_map._dump_tree() # load everything
@@ -2439,11 +2439,11 @@ class TestCHKMapDifference(TestCaseWithExampleMaps):
         self.assertEqual([key3], root_results)
         # the 'a' keys should not be queued up 2 times, since they are
         # identical
-        self.assertEqual([key1_a], diff._uninteresting_queue)
-        self.assertEqual([key3_a], diff._interesting_queue)
-        self.assertEqual([], diff._interesting_item_queue)
+        self.assertEqual([key1_a], diff._old_queue)
+        self.assertEqual([key3_a], diff._new_queue)
+        self.assertEqual([], diff._new_item_queue)
 
-    def test__process_next_uninteresting_batched_no_dupes(self):
+    def test__process_next_old_batched_no_dupes(self):
         c_map = self.make_two_deep_map()
         key1 = c_map.key()
         c_map._dump_tree() # load everything
@@ -2465,14 +2465,14 @@ class TestCHKMapDifference(TestCaseWithExampleMaps):
         root_results = [record.key for record in diff._read_all_roots()]
         self.assertEqual([key3], root_results)
         self.assertEqual(sorted([key1_a, key2_a]),
-                         sorted(diff._uninteresting_queue))
-        self.assertEqual([key3_a], diff._interesting_queue)
-        self.assertEqual([], diff._interesting_item_queue)
-        diff._process_next_uninteresting()
-        # All of the uninteresting records should be brought in and queued up,
+                         sorted(diff._old_queue))
+        self.assertEqual([key3_a], diff._new_queue)
+        self.assertEqual([], diff._new_item_queue)
+        diff._process_next_old()
+        # All of the old records should be brought in and queued up,
         # but we should not have any duplicates
         self.assertEqual(sorted([key1_aa, key1_ab, key1_ac, key1_ad, key2_aa]),
-                         sorted(diff._uninteresting_queue))
+                         sorted(diff._old_queue))
 
 
 class TestIterInterestingNodes(TestCaseWithExampleMaps):
@@ -2482,7 +2482,7 @@ class TestIterInterestingNodes(TestCaseWithExampleMaps):
         return c_map.key()
 
     def assertIterInteresting(self, records, items, interesting_keys,
-                              uninteresting_keys):
+                              old_keys):
         """Check the result of iter_interesting_nodes.
 
         Note that we no longer care how many steps are taken, etc, just that
@@ -2494,7 +2494,7 @@ class TestIterInterestingNodes(TestCaseWithExampleMaps):
         store = self.get_chk_bytes()
         store._search_key_func = chk_map._search_key_plain
         iter_nodes = chk_map.iter_interesting_nodes(store, interesting_keys,
-                                                    uninteresting_keys)
+                                                    old_keys)
         record_keys = []
         all_items = []
         for record, new_items in iter_nodes:
@@ -2690,8 +2690,8 @@ class TestIterInterestingNodes(TestCaseWithExampleMaps):
 
     def test_multiple_maps_overlapping_common_new(self):
         # Test that when a node found through the interesting_keys iteration
-        # for *some roots* and also via the uninteresting keys iteration, that
-        # it is still scanned for uninteresting refs and items, because its
+        # for *some roots* and also via the old keys iteration, that
+        # it is still scanned for old refs and items, because its
         # not truely new. This requires 2 levels of InternalNodes to expose,
         # because of the way the bootstrap in _find_children_info works.
         # This suggests that the code is probably amenable to/benefit from
