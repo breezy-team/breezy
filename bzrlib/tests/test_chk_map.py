@@ -2124,13 +2124,13 @@ class TestInternalNode(TestCaseWithStore):
 # 1-4K get0
 
 
-class TestInterestingNodeIterator(TestCaseWithExampleMaps):
+class TestCHKMapDifference(TestCaseWithExampleMaps):
 
-    def get_iterator(self, interesting_roots, uninteresting_roots,
-                     search_key_func=None):
+    def get_difference(self, interesting_roots, uninteresting_roots,
+                       search_key_func=None):
         if search_key_func is None:
             search_key_func = chk_map._search_key_plain
-        return chk_map.InterestingNodeIterator(self.get_chk_bytes(),
+        return chk_map.CHKMapDifference(self.get_chk_bytes(),
             interesting_roots, uninteresting_roots, search_key_func)
 
     def test__init__(self):
@@ -2138,27 +2138,27 @@ class TestInterestingNodeIterator(TestCaseWithExampleMaps):
         key1 = c_map.key()
         c_map.map(('aaa',), 'new aaa content')
         key2 = c_map._save()
-        iterator = self.get_iterator([key2], [key1])
-        self.assertEqual(set([key1]), iterator._all_uninteresting_chks)
-        self.assertEqual([], iterator._uninteresting_queue)
-        self.assertEqual([], iterator._interesting_queue)
+        diff = self.get_difference([key2], [key1])
+        self.assertEqual(set([key1]), diff._all_uninteresting_chks)
+        self.assertEqual([], diff._uninteresting_queue)
+        self.assertEqual([], diff._interesting_queue)
 
     def help__read_all_roots(self, search_key_func):
         c_map = self.make_root_only_map(search_key_func=search_key_func)
         key1 = c_map.key()
         c_map.map(('aaa',), 'new aaa content')
         key2 = c_map._save()
-        iterator = self.get_iterator([key2], [key1], search_key_func)
-        root_results = [record.key for record in iterator._read_all_roots()]
+        diff = self.get_difference([key2], [key1], search_key_func)
+        root_results = [record.key for record in diff._read_all_roots()]
         self.assertEqual([key2], root_results)
         # We should have queued up only items that aren't in the uninteresting
         # set
         self.assertEqual([(('aaa',), 'new aaa content')],
-                         iterator._interesting_item_queue)
-        self.assertEqual([], iterator._interesting_queue)
+                         diff._interesting_item_queue)
+        self.assertEqual([], diff._interesting_queue)
         # And there are no uninteresting references, so that queue should be
         # empty
-        self.assertEqual([], iterator._uninteresting_queue)
+        self.assertEqual([], diff._uninteresting_queue)
 
     def test__read_all_roots_plain(self):
         self.help__read_all_roots(search_key_func=chk_map._search_key_plain)
@@ -2171,8 +2171,8 @@ class TestInterestingNodeIterator(TestCaseWithExampleMaps):
         key1 = c_map.key()
         c_map2 = self.make_root_only_map(chk_map._search_key_plain)
         key2 = c_map2.key()
-        iterator = self.get_iterator([key2], [key1], chk_map._search_key_plain)
-        root_results = [record.key for record in iterator._read_all_roots()]
+        diff = self.get_difference([key2], [key1], chk_map._search_key_plain)
+        root_results = [record.key for record in diff._read_all_roots()]
         # We should have no results. key2 is completely contained within key1,
         # and we should have seen that in the first pass
         self.assertEqual([], root_results)
@@ -2185,14 +2185,14 @@ class TestInterestingNodeIterator(TestCaseWithExampleMaps):
         c_map.map(('abb',), 'new abb content')
         key2 = c_map._save()
         key2_a = c_map._root_node._items['a'].key()
-        iterator = self.get_iterator([key2], [key1], chk_map._search_key_plain)
-        root_results = [record.key for record in iterator._read_all_roots()]
+        diff = self.get_difference([key2], [key1], chk_map._search_key_plain)
+        root_results = [record.key for record in diff._read_all_roots()]
         self.assertEqual([key2], root_results)
         # At this point, we should have queued up only the 'a' Leaf on both
         # sides, both 'c' and 'd' are known to not have changed on both sides
-        self.assertEqual([key2_a], iterator._interesting_queue)
-        self.assertEqual([], iterator._interesting_item_queue)
-        self.assertEqual([key1_a], iterator._uninteresting_queue)
+        self.assertEqual([key2_a], diff._interesting_queue)
+        self.assertEqual([], diff._interesting_item_queue)
+        self.assertEqual([key1_a], diff._uninteresting_queue)
 
     def test__read_all_roots_multi_interesting_prepares_queues(self):
         c_map = self.make_one_deep_map(chk_map._search_key_plain)
@@ -2210,15 +2210,15 @@ class TestInterestingNodeIterator(TestCaseWithExampleMaps):
         key3 = c_map._save()
         key3_a = c_map._root_node._items['a'].key()
         key3_c = c_map._root_node._items['c'].key()
-        iterator = self.get_iterator([key2, key3], [key1],
-                                     chk_map._search_key_plain)
-        root_results = [record.key for record in iterator._read_all_roots()]
+        diff = self.get_difference([key2, key3], [key1],
+                                   chk_map._search_key_plain)
+        root_results = [record.key for record in diff._read_all_roots()]
         self.assertEqual(sorted([key2, key3]), sorted(root_results))
         # We should have queued up key2_a, and key3_c, but not key2_c or key3_c
-        self.assertEqual([key2_a, key3_c], iterator._interesting_queue)
-        self.assertEqual([], iterator._interesting_item_queue)
+        self.assertEqual([key2_a, key3_c], diff._interesting_queue)
+        self.assertEqual([], diff._interesting_item_queue)
         # And we should have queued up both a and c for the uninteresting set
-        self.assertEqual([key1_a, key1_c], iterator._uninteresting_queue)
+        self.assertEqual([key1_a, key1_c], diff._uninteresting_queue)
 
     def test__read_all_roots_different_depths(self):
         c_map = self.make_two_deep_map(chk_map._search_key_plain)
@@ -2234,22 +2234,22 @@ class TestInterestingNodeIterator(TestCaseWithExampleMaps):
         key2_aa = c_map2._root_node._items['aa'].key()
         key2_ad = c_map2._root_node._items['ad'].key()
 
-        iterator = self.get_iterator([key2], [key1], chk_map._search_key_plain)
-        root_results = [record.key for record in iterator._read_all_roots()]
+        diff = self.get_difference([key2], [key1], chk_map._search_key_plain)
+        root_results = [record.key for record in diff._read_all_roots()]
         self.assertEqual([key2], root_results)
         # Only the 'a' subset should be queued up, since 'c' and 'd' cannot be
         # present
-        self.assertEqual([key1_a], iterator._uninteresting_queue)
-        self.assertEqual([key2_aa, key2_ad], iterator._interesting_queue)
-        self.assertEqual([], iterator._interesting_item_queue)
+        self.assertEqual([key1_a], diff._uninteresting_queue)
+        self.assertEqual([key2_aa, key2_ad], diff._interesting_queue)
+        self.assertEqual([], diff._interesting_item_queue)
 
-        iterator = self.get_iterator([key1], [key2], chk_map._search_key_plain)
-        root_results = [record.key for record in iterator._read_all_roots()]
+        diff = self.get_difference([key1], [key2], chk_map._search_key_plain)
+        root_results = [record.key for record in diff._read_all_roots()]
         self.assertEqual([key1], root_results)
 
-        self.assertEqual([key2_aa, key2_ad], iterator._uninteresting_queue)
-        self.assertEqual([key1_a, key1_c, key1_d], iterator._interesting_queue)
-        self.assertEqual([], iterator._interesting_item_queue)
+        self.assertEqual([key2_aa, key2_ad], diff._uninteresting_queue)
+        self.assertEqual([key1_a, key1_c, key1_d], diff._interesting_queue)
+        self.assertEqual([], diff._interesting_item_queue)
 
     def test__read_all_roots_different_depths_16(self):
         c_map = self.make_two_deep_map(chk_map._search_key_16)
@@ -2268,24 +2268,24 @@ class TestInterestingNodeIterator(TestCaseWithExampleMaps):
         key2_F4 = c_map2._root_node._items['F4'].key()
         key2_FD = c_map2._root_node._items['FD'].key()
 
-        iterator = self.get_iterator([key2], [key1], chk_map._search_key_16)
-        root_results = [record.key for record in iterator._read_all_roots()]
+        diff = self.get_difference([key2], [key1], chk_map._search_key_16)
+        root_results = [record.key for record in diff._read_all_roots()]
         self.assertEqual([key2], root_results)
         # Only the subset of keys that may be present should be queued up.
-        self.assertEqual([key1_F], iterator._uninteresting_queue)
+        self.assertEqual([key1_F], diff._uninteresting_queue)
         self.assertEqual(sorted([key2_F0, key2_F3, key2_F4, key2_FD]),
-                         sorted(iterator._interesting_queue))
-        self.assertEqual([], iterator._interesting_item_queue)
+                         sorted(diff._interesting_queue))
+        self.assertEqual([], diff._interesting_item_queue)
 
-        iterator = self.get_iterator([key1], [key2], chk_map._search_key_16)
-        root_results = [record.key for record in iterator._read_all_roots()]
+        diff = self.get_difference([key1], [key2], chk_map._search_key_16)
+        root_results = [record.key for record in diff._read_all_roots()]
         self.assertEqual([key1], root_results)
 
         self.assertEqual(sorted([key2_F0, key2_F3, key2_F4, key2_FD]),
-                         sorted(iterator._uninteresting_queue))
+                         sorted(diff._uninteresting_queue))
         self.assertEqual(sorted([key1_2, key1_4, key1_C, key1_F]),
-                         sorted(iterator._interesting_queue))
-        self.assertEqual([], iterator._interesting_item_queue)
+                         sorted(diff._interesting_queue))
+        self.assertEqual([], diff._interesting_item_queue)
 
     def test__read_all_roots_mixed_depth(self):
         c_map = self.make_one_deep_two_prefix_map(chk_map._search_key_plain)
@@ -2300,17 +2300,17 @@ class TestInterestingNodeIterator(TestCaseWithExampleMaps):
         key2_a = c_map2._root_node._items['a'].key()
         key2_b = c_map2._root_node._items['b'].key()
 
-        iterator = self.get_iterator([key2], [key1], chk_map._search_key_plain)
-        root_results = [record.key for record in iterator._read_all_roots()]
+        diff = self.get_difference([key2], [key1], chk_map._search_key_plain)
+        root_results = [record.key for record in diff._read_all_roots()]
         self.assertEqual([key2], root_results)
         # 'ad' matches exactly 'a' on the other side, so it should be removed,
         # and neither side should have it queued for walking
-        self.assertEqual([], iterator._uninteresting_queue)
-        self.assertEqual([key2_b], iterator._interesting_queue)
-        self.assertEqual([], iterator._interesting_item_queue)
+        self.assertEqual([], diff._uninteresting_queue)
+        self.assertEqual([key2_b], diff._interesting_queue)
+        self.assertEqual([], diff._interesting_item_queue)
 
-        iterator = self.get_iterator([key1], [key2], chk_map._search_key_plain)
-        root_results = [record.key for record in iterator._read_all_roots()]
+        diff = self.get_difference([key1], [key2], chk_map._search_key_plain)
+        root_results = [record.key for record in diff._read_all_roots()]
         self.assertEqual([key1], root_results)
         # Note: This is technically not the 'true minimal' set that we could
         #       use The reason is that 'a' was matched exactly to 'ad' (by sha
@@ -2318,10 +2318,10 @@ class TestInterestingNodeIterator(TestCaseWithExampleMaps):
         #       than one interesting key, so for now, we live with this
         #       Consider revising, though benchmarking showing it to be a
         #       real-world issue should be done
-        self.assertEqual([key2_a], iterator._uninteresting_queue)
-        # self.assertEqual([], iterator._uninteresting_queue)
-        self.assertEqual([key1_aa], iterator._interesting_queue)
-        self.assertEqual([], iterator._interesting_item_queue)
+        self.assertEqual([key2_a], diff._uninteresting_queue)
+        # self.assertEqual([], diff._uninteresting_queue)
+        self.assertEqual([key1_aa], diff._interesting_queue)
+        self.assertEqual([], diff._interesting_item_queue)
 
     def test__read_all_roots_yields_extra_deep_records(self):
         # This is slightly controversial, as we will yield a chk page that we
@@ -2346,16 +2346,16 @@ class TestInterestingNodeIterator(TestCaseWithExampleMaps):
             "      ('ace',) 'initial ace content'\n",
             c_map2._dump_tree())
         key2 = c_map2.key()
-        iterator = self.get_iterator([key2], [key1], chk_map._search_key_plain)
-        root_results = [record.key for record in iterator._read_all_roots()]
+        diff = self.get_difference([key2], [key1], chk_map._search_key_plain)
+        root_results = [record.key for record in diff._read_all_roots()]
         self.assertEqual([key2], root_results)
         # However, even though we have yielded the root node to be fetched,
         # we should have enqued all of the chk pages to be walked, so that we
         # can find the keys if they are present
-        self.assertEqual([key1_a], iterator._uninteresting_queue)
+        self.assertEqual([key1_a], diff._uninteresting_queue)
         self.assertEqual([(('acc',), 'initial acc content'),
                           (('ace',), 'initial ace content'),
-                         ], iterator._interesting_item_queue)
+                         ], diff._interesting_item_queue)
 
     def test__read_all_roots_multiple_targets(self):
         c_map = self.make_root_only_map()
@@ -2368,16 +2368,16 @@ class TestInterestingNodeIterator(TestCaseWithExampleMaps):
         c_map.map(('ccc',), 'new ccc value')
         key3 = c_map._save()
         key3_c = c_map._root_node._items['c'].key()
-        iterator = self.get_iterator([key2, key3], [key1],
+        diff = self.get_difference([key2, key3], [key1],
                                      chk_map._search_key_plain)
-        root_results = [record.key for record in iterator._read_all_roots()]
+        root_results = [record.key for record in diff._read_all_roots()]
         self.assertEqual(sorted([key2, key3]), sorted(root_results))
-        self.assertEqual([], iterator._uninteresting_queue)
+        self.assertEqual([], diff._uninteresting_queue)
         # the key 'd' is interesting from key2 and key3, but should only be
         # entered into the queue 1 time
         self.assertEqual(sorted([key2_c, key3_c, key2_d]),
-                         sorted(iterator._interesting_queue))
-        self.assertEqual([], iterator._interesting_item_queue)
+                         sorted(diff._interesting_queue))
+        self.assertEqual([], diff._interesting_item_queue)
 
     def test__read_all_roots_no_uninteresting(self):
         # This is the 'initial branch' case. With nothing in the uninteresting
@@ -2385,44 +2385,42 @@ class TestInterestingNodeIterator(TestCaseWithExampleMaps):
         # then have them fast-path flushed via _flush_interesting_queue
         c_map = self.make_two_deep_map()
         key1 = c_map.key()
-        iterator = self.get_iterator([key1], [], chk_map._search_key_plain)
-        root_results = [record.key for record in iterator._read_all_roots()]
+        diff = self.get_difference([key1], [], chk_map._search_key_plain)
+        root_results = [record.key for record in diff._read_all_roots()]
         self.assertEqual([], root_results)
-        self.assertEqual([], iterator._uninteresting_queue)
-        self.assertEqual([key1], iterator._interesting_queue)
-        self.assertEqual([], iterator._interesting_item_queue)
+        self.assertEqual([], diff._uninteresting_queue)
+        self.assertEqual([key1], diff._interesting_queue)
+        self.assertEqual([], diff._interesting_item_queue)
 
         c_map2 = self.make_one_deep_map()
         key2 = c_map2.key()
-        iterator = self.get_iterator([key1, key2], [],
-                                     chk_map._search_key_plain)
-        root_results = [record.key for record in iterator._read_all_roots()]
+        diff = self.get_difference([key1, key2], [], chk_map._search_key_plain)
+        root_results = [record.key for record in diff._read_all_roots()]
         self.assertEqual([], root_results)
-        self.assertEqual([], iterator._uninteresting_queue)
-        self.assertEqual(sorted([key1, key2]),
-                         sorted(iterator._interesting_queue))
-        self.assertEqual([], iterator._interesting_item_queue)
+        self.assertEqual([], diff._uninteresting_queue)
+        self.assertEqual(sorted([key1, key2]), sorted(diff._interesting_queue))
+        self.assertEqual([], diff._interesting_item_queue)
 
     def test__read_all_roots_no_uninteresting_16(self):
         c_map = self.make_two_deep_map(chk_map._search_key_16)
         key1 = c_map.key()
-        iterator = self.get_iterator([key1], [], chk_map._search_key_16)
-        root_results = [record.key for record in iterator._read_all_roots()]
+        diff = self.get_difference([key1], [], chk_map._search_key_16)
+        root_results = [record.key for record in diff._read_all_roots()]
         self.assertEqual([], root_results)
-        self.assertEqual([], iterator._uninteresting_queue)
-        self.assertEqual([key1], iterator._interesting_queue)
-        self.assertEqual([], iterator._interesting_item_queue)
+        self.assertEqual([], diff._uninteresting_queue)
+        self.assertEqual([key1], diff._interesting_queue)
+        self.assertEqual([], diff._interesting_item_queue)
 
         c_map2 = self.make_one_deep_map(chk_map._search_key_16)
         key2 = c_map2.key()
-        iterator = self.get_iterator([key1, key2], [],
-                                     chk_map._search_key_16)
-        root_results = [record.key for record in iterator._read_all_roots()]
+        diff = self.get_difference([key1, key2], [],
+                                   chk_map._search_key_16)
+        root_results = [record.key for record in diff._read_all_roots()]
         self.assertEqual([], root_results)
-        self.assertEqual([], iterator._uninteresting_queue)
+        self.assertEqual([], diff._uninteresting_queue)
         self.assertEqual(sorted([key1, key2]),
-                         sorted(iterator._interesting_queue))
-        self.assertEqual([], iterator._interesting_item_queue)
+                         sorted(diff._interesting_queue))
+        self.assertEqual([], diff._interesting_item_queue)
 
     def test__read_all_roots_multiple_uninteresting(self):
         c_map = self.make_two_deep_map()
@@ -2435,15 +2433,15 @@ class TestInterestingNodeIterator(TestCaseWithExampleMaps):
         c_map.map(('add',), 'new add value')
         key3 = c_map._save()
         key3_a = c_map._root_node._items['a'].key()
-        iterator = self.get_iterator([key3], [key1, key2],
-                                     chk_map._search_key_plain)
-        root_results = [record.key for record in iterator._read_all_roots()]
+        diff = self.get_difference([key3], [key1, key2],
+                                   chk_map._search_key_plain)
+        root_results = [record.key for record in diff._read_all_roots()]
         self.assertEqual([key3], root_results)
         # the 'a' keys should not be queued up 2 times, since they are
         # identical
-        self.assertEqual([key1_a], iterator._uninteresting_queue)
-        self.assertEqual([key3_a], iterator._interesting_queue)
-        self.assertEqual([], iterator._interesting_item_queue)
+        self.assertEqual([key1_a], diff._uninteresting_queue)
+        self.assertEqual([key3_a], diff._interesting_queue)
+        self.assertEqual([], diff._interesting_item_queue)
 
     def test__process_next_uninteresting_batched_no_dupes(self):
         c_map = self.make_two_deep_map()
@@ -2462,19 +2460,19 @@ class TestInterestingNodeIterator(TestCaseWithExampleMaps):
         key3 = c_map._save()
         key3_a = c_map._root_node._items['a'].key()
         key3_ac = c_map._root_node._items['a']._items['ac'].key()
-        iterator = self.get_iterator([key3], [key1, key2],
-                                     chk_map._search_key_plain)
-        root_results = [record.key for record in iterator._read_all_roots()]
+        diff = self.get_difference([key3], [key1, key2],
+                                   chk_map._search_key_plain)
+        root_results = [record.key for record in diff._read_all_roots()]
         self.assertEqual([key3], root_results)
         self.assertEqual(sorted([key1_a, key2_a]),
-                         sorted(iterator._uninteresting_queue))
-        self.assertEqual([key3_a], iterator._interesting_queue)
-        self.assertEqual([], iterator._interesting_item_queue)
-        iterator._process_next_uninteresting()
+                         sorted(diff._uninteresting_queue))
+        self.assertEqual([key3_a], diff._interesting_queue)
+        self.assertEqual([], diff._interesting_item_queue)
+        diff._process_next_uninteresting()
         # All of the uninteresting records should be brought in and queued up,
         # but we should not have any duplicates
         self.assertEqual(sorted([key1_aa, key1_ab, key1_ac, key1_ad, key2_aa]),
-                         sorted(iterator._uninteresting_queue))
+                         sorted(diff._uninteresting_queue))
 
 
 class TestIterInterestingNodes(TestCaseWithExampleMaps):

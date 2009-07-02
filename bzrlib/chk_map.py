@@ -1398,11 +1398,15 @@ def _deserialise(bytes, key, search_key_func):
     return node
 
 
-class InterestingNodeIterator(object):
-    """Determine the nodes and items that are 'interesting'
+class CHKMapDifference(object):
+    """Iterate the stored pages and key,value pairs for (new - old).
 
-    This is defined as being present in the interesting set, but not being
-    present in the uninteresting set.
+    This class provides a generator over the stored CHK pages and the
+    (key, value) pairs that are in any of the new maps and not in any of the
+    old maps.
+
+    Note that it may yield chk pages that are common (especially root nodes),
+    but it won't yield (key,value) pairs that are common.
     """
 
     def __init__(self, store, interesting_root_keys, uninteresting_root_keys,
@@ -1610,10 +1614,10 @@ def iter_interesting_nodes(store, interesting_root_keys,
     :return: Yield
         (interesting record, {interesting key:values})
     """
-    iterator = InterestingNodeIterator(store, interesting_root_keys,
-                                       uninteresting_root_keys,
-                                       search_key_func=store._search_key_func,
-                                       pb=pb)
+    iterator = CHKMapDifference(store, interesting_root_keys,
+                                uninteresting_root_keys,
+                                search_key_func=store._search_key_func,
+                                pb=pb)
     return iterator.process()
 
 
