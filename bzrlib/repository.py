@@ -3521,60 +3521,14 @@ class InterDifferingSerializer(InterRepository):
         deltas.sort()
         return deltas[0][1:]
 
-    def _get_parent_keys(self, root_key, parent_map):
-        """Get the parent keys for a given root id."""
-        root_id, rev_id = root_key
-        # Include direct parents of the revision, but only if they used
-        # the same root_id and are heads.
-        parent_keys = []
-        for parent_id in parent_map[rev_id]:
-            if parent_id == _mod_revision.NULL_REVISION:
-                continue
-            if parent_id not in self._revision_id_to_root_id:
-                # We probably didn't read this revision, go spend the
-                # extra effort to actually check
-                try:
-                    tree = self.source.revision_tree(parent_id)
-                except errors.NoSuchRevision:
-                    # Ghost, fill out _revision_id_to_root_id in case we
-                    # encounter this again.
-                    # But set parent_root_id to None since we don't really know
-                    parent_root_id = None
-                else:
-                    parent_root_id = tree.get_root_id()
-                self._revision_id_to_root_id[parent_id] = None
-            else:
-                parent_root_id = self._revision_id_to_root_id[parent_id]
-            if root_id == parent_root_id:
-                # With stacking we _might_ want to refer to a non-local
-                # revision, but this code path only applies when we have the
-                # full content available, so ghosts really are ghosts, not just
-                # the edge of local data.
-                parent_keys.append((parent_id,))
-            else:
-                # root_id may be in the parent anyway.
-                try:
-                    tree = self.source.revision_tree(parent_id)
-                except errors.NoSuchRevision:
-                    # ghost, can't refer to it.
-                    pass
-                else:
-                    try:
-                        parent_keys.append((tree.inventory[root_id].revision,))
-                    except errors.NoSuchId:
-                        # not in the tree
-                        pass
-        g = graph.Graph(self.source.revisions)
-        heads = g.heads(parent_keys)
-        selected_keys = []
-        for key in parent_keys:
-            if key in heads and key not in selected_keys:
-                selected_keys.append(key)
-        return tuple([(root_id,)+ key for key in selected_keys])
-
     def _new_root_data_stream(self, root_keys_to_create, parent_map):
+        from bzrlib.fetch import _parent_keys_for_root_version
+        g = graph.Graph(self.source.revisions)
         for root_key in root_keys_to_create:
-            parent_keys = self._get_parent_keys(root_key, parent_map)
+            root_id, rev_id = root_key
+            parent_keys = _parent_keys_for_root_version(
+                root_id, rev_id, self._revision_id_to_root_id, parent_map, g,
+                self.source)
             yield versionedfile.FulltextContentFactory(root_key,
                 parent_keys, None, '')
 
