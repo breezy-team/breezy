@@ -342,7 +342,7 @@ class Annotator:
         self._annotations_cache[key] = annotations
         for parent_key in parent_keys:
             num = self._num_needed_children[parent_key]
-            num -= 1
+            num = num - 1
             if num == 0:
                 del self._text_cache[parent_key]
                 del self._annotations_cache[parent_key]
@@ -364,7 +364,6 @@ class Annotator:
 
     def annotate(self, key):
         """Return annotated fulltext for the given key."""
-        keys = self._get_needed_texts(key)
         pb = ui.ui_factory.nested_progress_bar()
         try:
             for text_key, text, num_lines in self._get_needed_texts(key, pb=pb):

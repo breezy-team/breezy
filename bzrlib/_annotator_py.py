@@ -188,7 +188,6 @@ class Annotator(object):
 
     def annotate(self, key):
         """Return annotated fulltext for the given key."""
-        keys = self._get_needed_texts(key)
         pb = ui.ui_factory.nested_progress_bar()
         try:
             for text_key, text, num_lines in self._get_needed_texts(key, pb=pb):
