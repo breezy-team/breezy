@@ -1098,14 +1098,14 @@ class cmd_push(Command):
          _unused) = bzrdir.BzrDir.open_containing_tree_or_branch(directory)
         if strict is None:
             strict = br_from.get_config().get_user_option_as_bool('push_strict')
+        if strict is None: strict = True # default value
         # Get the tip's revision_id
         revision = _get_one_revision('push', revision)
         if revision is not None:
             revision_id = revision.in_history(br_from).rev_id
         else:
             revision_id = None
-        if (tree is not None and revision_id is None
-            and (strict is None or strict)): # Default to True:
+        if strict and tree is not None and revision_id is None:
             changes = tree.changes_from(tree.basis_tree())
             if changes.has_changed() or len(tree.get_parent_ids()) > 1:
                 raise errors.UncommittedChanges(

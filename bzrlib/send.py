@@ -110,7 +110,8 @@ def send(submit_branch, revision, public_branch, remember, format,
             if strict is None:
                 strict = branch.get_config(
                     ).get_user_option_as_bool('send_strict')
-            if tree is not None and (strict is None or strict):
+            if strict is None: strict = True # default value
+            if strict and tree is not None:
                 changes = tree.changes_from(tree.basis_tree())
                 if changes.has_changed() or len(tree.get_parent_ids()) > 1:
                     raise errors.UncommittedChanges(
