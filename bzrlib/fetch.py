@@ -267,7 +267,7 @@ class Inter1and2Helper(object):
 
 def _parent_keys_for_root_version(
     root_id, rev_id, rev_id_to_root_id_map, parent_map, graph, repo):
-    """xxx""" # XXX
+    """Get the parent keys for a given root id."""
     # Include direct parents of the revision, but only if they used
     # the same root_id and are heads.
     rev_parents = parent_map[rev_id]
