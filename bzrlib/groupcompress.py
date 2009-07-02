@@ -16,8 +16,6 @@
 
 """Core compression logic for compressing streams of related files."""
 
-from itertools import izip
-from cStringIO import StringIO
 import time
 import zlib
 try:
@@ -28,13 +26,11 @@ except ImportError:
 from bzrlib import (
     annotate,
     debug,
-    diff,
     errors,
     graph as _mod_graph,
     knit,
     osutils,
     pack,
-    patiencediff,
     trace,
     )
 from bzrlib.graph import Graph
@@ -942,7 +938,7 @@ class PyrexGroupCompressor(_CommonGroupCompressor):
         self.endpoint = endpoint
 
 
-def make_pack_factory(graph, delta, keylength):
+def make_pack_factory(graph, delta, keylength, inconsistency_fatal=True):
     """Create a factory for creating a pack based groupcompress.
 
     This is only functional enough to run interface tests, it doesn't try to
@@ -963,7 +959,8 @@ def make_pack_factory(graph, delta, keylength):
         writer = pack.ContainerWriter(stream.write)
         writer.begin()
         index = _GCGraphIndex(graph_index, lambda:True, parents=parents,
-            add_callback=graph_index.add_nodes)
+            add_callback=graph_index.add_nodes,
+            inconsistency_fatal=inconsistency_fatal)
         access = knit._DirectPackAccess({})
         access.set_writer(writer, graph_index, (transport, 'newpack'))
         result = GroupCompressVersionedFiles(index, access, delta)
@@ -1610,7 +1607,8 @@ class _GCGraphIndex(object):
     """Mapper from GroupCompressVersionedFiles needs into GraphIndex storage."""
 
     def __init__(self, graph_index, is_locked, parents=True,
-        add_callback=None, track_external_parent_refs=False):
+        add_callback=None, track_external_parent_refs=False,
+        inconsistency_fatal=True):
         """Construct a _GCGraphIndex on a graph_index.
 
         :param graph_index: An implementation of bzrlib.index.GraphIndex.
@@ -1624,12 +1622,17 @@ class _GCGraphIndex(object):
         :param track_external_parent_refs: As keys are added, keep track of the
             keys they reference, so that we can query get_missing_parents(),
             etc.
+        :param inconsistency_fatal: When asked to add records that are already
+            present, and the details are inconsistent with the existing
+            record, raise an exception instead of warning (and skipping the
+            record).
         """
         self._add_callback = add_callback
         self._graph_index = graph_index
         self._parents = parents
         self.has_graph = parents
         self._is_locked = is_locked
+        self._inconsistency_fatal = inconsistency_fatal
         if track_external_parent_refs:
             self._key_dependencies = knit._KeyRefs()
         else:
@@ -1671,8 +1674,14 @@ class _GCGraphIndex(object):
             present_nodes = self._get_entries(keys)
             for (index, key, value, node_refs) in present_nodes:
                 if node_refs != keys[key][1]:
-                    raise errors.KnitCorrupt(self, "inconsistent details in add_records"
-                        ": %s %s" % ((value, node_refs), keys[key]))
+                    details = '%s %s %s' % (key, (value, node_refs), keys[key])
+                    if self._inconsistency_fatal:
+                        raise errors.KnitCorrupt(self, "inconsistent details"
+                                                 " in add_records: %s" %
+                                                 details)
+                    else:
+                        trace.warning("inconsistent details in skipped"
+                                      " record: %s", details)
                 del keys[key]
                 changed = True
         if changed:

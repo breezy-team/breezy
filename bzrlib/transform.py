@@ -995,18 +995,15 @@ class DiskTreeTransform(TreeTransformBase):
                        self._new_contents.iteritems()]
             entries.sort(reverse=True)
             for path, trans_id, kind in entries:
-                if kind == "directory":
-                    os.rmdir(path)
-                else:
-                    os.unlink(path)
+                delete_any(path)
             try:
-                os.rmdir(self._limbodir)
+                delete_any(self._limbodir)
             except OSError:
                 # We don't especially care *why* the dir is immortal.
                 raise ImmortalLimbo(self._limbodir)
             try:
                 if self._deletiondir is not None:
-                    os.rmdir(self._deletiondir)
+                    delete_any(self._deletiondir)
             except OSError:
                 raise errors.ImmortalPendingDeletion(self._deletiondir)
         finally:

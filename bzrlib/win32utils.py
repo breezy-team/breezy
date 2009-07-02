@@ -96,6 +96,10 @@ MAX_PATH = 260
 UNLEN = 256
 MAX_COMPUTERNAME_LENGTH = 31
 
+# Registry data type ids
+REG_SZ = 1
+REG_EXPAND_SZ = 2
+
 
 def debug_memory_win32api(message='', short=True):
     """Use trace.note() to dump the running memory info."""
@@ -462,25 +466,34 @@ def get_app_path(appname):
                 or appname itself if nothing found.
     """
     import _winreg
-    try:
-        hkey = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE,
-                               r'SOFTWARE\Microsoft\Windows'
-                               r'\CurrentVersion\App Paths')
-    except EnvironmentError:
-        return appname
 
     basename = appname
     if not os.path.splitext(basename)[1]:
         basename = appname + '.exe'
+
+    try:
+        hkey = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE,
+            'SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\' +
+            basename)
+    except EnvironmentError:
+        return appname
+
     try:
         try:
-            fullpath = _winreg.QueryValue(hkey, basename)
+            path, type_id = _winreg.QueryValueEx(hkey, '')
         except WindowsError:
-            fullpath = appname
+            return appname
     finally:
         _winreg.CloseKey(hkey)
 
-    return fullpath
+    if type_id == REG_SZ:
+        return path
+    if type_id == REG_EXPAND_SZ and has_win32api:
+        fullpath = win32api.ExpandEnvironmentStrings(path)
+        if len(fullpath) > 1 and fullpath[0] == '"' and fullpath[-1] == '"':
+            fullpath = fullpath[1:-1]   # remove quotes around value
+        return fullpath
+    return appname
 
 
 def set_file_attr_hidden(path):

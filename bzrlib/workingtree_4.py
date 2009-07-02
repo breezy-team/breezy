@@ -28,72 +28,43 @@ import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-from bisect import bisect_left
-import collections
-from copy import deepcopy
 import errno
-import itertools
-import operator
 import stat
-from time import time
-import warnings
 
 import bzrlib
 from bzrlib import (
     bzrdir,
     cache_utf8,
-    conflicts as _mod_conflicts,
     debug,
-    delta,
     dirstate,
     errors,
     generate_ids,
-    globbing,
-    ignores,
-    merge,
     osutils,
     revision as _mod_revision,
     revisiontree,
-    textui,
     trace,
     transform,
-    urlutils,
     views,
-    xml5,
-    xml6,
     )
 import bzrlib.branch
-from bzrlib.transport import get_transport
 import bzrlib.ui
 """)
 
-from bzrlib import symbol_versioning
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.filters import filtered_input_file, internal_size_sha_file_byname
-from bzrlib.inventory import InventoryEntry, Inventory, ROOT_ID, entry_factory
+from bzrlib.inventory import Inventory, ROOT_ID, entry_factory
 import bzrlib.mutabletree
 from bzrlib.mutabletree import needs_tree_write_lock
 from bzrlib.osutils import (
     file_kind,
     isdir,
-    normpath,
     pathjoin,
-    rand_chars,
     realpath,
     safe_unicode,
-    splitpath,
     )
-from bzrlib.trace import mutter, note
+from bzrlib.trace import mutter
 from bzrlib.transport.local import LocalTransport
 from bzrlib.tree import InterTree
-from bzrlib.progress import DummyProgress, ProgressPhase
-from bzrlib.revision import NULL_REVISION, CURRENT_REVISION
-from bzrlib.rio import RioReader, rio_file, Stanza
-from bzrlib.symbol_versioning import (deprecated_passed,
-        deprecated_method,
-        deprecated_function,
-        DEPRECATED_PARAMETER,
-        )
 from bzrlib.tree import Tree
 from bzrlib.workingtree import WorkingTree, WorkingTree3, WorkingTreeFormat3
 
@@ -1051,7 +1022,7 @@ class DirStateWorkingTree(WorkingTree3):
     def set_last_revision(self, new_revision):
         """Change the last revision in the working tree."""
         parents = self.get_parent_ids()
-        if new_revision in (NULL_REVISION, None):
+        if new_revision in (_mod_revision.NULL_REVISION, None):
             if len(parents) >= 2:
                 raise AssertionError(
                     "setting the last parent to none with a pending merge is "
@@ -1403,7 +1374,7 @@ class DirStateWorkingTreeFormat(WorkingTreeFormat3):
         wt.lock_tree_write()
         try:
             self._init_custom_control_files(wt)
-            if revision_id in (None, NULL_REVISION):
+            if revision_id in (None, _mod_revision.NULL_REVISION):
                 if branch.repository.supports_rich_root():
                     wt._set_root_id(generate_ids.gen_root_id())
                 else:
@@ -1420,7 +1391,7 @@ class DirStateWorkingTreeFormat(WorkingTreeFormat3):
                     pass
             if basis is None:
                 basis = branch.repository.revision_tree(revision_id)
-            if revision_id == NULL_REVISION:
+            if revision_id == _mod_revision.NULL_REVISION:
                 parents_list = []
             else:
                 parents_list = [(revision_id, basis)]
@@ -2016,13 +1987,13 @@ class InterDirStateTree(InterTree):
                 require_versioned, want_unversioned=want_unversioned)
         parent_ids = self.target.get_parent_ids()
         if not (self.source._revision_id in parent_ids
-                or self.source._revision_id == NULL_REVISION):
+                or self.source._revision_id == _mod_revision.NULL_REVISION):
             raise AssertionError(
                 "revision {%s} is not stored in {%s}, but %s "
                 "can only be used for trees stored in the dirstate"
                 % (self.source._revision_id, self.target, self.iter_changes))
         target_index = 0
-        if self.source._revision_id == NULL_REVISION:
+        if self.source._revision_id == _mod_revision.NULL_REVISION:
             source_index = None
             indices = (target_index,)
         else:
@@ -2049,13 +2020,13 @@ class InterDirStateTree(InterTree):
         state._read_dirblocks_if_needed()
         if require_versioned:
             # -- check all supplied paths are versioned in a search tree. --
-            all_versioned = True
+            not_versioned = []
             for path in specific_files:
                 path_entries = state._entries_for_path(path)
                 if not path_entries:
                     # this specified path is not present at all: error
-                    all_versioned = False
-                    break
+                    not_versioned.append(path)
+                    continue
                 found_versioned = False
                 # for each id at this path
                 for entry in path_entries:
@@ -2068,10 +2039,9 @@ class InterDirStateTree(InterTree):
                 if not found_versioned:
                     # none of the indexes was not 'absent' at all ids for this
                     # path.
-                    all_versioned = False
-                    break
-            if not all_versioned:
-                raise errors.PathsNotVersionedError(specific_files)
+                    not_versioned.append(path)
+            if len(not_versioned) > 0:
+                raise errors.PathsNotVersionedError(not_versioned)
         # -- remove redundancy in supplied specific_files to prevent over-scanning --
         search_specific_files = osutils.minimum_path_selection(specific_files)
 
@@ -2091,7 +2061,7 @@ class InterDirStateTree(InterTree):
             (revisiontree.RevisionTree, DirStateRevisionTree)):
             return False
         # the source revid must be in the target dirstate
-        if not (source._revision_id == NULL_REVISION or
+        if not (source._revision_id == _mod_revision.NULL_REVISION or
             source._revision_id in target.get_parent_ids()):
             # TODO: what about ghosts? it may well need to
             # check for them explicitly.
