@@ -35,7 +35,6 @@ from bzrlib import (
         symbol_versioning,
         transport,
         tsort,
-        ui,
         urlutils,
         )
 from bzrlib.config import BranchConfig, TransportConfig
@@ -2909,7 +2908,7 @@ class InterBranch(InterObject):
     @staticmethod
     def _get_branch_formats_to_test():
         """Return a tuple with the Branch formats to use when testing."""
-        raise NotImplementedError(self._get_branch_formats_to_test)
+        raise NotImplementedError(InterBranch._get_branch_formats_to_test)
 
     def pull(self, overwrite=False, stop_revision=None,
              possible_transports=None, local=False):
@@ -3070,7 +3069,6 @@ class GenericInterBranch(InterBranch):
                 _override_hook_source_branch=_override_hook_source_branch)
         finally:
             self.source.unlock()
-        return result
 
     def _push_with_bound_branches(self, overwrite, stop_revision,
             _override_hook_source_branch=None):

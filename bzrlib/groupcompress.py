@@ -16,8 +16,6 @@
 
 """Core compression logic for compressing streams of related files."""
 
-from itertools import izip
-from cStringIO import StringIO
 import time
 import zlib
 try:
@@ -28,13 +26,11 @@ except ImportError:
 from bzrlib import (
     annotate,
     debug,
-    diff,
     errors,
     graph as _mod_graph,
     knit,
     osutils,
     pack,
-    patiencediff,
     trace,
     )
 from bzrlib.graph import Graph

@@ -70,7 +70,6 @@ from bzrlib.transport import (
     do_catching_redirections,
     get_transport,
     local,
-    remote as remote_transport,
     )
 from bzrlib.weave import Weave
 """)
