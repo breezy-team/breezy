@@ -1,0 +1,61 @@
+Data migration
+##############
+
+Preparing for data migration
+----------------------------
+
+Before starting a migration, there are a few important things to do
+first:
+
+1. Take a complete backup.
+
+2. Take some time to purge obsolete branches.
+
+A complete backup gives you a safety net in case anything goes wrong.
+
+Purging obsolete branches reduces the amount of data that needs to
+be migrated. See `Finding obsolete branches`_ later for some tips
+on doing this.
+
+
+Introducing the upgrade-related commands
+----------------------------------------
+
+There are 3 important commands to be aware of when migrating data.
+
+* **check** - check a repository, branch or tree for data integrity errors
+
+* **reconcile** - fix data integrity errors
+
+* **upgrade** - migrate data to a different format.
+
+**reconcile** is rarely needed but it's good practice to run **check**
+before runing **upgrade**.
+
+For detailed help on these commands, see the Bazaar User Reference.
+
+.. _Bazaar User Reference: ../user-reference/index.html
+
+
+Migrating a standalone branch
+-----------------------------
+
+To do ...
+
+
+Migrating branches in a shared repository
+-----------------------------------------
+
+To do ...
+
+
+Migrating stacked branches
+--------------------------
+
+All branches stacked on another branch need to be upgraded **before**
+the stacked on branch. For branches managed on Launchpad, the default
+policy is for branches to be stacked on trunk so that means that you
+need to give your community plenty of time to upgrade any branches
+they own on Launchpad before you schedule the trunk upgrade.
+
+To be completed ...

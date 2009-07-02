@@ -1,0 +1,19 @@
+########################
+Bazaar 2.0 Upgrade Guide
+########################
+
+.. Files are currently links but will become includes once the
+.. content makes more sense as a whole.
+.. Please mark sections in linked/included files as following:
+..   level 1 ========
+..   level 2 --------
+..   level 3 ~~~~~~~~
+..   level 4 ^^^^^^^^ (it is better not to use nesting deeper than 3 levels)
+
+.. contents:: :depth: 2
+.. sectnum::
+
+
+.. include:: overview.txt
+.. include:: data_migration.txt
+.. include:: tips_and_tricks.txt

@@ -90,6 +90,7 @@ txt_files := $(wildcard doc/en/tutorials/*.txt) \
 	doc/en/user-guide/index.txt \
 	doc/en/mini-tutorial/index.txt \
 	doc/en/developer-guide/HACKING.txt \
+	doc/en/upgrade-guide/index.txt \
 	$(wildcard doc/es/guia-usario/*.txt) \
 	doc/es/mini-tutorial/index.txt \
 	doc/index.txt \
@@ -141,6 +142,9 @@ dev_txt_files := $(filter-out $(dev_txt_nohtml), $(dev_txt_all))
 dev_htm_files := $(patsubst %.txt, %.html, $(dev_txt_files)) 
 
 doc/%/user-guide/index.html: $(wildcard $(addsuffix /*.txt, doc/%/user-guide)) 
+	$(rst2html) --stylesheet=../../default.css $(dir $@)index.txt $@
+
+doc/%/upgrade-guide/index.html: $(wildcard $(addsuffix /*.txt, doc/%/upgrade-guide)) 
 	$(rst2html) --stylesheet=../../default.css $(dir $@)index.txt $@
 
 # Set the paper size for PDF files.
