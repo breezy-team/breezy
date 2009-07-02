@@ -108,16 +108,8 @@ def send(submit_branch, revision, public_branch, remember, format,
                 base_revision_id = revision[0].as_revision_id(branch)
         if revision_id is None:
             if strict is None:
-                strict = branch.get_config().get_user_option('send_strict')
-                if strict is not None:
-                    # FIXME: This should be better supported by config
-                    # -- vila 20090626
-                    bools = dict(yes=True, no=False, on=True, off=False,
-                                 true=True, false=False)
-                    try:
-                        strict = bools[strict.lower()]
-                    except KeyError:
-                        strict = None
+                strict = branch.get_config(
+                    ).get_user_option_as_bool('send_strict')
             if tree is not None and (strict is None or strict):
                 changes = tree.changes_from(tree.basis_tree())
                 if changes.has_changed() or len(tree.get_parent_ids()) > 1:
