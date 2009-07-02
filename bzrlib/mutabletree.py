@@ -523,6 +523,9 @@ class MutableTree(tree.Tree):
         for commit which is not required to handle situations that do not arise
         outside of commit.
 
+        See the inventory developers documentation for the theory behind
+        inventory deltas.
+
         :param new_revid: The new revision id for the trees parent.
         :param delta: An inventory delta (see apply_inventory_delta) describing
             the changes from the current left most parent revision to new_revid.

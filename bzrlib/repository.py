@@ -1015,6 +1015,9 @@ class Repository(object):
                                parents, basis_inv=None, propagate_caches=False):
         """Add a new inventory expressed as a delta against another revision.
 
+        See the inventory developers documentation for the theory behind
+        inventory deltas.
+
         :param basis_revision_id: The inventory id the delta was created
             against. (This does not have to be a direct parent.)
         :param delta: The inventory delta (see Inventory.apply_delta for
