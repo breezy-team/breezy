@@ -241,12 +241,9 @@ class Inter1and2Helper(object):
         """
         graph = self.source.get_graph()
         parent_map = graph.get_parent_map(revs)
-        mutter('in generate_root_texts: parent_map=%r', parent_map)
         rev_order = topo_sort(parent_map)
         rev_id_to_root_id, root_id_to_rev_ids = self._find_root_ids(
             revs, parent_map, graph)
-        mutter('in generate_root_texts: rev_id_to_root_id=%r',
-                rev_id_to_root_id)
         root_id_order = [(rev_id_to_root_id[rev_id], rev_id) for rev_id in
             rev_order]
         # Guaranteed stable, this groups all the file id operations together
@@ -271,7 +268,6 @@ def _parent_keys_for_root_version(
     # Include direct parents of the revision, but only if they used
     # the same root_id and are heads.
     rev_parents = parent_map[rev_id]
-    #mutter('in yield_roots: key=%s rev_parents=%r', key, rev_parents)
     parent_ids = []
     for parent_id in rev_parents:
         if parent_id == NULL_REVISION:
@@ -318,9 +314,7 @@ def _parent_keys_for_root_version(
     for parent_id in parent_ids:
         if parent_id in heads and parent_id not in selected_ids:
             selected_ids.append(parent_id)
-    mutter('in yield_roots: heads=%r selected_ids=%r',
         heads, selected_ids)
     parent_keys = [
         (root_id, parent_id) for parent_id in selected_ids]
-    mutter('in yield_roots: parent_keys=%r', parent_keys)
     return parent_keys
