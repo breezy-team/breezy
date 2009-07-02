@@ -57,7 +57,10 @@ class cmd_git_import(Command):
             InterRepository,
             Repository,
             )
-        from bzrlib.plugins.git.branch import GitBranch
+        from bzrlib.plugins.git.branch import (
+            GitBranch,
+            extract_tags,
+            )
         from bzrlib.plugins.git.repository import GitRepository
 
         if dest_location is None:
@@ -82,6 +85,7 @@ class cmd_git_import(Command):
         interrepo = InterRepository.get(source_repo, target_repo)
         mapping = source_repo.get_mapping()
         refs = interrepo.fetch_refs()
+        tags = extract_tags(refs, mapping)
         pb = ui.ui_factory.nested_progress_bar()
         try:
             for i, (name, ref) in enumerate(refs.iteritems()):
@@ -102,9 +106,10 @@ class cmd_git_import(Command):
                     head_branch = head_bzrdir.create_branch()
                 revid = mapping.revision_id_foreign_to_bzr(ref)
                 source_branch = GitBranch(source_repo.bzrdir, source_repo, 
-                    name, None)
+                    name, None, tags)
                 source_branch.head = ref
-                head_branch.generate_revision_history(revid)
+                if head_branch.last_revision() != revid:
+                    head_branch.generate_revision_history(revid)
                 source_branch.tags.merge_to(head_branch.tags)
         finally:
             pb.finished()

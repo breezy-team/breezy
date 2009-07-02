@@ -105,6 +105,18 @@ class LocalGitTagDict(tag.BasicTags):
             self.branch.mapping.revision_id_bzr_to_foreign(revid)
 
 
+class DictTagDict(LocalGitTagDict):
+
+
+    def __init__(self, branch, tags):
+        super(DictTagDict, self).__init__(branch)
+        self._tags = tags
+
+    def get_tag_dict(self):
+        return self._tags
+
+
+
 class GitBranchFormat(branch.BranchFormat):
 
     def get_format_description(self):
@@ -124,12 +136,14 @@ class GitBranchFormat(branch.BranchFormat):
 class GitBranch(ForeignBranch):
     """An adapter to git repositories for bzr Branch objects."""
 
-    def __init__(self, bzrdir, repository, name, lockfiles):
+    def __init__(self, bzrdir, repository, name, lockfiles, tagsdict=None):
         self.repository = repository
         self._format = GitBranchFormat()
         self.control_files = lockfiles
         self.bzrdir = bzrdir
         super(GitBranch, self).__init__(repository.get_mapping())
+        if tagsdict is not None:
+            self.tags = DictTagDict(self, tagsdict)
         self.name = name
         self._head = None
         self.base = bzrdir.transport.base
