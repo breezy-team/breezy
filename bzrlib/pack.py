@@ -175,10 +175,9 @@ class ReadVFile(object):
 
         :param readv_result: the most recent readv result - list or generator
         """
-        # we rely on its state as a generator to keep track of how much has
-        # been used.
-        if not getattr(readv_result, 'next'):
-            readv_result = iter(readv_result)
+        # readv can return a sequence or an iterator, but we require an
+        # iterator to know how much has been consumed.
+        readv_result = iter(readv_result)
         self.readv_result = readv_result
         self._string = None
 
