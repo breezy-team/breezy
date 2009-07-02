@@ -2369,7 +2369,7 @@ class TestCHKMapDifference(TestCaseWithExampleMaps):
         key3 = c_map._save()
         key3_c = c_map._root_node._items['c'].key()
         diff = self.get_difference([key2, key3], [key1],
-                                     chk_map._search_key_plain)
+                                   chk_map._search_key_plain)
         root_results = [record.key for record in diff._read_all_roots()]
         self.assertEqual(sorted([key2, key3]), sorted(root_results))
         self.assertEqual([], diff._old_queue)

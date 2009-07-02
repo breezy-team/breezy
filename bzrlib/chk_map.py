@@ -1476,8 +1476,7 @@ class CHKMapDifference(object):
             old_chks_to_enqueue.extend(prefix_refs)
         return old_chks_to_enqueue
 
-    def _enqueue_old(self, new_prefixes,
-                               old_chks_to_enqueue):
+    def _enqueue_old(self, new_prefixes, old_chks_to_enqueue):
         # At this point, we have read all the uninteresting and interesting
         # items, so we can queue up the uninteresting stuff, knowing that we've
         # handled the interesting ones
@@ -1506,8 +1505,7 @@ class CHKMapDifference(object):
             return
         old_chks_to_enqueue = self._read_old_roots()
         # filter out any root keys that are already known to be uninteresting
-        new_keys = set(self._new_root_keys).difference(
-                                self._all_old_chks)
+        new_keys = set(self._new_root_keys).difference(self._all_old_chks)
         # These are prefixes that are present in new_keys that we are
         # thinking to yield
         new_prefixes = set()
@@ -1530,10 +1528,10 @@ class CHKMapDifference(object):
             #       to make the results unique. We might profile whether we
             #       gain anything by ensuring unique return values for items
             new_items = [item for item in items
-                                 if item not in self._all_old_items]
+                               if item not in self._all_old_items]
             self._new_item_queue.extend(new_items)
             new_prefixes.update([self._search_key_func(item[0])
-                                         for item in new_items])
+                                 for item in new_items])
             processed_new_refs.update(refs)
             yield record
         # For new_prefixes we have the full length prefixes queued up.
@@ -1541,10 +1539,8 @@ class CHKMapDifference(object):
         # 'ab', then we also need to include 'a'.) So expand the
         # new_prefixes to include all shorter prefixes
         for prefix in list(new_prefixes):
-            new_prefixes.update([prefix[:i]
-                                         for i in xrange(1, len(prefix))])
-        self._enqueue_old(new_prefixes,
-                                    old_chks_to_enqueue)
+            new_prefixes.update([prefix[:i] for i in xrange(1, len(prefix))])
+        self._enqueue_old(new_prefixes, old_chks_to_enqueue)
 
     def _flush_new_queue(self):
         # No need to maintain the heap invariant anymore, just pull things out
@@ -1556,7 +1552,7 @@ class CHKMapDifference(object):
         processed_new_refs = self._processed_new_refs
         all_old_items = self._all_old_items
         new_items = [item for item in self._new_item_queue
-                                   if item not in all_old_items]
+                           if item not in all_old_items]
         self._new_item_queue = []
         if new_items:
             yield None, new_items
