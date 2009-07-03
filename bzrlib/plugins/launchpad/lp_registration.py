@@ -97,7 +97,6 @@ class LaunchpadService(object):
                     % (_bzrlib_version, xmlrpclib.__version__)
         self.transport = transport
 
-
     @property
     def service_url(self):
         """Return the http or https url for the xmlrpc server.
@@ -114,6 +113,17 @@ class LaunchpadService(object):
                 raise InvalidLaunchpadInstance(self._lp_instance)
         else:
             return self.DEFAULT_SERVICE_URL
+
+    @classmethod
+    def for_url(cls, url, **kwargs):
+        """Return the Launchpad service corresponding to the given URL."""
+        result = urlsplit(url)
+        lp_instance = result[1]
+        if lp_instance == '':
+            lp_instance = None
+        elif lp_instance not in cls.LAUNCHPAD_INSTANCE:
+            raise errors.InvalidURL(path=url)
+        return cls(lp_instance=lp_instance, **kwargs)
 
     def get_proxy(self, authenticated):
         """Return the proxy for XMLRPC requests."""
