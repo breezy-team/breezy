@@ -9,6 +9,7 @@ set ROOT=${buildout:directory}
 set RELEASE=%ROOT%\release\bzr.${settings:bzr-latest}
 set PYTHON=${buildout:executable}
 set BUILD_ERROR=0
+set ORIGINAL_PYTHONPATH=%PYTHONPATH%
 set ORIGINAL_DIRECTORY=%CD%
 
 set TORTOISE_OVERLAYS_MSI_WIN32_CMD=%PYTHON% %ROOT%/ostools.py basename ${settings:tortoise-overlays-win32-url}
@@ -50,10 +51,16 @@ cd %ROOT%/bzr-rebase/latest
 %PYTHON% setup.py install -O1 --install-lib=%RELEASE%
 @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
 
+set PYTHONPATH=%PYTHONPATH%;%RELEASE%
+cd %ROOT%/tbzr/trunk
+%PYTHON% setup.py build
+@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
 cd %RELEASE%
 make installer PYTHON=%CYG_PYTHON%
 @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
 
 :End
+set PYTHONPATH=%ORIGINAL_PYTHONPATH%
 cd %ORIGINAL_DIRECTORY%
 exit /b %BUILD_ERROR%
