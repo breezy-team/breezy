@@ -144,9 +144,6 @@ dev_htm_files := $(patsubst %.txt, %.html, $(dev_txt_files))
 doc/%/user-guide/index.html: $(wildcard $(addsuffix /*.txt, doc/%/user-guide)) 
 	$(rst2html) --stylesheet=../../default.css $(dir $@)index.txt $@
 
-doc/%/upgrade-guide/index.html: $(wildcard $(addsuffix /*.txt, doc/%/upgrade-guide)) 
-	$(rst2html) --stylesheet=../../default.css $(dir $@)index.txt $@
-
 # Set the paper size for PDF files.
 # Options:  'a4' (ISO A4 size), 'letter' (US Letter size)
 PAPERSIZE = a4
@@ -195,6 +192,11 @@ doc/en/release-notes/NEWS.txt: NEWS
 MAN_PAGES = man1/bzr.1
 man1/bzr.1: $(MAN_DEPENDENCIES)
 	PYTHONPATH=.:$$PYTHONPATH $(PYTHON) tools/generate_docs.py -o $@ man
+
+upgrade_guide_dependencies =  $(wildcard $(addsuffix /*.txt, doc/en/upgrade-guide)) 
+
+doc/en/upgrade-guide/index.html: $(upgrade_guide_dependencies)
+	$(rst2html) --stylesheet=../../default.css $(dir $@)index.txt $@
 
 # build a png of our performance task list
 # 
