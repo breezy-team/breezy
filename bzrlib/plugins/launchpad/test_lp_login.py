@@ -32,20 +32,20 @@ class TestLaunchpadLogin(TestCaseWithTransport):
 
     def test_login_with_name_sets_login(self):
         # lp-login with a 'name' parameter sets the Launchpad login.
-        self.run_bzr(['launchpad-login', '--no-check', 'jml'])
-        self.assertEqual('jml', account.get_lp_login())
+        self.run_bzr(['launchpad-login', '--no-check', 'foo'])
+        self.assertEqual('foo', account.get_lp_login())
 
     def test_login_without_name_when_logged_in(self):
         # lp-login without a 'name' parameter returns the user ID of the
         # logged in user.
-        account.set_lp_login('jml')
+        account.set_lp_login('foo')
         out, err = self.run_bzr(['launchpad-login', '--no-check'])
-        self.assertEqual('jml\n', out)
+        self.assertEqual('foo\n', out)
         self.assertEqual('', err)
 
     def test_login_with_name_no_output_by_default(self):
         # lp-login with a 'name' parameter produces no output by default.
-        out, err = self.run_bzr(['launchpad-login', '--no-check', 'jml'])
+        out, err = self.run_bzr(['launchpad-login', '--no-check', 'foo'])
         self.assertEqual('', out)
         self.assertEqual('', err)
 
@@ -53,6 +53,6 @@ class TestLaunchpadLogin(TestCaseWithTransport):
         # lp-login with a 'name' parameter and a verbose flag produces some
         # information about what Bazaar just did.
         out, err = self.run_bzr(
-            ['launchpad-login', '-v', '--no-check', 'jml'])
-        self.assertEqual("Launchpad user ID set to 'jml'.\n", out)
+            ['launchpad-login', '-v', '--no-check', 'foo'])
+        self.assertEqual("Launchpad user ID set to 'foo'.\n", out)
         self.assertEqual('', err)
