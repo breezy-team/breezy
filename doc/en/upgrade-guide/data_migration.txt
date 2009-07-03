@@ -30,7 +30,7 @@ There are 3 important commands to be aware of when migrating data.
 * **upgrade** - migrate data to a different format.
 
 **reconcile** is rarely needed but it's good practice to run **check**
-before runing **upgrade**.
+before and after runing **upgrade**.
 
 For detailed help on these commands, see the `Bazaar User Reference`_.
 
@@ -43,10 +43,13 @@ Communicating with your community
 To enable a smooth transistion to the new format, you should:
 
 1. Make one person responsible for migrating the trunk.
-2. Test the migration of trunk works successfully.
-3. Schedule a time for the trunk migration and notify your community.
 
-This forward warning should be long enough for users to have time
+2. Test the migration of trunk works successfully.
+
+3. Schedule a time for the trunk migration and notify your community
+   in advance.
+
+This advance warning should be long enough for users to have time
 to upgrade Bazaar and any required plugins before the migration date.
 
 For larger projects, allow some time for the migration itself.
@@ -64,7 +67,18 @@ document.
 Migrating a standalone branch
 -----------------------------
 
-To do ...
+The steps are:
+
+1. Run **bzr check**.
+
+2. If there are errors, try using **bzr reconcile** to fix them.
+   If that fails, file a bug so we can help you resolve the issue
+   and get your trunk clean. If it works, take a backup copy of
+   your now clean trunk.
+
+2. Run **bzr upgrade --format** where *format* is 2a or later.
+
+3. Run **bzr check** to confirm the final result is good.
 
 
 Migrating branches in a shared repository
@@ -75,6 +89,9 @@ Upgrade things in the following order:
 1. Upgrade the shared repository.
 2. Upgrade the branches.
 3. Upgrade any lightweight checkouts.
+
+As in the standalone branch case, be sure to run **check** before
+and after the upgrade to check for any existing or introduced issues.
 
 
 Migrating branches on Launchpad
@@ -132,16 +149,19 @@ To migrate branches in a shared repository:
 
 4. To migrate each local branch of interest, there are 2 options:
 
-   * *init* an empty branch in the new repository and *pull* the
-     revisions from the branch in the old repository across.
+ * **init** an empty branch in the new repository and **pull** the
+   revisions from the branch in the old repository across.
 
-   * In the new repository, *branch* from trunk to the new branch
-     name then *merge* your changes from the matching branch in the
-     old repository.
+ * In the new repository, **branch** from trunk to the new branch
+   name then **merge** your changes from the matching branch in the
+   old repository.
 
 The first method will give you a branch which is identical (in terms
 of revision history) to the old branch, but it's parent branch will
-be set to the old branch, not your new trunk. The second approach
-sets up the parent branch correctly but isn't ideal if you're not
-ready to include all the latest revisions from trunk into that branch.
+be set to the old branch, not your new trunk. If you use this method,
+you'll probably want to edit your branch.conf file to update the
+parent branch setting.
 
+In contrast, the second approach sets up the parent branch correctly.
+However, it isn't ideal if you're not ready to include all the latest
+revisions from trunk into that branch yet.

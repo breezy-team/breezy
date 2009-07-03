@@ -1,7 +1,7 @@
 Overview
 ########
 
-High Level Upgrade Process
+High level upgrade process
 --------------------------
 
 In broad terms, there are 3 steps involved in upgrading to Bazaar 2.x:
@@ -63,7 +63,7 @@ To upgrade Bazaar on OS X (via MacPorts):
 
 2. Upgrade to the latest version using **sudo port upgrade bzr**
 
-For further information of installing and upgrading, see
+For further information on installing and upgrading, see
 http://bazaar-vcs.org/Download.
 
 
@@ -79,7 +79,7 @@ For Windows and OS X users, bzrtools and bzr-svn are typically
 included in the installer so no special steps are required to upgrade
 these. For Linux and UNIX users, bztrools, bzr-svn and many other
 popular plugins can be installed and upgraded using your
-platform's package manager, e.g. Synaptic on Ununtu.
+platform's package manager, e.g. Synaptic on Ubuntu.
 
 
 Migrating data to the new default format
