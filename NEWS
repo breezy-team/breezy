@@ -164,6 +164,9 @@ Improvements
   Performance is also significantly improved when requesting multiple revs
   at once.  (Matthew Fuller, John Arbash Meinel)
 
+* Tildes are no longer escaped by Transports. (Andy Kilner)
+
+
 Documentation
 *************
 
