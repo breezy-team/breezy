@@ -242,8 +242,14 @@ class TestLocationsPywin32(TestLocationsCtypes):
 
 class TestSetHidden(TestCaseInTempDir):
 
-    def test_unicode(self):
-        # we should not raise traceback if we try to set hidden attribute
-        # on .bzr directory below unicode path
+    def test_unicode_dir(self):
+        # we should handle unicode paths without errors
         os.mkdir(u'\u1234')
         win32utils.set_file_attr_hidden(u'\u1234')
+
+    def test_dot_bzr_in_unicode_dir(self):
+        # we should not raise traceback if we try to set hidden attribute
+        # on .bzr directory below unicode path
+        os.makedirs(u'\u1234\\.bzr')
+        path = osutils.abspath(u'\u1234\\.bzr')
+        win32utils.set_file_attr_hidden(path)
