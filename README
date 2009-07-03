@@ -1,0 +1,4 @@
+bzr-guess, a bzr plugin for guessing at misspelt command names
+Copyright (C) 2009 Canonical Limited.
+
+Install in the regular way: bzr branch lp:bzr-guess ~/.bazaar/plugins/guess
