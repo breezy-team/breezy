@@ -60,6 +60,9 @@ cd %RELEASE%
 make installer PYTHON=%CYG_PYTHON%
 @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
 
+make python-installer PYTHON24=${settings:python24} PYTHON25=${settings:python25}
+@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
 :End
 set PYTHONPATH=%ORIGINAL_PYTHONPATH%
 cd %ORIGINAL_DIRECTORY%

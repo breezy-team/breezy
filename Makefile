@@ -21,6 +21,8 @@
 ### Core Stuff ###
 
 PYTHON=python
+PYTHON24=python24
+PYTHON25=python25
 PYTHON_BUILDFLAGS=
 
 .PHONY: all clean extensions pyflakes api-docs check-nodocs check
@@ -235,10 +237,10 @@ installer: exe copy-docs
 # win32 Python's distutils-based installer
 # require to have Python interpreter installed on win32
 py-inst-24: docs
-	python24 setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
+	$(PYTHON24) setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
 
 py-inst-25: docs
-	python25 setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
+	$(PYTHON25) setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
 
 python-installer: py-inst-24 py-inst-25
 
