@@ -507,6 +507,7 @@ def set_file_attr_hidden(path):
         try:
             SetFileAttributes(path, win32file.FILE_ATTRIBUTE_HIDDEN)
         except pywintypes.error, e:
+            from bzrlib import trace
             trace.mutter('Unable to set hidden attribute on %r: %s', path, e)
 
 
