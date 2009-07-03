@@ -92,6 +92,10 @@ Bug Fixes
   content plus the size of the compressed text.  Related to bug #109114.
   (John Arbash Meinel)
 
+* Set hidden attribute on .bzr directory below unicode path should never
+  fail with error. The operation should succeed even if bzr unable to set 
+  the attribute.  (Alexander Belchenko, related to bug #335362).
+  
 * Stacking will no longer accept requests to stack on the same
   branch/repository. Existing branches that incorrectly reference the same
   repository in a stacking configuration will now raise

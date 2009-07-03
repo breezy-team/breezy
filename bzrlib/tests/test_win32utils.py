@@ -238,3 +238,12 @@ class TestLocationsPywin32(TestLocationsCtypes):
 
     def restoreCtypes(self):
         win32utils.has_ctypes = self.old_ctypes
+
+
+class TestSetHidden(TestCaseInTempDir):
+
+    def test_unicode(self):
+        # we should not raise traceback if we try to set hidden attribute
+        # on .bzr directory below unicode path
+        os.mkdir(u'\u1234')
+        win32utils.set_file_attr_hidden(u'\u1234')
