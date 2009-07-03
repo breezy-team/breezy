@@ -1471,7 +1471,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 raise errors.BzrRenameFailedError(from_rel,to_rel,
                     errors.NotVersionedError(path=str(from_rel)))
             # put entry back in the inventory so we can rename it
-            from_entry = basis_tree.inventory[from_id]
+            from_entry = basis_tree.inventory[from_id].copy()
             inv.add(from_entry)
         else:
             from_entry = inv[from_id]
