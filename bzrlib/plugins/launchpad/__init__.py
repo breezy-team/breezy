@@ -259,6 +259,7 @@ def test_suite():
     from bzrlib.plugins.launchpad import (
         test_account,
         test_lp_directory,
+        test_lp_login,
         test_lp_open,
         test_lp_service,
         test_register,
@@ -270,6 +271,7 @@ def test_suite():
         test_account,
         test_register,
         test_lp_directory,
+        test_lp_login,
         test_lp_open,
         test_lp_service,
         ]:
