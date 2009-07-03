@@ -234,6 +234,9 @@ class cmd_launchpad_login(Command):
             if username:
                 if check_account:
                     account.check_lp_login(username)
+                    if verbose:
+                        self.outf.write(
+                            "Launchpad user ID exists and has SSH keys.\n")
                 self.outf.write(username + '\n')
             else:
                 self.outf.write('No Launchpad user ID configured.\n')
@@ -242,6 +245,9 @@ class cmd_launchpad_login(Command):
             name = name.lower()
             if check_account:
                 account.check_lp_login(name)
+                if verbose:
+                    self.outf.write(
+                        "Launchpad user ID exists and has SSH keys.\n")
             account.set_lp_login(name)
             if verbose:
                 self.outf.write("Launchpad user ID set to '%s'.\n" % (name,))
