@@ -67,4 +67,11 @@ class TestBranchCheck(TestCaseWithBranch):
         result.report_results(verbose=True)
         result.report_results(verbose=False)
 
+    def test_check_detects_ghosts_in_mainline(self):
+        tree = self.make_branch_and_tree('test')
+        tree.set_parent_ids(['thisisaghost'], allow_leftmost_as_ghost=True)
+        r1 = tree.commit('one')
+        r2 = tree.commit('two')
+        result = tree.branch.check()
+        self.assertEquals(True, result.ghosts_in_mainline)
 

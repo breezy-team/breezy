@@ -53,7 +53,7 @@ in the deltas to provide line annotation
 
 
 from cStringIO import StringIO
-from itertools import izip, chain
+from itertools import izip
 import operator
 import os
 import sys
@@ -686,7 +686,7 @@ class KnitAnnotateFactory(_KnitFactory):
         content = knit._get_content(key)
         # adjust for the fact that serialised annotations are only key suffixes
         # for this factory.
-        if type(key) == tuple:
+        if type(key) is tuple:
             prefix = key[:-1]
             origins = content.annotate()
             result = []
@@ -909,18 +909,45 @@ class KnitVersionedFiles(VersionedFiles):
             # indexes can't directly store that, so we give them
             # an empty tuple instead.
             parents = ()
+        line_bytes = ''.join(lines)
         return self._add(key, lines, parents,
-            parent_texts, left_matching_blocks, nostore_sha, random_id)
+            parent_texts, left_matching_blocks, nostore_sha, random_id,
+            line_bytes=line_bytes)
+
+    def _add_text(self, key, parents, text, nostore_sha=None, random_id=False):
+        """See VersionedFiles._add_text()."""
+        self._index._check_write_ok()
+        self._check_add(key, None, random_id, check_content=False)
+        if text.__class__ is not str:
+            raise errors.BzrBadParameterUnicode("text")
+        if parents is None:
+            # The caller might pass None if there is no graph data, but kndx
+            # indexes can't directly store that, so we give them
+            # an empty tuple instead.
+            parents = ()
+        return self._add(key, None, parents,
+            None, None, nostore_sha, random_id,
+            line_bytes=text)
 
     def _add(self, key, lines, parents, parent_texts,
-        left_matching_blocks, nostore_sha, random_id):
+        left_matching_blocks, nostore_sha, random_id,
+        line_bytes):
         """Add a set of lines on top of version specified by parents.
 
         Any versions not present will be converted into ghosts.
+
+        :param lines: A list of strings where each one is a single line (has a
+            single newline at the end of the string) This is now optional
+            (callers can pass None). It is left in its location for backwards
+            compatibility. It should ''.join(lines) must == line_bytes
+        :param line_bytes: A single string containing the content
+
+        We pass both lines and line_bytes because different routes bring the
+        values to this function. And for memory efficiency, we don't want to
+        have to split/join on-demand.
         """
         # first thing, if the content is something we don't need to store, find
         # that out.
-        line_bytes = ''.join(lines)
         digest = sha_string(line_bytes)
         if nostore_sha == digest:
             raise errors.ExistingContent
@@ -947,25 +974,34 @@ class KnitVersionedFiles(VersionedFiles):
 
         text_length = len(line_bytes)
         options = []
-        if lines:
-            if lines[-1][-1] != '\n':
-                # copy the contents of lines.
+        no_eol = False
+        # Note: line_bytes is not modified to add a newline, that is tracked
+        #       via the no_eol flag. 'lines' *is* modified, because that is the
+        #       general values needed by the Content code.
+        if line_bytes and line_bytes[-1] != '\n':
+            options.append('no-eol')
+            no_eol = True
+            # Copy the existing list, or create a new one
+            if lines is None:
+                lines = osutils.split_lines(line_bytes)
+            else:
                 lines = lines[:]
-                options.append('no-eol')
-                lines[-1] = lines[-1] + '\n'
-                line_bytes += '\n'
+            # Replace the last line with one that ends in a final newline
+            lines[-1] = lines[-1] + '\n'
+        if lines is None:
+            lines = osutils.split_lines(line_bytes)
 
         for element in key[:-1]:
-            if type(element) != str:
+            if type(element) is not str:
                 raise TypeError("key contains non-strings: %r" % (key,))
         if key[-1] is None:
             key = key[:-1] + ('sha1:' + digest,)
-        elif type(key[-1]) != str:
+        elif type(key[-1]) is not str:
                 raise TypeError("key contains non-strings: %r" % (key,))
         # Knit hunks are still last-element only
         version_id = key[-1]
         content = self._factory.make(lines, version_id)
-        if 'no-eol' in options:
+        if no_eol:
             # Hint to the content object that its text() call should strip the
             # EOL.
             content._should_strip_eol = True
@@ -986,8 +1022,11 @@ class KnitVersionedFiles(VersionedFiles):
             if self._factory.__class__ is KnitPlainFactory:
                 # Use the already joined bytes saving iteration time in
                 # _record_to_data.
+                dense_lines = [line_bytes]
+                if no_eol:
+                    dense_lines.append('\n')
                 size, bytes = self._record_to_data(key, digest,
-                    lines, [line_bytes])
+                    lines, dense_lines)
             else:
                 # get mixed annotation + content and feed it into the
                 # serialiser.
@@ -1920,21 +1959,16 @@ class KnitVersionedFiles(VersionedFiles):
             function spends less time resizing the final string.
         :return: (len, a StringIO instance with the raw data ready to read.)
         """
-        # Note: using a string copy here increases memory pressure with e.g.
-        # ISO's, but it is about 3 seconds faster on a 1.2Ghz intel machine
-        # when doing the initial commit of a mozilla tree. RBC 20070921
-        bytes = ''.join(chain(
-            ["version %s %d %s\n" % (key[-1],
-                                     len(lines),
-                                     digest)],
-            dense_lines or lines,
-            ["end %s\n" % key[-1]]))
-        if type(bytes) != str:
-            raise AssertionError(
-                'data must be plain bytes was %s' % type(bytes))
+        chunks = ["version %s %d %s\n" % (key[-1], len(lines), digest)]
+        chunks.extend(dense_lines or lines)
+        chunks.append("end %s\n" % key[-1])
+        for chunk in chunks:
+            if type(chunk) is not str:
+                raise AssertionError(
+                    'data must be plain bytes was %s' % type(chunk))
         if lines and lines[-1][-1] != '\n':
             raise ValueError('corrupt lines value %r' % lines)
-        compressed_bytes = tuned_gzip.bytes_to_gzip(bytes)
+        compressed_bytes = tuned_gzip.chunks_to_gzip(chunks)
         return len(compressed_bytes), compressed_bytes
 
     def _split_header(self, line):
@@ -2005,8 +2039,8 @@ class _ContentMapGenerator(object):
                 missing_keys.remove(record.key)
                 yield record
 
-        self._raw_record_map = self.vf._get_record_map_unparsed(self.keys,
-            allow_missing=True)
+        if self._raw_record_map is None:
+            raise AssertionError('_raw_record_map should have been filled')
         first = True
         for key in self.keys:
             if key in self.nonlocal_keys:
@@ -2375,7 +2409,7 @@ class _KndxIndex(object):
                     line = "\n%s %s %s %s %s :" % (
                         key[-1], ','.join(options), pos, size,
                         self._dictionary_compress(parents))
-                    if type(line) != str:
+                    if type(line) is not str:
                         raise AssertionError(
                             'data must be utf8 was %s' % type(line))
                     lines.append(line)
@@ -2570,7 +2604,7 @@ class _KndxIndex(object):
         result = set()
         # Identify all key prefixes.
         # XXX: A bit hacky, needs polish.
-        if type(self._mapper) == ConstantMapper:
+        if type(self._mapper) is ConstantMapper:
             prefixes = [()]
         else:
             relpaths = set()
@@ -2608,7 +2642,7 @@ class _KndxIndex(object):
                     del self._history
                 except NoSuchFile:
                     self._kndx_cache[prefix] = ({}, [])
-                    if type(self._mapper) == ConstantMapper:
+                    if type(self._mapper) is ConstantMapper:
                         # preserve behaviour for revisions.kndx etc.
                         self._init_index(path)
                     del self._cache
@@ -2882,6 +2916,8 @@ class _KnitGraphIndex(object):
 
     def get_missing_parents(self):
         """Return the keys of missing parents."""
+        # If updating this, you should also update
+        # groupcompress._GCGraphIndex.get_missing_parents
         # We may have false positives, so filter those out.
         self._key_dependencies.add_keys(
             self.get_parent_map(self._key_dependencies.get_unsatisfied_refs()))
@@ -3092,7 +3128,7 @@ class _KnitKeyAccess(object):
             opaque index memo. For _KnitKeyAccess the memo is (key, pos,
             length), where the key is the record key.
         """
-        if type(raw_data) != str:
+        if type(raw_data) is not str:
             raise AssertionError(
                 'data must be plain bytes was %s' % type(raw_data))
         result = []
@@ -3181,7 +3217,7 @@ class _DirectPackAccess(object):
             length), where the index field is the write_index object supplied
             to the PackAccess object.
         """
-        if type(raw_data) != str:
+        if type(raw_data) is not str:
             raise AssertionError(
                 'data must be plain bytes was %s' % type(raw_data))
         result = []
@@ -3407,7 +3443,7 @@ class _KnitAnnotator(object):
         fulltext.)
 
         :return: A list of (key, index_memo) records, suitable for
-            passing to read_records_iter to start reading in the raw data fro/
+            passing to read_records_iter to start reading in the raw data from
             the pack file.
         """
         if key in self._annotated_lines:
@@ -3550,12 +3586,8 @@ class _KnitAnnotator(object):
         """Create a heads provider for resolving ancestry issues."""
         if self._heads_provider is not None:
             return self._heads_provider
-        parent_provider = _mod_graph.DictParentsProvider(
-            self._revision_id_graph)
-        graph_obj = _mod_graph.Graph(parent_provider)
-        head_cache = _mod_graph.FrozenHeadsCache(graph_obj)
-        self._heads_provider = head_cache
-        return head_cache
+        self._heads_provider = _mod_graph.KnownGraph(self._revision_id_graph)
+        return self._heads_provider
 
     def annotate(self, key):
         """Return the annotated fulltext at the given key.
@@ -3584,19 +3616,15 @@ class _KnitAnnotator(object):
         being able to produce line deltas.
         """
         # TODO: this code generates a parent maps of present ancestors; it
-        # could be split out into a separate method, and probably should use
-        # iter_ancestry instead. -- mbp and robertc 20080704
+        #       could be split out into a separate method
+        #       -- mbp and robertc 20080704
         graph = _mod_graph.Graph(self._knit)
-        head_cache = _mod_graph.FrozenHeadsCache(graph)
-        search = graph._make_breadth_first_searcher([key])
-        keys = set()
-        while True:
-            try:
-                present, ghosts = search.next_with_ghosts()
-            except StopIteration:
-                break
-            keys.update(present)
-        parent_map = self._knit.get_parent_map(keys)
+        parent_map = dict((k, v) for k, v in graph.iter_ancestry([key])
+                          if v is not None)
+        if not parent_map:
+            raise errors.RevisionNotPresent(key, self)
+        keys = parent_map.keys()
+        heads_provider = _mod_graph.KnownGraph(parent_map)
         parent_cache = {}
         reannotate = annotate.reannotate
         for record in self._knit.get_record_stream(keys, 'topological', True):
@@ -3608,7 +3636,7 @@ class _KnitAnnotator(object):
             else:
                 parent_lines = []
             parent_cache[key] = list(
-                reannotate(parent_lines, fulltext, key, None, head_cache))
+                reannotate(parent_lines, fulltext, key, None, heads_provider))
         try:
             return parent_cache[key]
         except KeyError, e:

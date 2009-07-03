@@ -51,9 +51,6 @@ class RepoFetcher(object):
         :param last_revision: If set, try to limit to the data this revision
             references.
         :param find_ghosts: If True search the entire history for ghosts.
-        :param _write_group_acquired_callable: Don't use; this parameter only
-            exists to facilitate a hack done in InterPackRepo.fetch.  We would
-            like to remove this parameter.
         :param pb: ProgressBar object to use; deprecated and ignored.
             This method will just create one on top of the stack.
         """

@@ -301,36 +301,6 @@ class ForeignRevisionTests(TestCase):
         self.assertEquals(mapp, rev.mapping)
 
 
-class ShowForeignPropertiesTests(TestCase):
-    """Tests for the show_foreign_properties() function."""
-
-    def setUp(self):
-        super(ShowForeignPropertiesTests, self).setUp()
-        self.vcs = DummyForeignVcs()
-        foreign.foreign_vcs_registry.register("dummy",
-            self.vcs, "Dummy VCS")
-
-    def tearDown(self):
-        super(ShowForeignPropertiesTests, self).tearDown()
-        foreign.foreign_vcs_registry.remove("dummy")
-
-    def test_show_non_foreign(self):
-        """Test use with a native (non-foreign) bzr revision."""
-        self.assertEquals({}, foreign.show_foreign_properties(Revision("arevid")))
-
-    def test_show_imported(self):
-        rev = Revision("dummy-v1:my-foreign-revid")
-        self.assertEquals({ "dummy ding": "my/foreign\\revid" },
-                          foreign.show_foreign_properties(rev))
-
-    def test_show_direct(self):
-        rev = foreign.ForeignRevision(("some", "foreign", "revid"),
-                                      DummyForeignVcsMapping(self.vcs),
-                                      "roundtrip-revid")
-        self.assertEquals({ "dummy ding": "some/foreign\\revid" },
-                          foreign.show_foreign_properties(rev))
-
-
 class WorkingTreeFileUpdateTests(TestCaseWithTransport):
     """Tests for update_workingtree_fileids()."""
 

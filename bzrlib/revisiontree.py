@@ -45,7 +45,8 @@ class RevisionTree(tree.Tree):
         self._rules_searcher = None
 
     def supports_tree_reference(self):
-        return True
+        return getattr(self._repository._format, "supports_tree_reference",
+            False)
 
     def get_parent_ids(self):
         """See Tree.get_parent_ids.
@@ -113,11 +114,18 @@ class RevisionTree(tree.Tree):
     def has_filename(self, filename):
         return bool(self.inventory.path2id(filename))
 
-    def list_files(self, include_root=False):
+    def list_files(self, include_root=False, from_dir=None, recursive=True):
         # The only files returned by this are those from the version
-        entries = self.inventory.iter_entries()
-        # skip the root for compatability with the current apis.
-        if self.inventory.root is not None and not include_root:
+        inv = self.inventory
+        if from_dir is None:
+            from_dir_id = None
+        else:
+            from_dir_id = inv.path2id(from_dir)
+            if from_dir_id is None:
+                # Directory not versioned
+                return
+        entries = inv.iter_entries(from_dir=from_dir_id, recursive=recursive)
+        if inv.root is not None and not include_root and from_dir is None:
             # skip the root for compatability with the current apis.
             entries.next()
         for path, entry in entries:

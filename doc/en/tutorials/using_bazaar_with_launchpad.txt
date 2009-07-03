@@ -386,7 +386,7 @@ done by a robot (like `PQM`_) when the branch reaches the right state
 Code review tracking
 --------------------
 
-A number of feature are under development in Launchpad to track the
+A number of features are under development in Launchpad to track the
 states, conversations and outcomes of code reviews. These features are
 expected to be integrated with branch merge proposals and branch
 browsing features.

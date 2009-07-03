@@ -39,7 +39,6 @@ from bzrlib.trace import mutter
 from bzrlib import (
     debug,
     errors,
-    symbol_versioning,
     )
 
 _HEADER_READV = (0, 200)
@@ -1192,7 +1191,7 @@ class CombinedGraphIndex(object):
                 ', '.join(map(repr, self._indices)))
 
     def get_parent_map(self, keys):
-        """See graph._StackedParentsProvider.get_parent_map"""
+        """See graph.StackedParentsProvider.get_parent_map"""
         search_keys = set(keys)
         if NULL_REVISION in search_keys:
             search_keys.discard(NULL_REVISION)
