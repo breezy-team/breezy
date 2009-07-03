@@ -220,11 +220,12 @@ class cmd_launchpad_login(Command):
     aliases = ['lp-login']
     takes_args = ['name?']
     takes_options = [
+        'verbose',
         Option('no-check',
                "Don't check that the user name is valid."),
         ]
 
-    def run(self, name=None, no_check=False):
+    def run(self, name=None, no_check=False, verbose=False):
         from bzrlib.plugins.launchpad import account
         check_account = not no_check
 
@@ -242,6 +243,8 @@ class cmd_launchpad_login(Command):
             if check_account:
                 account.check_lp_login(name)
             account.set_lp_login(name)
+            if verbose:
+                self.outf.write("Launchpad user ID set to '%s'.\n" % (name,))
 
 register_command(cmd_launchpad_login)
 

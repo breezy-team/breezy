@@ -16,15 +16,43 @@
 
 """Tests for the launchpad-login command."""
 
+from bzrlib.plugins.launchpad import account
 from bzrlib.tests import TestCaseWithTransport
 
 
 class TestLaunchpadLogin(TestCaseWithTransport):
     """Tests for launchpad-login."""
 
-    def test_login_when_not_logged_in(self):
+    def test_login_without_name_when_not_logged_in(self):
         # lp-login without a 'name' parameter returns the user ID of the
         # logged in user. If no one is logged in, we tell the user as much.
-        out, err = self.run_bzr(['launchpad-login'], retcode=1)
+        out, err = self.run_bzr(['launchpad-login', '--no-check'], retcode=1)
         self.assertEqual('No Launchpad user ID configured.\n', out)
+        self.assertEqual('', err)
+
+    def test_login_with_name_sets_login(self):
+        # lp-login with a 'name' parameter sets the Launchpad login.
+        self.run_bzr(['launchpad-login', '--no-check', 'jml'])
+        self.assertEqual('jml', account.get_lp_login())
+
+    def test_login_without_name_when_logged_in(self):
+        # lp-login without a 'name' parameter returns the user ID of the
+        # logged in user.
+        account.set_lp_login('jml')
+        out, err = self.run_bzr(['launchpad-login', '--no-check'])
+        self.assertEqual('jml\n', out)
+        self.assertEqual('', err)
+
+    def test_login_with_name_no_output_by_default(self):
+        # lp-login with a 'name' parameter produces no output by default.
+        out, err = self.run_bzr(['launchpad-login', '--no-check', 'jml'])
+        self.assertEqual('', out)
+        self.assertEqual('', err)
+
+    def test_login_with_name_verbose(self):
+        # lp-login with a 'name' parameter and a verbose flag produces some
+        # information about what Bazaar just did.
+        out, err = self.run_bzr(
+            ['launchpad-login', '-v', '--no-check', 'jml'])
+        self.assertEqual("Launchpad user ID set to 'jml'.\n", out)
         self.assertEqual('', err)
