@@ -32,9 +32,33 @@ There are 3 important commands to be aware of when migrating data.
 **reconcile** is rarely needed but it's good practice to run **check**
 before runing **upgrade**.
 
-For detailed help on these commands, see the Bazaar User Reference.
+For detailed help on these commands, see the `Bazaar User Reference`_.
 
-.. _Bazaar User Reference: ../user-reference/index.html
+.. _Bazaar User Reference: ../user-reference/bzr_man.html
+
+
+Communicating with your community
+---------------------------------
+
+To enable a smooth transistion to the new format, you should:
+
+1. Make one person responsible for migrating the trunk.
+2. Test the migration of trunk works successfully.
+3. Schedule a time for the trunk migration and notify your community.
+
+This forward warning should be long enough for users to have time
+to upgrade Bazaar and any required plugins before the migration date.
+
+For larger projects, allow some time for the migration itself.
+You should have a good idea of how long the migration will take
+after doing the test migration. It may make sense to do the migration
+on a weekend or a Friday, giving yourself some breathing space if
+things go wrong.
+
+After the trunk is migrated, you'll need to notify your community
+accordingly, giving them instructions as to how to migrate their
+local branches. Sample instructions are provided later in this
+document.
 
 
 Migrating a standalone branch
@@ -46,16 +70,78 @@ To do ...
 Migrating branches in a shared repository
 -----------------------------------------
 
-To do ...
+Upgrade things in the following order:
+
+1. Upgrade the shared repository.
+2. Upgrade the branches.
+3. Upgrade any lightweight checkouts.
 
 
-Migrating stacked branches
---------------------------
+Migrating branches on Launchpad
+-------------------------------
 
-All branches stacked on another branch need to be upgraded **before**
-the stacked on branch. For branches managed on Launchpad, the default
-policy is for branches to be stacked on trunk so that means that you
-need to give your community plenty of time to upgrade any branches
-they own on Launchpad before you schedule the trunk upgrade.
+To allow isolation between public and private branches, Launchpad
+uses stacked branches rather than shared repositories as the core
+technology for efficient branch storage. The process for migrating
+to a new format for projects using Launchpad code hosting is therefore
+different to migrating a personal or in-house project.
 
-To be completed ...
+Here are the steps to follow:
+
+1. The nominated person grabs a copy of trunk and does the migration.
+
+2. On Launchpad, unset the current trunk from being the development focus.
+   (This *must* be done or the following step won't work as expected.)
+
+3. Push the migrated trunk to Launchpad.
+
+4. Set it as the development focus.
+
+5. Ask users subscribed to the old trunk to subscribe to the new one.
+
+In summary, these steps mean that the old trunk is still available and
+existing branches stacked on it will continue to be so. However, the
+development focus has switched to the migrated trunk and any new branches
+pushed to Launchpad for your project will now stack on it.
+
+You are now ready to tell your community that the new trunk is available
+and to give them instructions on migrating any local branches they have.
+
+
+Migrating local branches after a central trunk has migrated
+-----------------------------------------------------------
+
+To migrate a standalone branch:
+
+1. Grab the latest branch from the central location into a
+   new directory.
+
+2. Pull or merge any changes you've made in your existing branch
+   into the new branch.
+
+To migrate branches in a shared repository:
+
+1. Create a fresh shared repository in the new format (2a or later).
+
+2. Grab the latest branch from the central location into a
+   new directory inside the shared repository.
+
+3. Decide which of your local branches you want to migrate. (If you
+   haven't already, now's a good time for `Finding obsolete branches`_
+   and purging them, after backing up first of course.)
+
+4. To migrate each local branch of interest, there are 2 options:
+
+   * *init* an empty branch in the new repository and *pull* the
+     revisions from the branch in the old repository across.
+
+   * In the new repository, *branch* from trunk to the new branch
+     name then *merge* your changes from the matching branch in the
+     old repository.
+
+The first method will give you a branch which is identical (in terms
+of revision history) to the old branch, but it's parent branch will
+be set to the old branch, not your new trunk. The second approach
+sets up the parent branch correctly but isn't ideal if you're not
+ready to include all the latest revisions from trunk into that branch.
+
