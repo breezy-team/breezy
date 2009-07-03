@@ -20,14 +20,10 @@ from urlparse import urlsplit, urlunsplit
 import urllib
 import xmlrpclib
 
-from bzrlib.lazy_import import lazy_import
-lazy_import(globals(), """
-from bzrlib import urlutils
-""")
-
 from bzrlib import (
     config,
     errors,
+    urlutils,
     __version__ as _bzrlib_version,
     )
 
