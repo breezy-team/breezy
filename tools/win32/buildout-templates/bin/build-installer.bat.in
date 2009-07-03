@@ -7,6 +7,7 @@ set SVN_LIBINTL=${buildout:directory}/${svn-libintl:destination}
 set TBZR=${buildout:directory}/tbzr/trunk
 set ROOT=${buildout:directory}
 set RELEASE=%ROOT%\release\bzr.${settings:bzr-latest}
+set INSTALLERS=%ROOT%\installers
 set PYTHON=${buildout:executable}
 set BUILD_ERROR=0
 set ORIGINAL_PYTHONPATH=%PYTHONPATH%
@@ -26,6 +27,12 @@ FOR /f "tokens=1 delims= " %%G IN ('cygpath %PYTHON%') DO set CYG_PYTHON=%%G
 @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
 
 md %RELEASE%
+@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
+%PYTHON% %ROOT%/ostools.py remove %INSTALLERS%
+@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
+md %INSTALLERS%
 @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
 
 bzr co %ROOT%/bzr/latest %RELEASE%
@@ -60,7 +67,17 @@ cd %RELEASE%
 make installer PYTHON=%CYG_PYTHON%
 @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
 
-make python-installer PYTHON24=${settings:python24} PYTHON25=${settings:python25}
+rem Enable this when this branch is merged.
+rem make python-installer PYTHON24=${settings:python24} PYTHON25=${settings:python25}
+rem @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
+${settings:python24} setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
+@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
+${settings:python25} setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
+@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
+%PYTHON% %ROOT%/ostools.py copytodir %RELEASE%/bzr*.exe %INSTALLERS%
 @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
 
 :End
