@@ -105,6 +105,9 @@ Bug Fixes
 * Progress bars no longer show the network transport scheme or direction.
   (Martin Pool)
 
+* launchpad-login now respects the 'verbose' option.
+  (Jonathan Lange, #217031)
+
 
 Internals
 *********
