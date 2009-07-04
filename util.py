@@ -209,7 +209,7 @@ def suite_to_distribution(suite):
             'testing', 'unstable', 'experimental', 'frozen')
     debian_targets = ('', '-security', '-proposed-updates', '-backports')
     ubuntu_releases = ('warty', 'hoary', 'breezy', 'dapper', 'edgy',
-            'feisty', 'gutsy', 'hardy', 'intrepid', 'jaunty')
+            'feisty', 'gutsy', 'hardy', 'intrepid', 'jaunty', 'karmic')
     ubuntu_targets = ('', '-proposed', '-updates', '-security', '-backports')
     all_debian = [r + t for r in debian_releases for t in debian_targets]
     all_ubuntu = [r + t for r in ubuntu_releases for t in ubuntu_targets]
@@ -297,7 +297,9 @@ def _dget(cls, dsc_location, target_dir):
     for file_details in dsc['files']:
         name = file_details['name']
         _download_part(name, dsc_t, target_dir, file_details['md5sum'])
-    write_if_different(dsc_contents, os.path.join(target_dir, path))
+    target_file = os.path.join(target_dir, path)
+    write_if_different(dsc_contents, target_file)
+    return target_file
 
 
 def dget(dsc_location, target_dir):
