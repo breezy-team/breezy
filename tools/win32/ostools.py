@@ -118,7 +118,7 @@ def main(argv=None):
         return 0
 
     if cmd == 'makedir':
-        if len(argv) < 2:
+        if len(argv) == 0:
             print "Usage:  ostools.py makedir DIR"
             return 1
 
