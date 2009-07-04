@@ -1132,8 +1132,6 @@ class DistributionBranch(object):
             return br.repository.revision_tree(br.last_revision())
         upstream_trees = [get_last_revision_tree(o.upstream_branch)
             for o in other_branches]
-        import_dir(self.upstream_tree, upstream_part,
-                file_ids_from=upstream_trees + [self.tree])
         if upstream_branch is not None:
             if upstream_revision is None:
                 upstream_revision = upstream_branch.last_revision()
@@ -1141,6 +1139,11 @@ class DistributionBranch(object):
                     last_revision=upstream_revision)
             upstream_branch.tags.merge_to(self.upstream_branch.tags)
             upstream_parents.append(upstream_revision)
+            upstream_trees.insert(0,
+                    self.upstream_branch.repository.revision_tree(
+                        upstream_revision))
+        import_dir(self.upstream_tree, upstream_part,
+                file_ids_from=upstream_trees + [self.tree])
         self.upstream_tree.set_parent_ids(upstream_parents)
         revprops = {"deb-md5": md5}
         if upstream_tarball is not None:
