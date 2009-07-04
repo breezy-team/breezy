@@ -27,6 +27,7 @@ from bzrlib import (
     __version__ as _bzrlib_version,
     )
 
+
 # for testing, do
 '''
 export BZR_LP_XMLRPC_URL=http://xmlrpc.staging.launchpad.net/bazaar/
@@ -192,13 +193,7 @@ class LaunchpadService(object):
             instance = self._lp_instance
         return self.LAUNCHPAD_DOMAINS[instance]
 
-    def get_web_url_from_branch_url(self, branch_url, _request_factory=None):
-        """Get the Launchpad web URL for the given branch URL.
-
-        :raise errors.InvalidURL: if 'branch_url' cannot be identified as a
-            Launchpad branch URL.
-        :return: The URL of the branch on Launchpad.
-        """
+    def _guess_branch_path(self, branch_url, _request_factory=None):
         scheme, hostinfo, path = urlsplit(branch_url)[:3]
         if _request_factory is None:
             _request_factory = ResolveLaunchpadPathRequest
@@ -216,6 +211,16 @@ class LaunchpadService(object):
                 for domain in self.LAUNCHPAD_DOMAINS.itervalues())
             if hostinfo not in domains:
                 raise NotLaunchpadBranch(branch_url)
+        return path.lstrip('/')
+
+    def get_web_url_from_branch_url(self, branch_url, _request_factory=None):
+        """Get the Launchpad web URL for the given branch URL.
+
+        :raise errors.InvalidURL: if 'branch_url' cannot be identified as a
+            Launchpad branch URL.
+        :return: The URL of the branch on Launchpad.
+        """
+        path = self._guess_branch_path(branch_url, _request_factory)
         return urlutils.join('https://code.%s' % self.domain, path)
 
 
