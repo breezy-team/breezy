@@ -23,6 +23,8 @@
 PYTHON=python
 PYTHON24=python24
 PYTHON25=python25
+BZR_TARGET=release
+PLUGIN_TARGET=plugin-release
 PYTHON_BUILDFLAGS=
 
 .PHONY: all clean extensions pyflakes api-docs check-nodocs check
@@ -226,7 +228,7 @@ installer-all:
 	@echo *** Make all the installers from scratch
 	cd tools/win32 && $(PYTHON) bootstrap.py
 	cd tools/win32 && bin/buildout
-	cd tools/win32 && bin/build-installer.bat
+	cd tools/win32 && bin/build-installer.bat $(BZR_TARGET) $(PLUGIN_TARGET)
 
 
 clean-installer-all:

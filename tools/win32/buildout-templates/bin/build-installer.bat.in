@@ -3,7 +3,7 @@ setlocal
 
 set ROOT=${buildout:directory}
 
-set RELEASE=%ROOT%\release\bzr.${settings:bzr-latest}
+set RELEASE=%ROOT%\release\bzr.${settings:bzr-release}
 set DEV=%ROOT%\dev\bzr.dev
 set TARGET=
 set BZR_TARGET=
@@ -32,13 +32,13 @@ set TORTOISE_OVERLAYS_MSI_X64=${buildout:directory}/tortoise-overlays/%BASENAME%
 FOR /f "tokens=1 delims= " %%G IN ('cygpath %PYTHON%') DO set CYG_PYTHON=%%G
 
 :ARGS
-if "%1"=="release" (set TARGET=%RELEASE%) & (set BZR_TARGET=latest) & shift & goto ARGS
+if "%1"=="release" (set TARGET=%RELEASE%) & (set BZR_TARGET=release) & shift & goto ARGS
 if "%1"=="dev" (set TARGET=%DEV%) & (set BZR_TARGET=trunk) & shift & goto ARGS
-if "%1"=="plugin-latest" (set PLUGIN_TARGET=latest) & shift & goto ARGS
+if "%1"=="plugin-release" (set PLUGIN_TARGET=release) & shift & goto ARGS
 if "%1"=="plugin-dev" (set PLUGIN_TARGET=trunk) & shift & goto ARGS
 
-if not defined TARGET (set TARGET=%RELEASE%) & (set BZR_TARGET=latest)
-if not defined PLUGIN_TARGET (set PLUGIN_TARGET=latest)
+if not defined TARGET (set TARGET=%RELEASE%) & (set BZR_TARGET=release)
+if not defined PLUGIN_TARGET (set PLUGIN_TARGET=release)
 
 %PYTHON% %ROOT%/ostools.py remove %TARGET%
 @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
