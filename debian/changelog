@@ -1,6 +1,10 @@
 bzr-builddeb (2.1.2~ubuntu2) jaunty; urgency=low
 
+  [ James Westby ]
   * Don't remove the debian part of the version number twice. (LP: #372792)
+
+  [ Jelmer Vernooij ]
+  * Support Vcs-Hg in the deb: directory service if bzr-hg is installed.
 
  -- James Westby <james.westby@ubuntu.com>  Wed, 06 May 2009 17:49:49 +0100
 
