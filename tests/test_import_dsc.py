@@ -1392,3 +1392,12 @@ class DistributionBranchTests(tests.TestCaseWithTransport):
         self.assertEqual(up_rh1[-1], up_revtree.get_parent_ids()[1])
         self.assertEqual(up_rh2[-1],
                 self.tree2.branch.tags.lookup_tag("upstream-1.2"))
+
+    def test_import_symlink(self):
+        version = Version("1.0-1")
+        self.requireFeature(tests.SymlinkFeature)
+        builder = SourcePackageBuilder("package", version)
+        builder.add_default_control()
+        builder.add_upstream_symlink("a", "b")
+        builder.build()
+        self.db1.import_package(builder.dsc_name())

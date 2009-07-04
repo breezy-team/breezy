@@ -1714,7 +1714,13 @@ class DistributionBranch(object):
         tmpdir = tempfile.mkdtemp(prefix="builddeb-pristine-")
         try:
             dest = os.path.join(tmpdir, "orig")
-            export(tree, dest, format='dir')
+            tree.lock_read()
+            try:
+                for (dp, ie) in tree.inventory.iter_entries():
+                    ie._read_tree_state(dp, tree)
+                export(tree, dest, format='dir')
+            finally:
+                tree.unlock()
             command = ["/usr/bin/pristine-tar", "gendelta", tarball_path, "-"]
             info(" ".join(command))
             proc = Popen(command, stdout=PIPE, cwd=dest)

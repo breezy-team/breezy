@@ -240,6 +240,7 @@ class SourcePackageBuilder(object):
 
     def __init__(self, name, version, native=False):
         self.upstream_files = {}
+        self.upstream_symlinks = {}
         self.debian_files = {}
         self.name = name
         self.native = native
@@ -252,6 +253,9 @@ class SourcePackageBuilder(object):
     def add_upstream_files(self, files):
         for new_file in files:
             self.upstream_files[new_file[0]] = new_file[1]
+
+    def add_upstream_symlink(self, name, target):
+        self.upstream_symlinks[name] = target
 
     def remove_upstream_file(self, filename):
         del self.upstream_files[filename]
@@ -312,6 +316,14 @@ class SourcePackageBuilder(object):
             finally:
                 f.close()
 
+    def _make_symlinks(self, files_list, basedir):
+        for (path, target) in files_list.items():
+            dirname = os.path.dirname(path)
+            if dirname is not None and dirname != "":
+                if not os.path.exists(os.path.join(basedir, dirname)):
+                    os.makedirs(os.path.join(basedir, dirname))
+            os.symlink(target, os.path.join(basedir, path))
+
     def basedir(self):
         return self.name + "-" + str(self._cl.version.upstream_version)
 
@@ -319,13 +331,14 @@ class SourcePackageBuilder(object):
         basedir = self.basedir()
         os.mkdir(basedir)
         self._make_files(self.upstream_files, basedir)
+        self._make_symlinks(self.upstream_symlinks, basedir)
         return basedir
 
     def build(self):
         basedir = self._make_base()
         if not self.native:
             orig_basedir = basedir + ".orig"
-            shutil.copytree(basedir, orig_basedir)
+            shutil.copytree(basedir, orig_basedir, symlinks=True)
             cmd = "dpkg-source -sa -b %s" % (basedir)
             if os.path.exists("%s_%s.orig.tar.gz"
                     % (self.name, self._cl.version.upstream_version)):
