@@ -1697,8 +1697,7 @@ class DistributionBranch(object):
             export(tree, dest, format='dir')
             delta = self.pristine_tar_delta(revid)
             command = ["/usr/bin/pristine-tar", "gentar", "-",
-                       dest_filename]
-            print command
+                       os.path.abspath(dest_filename)]
             proc = Popen(command, stdin=PIPE, cwd=dest)
             (stdout, stderr) = proc.communicate(delta)
             if proc.returncode != 0:
