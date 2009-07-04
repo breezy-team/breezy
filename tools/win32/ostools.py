@@ -21,6 +21,13 @@ import os
 import shutil
 import sys
 
+def makedir(dirname):
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
+    if not os.path.isdir(dirname):
+        print "Error: Destination is not a directory", dirname
+        return 2
+    return 0
 
 def main(argv=None):
     if argv is None:
@@ -40,12 +47,9 @@ def main(argv=None):
             print "Usage:  ostools.py copytodir FILES... DIR"
             return 1
 
-        todir = argv.pop()
-        if not os.path.exists(todir):
-            os.makedirs(todir)
-        if not os.path.isdir(todir):
-            print "Error: Destination is not a directory"
-            return 2
+        retcode = makedir(argv.pop())
+        if retcode:
+            return retcode
 
         files = []
         for possible_glob in argv:
@@ -63,12 +67,9 @@ def main(argv=None):
             print "Usage:  ostools.py copytree FILES... DIR"
             return 1
 
-        todir = argv.pop()
-        if not os.path.exists(todir):
-            os.makedirs(todir)
-        if not os.path.isdir(todir):
-            print "Error: Destination is not a directory"
-            return 2
+        retcode = makedir(argv.pop())
+        if retcode:
+            return retcode
 
         files = []
         for possible_glob in argv:
@@ -78,8 +79,9 @@ def main(argv=None):
             relative_path = src
             dest = os.path.join(todir, relative_path)
             dest_dir = os.path.dirname(dest)
-            if not os.path.isdir(dest_dir):
-                os.makedirs(dest_dir)
+            retcode = makedir(dest_dir)
+            if retcode:
+                return retcode
             shutil.copy(src, dest)
             print "Copied:", src, "=>", dest
 
@@ -110,9 +112,19 @@ def main(argv=None):
         if len(argv) == 0:
             print "Usage:  ostools.py basename [PATH | URL]"
             return 1
-        
+
         for path in argv:
             print os.path.basename(path)
+        return 0
+
+    if cmd == 'makedir':
+        if len(argv) < 2:
+            print "Usage:  ostools.py makedir DIR"
+            return 1
+
+        retcode = makedir(argv.pop())
+        if retcode:
+            return retcode
         return 0
 
     print "Usage error"
