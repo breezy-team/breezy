@@ -48,6 +48,11 @@ from bzrlib.plugins.launchpad.lp_registration import (
     NotLaunchpadBranch,
     )
 
+try:
+    from bzrlib.plugins.launchpad import lp_api
+except ImportError:
+    lp_api = None
+
 
 class cmd_register_branch(Command):
     """Register a branch with launchpad.net.
@@ -244,6 +249,24 @@ class cmd_launchpad_login(Command):
             account.set_lp_login(name)
 
 register_command(cmd_launchpad_login)
+
+
+class cmd_launchpad_mirror(Command):
+    """Ask Launchpad to mirror a branch now."""
+
+    aliases = ['lp-mirror']
+    takes_args = ['location?']
+
+    def run(self, location='.'):
+        service = LaunchpadService()
+        launchpad = lp_api.login(service)
+        branch = _mod_branch.Branch.open(location)
+        lp_branch = lp_api.load_branch(launchpad, branch)
+        lp_branch.requestMirror()
+
+
+if lp_api is not None:
+    register_command(cmd_launchpad_mirror)
 
 
 def _register_directory():
