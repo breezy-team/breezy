@@ -53,23 +53,23 @@ bzr co %ROOT%/bzr/%BZR_TARGET% %TARGET%
 @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
 
 cd %ROOT%/subvertpy/%PLUGIN_TARGET%
-%PYTHON% setup.py install -O1 --install-lib=%RELEASE%
+%PYTHON% setup.py install -O1 --install-lib=%TARGET%
 @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
 
 cd %ROOT%/bzrtools/%PLUGIN_TARGET%
-%PYTHON% setup.py install -O1 --install-lib=%RELEASE%
+%PYTHON% setup.py install -O1 --install-lib=%TARGET%
 @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
 
 cd %ROOT%/qbzr/%PLUGIN_TARGET%
-%PYTHON% setup.py install -O1 --install-lib=%RELEASE%
+%PYTHON% setup.py install -O1 --install-lib=%TARGET%
 @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
 
 cd %ROOT%/bzr-svn/%PLUGIN_TARGET%
-%PYTHON% setup.py install -O1 --install-lib=%RELEASE%
+%PYTHON% setup.py install -O1 --install-lib=%TARGET%
 @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
 
 cd %ROOT%/bzr-rebase/%PLUGIN_TARGET%
-%PYTHON% setup.py install -O1 --install-lib=%RELEASE%
+%PYTHON% setup.py install -O1 --install-lib=%TARGET%
 @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
 
 set PYTHONPATH=%PYTHONPATH%;%TARGET%
