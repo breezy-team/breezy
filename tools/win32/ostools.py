@@ -47,7 +47,8 @@ def main(argv=None):
             print "Usage:  ostools.py copytodir FILES... DIR"
             return 1
 
-        retcode = makedir(argv.pop())
+        todir = argv.pop()
+        retcode = makedir(todir)
         if retcode:
             return retcode
 
@@ -67,7 +68,8 @@ def main(argv=None):
             print "Usage:  ostools.py copytree FILES... DIR"
             return 1
 
-        retcode = makedir(argv.pop())
+        todir = argv.pop()
+        retcode = makedir(todir)
         if retcode:
             return retcode
 
