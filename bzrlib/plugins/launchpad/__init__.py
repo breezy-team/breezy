@@ -113,7 +113,7 @@ class cmd_register_branch(Command):
             link_bug=None,
             dry_run=False):
         from bzrlib.plugins.launchpad.lp_registration import (
-            LaunchpadService, BranchRegistrationRequest, BranchBugLinkRequest,
+            BranchRegistrationRequest, BranchBugLinkRequest,
             DryRunLaunchpadService)
         if public_url is None:
             try:
