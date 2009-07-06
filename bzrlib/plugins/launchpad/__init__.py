@@ -26,8 +26,6 @@ from bzrlib import version_info
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-import webbrowser
-
 from bzrlib import (
     branch as _mod_branch,
     trace,
@@ -196,6 +194,8 @@ class cmd_launchpad_open(Command):
         web_url = self._get_web_url(LaunchpadService(), location)
         trace.note('Opening %s in web browser' % web_url)
         if not dry_run:
+            import webbrowser   # this import should not be lazy
+                                # otherwise bzr.exe lacks this module
             webbrowser.open(web_url)
 
 register_command(cmd_launchpad_open)
