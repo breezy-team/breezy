@@ -83,8 +83,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
         path whose NFD decomposition is different than the NFC one), this is
         the best way to keep test active (as opposed to disabling them
         completely). This is a stop gap. The tests should at least be rewritten
-        so that the failing ones are clearly separated from the passing ones
-        and use ExpectedFailure instead of TestSkipped.
+        so that the failing ones are clearly separated from the passing ones.
         """
         if fs_enc is None:
             fs_enc = osutils._fs_enc
