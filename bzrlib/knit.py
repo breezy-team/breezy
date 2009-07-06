@@ -1042,6 +1042,9 @@ class KnitVersionedFiles(VersionedFiles):
         """See VersionedFiles.annotate."""
         return self._factory.annotate(self, key)
 
+    def get_annotator(self):
+        return _KnitAnnotator(self)
+
     def check(self, progress_bar=None):
         """See VersionedFiles.check()."""
         # This doesn't actually test extraction of everything, but that will
@@ -3422,7 +3425,7 @@ class _KnitAnnotator(annotate.Annotator):
                         pending.update([p for p in parent_keys
                                            if p not in self._all_build_details])
                     else:
-                        raise ValueError('i dont handle ghosts')
+                        raise errors.RevisionNotPresent(key, self._vf)
         # Generally we will want to read the records in reverse order, because
         # we find the parent nodes after the children
         records.reverse()

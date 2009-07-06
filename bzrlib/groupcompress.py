@@ -1072,6 +1072,9 @@ class GroupCompressVersionedFiles(VersionedFiles):
         ann = annotate.Annotator(self)
         return ann.annotate_flat(key)
 
+    def get_annotator(self):
+        return annotate.Annotator(self)
+
     def check(self, progress_bar=None):
         """See VersionedFiles.check()."""
         keys = self.keys()
