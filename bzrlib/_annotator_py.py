@@ -35,7 +35,6 @@ class Annotator(object):
     def __init__(self, vf):
         """Create a new Annotator from a VersionedFile."""
         self._vf = vf
-        self._special_keys = set()
         self._parent_map = {}
         self._text_cache = {}
         # Map from key => number of nexts that will be built from this key
@@ -93,7 +92,6 @@ class Annotator(object):
             # _heads_provider does some graph caching, so it is only valid while
             # self._parent_map hasn't changed
             self._heads_provider = None
-        # self._parent_map.update(parent_map)
         return vf_keys_needed, ann_keys_needed
 
     def _get_needed_texts(self, key, pb=None):
@@ -226,7 +224,6 @@ class Annotator(object):
 
     def add_special_text(self, key, parent_keys, text):
         """Add a specific text to the graph."""
-        self._special_keys.add(key)
         self._parent_map[key] = parent_keys
         self._text_cache[key] = osutils.split_lines(text)
         self._heads_provider = None
