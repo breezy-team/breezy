@@ -443,7 +443,7 @@ class GCCHKPacker(Packer):
         #      is grabbing too many keys...
         text_keys = source_vf.keys()
         self._copy_stream(source_vf, target_vf, text_keys,
-                          'text', self._get_progress_stream, 4)
+                          'texts', self._get_progress_stream, 4)
 
     def _copy_signature_texts(self):
         source_vf, target_vf = self._build_vfs('signature', False, False)
