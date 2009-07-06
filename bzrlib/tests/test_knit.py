@@ -366,16 +366,25 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         :return: (versioned_file, reload_counter)
             versioned_file  a KnitVersionedFiles using the packs for access
         """
-        tree = self.make_branch_and_memory_tree('tree')
-        tree.lock_write()
-        self.addCleanup(tree.unlock)
-        tree.add([''], ['root-id'])
-        tree.commit('one', rev_id='rev-1')
-        tree.commit('two', rev_id='rev-2')
-        tree.commit('three', rev_id='rev-3')
+        builder = self.make_branch_builder('.')
+        builder.start_series()
+        builder.build_snapshot('rev-1', None, [
+            ('add', ('', 'root-id', 'directory', None)),
+            ('add', ('file', 'file-id', 'file', 'content\nrev 1\n')),
+            ])
+        builder.build_snapshot('rev-2', ['rev-1'], [
+            ('modify', ('file-id', 'content\nrev 2\n')),
+            ])
+        builder.build_snapshot('rev-3', ['rev-2'], [
+            ('modify', ('file-id', 'content\nrev 3\n')),
+            ])
+        builder.finish_series()
+        b = builder.get_branch()
+        b.lock_write()
+        self.addCleanup(b.unlock)
         # Pack these three revisions into another pack file, but don't remove
         # the originals
-        repo = tree.branch.repository
+        repo = b.repository
         collection = repo._pack_collection
         collection.ensure_loaded()
         orig_packs = collection.packs
@@ -384,7 +393,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         # forget about the new pack
         collection.reset()
         repo.refresh_data()
-        vf = tree.branch.repository.revisions
+        vf = repo.revisions
         # Set up a reload() function that switches to using the new pack file
         new_index = new_pack.revision_index
         access_tuple = new_pack.access_tuple()
