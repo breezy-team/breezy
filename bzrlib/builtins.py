@@ -5255,7 +5255,21 @@ class cmd_reconfigure(Command):
             stacked_on=None):
         directory = bzrdir.BzrDir.open(location)
         if stacked_on is not None:
-            pass
+            branch = directory.open_branch()
+            # it may be a path relative to the cwd or a url; the branch wants
+            # a path relative to itself...
+            on_url = urlutils.relative_url(branch.base,
+                urlutils.normalize_url(stacked_on))
+            branch.lock_write()
+            try:
+                branch.set_stacked_on_url(on_url)
+                if not is_quiet():
+                    self.outf.write(
+                        "%s is now stacked on %s\n"
+                        % (branch.base,
+                           branch.get_stacked_on_url()))
+            finally:
+                branch.unlock()
         # At the moment you can use --stacked-on and a different
         # reconfiguration shape at the same time; there seems no good reason
         # to ban it.
