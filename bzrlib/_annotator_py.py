@@ -25,10 +25,6 @@ from bzrlib import (
     )
 
 
-class AnnotatorPolicy(object):
-    """Variables that define annotations."""
-
-
 class Annotator(object):
     """Class that drives performing annotations."""
 
