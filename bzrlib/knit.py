@@ -3376,12 +3376,10 @@ class _KnitAnnotator(annotate.Annotator):
         """
         pending = set([key])
         records = []
-        generation = 0
-        kept_generation = 0
+        ann_keys = set()
         self._num_needed_children[key] = 1
         while pending:
             # get all pending nodes
-            generation += 1
             this_iteration = pending
             build_details = self._vf._index.get_build_details(this_iteration)
             self._all_build_details.update(build_details)
@@ -3394,8 +3392,8 @@ class _KnitAnnotator(annotate.Annotator):
                 self._heads_provider = None
                 records.append((key, index_memo))
                 # Do we actually need to check _annotated_lines?
-                pending.update(p for p in parent_keys
-                                 if p not in self._all_build_details)
+                pending.update([p for p in parent_keys
+                                   if p not in self._all_build_details])
                 if parent_keys:
                     for parent_key in parent_keys:
                         if parent_key in self._num_needed_children:
@@ -3410,11 +3408,25 @@ class _KnitAnnotator(annotate.Annotator):
 
             missing_versions = this_iteration.difference(build_details.keys())
             if missing_versions:
-                raise ValueError('i dont handle ghosts')
+                for key in missing_versions:
+                    if key in self._parent_map and key in self._text_cache:
+                        # We already have this text ready, we just need to
+                        # yield it later so we get it annotated
+                        ann_keys.add(key)
+                        parent_keys = self._parent_map[key]
+                        for parent_key in parent_keys:
+                            if parent_key in self._num_needed_children:
+                                self._num_needed_children[parent_key] += 1
+                            else:
+                                self._num_needed_children[parent_key] = 1
+                        pending.update([p for p in parent_keys
+                                           if p not in self._all_build_details])
+                    else:
+                        raise ValueError('i dont handle ghosts')
         # Generally we will want to read the records in reverse order, because
         # we find the parent nodes after the children
         records.reverse()
-        return records
+        return records, ann_keys
 
     def _get_needed_texts(self, key, pb=None):
         # if True or len(self._vf._fallback_vfs) > 0:
@@ -3425,11 +3437,15 @@ class _KnitAnnotator(annotate.Annotator):
             return
         while True:
             try:
-                records = self._get_build_graph(key)
+                records, ann_keys = self._get_build_graph(key)
                 for idx, (sub_key, text, num_lines) in enumerate(
                                                 self._extract_texts(records)):
                     if pb is not None:
                         pb.update('annotating', idx, len(records))
+                    yield sub_key, text, num_lines
+                for sub_key in ann_keys:
+                    text = self._text_cache[sub_key]
+                    num_lines = len(text) # bad assumption
                     yield sub_key, text, num_lines
                 return
             except errors.RetryWithNewPacks, e:

@@ -1456,6 +1456,33 @@ class Test_KnitAnnotator(TestCaseWithMemoryTransport):
                            ['line1\n', 'line2\n'], ('fulltext', False))
         ann._num_compression_children['parent-id'] = 2
 
+    def test_annotate_special_text(self):
+        ann = self.make_annotator()
+        vf = ann._vf
+        rev1_key = ('rev-1',)
+        rev2_key = ('rev-2',)
+        rev3_key = ('rev-3',)
+        spec_key = ('special:',)
+        vf.add_lines(rev1_key, [], ['initial content\n'])
+        vf.add_lines(rev2_key, [rev1_key], ['initial content\n',
+                                            'common content\n',
+                                            'content in 2\n'])
+        vf.add_lines(rev3_key, [rev1_key], ['initial content\n',
+                                            'common content\n',
+                                            'content in 3\n'])
+        spec_text = ('initial content\n'
+                     'common content\n'
+                     'content in 2\n'
+                     'content in 3\n')
+        ann.add_special_text(spec_key, [rev2_key, rev3_key], spec_text)
+        anns, lines = ann.annotate(spec_key)
+        self.assertEqual([(rev1_key,),
+                          (rev2_key, rev3_key),
+                          (rev2_key,),
+                          (rev3_key,),
+                         ], anns)
+        self.assertEqualDiff(spec_text, ''.join(lines))
+
 
 class KnitTests(TestCaseWithTransport):
     """Class containing knit test helper routines."""
