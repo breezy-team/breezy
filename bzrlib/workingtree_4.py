@@ -687,7 +687,7 @@ class DirStateWorkingTree(WorkingTree3):
             from_entry = self._get_entry(path=from_rel)
             if from_entry == (None, None):
                 raise errors.BzrMoveFailedError(from_rel,to_dir,
-                    errors.NotVersionedError(path=str(from_rel)))
+                    errors.NotVersionedError(path=from_rel))
 
             from_id = from_entry[0][2]
             to_rel = pathjoin(to_dir, from_tail)
