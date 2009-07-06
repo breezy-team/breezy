@@ -85,6 +85,9 @@ class Annotator(object):
             needed_keys = set()
             next_parent_map.update(self._vf.get_parent_map(parent_lookup))
             for key, parent_keys in next_parent_map.iteritems():
+                if parent_keys is None: # No graph versionedfile
+                    parent_keys = ()
+                    next_parent_map[key] = ()
                 self._update_needed_children(key, parent_keys)
                 needed_keys.update([key for key in parent_keys
                                          if key not in parent_map])

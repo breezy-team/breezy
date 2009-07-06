@@ -70,6 +70,13 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
     fe_key = ('f-id', 'e-id')
     ff_key = ('f-id', 'f-id')
 
+    def make_no_graph_texts(self):
+        factory = knit.make_pack_factory(False, False, 2)
+        self.vf = factory(self.get_transport())
+        self.ann = self.module.Annotator(self.vf)
+        self.vf.add_lines(self.fa_key, (), ['simple\n', 'content\n'])
+        self.vf.add_lines(self.fb_key, (), ['simple\n', 'new content\n'])
+
     def make_simple_text(self):
         # TODO: all we really need is a VersionedFile instance, we'd like to
         #       avoid creating all the intermediate stuff
@@ -352,6 +359,15 @@ class TestAnnotator(tests.TestCaseWithMemoryTransport):
                                   spec_text)
         self.assertAnnotateEqual([(self.fa_key,),
                                   (self.fb_key, self.fc_key, self.fe_key),
-                                  (spec_key,)
+                                  (spec_key,),
                                  ], spec_key,
                                  exp_text=spec_text)
+
+    def test_no_graph(self):
+        self.make_no_graph_texts()
+        self.assertAnnotateEqual([(self.fa_key,),
+                                  (self.fa_key,),
+                                 ], self.fa_key)
+        self.assertAnnotateEqual([(self.fb_key,),
+                                  (self.fb_key,),
+                                 ], self.fb_key)
