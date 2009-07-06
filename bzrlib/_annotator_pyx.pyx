@@ -362,6 +362,9 @@ class Annotator:
                                                 this_annotation, parent)
         self._record_annotation(key, parent_keys, annotations)
 
+    def add_special_text(self, key, parent_keys, text):
+        """Add a specific text to the graph."""
+
     def annotate(self, key):
         """Return annotated fulltext for the given key."""
         pb = ui.ui_factory.nested_progress_bar()

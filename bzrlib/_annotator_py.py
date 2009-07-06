@@ -35,6 +35,7 @@ class Annotator(object):
     def __init__(self, vf):
         """Create a new Annotator from a VersionedFile."""
         self._vf = vf
+        self._special_keys = set()
         self._parent_map = {}
         self._text_cache = {}
         # Map from key => number of nexts that will be built from this key
@@ -42,27 +43,58 @@ class Annotator(object):
         self._annotations_cache = {}
         self._heads_provider = None
 
+    def _update_needed_children(self, key, parent_keys):
+        for parent_key in parent_keys:
+            if parent_key in self._num_needed_children:
+                self._num_needed_children[parent_key] += 1
+            else:
+                self._num_needed_children[parent_key] = 1
+
     def _get_needed_keys(self, key):
-        graph = _mod_graph.Graph(self._vf)
-        parent_map = {}
+        """Determine the texts we need to get from the backing vf.
+
+        :return: (vf_keys_needed, ann_keys_needed)
+            vf_keys_needed  These are keys that we need to get from the vf
+            ann_keys_needed Texts which we have in self._text_cache but we
+                            don't have annotations for. We need to yield these
+                            in the proper order so that we can get proper
+                            annotations.
+        """
+        parent_map = self._parent_map
         # We need 1 extra copy of the node we will be looking at when we are
         # done
         self._num_needed_children[key] = 1
-        for key, parent_keys in graph.iter_ancestry([key]):
-            if parent_keys is None:
-                continue
-            parent_map[key] = parent_keys
-            for parent_key in parent_keys:
-                if parent_key in self._num_needed_children:
-                    self._num_needed_children[parent_key] += 1
+        vf_keys_needed = set()
+        ann_keys_needed = set()
+        needed_keys = set([key])
+        while needed_keys:
+            parent_lookup = []
+            next_parent_map = {}
+            for key in needed_keys:
+                if key in self._parent_map:
+                    # We don't need to lookup this key in the vf
+                    if key not in self._text_cache:
+                        # Extract this text from the vf
+                        vf_keys_needed.add(key)
+                    elif key not in self._annotations_cache:
+                        # We do need to annotate
+                        ann_keys_needed.add(key)
+                        next_parent_map[key] = self._parent_map[key]
                 else:
-                    self._num_needed_children[parent_key] = 1
-        self._parent_map.update(parent_map)
-        # _heads_provider does some graph caching, so it is only valid while
-        # self._parent_map hasn't changed
-        self._heads_provider = None
-        keys = parent_map.keys()
-        return keys
+                    parent_lookup.append(key)
+                    vf_keys_needed.add(key)
+            needed_keys = set()
+            next_parent_map.update(self._vf.get_parent_map(parent_lookup))
+            for key, parent_keys in next_parent_map.iteritems():
+                self._update_needed_children(key, parent_keys)
+                needed_keys.update([key for key in parent_keys
+                                         if key not in parent_map])
+            parent_map.update(next_parent_map)
+            # _heads_provider does some graph caching, so it is only valid while
+            # self._parent_map hasn't changed
+            self._heads_provider = None
+        # self._parent_map.update(parent_map)
+        return vf_keys_needed, ann_keys_needed
 
     def _get_needed_texts(self, key, pb=None):
         """Get the texts we need to properly annotate key.
@@ -73,18 +105,24 @@ class Annotator(object):
             matcher object we are using. Currently it is always 'lines' but
             future improvements may change this to a simple text string.
         """
-        keys = self._get_needed_keys(key)
+        keys, ann_keys = self._get_needed_keys(key)
         if pb is not None:
             pb.update('getting stream', 0, len(keys))
         stream  = self._vf.get_record_stream(keys, 'topological', True)
         for idx, record in enumerate(stream):
             if pb is not None:
                 pb.update('extracting', 0, len(keys))
+            if record.storage_kind == 'absent':
+                raise errors.RevisionNotPresent(record.key, self._vf)
             this_key = record.key
             lines = osutils.chunks_to_lines(record.get_bytes_as('chunked'))
             num_lines = len(lines)
             self._text_cache[this_key] = lines
             yield this_key, lines, num_lines
+        for key in ann_keys:
+            lines = self._text_cache[key]
+            num_lines = len(lines)
+            yield key, lines, num_lines
 
     def _get_parent_annotations_and_matches(self, key, text, parent_key):
         """Get the list of annotations for the parent, and the matching lines.
@@ -185,6 +223,13 @@ class Annotator(object):
                 self._update_from_other_parents(key, annotations, text,
                                                 this_annotation, parent)
         self._record_annotation(key, parent_keys, annotations)
+
+    def add_special_text(self, key, parent_keys, text):
+        """Add a specific text to the graph."""
+        self._special_keys.add(key)
+        self._parent_map[key] = parent_keys
+        self._text_cache[key] = osutils.split_lines(text)
+        self._heads_provider = None
 
     def annotate(self, key):
         """Return annotated fulltext for the given key."""
