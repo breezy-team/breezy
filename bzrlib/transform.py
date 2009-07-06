@@ -1962,6 +1962,13 @@ class _PreviewTree(tree.Tree):
             return old_annotation
         if not changed_content:
             return old_annotation
+        # TODO: This is doing something similar to what WT.annotate_iter is
+        #       doing, however it fails slightly because it doesn't know what
+        #       the *other* revision_id is, so it doesn't know how to give the
+        #       other as the origin for some lines, they all get
+        #       'default_revision'
+        #       It would be nice to be able to use the new Annotator based
+        #       approach, as well.
         return annotate.reannotate([old_annotation],
                                    self.get_file(file_id).readlines(),
                                    default_revision)
