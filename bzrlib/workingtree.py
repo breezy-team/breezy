@@ -489,6 +489,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 if file_id not in parent_tree:
                     continue
                 ie = parent_tree.inventory[file_id]
+                if ie.kind != 'file':
+                    # Note: this is slightly unnecessary, because symlinks and
+                    # directories have a "text" which is the empty text, and we
+                    # know that won't mess up annotations. But it seems cleaner
+                    continue
                 parent_text_key = (file_id, ie.revision)
                 if parent_text_key not in maybe_file_parent_keys:
                     maybe_file_parent_keys.append(parent_text_key)
