@@ -5246,13 +5246,18 @@ class cmd_reconfigure(Command):
             help='Perform reconfiguration even if local changes'
             ' will be lost.'),
         Option('stacked-on',
-            help='Reconfigure a branch to be stacked on another branch',
+            help='Reconfigure a branch to be stacked on another branch.',
             type=unicode,
+            ),
+        Option('unstacked',
+            help='Reconfigure a branch to be unstacked.  This '
+                'may requiring copying substantial substantial data into it.',
             ),
         ]
 
     def run(self, location=None, target_type=None, bind_to=None, force=False,
-            stacked_on=None):
+            stacked_on=None,
+            unstacked=None):
         directory = bzrdir.BzrDir.open(location)
         if stacked_on is not None:
             branch = directory.open_branch()
@@ -5270,11 +5275,22 @@ class cmd_reconfigure(Command):
                            branch.get_stacked_on_url()))
             finally:
                 branch.unlock()
+        elif unstacked:
+            branch = directory.open_branch()
+            branch.lock_write()
+            try:
+                branch.set_stacked_on_url(None)
+                if not is_quiet():
+                    self.outf.write(
+                        "%s is now not stacked\n"
+                        % (branch.base,))
+            finally:
+                branch.unlock()
         # At the moment you can use --stacked-on and a different
         # reconfiguration shape at the same time; there seems no good reason
         # to ban it.
         if target_type is None:
-            if stacked_on:
+            if stacked_on or unstacked:
                 return
             else:
                 raise errors.BzrCommandError('No target configuration'

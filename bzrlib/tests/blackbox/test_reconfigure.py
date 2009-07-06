@@ -186,19 +186,25 @@ class TestReconfigure(tests.TestCaseWithTransport):
 
 class TestReconfigureStacking(tests.TestCaseWithTransport):
 
-    def test_reconfigure_stacked_on(self):
+    def test_reconfigure_stacking(self):
         branch_1 = self.make_branch('b1', format='2a')
         branch_2 = self.make_branch('b2', format='2a')
         out, err = self.run_bzr('reconfigure --stacked-on b2 b1')
         self.assertContainsRe(out,
-            '^.*/b1/ is now stacked on ../b2\n')
+            '^.*/b1/ is now stacked on ../b2\n$')
         self.assertEquals('', err)
         # It should be given a relative URL to the destination, if possible,
         # because that's most likely to work across different transports
         self.assertEquals(branch_1.get_stacked_on_url(),
             '../b2')
+        # Now turn it off again
+        out, err = self.run_bzr('reconfigure --unstacked b1')
+        self.assertContainsRe(out,
+            '^.*/b1/ is now not stacked\n$')
+        self.assertEquals('', err)
+        self.assertRaises(errors.NotStacked,
+            branch_1.get_stacked_on_url)
 
     # XXX: Needs a test for reconfiguring stacking and shape at the same time;
-    # no branch at location; stacked-on is not a branch; quiet mode; output in
-    # non-quiet mode; handling of URLs relative to the stacked branch.
+    # no branch at location; stacked-on is not a branch; quiet mode;
     # -- mbp 20090706
