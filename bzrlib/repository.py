@@ -4023,8 +4023,10 @@ class StreamSink(object):
                     raise errors.IncompatibleRevision(self.target_repo._format)
                 if format_flags[1] and not target_tree_refs:
                     raise errors.IncompatibleRevision(self.target_repo._format)
+                revision_id = new_id[0]
+                parents = [key[0] for key in record.parents]
                 self.target_repo.add_inventory_by_delta(
-                    basis_id, inv_delta, new_id, record.parents)
+                    basis_id, inv_delta, revision_id, parents)
                 continue
             # It's not a delta, so it must be a fulltext in the source
             # serializer's format.
@@ -4090,11 +4092,8 @@ class StreamSource(object):
         return [('signatures', signatures), ('revisions', revisions)]
 
     def _generate_root_texts(self, revs):
-        """This will be called by __fetch between fetching weave texts and
+        """This will be called by get_stream between fetching weave texts and
         fetching the inventory weave.
-
-        Subclasses should override this if they need to generate root texts
-        after fetching weave texts.
         """
         if self._rich_root_upgrade():
             import bzrlib.fetch
@@ -4132,9 +4131,6 @@ class StreamSource(object):
                 # will be valid.
                 for _ in self._generate_root_texts(revs):
                     yield _
-                # NB: This currently reopens the inventory weave in source;
-                # using a single stream interface instead would avoid this.
-                from_weave = self.from_repository.inventories
                 # we fetch only the referenced inventories because we do not
                 # know for unselected inventories whether all their required
                 # texts are present in the other repository - it could be
@@ -4179,6 +4175,20 @@ class StreamSource(object):
             if not keys:
                 # No need to stream something we don't have
                 continue
+            if substream_kind == 'inventories':
+                # As with the original stream, we may need to generate root
+                # texts for the inventories we're about to stream.
+                revs = [key[0] for key in keys]
+                for _ in self._generate_root_texts(revs):
+                    yield _
+                # Get the inventory stream more-or-less as we do for the
+                # original stream; there's no reason to assume that records
+                # direct from the source will be suitable for the sink.  (Think
+                # e.g. 2a -> 1.9-rich-root).
+                for info in self._get_inventory_stream(revs, missing=True):
+                    yield info
+                continue
+
             # Ask for full texts always so that we don't need more round trips
             # after this stream.
             # Some of the missing keys are genuinely ghosts, so filter absent
@@ -4199,7 +4209,8 @@ class StreamSource(object):
         return (not self.from_repository._format.rich_root_data and
             self.to_format.rich_root_data)
 
-    def _get_inventory_stream(self, revision_ids):
+    def _get_inventory_stream(self, revision_ids, missing=False):
+        # XXX: should all three cases take 'missing' into account?
         from_format = self.from_repository._format
         if (from_format.supports_chks and self.to_format.supports_chks
             and (from_format._serializer == self.to_format._serializer)):
@@ -4220,9 +4231,12 @@ class StreamSource(object):
             #      figure out how a non-chk repository could possibly handle
             #      deserializing an inventory stream from a chk repo, as it
             #      doesn't have a way to understand individual pages.
-            return self._get_convertable_inventory_stream(revision_ids)
+            return self._get_convertable_inventory_stream(revision_ids,
+                    fulltexts=missing)
 
     def _get_simple_inventory_stream(self, revision_ids):
+        # NB: This currently reopens the inventory weave in source;
+        # using a single stream interface instead would avoid this.
         from_weave = self.from_repository.inventories
         yield ('inventories', from_weave.get_record_stream(
             [(rev_id,) for rev_id in revision_ids],
@@ -4295,17 +4309,17 @@ class StreamSource(object):
         yield ('chk_bytes', to_stream_adapter())
         ### pb.update('fetch inventory', 2, 2)
 
-    def _get_convertable_inventory_stream(self, revision_ids):
+    def _get_convertable_inventory_stream(self, revision_ids, fulltexts=False):
         # XXX: One of source or target is using chks, and they don't have
         #      compatible serializations. The StreamSink code expects to be
         #      able to convert on the target, so we need to put
         #      bytes-on-the-wire that can be converted
         # XXX: choose between fulltexts (for compat) or deltas (for efficiency)
-        yield ('inventories', self._stream_invs_as_deltas(revision_ids))
+        yield ('inventories',
+               self._stream_invs_as_deltas(revision_ids, fulltexts=fulltexts))
 
-    def _stream_invs_as_deltas(self, revision_ids):
+    def _stream_invs_as_deltas(self, revision_ids, fulltexts=False):
         from_repo = self.from_repository
-        from_serializer = from_repo._format._serializer
         revision_keys = [(rev_id,) for rev_id in revision_ids]
         parent_map = from_repo.inventories.get_parent_map(revision_keys)
         # XXX: possibly repos could implement a more efficient iter_inv_deltas
@@ -4313,47 +4327,26 @@ class StreamSource(object):
         inventories = self.from_repository.iter_inventories(
             revision_ids, 'topological')
         # XXX: ideally these flags would be per-revision, not per-repo...
-        flags = (from_repo._format.rich_root_data, from_repo._format.supports_tree_reference)
+        format = from_repo._format
+        flags = (format.rich_root_data, format.supports_tree_reference)
         for inv in inventories:
             key = (inv.revision_id,)
             parents = parent_map.get(key, ())
-            if parents == ():
-                # no parent, stream as fulltext
-                as_bytes = from_serializer.write_inventory_to_string(inv)
-                yield versionedfile.FulltextContentFactory(
-                    key, parents, None, as_bytes)
+            if fulltexts or parents == ():
+                # Either the caller asked for fulltexts, or there is no parent,
+                # so, stream as a delta from null:.
+                basis_id = _mod_revision.NULL_REVISION
+                parent_inv = Inventory()
             else:
                 # make as a delta against its left-most parent
                 # XXX: sometimes a non-left-hand parent would give smaller
                 # deltas.
                 assert not isinstance(parents[0], str)
-                parent_id = parents[0][0]
-                parent_inv = from_repo.get_inventory(parent_id)
-                delta = inv._make_delta(parent_inv)
-                yield versionedfile.InventoryDeltaContentFactory(
-                    key, parents, None, delta, parent_id, flags)
-
-    def _stream_invs_as_fulltexts(self, revision_ids):
-        from_repo = self.from_repository
-        from_serializer = from_repo._format._serializer
-        revision_keys = [(rev_id,) for rev_id in revision_ids]
-        parent_map = from_repo.inventories.get_parent_map(revision_keys)
-        for inv in self.from_repository.iter_inventories(revision_ids):
-            # XXX: This is a bit hackish, but it works. Basically,
-            #      CHKSerializer 'accidentally' supports
-            #      read/write_inventory_to_string, even though that is never
-            #      the format that is stored on disk. It *does* give us a
-            #      single string representation for an inventory, so live with
-            #      it for now.
-            #      This would be far better if we had a 'serialized inventory
-            #      delta' form. Then we could use 'inventory._make_delta', and
-            #      transmit that. This would both be faster to generate, and
-            #      result in fewer bytes-on-the-wire.
-            as_bytes = from_serializer.write_inventory_to_string(inv)
-            key = (inv.revision_id,)
-            parent_keys = parent_map.get(key, ())
-            yield versionedfile.FulltextContentFactory(
-                key, parent_keys, None, as_bytes)
+                basis_id = parents[0][0]
+                parent_inv = from_repo.get_inventory(basis_id)
+            delta = inv._make_delta(parent_inv)
+            yield versionedfile.InventoryDeltaContentFactory(
+                key, parents, None, delta, basis_id, flags)
 
 
 def _iter_for_revno(repo, partial_history_cache, stop_index=None,

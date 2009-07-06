@@ -86,33 +86,38 @@ def default_test_list():
                            format_to_test, format_to_test))
     # if there are specific combinations we want to use, we can add them
     # here. We want to test rich root upgrading.
-    result.append((InterRepository,
-                   weaverepo.RepositoryFormat5(),
-                   knitrepo.RepositoryFormatKnit3()))
-    result.append((InterRepository,
-                   knitrepo.RepositoryFormatKnit1(),
-                   knitrepo.RepositoryFormatKnit3()))
-    result.append((InterKnitRepo,
-                   knitrepo.RepositoryFormatKnit1(),
-                   pack_repo.RepositoryFormatKnitPack1()))
-    result.append((InterKnitRepo,
-                   pack_repo.RepositoryFormatKnitPack1(),
-                   knitrepo.RepositoryFormatKnit1()))
-    result.append((InterKnitRepo,
-                   knitrepo.RepositoryFormatKnit3(),
-                   pack_repo.RepositoryFormatKnitPack3()))
-    result.append((InterKnitRepo,
-                   pack_repo.RepositoryFormatKnitPack3(),
-                   knitrepo.RepositoryFormatKnit3()))
-    result.append((InterKnitRepo,
-                   pack_repo.RepositoryFormatKnitPack3(),
-                   pack_repo.RepositoryFormatKnitPack4()))
-    result.append((InterDifferingSerializer,
-                   pack_repo.RepositoryFormatKnitPack1(),
-                   pack_repo.RepositoryFormatKnitPack6RichRoot()))
-#    result.append((InterRepository,
-#                   pack_repo.RepositoryFormatKnitPack6RichRoot(),
-#                   groupcompress_repo.RepositoryFormat2a()))
+    def add_combo(inter_class, from_format, to_format):
+        result.append((inter_class, from_format, to_format))
+    add_combo(InterRepository,
+              weaverepo.RepositoryFormat5(),
+              knitrepo.RepositoryFormatKnit3())
+    add_combo(InterRepository,
+              knitrepo.RepositoryFormatKnit1(),
+              knitrepo.RepositoryFormatKnit3())
+    add_combo(InterKnitRepo,
+              knitrepo.RepositoryFormatKnit1(),
+              pack_repo.RepositoryFormatKnitPack1())
+    add_combo(InterKnitRepo,
+              pack_repo.RepositoryFormatKnitPack1(),
+              knitrepo.RepositoryFormatKnit1())
+    add_combo(InterKnitRepo,
+              knitrepo.RepositoryFormatKnit3(),
+              pack_repo.RepositoryFormatKnitPack3())
+    add_combo(InterKnitRepo,
+              pack_repo.RepositoryFormatKnitPack3(),
+              knitrepo.RepositoryFormatKnit3())
+    add_combo(InterKnitRepo,
+              pack_repo.RepositoryFormatKnitPack3(),
+              pack_repo.RepositoryFormatKnitPack4())
+    add_combo(InterDifferingSerializer,
+              pack_repo.RepositoryFormatKnitPack1(),
+              pack_repo.RepositoryFormatKnitPack6RichRoot())
+    add_combo(InterRepository,
+              pack_repo.RepositoryFormatKnitPack6RichRoot(),
+              groupcompress_repo.RepositoryFormat2a())
+    add_combo(InterRepository,
+              groupcompress_repo.RepositoryFormat2a(),
+              pack_repo.RepositoryFormatKnitPack6RichRoot())
     return result
 
 
