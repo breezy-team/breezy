@@ -5243,14 +5243,28 @@ class cmd_reconfigure(Command):
             ),
         Option('bind-to', help='Branch to bind checkout to.', type=str),
         Option('force',
-               help='Perform reconfiguration even if local changes'
-               ' will be lost.')
+            help='Perform reconfiguration even if local changes'
+            ' will be lost.'),
+        Option('stacked-on',
+            help='Reconfigure a branch to be stacked on another branch',
+            type=unicode,
+            ),
         ]
 
-    def run(self, location=None, target_type=None, bind_to=None, force=False):
+    def run(self, location=None, target_type=None, bind_to=None, force=False,
+            stacked_on=None):
         directory = bzrdir.BzrDir.open(location)
+        if stacked_on is not None:
+            pass
+        # At the moment you can use --stacked-on and a different
+        # reconfiguration shape at the same time; there seems no good reason
+        # to ban it.
         if target_type is None:
-            raise errors.BzrCommandError('No target configuration specified')
+            if stacked_on:
+                return
+            else:
+                raise errors.BzrCommandError('No target configuration'
+                    'specified')
         elif target_type == 'branch':
             reconfiguration = reconfigure.Reconfigure.to_branch(directory)
         elif target_type == 'tree':

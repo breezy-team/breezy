@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -182,3 +182,16 @@ class TestReconfigure(tests.TestCaseWithTransport):
 
     def test_lightweight_rich_root_pack_checkout_to_tree(self, format=None):
         self.test_lightweight_format_checkout_to_tree('rich-root-pack')
+
+
+class TestReconfigureStacking(tests.TestCaseWithTransport):
+
+    def test_reconfigure_stacked_on(self):
+        branch_1 = self.make_branch('b1', format='2a')
+        branch_2 = self.make_branch('b2', format='2a')
+        out, err = self.run_bzr('reconfigure --stacked-on b2 b1')
+        self.assertEquals(branch_1.get_stacked_on_url(),
+                branch_2.location)
+
+    # XXX: Needs a test for reconfiguring stacking and shape at the same time.
+    # -- mbp 20090706
