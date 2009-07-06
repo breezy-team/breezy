@@ -536,6 +536,18 @@ message:
 """
         self.check_log(expected, ['-n0', '-r1.1.1..1.1.2'])
 
+    def test_merges_partial_range_ignore_before_lower_bound(self):
+        """Dont show revisions before the lower bound"""
+        expected = """\
+    2 Lorem Ipsum\t2005-11-22 [merge]
+      merge branch level1
+
+          1.1.2 Lorem Ipsum\t2005-11-22 [merge]
+                merge branch level2
+
+"""
+        self.check_log(expected, ['--short', '-n0', '-r1.1.2..2'])
+
 
 class TestLogDiff(TestLog):
 
