@@ -65,6 +65,9 @@ Bug Fixes
   does not already have a control directory.  The flag ``--use-existing-dir``
   will allow operation to proceed.  (Alexander Belchenko, #307554)
 
+* ``bzr log -r123`` should not return 123's parents too.
+  (#325618, Marius Kruger)
+
 * ``bzr ls DIR --from-root`` now shows only things in DIR, not everything.
   (Ian Clatworthy)
 
