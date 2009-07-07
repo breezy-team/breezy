@@ -15,10 +15,208 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from bzrlib import errors, chk_map, inventory, osutils
+from bzrlib import (
+    chk_map,
+    bzrdir,
+    errors,
+    inventory,
+    osutils,
+    repository,
+    revision,
+    )
 from bzrlib.inventory import (CHKInventory, Inventory, ROOT_ID, InventoryFile,
     InventoryDirectory, InventoryEntry, TreeReference)
-from bzrlib.tests import TestCase, TestCaseWithTransport
+from bzrlib.tests import (
+    TestCase,
+    TestCaseWithTransport,
+    condition_isinstance,
+    multiply_tests,
+    split_suite_by_condition,
+    )
+from bzrlib.tests.workingtree_implementations import workingtree_formats
+
+
+def load_tests(standard_tests, module, loader):
+    """Parameterise some inventory tests."""
+    to_adapt, result = split_suite_by_condition(standard_tests,
+        condition_isinstance(TestDeltaApplication))
+    scenarios = [
+        ('Inventory', {'apply_delta':apply_inventory_Inventory}),
+        ]
+    # Working tree basis delta application
+    # Repository add_inv_by_delta.
+    # Reduce form of the per_repository test logic - that logic needs to be
+    # be able to get /just/ repositories whereas these tests are fine with
+    # just creating trees.
+    formats = set()
+    for _, format in repository.format_registry.iteritems():
+        scenarios.append((str(format.__name__), {
+            'apply_delta':apply_inventory_Repository_add_inventory_by_delta,
+            'format':format}))
+    for format in workingtree_formats():
+        scenarios.append((str(format.__class__.__name__), {
+            'apply_delta':apply_inventory_WT_basis,
+            'format':format}))
+    return multiply_tests(to_adapt, scenarios, result)
+
+
+def apply_inventory_Inventory(self, basis, delta):
+    """Apply delta to basis and return the result.
+    
+    :param basis: An inventory to be used as the basis.
+    :param delta: The inventory delta to apply:
+    :return: An inventory resulting from the application.
+    """
+    basis.apply_delta(delta)
+    return basis
+
+
+def apply_inventory_WT_basis(self, basis, delta):
+    """Apply delta to basis and return the result.
+
+    This sets the parent and then calls update_basis_by_delta.
+    
+    :param basis: An inventory to be used as the basis.
+    :param delta: The inventory delta to apply:
+    :return: An inventory resulting from the application.
+    """
+    control = self.make_bzrdir('tree', format=self.format._matchingbzrdir)
+    control.create_repository()
+    control.create_branch()
+    tree = self.format.initialize(control)
+    tree.lock_write()
+    try:
+        repo = tree.branch.repository
+        repo.start_write_group()
+        try:
+            rev = revision.Revision('basis', timestamp=0, timezone=None,
+                message="", committer="foo@example.com")
+            basis.revision_id = 'basis'
+            repo.add_revision('basis', rev, basis)
+            # Add a revision for the result, with the basis content - 
+            # update_basis_by_delta doesn't check that the delta results in
+            # result, and we want inconsistent deltas to get called on the
+            # tree, or else the code isn't actually checked.
+            rev = revision.Revision('result', timestamp=0, timezone=None,
+                message="", committer="foo@example.com")
+            basis.revision_id = 'result'
+            repo.add_revision('result', rev, basis)
+        except:
+            repo.abort_write_group()
+            raise
+        else:
+            repo.commit_write_group()
+        # This reads basis from the repo and puts it into the tree's local
+        # cache, if it has one.
+        tree.set_parent_ids(['basis'])
+    finally:
+        tree.unlock()
+    # Fresh lock, reads disk again.
+    tree.lock_write()
+    try:
+        tree.update_basis_by_delta('result', delta)
+    finally:
+        tree.unlock()
+    # reload tree - ensure we get what was written.
+    tree = tree.bzrdir.open_workingtree()
+    basis_tree = tree.basis_tree()
+    basis_tree.lock_read()
+    self.addCleanup(basis_tree.unlock)
+    # Note, that if the tree does not have a local cache, the trick above of
+    # setting the result as the basis, will come back to bite us. That said,
+    # all the implementations in bzr do have a local cache.
+    return basis_tree.inventory
+
+
+def apply_inventory_Repository_add_inventory_by_delta(self, basis, delta):
+    """Apply delta to basis and return the result.
+    
+    This inserts basis as a whole inventory and then uses
+    add_inventory_by_delta to add delta.
+
+    :param basis: An inventory to be used as the basis.
+    :param delta: The inventory delta to apply:
+    :return: An inventory resulting from the application.
+    """
+    format = self.format()
+    control = self.make_bzrdir('tree', format=format._matchingbzrdir)
+    repo = format.initialize(control)
+    repo.lock_write()
+    try:
+        repo.start_write_group()
+        try:
+            rev = revision.Revision('basis', timestamp=0, timezone=None,
+                message="", committer="foo@example.com")
+            basis.revision_id = 'basis'
+            repo.add_revision('basis', rev, basis)
+        except:
+            repo.abort_write_group()
+            raise
+        else:
+            repo.commit_write_group()
+    finally:
+        repo.unlock()
+    repo.lock_write()
+    try:
+        repo.start_write_group()
+        try:
+            inv_sha1 = repo.add_inventory_by_delta('basis', delta,
+                'result', ['basis'])
+        except:
+            repo.abort_write_group()
+            raise
+        else:
+            repo.commit_write_group()
+    finally:
+        repo.unlock()
+    # Fresh lock, reads disk again.
+    repo = repo.bzrdir.open_repository()
+    repo.lock_read()
+    self.addCleanup(repo.unlock)
+    return repo.get_inventory('result')
+
+
+class TestDeltaApplication(TestCaseWithTransport):
+ 
+    def get_empty_inventory(self, reference_inv=None):
+        """Get an empty inventory.
+
+        Note that tests should not depend on the revision of the root for
+        setting up test conditions, as it has to be flexible to accomodate non
+        rich root repositories.
+
+        :param reference_inv: If not None, get the revision for the root from
+            this inventory. This is useful for dealing with older repositories
+            that routinely discarded the root entry data. If None, the root's
+            revision is set to 'basis'.
+        """
+        inv = inventory.Inventory()
+        if reference_inv is not None:
+            inv.root.revision = reference_inv.root.revision
+        else:
+            inv.root.revision = 'basis'
+        return inv
+
+    def test_empty_delta(self):
+        inv = self.get_empty_inventory()
+        delta = []
+        inv = self.apply_delta(self, inv, delta)
+        inv2 = self.get_empty_inventory(inv)
+        self.assertEqual([], inv2._make_delta(inv))
+
+    def test_repeated_file_id(self):
+        inv = self.get_empty_inventory()
+        file1 = inventory.InventoryFile('id', 'path1', inv.root.file_id)
+        file1.revision = 'result'
+        file1.text_size = 0
+        file1.text_sha1 = ""
+        file2 = inventory.InventoryFile('id', 'path2', inv.root.file_id)
+        file2.revision = 'result'
+        file2.text_size = 0
+        file2.text_sha1 = ""
+        delta = [(None, 'path1', 'id', file1), (None, 'path2', 'id', file2)]
+        self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
+            inv, delta)
 
 
 class TestInventoryEntry(TestCase):

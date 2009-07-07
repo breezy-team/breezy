@@ -59,6 +59,12 @@ class TestCaseWithWorkingTree(bzrdir_implementations.TestCaseWithBzrDir):
         return self.workingtree_format.initialize(made_control)
 
 
+def workingtree_formats():
+    """The known working tree formats."""
+    return (workingtree.WorkingTreeFormat._formats.values() +
+        workingtree._legacy_formats)
+
+
 def load_tests(standard_tests, module, loader):
     test_workingtree_implementations = [
         'bzrlib.tests.workingtree_implementations.test_add_reference',
@@ -105,8 +111,8 @@ def load_tests(standard_tests, module, loader):
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
-        workingtree.WorkingTreeFormat._formats.values()
-        + workingtree._legacy_formats)
+        workingtree_formats()
+        )
 
     # add the tests for the sub modules
     return tests.multiply_tests(

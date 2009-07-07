@@ -1130,8 +1130,8 @@ class Inventory(CommonInventory):
         # before starting to mutate the inventory.
         unique_file_ids = set([f for _, _, f, _ in delta])
         if len(unique_file_ids) != len(delta):
-            raise AssertionError("a file-id appears multiple times in %r"
-                    % (delta,))
+            raise errors.InconsistentDeltaDelta(delta,
+                "a file-id appears multiple times")
         del unique_file_ids
 
         children = {}
@@ -1619,7 +1619,9 @@ class CHKInventory(CommonInventory):
             result.parent_id_basename_to_file_id = None
         result.root_id = self.root_id
         id_to_entry_delta = []
+        id_set = set()
         for old_path, new_path, file_id, entry in inventory_delta:
+            id_set.add(file_id)
             # file id changes
             if new_path == '':
                 result.root_id = file_id
@@ -1661,6 +1663,9 @@ class CHKInventory(CommonInventory):
                     # If the two keys are the same, the value will be unchanged
                     # as its always the file id.
                     parent_id_basename_delta.append((old_key, new_key, new_value))
+        if len(id_set) != len(inventory_delta):
+            raise errors.InconsistentDeltaDelta(inventory_delta,
+                'repeated file id')
         result.id_to_entry.apply_delta(id_to_entry_delta)
         if parent_id_basename_delta:
             result.parent_id_basename_to_file_id.apply_delta(parent_id_basename_delta)
