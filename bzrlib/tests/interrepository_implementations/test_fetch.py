@@ -28,6 +28,9 @@ from bzrlib import (
 from bzrlib.errors import (
     NoSuchRevision,
     )
+from bzrlib.graph import (
+    SearchResult,
+    )
 from bzrlib.revision import (
     NULL_REVISION,
     Revision,
@@ -158,9 +161,22 @@ class TestInterRepository(TestCaseWithInterRepository):
         self.addCleanup(unstacked_repo.unlock)
         self.assertFalse(unstacked_repo.has_revision('left'))
         self.assertFalse(unstacked_repo.has_revision('right'))
-        self.assertEqual(
-            set([('left',), ('right',), ('merge',)]),
-            unstacked_repo.inventories.keys())
+        self.assertTrue(unstacked_repo.has_revision('merge'))
+        # We used to check for the presence of parent invs here, but what
+        # really matters is that the repo can stream the new revision without
+        # the help of any fallback repos.
+        self.assertCanStreamRevision(unstacked_repo, 'merge')
+#        self.assertEqual(
+#            set([('left',), ('right',), ('merge',)]),
+#            unstacked_repo.inventories.keys())
+
+    def assertCanStreamRevision(self, repo, revision_id):
+        exclude_keys = set(repo.all_revision_ids()) - set([revision_id])
+        search = SearchResult([revision_id], exclude_keys, 1, [revision_id])
+        source = repo._get_source(repo._format)
+        for substream_kind, substream in source.get_stream(search):
+            # Consume the substream
+            list(substream)
 
     def test_fetch_missing_basis_text(self):
         """If fetching a delta, we should die if a basis is not present."""

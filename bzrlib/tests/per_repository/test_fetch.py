@@ -124,9 +124,11 @@ class TestFetchSameRepository(TestCaseWithRepository):
             return # not relevant
         builder = self.make_branch_builder('source', format='1.9')
         builder.start_series()
+        revision_ids = []
         for revision_id, parent_ids, actions in snapshots:
             builder.build_snapshot(revision_id, parent_ids, actions,
             allow_leftmost_as_ghost=allow_lefthand_ghost)
+            revision_ids.append(revision_id)
         builder.finish_series()
         source = builder.get_branch()
         if remote_format and not repo._format.rich_root_data:
@@ -139,6 +141,9 @@ class TestFetchSameRepository(TestCaseWithRepository):
         repo.fetch(source.repository)
         self.assertEqual(result,
             repo.texts.get_parent_map([(root_id, 'tip')])[(root_id, 'tip')])
+        for rev_id in revision_ids:
+            tree = repo.revision_tree(rev_id)
+            self.assertEqual(rev_id, tree.inventory.root.revision)
 
     def test_fetch_to_rich_root_set_parent_no_parents(self):
         # No parents rev -> No parents

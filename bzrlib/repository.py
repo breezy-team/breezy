@@ -4176,9 +4176,11 @@ class StreamSource(object):
                 # No need to stream something we don't have
                 continue
             if substream_kind == 'inventories':
+                # Some missing keys are genuinely ghosts, filter those out.
+                present = self.from_repository.inventories.get_parent_map(keys)
+                revs = [key[0] for key in present]
                 # As with the original stream, we may need to generate root
                 # texts for the inventories we're about to stream.
-                revs = [key[0] for key in keys]
                 for _ in self._generate_root_texts(revs):
                     yield _
                 # Get the inventory stream more-or-less as we do for the
@@ -4210,19 +4212,20 @@ class StreamSource(object):
             self.to_format.rich_root_data)
 
     def _get_inventory_stream(self, revision_ids, missing=False):
-        # XXX: should all three cases take 'missing' into account?
         from_format = self.from_repository._format
         if (from_format.supports_chks and self.to_format.supports_chks
             and (from_format._serializer == self.to_format._serializer)):
             # Both sides support chks, and they use the same serializer, so it
             # is safe to transmit the chk pages and inventory pages across
             # as-is.
+            # XXX: does this case need to take 'missing' into account?
             return self._get_chk_inventory_stream(revision_ids)
         elif (not from_format.supports_chks):
             # Source repository doesn't support chks. So we can transmit the
             # inventories 'as-is' and either they are just accepted on the
             # target, or the Sink will properly convert it.
-            return self._get_simple_inventory_stream(revision_ids)
+            return self._get_simple_inventory_stream(revision_ids,
+                    missing=missing)
         else:
             # XXX: xxx
             # XXX: Hack to make not-chk->chk fetch: copy the inventories as
@@ -4234,14 +4237,17 @@ class StreamSource(object):
             return self._get_convertable_inventory_stream(revision_ids,
                     fulltexts=missing)
 
-    def _get_simple_inventory_stream(self, revision_ids):
+    def _get_simple_inventory_stream(self, revision_ids, missing=False):
         # NB: This currently reopens the inventory weave in source;
         # using a single stream interface instead would avoid this.
         from_weave = self.from_repository.inventories
+        if missing:
+            delta_closure = True
+        else:
+            delta_closure = not self.delta_on_metadata()
         yield ('inventories', from_weave.get_record_stream(
             [(rev_id,) for rev_id in revision_ids],
-            self.inventory_fetch_order(),
-            not self.delta_on_metadata()))
+            self.inventory_fetch_order(), delta_closure))
 
     def _get_chk_inventory_stream(self, revision_ids):
         """Fetch the inventory texts, along with the associated chk maps."""

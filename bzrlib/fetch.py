@@ -221,11 +221,9 @@ class Inter1and2Helper(object):
 
     def _find_root_ids(self, revs, parent_map, graph):
         revision_root = {}
-        planned_versions = {}
         for tree in self.iter_rev_trees(revs):
             revision_id = tree.inventory.root.revision
             root_id = tree.get_root_id()
-            planned_versions.setdefault(root_id, []).append(revision_id)
             revision_root[revision_id] = root_id
         # Find out which parents we don't already know root ids for
         parents = set()
@@ -237,7 +235,7 @@ class Inter1and2Helper(object):
         for tree in self.iter_rev_trees(parents):
             root_id = tree.get_root_id()
             revision_root[tree.get_revision_id()] = root_id
-        return revision_root, planned_versions
+        return revision_root
 
     def generate_root_texts(self, revs):
         """Generate VersionedFiles for all root ids.
@@ -247,8 +245,7 @@ class Inter1and2Helper(object):
         graph = self.source.get_graph()
         parent_map = graph.get_parent_map(revs)
         rev_order = tsort.topo_sort(parent_map)
-        rev_id_to_root_id, root_id_to_rev_ids = self._find_root_ids(
-            revs, parent_map, graph)
+        rev_id_to_root_id = self._find_root_ids(revs, parent_map, graph)
         root_id_order = [(rev_id_to_root_id[rev_id], rev_id) for rev_id in
             rev_order]
         # Guaranteed stable, this groups all the file id operations together
@@ -295,6 +292,8 @@ def _parent_keys_for_root_version(
             else:
                 parent_root_id = tree.get_root_id()
             rev_id_to_root_id_map[parent_id] = None
+            #XXX: why not:  memory consumption maybe?
+            #rev_id_to_root_id_map[parent_id] = parent_root_id
         else:
             parent_root_id = rev_id_to_root_id_map[parent_id]
         if root_id == parent_root_id:
