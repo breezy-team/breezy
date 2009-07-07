@@ -1183,8 +1183,14 @@ class Repository(object):
         self._inventory_entry_cache = fifo_cache.FIFOCache(10*1024)
 
     def __repr__(self):
-        return '%s(%r)' % (self.__class__.__name__,
-                           self.base)
+        if self._fallback_repositories:
+            return '%s(%r, fallback_repositories=%r)' % (
+                self.__class__.__name__,
+                self.base,
+                self._fallback_repositories)
+        else:
+            return '%s(%r)' % (self.__class__.__name__,
+                               self.base)
 
     def has_same_location(self, other):
         """Returns a boolean indicating if this repository is at the same
