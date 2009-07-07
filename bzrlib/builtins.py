@@ -45,7 +45,6 @@ from bzrlib import (
     revision as _mod_revision,
     symbol_versioning,
     transport,
-    tree as _mod_tree,
     ui,
     urlutils,
     views,

@@ -27,11 +27,10 @@
 # created, but it's not for now.
 ROOT_ID = "TREE_ROOT"
 
-from copy import deepcopy
-
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import collections
+import copy
 import os
 import re
 import tarfile
@@ -43,7 +42,6 @@ from bzrlib import (
     generate_ids,
     osutils,
     symbol_versioning,
-    workingtree,
     )
 """)
 
@@ -1090,6 +1088,9 @@ class Inventory(CommonInventory):
     def apply_delta(self, delta):
         """Apply a delta to this inventory.
 
+        See the inventory developers documentation for the theory behind
+        inventory deltas.
+
         :param delta: A list of changes to apply. After all the changes are
             applied the final inventory must be internally consistent, but it
             is ok to supply changes which, if only half-applied would have an
@@ -1192,7 +1193,7 @@ class Inventory(CommonInventory):
 
     def _get_mutable_inventory(self):
         """See CommonInventory._get_mutable_inventory."""
-        return deepcopy(self)
+        return copy.deepcopy(self)
 
     def __iter__(self):
         """Iterate over all file-ids."""
@@ -1577,6 +1578,9 @@ class CHKInventory(CommonInventory):
     def create_by_apply_delta(self, inventory_delta, new_revision_id,
         propagate_caches=False):
         """Create a new CHKInventory by applying inventory_delta to this one.
+
+        See the inventory developers documentation for the theory behind
+        inventory deltas.
 
         :param inventory_delta: The inventory delta to apply. See
             Inventory.apply_delta for details.
