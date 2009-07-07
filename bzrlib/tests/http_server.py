@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import BaseHTTPServer
 import errno
 import httplib
 import os
@@ -143,6 +144,35 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             return None
 
         return SimpleHTTPServer.SimpleHTTPRequestHandler.send_head(self)
+
+    def send_error(self, code, message=None):
+        """Send and log an error reply.
+
+        Replace the bogus BaseHTTPServer.py with one that add the
+        Content-Length header to address strict http clients.
+        """
+
+        try:
+            short, long = self.responses[code]
+        except KeyError:
+            short, long = '???', '???'
+        if message is None:
+            message = short
+        explain = long
+        self.log_error("code %d, message %s", code, message)
+        # using _quote_html to prevent Cross Site Scripting attacks (see bug
+        # #1100201)
+        content = (self.error_message_format %
+                   {'code': code,
+                    'message': BaseHTTPServer._quote_html(message),
+                    'explain': explain})
+        self.send_response(code, message)
+        self.send_header("Content-Length", "%d" % len(content))
+        self.send_header("Content-Type", self.error_content_type)
+        self.send_header('Connection', 'close')
+        self.end_headers()
+        if self.command != 'HEAD' and code >= 200 and code not in (204, 304):
+            self.wfile.write(content)
 
     def send_range_content(self, file, start, length):
         file.seek(start)

@@ -75,6 +75,10 @@ Bug Fixes
   of a remote repository.
   (Jelmer Vernooij, #332194)
 
+* Fix bogus ``send_error`` in python's BaseHTTPServer by inserting the missing
+  'Content-Length header. https pycurl clients can hang otherwise.
+  (Vincent Ladeuil, #383920).
+
 * Force deletion of readonly files during merge, update and other tree
   transforms.
   (Craig Hewetson, Martin Pool, #218206)
