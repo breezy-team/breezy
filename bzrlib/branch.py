@@ -674,20 +674,27 @@ class Branch(object):
                     errors.UnstackableRepositoryFormat):
                     return
                 url = ''
-                # XXX: Lock correctness - should unlock our old repo if we were
-                # locked.
+                if len(self.repository._fallback_repositories) != 1:
+                    raise AssertionError("can't cope with fallback repositories "
+                        "of %r" % (self.repository,))
+                old_fallback_repository = self.repository._fallback_repositories[0]
+                # unlock it, including unlocking the fallback
+                self.repository.unlock()
                 # repositories don't offer an interface to remove fallback
                 # repositories today; take the conceptually simpler option and just
                 # reopen it.
                 self.repository = self.bzrdir.find_repository()
                 self.repository.lock_write()
-                # for every revision reference the branch has, ensure it is pulled
-                # in.
-                source_repository = self._get_fallback_repository(old_url)
-                for revision_id in chain([self.last_revision()],
-                    self.tags.get_reverse_tag_dict()):
-                    self.repository.fetch(source_repository, revision_id,
-                        find_ghosts=True)
+                try:
+                    # for every revision reference the branch has, ensure it
+                    # is pulled in.
+                    for revision_id in chain([self.last_revision()],
+                        self.tags.get_reverse_tag_dict()):
+                        self.repository.fetch(old_fallback_repository,
+                            revision_id,
+                            find_ghosts=True)
+                finally:
+                    self.repository.unlock()
             finally:
                 pb.finished()
         else:
