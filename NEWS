@@ -48,6 +48,9 @@ Bug Fixes
   diverged-branches`` when a push fails because the branches have
   diverged.  (Neil Martinsen-Burrell, #269477)
 
+* Annotate would sometimes 'latch on' to trivial lines, causing important
+  lines to be incorrectly annotated. (John Arbash Meinel, #387952)
+
 * Automatic format upgrades triggered by default stacking policies on a
   1.16rc1 (or later) smart server work again.
   (Andrew Bennetts, #388675)
@@ -145,7 +148,12 @@ Internals
 Improvements
 ************
 
-``bzr ls`` is now faster. On OpenOffice.org, the time drops from 2.4
+* ``bzr annotate`` can now be significantly faster. The time for
+  ``bzr annotate NEWS`` is down to 7s from 22s in 1.16. Files with long
+  histories and lots of 'duplicate insertions' will be improved more than
+  others. (John Arbash Meinel, Vincent Ladeuil)
+
+* ``bzr ls`` is now faster. On OpenOffice.org, the time drops from 2.4
   to 1.1 seconds. The improvement for ``bzr ls -r-1`` is more
   substantial dropping from 54.3 to 1.1 seconds. (Ian Clatworthy)
 
