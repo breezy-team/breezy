@@ -35,6 +35,7 @@ from bzrlib import (
         symbol_versioning,
         transport,
         tsort,
+        ui,
         urlutils,
         )
 from bzrlib.config import BranchConfig, TransportConfig
@@ -664,26 +665,31 @@ class Branch(object):
             raise errors.UnstackableBranchFormat(self._format, self.base)
         self._check_stackable_repo()
         if not url:
+            pb = ui.ui_factory.nested_progress_bar()
             try:
-                old_url = self.get_stacked_on_url()
-            except (errors.NotStacked, errors.UnstackableBranchFormat,
-                errors.UnstackableRepositoryFormat):
-                return
-            url = ''
-            # XXX: Lock correctness - should unlock our old repo if we were
-            # locked.
-            # repositories don't offer an interface to remove fallback
-            # repositories today; take the conceptually simpler option and just
-            # reopen it.
-            self.repository = self.bzrdir.find_repository()
-            self.repository.lock_write()
-            # for every revision reference the branch has, ensure it is pulled
-            # in.
-            source_repository = self._get_fallback_repository(old_url)
-            for revision_id in chain([self.last_revision()],
-                self.tags.get_reverse_tag_dict()):
-                self.repository.fetch(source_repository, revision_id,
-                    find_ghosts=True)
+                pb.update("Unstacking branch")
+                try:
+                    old_url = self.get_stacked_on_url()
+                except (errors.NotStacked, errors.UnstackableBranchFormat,
+                    errors.UnstackableRepositoryFormat):
+                    return
+                url = ''
+                # XXX: Lock correctness - should unlock our old repo if we were
+                # locked.
+                # repositories don't offer an interface to remove fallback
+                # repositories today; take the conceptually simpler option and just
+                # reopen it.
+                self.repository = self.bzrdir.find_repository()
+                self.repository.lock_write()
+                # for every revision reference the branch has, ensure it is pulled
+                # in.
+                source_repository = self._get_fallback_repository(old_url)
+                for revision_id in chain([self.last_revision()],
+                    self.tags.get_reverse_tag_dict()):
+                    self.repository.fetch(source_repository, revision_id,
+                        find_ghosts=True)
+            finally:
+                pb.finished()
         else:
             self._activate_fallback_location(url)
         # write this out after the repository is stacked to avoid setting a
