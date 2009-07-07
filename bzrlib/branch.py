@@ -665,44 +665,49 @@ class Branch(object):
             raise errors.UnstackableBranchFormat(self._format, self.base)
         self._check_stackable_repo()
         if not url:
-            pb = ui.ui_factory.nested_progress_bar()
             try:
-                pb.update("Unstacking branch")
-                try:
-                    old_url = self.get_stacked_on_url()
-                except (errors.NotStacked, errors.UnstackableBranchFormat,
-                    errors.UnstackableRepositoryFormat):
-                    return
-                url = ''
-                if len(self.repository._fallback_repositories) != 1:
-                    raise AssertionError("can't cope with fallback repositories "
-                        "of %r" % (self.repository,))
-                old_fallback_repository = self.repository._fallback_repositories[0]
-                # unlock it, including unlocking the fallback
-                self.repository.unlock()
-                # repositories don't offer an interface to remove fallback
-                # repositories today; take the conceptually simpler option and just
-                # reopen it.
-                self.repository = self.bzrdir.find_repository()
-                self.repository.lock_write()
-                try:
-                    # for every revision reference the branch has, ensure it
-                    # is pulled in.
-                    for revision_id in chain([self.last_revision()],
-                        self.tags.get_reverse_tag_dict()):
-                        self.repository.fetch(old_fallback_repository,
-                            revision_id,
-                            find_ghosts=True)
-                finally:
-                    self.repository.unlock()
-            finally:
-                pb.finished()
+                old_url = self.get_stacked_on_url()
+            except (errors.NotStacked, errors.UnstackableBranchFormat,
+                errors.UnstackableRepositoryFormat):
+                return
+            self._unstack()
         else:
             self._activate_fallback_location(url)
         # write this out after the repository is stacked to avoid setting a
         # stacked config that doesn't work.
         self._set_config_location('stacked_on_location', url)
 
+    def _unstack(self):
+        """Change a branch to be unstacked, copying data as needed.
+        
+        Don't call this directly, use set_stacked_on_url(None).
+        """
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            url = ''
+            if len(self.repository._fallback_repositories) != 1:
+                raise AssertionError("can't cope with fallback repositories "
+                    "of %r" % (self.repository,))
+            old_fallback_repository = self.repository._fallback_repositories[0]
+            # unlock it, including unlocking the fallback
+            self.repository.unlock()
+            # repositories don't offer an interface to remove fallback
+            # repositories today; take the conceptually simpler option and just
+            # reopen it.
+            self.repository = self.bzrdir.find_repository()
+            self.repository.lock_write()
+            try:
+                # for every revision reference the branch has, ensure it
+                # is pulled in.
+                for revision_id in chain([self.last_revision()],
+                    self.tags.get_reverse_tag_dict()):
+                    self.repository.fetch(old_fallback_repository,
+                        revision_id,
+                        find_ghosts=True)
+            finally:
+                self.repository.unlock()
+        finally:
+            pb.finished()
 
     def _set_tags_bytes(self, bytes):
         """Mirror method for _get_tags_bytes.
