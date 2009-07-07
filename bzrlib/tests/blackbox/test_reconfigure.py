@@ -207,4 +207,5 @@ class TestReconfigureStacking(tests.TestCaseWithTransport):
 
     # XXX: Needs a test for reconfiguring stacking and shape at the same time;
     # no branch at location; stacked-on is not a branch; quiet mode;
+    # operation over hpss; operation over ssh
     # -- mbp 20090706
