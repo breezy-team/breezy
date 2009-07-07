@@ -400,6 +400,9 @@ class _DefaultLogGenerator(LogGenerator):
                     log_count += 1
                     if log_count >= limit:
                         return
+                start_revision = rqst.get('start_revision')
+                if start_revision and start_revision.rev_id == rev_id:
+                    return
 
     def _format_diff(self, rev, rev_id):
         diff_type = self.rqst.get('diff_type')
