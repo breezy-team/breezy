@@ -695,17 +695,22 @@ class Branch(object):
             # repositories today; take the conceptually simpler option and just
             # reopen it.
             self.repository = self.bzrdir.find_repository()
+            # this is not paired with an unlock because it's just restoring
+            # the previous state; the lock's released when set_stacked_on_url
+            # returns
             self.repository.lock_write()
-            try:
-                # for every revision reference the branch has, ensure it
-                # is pulled in.
-                for revision_id in chain([self.last_revision()],
-                    self.tags.get_reverse_tag_dict()):
-                    self.repository.fetch(old_fallback_repository,
-                        revision_id,
-                        find_ghosts=True)
-            finally:
-                self.repository.unlock()
+            # XXX: This should probably bring across revisions referenced
+            # by tags if they're in the old fallback repository, but not
+            # error if they're not.  However, branch doesn't do that at
+            # present and this is consistent with that: the only tags that
+            # are preserved are those in the history of the branch.
+            #
+            # XXX: If you unstack a branch while it has a working tree
+            # with a pending merge, the pending-merged revisions will no
+            # longer be present.  You can (probably) revert and remerge.
+            self.repository.fetch(old_fallback_repository,
+                self.last_revision(),
+                find_ghosts=True)
         finally:
             pb.finished()
 
