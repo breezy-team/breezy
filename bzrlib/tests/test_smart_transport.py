@@ -1507,7 +1507,8 @@ class CommonSmartProtocolTestMixin(object):
         ex = self.assertRaises(errors.ConnectionReset,
             response_handler.read_response_tuple)
         self.assertEqual("Connection closed: "
-            "please check connectivity and permissions ",
+            "Unexpected end of message. Please check connectivity "
+            "and permissions, and report a bug if problems persist. ",
             str(ex))
 
     def test_server_offset_serialisation(self):
