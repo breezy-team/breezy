@@ -723,7 +723,7 @@ class RemoteRepository(_RpcHelper):
         invocation. If in doubt chat to the bzr network team.
         """
         if self._real_repository is None:
-            if 'hpss' in debug.debug_flags:
+            if 'hpssvfs' in debug.debug_flags:
                 import traceback
                 warning('VFS Repository access triggered\n%s',
                     ''.join(traceback.format_stack()))
