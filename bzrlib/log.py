@@ -400,8 +400,14 @@ class _DefaultLogGenerator(LogGenerator):
                     log_count += 1
                     if log_count >= limit:
                         return
-                if self.start_rev_id == rev_id:
-                    return
+                # we need to filter the revisions here again since
+                # the lower levels also return the revision parents
+                if rqst.get('direction') == 'forward':
+                    if self.end_rev_id == rev_id:
+                        return
+                else:
+                    if self.start_rev_id == rev_id:
+                        return
 
     def _format_diff(self, rev, rev_id):
         diff_type = self.rqst.get('diff_type')
