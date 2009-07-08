@@ -79,12 +79,8 @@ Bug Fixes
   transforms.
   (Craig Hewetson, Martin Pool, #218206)
 
-* The ``log+`` decorator, useful in debugging or profiling, could cause
-  "AttributeError: 'list' object has no attribute 'next'".  This is now
-  fixed.  The log decorator no longer shows the elapsed time or transfer
-  rate because they're available in the log prefixes and the transport
-  activity display respectively.
-  (Martin Pool, #340347)
+* ``LRUCache`` will maintain the linked list pointers even if a nodes
+  cleanup function raises an exception. (John Arbash Meinel, #396838)
 
 * Progress bars are now suppressed again when the environment variable
   ``BZR_PROGRESS_BAR`` is set to ``none``.
@@ -106,6 +102,13 @@ Bug Fixes
   UnstackableLocationError when the branch is opened. This can be fixed by
   removing the stacking location inside ``.bzr/branch``.
   (Robert Collins, #376243)
+
+* The ``log+`` decorator, useful in debugging or profiling, could cause
+  "AttributeError: 'list' object has no attribute 'next'".  This is now
+  fixed.  The log decorator no longer shows the elapsed time or transfer
+  rate because they're available in the log prefixes and the transport
+  activity display respectively.
+  (Martin Pool, #340347)
 
 * Unshelve works correctly when multiple zero-length files are present on
   the shelf. (Aaron Bentley, #363444)

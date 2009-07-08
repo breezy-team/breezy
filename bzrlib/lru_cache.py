@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2008 Canonical Ltd
+# Copyright (C) 2006, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -48,11 +48,13 @@ class _LRUNode(object):
                                      self.next_key, prev_key)
 
     def run_cleanup(self):
-        if self.cleanup is not None:
-            self.cleanup(self.key, self.value)
-        self.cleanup = None
-        # Just make sure to break any refcycles, etc
-        self.value = None
+        try:
+            if self.cleanup is not None:
+                self.cleanup(self.key, self.value)
+        finally:
+            self.cleanup = None
+            # Just make sure to break any refcycles, etc
+            self.value = None
 
 
 class LRUCache(object):
@@ -156,13 +158,16 @@ class LRUCache(object):
             raise ValueError('cannot use _null_key as a key')
         if key in self._cache:
             node = self._cache[key]
-            node.run_cleanup()
-            node.value = value
-            node.cleanup = cleanup
+            try:
+                node.run_cleanup()
+            finally:
+                node.value = value
+                node.cleanup = cleanup
+                self._record_access(node)
         else:
             node = _LRUNode(key, value, cleanup=cleanup)
             self._cache[key] = node
-        self._record_access(node)
+            self._record_access(node)
 
         if len(self._cache) > self._max_cache:
             # Trigger the cleanup
@@ -241,16 +246,18 @@ class LRUCache(object):
         # If we have removed all entries, remove the head pointer as well
         if self._least_recently_used is None:
             self._most_recently_used = None
-        node.run_cleanup()
-        # Now remove this node from the linked list
-        if node.prev is not None:
-            node.prev.next_key = node.next_key
-        if node.next_key is not _null_key:
-            node_next = self._cache[node.next_key]
-            node_next.prev = node.prev
-        # And remove this node's pointers
-        node.prev = None
-        node.next_key = _null_key
+        try:
+            node.run_cleanup()
+        finally:
+            # Now remove this node from the linked list
+            if node.prev is not None:
+                node.prev.next_key = node.next_key
+            if node.next_key is not _null_key:
+                node_next = self._cache[node.next_key]
+                node_next.prev = node.prev
+            # And remove this node's pointers
+            node.prev = None
+            node.next_key = _null_key
 
     def _remove_lru(self):
         """Remove one entry from the lru, and handle consequences.
