@@ -166,9 +166,6 @@ class TestInterRepository(TestCaseWithInterRepository):
         # really matters is that the repo can stream the new revision without
         # the help of any fallback repos.
         self.assertCanStreamRevision(unstacked_repo, 'merge')
-#        self.assertEqual(
-#            set([('left',), ('right',), ('merge',)]),
-#            unstacked_repo.inventories.keys())
 
     def assertCanStreamRevision(self, repo, revision_id):
         exclude_keys = set(repo.all_revision_ids()) - set([revision_id])

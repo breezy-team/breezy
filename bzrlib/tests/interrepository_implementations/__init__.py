@@ -59,7 +59,6 @@ def make_scenarios(transport_server, transport_readonly_server, formats):
             {"transport_server": transport_server,
              "transport_readonly_server": transport_readonly_server,
              "repository_format": repository_format,
-#             "interrepo_class": interrepo_class,
              "repository_format_to": repository_format_to,
              })
         result.append(scenario)
