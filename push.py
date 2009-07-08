@@ -81,9 +81,9 @@ class MissingObjectsIterator(object):
         # or already present remotely (as git doesn't do ghosts)
         return False
 
-    def queue(self, sha, obj, path, ie=None, inv=None):
+    def queue(self, sha, obj, path, ie=None, inv=None, unusual_modes=None):
         if obj is None:
-            obj = (ie, inv)
+            obj = (ie, inv, unusual_modes)
         self._pending.append((obj, path))
         self._sent_shas.add(sha)
 
@@ -103,12 +103,12 @@ class MissingObjectsIterator(object):
                 tree_sha = sha
             if not self.need_sha(sha):
                 continue
-            self.queue(sha, object, inv.id2path(ie.file_id), ie, inv)
+            self.queue(sha, object, inv.id2path(ie.file_id), ie, inv, unusual_modes)
             if ie.kind == "directory":
                 todo.extend(ie.children.values())
         assert tree_sha is not None
         commit = self._object_store._get_commit(rev, tree_sha)
-        self.queue(commit.id, commit, None)
+        self.queue(commit.id, commit, None, None)
         return commit.id
 
     def __len__(self):
