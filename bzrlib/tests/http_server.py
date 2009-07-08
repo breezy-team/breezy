@@ -145,35 +145,6 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
         return SimpleHTTPServer.SimpleHTTPRequestHandler.send_head(self)
 
-    def send_error(self, code, message=None):
-        """Send and log an error reply.
-
-        Replace the bogus BaseHTTPServer.py with one that add the
-        Content-Length header to address strict http clients.
-        """
-
-        try:
-            short, long = self.responses[code]
-        except KeyError:
-            short, long = '???', '???'
-        if message is None:
-            message = short
-        explain = long
-        self.log_error("code %d, message %s", code, message)
-        # using _quote_html to prevent Cross Site Scripting attacks (see bug
-        # #1100201)
-        content = (self.error_message_format %
-                   {'code': code,
-                    'message': BaseHTTPServer._quote_html(message),
-                    'explain': explain})
-        self.send_response(code, message)
-        self.send_header("Content-Length", "%d" % len(content))
-        self.send_header("Content-Type", self.error_content_type)
-        self.send_header('Connection', 'close')
-        self.end_headers()
-        if self.command != 'HEAD' and code >= 200 and code not in (204, 304):
-            self.wfile.write(content)
-
     def send_range_content(self, file, start, length):
         file.seek(start)
         self.wfile.write(file.read(length))
@@ -411,6 +382,23 @@ class TestingThreadingHTTPServer(SocketServer.ThreadingTCPServer,
         # process. This is prophylactic as we should not leave the threads
         # lying around.
         self.daemon_threads = True
+
+    def process_request_thread(self, request, client_address):
+        SocketServer.ThreadingTCPServer.process_request_thread(
+            self, request, client_address)
+        # Under some circumstances (as in bug #383920), we need to force the
+        # shutdown as python delays it until gc occur otherwise and the client
+        # may hang.
+        try:
+            # The request process has been completed, the thread is about to
+            # die, let's shutdown the socket if we can.
+            request.shutdown(socket.SHUT_RDWR)
+        except (socket.error, select.error), e:
+            if e[0] in (errno.EBADF, errno.ENOTCONN):
+                # Right, the socket is already down
+                pass
+            else:
+                raise
 
 
 class HttpServer(transport.Server):

@@ -90,7 +90,7 @@ class TestReadBundleFromURL(TestTransportImplementation):
         # read_mergeable_from_url will invoke get_transport which may *not*
         # respect self._transport (i.e. returns a transport that is different
         # from the one we want to test, so we must inject a correct transport
-        # into possible_transports first.
+        # into possible_transports first).
         self.possible_transports = [self.get_transport(self.bundle_name)]
         self._captureVar('BZR_NO_SMART_VFS', None)
         wt = self.create_test_bundle()
