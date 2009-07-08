@@ -56,7 +56,6 @@ cdef extern from "Python.h":
 
 
 from bzrlib import _annotator_py
-from bzrlib import errors, graph as _mod_graph, osutils, patiencediff, ui
 
 
 cdef int _check_annotations_are_lists(annotations,
@@ -155,8 +154,8 @@ cdef object _combine_annotations(ann_one, ann_two, cache):
     return new_ann
 
 
-cdef _apply_parent_annotations(annotations, parent_annotations,
-                               matching_blocks):
+cdef int _apply_parent_annotations(annotations, parent_annotations,
+                                   matching_blocks) except -1:
     """Apply the annotations from parent_annotations into annotations.
 
     matching_blocks defines the ranges that match.
@@ -181,6 +180,57 @@ cdef _apply_parent_annotations(annotations, parent_annotations,
             Py_INCREF_ptr(par_temp[idx])
             Py_DECREF_ptr(ann_temp[idx])
             ann_temp[idx] = par_temp[idx]
+    return 0
+
+
+cdef int _merge_annotations(this_annotation, annotations, parent_annotations,
+                            matching_blocks, ann_cache) except -1:
+    cdef Py_ssize_t parent_idx, ann_idx, lines_idx, match_len, idx
+    cdef Py_ssize_t pos
+    cdef PyObject *ann_temp, *par_temp
+
+    _check_annotations_are_lists(annotations, parent_annotations)
+    last_ann = None
+    last_parent = None
+    last_res = None
+    for parent_idx, lines_idx, match_len in matching_blocks:
+        _check_match_ranges(parent_annotations, annotations,
+                            parent_idx, lines_idx, match_len)
+        # For lines which match this parent, we will now resolve whether
+        # this parent wins over the current annotation
+        for idx from 0 <= idx < match_len:
+            ann_idx = lines_idx + idx
+            ann_temp = PyList_GET_ITEM(annotations, ann_idx)
+            par_temp = PyList_GET_ITEM(parent_annotations, parent_idx + idx)
+            if (ann_temp == par_temp):
+                # This is parent, do nothing
+                # Pointer comparison is fine here. Value comparison would
+                # be ok, but it will be handled in the final if clause by
+                # merging the two tuples into the same tuple
+                # Avoiding the Py_INCREF and function call to
+                # PyObject_RichCompareBool using pointer comparison drops
+                # timing from 215ms => 125ms
+                continue
+            par_ann = <object>par_temp
+            ann = <object>ann_temp
+            if (ann is this_annotation):
+                # Originally claimed 'this', but it was really in this
+                # parent
+                Py_INCREF(par_ann)
+                PyList_SetItem(annotations, ann_idx, par_ann)
+                continue
+            # Resolve the fact that both sides have a different value for
+            # last modified
+            if (ann is last_ann and par_ann is last_parent):
+                Py_INCREF(last_res)
+                PyList_SetItem(annotations, ann_idx, last_res)
+            else:
+                new_ann = _combine_annotations(ann, par_ann, ann_cache)
+                Py_INCREF(new_ann)
+                PyList_SetItem(annotations, ann_idx, new_ann)
+                last_ann = ann
+                last_parent = par_ann
+                last_res = new_ann
 
 
 class Annotator(_annotator_py.Annotator):
@@ -188,8 +238,9 @@ class Annotator(_annotator_py.Annotator):
 
     def _update_from_first_parent(self, key, annotations, lines, parent_key):
         """Reannotate this text relative to its first parent."""
-        parent_annotations, matching_blocks = self._get_parent_annotations_and_matches(
-            key, lines, parent_key)
+        (parent_annotations,
+         matching_blocks) = self._get_parent_annotations_and_matches(
+                                key, lines, parent_key)
 
         _apply_parent_annotations(annotations, parent_annotations,
                                   matching_blocks)
@@ -197,53 +248,11 @@ class Annotator(_annotator_py.Annotator):
     def _update_from_other_parents(self, key, annotations, lines,
                                    this_annotation, parent_key):
         """Reannotate this text relative to a second (or more) parent."""
-        cdef Py_ssize_t parent_idx, ann_idx, lines_idx, match_len, idx
-        cdef Py_ssize_t pos
-        cdef PyObject *ann_temp, *par_temp
-        parent_annotations, matching_blocks = self._get_parent_annotations_and_matches(
-            key, lines, parent_key)
-        _check_annotations_are_lists(annotations, parent_annotations)
-        last_ann = None
-        last_parent = None
-        last_res = None
-        cache = self._ann_tuple_cache
-        for parent_idx, lines_idx, match_len in matching_blocks:
-            _check_match_ranges(parent_annotations, annotations,
-                                parent_idx, lines_idx, match_len)
-            # For lines which match this parent, we will now resolve whether
-            # this parent wins over the current annotation
-            for idx from 0 <= idx < match_len:
-                ann_idx = lines_idx + idx
-                ann_temp = PyList_GET_ITEM(annotations, ann_idx)
-                par_temp = PyList_GET_ITEM(parent_annotations, parent_idx + idx)
-                if (ann_temp == par_temp):
-                    # This is parent, do nothing
-                    # Pointer comparison is fine here. Value comparison would
-                    # be ok, but it will be handled in the final if clause by
-                    # merging the two tuples into the same tuple
-                    # Avoiding the Py_INCREF by using pointer comparison drops
-                    # timing from 215ms => 125ms
-                    continue
-                par_ann = <object>par_temp
-                ann = <object>ann_temp
-                if (ann is this_annotation):
-                    # Originally claimed 'this', but it was really in this
-                    # parent
-                    Py_INCREF(par_ann)
-                    PyList_SetItem(annotations, ann_idx, par_ann)
-                    continue
-                # Resolve the fact that both sides have a different value for
-                # last modified
-                if (ann is last_ann and par_ann is last_parent):
-                    Py_INCREF(last_res)
-                    PyList_SetItem(annotations, ann_idx, last_res)
-                else:
-                    new_ann = _combine_annotations(ann, par_ann, cache)
-                    Py_INCREF(new_ann)
-                    PyList_SetItem(annotations, ann_idx, new_ann)
-                    last_ann = ann
-                    last_parent = par_ann
-                    last_res = new_ann
+        (parent_annotations,
+         matching_blocks) = self._get_parent_annotations_and_matches(
+                                key, lines, parent_key)
+        _merge_annotations(this_annotation, annotations, parent_annotations,
+                           matching_blocks, self._ann_tuple_cache)
 
     def annotate_flat(self, key):
         """Determine the single-best-revision to source for each line.

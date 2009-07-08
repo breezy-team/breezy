@@ -143,8 +143,9 @@ class Annotator(object):
 
     def _update_from_first_parent(self, key, annotations, lines, parent_key):
         """Reannotate this text relative to its first parent."""
-        parent_annotations, matching_blocks = self._get_parent_annotations_and_matches(
-            key, lines, parent_key)
+        (parent_annotations,
+         matching_blocks) = self._get_parent_annotations_and_matches(
+                                key, lines, parent_key)
 
         for parent_idx, lines_idx, match_len in matching_blocks:
             # For all matching regions we copy across the parent annotations
@@ -154,8 +155,9 @@ class Annotator(object):
     def _update_from_other_parents(self, key, annotations, lines,
                                    this_annotation, parent_key):
         """Reannotate this text relative to a second (or more) parent."""
-        parent_annotations, matching_blocks = self._get_parent_annotations_and_matches(
-            key, lines, parent_key)
+        (parent_annotations,
+         matching_blocks) = self._get_parent_annotations_and_matches(
+                                key, lines, parent_key)
 
         last_ann = None
         last_parent = None
@@ -239,7 +241,14 @@ class Annotator(object):
         self._heads_provider = None
 
     def annotate(self, key):
-        """Return annotated fulltext for the given key."""
+        """Return annotated fulltext for the given key.
+
+        :param key: A tuple defining the text to annotate
+        :return: ([annotations], [lines])
+            annotations is a list of tuples of keys, one for each line in lines
+                        each key is a possible source for the given line.
+            lines the text of "key" as a list of lines
+        """
         pb = ui.ui_factory.nested_progress_bar()
         try:
             for text_key, text, num_lines in self._get_needed_texts(key, pb=pb):
@@ -261,6 +270,8 @@ class Annotator(object):
         """Determine the single-best-revision to source for each line.
 
         This is meant as a compatibility thunk to how annotate() used to work.
+        :return: [(ann_key, line)]
+            A list of tuples with a single annotation key for each line.
         """
         annotations, lines = self.annotate(key)
         assert len(annotations) == len(lines)
