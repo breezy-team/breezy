@@ -75,6 +75,10 @@ def apply_inventory_WT_basis(self, basis, delta):
     """Apply delta to basis and return the result.
 
     This sets the parent and then calls update_basis_by_delta.
+    It also puts the basis in the repository under both 'basis' and 'result' to
+    allow safety checks made by the WT to succeed, and finally ensures that all
+    items in the delta with a new path are present in the WT before calling
+    update_basis_by_delta.
     
     :param basis: An inventory to be used as the basis.
     :param delta: The inventory delta to apply:
@@ -109,6 +113,30 @@ def apply_inventory_WT_basis(self, basis, delta):
         # This reads basis from the repo and puts it into the tree's local
         # cache, if it has one.
         tree.set_parent_ids(['basis'])
+        inv = tree.inventory
+        paths = {}
+        parents = set()
+        for old, new, id, entry in delta:
+            if entry is None:
+                continue
+            paths[new] = (entry.file_id, entry.kind)
+            parents.add(osutils.dirname(new))
+        parents = osutils.minimum_path_selection(parents)
+        parents.discard('')
+        if parents:
+            # Put place holders in the tree to permit adding the other entries.
+            import pdb;pdb.set_trace()
+        if paths:
+            # Many deltas may cause this mini-apply to fail, but we want to see what
+            # the delta application code says, not the prep that we do to deal with 
+            # limitations of dirstate's update_basis code.
+            for path, (file_id, kind) in sorted(paths.items()):
+                try:
+                    tree.add([path], [file_id], [kind])
+                except (KeyboardInterrupt, SystemExit):
+                    raise
+                except:
+                    pass
     finally:
         tree.unlock()
     # Fresh lock, reads disk again.
@@ -215,6 +243,52 @@ class TestDeltaApplication(TestCaseWithTransport):
         file2.text_size = 0
         file2.text_sha1 = ""
         delta = [(None, 'path1', 'id', file1), (None, 'path2', 'id', file2)]
+        self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
+            inv, delta)
+
+    def test_repeated_new_path(self):
+        inv = self.get_empty_inventory()
+        file1 = inventory.InventoryFile('id1', 'path', inv.root.file_id)
+        file1.revision = 'result'
+        file1.text_size = 0
+        file1.text_sha1 = ""
+        file2 = inventory.InventoryFile('id2', 'path', inv.root.file_id)
+        file2.revision = 'result'
+        file2.text_size = 0
+        file2.text_sha1 = ""
+        delta = [(None, 'path', 'id1', file1), (None, 'path', 'id2', file2)]
+        self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
+            inv, delta)
+
+    def test_repeated_old_path(self):
+        inv = self.get_empty_inventory()
+        file1 = inventory.InventoryFile('id1', 'path', inv.root.file_id)
+        file1.revision = 'result'
+        file1.text_size = 0
+        file1.text_sha1 = ""
+        # We can't *create* a source inventory with the same path, but
+        # a badly generated partial delta might claim the same source twice.
+        # This would be buggy in two ways: the path is repeated in the delta,
+        # And the path for one of the file ids doesn't match the source
+        # location. Alternatively, we could have a repeated fileid, but that
+        # is separately checked for.
+        file2 = inventory.InventoryFile('id2', 'path2', inv.root.file_id)
+        file2.revision = 'result'
+        file2.text_size = 0
+        file2.text_sha1 = ""
+        inv.add(file1)
+        inv.add(file2)
+        delta = [('path', None, 'id1', None), ('path', None, 'id2', None)]
+        self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
+            inv, delta)
+
+    def test_mismatched_id_entry_id(self):
+        inv = self.get_empty_inventory()
+        file1 = inventory.InventoryFile('id1', 'path', inv.root.file_id)
+        file1.revision = 'result'
+        file1.text_size = 0
+        file1.text_sha1 = ""
+        delta = [(None, 'path', 'id', file1)]
         self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
             inv, delta)
 

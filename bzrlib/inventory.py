@@ -1127,12 +1127,11 @@ class Inventory(CommonInventory):
         """
         # Check that the delta is legal. It would be nice if this could be
         # done within the loops below but it's safer to validate the delta
-        # before starting to mutate the inventory.
-        unique_file_ids = set([f for _, _, f, _ in delta])
-        if len(unique_file_ids) != len(delta):
-            raise errors.InconsistentDeltaDelta(delta,
-                "a file-id appears multiple times")
-        del unique_file_ids
+        # before starting to mutate the inventory, as there isn't a rollback
+        # facility.
+        list(_check_delta_unique_ids(_check_delta_unique_new_paths(
+            _check_delta_unique_old_paths(_check_delta_ids_match_entry(
+            delta)))))
 
         children = {}
         # Remove all affected items which were in the original inventory,
@@ -1269,9 +1268,10 @@ class Inventory(CommonInventory):
                                entry.parent_id)
 
             if entry.name in parent.children:
-                raise BzrError("%s is already versioned" %
-                        osutils.pathjoin(self.id2path(parent.file_id),
-                        entry.name).encode('utf-8'))
+                raise errors.InconsistentDelta(
+                    self.id2path(parent.children[entry.name].file_id),
+                    entry.file_id,
+                    "Path already versioned")
             parent.children[entry.name] = entry
         return self._add_child(entry)
 
@@ -1619,9 +1619,17 @@ class CHKInventory(CommonInventory):
             result.parent_id_basename_to_file_id = None
         result.root_id = self.root_id
         id_to_entry_delta = []
-        id_set = set()
+        # inventory_delta is only traversed once, so we just update the
+        # variable.
+        # Check for repeated file ids
+        inventory_delta = _check_delta_unique_ids(inventory_delta)
+        # Repeated old paths
+        inventory_delta = _check_delta_unique_old_paths(inventory_delta)
+        # Check for repeated new paths
+        inventory_delta = _check_delta_unique_new_paths(inventory_delta)
+        # Check for entries that don't match the fileid
+        inventory_delta = _check_delta_ids_match_entry(inventory_delta)
         for old_path, new_path, file_id, entry in inventory_delta:
-            id_set.add(file_id)
             # file id changes
             if new_path == '':
                 result.root_id = file_id
@@ -1663,9 +1671,6 @@ class CHKInventory(CommonInventory):
                     # If the two keys are the same, the value will be unchanged
                     # as its always the file id.
                     parent_id_basename_delta.append((old_key, new_key, new_value))
-        if len(id_set) != len(inventory_delta):
-            raise errors.InconsistentDeltaDelta(inventory_delta,
-                'repeated file id')
         result.id_to_entry.apply_delta(id_to_entry_delta)
         if parent_id_basename_delta:
             result.parent_id_basename_to_file_id.apply_delta(parent_id_basename_delta)
@@ -2077,3 +2082,64 @@ def is_valid_name(name):
         _NAME_RE = re.compile(r'^[^/\\]+$')
 
     return bool(_NAME_RE.match(name))
+
+
+def _check_delta_unique_ids(delta):
+    """Decorate a delta and check that the file ids in it are unique.
+
+    :return: A generator over delta.
+    """
+    ids = set()
+    for item in delta:
+        length = len(ids) + 1
+        ids.add(item[2])
+        if len(ids) != length:
+            raise errors.InconsistentDelta(item[0] or item[1], item[2],
+                "repeated file_id")
+        yield item
+
+
+def _check_delta_unique_new_paths(delta):
+    """Decorate a delta and check that the new paths in it are unique.
+
+    :return: A generator over delta.
+    """
+    paths = set()
+    for item in delta:
+        length = len(paths) + 1
+        path = item[1]
+        if path is not None:
+            paths.add(path)
+            if len(paths) != length:
+                raise errors.InconsistentDelta(path, item[2], "repeated path")
+        yield item
+
+
+def _check_delta_unique_old_paths(delta):
+    """Decorate a delta and check that the old paths in it are unique.
+
+    :return: A generator over delta.
+    """
+    paths = set()
+    for item in delta:
+        length = len(paths) + 1
+        path = item[0]
+        if path is not None:
+            paths.add(path)
+            if len(paths) != length:
+                raise errors.InconsistentDelta(path, item[2], "repeated path")
+        yield item
+
+
+def _check_delta_ids_match_entry(delta):
+    """Decorate a delta and check that the ids in it match the entry.file_id.
+
+    :return: A generator over delta.
+    """
+    for item in delta:
+        entry = item[3]
+        if entry is not None:
+            if entry.file_id != item[2]:
+                raise errors.InconsistentDelta(item[0] or item[1], item[2],
+                    "mismatched id with %r" % entry)
+        yield item

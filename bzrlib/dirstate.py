@@ -1400,6 +1400,9 @@ class DirState(object):
         # inventory entries to dirstate.
         root_only = ('', '')
         for old_path, new_path, file_id, inv_entry in delta:
+            if inv_entry is not None and file_id != inv_entry.file_id:
+                raise errors.InconsistentDelta(new_path, file_id,
+                    "mismatched entry file_id %r" % inv_entry)
             if old_path is None:
                 adds.append((None, encode(new_path), file_id,
                     inv_to_entry(inv_entry), True))
@@ -1453,12 +1456,20 @@ class DirState(object):
                 changes.append((encode(old_path), encode(new_path), file_id,
                     inv_to_entry(inv_entry)))
 
-        # Finish expunging deletes/first half of renames.
-        self._update_basis_apply_deletes(deletes)
-        # Reinstate second half of renames and new paths.
-        self._update_basis_apply_adds(adds)
-        # Apply in-situ changes.
-        self._update_basis_apply_changes(changes)
+        try:
+            # Finish expunging deletes/first half of renames.
+            self._update_basis_apply_deletes(deletes)
+            # Reinstate second half of renames and new paths.
+            self._update_basis_apply_adds(adds)
+            # Apply in-situ changes.
+            self._update_basis_apply_changes(changes)
+        except errors.BzrError:
+            # _get_entry raises BzrError when a request is inconsistent; we
+            # want such errors to be shown as InconsistentDelta - and that 
+            # fits the behaviour we trigger. Partof this is driven by dirstate
+            # only supporting deltas that turn the basis into a closer fit to
+            # the active tree.
+            raise errors.InconsistentDeltaDelta(delta, "error from _get_entry.")
 
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
         self._header_state = DirState.IN_MEMORY_MODIFIED
