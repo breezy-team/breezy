@@ -63,6 +63,16 @@ class _CompiledKnownGraphFeature(tests.Feature):
 CompiledKnownGraphFeature = _CompiledKnownGraphFeature()
 
 
+#  a
+#  |\
+#  b |
+#  | |
+#  c |
+#   \|
+#    d
+alt_merge = {'a': [], 'b': ['a'], 'c': ['b'], 'd': ['a', 'c']}
+
+
 class TestKnownGraph(tests.TestCase):
 
     module = None # Set by load_tests
@@ -202,6 +212,10 @@ class TestKnownGraph(tests.TestCase):
         self.assertEqual(set(['z']), graph.heads(['w', 's', 'z']))
         self.assertEqual(set(['w', 'q']), graph.heads(['w', 's', 'q']))
         self.assertEqual(set(['z']), graph.heads(['s', 'z']))
+
+    def test_heads_alt_merge(self):
+        graph = self.make_known_graph(alt_merge)
+        self.assertEqual(set(['c']), graph.heads(['a', 'c']))
 
     def test_heads_with_ghost(self):
         graph = self.make_known_graph(test_graph.with_ghost)
