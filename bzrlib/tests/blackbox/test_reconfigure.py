@@ -20,6 +20,7 @@ from bzrlib import (
     tests,
     workingtree,
     )
+from bzrlib.branchbuilder import BranchBuilder
 
 
 class TestReconfigure(tests.TestCaseWithTransport):
@@ -187,23 +188,45 @@ class TestReconfigure(tests.TestCaseWithTransport):
 class TestReconfigureStacking(tests.TestCaseWithTransport):
 
     def test_reconfigure_stacking(self):
-        branch_1 = self.make_branch('b1', format='2a')
-        branch_2 = self.make_branch('b2', format='2a')
-        out, err = self.run_bzr('reconfigure --stacked-on b2 b1')
+        """Test a fairly realistic scenario for stacking:
+
+         * make a branch with some history
+         * branch it
+         * make the second branch stacked on the first
+         * commit in the second
+         * then make the second unstacked, so it has to fill in history from
+           the original fallback lying underneath its original content
+
+        See discussion in <https://bugs.edge.launchpad.net/bzr/+bug/391411>
+        """
+        tree_1 = self.make_branch_and_tree('b1', format='2a')
+        self.build_tree(['b1/foo'])
+        tree_1.add(['foo'])
+        tree_1.commit('add foo')
+        branch_1 = tree_1.branch
+        # now branch and commit again
+        bzrdir_2 = tree_1.bzrdir.sprout('b2')
+        tree_2 = bzrdir_2.open_workingtree()
+        branch_2 = tree_2.branch
+        # now reconfigure to be stacked
+        out, err = self.run_bzr('reconfigure --stacked-on b1 b2')
         self.assertContainsRe(out,
-            '^.*/b1/ is now stacked on ../b2\n$')
+            '^.*/b2/ is now stacked on ../b1\n$')
         self.assertEquals('', err)
         # It should be given a relative URL to the destination, if possible,
         # because that's most likely to work across different transports
-        self.assertEquals(branch_1.get_stacked_on_url(),
-            '../b2')
+        self.assertEquals(branch_2.get_stacked_on_url(),
+            '../b1')
+        # commit, and it should be stored into b2's repo
+        self.build_tree_contents([('foo', 'new foo')])
+        tree_2.commit('update foo')
         # Now turn it off again
-        out, err = self.run_bzr('reconfigure --unstacked b1')
+        out, err = self.run_bzr('reconfigure --unstacked b2')
         self.assertContainsRe(out,
-            '^.*/b1/ is now not stacked\n$')
+            '^.*/b2/ is now not stacked\n$')
         self.assertEquals('', err)
         self.assertRaises(errors.NotStacked,
-            branch_1.get_stacked_on_url)
+            branch_2.get_stacked_on_url)
 
     # XXX: Needs a test for reconfiguring stacking and shape at the same time;
     # no branch at location; stacked-on is not a branch; quiet mode;
