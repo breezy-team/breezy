@@ -119,6 +119,9 @@ def _tree_to_entry(content, name, parent_id, file_id, last_modified,
 class InventoryDeltaSerializer(object):
     """Serialize and deserialize inventory deltas."""
 
+    # XXX: really, the serializer and deserializer should be two separate
+    # classes.
+
     FORMAT_1 = 'bzr inventory delta v1 (bzr 1.14)'
 
     def __init__(self):
@@ -132,7 +135,8 @@ class InventoryDeltaSerializer(object):
         }
 
     def require_flags(self, versioned_root=None, tree_references=None):
-        """XXX
+        """Set the versioned_root and/or tree_references flags for this
+        (de)serializer.
 
         :param versioned_root: If True, any root entry that is seen is expected
             to be versioned, and root entries can have any fileid.
@@ -151,6 +155,9 @@ class InventoryDeltaSerializer(object):
 
     def delta_to_lines(self, old_name, new_name, delta_to_new):
         """Return a line sequence for delta_to_new.
+
+        Both the versioned_root and tree_references flags must be set via
+        require_flags before calling this.
 
         :param old_name: A UTF8 revision id for the old inventory.  May be
             NULL_REVISION if there is no older inventory and delta_to_new
@@ -235,6 +242,10 @@ class InventoryDeltaSerializer(object):
 
     def parse_text_bytes(self, bytes):
         """Parse the text bytes of a serialized inventory delta.
+
+        If versioned_root and/or tree_references flags were set via
+        require_flags, then the parsed flags must match or a BzrError will be
+        raised.
 
         :param bytes: The bytes to parse. This can be obtained by calling
             delta_to_lines and then doing ''.join(delta_lines).
