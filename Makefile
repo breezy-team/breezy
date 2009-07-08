@@ -85,33 +85,19 @@ endif
 derived_txt_files := \
 	doc/en/user-reference/bzr_man.txt \
 	doc/en/release-notes/NEWS.txt
-txt_files := $(wildcard doc/en/tutorials/*.txt) \
+txt_files := $(wildcard doc/*/tutorials/*.txt) \
+	$(wildcard doc/*/mini-tutorial/index.txt) \
+	$(wildcard doc/*/user-guide/index.txt) \
 	$(derived_txt_files) \
-	doc/en/user-guide/index.txt \
-	doc/en/mini-tutorial/index.txt \
 	doc/en/developer-guide/HACKING.txt \
-	$(wildcard doc/es/guia-usario/*.txt) \
-	doc/es/mini-tutorial/index.txt \
 	doc/index.txt \
-	doc/index.es.txt \
-	doc/index.ru.txt \
-	doc/ru/user-guide/index.txt \
-	doc/ru/mini-tutorial/index.txt \
-	$(wildcard doc/ru/tutorials/*.txt)
+	$(wildcard doc/index.*.txt)
 non_txt_files := \
        doc/default.css \
-       doc/en/quick-reference/quick-start-summary.svg \
-       doc/en/quick-reference/quick-start-summary.png \
-       doc/en/quick-reference/quick-start-summary.pdf \
-       $(wildcard doc/en/user-guide/images/*.png) \
-       doc/es/referencia-rapida/referencia-rapida.svg \
-       doc/es/referencia-rapida/referencia-rapida.png \
-       doc/es/referencia-rapida/referencia-rapida.pdf \
-       $(wildcard doc/es/guia-usuario/images/*.png) \
-       doc/ru/quick-reference/quick-start-summary.svg \
-       doc/ru/quick-reference/quick-start-summary.png \
-       doc/ru/quick-reference/quick-start-summary.pdf \
-       $(wildcard doc/ru/user-guide/images/*.png)
+       $(wildcard doc/*/quick-reference/quick-start-summary.svg) \
+       $(wildcard doc/*/quick-reference/quick-start-summary.png) \
+       $(wildcard doc/*/quick-reference/quick-start-summary.pdf) \
+       $(wildcard doc/*/user-guide/images/*.png)
 htm_files := $(patsubst %.txt, %.html, $(txt_files)) 
 
 # doc/developers/*.txt files that should *not* be individually
