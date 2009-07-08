@@ -79,6 +79,9 @@ Bug Fixes
   transforms.
   (Craig Hewetson, Martin Pool, #218206)
 
+* Force socket shutdown in threaded http test servers to avoid client hangs
+  (pycurl).  (Vincent Ladeuil, #383920).
+
 * The ``log+`` decorator, useful in debugging or profiling, could cause
   "AttributeError: 'list' object has no attribute 'next'".  This is now
   fixed.  The log decorator no longer shows the elapsed time or transfer
