@@ -117,7 +117,11 @@ cdef object _combine_annotations(ann_one, ann_two, cache):
     new_ann = PyTuple_New(PyTuple_GET_SIZE(ann_one)
                           + PyTuple_GET_SIZE(ann_two))
     while left != NULL and right != NULL:
-        if (PyObject_RichCompareBool_ptr(left, right, Py_EQ)):
+        # left == right is done by PyObject_RichCompareBool_ptr, however it
+        # avoids a function call for a very common case. Drops 'time bzr
+        # annotate NEWS' from 7.25s to 7.16s, so it *is* a visible impact.
+        if (left == right
+            or PyObject_RichCompareBool_ptr(left, right, Py_EQ)):
             # Identical values, step both
             Py_INCREF_ptr(left)
             PyTuple_SET_ITEM_ptr(new_ann, out_pos, left)
