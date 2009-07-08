@@ -37,7 +37,7 @@ from bzrlib.osutils import get_user_encoding
 IGNORE_FILENAME = ".bzrignore"
 
 
-# XXX: Compatibility. This should probably be deprecated
+# XXX: Deprecated as of bzr-1.17 use osutils.get_user_encoding() directly
 user_encoding = get_user_encoding()
 
 
