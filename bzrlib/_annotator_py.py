@@ -292,7 +292,6 @@ class Annotator(object):
         """
         custom_tiebreaker = annotate._break_annotation_tie
         annotations, lines = self.annotate(key)
-        assert len(annotations) == len(lines)
         out = []
         heads = self._get_heads_provider().heads
         append = out.append

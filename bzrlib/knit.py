@@ -3532,7 +3532,6 @@ class _KnitAnnotator(annotate.Annotator):
                 lines = self._expand_record(child_key, parent_keys,
                                             compression_parent,
                                             record, record_details)
-                assert lines is not None
                 if self._check_ready_for_annotations(child_key, parent_keys):
                     to_return.append(child_key)
         # Also check any children that are waiting for this parent to be
@@ -3595,7 +3594,6 @@ class _KnitAnnotator(annotate.Annotator):
             # ghosts?
             details = self._all_build_details[key]
             (_, compression_parent, parent_keys, record_details) = details
-            assert parent_keys == self._parent_map[key]
             lines = self._expand_record(key, parent_keys, compression_parent,
                                         record, record_details)
             if lines is None:
