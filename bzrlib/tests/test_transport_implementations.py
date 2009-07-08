@@ -203,6 +203,13 @@ class TransportTests(TestTransportImplementation):
         for content, f in itertools.izip(contents, content_f):
             self.assertEqual(content, f.read())
 
+    def test_get_unknown_file(self):
+        t = self.get_transport()
+        files = ['a', 'b']
+        contents = ['contents of a\n',
+                    'contents of b\n',
+                    ]
+        self.build_tree(files, transport=t, line_endings='binary')
         self.assertRaises(NoSuchFile, t.get, 'c')
         self.assertListRaises(NoSuchFile, t.get_multi, ['a', 'b', 'c'])
         self.assertListRaises(NoSuchFile, t.get_multi, iter(['a', 'b', 'c']))
@@ -241,6 +248,9 @@ class TransportTests(TestTransportImplementation):
 
         for content, fname in zip(contents, files):
             self.assertEqual(content, t.get_bytes(fname))
+
+    def test_get_bytes_unknown_file(self):
+        t = self.get_transport()
 
         self.assertRaises(NoSuchFile, t.get_bytes, 'c')
 
