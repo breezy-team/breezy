@@ -78,6 +78,34 @@ class TestStacking(TestCaseWithBranch):
             return
         self.assertEqual('../target', branch.get_stacked_on_url())
 
+    def test_set_stacked_on_same_branch_raises(self):
+        # Stacking on the same branch silently raises and doesn't execute the
+        # change. Reported in bug 376243.
+        branch = self.make_branch('branch')
+        try:
+            self.assertRaises(errors.UnstackableLocationError,
+                branch.set_stacked_on_url, '../branch')
+        except unstackable_format_errors:
+            # if the set failed, so must the get
+            self.assertRaises(unstackable_format_errors, branch.get_stacked_on_url)
+            return
+        self.assertRaises(errors.NotStacked, branch.get_stacked_on_url)
+
+    def test_set_stacked_on_same_branch_after_being_stacked_raises(self):
+        # Stacking on the same branch silently raises and doesn't execute the
+        # change.
+        branch = self.make_branch('branch')
+        target = self.make_branch('target')
+        try:
+            branch.set_stacked_on_url('../target')
+        except unstackable_format_errors:
+            # if the set failed, so must the get
+            self.assertRaises(unstackable_format_errors, branch.get_stacked_on_url)
+            return
+        self.assertRaises(errors.UnstackableLocationError,
+            branch.set_stacked_on_url, '../branch')
+        self.assertEqual('../target', branch.get_stacked_on_url())
+
     def assertRevisionInRepository(self, repo_path, revid):
         """Check that a revision is in a repository, disregarding stacking."""
         repo = bzrdir.BzrDir.open(repo_path).open_repository()
@@ -420,6 +448,31 @@ class TestStacking(TestCaseWithBranch):
         b.bzrdir.clone_on_transport(transport, stacked_on=b.base)
         # Ensure that opening the branch doesn't raise.
         branch.Branch.open(transport.base)
+
+    def test_revision_history_of_stacked(self):
+        # See <https://launchpad.net/bugs/380314>.
+        stack_on = self.make_branch_and_tree('stack-on')
+        stack_on.commit('first commit', rev_id='rev1')
+        try:
+            stacked_dir = stack_on.bzrdir.sprout(
+                self.get_url('stacked'), stacked=True)
+        except unstackable_format_errors, e:
+            raise TestNotApplicable('Format does not support stacking.')
+        try:
+            stacked = stacked_dir.open_workingtree()
+        except errors.NoWorkingTree:
+            stacked = stacked_dir.open_branch().create_checkout(
+                'stacked-checkout', lightweight=True)
+        stacked.commit('second commit', rev_id='rev2')
+        # Sanity check: stacked's repo should not contain rev1, otherwise this
+        # test isn't testing what it's supposed to.
+        repo = stacked.branch.repository.bzrdir.open_repository()
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        self.assertEqual({}, repo.get_parent_map(['rev1']))
+        # revision_history should work, even though the history is spread over
+        # multiple repositories.
+        self.assertLength(2, stacked.branch.revision_history())
 
 
 class TestStackingConnections(

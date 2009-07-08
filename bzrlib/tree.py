@@ -19,7 +19,6 @@
 
 import os
 from collections import deque
-from cStringIO import StringIO
 
 import bzrlib
 from bzrlib import (
@@ -30,17 +29,16 @@ from bzrlib import (
     osutils,
     revision as _mod_revision,
     rules,
-    symbol_versioning,
     )
 from bzrlib.decorators import needs_read_lock
-from bzrlib.errors import BzrError, BzrCheckError, NoSuchId
+from bzrlib.errors import BzrError, NoSuchId
 from bzrlib import errors
-from bzrlib.inventory import Inventory, InventoryFile
+from bzrlib.inventory import InventoryFile
 from bzrlib.inter import InterObject
 from bzrlib.osutils import fingerprint_file
 import bzrlib.revision
 from bzrlib.symbol_versioning import deprecated_function, deprecated_in
-from bzrlib.trace import mutter, note
+from bzrlib.trace import note
 
 
 class Tree(object):
@@ -263,6 +261,20 @@ class Tree(object):
         """
         raise NotImplementedError(self.get_file)
 
+    def get_file_with_stat(self, file_id, path=None):
+        """Get a file handle and stat object for file_id.
+
+        The default implementation returns (self.get_file, None) for backwards
+        compatibility.
+
+        :param file_id: The file id to read.
+        :param path: The path of the file, if it is known.
+        :return: A tuple (file_handle, stat_value_or_None). If the tree has
+            no stat facility, or need for a stat cache feedback during commit,
+            it may return None for the second element of the tuple.
+        """
+        return (self.get_file(file_id, path), None)
+
     def get_file_text(self, file_id, path=None):
         """Return the byte content of a file.
 
@@ -423,7 +435,7 @@ class Tree(object):
         raise NotImplementedError(self.annotate_iter)
 
     def _get_plan_merge_data(self, file_id, other, base):
-        from bzrlib import merge, versionedfile
+        from bzrlib import versionedfile
         vf = versionedfile._PlanMergeVersionedFile(file_id)
         last_revision_a = self._get_file_revision(file_id, vf, 'this:')
         last_revision_b = other._get_file_revision(file_id, vf, 'other:')

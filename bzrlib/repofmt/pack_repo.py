@@ -36,10 +36,7 @@ from bzrlib import (
     )
 from bzrlib.index import (
     CombinedGraphIndex,
-    GraphIndex,
-    GraphIndexBuilder,
     GraphIndexPrefixAdapter,
-    InMemoryGraphIndex,
     )
 from bzrlib.knit import (
     KnitPlainFactory,
@@ -55,7 +52,6 @@ from bzrlib import (
     lockable_files,
     lockdir,
     revision as _mod_revision,
-    symbol_versioning,
     )
 
 from bzrlib.decorators import needs_write_lock
@@ -73,8 +69,8 @@ from bzrlib.repository import (
     MetaDirRepositoryFormat,
     RepositoryFormat,
     RootCommitBuilder,
+    StreamSource,
     )
-import bzrlib.revision as _mod_revision
 from bzrlib.trace import (
     mutter,
     warning,
@@ -268,10 +264,11 @@ class ResumedPack(ExistingPack):
 
     def __init__(self, name, revision_index, inventory_index, text_index,
         signature_index, upload_transport, pack_transport, index_transport,
-        pack_collection):
+        pack_collection, chk_index=None):
         """Create a ResumedPack object."""
         ExistingPack.__init__(self, pack_transport, name, revision_index,
-            inventory_index, text_index, signature_index)
+            inventory_index, text_index, signature_index,
+            chk_index=chk_index)
         self.upload_transport = upload_transport
         self.index_transport = index_transport
         self.index_sizes = [None, None, None, None]
@@ -281,6 +278,9 @@ class ResumedPack(ExistingPack):
             ('text', text_index),
             ('signature', signature_index),
             ]
+        if chk_index is not None:
+            indices.append(('chk', chk_index))
+            self.index_sizes.append(None)
         for index_type, index in indices:
             offset = self.index_offset(index_type)
             self.index_sizes[offset] = index._size
@@ -301,21 +301,31 @@ class ResumedPack(ExistingPack):
         self.upload_transport.delete(self.file_name())
         indices = [self.revision_index, self.inventory_index, self.text_index,
             self.signature_index]
+        if self.chk_index is not None:
+            indices.append(self.chk_index)
         for index in indices:
             index._transport.delete(index._name)
 
     def finish(self):
         self._check_references()
-        new_name = '../packs/' + self.file_name()
-        self.upload_transport.rename(self.file_name(), new_name)
-        for index_type in ['revision', 'inventory', 'text', 'signature']:
+        index_types = ['revision', 'inventory', 'text', 'signature']
+        if self.chk_index is not None:
+            index_types.append('chk')
+        for index_type in index_types:
             old_name = self.index_name(index_type, self.name)
             new_name = '../indices/' + old_name
             self.upload_transport.rename(old_name, new_name)
             self._replace_index_with_readonly(index_type)
+        new_name = '../packs/' + self.file_name()
+        self.upload_transport.rename(self.file_name(), new_name)
         self._state = 'finished'
 
     def _get_external_refs(self, index):
+        """Return compression parents for this index that are not present.
+
+        This returns any compression parents that are referenced by this index,
+        which are not contained *in* this index. They may be present elsewhere.
+        """
         return index.external_references(1)
 
 
@@ -1292,7 +1302,7 @@ class ReconcilePacker(Packer):
         # space (we only topo sort the revisions, which is smaller).
         topo_order = tsort.topo_sort(ancestors)
         rev_order = dict(zip(topo_order, range(len(topo_order))))
-        bad_texts.sort(key=lambda key:rev_order[key[0][1]])
+        bad_texts.sort(key=lambda key:rev_order.get(key[0][1], 0))
         transaction = repo.get_transaction()
         file_id_index = GraphIndexPrefixAdapter(
             self.new_pack.text_index,
@@ -1352,6 +1362,7 @@ class RepositoryPackCollection(object):
     """
 
     pack_factory = NewPack
+    resumed_pack_factory = ResumedPack
 
     def __init__(self, repo, transport, index_transport, upload_transport,
                  pack_transport, index_builder_class, index_class,
@@ -1443,12 +1454,12 @@ class RepositoryPackCollection(object):
         in synchronisation with certain steps. Otherwise the names collection
         is not flushed.
 
-        :return: True if packing took place.
+        :return: Something evaluating true if packing took place.
         """
         while True:
             try:
                 return self._do_autopack()
-            except errors.RetryAutopack, e:
+            except errors.RetryAutopack:
                 # If we get a RetryAutopack exception, we should abort the
                 # current action, and retry.
                 pass
@@ -1458,7 +1469,7 @@ class RepositoryPackCollection(object):
         total_revisions = self.revision_index.combined_index.key_count()
         total_packs = len(self._names)
         if self._max_pack_count(total_revisions) >= total_packs:
-            return False
+            return None
         # determine which packs need changing
         pack_distribution = self.pack_distribution(total_revisions)
         existing_packs = []
@@ -1486,10 +1497,10 @@ class RepositoryPackCollection(object):
             'containing %d revisions. Packing %d files into %d affecting %d'
             ' revisions', self, total_packs, total_revisions, num_old_packs,
             num_new_packs, num_revs_affected)
-        self._execute_pack_operations(pack_operations,
+        result = self._execute_pack_operations(pack_operations,
                                       reload_func=self._restart_autopack)
         mutter('Auto-packing repository %s completed', self)
-        return True
+        return result
 
     def _execute_pack_operations(self, pack_operations, _packer_class=Packer,
                                  reload_func=None):
@@ -1497,7 +1508,7 @@ class RepositoryPackCollection(object):
 
         :param pack_operations: A list of [revision_count, packs_to_combine].
         :param _packer_class: The class of packer to use (default: Packer).
-        :return: None.
+        :return: The new pack names.
         """
         for revision_count, packs in pack_operations:
             # we may have no-ops from the setup logic
@@ -1519,10 +1530,11 @@ class RepositoryPackCollection(object):
                 self._remove_pack_from_memory(pack)
         # record the newly available packs and stop advertising the old
         # packs
-        self._save_pack_names(clear_obsolete_packs=True)
+        result = self._save_pack_names(clear_obsolete_packs=True)
         # Move the old packs out of the way now they are no longer referenced.
         for revision_count, packs in pack_operations:
             self._obsolete_packs(packs)
+        return result
 
     def _flush_new_pack(self):
         if self._new_pack is not None:
@@ -1538,29 +1550,26 @@ class RepositoryPackCollection(object):
 
     def _already_packed(self):
         """Is the collection already packed?"""
-        return len(self._names) < 2
+        return not (self.repo._format.pack_compresses or (len(self._names) > 1))
 
-    def pack(self):
+    def pack(self, hint=None):
         """Pack the pack collection totally."""
         self.ensure_loaded()
         total_packs = len(self._names)
         if self._already_packed():
-            # This is arguably wrong because we might not be optimal, but for
-            # now lets leave it in. (e.g. reconcile -> one pack. But not
-            # optimal.
             return
         total_revisions = self.revision_index.combined_index.key_count()
         # XXX: the following may want to be a class, to pack with a given
         # policy.
         mutter('Packing repository %s, which has %d pack files, '
-            'containing %d revisions into 1 packs.', self, total_packs,
-            total_revisions)
+            'containing %d revisions with hint %r.', self, total_packs,
+            total_revisions, hint)
         # determine which packs need changing
-        pack_distribution = [1]
         pack_operations = [[0, []]]
         for pack in self.all_packs():
-            pack_operations[-1][0] += pack.get_revision_count()
-            pack_operations[-1][1].append(pack)
+            if not hint or pack.name in hint:
+                pack_operations[-1][0] += pack.get_revision_count()
+                pack_operations[-1][1].append(pack)
         self._execute_pack_operations(pack_operations, OptimisingPacker)
 
     def plan_autopack_combinations(self, existing_packs, pack_distribution):
@@ -1680,9 +1689,14 @@ class RepositoryPackCollection(object):
             inv_index = self._make_index(name, '.iix', resume=True)
             txt_index = self._make_index(name, '.tix', resume=True)
             sig_index = self._make_index(name, '.six', resume=True)
-            result = ResumedPack(name, rev_index, inv_index, txt_index,
-                sig_index, self._upload_transport, self._pack_transport,
-                self._index_transport, self)
+            if self.chk_index is not None:
+                chk_index = self._make_index(name, '.cix', resume=True)
+            else:
+                chk_index = None
+            result = self.resumed_pack_factory(name, rev_index, inv_index,
+                txt_index, sig_index, self._upload_transport,
+                self._pack_transport, self._index_transport, self,
+                chk_index=chk_index)
         except errors.NoSuchFile, e:
             raise errors.UnresumableWriteGroup(self.repo, [name], str(e))
         self.add_pack_to_memory(result)
@@ -1809,14 +1823,11 @@ class RepositoryPackCollection(object):
     def reset(self):
         """Clear all cached data."""
         # cached revision data
-        self.repo._revision_knit = None
         self.revision_index.clear()
         # cached signature data
-        self.repo._signature_knit = None
         self.signature_index.clear()
         # cached file text data
         self.text_index.clear()
-        self.repo._text_knit = None
         # cached inventory data
         self.inventory_index.clear()
         # cached chk data
@@ -1920,6 +1931,7 @@ class RepositoryPackCollection(object):
 
         :param clear_obsolete_packs: If True, clear out the contents of the
             obsolete_packs directory.
+        :return: A list of the names saved that were not previously on disk.
         """
         self.lock_names()
         try:
@@ -1940,6 +1952,7 @@ class RepositoryPackCollection(object):
             self._unlock_names()
         # synchronise the memory packs list with what we just wrote:
         self._syncronize_pack_names_from_disk_nodes(disk_nodes)
+        return [new_node[0][0] for new_node in new_nodes]
 
     def reload_pack_names(self):
         """Sync our pack listing with what is present in the repository.
@@ -2035,7 +2048,6 @@ class RepositoryPackCollection(object):
                 except KeyError:
                     pass
         del self._resumed_packs[:]
-        self.repo._text_knit = None
 
     def _remove_resumed_pack_indices(self):
         for resumed_pack in self._resumed_packs:
@@ -2080,8 +2092,7 @@ class RepositoryPackCollection(object):
             if not self.autopack():
                 # when autopack takes no steps, the names list is still
                 # unsaved.
-                self._save_pack_names()
-        self.repo._text_knit = None
+                return self._save_pack_names()
 
     def _suspend_write_group(self):
         tokens = [pack.name for pack in self._resumed_packs]
@@ -2095,7 +2106,6 @@ class RepositoryPackCollection(object):
             self._new_pack.abort()
             self._new_pack = None
         self._remove_resumed_pack_indices()
-        self.repo._text_knit = None
         return tokens
 
     def _resume_write_group(self, tokens):
@@ -2202,6 +2212,7 @@ class KnitPackRepository(KnitRepository):
                     % (self._format, self.bzrdir.transport.base))
 
     def _abort_write_group(self):
+        self.revisions._index._key_dependencies.refs.clear()
         self._pack_collection._abort_write_group()
 
     def _find_inconsistent_revision_parents(self):
@@ -2250,6 +2261,11 @@ class KnitPackRepository(KnitRepository):
             pb.finished()
         return result
 
+    def _get_source(self, to_format):
+        if to_format.network_name() == self._format.network_name():
+            return KnitPackStreamSource(self, to_format)
+        return super(KnitPackRepository, self)._get_source(to_format)
+
     def _make_parents_provider(self):
         return graph.CachingParentsProvider(self)
 
@@ -2262,17 +2278,23 @@ class KnitPackRepository(KnitRepository):
         self._pack_collection._start_write_group()
 
     def _commit_write_group(self):
+        self.revisions._index._key_dependencies.refs.clear()
         return self._pack_collection._commit_write_group()
 
     def suspend_write_group(self):
         # XXX check self._write_group is self.get_transaction()?
         tokens = self._pack_collection._suspend_write_group()
+        self.revisions._index._key_dependencies.refs.clear()
         self._write_group = None
         return tokens
 
     def _resume_write_group(self, tokens):
         self._start_write_group()
-        self._pack_collection._resume_write_group(tokens)
+        try:
+            self._pack_collection._resume_write_group(tokens)
+        except errors.UnresumableWriteGroup:
+            self._abort_write_group()
+            raise
         for pack in self._pack_collection._resumed_packs:
             self.revisions._index.scan_unvalidated_index(pack.revision_index)
 
@@ -2295,10 +2317,10 @@ class KnitPackRepository(KnitRepository):
         self._write_lock_count += 1
         if self._write_lock_count == 1:
             self._transaction = transactions.WriteTransaction()
+        if not locked:
             for repo in self._fallback_repositories:
                 # Writes don't affect fallback repos
                 repo.lock_read()
-        if not locked:
             self._refresh_data()
 
     def lock_read(self):
@@ -2307,10 +2329,9 @@ class KnitPackRepository(KnitRepository):
             self._write_lock_count += 1
         else:
             self.control_files.lock_read()
-            for repo in self._fallback_repositories:
-                # Writes don't affect fallback repos
-                repo.lock_read()
         if not locked:
+            for repo in self._fallback_repositories:
+                repo.lock_read()
             self._refresh_data()
 
     def leave_lock_in_place(self):
@@ -2322,13 +2343,13 @@ class KnitPackRepository(KnitRepository):
         raise NotImplementedError(self.dont_leave_lock_in_place)
 
     @needs_write_lock
-    def pack(self):
+    def pack(self, hint=None):
         """Compress the data within the repository.
 
         This will pack all the data to a single pack. In future it may
         recompress deltas or do other such expensive operations.
         """
-        self._pack_collection.pack()
+        self._pack_collection.pack(hint=hint)
 
     @needs_write_lock
     def reconcile(self, other=None, thorough=False):
@@ -2356,12 +2377,85 @@ class KnitPackRepository(KnitRepository):
                 transaction = self._transaction
                 self._transaction = None
                 transaction.finish()
-                for repo in self._fallback_repositories:
-                    repo.unlock()
         else:
             self.control_files.unlock()
+
+        if not self.is_locked():
             for repo in self._fallback_repositories:
                 repo.unlock()
+
+
+class KnitPackStreamSource(StreamSource):
+    """A StreamSource used to transfer data between same-format KnitPack repos.
+
+    This source assumes:
+        1) Same serialization format for all objects
+        2) Same root information
+        3) XML format inventories
+        4) Atomic inserts (so we can stream inventory texts before text
+           content)
+        5) No chk_bytes
+    """
+
+    def __init__(self, from_repository, to_format):
+        super(KnitPackStreamSource, self).__init__(from_repository, to_format)
+        self._text_keys = None
+        self._text_fetch_order = 'unordered'
+
+    def _get_filtered_inv_stream(self, revision_ids):
+        from_repo = self.from_repository
+        parent_ids = from_repo._find_parent_ids_of_revisions(revision_ids)
+        parent_keys = [(p,) for p in parent_ids]
+        find_text_keys = from_repo._find_text_key_references_from_xml_inventory_lines
+        parent_text_keys = set(find_text_keys(
+            from_repo._inventory_xml_lines_for_keys(parent_keys)))
+        content_text_keys = set()
+        knit = KnitVersionedFiles(None, None)
+        factory = KnitPlainFactory()
+        def find_text_keys_from_content(record):
+            if record.storage_kind not in ('knit-delta-gz', 'knit-ft-gz'):
+                raise ValueError("Unknown content storage kind for"
+                    " inventory text: %s" % (record.storage_kind,))
+            # It's a knit record, it has a _raw_record field (even if it was
+            # reconstituted from a network stream).
+            raw_data = record._raw_record
+            # read the entire thing
+            revision_id = record.key[-1]
+            content, _ = knit._parse_record(revision_id, raw_data)
+            if record.storage_kind == 'knit-delta-gz':
+                line_iterator = factory.get_linedelta_content(content)
+            elif record.storage_kind == 'knit-ft-gz':
+                line_iterator = factory.get_fulltext_content(content)
+            content_text_keys.update(find_text_keys(
+                [(line, revision_id) for line in line_iterator]))
+        revision_keys = [(r,) for r in revision_ids]
+        def _filtered_inv_stream():
+            source_vf = from_repo.inventories
+            stream = source_vf.get_record_stream(revision_keys,
+                                                 'unordered', False)
+            for record in stream:
+                if record.storage_kind == 'absent':
+                    raise errors.NoSuchRevision(from_repo, record.key)
+                find_text_keys_from_content(record)
+                yield record
+            self._text_keys = content_text_keys - parent_text_keys
+        return ('inventories', _filtered_inv_stream())
+
+    def _get_text_stream(self):
+        # Note: We know we don't have to handle adding root keys, because both
+        # the source and target are the identical network name.
+        text_stream = self.from_repository.texts.get_record_stream(
+                        self._text_keys, self._text_fetch_order, False)
+        return ('texts', text_stream)
+
+    def get_stream(self, search):
+        revision_ids = search.get_keys()
+        for stream_info in self._fetch_revision_texts(revision_ids):
+            yield stream_info
+        self._revision_keys = [(rev_id,) for rev_id in revision_ids]
+        yield self._get_filtered_inv_stream(revision_ids)
+        yield self._get_text_stream()
+
 
 
 class RepositoryFormatPack(MetaDirRepositoryFormat):

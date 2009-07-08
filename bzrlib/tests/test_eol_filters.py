@@ -66,3 +66,11 @@ class TestEolRulesSpecifications(TestCase):
         """
         prefs = (('eol','unknown-value'),)
         self.assertRaises(errors.BzrError, _get_filter_stack_for,  prefs)
+
+    def test_eol_missing_altogether_is_ok(self):
+        """
+        Not having eol in the set of preferences should be ok.
+        """
+        # In this case, 'eol' is looked up with a value of None.
+        prefs = (('eol', None),)
+        self.assertEqual([], _get_filter_stack_for(prefs))

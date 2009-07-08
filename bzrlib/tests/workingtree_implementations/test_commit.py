@@ -602,3 +602,29 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         revid = tree.commit('first post')
         committed_tree = tree.basis_tree()
         self.assertTrue(committed_tree.has_filename("newfile"))
+
+    def test_commit_and_mv_dance_a(self):
+        # should fail because of
+        # <https://bugs.launchpad.net/bzr/+bug/395556> but apparently does
+        # not, while the blackbox.test_commit equivalent does - maybe because
+        # of different format combinations
+        tree = self.make_branch_and_tree(".")
+        self.build_tree(["a"])
+        tree.add("a")
+        tree.rename_one("a", "b")
+        tree.commit("Actually no, b")
+        tree.rename_one("b", "a")
+        tree.commit("No, really, a")
+
+    def test_commit_and_mv_dance_b(self):
+        # should fail because of
+        # <https://bugs.launchpad.net/bzr/+bug/395556> but apparently does
+        # not, while the blackbox.test_commit equivalent does - maybe because
+        # of different format combinations
+        tree = self.make_branch_and_tree(".")
+        self.build_tree(["b"])
+        tree.add("b")
+        tree.rename_one("b", "a")
+        tree.commit("Actually no, a")
+        tree.rename_one("a", "b")
+        tree.commit("No, really, b")

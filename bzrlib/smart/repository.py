@@ -19,13 +19,13 @@
 import bz2
 import os
 import Queue
-import struct
 import sys
 import tarfile
 import tempfile
 import threading
 
 from bzrlib import (
+    bencode,
     errors,
     graph,
     osutils,
@@ -39,7 +39,6 @@ from bzrlib.smart.request import (
     )
 from bzrlib.repository import _strip_NULL_ghosts, network_format_registry
 from bzrlib import revision as _mod_revision
-from bzrlib.util import bencode
 from bzrlib.versionedfile import NetworkRecordStream, record_to_fulltext_bytes
 
 
@@ -284,6 +283,31 @@ class SmartServerRepositoryGetRevisionGraph(SmartServerRepositoryReadLocked):
         return SuccessfulSmartServerResponse(('ok', ), '\n'.join(lines))
 
 
+class SmartServerRepositoryGetRevIdForRevno(SmartServerRepositoryReadLocked):
+
+    def do_readlocked_repository_request(self, repository, revno,
+            known_pair):
+        """Find the revid for a given revno, given a known revno/revid pair.
+        
+        New in 1.17.
+        """
+        try:
+            found_flag, result = repository.get_rev_id_for_revno(revno, known_pair)
+        except errors.RevisionNotPresent, err:
+            if err.revision_id != known_pair[1]:
+                raise AssertionError(
+                    'get_rev_id_for_revno raised RevisionNotPresent for '
+                    'non-initial revision: ' + err.revision_id)
+            return FailedSmartServerResponse(
+                ('nosuchrevision', err.revision_id))
+        if found_flag:
+            return SuccessfulSmartServerResponse(('ok', result))
+        else:
+            earliest_revno, earliest_revid = result
+            return SuccessfulSmartServerResponse(
+                ('history-incomplete', earliest_revno, earliest_revid))
+
+
 class SmartServerRequestHasRevision(SmartServerRepositoryRequest):
 
     def do_repository_request(self, repository, revision_id):
@@ -436,6 +460,8 @@ def _stream_to_byte_stream(stream, src_format):
         for record in substream:
             if record.storage_kind in ('chunked', 'fulltext'):
                 serialised = record_to_fulltext_bytes(record)
+            elif record.storage_kind == 'absent':
+                raise ValueError("Absent factory for %s" % (record.key,))
             else:
                 serialised = record.get_bytes_as(record.storage_kind)
             if serialised:

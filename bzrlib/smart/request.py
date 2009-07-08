@@ -492,7 +492,7 @@ request_handlers.register_lazy(
     'BzrDirFormat.initialize', 'bzrlib.smart.bzrdir',
     'SmartServerRequestInitializeBzrDir')
 request_handlers.register_lazy(
-    'BzrDirFormat.initialize_ex', 'bzrlib.smart.bzrdir',
+    'BzrDirFormat.initialize_ex_1.16', 'bzrlib.smart.bzrdir',
     'SmartServerRequestBzrDirInitializeEx')
 request_handlers.register_lazy(
     'BzrDir.open', 'bzrlib.smart.bzrdir', 'SmartServerRequestOpenBzrDir')
@@ -554,6 +554,9 @@ request_handlers.register_lazy(
     'SmartServerRepositorySetMakeWorkingTrees')
 request_handlers.register_lazy(
     'Repository.unlock', 'bzrlib.smart.repository', 'SmartServerRepositoryUnlock')
+request_handlers.register_lazy(
+    'Repository.get_rev_id_for_revno', 'bzrlib.smart.repository',
+    'SmartServerRepositoryGetRevIdForRevno')
 request_handlers.register_lazy(
     'Repository.get_stream', 'bzrlib.smart.repository',
     'SmartServerRepositoryGetStream')

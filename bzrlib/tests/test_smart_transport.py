@@ -1507,7 +1507,8 @@ class CommonSmartProtocolTestMixin(object):
         ex = self.assertRaises(errors.ConnectionReset,
             response_handler.read_response_tuple)
         self.assertEqual("Connection closed: "
-            "please check connectivity and permissions ",
+            "Unexpected end of message. Please check connectivity "
+            "and permissions, and report a bug if problems persist. ",
             str(ex))
 
     def test_server_offset_serialisation(self):
@@ -3526,7 +3527,7 @@ class RemoteHTTPTransportTestCase(tests.TestCase):
         # still work correctly.
         base_transport = remote.RemoteHTTPTransport('bzr+http://host/%7Ea/b')
         new_transport = base_transport.clone('c')
-        self.assertEqual('bzr+http://host/%7Ea/b/c/', new_transport.base)
+        self.assertEqual('bzr+http://host/~a/b/c/', new_transport.base)
         self.assertEqual(
             'c/',
             new_transport._client.remote_path_from_transport(new_transport))

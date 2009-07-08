@@ -157,10 +157,10 @@ class CLIUIFactory(UIFactory):
         self.stderr = stderr or sys.stderr
 
     def get_boolean(self, prompt):
-        # FIXME: make a regexp and handle case variations as well.
         while True:
             self.prompt(prompt + "? [y/n]: ")
             line = self.stdin.readline()
+            line = line.lower()
             if line in ('y\n', 'yes\n'):
                 return True
             if line in ('n\n', 'no\n'):
@@ -227,7 +227,7 @@ class CLIUIFactory(UIFactory):
             prompt = prompt % kwargs
         prompt = prompt.encode(osutils.get_terminal_encoding(), 'replace')
         self.clear_term()
-        self.stdout.write(prompt)
+        self.stderr.write(prompt)
 
     def note(self, msg):
         """Write an already-formatted message."""

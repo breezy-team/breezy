@@ -728,9 +728,11 @@ class TestUIFactory(ui.CLIUIFactory):
     def finished(self):
         """See progress.ProgressBar.finished()."""
 
-    def note(self, fmt_string, *args, **kwargs):
+    def note(self, fmt_string, *args):
         """See progress.ProgressBar.note()."""
-        self.stdout.write((fmt_string + "\n") % args)
+        if args:
+            fmt_string = fmt_string % args
+        self.stdout.write(fmt_string + "\n")
 
     def progress_bar(self):
         return self
@@ -2753,7 +2755,7 @@ parallel_registry = registry.Registry()
 
 
 def fork_decorator(suite):
-    concurrency = local_concurrency()
+    concurrency = osutils.local_concurrency()
     if concurrency == 1:
         return suite
     from testtools import ConcurrentTestSuite
@@ -2762,7 +2764,7 @@ parallel_registry.register('fork', fork_decorator)
 
 
 def subprocess_decorator(suite):
-    concurrency = local_concurrency()
+    concurrency = osutils.local_concurrency()
     if concurrency == 1:
         return suite
     from testtools import ConcurrentTestSuite
@@ -2954,7 +2956,7 @@ def fork_for_tests(suite):
     :return: An iterable of TestCase-like objects which can each have
         run(result) called on them to feed tests to result.
     """
-    concurrency = local_concurrency()
+    concurrency = osutils.local_concurrency()
     result = []
     from subunit import TestProtocolClient, ProtocolTestCase
     class TestInOtherProcess(ProtocolTestCase):
@@ -3003,9 +3005,9 @@ def reinvoke_for_tests(suite):
     :return: An iterable of TestCase-like objects which can each have
         run(result) called on them to feed tests to result.
     """
-    concurrency = local_concurrency()
+    concurrency = osutils.local_concurrency()
     result = []
-    from subunit import TestProtocolClient, ProtocolTestCase
+    from subunit import ProtocolTestCase
     class TestInSubprocess(ProtocolTestCase):
         def __init__(self, process, name):
             ProtocolTestCase.__init__(self, process.stdout)
@@ -3047,24 +3049,6 @@ def reinvoke_for_tests(suite):
             os.unlink(test_list_file_name)
             raise
     return result
-
-
-def cpucount(content):
-    lines = content.splitlines()
-    prefix = 'processor'
-    for line in lines:
-        if line.startswith(prefix):
-            concurrency = int(line[line.find(':')+1:]) + 1
-    return concurrency
-
-
-def local_concurrency():
-    try:
-        content = file('/proc/cpuinfo', 'rb').read()
-        concurrency = cpucount(content)
-    except Exception, e:
-        concurrency = 1
-    return concurrency
 
 
 class BZRTransformingResult(unittest.TestResult):
@@ -3363,6 +3347,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test__chk_map',
                    'bzrlib.tests.test__dirstate_helpers',
                    'bzrlib.tests.test__groupcompress',
+                   'bzrlib.tests.test__known_graph',
                    'bzrlib.tests.test__rio',
                    'bzrlib.tests.test__walkdirs_win32',
                    'bzrlib.tests.test_ancestry',
@@ -3370,6 +3355,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_api',
                    'bzrlib.tests.test_atomicfile',
                    'bzrlib.tests.test_bad_files',
+                   'bzrlib.tests.test_bencode',
                    'bzrlib.tests.test_bisect_multi',
                    'bzrlib.tests.test_branch',
                    'bzrlib.tests.test_branchbuilder',
@@ -3380,6 +3366,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test__chunks_to_lines',
                    'bzrlib.tests.test_cache_utf8',
                    'bzrlib.tests.test_chk_map',
+                   'bzrlib.tests.test_chk_serializer',
                    'bzrlib.tests.test_chunk_writer',
                    'bzrlib.tests.test_clean_tree',
                    'bzrlib.tests.test_commands',
@@ -3517,11 +3504,12 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_xml',
                    'bzrlib.tests.tree_implementations',
                    'bzrlib.tests.workingtree_implementations',
-                   'bzrlib.util.tests.test_bencode',
                    ]
 
     loader = TestUtil.TestLoader()
 
+    if keep_only is not None:
+        id_filter = TestIdList(keep_only)
     if starting_with:
         starting_with = [test_prefix_alias_registry.resolve_alias(start)
                          for start in starting_with]
@@ -3540,7 +3528,6 @@ def test_suite(keep_only=None, starting_with=None):
         loader = TestUtil.FilteredByModuleTestLoader(interesting_module)
 
     elif keep_only is not None:
-        id_filter = TestIdList(keep_only)
         loader = TestUtil.FilteredByModuleTestLoader(id_filter.refers_to)
         def interesting_module(name):
             return id_filter.refers_to(name)

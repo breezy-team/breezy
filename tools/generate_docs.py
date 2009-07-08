@@ -33,10 +33,11 @@ Examples:
 Run "%(prog)s --help" for the option reference.
 """
 
+import bzrlib.commands
 import sys
 from optparse import OptionParser
 
-import tools.doc_generate
+from bzrlib import doc_generate
 
 def main(argv):
     parser = OptionParser(usage="""%prog [options] OUTPUT_FORMAT
@@ -68,9 +69,11 @@ Available OUTPUT_FORMAT:
     if len(args) != 2:
         parser.print_help()
         sys.exit(1)
+    
+    bzrlib.commands.install_bzr_command_hooks()
 
     infogen_type = args[1]
-    infogen_mod = tools.doc_generate.get_module(infogen_type)
+    infogen_mod = doc_generate.get_module(infogen_type)
 
     if options.filename:
         outfilename = options.filename

@@ -55,8 +55,9 @@ class TestAdd(ExternalBase):
         out = self.run_bzr('add')[0]
         # the ordering is not defined at the moment
         results = sorted(out.rstrip('\n').split('\n'))
-        self.assertEquals(['If you wish to add some of these files, please'\
-                           ' add them by name.',
+        self.assertEquals(['If you wish to add ignored files, '
+                           'please add them explicitly by name. '
+                           '("bzr ignored" gives a list)',
                            'adding .bzrignore',
                            'adding dir',
                            'adding dir/sub.txt',
@@ -65,8 +66,8 @@ class TestAdd(ExternalBase):
                           results)
         out = self.run_bzr('add -v')[0]
         results = sorted(out.rstrip('\n').split('\n'))
-        self.assertEquals(['If you wish to add some of these files, please'\
-                           ' add them by name.',
+        self.assertEquals(['If you wish to add ignored files, '\
+                           'please add them explicitly by name. ("bzr ignored" gives a list)',
                            'ignored CVS matching "CVS"'],
                           results)
 

@@ -18,7 +18,15 @@
 
 import sys
 
-from bzrlib import bzrdir, errors, graph, memorytree, remote
+from bzrlib import (
+    bzrdir,
+    errors,
+    graph,
+    memorytree,
+    osutils,
+    remote,
+    versionedfile,
+    )
 from bzrlib.branch import BzrBranchFormat7
 from bzrlib.inventory import InventoryDirectory
 from bzrlib.transport import local, memory
@@ -60,11 +68,14 @@ class TestWriteGroup(TestCaseWithRepository):
             repo.commit_write_group()
             repo.unlock()
 
-    def test_commit_write_group_gets_None(self):
+    def test_commit_write_group_does_not_error(self):
         repo = self.make_repository('.')
         repo.lock_write()
         repo.start_write_group()
-        self.assertEqual(None, repo.commit_write_group())
+        # commit_write_group can either return None (for repositories without
+        # isolated transactions) or a hint for pack(). So we only check it
+        # works in this interface test, because all repositories are exercised.
+        repo.commit_write_group()
         repo.unlock()
 
     def test_unlock_in_write_group(self):
@@ -240,9 +251,9 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         inventory) in it must have all the texts in its inventory (even if not
         changed w.r.t. to the absent parent), otherwise it will report missing
         texts/parent inventory.
-        
+
         The core of this test is that a file was changed in rev-1, but in a
-        stacked repo that only has rev-2 
+        stacked repo that only has rev-2
         """
         # Make a trunk with one commit.
         trunk_repo = self.make_stackable_repo()
@@ -283,6 +294,69 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         self.assertEqual(
             set(), reopened_repo.get_missing_parent_inventories())
         reopened_repo.abort_write_group()
+
+    def test_get_missing_parent_inventories_check(self):
+        builder = self.make_branch_builder('test')
+        builder.build_snapshot('A-id', ['ghost-parent-id'], [
+            ('add', ('', 'root-id', 'directory', None)),
+            ('add', ('file', 'file-id', 'file', 'content\n'))],
+            allow_leftmost_as_ghost=True)
+        b = builder.get_branch()
+        b.lock_read()
+        self.addCleanup(b.unlock)
+        repo = self.make_repository('test-repo')
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        self.addCleanup(repo.abort_write_group)
+        # Now, add the objects manually
+        text_keys = [('file-id', 'A-id')]
+        if repo.supports_rich_root():
+            text_keys.append(('root-id', 'A-id'))
+        # Directly add the texts, inventory, and revision object for 'A-id'
+        repo.texts.insert_record_stream(b.repository.texts.get_record_stream(
+            text_keys, 'unordered', True))
+        repo.add_revision('A-id', b.repository.get_revision('A-id'),
+                          b.repository.get_inventory('A-id'))
+        get_missing = repo.get_missing_parent_inventories
+        if repo._format.supports_external_lookups:
+            self.assertEqual(set([('inventories', 'ghost-parent-id')]),
+                get_missing(check_for_missing_texts=False))
+            self.assertEqual(set(), get_missing(check_for_missing_texts=True))
+            self.assertEqual(set(), get_missing())
+        else:
+            # If we don't support external lookups, we always return empty
+            self.assertEqual(set(), get_missing(check_for_missing_texts=False))
+            self.assertEqual(set(), get_missing(check_for_missing_texts=True))
+            self.assertEqual(set(), get_missing())
+
+    def test_insert_stream_passes_resume_info(self):
+        repo = self.make_repository('test-repo')
+        if not repo._format.supports_external_lookups:
+            raise TestNotApplicable('only valid in resumable repos')
+        # log calls to get_missing_parent_inventories, so that we can assert it
+        # is called with the correct parameters
+        call_log = []
+        orig = repo.get_missing_parent_inventories
+        def get_missing(check_for_missing_texts=True):
+            call_log.append(check_for_missing_texts)
+            return orig(check_for_missing_texts=check_for_missing_texts)
+        repo.get_missing_parent_inventories = get_missing
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        sink = repo._get_sink()
+        sink.insert_stream((), repo._format, [])
+        self.assertEqual([False], call_log)
+        del call_log[:]
+        repo.start_write_group()
+        # We need to insert something, or suspend_write_group won't actually
+        # create a token
+        repo.texts.insert_record_stream([versionedfile.FulltextContentFactory(
+            ('file-id', 'rev-id'), (), None, 'lines\n')])
+        tokens = repo.suspend_write_group()
+        self.assertNotEqual([], tokens)
+        sink.insert_stream((), repo._format, tokens)
+        self.assertEqual([True], call_log)
 
 
 class TestResumeableWriteGroup(TestCaseWithRepository):
@@ -518,9 +592,12 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         source_repo.start_write_group()
         key_base = ('file-id', 'base')
         key_delta = ('file-id', 'delta')
-        source_repo.texts.add_lines(key_base, (), ['lines\n'])
-        source_repo.texts.add_lines(
-            key_delta, (key_base,), ['more\n', 'lines\n'])
+        def text_stream():
+            yield versionedfile.FulltextContentFactory(
+                key_base, (), None, 'lines\n')
+            yield versionedfile.FulltextContentFactory(
+                key_delta, (key_base,), None, 'more\nlines\n')
+        source_repo.texts.insert_record_stream(text_stream())
         source_repo.commit_write_group()
         return source_repo
 
@@ -536,9 +613,20 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         stream = source_repo.texts.get_record_stream(
             [key_delta], 'unordered', False)
         repo.texts.insert_record_stream(stream)
-        # It's not commitable due to the missing compression parent.
-        self.assertRaises(
-            errors.BzrCheckError, repo.commit_write_group)
+        # It's either not commitable due to the missing compression parent, or
+        # the stacked location has already filled in the fulltext.
+        try:
+            repo.commit_write_group()
+        except errors.BzrCheckError:
+            # It refused to commit because we have a missing parent
+            pass
+        else:
+            same_repo = self.reopen_repo(repo)
+            same_repo.lock_read()
+            record = same_repo.texts.get_record_stream([key_delta],
+                                                       'unordered', True).next()
+            self.assertEqual('more\nlines\n', record.get_bytes_as('fulltext'))
+            return
         # Merely suspending and resuming doesn't make it commitable either.
         wg_tokens = repo.suspend_write_group()
         same_repo = self.reopen_repo(repo)
@@ -570,8 +658,19 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
         same_repo.texts.insert_record_stream(stream)
         # Just like if we'd added that record without a suspend/resume cycle,
         # commit_write_group fails.
-        self.assertRaises(
-            errors.BzrCheckError, same_repo.commit_write_group)
+        try:
+            same_repo.commit_write_group()
+        except errors.BzrCheckError:
+            pass
+        else:
+            # If the commit_write_group didn't fail, that is because the
+            # insert_record_stream already gave it a fulltext.
+            same_repo = self.reopen_repo(repo)
+            same_repo.lock_read()
+            record = same_repo.texts.get_record_stream([key_delta],
+                                                       'unordered', True).next()
+            self.assertEqual('more\nlines\n', record.get_bytes_as('fulltext'))
+            return
         same_repo.abort_write_group()
 
     def test_add_missing_parent_after_resume(self):

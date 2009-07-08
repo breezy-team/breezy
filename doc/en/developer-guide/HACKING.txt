@@ -46,6 +46,15 @@ overall Bazaar Platform. Here are some links to browse:
 If nothing else, perhaps you'll find inspiration in how other developers
 have solved their challenges.
 
+Finding Something To Do
+=======================
+
+Ad-hoc performance work can also be done. One useful tool is the 'evil' debug
+flag. For instance running ``bzr -Devil commit -m "test"`` will log a backtrace
+to the bzr log file for every method call which triggers a slow or non-scalable
+part of the bzr library. So checking that a given command with ``-Devil`` has
+no backtraces logged to the log file is a good way to find problem function
+calls that might be nested deep in the code base.
 
 Planning and Discussing Changes
 ===============================
@@ -1548,16 +1557,6 @@ using Launchpad's whiteboard feature.
 
 Planning Releases
 =================
-
-Roadmaps
---------
-
-As the two senior developers, Martin Pool and Robert Collins coordinate
-the overall Bazaar product development roadmap. Core developers provide
-input and review into this, particularly during sprints. It's totally
-expected that community members ought to be working on things that
-interest them the most. The roadmap is valuable though because it provides
-context for understanding where the product is going as a whole and why.
 
 
 Using Releases and Milestones in Launchpad

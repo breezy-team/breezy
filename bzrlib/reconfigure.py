@@ -27,6 +27,7 @@ class Reconfigure(object):
     def __init__(self, bzrdir, new_bound_location=None):
         self.bzrdir = bzrdir
         self.new_bound_location = new_bound_location
+        self.local_repository = None
         try:
             self.repository = self.bzrdir.find_repository()
         except errors.NoRepositoryPresent:
