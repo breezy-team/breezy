@@ -75,6 +75,10 @@ Bug Fixes
 * Fetch between repositories does not error if they have inconsistent data
   that should be irrelevant to the fetch operation. (Aaron Bentley)
 
+* Fix ``AttributeError`` exception when reconfiguring lightweight checkout 
+  of a remote repository.
+  (Jelmer Vernooij, #332194)
+
 * Force deletion of readonly files during merge, update and other tree
   transforms.
   (Craig Hewetson, Martin Pool, #218206)
