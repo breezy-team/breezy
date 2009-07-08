@@ -699,17 +699,18 @@ class Branch(object):
             # the previous state; the lock's released when set_stacked_on_url
             # returns
             self.repository.lock_write()
-            # XXX: This should probably bring across revisions referenced
-            # by tags if they're in the old fallback repository, but not
-            # error if they're not.  However, branch doesn't do that at
-            # present and this is consistent with that: the only tags that
-            # are preserved are those in the history of the branch.
-            #
             # XXX: If you unstack a branch while it has a working tree
             # with a pending merge, the pending-merged revisions will no
             # longer be present.  You can (probably) revert and remerge.
+            #
+            # XXX: For simplicity, this just fetches everything from the
+            # source repository - that may sometimes be too much, but I see no
+            # way at present to tell fetch to only backfill the data that's
+            # now essentially a ghost.   That does also mean you get all the
+            # tags, and usually the incremental size from bringing
+            # unreferenced history will be small relative to the expansion
+            # from unstacking.
             self.repository.fetch(old_fallback_repository,
-                self.last_revision(),
                 find_ghosts=True)
         finally:
             pb.finished()
