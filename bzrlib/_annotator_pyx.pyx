@@ -231,6 +231,7 @@ cdef int _merge_annotations(this_annotation, annotations, parent_annotations,
                 last_ann = ann
                 last_parent = par_ann
                 last_res = new_ann
+    return 0
 
 
 class Annotator(_annotator_py.Annotator):
