@@ -1,5 +1,5 @@
-TARGETS=referencia-rapida.png referencia-rapida.pdf
-OBJECTS=referencia-rapida.svg Makefile
+TARGETS=quick-start-summary.png quick-start-summary.pdf
+OBJECTS=quick-start-summary.svg Makefile
 
 all: $(TARGETS)
 
