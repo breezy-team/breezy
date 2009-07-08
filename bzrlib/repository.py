@@ -3670,7 +3670,6 @@ class InterDifferingSerializer(InterRepository):
         # Walk though all revisions; get inventory deltas, copy referenced
         # texts that delta references, insert the delta, revision and
         # signature.
-        first_rev = self.source.get_revision(revision_ids[0])
         if pb is None:
             my_pb = ui.ui_factory.nested_progress_bar()
             pb = my_pb
@@ -3830,9 +3829,6 @@ class _VersionedFileChecker(object):
         self.file_ids = set([file_id for file_id, _ in
             self.text_index.iterkeys()])
         # text keys is now grouped by file_id
-        n_weaves = len(self.file_ids)
-        files_in_revisions = {}
-        revisions_of_files = {}
         n_versions = len(self.text_index)
         progress_bar.update('loading text store', 0, n_versions)
         parent_map = self.repository.texts.get_parent_map(self.text_index)
@@ -3931,12 +3927,6 @@ class StreamSink(object):
                 pass
             else:
                 new_pack.set_write_cache_size(1024*1024)
-        # XXX: would be more convenient to pass the *target*'s feature flags to
-        # the deserializer, or none at all (the serialized records already have
-        # the feature flags embedded, why repeat myself?)... after all it's ok
-        # if the src and target's flags are different, so long as it's a
-        # compatible transition (i.e. inserting into a target with richer info
-        # that the source).
         delta_deserializer = inventory_delta.InventoryDeltaSerializer()
         for substream_type, substream in stream:
             if substream_type == 'texts':
@@ -4019,6 +4009,7 @@ class StreamSink(object):
                 # Insert the delta directly
                 delta_tuple = record.get_bytes_as('inventory-delta')
                 basis_id, new_id, inv_delta, format_flags = delta_tuple
+                # Make sure the delta is compatible with the target
                 if format_flags[0] and not target_rich_root:
                     raise errors.IncompatibleRevision(self.target_repo._format)
                 if format_flags[1] and not target_tree_refs:
@@ -4227,13 +4218,8 @@ class StreamSource(object):
             return self._get_simple_inventory_stream(revision_ids,
                     missing=missing)
         else:
-            # XXX: xxx
-            # XXX: Hack to make not-chk->chk fetch: copy the inventories as
-            #      inventories. Note that this should probably be done somehow
-            #      as part of bzrlib.repository.StreamSink. Except JAM couldn't
-            #      figure out how a non-chk repository could possibly handle
-            #      deserializing an inventory stream from a chk repo, as it
-            #      doesn't have a way to understand individual pages.
+            # Make not-chk->chk fetch: copy the inventories as (format-neutral)
+            # inventory deltas.
             return self._get_convertable_inventory_stream(revision_ids,
                     fulltexts=missing)
 
@@ -4332,7 +4318,9 @@ class StreamSource(object):
         # method...
         inventories = self.from_repository.iter_inventories(
             revision_ids, 'topological')
-        # XXX: ideally these flags would be per-revision, not per-repo...
+        # XXX: ideally these flags would be per-revision, not per-repo (e.g.
+        # streaming a non-rich-root revision out of a rich-root repo back into
+        # a non-rich-root repo ought to be allowed)
         format = from_repo._format
         flags = (format.rich_root_data, format.supports_tree_reference)
         for inv in inventories:
@@ -4343,14 +4331,20 @@ class StreamSource(object):
                 # so, stream as a delta from null:.
                 basis_id = _mod_revision.NULL_REVISION
                 parent_inv = Inventory()
+                delta = inv._make_delta(parent_inv)
             else:
-                # make as a delta against its left-most parent
-                # XXX: sometimes a non-left-hand parent would give smaller
-                # deltas.
-                assert not isinstance(parents[0], str)
-                basis_id = parents[0][0]
-                parent_inv = from_repo.get_inventory(basis_id)
-            delta = inv._make_delta(parent_inv)
+                # Make a delta against each parent so that we can find the
+                # smallest.
+                best_delta = None
+                for parent_key in parents:
+                    parent_id = parent_key[0]
+                    parent_inv = from_repo.get_inventory(parent_id)
+                    candidate_delta = inv._make_delta(parent_inv)
+                    if (best_delta is None or 
+                        len(best_delta) > len(candidate_delta)):
+                        best_delta = candidate_delta
+                        basis_id = parent_id
+                delta = best_delta
             yield versionedfile.InventoryDeltaContentFactory(
                 key, parents, None, delta, basis_id, flags)
 
