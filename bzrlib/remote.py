@@ -18,6 +18,7 @@
 # across to run on the server.
 
 import bz2
+import warnings
 
 from bzrlib import (
     bencode,
@@ -1026,12 +1027,11 @@ class RemoteRepository(_RpcHelper):
 
     def unlock(self):
         if not self._lock_count:
-            # TODO: Should be done consistently across all unlock/unwind
-            # methods.
-            mutter("exception during previous unlock; "
-                "previous (possibly unrelated) exception was:")
-            trace.log_exception_quietly()
-            raise errors.LockNotHeld(self)
+            # This is typically masking some other error; use -Werror to make
+            # it fatal
+            warnings.warn("%r is already unlocked" % (self,),
+                stacklevel=2)
+            return
         self._lock_count -= 1
         if self._lock_count > 0:
             return
