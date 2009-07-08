@@ -37,6 +37,7 @@ class Annotator(object):
         self._num_needed_children = {}
         self._annotations_cache = {}
         self._heads_provider = None
+        self._ann_tuple_cache = {}
 
     def _update_needed_children(self, key, parent_keys):
         for parent_key in parent_keys:
@@ -140,7 +141,7 @@ class Annotator(object):
         matching_blocks = matcher.get_matching_blocks()
         return parent_annotations, matching_blocks
 
-    def _update_from_one_parent(self, key, annotations, lines, parent_key):
+    def _update_from_first_parent(self, key, annotations, lines, parent_key):
         """Reannotate this text relative to its first parent."""
         parent_annotations, matching_blocks = self._get_parent_annotations_and_matches(
             key, lines, parent_key)
@@ -215,7 +216,8 @@ class Annotator(object):
         annotations = [this_annotation] * num_lines
         parent_keys = self._parent_map[key]
         if parent_keys:
-            self._update_from_one_parent(key, annotations, text, parent_keys[0])
+            self._update_from_first_parent(key, annotations, text,
+                                           parent_keys[0])
             for parent in parent_keys[1:]:
                 self._update_from_other_parents(key, annotations, text,
                                                 this_annotation, parent)
@@ -262,8 +264,7 @@ class Annotator(object):
             else:
                 the_heads = heads(annotation)
                 if len(the_heads) == 1:
-                    for head in the_heads:
-                        break
+                    for head in the_heads: break # get the item out of the set
                 else:
                     # We need to resolve the ambiguity, for now just pick the
                     # sorted smallest
