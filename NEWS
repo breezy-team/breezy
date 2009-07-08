@@ -120,6 +120,11 @@ Bug Fixes
 Internals
 *********
 
+* ``bzrlib.user_encoding`` is now officially deprecated. It is not
+  possible to write a deprecation wrapper, but the variable will be
+  removed in the near future. Use ``bzrlib.osutils.get_user_encoding()``
+  instead. (Alexander Belchenko)
+
 * Command lookup has had hooks added. ``bzrlib.Command.hooks`` has
   three new hook points: ``get_command``, ``get_missing_command`` and
   ``list_commands``, which allow just-in-time command name provision
