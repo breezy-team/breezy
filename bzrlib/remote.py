@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -32,6 +32,7 @@ from bzrlib import (
     revision,
     revision as _mod_revision,
     symbol_versioning,
+    trace,
 )
 from bzrlib.branch import BranchReferenceFormat
 from bzrlib.bzrdir import BzrDir, RemoteBzrDirFormat
@@ -1025,6 +1026,11 @@ class RemoteRepository(_RpcHelper):
 
     def unlock(self):
         if not self._lock_count:
+            # TODO: Should be done consistently across all unlock/unwind
+            # methods.
+            mutter("exception during previous unlock; "
+                "previous (possibly unrelated) exception was:")
+            trace.log_exception_quietly()
             raise errors.LockNotHeld(self)
         self._lock_count -= 1
         if self._lock_count > 0:
