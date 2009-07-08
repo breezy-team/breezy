@@ -119,14 +119,14 @@ class LocalGitBzrDirFormat(GitBzrDirFormat):
         """Open this directory.
 
         """
-        import dulwich as git
+        import dulwich
         # we dont grok readonly - git isn't integrated with transport.
         url = transport.base
         if url.startswith('readonly+'):
             url = url[len('readonly+'):]
 
         try:
-            gitrepo = git.repo.Repo(transport.local_abspath(".").encode(osutils._fs_enc))
+            gitrepo = dulwich.repo.Repo(transport.local_abspath(".").encode(osutils._fs_enc))
         except bzr_errors.NotLocalUrl:
             raise bzr_errors.NotBranchError(path=transport.base)
         from bzrlib.plugins.git.dir import LocalGitDir, GitLockableFiles, GitLock
@@ -146,12 +146,12 @@ class LocalGitBzrDirFormat(GitBzrDirFormat):
         if not transport.has(".git") and not transport.has("objects"):
             raise bzr_errors.NotBranchError(path=transport.base)
 
-        import dulwich as git
+        import dulwich
         format = klass()
         try:
             format.open(transport)
             return format
-        except git.errors.NotGitRepository, e:
+        except dulwich.errors.NotGitRepository, e:
             raise bzr_errors.NotBranchError(path=transport.base)
         raise bzr_errors.NotBranchError(path=transport.base)
 

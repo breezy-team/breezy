@@ -17,7 +17,7 @@
 from cStringIO import (
     StringIO,
     )
-import dulwich as git
+
 from dulwich.objects import (
     Commit,
     Tag,
