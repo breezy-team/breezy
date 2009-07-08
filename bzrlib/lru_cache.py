@@ -52,8 +52,9 @@ class _LRUNode(object):
             if self.cleanup is not None:
                 self.cleanup(self.key, self.value)
         finally:
+            # cleanup might raise an exception, but we want to make sure
+            # to break refcycles, etc
             self.cleanup = None
-            # Just make sure to break any refcycles, etc
             self.value = None
 
 
@@ -161,6 +162,8 @@ class LRUCache(object):
             try:
                 node.run_cleanup()
             finally:
+                # Maintain the LRU properties, even if cleanup raises an
+                # exception
                 node.value = value
                 node.cleanup = cleanup
                 self._record_access(node)
@@ -249,7 +252,8 @@ class LRUCache(object):
         try:
             node.run_cleanup()
         finally:
-            # Now remove this node from the linked list
+            # cleanup might raise an exception, but we want to make sure to
+            # maintain the linked list
             if node.prev is not None:
                 node.prev.next_key = node.next_key
             if node.next_key is not _null_key:
