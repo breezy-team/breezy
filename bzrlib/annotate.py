@@ -313,7 +313,9 @@ def _get_matching_blocks(old, new):
     return matcher.get_matching_blocks()
 
 
-def _break_annotation_tie(annotated_lines):
+_break_annotation_tie = None
+
+def _old_break_annotation_tie(annotated_lines):
     """Chose an attribution between several possible ones.
 
     :param annotated_lines: A list of tuples ((file_id, rev_id), line) where
@@ -394,7 +396,11 @@ def _find_matching_unannotated_lines(output_lines, plain_child_lines,
                         # If the result is not stable, there is a risk a
                         # performance degradation as criss-cross merges will
                         # flip-flop the attribution.
-                        output_append(_break_annotation_tie([left, right]))
+                        if _break_annotation_tie is None:
+                            output_append(
+                                _old_break_annotation_tie([left, right]))
+                        else:
+                            output_append(_break_annotation_tie([left, right]))
         last_child_idx = child_idx + match_len
 
 

@@ -16,6 +16,10 @@
 
 """Functionality for doing annotations in the 'optimal' way"""
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib import annotate # Must be lazy to avoid circular importing
+""")
 from bzrlib import (
     errors,
     graph as _mod_graph,
@@ -266,6 +270,19 @@ class Annotator(object):
             self._heads_provider = _mod_graph.KnownGraph(self._parent_map)
         return self._heads_provider
 
+    def _resolve_annotation_tie(self, the_heads, line, tiebreaker):
+        if tiebreaker is None:
+            head = sorted(the_heads)[0]
+        else:
+            # Backwards compatibility, break up the heads into pairs and
+            # resolve the result
+            next_head = iter(the_heads)
+            head = next_head.next()
+            for possible_head in next_head:
+                annotated_lines = ((head, line), (possible_head, line))
+                head = tiebreaker(annotated_lines)[0]
+        return head
+
     def annotate_flat(self, key):
         """Determine the single-best-revision to source for each line.
 
@@ -273,6 +290,7 @@ class Annotator(object):
         :return: [(ann_key, line)]
             A list of tuples with a single annotation key for each line.
         """
+        custom_tiebreaker = annotate._break_annotation_tie
         annotations, lines = self.annotate(key)
         assert len(annotations) == len(lines)
         out = []
@@ -280,14 +298,13 @@ class Annotator(object):
         append = out.append
         for annotation, line in zip(annotations, lines):
             if len(annotation) == 1:
-                append((annotation[0], line))
+                head = annotation[0]
             else:
                 the_heads = heads(annotation)
                 if len(the_heads) == 1:
                     for head in the_heads: break # get the item out of the set
                 else:
-                    # We need to resolve the ambiguity, for now just pick the
-                    # sorted smallest
-                    head = sorted(the_heads)[0]
-                append((head, line))
+                    head = self._resolve_annotation_tie(the_heads, line,
+                                                        custom_tiebreaker)
+            append((head, line))
         return out

@@ -261,8 +261,11 @@ class Annotator(_annotator_py.Annotator):
         This is meant as a compatibility thunk to how annotate() used to work.
         """
         cdef Py_ssize_t pos, num_lines
+
+        from bzrlib import annotate
+
+        custom_tiebreaker = annotate._break_annotation_tie
         annotations, lines = self.annotate(key)
-        assert len(annotations) == len(lines)
         num_lines = len(lines)
         out = []
         heads = self._get_heads_provider().heads
@@ -278,6 +281,7 @@ class Annotator(_annotator_py.Annotator):
                 else:
                     # We need to resolve the ambiguity, for now just pick the
                     # sorted smallest
-                    head = sorted(the_heads)[0]
+                    head = self._resolve_annotation_tie(the_heads, line,
+                                                        custom_tiebreaker)
             PyList_Append(out, (head, line))
         return out
