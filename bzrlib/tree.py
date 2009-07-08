@@ -104,24 +104,6 @@ class Tree(object):
         return intertree.iter_changes(include_unchanged, specific_files, pb,
             extra_trees, require_versioned, want_unversioned=want_unversioned)
 
-
-    @needs_read_lock
-    def has_changes(self, from_tree):
-        """Quickly check that the tree contains at least one change.
-
-        :return: True if a change is found. False otherwise
-        """
-        changes = self.iter_changes(from_tree)
-        try:
-            change = changes.next()
-            # Exclude root (talk about black magic... --vila 20090629)
-            if change[4] == (None, None):
-                change = changes.next()
-            return True
-        except StopIteration:
-            # No changes
-            return False
-
     def conflicts(self):
         """Get a list of the conflicts in the tree.
 
