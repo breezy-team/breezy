@@ -301,13 +301,19 @@ if have_fcntl:
 
 
 if have_pywin32 and sys.platform == 'win32':
+    if os.path.supports_unicode_filenames:
+        # for Windows NT/2K/XP/etc
+        win32file_CreateFile = win32file.CreateFileW
+    else:
+        # for Windows 98
+        win32file_CreateFile = win32file.CreateFile
 
     class _w32c_FileLock(_OSLock):
 
         def _open(self, filename, access, share, cflags, pymode):
             self.filename = osutils.realpath(filename)
             try:
-                self._handle = win32file.CreateFile(filename, access, share,
+                self._handle = win32file_CreateFile(filename, access, share,
                     None, win32file.OPEN_ALWAYS,
                     win32file.FILE_ATTRIBUTE_NORMAL, None)
             except pywintypes.error, e:
