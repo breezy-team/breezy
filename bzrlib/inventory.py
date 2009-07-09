@@ -1268,9 +1268,8 @@ class Inventory(CommonInventory):
             try:
                 parent = self._byid[entry.parent_id]
             except KeyError:
-                raise BzrError("parent_id {%s} not in inventory" %
-                               entry.parent_id)
-
+                raise errors.InconsistentDelta("<unknown>", entry.parent_id,
+                    "Parent not in inventory.")
             if entry.name in parent.children:
                 raise errors.InconsistentDelta(
                     self.id2path(parent.children[entry.name].file_id),
@@ -1682,9 +1681,13 @@ class CHKInventory(CommonInventory):
         if parent_id_basename_delta:
             result.parent_id_basename_to_file_id.apply_delta(parent_id_basename_delta)
         for parent in parents:
-            if result[parent].kind != 'directory':
-                raise errors.InconsistentDelta(result.id2path(parent), parent,
-                    'Not a directory, but given children')
+            try:
+                if result[parent].kind != 'directory':
+                    raise errors.InconsistentDelta(result.id2path(parent), parent,
+                        'Not a directory, but given children')
+            except errors.NoSuchId:
+                raise errors.InconsistentDelta("<unknown>", parent,
+                    "Parent is not present in resulting inventory.")
         return result
 
     @classmethod

@@ -1605,6 +1605,10 @@ class DirState(object):
             # Get the entry - the ensures that file_id, dirname exists and has
             # the right file id.
             entry = self._get_entry(1, file_id, dirname)
+            if entry[1] is None:
+                self._changes_aborted = True
+                raise errors.InconsistentDelta(dirname, file_id,
+                    "This parent is not present.")
             # Parents of things must be directories
             if entry[1][1][0] != 'd':
                 self._changes_aborted = True

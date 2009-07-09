@@ -125,9 +125,11 @@ def apply_inventory_WT_basis(self, basis, delta):
         parents = osutils.minimum_path_selection(parents)
         parents.discard('')
         # Put place holders in the tree to permit adding the other entries.
-        for parent in parents:
+        for pos, parent in enumerate(parents):
             if not tree.path2id(parent):
-                import pdb;pdb.set_trace()
+                # add a synthetic directory in the tree so we can can put the
+                # tree0 entries in place for dirstate.
+                tree.add([parent], ["id%d" % pos], ["directory"])
         if paths:
             # Many deltas may cause this mini-apply to fail, but we want to see what
             # the delta application code says, not the prep that we do to deal with 
@@ -305,6 +307,16 @@ class TestDeltaApplication(TestCaseWithTransport):
         file2.text_size = 0
         file2.text_sha1 = ""
         inv.add(file1)
+        delta = [(None, 'path/path2', 'id2', file2)]
+        self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
+            inv, delta)
+
+    def test_parent_is_missing(self):
+        inv = self.get_empty_inventory()
+        file2 = inventory.InventoryFile('id2', 'path2', 'missingparent')
+        file2.revision = 'result'
+        file2.text_size = 0
+        file2.text_sha1 = ""
         delta = [(None, 'path/path2', 'id2', file2)]
         self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
             inv, delta)
