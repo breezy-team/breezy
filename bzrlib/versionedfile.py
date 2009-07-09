@@ -33,6 +33,7 @@ from bzrlib import (
     errors,
     groupcompress,
     index,
+    inventory,
     inventory_delta,
     knit,
     osutils,
@@ -160,7 +161,8 @@ class FulltextContentFactory(ContentFactory):
 
 class InventoryDeltaContentFactory(ContentFactory):
 
-    def __init__(self, key, parents, sha1, delta, basis_id, format_flags):
+    def __init__(self, key, parents, sha1, delta, basis_id, format_flags,
+            repo=None):
         self.sha1 = sha1
         self.storage_kind = 'inventory-delta'
         self.key = key
@@ -168,6 +170,7 @@ class InventoryDeltaContentFactory(ContentFactory):
         self._delta = delta
         self._basis_id = basis_id
         self._format_flags = format_flags
+        self._repo = repo
 
     def get_bytes_as(self, storage_kind):
         if storage_kind == self.storage_kind:
@@ -175,8 +178,18 @@ class InventoryDeltaContentFactory(ContentFactory):
         elif storage_kind == 'inventory-delta-bytes':
             serializer = inventory_delta.InventoryDeltaSerializer()
             serializer.require_flags(*self._format_flags)
+            return ''.join(serializer.delta_to_lines(
+                self._basis_id, self.key, self._delta))
+        elif storage_kind == 'inventory-delta-bytes-from-null':
+            if self._repo is None:
+                raise errors.UnavailableRepresentation(self.key, storage_kind,
+                    self.storage_kind)
+            null_inv = inventory.Inventory(None)
+            my_inv = self._repo.get_inventory(self.key) # XXX: key[0] ???
+            delta = my_inv._make_delta(null_inv)
+            serializer.require_flags(*self._format_flags)
             return serializer.delta_to_lines(
-                self._basis_id, self.key, self.delta)
+                revision.NULL_REVISION, self.key, delta)
         raise errors.UnavailableRepresentation(self.key, storage_kind,
             self.storage_kind)
 
@@ -1587,10 +1600,12 @@ class NetworkRecordStream(object):
 
         :return: An iterator as per VersionedFiles.get_record_stream().
         """
+        from bzrlib.trace import mutter
         for bytes in self._bytes_iterator:
             storage_kind, line_end = network_bytes_to_kind_and_offset(bytes)
             for record in self._kind_factory[storage_kind](
                 storage_kind, bytes, line_end):
+                mutter('<- <- bytes: %r, %s', record.key, record.storage_kind)
                 yield record
 
 
@@ -1613,9 +1628,9 @@ def inventory_delta_network_to_record(kind, bytes, line_end):
     if parents == 'nil':
         parents = None
     inventory_delta_bytes = bytes[line_end+4+meta_len:]
-    deserialiser = InventoryDeltaSerializer()
+    deserialiser = inventory_delta.InventoryDeltaSerializer()
     parse_result = deserialiser.parse_text_bytes(inventory_delta_bytes)
-    basis_id, new_id, delta, rich_root, tree_refs = parse_result
+    basis_id, new_id, rich_root, tree_refs, delta = parse_result
     return [InventoryDeltaContentFactory(
         key, parents, None, delta, basis_id, (rich_root, tree_refs))]
 
@@ -1637,6 +1652,10 @@ def record_to_fulltext_bytes(record):
 
 def record_to_inventory_delta_bytes(record):
     record_content = record.get_bytes_as('inventory-delta-bytes')
+    if record.parents is None:
+        parents = 'nil'
+    else:
+        parents = record.parents
     record_meta = bencode.bencode((record.key, parents))
     return "inventory-delta\n%s%s%s" % (
         _length_prefix(record_meta), record_meta, record_content)

@@ -518,7 +518,10 @@ class _DebugCounter(object):
         # Increment the count in the WeakKeyDictionary
         value = self.counts[params.medium]
         value['count'] += 1
-        request_method = request.request_handlers.get(params.method)
+        try:
+            request_method = request.request_handlers.get(params.method)
+        except KeyError:
+            return
         if issubclass(request_method, vfs.VfsRequest):
             value['vfs_count'] += 1
 

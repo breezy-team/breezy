@@ -3905,6 +3905,9 @@ class StreamSink(object):
         finally:
             self.target_repo.unlock()
 
+    def _inv_deltas_ok(self):
+        return True
+    
     def _locked_insert_stream(self, stream, src_format, is_resume):
         to_serializer = self.target_repo._format._serializer
         src_serializer = src_format._serializer
@@ -3929,6 +3932,7 @@ class StreamSink(object):
                 new_pack.set_write_cache_size(1024*1024)
         delta_deserializer = inventory_delta.InventoryDeltaSerializer()
         for substream_type, substream in stream:
+            mutter('=== sink got substream: %s', substream_type)
             if substream_type == 'texts':
                 self.target_repo.texts.insert_record_stream(substream)
             elif substream_type == 'inventories':
@@ -4005,6 +4009,8 @@ class StreamSink(object):
         target_rich_root = self.target_repo._format.rich_root_data
         target_tree_refs = self.target_repo._format.supports_tree_reference
         for record in substream:
+            mutter('_extract_and_insert_inventories: %r %s', record.key,
+                    record.storage_kind)
             if record.storage_kind == 'inventory-delta':
                 # Insert the delta directly
                 delta_tuple = record.get_bytes_as('inventory-delta')
@@ -4032,9 +4038,13 @@ class StreamSink(object):
 
     def _extract_and_insert_revisions(self, substream, serializer):
         for record in substream:
+            mutter('_extract_and_insert_revisions: %r %s', record.key,
+                    record.storage_kind)
             bytes = record.get_bytes_as('fulltext')
+            mutter('bytes: %r', bytes)
             revision_id = record.key[0]
             rev = serializer.read_revision_from_string(bytes)
+            mutter('rev: %r %r', rev, rev.__dict__)
             if rev.revision_id != revision_id:
                 raise AssertionError('wtf: %s != %s' % (rev, revision_id))
             self.target_repo.add_revision(revision_id, rev)
@@ -4210,16 +4220,25 @@ class StreamSource(object):
             # is safe to transmit the chk pages and inventory pages across
             # as-is.
             # XXX: does this case need to take 'missing' into account?
+            mutter('**** chk->chk, same serializer')
             return self._get_chk_inventory_stream(revision_ids)
         elif (not from_format.supports_chks):
             # Source repository doesn't support chks. So we can transmit the
             # inventories 'as-is' and either they are just accepted on the
             # target, or the Sink will properly convert it.
+            # (XXX: this assumes that all non-chk formats are understood as-is
+            # by any Sink, but that presumably isn't true for foreign repo
+            # formats added by bzr-svn etc?)
+            mutter('**** non-chk -> ...')
+            mutter('from: %r  to: %r', from_format, self.to_format)
+            mutter('from: %r  to: %r', from_format.network_name(),
+                    self.to_format.network_name())
             return self._get_simple_inventory_stream(revision_ids,
                     missing=missing)
         else:
-            # Make not-chk->chk fetch: copy the inventories as (format-neutral)
-            # inventory deltas.
+            # Make chk->non-chk (and chk with different serializers) fetch:
+            # copy the inventories as (format-neutral) inventory deltas.
+            mutter('**** chk -> non-chk / chk -> chk, diff serializer')
             return self._get_convertable_inventory_stream(revision_ids,
                     fulltexts=missing)
 
@@ -4302,13 +4321,14 @@ class StreamSource(object):
         ### pb.update('fetch inventory', 2, 2)
 
     def _get_convertable_inventory_stream(self, revision_ids, fulltexts=False):
+        # XXX
         # XXX: One of source or target is using chks, and they don't have
         #      compatible serializations. The StreamSink code expects to be
         #      able to convert on the target, so we need to put
-        #      bytes-on-the-wire that can be converted
-        # XXX: choose between fulltexts (for compat) or deltas (for efficiency)
+        #      bytes-on-the-wire that can be converted.  That means either
+        #      inventory deltas (if the remote is >= 1.17), or else fulltexts.
         yield ('inventories',
-               self._stream_invs_as_deltas(revision_ids, fulltexts=fulltexts))
+           self._stream_invs_as_deltas(revision_ids, fulltexts=fulltexts))
 
     def _stream_invs_as_deltas(self, revision_ids, fulltexts=False):
         from_repo = self.from_repository
@@ -4330,7 +4350,7 @@ class StreamSource(object):
                 # Either the caller asked for fulltexts, or there is no parent,
                 # so, stream as a delta from null:.
                 basis_id = _mod_revision.NULL_REVISION
-                parent_inv = Inventory()
+                parent_inv = Inventory(None)
                 delta = inv._make_delta(parent_inv)
             else:
                 # Make a delta against each parent so that we can find the
@@ -4340,7 +4360,7 @@ class StreamSource(object):
                     parent_id = parent_key[0]
                     parent_inv = from_repo.get_inventory(parent_id)
                     candidate_delta = inv._make_delta(parent_inv)
-                    if (best_delta is None or 
+                    if (best_delta is None or
                         len(best_delta) > len(candidate_delta)):
                         best_delta = candidate_delta
                         basis_id = parent_id

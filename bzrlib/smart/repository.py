@@ -39,7 +39,11 @@ from bzrlib.smart.request import (
     )
 from bzrlib.repository import _strip_NULL_ghosts, network_format_registry
 from bzrlib import revision as _mod_revision
-from bzrlib.versionedfile import NetworkRecordStream, record_to_fulltext_bytes
+from bzrlib.versionedfile import (
+    NetworkRecordStream,
+    record_to_fulltext_bytes,
+    record_to_inventory_delta_bytes,
+    )
 
 
 class SmartServerRepositoryRequest(SmartServerRequest):
@@ -456,11 +460,14 @@ def _stream_to_byte_stream(stream, src_format):
     pack_writer = pack.ContainerSerialiser()
     yield pack_writer.begin()
     yield pack_writer.bytes_record(src_format.network_name(), '')
+    from bzrlib.trace import mutter
     for substream_type, substream in stream:
+        mutter('-> bytes: %s', substream_type)
         for record in substream:
+            mutter('-> -> bytes: %s %r', substream_type, record.key)
             if record.storage_kind in ('chunked', 'fulltext'):
                 serialised = record_to_fulltext_bytes(record)
-            elif record.storage_kind == 'inventory-delta-bytes':
+            elif record.storage_kind == 'inventory-delta':
                 serialised = record_to_inventory_delta_bytes(record)
             elif record.storage_kind == 'absent':
                 raise ValueError("Absent factory for %s" % (record.key,))
@@ -481,6 +488,7 @@ def _byte_stream_to_stream(byte_stream):
     :return: (RepositoryFormat, stream_generator)
     """
     stream_decoder = pack.ContainerPushParser()
+    from bzrlib.trace import mutter
     def record_stream():
         """Closure to return the substreams."""
         # May have fully parsed records already.
@@ -488,6 +496,9 @@ def _byte_stream_to_stream(byte_stream):
             record_names, record_bytes = record
             record_name, = record_names
             substream_type = record_name[0]
+            mutter('<- bytes: %s', substream_type)
+#            if substream_type == 'inventories':
+#                import pdb; pdb.set_trace()
             substream = NetworkRecordStream([record_bytes])
             yield substream_type, substream.read()
         for bytes in byte_stream:
@@ -496,6 +507,9 @@ def _byte_stream_to_stream(byte_stream):
                 record_names, record_bytes = record
                 record_name, = record_names
                 substream_type = record_name[0]
+                mutter('<- bytes: %s', substream_type)
+#                if substream_type == 'inventories':
+#                    import pdb; pdb.set_trace()
                 substream = NetworkRecordStream([record_bytes])
                 yield substream_type, substream.read()
     for bytes in byte_stream:
@@ -650,6 +664,23 @@ class SmartServerRepositoryInsertStreamLocked(SmartServerRepositoryRequest):
         else:
             self.repository.unlock()
             return SuccessfulSmartServerResponse(('ok', ))
+
+
+class SmartServerRepositoryInsertStream_1_17(SmartServerRepositoryInsertStreamLocked):
+    """Insert a record stream from a RemoteSink into a repository.
+
+    Same as SmartServerRepositoryInsertStreamLocked, except:
+     - the lock token argument is optional
+     - servers that implement this verb accept 'inventory-delta' records in the
+       stream.
+
+    New in 1.17.
+    """
+
+    def do_repository_request(self, repository, resume_tokens, lock_token=None):
+        """StreamSink.insert_stream for a remote repository."""
+        SmartServerRepositoryInsertStreamLocked.do_repository_request(
+            self, repository, resume_tokens, lock_token)
 
 
 class SmartServerRepositoryInsertStream(SmartServerRepositoryInsertStreamLocked):
