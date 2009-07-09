@@ -63,6 +63,7 @@ def load_tests(standard_tests, module, loader):
     test_workingtree_implementations = [
         'bzrlib.tests.workingtree_implementations.test_add_reference',
         'bzrlib.tests.workingtree_implementations.test_add',
+        'bzrlib.tests.workingtree_implementations.test_annotate_iter',
         'bzrlib.tests.workingtree_implementations.test_basis_inventory',
         'bzrlib.tests.workingtree_implementations.test_basis_tree',
         'bzrlib.tests.workingtree_implementations.test_break_lock',
