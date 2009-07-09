@@ -684,34 +684,48 @@ class Branch(object):
         """
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            url = ''
-            if len(self.repository._fallback_repositories) != 1:
+            # The basic approach here is to fetch the tip of the branch,
+            # including all available ghosts, from the existing stacked
+            # repository into a new repository object without the fallbacks. 
+            #
+            # XXX: See <https://launchpad.net/bugs/397286> - this may not be
+            # correct for CHKMap repostiories
+            old_repository = self.repository
+            if len(old_repository._fallback_repositories) != 1:
                 raise AssertionError("can't cope with fallback repositories "
                     "of %r" % (self.repository,))
-            old_fallback_repository = self.repository._fallback_repositories[0]
             # unlock it, including unlocking the fallback
-            self.repository.unlock()
-            # repositories don't offer an interface to remove fallback
-            # repositories today; take the conceptually simpler option and just
-            # reopen it.
-            self.repository = self.bzrdir.find_repository()
-            # this is not paired with an unlock because it's just restoring
-            # the previous state; the lock's released when set_stacked_on_url
-            # returns
-            self.repository.lock_write()
-            # XXX: If you unstack a branch while it has a working tree
-            # with a pending merge, the pending-merged revisions will no
-            # longer be present.  You can (probably) revert and remerge.
-            #
-            # XXX: For simplicity, this just fetches everything from the
-            # source repository - that may sometimes be too much, but I see no
-            # way at present to tell fetch to only backfill the data that's
-            # now essentially a ghost.   That does also mean you get all the
-            # tags, and usually the incremental size from bringing
-            # unreferenced history will be small relative to the expansion
-            # from unstacking.
-            self.repository.fetch(old_fallback_repository,
-                find_ghosts=True)
+            old_repository.unlock()
+            old_repository.lock_read()
+            try:
+                # repositories don't offer an interface to remove fallback
+                # repositories today; take the conceptually simpler option and just
+                # reopen it.
+                self.repository = self.bzrdir.find_repository()
+                if self.repository._fallback_repositories:
+                    raise AssertionError("didn't expect %r to have "
+                        "fallback_repositories"
+                        % (self.repository,))
+                # this is not paired with an unlock because it's just restoring
+                # the previous state; the lock's released when set_stacked_on_url
+                # returns
+                self.repository.lock_write()
+                # XXX: If you unstack a branch while it has a working tree
+                # with a pending merge, the pending-merged revisions will no
+                # longer be present.  You can (probably) revert and remerge.
+                #
+                # XXX: For simplicity, this just fetches everything from the
+                # source repository - that may sometimes be too much, but I see no
+                # way at present to tell fetch to only backfill the data that's
+                # now essentially a ghost.   That does also mean you get all the
+                # tags, and usually the incremental size from bringing
+                # unreferenced history will be small relative to the expansion
+                # from unstacking.
+                self.repository.fetch(old_repository,
+                    revision_id=self.last_revision(),
+                    find_ghosts=True)
+            finally:
+                old_repository.unlock()
         finally:
             pb.finished()
 
