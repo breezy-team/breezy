@@ -78,6 +78,10 @@ Bug Fixes
   of a remote repository.
   (Jelmer Vernooij, #332194)
 
+* Fix bug in decoding v3 smart server messages when receiving multiple
+  lots of excess bytes after an end-of-message.
+  (Andrew Bennetts)
+
 * Force deletion of readonly files during merge, update and other tree
   transforms.
   (Craig Hewetson, Martin Pool, #218206)
