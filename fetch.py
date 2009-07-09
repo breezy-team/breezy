@@ -426,14 +426,21 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
     """InterRepository that copies revisions from a remote Git into a non-Git 
     repository."""
 
+    def get_target_heads(self):
+        # FIXME: This should be more efficient
+        all_revs = self.target.all_revision_ids()
+        parent_map = self.target.get_parent_map(all_revs)
+        all_parents = set()
+        map(all_parents.update, parent_map.itervalues())
+        return set(all_revs) - all_parents
+
     def fetch_objects(self, determine_wants, mapping, pb=None):
         def progress(text):
             report_git_progress(pb, text)
         store = BazaarObjectStore(self.target, mapping)
         self.target.lock_write()
         try:
-            # FIXME: This should be more efficient
-            heads = self.target.get_graph().heads(self.target.all_revision_ids())
+            heads = self.get_target_heads()
             graph_walker = store.get_graph_walker(
                     [store._lookup_revision_sha1(head) for head in heads])
             recorded_wants = []
