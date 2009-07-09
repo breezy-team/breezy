@@ -1535,7 +1535,10 @@ class Repository(object):
             raise errors.InternalBzrError(
                 "May not fetch while in a write group.")
         # fast path same-url fetch operations
-        if self.has_same_location(source) and fetch_spec is None:
+        # TODO: lift out to somewhere common with RemoteRepository
+        if (self.has_same_location(source) and fetch_spec is None
+            and ([f._transport.base for f in self._fallback_repositories]
+                 == [f._transport.base for f in source._fallback_repositories])):
             # check that last_revision is in 'from' and then return a
             # no-operation.
             if (revision_id is not None and
