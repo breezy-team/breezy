@@ -1285,7 +1285,8 @@ class DirState(object):
         removals = {}
         for old_path, new_path, file_id, inv_entry in sorted(delta, reverse=True):
             if (file_id in insertions) or (file_id in removals):
-                raise AssertionError("repeated file id in delta %r" % (file_id,))
+                raise errors.InconsistentDelta(old_path or new_path, file_id,
+                    "repeated file_id")
             if old_path is not None:
                 old_path = old_path.encode('utf-8')
                 removals[file_id] = old_path
@@ -1399,6 +1400,9 @@ class DirState(object):
         # At the same time, to reduce interface friction we convert the input
         # inventory entries to dirstate.
         root_only = ('', '')
+        # Accumulate parent references (path and id), to check for parentless
+        # items or items placed under files/links/tree-references.
+        parents = set()
         for old_path, new_path, file_id, inv_entry in delta:
             if inv_entry is not None and file_id != inv_entry.file_id:
                 raise errors.InconsistentDelta(new_path, file_id,
@@ -1406,6 +1410,9 @@ class DirState(object):
             if old_path is None:
                 adds.append((None, encode(new_path), file_id,
                     inv_to_entry(inv_entry), True))
+                # note the parent for validation
+                dirname, basename = osutils.split(new_path)
+                parents.add((dirname, inv_entry.parent_id))
             elif new_path is None:
                 deletes.append((encode(old_path), None, file_id, None, True))
             elif (old_path, new_path) != root_only:
@@ -1450,6 +1457,9 @@ class DirState(object):
                         (source_path, target_path, entry[0][2], None, False))
                 deletes.append(
                     (encode(old_path), new_path, file_id, None, False))
+                # note the parent for validation
+                dirname, basename = osutils.split(new_path)
+                parents.add((dirname, inv_entry.parent_id))
             else:
                 # changes to just the root should not require remove/insertion
                 # of everything.
@@ -1463,12 +1473,17 @@ class DirState(object):
             self._update_basis_apply_adds(adds)
             # Apply in-situ changes.
             self._update_basis_apply_changes(changes)
-        except errors.BzrError:
+            # Validate parents
+            self._update_basis_check_parents(parents)
+        except errors.BzrError, e:
+            if 'integrity error' not in str(e):
+                raise
             # _get_entry raises BzrError when a request is inconsistent; we
             # want such errors to be shown as InconsistentDelta - and that 
             # fits the behaviour we trigger. Partof this is driven by dirstate
             # only supporting deltas that turn the basis into a closer fit to
             # the active tree.
+            self._changes_aborted = True
             raise errors.InconsistentDeltaDelta(delta, "error from _get_entry.")
 
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
@@ -1583,6 +1598,18 @@ class DirState(object):
                 else:
                     # it is being resurrected here, so blank it out temporarily.
                     self._dirblocks[block_index][1][entry_index][1][1] = null
+
+    def _update_basis_check_parents(self, parents):
+        """Check that parents required by the delta are all intact."""
+        for dirname, file_id in parents:
+            # Get the entry - the ensures that file_id, dirname exists and has
+            # the right file id.
+            entry = self._get_entry(1, file_id, dirname)
+            # Parents of things must be directories
+            if entry[1][1][0] != 'd':
+                self._changes_aborted = True
+                raise errors.InconsistentDelta(dirname, file_id,
+                    "This parent is not a directory.")
 
     def _observed_sha1(self, entry, sha1, stat_value,
         _stat_to_minikind=_stat_to_minikind, _pack_stat=pack_stat):

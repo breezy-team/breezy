@@ -1166,7 +1166,11 @@ class Inventory(CommonInventory):
                 replacement.revision = new_entry.revision
                 replacement.children = children.pop(replacement.file_id, {})
                 new_entry = replacement
-            self.add(new_entry)
+            try:
+                self.add(new_entry)
+            except AttributeError:
+                raise errors.InconsistentDelta(new_path, new_entry.file_id,
+                    "Parent is not a directory.")
         if len(children):
             # Get the parent id that was deleted
             parent_id, children = children.popitem()
@@ -1629,6 +1633,8 @@ class CHKInventory(CommonInventory):
         inventory_delta = _check_delta_unique_new_paths(inventory_delta)
         # Check for entries that don't match the fileid
         inventory_delta = _check_delta_ids_match_entry(inventory_delta)
+        # All changed entries need to have their parents be directories.
+        parents = set()
         for old_path, new_path, file_id, entry in inventory_delta:
             # file id changes
             if new_path == '':
@@ -1649,6 +1655,7 @@ class CHKInventory(CommonInventory):
                 # Update caches. It's worth doing this whether
                 # we're propagating the old caches or not.
                 result._path_to_fileid_cache[new_path] = file_id
+                parents.add(entry.parent_id)
             if old_path is None:
                 old_key = None
             else:
@@ -1674,6 +1681,10 @@ class CHKInventory(CommonInventory):
         result.id_to_entry.apply_delta(id_to_entry_delta)
         if parent_id_basename_delta:
             result.parent_id_basename_to_file_id.apply_delta(parent_id_basename_delta)
+        for parent in parents:
+            if result[parent].kind != 'directory':
+                raise errors.InconsistentDelta(result.id2path(parent), parent,
+                    'Not a directory, but given children')
         return result
 
     @classmethod

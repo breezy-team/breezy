@@ -110,10 +110,11 @@ def apply_inventory_WT_basis(self, basis, delta):
             raise
         else:
             repo.commit_write_group()
+        # Set the basis state as the trees current state
+        tree._write_inventory(basis)
         # This reads basis from the repo and puts it into the tree's local
         # cache, if it has one.
         tree.set_parent_ids(['basis'])
-        inv = tree.inventory
         paths = {}
         parents = set()
         for old, new, id, entry in delta:
@@ -123,9 +124,10 @@ def apply_inventory_WT_basis(self, basis, delta):
             parents.add(osutils.dirname(new))
         parents = osutils.minimum_path_selection(parents)
         parents.discard('')
-        if parents:
-            # Put place holders in the tree to permit adding the other entries.
-            import pdb;pdb.set_trace()
+        # Put place holders in the tree to permit adding the other entries.
+        for parent in parents:
+            if not tree.path2id(parent):
+                import pdb;pdb.set_trace()
         if paths:
             # Many deltas may cause this mini-apply to fail, but we want to see what
             # the delta application code says, not the prep that we do to deal with 
@@ -289,6 +291,21 @@ class TestDeltaApplication(TestCaseWithTransport):
         file1.text_size = 0
         file1.text_sha1 = ""
         delta = [(None, 'path', 'id', file1)]
+        self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
+            inv, delta)
+
+    def test_parent_is_not_directory(self):
+        inv = self.get_empty_inventory()
+        file1 = inventory.InventoryFile('id1', 'path', inv.root.file_id)
+        file1.revision = 'result'
+        file1.text_size = 0
+        file1.text_sha1 = ""
+        file2 = inventory.InventoryFile('id2', 'path2', 'id1')
+        file2.revision = 'result'
+        file2.text_size = 0
+        file2.text_sha1 = ""
+        inv.add(file1)
+        delta = [(None, 'path/path2', 'id2', file2)]
         self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
             inv, delta)
 
