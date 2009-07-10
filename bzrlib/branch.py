@@ -663,6 +663,9 @@ class Branch(object):
         """
         if not self._format.supports_stacking():
             raise errors.UnstackableBranchFormat(self._format, self.base)
+        # XXX: Changing from one fallback repository to another does not check
+        # that all the data you need is present in the new fallback.
+        # Possibly it should.
         self._check_stackable_repo()
         if not url:
             try:
