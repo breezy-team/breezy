@@ -705,7 +705,7 @@ class Branch(object):
                 # stream from one of them to the other.  This does mean doing
                 # separate SSH connection setup, but unstacking is not a
                 # common operation so it's tolerable.
-                new_bzrdir = bzrdir.BzrDir.open(self.bzrdir.base)
+                new_bzrdir = bzrdir.BzrDir.open(self.bzrdir.root_transport.base)
                 new_repository = new_bzrdir.find_repository()
                 self.repository = new_repository
                 if self.repository._fallback_repositories:
