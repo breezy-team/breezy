@@ -112,12 +112,9 @@ class TestInventoryUpdates(TestInventory):
     def test_error_encoding(self):
         inv = self.make_inventory('tree-root')
         inv.add(InventoryFile('a-id', u'\u1234', 'tree-root'))
-        try:
-            inv.add(InventoryFile('b-id', u'\u1234', 'tree-root'))
-        except errors.BzrError, e:
-            self.assertContainsRe(str(e), u'\u1234'.encode('utf-8'))
-        else:
-            self.fail('BzrError not raised')
+        e = self.assertRaises(errors.InconsistentDelta, inv.add,
+            InventoryFile('b-id', u'\u1234', 'tree-root'))
+        self.assertContainsRe(str(e), r'\\u1234')
 
     def test_add_recursive(self):
         parent = InventoryDirectory('src-id', 'src', 'tree-root')
@@ -129,6 +126,13 @@ class TestInventoryUpdates(TestInventory):
 
 
 class TestInventoryApplyDelta(TestInventory):
+    """A subset of the inventory delta application tests.
+
+    See test_inv which has comprehensive delta application tests for
+    inventories, dirstate, and repository based inventories, unlike the tests
+    here which only test in-memory implementations that can support a plain
+    'apply_delta'.
+    """
 
     def test_apply_delta_add(self):
         inv = self.make_inventory('tree-root')
@@ -161,7 +165,7 @@ class TestInventoryApplyDelta(TestInventory):
     def test_apply_delta_illegal(self):
         # A file-id cannot appear in a delta more than once
         inv = self.make_inventory('tree-root')
-        self.assertRaises(AssertionError, inv.apply_delta, [
+        self.assertRaises(errors.InconsistentDelta, inv.apply_delta, [
             ("a", "a", "id-1", InventoryFile('id-1', 'a', 'tree-root')),
             ("a", "b", "id-1", InventoryFile('id-1', 'b', 'tree-root')),
             ])
