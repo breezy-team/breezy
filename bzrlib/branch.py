@@ -698,10 +698,16 @@ class Branch(object):
             old_repository.unlock()
             old_repository.lock_read()
             try:
-                # repositories don't offer an interface to remove fallback
+                # Repositories don't offer an interface to remove fallback
                 # repositories today; take the conceptually simpler option and just
-                # reopen it.
-                self.repository = self.bzrdir.find_repository()
+                # reopen it.  We reopen it starting from the URL so that we
+                # get a separate connection for RemoteRepositories and can
+                # stream from one of them to the other.  This does mean doing
+                # separate SSH connection setup, but unstacking is not a
+                # common operation so it's tolerable.
+                new_bzrdir = bzrdir.BzrDir.open(self.bzrdir.base)
+                new_repository = new_bzrdir.find_repository()
+                self.repository = new_repository
                 if self.repository._fallback_repositories:
                     raise AssertionError("didn't expect %r to have "
                         "fallback_repositories"
@@ -714,13 +720,9 @@ class Branch(object):
                 # with a pending merge, the pending-merged revisions will no
                 # longer be present.  You can (probably) revert and remerge.
                 #
-                # XXX: For simplicity, this just fetches everything from the
-                # source repository - that may sometimes be too much, but I see no
-                # way at present to tell fetch to only backfill the data that's
-                # now essentially a ghost.   That does also mean you get all the
-                # tags, and usually the incremental size from bringing
-                # unreferenced history will be small relative to the expansion
-                # from unstacking.
+                # XXX: This only fetches up to the tip of the repository; it
+                # doesn't bring across any tags.  That's fairly consistent
+                # with how branch works, but perhaps not ideal.
                 self.repository.fetch(old_repository,
                     revision_id=self.last_revision(),
                     find_ghosts=True)
