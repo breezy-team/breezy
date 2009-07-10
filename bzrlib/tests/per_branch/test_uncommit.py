@@ -21,7 +21,7 @@ Note that uncommit currently is not a branch method; it should be.
 
 from bzrlib.branch import Branch
 from bzrlib import errors
-from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
+from bzrlib.tests.per_branch.test_branch import TestCaseWithBranch
 from bzrlib.uncommit import uncommit
 
 

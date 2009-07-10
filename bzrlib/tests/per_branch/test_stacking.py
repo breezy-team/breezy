@@ -24,7 +24,7 @@ from bzrlib import (
 from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import server
 from bzrlib.tests import TestNotApplicable, KnownFailure, transport_util
-from bzrlib.tests.branch_implementations import TestCaseWithBranch
+from bzrlib.tests.per_branch import TestCaseWithBranch
 from bzrlib.transport import get_transport
 
 

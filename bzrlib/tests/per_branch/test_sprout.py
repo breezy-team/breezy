@@ -25,7 +25,7 @@ from bzrlib import (
     revision as _mod_revision,
     tests,
     )
-from bzrlib.tests.branch_implementations import TestCaseWithBranch
+from bzrlib.tests.per_branch import TestCaseWithBranch
 
 
 class TestSprout(TestCaseWithBranch):

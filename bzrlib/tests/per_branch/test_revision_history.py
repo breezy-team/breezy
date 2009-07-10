@@ -21,7 +21,7 @@ from bzrlib import (
     errors,
     revision as _mod_revision,
     )
-from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
+from bzrlib.tests.per_branch.test_branch import TestCaseWithBranch
 
 
 class TestLastRevision(TestCaseWithBranch):

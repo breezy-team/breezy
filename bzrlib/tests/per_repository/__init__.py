@@ -21,7 +21,7 @@
 
 These test the conformance of all the repository variations to the expected API.
 Specific tests for individual formats are in the tests/test_repository.py file
-rather than in tests/branch_implementations/*.py.
+rather than in tests/per_branch/*.py.
 """
 
 from bzrlib import (

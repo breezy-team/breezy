@@ -23,7 +23,7 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib import errors
 from bzrlib.memorytree import MemoryTree
 from bzrlib.revision import NULL_REVISION
-from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
+from bzrlib.tests.per_branch.test_branch import TestCaseWithBranch
 
 
 class TestPull(TestCaseWithBranch):

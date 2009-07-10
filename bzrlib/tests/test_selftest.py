@@ -167,7 +167,7 @@ class TestBranchScenarios(tests.TestCase):
     def test_scenarios(self):
         # check that constructor parameters are passed through to the adapted
         # test.
-        from bzrlib.tests.branch_implementations import make_scenarios
+        from bzrlib.tests.per_branch import make_scenarios
         server1 = "a"
         server2 = "b"
         formats = [("c", "C"), ("d", "D")]

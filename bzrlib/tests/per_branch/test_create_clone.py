@@ -20,7 +20,7 @@ from bzrlib.branch import Branch
 from bzrlib import errors
 from bzrlib import remote
 from bzrlib import tests
-from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
+from bzrlib.tests.per_branch.test_branch import TestCaseWithBranch
 
 
 class TestCreateClone(TestCaseWithBranch):

@@ -20,7 +20,7 @@ from bzrlib import (
     branch,
     )
 from bzrlib.remote import RemoteBranch
-from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
+from bzrlib.tests.per_branch.test_branch import TestCaseWithBranch
 
 
 class TestCreateCheckout(TestCaseWithBranch):

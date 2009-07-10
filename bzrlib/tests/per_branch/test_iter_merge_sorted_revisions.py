@@ -21,7 +21,7 @@ from bzrlib import (
     revision,
     )
 
-from bzrlib.tests.branch_implementations import TestCaseWithBranch
+from bzrlib.tests.per_branch import TestCaseWithBranch
 
 
 class TestIterMergeSortedRevisions(TestCaseWithBranch):

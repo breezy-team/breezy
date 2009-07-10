@@ -35,7 +35,7 @@ from bzrlib.memorytree import MemoryTree
 from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import client, server
 from bzrlib.smart.repository import SmartServerRepositoryGetParentMap
-from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
+from bzrlib.tests.per_branch.test_branch import TestCaseWithBranch
 from bzrlib.transport import get_transport
 from bzrlib.transport.local import LocalURLServer
 

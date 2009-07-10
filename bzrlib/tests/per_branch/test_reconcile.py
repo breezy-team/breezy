@@ -17,7 +17,7 @@
 """Tests for branch implementations - test reconcile() functionality"""
 
 from bzrlib import errors, reconcile
-from bzrlib.tests.branch_implementations import TestCaseWithBranch
+from bzrlib.tests.per_branch import TestCaseWithBranch
 
 
 class TestBranchReconcile(TestCaseWithBranch):

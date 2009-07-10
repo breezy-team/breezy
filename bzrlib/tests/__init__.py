@@ -3333,7 +3333,7 @@ def test_suite(keep_only=None, starting_with=None):
     testmod_names = [
                    'bzrlib.doc',
                    'bzrlib.tests.blackbox',
-                   'bzrlib.tests.branch_implementations',
+                   'bzrlib.tests.per_branch',
                    'bzrlib.tests.bzrdir_implementations',
                    'bzrlib.tests.commands',
                    'bzrlib.tests.interrepository_implementations',

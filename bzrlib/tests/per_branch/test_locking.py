@@ -20,7 +20,7 @@ from bzrlib import errors
 from bzrlib.branch import BzrBranchFormat4
 from bzrlib.bzrdir import RemoteBzrDirFormat
 from bzrlib.tests import TestSkipped
-from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
+from bzrlib.tests.per_branch.test_branch import TestCaseWithBranch
 from bzrlib.tests.lock_helpers import TestPreventLocking, LockWrapper
 
 

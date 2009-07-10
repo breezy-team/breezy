@@ -21,7 +21,7 @@
 
 These test the conformance of all the branch variations to the expected API.
 Specific tests for individual formats are in the tests/test_branch file
-rather than in tests/branch_implementations/*.py.
+rather than in tests/per_branch/*.py.
 """
 
 from bzrlib import (
@@ -163,34 +163,34 @@ def branch_scenarios():
 
 
 def load_tests(standard_tests, module, loader):
-    test_branch_implementations = [
-        'bzrlib.tests.branch_implementations.test_bound_sftp',
-        'bzrlib.tests.branch_implementations.test_branch',
-        'bzrlib.tests.branch_implementations.test_break_lock',
-        'bzrlib.tests.branch_implementations.test_check',
-        'bzrlib.tests.branch_implementations.test_create_checkout',
-        'bzrlib.tests.branch_implementations.test_create_clone',
-        'bzrlib.tests.branch_implementations.test_commit',
-        'bzrlib.tests.branch_implementations.test_dotted_revno_to_revision_id',
-        'bzrlib.tests.branch_implementations.test_get_revision_id_to_revno_map',
-        'bzrlib.tests.branch_implementations.test_hooks',
-        'bzrlib.tests.branch_implementations.test_http',
-        'bzrlib.tests.branch_implementations.test_iter_merge_sorted_revisions',
-        'bzrlib.tests.branch_implementations.test_last_revision_info',
-        'bzrlib.tests.branch_implementations.test_locking',
-        'bzrlib.tests.branch_implementations.test_parent',
-        'bzrlib.tests.branch_implementations.test_permissions',
-        'bzrlib.tests.branch_implementations.test_pull',
-        'bzrlib.tests.branch_implementations.test_push',
-        'bzrlib.tests.branch_implementations.test_reconcile',
-        'bzrlib.tests.branch_implementations.test_revision_history',
-        'bzrlib.tests.branch_implementations.test_revision_id_to_dotted_revno',
-        'bzrlib.tests.branch_implementations.test_revision_id_to_revno',
-        'bzrlib.tests.branch_implementations.test_sprout',
-        'bzrlib.tests.branch_implementations.test_stacking',
-        'bzrlib.tests.branch_implementations.test_tags',
-        'bzrlib.tests.branch_implementations.test_uncommit',
-        'bzrlib.tests.branch_implementations.test_update',
+    test_per_branch = [
+        'bzrlib.tests.per_branch.test_bound_sftp',
+        'bzrlib.tests.per_branch.test_branch',
+        'bzrlib.tests.per_branch.test_break_lock',
+        'bzrlib.tests.per_branch.test_check',
+        'bzrlib.tests.per_branch.test_create_checkout',
+        'bzrlib.tests.per_branch.test_create_clone',
+        'bzrlib.tests.per_branch.test_commit',
+        'bzrlib.tests.per_branch.test_dotted_revno_to_revision_id',
+        'bzrlib.tests.per_branch.test_get_revision_id_to_revno_map',
+        'bzrlib.tests.per_branch.test_hooks',
+        'bzrlib.tests.per_branch.test_http',
+        'bzrlib.tests.per_branch.test_iter_merge_sorted_revisions',
+        'bzrlib.tests.per_branch.test_last_revision_info',
+        'bzrlib.tests.per_branch.test_locking',
+        'bzrlib.tests.per_branch.test_parent',
+        'bzrlib.tests.per_branch.test_permissions',
+        'bzrlib.tests.per_branch.test_pull',
+        'bzrlib.tests.per_branch.test_push',
+        'bzrlib.tests.per_branch.test_reconcile',
+        'bzrlib.tests.per_branch.test_revision_history',
+        'bzrlib.tests.per_branch.test_revision_id_to_dotted_revno',
+        'bzrlib.tests.per_branch.test_revision_id_to_revno',
+        'bzrlib.tests.per_branch.test_sprout',
+        'bzrlib.tests.per_branch.test_stacking',
+        'bzrlib.tests.per_branch.test_tags',
+        'bzrlib.tests.per_branch.test_uncommit',
+        'bzrlib.tests.per_branch.test_update',
         ]
-    sub_tests = loader.loadTestsFromModuleNames(test_branch_implementations)
+    sub_tests = loader.loadTestsFromModuleNames(test_per_branch)
     return tests.multiply_tests(sub_tests, branch_scenarios(), standard_tests)

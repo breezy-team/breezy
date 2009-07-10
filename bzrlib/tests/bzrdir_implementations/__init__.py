@@ -21,7 +21,7 @@
 
 These test the conformance of all the bzrdir variations to the expected API.
 Specific tests for individual formats are in the tests/test_bzrdir.py file
-rather than in tests/branch_implementations/*.py.
+rather than in tests/per_branch/*.py.
 """
 
 from bzrlib.bzrdir import BzrDirFormat

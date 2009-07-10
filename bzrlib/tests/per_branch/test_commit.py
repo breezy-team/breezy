@@ -18,7 +18,7 @@
 
 from bzrlib.branch import Branch
 from bzrlib import errors
-from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
+from bzrlib.tests.per_branch.test_branch import TestCaseWithBranch
 from bzrlib.revision import NULL_REVISION
 from bzrlib.transport import get_transport
 from bzrlib.delta import TreeDelta

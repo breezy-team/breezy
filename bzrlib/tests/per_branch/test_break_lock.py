@@ -21,7 +21,7 @@ from cStringIO import StringIO
 import bzrlib
 import bzrlib.errors as errors
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestNotApplicable
-from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
+from bzrlib.tests.per_branch.test_branch import TestCaseWithBranch
 
 
 class TestBreakLock(TestCaseWithBranch):

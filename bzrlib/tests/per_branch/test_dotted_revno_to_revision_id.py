@@ -18,7 +18,7 @@
 
 from bzrlib import errors
 
-from bzrlib.tests.branch_implementations import TestCaseWithBranch
+from bzrlib.tests.per_branch import TestCaseWithBranch
 
 
 class TestDottedRevnoToRevisionId(TestCaseWithBranch):
