@@ -816,6 +816,9 @@ class RemoteRepository(_RpcHelper, repository.RepositoryBase):
         return result
 
     def has_same_location(self, other):
+        # TODO: Move to RepositoryBase and unify with the regular Repository
+        # one; unfortunately the tests rely on slightly different behaviour at
+        # present -- mbp 20090710
         return (self.__class__ is other.__class__ and
                 self.bzrdir.transport.base == other.bzrdir.transport.base)
 
