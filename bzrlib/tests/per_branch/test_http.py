@@ -19,8 +19,8 @@
 import os
 
 from bzrlib import branch, errors
-from bzrlib.tests.per_branch.test_branch import TestCaseWithBranch
 from bzrlib.tests.http_server import HttpServer
+from bzrlib.tests.per_branch.test_branch import TestCaseWithBranch
 from bzrlib.transport.local import LocalURLServer
 from bzrlib.transport.chroot import TestingChrootServer
 

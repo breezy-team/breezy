@@ -3333,17 +3333,20 @@ def test_suite(keep_only=None, starting_with=None):
     testmod_names = [
                    'bzrlib.doc',
                    'bzrlib.tests.blackbox',
+                   'bzrlib.tests.commands',
                    'bzrlib.tests.per_branch',
                    'bzrlib.tests.per_bzrdir',
-                   'bzrlib.tests.commands',
                    'bzrlib.tests.per_interrepository',
                    'bzrlib.tests.per_intertree',
                    'bzrlib.tests.per_inventory',
                    'bzrlib.tests.per_interbranch',
                    'bzrlib.tests.per_lock',
+                   'bzrlib.tests.per_transport',
+                   'bzrlib.tests.per_tree',
                    'bzrlib.tests.per_repository',
                    'bzrlib.tests.per_repository_chk',
                    'bzrlib.tests.per_repository_reference',
+                   'bzrlib.tests.per_workingtree',
                    'bzrlib.tests.test__annotator',
                    'bzrlib.tests.test__chk_map',
                    'bzrlib.tests.test__dirstate_helpers',
@@ -3482,7 +3485,6 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_transactions',
                    'bzrlib.tests.test_transform',
                    'bzrlib.tests.test_transport',
-                   'bzrlib.tests.per_transport',
                    'bzrlib.tests.test_transport_log',
                    'bzrlib.tests.test_tree',
                    'bzrlib.tests.test_treebuilder',
@@ -3503,8 +3505,6 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_workingtree_4',
                    'bzrlib.tests.test_wsgi',
                    'bzrlib.tests.test_xml',
-                   'bzrlib.tests.per_tree',
-                   'bzrlib.tests.per_workingtree',
                    ]
 
     loader = TestUtil.TestLoader()

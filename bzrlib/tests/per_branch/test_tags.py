@@ -31,8 +31,7 @@ from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
 
-from bzrlib.tests.per_branch.test_branch \
-        import TestCaseWithBranch
+from bzrlib.tests.per_branch.test_branch import TestCaseWithBranch
 
 
 class TestBranchTags(TestCaseWithBranch):

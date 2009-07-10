@@ -120,8 +120,7 @@ class TestTransportScenarios(tests.TestCase):
             def get_test_permutations(self):
                 return sample_permutation
         sample_permutation = [(1,2), (3,4)]
-        from bzrlib.tests.per_transport \
-            import get_transport_test_permutations
+        from bzrlib.tests.per_transport import get_transport_test_permutations
         self.assertEqual(sample_permutation,
                          get_transport_test_permutations(MockModule()))
 
@@ -130,8 +129,7 @@ class TestTransportScenarios(tests.TestCase):
         # as there are in all the registered transport modules - we assume if
         # this matches its probably doing the right thing especially in
         # combination with the tests for setting the right classes below.
-        from bzrlib.tests.per_transport \
-            import transport_test_permutations
+        from bzrlib.tests.per_transport import transport_test_permutations
         from bzrlib.transport import _get_transport_modules
         modules = _get_transport_modules()
         permutation_count = 0
@@ -149,8 +147,7 @@ class TestTransportScenarios(tests.TestCase):
         # This test used to know about all the possible transports and the
         # order they were returned but that seems overly brittle (mbp
         # 20060307)
-        from bzrlib.tests.per_transport \
-            import transport_test_permutations
+        from bzrlib.tests.per_transport import transport_test_permutations
         scenarios = transport_test_permutations()
         # there are at least that many builtin transports
         self.assertTrue(len(scenarios) > 6)
@@ -293,8 +290,7 @@ class TestInterRepositoryScenarios(tests.TestCase):
     def test_scenarios(self):
         # check that constructor parameters are passed through to the adapted
         # test.
-        from bzrlib.tests.per_interrepository import \
-            make_scenarios
+        from bzrlib.tests.per_interrepository import make_scenarios
         server1 = "a"
         server2 = "b"
         formats = [(str, "C1", "C2"), (int, "D1", "D2")]
@@ -320,8 +316,7 @@ class TestWorkingTreeScenarios(tests.TestCase):
     def test_scenarios(self):
         # check that constructor parameters are passed through to the adapted
         # test.
-        from bzrlib.tests.per_workingtree \
-            import make_scenarios
+        from bzrlib.tests.per_workingtree import make_scenarios
         server1 = "a"
         server2 = "b"
         formats = [workingtree.WorkingTreeFormat2(),
@@ -2203,10 +2198,9 @@ class TestTestSuite(tests.TestCase):
         test_list = [
             # testmod_names
             'bzrlib.tests.blackbox.test_branch.TestBranch.test_branch',
-            'bzrlib.tests.test_selftest.TestTestSuite.test_test_suite',
-            # transport implementations
             ('bzrlib.tests.per_transport.TransportTests'
-                '.test_abspath(LocalURLServer)'),
+             '.test_abspath(LocalURLServer)'),
+            'bzrlib.tests.test_selftest.TestTestSuite.test_test_suite',
             # modules_to_doctest
             'bzrlib.timestamp.format_highres_date',
             # plugins can't be tested that way since selftest may be run with

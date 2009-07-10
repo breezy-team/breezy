@@ -19,10 +19,10 @@
 
 These test the conformance of all the tree variations to the expected API.
 Specific tests for individual variations are in other places such as:
+ - tests/per_workingtree/*.py.
  - tests/test_tree.py
  - tests/test_revision.py
  - tests/test_workingtree.py
- - tests/per_workingtree/*.py.
 """
 
 from bzrlib import (
@@ -362,21 +362,24 @@ def create_tree_scenario(transport_server, transport_readonly_server,
 
 
 def load_tests(standard_tests, module, loader):
-    submod_tests = loader.loadTestsFromModuleNames([
-        'bzrlib.tests.per_tree.test_annotate_iter',
-        'bzrlib.tests.per_tree.test_get_file_mtime',
-        'bzrlib.tests.per_tree.test_get_file_with_stat',
-        'bzrlib.tests.per_tree.test_get_root_id',
-        'bzrlib.tests.per_tree.test_get_symlink_target',
-        'bzrlib.tests.per_tree.test_inv',
-        'bzrlib.tests.per_tree.test_iter_search_rules',
-        'bzrlib.tests.per_tree.test_list_files',
-        'bzrlib.tests.per_tree.test_path_content_summary',
-        'bzrlib.tests.per_tree.test_revision_tree',
-        'bzrlib.tests.per_tree.test_test_trees',
-        'bzrlib.tests.per_tree.test_tree',
-        'bzrlib.tests.per_tree.test_walkdirs',
-        ])
+    per_tree_mod_names = [
+        'annotate_iter',
+        'get_file_mtime',
+        'get_file_with_stat',
+        'get_root_id',
+        'get_symlink_target',
+        'inv',
+        'iter_search_rules',
+        'list_files',
+        'path_content_summary',
+        'revision_tree',
+        'test_trees',
+        'tree',
+        'walkdirs',
+        ]
+    submod_tests = loader.loadTestsFromModuleNames(
+        ['bzrlib.tests.per_tree.test_' + name
+         for name in per_tree_mod_names])
     scenarios = make_scenarios(
         tests.default_transport,
         # None here will cause a readonly decorator to be created

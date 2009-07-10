@@ -43,8 +43,8 @@ from bzrlib.osutils import getcwd
 import bzrlib.revision
 from bzrlib.symbol_versioning import deprecated_in
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
-from bzrlib.tests.per_branch import TestCaseWithBranch
 from bzrlib.tests.http_server import HttpServer
+from bzrlib.tests.per_branch import TestCaseWithBranch
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryServer
