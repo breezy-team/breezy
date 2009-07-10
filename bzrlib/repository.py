@@ -4243,12 +4243,11 @@ class StreamSource(object):
             self.inventory_fetch_order(), delta_closure))
 
     def _get_convertable_inventory_stream(self, revision_ids, fulltexts=False):
-        # XXX
-        # XXX: One of source or target is using chks, and they don't have
-        #      compatible serializations. The StreamSink code expects to be
-        #      able to convert on the target, so we need to put
-        #      bytes-on-the-wire that can be converted.  That means either
-        #      inventory deltas (if the remote is >= 1.17), or else fulltexts.
+        # The source is using CHKs, but the target either doesn't or is has a
+        # different serializer.  The StreamSink code expects to be able to
+        # convert on the target, so we need to put bytes-on-the-wire that can
+        # be converted.  That means inventory deltas (if the remote is <1.17,
+        # RemoteStreamSink will fallback to VFS to insert the deltas).
         yield ('inventories',
            self._stream_invs_as_deltas(revision_ids, fulltexts=fulltexts))
 
