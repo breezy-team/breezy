@@ -161,7 +161,8 @@ class BranchBuilder(object):
         self._tree = None
 
     def build_snapshot(self, revision_id, parent_ids, actions,
-        message=None, timestamp=None, allow_leftmost_as_ghost=False):
+        message=None, timestamp=None, allow_leftmost_as_ghost=False,
+        committer=None):
         """Build a commit, shaped in a specific way.
 
         :param revision_id: The handle for the new commit, can be None
@@ -176,6 +177,7 @@ class BranchBuilder(object):
             commit message will be written.
         :param timestamp: If non-None, set the timestamp of the commit to this
             value.
+        :param committer: An optional username to use for commit
         :param allow_leftmost_as_ghost: True if the leftmost parent should be
             permitted to be a ghost.
         :return: The revision_id of the new commit
@@ -241,7 +243,7 @@ class BranchBuilder(object):
             for file_id, content in new_contents.iteritems():
                 tree.put_file_bytes_non_atomic(file_id, content)
             return self._do_commit(tree, message=message, rev_id=revision_id,
-                timestamp=timestamp)
+                timestamp=timestamp, committer=committer)
         finally:
             tree.unlock()
 

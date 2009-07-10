@@ -58,9 +58,6 @@ from bzrlib.inventory import (
     entry_factory,
     )
 from bzrlib import registry
-from bzrlib.symbol_versioning import (
-        deprecated_method,
-        )
 from bzrlib.trace import (
     log_exception_quietly, note, mutter, mutter_callsite, warning)
 
@@ -789,8 +786,8 @@ class CommitBuilder(object):
                         # references.
                         raise errors.UnsupportedOperation(tree.add_reference,
                             self.repository)
-                    entry.reference_revision = \
-                        tree.get_reference_revision(change[0])
+                    reference_revision = tree.get_reference_revision(change[0])
+                    entry.reference_revision = reference_revision
                     if (carry_over_possible and
                         parent_entry.reference_revision == reference_revision):
                         carried_over = True
@@ -1023,6 +1020,9 @@ class Repository(object):
     def add_inventory_by_delta(self, basis_revision_id, delta, new_revision_id,
                                parents, basis_inv=None, propagate_caches=False):
         """Add a new inventory expressed as a delta against another revision.
+
+        See the inventory developers documentation for the theory behind
+        inventory deltas.
 
         :param basis_revision_id: The inventory id the delta was created
             against. (This does not have to be a direct parent.)

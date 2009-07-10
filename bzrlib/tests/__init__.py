@@ -3007,7 +3007,7 @@ def reinvoke_for_tests(suite):
     """
     concurrency = osutils.local_concurrency()
     result = []
-    from subunit import TestProtocolClient, ProtocolTestCase
+    from subunit import ProtocolTestCase
     class TestInSubprocess(ProtocolTestCase):
         def __init__(self, process, name):
             ProtocolTestCase.__init__(self, process.stdout)
@@ -3344,6 +3344,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.per_repository',
                    'bzrlib.tests.per_repository_chk',
                    'bzrlib.tests.per_repository_reference',
+                   'bzrlib.tests.test__annotator',
                    'bzrlib.tests.test__chk_map',
                    'bzrlib.tests.test__dirstate_helpers',
                    'bzrlib.tests.test__groupcompress',
@@ -3508,6 +3509,8 @@ def test_suite(keep_only=None, starting_with=None):
 
     loader = TestUtil.TestLoader()
 
+    if keep_only is not None:
+        id_filter = TestIdList(keep_only)
     if starting_with:
         starting_with = [test_prefix_alias_registry.resolve_alias(start)
                          for start in starting_with]
@@ -3526,7 +3529,6 @@ def test_suite(keep_only=None, starting_with=None):
         loader = TestUtil.FilteredByModuleTestLoader(interesting_module)
 
     elif keep_only is not None:
-        id_filter = TestIdList(keep_only)
         loader = TestUtil.FilteredByModuleTestLoader(id_filter.refers_to)
         def interesting_module(name):
             return id_filter.refers_to(name)

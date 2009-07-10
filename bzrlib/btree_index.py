@@ -17,12 +17,8 @@
 
 """B+Tree indices"""
 
-import array
-import bisect
 from bisect import bisect_right
-from copy import deepcopy
 import math
-import struct
 import tempfile
 import zlib
 

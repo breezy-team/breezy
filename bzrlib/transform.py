@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -995,18 +995,15 @@ class DiskTreeTransform(TreeTransformBase):
                        self._new_contents.iteritems()]
             entries.sort(reverse=True)
             for path, trans_id, kind in entries:
-                if kind == "directory":
-                    os.rmdir(path)
-                else:
-                    os.unlink(path)
+                delete_any(path)
             try:
-                os.rmdir(self._limbodir)
+                delete_any(self._limbodir)
             except OSError:
                 # We don't especially care *why* the dir is immortal.
                 raise ImmortalLimbo(self._limbodir)
             try:
                 if self._deletiondir is not None:
-                    os.rmdir(self._deletiondir)
+                    delete_any(self._deletiondir)
             except OSError:
                 raise errors.ImmortalPendingDeletion(self._deletiondir)
         finally:
@@ -1965,6 +1962,13 @@ class _PreviewTree(tree.Tree):
             return old_annotation
         if not changed_content:
             return old_annotation
+        # TODO: This is doing something similar to what WT.annotate_iter is
+        #       doing, however it fails slightly because it doesn't know what
+        #       the *other* revision_id is, so it doesn't know how to give the
+        #       other as the origin for some lines, they all get
+        #       'default_revision'
+        #       It would be nice to be able to use the new Annotator based
+        #       approach, as well.
         return annotate.reannotate([old_annotation],
                                    self.get_file(file_id).readlines(),
                                    default_revision)
