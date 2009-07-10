@@ -199,6 +199,7 @@ class TestReconfigureStacking(tests.TestCaseWithTransport):
 
         See discussion in <https://bugs.edge.launchpad.net/bzr/+bug/391411>
         """
+        # there are also per_branch tests that exercise remote operation etc
         tree_1 = self.make_branch_and_tree('b1', format='2a')
         self.build_tree(['b1/foo'])
         tree_1.add(['foo'])
@@ -229,6 +230,5 @@ class TestReconfigureStacking(tests.TestCaseWithTransport):
             branch_2.get_stacked_on_url)
 
     # XXX: Needs a test for reconfiguring stacking and shape at the same time;
-    # no branch at location; stacked-on is not a branch; quiet mode;
-    # operation over hpss; operation over ssh
+    # no branch at location; stacked-on is not a branch; quiet mode.
     # -- mbp 20090706
