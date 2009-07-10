@@ -3414,6 +3414,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_knit',
                    'bzrlib.tests.test_lazy_import',
                    'bzrlib.tests.test_lazy_regex',
+                   'bzrlib.tests.test_lock',
                    'bzrlib.tests.test_lockable_files',
                    'bzrlib.tests.test_lockdir',
                    'bzrlib.tests.test_log',

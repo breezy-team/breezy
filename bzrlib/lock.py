@@ -399,15 +399,15 @@ if have_ctypes_win32:
             DWORD,                 # dwFlagsAndAttributes
             HANDLE                 # hTemplateFile
         )((_function_name, ctypes.windll.kernel32))
-    
+
     INVALID_HANDLE_VALUE = -1
-    
+
     GENERIC_READ = 0x80000000
     GENERIC_WRITE = 0x40000000
     FILE_SHARE_READ = 1
     OPEN_ALWAYS = 4
     FILE_ATTRIBUTE_NORMAL = 128
-    
+
     ERROR_ACCESS_DENIED = 5
     ERROR_SHARING_VIOLATION = 32
 
