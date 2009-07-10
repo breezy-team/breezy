@@ -826,6 +826,7 @@ class DistributionBranchTests(tests.TestCaseWithTransport):
         self.assertEqual(len(self.tree2.branch.revision_history()), 3)
 
     def test_import_package_init_upstream_from_other(self):
+        self.requireFeature(PristineTarFeature)
         version1 = Version("0.1-1")
         version2 = Version("0.1-2")
         builder = SourcePackageBuilder("package", version1)
@@ -1358,6 +1359,7 @@ class DistributionBranchTests(tests.TestCaseWithTransport):
         # are used in the second non-native upstream
 
     def test_merge_upstream_branches(self):
+        self.requireFeature(PristineTarFeature)
         version1 = Version("1.0-1")
         version2 = Version("1.1-1")
         version3 = Version("1.2-1")
@@ -1395,6 +1397,7 @@ class DistributionBranchTests(tests.TestCaseWithTransport):
 
     def test_import_symlink(self):
         version = Version("1.0-1")
+        self.requireFeature(PristineTarFeature)
         self.requireFeature(tests.SymlinkFeature)
         builder = SourcePackageBuilder("package", version)
         builder.add_default_control()
