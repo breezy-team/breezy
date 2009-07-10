@@ -37,8 +37,10 @@ unlock() method.
 import errno
 import os
 import sys
+import warnings
 
 from bzrlib import (
+    debug,
     errors,
     osutils,
     trace,
@@ -84,6 +86,23 @@ class LockResult(object):
     def __repr__(self):
         return '%s(%s%s)' % (self.__class__.__name__,
                              self.lock_url, self.details)
+
+
+def cant_unlock_not_held(locked_object):
+    """An attempt to unlock failed because the object was not locked.
+
+    This provides a policy point from which we can generate either a warning 
+    or an exception.
+    """
+    # This is typically masking some other error and called from a finally
+    # block, so it's useful to have tho option not to generate a new error
+    # here.  You can use -Werror to make it fatal.  It should possibly also
+    # raise LockNotHeld.
+    if 'no_unlock_errors' in debug.debug_flags or True:
+        warnings.warn("%r is already unlocked" % (locked_object,),
+            stacklevel=3)
+    else:
+        raise errors.LockNotHeld(locked_object)
 
 
 try:

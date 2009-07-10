@@ -1030,11 +1030,7 @@ class RemoteRepository(_RpcHelper, repository.RepositoryBase):
 
     def unlock(self):
         if not self._lock_count:
-            # This is typically masking some other error; use -Werror to make
-            # it fatal
-            warnings.warn("%r is already unlocked" % (self,),
-                stacklevel=2)
-            return
+            return lock.cant_unlock_not_held(self)
         self._lock_count -= 1
         if self._lock_count > 0:
             return
