@@ -42,21 +42,73 @@ class TestOSLock(tests.TestCaseInTempDir):
     read_lock = None
     write_lock = None
 
-    def test_create_read_lock(self):
+    def setUp(self):
+        super(TestOSLock, self).setUp()
         self.build_tree(['a-lock-file'])
-        lock = self.read_lock('a-lock-file')
-        lock.unlock()
+
+    def test_create_read_lock(self):
+        r_lock = self.read_lock('a-lock-file')
+        r_lock.unlock()
 
     def test_create_write_lock(self):
-        self.build_tree(['a-lock-file'])
-        lock = self.write_lock('a-lock-file')
-        lock.unlock()
+        w_lock = self.write_lock('a-lock-file')
+        w_lock.unlock()
+
+    def test_read_locks_share(self):
+        r_lock = self.read_lock('a-lock-file')
+        try:
+            lock2 = self.read_lock('a-lock-file')
+            lock2.unlock()
+        finally:
+            r_lock.unlock()
 
     def test_write_locks_are_exclusive(self):
-        self.build_tree(['a-lock-file'])
-        lock = self.write_lock('a-lock-file')
+        w_lock = self.write_lock('a-lock-file')
         try:
             self.assertRaises(errors.LockContention,
                               self.write_lock, 'a-lock-file')
         finally:
-            lock.unlock()
+            w_lock.unlock()
+
+    def test_read_locks_block_write_locks(self):
+        r_lock = self.read_lock('a-lock-file')
+        try:
+            self.assertRaises(errors.LockContention,
+                              self.write_lock, 'a-lock-file')
+        finally:
+            r_lock.unlock()
+
+    def test_temporary_write_lock(self):
+        r_lock = self.read_lock('a-lock-file')
+        try:
+            status, w_lock = r_lock.temporary_write_lock()
+            self.assertTrue(status)
+            # This should block another write lock
+            try:
+                self.assertRaises(errors.LockContention,
+                                  self.write_lock, 'a-lock-file')
+            finally:
+                r_lock = w_lock.restore_read_lock()
+            # We should be able to take a read lock now
+            r_lock2 = self.read_lock('a-lock-file')
+            r_lock2.unlock()
+        finally:
+            r_lock.unlock()
+
+    def test_temporary_write_lock_fails(self):
+        r_lock = self.read_lock('a-lock-file')
+        try:
+            r_lock2 = self.read_lock('a-lock-file')
+            try:
+                status, w_lock = r_lock.temporary_write_lock()
+                self.assertFalse(status)
+                # Taking out the lock requires unlocking and locking again, so
+                # we have to replace the original object
+                r_lock = w_lock
+            finally:
+                r_lock2.unlock()
+            # We should be able to take a read lock now
+            r_lock2 = self.read_lock('a-lock-file')
+            r_lock2.unlock()
+        finally:
+            r_lock.unlock()
