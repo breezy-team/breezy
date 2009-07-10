@@ -28,6 +28,7 @@ from bzrlib import (
     debug,
     errors,
     graph,
+    lock,
     lockdir,
     repository,
     revision,
