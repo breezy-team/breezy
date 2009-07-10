@@ -1401,7 +1401,9 @@ class DirState(object):
         # inventory entries to dirstate.
         root_only = ('', '')
         # Accumulate parent references (path and id), to check for parentless
-        # items or items placed under files/links/tree-references.
+        # items or items placed under files/links/tree-references. We get
+        # references from every item in the delta that is not a deletion and
+        # is not itself the root.
         parents = set()
         for old_path, new_path, file_id, inv_entry in delta:
             if inv_entry is not None and file_id != inv_entry.file_id:
@@ -1410,9 +1412,9 @@ class DirState(object):
             if new_path is not None:
                 new_path_utf8 = encode(new_path)
                 # note the parent for validation
-                dirname, basename = osutils.split(new_path_utf8)
-                if basename:
-                    parents.add((dirname, inv_entry.parent_id))
+                dirname_utf8, basename_utf8 = osutils.split(new_path_utf8)
+                if basename_utf8:
+                    parents.add((dirname_utf8, inv_entry.parent_id))
             if old_path is None:
                 adds.append((None, encode(new_path), file_id,
                     inv_to_entry(inv_entry), True))
@@ -1600,19 +1602,19 @@ class DirState(object):
 
     def _update_basis_check_parents(self, parents):
         """Check that parents required by the delta are all intact."""
-        for dirname, file_id in parents:
-            # Get the entry - the ensures that file_id, dirname exists and has
-            # the right file id.
-            entry = self._get_entry(1, file_id, dirname)
+        for dirname_utf8, file_id in parents:
+            # Get the entry - the ensures that file_id, dirname_utf8 exists and
+            # has the right file id.
+            entry = self._get_entry(1, file_id, dirname_utf8)
             if entry[1] is None:
                 self._changes_aborted = True
-                raise errors.InconsistentDelta(dirname.decode('utf8'), file_id,
-                    "This parent is not present.")
+                raise errors.InconsistentDelta(dirname_utf8.decode('utf8'),
+                    file_id, "This parent is not present.")
             # Parents of things must be directories
             if entry[1][1][0] != 'd':
                 self._changes_aborted = True
-                raise errors.InconsistentDelta(dirname.decode('utf8'), file_id,
-                    "This parent is not a directory.")
+                raise errors.InconsistentDelta(dirname_utf8.decode('utf8'),
+                    file_id, "This parent is not a directory.")
 
     def _observed_sha1(self, entry, sha1, stat_value,
         _stat_to_minikind=_stat_to_minikind, _pack_stat=pack_stat):
