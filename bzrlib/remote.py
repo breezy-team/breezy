@@ -1238,8 +1238,7 @@ class RemoteRepository(_RpcHelper, repository.RepositoryBase):
         # fast path same-url fetch operations
         if (self.has_same_location(source)
             and fetch_spec is None
-            and ([f._transport.base for f in self._fallback_repositories]
-                 == [f._transport.base for f in source._fallback_repositories])):
+            and self.has_same_fallbacks(source)):
             # check that last_revision is in 'from' and then return a
             # no-operation.
             if (revision_id is not None and

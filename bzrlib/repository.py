@@ -857,6 +857,16 @@ class RepositoryBase(object):
     foreign, etc.
     """
 
+    def has_same_fallbacks(self, other_repo):
+        my_fb = self._fallback_repositories
+        other_fb = other_repo._fallback_repositories
+        if len(my_fb) != len(other_fb):
+            return False
+        for f, g in zip(my_fb, other_fb):
+            if not f.has_same_location(g):
+                return False
+        return True
+
 
 class Repository(RepositoryBase):
     """Repository holding history for one or more branches.
@@ -1546,9 +1556,9 @@ class Repository(RepositoryBase):
                 "May not fetch while in a write group.")
         # fast path same-url fetch operations
         # TODO: lift out to somewhere common with RemoteRepository
-        if (self.has_same_location(source) and fetch_spec is None
-            and ([f._transport.base for f in self._fallback_repositories]
-                 == [f._transport.base for f in source._fallback_repositories])):
+        if (self.has_same_location(source)
+            and fetch_spec is None
+            and self.has_same_fallbacks(source)):
             # check that last_revision is in 'from' and then return a
             # no-operation.
             if (revision_id is not None and
