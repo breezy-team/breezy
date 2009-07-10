@@ -1407,12 +1407,15 @@ class DirState(object):
             if inv_entry is not None and file_id != inv_entry.file_id:
                 raise errors.InconsistentDelta(new_path, file_id,
                     "mismatched entry file_id %r" % inv_entry)
+            if new_path is not None:
+                new_path_utf8 = encode(new_path)
+                # note the parent for validation
+                dirname, basename = osutils.split(new_path_utf8)
+                if basename:
+                    parents.add((dirname, inv_entry.parent_id))
             if old_path is None:
                 adds.append((None, encode(new_path), file_id,
                     inv_to_entry(inv_entry), True))
-                # note the parent for validation
-                dirname, basename = osutils.split(new_path)
-                parents.add((dirname, inv_entry.parent_id))
             elif new_path is None:
                 deletes.append((encode(old_path), None, file_id, None, True))
             elif (old_path, new_path) != root_only:
@@ -1430,7 +1433,6 @@ class DirState(object):
                 # for 'r' items on every pass.
                 self._update_basis_apply_deletes(deletes)
                 deletes = []
-                new_path_utf8 = encode(new_path)
                 # Split into an add/delete pair recursively.
                 adds.append((None, new_path_utf8, file_id,
                     inv_to_entry(inv_entry), False))

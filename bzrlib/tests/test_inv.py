@@ -246,7 +246,7 @@ class TestDeltaApplication(TestCaseWithTransport):
         file2.revision = 'result'
         file2.text_size = 0
         file2.text_sha1 = ""
-        delta = [(None, 'path1', 'id', file1), (None, 'path2', 'id', file2)]
+        delta = [(None, u'path1', 'id', file1), (None, u'path2', 'id', file2)]
         self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
             inv, delta)
 
@@ -260,7 +260,7 @@ class TestDeltaApplication(TestCaseWithTransport):
         file2.revision = 'result'
         file2.text_size = 0
         file2.text_sha1 = ""
-        delta = [(None, 'path', 'id1', file1), (None, 'path', 'id2', file2)]
+        delta = [(None, u'path', 'id1', file1), (None, u'path', 'id2', file2)]
         self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
             inv, delta)
 
@@ -282,7 +282,7 @@ class TestDeltaApplication(TestCaseWithTransport):
         file2.text_sha1 = ""
         inv.add(file1)
         inv.add(file2)
-        delta = [('path', None, 'id1', None), ('path', None, 'id2', None)]
+        delta = [(u'path', None, 'id1', None), (u'path', None, 'id2', None)]
         self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
             inv, delta)
 
@@ -292,7 +292,7 @@ class TestDeltaApplication(TestCaseWithTransport):
         file1.revision = 'result'
         file1.text_size = 0
         file1.text_sha1 = ""
-        delta = [(None, 'path', 'id', file1)]
+        delta = [(None, u'path', 'id', file1)]
         self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
             inv, delta)
 
@@ -307,7 +307,7 @@ class TestDeltaApplication(TestCaseWithTransport):
         file2.text_size = 0
         file2.text_sha1 = ""
         inv.add(file1)
-        delta = [(None, 'path/path2', 'id2', file2)]
+        delta = [(None, u'path/path2', 'id2', file2)]
         self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
             inv, delta)
 
@@ -317,7 +317,7 @@ class TestDeltaApplication(TestCaseWithTransport):
         file2.revision = 'result'
         file2.text_size = 0
         file2.text_sha1 = ""
-        delta = [(None, 'path/path2', 'id2', file2)]
+        delta = [(None, u'path/path2', 'id2', file2)]
         self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
             inv, delta)
 
