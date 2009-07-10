@@ -98,7 +98,7 @@ def cant_unlock_not_held(locked_object):
     # block, so it's useful to have tho option not to generate a new error
     # here.  You can use -Werror to make it fatal.  It should possibly also
     # raise LockNotHeld.
-    if 'no_unlock_errors' in debug.debug_flags or True:
+    if 'unlock' in debug.debug_flags:
         warnings.warn("%r is already unlocked" % (locked_object,),
             stacklevel=3)
     else:

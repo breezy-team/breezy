@@ -22,5 +22,6 @@ prefix) put in the ``debug_flags`` variable in ``bazaar.conf``.
 -Dknit            Trace knit operations.
 -Dlock            Trace when lockdir locks are taken or released.
 -Dmerge           Emit information for debugging merges.
+-Dunlock	  Some errors during unlock are treated as warnings.
 -Dpack            Emit information about pack operations.
 -Dsftp            Trace SFTP internals.
