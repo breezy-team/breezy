@@ -5293,7 +5293,7 @@ class cmd_reconfigure(Command):
             if stacked_on or unstacked:
                 return
             else:
-                raise errors.BzrCommandError('No target configuration'
+                raise errors.BzrCommandError('No target configuration '
                     'specified')
         elif target_type == 'branch':
             reconfiguration = reconfigure.Reconfigure.to_branch(directory)
