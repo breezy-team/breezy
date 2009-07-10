@@ -848,7 +848,17 @@ class RootCommitBuilder(CommitBuilder):
 ######################################################################
 # Repositories
 
-class Repository(object):
+
+class RepositoryBase(object):
+    """Minimal base class for repositories.
+
+    This class contains common methods for repository implementations, but 
+    makes minimal assumptions about how they're implemented: native, remote,
+    foreign, etc.
+    """
+
+
+class Repository(RepositoryBase):
     """Repository holding history for one or more branches.
 
     The repository holds and retrieves historical information including

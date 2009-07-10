@@ -578,7 +578,7 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
         return self._custom_format._serializer
 
 
-class RemoteRepository(_RpcHelper):
+class RemoteRepository(_RpcHelper, repository.RepositoryBase):
     """Repository accessed over rpc.
 
     For the moment most operations are performed using local transport-backed
