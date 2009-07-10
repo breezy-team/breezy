@@ -58,6 +58,9 @@ Bug Fixes
 * Avoid progress bar artifacts being left behind on the screen.
   (Martin Pool, #321935)
 
+* BranchBuilder now accepts timezone to avoid test failures in countries far
+  from GMT. (Vincent Ladeuil, #397716)
+
 * Better message in ``bzr split`` error suggesting a rich root format.
   (Neil Martinsen-Burrell, #220067)
 
