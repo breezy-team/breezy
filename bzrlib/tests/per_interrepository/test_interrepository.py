@@ -33,7 +33,7 @@ from bzrlib.tests import (
     TestNotApplicable,
     TestSkipped,
     )
-from bzrlib.tests.interrepository_implementations import (
+from bzrlib.tests.per_interrepository import (
     TestCaseWithInterRepository,
     )
 

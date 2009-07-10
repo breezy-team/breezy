@@ -22,7 +22,7 @@
 These test the conformance of all the interrepository variations to the
 expected API including generally applicable corner cases.
 Specific tests for individual formats are in the tests/test_repository.py file
-rather than in tests/interrepository_implementations/*.py.
+rather than in tests/per_interrepository/*.py.
 """
 
 
@@ -152,8 +152,8 @@ class TestCaseWithInterRepository(TestCaseWithBzrDir):
 
 def load_tests(standard_tests, module, loader):
     submod_tests = loader.loadTestsFromModuleNames([
-        'bzrlib.tests.interrepository_implementations.test_fetch',
-        'bzrlib.tests.interrepository_implementations.test_interrepository',
+        'bzrlib.tests.per_interrepository.test_fetch',
+        'bzrlib.tests.per_interrepository.test_interrepository',
         ])
     scenarios = make_scenarios(
         default_transport,

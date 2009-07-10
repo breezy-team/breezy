@@ -293,7 +293,7 @@ class TestInterRepositoryScenarios(tests.TestCase):
     def test_scenarios(self):
         # check that constructor parameters are passed through to the adapted
         # test.
-        from bzrlib.tests.interrepository_implementations import \
+        from bzrlib.tests.per_interrepository import \
             make_scenarios
         server1 = "a"
         server2 = "b"

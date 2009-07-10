@@ -35,10 +35,10 @@ from bzrlib.revision import (
 from bzrlib.tests import (
     TestNotApplicable,
     )
-from bzrlib.tests.interrepository_implementations import (
+from bzrlib.tests.per_interrepository import (
     TestCaseWithInterRepository,
     )
-from bzrlib.tests.interrepository_implementations.test_interrepository import (
+from bzrlib.tests.per_interrepository.test_interrepository import (
     check_repo_format_for_funky_id_on_win32
     )
 
