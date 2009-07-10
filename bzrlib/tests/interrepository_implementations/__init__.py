@@ -40,7 +40,7 @@ from bzrlib.tests import (
                           default_transport,
                           multiply_tests,
                           )
-from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
+from bzrlib.tests.per_bzrdir.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.transport import get_transport
 
 

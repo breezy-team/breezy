@@ -3334,7 +3334,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.doc',
                    'bzrlib.tests.blackbox',
                    'bzrlib.tests.per_branch',
-                   'bzrlib.tests.bzrdir_implementations',
+                   'bzrlib.tests.per_bzrdir',
                    'bzrlib.tests.commands',
                    'bzrlib.tests.interrepository_implementations',
                    'bzrlib.tests.intertree_implementations',

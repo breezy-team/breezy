@@ -32,7 +32,7 @@ from bzrlib import (
     tests,
     transform,
     )
-from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
+from bzrlib.tests.per_bzrdir.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.tests.workingtree_implementations import (
     make_scenarios as wt_make_scenarios,
     make_scenario as wt_make_scenario,

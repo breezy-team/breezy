@@ -43,7 +43,7 @@ from bzrlib.tests import (
                           multiply_scenarios,
                           multiply_tests,
                           )
-from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
+from bzrlib.tests.per_bzrdir.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.transport.memory import MemoryServer
 
 

@@ -38,7 +38,7 @@ from bzrlib.smart.server import (
     SmartTCPServer_for_testing,
     SmartTCPServer_for_testing_v2_only,
     )
-from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
+from bzrlib.tests.per_bzrdir.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.transport.memory import MemoryServer
 
 
