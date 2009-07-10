@@ -78,6 +78,15 @@ class TestOSLock(tests.TestCaseInTempDir):
         finally:
             r_lock.unlock()
 
+    def test_write_locks_block_read_lock(self):
+        w_lock = self.write_lock('a-lock-file')
+        try:
+            self.assertRaises(errors.LockContention,
+                              self.read_lock, 'a-lock-file')
+        finally:
+            w_lock.unlock()
+
+
     def test_temporary_write_lock(self):
         r_lock = self.read_lock('a-lock-file')
         try:
