@@ -712,7 +712,19 @@ class TreeReference(InventoryEntry):
 
 
 class CommonInventory(object):
-    """Basic inventory logic, defined in terms of primitives like has_id."""
+    """Basic inventory logic, defined in terms of primitives like has_id.
+
+    An inventory is the metadata about the contents of a tree.
+
+    This is broadly a map from file_id to entries such as directories, files,
+    symlinks and tree references. Each entry maintains its own metadata like
+    SHA1 and length for files, or children for a directory.
+
+    Entries can be looked up either by path or by file_id.
+
+    InventoryEntry objects must not be modified after they are
+    inserted, other than through the Inventory API.
+    """
 
     def __contains__(self, file_id):
         """True if this entry contains a file with given id.
@@ -1019,21 +1031,12 @@ class CommonInventory(object):
 
 
 class Inventory(CommonInventory):
-    """Inventory of versioned files in a tree.
+    """Mutable dict based in-memory inventory.
 
-    This describes which file_id is present at each point in the tree,
-    and possibly the SHA-1 or other information about the file.
-    Entries can be looked up either by path or by file_id.
-
-    The inventory represents a typical unix file tree, with
-    directories containing files and subdirectories.  We never store
-    the full path to a file, because renaming a directory implicitly
-    moves all of its contents.  This class internally maintains a
+    We never store the full path to a file, because renaming a directory
+    implicitly moves all of its contents.  This class internally maintains a
     lookup tree that allows the children under a directory to be
     returned quickly.
-
-    InventoryEntry objects must not be modified after they are
-    inserted, other than through the Inventory API.
 
     >>> inv = Inventory()
     >>> inv.add(InventoryFile('123-123', 'hello.c', ROOT_ID))
@@ -1041,24 +1044,19 @@ class Inventory(CommonInventory):
     >>> inv['123-123'].name
     'hello.c'
 
-    May be treated as an iterator or set to look up file ids:
+    Id's may be looked up from paths:
 
-    >>> bool(inv.path2id('hello.c'))
-    True
+    >>> inv.path2id('hello.c')
+    '123-123'
     >>> '123-123' in inv
     True
 
-    May also look up by name:
+    There are iterators over the contents:
 
-    >>> [x[0] for x in inv.iter_entries()]
+    >>> [entry[0] for entry in inv.iter_entries()]
     ['', u'hello.c']
-    >>> inv = Inventory('TREE_ROOT-12345678-12345678')
-    >>> inv.add(InventoryFile('123-123', 'hello.c', ROOT_ID))
-    Traceback (most recent call last):
-    BzrError: parent_id {TREE_ROOT} not in inventory
-    >>> inv.add(InventoryFile('123-123', 'hello.c', 'TREE_ROOT-12345678-12345678'))
-    InventoryFile('123-123', 'hello.c', parent_id='TREE_ROOT-12345678-12345678', sha1=None, len=None, revision=None)
     """
+
     def __init__(self, root_id=ROOT_ID, revision_id=None):
         """Create or read an inventory.
 
@@ -1680,6 +1678,7 @@ class CHKInventory(CommonInventory):
         result.id_to_entry.apply_delta(id_to_entry_delta)
         if parent_id_basename_delta:
             result.parent_id_basename_to_file_id.apply_delta(parent_id_basename_delta)
+        parents.discard(None)
         for parent in parents:
             try:
                 if result[parent].kind != 'directory':

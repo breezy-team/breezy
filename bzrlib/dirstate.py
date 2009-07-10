@@ -1459,9 +1459,6 @@ class DirState(object):
                         (source_path, target_path, entry[0][2], None, False))
                 deletes.append(
                     (encode(old_path), new_path, file_id, None, False))
-                # note the parent for validation
-                dirname, basename = osutils.split(new_path)
-                parents.add((dirname, inv_entry.parent_id))
             else:
                 # changes to just the root should not require remove/insertion
                 # of everything.
@@ -1609,12 +1606,12 @@ class DirState(object):
             entry = self._get_entry(1, file_id, dirname)
             if entry[1] is None:
                 self._changes_aborted = True
-                raise errors.InconsistentDelta(dirname, file_id,
+                raise errors.InconsistentDelta(dirname.decode('utf8'), file_id,
                     "This parent is not present.")
             # Parents of things must be directories
             if entry[1][1][0] != 'd':
                 self._changes_aborted = True
-                raise errors.InconsistentDelta(dirname, file_id,
+                raise errors.InconsistentDelta(dirname.decode('utf8'), file_id,
                     "This parent is not a directory.")
 
     def _observed_sha1(self, entry, sha1, stat_value,
@@ -1865,7 +1862,7 @@ class DirState(object):
         self._read_dirblocks_if_needed()
         if path_utf8 is not None:
             if type(path_utf8) is not str:
-                raise AssertionError('path_utf8 is not a str: %s %s'
+                raise errors.BzrError('path_utf8 is not a str: %s %r'
                     % (type(path_utf8), path_utf8))
             # path lookups are faster
             dirname, basename = osutils.split(path_utf8)
