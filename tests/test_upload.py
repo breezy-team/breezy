@@ -33,8 +33,8 @@ from bzrlib import (
 from bzrlib.smart import server as smart_server
 
 from bzrlib.tests import (
-    test_transport_implementations,
-    branch_implementations,
+    per_branch,
+    per_transport,
     )
 
 
@@ -48,7 +48,7 @@ from bzrlib.plugins.upload import (
 
 def get_transport_scenarios():
     result = []
-    basis = test_transport_implementations.transport_test_permutations()
+    basis = per_transport.transport_test_permutations()
     # Keep only the interesting ones for upload
     for name, d in basis:
         t_class = d['transport_class']
@@ -97,7 +97,7 @@ def load_tests(standard_tests, module, loader):
         remaining_tests, tests.condition_isinstance((
                 TestBranchUploadLocations,
                 )))
-    tests.multiply_tests(b_tests, branch_implementations.branch_scenarios(),
+    tests.multiply_tests(b_tests, per_branch.branch_scenarios(),
                          result)
 
     # No parametrization for the remaining tests
@@ -539,7 +539,7 @@ class TestIncrementalUpload(tests.TestCaseWithTransport, TestUploadMixin):
         self.assertUpFileEqual('bar', 'hello')
 
 
-class TestBranchUploadLocations(branch_implementations.TestCaseWithBranch):
+class TestBranchUploadLocations(per_branch.TestCaseWithBranch):
 
     def test_get_upload_location_unset(self):
         config = self.get_branch().get_config()
@@ -587,7 +587,7 @@ class TestUploadFromRemoteBranch(tests.TestCaseWithTransport,
         upload = self._get_cmd_upload()
         up_url = self.get_url(self.branch_dir)
         # Let's try to upload from the just created remote branch into the
-        # branch (with has a working tree).
+        # branch (which has a working tree).
         self.assertRaises(CannotUploadToWorkingTreeError,
                           upload.run, up_url, directory=remote_branch_url)
 
