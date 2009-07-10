@@ -120,7 +120,7 @@ class TestTransportScenarios(tests.TestCase):
             def get_test_permutations(self):
                 return sample_permutation
         sample_permutation = [(1,2), (3,4)]
-        from bzrlib.tests.test_transport_implementations \
+        from bzrlib.tests.per_transport \
             import get_transport_test_permutations
         self.assertEqual(sample_permutation,
                          get_transport_test_permutations(MockModule()))
@@ -130,7 +130,7 @@ class TestTransportScenarios(tests.TestCase):
         # as there are in all the registered transport modules - we assume if
         # this matches its probably doing the right thing especially in
         # combination with the tests for setting the right classes below.
-        from bzrlib.tests.test_transport_implementations \
+        from bzrlib.tests.per_transport \
             import transport_test_permutations
         from bzrlib.transport import _get_transport_modules
         modules = _get_transport_modules()
@@ -149,7 +149,7 @@ class TestTransportScenarios(tests.TestCase):
         # This test used to know about all the possible transports and the
         # order they were returned but that seems overly brittle (mbp
         # 20060307)
-        from bzrlib.tests.test_transport_implementations \
+        from bzrlib.tests.per_transport \
             import transport_test_permutations
         scenarios = transport_test_permutations()
         # there are at least that many builtin transports
@@ -320,7 +320,7 @@ class TestWorkingTreeScenarios(tests.TestCase):
     def test_scenarios(self):
         # check that constructor parameters are passed through to the adapted
         # test.
-        from bzrlib.tests.workingtree_implementations \
+        from bzrlib.tests.per_workingtree \
             import make_scenarios
         server1 = "a"
         server2 = "b"
@@ -351,7 +351,7 @@ class TestTreeScenarios(tests.TestCase):
         # workingtree_to_test_tree attribute set to 'return_parameter' and the
         # revision one set to revision_tree_from_workingtree.
 
-        from bzrlib.tests.tree_implementations import (
+        from bzrlib.tests.per_tree import (
             _dirstate_tree_from_workingtree,
             make_scenarios,
             preview_tree_pre,
@@ -433,11 +433,11 @@ class TestInterTreeScenarios(tests.TestCase):
         # unlike the TestProviderAdapter we dont want to automatically add a
         # parameterized one for WorkingTree - the optimisers will tell us what
         # ones to add.
-        from bzrlib.tests.tree_implementations import (
+        from bzrlib.tests.per_tree import (
             return_parameter,
             revision_tree_from_workingtree
             )
-        from bzrlib.tests.intertree_implementations import (
+        from bzrlib.tests.per_intertree import (
             make_scenarios,
             )
         from bzrlib.workingtree import WorkingTreeFormat2, WorkingTreeFormat3
@@ -2205,8 +2205,8 @@ class TestTestSuite(tests.TestCase):
             'bzrlib.tests.blackbox.test_branch.TestBranch.test_branch',
             'bzrlib.tests.test_selftest.TestTestSuite.test_test_suite',
             # transport implementations
-            'bzrlib.tests.test_transport_implementations.TransportTests'
-            '.test_abspath(LocalURLServer)',
+            ('bzrlib.tests.per_transport.TransportTests'
+                '.test_abspath(LocalURLServer)'),
             # modules_to_doctest
             'bzrlib.timestamp.format_highres_date',
             # plugins can't be tested that way since selftest may be run with

@@ -131,7 +131,7 @@ class TestSprout(TestCaseWithBranch):
         # this tests bug #272444
         # Since the trigger function seems to be set_parent_trees, there exists
         # also a similar test, with name test_unicode_symlink, in class
-        # TestSetParents at file workingtree_implementations/test_parents.py
+        # TestSetParents at file per_workingtree/test_parents.py
         self.requireFeature(tests.SymlinkFeature)
         self.requireFeature(tests.UnicodeFilenameFeature)
 

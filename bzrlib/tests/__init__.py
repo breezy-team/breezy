@@ -3337,8 +3337,8 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.per_bzrdir',
                    'bzrlib.tests.commands',
                    'bzrlib.tests.per_interrepository',
-                   'bzrlib.tests.intertree_implementations',
-                   'bzrlib.tests.inventory_implementations',
+                   'bzrlib.tests.per_intertree',
+                   'bzrlib.tests.per_inventory',
                    'bzrlib.tests.per_interbranch',
                    'bzrlib.tests.per_lock',
                    'bzrlib.tests.per_repository',
@@ -3482,7 +3482,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_transactions',
                    'bzrlib.tests.test_transform',
                    'bzrlib.tests.test_transport',
-                   'bzrlib.tests.test_transport_implementations',
+                   'bzrlib.tests.per_transport',
                    'bzrlib.tests.test_transport_log',
                    'bzrlib.tests.test_tree',
                    'bzrlib.tests.test_treebuilder',
@@ -3503,8 +3503,8 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_workingtree_4',
                    'bzrlib.tests.test_wsgi',
                    'bzrlib.tests.test_xml',
-                   'bzrlib.tests.tree_implementations',
-                   'bzrlib.tests.workingtree_implementations',
+                   'bzrlib.tests.per_tree',
+                   'bzrlib.tests.per_workingtree',
                    ]
 
     loader = TestUtil.TestLoader()
