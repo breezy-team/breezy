@@ -927,6 +927,11 @@ class Repository(object):
         """
         if self._write_group is not self.get_transaction():
             # has an unlock or relock occured ?
+            if suppress_errors:
+                mutter(
+                '(suppressed) mismatched lock context and write group. %r, %r',
+                self._write_group, self.get_transaction())
+                return
             raise errors.BzrError(
                 'mismatched lock context and write group. %r, %r' %
                 (self._write_group, self.get_transaction()))
@@ -3932,7 +3937,6 @@ class StreamSink(object):
                 new_pack.set_write_cache_size(1024*1024)
         delta_deserializer = inventory_delta.InventoryDeltaSerializer()
         for substream_type, substream in stream:
-            mutter('=== sink got substream: %s', substream_type)
             if substream_type == 'texts':
                 self.target_repo.texts.insert_record_stream(substream)
             elif substream_type == 'inventories':
@@ -4009,8 +4013,6 @@ class StreamSink(object):
         target_rich_root = self.target_repo._format.rich_root_data
         target_tree_refs = self.target_repo._format.supports_tree_reference
         for record in substream:
-            mutter('_extract_and_insert_inventories: %r %s', record.key,
-                    record.storage_kind)
             if record.storage_kind == 'inventory-delta':
                 # Insert the delta directly
                 delta_tuple = record.get_bytes_as('inventory-delta')
@@ -4038,13 +4040,9 @@ class StreamSink(object):
 
     def _extract_and_insert_revisions(self, substream, serializer):
         for record in substream:
-            mutter('_extract_and_insert_revisions: %r %s', record.key,
-                    record.storage_kind)
             bytes = record.get_bytes_as('fulltext')
-            mutter('bytes: %r', bytes)
             revision_id = record.key[0]
             rev = serializer.read_revision_from_string(bytes)
-            mutter('rev: %r %r', rev, rev.__dict__)
             if rev.revision_id != revision_id:
                 raise AssertionError('wtf: %s != %s' % (rev, revision_id))
             self.target_repo.add_revision(revision_id, rev)
@@ -4214,14 +4212,9 @@ class StreamSource(object):
 
     def _get_inventory_stream(self, revision_ids, missing=False):
         from_format = self.from_repository._format
-        if (from_format.supports_chks and self.to_format.supports_chks
-            and (from_format._serializer == self.to_format._serializer)):
-            # Both sides support chks, and they use the same serializer, so it
-            # is safe to transmit the chk pages and inventory pages across
-            # as-is.
-            # XXX: does this case need to take 'missing' into account?
-            mutter('**** chk->chk, same serializer')
-            return self._get_chk_inventory_stream(revision_ids)
+        if (from_format.supports_chks and self.to_format.supports_chks):
+            raise AssertionError(
+                "this case should be handled by GroupCHKStreamSource")
         elif (not from_format.supports_chks):
             # Source repository doesn't support chks. So we can transmit the
             # inventories 'as-is' and either they are just accepted on the
@@ -4229,16 +4222,11 @@ class StreamSource(object):
             # (XXX: this assumes that all non-chk formats are understood as-is
             # by any Sink, but that presumably isn't true for foreign repo
             # formats added by bzr-svn etc?)
-            mutter('**** non-chk -> ...')
-            mutter('from: %r  to: %r', from_format, self.to_format)
-            mutter('from: %r  to: %r', from_format.network_name(),
-                    self.to_format.network_name())
             return self._get_simple_inventory_stream(revision_ids,
                     missing=missing)
         else:
             # Make chk->non-chk (and chk with different serializers) fetch:
             # copy the inventories as (format-neutral) inventory deltas.
-            mutter('**** chk -> non-chk / chk -> chk, diff serializer')
             return self._get_convertable_inventory_stream(revision_ids,
                     fulltexts=missing)
 
@@ -4253,72 +4241,6 @@ class StreamSource(object):
         yield ('inventories', from_weave.get_record_stream(
             [(rev_id,) for rev_id in revision_ids],
             self.inventory_fetch_order(), delta_closure))
-
-    def _get_chk_inventory_stream(self, revision_ids):
-        """Fetch the inventory texts, along with the associated chk maps."""
-        # We want an inventory outside of the search set, so that we can filter
-        # out uninteresting chk pages. For now we use
-        # _find_revision_outside_set, but if we had a Search with cut_revs, we
-        # could use that instead.
-        start_rev_id = self.from_repository._find_revision_outside_set(
-                            revision_ids)
-        start_rev_key = (start_rev_id,)
-        inv_keys_to_fetch = [(rev_id,) for rev_id in revision_ids]
-        if start_rev_id != _mod_revision.NULL_REVISION:
-            inv_keys_to_fetch.append((start_rev_id,))
-        # Any repo that supports chk_bytes must also support out-of-order
-        # insertion. At least, that is how we expect it to work
-        # We use get_record_stream instead of iter_inventories because we want
-        # to be able to insert the stream as well. We could instead fetch
-        # allowing deltas, and then iter_inventories, but we don't know whether
-        # source or target is more 'local' anway.
-        inv_stream = self.from_repository.inventories.get_record_stream(
-            inv_keys_to_fetch, 'unordered',
-            True) # We need them as full-texts so we can find their references
-        uninteresting_chk_roots = set()
-        interesting_chk_roots = set()
-        def filter_inv_stream(inv_stream):
-            for idx, record in enumerate(inv_stream):
-                ### child_pb.update('fetch inv', idx, len(inv_keys_to_fetch))
-                bytes = record.get_bytes_as('fulltext')
-                chk_inv = inventory.CHKInventory.deserialise(
-                    self.from_repository.chk_bytes, bytes, record.key)
-                if record.key == start_rev_key:
-                    uninteresting_chk_roots.add(chk_inv.id_to_entry.key())
-                    p_id_map = chk_inv.parent_id_basename_to_file_id
-                    if p_id_map is not None:
-                        uninteresting_chk_roots.add(p_id_map.key())
-                else:
-                    yield record
-                    interesting_chk_roots.add(chk_inv.id_to_entry.key())
-                    p_id_map = chk_inv.parent_id_basename_to_file_id
-                    if p_id_map is not None:
-                        interesting_chk_roots.add(p_id_map.key())
-        ### pb.update('fetch inventory', 0, 2)
-        yield ('inventories', filter_inv_stream(inv_stream))
-        # Now that we have worked out all of the interesting root nodes, grab
-        # all of the interesting pages and insert them
-        ### pb.update('fetch inventory', 1, 2)
-        interesting = chk_map.iter_interesting_nodes(
-            self.from_repository.chk_bytes, interesting_chk_roots,
-            uninteresting_chk_roots)
-        def to_stream_adapter():
-            """Adapt the iter_interesting_nodes result to a single stream.
-
-            iter_interesting_nodes returns records as it processes them, along
-            with keys. However, we only want to return the records themselves.
-            """
-            for record, items in interesting:
-                if record is not None:
-                    yield record
-        # XXX: We could instead call get_record_stream(records.keys())
-        #      ATM, this will always insert the records as fulltexts, and
-        #      requires that you can hang on to records once you have gone
-        #      on to the next one. Further, it causes the target to
-        #      recompress the data. Testing shows it to be faster than
-        #      requesting the records again, though.
-        yield ('chk_bytes', to_stream_adapter())
-        ### pb.update('fetch inventory', 2, 2)
 
     def _get_convertable_inventory_stream(self, revision_ids, fulltexts=False):
         # XXX
@@ -4343,6 +4265,7 @@ class StreamSource(object):
         # a non-rich-root repo ought to be allowed)
         format = from_repo._format
         flags = (format.rich_root_data, format.supports_tree_reference)
+        invs_sent_so_far = set([_mod_revision.NULL_REVISION])
         for inv in inventories:
             key = (inv.revision_id,)
             parents = parent_map.get(key, ())
@@ -4356,15 +4279,24 @@ class StreamSource(object):
                 # Make a delta against each parent so that we can find the
                 # smallest.
                 best_delta = None
-                for parent_key in parents:
-                    parent_id = parent_key[0]
-                    parent_inv = from_repo.get_inventory(parent_id)
+                parent_ids = [parent_key[0] for parent_key in parents]
+                parent_ids.append(_mod_revision.NULL_REVISION)
+                for parent_id in parent_ids:
+                    if parent_id not in invs_sent_so_far:
+                        # We don't know that the remote side has this basis, so
+                        # we can't use it.
+                        continue
+                    if parent_id == _mod_revision.NULL_REVISION:
+                        parent_inv = Inventory(None)
+                    else:
+                        parent_inv = from_repo.get_inventory(parent_id)
                     candidate_delta = inv._make_delta(parent_inv)
                     if (best_delta is None or
                         len(best_delta) > len(candidate_delta)):
                         best_delta = candidate_delta
                         basis_id = parent_id
                 delta = best_delta
+            invs_sent_so_far.add(basis_id)
             yield versionedfile.InventoryDeltaContentFactory(
                 key, parents, None, delta, basis_id, flags)
 

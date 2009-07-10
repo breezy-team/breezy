@@ -1771,6 +1771,12 @@ class RemoteStreamSource(repository.StreamSource):
         return self.missing_parents_chain(search, [self.from_repository] +
             self.from_repository._fallback_repositories)
 
+    def get_stream_for_missing_keys(self, missing_keys):
+        self.from_repository._ensure_real()
+        real_repo = self.from_repository._real_repository
+        real_source = real_repo._get_source(self.to_format)
+        return real_source.get_stream_for_missing_keys(missing_keys)
+
     def _real_stream(self, repo, search):
         """Get a stream for search from repo.
         
