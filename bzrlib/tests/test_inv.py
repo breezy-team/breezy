@@ -33,7 +33,7 @@ from bzrlib.tests import (
     multiply_tests,
     split_suite_by_condition,
     )
-from bzrlib.tests.workingtree_implementations import workingtree_formats
+from bzrlib.tests.per_workingtree import workingtree_formats
 
 
 def load_tests(standard_tests, module, loader):
