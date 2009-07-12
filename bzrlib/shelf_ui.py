@@ -185,7 +185,7 @@ class Shelver(object):
         prompt = self.vocab[change[0]] % vals
         return self.prompt_bool(prompt)
 
-    def get_parsed_patch(self, file_id):
+    def get_parsed_patch(self, file_id, invert=False):
         """Return a parsed version of a file's patch.
 
         :param file_id: The id of the file to generate a patch for.
@@ -194,8 +194,13 @@ class Shelver(object):
         old_path = self.target_tree.id2path(file_id)
         new_path = self.work_tree.id2path(file_id)
         diff_file = StringIO()
-        text_differ = diff.DiffText(self.target_tree, self.work_tree,
-                                    diff_file)
+        if invert:
+            old_tree = self.work_tree
+            new_tree = self.target_tree
+        else:
+            old_tree = self.target_tree
+            new_tree = self.work_tree
+        text_differ = diff.DiffText(old_tree, new_tree, diff_file)
         patch = text_differ.diff(file_id, old_path, new_path, 'file', 'file')
         diff_file.seek(0)
         return patches.parse_patch(diff_file)
@@ -246,26 +251,36 @@ class Shelver(object):
         :param file_id: The id of the file to shelve.
         :return: number of shelved hunks.
         """
-        target_lines = self.target_tree.get_file_lines(file_id)
+        if self.vocab_apply:
+            target_lines = self.work_tree.get_file_lines(file_id)
+        else:
+            target_lines = self.target_tree.get_file_lines(file_id)
         textfile.check_text_lines(self.work_tree.get_file_lines(file_id))
         textfile.check_text_lines(target_lines)
-        parsed = self.get_parsed_patch(file_id)
+        parsed = self.get_parsed_patch(file_id, self.vocab_apply)
         final_hunks = []
         if not self.auto:
             offset = 0
             self.diff_writer.write(parsed.get_header())
             for hunk in parsed.hunks:
                 self.diff_writer.write(str(hunk))
-                if not self.prompt_bool(self.vocab['hunk']):
+                selected = self.prompt_bool(self.vocab['hunk'])
+                if not self.vocab_apply:
+                    selected = (not selected)
+                if selected:
                     hunk.mod_pos += offset
                     final_hunks.append(hunk)
                 else:
                     offset -= (hunk.mod_range - hunk.orig_range)
         sys.stdout.flush()
-        if len(parsed.hunks) == len(final_hunks):
+        if not self.vocab_apply and len(parsed.hunks) == len(final_hunks):
+            return 0
+        if self.vocab_apply and len(final_hunks) == 0:
             return 0
         patched = patches.iter_patched_from_hunks(target_lines, final_hunks)
         creator.shelve_lines(file_id, list(patched))
+        if self.vocab_apply:
+            return len(final_hunks)
         return len(parsed.hunks) - len(final_hunks)
 
 
