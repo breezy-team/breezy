@@ -3740,10 +3740,11 @@ class cmd_merge(Command):
             return 0
 
     def _do_interactive(self, merger, cleanups):
-        from bzrlib.shelf_ui import Shelver
+        from bzrlib import shelf_ui
         tt, result_tree = self._get_preview(merger, cleanups)
-        shelver = Shelver(merger.this_tree, result_tree, destroy=True,
-                          vocab_apply=True)
+        shelver = shelf_ui.Shelver(merger.this_tree, result_tree, destroy=True,
+                                   vocab_apply=True,
+                                   reporter=shelf_ui.ApplyReporter())
         shelver.run()
 
     def sanity_check_merger(self, merger):

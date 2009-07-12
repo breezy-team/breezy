@@ -46,10 +46,19 @@ class ShelfReporter(object):
     def shelved_id(self, shelf_id):
         trace.note('Changes shelved with id "%d".' % shelf_id)
 
+    def changes_destroyed(self):
+        trace.note('Selected changes destroyed.')
+
     def selected_changes(self, transform):
         trace.note("Selected changes:")
         changes = transform.iter_changes()
         delta.report_changes(changes, self.delta_reporter)
+
+
+class ApplyReporter(ShelfReporter):
+
+    def changes_destroyed(self):
+        pass
 
 
 class Shelver(object):
@@ -162,7 +171,7 @@ class Shelver(object):
                     % changes_shelved)):
                     if self.destroy:
                         creator.transform()
-                        trace.note('Selected changes destroyed.')
+                        self.reporter.changes_destroyed()
                     else:
                         shelf_id = self.manager.shelve_changes(creator,
                                                                self.message)
