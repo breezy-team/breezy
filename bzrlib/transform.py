@@ -859,7 +859,7 @@ class TreeTransformBase(object):
         """
         return _PreviewTree(self)
 
-    def commit(self, branch, message, merge_parents=None):
+    def commit(self, branch, message, merge_parents=None, strict=False):
         """Commit the result of this TreeTransform to a branch.
 
         :param branch: The branch to commit to.
@@ -869,6 +869,11 @@ class TreeTransformBase(object):
         """
         revno, last_rev_id = branch.last_revision_info()
         parent_ids = [last_rev_id]
+        if strict:
+            unversioned = set(self._new_contents).difference(set(self._new_id))
+            for trans_id in unversioned:
+                if self.final_file_id(trans_id) is None:
+                    raise errors.StrictCommitFailed()
         if merge_parents is not None:
             parent_ids.extend(merge_parents)
         if self._tree.get_revision_id() != last_rev_id:

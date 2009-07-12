@@ -1924,6 +1924,22 @@ class TestCommitTransform(tests.TestCaseWithTransport):
         self.assertEqual('dir/symlink', tree.id2path('symlink-id'))
         self.assertEqual('target', tree.get_symlink_target('symlink-id'))
 
+    def test_add_unversioned(self):
+        branch, tt = self.get_branch_and_transform()
+        tt.new_file('file', tt.root, 'contents')
+        self.assertRaises(errors.StrictCommitFailed, tt.commit, branch,
+                          'message', strict=True)
+
+    def test_modify_strict(self):
+        branch, tt = self.get_branch_and_transform()
+        tt.new_file('file', tt.root, 'contents', 'file-id')
+        tt.commit(branch, 'message', strict=True)
+        tt = TransformPreview(branch.basis_tree())
+        trans_id = tt.trans_id_file_id('file-id')
+        tt.delete_contents(trans_id)
+        tt.create_file('contents', trans_id)
+        tt.commit(branch, 'message', strict=True)
+
 
 class MockTransform(object):
 
