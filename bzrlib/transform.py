@@ -859,6 +859,29 @@ class TreeTransformBase(object):
         """
         return _PreviewTree(self)
 
+    def commit(self, branch, message, merge_parents=None):
+        """Commit the result of this TreeTransform to a branch.
+
+        :param branch: The branch to commit to.
+        :param message: The message to attach to the commit.
+        :param merge_parents: Additional parents specified by pending merges.
+        :return: The revision_id of the revision committed.
+        """
+        revno, last_rev_id = branch.last_revision_info()
+        parent_ids = [last_rev_id]
+        if merge_parents is not None:
+            parent_ids.extend(merge_parents)
+        if self._tree.get_revision_id() != last_rev_id:
+            raise errors.WrongCommitBasis(self._tree)
+        builder = branch.get_commit_builder(parent_ids)
+        preview = self.get_preview_tree()
+        list(builder.record_iter_changes(preview, last_rev_id,
+                                         self.iter_changes()))
+        builder.finish_inventory()
+        revision_id = builder.commit(message)
+        branch.set_last_revision_info(revno + 1, revision_id)
+        return revision_id
+
     def _text_parent(self, trans_id):
         file_id = self.tree_file_id(trans_id)
         try:
