@@ -3616,7 +3616,10 @@ class cmd_merge(Command):
                short_name='d',
                type=unicode,
                ),
-        Option('preview', help='Instead of merging, show a diff of the merge.')
+        Option('preview', help='Instead of merging, show a diff of the'
+               ' merge.'),
+        Option('interactive', help='Select changes interactively.',
+            short_name='i')
     ]
 
     def run(self, location=None, revision=None, force=False,
@@ -3624,6 +3627,7 @@ class cmd_merge(Command):
             uncommitted=False, pull=False,
             directory=None,
             preview=False,
+            interactive=False,
             ):
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
@@ -3700,7 +3704,9 @@ class cmd_merge(Command):
                     return 0
             merger.check_basis(False)
             if preview:
-                return self._do_preview(merger)
+                return self._do_preview(merger, cleanups)
+            elif interactive:
+                return self._do_interactive(merger, cleanups)
             else:
                 return self._do_merge(merger, change_reporter, allow_pending,
                                       verified)
@@ -3708,16 +3714,18 @@ class cmd_merge(Command):
             for cleanup in reversed(cleanups):
                 cleanup()
 
-    def _do_preview(self, merger):
-        from bzrlib.diff import show_diff_trees
+    def _get_preview(self, merger, cleanups):
         tree_merger = merger.make_merger()
         tt = tree_merger.make_preview_transform()
-        try:
-            result_tree = tt.get_preview_tree()
-            show_diff_trees(merger.this_tree, result_tree, self.outf,
-                            old_label='', new_label='')
-        finally:
-            tt.finalize()
+        cleanups.append(tt.finalize)
+        result_tree = tt.get_preview_tree()
+        return tt, result_tree
+
+    def _do_preview(self, merger, cleanups):
+        from bzrlib.diff import show_diff_trees
+        tt, result_tree = self._get_preview(merger, cleanups)
+        show_diff_trees(merger.this_tree, result_tree, self.outf,
+                        old_label='', new_label='')
 
     def _do_merge(self, merger, change_reporter, allow_pending, verified):
         merger.change_reporter = change_reporter
@@ -3730,6 +3738,13 @@ class cmd_merge(Command):
             return 1
         else:
             return 0
+
+    def _do_interactive(self, merger, cleanups):
+        from bzrlib.shelf_ui import Shelver
+        tt, result_tree = self._get_preview(merger, cleanups)
+        shelver = Shelver(merger.this_tree, result_tree, destroy=True,
+                          vocab_apply=True)
+        shelver.run()
 
     def sanity_check_merger(self, merger):
         if (merger.show_base and
