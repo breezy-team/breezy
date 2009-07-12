@@ -101,12 +101,6 @@ class ApplyReporter(ShelfReporter):
         pass
 
 
-class ApplyReporter(ShelfReporter):
-
-    def changes_destroyed(self):
-        pass
-
-
 class Shelver(object):
     """Interactively shelve the changes in a working tree."""
 

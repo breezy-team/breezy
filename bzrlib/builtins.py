@@ -3743,7 +3743,6 @@ class cmd_merge(Command):
         from bzrlib import shelf_ui
         tt, result_tree = self._get_preview(merger, cleanups)
         shelver = shelf_ui.Shelver(merger.this_tree, result_tree, destroy=True,
-                                   vocab_apply=True,
                                    reporter=shelf_ui.ApplyReporter())
         shelver.run()
 
