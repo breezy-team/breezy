@@ -27,10 +27,10 @@ class ExpectShelver(shelf_ui.Shelver):
 
     def __init__(self, work_tree, target_tree, diff_writer=None,
                  auto=False, auto_apply=False, file_list=None, message=None,
-                 destroy=False, vocab_apply=False):
+                 destroy=False, reporter=None):
         shelf_ui.Shelver.__init__(self, work_tree, target_tree, diff_writer,
                                   auto, auto_apply, file_list, message,
-                                  destroy, vocab_apply=vocab_apply)
+                                  destroy, reporter=reporter)
         self.expected = []
         self.diff_writer = StringIO()
 
@@ -224,11 +224,12 @@ class TestShelver(tests.TestCaseWithTransport):
         self.assertFileEqual(LINES_AJ, 'tree/foo')
 
 
-class TestShelverApplyVocab(TestShelver):
+class TestApplyReporter(TestShelver):
 
     def test_shelve_not_diff(self):
         tree = self.create_shelvable_tree()
-        shelver = ExpectShelver(tree, tree.basis_tree(), vocab_apply=True)
+        shelver = ExpectShelver(tree, tree.basis_tree(),
+                                reporter=shelf_ui.ApplyReporter())
         shelver.expect('Apply change? [yNfq?]', 'n')
         shelver.expect('Apply change? [yNfq?]', 'n')
         # No final shelving prompt because no changes were selected
@@ -237,7 +238,8 @@ class TestShelverApplyVocab(TestShelver):
 
     def test_shelve_diff_no(self):
         tree = self.create_shelvable_tree()
-        shelver = ExpectShelver(tree, tree.basis_tree(), vocab_apply=True)
+        shelver = ExpectShelver(tree, tree.basis_tree(),
+                                reporter=shelf_ui.ApplyReporter())
         shelver.expect('Apply change? [yNfq?]', 'y')
         shelver.expect('Apply change? [yNfq?]', 'y')
         shelver.expect('Apply 2 change(s)? [yNfq?]', 'n')
@@ -246,7 +248,8 @@ class TestShelverApplyVocab(TestShelver):
 
     def test_shelve_diff(self):
         tree = self.create_shelvable_tree()
-        shelver = ExpectShelver(tree, tree.basis_tree(), vocab_apply=True)
+        shelver = ExpectShelver(tree, tree.basis_tree(),
+                                reporter=shelf_ui.ApplyReporter())
         shelver.expect('Apply change? [yNfq?]', 'y')
         shelver.expect('Apply change? [yNfq?]', 'y')
         shelver.expect('Apply 2 change(s)? [yNfq?]', 'y')
@@ -256,7 +259,8 @@ class TestShelverApplyVocab(TestShelver):
     def test_shelve_binary_change(self):
         tree = self.create_shelvable_tree()
         self.build_tree_contents([('tree/foo', '\x00')])
-        shelver = ExpectShelver(tree, tree.basis_tree(), vocab_apply=True)
+        shelver = ExpectShelver(tree, tree.basis_tree(),
+                                reporter=shelf_ui.ApplyReporter())
         shelver.expect('Apply binary changes? [yNfq?]', 'y')
         shelver.expect('Apply 1 change(s)? [yNfq?]', 'y')
         shelver.run()
@@ -265,7 +269,8 @@ class TestShelverApplyVocab(TestShelver):
     def test_shelve_rename(self):
         tree = self.create_shelvable_tree()
         tree.rename_one('foo', 'bar')
-        shelver = ExpectShelver(tree, tree.basis_tree(), vocab_apply=True)
+        shelver = ExpectShelver(tree, tree.basis_tree(),
+                                reporter=shelf_ui.ApplyReporter())
         shelver.expect('Rename "bar" => "foo"? [yNfq?]', 'y')
         shelver.expect('Apply change? [yNfq?]', 'y')
         shelver.expect('Apply change? [yNfq?]', 'y')
@@ -276,7 +281,8 @@ class TestShelverApplyVocab(TestShelver):
     def test_shelve_deletion(self):
         tree = self.create_shelvable_tree()
         os.unlink('tree/foo')
-        shelver = ExpectShelver(tree, tree.basis_tree(), vocab_apply=True)
+        shelver = ExpectShelver(tree, tree.basis_tree(),
+                                reporter=shelf_ui.ApplyReporter())
         shelver.expect('Add file "foo"? [yNfq?]', 'y')
         shelver.expect('Apply 1 change(s)? [yNfq?]', 'y')
         shelver.run()
@@ -287,7 +293,8 @@ class TestShelverApplyVocab(TestShelver):
         tree.commit('add tree root')
         self.build_tree(['tree/foo'])
         tree.add('foo')
-        shelver = ExpectShelver(tree, tree.basis_tree(), vocab_apply=True)
+        shelver = ExpectShelver(tree, tree.basis_tree(),
+                                reporter=shelf_ui.ApplyReporter())
         shelver.expect('Delete file "foo"? [yNfq?]', 'y')
         shelver.expect('Apply 1 change(s)? [yNfq?]', 'y')
         shelver.run()
@@ -297,7 +304,8 @@ class TestShelverApplyVocab(TestShelver):
         tree = self.create_shelvable_tree()
         os.unlink('tree/foo')
         os.mkdir('tree/foo')
-        shelver = ExpectShelver(tree, tree.basis_tree(), vocab_apply=True)
+        shelver = ExpectShelver(tree, tree.basis_tree(),
+                               reporter=shelf_ui.ApplyReporter())
         shelver.expect('Change "foo" from directory to a file? [yNfq?]', 'y')
         shelver.expect('Apply 1 change(s)? [yNfq?]', 'y')
 
@@ -308,7 +316,8 @@ class TestShelverApplyVocab(TestShelver):
         tree.commit("Add symlink")
         os.unlink('tree/baz')
         os.symlink('vax', 'tree/baz')
-        shelver = ExpectShelver(tree, tree.basis_tree(), vocab_apply=True)
+        shelver = ExpectShelver(tree, tree.basis_tree(),
+                                reporter=shelf_ui.ApplyReporter())
         shelver.expect('Change target of "baz" from "vax" to "bar"? [yNfq?]',
                        'y')
         shelver.expect('Apply 1 change(s)? [yNfq?]', 'y')
