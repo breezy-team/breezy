@@ -1911,6 +1911,23 @@ class TestCommitTransform(tests.TestCaseWithTransport):
         self.assertEqual(['rev1b', 'rev1c'],
                          branch.basis_tree().get_parent_ids()[1:])
 
+    def test_first_commit(self):
+        branch = self.make_branch('branch')
+        branch.lock_write()
+        self.addCleanup(branch.unlock)
+        tt = TransformPreview(branch.basis_tree())
+        rev = tt.commit(branch, 'my message')
+        self.assertEqual([], branch.basis_tree().get_parent_ids())
+
+    def test_first_commit(self):
+        branch = self.make_branch('branch')
+        branch.lock_write()
+        self.addCleanup(branch.unlock)
+        tt = TransformPreview(branch.basis_tree())
+        self.assertRaises(errors.MergeParentsInFirstCommit, tt.commit, branch,
+                          'my message', ['rev1b-id'])
+        self.assertEqual([], branch.basis_tree().get_parent_ids())
+
     def test_add_files(self):
         branch, tt = self.get_branch_and_transform()
         tt.new_file('file', tt.root, 'contents', 'file-id')

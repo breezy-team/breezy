@@ -867,15 +867,21 @@ class TreeTransformBase(object):
         :param merge_parents: Additional parents specified by pending merges.
         :return: The revision_id of the revision committed.
         """
-        revno, last_rev_id = branch.last_revision_info()
-        parent_ids = [last_rev_id]
         if strict:
             unversioned = set(self._new_contents).difference(set(self._new_id))
             for trans_id in unversioned:
                 if self.final_file_id(trans_id) is None:
                     raise errors.StrictCommitFailed()
-        if merge_parents is not None:
-            parent_ids.extend(merge_parents)
+
+        revno, last_rev_id = branch.last_revision_info()
+        if last_rev_id == _mod_revision.NULL_REVISION:
+            if merge_parents is not None:
+                raise errors.MergeParentsInFirstCommit()
+            parent_ids = []
+        else:
+            parent_ids = [last_rev_id]
+            if merge_parents is not None:
+                parent_ids.extend(merge_parents)
         if self._tree.get_revision_id() != last_rev_id:
             raise errors.WrongCommitBasis(self._tree)
         builder = branch.get_commit_builder(parent_ids)

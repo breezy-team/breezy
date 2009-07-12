@@ -3074,3 +3074,8 @@ class WrongCommitBasis(BzrError):
 
     def __init__(self, tree):
         BzrError.__init__(self, tree=tree, tree_rev_id=tree.get_revision_id())
+
+
+class MergeParentsInFirstCommit(BzrError):
+
+    _fmt = 'Merge parents supplied for initial commit.'
