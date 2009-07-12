@@ -57,7 +57,8 @@ class Shelver(object):
 
     def __init__(self, work_tree, target_tree, diff_writer=None, auto=False,
                  auto_apply=False, file_list=None, message=None,
-                 destroy=False, manager=None, reporter=None):
+                 destroy=False, manager=None, reporter=None,
+                 vocab_apply=False):
         """Constructor.
 
         :param work_tree: The working tree to shelve changes from.
@@ -87,6 +88,33 @@ class Shelver(object):
         if reporter is None:
             reporter = ShelfReporter()
         self.reporter = reporter
+        self.vocab_apply=vocab_apply
+        if self.vocab_apply:
+            self.vocab = {'add file': 'Delete file "%(path)s"?',
+                          'binary': 'Apply binary changes?',
+                          'change kind': 'Change "%(path)s" from %(this)s'
+                          ' to %(other)s?',
+                          'delete file': 'Add file "%(path)s"?',
+                          'final': 'Apply %d change(s)?',
+                          'hunk': 'Apply change?',
+                          'modify target': 'Change target of'
+                          ' "%(path)s" from "%(this)s" to "%(other)s"?',
+                          'rename': 'Rename "%(this)s" => "%(other)s"?',
+                          }
+        else:
+            self.vocab = {'add file': 'Shelve adding file "%(path)s"?',
+                          'binary': 'Shelve binary changes?',
+                          'change kind': 'Shelve changing "%s" from %(other)s'
+                          ' to %(this)s?',
+                          'delete file': 'Shelve removing file "%(path)s"?',
+                          'final': 'Shelve %d change(s)?',
+                          'hunk': 'Shelve?',
+                          'modify target': 'Shelve changing target of'
+                          ' "%(path)s" from "%(other)s" to "%(this)s"?',
+                          'rename': 'Shelve renaming "%(other)s" =>'
+                                     ' "%(this)s"?'
+                          }
+
 
     @classmethod
     def from_args(klass, diff_writer, revision=None, all=False, file_list=None,
@@ -121,38 +149,17 @@ class Shelver(object):
                         changes_shelved += self.handle_modify_text(creator,
                                                                    change[1])
                     except errors.BinaryFile:
-                        if self.prompt_bool('Shelve binary changes?'):
+                        if self.prompt_bool(self.vocab['binary']):
                             changes_shelved += 1
                             creator.shelve_content_change(change[1])
-                if change[0] == 'add file':
-                    if self.prompt_bool('Shelve adding file "%s"?'
-                                        % change[3]):
-                        creator.shelve_creation(change[1])
-                        changes_shelved += 1
-                if change[0] == 'delete file':
-                    if self.prompt_bool('Shelve removing file "%s"?'
-                                        % change[3]):
-                        creator.shelve_deletion(change[1])
-                        changes_shelved += 1
-                if change[0] == 'change kind':
-                    if self.prompt_bool('Shelve changing "%s" from %s to %s? '
-                                        % (change[4], change[2], change[3])):
-                        creator.shelve_content_change(change[1])
-                        changes_shelved += 1
-                if change[0] == 'rename':
-                    if self.prompt_bool('Shelve renaming "%s" => "%s"?' %
-                                   change[2:]):
-                        creator.shelve_rename(change[1])
-                        changes_shelved += 1
-                if change[0] == 'modify target':
-                    if self.prompt_bool('Shelve changing target of "%s" '
-                            'from "%s" to "%s"?' % change[2:]):
-                        creator.shelve_modify_target(change[1])
+                else:
+                    if self.prompt_change(change):
+                        creator.shelve_change(change)
                         changes_shelved += 1
             if changes_shelved > 0:
                 self.reporter.selected_changes(creator.work_transform)
-                if (self.auto_apply or self.prompt_bool(
-                    'Shelve %d change(s)?' % changes_shelved)):
+                if (self.auto_apply or self.prompt_bool(self.vocab['final']
+                    % changes_shelved)):
                     if self.destroy:
                         creator.transform()
                         trace.note('Selected changes destroyed.')
@@ -165,6 +172,18 @@ class Shelver(object):
         finally:
             shutil.rmtree(self.tempdir)
             creator.finalize()
+
+    def prompt_change(self, change):
+        if change[0] == 'rename':
+            vals = {'this': change[3], 'other': change[2]}
+        elif change[0] == 'change kind':
+            vals = {'path': change[4], 'other': change[2], 'this': change[3]}
+        elif change[0] == 'modify target':
+            vals = {'path': change[2], 'other': change[3], 'this': change[4]}
+        else:
+            vals = {'path': change[3]}
+        prompt = self.vocab[change[0]] % vals
+        return self.prompt_bool(prompt)
 
     def get_parsed_patch(self, file_id):
         """Return a parsed version of a file's patch.
@@ -237,7 +256,7 @@ class Shelver(object):
             self.diff_writer.write(parsed.get_header())
             for hunk in parsed.hunks:
                 self.diff_writer.write(str(hunk))
-                if not self.prompt_bool('Shelve?'):
+                if not self.prompt_bool(self.vocab['hunk']):
                     hunk.mod_pos += offset
                     final_hunks.append(hunk)
                 else:
