@@ -36,6 +36,7 @@ from bzrlib import (
 
 
 class ShelfReporter(object):
+
     vocab = {'add file': 'Shelve adding file "%(path)s"?',
              'binary': 'Shelve binary changes?',
              'change kind': 'Shelve changing "%s" from %(other)s'
@@ -55,20 +56,25 @@ class ShelfReporter(object):
         self.delta_reporter = delta._ChangeReporter()
 
     def no_changes(self):
+        """Report that no changes were selected to apply."""
         trace.warning('No changes to shelve.')
 
     def shelved_id(self, shelf_id):
+        """Report the id changes were shelved to."""
         trace.note('Changes shelved with id "%d".' % shelf_id)
 
     def changes_destroyed(self):
+        """Report that changes were made without shelving."""
         trace.note('Selected changes destroyed.')
 
     def selected_changes(self, transform):
+        """Report the changes that were selected."""
         trace.note("Selected changes:")
         changes = transform.iter_changes()
         delta.report_changes(changes, self.delta_reporter)
 
     def prompt_change(self, change):
+        """Determine the prompt for a change to apply."""
         if change[0] == 'rename':
             vals = {'this': change[3], 'other': change[2]}
         elif change[0] == 'change kind':
@@ -119,6 +125,7 @@ class Shelver(object):
         :param destroy: Change the working tree without storing the shelved
             changes.
         :param manager: The shelf manager to use.
+        :param reporter: Object for reporting changes to user.
         """
         self.work_tree = work_tree
         self.target_tree = target_tree
@@ -198,6 +205,8 @@ class Shelver(object):
         """Return a parsed version of a file's patch.
 
         :param file_id: The id of the file to generate a patch for.
+        :param invert: If True, provide an inverted patch (insertions displayed
+            as removals, removals displayed as insertions).
         :return: A patches.Patch.
         """
         diff_file = StringIO()
@@ -255,6 +264,9 @@ class Shelver(object):
 
     def handle_modify_text(self, creator, file_id):
         """Provide diff hunk selection for modified text.
+
+        If self.reporter.invert_diff is True, the diff is inverted so that
+        insertions are displayed as removals and vice versa.
 
         :param creator: a ShelfCreator
         :param file_id: The id of the file to shelve.
