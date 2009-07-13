@@ -1033,8 +1033,6 @@ class RepositoryFormatCHK1(RepositoryFormatPack):
     repository_class = CHKInventoryRepository
     supports_external_lookups = True
     supports_chks = True
-    # For right now, setting this to True gives us InterModel1And2 rather
-    # than InterDifferingSerializer
     _commit_builder_class = PackRootCommitBuilder
     rich_root_data = True
     _serializer = chk_serializer.chk_serializer_255_bigpage
