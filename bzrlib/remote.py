@@ -1683,6 +1683,11 @@ class RemoteStreamSink(repository.StreamSink):
         for verb, required_version in candidate_calls:
             if medium._is_remote_before(required_version):
                 continue
+            if resume_tokens:
+                # We've already done the probing (and set _is_remote_before) on
+                # a previous insert.
+                found_verb = True
+                break
             byte_stream = smart_repo._stream_to_byte_stream([], src_format)
             try:
                 response = client.call_with_body_stream(
