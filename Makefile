@@ -90,6 +90,9 @@ txt_files := $(wildcard doc/*/tutorials/*.txt) \
 	$(wildcard doc/*/user-guide/index.txt) \
 	$(derived_txt_files) \
 	doc/en/developer-guide/HACKING.txt \
+	doc/en/upgrade-guide/index.txt \
+	$(wildcard doc/es/guia-usario/*.txt) \
+	doc/es/mini-tutorial/index.txt \
 	doc/index.txt \
 	$(wildcard doc/index.*.txt)
 non_txt_files := \
@@ -177,6 +180,11 @@ doc/en/release-notes/NEWS.txt: NEWS
 MAN_PAGES = man1/bzr.1
 man1/bzr.1: $(MAN_DEPENDENCIES)
 	PYTHONPATH=.:$$PYTHONPATH $(PYTHON) tools/generate_docs.py -o $@ man
+
+upgrade_guide_dependencies =  $(wildcard $(addsuffix /*.txt, doc/en/upgrade-guide)) 
+
+doc/en/upgrade-guide/index.html: $(upgrade_guide_dependencies)
+	$(rst2html) --stylesheet=../../default.css $(dir $@)index.txt $@
 
 # build a png of our performance task list
 # 
