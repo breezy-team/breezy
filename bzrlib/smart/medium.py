@@ -472,7 +472,8 @@ class SmartClientMediumRequest(object):
         if not line.endswith('\n'):
             # end of file encountered reading from server
             raise errors.ConnectionReset(
-                "please check connectivity and permissions")
+                "Unexpected end of message. Please check connectivity "
+                "and permissions, and report a bug if problems persist.")
         return line
 
     def _read_line(self):

@@ -21,7 +21,7 @@
 
 These test the conformance of all the repository variations to the expected API.
 Specific tests for individual formats are in the tests/test_repository.py file
-rather than in tests/branch_implementations/*.py.
+rather than in tests/per_branch/*.py.
 """
 
 from bzrlib import (
@@ -43,7 +43,7 @@ from bzrlib.tests import (
                           multiply_scenarios,
                           multiply_tests,
                           )
-from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
+from bzrlib.tests.per_bzrdir.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.transport.memory import MemoryServer
 
 

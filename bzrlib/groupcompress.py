@@ -16,8 +16,6 @@
 
 """Core compression logic for compressing streams of related files."""
 
-from itertools import izip
-from cStringIO import StringIO
 import time
 import zlib
 try:
@@ -28,13 +26,11 @@ except ImportError:
 from bzrlib import (
     annotate,
     debug,
-    diff,
     errors,
     graph as _mod_graph,
     knit,
     osutils,
     pack,
-    patiencediff,
     trace,
     )
 from bzrlib.graph import Graph
@@ -108,6 +104,7 @@ class GroupCompressBlock(object):
         self._z_content_length = None
         self._content_length = None
         self._content = None
+        self._content_chunks = None
 
     def __len__(self):
         # This is the maximum number of bytes this object will reference if
@@ -136,6 +133,10 @@ class GroupCompressBlock(object):
                 'requested num_bytes (%d) > content length (%d)'
                 % (num_bytes, self._content_length))
         # Expand the content if required
+        if self._content is None:
+            if self._content_chunks is not None:
+                self._content = ''.join(self._content_chunks)
+                self._content_chunks = None
         if self._content is None:
             if self._z_content is None:
                 raise AssertionError('No content to decompress')
@@ -273,22 +274,55 @@ class GroupCompressBlock(object):
             bytes = apply_delta_to_source(self._content, content_start, end)
         return bytes
 
+    def set_chunked_content(self, content_chunks, length):
+        """Set the content of this block to the given chunks."""
+        # If we have lots of short lines, it is may be more efficient to join
+        # the content ahead of time. If the content is <10MiB, we don't really
+        # care about the extra memory consumption, so we can just pack it and
+        # be done. However, timing showed 18s => 17.9s for repacking 1k revs of
+        # mysql, which is below the noise margin
+        self._content_length = length
+        self._content_chunks = content_chunks
+        self._content = None
+        self._z_content = None
+
     def set_content(self, content):
         """Set the content of this block."""
         self._content_length = len(content)
         self._content = content
         self._z_content = None
 
+    def _create_z_content_using_lzma(self):
+        if self._content_chunks is not None:
+            self._content = ''.join(self._content_chunks)
+            self._content_chunks = None
+        if self._content is None:
+            raise AssertionError('Nothing to compress')
+        self._z_content = pylzma.compress(self._content)
+        self._z_content_length = len(self._z_content)
+
+    def _create_z_content_from_chunks(self):
+        compressor = zlib.compressobj(zlib.Z_DEFAULT_COMPRESSION)
+        compressed_chunks = map(compressor.compress, self._content_chunks)
+        compressed_chunks.append(compressor.flush())
+        self._z_content = ''.join(compressed_chunks)
+        self._z_content_length = len(self._z_content)
+
+    def _create_z_content(self):
+        if self._z_content is not None:
+            return
+        if _USE_LZMA:
+            self._create_z_content_using_lzma()
+            return
+        if self._content_chunks is not None:
+            self._create_z_content_from_chunks()
+            return
+        self._z_content = zlib.compress(self._content)
+        self._z_content_length = len(self._z_content)
+
     def to_bytes(self):
         """Encode the information into a byte stream."""
-        compress = zlib.compress
-        if _USE_LZMA:
-            compress = pylzma.compress
-        if self._z_content is None:
-            if self._content is None:
-                raise AssertionError('Nothing to compress')
-            self._z_content = compress(self._content)
-            self._z_content_length = len(self._z_content)
+        self._create_z_content()
         if _USE_LZMA:
             header = self.GCB_LZ_HEADER
         else:
@@ -762,10 +796,9 @@ class _CommonGroupCompressor(object):
         #       for 'commit' down to ~1x the size of the largest file, at a
         #       cost of increased complexity within this code. 2x is still <<
         #       3x the size of the largest file, so we are doing ok.
-        content = ''.join(self.chunks)
+        self._block.set_chunked_content(self.chunks, self.endpoint)
         self.chunks = None
         self._delta_index = None
-        self._block.set_content(content)
         return self._block
 
     def pop_last(self):
@@ -905,7 +938,7 @@ class PyrexGroupCompressor(_CommonGroupCompressor):
         self.endpoint = endpoint
 
 
-def make_pack_factory(graph, delta, keylength):
+def make_pack_factory(graph, delta, keylength, inconsistency_fatal=True):
     """Create a factory for creating a pack based groupcompress.
 
     This is only functional enough to run interface tests, it doesn't try to
@@ -926,7 +959,8 @@ def make_pack_factory(graph, delta, keylength):
         writer = pack.ContainerWriter(stream.write)
         writer.begin()
         index = _GCGraphIndex(graph_index, lambda:True, parents=parents,
-            add_callback=graph_index.add_nodes)
+            add_callback=graph_index.add_nodes,
+            inconsistency_fatal=inconsistency_fatal)
         access = knit._DirectPackAccess({})
         access.set_writer(writer, graph_index, (transport, 'newpack'))
         result = GroupCompressVersionedFiles(index, access, delta)
@@ -1008,6 +1042,24 @@ class GroupCompressVersionedFiles(VersionedFiles):
                                                nostore_sha=nostore_sha))[0]
         return sha1, length, None
 
+    def _add_text(self, key, parents, text, nostore_sha=None, random_id=False):
+        """See VersionedFiles._add_text()."""
+        self._index._check_write_ok()
+        self._check_add(key, None, random_id, check_content=False)
+        if text.__class__ is not str:
+            raise errors.BzrBadParameterUnicode("text")
+        if parents is None:
+            # The caller might pass None if there is no graph data, but kndx
+            # indexes can't directly store that, so we give them
+            # an empty tuple instead.
+            parents = ()
+        # double handling for now. Make it work until then.
+        length = len(text)
+        record = FulltextContentFactory(key, parents, None, text)
+        sha1 = list(self._insert_record_stream([record], random_id=random_id,
+                                               nostore_sha=nostore_sha))[0]
+        return sha1, length, None
+
     def add_fallback_versioned_files(self, a_versioned_files):
         """Add a source of texts for texts not present in this knit.
 
@@ -1017,37 +1069,11 @@ class GroupCompressVersionedFiles(VersionedFiles):
 
     def annotate(self, key):
         """See VersionedFiles.annotate."""
-        graph = Graph(self)
-        parent_map = self.get_parent_map([key])
-        if not parent_map:
-            raise errors.RevisionNotPresent(key, self)
-        if parent_map[key] is not None:
-            search = graph._make_breadth_first_searcher([key])
-            keys = set()
-            while True:
-                try:
-                    present, ghosts = search.next_with_ghosts()
-                except StopIteration:
-                    break
-                keys.update(present)
-            parent_map = self.get_parent_map(keys)
-        else:
-            keys = [key]
-            parent_map = {key:()}
-        # So we used Graph(self) to load the parent_map, but now that we have
-        # it, we can just query the parent map directly, so create a new Graph
-        # object
-        graph = _mod_graph.Graph(_mod_graph.DictParentsProvider(parent_map))
-        head_cache = _mod_graph.FrozenHeadsCache(graph)
-        parent_cache = {}
-        reannotate = annotate.reannotate
-        for record in self.get_record_stream(keys, 'topological', True):
-            key = record.key
-            lines = osutils.chunks_to_lines(record.get_bytes_as('chunked'))
-            parent_lines = [parent_cache[parent] for parent in parent_map[key]]
-            parent_cache[key] = list(
-                reannotate(parent_lines, lines, key, None, head_cache))
-        return parent_cache[key]
+        ann = annotate.Annotator(self)
+        return ann.annotate_flat(key)
+
+    def get_annotator(self):
+        return annotate.Annotator(self)
 
     def check(self, progress_bar=None):
         """See VersionedFiles.check()."""
@@ -1529,8 +1555,6 @@ class GroupCompressVersionedFiles(VersionedFiles):
 
         :return: An iterator over (line, key).
         """
-        if pb is None:
-            pb = progress.DummyProgress()
         keys = set(keys)
         total = len(keys)
         # we don't care about inclusions, the caller cares.
@@ -1540,13 +1564,15 @@ class GroupCompressVersionedFiles(VersionedFiles):
             'unordered', True)):
             # XXX: todo - optimise to use less than full texts.
             key = record.key
-            pb.update('Walking content', key_idx, total)
+            if pb is not None:
+                pb.update('Walking content', key_idx, total)
             if record.storage_kind == 'absent':
                 raise errors.RevisionNotPresent(key, self)
             lines = osutils.split_lines(record.get_bytes_as('fulltext'))
             for line in lines:
                 yield line, key
-        pb.update('Walking content', total, total)
+        if pb is not None:
+            pb.update('Walking content', total, total)
 
     def keys(self):
         """See VersionedFiles.keys."""
@@ -1563,7 +1589,8 @@ class _GCGraphIndex(object):
     """Mapper from GroupCompressVersionedFiles needs into GraphIndex storage."""
 
     def __init__(self, graph_index, is_locked, parents=True,
-        add_callback=None, track_external_parent_refs=False):
+        add_callback=None, track_external_parent_refs=False,
+        inconsistency_fatal=True):
         """Construct a _GCGraphIndex on a graph_index.
 
         :param graph_index: An implementation of bzrlib.index.GraphIndex.
@@ -1577,12 +1604,17 @@ class _GCGraphIndex(object):
         :param track_external_parent_refs: As keys are added, keep track of the
             keys they reference, so that we can query get_missing_parents(),
             etc.
+        :param inconsistency_fatal: When asked to add records that are already
+            present, and the details are inconsistent with the existing
+            record, raise an exception instead of warning (and skipping the
+            record).
         """
         self._add_callback = add_callback
         self._graph_index = graph_index
         self._parents = parents
         self.has_graph = parents
         self._is_locked = is_locked
+        self._inconsistency_fatal = inconsistency_fatal
         if track_external_parent_refs:
             self._key_dependencies = knit._KeyRefs()
         else:
@@ -1613,7 +1645,7 @@ class _GCGraphIndex(object):
                 if refs:
                     for ref in refs:
                         if ref:
-                            raise KnitCorrupt(self,
+                            raise errors.KnitCorrupt(self,
                                 "attempt to add node with parents "
                                 "in parentless index.")
                     refs = ()
@@ -1624,8 +1656,14 @@ class _GCGraphIndex(object):
             present_nodes = self._get_entries(keys)
             for (index, key, value, node_refs) in present_nodes:
                 if node_refs != keys[key][1]:
-                    raise errors.KnitCorrupt(self, "inconsistent details in add_records"
-                        ": %s %s" % ((value, node_refs), keys[key]))
+                    details = '%s %s %s' % (key, (value, node_refs), keys[key])
+                    if self._inconsistency_fatal:
+                        raise errors.KnitCorrupt(self, "inconsistent details"
+                                                 " in add_records: %s" %
+                                                 details)
+                    else:
+                        trace.warning("inconsistent details in skipped"
+                                      " record: %s", details)
                 del keys[key]
                 changed = True
         if changed:
@@ -1676,7 +1714,7 @@ class _GCGraphIndex(object):
         if check_present:
             missing_keys = keys.difference(found_keys)
             if missing_keys:
-                raise RevisionNotPresent(missing_keys.pop(), self)
+                raise errors.RevisionNotPresent(missing_keys.pop(), self)
 
     def get_parent_map(self, keys):
         """Get a map of the parents of keys.

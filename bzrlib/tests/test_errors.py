@@ -87,6 +87,12 @@ class TestErrors(TestCaseWithTransport):
             "reason: reason for foo",
             str(error))
 
+    def test_inconsistent_delta_delta(self):
+        error = errors.InconsistentDeltaDelta([], 'reason')
+        self.assertEqualDiff(
+            "An inconsistent delta was supplied: []\nreason: reason",
+            str(error))
+
     def test_in_process_transport(self):
         error = errors.InProcessTransport('fpp')
         self.assertEqualDiff(
@@ -240,6 +246,11 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqualDiff(
             "The branch '/foo'(foo) is not a stackable format. "
             "You will need to upgrade the branch to permit branch stacking.",
+            str(error))
+
+    def test_unstackable_location(self):
+        error = errors.UnstackableLocationError('foo', 'bar')
+        self.assertEqualDiff("The branch 'foo' cannot be stacked on 'bar'.",
             str(error))
 
     def test_unstackable_repository_format(self):

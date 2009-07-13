@@ -19,6 +19,7 @@
 """Text UI, write output to the console.
 """
 
+import os
 import sys
 import time
 import warnings
@@ -56,8 +57,8 @@ class TextUIFactory(CLIUIFactory):
             symbol_versioning.warn(symbol_versioning.deprecated_in((1, 11, 0))
                 % "bar_type parameter")
         # paints progress, network activity, etc
-        self._progress_view = TextProgressView(self.stderr)
-
+        self._progress_view = self._make_progress_view()
+        
     def clear_term(self):
         """Prepare the terminal for output.
 
@@ -68,6 +69,12 @@ class TextUIFactory(CLIUIFactory):
         # bar _is_ going to the terminal, we shouldn't need
         # to clear it.  We might need to separately check for the case of
         self._progress_view.clear()
+
+    def _make_progress_view(self):
+        if os.environ.get('BZR_PROGRESS_BAR') in ('text', None, ''):
+            return TextProgressView(self.stderr)
+        else:
+            return NullProgressView()
 
     def note(self, msg):
         """Write an already-formatted message, clearing the progress bar if necessary."""
@@ -80,7 +87,7 @@ class TextUIFactory(CLIUIFactory):
         This may update a progress bar, spinner, or similar display.
         By default it does nothing.
         """
-        self._progress_view._show_transport_activity(transport,
+        self._progress_view.show_transport_activity(transport,
             direction, byte_count)
 
     def _progress_updated(self, task):
@@ -97,6 +104,19 @@ class TextUIFactory(CLIUIFactory):
     def _progress_all_finished(self):
         self._progress_view.clear()
 
+
+class NullProgressView(object):
+    """Soak up and ignore progress information."""
+
+    def clear(self):
+        pass
+
+    def show_progress(self, task):
+        pass
+
+    def show_transport_activity(self, transport, direction, byte_count):
+        pass
+    
 
 class TextProgressView(object):
     """Display of progress bar and other information on a tty.
@@ -118,6 +138,7 @@ class TextProgressView(object):
         # true when there's output on the screen we may need to clear
         self._have_output = False
         # XXX: We could listen for SIGWINCH and update the terminal width...
+        # https://launchpad.net/bugs/316357
         self._width = osutils.terminal_width()
         self._last_transport_msg = ''
         self._spin_pos = 0
@@ -216,7 +237,7 @@ class TextProgressView(object):
         self._last_repaint = now
         self._repaint()
 
-    def _show_transport_activity(self, transport, direction, byte_count):
+    def show_transport_activity(self, transport, direction, byte_count):
         """Called by transports via the ui_factory, as they do IO.
 
         This may update a progress bar, spinner, or similar display.
@@ -225,6 +246,14 @@ class TextProgressView(object):
         # XXX: Probably there should be a transport activity model, and that
         # too should be seen by the progress view, rather than being poked in
         # here.
+        if not self._have_output:
+            # As a workaround for <https://launchpad.net/bugs/321935> we only
+            # show transport activity when there's already a progress bar
+            # shown, which time the application code is expected to know to
+            # clear off the progress bar when it's going to send some other
+            # output.  Eventually it would be nice to have that automatically
+            # synchronized.
+            return
         self._total_byte_count += byte_count
         self._bytes_since_update += byte_count
         now = time.time()
@@ -234,19 +263,10 @@ class TextProgressView(object):
             # guard against clock stepping backwards, and don't update too
             # often
             rate = self._bytes_since_update / (now - self._transport_update_time)
-            scheme = getattr(transport, '_scheme', None) or repr(transport)
-            if direction == 'read':
-                dir_char = '>'
-            elif direction == 'write':
-                dir_char = '<'
-            else:
-                dir_char = ' '
-            msg = ("%.7s %s %6dKB %5dKB/s" %
-                    (scheme, dir_char, self._total_byte_count>>10, int(rate)>>10,))
+            msg = ("%6dKB %5dKB/s" %
+                    (self._total_byte_count>>10, int(rate)>>10,))
             self._transport_update_time = now
             self._last_repaint = now
             self._bytes_since_update = 0
             self._last_transport_msg = msg
             self._repaint()
-
-

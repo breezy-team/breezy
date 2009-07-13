@@ -148,7 +148,7 @@ class bzr_build(build):
     def run(self):
         build.run(self)
 
-        import generate_docs
+        from tools import generate_docs
         generate_docs.main(argv=["bzr", "man"])
 
 
@@ -242,9 +242,9 @@ def add_pyrex_extension(module_name, libraries=None, extra_source=[]):
     c_name = path + '.c'
     define_macros = []
     if sys.platform == 'win32':
-        # pyrex uses the macro WIN32 to detect the platform, even though it should
-        # be using something like _WIN32 or MS_WINDOWS, oh well, we can give it the
-        # right value.
+        # pyrex uses the macro WIN32 to detect the platform, even though it
+        # should be using something like _WIN32 or MS_WINDOWS, oh well, we can
+        # give it the right value.
         define_macros.append(('WIN32', None))
     if have_pyrex:
         source = [pyrex_name]
@@ -259,15 +259,17 @@ def add_pyrex_extension(module_name, libraries=None, extra_source=[]):
         define_macros=define_macros, libraries=libraries))
 
 
+add_pyrex_extension('bzrlib._annotator_pyx')
 add_pyrex_extension('bzrlib._bencode_pyx')
-add_pyrex_extension('bzrlib._btree_serializer_c')
+add_pyrex_extension('bzrlib._btree_serializer_pyx')
 add_pyrex_extension('bzrlib._chunks_to_lines_pyx')
 add_pyrex_extension('bzrlib._groupcompress_pyx',
                     extra_source=['bzrlib/diff-delta.c'])
-add_pyrex_extension('bzrlib._knit_load_data_c')
+add_pyrex_extension('bzrlib._knit_load_data_pyx')
+add_pyrex_extension('bzrlib._known_graph_pyx')
 add_pyrex_extension('bzrlib._rio_pyx')
 if sys.platform == 'win32':
-    add_pyrex_extension('bzrlib._dirstate_helpers_c',
+    add_pyrex_extension('bzrlib._dirstate_helpers_pyx',
                         libraries=['Ws2_32'])
     add_pyrex_extension('bzrlib._walkdirs_win32')
     z_lib = 'zdll'
@@ -277,17 +279,18 @@ else:
         # The code it generates re-uses a "local" pointer and
         # calls "PY_DECREF" after having set it to NULL. (It mixes PY_XDECREF
         # which is NULL safe with PY_DECREF which is not.)
-        print 'Cannot build extension "bzrlib._dirstate_helpers_c" using'
+        print 'Cannot build extension "bzrlib._dirstate_helpers_pyx" using'
         print 'your version of pyrex "%s". Please upgrade your pyrex' % (
             pyrex_version,)
         print 'install. For now, the non-compiled (python) version will'
         print 'be used instead.'
     else:
-        add_pyrex_extension('bzrlib._dirstate_helpers_c')
+        add_pyrex_extension('bzrlib._dirstate_helpers_pyx')
     add_pyrex_extension('bzrlib._readdir_pyx')
     z_lib = 'z'
 add_pyrex_extension('bzrlib._chk_map_pyx', libraries=[z_lib])
-ext_modules.append(Extension('bzrlib._patiencediff_c', ['bzrlib/_patiencediff_c.c']))
+ext_modules.append(Extension('bzrlib._patiencediff_c',
+                             ['bzrlib/_patiencediff_c.c']))
 
 
 if unavailable_files:
@@ -535,7 +538,7 @@ elif 'py2exe' in sys.argv:
                   ImaginaryModule cElementTree elementtree.ElementTree
                   Crypto.PublicKey._fastmath
                   medusa medusa.filesys medusa.ftp_server
-                  tools tools.doc_generate
+                  tools
                   resource validate""".split()
     dll_excludes = []
 
@@ -654,7 +657,8 @@ else:
     # ad-hoc for easy_install
     DATA_FILES = []
     if not 'bdist_egg' in sys.argv:
-        # generate and install bzr.1 only with plain install, not easy_install one
+        # generate and install bzr.1 only with plain install, not the
+        # easy_install one
         DATA_FILES = [('man/man1', ['bzr.1'])]
 
     # std setup

@@ -207,7 +207,8 @@ def _help_on_transport(name):
     import textwrap
 
     def add_string(proto, help, maxl, prefix_width=20):
-       help_lines = textwrap.wrap(help, maxl - prefix_width)
+       help_lines = textwrap.wrap(help, maxl - prefix_width,
+            break_long_words=False)
        line_with_indent = '\n' + ' ' * prefix_width
        help_text = line_with_indent.join(help_lines)
        return "%-20s%s\n" % (proto, help_text)
@@ -732,6 +733,8 @@ topic_registry.register('debug-flags', _load_from_file,
                         'Options to show or record debug information')
 topic_registry.register('log-formats', _load_from_file,
                         'Details on the logging formats available')
+topic_registry.register('diverged-branches', _load_from_file,
+                        'How to fix diverged branches')
 
 
 # Register concept topics.

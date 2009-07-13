@@ -23,31 +23,26 @@ import re
 import sys
 import time
 
-import bzrlib
-import bzrlib.errors as errors
+from bzrlib import (
+    errors,
+    tests,
+    ui as _mod_ui,
+    )
 from bzrlib.symbol_versioning import (
     deprecated_in,
     )
-from bzrlib.tests import (
-    TestCase,
-    TestUIFactory,
-    StringIOWrapper,
-    )
 from bzrlib.tests.test_progress import _TTYStringIO
-from bzrlib.ui import (
-    CLIUIFactory,
-    SilentUIFactory,
-    )
 from bzrlib.ui.text import (
+    NullProgressView,
     TextProgressView,
     TextUIFactory,
     )
 
 
-class UITests(TestCase):
+class UITests(tests.TestCase):
 
     def test_silent_factory(self):
-        ui = SilentUIFactory()
+        ui = _mod_ui.SilentUIFactory()
         stdout = StringIO()
         self.assertEqual(None,
                          self.apply_redirected(None, stdout, stdout,
@@ -61,8 +56,9 @@ class UITests(TestCase):
         self.assertEqual('', stdout.getvalue())
 
     def test_text_factory_ascii_password(self):
-        ui = TestUIFactory(stdin='secret\n', stdout=StringIOWrapper(),
-                           stderr=StringIOWrapper())
+        ui = tests.TestUIFactory(stdin='secret\n',
+                                 stdout=tests.StringIOWrapper(),
+                                 stderr=tests.StringIOWrapper())
         pb = ui.nested_progress_bar()
         try:
             self.assertEqual('secret',
@@ -83,9 +79,9 @@ class UITests(TestCase):
         We can't predict what encoding users will have for stdin, so we force
         it to utf8 to test that we transport the password correctly.
         """
-        ui = TestUIFactory(stdin=u'baz\u1234'.encode('utf8'),
-                           stdout=StringIOWrapper(),
-                           stderr=StringIOWrapper())
+        ui = tests.TestUIFactory(stdin=u'baz\u1234'.encode('utf8'),
+                                 stdout=tests.StringIOWrapper(),
+                                 stderr=tests.StringIOWrapper())
         ui.stderr.encoding = ui.stdout.encoding = ui.stdin.encoding = 'utf8'
         pb = ui.nested_progress_bar()
         try:
@@ -102,6 +98,25 @@ class UITests(TestCase):
             self.assertEqual('', ui.stdout.readline())
         finally:
             pb.finished()
+
+    def test_progress_construction(self):
+        """TextUIFactory constructs the right progress view.
+        """
+        os.environ['BZR_PROGRESS_BAR'] = 'none'
+        self.assertIsInstance(TextUIFactory()._progress_view,
+            NullProgressView)
+
+        os.environ['BZR_PROGRESS_BAR'] = 'text'
+        self.assertIsInstance(TextUIFactory()._progress_view,
+            TextProgressView)
+
+        os.environ['BZR_PROGRESS_BAR'] = 'text'
+        self.assertIsInstance(TextUIFactory()._progress_view,
+            TextProgressView)
+
+        del os.environ['BZR_PROGRESS_BAR']
+        self.assertIsInstance(TextUIFactory()._progress_view,
+            TextProgressView)
 
     def test_progress_note(self):
         stderr = StringIO()
@@ -161,7 +176,10 @@ class UITests(TestCase):
     def assert_get_bool_acceptance_of_user_input(self, factory):
         factory.stdin = StringIO("y\nyes with garbage\n"
                                  "yes\nn\nnot an answer\n"
-                                 "no\nfoo\n")
+                                 "no\n"
+                                 "N\nY\n"
+                                 "foo\n"
+                                )
         factory.stdout = StringIO()
         factory.stderr = StringIO()
         # there is no output from the base factory
@@ -169,16 +187,18 @@ class UITests(TestCase):
         self.assertEqual(True, factory.get_boolean(""))
         self.assertEqual(False, factory.get_boolean(""))
         self.assertEqual(False, factory.get_boolean(""))
+        self.assertEqual(False, factory.get_boolean(""))
+        self.assertEqual(True, factory.get_boolean(""))
         self.assertEqual("foo\n", factory.stdin.read())
         # stdin should be empty
         self.assertEqual('', factory.stdin.readline())
 
     def test_silent_ui_getbool(self):
-        factory = SilentUIFactory()
+        factory = _mod_ui.SilentUIFactory()
         self.assert_get_bool_acceptance_of_user_input(factory)
 
     def test_silent_factory_prompts_silently(self):
-        factory = SilentUIFactory()
+        factory = _mod_ui.SilentUIFactory()
         stdout = StringIO()
         factory.stdin = StringIO("y\n")
         self.assertEqual(True,
@@ -202,7 +222,8 @@ class UITests(TestCase):
     def test_text_factory_prompts_and_clears(self):
         # a get_boolean call should clear the pb before prompting
         out = _TTYStringIO()
-        factory = TextUIFactory(stdin=StringIO("yada\ny\n"), stdout=out, stderr=out)
+        factory = TextUIFactory(stdin=StringIO("yada\ny\n"),
+                                stdout=out, stderr=out)
         pb = factory.nested_progress_bar()
         pb.show_bar = False
         pb.show_spinner = False
@@ -233,7 +254,7 @@ class UITests(TestCase):
             pb.finished()
 
     def test_silent_ui_getusername(self):
-        factory = SilentUIFactory()
+        factory = _mod_ui.SilentUIFactory()
         factory.stdin = StringIO("someuser\n\n")
         factory.stdout = StringIO()
         factory.stderr = StringIO()
@@ -259,8 +280,9 @@ class UITests(TestCase):
         self.assertEqual('', factory.stdin.readline())
 
     def test_text_ui_getusername_utf8(self):
-        ui = TestUIFactory(stdin=u'someuser\u1234'.encode('utf8'),
-                           stdout=StringIOWrapper(), stderr=StringIOWrapper())
+        ui = tests.TestUIFactory(stdin=u'someuser\u1234'.encode('utf8'),
+                                 stdout=tests.StringIOWrapper(),
+                                 stderr=tests.StringIOWrapper())
         ui.stderr.encoding = ui.stdout.encoding = ui.stdin.encoding = "utf8"
         pb = ui.nested_progress_bar()
         try:
@@ -275,7 +297,7 @@ class UITests(TestCase):
             pb.finished()
 
 
-class TestTextProgressView(TestCase):
+class TestTextProgressView(tests.TestCase):
     """Tests for text display of progress bars.
     """
     # XXX: These might be a bit easier to write if the rendering and
