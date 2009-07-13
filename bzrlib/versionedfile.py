@@ -1604,12 +1604,10 @@ class NetworkRecordStream(object):
 
         :return: An iterator as per VersionedFiles.get_record_stream().
         """
-        from bzrlib.trace import mutter
         for bytes in self._bytes_iterator:
             storage_kind, line_end = network_bytes_to_kind_and_offset(bytes)
             for record in self._kind_factory[storage_kind](
                 storage_kind, bytes, line_end):
-                mutter('<- <- bytes: %r, %s', record.key, record.storage_kind)
                 yield record
 
 

@@ -460,11 +460,8 @@ def _stream_to_byte_stream(stream, src_format):
     pack_writer = pack.ContainerSerialiser()
     yield pack_writer.begin()
     yield pack_writer.bytes_record(src_format.network_name(), '')
-    from bzrlib.trace import mutter
     for substream_type, substream in stream:
-        mutter('-> bytes: %s', substream_type)
         for record in substream:
-            mutter('-> -> bytes: %s %r', substream_type, record.key)
             if record.storage_kind in ('chunked', 'fulltext'):
                 serialised = record_to_fulltext_bytes(record)
             elif record.storage_kind == 'inventory-delta':
@@ -488,7 +485,6 @@ def _byte_stream_to_stream(byte_stream):
     :return: (RepositoryFormat, stream_generator)
     """
     stream_decoder = pack.ContainerPushParser()
-    from bzrlib.trace import mutter
     def record_stream():
         """Closure to return the substreams."""
         # May have fully parsed records already.
@@ -496,9 +492,6 @@ def _byte_stream_to_stream(byte_stream):
             record_names, record_bytes = record
             record_name, = record_names
             substream_type = record_name[0]
-            mutter('<- bytes: %s', substream_type)
-#            if substream_type == 'inventories':
-#                import pdb; pdb.set_trace()
             substream = NetworkRecordStream([record_bytes])
             yield substream_type, substream.read()
         for bytes in byte_stream:
@@ -507,9 +500,6 @@ def _byte_stream_to_stream(byte_stream):
                 record_names, record_bytes = record
                 record_name, = record_names
                 substream_type = record_name[0]
-                mutter('<- bytes: %s', substream_type)
-#                if substream_type == 'inventories':
-#                    import pdb; pdb.set_trace()
                 substream = NetworkRecordStream([record_bytes])
                 yield substream_type, substream.read()
     for bytes in byte_stream:
