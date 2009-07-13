@@ -1089,6 +1089,9 @@ class Inventory(CommonInventory):
         See the inventory developers documentation for the theory behind
         inventory deltas.
 
+        If delta application fails the inventory is left in an indeterminate
+        state and must not be used.
+
         :param delta: A list of changes to apply. After all the changes are
             applied the final inventory must be internally consistent, but it
             is ok to supply changes which, if only half-applied would have an
@@ -1138,13 +1141,13 @@ class Inventory(CommonInventory):
         # modified children remaining by the time we examine it.
         for old_path, file_id in sorted(((op, f) for op, np, f, e in delta
                                         if op is not None), reverse=True):
-            if file_id not in self:
-                # adds come later
-                continue
             # Preserve unaltered children of file_id for later reinsertion.
             file_id_children = getattr(self[file_id], 'children', {})
             if len(file_id_children):
                 children[file_id] = file_id_children
+            if self.id2path(file_id) != old_path:
+                raise errors.InconsistentDelta(old_path, file_id,
+                    "Entry was at wrong other path %r." % self.id2path(file_id))
             # Remove file_id and the unaltered children. If file_id is not
             # being deleted it will be reinserted back later.
             self.remove_recursive_id(file_id)
@@ -1661,6 +1664,10 @@ class CHKInventory(CommonInventory):
                 old_key = None
             else:
                 old_key = (file_id,)
+                if self.id2path(file_id) != old_path:
+                    raise errors.InconsistentDelta(old_path, file_id,
+                        "Entry was at wrong other path %r." %
+                        self.id2path(file_id))
             id_to_entry_delta.append((old_key, new_key, new_value))
             if result.parent_id_basename_to_file_id is not None:
                 # parent_id, basename changes

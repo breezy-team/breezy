@@ -380,6 +380,50 @@ class TestDeltaApplication(TestCaseWithTransport):
         self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
             inv, delta)
 
+    def test_old_parent_path_is_wrong(self):
+        inv = self.get_empty_inventory()
+        parent1 = inventory.InventoryDirectory('p-1', 'dir', inv.root.file_id)
+        parent1.revision = 'result'
+        parent2 = inventory.InventoryDirectory('p-2', 'dir2', inv.root.file_id)
+        parent2.revision = 'result'
+        file1 = inventory.InventoryFile('id', 'path', 'p-2')
+        file1.revision = 'result'
+        file1.text_size = 0
+        file1.text_sha1 = ""
+        inv.add(parent1)
+        inv.add(parent2)
+        inv.add(file1)
+        # This delta claims that file1 was at dir/path, but actually it was at
+        # dir2/path if you follow the inventory parent structure.
+        delta = [(u'dir/path', None, 'id', None)]
+        self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
+            inv, delta)
+
+    def test_old_parent_path_is_for_other_id(self):
+        inv = self.get_empty_inventory()
+        parent1 = inventory.InventoryDirectory('p-1', 'dir', inv.root.file_id)
+        parent1.revision = 'result'
+        parent2 = inventory.InventoryDirectory('p-2', 'dir2', inv.root.file_id)
+        parent2.revision = 'result'
+        file1 = inventory.InventoryFile('id', 'path', 'p-2')
+        file1.revision = 'result'
+        file1.text_size = 0
+        file1.text_sha1 = ""
+        file2 = inventory.InventoryFile('id2', 'path', 'p-1')
+        file2.revision = 'result'
+        file2.text_size = 0
+        file2.text_sha1 = ""
+        inv.add(parent1)
+        inv.add(parent2)
+        inv.add(file1)
+        inv.add(file2)
+        # This delta claims that file1 was at dir/path, but actually it was at
+        # dir2/path if you follow the inventory parent structure. At dir/path
+        # is another entry we should not delete.
+        delta = [(u'dir/path', None, 'id', None)]
+        self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
+            inv, delta)
+
 
 class TestInventoryEntry(TestCase):
 

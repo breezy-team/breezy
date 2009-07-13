@@ -204,6 +204,7 @@ desired.
 import bisect
 import binascii
 import errno
+import operator
 import os
 from stat import S_IEXEC
 import stat
@@ -1338,7 +1339,7 @@ class DirState(object):
                     insertions[child[0][2]] = (key, minikind, executable,
                                                fingerprint, new_child_path)
         try:
-            self._apply_removals(removals.values())
+            self._apply_removals(removals.iteritems())
             self._apply_insertions(insertions.values())
             # Validate parents
             self._after_delta_check_parents(parents, 0)
@@ -1352,11 +1353,23 @@ class DirState(object):
             raise errors.InconsistentDeltaDelta(delta, "error from _get_entry.")
 
     def _apply_removals(self, removals):
-        for path in sorted(removals, reverse=True):
+        for file_id, path in sorted(removals, reverse=True,
+            key=operator.itemgetter(1)):
             dirname, basename = osutils.split(path)
             block_i, entry_i, d_present, f_present = \
                 self._get_block_entry_index(dirname, basename, 0)
-            entry = self._dirblocks[block_i][1][entry_i]
+            try:
+                entry = self._dirblocks[block_i][1][entry_i]
+            except IndexError:
+                raise errors.InconsistentDelta(path, file_id,
+                    "Wrong path for old path.")
+            if not f_present or entry[1][0][0] in 'ar':
+                raise errors.InconsistentDelta(path, file_id,
+                    "Wrong path for old path.")
+            if file_id != entry[0][2]:
+                raise errors.InconsistentDelta(path, file_id,
+                    "Attempt to remove wrong has wrong id - found %r."
+                    % entry[0][2])
             self._make_absent(entry)
             # See if we have a malformed delta: deleting a directory must not
             # leave crud behind. This increases the number of bisects needed
