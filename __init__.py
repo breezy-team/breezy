@@ -25,7 +25,7 @@ import bzrlib
 import bzrlib.api
 from bzrlib.commands import plugin_cmds
 
-version_info = (0, 5, 2, 'dev', 0)
+version_info = (0, 5, 2, 'final', 0)
 if version_info[3] == 'final':
     version_string = '%d.%d.%d' % version_info[:3]
 else:
@@ -38,7 +38,7 @@ COMPATIBLE_BZR_VERSIONS = [(1, 14, 0), (1, 15, 0), (1, 16, 0), (1, 17, 0)]
 bzrlib.api.require_any_api(bzrlib, COMPATIBLE_BZR_VERSIONS)
 
 for cmd in ["replay", "rebase", "rebase_abort", "rebase_continue",
-            "rebase_todo"]:
+            "rebase_todo", "filter_branch"]:
     plugin_cmds.register_lazy("cmd_%s" % cmd, [], 
         "bzrlib.plugins.rebase.commands")
 
