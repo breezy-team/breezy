@@ -108,6 +108,8 @@ class ShelfCreator(object):
             self.shelve_content_change(change[1])
         elif change[0] == 'modify target':
             self.shelve_modify_target(change[1])
+        else:
+            raise ValueError('Unknown change kind: "%s"' % change[0])
 
     def shelve_rename(self, file_id):
         """Shelve a file rename.
