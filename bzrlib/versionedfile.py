@@ -1623,7 +1623,7 @@ def fulltext_network_to_record(kind, bytes, line_end):
 
 
 def inventory_delta_network_to_record(kind, bytes, line_end):
-    """Convert a network fulltext record to record."""
+    """Convert a network inventory-delta record to record."""
     meta_len, = struct.unpack('!L', bytes[line_end:line_end+4])
     record_meta = bytes[line_end+4:line_end+4+meta_len]
     key, parents = bencode.bdecode_as_tuple(record_meta)
