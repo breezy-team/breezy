@@ -54,10 +54,12 @@ def load_tests(standard_tests, module, loader):
             'apply_delta':apply_inventory_Repository_add_inventory_by_delta,
             'format':format}))
     for format in workingtree_formats():
-        scenarios.append((str(format.__class__.__name__), {
+        scenarios.append(
+            (str(format.__class__.__name__) + ".update_basis_by_delta", {
             'apply_delta':apply_inventory_WT_basis,
             'format':format}))
-        scenarios.append((str(format.__class__.__name__), {
+        scenarios.append(
+            (str(format.__class__.__name__) + ".apply_inventory_delta", {
             'apply_delta':apply_inventory_WT,
             'format':format}))
     return multiply_tests(to_adapt, scenarios, result)
@@ -357,6 +359,24 @@ class TestDeltaApplication(TestCaseWithTransport):
         file2.text_size = 0
         file2.text_sha1 = ""
         delta = [(None, u'path/path2', 'id2', file2)]
+        self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
+            inv, delta)
+
+    def test_new_parent_path_has_wrong_id(self):
+        inv = self.get_empty_inventory()
+        parent1 = inventory.InventoryDirectory('p-1', 'dir', inv.root.file_id)
+        parent1.revision = 'result'
+        parent2 = inventory.InventoryDirectory('p-2', 'dir2', inv.root.file_id)
+        parent2.revision = 'result'
+        file1 = inventory.InventoryFile('id', 'path', 'p-2')
+        file1.revision = 'result'
+        file1.text_size = 0
+        file1.text_sha1 = ""
+        inv.add(parent1)
+        inv.add(parent2)
+        # This delta claims that file1 is at dir/path, but actually its at
+        # dir2/path if you follow the inventory parent structure.
+        delta = [(None, u'dir/path', 'id', file1)]
         self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
             inv, delta)
 

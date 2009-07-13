@@ -554,6 +554,7 @@ Forms of inventory inconsistency deltas can carry/cause:
    (Wrong path)
  - An entry whose parent is not a directory. (Under non-directory).
  - An entry that is internally inconsistent.
+ - An entry that is already present in the tree (Duplicate id)
 
 Known causes of inconsistency:
  - A 'new' entry which the inventory already has - when this is a directory

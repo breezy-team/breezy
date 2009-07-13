@@ -1297,6 +1297,7 @@ class DirState(object):
             inventory._check_delta_unique_new_paths(
             inventory._check_delta_ids_match_entry(delta))), reverse=True):
             if (file_id in insertions) or (file_id in removals):
+                self._changes_aborted = True
                 raise errors.InconsistentDelta(old_path or new_path, file_id,
                     "repeated file_id")
             if old_path is not None:
@@ -1336,10 +1337,19 @@ class DirState(object):
                                                   child_basename)
                     insertions[child[0][2]] = (key, minikind, executable,
                                                fingerprint, new_child_path)
-        self._apply_removals(removals.values())
-        self._apply_insertions(insertions.values())
-        # Validate parents
-        self._after_delta_check_parents(parents, 0)
+        try:
+            self._apply_removals(removals.values())
+            self._apply_insertions(insertions.values())
+            # Validate parents
+            self._after_delta_check_parents(parents, 0)
+        except errors.BzrError, e:
+            if 'integrity error' not in str(e):
+                raise
+            # _get_entry raises BzrError when a request is inconsistent; we
+            # want such errors to be shown as InconsistentDelta - and that 
+            # fits the behaviour we trigger.
+            self._changes_aborted = True
+            raise errors.InconsistentDeltaDelta(delta, "error from _get_entry.")
 
     def _apply_removals(self, removals):
         for path in sorted(removals, reverse=True):

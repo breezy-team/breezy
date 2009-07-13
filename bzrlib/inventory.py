@@ -1169,6 +1169,9 @@ class Inventory(CommonInventory):
             except AttributeError:
                 raise errors.InconsistentDelta(new_path, new_entry.file_id,
                     "Parent is not a directory.")
+            if self.id2path(new_entry.file_id) != new_path:
+                raise errors.InconsistentDelta(new_path, new_entry.file_id,
+                    "New path is not consistent with parent path.")
         if len(children):
             # Get the parent id that was deleted
             parent_id, children = children.popitem()
@@ -1254,12 +1257,11 @@ class Inventory(CommonInventory):
         To add  a file to a branch ready to be committed, use Branch.add,
         which calls this.
 
-        Returns the new entry object.
+        :return: entry
         """
         if entry.file_id in self._byid:
             raise errors.DuplicateFileId(entry.file_id,
                                          self._byid[entry.file_id])
-
         if entry.parent_id is None:
             self.root = entry
         else:
@@ -1590,6 +1592,7 @@ class CHKInventory(CommonInventory):
           copied to and updated for the result.
         :return: The new CHKInventory.
         """
+        split = osutils.split
         result = CHKInventory(self._search_key_name)
         if propagate_caches:
             # Just propagate the path-to-fileid cache for now
@@ -1630,7 +1633,8 @@ class CHKInventory(CommonInventory):
         inventory_delta = _check_delta_unique_new_paths(inventory_delta)
         # Check for entries that don't match the fileid
         inventory_delta = _check_delta_ids_match_entry(inventory_delta)
-        # All changed entries need to have their parents be directories.
+        # All changed entries need to have their parents be directories and be
+        # at the right path. This set contains (path, id) tuples.
         parents = set()
         for old_path, new_path, file_id, entry in inventory_delta:
             # file id changes
@@ -1652,7 +1656,7 @@ class CHKInventory(CommonInventory):
                 # Update caches. It's worth doing this whether
                 # we're propagating the old caches or not.
                 result._path_to_fileid_cache[new_path] = file_id
-                parents.add(entry.parent_id)
+                parents.add((split(new_path)[0], entry.parent_id))
             if old_path is None:
                 old_key = None
             else:
@@ -1678,8 +1682,8 @@ class CHKInventory(CommonInventory):
         result.id_to_entry.apply_delta(id_to_entry_delta)
         if parent_id_basename_delta:
             result.parent_id_basename_to_file_id.apply_delta(parent_id_basename_delta)
-        parents.discard(None)
-        for parent in parents:
+        parents.discard(('', None))
+        for parent_path, parent in parents:
             try:
                 if result[parent].kind != 'directory':
                     raise errors.InconsistentDelta(result.id2path(parent), parent,
@@ -1687,6 +1691,9 @@ class CHKInventory(CommonInventory):
             except errors.NoSuchId:
                 raise errors.InconsistentDelta("<unknown>", parent,
                     "Parent is not present in resulting inventory.")
+            if result.path2id(parent_path) != parent:
+                raise errors.InconsistentDelta(parent_path, parent,
+                    "Parent has wrong path %r." % result.path2id(parent_path))
         return result
 
     @classmethod
