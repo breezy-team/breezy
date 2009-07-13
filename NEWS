@@ -6,8 +6,49 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
+
 In Development
 ##############
+
+Compatibility Breaks
+********************
+
+New Features
+************
+
+Bug Fixes
+*********
+
+* BranchBuilder now accepts timezone to avoid test failures in countries far
+  from GMT. (Vincent Ladeuil, #397716)
+
+Improvements
+************
+
+Documentation
+*************
+
+* Added Bazaar 2.0 Upgrade Guide. (Ian Clatworthy)
+
+API Changes
+***********
+
+Internals
+*********
+
+
+bzr 1.17rc1 "So late it's brunch" 2009-07-13
+############################################
+
+Bazaar continues to blaze a straight and shining path to the 2.0 release and
+the elevation of the ``2a`` beta format to the full glory of "supported and
+stable".
+
+Highlights in this release include greatly reduced memory consumption during
+commits, faster ``ls``, faster ``annotate``, faster network operations if
+you're specifying a revision number and the final destruction of those
+annoying progress bar artifacts.
+
 
 Compatibility Breaks
 ********************
@@ -7628,7 +7669,7 @@ Bug Fixes
 * Avoid circular imports by creating a deprecated function for
   ``bzrlib.tree.RevisionTree``. Callers should have been using
   ``bzrlib.revisontree.RevisionTree`` anyway. (John Arbash Meinel,
-  #63360, #66349)
+  #66349)
 
 * Don't use ``socket.MSG_WAITALL`` as it doesn't exist on all
   platforms. (Martin Pool, #66356)
