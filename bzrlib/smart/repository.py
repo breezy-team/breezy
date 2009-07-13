@@ -656,7 +656,7 @@ class SmartServerRepositoryInsertStreamLocked(SmartServerRepositoryRequest):
             return SuccessfulSmartServerResponse(('ok', ))
 
 
-class SmartServerRepositoryInsertStream_1_17(SmartServerRepositoryInsertStreamLocked):
+class SmartServerRepositoryInsertStream_1_18(SmartServerRepositoryInsertStreamLocked):
     """Insert a record stream from a RemoteSink into a repository.
 
     Same as SmartServerRepositoryInsertStreamLocked, except:
@@ -664,7 +664,7 @@ class SmartServerRepositoryInsertStream_1_17(SmartServerRepositoryInsertStreamLo
      - servers that implement this verb accept 'inventory-delta' records in the
        stream.
 
-    New in 1.17.
+    New in 1.18.
     """
 
     def do_repository_request(self, repository, resume_tokens, lock_token=None):

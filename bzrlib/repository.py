@@ -3684,9 +3684,6 @@ class StreamSink(object):
         finally:
             self.target_repo.unlock()
 
-    def _inv_deltas_ok(self):
-        return True
-    
     def _locked_insert_stream(self, stream, src_format, is_resume):
         to_serializer = self.target_repo._format._serializer
         src_serializer = src_format._serializer

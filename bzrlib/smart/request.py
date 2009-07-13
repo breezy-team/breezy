@@ -544,7 +544,7 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'Repository.insert_stream', 'bzrlib.smart.repository', 'SmartServerRepositoryInsertStream')
 request_handlers.register_lazy(
-    'Repository.insert_stream_1.17', 'bzrlib.smart.repository', 'SmartServerRepositoryInsertStream_1_17')
+    'Repository.insert_stream_1.18', 'bzrlib.smart.repository', 'SmartServerRepositoryInsertStream_1_18')
 request_handlers.register_lazy(
     'Repository.insert_stream_locked', 'bzrlib.smart.repository', 'SmartServerRepositoryInsertStreamLocked')
 request_handlers.register_lazy(
