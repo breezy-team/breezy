@@ -97,6 +97,7 @@ class ShelfCreator(object):
                     yield ('modify text', file_id)
 
     def shelve_change(self, change):
+        """Shelve a change in the iter_shelvable format."""
         if change[0] == 'rename':
             self.shelve_rename(change[1])
         elif change[0] == 'delete file':
