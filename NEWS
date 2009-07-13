@@ -6,8 +6,18 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
-In Development
-##############
+bzr 1.17rc1 "So late it's brunch" 2009-07-13
+############################################
+
+Bazaar continues to blaze a straight and shining path to the 2.0 release and
+the elevation of the ``2a`` beta format to the full glory of "supported and
+stable".
+
+Highlights in this release include greatly reduced memory consumption during
+commits, faster ``ls``, faster ``annotate``, faster network operations if
+you're specifying a revision number and the final destruction of those
+annoying progress bar artifacts.
+
 
 Compatibility Breaks
 ********************
