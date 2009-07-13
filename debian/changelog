@@ -1,8 +1,9 @@
 bzr (1.17~rc1-1) unstable; urgency=low
 
   * New upstream version.
+  * Bump standards version to 3.8.2.
 
- -- Jelmer Vernooij <jelmer@debian.org>  Mon, 13 Jul 2009 23:17:58 +0200
+ -- Jelmer Vernooij <jelmer@debian.org>  Tue, 14 Jul 2009 00:52:47 +0200
 
 bzr (1.16-1) unstable; urgency=low
 
