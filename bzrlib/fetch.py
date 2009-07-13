@@ -292,8 +292,9 @@ def _parent_keys_for_root_version(
             else:
                 parent_root_id = tree.get_root_id()
             rev_id_to_root_id_map[parent_id] = None
-            #XXX: why not:  memory consumption maybe?
-            #rev_id_to_root_id_map[parent_id] = parent_root_id
+            # XXX: why not:
+            #   rev_id_to_root_id_map[parent_id] = parent_root_id
+            # memory consumption maybe?
         else:
             parent_root_id = rev_id_to_root_id_map[parent_id]
         if root_id == parent_root_id:

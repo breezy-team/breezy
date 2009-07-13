@@ -4246,7 +4246,7 @@ class StreamSource(object):
         # The source is using CHKs, but the target either doesn't or is has a
         # different serializer.  The StreamSink code expects to be able to
         # convert on the target, so we need to put bytes-on-the-wire that can
-        # be converted.  That means inventory deltas (if the remote is <1.17,
+        # be converted.  That means inventory deltas (if the remote is <1.18,
         # RemoteStreamSink will fallback to VFS to insert the deltas).
         yield ('inventories',
            self._stream_invs_as_deltas(revision_ids, fulltexts=fulltexts))

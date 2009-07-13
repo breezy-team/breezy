@@ -695,12 +695,12 @@ class RemoteRepository(_RpcHelper):
         """See Repository.get_rev_id_for_revno."""
         path = self.bzrdir._path_for_remote_call(self._client)
         try:
-            if self._client._medium._is_remote_before((1, 17)):
+            if self._client._medium._is_remote_before((1, 18)):
                 return self._get_rev_id_for_revno_vfs(revno, known_pair)
             response = self._call(
                 'Repository.get_rev_id_for_revno', path, revno, known_pair)
         except errors.UnknownSmartMethod:
-            self._client._medium._remember_remote_is_before((1, 17))
+            self._client._medium._remember_remote_is_before((1, 18))
             return self._get_rev_id_for_revno_vfs(revno, known_pair)
         if response[0] == 'ok':
             return True, response[1]
@@ -1669,7 +1669,7 @@ class RemoteStreamSink(repository.StreamSink):
     def insert_stream(self, stream, src_format, resume_tokens):
         target = self.target_repo
         target._unstacked_provider.missing_keys.clear()
-        candidate_calls = [('Repository.insert_stream_1.17', (1, 17))]
+        candidate_calls = [('Repository.insert_stream_1.18', (1, 18))]
         if target._lock_token:
             candidate_calls.append(('Repository.insert_stream_locked', (1, 14)))
             lock_args = (target._lock_token or '',)
@@ -1697,7 +1697,7 @@ class RemoteStreamSink(repository.StreamSink):
             return self._insert_real(stream, src_format, resume_tokens)
         self._last_inv_record = None
         self._last_substream = None
-        if required_version < (1, 17):
+        if required_version < (1, 18):
             # Remote side doesn't support inventory deltas.
             stream = self._stop_stream_if_inventory_delta(stream)
         byte_stream = smart_repo._stream_to_byte_stream(
@@ -1708,7 +1708,10 @@ class RemoteStreamSink(repository.StreamSink):
         if response[0][0] not in ('ok', 'missing-basis'):
             raise errors.UnexpectedSmartServerResponse(response)
         if self._last_inv_record is not None:
-            return self._resume_stream_with_vfs(response, src_format, stream)
+            # The stream included an inventory-delta record, but the remote
+            # side isn't new enough to support them.  So we need to send the
+            # rest of the stream via VFS.
+            return self._resume_stream_with_vfs(response, src_format)
         if response[0][0] == 'missing-basis':
             tokens, missing_keys = bencode.bdecode_as_tuple(response[0][1])
             resume_tokens = tokens
@@ -1717,29 +1720,40 @@ class RemoteStreamSink(repository.StreamSink):
             self.target_repo.refresh_data()
             return [], set()
 
-    def _resume_stream_with_vfs(self, response, src_format, stream):
+    def _resume_stream_with_vfs(self, response, src_format):
+        """Resume sending a stream via VFS, first resending the record and
+        substream that couldn't be sent via an insert_stream verb.
+        """
         if response[0][0] == 'missing-basis':
             tokens, missing_keys = bencode.bdecode_as_tuple(response[0][1])
             # Ignore missing_keys, we haven't finished inserting yet
         else:
             tokens = []
+        def resume_substream():
+            # First yield the record we stopped at.
+            yield self._last_inv_record
+            self._last_inv_record = None
+            # Then yield the rest of the substream that was interrupted.
+            for record in self._last_substream:
+                yield record
+            self._last_substream = None
         def resume_stream():
-            def resume_substream():
-                mutter('resumed substream rec: %r', self._last_inv_record)
-                yield self._last_inv_record
-                self._last_inv_record = None
-                for record in self._last_substream:
-                    mutter('resumed substream rec 2: %r', record)
-                    yield record
-                self._last_substream = None
-            mutter('resumed stream: (first)')
+            # Finish sending the interrupted substream
             yield ('inventories', resume_substream())
+            # Then simply continue sending the rest of the stream.
             for substream_kind, substream in self._last_stream:
-                mutter('resumed stream: %r', substream_kind)
                 yield substream_kind, substream
         return self._insert_real(resume_stream(), src_format, tokens)
 
     def _stop_stream_if_inventory_delta(self, stream):
+        """Normally this just lets the original stream pass-through unchanged.
+
+        However if any 'inventories' substream includes an inventory-delta
+        record it will stop streaming, and store the interrupted record,
+        substream and stream in self._last_inv_record, self._last_substream and
+        self._last_stream so that the stream can be resumed by
+        _resume_stream_with_vfs.
+        """
         def filter_inv_substream(inv_substream):
             substream_iter = iter(inv_substream)
             for record in substream_iter:
