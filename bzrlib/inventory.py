@@ -1132,7 +1132,8 @@ class Inventory(CommonInventory):
         # facility.
         list(_check_delta_unique_ids(_check_delta_unique_new_paths(
             _check_delta_unique_old_paths(_check_delta_ids_match_entry(
-            delta)))))
+            _check_delta_new_path_entry_both_or_None(
+            delta))))))
 
         children = {}
         # Remove all affected items which were in the original inventory,
@@ -1156,7 +1157,7 @@ class Inventory(CommonInventory):
         # longest, ensuring that items which were modified and whose parents in
         # the resulting inventory were also modified, are inserted after their
         # parents.
-        for new_path, new_entry in sorted((np, e) for op, np, f, e in
+        for new_path, f, new_entry in sorted((np, f, e) for op, np, f, e in
                                           delta if np is not None):
             if new_entry.kind == 'directory':
                 # Pop the child which to allow detection of children whose
@@ -1636,6 +1637,9 @@ class CHKInventory(CommonInventory):
         inventory_delta = _check_delta_unique_new_paths(inventory_delta)
         # Check for entries that don't match the fileid
         inventory_delta = _check_delta_ids_match_entry(inventory_delta)
+        # Check for new_path <-> entry consistency
+        inventory_delta = _check_delta_new_path_entry_both_or_None(
+            inventory_delta)
         # All changed entries need to have their parents be directories and be
         # at the right path. This set contains (path, id) tuples.
         parents = set()
@@ -2169,4 +2173,21 @@ def _check_delta_ids_match_entry(delta):
             if entry.file_id != item[2]:
                 raise errors.InconsistentDelta(item[0] or item[1], item[2],
                     "mismatched id with %r" % entry)
+        yield item
+
+
+def _check_delta_new_path_entry_both_or_None(delta):
+    """Decorate a delta and check that the new_path and entry are paired.
+
+    :return: A generator over delta.
+    """
+    for item in delta:
+        new_path = item[1]
+        entry = item[3]
+        if new_path is None and entry is not None:
+            raise errors.InconsistentDelta(item[0], item[1],
+                "Entry with no new_path")
+        if new_path is not None and entry is None:
+            raise errors.InconsistentDelta(new_path, item[1],
+                "new_path with no entry")
         yield item

@@ -159,7 +159,7 @@ def apply_inventory_WT_basis(self, basis, delta):
         paths = {}
         parents = set()
         for old, new, id, entry in delta:
-            if entry is None:
+            if None in (new, entry):
                 continue
             paths[new] = (entry.file_id, entry.kind)
             parents.add(osutils.dirname(new))
@@ -334,6 +334,22 @@ class TestDeltaApplication(TestCaseWithTransport):
         file1.text_size = 0
         file1.text_sha1 = ""
         delta = [(None, u'path', 'id', file1)]
+        self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
+            inv, delta)
+
+    def test_mismatched_new_path_entry_None(self):
+        inv = self.get_empty_inventory()
+        delta = [(None, u'path', 'id', None)]
+        self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
+            inv, delta)
+
+    def test_mismatched_new_path_None_entry(self):
+        inv = self.get_empty_inventory()
+        file1 = inventory.InventoryFile('id1', 'path', inv.root.file_id)
+        file1.revision = 'result'
+        file1.text_size = 0
+        file1.text_sha1 = ""
+        delta = [(u"path", None, 'id1', file1)]
         self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
             inv, delta)
 

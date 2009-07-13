@@ -1296,7 +1296,9 @@ class DirState(object):
         for old_path, new_path, file_id, inv_entry in sorted(
             inventory._check_delta_unique_old_paths(
             inventory._check_delta_unique_new_paths(
-            inventory._check_delta_ids_match_entry(delta))), reverse=True):
+            inventory._check_delta_ids_match_entry(
+            inventory._check_delta_new_path_entry_both_or_None(delta)))),
+            reverse=True):
             if (file_id in insertions) or (file_id in removals):
                 self._changes_aborted = True
                 raise errors.InconsistentDelta(old_path or new_path, file_id,
@@ -1305,6 +1307,9 @@ class DirState(object):
                 old_path = old_path.encode('utf-8')
                 removals[file_id] = old_path
             if new_path is not None:
+                if inv_entry is None:
+                    raise errors.InconsistentDelta(new_path, file_id,
+                        "new_path with no entry")
                 new_path = new_path.encode('utf-8')
                 dirname, basename = osutils.split(new_path)
                 dirname_utf8 = encode(dirname)
@@ -1454,6 +1459,9 @@ class DirState(object):
                 raise errors.InconsistentDelta(new_path, file_id,
                     "mismatched entry file_id %r" % inv_entry)
             if new_path is not None:
+                if inv_entry is None:
+                    raise errors.InconsistentDelta(new_path, file_id,
+                        "new_path with no entry")
                 new_path_utf8 = encode(new_path)
                 # note the parent for validation
                 dirname_utf8, basename_utf8 = osutils.split(new_path_utf8)
