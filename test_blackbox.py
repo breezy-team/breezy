@@ -16,10 +16,10 @@
 
 """Couple of blackbox tests for the rebase plugin."""
 
+import os
+
 from bzrlib.branch import Branch
 from bzrlib.tests.blackbox import ExternalBase
-
-import os
 
 class TestRebaseSimple(ExternalBase):
 

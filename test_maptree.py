@@ -18,7 +18,10 @@
 from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.treebuilder import TreeBuilder
 
-from maptree import MapTree, map_file_ids
+from bzrlib.plugins.rebase.maptree import (
+    MapTree,
+    map_file_ids,
+    )
 
 
 class EmptyMapTreeTests(TestCaseWithTransport):

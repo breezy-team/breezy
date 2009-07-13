@@ -88,11 +88,17 @@ class cmd_rebase(Command):
         from bzrlib.branch import Branch
         from bzrlib.revisionspec import RevisionSpec
         from bzrlib.workingtree import WorkingTree
-        from rebase import (generate_simple_plan, rebase, rebase_plan_exists,
-                            read_rebase_plan, remove_rebase_plan,
-                            workingtree_replay, write_rebase_plan,
-                            regenerate_default_revid,
-                            rebase_todo)
+        from bzrlib.plugins.rebase.rebase import (
+            generate_simple_plan,
+            rebase,
+            rebase_plan_exists,
+            read_rebase_plan,
+            remove_rebase_plan,
+            workingtree_replay,
+            write_rebase_plan,
+            regenerate_default_revid,
+            rebase_todo,
+            )
         if revision is not None and pending_merges:
             raise BzrCommandError(
                 "--revision and --pending-merges are mutually exclusive")
@@ -213,7 +219,11 @@ class cmd_rebase_abort(Command):
     
     @display_command
     def run(self):
-        from rebase import read_rebase_plan, remove_rebase_plan, complete_revert
+        from bzrlib.plugins.rebase.rebase import (
+            read_rebase_plan,
+            remove_rebase_plan,
+            complete_revert,
+            )
         from bzrlib.workingtree import WorkingTree
         wt = WorkingTree.open_containing('.')[0]
         wt.lock_write()
@@ -235,9 +245,15 @@ class cmd_rebase_continue(Command):
     
     @display_command
     def run(self, merge_type=None):
-        from rebase import (commit_rebase, rebase, rebase_plan_exists,
-                            read_rebase_plan, read_active_rebase_revid,
-                            remove_rebase_plan, workingtree_replay)
+        from bzrlib.plugins.rebase.rebase import (
+            commit_rebase,
+            rebase,
+            rebase_plan_exists,
+            read_rebase_plan,
+            read_active_rebase_revid,
+            remove_rebase_plan,
+            workingtree_replay,
+            )
         from bzrlib.workingtree import WorkingTree
         wt = WorkingTree.open_containing('.')[0]
         wt.lock_write()
@@ -277,8 +293,11 @@ class cmd_rebase_todo(Command):
     """
     
     def run(self):
-        from rebase import (rebase_todo, read_rebase_plan,
-                            read_active_rebase_revid)
+        from bzrlib.plugins.rebase.rebase import (
+            rebase_todo,
+            read_rebase_plan,
+            read_active_rebase_revid,
+            )
         from bzrlib.workingtree import WorkingTree
         wt = WorkingTree.open_containing('.')[0]
         wt.lock_read()
@@ -309,7 +328,10 @@ class cmd_replay(Command):
         from bzrlib.branch import Branch
         from bzrlib.workingtree import WorkingTree
         from bzrlib import ui
-        from rebase import regenerate_default_revid, replay_delta_workingtree
+        from bzrlib.plugins.rebase.rebase import (
+            regenerate_default_revid,
+            replay_delta_workingtree,
+            )
 
         from_branch = Branch.open_containing(location)[0]
 

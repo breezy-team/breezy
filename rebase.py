@@ -15,20 +15,32 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Rebase."""
 
+import os
+
+from bzrlib import (
+    osutils,
+    )
 from bzrlib.config import Config
-from bzrlib.errors import (BzrError, NoSuchFile, UnknownFormatError,
-                           NoCommonAncestor, NoSuchId, UnrelatedBranches)
+from bzrlib.errors import (
+    BzrError,
+    NoSuchFile,
+    UnknownFormatError,
+    NoCommonAncestor,
+    NoSuchId,
+    UnrelatedBranches,
+    )
 from bzrlib.generate_ids import gen_revision_id
 from bzrlib.graph import FrozenHeadsCache
 from bzrlib.merge import Merger
-from bzrlib import osutils
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
 from bzrlib.tsort import topo_sort
 import bzrlib.ui as ui
 
-from maptree import MapTree, map_file_ids
-import os
+from bzrlib.plugins.rebase.maptree import (
+    MapTree,
+    map_file_ids,
+    )
 
 REBASE_PLAN_FILENAME = 'rebase-plan'
 REBASE_CURRENT_REVID_FILENAME = 'rebase-current'

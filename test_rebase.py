@@ -22,16 +22,28 @@ from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.trace import mutter
 
-from rebase import (marshall_rebase_plan, unmarshall_rebase_plan, 
-                    replay_snapshot, generate_simple_plan,
-                    generate_transpose_plan, rebase_plan_exists,
-                    rebase_todo, REBASE_PLAN_FILENAME, 
-                    REBASE_CURRENT_REVID_FILENAME, read_rebase_plan, 
-                    remove_rebase_plan, read_active_rebase_revid, 
-                    write_active_rebase_revid, write_rebase_plan, MapTree,
-                    ReplaySnapshotError, ReplayParentsInconsistent, 
-                    replay_delta_workingtree, replay_determine_base, 
-                    commit_rebase)
+from bzrlib.plugins.rebase.rebase import (
+    marshall_rebase_plan,
+    unmarshall_rebase_plan,
+    replay_snapshot,
+    generate_simple_plan,
+    generate_transpose_plan,
+    rebase_plan_exists,
+    rebase_todo,
+    REBASE_PLAN_FILENAME,
+    REBASE_CURRENT_REVID_FILENAME,
+    read_rebase_plan,
+    remove_rebase_plan,
+    read_active_rebase_revid,
+    write_active_rebase_revid,
+    write_rebase_plan,
+    MapTree,
+    ReplaySnapshotError,
+    ReplayParentsInconsistent,
+    replay_delta_workingtree,
+    replay_determine_base,
+    commit_rebase,
+    )
 
 
 class RebasePlanReadWriterTests(TestCase):

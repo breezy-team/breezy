@@ -15,10 +15,12 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Map Tree."""
 
+from bzrlib import (
+    osutils,
+    )
 from bzrlib.config import Config
 from bzrlib.errors import BzrError, NoSuchFile, UnknownFormatError
 from bzrlib.generate_ids import gen_revision_id
-from bzrlib import osutils
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
 import bzrlib.ui as ui
