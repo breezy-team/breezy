@@ -19,6 +19,9 @@ New Features
 Bug Fixes
 *********
 
+* BranchBuilder now accepts timezone to avoid test failures in countries far
+  from GMT. (Vincent Ladeuil, #397716)
+
 Improvements
 ************
 
