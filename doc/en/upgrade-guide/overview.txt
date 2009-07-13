@@ -52,10 +52,7 @@ To upgrade Bazaar on Windows:
 
 To upgrade Bazaar on OS X (via the installer):
 
-1. Uninstall the existing version by deleting the relevant
-   application folder.
-
-2. Install the new version using the relevant installer.
+1. Install the new version using the relevant installer.
 
 To upgrade Bazaar on OS X (via MacPorts):
 
