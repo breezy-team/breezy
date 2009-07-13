@@ -1557,6 +1557,42 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         self.assertRaises(RevisionNotPresent,
             files.annotate, prefix + ('missing-key',))
 
+    def test_get_annotator(self):
+        files = self.get_versionedfiles()
+        self.get_diamond_files(files)
+        origin_key = self.get_simple_key('origin')
+        base_key = self.get_simple_key('base')
+        left_key = self.get_simple_key('left')
+        right_key = self.get_simple_key('right')
+        merged_key = self.get_simple_key('merged')
+        # annotator = files.get_annotator()
+        # introduced full text
+        origins, lines = files.get_annotator().annotate(origin_key)
+        self.assertEqual([(origin_key,)], origins)
+        self.assertEqual(['origin\n'], lines)
+        # a delta
+        origins, lines = files.get_annotator().annotate(base_key)
+        self.assertEqual([(base_key,)], origins)
+        # a merge
+        origins, lines = files.get_annotator().annotate(merged_key)
+        if self.graph:
+            self.assertEqual([
+                (base_key,),
+                (left_key,),
+                (right_key,),
+                (merged_key,),
+                ], origins)
+        else:
+            # Without a graph everything is new.
+            self.assertEqual([
+                (merged_key,),
+                (merged_key,),
+                (merged_key,),
+                (merged_key,),
+                ], origins)
+        self.assertRaises(RevisionNotPresent,
+            files.get_annotator().annotate, self.get_simple_key('missing-key'))
+
     def test_construct(self):
         """Each parameterised test can be constructed on a transport."""
         files = self.get_versionedfiles()

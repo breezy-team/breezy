@@ -16,8 +16,6 @@
 
 """Core compression logic for compressing streams of related files."""
 
-from itertools import izip
-from cStringIO import StringIO
 import time
 import zlib
 try:
@@ -28,13 +26,11 @@ except ImportError:
 from bzrlib import (
     annotate,
     debug,
-    diff,
     errors,
     graph as _mod_graph,
     knit,
     osutils,
     pack,
-    patiencediff,
     trace,
     )
 from bzrlib.graph import Graph
@@ -1073,29 +1069,11 @@ class GroupCompressVersionedFiles(VersionedFiles):
 
     def annotate(self, key):
         """See VersionedFiles.annotate."""
-        graph = Graph(self)
-        parent_map = self.get_parent_map([key])
-        if not parent_map:
-            raise errors.RevisionNotPresent(key, self)
-        if parent_map[key] is not None:
-            parent_map = dict((k, v) for k, v in graph.iter_ancestry([key])
-                              if v is not None)
-            keys = parent_map.keys()
-        else:
-            keys = [key]
-            parent_map = {key:()}
-        # We used Graph(self) to load the parent_map, but now that we have it,
-        # we can just query the parent map directly, so create a KnownGraph
-        heads_provider = _mod_graph.KnownGraph(parent_map)
-        parent_cache = {}
-        reannotate = annotate.reannotate
-        for record in self.get_record_stream(keys, 'topological', True):
-            key = record.key
-            lines = osutils.chunks_to_lines(record.get_bytes_as('chunked'))
-            parent_lines = [parent_cache[parent] for parent in parent_map[key]]
-            parent_cache[key] = list(
-                reannotate(parent_lines, lines, key, None, heads_provider))
-        return parent_cache[key]
+        ann = annotate.Annotator(self)
+        return ann.annotate_flat(key)
+
+    def get_annotator(self):
+        return annotate.Annotator(self)
 
     def check(self, progress_bar=None):
         """See VersionedFiles.check()."""

@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2008 Canonical Ltd
+# Copyright (C) 2006, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -131,6 +131,43 @@ class TestLRUCache(tests.TestCase):
         # Even __setitem__ should make sure cleanup() is called
         cache[2] = 26
         self.assertEqual([(2, 20), (2, 25)], cleanup_called)
+
+    def test_cleanup_error_maintains_linked_list(self):
+        cleanup_called = []
+        def cleanup_func(key, val):
+            cleanup_called.append((key, val))
+            raise ValueError('failure during cleanup')
+
+        cache = lru_cache.LRUCache(max_cache=10)
+        for i in xrange(10):
+            cache.add(i, i, cleanup=cleanup_func)
+        for i in xrange(10, 20):
+            self.assertRaises(ValueError,
+                cache.add, i, i, cleanup=cleanup_func)
+
+        self.assertEqual([(i, i) for i in xrange(10)], cleanup_called)
+
+        self.assertEqual(range(19, 9, -1), [n.key for n in cache._walk_lru()])
+
+    def test_cleanup_during_replace_still_replaces(self):
+        cleanup_called = []
+        def cleanup_func(key, val):
+            cleanup_called.append((key, val))
+            raise ValueError('failure during cleanup')
+
+        cache = lru_cache.LRUCache(max_cache=10)
+        for i in xrange(10):
+            cache.add(i, i, cleanup=cleanup_func)
+        self.assertRaises(ValueError,
+            cache.add, 1, 20, cleanup=cleanup_func)
+        # We also still update the recent access to this node
+        self.assertEqual([1, 9, 8, 7, 6, 5, 4, 3, 2, 0],
+                         [n.key for n in cache._walk_lru()])
+        self.assertEqual(20, cache[1])
+
+        self.assertEqual([(1, 1)], cleanup_called)
+        self.assertEqual([1, 9, 8, 7, 6, 5, 4, 3, 2, 0],
+                         [n.key for n in cache._walk_lru()])
 
     def test_len(self):
         cache = lru_cache.LRUCache(max_cache=10, after_cleanup_count=10)

@@ -119,8 +119,8 @@ def send(submit_branch, revision, public_branch, remember, format,
                     except KeyError:
                         strict = None
             if tree is not None and (strict is None or strict):
-                changes = tree.changes_from(tree.basis_tree())
-                if changes.has_changed() or len(tree.get_parent_ids()) > 1:
+                if (tree.has_changes(tree.basis_tree())
+                    or len(tree.get_parent_ids()) > 1):
                     raise errors.UncommittedChanges(
                         tree, more='Use --no-strict to force the send.')
                 if tree.last_revision() != tree.branch.last_revision():

@@ -87,7 +87,8 @@ class RevisionTree(tree.Tree):
                       default_revision=revision.CURRENT_REVISION):
         """See Tree.annotate_iter"""
         text_key = (file_id, self.inventory[file_id].revision)
-        annotations = self._repository.texts.annotate(text_key)
+        annotator = self._repository.texts.get_annotator()
+        annotations = annotator.annotate_flat(text_key)
         return [(key[-1], line) for key, line in annotations]
 
     def get_file_size(self, file_id):

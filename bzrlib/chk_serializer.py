@@ -16,15 +16,10 @@
 
 """Serializer object for CHK based inventory storage."""
 
-from cStringIO import (
-    StringIO,
-    )
-
 from bzrlib import (
     bencode,
     cache_utf8,
     inventory,
-    osutils,
     revision as _mod_revision,
     xml5,
     xml6,

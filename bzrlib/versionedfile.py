@@ -30,6 +30,7 @@ lazy_import(globals(), """
 import urllib
 
 from bzrlib import (
+    annotate,
     errors,
     groupcompress,
     index,
@@ -1121,6 +1122,9 @@ class ThunkedVersionedFiles(VersionedFiles):
         for origin, line in origins:
             result.append((prefix + (origin,), line))
         return result
+
+    def get_annotator(self):
+        return annotate.Annotator(self)
 
     def check(self, progress_bar=None):
         """See VersionedFiles.check()."""

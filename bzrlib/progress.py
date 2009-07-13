@@ -25,20 +25,15 @@ will manage a conceptual stack of nested activities.
 import sys
 import time
 import os
-import warnings
 
 
 from bzrlib import (
     errors,
-    osutils,
-    trace,
-    ui,
     )
 from bzrlib.trace import mutter
 from bzrlib.symbol_versioning import (
     deprecated_function,
     deprecated_in,
-    deprecated_method,
     )
 
 

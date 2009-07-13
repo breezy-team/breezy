@@ -39,7 +39,6 @@ def make_scenarios(lock_classes):
     return result
 
 
-
 def load_tests(standard_tests, module, loader):
     submod_tests = loader.loadTestsFromModuleNames([
         'bzrlib.tests.per_lock.test_lock',
