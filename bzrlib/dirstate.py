@@ -1277,13 +1277,25 @@ class DirState(object):
     def update_by_delta(self, delta):
         """Apply an inventory delta to the dirstate for tree 0
 
+        This is the workhorse for apply_inventory_delta in dirstate based
+        trees.
+
         :param delta: An inventory delta.  See Inventory.apply_delta for
             details.
         """
         self._read_dirblocks_if_needed()
+        encode = cache_utf8.encode
         insertions = {}
         removals = {}
-        for old_path, new_path, file_id, inv_entry in sorted(delta, reverse=True):
+        # Accumulate parent references (path_utf8, id), to check for parentless
+        # items or items placed under files/links/tree-references. We get
+        # references from every item in the delta that is not a deletion and
+        # is not itself the root.
+        parents = set()
+        for old_path, new_path, file_id, inv_entry in sorted(
+            inventory._check_delta_unique_old_paths(
+            inventory._check_delta_unique_new_paths(
+            inventory._check_delta_ids_match_entry(delta))), reverse=True):
             if (file_id in insertions) or (file_id in removals):
                 raise errors.InconsistentDelta(old_path or new_path, file_id,
                     "repeated file_id")
@@ -1293,6 +1305,9 @@ class DirState(object):
             if new_path is not None:
                 new_path = new_path.encode('utf-8')
                 dirname, basename = osutils.split(new_path)
+                dirname_utf8 = encode(dirname)
+                if basename:
+                    parents.add((dirname_utf8, inv_entry.parent_id))
                 key = (dirname, basename, file_id)
                 minikind = DirState._kind_to_minikind[inv_entry.kind]
                 if minikind == 't':
@@ -1323,6 +1338,8 @@ class DirState(object):
                                                fingerprint, new_child_path)
         self._apply_removals(removals.values())
         self._apply_insertions(insertions.values())
+        # Validate parents
+        self._after_delta_check_parents(parents, 0)
 
     def _apply_removals(self, removals):
         for path in sorted(removals, reverse=True):
@@ -1348,9 +1365,13 @@ class DirState(object):
                             "not deleted.")
 
     def _apply_insertions(self, adds):
-        for key, minikind, executable, fingerprint, path_utf8 in sorted(adds):
-            self.update_minimal(key, minikind, executable, fingerprint,
-                                path_utf8=path_utf8)
+        try:
+            for key, minikind, executable, fingerprint, path_utf8 in sorted(adds):
+                self.update_minimal(key, minikind, executable, fingerprint,
+                                    path_utf8=path_utf8)
+        except errors.NotVersionedError:
+            raise errors.InconsistentDelta(path_utf8.decode('utf8'), key[2],
+                "Missing parent")
 
     def update_basis_by_delta(self, delta, new_revid):
         """Update the parents of this tree after a commit.
@@ -1400,7 +1421,7 @@ class DirState(object):
         # At the same time, to reduce interface friction we convert the input
         # inventory entries to dirstate.
         root_only = ('', '')
-        # Accumulate parent references (path and id), to check for parentless
+        # Accumulate parent references (path_utf8, id), to check for parentless
         # items or items placed under files/links/tree-references. We get
         # references from every item in the delta that is not a deletion and
         # is not itself the root.
@@ -1475,7 +1496,7 @@ class DirState(object):
             # Apply in-situ changes.
             self._update_basis_apply_changes(changes)
             # Validate parents
-            self._update_basis_check_parents(parents)
+            self._after_delta_check_parents(parents, 1)
         except errors.BzrError, e:
             if 'integrity error' not in str(e):
                 raise
@@ -1600,18 +1621,24 @@ class DirState(object):
                     # it is being resurrected here, so blank it out temporarily.
                     self._dirblocks[block_index][1][entry_index][1][1] = null
 
-    def _update_basis_check_parents(self, parents):
-        """Check that parents required by the delta are all intact."""
+    def _after_delta_check_parents(self, parents, index):
+        """Check that parents required by the delta are all intact.
+        
+        :param parents: An iterable of (path_utf8, file_id) tuples which are
+            required to be present in tree 'index' at path_utf8 with id file_id
+            and be a directory.
+        :param index: The column in the dirstate to check for parents in.
+        """
         for dirname_utf8, file_id in parents:
             # Get the entry - the ensures that file_id, dirname_utf8 exists and
             # has the right file id.
-            entry = self._get_entry(1, file_id, dirname_utf8)
+            entry = self._get_entry(index, file_id, dirname_utf8)
             if entry[1] is None:
                 self._changes_aborted = True
                 raise errors.InconsistentDelta(dirname_utf8.decode('utf8'),
                     file_id, "This parent is not present.")
             # Parents of things must be directories
-            if entry[1][1][0] != 'd':
+            if entry[1][index][0] != 'd':
                 self._changes_aborted = True
                 raise errors.InconsistentDelta(dirname_utf8.decode('utf8'),
                     file_id, "This parent is not a directory.")

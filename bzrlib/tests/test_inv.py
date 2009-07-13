@@ -57,6 +57,9 @@ def load_tests(standard_tests, module, loader):
         scenarios.append((str(format.__class__.__name__), {
             'apply_delta':apply_inventory_WT_basis,
             'format':format}))
+        scenarios.append((str(format.__class__.__name__), {
+            'apply_delta':apply_inventory_WT,
+            'format':format}))
     return multiply_tests(to_adapt, scenarios, result)
 
 
@@ -69,6 +72,42 @@ def apply_inventory_Inventory(self, basis, delta):
     """
     basis.apply_delta(delta)
     return basis
+
+
+def apply_inventory_WT(self, basis, delta):
+    """Apply delta to basis and return the result.
+
+    This sets the tree state to be basis, and then calls apply_inventory_delta.
+    
+    :param basis: An inventory to be used as the basis.
+    :param delta: The inventory delta to apply:
+    :return: An inventory resulting from the application.
+    """
+    control = self.make_bzrdir('tree', format=self.format._matchingbzrdir)
+    control.create_repository()
+    control.create_branch()
+    tree = self.format.initialize(control)
+    tree.lock_write()
+    try:
+        tree._write_inventory(basis)
+    finally:
+        tree.unlock()
+    # Fresh object, reads disk again.
+    tree = tree.bzrdir.open_workingtree()
+    tree.lock_write()
+    try:
+        tree.apply_inventory_delta(delta)
+    finally:
+        tree.unlock()
+    # reload tree - ensure we get what was written.
+    tree = tree.bzrdir.open_workingtree()
+    tree.lock_read()
+    self.addCleanup(tree.unlock)
+    # One could add 'tree._validate' here but that would cause 'early' failues 
+    # as far as higher level code is concerned. Possibly adding an
+    # expect_fail parameter to this function and if that is False then do a
+    # validate call.
+    return tree.inventory
 
 
 def apply_inventory_WT_basis(self, basis, delta):
