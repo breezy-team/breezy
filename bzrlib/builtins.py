@@ -3719,11 +3719,11 @@ class cmd_merge(Command):
         tt = tree_merger.make_preview_transform()
         cleanups.append(tt.finalize)
         result_tree = tt.get_preview_tree()
-        return tt, result_tree
+        return result_tree
 
     def _do_preview(self, merger, cleanups):
         from bzrlib.diff import show_diff_trees
-        tt, result_tree = self._get_preview(merger, cleanups)
+        result_tree = self._get_preview(merger, cleanups)
         show_diff_trees(merger.this_tree, result_tree, self.outf,
                         old_label='', new_label='')
 
@@ -3741,7 +3741,7 @@ class cmd_merge(Command):
 
     def _do_interactive(self, merger, cleanups):
         from bzrlib import shelf_ui
-        tt, result_tree = self._get_preview(merger, cleanups)
+        result_tree = self._get_preview(merger, cleanups)
         shelver = shelf_ui.Shelver(merger.this_tree, result_tree, destroy=True,
                                    reporter=shelf_ui.ApplyReporter())
         shelver.run()
