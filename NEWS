@@ -19,17 +19,19 @@ New Features
 Bug Fixes
 *********
 
-Internals
-*********
-
 Improvements
 ************
 
 Documentation
 *************
 
+* Added Bazaar 2.0 Upgrade Guide. (Ian Clatworthy)
+
 API Changes
 ***********
+
+Internals
+*********
 
 
 bzr 1.17rc1 "So late it's brunch" 2009-07-13
