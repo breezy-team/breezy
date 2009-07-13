@@ -192,7 +192,7 @@ class TestBenchmarkTests(TestCaseWithTransport):
         try:
             TestCaseWithMemoryTransport.TEST_ROOT = None
             out, err = self.run_bzr('selftest --benchmark'
-                                    ' workingtree_implementations')
+                                    ' per_workingtree')
         finally:
             TestCaseWithMemoryTransport.TEST_ROOT = old_root
         self.assertContainsRe(out, 'Ran 0 tests.*\n\nOK')

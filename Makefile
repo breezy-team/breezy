@@ -85,33 +85,19 @@ endif
 derived_txt_files := \
 	doc/en/user-reference/bzr_man.txt \
 	doc/en/release-notes/NEWS.txt
-txt_files := $(wildcard doc/en/tutorials/*.txt) \
+txt_files := $(wildcard doc/*/tutorials/*.txt) \
+	$(wildcard doc/*/mini-tutorial/index.txt) \
+	$(wildcard doc/*/user-guide/index.txt) \
 	$(derived_txt_files) \
-	doc/en/user-guide/index.txt \
-	doc/en/mini-tutorial/index.txt \
 	doc/en/developer-guide/HACKING.txt \
-	$(wildcard doc/es/guia-usario/*.txt) \
-	doc/es/mini-tutorial/index.txt \
 	doc/index.txt \
-	doc/index.es.txt \
-	doc/index.ru.txt \
-	doc/ru/user-guide/index.txt \
-	doc/ru/mini-tutorial/index.txt \
-	$(wildcard doc/ru/tutorials/*.txt)
+	$(wildcard doc/index.*.txt)
 non_txt_files := \
        doc/default.css \
-       doc/en/quick-reference/quick-start-summary.svg \
-       doc/en/quick-reference/quick-start-summary.png \
-       doc/en/quick-reference/quick-start-summary.pdf \
-       $(wildcard doc/en/user-guide/images/*.png) \
-       doc/es/referencia-rapida/referencia-rapida.svg \
-       doc/es/referencia-rapida/referencia-rapida.png \
-       doc/es/referencia-rapida/referencia-rapida.pdf \
-       $(wildcard doc/es/guia-usuario/images/*.png) \
-       doc/ru/quick-reference/quick-start-summary.svg \
-       doc/ru/quick-reference/quick-start-summary.png \
-       doc/ru/quick-reference/quick-start-summary.pdf \
-       $(wildcard doc/ru/user-guide/images/*.png)
+       $(wildcard doc/*/quick-reference/quick-start-summary.svg) \
+       $(wildcard doc/*/quick-reference/quick-start-summary.png) \
+       $(wildcard doc/*/quick-reference/quick-start-summary.pdf) \
+       $(wildcard doc/*/user-guide/images/*.png)
 htm_files := $(patsubst %.txt, %.html, $(txt_files)) 
 
 # doc/developers/*.txt files that should *not* be individually
@@ -177,27 +163,20 @@ doc/index.%.html: doc/index.%.txt
 	$(rst2html) --stylesheet=../../default.css $< $@
 
 MAN_DEPENDENCIES = bzrlib/builtins.py \
-		 bzrlib/bundle/commands.py \
-		 bzrlib/conflicts.py \
-		 bzrlib/help_topics/__init__.py \
-		 bzrlib/bzrdir.py \
-		 bzrlib/sign_my_commits.py \
-		 bzrlib/bugtracker.py \
-		 generate_docs.py \
-		 tools/doc_generate/__init__.py \
-		 tools/doc_generate/autodoc_man.py \
-		 tools/doc_generate/autodoc_rstx.py \
-		 $(wildcard $(addsuffix /*.txt, bzrlib/help_topics/en)) 
+	$(wildcard bzrlib/*.py) \
+	$(wildcard bzrlib/*/*.py) \
+	tools/generate_docs.py \
+	$(wildcard $(addsuffix /*.txt, bzrlib/help_topics/en)) 
 
 doc/en/user-reference/bzr_man.txt: $(MAN_DEPENDENCIES)
-	$(PYTHON) generate_docs.py -o $@ rstx
+	PYTHONPATH=.:$$PYTHONPATH $(PYTHON) tools/generate_docs.py -o $@ rstx
 
 doc/en/release-notes/NEWS.txt: NEWS
 	$(PYTHON) -c "import shutil; shutil.copyfile('$<', '$@')"
 
 MAN_PAGES = man1/bzr.1
 man1/bzr.1: $(MAN_DEPENDENCIES)
-	$(PYTHON) generate_docs.py -o $@ man
+	PYTHONPATH=.:$$PYTHONPATH $(PYTHON) tools/generate_docs.py -o $@ man
 
 # build a png of our performance task list
 # 
@@ -254,7 +233,10 @@ py-inst-24: docs
 py-inst-25: docs
 	python25 setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
 
-python-installer: py-inst-24 py-inst-25
+py-inst-26: docs
+	python26 setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
+
+python-installer: py-inst-24 py-inst-25 py-inst-26
 
 
 copy-docs: docs

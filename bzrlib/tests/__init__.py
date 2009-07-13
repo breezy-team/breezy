@@ -3007,7 +3007,7 @@ def reinvoke_for_tests(suite):
     """
     concurrency = osutils.local_concurrency()
     result = []
-    from subunit import TestProtocolClient, ProtocolTestCase
+    from subunit import ProtocolTestCase
     class TestInSubprocess(ProtocolTestCase):
         def __init__(self, process, name):
             ProtocolTestCase.__init__(self, process.stdout)
@@ -3333,17 +3333,21 @@ def test_suite(keep_only=None, starting_with=None):
     testmod_names = [
                    'bzrlib.doc',
                    'bzrlib.tests.blackbox',
-                   'bzrlib.tests.branch_implementations',
-                   'bzrlib.tests.bzrdir_implementations',
                    'bzrlib.tests.commands',
-                   'bzrlib.tests.interrepository_implementations',
-                   'bzrlib.tests.intertree_implementations',
-                   'bzrlib.tests.inventory_implementations',
+                   'bzrlib.tests.per_branch',
+                   'bzrlib.tests.per_bzrdir',
+                   'bzrlib.tests.per_interrepository',
+                   'bzrlib.tests.per_intertree',
+                   'bzrlib.tests.per_inventory',
                    'bzrlib.tests.per_interbranch',
                    'bzrlib.tests.per_lock',
+                   'bzrlib.tests.per_transport',
+                   'bzrlib.tests.per_tree',
                    'bzrlib.tests.per_repository',
                    'bzrlib.tests.per_repository_chk',
                    'bzrlib.tests.per_repository_reference',
+                   'bzrlib.tests.per_workingtree',
+                   'bzrlib.tests.test__annotator',
                    'bzrlib.tests.test__chk_map',
                    'bzrlib.tests.test__dirstate_helpers',
                    'bzrlib.tests.test__groupcompress',
@@ -3481,7 +3485,6 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_transactions',
                    'bzrlib.tests.test_transform',
                    'bzrlib.tests.test_transport',
-                   'bzrlib.tests.test_transport_implementations',
                    'bzrlib.tests.test_transport_log',
                    'bzrlib.tests.test_tree',
                    'bzrlib.tests.test_treebuilder',
@@ -3502,12 +3505,12 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_workingtree_4',
                    'bzrlib.tests.test_wsgi',
                    'bzrlib.tests.test_xml',
-                   'bzrlib.tests.tree_implementations',
-                   'bzrlib.tests.workingtree_implementations',
                    ]
 
     loader = TestUtil.TestLoader()
 
+    if keep_only is not None:
+        id_filter = TestIdList(keep_only)
     if starting_with:
         starting_with = [test_prefix_alias_registry.resolve_alias(start)
                          for start in starting_with]
@@ -3526,7 +3529,6 @@ def test_suite(keep_only=None, starting_with=None):
         loader = TestUtil.FilteredByModuleTestLoader(interesting_module)
 
     elif keep_only is not None:
-        id_filter = TestIdList(keep_only)
         loader = TestUtil.FilteredByModuleTestLoader(id_filter.refers_to)
         def interesting_module(name):
             return id_filter.refers_to(name)

@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -38,14 +38,12 @@ Densely packed upper nodes.
 """
 
 import heapq
-import time
 
 from bzrlib import lazy_import
 lazy_import.lazy_import(globals(), """
 from bzrlib import versionedfile
 """)
 from bzrlib import (
-    errors,
     lru_cache,
     osutils,
     registry,
@@ -203,13 +201,48 @@ class CHKMap(object):
             multiple pages.
         :return: The root chk of the resulting CHKMap.
         """
-        result = CHKMap(store, None, search_key_func=search_key_func)
+        root_key = klass._create_directly(store, initial_value,
+            maximum_size=maximum_size, key_width=key_width,
+            search_key_func=search_key_func)
+        return root_key
+
+    @classmethod
+    def _create_via_map(klass, store, initial_value, maximum_size=0,
+                        key_width=1, search_key_func=None):
+        result = klass(store, None, search_key_func=search_key_func)
         result._root_node.set_maximum_size(maximum_size)
         result._root_node._key_width = key_width
         delta = []
         for key, value in initial_value.items():
             delta.append((None, key, value))
-        return result.apply_delta(delta)
+        root_key = result.apply_delta(delta)
+        return root_key
+
+    @classmethod
+    def _create_directly(klass, store, initial_value, maximum_size=0,
+                         key_width=1, search_key_func=None):
+        node = LeafNode(search_key_func=search_key_func)
+        node.set_maximum_size(maximum_size)
+        node._key_width = key_width
+        node._items = dict(initial_value)
+        node._raw_size = sum([node._key_value_len(key, value)
+                              for key,value in initial_value.iteritems()])
+        node._len = len(node._items)
+        node._compute_search_prefix()
+        node._compute_serialised_prefix()
+        if (node._len > 1
+            and maximum_size
+            and node._current_size() > maximum_size):
+            prefix, node_details = node._split(store)
+            if len(node_details) == 1:
+                raise AssertionError('Failed to split using node._split')
+            node = InternalNode(prefix, search_key_func=search_key_func)
+            node.set_maximum_size(maximum_size)
+            node._key_width = key_width
+            for split, subnode in node_details:
+                node.add_node(split, subnode)
+        keys = list(node.serialise(store))
+        return keys[-1]
 
     def iter_changes(self, basis):
         """Iterate over the changes between basis and self.
@@ -764,7 +797,19 @@ class LeafNode(Node):
                 result[prefix] = node
             else:
                 node = result[prefix]
-            node.map(store, key, value)
+            sub_prefix, node_details = node.map(store, key, value)
+            if len(node_details) > 1:
+                if prefix != sub_prefix:
+                    # This node has been split and is now found via a different
+                    # path
+                    result.pop(prefix)
+                new_node = InternalNode(sub_prefix,
+                    search_key_func=self._search_key_func)
+                new_node.set_maximum_size(self._maximum_size)
+                new_node._key_width = self._key_width
+                for split, node in node_details:
+                    new_node.add_node(split, node)
+                result[prefix] = new_node
         return common_prefix, result.items()
 
     def map(self, store, key, value):
@@ -1357,6 +1402,7 @@ def _find_children_info(store, interesting_keys, uninteresting_keys, pb):
     chks_to_read = uninteresting_keys.union(interesting_keys)
     next_uninteresting = set()
     next_interesting = set()
+    next_interesting_intersection = None
     uninteresting_items = set()
     interesting_items = set()
     interesting_to_yield = []
@@ -1378,11 +1424,17 @@ def _find_children_info(store, interesting_keys, uninteresting_keys, pb):
         else:
             interesting_to_yield.append(record.key)
             if type(node) is InternalNode:
+                if next_interesting_intersection is None:
+                    next_interesting_intersection = set(node.refs())
+                else:
+                    next_interesting_intersection = \
+                        next_interesting_intersection.intersection(node.refs())
                 next_interesting.update(node.refs())
             else:
                 interesting_items.update(node.iteritems(None))
     return (next_uninteresting, uninteresting_items,
-            next_interesting, interesting_to_yield, interesting_items)
+            next_interesting, interesting_to_yield, interesting_items,
+            next_interesting_intersection)
 
 
 def _find_all_uninteresting(store, interesting_root_keys,
@@ -1403,16 +1455,21 @@ def _find_all_uninteresting(store, interesting_root_keys,
     # uninteresting set
     (uninteresting_keys, uninteresting_items,
      interesting_keys, interesting_to_yield,
-     interesting_items) = _find_children_info(store, interesting_root_keys,
+     interesting_items, interesting_intersection,
+     ) = _find_children_info(store, interesting_root_keys,
                                               uninteresting_root_keys,
                                               pb=pb)
     all_uninteresting_chks.update(uninteresting_keys)
     all_uninteresting_items.update(uninteresting_items)
     del uninteresting_items
-    # Note: Exact matches between interesting and uninteresting do not need
-    #       to be search further. Non-exact matches need to be searched in case
-    #       there is a future exact-match
-    uninteresting_keys.difference_update(interesting_keys)
+    # Do not examine in detail pages common to all interesting trees.
+    # Pages that are common to all interesting trees will have their
+    # older versions found via the uninteresting tree traversal. Some pages
+    # found via the interesting trees traversal will be uninteresting for
+    # other of the interesting trees, which is why we require the pages to be
+    # common for us to trim them.
+    if interesting_intersection is not None:
+        uninteresting_keys.difference_update(interesting_intersection)
 
     # Second, find the full set of uninteresting bits reachable by the
     # uninteresting roots

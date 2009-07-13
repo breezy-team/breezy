@@ -46,7 +46,7 @@ class TestCommitMerge(TestCaseWithTransport):
         wtx.commit('commit one', rev_id='x@u-0-1', allow_pointless=True)
         wty.commit('commit two', rev_id='y@u-0-1', allow_pointless=True)
 
-        self.assertEqual((1, []), by.fetch(bx))
+        by.fetch(bx)
         # just having the history there does nothing
         self.assertRaises(PointlessCommit,
                           wty.commit,

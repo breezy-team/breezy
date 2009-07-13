@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -313,7 +313,9 @@ def _get_matching_blocks(old, new):
     return matcher.get_matching_blocks()
 
 
-def _break_annotation_tie(annotated_lines):
+_break_annotation_tie = None
+
+def _old_break_annotation_tie(annotated_lines):
     """Chose an attribution between several possible ones.
 
     :param annotated_lines: A list of tuples ((file_id, rev_id), line) where
@@ -394,7 +396,11 @@ def _find_matching_unannotated_lines(output_lines, plain_child_lines,
                         # If the result is not stable, there is a risk a
                         # performance degradation as criss-cross merges will
                         # flip-flop the attribution.
-                        output_append(_break_annotation_tie([left, right]))
+                        if _break_annotation_tie is None:
+                            output_append(
+                                _old_break_annotation_tie([left, right]))
+                        else:
+                            output_append(_break_annotation_tie([left, right]))
         last_child_idx = child_idx + match_len
 
 
@@ -444,3 +450,9 @@ def _reannotate_annotated(right_parent_lines, new_lines, new_revision_id,
         # If left and right agree on a range, just push that into the output
         lines_extend(annotated_lines[left_idx:left_idx + match_len])
     return lines
+
+
+try:
+    from bzrlib._annotator_pyx import Annotator
+except ImportError:
+    from bzrlib._annotator_py import Annotator

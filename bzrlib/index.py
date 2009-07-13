@@ -39,7 +39,6 @@ from bzrlib.trace import mutter
 from bzrlib import (
     debug,
     errors,
-    symbol_versioning,
     )
 
 _HEADER_READV = (0, 200)
