@@ -1894,7 +1894,7 @@ class TestCommitTransform(tests.TestCaseWithTransport):
             _mod_revision.NULL_REVISION)
         tt = TransformPreview(basis)
         self.addCleanup(tt.finalize)
-        e = self.assertRaises(errors.WrongCommitBasis, tt.commit, branch, '')
+        e = self.assertRaises(ValueError, tt.commit, branch, '')
         self.assertEqual('TreeTransform not based on branch basis: null:',
                          str(e))
 
@@ -1918,15 +1918,19 @@ class TestCommitTransform(tests.TestCaseWithTransport):
         tt = TransformPreview(branch.basis_tree())
         rev = tt.commit(branch, 'my message')
         self.assertEqual([], branch.basis_tree().get_parent_ids())
+        self.assertNotEqual(_mod_revision.NULL_REVISION,
+                            branch.last_revision())
 
-    def test_first_commit(self):
+    def test_first_commit_with_merge_parents(self):
         branch = self.make_branch('branch')
         branch.lock_write()
         self.addCleanup(branch.unlock)
         tt = TransformPreview(branch.basis_tree())
-        self.assertRaises(errors.MergeParentsInFirstCommit, tt.commit, branch,
+        e = self.assertRaises(ValueError, tt.commit, branch,
                           'my message', ['rev1b-id'])
-        self.assertEqual([], branch.basis_tree().get_parent_ids())
+        self.assertEqual('Cannot supply merge parents for first commit.',
+                         str(e))
+        self.assertEqual(_mod_revision.NULL_REVISION, branch.last_revision())
 
     def test_add_files(self):
         branch, tt = self.get_branch_and_transform()

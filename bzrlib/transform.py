@@ -876,14 +876,16 @@ class TreeTransformBase(object):
         revno, last_rev_id = branch.last_revision_info()
         if last_rev_id == _mod_revision.NULL_REVISION:
             if merge_parents is not None:
-                raise errors.MergeParentsInFirstCommit()
+                raise ValueError('Cannot supply merge parents for first'
+                                 ' commit.')
             parent_ids = []
         else:
             parent_ids = [last_rev_id]
             if merge_parents is not None:
                 parent_ids.extend(merge_parents)
         if self._tree.get_revision_id() != last_rev_id:
-            raise errors.WrongCommitBasis(self._tree)
+            raise ValueError('TreeTransform not based on branch basis: %s' %
+                             self._tree.get_revision_id())
         builder = branch.get_commit_builder(parent_ids)
         preview = self.get_preview_tree()
         list(builder.record_iter_changes(preview, last_rev_id,

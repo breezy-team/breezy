@@ -3066,16 +3066,3 @@ class LossyPushToSameVCS(BzrError):
     def __init__(self, source_branch, target_branch):
         self.source_branch = source_branch
         self.target_branch = target_branch
-
-
-class WrongCommitBasis(BzrError):
-
-    _fmt = 'TreeTransform not based on branch basis: %(tree_rev_id)s'
-
-    def __init__(self, tree):
-        BzrError.__init__(self, tree=tree, tree_rev_id=tree.get_revision_id())
-
-
-class MergeParentsInFirstCommit(BzrError):
-
-    _fmt = 'Merge parents supplied for initial commit.'
