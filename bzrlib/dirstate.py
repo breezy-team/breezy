@@ -1293,6 +1293,9 @@ class DirState(object):
         # references from every item in the delta that is not a deletion and
         # is not itself the root.
         parents = set()
+        # Added ids must not be in the dirstate already. This set holds those
+        # ids.
+        new_ids = set()
         for old_path, new_path, file_id, inv_entry in sorted(
             inventory._check_delta_unique_old_paths(
             inventory._check_delta_unique_new_paths(
@@ -1306,6 +1309,8 @@ class DirState(object):
             if old_path is not None:
                 old_path = old_path.encode('utf-8')
                 removals[file_id] = old_path
+            else:
+                new_ids.add(file_id)
             if new_path is not None:
                 if inv_entry is None:
                     raise errors.InconsistentDelta(new_path, file_id,
@@ -1343,6 +1348,7 @@ class DirState(object):
                                                   child_basename)
                     insertions[child[0][2]] = (key, minikind, executable,
                                                fingerprint, new_child_path)
+        self._check_delta_ids_absent(new_ids, delta, 0)
         try:
             self._apply_removals(removals.iteritems())
             self._apply_insertions(insertions.values())
@@ -1454,6 +1460,9 @@ class DirState(object):
         # references from every item in the delta that is not a deletion and
         # is not itself the root.
         parents = set()
+        # Added ids must not be in the dirstate already. This set holds those
+        # ids.
+        new_ids = set()
         for old_path, new_path, file_id, inv_entry in delta:
             if inv_entry is not None and file_id != inv_entry.file_id:
                 raise errors.InconsistentDelta(new_path, file_id,
@@ -1470,6 +1479,7 @@ class DirState(object):
             if old_path is None:
                 adds.append((None, encode(new_path), file_id,
                     inv_to_entry(inv_entry), True))
+                new_ids.add(file_id)
             elif new_path is None:
                 deletes.append((encode(old_path), None, file_id, None, True))
             elif (old_path, new_path) != root_only:
@@ -1518,7 +1528,7 @@ class DirState(object):
                 # of everything.
                 changes.append((encode(old_path), encode(new_path), file_id,
                     inv_to_entry(inv_entry)))
-
+        self._check_delta_ids_absent(new_ids, delta, 1)
         try:
             # Finish expunging deletes/first half of renames.
             self._update_basis_apply_deletes(deletes)
@@ -1543,6 +1553,29 @@ class DirState(object):
         self._header_state = DirState.IN_MEMORY_MODIFIED
         self._id_index = None
         return
+
+    def _check_delta_ids_absent(self, new_ids, delta, tree_index):
+        """Check that none of the file_ids in new_ids are present in a tree."""
+        if not new_ids:
+            return
+        id_index = self._get_id_index()
+        for file_id in new_ids:
+            for key in id_index.get(file_id, []):
+                block_i, entry_i, d_present, f_present = \
+                    self._get_block_entry_index(key[0], key[1], tree_index)
+                if not f_present:
+                    # In a different tree
+                    continue
+                entry = self._dirblocks[block_i][1][entry_i]
+                if entry[0][2] != file_id:
+                    # Different file_id, so not what we want.
+                    continue
+                # NB: No changes made before this helper is called, so no need
+                # to set the _changes_aborted flag.
+                raise errors.InconsistentDelta(
+                    ("%s/%s" % key[0:2]).decode('utf8'), file_id,
+                    "This file_id is new in the delta but already present in "
+                    "the target")
 
     def _update_basis_apply_adds(self, adds):
         """Apply a sequence of adds to tree 1 during update_basis_by_delta.

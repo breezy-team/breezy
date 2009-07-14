@@ -20,6 +20,7 @@ from itertools import izip
 
 from bzrlib import (
     chk_map,
+    errors,
     osutils,
     tests,
     )
@@ -227,6 +228,18 @@ class TestMap(TestCaseWithStore):
         # The update should have left us with an in memory root node, with an
         # updated key.
         self.assertEqual(new_root, chkmap._root_node._key)
+
+    def test_apply_new_keys_must_be_new(self):
+        # applying a delta (None, "a", "b") to a map with 'a' in it generates
+        # an error.
+        chk_bytes = self.get_chk_bytes()
+        root_key = CHKMap.from_dict(chk_bytes, {("a",):"b"})
+        chkmap = CHKMap(chk_bytes, root_key)
+        self.assertRaises(errors.InconsistentDelta, chkmap.apply_delta,
+            [(None, ("a",), "b")])
+        # As an error occured, the update should have left us without changing
+        # anything (the root should be unchanged).
+        self.assertEqual(root_key, chkmap._root_node._key)
 
     def test_apply_delta_is_deterministic(self):
         chk_bytes = self.get_chk_bytes()

@@ -1170,6 +1170,9 @@ class Inventory(CommonInventory):
                 new_entry = replacement
             try:
                 self.add(new_entry)
+            except errors.DuplicateFileId:
+                raise errors.InconsistentDelta(new_path, new_entry.file_id,
+                    "New id is already present in target.")
             except AttributeError:
                 raise errors.InconsistentDelta(new_path, new_entry.file_id,
                     "Parent is not a directory.")
