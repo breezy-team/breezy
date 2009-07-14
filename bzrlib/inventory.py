@@ -1646,6 +1646,12 @@ class CHKInventory(CommonInventory):
         # All changed entries need to have their parents be directories and be
         # at the right path. This set contains (path, id) tuples.
         parents = set()
+        # When we delete an item, all the children of it must be either deleted
+        # or altered in their own right. As we batch process the change via
+        # CHKMap.apply_delta, we build a set of things to use to validate the
+        # delta.
+        deletes = set()
+        altered = set()
         for old_path, new_path, file_id, entry in inventory_delta:
             # file id changes
             if new_path == '':
@@ -1660,6 +1666,7 @@ class CHKInventory(CommonInventory):
                         del result._path_to_fileid_cache[old_path]
                     except KeyError:
                         pass
+                deletes.add(file_id)
             else:
                 new_key = (file_id,)
                 new_value = result._entry_to_bytes(entry)
@@ -1675,6 +1682,7 @@ class CHKInventory(CommonInventory):
                     raise errors.InconsistentDelta(old_path, file_id,
                         "Entry was at wrong other path %r." %
                         self.id2path(file_id))
+                altered.add(file_id)
             id_to_entry_delta.append((old_key, new_key, new_value))
             if result.parent_id_basename_to_file_id is not None:
                 # parent_id, basename changes
@@ -1693,6 +1701,18 @@ class CHKInventory(CommonInventory):
                     # If the two keys are the same, the value will be unchanged
                     # as its always the file id.
                     parent_id_basename_delta.append((old_key, new_key, new_value))
+        # validate that deletes are complete.
+        for file_id in deletes:
+            entry = self[file_id]
+            if entry.kind != 'directory':
+                continue
+            # This loop could potentially be better by using the id_basename
+            # map to just get the child file ids.
+            for child in entry.children.values():
+                if child.file_id not in altered:
+                    raise errors.InconsistentDelta(self.id2path(child.file_id),
+                        child.file_id, "Child not deleted or reparented when "
+                        "parent deleted.")
         result.id_to_entry.apply_delta(id_to_entry_delta)
         if parent_id_basename_delta:
             result.parent_id_basename_to_file_id.apply_delta(parent_id_basename_delta)

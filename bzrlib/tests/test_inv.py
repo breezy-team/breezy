@@ -462,6 +462,22 @@ class TestDeltaApplication(TestCaseWithTransport):
         self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
             inv, delta)
 
+    def test_remove_dir_leaving_dangling_child(self):
+        inv = self.get_empty_inventory()
+        dir1 = inventory.InventoryDirectory('p-1', 'dir1', inv.root.file_id)
+        dir1.revision = 'result'
+        dir2 = inventory.InventoryDirectory('p-2', 'child1', 'p-1')
+        dir2.revision = 'result'
+        dir3 = inventory.InventoryDirectory('p-3', 'child2', 'p-1')
+        dir3.revision = 'result'
+        inv.add(dir1)
+        inv.add(dir2)
+        inv.add(dir3)
+        delta = [(u'dir1', None, 'p-1', None),
+            (u'dir1/child2', None, 'p-3', None)]
+        self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
+            inv, delta)
+
 
 class TestInventoryEntry(TestCase):
 
