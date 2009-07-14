@@ -21,6 +21,10 @@
 ### Core Stuff ###
 
 PYTHON=python
+PYTHON24=python24
+PYTHON25=python25
+BZR_TARGET=release
+PLUGIN_TARGET=plugin-release
 PYTHON_BUILDFLAGS=
 
 .PHONY: all clean extensions pyflakes api-docs check-nodocs check
@@ -218,6 +222,33 @@ clean-docs:
 
 ### Windows Support ###
 
+# make all the installers completely from scratch, using zc.buildout
+# to fetch the dependencies
+installer-all:
+	@echo *** Make all the installers from scratch
+	cd tools/win32 && $(PYTHON) bootstrap.py
+	cd tools/win32 && bin/buildout
+	cd tools/win32 && bin/build-installer.bat $(BZR_TARGET) $(PLUGIN_TARGET)
+
+
+clean-installer-all:
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/.installed.cfg
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/bin/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/bzr/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/bzr-rebase/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/bzr-svn/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/bzrtools/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/db4/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/develop-eggs/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/libintl/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/parts/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/qbzr/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/subvertpy/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/svn/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/tbzr/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/tortoise-overlays/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/zlib/
+
 # make bzr.exe for win32 with py2exe
 exe:
 	@echo *** Make bzr.exe
@@ -229,17 +260,17 @@ exe:
 
 # win32 installer for bzr.exe
 installer: exe copy-docs
-	@echo *** Make windows installer
+	@echo *** Make Windows installer
 	$(PYTHON) tools/win32/run_script.py cog.py -d -o tools/win32/bzr.iss tools/win32/bzr.iss.cog
 	iscc /Q tools/win32/bzr.iss
 
 # win32 Python's distutils-based installer
 # require to have Python interpreter installed on win32
 py-inst-24: docs
-	python24 setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
+	$(PYTHON24) setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
 
 py-inst-25: docs
-	python25 setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
+	$(PYTHON25) setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
 
 py-inst-26: docs
 	python26 setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
