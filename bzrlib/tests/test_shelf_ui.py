@@ -165,6 +165,7 @@ class TestShelver(tests.TestCaseWithTransport):
         shelver.expect('Shelve 1 change(s)? [yNfq?]', 'y')
 
     def test_shelve_modify_target(self):
+        self.requireFeature(tests.SymlinkFeature)
         tree = self.create_shelvable_tree()
         os.symlink('bar', 'tree/baz')
         tree.add('baz', 'baz-id')
@@ -310,6 +311,7 @@ class TestApplyReporter(TestShelver):
         shelver.expect('Apply 1 change(s)? [yNfq?]', 'y')
 
     def test_shelve_modify_target(self):
+        self.requireFeature(tests.SymlinkFeature)
         tree = self.create_shelvable_tree()
         os.symlink('bar', 'tree/baz')
         tree.add('baz', 'baz-id')
