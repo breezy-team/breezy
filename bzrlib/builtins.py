@@ -3740,6 +3740,12 @@ class cmd_merge(Command):
             return 0
 
     def _do_interactive(self, merger, cleanups):
+        """Perform an interactive merge.
+
+        This works by generating a preview tree of the merge, then using
+        Shelver to selectively remove the differences between the working tree
+        and the preview tree.
+        """
         from bzrlib import shelf_ui
         result_tree = self._get_preview(merger, cleanups)
         shelver = shelf_ui.Shelver(merger.this_tree, result_tree, destroy=True,
