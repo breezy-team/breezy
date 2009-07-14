@@ -38,8 +38,8 @@ add()
 		echo "There is already a remote with that name"
 		exit
 	fi
-	if [ -n "$(git config git-darcs.$name.url)" ]; then
-		echo "There is alread a darcs repo with that name"
+	if [ -n "$(git config git-darcs.$name.location)" ]; then
+		echo "There is already a darcs repo with that name"
 		exit
 	fi
 	if [ ! -d $location/_darcs ]; then
