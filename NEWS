@@ -16,6 +16,9 @@ Compatibility Breaks
 New Features
 ************
 
+* ``merge --interactive`` applies a user-selected portion of the merge.  The UI
+  is similar to ``shelve``.  (Aaron Bentley)
+
 Bug Fixes
 *********
 
