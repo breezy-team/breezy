@@ -370,7 +370,6 @@ class TestIterChanges(TestCaseWithTwoTrees):
 
     def check_has_changes(self, expected, tree1, tree2):
         # has_changes is defined for mutable trees only
-        print '\nt1, t2: %r, %r' % (type(tree1), type(tree2))
         if not isinstance(tree2, mutabletree.MutableTree):
             if isinstance(tree1, mutabletree.MutableTree):
                 # Let's switch the trees since has_changes() is commutative
