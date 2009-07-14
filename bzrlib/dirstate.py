@@ -1296,6 +1296,8 @@ class DirState(object):
         # Added ids must not be in the dirstate already. This set holds those
         # ids.
         new_ids = set()
+        # This loop transforms the delta to single atomic operations that can
+        # be executed and validated.
         for old_path, new_path, file_id, inv_entry in sorted(
             inventory._check_delta_unique_old_paths(
             inventory._check_delta_unique_new_paths(
@@ -1303,7 +1305,6 @@ class DirState(object):
             inventory._check_delta_new_path_entry_both_or_None(delta)))),
             reverse=True):
             if (file_id in insertions) or (file_id in removals):
-                self._changes_aborted = True
                 raise errors.InconsistentDelta(old_path or new_path, file_id,
                     "repeated file_id")
             if old_path is not None:
@@ -2569,7 +2570,8 @@ class DirState(object):
                 # old is finished: insert current_new into the state.
                 self.update_minimal(new_entry_key, current_new_minikind,
                     executable=current_new[1].executable,
-                    path_utf8=new_path_utf8, fingerprint=fingerprint)
+                    path_utf8=new_path_utf8, fingerprint=fingerprint,
+                    fullscan=True)
                 current_new = advance(new_iterator)
             elif not current_new:
                 # new is finished
@@ -2587,7 +2589,8 @@ class DirState(object):
                     current_old[1][0][0] != current_new_minikind):
                     self.update_minimal(current_old[0], current_new_minikind,
                         executable=current_new[1].executable,
-                        path_utf8=new_path_utf8, fingerprint=fingerprint)
+                        path_utf8=new_path_utf8, fingerprint=fingerprint,
+                        fullscan=True)
                 # both sides are dealt with, move on
                 current_old = advance(old_iterator)
                 current_new = advance(new_iterator)
@@ -2598,7 +2601,8 @@ class DirState(object):
                 # add a entry for this and advance new
                 self.update_minimal(new_entry_key, current_new_minikind,
                     executable=current_new[1].executable,
-                    path_utf8=new_path_utf8, fingerprint=fingerprint)
+                    path_utf8=new_path_utf8, fingerprint=fingerprint,
+                    fullscan=True)
                 current_new = advance(new_iterator)
             else:
                 # we've advanced past the place where the old key would be,
@@ -2662,7 +2666,7 @@ class DirState(object):
         return last_reference
 
     def update_minimal(self, key, minikind, executable=False, fingerprint='',
-                       packed_stat=None, size=0, path_utf8=None):
+        packed_stat=None, size=0, path_utf8=None, fullscan=False):
         """Update an entry to the state in tree 0.
 
         This will either create a new entry at 'key' or update an existing one.
@@ -2679,6 +2683,9 @@ class DirState(object):
         :param size: Size information for new entry
         :param path_utf8: key[0] + '/' + key[1], just passed in to avoid doing
                 extra computation.
+        :param fullscan: If True then a complete scan of the dirstate is being
+            done and checking for duplicate rows should not be done. This
+            should only be set by set_state_from_inventory and similar methods.
 
         If packed_stat and fingerprint are not given, they're invalidated in
         the entry.
@@ -2693,6 +2700,22 @@ class DirState(object):
         new_details = (minikind, fingerprint, size, executable, packed_stat)
         id_index = self._get_id_index()
         if not present:
+            # New record. Check there isn't a entry at this path already.
+            if not fullscan:
+                low_index, _ = self._find_entry_index(key[0:2] + ('',), block)
+                while low_index < len(block):
+                    entry = block[low_index]
+                    if entry[0][0:2] == key[0:2]:
+                        if entry[1][0][0] not in 'ar':
+                            # This entry has the same path (but a different id) as
+                            # the new entry we're adding, and is present in ths
+                            # tree.
+                            raise errors.InconsistentDelta(
+                                ("%s/%s" % key[0:2]).decode('utf8'), key[2],
+                                "Attempt to add item at path already occupied by "
+                                "id %r" % entry[0][2])
+                    else:
+                        break
             # new entry, synthesis cross reference here,
             existing_keys = id_index.setdefault(key[2], set())
             if not existing_keys:

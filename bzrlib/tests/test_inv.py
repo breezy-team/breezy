@@ -451,6 +451,17 @@ class TestDeltaApplication(TestCaseWithTransport):
         self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
             inv, delta)
 
+    def test_add_new_id_existing_path(self):
+        inv = self.get_empty_inventory()
+        parent1 = inventory.InventoryDirectory('p-1', 'dir1', inv.root.file_id)
+        parent1.revision = 'result'
+        parent2 = inventory.InventoryDirectory('p-2', 'dir1', inv.root.file_id)
+        parent2.revision = 'result'
+        inv.add(parent1)
+        delta = [(None, u'dir1', 'p-2', parent2)]
+        self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
+            inv, delta)
+
 
 class TestInventoryEntry(TestCase):
 
