@@ -36,6 +36,9 @@ API Changes
 Internals
 *********
 
+* ``CHKMap.apply_delta`` now raises ``InconsistentDelta`` if a delta adds
+  as new a key which was already mapped. (Robert Collins)
+
 
 bzr 1.17rc1 "So late it's brunch" 2009-07-13
 ############################################
