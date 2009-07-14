@@ -80,6 +80,11 @@ New Features
   behavior.
   (Vincent Ladeuil, #206577)
 
+* ``bzr switch --create-branch/-b`` can now be used to create and switch
+  to a new branch. Supplying a name without a ``/`` will create the branch
+  relative to the existing branch. (similar to how ``bzr switch name``
+  works when the branch already exists.) (John Arbash Meinel)
+
 
 Bug Fixes
 *********
