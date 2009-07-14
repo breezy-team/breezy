@@ -3748,8 +3748,10 @@ class cmd_merge(Command):
         """
         from bzrlib import shelf_ui
         result_tree = self._get_preview(merger, cleanups)
+        writer = bzrlib.option.diff_writer_registry.get()
         shelver = shelf_ui.Shelver(merger.this_tree, result_tree, destroy=True,
-                                   reporter=shelf_ui.ApplyReporter())
+                                   reporter=shelf_ui.ApplyReporter(),
+                                   diff_writer=writer(sys.stdout))
         shelver.run()
 
     def sanity_check_merger(self, merger):
