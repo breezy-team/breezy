@@ -96,6 +96,21 @@ class ShelfCreator(object):
                 elif changed:
                     yield ('modify text', file_id)
 
+    def shelve_change(self, change):
+        """Shelve a change in the iter_shelvable format."""
+        if change[0] == 'rename':
+            self.shelve_rename(change[1])
+        elif change[0] == 'delete file':
+            self.shelve_deletion(change[1])
+        elif change[0] == 'add file':
+            self.shelve_creation(change[1])
+        elif change[0] == 'change kind':
+            self.shelve_content_change(change[1])
+        elif change[0] == 'modify target':
+            self.shelve_modify_target(change[1])
+        else:
+            raise ValueError('Unknown change kind: "%s"' % change[0])
+
     def shelve_rename(self, file_id):
         """Shelve a file rename.
 

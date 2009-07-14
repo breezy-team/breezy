@@ -1396,106 +1396,202 @@ def _deserialise(bytes, key, search_key_func):
     return node
 
 
-def _find_children_info(store, interesting_keys, uninteresting_keys, pb):
-    """Read the associated records, and determine what is interesting."""
-    uninteresting_keys = set(uninteresting_keys)
-    chks_to_read = uninteresting_keys.union(interesting_keys)
-    next_uninteresting = set()
-    next_interesting = set()
-    next_interesting_intersection = None
-    uninteresting_items = set()
-    interesting_items = set()
-    interesting_to_yield = []
-    for record in store.get_record_stream(chks_to_read, 'unordered', True):
-        # records_read.add(record.key())
-        if pb is not None:
-            pb.tick()
-        bytes = record.get_bytes_as('fulltext')
-        # We don't care about search_key_func for this code, because we only
-        # care about external references.
-        node = _deserialise(bytes, record.key, search_key_func=None)
-        if record.key in uninteresting_keys:
-            if type(node) is InternalNode:
-                next_uninteresting.update(node.refs())
-            else:
-                # We know we are at a LeafNode, so we can pass None for the
-                # store
-                uninteresting_items.update(node.iteritems(None))
-        else:
-            interesting_to_yield.append(record.key)
-            if type(node) is InternalNode:
-                if next_interesting_intersection is None:
-                    next_interesting_intersection = set(node.refs())
-                else:
-                    next_interesting_intersection = \
-                        next_interesting_intersection.intersection(node.refs())
-                next_interesting.update(node.refs())
-            else:
-                interesting_items.update(node.iteritems(None))
-    return (next_uninteresting, uninteresting_items,
-            next_interesting, interesting_to_yield, interesting_items,
-            next_interesting_intersection)
+class CHKMapDifference(object):
+    """Iterate the stored pages and key,value pairs for (new - old).
 
+    This class provides a generator over the stored CHK pages and the
+    (key, value) pairs that are in any of the new maps and not in any of the
+    old maps.
 
-def _find_all_uninteresting(store, interesting_root_keys,
-                            uninteresting_root_keys, pb):
-    """Determine the full set of uninteresting keys."""
-    # What about duplicates between interesting_root_keys and
-    # uninteresting_root_keys?
-    if not uninteresting_root_keys:
-        # Shortcut case. We know there is nothing uninteresting to filter out
-        # So we just let the rest of the algorithm do the work
-        # We know there is nothing uninteresting, and we didn't have to read
-        # any interesting records yet.
-        return (set(), set(), set(interesting_root_keys), [], set())
-    all_uninteresting_chks = set(uninteresting_root_keys)
-    all_uninteresting_items = set()
+    Note that it may yield chk pages that are common (especially root nodes),
+    but it won't yield (key,value) pairs that are common.
+    """
 
-    # First step, find the direct children of both the interesting and
-    # uninteresting set
-    (uninteresting_keys, uninteresting_items,
-     interesting_keys, interesting_to_yield,
-     interesting_items, interesting_intersection,
-     ) = _find_children_info(store, interesting_root_keys,
-                                              uninteresting_root_keys,
-                                              pb=pb)
-    all_uninteresting_chks.update(uninteresting_keys)
-    all_uninteresting_items.update(uninteresting_items)
-    del uninteresting_items
-    # Do not examine in detail pages common to all interesting trees.
-    # Pages that are common to all interesting trees will have their
-    # older versions found via the uninteresting tree traversal. Some pages
-    # found via the interesting trees traversal will be uninteresting for
-    # other of the interesting trees, which is why we require the pages to be
-    # common for us to trim them.
-    if interesting_intersection is not None:
-        uninteresting_keys.difference_update(interesting_intersection)
+    def __init__(self, store, new_root_keys, old_root_keys,
+                 search_key_func, pb=None):
+        self._store = store
+        self._new_root_keys = new_root_keys
+        self._old_root_keys = old_root_keys
+        self._pb = pb
+        # All uninteresting chks that we have seen. By the time they are added
+        # here, they should be either fully ignored, or queued up for
+        # processing
+        self._all_old_chks = set(self._old_root_keys)
+        # All items that we have seen from the old_root_keys
+        self._all_old_items = set()
+        # These are interesting items which were either read, or already in the
+        # interesting queue (so we don't need to walk them again)
+        self._processed_new_refs = set()
+        self._search_key_func = search_key_func
 
-    # Second, find the full set of uninteresting bits reachable by the
-    # uninteresting roots
-    chks_to_read = uninteresting_keys
-    while chks_to_read:
-        next_chks = set()
-        for record in store.get_record_stream(chks_to_read, 'unordered', False):
-            # TODO: Handle 'absent'
-            if pb is not None:
-                pb.tick()
+        # The uninteresting and interesting nodes to be searched
+        self._old_queue = []
+        self._new_queue = []
+        # Holds the (key, value) items found when processing the root nodes,
+        # waiting for the uninteresting nodes to be walked
+        self._new_item_queue = []
+        self._state = None
+
+    def _read_nodes_from_store(self, keys):
+        # We chose not to use _page_cache, because we think in terms of records
+        # to be yielded. Also, we expect to touch each page only 1 time during
+        # this code. (We may want to evaluate saving the raw bytes into the
+        # page cache, which would allow a working tree update after the fetch
+        # to not have to read the bytes again.)
+        stream = self._store.get_record_stream(keys, 'unordered', True)
+        for record in stream:
+            if self._pb is not None:
+                self._pb.tick()
+            if record.storage_kind == 'absent':
+                raise errors.NoSuchRevision(self._store, record.key)
             bytes = record.get_bytes_as('fulltext')
-            # We don't care about search_key_func for this code, because we
-            # only care about external references.
-            node = _deserialise(bytes, record.key, search_key_func=None)
+            node = _deserialise(bytes, record.key,
+                                search_key_func=self._search_key_func)
             if type(node) is InternalNode:
-                # uninteresting_prefix_chks.update(node._items.iteritems())
-                chks = node._items.values()
-                # TODO: We remove the entries that are already in
-                #       uninteresting_chks ?
-                next_chks.update(chks)
-                all_uninteresting_chks.update(chks)
+                # Note we don't have to do node.refs() because we know that
+                # there are no children that have been pushed into this node
+                prefix_refs = node._items.items()
+                items = []
             else:
-                all_uninteresting_items.update(node._items.iteritems())
-        chks_to_read = next_chks
-    return (all_uninteresting_chks, all_uninteresting_items,
-            interesting_keys, interesting_to_yield, interesting_items)
+                prefix_refs = []
+                items = node._items.items()
+            yield record, node, prefix_refs, items
+
+    def _read_old_roots(self):
+        old_chks_to_enqueue = []
+        all_old_chks = self._all_old_chks
+        for record, node, prefix_refs, items in \
+                self._read_nodes_from_store(self._old_root_keys):
+            # Uninteresting node
+            prefix_refs = [p_r for p_r in prefix_refs
+                                if p_r[1] not in all_old_chks]
+            new_refs = [p_r[1] for p_r in prefix_refs]
+            all_old_chks.update(new_refs)
+            self._all_old_items.update(items)
+            # Queue up the uninteresting references
+            # Don't actually put them in the 'to-read' queue until we have
+            # finished checking the interesting references
+            old_chks_to_enqueue.extend(prefix_refs)
+        return old_chks_to_enqueue
+
+    def _enqueue_old(self, new_prefixes, old_chks_to_enqueue):
+        # At this point, we have read all the uninteresting and interesting
+        # items, so we can queue up the uninteresting stuff, knowing that we've
+        # handled the interesting ones
+        for prefix, ref in old_chks_to_enqueue:
+            not_interesting = True
+            for i in xrange(len(prefix), 0, -1):
+                if prefix[:i] in new_prefixes:
+                    not_interesting = False
+                    break
+            if not_interesting:
+                # This prefix is not part of the remaining 'interesting set'
+                continue
+            self._old_queue.append(ref)
+
+    def _read_all_roots(self):
+        """Read the root pages.
+
+        This is structured as a generator, so that the root records can be
+        yielded up to whoever needs them without any buffering.
+        """
+        # This is the bootstrap phase
+        if not self._old_root_keys:
+            # With no old_root_keys we can just shortcut and be ready
+            # for _flush_new_queue
+            self._new_queue = list(self._new_root_keys)
+            return
+        old_chks_to_enqueue = self._read_old_roots()
+        # filter out any root keys that are already known to be uninteresting
+        new_keys = set(self._new_root_keys).difference(self._all_old_chks)
+        # These are prefixes that are present in new_keys that we are
+        # thinking to yield
+        new_prefixes = set()
+        # We are about to yield all of these, so we don't want them getting
+        # added a second time
+        processed_new_refs = self._processed_new_refs
+        processed_new_refs.update(new_keys)
+        for record, node, prefix_refs, items in \
+                self._read_nodes_from_store(new_keys):
+            # At this level, we now know all the uninteresting references
+            # So we filter and queue up whatever is remaining
+            prefix_refs = [p_r for p_r in prefix_refs
+                           if p_r[1] not in self._all_old_chks
+                              and p_r[1] not in processed_new_refs]
+            refs = [p_r[1] for p_r in prefix_refs]
+            new_prefixes.update([p_r[0] for p_r in prefix_refs])
+            self._new_queue.extend(refs)
+            # TODO: We can potentially get multiple items here, however the
+            #       current design allows for this, as callers will do the work
+            #       to make the results unique. We might profile whether we
+            #       gain anything by ensuring unique return values for items
+            new_items = [item for item in items
+                               if item not in self._all_old_items]
+            self._new_item_queue.extend(new_items)
+            new_prefixes.update([self._search_key_func(item[0])
+                                 for item in new_items])
+            processed_new_refs.update(refs)
+            yield record
+        # For new_prefixes we have the full length prefixes queued up.
+        # However, we also need possible prefixes. (If we have a known ref to
+        # 'ab', then we also need to include 'a'.) So expand the
+        # new_prefixes to include all shorter prefixes
+        for prefix in list(new_prefixes):
+            new_prefixes.update([prefix[:i] for i in xrange(1, len(prefix))])
+        self._enqueue_old(new_prefixes, old_chks_to_enqueue)
+
+    def _flush_new_queue(self):
+        # No need to maintain the heap invariant anymore, just pull things out
+        # and process them
+        refs = set(self._new_queue)
+        self._new_queue = []
+        # First pass, flush all interesting items and convert to using direct refs
+        all_old_chks = self._all_old_chks
+        processed_new_refs = self._processed_new_refs
+        all_old_items = self._all_old_items
+        new_items = [item for item in self._new_item_queue
+                           if item not in all_old_items]
+        self._new_item_queue = []
+        if new_items:
+            yield None, new_items
+        refs = refs.difference(all_old_chks)
+        while refs:
+            next_refs = set()
+            next_refs_update = next_refs.update
+            # Inlining _read_nodes_from_store improves 'bzr branch bzr.dev'
+            # from 1m54s to 1m51s. Consider it.
+            for record, _, p_refs, items in self._read_nodes_from_store(refs):
+                items = [item for item in items
+                         if item not in all_old_items]
+                yield record, items
+                next_refs_update([p_r[1] for p_r in p_refs])
+            next_refs = next_refs.difference(all_old_chks)
+            next_refs = next_refs.difference(processed_new_refs)
+            processed_new_refs.update(next_refs)
+            refs = next_refs
+
+    def _process_next_old(self):
+        # Since we don't filter uninteresting any further than during
+        # _read_all_roots, process the whole queue in a single pass.
+        refs = self._old_queue
+        self._old_queue = []
+        all_old_chks = self._all_old_chks
+        for record, _, prefix_refs, items in self._read_nodes_from_store(refs):
+            self._all_old_items.update(items)
+            refs = [r for _,r in prefix_refs if r not in all_old_chks]
+            self._old_queue.extend(refs)
+            all_old_chks.update(refs)
+
+    def _process_queues(self):
+        while self._old_queue:
+            self._process_next_old()
+        return self._flush_new_queue()
+
+    def process(self):
+        for record in self._read_all_roots():
+            yield record, []
+        for record, items in self._process_queues():
+            yield record, items
 
 
 def iter_interesting_nodes(store, interesting_root_keys,
@@ -1512,72 +1608,11 @@ def iter_interesting_nodes(store, interesting_root_keys,
     :return: Yield
         (interesting record, {interesting key:values})
     """
-    # TODO: consider that it may be more memory efficient to use the 20-byte
-    #       sha1 string, rather than tuples of hexidecimal sha1 strings.
-    # TODO: Try to factor out a lot of the get_record_stream() calls into a
-    #       helper function similar to _read_bytes. This function should be
-    #       able to use nodes from the _page_cache as well as actually
-    #       requesting bytes from the store.
-
-    (all_uninteresting_chks, all_uninteresting_items, interesting_keys,
-     interesting_to_yield, interesting_items) = _find_all_uninteresting(store,
-        interesting_root_keys, uninteresting_root_keys, pb)
-
-    # Now that we know everything uninteresting, we can yield information from
-    # our first request
-    interesting_items.difference_update(all_uninteresting_items)
-    interesting_to_yield = set(interesting_to_yield) - all_uninteresting_chks
-    if interesting_items:
-        yield None, interesting_items
-    if interesting_to_yield:
-        # We request these records again, rather than buffering the root
-        # records, most likely they are still in the _group_cache anyway.
-        for record in store.get_record_stream(interesting_to_yield,
-                                              'unordered', False):
-            yield record, []
-    all_uninteresting_chks.update(interesting_to_yield)
-    interesting_keys.difference_update(all_uninteresting_chks)
-
-    chks_to_read = interesting_keys
-    counter = 0
-    while chks_to_read:
-        next_chks = set()
-        for record in store.get_record_stream(chks_to_read, 'unordered', False):
-            counter += 1
-            if pb is not None:
-                pb.update('find chk pages', counter)
-            # TODO: Handle 'absent'?
-            bytes = record.get_bytes_as('fulltext')
-            # We don't care about search_key_func for this code, because we
-            # only care about external references.
-            node = _deserialise(bytes, record.key, search_key_func=None)
-            if type(node) is InternalNode:
-                # all_uninteresting_chks grows large, as it lists all nodes we
-                # don't want to process (including already seen interesting
-                # nodes).
-                # small.difference_update(large) scales O(large), but
-                # small.difference(large) scales O(small).
-                # Also, we know we just _deserialised this node, so we can
-                # access the dict directly.
-                chks = set(node._items.itervalues()).difference(
-                            all_uninteresting_chks)
-                # Is set() and .difference_update better than:
-                # chks = [chk for chk in node.refs()
-                #              if chk not in all_uninteresting_chks]
-                next_chks.update(chks)
-                # These are now uninteresting everywhere else
-                all_uninteresting_chks.update(chks)
-                interesting_items = []
-            else:
-                interesting_items = [item for item in node._items.iteritems()
-                                     if item not in all_uninteresting_items]
-                # TODO: Do we need to filter out items that we have already
-                #       seen on other pages? We don't really want to buffer the
-                #       whole thing, but it does mean that callers need to
-                #       understand they may get duplicate values.
-                # all_uninteresting_items.update(interesting_items)
-            yield record, interesting_items
-        chks_to_read = next_chks
+    iterator = CHKMapDifference(store, interesting_root_keys,
+                                uninteresting_root_keys,
+                                search_key_func=store._search_key_func,
+                                pb=pb)
+    return iterator.process()
 
 
 try:
