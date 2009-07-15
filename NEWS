@@ -22,6 +22,10 @@ New Features
 Bug Fixes
 *********
 
+* Annotating on a stacked branch will now succeed in simple scenarios.
+  There are still some complex scenarios where it will fail (bug #399884)
+  (John Arbash Meinel, #393366)
+
 * BranchBuilder now accepts timezone to avoid test failures in countries far
   from GMT. (Vincent Ladeuil, #397716)
 
