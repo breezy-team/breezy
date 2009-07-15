@@ -36,6 +36,9 @@ Documentation
 API Changes
 ***********
 
+* New TransformPreview.commit() allows committing without a working tree.
+  (Aaron Bentley)
+
 Internals
 *********
 
