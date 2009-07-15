@@ -1961,6 +1961,17 @@ class TestCommitTransform(tests.TestCaseWithTransport):
         tt.create_file('contents', trans_id)
         tt.commit(branch, 'message', strict=True)
 
+    def test_commit_malformed(self):
+        """Committing a malformed transform should raise an exception.
+
+        In this case, we are adding a file without adding its parent.
+        """
+        branch, tt = self.get_branch_and_transform()
+        parent_id = tt.trans_id_file_id('parent-id')
+        tt.new_file('file', parent_id, 'contents', 'file-id')
+        self.assertRaises(errors.MalformedTransform, tt.commit, branch,
+                          'message')
+
 
 class MockTransform(object):
 

@@ -442,6 +442,11 @@ class TreeTransformBase(object):
         conflicts.extend(self._overwrite_conflicts())
         return conflicts
 
+    def _check_malformed(self):
+        conflicts = self.find_conflicts()
+        if len(conflicts) != 0:
+            raise MalformedTransform(conflicts=conflicts)
+
     def _add_tree_children(self):
         """Add all the children of all active parents to the known paths.
 
@@ -867,6 +872,7 @@ class TreeTransformBase(object):
         :param merge_parents: Additional parents specified by pending merges.
         :return: The revision_id of the revision committed.
         """
+        self._check_malformed()
         if strict:
             unversioned = set(self._new_contents).difference(set(self._new_id))
             for trans_id in unversioned:
@@ -1390,7 +1396,6 @@ class TreeTransform(DiskTreeTransform):
                 continue
             yield self.trans_id_tree_path(childpath)
 
-
     def apply(self, no_conflicts=False, precomputed_delta=None, _mover=None):
         """Apply all changes to the inventory and filesystem.
 
@@ -1406,9 +1411,7 @@ class TreeTransform(DiskTreeTransform):
         :param _mover: Supply an alternate FileMover, for testing
         """
         if not no_conflicts:
-            conflicts = self.find_conflicts()
-            if len(conflicts) != 0:
-                raise MalformedTransform(conflicts=conflicts)
+            self._check_malformed()
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
             if precomputed_delta is None:
