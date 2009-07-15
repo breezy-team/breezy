@@ -568,6 +568,8 @@ class cmd_merge_upstream(Command):
             version = Version(version)
             orig_dir = config.orig_dir or default_orig_dir
             orig_dir = os.path.join(tree.basedir, orig_dir)
+            if not os.path.exists(orig_dir):
+                os.makedirs(orig_dir)
             dest_name = tarball_name(package, version.upstream_version)
             tarball_filename = os.path.join(orig_dir, dest_name)
 
