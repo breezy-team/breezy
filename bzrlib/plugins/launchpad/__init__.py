@@ -26,8 +26,6 @@ from bzrlib import version_info
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-import webbrowser
-
 from bzrlib import (
     branch as _mod_branch,
     trace,
@@ -196,6 +194,8 @@ class cmd_launchpad_open(Command):
         web_url = self._get_web_url(LaunchpadService(), location)
         trace.note('Opening %s in web browser' % web_url)
         if not dry_run:
+            import webbrowser   # this import should not be lazy
+                                # otherwise bzr.exe lacks this module
             webbrowser.open(web_url)
 
 register_command(cmd_launchpad_open)
@@ -220,11 +220,12 @@ class cmd_launchpad_login(Command):
     aliases = ['lp-login']
     takes_args = ['name?']
     takes_options = [
+        'verbose',
         Option('no-check',
                "Don't check that the user name is valid."),
         ]
 
-    def run(self, name=None, no_check=False):
+    def run(self, name=None, no_check=False, verbose=False):
         from bzrlib.plugins.launchpad import account
         check_account = not no_check
 
@@ -233,6 +234,9 @@ class cmd_launchpad_login(Command):
             if username:
                 if check_account:
                     account.check_lp_login(username)
+                    if verbose:
+                        self.outf.write(
+                            "Launchpad user ID exists and has SSH keys.\n")
                 self.outf.write(username + '\n')
             else:
                 self.outf.write('No Launchpad user ID configured.\n')
@@ -241,7 +245,12 @@ class cmd_launchpad_login(Command):
             name = name.lower()
             if check_account:
                 account.check_lp_login(name)
+                if verbose:
+                    self.outf.write(
+                        "Launchpad user ID exists and has SSH keys.\n")
             account.set_lp_login(name)
+            if verbose:
+                self.outf.write("Launchpad user ID set to '%s'.\n" % (name,))
 
 register_command(cmd_launchpad_login)
 
@@ -259,6 +268,7 @@ def test_suite():
     from bzrlib.plugins.launchpad import (
         test_account,
         test_lp_directory,
+        test_lp_login,
         test_lp_open,
         test_lp_service,
         test_register,
@@ -270,6 +280,7 @@ def test_suite():
         test_account,
         test_register,
         test_lp_directory,
+        test_lp_login,
         test_lp_open,
         test_lp_service,
         ]:

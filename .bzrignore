@@ -38,6 +38,7 @@ build
 ./api
 doc/**/*.html
 doc/developers/performance.png
+bzrlib/_annotator_pyx.c
 bzrlib/_bencode_pyx.c
 bzrlib/_btree_serializer_pyx.c
 bzrlib/_chk_map_pyx.c

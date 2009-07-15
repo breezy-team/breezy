@@ -66,6 +66,7 @@ else:
         suffix = 'W'
 try:
     import win32file
+    import pywintypes
     has_win32file = True
 except ImportError:
     has_win32file = False
@@ -499,7 +500,15 @@ def get_app_path(appname):
 def set_file_attr_hidden(path):
     """Set file attributes to hidden if possible"""
     if has_win32file:
-        win32file.SetFileAttributes(path, win32file.FILE_ATTRIBUTE_HIDDEN)
+        if winver != 'Windows 98':
+            SetFileAttributes = win32file.SetFileAttributesW
+        else:
+            SetFileAttributes = win32file.SetFileAttributes
+        try:
+            SetFileAttributes(path, win32file.FILE_ATTRIBUTE_HIDDEN)
+        except pywintypes.error, e:
+            from bzrlib import trace
+            trace.mutter('Unable to set hidden attribute on %r: %s', path, e)
 
 
 if has_ctypes and winver != 'Windows 98':

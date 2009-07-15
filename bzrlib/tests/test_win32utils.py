@@ -18,7 +18,13 @@ import os
 import sys
 
 from bzrlib import osutils
-from bzrlib.tests import TestCase, TestCaseInTempDir, TestSkipped, Feature
+from bzrlib.tests import (
+    Feature,
+    TestCase,
+    TestCaseInTempDir,
+    TestSkipped,
+    UnicodeFilenameFeature,
+    )
 from bzrlib.win32utils import glob_expand, get_app_path
 from bzrlib import win32utils
 
@@ -238,3 +244,20 @@ class TestLocationsPywin32(TestLocationsCtypes):
 
     def restoreCtypes(self):
         win32utils.has_ctypes = self.old_ctypes
+
+
+class TestSetHidden(TestCaseInTempDir):
+
+    def test_unicode_dir(self):
+        # we should handle unicode paths without errors
+        self.requireFeature(UnicodeFilenameFeature)
+        os.mkdir(u'\u1234')
+        win32utils.set_file_attr_hidden(u'\u1234')
+
+    def test_dot_bzr_in_unicode_dir(self):
+        # we should not raise traceback if we try to set hidden attribute
+        # on .bzr directory below unicode path
+        self.requireFeature(UnicodeFilenameFeature)
+        os.makedirs(u'\u1234\\.bzr')
+        path = osutils.abspath(u'\u1234\\.bzr')
+        win32utils.set_file_attr_hidden(path)

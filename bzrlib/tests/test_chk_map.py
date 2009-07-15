@@ -20,6 +20,7 @@ from itertools import izip
 
 from bzrlib import (
     chk_map,
+    groupcompress,
     osutils,
     tests,
     )
@@ -59,17 +60,14 @@ class TestNode(tests.TestCase):
         self.assertCommonPrefix('', '', '')
 
 
-class TestCaseWithStore(tests.TestCaseWithTransport):
+class TestCaseWithStore(tests.TestCaseWithMemoryTransport):
 
     def get_chk_bytes(self):
         # The easiest way to get a CHK store is a development6 repository and
         # then work with the chk_bytes attribute directly.
-        repo = self.make_repository(".", format="development6-rich-root")
-        repo.lock_write()
-        self.addCleanup(repo.unlock)
-        repo.start_write_group()
-        self.addCleanup(repo.abort_write_group)
-        return repo.chk_bytes
+        factory = groupcompress.make_pack_factory(False, False, 1)
+        self.chk_bytes = factory(self.get_transport())
+        return self.chk_bytes
 
     def _get_map(self, a_dict, maximum_size=0, chk_bytes=None, key_width=1,
                  search_key_func=None):
@@ -95,6 +93,246 @@ class TestCaseWithStore(tests.TestCaseWithTransport):
 
     def to_dict(self, node, *args):
         return dict(node.iteritems(*args))
+
+
+class TestCaseWithExampleMaps(TestCaseWithStore):
+
+    def get_chk_bytes(self):
+        if getattr(self, '_chk_bytes', None) is None:
+            self._chk_bytes = super(TestCaseWithExampleMaps,
+                                    self).get_chk_bytes()
+        return self._chk_bytes
+
+    def get_map(self, a_dict, maximum_size=100, search_key_func=None):
+        c_map = self._get_map(a_dict, maximum_size=maximum_size,
+                              chk_bytes=self.get_chk_bytes(),
+                              search_key_func=search_key_func)
+        return c_map
+
+    def make_root_only_map(self, search_key_func=None):
+        return self.get_map({
+            ('aaa',): 'initial aaa content',
+            ('abb',): 'initial abb content',
+        }, search_key_func=search_key_func)
+
+    def make_root_only_aaa_ddd_map(self, search_key_func=None):
+        return self.get_map({
+            ('aaa',): 'initial aaa content',
+            ('ddd',): 'initial ddd content',
+        }, search_key_func=search_key_func)
+
+    def make_one_deep_map(self, search_key_func=None):
+        # Same as root_only_map, except it forces an InternalNode at the root
+        return self.get_map({
+            ('aaa',): 'initial aaa content',
+            ('abb',): 'initial abb content',
+            ('ccc',): 'initial ccc content',
+            ('ddd',): 'initial ddd content',
+        }, search_key_func=search_key_func)
+
+    def make_two_deep_map(self, search_key_func=None):
+        # Carefully chosen so that it creates a 2-deep map for both
+        # _search_key_plain and for _search_key_16
+        # Also so that things line up with make_one_deep_two_prefix_map
+        return self.get_map({
+            ('aaa',): 'initial aaa content',
+            ('abb',): 'initial abb content',
+            ('acc',): 'initial acc content',
+            ('ace',): 'initial ace content',
+            ('add',): 'initial add content',
+            ('adh',): 'initial adh content',
+            ('adl',): 'initial adl content',
+            ('ccc',): 'initial ccc content',
+            ('ddd',): 'initial ddd content',
+        }, search_key_func=search_key_func)
+
+    def make_one_deep_two_prefix_map(self, search_key_func=None):
+        """Create a map with one internal node, but references are extra long.
+
+        Otherwise has similar content to make_two_deep_map.
+        """
+        return self.get_map({
+            ('aaa',): 'initial aaa content',
+            ('add',): 'initial add content',
+            ('adh',): 'initial adh content',
+            ('adl',): 'initial adl content',
+        }, search_key_func=search_key_func)
+
+    def make_one_deep_one_prefix_map(self, search_key_func=None):
+        """Create a map with one internal node, but references are extra long.
+
+        Similar to make_one_deep_two_prefix_map, except the split is at the
+        first char, rather than the second.
+        """
+        return self.get_map({
+            ('add',): 'initial add content',
+            ('adh',): 'initial adh content',
+            ('adl',): 'initial adl content',
+            ('bbb',): 'initial bbb content',
+        }, search_key_func=search_key_func)
+
+
+class TestTestCaseWithExampleMaps(TestCaseWithExampleMaps):
+    """Actual tests for the provided examples."""
+
+    def test_root_only_map_plain(self):
+        c_map = self.make_root_only_map()
+        self.assertEqualDiff(
+            "'' LeafNode\n"
+            "      ('aaa',) 'initial aaa content'\n"
+            "      ('abb',) 'initial abb content'\n",
+            c_map._dump_tree())
+
+    def test_root_only_map_16(self):
+        c_map = self.make_root_only_map(search_key_func=chk_map._search_key_16)
+        self.assertEqualDiff(
+            "'' LeafNode\n"
+            "      ('aaa',) 'initial aaa content'\n"
+            "      ('abb',) 'initial abb content'\n",
+            c_map._dump_tree())
+
+    def test_one_deep_map_plain(self):
+        c_map = self.make_one_deep_map()
+        self.assertEqualDiff(
+            "'' InternalNode\n"
+            "  'a' LeafNode\n"
+            "      ('aaa',) 'initial aaa content'\n"
+            "      ('abb',) 'initial abb content'\n"
+            "  'c' LeafNode\n"
+            "      ('ccc',) 'initial ccc content'\n"
+            "  'd' LeafNode\n"
+            "      ('ddd',) 'initial ddd content'\n",
+            c_map._dump_tree())
+
+    def test_one_deep_map_16(self):
+        c_map = self.make_one_deep_map(search_key_func=chk_map._search_key_16)
+        self.assertEqualDiff(
+            "'' InternalNode\n"
+            "  '2' LeafNode\n"
+            "      ('ccc',) 'initial ccc content'\n"
+            "  '4' LeafNode\n"
+            "      ('abb',) 'initial abb content'\n"
+            "  'F' LeafNode\n"
+            "      ('aaa',) 'initial aaa content'\n"
+            "      ('ddd',) 'initial ddd content'\n",
+            c_map._dump_tree())
+
+    def test_root_only_aaa_ddd_plain(self):
+        c_map = self.make_root_only_aaa_ddd_map()
+        self.assertEqualDiff(
+            "'' LeafNode\n"
+            "      ('aaa',) 'initial aaa content'\n"
+            "      ('ddd',) 'initial ddd content'\n",
+            c_map._dump_tree())
+
+    def test_one_deep_map_16(self):
+        c_map = self.make_root_only_aaa_ddd_map(
+                search_key_func=chk_map._search_key_16)
+        # We use 'aaa' and 'ddd' because they happen to map to 'F' when using
+        # _search_key_16
+        self.assertEqualDiff(
+            "'' LeafNode\n"
+            "      ('aaa',) 'initial aaa content'\n"
+            "      ('ddd',) 'initial ddd content'\n",
+            c_map._dump_tree())
+
+    def test_two_deep_map_plain(self):
+        c_map = self.make_two_deep_map()
+        self.assertEqualDiff(
+            "'' InternalNode\n"
+            "  'a' InternalNode\n"
+            "    'aa' LeafNode\n"
+            "      ('aaa',) 'initial aaa content'\n"
+            "    'ab' LeafNode\n"
+            "      ('abb',) 'initial abb content'\n"
+            "    'ac' LeafNode\n"
+            "      ('acc',) 'initial acc content'\n"
+            "      ('ace',) 'initial ace content'\n"
+            "    'ad' LeafNode\n"
+            "      ('add',) 'initial add content'\n"
+            "      ('adh',) 'initial adh content'\n"
+            "      ('adl',) 'initial adl content'\n"
+            "  'c' LeafNode\n"
+            "      ('ccc',) 'initial ccc content'\n"
+            "  'd' LeafNode\n"
+            "      ('ddd',) 'initial ddd content'\n",
+            c_map._dump_tree())
+
+    def test_two_deep_map_16(self):
+        c_map = self.make_two_deep_map(search_key_func=chk_map._search_key_16)
+        self.assertEqualDiff(
+            "'' InternalNode\n"
+            "  '2' LeafNode\n"
+            "      ('acc',) 'initial acc content'\n"
+            "      ('ccc',) 'initial ccc content'\n"
+            "  '4' LeafNode\n"
+            "      ('abb',) 'initial abb content'\n"
+            "  'C' LeafNode\n"
+            "      ('ace',) 'initial ace content'\n"
+            "  'F' InternalNode\n"
+            "    'F0' LeafNode\n"
+            "      ('aaa',) 'initial aaa content'\n"
+            "    'F3' LeafNode\n"
+            "      ('adl',) 'initial adl content'\n"
+            "    'F4' LeafNode\n"
+            "      ('adh',) 'initial adh content'\n"
+            "    'FB' LeafNode\n"
+            "      ('ddd',) 'initial ddd content'\n"
+            "    'FD' LeafNode\n"
+            "      ('add',) 'initial add content'\n",
+            c_map._dump_tree())
+
+    def test_one_deep_two_prefix_map_plain(self):
+        c_map = self.make_one_deep_two_prefix_map()
+        self.assertEqualDiff(
+            "'' InternalNode\n"
+            "  'aa' LeafNode\n"
+            "      ('aaa',) 'initial aaa content'\n"
+            "  'ad' LeafNode\n"
+            "      ('add',) 'initial add content'\n"
+            "      ('adh',) 'initial adh content'\n"
+            "      ('adl',) 'initial adl content'\n",
+            c_map._dump_tree())
+
+    def test_one_deep_two_prefix_map_16(self):
+        c_map = self.make_one_deep_two_prefix_map(
+            search_key_func=chk_map._search_key_16)
+        self.assertEqualDiff(
+            "'' InternalNode\n"
+            "  'F0' LeafNode\n"
+            "      ('aaa',) 'initial aaa content'\n"
+            "  'F3' LeafNode\n"
+            "      ('adl',) 'initial adl content'\n"
+            "  'F4' LeafNode\n"
+            "      ('adh',) 'initial adh content'\n"
+            "  'FD' LeafNode\n"
+            "      ('add',) 'initial add content'\n",
+            c_map._dump_tree())
+
+    def test_one_deep_one_prefix_map_plain(self):
+        c_map = self.make_one_deep_one_prefix_map()
+        self.assertEqualDiff(
+            "'' InternalNode\n"
+            "  'a' LeafNode\n"
+            "      ('add',) 'initial add content'\n"
+            "      ('adh',) 'initial adh content'\n"
+            "      ('adl',) 'initial adl content'\n"
+            "  'b' LeafNode\n"
+            "      ('bbb',) 'initial bbb content'\n",
+            c_map._dump_tree())
+
+    def test_one_deep_one_prefix_map_16(self):
+        c_map = self.make_one_deep_one_prefix_map(
+            search_key_func=chk_map._search_key_16)
+        self.assertEqualDiff(
+            "'' InternalNode\n"
+            "  '4' LeafNode\n"
+            "      ('bbb',) 'initial bbb content'\n"
+            "  'F' LeafNode\n"
+            "      ('add',) 'initial add content'\n"
+            "      ('adh',) 'initial adh content'\n"
+            "      ('adl',) 'initial adl content'\n",
+            c_map._dump_tree())
 
 
 class TestMap(TestCaseWithStore):
@@ -1886,62 +2124,406 @@ class TestInternalNode(TestCaseWithStore):
 # 1-4K get0
 
 
-class TestIterInterestingNodes(TestCaseWithStore):
+class TestCHKMapDifference(TestCaseWithExampleMaps):
 
-    def get_chk_bytes(self):
-        if getattr(self, '_chk_bytes', None) is None:
-            self._chk_bytes = super(TestIterInterestingNodes,
-                                    self).get_chk_bytes()
-        return self._chk_bytes
+    def get_difference(self, new_roots, old_roots,
+                       search_key_func=None):
+        if search_key_func is None:
+            search_key_func = chk_map._search_key_plain
+        return chk_map.CHKMapDifference(self.get_chk_bytes(),
+            new_roots, old_roots, search_key_func)
+
+    def test__init__(self):
+        c_map = self.make_root_only_map()
+        key1 = c_map.key()
+        c_map.map(('aaa',), 'new aaa content')
+        key2 = c_map._save()
+        diff = self.get_difference([key2], [key1])
+        self.assertEqual(set([key1]), diff._all_old_chks)
+        self.assertEqual([], diff._old_queue)
+        self.assertEqual([], diff._new_queue)
+
+    def help__read_all_roots(self, search_key_func):
+        c_map = self.make_root_only_map(search_key_func=search_key_func)
+        key1 = c_map.key()
+        c_map.map(('aaa',), 'new aaa content')
+        key2 = c_map._save()
+        diff = self.get_difference([key2], [key1], search_key_func)
+        root_results = [record.key for record in diff._read_all_roots()]
+        self.assertEqual([key2], root_results)
+        # We should have queued up only items that aren't in the old
+        # set
+        self.assertEqual([(('aaa',), 'new aaa content')],
+                         diff._new_item_queue)
+        self.assertEqual([], diff._new_queue)
+        # And there are no old references, so that queue should be
+        # empty
+        self.assertEqual([], diff._old_queue)
+
+    def test__read_all_roots_plain(self):
+        self.help__read_all_roots(search_key_func=chk_map._search_key_plain)
+
+    def test__read_all_roots_16(self):
+        self.help__read_all_roots(search_key_func=chk_map._search_key_16)
+
+    def test__read_all_roots_skips_known_old(self):
+        c_map = self.make_one_deep_map(chk_map._search_key_plain)
+        key1 = c_map.key()
+        c_map2 = self.make_root_only_map(chk_map._search_key_plain)
+        key2 = c_map2.key()
+        diff = self.get_difference([key2], [key1], chk_map._search_key_plain)
+        root_results = [record.key for record in diff._read_all_roots()]
+        # We should have no results. key2 is completely contained within key1,
+        # and we should have seen that in the first pass
+        self.assertEqual([], root_results)
+
+    def test__read_all_roots_prepares_queues(self):
+        c_map = self.make_one_deep_map(chk_map._search_key_plain)
+        key1 = c_map.key()
+        c_map._dump_tree() # load everything
+        key1_a = c_map._root_node._items['a'].key()
+        c_map.map(('abb',), 'new abb content')
+        key2 = c_map._save()
+        key2_a = c_map._root_node._items['a'].key()
+        diff = self.get_difference([key2], [key1], chk_map._search_key_plain)
+        root_results = [record.key for record in diff._read_all_roots()]
+        self.assertEqual([key2], root_results)
+        # At this point, we should have queued up only the 'a' Leaf on both
+        # sides, both 'c' and 'd' are known to not have changed on both sides
+        self.assertEqual([key2_a], diff._new_queue)
+        self.assertEqual([], diff._new_item_queue)
+        self.assertEqual([key1_a], diff._old_queue)
+
+    def test__read_all_roots_multi_new_prepares_queues(self):
+        c_map = self.make_one_deep_map(chk_map._search_key_plain)
+        key1 = c_map.key()
+        c_map._dump_tree() # load everything
+        key1_a = c_map._root_node._items['a'].key()
+        key1_c = c_map._root_node._items['c'].key()
+        c_map.map(('abb',), 'new abb content')
+        key2 = c_map._save()
+        key2_a = c_map._root_node._items['a'].key()
+        key2_c = c_map._root_node._items['c'].key()
+        c_map = chk_map.CHKMap(self.get_chk_bytes(), key1,
+                               chk_map._search_key_plain)
+        c_map.map(('ccc',), 'new ccc content')
+        key3 = c_map._save()
+        key3_a = c_map._root_node._items['a'].key()
+        key3_c = c_map._root_node._items['c'].key()
+        diff = self.get_difference([key2, key3], [key1],
+                                   chk_map._search_key_plain)
+        root_results = [record.key for record in diff._read_all_roots()]
+        self.assertEqual(sorted([key2, key3]), sorted(root_results))
+        # We should have queued up key2_a, and key3_c, but not key2_c or key3_c
+        self.assertEqual([key2_a, key3_c], diff._new_queue)
+        self.assertEqual([], diff._new_item_queue)
+        # And we should have queued up both a and c for the old set
+        self.assertEqual([key1_a, key1_c], diff._old_queue)
+
+    def test__read_all_roots_different_depths(self):
+        c_map = self.make_two_deep_map(chk_map._search_key_plain)
+        c_map._dump_tree() # load everything
+        key1 = c_map.key()
+        key1_a = c_map._root_node._items['a'].key()
+        key1_c = c_map._root_node._items['c'].key()
+        key1_d = c_map._root_node._items['d'].key()
+
+        c_map2 = self.make_one_deep_two_prefix_map(chk_map._search_key_plain)
+        c_map2._dump_tree()
+        key2 = c_map2.key()
+        key2_aa = c_map2._root_node._items['aa'].key()
+        key2_ad = c_map2._root_node._items['ad'].key()
+
+        diff = self.get_difference([key2], [key1], chk_map._search_key_plain)
+        root_results = [record.key for record in diff._read_all_roots()]
+        self.assertEqual([key2], root_results)
+        # Only the 'a' subset should be queued up, since 'c' and 'd' cannot be
+        # present
+        self.assertEqual([key1_a], diff._old_queue)
+        self.assertEqual([key2_aa, key2_ad], diff._new_queue)
+        self.assertEqual([], diff._new_item_queue)
+
+        diff = self.get_difference([key1], [key2], chk_map._search_key_plain)
+        root_results = [record.key for record in diff._read_all_roots()]
+        self.assertEqual([key1], root_results)
+
+        self.assertEqual([key2_aa, key2_ad], diff._old_queue)
+        self.assertEqual([key1_a, key1_c, key1_d], diff._new_queue)
+        self.assertEqual([], diff._new_item_queue)
+
+    def test__read_all_roots_different_depths_16(self):
+        c_map = self.make_two_deep_map(chk_map._search_key_16)
+        c_map._dump_tree() # load everything
+        key1 = c_map.key()
+        key1_2 = c_map._root_node._items['2'].key()
+        key1_4 = c_map._root_node._items['4'].key()
+        key1_C = c_map._root_node._items['C'].key()
+        key1_F = c_map._root_node._items['F'].key()
+
+        c_map2 = self.make_one_deep_two_prefix_map(chk_map._search_key_16)
+        c_map2._dump_tree()
+        key2 = c_map2.key()
+        key2_F0 = c_map2._root_node._items['F0'].key()
+        key2_F3 = c_map2._root_node._items['F3'].key()
+        key2_F4 = c_map2._root_node._items['F4'].key()
+        key2_FD = c_map2._root_node._items['FD'].key()
+
+        diff = self.get_difference([key2], [key1], chk_map._search_key_16)
+        root_results = [record.key for record in diff._read_all_roots()]
+        self.assertEqual([key2], root_results)
+        # Only the subset of keys that may be present should be queued up.
+        self.assertEqual([key1_F], diff._old_queue)
+        self.assertEqual(sorted([key2_F0, key2_F3, key2_F4, key2_FD]),
+                         sorted(diff._new_queue))
+        self.assertEqual([], diff._new_item_queue)
+
+        diff = self.get_difference([key1], [key2], chk_map._search_key_16)
+        root_results = [record.key for record in diff._read_all_roots()]
+        self.assertEqual([key1], root_results)
+
+        self.assertEqual(sorted([key2_F0, key2_F3, key2_F4, key2_FD]),
+                         sorted(diff._old_queue))
+        self.assertEqual(sorted([key1_2, key1_4, key1_C, key1_F]),
+                         sorted(diff._new_queue))
+        self.assertEqual([], diff._new_item_queue)
+
+    def test__read_all_roots_mixed_depth(self):
+        c_map = self.make_one_deep_two_prefix_map(chk_map._search_key_plain)
+        c_map._dump_tree() # load everything
+        key1 = c_map.key()
+        key1_aa = c_map._root_node._items['aa'].key()
+        key1_ad = c_map._root_node._items['ad'].key()
+
+        c_map2 = self.make_one_deep_one_prefix_map(chk_map._search_key_plain)
+        c_map2._dump_tree()
+        key2 = c_map2.key()
+        key2_a = c_map2._root_node._items['a'].key()
+        key2_b = c_map2._root_node._items['b'].key()
+
+        diff = self.get_difference([key2], [key1], chk_map._search_key_plain)
+        root_results = [record.key for record in diff._read_all_roots()]
+        self.assertEqual([key2], root_results)
+        # 'ad' matches exactly 'a' on the other side, so it should be removed,
+        # and neither side should have it queued for walking
+        self.assertEqual([], diff._old_queue)
+        self.assertEqual([key2_b], diff._new_queue)
+        self.assertEqual([], diff._new_item_queue)
+
+        diff = self.get_difference([key1], [key2], chk_map._search_key_plain)
+        root_results = [record.key for record in diff._read_all_roots()]
+        self.assertEqual([key1], root_results)
+        # Note: This is technically not the 'true minimal' set that we could
+        #       use The reason is that 'a' was matched exactly to 'ad' (by sha
+        #       sum).  However, the code gets complicated in the case of more
+        #       than one interesting key, so for now, we live with this
+        #       Consider revising, though benchmarking showing it to be a
+        #       real-world issue should be done
+        self.assertEqual([key2_a], diff._old_queue)
+        # self.assertEqual([], diff._old_queue)
+        self.assertEqual([key1_aa], diff._new_queue)
+        self.assertEqual([], diff._new_item_queue)
+
+    def test__read_all_roots_yields_extra_deep_records(self):
+        # This is slightly controversial, as we will yield a chk page that we
+        # might later on find out could be filtered out. (If a root node is
+        # referenced deeper in the old set.)
+        # However, even with stacking, we always have all chk pages that we
+        # will need. So as long as we filter out the referenced keys, we'll
+        # never run into problems.
+        # This allows us to yield a root node record immediately, without any
+        # buffering.
+        c_map = self.make_two_deep_map(chk_map._search_key_plain)
+        c_map._dump_tree() # load all keys
+        key1 = c_map.key()
+        key1_a = c_map._root_node._items['a'].key()
+        c_map2 = self.get_map({
+            ('acc',): 'initial acc content',
+            ('ace',): 'initial ace content',
+        }, maximum_size=100)
+        self.assertEqualDiff(
+            "'' LeafNode\n"
+            "      ('acc',) 'initial acc content'\n"
+            "      ('ace',) 'initial ace content'\n",
+            c_map2._dump_tree())
+        key2 = c_map2.key()
+        diff = self.get_difference([key2], [key1], chk_map._search_key_plain)
+        root_results = [record.key for record in diff._read_all_roots()]
+        self.assertEqual([key2], root_results)
+        # However, even though we have yielded the root node to be fetched,
+        # we should have enqued all of the chk pages to be walked, so that we
+        # can find the keys if they are present
+        self.assertEqual([key1_a], diff._old_queue)
+        self.assertEqual([(('acc',), 'initial acc content'),
+                          (('ace',), 'initial ace content'),
+                         ], diff._new_item_queue)
+
+    def test__read_all_roots_multiple_targets(self):
+        c_map = self.make_root_only_map()
+        key1 = c_map.key()
+        c_map = self.make_one_deep_map()
+        key2 = c_map.key()
+        c_map._dump_tree()
+        key2_c = c_map._root_node._items['c'].key()
+        key2_d = c_map._root_node._items['d'].key()
+        c_map.map(('ccc',), 'new ccc value')
+        key3 = c_map._save()
+        key3_c = c_map._root_node._items['c'].key()
+        diff = self.get_difference([key2, key3], [key1],
+                                   chk_map._search_key_plain)
+        root_results = [record.key for record in diff._read_all_roots()]
+        self.assertEqual(sorted([key2, key3]), sorted(root_results))
+        self.assertEqual([], diff._old_queue)
+        # the key 'd' is interesting from key2 and key3, but should only be
+        # entered into the queue 1 time
+        self.assertEqual(sorted([key2_c, key3_c, key2_d]),
+                         sorted(diff._new_queue))
+        self.assertEqual([], diff._new_item_queue)
+
+    def test__read_all_roots_no_old(self):
+        # This is the 'initial branch' case. With nothing in the old
+        # set, we can just queue up all root nodes into interesting queue, and
+        # then have them fast-path flushed via _flush_new_queue
+        c_map = self.make_two_deep_map()
+        key1 = c_map.key()
+        diff = self.get_difference([key1], [], chk_map._search_key_plain)
+        root_results = [record.key for record in diff._read_all_roots()]
+        self.assertEqual([], root_results)
+        self.assertEqual([], diff._old_queue)
+        self.assertEqual([key1], diff._new_queue)
+        self.assertEqual([], diff._new_item_queue)
+
+        c_map2 = self.make_one_deep_map()
+        key2 = c_map2.key()
+        diff = self.get_difference([key1, key2], [], chk_map._search_key_plain)
+        root_results = [record.key for record in diff._read_all_roots()]
+        self.assertEqual([], root_results)
+        self.assertEqual([], diff._old_queue)
+        self.assertEqual(sorted([key1, key2]), sorted(diff._new_queue))
+        self.assertEqual([], diff._new_item_queue)
+
+    def test__read_all_roots_no_old_16(self):
+        c_map = self.make_two_deep_map(chk_map._search_key_16)
+        key1 = c_map.key()
+        diff = self.get_difference([key1], [], chk_map._search_key_16)
+        root_results = [record.key for record in diff._read_all_roots()]
+        self.assertEqual([], root_results)
+        self.assertEqual([], diff._old_queue)
+        self.assertEqual([key1], diff._new_queue)
+        self.assertEqual([], diff._new_item_queue)
+
+        c_map2 = self.make_one_deep_map(chk_map._search_key_16)
+        key2 = c_map2.key()
+        diff = self.get_difference([key1, key2], [],
+                                   chk_map._search_key_16)
+        root_results = [record.key for record in diff._read_all_roots()]
+        self.assertEqual([], root_results)
+        self.assertEqual([], diff._old_queue)
+        self.assertEqual(sorted([key1, key2]),
+                         sorted(diff._new_queue))
+        self.assertEqual([], diff._new_item_queue)
+
+    def test__read_all_roots_multiple_old(self):
+        c_map = self.make_two_deep_map()
+        key1 = c_map.key()
+        c_map._dump_tree() # load everything
+        key1_a = c_map._root_node._items['a'].key()
+        c_map.map(('ccc',), 'new ccc value')
+        key2 = c_map._save()
+        key2_a = c_map._root_node._items['a'].key()
+        c_map.map(('add',), 'new add value')
+        key3 = c_map._save()
+        key3_a = c_map._root_node._items['a'].key()
+        diff = self.get_difference([key3], [key1, key2],
+                                   chk_map._search_key_plain)
+        root_results = [record.key for record in diff._read_all_roots()]
+        self.assertEqual([key3], root_results)
+        # the 'a' keys should not be queued up 2 times, since they are
+        # identical
+        self.assertEqual([key1_a], diff._old_queue)
+        self.assertEqual([key3_a], diff._new_queue)
+        self.assertEqual([], diff._new_item_queue)
+
+    def test__process_next_old_batched_no_dupes(self):
+        c_map = self.make_two_deep_map()
+        key1 = c_map.key()
+        c_map._dump_tree() # load everything
+        key1_a = c_map._root_node._items['a'].key()
+        key1_aa = c_map._root_node._items['a']._items['aa'].key()
+        key1_ab = c_map._root_node._items['a']._items['ab'].key()
+        key1_ac = c_map._root_node._items['a']._items['ac'].key()
+        key1_ad = c_map._root_node._items['a']._items['ad'].key()
+        c_map.map(('aaa',), 'new aaa value')
+        key2 = c_map._save()
+        key2_a = c_map._root_node._items['a'].key()
+        key2_aa = c_map._root_node._items['a']._items['aa'].key()
+        c_map.map(('acc',), 'new acc content')
+        key3 = c_map._save()
+        key3_a = c_map._root_node._items['a'].key()
+        key3_ac = c_map._root_node._items['a']._items['ac'].key()
+        diff = self.get_difference([key3], [key1, key2],
+                                   chk_map._search_key_plain)
+        root_results = [record.key for record in diff._read_all_roots()]
+        self.assertEqual([key3], root_results)
+        self.assertEqual(sorted([key1_a, key2_a]),
+                         sorted(diff._old_queue))
+        self.assertEqual([key3_a], diff._new_queue)
+        self.assertEqual([], diff._new_item_queue)
+        diff._process_next_old()
+        # All of the old records should be brought in and queued up,
+        # but we should not have any duplicates
+        self.assertEqual(sorted([key1_aa, key1_ab, key1_ac, key1_ad, key2_aa]),
+                         sorted(diff._old_queue))
+
+
+class TestIterInterestingNodes(TestCaseWithExampleMaps):
 
     def get_map_key(self, a_dict, maximum_size=10):
-        c_map = self._get_map(a_dict, maximum_size=maximum_size,
-                              chk_bytes=self.get_chk_bytes())
+        c_map = self.get_map(a_dict, maximum_size=maximum_size)
         return c_map.key()
 
-    def assertIterInteresting(self, expected, interesting_keys,
-                              uninteresting_keys):
+    def assertIterInteresting(self, records, items, interesting_keys,
+                              old_keys):
         """Check the result of iter_interesting_nodes.
 
-        :param expected: A list of (record_keys, interesting_chk_pages,
-                                    interesting key value pairs)
+        Note that we no longer care how many steps are taken, etc, just that
+        the right contents are returned.
+
+        :param records: A list of record keys that should be yielded
+        :param items: A list of items (key,value) that should be yielded.
         """
         store = self.get_chk_bytes()
+        store._search_key_func = chk_map._search_key_plain
         iter_nodes = chk_map.iter_interesting_nodes(store, interesting_keys,
-                                                    uninteresting_keys)
-        nodes = list(iter_nodes)
-        for count, (exp, act) in enumerate(izip(expected, nodes)):
-            exp_record, exp_items = exp
-            record, items = act
-            exp_tuple = (exp_record, sorted(exp_items))
-            if record is None:
-                act_tuple = (None, sorted(items))
-            else:
-                act_tuple = (record.key, sorted(items))
-            self.assertEqual(exp_tuple, act_tuple,
-                             'entry %d did not match expected' % count)
-        self.assertEqual(len(expected), len(nodes))
+                                                    old_keys)
+        record_keys = []
+        all_items = []
+        for record, new_items in iter_nodes:
+            if record is not None:
+                record_keys.append(record.key)
+            if new_items:
+                all_items.extend(new_items)
+        self.assertEqual(sorted(records), sorted(record_keys))
+        self.assertEqual(sorted(items), sorted(all_items))
 
     def test_empty_to_one_keys(self):
         target = self.get_map_key({('a',): 'content'})
-        self.assertIterInteresting(
-            [(target, [(('a',), 'content')]),
-            ], [target], [])
+        self.assertIterInteresting([target],
+                                   [(('a',), 'content')],
+                                   [target], [])
 
     def test_none_to_one_key(self):
         basis = self.get_map_key({})
         target = self.get_map_key({('a',): 'content'})
-        self.assertIterInteresting(
-            [(None, [(('a',), 'content')]),
-             (target, []),
-            ], [target], [basis])
+        self.assertIterInteresting([target],
+                                   [(('a',), 'content')],
+                                   [target], [basis])
 
     def test_one_to_none_key(self):
         basis = self.get_map_key({('a',): 'content'})
         target = self.get_map_key({})
-        self.assertIterInteresting(
-            [(target, [])],
-            [target], [basis])
+        self.assertIterInteresting([target],
+                                   [],
+                                   [target], [basis])
 
     def test_common_pages(self):
         basis = self.get_map_key({('a',): 'content',
@@ -1964,10 +2546,9 @@ class TestIterInterestingNodes(TestCaseWithStore):
             target_map._dump_tree())
         b_key = target_map._root_node._items['b'].key()
         # This should return the root node, and the node for the 'b' key
-        self.assertIterInteresting(
-            [(target, []),
-             (b_key, [(('b',), 'other content')])],
-            [target], [basis])
+        self.assertIterInteresting([target, b_key],
+                                   [(('b',), 'other content')],
+                                   [target], [basis])
 
     def test_common_sub_page(self):
         basis = self.get_map_key({('aaa',): 'common',
@@ -1991,12 +2572,11 @@ class TestIterInterestingNodes(TestCaseWithStore):
         # The key for the internal aa node
         a_key = target_map._root_node._items['a'].key()
         # The key for the leaf aab node
+        # aaa_key = target_map._root_node._items['a']._items['aaa'].key()
         aab_key = target_map._root_node._items['a']._items['aab'].key()
-        self.assertIterInteresting(
-            [(target, []),
-             (a_key, []),
-             (aab_key, [(('aab',), 'new')])],
-            [target], [basis])
+        self.assertIterInteresting([target, a_key, aab_key],
+                                   [(('aab',), 'new')],
+                                   [target], [basis])
 
     def test_common_leaf(self):
         basis = self.get_map_key({})
@@ -2040,29 +2620,22 @@ class TestIterInterestingNodes(TestCaseWithStore):
         a_key = target3_map._root_node._items['a'].key()
         aac_key = target3_map._root_node._items['a']._items['aac'].key()
         self.assertIterInteresting(
-            [(None, [(('aaa',), 'common')]),
-             (target1, []),
-             (target2, []),
-             (target3, []),
-             (b_key, [(('bbb',), 'new')]),
-             (a_key, []),
-             (aac_key, [(('aac',), 'other')]),
-            ], [target1, target2, target3], [basis])
+            [target1, target2, target3, a_key, aac_key, b_key],
+            [(('aaa',), 'common'), (('bbb',), 'new'), (('aac',), 'other')],
+            [target1, target2, target3], [basis])
 
         self.assertIterInteresting(
-            [(target2, []),
-             (target3, []),
-             (b_key, [(('bbb',), 'new')]),
-             (a_key, []),
-             (aac_key, [(('aac',), 'other')]),
-            ], [target2, target3], [target1])
+            [target2, target3, a_key, aac_key, b_key],
+            [(('bbb',), 'new'), (('aac',), 'other')],
+            [target2, target3], [target1])
 
-        # This may be a case that we relax. A root node is a deep child of the
-        # excluded set. The cost is buffering root nodes until we have
-        # determined all possible exclusions. (Because a prefix of '', cannot
-        # be excluded.)
+        # Technically, target1 could be filtered out, but since it is a root
+        # node, we yield it immediately, rather than waiting to find out much
+        # later on.
         self.assertIterInteresting(
-            [], [target1], [target3])
+            [target1],
+            [],
+            [target1], [target3])
 
     def test_multiple_maps(self):
         basis1 = self.get_map_key({('aaa',): 'common',
@@ -2111,18 +2684,14 @@ class TestIterInterestingNodes(TestCaseWithStore):
         # The key for the leaf bba node
         bba_key = target2_map._root_node._items['b']._items['bba'].key()
         self.assertIterInteresting(
-            [(target1, []),
-             (target2, []),
-             (a_key, []),
-             (b_key, []),
-             (aac_key, [(('aac',), 'target1')]),
-             (bba_key, [(('bba',), 'target2')]),
-            ], [target1, target2], [basis1, basis2])
+            [target1, target2, a_key, aac_key, b_key, bba_key],
+            [(('aac',), 'target1'), (('bba',), 'target2')],
+            [target1, target2], [basis1, basis2])
 
     def test_multiple_maps_overlapping_common_new(self):
         # Test that when a node found through the interesting_keys iteration
-        # for *some roots* and also via the uninteresting keys iteration, that
-        # it is still scanned for uninteresting refs and items, because its
+        # for *some roots* and also via the old keys iteration, that
+        # it is still scanned for old refs and items, because its
         # not truely new. This requires 2 levels of InternalNodes to expose,
         # because of the way the bootstrap in _find_children_info works.
         # This suggests that the code is probably amenable to/benefit from
@@ -2188,17 +2757,10 @@ class TestIterInterestingNodes(TestCaseWithStore):
             right_map._dump_tree())
         # Keys from the right side target - none, the root is enough.
         # Test behaviour
-        self.expectFailure("we don't properly filter different depths",
-            self.assertIterInteresting,
-            [(left, []),
-             (right, []),
-             (l_d_key, [(('ddd',), 'change')]),
-            ], [left, right], [basis])
         self.assertIterInteresting(
-            [(left, []),
-             (right, []),
-             (l_d_key, [(('ddd',), 'change')]),
-            ], [left, right], [basis])
+            [right, left, l_d_key],
+            [(('ddd',), 'change')],
+            [left, right], [basis])
 
     def test_multiple_maps_similar(self):
         # We want to have a depth=2 tree, with multiple entries in each leaf
@@ -2259,8 +2821,6 @@ class TestIterInterestingNodes(TestCaseWithStore):
         r_a_key = right_map._root_node._items['a'].key()
         r_c_key = right_map._root_node._items['c'].key()
         self.assertIterInteresting(
-            [(left, []),
-             (right, []),
-             (l_a_key, [(('abb',), 'changed left')]),
-             (r_c_key, [(('cbb',), 'changed right')]),
-            ], [left, right], [basis])
+            [right, left, l_a_key, r_c_key],
+            [(('abb',), 'changed left'), (('cbb',), 'changed right')],
+            [left, right], [basis])

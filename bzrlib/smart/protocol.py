@@ -1036,7 +1036,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
             raise errors.SmartMessageHandlerError(sys.exc_info())
 
     def _state_accept_reading_unused(self):
-        self.unused_data = self._get_in_buffer()
+        self.unused_data += self._get_in_buffer()
         self._set_in_buffer(None)
 
     def next_read_size(self):

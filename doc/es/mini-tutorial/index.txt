@@ -267,7 +267,7 @@ Aprendiendo más
 ===============
 
 Puede encontrar más sobre Bazaar en la
-`Guía de Usuario de Bazaar <../guia-usuario/index.html>`_.
+`Guía de Usuario de Bazaar <../user-guide/index.html>`_.
 
 Para aprender sobre Bazaar por línea de comandos::
 
