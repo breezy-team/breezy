@@ -1096,26 +1096,17 @@ class cmd_push(Command):
         (tree, br_from,
          _unused) = bzrdir.BzrDir.open_containing_tree_or_branch(directory)
         if strict is None:
-            strict = br_from.get_config().get_user_option('push_strict')
-            if strict is not None:
-                # FIXME: This should be better supported by config
-                # -- vila 20090611
-                bools = dict(yes=True, no=False, on=True, off=False,
-                             true=True, false=False)
-                try:
-                    strict = bools[strict.lower()]
-                except KeyError:
-                    strict = None
+            strict = br_from.get_config().get_user_option_as_bool('push_strict')
+        if strict is None: strict = True # default value
         # Get the tip's revision_id
         revision = _get_one_revision('push', revision)
         if revision is not None:
             revision_id = revision.in_history(br_from).rev_id
         else:
             revision_id = None
-        if (tree is not None and revision_id is None
-            and (strict is None or strict)): # Default to True:
+        if strict and tree is not None and revision_id is None:
             if (tree.has_changes(tree.basis_tree())
-                 or len(tree.get_parent_ids()) > 1):
+                or len(tree.get_parent_ids()) > 1):
                 raise errors.UncommittedChanges(
                     tree, more='Use --no-strict to force the push.')
             if tree.last_revision() != tree.branch.last_revision():
