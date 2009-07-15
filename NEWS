@@ -6,6 +6,21 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
+bzr 1.17
+########
+
+Bug Fixes
+*********
+
+* Change an extension to call the python ``frozenset()`` rather than the C
+  api ``PyFrozenSet_New``. It turns out that python2.4 did not expose the
+  C api. (John Arbash Meinel, #399366)
+
+* Fixes for the Makefile and the rename of ``generate_docs.py`` to
+  ``tools/generate_docs.py`` to allow everything to be built on Windows.
+  (John Arbash Meinel, #399356)
+
+
 bzr 1.17rc1 "So late it's brunch" 2009-07-13
 ############################################
 
