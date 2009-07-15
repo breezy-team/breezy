@@ -25,6 +25,11 @@ Bug Fixes
 * BranchBuilder now accepts timezone to avoid test failures in countries far
   from GMT. (Vincent Ladeuil, #397716)
 
+* ``bzr commit`` no longer saves the unversioning of missing files until
+  the commit has completed on the branch. This means that aborting a
+  commit that found a missing file will leave the tree unedited.
+  (Robert Collins, #282402)
+
 Improvements
 ************
 
