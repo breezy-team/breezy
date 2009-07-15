@@ -96,7 +96,7 @@ class TestDeserialization(TestCase):
         serializer = inventory_delta.InventoryDeltaSerializer()
         err = self.assertRaises(
             errors.BzrError, serializer.parse_text_bytes, '')
-        self.assertContainsRe(str(err), 'unknown format')
+        self.assertContainsRe(str(err), 'last line not empty')
 
     def test_parse_bad_format(self):
         serializer = inventory_delta.InventoryDeltaSerializer()
@@ -142,8 +142,8 @@ None\x00/\x00an-id\x00\x00a@e\xc3\xa5ample.com--2004\x00dir\x00\x00
             'directory', u'', None, 'an-id')
         expected_entry.revision = 'a@e\xc3\xa5ample.com--2004'
         self.assertEqual(
-            ('null:', 'entry-version', True, True, 
-             [(None, '/', 'an-id', expected_entry)]),
+            ('null:', 'entry-version', True, True,
+             [(None, '', 'an-id', expected_entry)]),
             parse_result)
 
     def test_parse_special_revid_not_valid_last_mod(self):
@@ -236,6 +236,32 @@ None\x00/\x00TREE_ROOT\x00\x00a@e\xc3\xa5ample.com--2004\x00dir
             serializer.parse_text_bytes, lines)
         self.assertContainsRe(str(err), 'Versioned root found')
 
+    def test_parse_last_line_not_empty(self):
+        """newpath must start with / if it is not None."""
+        # Trim the trailing newline from a valid serialization
+        lines = root_only_lines[:-1]
+        serializer = inventory_delta.InventoryDeltaSerializer()
+        err = self.assertRaises(errors.BzrError,
+            serializer.parse_text_bytes, lines)
+        self.assertContainsRe(str(err), 'last line not empty')
+
+    def test_parse_invalid_newpath(self):
+        """newpath must start with / if it is not None."""
+        lines = empty_lines
+        lines += "None\x00bad\x00TREE_ROOT\x00\x00version\x00dir\n"
+        serializer = inventory_delta.InventoryDeltaSerializer()
+        err = self.assertRaises(errors.BzrError,
+            serializer.parse_text_bytes, lines)
+        self.assertContainsRe(str(err), 'newpath invalid')
+
+    def test_parse_invalid_oldpath(self):
+        """oldpath must start with / if it is not None."""
+        lines = root_only_lines
+        lines += "bad\x00/new\x00file-id\x00\x00version\x00dir\n"
+        serializer = inventory_delta.InventoryDeltaSerializer()
+        err = self.assertRaises(errors.BzrError,
+            serializer.parse_text_bytes, lines)
+        self.assertContainsRe(str(err), 'oldpath invalid')
 
 
 class TestSerialization(TestCase):
@@ -383,8 +409,9 @@ class TestSerialization(TestCase):
             serializer.delta_to_lines(NULL_REVISION, 'entry-version', delta))
 
     def test_to_inventory_root_id_versioned_not_permitted(self):
-        delta = [(None, '/', 'TREE_ROOT', inventory.make_entry(
-            'directory', '', None, 'TREE_ROOT'))]
+        root_entry = inventory.make_entry('directory', '', None, 'TREE_ROOT')
+        root_entry.revision = 'some-version'
+        delta = [(None, '', 'TREE_ROOT', root_entry)]
         serializer = inventory_delta.InventoryDeltaSerializer()
         serializer.require_flags(versioned_root=False, tree_references=True)
         self.assertRaises(
@@ -392,7 +419,7 @@ class TestSerialization(TestCase):
             'new-version', delta)
 
     def test_to_inventory_root_id_not_versioned(self):
-        delta = [(None, '/', 'an-id', inventory.make_entry(
+        delta = [(None, '', 'an-id', inventory.make_entry(
             'directory', '', None, 'an-id'))]
         serializer = inventory_delta.InventoryDeltaSerializer()
         serializer.require_flags(versioned_root=True, tree_references=True)
@@ -405,9 +432,9 @@ class TestSerialization(TestCase):
         tree_ref = make_entry('tree-reference', 'foo', 'changed-in', 'ref-id')
         tree_ref.reference_revision = 'ref-revision'
         delta = [
-            (None, '/', 'an-id',
+            (None, '', 'an-id',
              make_entry('directory', '', 'changed-in', 'an-id')),
-            (None, '/foo', 'ref-id', tree_ref)
+            (None, 'foo', 'ref-id', tree_ref)
             # a file that followed the root move
             ]
         serializer = inventory_delta.InventoryDeltaSerializer()

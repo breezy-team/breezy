@@ -210,6 +210,10 @@ class InventoryDeltaSerializer(object):
                 oldpath_utf8 = 'None'
             else:
                 oldpath_utf8 = '/' + oldpath.encode('utf8')
+            if newpath == '/':
+                raise AssertionError(
+                    "Bad inventory delta: '/' is not a valid newpath "
+                    "(should be '') in delta item %r" % (delta_item,))
             # TODO: Test real-world utf8 cache hit rate. It may be a win.
             newpath_utf8 = '/' + newpath.encode('utf8')
             # Serialize None as ''
@@ -252,6 +256,9 @@ class InventoryDeltaSerializer(object):
         :return: (parent_id, new_id, versioned_root, tree_references,
             inventory_delta)
         """
+        if bytes[-1:] != '\n':
+            last_line = bytes.rsplit('\n', 1)[-1]
+            raise errors.BzrError('last line not empty: %r' % (last_line,))
         lines = bytes.split('\n')[:-1] # discard the last empty line
         if not lines or lines[0] != 'format: %s' % InventoryDeltaSerializer.FORMAT_1:
             raise errors.BzrError('unknown format %r' % lines[0:1])
@@ -297,17 +304,28 @@ class InventoryDeltaSerializer(object):
                     raise errors.BzrError('special revisionid found: %r' % line)
             if delta_tree_references is False and content.startswith('tree\x00'):
                 raise errors.BzrError("Tree reference found: %r" % line)
-            content_tuple = tuple(content.split('\x00'))
-            entry = _parse_entry(
-                newpath_utf8, file_id, parent_id, last_modified, content_tuple)
             if oldpath_utf8 == 'None':
                 oldpath = None
+            elif oldpath_utf8[:1] != '/':
+                raise errors.BzrError(
+                    "oldpath invalid (does not start with /): %r"
+                    % (oldpath_utf8,))
             else:
+                oldpath_utf8 = oldpath_utf8[1:]
                 oldpath = oldpath_utf8.decode('utf8')
             if newpath_utf8 == 'None':
                 newpath = None
+            elif newpath_utf8[:1] != '/':
+                raise errors.BzrError(
+                    "newpath invalid (does not start with /): %r"
+                    % (newpath_utf8,))
             else:
+                # Trim leading slash
+                newpath_utf8 = newpath_utf8[1:]
                 newpath = newpath_utf8.decode('utf8')
+            content_tuple = tuple(content.split('\x00'))
+            entry = _parse_entry(
+                newpath_utf8, file_id, parent_id, last_modified, content_tuple)
             delta_item = (oldpath, newpath, file_id, entry)
             result.append(delta_item)
         return (delta_parent_id, delta_version_id, delta_versioned_root,
