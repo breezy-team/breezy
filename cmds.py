@@ -133,7 +133,7 @@ def debuild_config(tree, working_tree, no_user_config):
     if tree.path2id(default_conf):
         config_files.append((tree.get_file(tree.path2id(default_conf)), False,
                     "default.conf"))
-    config = DebBuildConfig(config_files)
+    config = DebBuildConfig(config_files, tree=tree)
     config.set_user_config(user_config)
     return config
 
