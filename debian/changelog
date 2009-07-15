@@ -1,4 +1,4 @@
-bzr-builddeb (2.2~ubuntu1) jaunty; urgency=low
+bzr-builddeb (2.2~ubuntu1) karmic; urgency=low
 
   [ James Westby ]
   * Don't remove the debian part of the version number twice. (LP: #372792)
