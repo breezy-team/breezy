@@ -19,6 +19,7 @@
 #
 
 import shutil
+import signal
 import subprocess
 import os
 
@@ -31,6 +32,13 @@ from bzrlib.plugins.builddeb.errors import (
 from bzrlib.plugins.builddeb.util import (
         get_parent_dir,
         )
+
+
+def subprocess_setup():
+    # Python installs a SIGPIPE handler by default. This is usually not what
+    # non-Python subprocesses expect.
+    # Many, many thanks to Colin Watson
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
 
 class DebBuild(object):
@@ -77,7 +85,8 @@ class DebBuild(object):
         """This builds the package using the supplied command."""
         info("Building the package in %s, using %s", self.target_dir,
                 self.builder)
-        proc = subprocess.Popen(self.builder, shell=True, cwd=self.target_dir)
+        proc = subprocess.Popen(self.builder, shell=True, cwd=self.target_dir,
+                preexec_fn=subprocess_setup)
         proc.wait()
         if proc.returncode != 0:
             raise BuildFailedError
