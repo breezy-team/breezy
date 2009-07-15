@@ -25,6 +25,10 @@ Bug Fixes
 * BranchBuilder now accepts timezone to avoid test failures in countries far
   from GMT. (Vincent Ladeuil, #397716)
 
+* ``WorkingTree4.unversion`` will no longer fail to unversion ids which
+  were present in a parent tree but renamed in the working tree.
+  (Robert Collins, #187207)
+
 Improvements
 ************
 
