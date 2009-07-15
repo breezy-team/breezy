@@ -63,6 +63,8 @@ def debian_changelog_commit_message(commit, start_message):
     cl_path = "debian/changelog"
     if not commit.work_tree.has_filename(cl_path):
         return start_message
+    if commit.work_tree.path2id(cl_path) is None:
+        return start_message
     if cl_path in commit.exclude:
         return start_message
     if commit.specific_files and cl_path not in commit.specific_files:

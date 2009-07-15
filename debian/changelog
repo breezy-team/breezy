@@ -1,3 +1,10 @@
+bzr-builddeb (2.2~ubuntu2) karmic; urgency=low
+
+  * Don't cause the commit to fail if the changelog file is present but
+    unknown.
+
+ -- James Westby <james.westby@ubuntu.com>  Wed, 15 Jul 2009 18:05:38 +0100
+
 bzr-builddeb (2.2~ubuntu1) karmic; urgency=low
 
   [ James Westby ]
