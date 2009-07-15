@@ -203,6 +203,7 @@ desired.
 
 import bisect
 import binascii
+from copy import deepcopy
 import errno
 import os
 from stat import S_IEXEC
@@ -2436,8 +2437,11 @@ class DirState(object):
         new_iterator = new_inv.iter_entries_by_dir()
         # we will be modifying the dirstate, so we need a stable iterator. In
         # future we might write one, for now we just clone the state into a
-        # list - which is a shallow copy.
-        old_iterator = iter(list(self._iter_entries()))
+        # list using a deep copy so that forward changes don't make the logic
+        # more complex. Using a shallow copy results in all entries being seen
+        # but the state of the entries being wrong, and that leads to stale
+        # entries being left behind.
+        old_iterator = iter(deepcopy(list(self._iter_entries())))
         # both must have roots so this is safe:
         current_new = new_iterator.next()
         current_old = old_iterator.next()

@@ -25,6 +25,11 @@ Bug Fixes
 * BranchBuilder now accepts timezone to avoid test failures in countries far
   from GMT. (Vincent Ladeuil, #397716)
 
+* Renames to lexographically lower basenames in trees that have never been
+  committed to will no longer corrupt the dirstate. This was caused by an
+  aliasing bug in the dirstate set_state_from_inventory method.
+  (Robert Collins, #395556)
+
 Improvements
 ************
 

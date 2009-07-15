@@ -639,25 +639,3 @@ class TestCommit(ExternalBase):
         out, err = self.run_bzr("commit tree/hello.txt")
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         self.assertEqual('save me some typing\n', last_rev.message)
-
-    def test_commit_and_mv_dance_a(self):
-        # see https://bugs.launchpad.net/bzr/+bug/395556
-        tree = self.make_branch_and_tree(".")
-        self.build_tree(["a"])
-        tree.add("a")
-        self.check_output("a => b\n", ["mv", "a", "b"])
-        self.check_output("", ["commit", "-q", "-m", "Actually no, b"])
-        self.check_output("b => a\n", ["mv", "b", "a"])
-        self.check_output("", ["commit", "-q", "-m", "No, really, a"])
-
-    def test_commit_and_mv_dance_b(self):
-        # see https://bugs.launchpad.net/bzr/+bug/395556
-        tree = self.make_branch_and_tree(".")
-        self.build_tree(["b"])
-        tree.add("b")
-        self.check_output("b => a\n", ["mv", "b", "a"])
-        self.check_output("", ["commit", "-q", "-m", "Actually no, a"])
-        self.check_output("a => b\n", ["mv", "a", "b"])
-        self.expectFailure("bug 395556: gives DuplicateFileId "
-            "committing renames",
-            self.check_output, "", ["commit", "-q", "-m", "No, really, b"])
