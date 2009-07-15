@@ -63,16 +63,16 @@ def recursive_copy(fromdir, todir):
             shutil.copy(path, todir)
 
 
-def find_changelog(t, merge):
+def find_changelog(t, merge, max_blocks=1):
     """Find the changelog in the given tree.
 
     First looks for 'debian/changelog'. If "merge" is true will also
     look for 'changelog'.
 
-    The returned changelog is created with 'max_blocks=1' and
-    'allow_empty_author=True'. The first to try and prevent old broken
-    changelog entries from causing the command to fail, and the
-    second as some people do this but still want to build.
+    The returned changelog is created with 'allow_empty_author=True'
+    as some people do this but still want to build.
+    'max_blocks' defaults to 1 to try and prevent old broken
+    changelog entries from causing the command to fail, 
 
     "larstiq" is a subset of "merge" mode. It indicates that the
     '.bzr' dir is at the same level as 'changelog' etc., rather
@@ -80,6 +80,7 @@ def find_changelog(t, merge):
 
     :param t: the Tree to look in.
     :param merge: whether this is a "merge" package.
+    :param max_blocks: Number of max_blocks to parse (defaults to 1)
     :return: (changelog, larstiq) where changelog is the Changelog,
         and larstiq is a boolean indicating whether the file is at
         'changelog' if merge was given, False otherwise.
@@ -115,7 +116,7 @@ def find_changelog(t, merge):
        t.unlock()
     changelog = Changelog()
     try:
-        changelog.parse_changelog(contents, max_blocks=1, allow_empty_author=True)
+        changelog.parse_changelog(contents, max_blocks=max_blocks, allow_empty_author=True)
     except ChangelogParseError, e:
         raise UnparseableChangelog(str(e))
     return changelog, larstiq
@@ -412,3 +413,17 @@ def get_commit_info_from_changelog(changelog, branch, _lplib=None):
         thanks = find_thanks(changes)
         message = "\n".join(changes)
     return (message, authors, thanks, bugs)
+
+
+def find_last_distribution(changelog):
+    """Find the last changelog that was used in a changelog.
+
+    This will skip stanzas with the 'UNRELEASED' distribution.
+    
+    :param changelog: Changelog to analyze
+    """
+    for block in changelog._blocks:
+        distribution = block.distributions.split(" ")[0]
+        if distribution != "UNRELEASED":
+            return distribution
+    return None

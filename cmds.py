@@ -77,6 +77,7 @@ from bzrlib.plugins.builddeb.source_distiller import (
 from bzrlib.plugins.builddeb.upstream import UpstreamProvider
 from bzrlib.plugins.builddeb.util import (find_changelog,
         get_export_upstream_revision,
+        find_last_distribution,
         lookup_distribution,
         suite_to_distribution,
         tarball_name,
@@ -504,19 +505,20 @@ class cmd_merge_upstream(Command):
                     raise BzrCommandError("No location specified to merge")
             changelog = None
             try:
-                changelog = find_changelog(tree, False)[0]
+                changelog = find_changelog(tree, False, max_blocks=2)[0]
                 current_version = changelog.version
                 if package is None:
                     package = changelog.package
                 if distribution is None:
-                    distribution = changelog.distributions.split(" ")[0]
-                    info("Using distribution %s" % distribution)
+                    distribution = find_last_distribution(changelog)
+                    if distribution is not None:
+                        info("Using distribution %s" % distribution)
             except MissingChangelogError:
                 current_version = None
-                if distribution is None:
-                    info("No distribution specified, and no changelog, "
-                            "assuming 'debian'")
-                    distribution = "debian"
+            if distribution is None:
+                info("No distribution specified, and no changelog, "
+                        "assuming 'debian'")
+                distribution = "debian"
 
             if package is None:
                 raise BzrCommandError("You did not specify --package, and "
