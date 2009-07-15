@@ -423,6 +423,8 @@ class FtpTransport(ConnectedTransport):
             self._setmode(relpath, mode)
             ftp.getresp()
         except ftplib.error_perm, e:
+            warning("FTP server does not support file appending natively. " \
+                "Performance may be severely degraded!")
             self._has_append = False
             self._fallback_append(relpath, text, mode)
             
