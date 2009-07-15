@@ -277,7 +277,7 @@ class UpstreamProvider(object):
     def provide_with_pristine_tar(self, target_dir):
         target_filename = os.path.join(target_dir, self._tarball_name())
         return self._pristine_provider(self.tree, self.branch, self.package,
-                self.version, target_filename)
+                self.version.upstream_version, target_filename)
 
     def provide_with_get_orig_source(self, target_dir):
         if self.larstiq:

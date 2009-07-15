@@ -109,15 +109,15 @@ class MockPristineProvider(MockProvider):
         self.tree = None
         self.branch = None
         self.package = None
-        self.version = None
+        self.upstream_version = None
         self.target_filename = None
 
-    def provide(self, tree, branch, package, version, target_filename):
+    def provide(self, tree, branch, package, upstream_version, target_filename):
         self.called_times += 1
         self.tree = tree
         self.branch = branch
         self.package = package
-        self.version = version
+        self.upstream_version = upstream_version
         self.target_filename = target_filename
         if self.find:
             self.create_target(target_filename)

@@ -704,7 +704,7 @@ class cmd_import_dsc(Command):
             try:
                 if last_version is not None:
                     if not db.has_upstream_version_in_packaging_branch(
-                            last_version):
+                            last_version.upstream_version):
                         raise BzrCommandError("Unable to find the tag for "
                                 "the previous upstream version, %s, in the "
                                 "branch: %s" % (last_version,

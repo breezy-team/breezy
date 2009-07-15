@@ -505,7 +505,8 @@ class DistributionBranch(object):
             part of the version number from.
         :return: a String with the name of the tag.
         """
-        tag_name = self.tag_name(version.upstream_version)
+        assert isinstance(version, str)
+        tag_name = self.tag_name(version)
         if distro is None:
             return "upstream-" + tag_name
         return "upstream-%s-%s" % (distro, tag_name)
@@ -564,8 +565,8 @@ class DistributionBranch(object):
         string passed must the the md5sum that is associated with the
         revision pointed to by the tag.
 
-        :param version: a Version object from which to extract the upstream
-            version number to look for in the upstream branch.
+        :param version: a upstream version number to look for in the upstream 
+            branch.
         :param md5: a string with the md5sum that if not None must be
             associated with the revision.
         :return: True if the upstream branch contains the specified upstream
@@ -583,6 +584,7 @@ class DistributionBranch(object):
         return False
 
     def has_upstream_version_in_packaging_branch(self, version, md5=None):
+        assert isinstance(version, str)
         tag_name = self.upstream_tag_name(version)
         if self._has_version(self.branch, tag_name, md5=md5):
             return True
@@ -722,9 +724,10 @@ class DistributionBranch(object):
         Sets a tag on the last revision of the upstream branch with a tag
         that refers to the upstream part of the version provided.
 
-        :param version: the Version object from which to extract the upstream
-            part of the version number to derive the tag name from.
+        :param version: the upstream part of the version number to derive the 
+            tag name from.
         """
+        assert isinstance(version, str)
         tag_name = self.upstream_tag_name(version)
         self.upstream_branch.tags.set_tag(tag_name,
                 self.upstream_branch.last_revision())
@@ -843,13 +846,14 @@ class DistributionBranch(object):
         indicates that a pull should be done from that branch, rather
         than importing the upstream as a new revision in this branch.
 
-        :param version: the Version object to use the upstream part
-            of when searching in the lesser branches.
+        :param version: the upstream version to use when searching in the 
+            lesser branches.
         :param md5: a String containing the md5 associateed with the
             upstream version.
         :return: a DistributionBranch object to pull the upstream from
             if that is what should be done, otherwise None.
         """
+        assert isinstance(version, str)
         assert md5 is not None, \
             ("It's not a good idea to use branch_to_pull_upstream_from with "
              "md5 == None, as you may pull the wrong revision.")
@@ -968,11 +972,12 @@ class DistributionBranch(object):
         recognised as being part of this branch.
 
         :param pull_branch: the DistributionBranch to pull from.
-        :param version: the Version to use the upstream part of.
+        :param version: the upstream version string
         """
+        assert isinstance(version, str)
         pull_revision = pull_branch.revid_of_upstream_version(version)
         mutter("Pulling upstream part of %s from revision %s" % \
-                (str(version), pull_revision))
+                (version, pull_revision))
         up_pull_branch = pull_branch.upstream_branch
         assert self.upstream_tree is not None, \
             "Can't pull upstream with no tree"
@@ -1009,9 +1014,10 @@ class DistributionBranch(object):
         assert self.tree is not None, "Can't pull branch with no tree"
         self.tree.pull(pull_branch.branch, stop_revision=pull_revision)
         self.tag_version(version)
-        if not native and not self.has_upstream_version(version):
-            if pull_branch.has_upstream_version(version):
-                self.pull_upstream_from_branch(pull_branch, version)
+        if not native and not self.has_upstream_version(version.upstream_version):
+            if pull_branch.has_upstream_version(version.upstream_version):
+                self.pull_upstream_from_branch(pull_branch, 
+                    version.upstream_version)
             else:
                 assert False, ("Can't find the needed upstream part "
                         "for version %s" % version)
@@ -1064,7 +1070,7 @@ class DistributionBranch(object):
                     break
         real_parents = [p[2] for p in parents]
         if need_upstream_parent:
-            parent_revid = self.revid_of_upstream_version(version)
+            parent_revid = self.revid_of_upstream_version(version.upstream_version)
             if len(parents) > 0:
                 real_parents.insert(1, parent_revid)
             else:
@@ -1106,7 +1112,7 @@ class DistributionBranch(object):
 
         :param upstream_part: the path of a directory containing the
             unpacked upstream part of the source package.
-        :param version: the Version of the package that is being imported.
+        :param version: upstream version that is being imported
         :param md5: the md5 of the upstream part.
         :param upstream_parents: the parents to give the upstream revision
         :param timestamp: a tuple of (timestamp, timezone) to use for
@@ -1117,6 +1123,7 @@ class DistributionBranch(object):
         # from lesser branches first? For now we'll just dump it on.
         # TODO: this method needs a lot of work for when we will make
         # the branches writeable by others.
+        assert isinstance(version, str)
         mutter("Importing upstream version %s from %s with parents %s" \
                 % (version, upstream_part, str(upstream_parents)))
         assert self.upstream_tree is not None, \
@@ -1158,7 +1165,7 @@ class DistributionBranch(object):
             timezone = timestamp[1]
             timestamp = timestamp[0]
         revid = self.upstream_tree.commit("Import upstream version %s" \
-                % (str(version.upstream_version),),
+                % (version,),
                 revprops=revprops, timestamp=timestamp, timezone=timezone)
         self.tag_upstream_version(version)
         return revid
@@ -1358,7 +1365,7 @@ class DistributionBranch(object):
             # upstream as a non-native version (i.e. it wasn't a mistaken
             # native -2 version), then we want to add an extra parent.
             if (self.is_version_native(last_contained_version)
-                and not self.has_upstream_version(last_contained_version)):
+                and not self.has_upstream_version(last_contained_version.upstream_version)):
                 revid = self.revid_of_version(last_contained_version)
                 parents.append(revid)
                 self.upstream_branch.fetch(self.branch,
@@ -1374,7 +1381,7 @@ class DistributionBranch(object):
                 pull_version = pull_parents[1][1]
             if not pull_branch.is_version_native(pull_version):
                     pull_revid = \
-                        pull_branch.revid_of_upstream_version(pull_version)
+                        pull_branch.revid_of_upstream_version(pull_version.upstream_version)
                     mutter("Initialising upstream from %s, version %s" \
                         % (str(pull_branch), str(pull_version)))
                     parents.append(pull_revid)
@@ -1407,7 +1414,8 @@ class DistributionBranch(object):
             timestamp=None, author=None):
         pull_branch = self.branch_to_pull_version_from(version, md5)
         if pull_branch is not None:
-            if (self.branch_to_pull_upstream_from(version, upstream_md5)
+            if (self.branch_to_pull_upstream_from(version.upstream_version,
+                        upstream_md5)
                     is None):
                 pull_branch = None
         if pull_branch is not None:
@@ -1416,18 +1424,21 @@ class DistributionBranch(object):
             # We need to import at least the diff, possibly upstream.
             # Work out if we need the upstream part first.
             imported_upstream = False
-            if not self.has_upstream_version(version):
+            if not self.has_upstream_version(version.upstream_version):
                 up_pull_branch = \
-                    self.branch_to_pull_upstream_from(version, upstream_md5)
+                    self.branch_to_pull_upstream_from(version.upstream_version,
+                            upstream_md5)
                 if up_pull_branch is not None:
-                    self.pull_upstream_from_branch(up_pull_branch, version)
+                    self.pull_upstream_from_branch(up_pull_branch,
+                            version.upstream_version)
                 else:
                     imported_upstream = True
                     # Check whether we should pull first if this initialises
                     # from another branch:
                     upstream_parents = self.upstream_parents(versions,
-                            version)
-                    new_revid = self.import_upstream(upstream_part, version,
+                            version.upstream_version)
+                    new_revid = self.import_upstream(upstream_part,
+                            version.upstream_version,
                             upstream_md5, upstream_parents,
                             upstream_tarball=upstream_tarball,
                             timestamp=timestamp, author=author)
@@ -1624,7 +1635,7 @@ class DistributionBranch(object):
         try:
             if previous_version is not None:
                 if not self.has_upstream_version_in_packaging_branch(
-                        previous_version):
+                        previous_version.upstream_version):
                     raise BzrCommandError("Unable to find the tag for the "
                             "previous upstream version, %s, in the branch: "
                             "%s" % (previous_version,
@@ -1634,7 +1645,7 @@ class DistributionBranch(object):
                 self._extract_upstream_tree(upstream_tip, tempdir)
             else:
                 self._create_empty_upstream_tree(tempdir)
-            if self.has_upstream_version_in_packaging_branch(version):
+            if self.has_upstream_version_in_packaging_branch(version.upstream_version):
                 raise UpstreamAlreadyImported(version)
             try:
                 if upstream_branch is not None:
@@ -1691,6 +1702,7 @@ class DistributionBranch(object):
 
     def reconstruct_pristine_tar(self, revid, package, version,
             dest_filename):
+        """Reconstruct a pristine-tar tarball from a bzr revision."""
         if not os.path.exists("/usr/bin/pristine-tar"):
             raise PristineTarError("/usr/bin/pristine-tar is not available")
         tree = self.branch.repository.revision_tree(revid)
