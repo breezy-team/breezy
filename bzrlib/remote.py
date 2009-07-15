@@ -583,6 +583,11 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
         self._ensure_real()
         return self._custom_format._serializer
 
+    @property
+    def repository_class(self):
+        self._ensure_real()
+        return self._custom_format.repository_class
+
 
 class RemoteRepository(_RpcHelper):
     """Repository accessed over rpc.
@@ -1830,18 +1835,26 @@ class RemoteStreamSource(repository.StreamSource):
             return self._real_stream(repo, search)
         client = repo._client
         medium = client._medium
-        if medium._is_remote_before((1, 13)):
-            # streaming was added in 1.13
-            return self._real_stream(repo, search)
         path = repo.bzrdir._path_for_remote_call(client)
-        try:
-            search_bytes = repo._serialise_search_result(search)
-            response = repo._call_with_body_bytes_expecting_body(
-                'Repository.get_stream',
-                (path, self.to_format.network_name()), search_bytes)
-            response_tuple, response_handler = response
-        except errors.UnknownSmartMethod:
-            medium._remember_remote_is_before((1,13))
+        search_bytes = repo._serialise_search_result(search)
+        args = (path, self.to_format.network_name())
+        candidate_verbs = [
+            ('Repository.get_stream_1.18', (1, 18)),
+            ('Repository.get_stream', (1, 13))]
+        found_verb = False
+        for verb, version in candidate_verbs:
+            if medium._is_remote_before(version):
+                continue
+            try:
+                response = repo._call_with_body_bytes_expecting_body(
+                    verb, args, search_bytes)
+            except errors.UnknownSmartMethod:
+                medium._remember_remote_is_before(version)
+            else:
+                response_tuple, response_handler = response
+                found_verb = True
+                break
+        if not found_verb:
             return self._real_stream(repo, search)
         if response_tuple[0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response_tuple)

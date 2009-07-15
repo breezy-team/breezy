@@ -186,7 +186,7 @@ class InventoryDeltaContentFactory(ContentFactory):
                 raise errors.UnavailableRepresentation(self.key, storage_kind,
                     self.storage_kind)
             null_inv = inventory.Inventory(None)
-            my_inv = self._repo.get_inventory(self.key) # XXX: key[0] ???
+            my_inv = self._repo.get_inventory(self.key)
             delta = my_inv._make_delta(null_inv)
             serializer.require_flags(*self._format_flags)
             return serializer.delta_to_lines(

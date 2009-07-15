@@ -30,6 +30,7 @@ from bzrlib import (
     graph,
     osutils,
     pack,
+    versionedfile,
     )
 from bzrlib.bzrdir import BzrDir
 from bzrlib.smart.request import (
@@ -418,7 +419,38 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
             repository.
         """
         self._to_format = network_format_registry.get(to_network_name)
+        if self._should_fake_unknown():
+            return FailedSmartServerResponse(
+                ('UnknownMethod', 'Repository.get_stream'))
         return None # Signal that we want a body.
+
+    def _should_fake_unknown(self):
+        # This is a workaround for bugs in pre-1.18 clients that claim to
+        # support receiving streams of CHK repositories.  The pre-1.18 client
+        # expects inventory records to be serialized in the format defined by
+        # to_network_name, but in pre-1.18 (at least) that format definition
+        # tries to use the xml5 serializer, which does not correctly handle
+        # rich-roots.  After 1.18 the client can also accept inventory-deltas
+        # (which avoids this issue), and those clients will use the
+        # Repository.get_stream_1.18 verb instead of this one.
+        # So: if this repository is CHK, and the to_format doesn't match,
+        # we should just fake an UnknownSmartMethod error so that the client
+        # will fallback to VFS, rather than sending it a stream we know it
+        # cannot handle.
+        from_format = self._repository._format
+        to_format = self._to_format
+        if not from_format.supports_chks:
+            # Source not CHK: that's ok
+            return False
+        if (to_format.supports_chks and
+            from_format.repository_class is to_format.repository_class and
+            from_format._serializer == to_format._serializer):
+            # Source is CHK, but target matches: that's ok
+            # (e.g. 2a->2a, or CHK2->2a)
+            return False
+        # Source is CHK, and target is not CHK or incompatible CHK.  We can't
+        # generate a compatible stream.
+        return True
 
     def do_body(self, body_bytes):
         repository = self._repository
@@ -453,6 +485,14 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
             yield FailedSmartServerResponse(('NoSuchRevision', e.revision_id))
         else:
             repository.unlock()
+
+
+class SmartServerRepositoryGetStream_1_18(SmartServerRepositoryGetStream):
+
+    def _should_fake_unknown(self):
+        # The client is at least 1.18, so we don't need to work around any
+        # bugs.
+        return False
 
 
 def _stream_to_byte_stream(stream, src_format):

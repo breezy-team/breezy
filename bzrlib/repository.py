@@ -3983,7 +3983,8 @@ class StreamSource(object):
 
     def _get_inventory_stream(self, revision_ids, missing=False):
         from_format = self.from_repository._format
-        if (from_format.supports_chks and self.to_format.supports_chks):
+        if (from_format.supports_chks and self.to_format.supports_chks and
+            from_format.network_name() == self.to_format.network_name()):
             raise AssertionError(
                 "this case should be handled by GroupCHKStreamSource")
         elif (not from_format.supports_chks):
@@ -4068,7 +4069,7 @@ class StreamSource(object):
                 delta = best_delta
             invs_sent_so_far.add(basis_id)
             yield versionedfile.InventoryDeltaContentFactory(
-                key, parents, None, delta, basis_id, flags)
+                key, parents, None, delta, basis_id, flags, from_repo)
 
 
 def _iter_for_revno(repo, partial_history_cache, stop_index=None,

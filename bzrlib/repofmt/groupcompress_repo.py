@@ -876,14 +876,13 @@ class CHKInventoryRepository(KnitPackRepository):
 
     def _get_source(self, to_format):
         """Return a source for streaming from this repository."""
-        if isinstance(to_format, remote.RemoteRepositoryFormat):
-            # Can't just check attributes on to_format with the current code,
-            # work around this:
-            to_format._ensure_real()
-            to_format = to_format._custom_format
-        if to_format.__class__ is self._format.__class__:
+        if (to_format.supports_chks and
+            self._format.repository_class is to_format.repository_class and
+            self._format._serializer == to_format._serializer):
             # We must be exactly the same format, otherwise stuff like the chk
-            # page layout might be different
+            # page layout might be different.
+            # Actually, this test is just slightly looser than exact so that
+            # CHK2 <-> 2a transfers will work.
             return GroupCHKStreamSource(self, to_format)
         return super(CHKInventoryRepository, self)._get_source(to_format)
 

@@ -103,6 +103,10 @@ def default_test_list():
               groupcompress_repo.RepositoryFormat2a())
     add_combo(groupcompress_repo.RepositoryFormat2a(),
               pack_repo.RepositoryFormatKnitPack6RichRoot())
+    add_combo(groupcompress_repo.RepositoryFormatCHK2(),
+              groupcompress_repo.RepositoryFormat2a())
+    add_combo(groupcompress_repo.RepositoryFormatCHK1(),
+              groupcompress_repo.RepositoryFormat2a())
     return result
 
 
