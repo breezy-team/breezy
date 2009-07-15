@@ -20,6 +20,7 @@
 import glob
 import os
 import shutil
+import signal
 import subprocess
 import tempfile
 
@@ -33,6 +34,13 @@ from bzrlib.plugins.builddeb.util import (
         get_parent_dir,
         recursive_copy,
         )
+
+
+def subprocess_setup():
+    # Python installs a SIGPIPE handler by default. This is usually not what
+    # non-Python subprocesses expect.
+    # Many, many thanks to Colin Watson
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
 
 class SourceDistiller(object):
@@ -124,7 +132,8 @@ class MergeModeDistiller(SourceDistiller):
             # Extract it to the right place
             tempdir = tempfile.mkdtemp(prefix='builddeb-merge-')
             try:
-                ret = subprocess.call(['tar','-C',tempdir,'-xf',tarball])
+                ret = subprocess.call(['tar','-C',tempdir,'-xf',tarball],
+                        preexec_fn=subprocess_setup)
                 if ret != 0:
                     raise TarFailed("uncompress", tarball)
                 files = glob.glob(tempdir+'/*')

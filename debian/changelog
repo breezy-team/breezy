@@ -1,7 +1,16 @@
-bzr-builddeb (2.1.2~ubuntu2) jaunty; urgency=low
+bzr-builddeb (2.2~ubuntu1) jaunty; urgency=low
 
   [ James Westby ]
   * Don't remove the debian part of the version number twice. (LP: #372792)
+  * Make import-dsc work when the package contains a symlink.
+  * Also take file-ids from the upstream revision when doing an import-dsc.
+  * Fix a stupid error when recreating the tarball using pristine-tar.
+  * Add karmic to the list of releases.
+  * Several fixes for import-dsc when used in a multi-branch setting
+    (not possible from the command line).
+  * Don't deadlock when the pristine-tar delta is large.
+  * Avoid problems due to SIGPIPE and subprocess causing failures to
+    uncompress some tarballs. Thansk to Colin Watson (LP: #395353)
 
   [ Jelmer Vernooij ]
   * Support Vcs-Hg in the deb: directory service if bzr-hg is installed.
