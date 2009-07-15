@@ -1567,9 +1567,10 @@ class RepositoryPackCollection(object):
         # determine which packs need changing
         pack_operations = [[0, []]]
         for pack in self.all_packs():
-            if not hint or pack.name in hint:
+            if hint is None or pack.name in hint:
                 pack_operations[-1][0] += pack.get_revision_count()
                 pack_operations[-1][1].append(pack)
+        mutter('pack ops: %r', pack_operations)
         self._execute_pack_operations(pack_operations, OptimisingPacker)
 
     def plan_autopack_combinations(self, existing_packs, pack_distribution):
@@ -2070,6 +2071,8 @@ class RepositoryPackCollection(object):
                  % (self.repo, sorted(all_missing)))
         self._remove_pack_indices(self._new_pack)
         should_autopack = False
+        mutter('_cwg: data_inserted()=%r', self._new_pack.data_inserted())
+        mutter('_cwg: _resumed_packs=%r', self._resumed_packs)
         if self._new_pack.data_inserted():
             # get all the data to disk and read to use
             self._new_pack.finish()
@@ -2088,11 +2091,13 @@ class RepositoryPackCollection(object):
             self.allocate(resumed_pack)
             should_autopack = True
         del self._resumed_packs[:]
+        mutter('_commit_write_group: should_autopack=%r', should_autopack)
         if should_autopack:
             if not self.autopack():
                 # when autopack takes no steps, the names list is still
                 # unsaved.
                 return self._save_pack_names()
+        return []
 
     def _suspend_write_group(self):
         tokens = [pack.name for pack in self._resumed_packs]
