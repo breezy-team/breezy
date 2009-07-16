@@ -31,6 +31,7 @@ from bzrlib import (
     config,
     errors,
     graph,
+    inventory,
     pack,
     remote,
     repository,
@@ -38,6 +39,7 @@ from bzrlib import (
     tests,
     treebuilder,
     urlutils,
+    versionedfile,
     )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir, BzrDirFormat
@@ -2281,6 +2283,89 @@ class TestRepositoryInsertStream(TestRemoteRepository):
         self.assertEqual([], resume_tokens)
         self.assertEqual(set(), missing_keys)
         client.finished_test()
+
+    def test_stream_with_inventory_delta(self):
+        """inventory-delta records can't be sent to the
+        Repository.insert_stream verb.  So when one is encountered the
+        RemoteSink immediately stops using that verb and falls back to VFS
+        insert_stream.
+        """
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'Repository.insert_stream_1.18', ('quack/', ''),
+            'unknown', ('Repository.insert_stream_1.18',))
+        client.add_expected_call(
+            'Repository.insert_stream', ('quack/', ''),
+            'success', ('ok',))
+        client.add_expected_call(
+            'Repository.insert_stream', ('quack/', ''),
+            'success', ('ok',))
+        # Create a fake real repository for insert_stream to fall back on, so
+        # that we can directly see the records the RemoteSink passes to the
+        # real sink.
+        class FakeRealSink:
+            def __init__(self):
+                self.records = []
+            def insert_stream(self, stream, src_format, resume_tokens):
+                for substream_kind, substream in stream:
+                    self.records.append(
+                        (substream_kind, [record.key for record in substream]))
+                return ['fake tokens'], ['fake missing keys']
+        fake_real_sink = FakeRealSink()
+        class FakeRealRepository:
+            def _get_sink(self):
+                return fake_real_sink
+        repo._real_repository = FakeRealRepository()
+        sink = repo._get_sink()
+        fmt = repository.RepositoryFormat.get_default_format()
+        stream = self.make_stream_with_inv_deltas(fmt)
+        resume_tokens, missing_keys = sink.insert_stream(stream, fmt, [])
+        # Every record from the first inventory delta should have been sent to
+        # the VFS sink.
+        expected_records = [
+            ('inventories', [('rev2',), ('rev3',)]),
+            ('texts', [('some-rev', 'some-file')])]
+        self.assertEqual(expected_records, fake_real_sink.records)
+        # The return values from the real sink's insert_stream are propagated
+        # back to the original caller.
+        self.assertEqual(['fake tokens'], resume_tokens)
+        self.assertEqual(['fake missing keys'], missing_keys)
+        client.finished_test()
+
+    def make_stream_with_inv_deltas(self, fmt):
+        """Make a simple stream with an inventory delta followed by more
+        records and more substreams to test that all records and substreams
+        from that point on are used.
+
+        This sends, in order:
+           * inventories substream: rev1, rev2, rev3.  rev2 and rev3 are
+             inventory-deltas.
+           * texts substream: (some-rev, some-file)
+        """
+        # Define a stream using generators so that it isn't rewindable.
+        def stream_with_inv_delta():
+            yield ('inventories', inventory_substream_with_delta())
+            yield ('texts', [
+                versionedfile.FulltextContentFactory(
+                    ('some-rev', 'some-file'), (), None, 'content')])
+        def inventory_substream_with_delta():
+            # An empty inventory fulltext.  This will be streamed normally.
+            inv = inventory.Inventory(revision_id='rev1')
+            text = fmt._serializer.write_inventory_to_string(inv)
+            yield versionedfile.FulltextContentFactory(
+                ('rev1',), (), None, text)
+            # An inventory delta.  This can't be streamed via this verb, so it
+            # will trigger a fallback to VFS insert_stream.
+            entry = inv.make_entry(
+                'directory', 'newdir', inv.root.file_id, 'newdir-id')
+            delta = [(None, 'newdir', 'newdir-id', entry)]
+            yield versionedfile.InventoryDeltaContentFactory(
+                ('rev2',), (('rev1',)), None, ('rev1',), (True, False), None)
+            # Another delta.
+            yield versionedfile.InventoryDeltaContentFactory(
+                ('rev3',), (('rev1',)), None, ('rev1',), (True, False), None)
+        return stream_with_inv_delta()
 
 
 class TestRepositoryInsertStream_1_18(TestRemoteRepository):
