@@ -30,6 +30,12 @@ Bug Fixes
   commit that found a missing file will leave the tree unedited.
   (Robert Collins, #282402)
 
+* ``bzr mv`` no longer takes out branch locks, which allows it to work
+  when the branch is readonly. (Robert Collins, #216541)
+
+* Fixed spurious "Source branch does not support stacking" warning when
+  pushing. (Andrew Bennetts, #388908)
+  
 * Renames to lexographically lower basenames in trees that have never been
   committed to will no longer corrupt the dirstate. This was caused by an
   bug in the dirstate update_minimal method. (Robert Collins, #395556)
