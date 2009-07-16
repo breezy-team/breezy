@@ -280,6 +280,15 @@ class TestCommit(TestCaseWithWorkingTree):
         wt2.merge_from_branch(wt.branch)
         wt2.commit('merged kind change')
 
+    def test_commit_aborted_does_not_apply_automatic_changes_bug_282402(self):
+        wt = self.make_branch_and_tree('.')
+        wt.add(['a'], ['a-id'], ['file'])
+        def fail_message(obj):
+            raise errors.BzrCommandError("empty commit message")
+        self.assertRaises(errors.BzrCommandError, wt.commit,
+            message_callback=fail_message)
+        self.assertEqual('a', wt.id2path('a-id'))
+
     def test_local_commit_ignores_master(self):
         # a --local commit does not require access to the master branch
         # at all, or even for it to exist.
