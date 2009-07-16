@@ -2644,17 +2644,29 @@ class DirState(object):
                     # relocations when updating an existing record but its not:
                     # the test for existing kinds is different: this can be
                     # factored out to a helper though.
-                    other_block_index, present = self._find_block_index_from_key(other_key)
+                    other_block_index, present = self._find_block_index_from_key(
+                        other_key)
                     if not present:
-                        raise AssertionError('could not find block for %s' % (other_key,))
+                        raise AssertionError('could not find block for %s' % (
+                            other_key,))
                     other_entry_index, present = self._find_entry_index(other_key,
                                             self._dirblocks[other_block_index][1])
                     if not present:
-                        raise AssertionError('could not find entry for %s' % (other_key,))
+                        raise AssertionError('could not find entry for %s' % (
+                            other_key,))
                     if path_utf8 is None:
                         raise AssertionError('no path')
-                    self._dirblocks[other_block_index][1][other_entry_index][1][0] = \
+                    other_block = self._dirblocks[other_block_index][1]
+                    # Turn this other location into a reference to the new
+                    # location. This also updates the aliased iterator that
+                    # set_state_from_inventory uses so that the old entry, if
+                    # not already examined, is skipped over.
+                    other_block[other_entry_index][1][0] = \
                         ('r', path_utf8, 0, False, '')
+                    if len(other_block[other_entry_index][1]) == 1:
+                        # We only have one tree in use, so an 'r' record is not
+                        # needed: remove it.
+                        other_block.pop(other_entry_index)
 
                 num_present_parents = self._num_present_parents()
                 for lookup_index in xrange(1, num_present_parents + 1):

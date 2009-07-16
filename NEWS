@@ -27,8 +27,7 @@ Bug Fixes
 
 * Renames to lexographically lower basenames in trees that have never been
   committed to will no longer corrupt the dirstate. This was caused by an
-  aliasing bug in the dirstate set_state_from_inventory method.
-  (Robert Collins, #395556)
+  bug in the dirstate update_minimal method. (Robert Collins, #395556)
 
 Improvements
 ************
