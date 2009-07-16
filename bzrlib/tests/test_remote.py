@@ -332,15 +332,6 @@ class TestRemote(tests.TestCaseWithMemoryTransport):
         reference_bzrdir_format = bzrdir.format_registry.get('default')()
         return reference_bzrdir_format.repository_format
 
-    def disable_verb(self, verb):
-        """Disable a verb for one test."""
-        request_handlers = smart.request.request_handlers
-        orig_method = request_handlers.get(verb)
-        request_handlers.remove(verb)
-        def restoreVerb():
-            request_handlers.register(verb, orig_method)
-        self.addCleanup(restoreVerb)
-
 
 class Test_ClientMedium_remote_path_from_transport(tests.TestCase):
     """Tests for the behaviour of client_medium.remote_path_from_transport."""
@@ -2216,10 +2207,22 @@ class TestRepositoryHasRevision(TestRemoteRepository):
 
 
 class TestRepositoryInsertStream(TestRemoteRepository):
+    """Tests for using Repository.insert_stream verb when the _1.18 variant is
+    not available.
+
+    This test case is very similar to TestRepositoryInsertStream_1_18.
+    """
+
+    def setUp(self):
+        TestRemoteRepository.setUp(self)
+        self.disable_verb('Repository.insert_stream_1.18')
 
     def test_unlocked_repo(self):
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'Repository.insert_stream_1.18', ('quack/', ''),
+            'unknown', ('Repository.insert_stream_1.18',))
         client.add_expected_call(
             'Repository.insert_stream', ('quack/', ''),
             'success', ('ok',))
@@ -2239,6 +2242,9 @@ class TestRepositoryInsertStream(TestRemoteRepository):
         client.add_expected_call(
             'Repository.lock_write', ('quack/', ''),
             'success', ('ok', ''))
+        client.add_expected_call(
+            'Repository.insert_stream_1.18', ('quack/', ''),
+            'unknown', ('Repository.insert_stream_1.18',))
         client.add_expected_call(
             'Repository.insert_stream', ('quack/', ''),
             'success', ('ok',))
@@ -2260,10 +2266,72 @@ class TestRepositoryInsertStream(TestRemoteRepository):
             'Repository.lock_write', ('quack/', ''),
             'success', ('ok', 'a token'))
         client.add_expected_call(
+            'Repository.insert_stream_1.18', ('quack/', '', 'a token'),
+            'unknown', ('Repository.insert_stream_1.18',))
+        client.add_expected_call(
             'Repository.insert_stream_locked', ('quack/', '', 'a token'),
             'success', ('ok',))
         client.add_expected_call(
             'Repository.insert_stream_locked', ('quack/', '', 'a token'),
+            'success', ('ok',))
+        repo.lock_write()
+        sink = repo._get_sink()
+        fmt = repository.RepositoryFormat.get_default_format()
+        resume_tokens, missing_keys = sink.insert_stream([], fmt, [])
+        self.assertEqual([], resume_tokens)
+        self.assertEqual(set(), missing_keys)
+        client.finished_test()
+
+
+class TestRepositoryInsertStream_1_18(TestRemoteRepository):
+
+    def test_unlocked_repo(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'Repository.insert_stream_1.18', ('quack/', ''),
+            'success', ('ok',))
+        client.add_expected_call(
+            'Repository.insert_stream_1.18', ('quack/', ''),
+            'success', ('ok',))
+        sink = repo._get_sink()
+        fmt = repository.RepositoryFormat.get_default_format()
+        resume_tokens, missing_keys = sink.insert_stream([], fmt, [])
+        self.assertEqual([], resume_tokens)
+        self.assertEqual(set(), missing_keys)
+        client.finished_test()
+
+    def test_locked_repo_with_no_lock_token(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'Repository.lock_write', ('quack/', ''),
+            'success', ('ok', ''))
+        client.add_expected_call(
+            'Repository.insert_stream_1.18', ('quack/', ''),
+            'success', ('ok',))
+        client.add_expected_call(
+            'Repository.insert_stream_1.18', ('quack/', ''),
+            'success', ('ok',))
+        repo.lock_write()
+        sink = repo._get_sink()
+        fmt = repository.RepositoryFormat.get_default_format()
+        resume_tokens, missing_keys = sink.insert_stream([], fmt, [])
+        self.assertEqual([], resume_tokens)
+        self.assertEqual(set(), missing_keys)
+        client.finished_test()
+
+    def test_locked_repo_with_lock_token(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'Repository.lock_write', ('quack/', ''),
+            'success', ('ok', 'a token'))
+        client.add_expected_call(
+            'Repository.insert_stream_1.18', ('quack/', '', 'a token'),
+            'success', ('ok',))
+        client.add_expected_call(
+            'Repository.insert_stream_1.18', ('quack/', '', 'a token'),
             'success', ('ok',))
         repo.lock_write()
         sink = repo._get_sink()

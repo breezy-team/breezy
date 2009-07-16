@@ -131,16 +131,6 @@ class TestInterRepository(TestCaseWithInterRepository):
         self.setup_smart_server_with_call_log()
         self.test_fetch_parent_inventories_at_stacking_boundary()
 
-    def disable_verb(self, verb):
-        """Disable a verb for one test."""
-        from bzrlib.smart import request
-        request_handlers = request.request_handlers
-        orig_method = request_handlers.get(verb)
-        request_handlers.remove(verb)
-        def restoreVerb():
-            request_handlers.register(verb, orig_method)
-        self.addCleanup(restoreVerb)
-
     def test_fetch_parent_inventories_at_stacking_boundary_smart_old(self):
         self.setup_smart_server_with_call_log()
         self.disable_verb('Repository.insert_stream_1.18')
